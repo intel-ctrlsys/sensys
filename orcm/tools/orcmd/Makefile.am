@@ -1,0 +1,51 @@
+#
+# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
+#                         University Research and Technology
+#                         Corporation.  All rights reserved.
+# Copyright (c) 2004-2005 The University of Tennessee and The University
+#                         of Tennessee Research Foundation.  All rights
+#                         reserved.
+# Copyright (c) 2004-2009 High Performance Computing Center Stuttgart, 
+#                         University of Stuttgart.  All rights reserved.
+# Copyright (c) 2004-2005 The Regents of the University of California.
+#                         All rights reserved.
+# Copyright (c) 2007-2008 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
+# Copyright (c) 2013      Intel, Inc.  All rights reserved.
+# $COPYRIGHT$
+# 
+# Additional copyrights may follow
+# 
+# $HEADER$
+#
+
+include $(top_srcdir)/Makefile.ompi-rules
+
+man_pages = orcmd.1
+EXTRA_DIST = $(man_pages:.1=.1in)
+
+if OMPI_INSTALL_BINARIES
+
+bin_PROGRAMS = orcmd
+
+nodist_man_MANS = $(man_pages)
+
+# Ensure that the man pages are rebuilt if the orcm_config.h file
+# changes; a "good enough" way to know if configure was run again (and
+# therefore the release date or version may have changed)
+$(nodist_man_MANS): $(top_builddir)/orcm/include/orcm_config.h
+
+endif # OMPI_INSTALL_BINARIES
+
+orcmd_SOURCES = orcmd.c
+# the following empty orcmd_LDFLAGS is used 
+#  so that the orcmd can be compiled statically 
+#  by simply changing the value of this from 
+#  nothing to -all-static in the Makefile.in
+#  nice for systems that don't have all the shared 
+#  libraries on the computes 
+orcmd_LDFLAGS =
+orcmd_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/libopen-rte.la
+
+distclean-local:
+	rm -f $(man_pages)

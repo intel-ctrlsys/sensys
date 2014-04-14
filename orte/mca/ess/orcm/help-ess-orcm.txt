@@ -1,0 +1,59 @@
+# -*- text -*-
+#
+#ﬁ Copyright (c) 2013      Intel, Inc. All rights reserved.
+# $COPYRIGHT$
+# 
+# Additional copyrights may follow
+# 
+# $HEADER$
+#
+#
+[site-file-not-found]
+The orcmd site configuration file:
+
+  %s
+
+could not be opened. Please check the path and permissions.
+#
+[node-not-found]
+The configuration file does not contain this node:
+
+  file: %s
+  node: %s
+
+Note that the node can be expressed either as an IP address
+or as a string as returned by the hostname command.
+
+Please correct the configuration and try again.
+#
+[master-not-found]
+An orcmd master was not defined for the orcmd-group:
+
+  %s
+
+Please check the configuration file and ensure that all
+orcmd-group's have a defined master.
+#
+[duplicate-node]
+At least one node in the configuration file is listed in more
+than one place:
+
+  file: %s
+  node: %s
+
+Please ensure that each node is only listed once in the file.
+#
+[missing-section]
+The configuration file is missing at least one required section:
+
+  file:     %s
+  section:  %s
+
+Please check the configuration file for complete information.
+#
+[valid-config]
+The configuration file:
+
+  file: %s
+
+has been checked and validated.

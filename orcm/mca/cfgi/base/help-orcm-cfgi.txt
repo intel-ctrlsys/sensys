@@ -1,0 +1,33 @@
+# -*- text -*-
+#
+# Copyright (c) 2014      Intel, Inc.  All rights reserved.
+# $COPYRIGHT$
+# 
+# Additional copyrights may follow
+# 
+# $HEADER$
+#
+# This is the US/English general help file for the SDS base.
+#
+[site-file-not-found]
+The ORCM site configuration file:
+
+  %s
+
+could not be opened. Please check the path and permissions.
+#
+[valid-config]
+The configuration file:
+
+  file: %s
+
+has been checked and validated.
+#
+[unknown-node]
+ORCM detected a node specified for a queue that is not
+present in the system configuration:
+
+  queue:  %s
+  node:   %s
+
+Please correct the situation and try again.

@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<!-- orcm configuration file. -->
+
+<configuration>
+
+<orcm-aggregators>
+  <nodes>
+    <value>bend001</value>
+  </nodes>
+  <port>
+    <value>55805</value>
+  </port>
+  <mca-params>
+    <value>sensor_base_sample_rate=5,sensor_heartbeat_rate=10,sensor_base_log_samples=1,db_print_file=+</value>
+  </mca-params>
+</orcm-aggregators>
+
+<orcm-daemons>
+  <nodes>
+    <value>bend002</value>
+    <value>bend003</value>
+    <value>bend004</value>
+  </nodes>
+  <port>
+    <value>55810</value>
+  </port>
+<cores>
+  <value>0,1</value>
+</cores>
+  <mca-params>
+    <value>sensor_base_sample_rate=5,sensor_heartbeat_rate=10,sensor_base_log_samples=1</value>
+  </mca-params>
+</orcm-daemons>
+
+<orcm-schedulers>
+  <description>Identify the node that houses the ORCM scheduler. Only
+  one allowed at this time</description>
+  <nodes>
+    <value>bend001</value>
+  </nodes>
+  <port>
+    <value>55820</value>
+    <description>Port used by orcm scheduler</description>
+  </port>
+  <mca-params>
+    <description>List of MCA params to be used by scheduler</description>
+  </mca-params>
+</orcm-schedulers>
+
+</configuration>

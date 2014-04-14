@@ -1,0 +1,19 @@
+# -*- text -*-
+#
+# $COPYRIGHT$
+# 
+# Additional copyrights may follow
+# 
+# $HEADER$
+#
+#
+[usage]
+nmon [OPTIONS]
+  Greenplum Node Monitoring Tool
+
+%s
+#
+[version]
+nmon %s
+
+Report bugs to %s

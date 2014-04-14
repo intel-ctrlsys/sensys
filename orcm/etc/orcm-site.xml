@@ -1,0 +1,93 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<!-- orcm configuration file. -->
+
+<configuration>
+
+<orcm-log>
+  <value>/var/log/orcm/orcm.log</value>
+</orcm-log>
+
+<orcm-daemons>
+  <nodes>
+      <value>bend001</value>
+      <value>bend003</value>
+      <description>List of all nodes that will have an orcmd. Can be</description>
+      <description>expressed as a regular expression.</description>
+      <description>If an orcmd doesn't find its local node in this list, it will abort with an error message.</description>
+  </nodes>
+  <port>
+    <value>55805</value>
+    <description>Port used by orcmd monitoring daemons - only one daemon
+    allowed on a node. Each orcmd will be listening on this port</description>
+  </port>
+  <cores>
+    <value>0,1</value>
+    <description>Comma-delimited list of ranges of cores that ORCM
+    daemons are to be restricted to using</description>
+  </cores>
+  <mca-params>
+    <description>List of MCA params to be used by
+    daemons</description>
+    <value>
+      sensor_base_sample_rate=5,sensor_heartbeat_rate=10
+    </value>
+  </mca-params>
+</orcm-daemons>
+
+<orcm-aggregators>
+  <description>List the nodes that will house an aggregator. Aggregators are
+  defined as those daemons that actually record monitoring data into
+  the database. Only one aggregator is allowed per node! Aggregators
+  do not sample their local data by default. The ID of
+  each aggregator is taken from its position in the list, starting at
+  zero. The node name "localhost" is reserved to indicate that
+  the aggregator will be operating standalone for test purposes - when
+  running standalone, the aggregator will default to sampling</description>
+  <nodes>
+    <value>bend000</value>
+    <value>bend014</value>
+    <value>bend005</value>
+  </nodes>
+  <port>
+    <value>55810</value>
+    <description>Port used by orcmd monitoring daemons - only one daemon
+    allowed on a node. Each orcmd will be listening on this port</description>
+  </port>
+  <cores>
+    <value>0,1</value>
+    <description>Comma-delimited list of ranges of cores that ORCM
+    aggregators are to be restricted to using</description>
+  </cores>
+  <mca-params>
+    <description>List of MCA params to be used by aggregators</description>
+  </mca-params>
+</orcm-aggregators>
+
+<orcm-schedulers>
+  <description>Identify the node(s) that houses the ORCM scheduler(s). Only
+  one allowed at this time</description>
+  <nodes>
+    <value>bend001</value>
+  </nodes>
+  <port>
+    <value>55820</value>
+    <description>Port used by orcm scheduler</description>
+  </port>
+  <mca-params>
+    <description>List of MCA params to be used by scheduler</description>
+  </mca-params>
+  <queues>
+    <description>Definition of the queues to be used by the
+    schedulers. Each entry is in the form of
+    queuename:priority:list-of-nodes, where the list-of-nodes is a
+    comma-separated list of node ranges in regular expression. The
+    "default" queue is automatically created and will contain all
+    nodes not explicitly contained in any other defined queue. The
+    default queue has a zero priority
+    </description>
+  </queues>
+</orcm-schedulers>
+
+</configuration>

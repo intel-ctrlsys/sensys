@@ -1,0 +1,30 @@
+/* -*- c -*-
+ *
+ * Copyright (c) 2013      Intel, Inc. All rights reserved.
+ * $COPYRIGHT$
+ * 
+ * Additional copyrights may follow
+ * 
+ * $HEADER$
+ *
+ * This file should be included by any file that needs full
+ * version information for the ORCM project
+ */
+
+#ifndef ORCM_VERSIONS_H
+#define ORCM_VERSIONS_H
+
+#define ORCM_MAJOR_VERSION @ORCM_MAJOR_VERSION@
+#define ORCM_MINOR_VERSION @ORCM_MINOR_VERSION@
+#define ORCM_RELEASE_VERSION @ORCM_RELEASE_VERSION@
+#define ORCM_GREEK_VERSION "@ORCM_GREEK_VERSION@"
+#define ORCM_WANT_REPO_REV @ORCM_WANT_REPO_REV@
+#define ORCM_REPO_REV "@ORCM_REPO_REV@"
+#ifdef ORCM_VERSION
+/* If we included version.h, we want the real version, not the
+   stripped (no-r number) verstion */
+#undef ORCM_VERSION
+#endif
+#define ORCM_VERSION "@ORCM_VERSION@"
+
+#endif

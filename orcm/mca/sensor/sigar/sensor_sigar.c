@@ -7,9 +7,9 @@
  * $HEADER$
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
-#include "orte/types.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
+#include "orcm/types.h"
 
 #include <errno.h>
 #ifdef HAVE_UNISTD_H
@@ -39,30 +39,30 @@
 #include "opal/mca/event/event.h"
 #include "opal/mca/db/db.h"
 
-#include "orte/util/proc_info.h"
-#include "orte/util/name_fns.h"
-#include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/odls/odls_types.h"
-#include "orte/mca/odls/base/odls_private.h"
-#include "orte/mca/rml/rml.h"
-#include "orte/mca/state/state.h"
-#include "orte/runtime/orte_globals.h"
-#include "orte/orted/orted.h"
+#include "orcm/util/proc_info.h"
+#include "orcm/util/name_fns.h"
+#include "orcm/mca/errmgr/errmgr.h"
+#include "orcm/mca/odls/odls_types.h"
+#include "orcm/mca/odls/base/odls_private.h"
+#include "orcm/mca/rml/rml.h"
+#include "orcm/mca/state/state.h"
+#include "orcm/runtime/orcm_globals.h"
+#include "orcm/orcmd/orcmd.h"
 
-#include "orte/mca/sensor/base/base.h"
-#include "orte/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/base.h"
+#include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_sigar.h"
 
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void start(orte_jobid_t job);
-static void stop(orte_jobid_t job);
+static void start(orcm_jobid_t job);
+static void stop(orcm_jobid_t job);
 static void sigar_sample(void);
 static void sigar_log(opal_buffer_t *buf);
 
 /* instantiate the module */
-orte_sensor_base_module_t orte_sensor_sigar_module = {
+orcm_sensor_base_module_t orcm_sensor_sigar_module = {
     init,
     finalize,
     start,
@@ -179,7 +179,7 @@ static int init(void)
     if (0 != sigar_open(&sigar)) {
         opal_output(0, "%s: sigar_open failed on node %s",
                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                    orte_process_info.nodename);
+                    orcm_process_info.nodename);
         return ORTE_ERROR;
     }
 
@@ -238,13 +238,13 @@ static void finalize(void)
 /*
  * Start monitoring of local processes
  */
-static void start(orte_jobid_t jobid)
+static void start(orcm_jobid_t jobid)
 {
     return;
 }
 
 
-static void stop(orte_jobid_t jobid)
+static void stop(orcm_jobid_t jobid)
 {
     return;
 }
@@ -275,7 +275,7 @@ static void sigar_sample(void)
     if (mca_sensor_sigar_component.test) {
         /* just send the test vector */
         bptr = &test_vector;
-        opal_dss.pack(orte_sensor_base.samples, &bptr, 1, OPAL_BUFFER);
+        opal_dss.pack(orcm_sensor_base.samples, &bptr, 1, OPAL_BUFFER);
         return;
     }
 
@@ -290,7 +290,7 @@ static void sigar_sample(void)
     }
     free(ctmp);
     /* include our node name */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &orcm_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
         return;
@@ -313,7 +313,7 @@ static void sigar_sample(void)
     /* get the memory usage for this node */
     memset(&mem, 0, sizeof(mem));
     sigar_mem_get(sigar, &mem);
-    opal_output_verbose(1, orte_sensor_base_framework.framework_output,
+    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "mem total: %" PRIu64 " used: %" PRIu64 " actual used: %" PRIu64 " actual free: %" PRIu64 "",
                         mem.total, mem.used, mem.actual_used, mem.actual_free);
     /* add it to the data */
@@ -341,7 +341,7 @@ static void sigar_sample(void)
     /* get swap data */
     memset(&swap, 0, sizeof(swap));
     sigar_swap_get(sigar, &swap);
-    opal_output_verbose(1, orte_sensor_base_framework.framework_output,
+    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "swap total: %" PRIu64 " used: %" PRIu64 "page_in: %" PRIu64 " page_out: %" PRIu64 "\n",
                         swap.total, swap.used, swap.page_in, swap.page_out);
     /* compute the values we actually want and add them to the data */
@@ -371,7 +371,7 @@ static void sigar_sample(void)
     /* get the cpu usage */
     memset(&cpu, 0, sizeof(cpu));
     sigar_cpu_get(sigar, &cpu);
-    opal_output_verbose(1, orte_sensor_base_framework.framework_output,
+    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "cpu user: %" PRIu64 " sys: %" PRIu64 " idle: %" PRIu64 " wait: %" PRIu64 " nice: %" PRIu64 " total: %" PRIu64 "", 
 			cpu.user, cpu.sys, cpu.idle, cpu.wait, cpu.nice, cpu.total);
     /* compute the values we actually want and add them to the data */
@@ -405,7 +405,7 @@ static void sigar_sample(void)
     /* get load average data */
     memset(&loadavg, 0, sizeof(loadavg));
     sigar_loadavg_get(sigar, &loadavg);
-    opal_output_verbose(1, orte_sensor_base_framework.framework_output,
+    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "load_avg: %e %e %e",
                         loadavg.loadavg[0], loadavg.loadavg[1], loadavg.loadavg[2]);
     /* add them to the data */
@@ -435,7 +435,7 @@ static void sigar_sample(void)
             opal_output(0, "%s Failed to get usage data for filesystem %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), dit->mount_pt);
         } else {
-            opal_output_verbose(1, orte_sensor_base_framework.framework_output,
+            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                                 "FileSystem: %s Reads: %" PRIu64 " Writes: %" PRIu64 " ReadBytes: %" PRIu64 " WriteBytes: %" PRIu64 "", 
                                 dit->mount_pt, fsusage.disk.reads, fsusage.disk.writes, fsusage.disk.read_bytes, fsusage.disk.write_bytes);
             /* compute the number of reads since last reading */
@@ -450,7 +450,7 @@ static void sigar_sample(void)
             /* compute the number of bytes written since last reading */
             write_bytes = metric_diff_calc(fsusage.disk.write_bytes, dit->write_bytes, dit->mount_pt, "disk write bytes");
             dit->write_bytes = fsusage.disk.write_bytes;  /* old = new */
-            opal_output_verbose(4, orte_sensor_base_framework.framework_output,
+            opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
                                 "FileSystem: %s ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "", 
                                 dit->mount_pt, reads, writes, read_bytes, write_bytes);
             /* accumulate the values */
@@ -460,7 +460,7 @@ static void sigar_sample(void)
             tdisk.write_bytes += write_bytes;
         }
     }
-    opal_output_verbose(4, orte_sensor_base_framework.framework_output,
+    opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
                         "Totals: ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "", 
                         tdisk.reads, tdisk.writes, tdisk.read_bytes, tdisk.write_bytes);
     /* compute the values we actually want and add them to the data */
@@ -497,7 +497,7 @@ static void sigar_sample(void)
             opal_output(0, "%s Failed to get usage data for interface %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), sit->interface);
         } else {
-            opal_output_verbose(1, orte_sensor_base_framework.framework_output,
+            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                                 "Interface: %s RecvdPackets: %" PRIu64 " RecvdBytes: %" PRIu64 " TransPackets: %" PRIu64 " TransBytes: %" PRIu64 "", 
                                 sit->interface, ifc.rx_packets, ifc.rx_bytes, ifc.tx_packets, ifc.tx_bytes);
             /* compute the number of recvd packets since last reading */
@@ -512,7 +512,7 @@ static void sigar_sample(void)
             /* compute the number of transmitted bytes since last reading */
             txbytes = metric_diff_calc(ifc.tx_bytes, sit->tx_bytes, sit->interface, "tx bytes");
             sit->tx_bytes = ifc.tx_bytes;  /* old = new */
-            opal_output_verbose(4, orte_sensor_base_framework.framework_output,
+            opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
                                 "Interface: %s RxPkts: %" PRIu64 " TxPkts: %" PRIu64 " RxBytes: %" PRIu64 " TxBytes: %" PRIu64 "", 
                                 sit->interface, rxpkts, txpkts, rxbytes, txbytes);
             /* accumulate the values */
@@ -522,7 +522,7 @@ static void sigar_sample(void)
             tnet.tx_bytes += txbytes;
         }
     }
-    opal_output_verbose(4, orte_sensor_base_framework.framework_output,
+    opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
                         "Totals: RxPkts: %" PRIu64 " TxPkts: %" PRIu64 " RxBytes: %" PRIu64 " TxBytes: %" PRIu64 "", 
                         tnet.rx_packets, tnet.tx_packets, tnet.rx_bytes, tnet.tx_bytes);
     /* compute the values we actually want and add them to the data */
@@ -554,7 +554,7 @@ static void sigar_sample(void)
     /* xfer the data for transmission - need at least one prior sample before doing so */
     if (0 < last_sample) {
         bptr = &data;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(orte_sensor_base.samples, &bptr, 1, OPAL_BUFFER))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(orcm_sensor_base.samples, &bptr, 1, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             return;
@@ -586,7 +586,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
 
-    opal_output_verbose(3, orte_sensor_base_framework.framework_output,
+    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "%s Received log from host %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname);
@@ -859,7 +859,7 @@ static uint64_t metric_diff_calc(sigar_uint64_t newval, uint64_t oldval,
 
     if (newval < oldval) {
         /* assume that the value was reset and we are starting over */
-        opal_output_verbose(3, orte_sensor_base_framework.framework_output,
+        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "%s metric_diff_calc: new value %" PRIu64 " is less than old value %" PRIu64
                             " for %s metric %s; assume the value was reset and set diff to new value.",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
@@ -882,7 +882,7 @@ static void generate_test_vector(opal_buffer_t *v)
     ctmp = strdup("sigar");
     opal_dss.pack(v, &ctmp, 1, OPAL_STRING);
     free(ctmp);
-    opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING);
+    opal_dss.pack(v, &orcm_process_info.nodename, 1, OPAL_STRING);
     /* get the time so it will be unique each time */
     now = time(NULL);
     /* pass the time along as a simple string */

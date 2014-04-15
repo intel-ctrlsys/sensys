@@ -20,8 +20,8 @@
  * includes
  */
 
-#include "orte_config.h"
-#include "orte/types.h"
+#include "orcm_config.h"
+#include "orcm/types.h"
 
 #include "opal/mca/mca.h"
 
@@ -32,60 +32,60 @@ BEGIN_C_DECLS
  */
 
 /* start collecting data */
-typedef void (*orte_sensor_API_module_start_fn_t)(orte_jobid_t job);
+typedef void (*orcm_sensor_API_module_start_fn_t)(orcm_jobid_t job);
 
 /* stop collecting data */
-typedef void (*orte_sensor_API_module_stop_fn_t)(orte_jobid_t job);
+typedef void (*orcm_sensor_API_module_stop_fn_t)(orcm_jobid_t job);
 
 /* API module */
 /*
  * Ver 1.0
  */
-struct orte_sensor_base_API_module_1_0_0_t {
-    orte_sensor_API_module_start_fn_t      start;
-    orte_sensor_API_module_stop_fn_t       stop;
+struct orcm_sensor_base_API_module_1_0_0_t {
+    orcm_sensor_API_module_start_fn_t      start;
+    orcm_sensor_API_module_stop_fn_t       stop;
 };
 
-typedef struct orte_sensor_base_API_module_1_0_0_t orte_sensor_base_API_module_1_0_0_t;
-typedef orte_sensor_base_API_module_1_0_0_t orte_sensor_base_API_module_t;
+typedef struct orcm_sensor_base_API_module_1_0_0_t orcm_sensor_base_API_module_1_0_0_t;
+typedef orcm_sensor_base_API_module_1_0_0_t orcm_sensor_base_API_module_t;
 
 /* initialize the module */
-typedef int (*orte_sensor_base_module_init_fn_t)(void);
+typedef int (*orcm_sensor_base_module_init_fn_t)(void);
     
 /* finalize the module */
-typedef void (*orte_sensor_base_module_finalize_fn_t)(void);
+typedef void (*orcm_sensor_base_module_finalize_fn_t)(void);
 
 /* tell the module to sample its sensor */
-typedef void (*orte_sensor_base_module_sample_fn_t)(void);
+typedef void (*orcm_sensor_base_module_sample_fn_t)(void);
 
 /* pass a buffer to the module for logging */
-typedef void (*orte_sensor_base_module_log_fn_t)(opal_buffer_t *sample);
+typedef void (*orcm_sensor_base_module_log_fn_t)(opal_buffer_t *sample);
 
 /*
  * Component modules Ver 1.0
  */
-struct orte_sensor_base_module_1_0_0_t {
-    orte_sensor_base_module_init_fn_t       init;
-    orte_sensor_base_module_finalize_fn_t   finalize;
-    orte_sensor_API_module_start_fn_t       start;
-    orte_sensor_API_module_stop_fn_t        stop;
-    orte_sensor_base_module_sample_fn_t     sample;
-    orte_sensor_base_module_log_fn_t        log;
+struct orcm_sensor_base_module_1_0_0_t {
+    orcm_sensor_base_module_init_fn_t       init;
+    orcm_sensor_base_module_finalize_fn_t   finalize;
+    orcm_sensor_API_module_start_fn_t       start;
+    orcm_sensor_API_module_stop_fn_t        stop;
+    orcm_sensor_base_module_sample_fn_t     sample;
+    orcm_sensor_base_module_log_fn_t        log;
 };
 
-typedef struct orte_sensor_base_module_1_0_0_t orte_sensor_base_module_1_0_0_t;
-typedef orte_sensor_base_module_1_0_0_t orte_sensor_base_module_t;
+typedef struct orcm_sensor_base_module_1_0_0_t orcm_sensor_base_module_1_0_0_t;
+typedef orcm_sensor_base_module_1_0_0_t orcm_sensor_base_module_t;
 
 /*
  * the standard component data structure
  */
-struct orte_sensor_base_component_1_0_0_t {
+struct orcm_sensor_base_component_1_0_0_t {
     mca_base_component_t base_version;
     mca_base_component_data_t base_data;
     char *data_measured;
 };
-typedef struct orte_sensor_base_component_1_0_0_t orte_sensor_base_component_1_0_0_t;
-typedef orte_sensor_base_component_1_0_0_t orte_sensor_base_component_t;
+typedef struct orcm_sensor_base_component_1_0_0_t orcm_sensor_base_component_1_0_0_t;
+typedef orcm_sensor_base_component_1_0_0_t orcm_sensor_base_component_t;
 
 
 
@@ -100,7 +100,7 @@ typedef orte_sensor_base_component_1_0_0_t orte_sensor_base_component_t;
 
 /* Global structure for accessing sensor functions
  */
-ORTE_DECLSPEC extern orte_sensor_base_API_module_t orte_sensor;  /* holds API function pointers */
+ORTE_DECLSPEC extern orcm_sensor_base_API_module_t orcm_sensor;  /* holds API function pointers */
 
 END_C_DECLS
 

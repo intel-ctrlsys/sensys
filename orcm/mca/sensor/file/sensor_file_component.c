@@ -7,27 +7,27 @@
  * $HEADER$
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #include "opal/mca/base/base.h"
 #include "opal/util/output.h"
 #include "opal/class/opal_pointer_array.h"
 
-#include "orte/util/proc_info.h"
-#include "orte/util/show_help.h"
+#include "orcm/util/proc_info.h"
+#include "orcm/util/show_help.h"
 
 #include "sensor_file.h"
 
 /*
  * Local functions
  */
-static int orte_sensor_file_register (void);
-static int orte_sensor_file_open(void);
-static int orte_sensor_file_close(void);
-static int orte_sensor_file_query(mca_base_module_t **module, int *priority);
+static int orcm_sensor_file_register (void);
+static int orcm_sensor_file_open(void);
+static int orcm_sensor_file_close(void);
+static int orcm_sensor_file_query(mca_base_module_t **module, int *priority);
 
-orte_sensor_file_component_t mca_sensor_file_component = {
+orcm_sensor_file_component_t mca_sensor_file_component = {
     {
         {
             ORTE_SENSOR_BASE_VERSION_1_0_0,
@@ -36,10 +36,10 @@ orte_sensor_file_component_t mca_sensor_file_component = {
             ORTE_MAJOR_VERSION,  /* MCA component major version */
             ORTE_MINOR_VERSION,  /* MCA component minor version */
             ORTE_RELEASE_VERSION,  /* MCA component release version */
-            orte_sensor_file_open,  /* component open  */
-            orte_sensor_file_close, /* component close */
-            orte_sensor_file_query,  /* component query */
-            orte_sensor_file_register
+            orcm_sensor_file_open,  /* component open  */
+            orcm_sensor_file_close, /* component close */
+            orcm_sensor_file_query,  /* component query */
+            orcm_sensor_file_register
         },
         {
             /* The component is checkpoint ready */
@@ -53,7 +53,7 @@ orte_sensor_file_component_t mca_sensor_file_component = {
 /**
   * component register/open/close/init function
   */
-static int orte_sensor_file_register (void)
+static int orcm_sensor_file_register (void)
 {
     mca_base_component_t *c = &mca_sensor_file_component.super.base_version;
 
@@ -96,16 +96,16 @@ static int orte_sensor_file_register (void)
     return ORTE_SUCCESS;
 }
 
-static int orte_sensor_file_open(void)
+static int orcm_sensor_file_open(void)
 {
     return ORTE_SUCCESS;
 }
 
 
-static int orte_sensor_file_query(mca_base_module_t **module, int *priority)
+static int orcm_sensor_file_query(mca_base_module_t **module, int *priority)
 {
     *priority = 20;  /* higher than heartbeat */
-    *module = (mca_base_module_t *)&orte_sensor_file_module;
+    *module = (mca_base_module_t *)&orcm_sensor_file_module;
     return ORTE_SUCCESS;
 }
 
@@ -113,7 +113,7 @@ static int orte_sensor_file_query(mca_base_module_t **module, int *priority)
  *  Close all subsystems.
  */
 
-static int orte_sensor_file_close(void)
+static int orcm_sensor_file_close(void)
 {
     return ORTE_SUCCESS;
 }

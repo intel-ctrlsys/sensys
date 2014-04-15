@@ -7,9 +7,9 @@
  * $HEADER$
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
-#include "orte/types.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
+#include "orcm/types.h"
 
 #include <errno.h>
 #ifdef HAVE_UNISTD_H
@@ -35,25 +35,25 @@
 #include "opal/util/os_dirpath.h"
 #include "opal/mca/db/db.h"
 
-#include "orte/util/name_fns.h"
-#include "orte/util/show_help.h"
-#include "orte/runtime/orte_globals.h"
-#include "orte/mca/errmgr/errmgr.h"
+#include "orcm/util/name_fns.h"
+#include "orcm/util/show_help.h"
+#include "orcm/runtime/orcm_globals.h"
+#include "orcm/mca/errmgr/errmgr.h"
 
-#include "orte/mca/sensor/base/base.h"
-#include "orte/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/base.h"
+#include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_freq.h"
 
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void start(orte_jobid_t job);
-static void stop(orte_jobid_t job);
+static void start(orcm_jobid_t job);
+static void stop(orcm_jobid_t job);
 static void freq_sample(void);
 static void freq_log(opal_buffer_t *buf);
 
 /* instantiate the module */
-orte_sensor_base_module_t orte_sensor_freq_module = {
+orcm_sensor_base_module_t orcm_sensor_freq_module = {
     init,
     finalize,
     start,
@@ -86,7 +86,7 @@ OBJ_CLASS_INSTANCE(corefreq_tracker_t,
 static bool log_enabled = true;
 static opal_list_t tracking;
 
-static char *orte_getline(FILE *fp)
+static char *orcm_getline(FILE *fp)
 {
     char *ret, *buff;
     char input[1024];
@@ -123,8 +123,8 @@ static int init(void)
      */
     if (NULL == (cur_dirp = opendir("/sys/devices/system/cpu"))) {
         OBJ_DESTRUCT(&tracking);
-        orte_show_help("help-orte-sensor-freq.txt", "req-dir-not-found",
-                       true, orte_process_info.nodename,
+        orcm_show_help("help-orcm-sensor-freq.txt", "req-dir-not-found",
+                       true, orcm_process_info.nodename,
                        "/sys/devices/system/cpu");
         return ORTE_ERROR;
     }
@@ -166,14 +166,14 @@ static int init(void)
         /* read the static info */
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_max_freq", NULL);
         fp = fopen(filename, "r");
-        tmp = orte_getline(fp);
+        tmp = orcm_getline(fp);
         fclose(fp);
         trk->max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
         free(filename);
 
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_min_freq", NULL);
         fp = fopen(filename, "r");
-        tmp = orte_getline(fp);
+        tmp = orcm_getline(fp);
         fclose(fp);
         trk->min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
         free(filename);
@@ -187,8 +187,8 @@ static int init(void)
 
     if (0 == opal_list_get_size(&tracking)) {
         /* nothing to read */
-        orte_show_help("help-orte-sensor-freq.txt", "no-cores-found",
-                       true, orte_process_info.nodename);
+        orcm_show_help("help-orcm-sensor-freq.txt", "no-cores-found",
+                       true, orcm_process_info.nodename);
         return ORTE_ERROR;
     }
 
@@ -203,13 +203,13 @@ static void finalize(void)
 /*
  * Start monitoring of local temps
  */
-static void start(orte_jobid_t jobid)
+static void start(orcm_jobid_t jobid)
 {
     return;
 }
 
 
-static void stop(orte_jobid_t jobid)
+static void stop(orcm_jobid_t jobid)
 {
     return;
 }
@@ -232,7 +232,7 @@ static void freq_sample(void)
         return;
     }
 
-    opal_output_verbose(2, orte_sensor_base_framework.framework_output,
+    opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                         "%s sampling freq",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
@@ -250,7 +250,7 @@ static void freq_sample(void)
     free(freq);
 
     /* store our hostname */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orcm_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
         return;
@@ -278,14 +278,14 @@ static void freq_sample(void)
     free(timestamp_str);
 
     OPAL_LIST_FOREACH_SAFE(trk, nxt, &tracking, corefreq_tracker_t) {
-        opal_output_verbose(2, orte_sensor_base_framework.framework_output,
+        opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                             "%s processing freq file %s",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                             trk->file);
         /* read the freq */
         if (NULL == (fp = fopen(trk->file, "r"))) {
             /* we can't be read, so remove it from the list */
-            opal_output_verbose(2, orte_sensor_base_framework.framework_output,
+            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                                 "%s access denied to freq file %s - removing it",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 trk->file);
@@ -293,9 +293,9 @@ static void freq_sample(void)
             OBJ_RELEASE(trk);
             continue;
         }
-        while (NULL != (freq = orte_getline(fp))) {
+        while (NULL != (freq = orcm_getline(fp))) {
             ghz = strtoul(freq, NULL, 10) / 1000000.0;
-            opal_output_verbose(5, orte_sensor_base_framework.framework_output,
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "%s sensor:freq: Core %d freq %f max %f min %f",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 trk->core, ghz, trk->max_freq, trk->min_freq);
@@ -314,7 +314,7 @@ static void freq_sample(void)
     /* xfer the data for transmission */
     if (packed) {
         bptr = &data;
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(orte_sensor_base.samples, &bptr, 1, OPAL_BUFFER))) {
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(orcm_sensor_base.samples, &bptr, 1, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
             return;
@@ -357,7 +357,7 @@ static void freq_log(opal_buffer_t *sample)
         return;
     }
 
-    opal_output_verbose(3, orte_sensor_base_framework.framework_output,
+    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "%s Received freq log from host %s with %d cores",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname, ncores);

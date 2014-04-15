@@ -9,12 +9,14 @@
 extern mca_base_framework_t orcm_cfgi_base_framework;
 extern mca_base_framework_t orcm_notifier_base_framework;
 extern mca_base_framework_t orcm_scd_base_framework;
+extern mca_base_framework_t orcm_sensor_base_framework;
 extern mca_base_framework_t orcm_sst_base_framework;
 
 static mca_base_framework_t *orcm_frameworks[] = {
     &orcm_cfgi_base_framework,
     &orcm_notifier_base_framework,
     &orcm_scd_base_framework,
+    &orcm_sensor_base_framework,
     &orcm_sst_base_framework,
     NULL
 };

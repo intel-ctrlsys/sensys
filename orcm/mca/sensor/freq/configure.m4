@@ -10,8 +10,8 @@ dnl
 
 # MCA_sensor_freq_CONFIG([action-if-found], [action-if-not-found])
 # -----------------------------------------------------------
-AC_DEFUN([MCA_orte_sensor_freq_CONFIG], [
-    AC_CONFIG_FILES([orte/mca/sensor/freq/Makefile])
+AC_DEFUN([MCA_orcm_sensor_freq_CONFIG], [
+    AC_CONFIG_FILES([orcm/mca/sensor/freq/Makefile])
 
     AC_ARG_WITH([freq],
                 [AC_HELP_STRING([--with-freq],
@@ -22,7 +22,7 @@ AC_DEFUN([MCA_orte_sensor_freq_CONFIG], [
     AS_IF([test "$with_freq" != "no"],
           [AS_IF([test "$opal_found_linux" = "yes"],
                  [$1],
-                 [AC_MSG_WARN([Core frequency sensing was requested but is only supported on Linux systems])
+                 [AC_MSG_WARN([Core frequency sensing was requested but is only supporcmd on Linux systems])
                   AC_MSG_ERROR([Cannot continue])
                   $2])
           ],

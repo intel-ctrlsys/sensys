@@ -7,9 +7,9 @@
  * $HEADER$
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
-#include "orte/types.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
+#include "orcm/types.h"
 
 #include <errno.h>
 #ifdef HAVE_UNISTD_H
@@ -34,25 +34,25 @@
 #include "opal/util/os_dirpath.h"
 #include "opal/mca/db/db.h"
 
-#include "orte/util/name_fns.h"
-#include "orte/util/show_help.h"
-#include "orte/runtime/orte_globals.h"
-#include "orte/mca/errmgr/errmgr.h"
+#include "orcm/util/name_fns.h"
+#include "orcm/util/show_help.h"
+#include "orcm/runtime/orcm_globals.h"
+#include "orcm/mca/errmgr/errmgr.h"
 
-#include "orte/mca/sensor/base/base.h"
-#include "orte/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/base.h"
+#include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_coretemp.h"
 
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void start(orte_jobid_t job);
-static void stop(orte_jobid_t job);
+static void start(orcm_jobid_t job);
+static void stop(orcm_jobid_t job);
 static void coretemp_sample(void);
 static void coretemp_log(opal_buffer_t *buf);
 
 /* instantiate the module */
-orte_sensor_base_module_t orte_sensor_coretemp_module = {
+orcm_sensor_base_module_t orcm_sensor_coretemp_module = {
     init,
     finalize,
     start,
@@ -90,7 +90,7 @@ OBJ_CLASS_INSTANCE(coretemp_tracker_t,
 static bool log_enabled = true;
 static opal_list_t tracking;
 
-static char *orte_getline(FILE *fp)
+static char *orcm_getline(FILE *fp)
 {
     char *ret, *buff;
     char input[1024];
@@ -129,8 +129,8 @@ static int init(void)
      */
     if (NULL == (cur_dirp = opendir("/sys/bus/platform/devices"))) {
         OBJ_DESTRUCT(&tracking);
-        orte_show_help("help-orte-sensor-coretemp.txt", "req-dir-not-found",
-                       true, orte_process_info.nodename,
+        orcm_show_help("help-orcm-sensor-coretemp.txt", "req-dir-not-found",
+                       true, orcm_process_info.nodename,
                        "/sys/bus/platform/devices");
         return ORTE_ERROR;
     }
@@ -190,13 +190,13 @@ static int init(void)
             /* look for critical, max, and label info */
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "label");
             fp = fopen(filename, "r");
-            trk->label = orte_getline(fp);
+            trk->label = orcm_getline(fp);
             fclose(fp);
             free(filename);
 
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "crit");
             fp = fopen(filename, "r");
-            ptr = orte_getline(fp);
+            ptr = orcm_getline(fp);
             fclose(fp);
             trk->critical_temp = strtol(ptr, NULL, 10)/100.0;
             free(ptr);
@@ -204,7 +204,7 @@ static int init(void)
 
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "max");
             fp = fopen(filename, "r");
-            ptr = orte_getline(fp);
+            ptr = orcm_getline(fp);
             fclose(fp);
             trk->max_temp = strtol(ptr, NULL, 10)/100.0;
             free(ptr);
@@ -222,8 +222,8 @@ static int init(void)
 
     if (0 == opal_list_get_size(&tracking)) {
         /* nothing to read */
-        orte_show_help("help-orte-sensor-coretemp.txt", "no-cores-found",
-                       true, orte_process_info.nodename);
+        orcm_show_help("help-orcm-sensor-coretemp.txt", "no-cores-found",
+                       true, orcm_process_info.nodename);
         return ORTE_ERROR;
     }
 
@@ -238,13 +238,13 @@ static void finalize(void)
 /*
  * Start monitoring of local temps
  */
-static void start(orte_jobid_t jobid)
+static void start(orcm_jobid_t jobid)
 {
     return;
 }
 
 
-static void stop(orte_jobid_t jobid)
+static void stop(orcm_jobid_t jobid)
 {
     return;
 }
@@ -281,7 +281,7 @@ static void coretemp_sample(void)
     free(temp);
 
     /* store our hostname */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orcm_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
         return;
@@ -312,7 +312,7 @@ static void coretemp_sample(void)
         /* read the temp */
         if (NULL == (fp = fopen(trk->file, "r"))) {
             /* we can't be read, so remove it from the list */
-            opal_output_verbose(2, orte_sensor_base_framework.framework_output,
+            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                                 "%s access denied to coretemp file %s - removing it",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 trk->file);
@@ -320,9 +320,9 @@ static void coretemp_sample(void)
             OBJ_RELEASE(trk);
             continue;
         }
-        while (NULL != (temp = orte_getline(fp))) {
+        while (NULL != (temp = orcm_getline(fp))) {
             degc = strtoul(temp, NULL, 10) / 100.0;
-            opal_output_verbose(5, orte_sensor_base_framework.framework_output,
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "%s sensor:coretemp: Socket %d %s temp %f max %f critical %f",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 trk->socket, trk->label, degc, trk->max_temp, trk->critical_temp);
@@ -337,13 +337,13 @@ static void coretemp_sample(void)
             /* check for exceed critical temp */
             if (trk->critical_temp < degc) {
                 /* alert the errmgr - this is a critical problem */
-                opal_output_verbose(5, orte_sensor_base_framework.framework_output,
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                     "%s sensor:coretemp: Socket %d %s CRITICAL",
                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                     trk->socket, trk->label);
              } else if (trk->max_temp < degc) {
                 /* alert the errmgr */
-                opal_output_verbose(5, orte_sensor_base_framework.framework_output,
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                     "%s sensor:coretemp: Socket %d %s MAX",
                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                     trk->socket, trk->label);
@@ -355,7 +355,7 @@ static void coretemp_sample(void)
     /* xfer the data for transmission */
     if (packed) {
         bptr = &data;
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(orte_sensor_base.samples, &bptr, 1, OPAL_BUFFER))) {
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(orcm_sensor_base.samples, &bptr, 1, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
             return;
@@ -398,7 +398,7 @@ static void coretemp_log(opal_buffer_t *sample)
         return;
     }
 
-    opal_output_verbose(3, orte_sensor_base_framework.framework_output,
+    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "%s Received log from host %s with %d cores",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname, ncores);

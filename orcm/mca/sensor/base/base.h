@@ -17,21 +17,21 @@
 /*
  * includes
  */
-#include "orte_config.h"
+#include "orcm_config.h"
 
 #include "opal/class/opal_list.h"
 #include "opal/mca/base/base.h"
 
-#include "orte/mca/sensor/sensor.h"
+#include "orcm/mca/sensor/sensor.h"
 
 BEGIN_C_DECLS
 
 /*
  * MCA Framework
  */
-ORTE_DECLSPEC extern mca_base_framework_t orte_sensor_base_framework;
+ORTE_DECLSPEC extern mca_base_framework_t orcm_sensor_base_framework;
 /* select a component */
-ORTE_DECLSPEC int orte_sensor_base_select(void);
+ORTE_DECLSPEC int orcm_sensor_base_select(void);
 
 
 END_C_DECLS

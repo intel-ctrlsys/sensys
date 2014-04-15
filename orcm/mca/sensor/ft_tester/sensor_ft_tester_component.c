@@ -8,27 +8,27 @@
  * $HEADER$
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #include "opal/mca/base/base.h"
 #include "opal/util/output.h"
 #include "opal/class/opal_pointer_array.h"
 
-#include "orte/util/proc_info.h"
-#include "orte/util/show_help.h"
+#include "orcm/util/proc_info.h"
+#include "orcm/util/show_help.h"
 
 #include "sensor_ft_tester.h"
 
 /*
  * Local functions
  */
-static int orte_sensor_ft_tester_register (void);
-static int orte_sensor_ft_tester_open(void);
-static int orte_sensor_ft_tester_close(void);
-static int orte_sensor_ft_tester_query(mca_base_module_t **module, int *priority);
+static int orcm_sensor_ft_tester_register (void);
+static int orcm_sensor_ft_tester_open(void);
+static int orcm_sensor_ft_tester_close(void);
+static int orcm_sensor_ft_tester_query(mca_base_module_t **module, int *priority);
 
-orte_sensor_ft_tester_component_t mca_sensor_ft_tester_component = {
+orcm_sensor_ft_tester_component_t mca_sensor_ft_tester_component = {
     {
         {
             ORTE_SENSOR_BASE_VERSION_1_0_0,
@@ -37,10 +37,10 @@ orte_sensor_ft_tester_component_t mca_sensor_ft_tester_component = {
             ORTE_MAJOR_VERSION,  /* MCA component major version */
             ORTE_MINOR_VERSION,  /* MCA component minor version */
             ORTE_RELEASE_VERSION,  /* MCA component release version */
-            orte_sensor_ft_tester_open,  /* component open  */
-            orte_sensor_ft_tester_close, /* component close */
-            orte_sensor_ft_tester_query, /* component query */
-            orte_sensor_ft_tester_register
+            orcm_sensor_ft_tester_open,  /* component open  */
+            orcm_sensor_ft_tester_close, /* component close */
+            orcm_sensor_ft_tester_query, /* component query */
+            orcm_sensor_ft_tester_register
         },
         {
             /* The component is checkpoint ready */
@@ -52,12 +52,12 @@ orte_sensor_ft_tester_component_t mca_sensor_ft_tester_component = {
 
 static char *daemon_fail_prob = NULL;
 static char *fail_prob = NULL;
-opal_rng_buff_t orte_sensor_ft_rng_buff;
+opal_rng_buff_t orcm_sensor_ft_rng_buff;
 
 /**
   * component register/open/close/init function
   */
-static int orte_sensor_ft_tester_register (void)
+static int orcm_sensor_ft_tester_register (void)
 {
     mca_base_component_t *c = &mca_sensor_ft_tester_component.super.base_version;
 
@@ -85,7 +85,7 @@ static int orte_sensor_ft_tester_register (void)
     return ORTE_SUCCESS;
 }
 
-static int orte_sensor_ft_tester_open(void)
+static int orcm_sensor_ft_tester_open(void)
 {
     /* lookup parameters */
     if (NULL != fail_prob) {
@@ -112,16 +112,16 @@ static int orte_sensor_ft_tester_open(void)
 }
 
 
-static int orte_sensor_ft_tester_query(mca_base_module_t **module, int *priority)
+static int orcm_sensor_ft_tester_query(mca_base_module_t **module, int *priority)
 {
     if (0.0 < mca_sensor_ft_tester_component.fail_prob ||
         0.0 < mca_sensor_ft_tester_component.daemon_fail_prob) {
         *priority = 1;  /* at the bottom */
-        *module = (mca_base_module_t *)&orte_sensor_ft_tester_module;
+        *module = (mca_base_module_t *)&orcm_sensor_ft_tester_module;
         /* seed the RNG --- Not sure if we should assume all procs use 
          * the same seed? 
          */
-        opal_srand(&orte_sensor_ft_rng_buff, (uint32_t) getpid());
+        opal_srand(&orcm_sensor_ft_rng_buff, (uint32_t) getpid());
         return ORTE_SUCCESS;
     }
     *priority = 0;
@@ -134,7 +134,7 @@ static int orte_sensor_ft_tester_query(mca_base_module_t **module, int *priority
  *  Close all subsystems.
  */
 
-static int orte_sensor_ft_tester_close(void)
+static int orcm_sensor_ft_tester_close(void)
 {
     return ORTE_SUCCESS;
 }

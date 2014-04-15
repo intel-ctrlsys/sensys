@@ -10,8 +10,8 @@ dnl
 
 # MCA_sensor_sigar_CONFIG([action-if-found], [action-if-not-found])
 # -----------------------------------------------------------
-AC_DEFUN([MCA_orte_sensor_sigar_CONFIG], [
-    AC_CONFIG_FILES([orte/mca/sensor/sigar/Makefile])
+AC_DEFUN([MCA_orcm_sensor_sigar_CONFIG], [
+    AC_CONFIG_FILES([orcm/mca/sensor/sigar/Makefile])
 
     AC_ARG_WITH([sigar],
                 [AC_HELP_STRING([--with-sigar],
@@ -25,14 +25,14 @@ AC_DEFUN([MCA_orte_sensor_sigar_CONFIG], [
                         [libname="sigar-universal-macosx"], [libname="sigar"])
 
                   AS_IF([test ! -z "$with_sigar" -a "$with_sigar" != "yes"],
-                        [orte_check_sigar_dir="$with_sigar"])
+                        [orcm_check_sigar_dir="$with_sigar"])
 
                   OMPI_CHECK_PACKAGE([sensor_sigar],
                                      [sigar.h],
                                      [$libname],
                                      [sigar_proc_cpu_get],
                                      [],
-                                     [$orte_check_sigar_dir],
+                                     [$orcm_check_sigar_dir],
                                      [],
                                      [$1],
                                      [AC_MSG_WARN([SIGAR SENSOR SUPPORT REQUESTED])

@@ -13,8 +13,8 @@
 #ifndef ORTE_MCA_SENSOR_TYPES_H
 #define ORTE_MCA_SENSOR_TYPES_H
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
@@ -23,7 +23,7 @@
 #include "opal/dss/dss_types.h"
 
 /*
- * General SENSOR types - instanced in runtime/orte_globals.c
+ * General SENSOR types - instanced in runtime/orcm_globals.c
  */
 
 BEGIN_C_DECLS
@@ -42,8 +42,8 @@ typedef struct {
     char *sensor;
     struct timeval timestamp;
     opal_byte_object_t data;
-} orte_sensor_data_t;
-ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orte_sensor_data_t);
+} orcm_sensor_data_t;
+ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_sensor_data_t);
 
 END_C_DECLS
 

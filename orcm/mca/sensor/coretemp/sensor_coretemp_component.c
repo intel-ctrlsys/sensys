@@ -5,25 +5,25 @@
  * $HEADER$
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #include "opal/mca/base/base.h"
 #include "opal/mca/base/mca_base_var.h"
 
-#include "orte/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_coretemp.h"
 
 /*
  * Local functions
  */
 
-static int orte_sensor_coretemp_open(void);
-static int orte_sensor_coretemp_close(void);
-static int orte_sensor_coretemp_query(mca_base_module_t **module, int *priority);
+static int orcm_sensor_coretemp_open(void);
+static int orcm_sensor_coretemp_close(void);
+static int orcm_sensor_coretemp_query(mca_base_module_t **module, int *priority);
 static int coretemp_component_register(void);
 
-orte_sensor_coretemp_component_t mca_sensor_coretemp_component = {
+orcm_sensor_coretemp_component_t mca_sensor_coretemp_component = {
     {
         {
             ORTE_SENSOR_BASE_VERSION_1_0_0,
@@ -32,9 +32,9 @@ orte_sensor_coretemp_component_t mca_sensor_coretemp_component = {
             ORTE_MAJOR_VERSION,  /* MCA component major version */
             ORTE_MINOR_VERSION,  /* MCA component minor version */
             ORTE_RELEASE_VERSION,  /* MCA component release version */
-            orte_sensor_coretemp_open,  /* component open  */
-            orte_sensor_coretemp_close, /* component close */
-            orte_sensor_coretemp_query,  /* component query */
+            orcm_sensor_coretemp_open,  /* component open  */
+            orcm_sensor_coretemp_close, /* component close */
+            orcm_sensor_coretemp_query,  /* component query */
             coretemp_component_register
         },
         {
@@ -48,12 +48,12 @@ orte_sensor_coretemp_component_t mca_sensor_coretemp_component = {
 /**
   * component open/close/init function
   */
-static int orte_sensor_coretemp_open(void)
+static int orcm_sensor_coretemp_open(void)
 {
     return ORTE_SUCCESS;
 }
 
-static int orte_sensor_coretemp_query(mca_base_module_t **module, int *priority)
+static int orcm_sensor_coretemp_query(mca_base_module_t **module, int *priority)
 {
     /* if we can build, then we definitely want to be used
      * even if we aren't going to sample as we have to be
@@ -63,7 +63,7 @@ static int orte_sensor_coretemp_query(mca_base_module_t **module, int *priority)
      * check again here
      */
     *priority = 50;  /* ahead of heartbeat */
-    *module = (mca_base_module_t *)&orte_sensor_coretemp_module;
+    *module = (mca_base_module_t *)&orcm_sensor_coretemp_module;
     return ORTE_SUCCESS;
 }
 
@@ -71,7 +71,7 @@ static int orte_sensor_coretemp_query(mca_base_module_t **module, int *priority)
  *  Close all subsystems.
  */
 
-static int orte_sensor_coretemp_close(void)
+static int orcm_sensor_coretemp_close(void)
 {
     return ORTE_SUCCESS;
 }

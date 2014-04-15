@@ -13,9 +13,9 @@
  * $HEADER$
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
-#include "orte/types.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
+#include "orcm/types.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -41,26 +41,26 @@
 #include "opal_stdint.h"
 #include "opal/util/output.h"
 
-#include "orte/util/show_help.h"
-#include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/state/state.h"
-#include "orte/util/name_fns.h"
-#include "orte/runtime/orte_globals.h"
+#include "orcm/util/show_help.h"
+#include "orcm/mca/errmgr/errmgr.h"
+#include "orcm/mca/state/state.h"
+#include "orcm/util/name_fns.h"
+#include "orcm/runtime/orcm_globals.h"
 
-#include "orte/mca/sensor/base/base.h"
-#include "orte/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/base.h"
+#include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_file.h"
 
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void start(orte_jobid_t job);
-static void stop(orte_jobid_t job);
+static void start(orcm_jobid_t job);
+static void stop(orcm_jobid_t job);
 static void file_sample(void);
 static void file_log(opal_buffer_t *sample);
 
 /* instantiate the module */
-orte_sensor_base_module_t orte_sensor_file_module = {
+orcm_sensor_base_module_t orcm_sensor_file_module = {
     init,
     finalize,
     start,
@@ -72,8 +72,8 @@ orte_sensor_base_module_t orte_sensor_file_module = {
 /* define a tracking object */
 typedef struct {
     opal_list_item_t super;
-    orte_jobid_t jobid;
-    orte_vpid_t vpid;
+    orcm_jobid_t jobid;
+    orcm_vpid_t vpid;
     char *file;
     int tick;
     bool check_size;
@@ -124,7 +124,7 @@ static void finalize(void)
     return;
 }
 
-static bool find_value(orte_app_context_t *app,
+static bool find_value(orcm_app_context_t *app,
                        char *pattern, char **value)
 {
     int i;
@@ -146,10 +146,10 @@ static bool find_value(orte_app_context_t *app,
 /*
  * Start monitoring of local processes
  */
-static void start(orte_jobid_t jobid)
+static void start(orcm_jobid_t jobid)
 {
-    orte_job_t *jobdat;
-    orte_app_context_t *app, *aptr;
+    orcm_job_t *jobdat;
+    orcm_app_context_t *app, *aptr;
     int i;
     char *filename;
     file_tracker_t *ft;
@@ -160,13 +160,13 @@ static void start(orte_jobid_t jobid)
         return;
     }
     
-    OPAL_OUTPUT_VERBOSE((1, orte_sensor_base_framework.framework_output,
+    OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "%s starting file monitoring for job %s",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          ORTE_JOBID_PRINT(jobid)));
     
     /* get the local jobdat for this job */
-    if (NULL == (jobdat = orte_get_job_data_object(jobid))) {
+    if (NULL == (jobdat = orcm_get_job_data_object(jobid))) {
         ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
         return;
     }
@@ -174,7 +174,7 @@ static void start(orte_jobid_t jobid)
     /* must be at least one app_context, so use the first one found */
     app = NULL;
     for (i=0; i < jobdat->apps->size; i++) {
-        if (NULL != (aptr = (orte_app_context_t*)opal_pointer_array_get_item(jobdat->apps, i))) {
+        if (NULL != (aptr = (orcm_app_context_t*)opal_pointer_array_get_item(jobdat->apps, i))) {
             app = aptr;
             break;
         }
@@ -190,7 +190,7 @@ static void start(orte_jobid_t jobid)
         /* was a default file given */
         if (NULL == mca_sensor_file_component.file) {
             /* can't do anything without a file */
-            OPAL_OUTPUT_VERBOSE((1, orte_sensor_base_framework.framework_output,
+            OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                                  "%s sensor:file no file for job %s",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                  ORTE_JOBID_PRINT(jobid)));
@@ -242,7 +242,7 @@ static void start(orte_jobid_t jobid)
         free(ptr);
     }
     opal_list_append(&jobs, &ft->super);
-    OPAL_OUTPUT_VERBOSE((1, orte_sensor_base_framework.framework_output,
+    OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "%s file %s monitored for %s%s%s with limit %d",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          ft->file, ft->check_size ? "SIZE:" : " ",
@@ -252,7 +252,7 @@ static void start(orte_jobid_t jobid)
 }
 
 
-static void stop(orte_jobid_t jobid)
+static void stop(orcm_jobid_t jobid)
 {
     opal_list_item_t *item;
     file_tracker_t *ft;
@@ -279,9 +279,9 @@ static void file_sample(void)
     struct stat buf;
     opal_list_item_t *item;
     file_tracker_t *ft;
-    orte_job_t *jdata;
+    orcm_job_t *jdata;
 
-    OPAL_OUTPUT_VERBOSE((1, orte_sensor_base_framework.framework_output,
+    OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "%s sampling files",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     
@@ -293,14 +293,14 @@ static void file_sample(void)
         /* stat the file and get its size */
         if (0 > stat(ft->file, &buf)) {
             /* cannot stat file */
-            OPAL_OUTPUT_VERBOSE((1, orte_sensor_base_framework.framework_output,
+            OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                                  "%s could not stat %s",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                  ft->file));
             continue;
         }
         
-        OPAL_OUTPUT_VERBOSE((1, orte_sensor_base_framework.framework_output,
+        OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                              "%s size %lu access %s\tmod %s",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              (unsigned long)buf.st_size, ctime(&buf.st_atime), ctime(&buf.st_mtime)));
@@ -334,15 +334,15 @@ static void file_sample(void)
         }
         
     CHECK:
-        OPAL_OUTPUT_VERBOSE((1, orte_sensor_base_framework.framework_output,
+        OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                              "%s sampled file %s tick %d",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              ft->file, ft->tick));
 
         if (ft->tick == ft->limit) {
-            orte_show_help("help-orte-sensor-file.txt", "file-stalled", true,
+            orcm_show_help("help-orcm-sensor-file.txt", "file-stalled", true,
                            ft->file, ft->file_size, ctime(&ft->last_access), ctime(&ft->last_mod));
-            jdata = orte_get_job_data_object(ft->jobid);
+            jdata = orcm_get_job_data_object(ft->jobid);
             ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_SENSOR_BOUND_EXCEEDED);
         }
     }

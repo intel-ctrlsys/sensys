@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orte-sensor-coretemp.txt
+dist_ompidata_DATA = help-orcm-sensor-coretemp.txt
 
 sources = \
         sensor_coretemp.c \
@@ -19,7 +19,7 @@ sources = \
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la
 # (for static builds).
 
-if MCA_BUILD_orte_sensor_coretemp_DSO
+if MCA_BUILD_orcm_sensor_coretemp_DSO
 component_noinst =
 component_install = mca_sensor_coretemp.la
 else

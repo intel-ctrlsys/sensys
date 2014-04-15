@@ -5,29 +5,29 @@
  * $HEADER$
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #include "opal/mca/base/base.h"
 #include "opal/mca/base/mca_base_var.h"
 #include "opal/mca/hwloc/hwloc.h"
 #include "opal/util/os_dirpath.h"
 
-#include "orte/util/show_help.h"
+#include "orcm/util/show_help.h"
 
-#include "orte/mca/sensor/base/base.h"
+#include "orcm/mca/sensor/base/base.h"
 #include "sensor_pwr.h"
 
 /*
  * Local functions
  */
 
-static int orte_sensor_pwr_open(void);
-static int orte_sensor_pwr_close(void);
-static int orte_sensor_pwr_query(mca_base_module_t **module, int *priority);
+static int orcm_sensor_pwr_open(void);
+static int orcm_sensor_pwr_close(void);
+static int orcm_sensor_pwr_query(mca_base_module_t **module, int *priority);
 static int pwr_component_register(void);
 
-orte_sensor_pwr_component_t mca_sensor_pwr_component = {
+orcm_sensor_pwr_component_t mca_sensor_pwr_component = {
     {
         {
             ORTE_SENSOR_BASE_VERSION_1_0_0,
@@ -36,9 +36,9 @@ orte_sensor_pwr_component_t mca_sensor_pwr_component = {
             ORTE_MAJOR_VERSION,  /* MCA component major version */
             ORTE_MINOR_VERSION,  /* MCA component minor version */
             ORTE_RELEASE_VERSION,  /* MCA component release version */
-            orte_sensor_pwr_open,  /* component open  */
-            orte_sensor_pwr_close, /* component close */
-            orte_sensor_pwr_query,  /* component query */
+            orcm_sensor_pwr_open,  /* component open  */
+            orcm_sensor_pwr_close, /* component close */
+            orcm_sensor_pwr_query,  /* component query */
             pwr_component_register
         },
         {
@@ -52,15 +52,15 @@ orte_sensor_pwr_component_t mca_sensor_pwr_component = {
 /**
   * component open/close/init function
   */
-static int orte_sensor_pwr_open(void)
+static int orcm_sensor_pwr_open(void)
 {
     return ORTE_SUCCESS;
 }
 
-static int orte_sensor_pwr_query(mca_base_module_t **module, int *priority)
+static int orcm_sensor_pwr_query(mca_base_module_t **module, int *priority)
 {
     *priority = 50;  /* ahead of heartbeat */
-    *module = (mca_base_module_t *)&orte_sensor_pwr_module;
+    *module = (mca_base_module_t *)&orcm_sensor_pwr_module;
     return ORTE_SUCCESS;
 }
 
@@ -68,7 +68,7 @@ static int orte_sensor_pwr_query(mca_base_module_t **module, int *priority)
  *  Close all subsystems.
  */
 
-static int orte_sensor_pwr_close(void)
+static int orcm_sensor_pwr_close(void)
 {
     return ORTE_SUCCESS;
 }

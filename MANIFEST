@@ -122,7 +122,6 @@
 ./config/ompi_setup_fc.m4
 ./config/ompi_fortran_check_private.m4
 ./config/ompi_lang_link_with_c.m4
-./.mailmap
 ./autogen.sh
 ./contrib
 ./contrib/header_replacement.sh
@@ -6762,7 +6761,6 @@
 ./orte/test/system/orte_no_op.c
 ./orte/test/system/red.py
 ./orte/Makefile.am
-./MANIFEST1
 ./orcm
 ./orcm/runtime
 ./orcm/runtime/orcm_init.c

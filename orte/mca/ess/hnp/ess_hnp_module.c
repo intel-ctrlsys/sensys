@@ -10,10 +10,10 @@
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2010-2011 Oak Ridge National Labs.  All rights reserved.
- * Copyright (c) 2011-2012 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2011-2014 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.  All rights
  *                         reserved. 
- * Copyright (c) 2013      Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2013-2014 Intel, Inc.  All rights reserved. 
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -48,6 +48,7 @@
 #include "opal/util/output.h"
 #include "opal/util/malloc.h"
 #include "opal/util/basename.h"
+#include "opal/util/fd.h"
 #include "opal/mca/pstat/base/base.h"
 #include "opal/mca/hwloc/base/base.h"
 
@@ -64,8 +65,6 @@
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/plm/plm.h"
 #include "orte/mca/odls/base/base.h"
-#include "orte/mca/sensor/base/base.h"
-#include "orte/mca/sensor/sensor.h"
 #include "orte/mca/rmaps/base/base.h"
 #if OPAL_ENABLE_FT_CR == 1
 #include "orte/mca/snapc/base/base.h"
@@ -168,6 +167,15 @@ static int rte_init(void)
     opal_event_set(orte_event_base, &term_handler, term_pipe[0], OPAL_EV_READ, clean_abort, NULL);
     opal_event_set_priority(&term_handler, ORTE_ERROR_PRI);
     opal_event_add(&term_handler, NULL);
+
+    /* Set both ends of this pipe to be close-on-exec so that no
+       children inherit it */
+    if (opal_fd_set_cloexec(term_pipe[0]) != OPAL_SUCCESS ||
+        opal_fd_set_cloexec(term_pipe[1]) != OPAL_SUCCESS) {
+        error = "unable to set the pipe to CLOEXEC";
+        goto error;
+    }
+
     /* point the signal trap to a function that will activate that event */
     signal(SIGTERM, abort_signal_callback);
     signal(SIGINT, abort_signal_callback);
@@ -303,11 +311,6 @@ static int rte_init(void)
     }
     /* Setup the communication infrastructure */
     
-    /* clear the session directory just in case there are
-     * stale directories laying around
-     */
-    orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);
-
     /*
      * OOB Layer
      */
@@ -598,6 +601,23 @@ static int rte_init(void)
                              (NULL == orte_process_info.tmpdir_base) ? "UNDEF" : orte_process_info.tmpdir_base,
                              orte_process_info.nodename));
         
+        /* take a pass thru the session directory code to fillin the
+         * tmpdir names - don't create anything yet
+         */
+        if (ORTE_SUCCESS != (ret = orte_session_dir(false,
+                                                    orte_process_info.tmpdir_base,
+                                                    orte_process_info.nodename, NULL,
+                                                    ORTE_PROC_MY_NAME))) {
+            ORTE_ERROR_LOG(ret);
+            error = "orte_session_dir define";
+            goto error;
+        }
+        /* clear the session directory just in case there are
+         * stale directories laying around
+         */
+        orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);
+
+        /* now actually create the directory tree */
         if (ORTE_SUCCESS != (ret = orte_session_dir(true,
                                                     orte_process_info.tmpdir_base,
                                                     orte_process_info.nodename, NULL,
@@ -711,20 +731,6 @@ static int rte_init(void)
         goto error;
     }
     
-    /* setup the SENSOR framework */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_sensor_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_sensor_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_sensor_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_sensor_select";
-        goto error;
-    }
-    /* start the local sensors */
-    orte_sensor.start(ORTE_PROC_MY_NAME->jobid);
-    
     /* setup the dfs framework */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_dfs_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -798,10 +804,6 @@ static int rte_finalize(void)
         }
         signals_set = false;
     }
-
-    /* stop the local sensors */
-    orte_sensor.stop(ORTE_PROC_MY_NAME->jobid);
-    (void) mca_base_framework_close(&orte_sensor_base_framework);
 
     /* close the dfs */
     (void) mca_base_framework_close(&orte_dfs_base_framework);
@@ -902,6 +904,8 @@ static void clean_abort(int fd, short flags, void *arg)
         opal_event_add(&term_handler, NULL);
         return;
     }
+    /* ensure we exit with a non-zero status */
+    ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
 
     /* ensure that the forwarding of stdin stops */
     orte_job_term_ordered = true;

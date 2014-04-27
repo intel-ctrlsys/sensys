@@ -108,7 +108,7 @@ AC_DEFUN([MCA_opal_hwloc_external_CONFIG],[
 
     # If we still want external support, try it
     AS_IF([test "$opal_hwloc_external_want" = "yes"],
-          [OMPI_CHECK_WITHDIR([hwloc-libdir], [$with_hwloc_libdir], 
+          [OPAL_CHECK_WITHDIR([hwloc-libdir], [$with_hwloc_libdir], 
                               [libhwloc.*])
 
            AC_MSG_CHECKING([looking for external hwloc in])
@@ -124,7 +124,7 @@ AC_DEFUN([MCA_opal_hwloc_external_CONFIG],[
            opal_hwloc_external_LDFLAGS_save=$LDFLAGS
            opal_hwloc_external_LIBS_save=$LIBS
 
-           OMPI_CHECK_PACKAGE([opal_hwloc_external],
+           OPAL_CHECK_PACKAGE([opal_hwloc_external],
                               [hwloc.h],
                               [hwloc],
                               [hwloc_topology_init],

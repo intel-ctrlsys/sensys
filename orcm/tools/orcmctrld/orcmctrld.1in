@@ -5,7 +5,7 @@
 .\" Man page for ORTE's orterun command
 .\" 
 .\" .TH name     section center-footer   left-footer  center-header
-.TH MPIRUN 1 "#OMPI_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
+.TH MPIRUN 1 "#OPAL_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
 .\" **************************
 .\"    Name Section
 .\" **************************
@@ -1168,7 +1168,7 @@ is equivalent to
 .
 .SS Exported Environment Variables
 .
-All environment variables that are named in the form OMPI_* will automatically
+All environment variables that are named in the form OPAL_* will automatically
 be exported to new processes on the local and remote nodes.
 The \fI\-x\fP option to \fImpirun\fP can be used to export specific environment
 variables to the new processes.  While the syntax of the \fI\-x\fP
@@ -1216,7 +1216,7 @@ The same effect may be accomplished by setting corresponding environment
 variables before running \fImpirun\fP.
 The form of the environment variables that Open MPI sets is:
 
-      OMPI_MCA_<key>=<value>
+      OPAL_MCA_<key>=<value>
 .PP
 Thus, the \fI-mca\fP switch overrides any previously set environment
 variables.  The \fI-mca\fP settings similarly override MCA parameters set

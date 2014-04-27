@@ -7,14 +7,14 @@
 # $HEADER$
 #
 
-if OMPI_INSTALL_BINARIES
+if OPAL_INSTALL_BINARIES
 
 bin_PROGRAMS = orcm-emulator
 
 
 dist_ompidata_DATA = help-emulator.txt
 
-endif # OMPI_INSTALL_BINARIES
+endif # OPAL_INSTALL_BINARIES
 
 orcm_emulator_SOURCES = \
         orcm-emulator.c

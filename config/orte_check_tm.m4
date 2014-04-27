@@ -45,7 +45,7 @@ AC_DEFUN([ORTE_CHECK_TM],[
     AC_ARG_WITH([tm],
                 [AC_HELP_STRING([--with-tm(=DIR)],
                                 [Build TM (Torque, PBSPro, and compatible) support, optionally adding DIR/include, DIR/lib, and DIR/lib64 to the search path for headers and libraries])])
-    OMPI_CHECK_WITHDIR([tm], [$with_tm], [include/tm.h])
+    OPAL_CHECK_WITHDIR([tm], [$with_tm], [include/tm.h])
 
     orte_check_tm_found=no
     AS_IF([test "$with_tm" = "no"],
@@ -112,21 +112,21 @@ AC_DEFUN([ORTE_CHECK_TM],[
 
     AS_IF([test "$orte_check_tm_found" = "no"],
           [AS_IF([test "$orte_check_tm_happy" = "yes"],
-                 [_OMPI_CHECK_PACKAGE_HEADER([$1], 
+                 [_OPAL_CHECK_PACKAGE_HEADER([$1], 
                        [tm.h],
                        [$orte_check_tm_dir],
                        [orte_check_tm_found="yes"],
                        [orte_check_tm_found="no"])])
 
            AS_IF([test "$orte_check_tm_found" = "yes"],
-                 [_OMPI_CHECK_PACKAGE_LIB([$1],
+                 [_OPAL_CHECK_PACKAGE_LIB([$1],
                        [pbs],
                        [tm_init],
                        [],
                        [$orte_check_tm_dir],
                        [$orte_check_tm_libdir],
                        [orte_check_tm_found="yes"],
-                       [_OMPI_CHECK_PACKAGE_LIB([$1],
+                       [_OPAL_CHECK_PACKAGE_LIB([$1],
                              [torque],
                              [tm_init],
                              [],

@@ -370,9 +370,9 @@ void orte_info_do_config(bool want_all)
     orte_info_out("Configured on", "config:timestamp", OPAL_CONFIGURE_DATE);
     orte_info_out("Configure host", "config:host", OPAL_CONFIGURE_HOST);
     
-    orte_info_out("Built by", "build:user", OMPI_BUILD_USER);
-    orte_info_out("Built on", "build:timestamp", OMPI_BUILD_DATE);
-    orte_info_out("Built host", "build:host", OMPI_BUILD_HOST);
+    orte_info_out("Built by", "build:user", OPAL_BUILD_USER);
+    orte_info_out("Built on", "build:timestamp", OPAL_BUILD_DATE);
+    orte_info_out("Built host", "build:host", OPAL_BUILD_HOST);
 
     orte_info_out("C compiler", "compiler:c:command", OPAL_CC);
     orte_info_out("C compiler absolute", "compiler:c:absolute", OPAL_CC_ABSOLUTE);
@@ -407,9 +407,9 @@ void orte_info_do_config(bool want_all)
     if (want_all) {
         
         
-        orte_info_out("Build CFLAGS", "option:build:cflags", OMPI_BUILD_CFLAGS);
-        orte_info_out("Build LDFLAGS", "option:build:ldflags", OMPI_BUILD_LDFLAGS);
-        orte_info_out("Build LIBS", "option:build:libs", OMPI_BUILD_LIBS);
+        orte_info_out("Build CFLAGS", "option:build:cflags", OPAL_BUILD_CFLAGS);
+        orte_info_out("Build LDFLAGS", "option:build:ldflags", OPAL_BUILD_LDFLAGS);
+        orte_info_out("Build LIBS", "option:build:libs", OPAL_BUILD_LIBS);
         
         orte_info_out("Wrapper extra CFLAGS", "option:wrapper:extra_cflags", 
                       WRAPPER_EXTRA_CFLAGS);

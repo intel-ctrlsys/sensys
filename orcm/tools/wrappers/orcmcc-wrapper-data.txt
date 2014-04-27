@@ -7,16 +7,16 @@
 
 project=OPEN Resilient Cluster Manager
 project_short=ORCM
-version=1.9a1r31387M
+version=@ORCM_VERSION@
 language=C
 compiler_env=CC
 compiler_flags_env=CFLAGS
 compiler=gcc -std=gnu99
 extra_includes=@ORCM_WRAPPER_EXTRA_INCLUDES@
-preprocessor_flags=-I${includedir}/openmpi -I${includedir}/openmpi/opal/mca/hwloc/hwloc172/hwloc/include -I${includedir}/openmpi/opal/mca/event/libevent2021/libevent -I${includedir}/openmpi/opal/mca/event/libevent2021/libevent/include  
-compiler_flags= 
-linker_flags=  
-libs=-lorcm -lopen-rte -lopen-pal -lm 
+preprocessor_flags=@ORCM_WRAPPER_EXTRA_CPPFLAGS@
+compiler_flags=@ORCM_WRAPPER_EXTRA_CFLAGS@
+linker_flags=@ORCM_WRAPPER_EXTRA_LDFLAGS@
+libs=-lorcm -lopen-rte -lopen-pal @ORCM_WRAPPER_EXTRA_LIBS@
 required_file=
 includedir=${includedir}
 libdir=${libdir}

@@ -19,7 +19,7 @@ AC_DEFUN([MCA_orcm_cfgi_dbmysql_CONFIG], [
           [orcm_cfgi_dbmysql_check_save_CPPFLAGS=$CPPFLAGS
            orcm_cfgi_dbmysql_check_save_LDFLAGS=$LDFLAGS
            orcm_cfgi_dbmysql_check_save_LIBS=$LIBS
-           OMPI_CHECK_PACKAGE([cfgi_dbmysql],
+           OPAL_CHECK_PACKAGE([cfgi_dbmysql],
                               [mysql.h],
                               [mysqlclient],
                               [mysql_library_init],

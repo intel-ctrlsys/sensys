@@ -58,7 +58,7 @@ sub check_env {
     my $envvar = shift;
     my $str = shift;
 
-    foreach my $var (("OMPI_MPI", "OMPI_")) {
+    foreach my $var (("OPAL_MPI", "OPAL_")) {
         my $testvar = $var . $envvar;
         if (exists($ENV{$testvar})) {
             $str = $ENV{$testvar};

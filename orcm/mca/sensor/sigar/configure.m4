@@ -27,7 +27,7 @@ AC_DEFUN([MCA_orcm_sensor_sigar_CONFIG], [
                   AS_IF([test ! -z "$with_sigar" -a "$with_sigar" != "yes"],
                         [orcm_check_sigar_dir="$with_sigar"])
 
-                  OMPI_CHECK_PACKAGE([sensor_sigar],
+                  OPAL_CHECK_PACKAGE([sensor_sigar],
                                      [sigar.h],
                                      [$libname],
                                      [sigar_proc_cpu_get],

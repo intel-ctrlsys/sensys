@@ -34,7 +34,7 @@ AC_DEFUN([ORCM_CHECK_FTB],[
             AS_IF([test ! -z "$with_ftb_libdir" -a "$with_ftb_libdir" != "yes"],
                 [ompi_check_ftb_libdir="$with_ftb_libdir"])
             
-            OMPI_CHECK_PACKAGE([$1],
+            OPAL_CHECK_PACKAGE([$1],
                 [libftb.h],
                 [ftb],
                 [FTB_Connect],

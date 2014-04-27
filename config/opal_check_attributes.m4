@@ -66,7 +66,7 @@ AC_DEFUN([_OPAL_CHECK_SPECIFIC_ATTRIBUTE], [
                         #
                         # In case we did succeed: Fine, but was this due to the
                         # attribute being ignored/skipped? Grep for IgNoRe/skip in conftest.err
-                        # and if found, reset the ompi_cv__attribute__var=0
+                        # and if found, reset the opal_cv__attribute__var=0
                         #
                         opal_cv___attribute__[$1]=1
                         _OPAL_ATTRIBUTE_FAIL_SEARCH([$1])
@@ -110,7 +110,7 @@ AC_DEFUN([_OPAL_CHECK_SPECIFIC_ATTRIBUTE], [
                  #
                  # In case we did NOT succeed: Fine, but was this due to the
                  # attribute being ignored? Grep for IgNoRe in conftest.err
-                 # and if found, reset the ompi_cv__attribute__var=0
+                 # and if found, reset the opal_cv__attribute__var=0
                  #
                  opal_cv___attribute__[$1]=1
                  _OPAL_ATTRIBUTE_FAIL_SEARCH([$1])
@@ -268,7 +268,7 @@ AC_DEFUN([OPAL_CHECK_ATTRIBUTES], [
         [])
 
     ATTRIBUTE_CFLAGS=
-    case "$ompi_c_vendor" in
+    case "$opal_c_vendor" in
         gnu)
             ATTRIBUTE_CFLAGS="-Wall"
             ;;
@@ -294,7 +294,7 @@ AC_DEFUN([OPAL_CHECK_ATTRIBUTES], [
         [$ATTRIBUTE_CFLAGS])
 
     ATTRIBUTE_CFLAGS=
-    case "$ompi_c_vendor" in
+    case "$opal_c_vendor" in
         gnu)
             ATTRIBUTE_CFLAGS="-Wall"
             ;;
@@ -372,7 +372,7 @@ AC_DEFUN([OPAL_CHECK_ATTRIBUTES], [
     # Ignored by PGI-6.2.5 (pgCC) -- recognized by cross-check
     #
     ATTRIBUTE_CFLAGS=
-    case "$ompi_c_vendor" in
+    case "$opal_c_vendor" in
         gnu)
             ATTRIBUTE_CFLAGS="-Wall"
             ;;
@@ -456,7 +456,7 @@ AC_DEFUN([OPAL_CHECK_ATTRIBUTES], [
     # Ignored by pathcc-2.2.1 -- recognized by cross-check (through grep ignore)
     #
     ATTRIBUTE_CFLAGS=
-    case "$ompi_c_vendor" in
+    case "$opal_c_vendor" in
         gnu)
             ATTRIBUTE_CFLAGS="-Wall"
             ;;
@@ -508,7 +508,7 @@ AC_DEFUN([OPAL_CHECK_ATTRIBUTES], [
     # Ignored by pathcc-2.2.1 -- recognized by cross-check (through grep ignore)
     #
     ATTRIBUTE_CFLAGS=
-    case "$ompi_c_vendor" in
+    case "$opal_c_vendor" in
         gnu)
             ATTRIBUTE_CFLAGS="-Wall"
             ;;

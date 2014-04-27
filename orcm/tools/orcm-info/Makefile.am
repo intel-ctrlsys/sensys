@@ -23,26 +23,26 @@ AM_CFLAGS = \
             -DOPAL_CONFIGURE_USER="\"@OPAL_CONFIGURE_USER@\"" \
             -DOPAL_CONFIGURE_HOST="\"@OPAL_CONFIGURE_HOST@\"" \
             -DOPAL_CONFIGURE_DATE="\"@OPAL_CONFIGURE_DATE@\"" \
-            -DOMPI_BUILD_USER="\"$$USER\"" \
-            -DOMPI_BUILD_HOST="\"`hostname`\"" \
-            -DOMPI_BUILD_DATE="\"`date`\"" \
-            -DOMPI_BUILD_CFLAGS="\"@CFLAGS@\"" \
-            -DOMPI_BUILD_CPPFLAGS="\"@CPPFLAGS@\"" \
-            -DOMPI_BUILD_CXXFLAGS="\"@CXXFLAGS@\"" \
-            -DOMPI_BUILD_CXXCPPFLAGS="\"@CXXCPPFLAGS@\"" \
-            -DOMPI_BUILD_FFLAGS="\"@FFLAGS@\"" \
-            -DOMPI_BUILD_FCFLAGS="\"@FCFLAGS@\"" \
-            -DOMPI_BUILD_LDFLAGS="\"@LDFLAGS@\"" \
-            -DOMPI_BUILD_LIBS="\"@LIBS@\"" \
+            -DOPAL_BUILD_USER="\"$$USER\"" \
+            -DOPAL_BUILD_HOST="\"`hostname`\"" \
+            -DOPAL_BUILD_DATE="\"`date`\"" \
+            -DOPAL_BUILD_CFLAGS="\"@CFLAGS@\"" \
+            -DOPAL_BUILD_CPPFLAGS="\"@CPPFLAGS@\"" \
+            -DOPAL_BUILD_CXXFLAGS="\"@CXXFLAGS@\"" \
+            -DOPAL_BUILD_CXXCPPFLAGS="\"@CXXCPPFLAGS@\"" \
+            -DOPAL_BUILD_FFLAGS="\"@FFLAGS@\"" \
+            -DOPAL_BUILD_FCFLAGS="\"@FCFLAGS@\"" \
+            -DOPAL_BUILD_LDFLAGS="\"@LDFLAGS@\"" \
+            -DOPAL_BUILD_LIBS="\"@LIBS@\"" \
             -DOPAL_CC_ABSOLUTE="\"@OPAL_CC_ABSOLUTE@\"" \
-            -DOMPI_CXX_ABSOLUTE="\"@OMPI_CXX_ABSOLUTE@\""
+            -DOPAL_CXX_ABSOLUTE="\"@OPAL_CXX_ABSOLUTE@\""
  
 include $(top_srcdir)/Makefile.ompi-rules
 
 man_pages = orcm-info.1
 EXTRA_DIST = $(man_pages:.1=.1in)
 
-if OMPI_INSTALL_BINARIES
+if OPAL_INSTALL_BINARIES
 
 bin_PROGRAMS = orcm-info
 
@@ -68,7 +68,7 @@ orcm_info_SOURCES = \
 orcm_info_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/libopen-rte.la $(top_builddir)/opal/libopen-pal.la
 
 clean-local:
-	test -z "$(OMPI_CXX_TEMPLATE_REPOSITORY)" || rm -rf $(OMPI_CXX_TEMPLATE_REPOSITORY)
+	test -z "$(OPAL_CXX_TEMPLATE_REPOSITORY)" || rm -rf $(OPAL_CXX_TEMPLATE_REPOSITORY)
 
 distclean-local:
 	rm -f $(man_pages)

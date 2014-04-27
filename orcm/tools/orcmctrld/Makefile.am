@@ -15,7 +15,7 @@ include $(top_srcdir)/Makefile.ompi-rules
 man_pages = orcmctrld.1
 EXTRA_DIST = $(man_pages:.1=.1in)
 
-if OMPI_INSTALL_BINARIES
+if OPAL_INSTALL_BINARIES
 
 bin_PROGRAMS = orcmctrld
 
@@ -26,7 +26,7 @@ nodist_man_MANS = $(man_pages)
 # therefore the release date or version may have changed)
 $(nodist_man_MANS): $(top_builddir)/orcm/include/orcm_config.h
 
-endif # OMPI_INSTALL_BINARIES
+endif # OPAL_INSTALL_BINARIES
 
 orcmctrld_SOURCES = orcmctrld.c
 # the following empty orcmd_LDFLAGS is used 

@@ -24,7 +24,7 @@ dnl
 AC_DEFUN([OPAL_SETUP_LIBLTDL],[
     OPAL_VAR_SCOPE_PUSH([HAPPY])
 
-    ompi_show_subtitle "GNU libltdl setup"
+    opal_show_subtitle "GNU libltdl setup"
 
     # AC_CONFIG_SUBDIRS appears to be broken for non-gcc compilers (i.e.,
     # passing precious variables down to the sub-configure).
@@ -76,7 +76,7 @@ AC_DEFUN([OPAL_SETUP_LIBLTDL],[
               ;;
            *) 
               AC_MSG_RESULT([external copy ($libltdl_location)])
-              OMPI_CHECK_WITHDIR([libltdl], [$libltdl_location], 
+              OPAL_CHECK_WITHDIR([libltdl], [$libltdl_location], 
                                  [include/ltdl.h])
               # If we're using an extern libltdl, then reset the
               # LTDLINCL that was set earlier (ie., there's no need to
@@ -88,7 +88,7 @@ AC_DEFUN([OPAL_SETUP_LIBLTDL],[
             esac
 
             AS_IF([test "$libltdl_need_external" = "1"],
-                  [OMPI_CHECK_PACKAGE([libltdl],
+                  [OPAL_CHECK_PACKAGE([libltdl],
                                  [ltdl.h],
                                  [ltdl],
                                  [lt_dlopen],
@@ -147,23 +147,23 @@ AC_DEFUN([OPAL_SETUP_LIBLTDL],[
 AC_DEFUN([_OPAL_SETUP_LIBLTDL_INTERNAL],[
     OPAL_VAR_SCOPE_PUSH([CFLAGS_save CPPFLAGS_save])
 
-    ompi_subdir_args="$ompi_subdir_args --enable-ltdl-convenience --disable-ltdl-install"
+    opal_subdir_args="$opal_subdir_args --enable-ltdl-convenience --disable-ltdl-install"
     if test "$enable_shared" = "yes"; then
-        ompi_subdir_args="$ompi_subdir_args --enable-shared"
+        opal_subdir_args="$opal_subdir_args --enable-shared"
     else
-        ompi_subdir_args="$ompi_subdir_args --disable-shared"
+        opal_subdir_args="$opal_subdir_args --disable-shared"
     fi
     if test "$enable_static" = "yes"; then
-        ompi_subdir_args="$ompi_subdir_args --enable-static"
+        opal_subdir_args="$opal_subdir_args --enable-static"
     else
-        ompi_subdir_args="$ompi_subdir_args --disable-static"
+        opal_subdir_args="$opal_subdir_args --disable-static"
     fi
 
     CFLAGS_save="$CFLAGS"
-    CFLAGS="$OMPI_CFLAGS_BEFORE_PICKY $OPAL_VISIBILITY_CFLAGS"
+    CFLAGS="$OPAL_CFLAGS_BEFORE_PICKY $OPAL_VISIBILITY_CFLAGS"
 
     # VPATH support will be included by default in CONFIG_SUBDIR
-    OMPI_CONFIG_SUBDIR(opal/libltdl, [$ompi_subdir_args], 
+    OPAL_CONFIG_SUBDIR(opal/libltdl, [$opal_subdir_args], 
                        [HAPPY=1], [HAPPY=0])
     if test "$HAPPY" = "1"; then
         LIBLTDL_SUBDIR=libltdl

@@ -21,13 +21,13 @@
 set srcdir="$1"
 set builddir="`pwd`"
 set distdir="$builddir/$2"
-set OMPI_VERSION="$3"
-set OMPI_REPO_REV="$4"
+set OPAL_VERSION="$3"
+set OPAL_REPO_REV="$4"
 
 if ("$distdir" == "") then
     echo "Must supply relative distdir as argv[2] -- aborting"
     exit 1
-elif ("$OMPI_VERSION" == "") then
+elif ("$OPAL_VERSION" == "") then
     echo "Must supply version as argv[1] -- aborting"
     exit 1
 endif
@@ -36,7 +36,7 @@ endif
 # our tree's revision number, but only if we are in the source tree.
 # Otherwise, use what configure told us, at the cost of allowing one
 # or two corner cases in (but otherwise VPATH builds won't work)
-set repo_rev=$OMPI_REPO_REV
+set repo_rev=$OPAL_REPO_REV
 if (-d .svn) then
     set repo_rev="r`svnversion .`"
 endif
@@ -46,7 +46,7 @@ cat <<EOF
  
 Creating Open MPI distribution
 In directory: `pwd`
-Version: $OMPI_VERSION
+Version: $OPAL_VERSION
 Started: $start
  
 EOF
@@ -185,7 +185,7 @@ end
 # JMS don't have man pages yet -- this is a straight copy from LAM7
 #
 
-set ver="$OMPI_VERSION"
+set ver="$OPAL_VERSION"
 #echo "*** Updating version date/number in man pages"
 #rm -f manfiles
 #find man -type f | grep -v Makefile > manfiles
@@ -251,7 +251,7 @@ echo "*** Updating version number in $files..."
 foreach file ($files)
     echo " - Setting $file"
     if (-f $file) then
-	sed -e "s/OMPI_VERSION/$ver/g" $file > bar
+	sed -e "s/OPAL_VERSION/$ver/g" $file > bar
 	mv -f bar $file
     endif
 end

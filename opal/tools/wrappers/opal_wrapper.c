@@ -718,7 +718,7 @@ main(int argc, char *argv[])
         flags &= ~(COMP_WANT_PREPROC|COMP_WANT_COMPILE|COMP_WANT_LINK);
     }
 
-#if !OMPI_ENABLE_MPI_PROFILING
+#if !OPAL_ENABLE_MPI_PROFILING
     /* sanity check */
     if (flags & COMP_WANT_PMPI) {
 	    opal_show_help("help-opal-wrapper.txt", "no-profiling-support", true,

@@ -39,7 +39,7 @@
 
 #include "opal/util/show_help.h"
 
-#define OMPI_max(a,b) (((a) > (b)) ? (a) : (b)) 
+#define OPAL_max(a,b) (((a) > (b)) ? (a) : (b)) 
 
 
 /*

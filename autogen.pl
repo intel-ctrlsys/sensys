@@ -856,7 +856,7 @@ $dnl_line\n\n";
 # Verify that we're in the ORCM root directory by checking for a token file.
 
 my_die "Not at the root directory of an ORCM source tree"
-    if (! -f "config/orcm_mca.m4");
+    if (! -f "config/opal_mca.m4");
 
 # Now that we've verified that we're in the top-level ORCM directory,
 # set the sentinel file to remove if we abort.

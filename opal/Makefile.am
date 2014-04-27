@@ -10,6 +10,7 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2014      Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
@@ -21,7 +22,6 @@ SUBDIRS = \
 	include \
         $(LIBLTDL_SUBDIR) \
 	asm \
-        datatype \
         etc \
         util \
 	mca/base \
@@ -37,7 +37,6 @@ DIST_SUBDIRS = \
 	include \
 	$(LIBLTDL_SUBDIR) \
 	asm \
-        datatype \
         etc \
 	util \
 	mca/base \
@@ -51,7 +50,6 @@ libopen_pal_la_SOURCES =
 libopen_pal_la_LIBADD = \
         $(LIBLTDL) \
         asm/libasm.la \
-        datatype/libdatatype.la \
         mca/base/libmca_base.la \
         util/libopalutil.la \
 	$(MCA_opal_FRAMEWORK_LIBS)

@@ -1,3 +1,4 @@
+.DS_Store
 .gitignore
 .mailmap
 ompi
@@ -25,7 +26,6 @@ autogen.sh
 NEWS
 Makefile.am
 configure.ac
-contrib/Makefile.am
 contrib/hg
 contrib/ompi_branch_check_revisions-v1.5.txt
 contrib/ompi_cplusplus.sed

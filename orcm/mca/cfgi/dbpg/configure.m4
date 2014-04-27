@@ -19,7 +19,7 @@ AC_DEFUN([MCA_orcm_cfgi_dbpg_CONFIG], [
           [orcm_cfgi_dbpg_check_save_CPPFLAGS=$CPPFLAGS
            orcm_cfgi_dbpg_check_save_LDFLAGS=$LDFLAGS
            orcm_cfgi_dbpg_check_save_LIBS=$LIBS
-           OMPI_CHECK_PACKAGE([cfgi_dbpg],
+           OPAL_CHECK_PACKAGE([cfgi_dbpg],
                               [libpq-fe.h],
                               [pq],
                               [PQconnectdb],

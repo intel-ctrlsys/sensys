@@ -624,7 +624,7 @@ int orterun(int argc, char *argv[])
     orte_basename = opal_basename(argv[0]);
 
     /* bozo check - we don't allow recursive calls of orterun */
-    if (NULL != getenv("OMPI_UNIVERSE_SIZE")) {
+    if (NULL != getenv("OPAL_UNIVERSE_SIZE")) {
         fprintf(stderr, "\n\n**********************************************************\n\n");
         fprintf(stderr, "Open MPI does not support recursive calls of %s\n", orte_basename);
         fprintf(stderr, "\n**********************************************************\n");
@@ -832,7 +832,7 @@ int orterun(int argc, char *argv[])
     orte_launch_environ = opal_argv_copy(environ);
     
     /* purge an ess flag set externally */
-    opal_unsetenv("OMPI_MCA_ess", &orte_launch_environ);
+    opal_unsetenv("OPAL_MCA_ess", &orte_launch_environ);
     
 #if OPAL_ENABLE_FT_CR == 1
     /* Disable OPAL CR notifications for this tool */
@@ -1685,11 +1685,11 @@ static int create_app(int argc, char* argv[],
         goto cleanup;
     }
     
-    /* Grab all OMPI_* environment variables */
+    /* Grab all OPAL_* environment variables */
 
     app->env = opal_argv_copy(*app_env);
     for (i = 0; NULL != environ[i]; ++i) {
-        if (0 == strncmp("OMPI_", environ[i], 5)) {
+        if (0 == strncmp("OPAL_", environ[i], 5)) {
             /* check for duplicate in app->env - this
              * would have been placed there by the
              * cmd line processor. By convention, we
@@ -1707,7 +1707,7 @@ static int create_app(int argc, char* argv[],
     
     /* add the ompi-server, if provided */
     if (NULL != ompi_server) {
-        opal_setenv("OMPI_MCA_pubsub_orte_server", ompi_server, true, &app->env);
+        opal_setenv("OPAL_MCA_pubsub_orte_server", ompi_server, true, &app->env);
     }
 
     /* Did the user request to export any environment variables on the cmd line? */
@@ -1775,9 +1775,9 @@ static int create_app(int argc, char* argv[],
     }
 
     /* If the user specified --path, store it in the user's app
-       environment via the OMPI_exec_path variable. */
+       environment via the OPAL_exec_path variable. */
     if (NULL != orterun_globals.path) {
-        asprintf(&value, "OMPI_exec_path=%s", orterun_globals.path);
+        asprintf(&value, "OPAL_exec_path=%s", orterun_globals.path);
         opal_argv_append_nosize(&app->env, value);
         /* save it for any comm_spawn'd apps */
         opal_argv_append_nosize(&orte_forwarded_envars, value);
@@ -2073,21 +2073,21 @@ static int create_app(int argc, char* argv[],
                 continue;
             }
             /* declare this the winner */
-            opal_setenv("OMPI_COMMAND", app->argv[i], true, &app->env);
+            opal_setenv("OPAL_COMMAND", app->argv[i], true, &app->env);
             /* collect everything else as the cmd line */
             if ((i+1) < opal_argv_count(app->argv)) {
                 value = opal_argv_join(&app->argv[i+1], ' ');
-                opal_setenv("OMPI_ARGV", value, true, &app->env);
+                opal_setenv("OPAL_ARGV", value, true, &app->env);
                 free(value);
             }
             break;
         }
     } else {
         /* add the cmd to the environment for MPI_Info to pickup */
-        opal_setenv("OMPI_COMMAND", appname, true, &app->env);
+        opal_setenv("OPAL_COMMAND", appname, true, &app->env);
         if (1 < opal_argv_count(app->argv)) {
             value = opal_argv_join(&app->argv[1], ' ');
-            opal_setenv("OMPI_ARGV", value, true, &app->env);
+            opal_setenv("OPAL_ARGV", value, true, &app->env);
             free(value);
         }
     }

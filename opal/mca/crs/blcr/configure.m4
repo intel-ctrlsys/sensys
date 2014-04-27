@@ -25,11 +25,11 @@ AC_DEFUN([MCA_opal_crs_blcr_CONFIG],[
     AC_ARG_WITH([blcr],
                 [AC_HELP_STRING([--with-blcr(=DIR)],
                                 [Path to BLCR Installation])])
-    OMPI_CHECK_WITHDIR([blcr], [$with_blcr], [include/libcr.h])
+    OPAL_CHECK_WITHDIR([blcr], [$with_blcr], [include/libcr.h])
     AC_ARG_WITH([blcr-libdir],
                 [AC_HELP_STRING([--with-blcr-libdir=DIR],
                                 [Search for BLCR libraries in DIR])])
-    OMPI_CHECK_WITHDIR([blcr-libdir], [$with_blcr_libdir], [libcr.*])
+    OPAL_CHECK_WITHDIR([blcr-libdir], [$with_blcr_libdir], [libcr.*])
 
     check_crs_blcr_good="no"
 
@@ -73,7 +73,7 @@ AC_DEFUN([MCA_opal_crs_blcr_CONFIG],[
            AC_MSG_RESULT([$check_crs_blcr_dir_msg])
            AC_MSG_CHECKING([for BLCR library dir])
            AC_MSG_RESULT([$check_crs_blcr_libdir_msg])
-           OMPI_CHECK_PACKAGE([crs_blcr_check],
+           OPAL_CHECK_PACKAGE([crs_blcr_check],
                               [libcr.h],
                               [cr],
                               [cr_init],
@@ -127,7 +127,7 @@ AC_DEFUN([MCA_opal_crs_blcr_CONFIG],[
            #
            crs_blcr_have_working_cr_request=0
            AC_MSG_CHECKING(for BLCR working cr_request)
-           OMPI_CHECK_FUNC_LIB([cr_request_file],[cr],
+           OPAL_CHECK_FUNC_LIB([cr_request_file],[cr],
                [AC_TRY_COMPILE([#include <libcr.h>],
                        [#if CR_RELEASE_MAJOR <= 0 && CR_RELEASE_MINOR < 6
                         #error Version earlier than 0.6.0
@@ -149,7 +149,7 @@ AC_DEFUN([MCA_opal_crs_blcr_CONFIG],[
            #
            crs_blcr_have_cr_request_checkpoint=0
            AC_MSG_CHECKING(for BLCR cr_request_checkpoint)
-           OMPI_CHECK_FUNC_LIB([cr_request_checkpoint],[cr],
+           OPAL_CHECK_FUNC_LIB([cr_request_checkpoint],[cr],
                [crs_blcr_have_cr_request_checkpoint=1
                    ],
                [crs_blcr_have_cr_request_checkpoint=0

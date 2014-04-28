@@ -5,6 +5,7 @@
  *                         reserved.
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.
  *                         All rights reserved.
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  * 
@@ -41,11 +42,11 @@
 #include "opal_stdint.h"
 #include "opal/util/output.h"
 
-#include "orcm/util/show_help.h"
-#include "orcm/mca/errmgr/errmgr.h"
-#include "orcm/mca/state/state.h"
-#include "orcm/util/name_fns.h"
-#include "orcm/runtime/orcm_globals.h"
+#include "orte/util/show_help.h"
+#include "orte/mca/errmgr/errmgr.h"
+#include "orte/mca/state/state.h"
+#include "orte/util/name_fns.h"
+#include "orte/runtime/orte_globals.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -54,8 +55,8 @@
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void start(orcm_jobid_t job);
-static void stop(orcm_jobid_t job);
+static void start(orte_jobid_t job);
+static void stop(orte_jobid_t job);
 static void file_sample(void);
 static void file_log(opal_buffer_t *sample);
 
@@ -72,8 +73,8 @@ orcm_sensor_base_module_t orcm_sensor_file_module = {
 /* define a tracking object */
 typedef struct {
     opal_list_item_t super;
-    orcm_jobid_t jobid;
-    orcm_vpid_t vpid;
+    orte_jobid_t jobid;
+    orte_vpid_t vpid;
     char *file;
     int tick;
     bool check_size;
@@ -109,7 +110,7 @@ static opal_list_t jobs;
 static int init(void)
 {
     OBJ_CONSTRUCT(&jobs, opal_list_t);
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static void finalize(void)
@@ -124,7 +125,7 @@ static void finalize(void)
     return;
 }
 
-static bool find_value(orcm_app_context_t *app,
+static bool find_value(orte_app_context_t *app,
                        char *pattern, char **value)
 {
     int i;
@@ -146,10 +147,10 @@ static bool find_value(orcm_app_context_t *app,
 /*
  * Start monitoring of local processes
  */
-static void start(orcm_jobid_t jobid)
+static void start(orte_jobid_t jobid)
 {
-    orcm_job_t *jobdat;
-    orcm_app_context_t *app, *aptr;
+    orte_job_t *jobdat;
+    orte_app_context_t *app, *aptr;
     int i;
     char *filename;
     file_tracker_t *ft;
@@ -166,7 +167,7 @@ static void start(orcm_jobid_t jobid)
                          ORTE_JOBID_PRINT(jobid)));
     
     /* get the local jobdat for this job */
-    if (NULL == (jobdat = orcm_get_job_data_object(jobid))) {
+    if (NULL == (jobdat = orte_get_job_data_object(jobid))) {
         ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
         return;
     }
@@ -174,7 +175,7 @@ static void start(orcm_jobid_t jobid)
     /* must be at least one app_context, so use the first one found */
     app = NULL;
     for (i=0; i < jobdat->apps->size; i++) {
-        if (NULL != (aptr = (orcm_app_context_t*)opal_pointer_array_get_item(jobdat->apps, i))) {
+        if (NULL != (aptr = (orte_app_context_t*)opal_pointer_array_get_item(jobdat->apps, i))) {
             app = aptr;
             break;
         }
@@ -252,7 +253,7 @@ static void start(orcm_jobid_t jobid)
 }
 
 
-static void stop(orcm_jobid_t jobid)
+static void stop(orte_jobid_t jobid)
 {
     opal_list_item_t *item;
     file_tracker_t *ft;
@@ -279,7 +280,7 @@ static void file_sample(void)
     struct stat buf;
     opal_list_item_t *item;
     file_tracker_t *ft;
-    orcm_job_t *jdata;
+    orte_job_t *jdata;
 
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "%s sampling files",
@@ -340,9 +341,9 @@ static void file_sample(void)
                              ft->file, ft->tick));
 
         if (ft->tick == ft->limit) {
-            orcm_show_help("help-orcm-sensor-file.txt", "file-stalled", true,
+            orte_show_help("help-orcm-sensor-file.txt", "file-stalled", true,
                            ft->file, ft->file_size, ctime(&ft->last_access), ctime(&ft->last_mod));
-            jdata = orcm_get_job_data_object(ft->jobid);
+            jdata = orte_get_job_data_object(ft->jobid);
             ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_SENSOR_BOUND_EXCEEDED);
         }
     }

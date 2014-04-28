@@ -25,6 +25,8 @@
 
 #include "opal/mca/mca.h"
 
+#include "orte/types.h"
+
 BEGIN_C_DECLS
 
 /*
@@ -32,10 +34,10 @@ BEGIN_C_DECLS
  */
 
 /* start collecting data */
-typedef void (*orcm_sensor_API_module_start_fn_t)(orcm_jobid_t job);
+typedef void (*orcm_sensor_API_module_start_fn_t)(orte_jobid_t job);
 
 /* stop collecting data */
-typedef void (*orcm_sensor_API_module_stop_fn_t)(orcm_jobid_t job);
+typedef void (*orcm_sensor_API_module_stop_fn_t)(orte_jobid_t job);
 
 /* API module */
 /*
@@ -92,7 +94,7 @@ typedef orcm_sensor_base_component_1_0_0_t orcm_sensor_base_component_t;
 /*
  * Macro for use in components that are of type sensor v1.0.0
  */
-#define ORTE_SENSOR_BASE_VERSION_1_0_0 \
+#define ORCM_SENSOR_BASE_VERSION_1_0_0 \
   /* sensor v1.0 is chained to MCA v2.0 */ \
   MCA_BASE_VERSION_2_0_0, \
   /* sensor v1.0 */ \
@@ -100,7 +102,7 @@ typedef orcm_sensor_base_component_1_0_0_t orcm_sensor_base_component_t;
 
 /* Global structure for accessing sensor functions
  */
-ORTE_DECLSPEC extern orcm_sensor_base_API_module_t orcm_sensor;  /* holds API function pointers */
+ORCM_DECLSPEC extern orcm_sensor_base_API_module_t orcm_sensor;  /* holds API function pointers */
 
 END_C_DECLS
 

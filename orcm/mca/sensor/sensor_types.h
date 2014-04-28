@@ -10,8 +10,8 @@
 /** @file:
  */
 
-#ifndef ORTE_MCA_SENSOR_TYPES_H
-#define ORTE_MCA_SENSOR_TYPES_H
+#ifndef ORCM_MCA_SENSOR_TYPES_H
+#define ORCM_MCA_SENSOR_TYPES_H
 
 #include "orcm_config.h"
 #include "orcm/constants.h"
@@ -29,9 +29,9 @@
 BEGIN_C_DECLS
 
 enum {
-    ORTE_SENSOR_SCALE_LINEAR,
-    ORTE_SENSOR_SCALE_LOG,
-    ORTE_SENSOR_SCALE_SIGMOID
+    ORCM_SENSOR_SCALE_LINEAR,
+    ORCM_SENSOR_SCALE_LOG,
+    ORCM_SENSOR_SCALE_SIGMOID
 };
 
 /*
@@ -43,7 +43,7 @@ typedef struct {
     struct timeval timestamp;
     opal_byte_object_t data;
 } orcm_sensor_data_t;
-ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_sensor_data_t);
+ORCM_DECLSPEC OBJ_CLASS_DECLARATION(orcm_sensor_data_t);
 
 END_C_DECLS
 

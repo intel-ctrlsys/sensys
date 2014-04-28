@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  * 
@@ -23,7 +24,6 @@
 #include "opal/util/output.h"
 #include "opal/class/opal_pointer_array.h"
 
-#include "orcm/mca/errmgr/errmgr.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 
@@ -51,7 +51,7 @@ int orcm_sensor_base_select(void)
     bool duplicate;
 
     if (selected) {
-        return ORTE_SUCCESS;
+        return ORCM_SUCCESS;
     }
     selected = true;
 
@@ -147,7 +147,7 @@ int orcm_sensor_base_select(void)
 
     if (none_found) {
         /* okay for no modules to be found */
-        return ORTE_SUCCESS;
+        return ORCM_SUCCESS;
     }
 
     /*
@@ -199,7 +199,7 @@ int orcm_sensor_base_select(void)
             continue;
         }
         if( NULL != i_module->module->init ) {
-            if (ORTE_SUCCESS != i_module->module->init()) {
+            if (ORCM_SUCCESS != i_module->module->init()) {
                 /* can't sample - however, if we are the HNP
                  * or an aggregator, then we need this module
                  * anyway so we can log incoming data
@@ -214,5 +214,5 @@ int orcm_sensor_base_select(void)
         }
     }
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }

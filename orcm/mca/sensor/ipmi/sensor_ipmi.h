@@ -10,10 +10,10 @@
 /**
  * @file
  *
- * SIGAR resource manager sensor 
+ * IPMI resource manager sensor 
  */
-#ifndef ORCM_SENSOR_SIGAR_H
-#define ORCM_SENSOR_SIGAR_H
+#ifndef ORCM_SENSOR_IPMI_H
+#define ORCM_SENSOR_IPMI_H
 
 #include "orcm_config.h"
 
@@ -23,11 +23,11 @@ BEGIN_C_DECLS
 
 typedef struct {
     orcm_sensor_base_component_t super;
-    bool test;
-} orcm_sensor_sigar_component_t;
+    char *sensors;
+} orcm_sensor_ipmi_component_t;
 
-ORCM_MODULE_DECLSPEC extern orcm_sensor_sigar_component_t mca_sensor_sigar_component;
-extern orcm_sensor_base_module_t orcm_sensor_sigar_module;
+ORCM_MODULE_DECLSPEC extern orcm_sensor_ipmi_component_t mca_sensor_ipmi_component;
+extern orcm_sensor_base_module_t orcm_sensor_ipmi_module;
 
 
 END_C_DECLS

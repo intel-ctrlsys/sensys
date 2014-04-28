@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -74,7 +75,7 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
     mca_base_var_register_synonym(var_id, "orcm", "sensor", NULL, "log_samples",
                                   MCA_BASE_VAR_SYN_FLAG_DEPRECATED);
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int orcm_sensor_base_close(void)
@@ -117,7 +118,7 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
     return mca_base_framework_components_open(&orcm_sensor_base_framework, flags);
 }
 
-MCA_BASE_FRAMEWORK_DECLARE(orcm, sensor, "ORTE Monitoring Sensors",
+MCA_BASE_FRAMEWORK_DECLARE(orcm, sensor, "ORCM Monitoring Sensors",
                            orcm_sensor_base_register,
                            orcm_sensor_base_open, orcm_sensor_base_close,
                            mca_sensor_base_static_components, 0);

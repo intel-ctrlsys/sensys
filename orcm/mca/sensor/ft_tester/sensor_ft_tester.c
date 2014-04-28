@@ -31,10 +31,10 @@
 #include "opal/util/alfg.h"
 #include "opal/util/output.h"
 
-#include "orcm/util/error_strings.h"
-#include "orcm/util/name_fns.h"
-#include "orcm/mca/errmgr/errmgr.h"
-#include "orcm/runtime/orcm_globals.h"
+#include "orte/util/error_strings.h"
+#include "orte/util/name_fns.h"
+#include "orte/mca/errmgr/errmgr.h"
+#include "orte/runtime/orte_globals.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -56,7 +56,7 @@ orcm_sensor_base_module_t orcm_sensor_ft_tester_module = {
 static void sample(void)
 {
     float prob;
-    orcm_proc_t *child;
+    orte_proc_t *child;
     int i;
 
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
@@ -76,15 +76,15 @@ static void sample(void)
             OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                                  "%s sample:ft_tester committing suicide",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-            orcm_errmgr.abort(1, NULL);
+            orte_errmgr.abort(1, NULL);
             return;
         }
     }
 
     if (0 < mca_sensor_ft_tester_component.fail_prob) {
         /* see if we should kill a child */
-        for (i=0; i < orcm_local_children->size; i++) {
-            if (NULL == (child = (orcm_proc_t*)opal_pointer_array_get_item(orcm_local_children, i))) {
+        for (i=0; i < orte_local_children->size; i++) {
+            if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
                 continue;
             }
             if (!child->alive || 0 == child->pid ||
@@ -94,7 +94,7 @@ static void sample(void)
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                      ORTE_NAME_PRINT(&child->name),
                                      child->alive ? "TRUE" : "FALSE",
-                                     (unsigned long)child->pid, orcm_proc_state_to_str(child->state)));
+                                     (unsigned long)child->pid, orte_proc_state_to_str(child->state)));
                 continue;
             }
             /* roll the dice */

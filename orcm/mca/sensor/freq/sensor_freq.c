@@ -35,10 +35,10 @@
 #include "opal/util/os_dirpath.h"
 #include "opal/mca/db/db.h"
 
-#include "orcm/util/name_fns.h"
-#include "orcm/util/show_help.h"
-#include "orcm/runtime/orcm_globals.h"
-#include "orcm/mca/errmgr/errmgr.h"
+#include "orte/util/name_fns.h"
+#include "orte/util/show_help.h"
+#include "orte/runtime/orte_globals.h"
+#include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -47,8 +47,8 @@
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void start(orcm_jobid_t job);
-static void stop(orcm_jobid_t job);
+static void start(orte_jobid_t job);
+static void stop(orte_jobid_t job);
 static void freq_sample(void);
 static void freq_log(opal_buffer_t *buf);
 
@@ -86,7 +86,7 @@ OBJ_CLASS_INSTANCE(corefreq_tracker_t,
 static bool log_enabled = true;
 static opal_list_t tracking;
 
-static char *orcm_getline(FILE *fp)
+static char *orte_getline(FILE *fp)
 {
     char *ret, *buff;
     char input[1024];
@@ -123,8 +123,8 @@ static int init(void)
      */
     if (NULL == (cur_dirp = opendir("/sys/devices/system/cpu"))) {
         OBJ_DESTRUCT(&tracking);
-        orcm_show_help("help-orcm-sensor-freq.txt", "req-dir-not-found",
-                       true, orcm_process_info.nodename,
+        orte_show_help("help-orcm-sensor-freq.txt", "req-dir-not-found",
+                       true, orte_process_info.nodename,
                        "/sys/devices/system/cpu");
         return ORTE_ERROR;
     }
@@ -166,14 +166,14 @@ static int init(void)
         /* read the static info */
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_max_freq", NULL);
         fp = fopen(filename, "r");
-        tmp = orcm_getline(fp);
+        tmp = orte_getline(fp);
         fclose(fp);
         trk->max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
         free(filename);
 
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_min_freq", NULL);
         fp = fopen(filename, "r");
-        tmp = orcm_getline(fp);
+        tmp = orte_getline(fp);
         fclose(fp);
         trk->min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
         free(filename);
@@ -187,12 +187,12 @@ static int init(void)
 
     if (0 == opal_list_get_size(&tracking)) {
         /* nothing to read */
-        orcm_show_help("help-orcm-sensor-freq.txt", "no-cores-found",
-                       true, orcm_process_info.nodename);
+        orte_show_help("help-orcm-sensor-freq.txt", "no-cores-found",
+                       true, orte_process_info.nodename);
         return ORTE_ERROR;
     }
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static void finalize(void)
@@ -203,13 +203,13 @@ static void finalize(void)
 /*
  * Start monitoring of local temps
  */
-static void start(orcm_jobid_t jobid)
+static void start(orte_jobid_t jobid)
 {
     return;
 }
 
 
-static void stop(orcm_jobid_t jobid)
+static void stop(orte_jobid_t jobid)
 {
     return;
 }
@@ -250,7 +250,7 @@ static void freq_sample(void)
     free(freq);
 
     /* store our hostname */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orcm_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
         return;
@@ -293,7 +293,7 @@ static void freq_sample(void)
             OBJ_RELEASE(trk);
             continue;
         }
-        while (NULL != (freq = orcm_getline(fp))) {
+        while (NULL != (freq = orte_getline(fp))) {
             ghz = strtoul(freq, NULL, 10) / 1000000.0;
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "%s sensor:freq: Core %d freq %f max %f min %f",
@@ -395,7 +395,7 @@ static void freq_log(opal_buffer_t *sample)
     }
 
     /* store it */
-    if (ORTE_SUCCESS != (rc = opal_db.add_log("freq", kv, ncores+2))) {
+    if (ORCM_SUCCESS != (rc = opal_db.add_log("freq", kv, ncores+2))) {
         /* don't bark about it - just quietly disable the log */
         log_enabled = false;
     }

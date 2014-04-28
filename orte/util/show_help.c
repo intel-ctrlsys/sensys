@@ -628,6 +628,7 @@ int orte_show_help_norender(const char *filename, const char *topic,
      * mode, then all we can do is process this locally
      */
     if (ORTE_PROC_IS_HNP || orte_standalone_operation ||
+        ORTE_PROC_IS_SCHEDULER || ORTE_PROC_IS_TOOL ||
         NULL == orte_rml.send_buffer_nb ||
         NULL == orte_routed.get_route ||
         NULL == orte_process_info.my_hnp_uri) {

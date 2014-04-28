@@ -15,7 +15,6 @@ configure.ac
 config/ompi_*
 config/oshmem_*
 config/Makefile.am
-config/opal_check_cuda.m4
 config/opal_setup_cxx.m4
 config/opal_setup_java.m4
 config/orte_setup_java.m4
@@ -64,3 +63,4 @@ opal/mca/event/libevent2021/libevent/m4/lt~obsolete.m4
 opal/mca/event/libevent2021/libevent/missing
 orcm/include/orcm/frameworks.h
 orte/include/orte/frameworks.h
+orcm/tools/wrappers/orcmcc-wrapper-data.txt

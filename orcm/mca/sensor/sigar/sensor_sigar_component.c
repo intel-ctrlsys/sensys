@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013      Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  * Additional copyrights may follow
  * 
  * $HEADER$
@@ -26,12 +26,12 @@ static int sigar_component_register(void);
 orcm_sensor_sigar_component_t mca_sensor_sigar_component = {
     {
         {
-            ORTE_SENSOR_BASE_VERSION_1_0_0,
+            ORCM_SENSOR_BASE_VERSION_1_0_0,
             
             "sigar", /* MCA component name */
-            ORTE_MAJOR_VERSION,  /* MCA component major version */
-            ORTE_MINOR_VERSION,  /* MCA component minor version */
-            ORTE_RELEASE_VERSION,  /* MCA component release version */
+            ORCM_MAJOR_VERSION,  /* MCA component major version */
+            ORCM_MINOR_VERSION,  /* MCA component minor version */
+            ORCM_RELEASE_VERSION,  /* MCA component release version */
             orcm_sensor_sigar_open,  /* component open  */
             orcm_sensor_sigar_close, /* component close */
             orcm_sensor_sigar_query,  /* component query */
@@ -50,7 +50,7 @@ orcm_sensor_sigar_component_t mca_sensor_sigar_component = {
   */
 static int orcm_sensor_sigar_open(void)
 {
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int orcm_sensor_sigar_query(mca_base_module_t **module, int *priority)
@@ -61,7 +61,7 @@ static int orcm_sensor_sigar_query(mca_base_module_t **module, int *priority)
      */
     *priority = 150;  /* ahead of heartbeat and resusage */
     *module = (mca_base_module_t *)&orcm_sensor_sigar_module;
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 /**
@@ -70,7 +70,7 @@ static int orcm_sensor_sigar_query(mca_base_module_t **module, int *priority)
 
 static int orcm_sensor_sigar_close(void)
 {
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int sigar_component_register(void)
@@ -84,5 +84,5 @@ static int sigar_component_register(void)
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_sigar_component.test);
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }

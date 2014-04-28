@@ -27,7 +27,7 @@
 #include "opal/class/opal_pointer_array.h"
 #include "opal/mca/event/event.h"
 
-#include "orcm/runtime/orcm_globals.h"
+#include "orte/runtime/orte_globals.h"
 
 #include "orcm/mca/sensor/sensor.h"
 
@@ -57,11 +57,11 @@ typedef struct {
 OBJ_CLASS_DECLARATION(orcm_sensor_active_module_t);
 
 
-ORTE_DECLSPEC extern orcm_sensor_base_t orcm_sensor_base;
-ORTE_DECLSPEC void orcm_sensor_base_start(orcm_jobid_t job);
-ORTE_DECLSPEC void orcm_sensor_base_stop(orcm_jobid_t job);
-ORTE_DECLSPEC void orcm_sensor_base_sample(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orcm_sensor_base_log(char *comp, opal_buffer_t *data);
+ORCM_DECLSPEC extern orcm_sensor_base_t orcm_sensor_base;
+ORCM_DECLSPEC void orcm_sensor_base_start(orte_jobid_t job);
+ORCM_DECLSPEC void orcm_sensor_base_stop(orte_jobid_t job);
+ORCM_DECLSPEC void orcm_sensor_base_sample(int fd, short args, void *cbdata);
+ORCM_DECLSPEC void orcm_sensor_base_log(char *comp, opal_buffer_t *data);
 
 END_C_DECLS
 #endif

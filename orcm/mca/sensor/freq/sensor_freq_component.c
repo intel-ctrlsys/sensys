@@ -26,12 +26,12 @@ static int freq_component_register(void);
 orcm_sensor_freq_component_t mca_sensor_freq_component = {
     {
         {
-            ORTE_SENSOR_BASE_VERSION_1_0_0,
+            ORCM_SENSOR_BASE_VERSION_1_0_0,
             
             "freq", /* MCA component name */
-            ORTE_MAJOR_VERSION,  /* MCA component major version */
-            ORTE_MINOR_VERSION,  /* MCA component minor version */
-            ORTE_RELEASE_VERSION,  /* MCA component release version */
+            ORCM_MAJOR_VERSION,  /* MCA component major version */
+            ORCM_MINOR_VERSION,  /* MCA component minor version */
+            ORCM_RELEASE_VERSION,  /* MCA component release version */
             orcm_sensor_freq_open,  /* component open  */
             orcm_sensor_freq_close, /* component close */
             orcm_sensor_freq_query,  /* component query */
@@ -50,7 +50,7 @@ orcm_sensor_freq_component_t mca_sensor_freq_component = {
   */
 static int orcm_sensor_freq_open(void)
 {
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int orcm_sensor_freq_query(mca_base_module_t **module, int *priority)
@@ -64,7 +64,7 @@ static int orcm_sensor_freq_query(mca_base_module_t **module, int *priority)
      */
     *priority = 50;  /* ahead of heartbeat */
     *module = (mca_base_module_t *)&orcm_sensor_freq_module;
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 /**
@@ -73,7 +73,7 @@ static int orcm_sensor_freq_query(mca_base_module_t **module, int *priority)
 
 static int orcm_sensor_freq_close(void)
 {
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int freq_component_register(void)
@@ -87,5 +87,5 @@ static int freq_component_register(void)
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_freq_component.test);
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }

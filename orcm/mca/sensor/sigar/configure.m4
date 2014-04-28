@@ -40,12 +40,12 @@ AC_DEFUN([MCA_orcm_sensor_sigar_CONFIG], [
                                       AC_MSG_ERROR([CANNOT CONTINUE])
                                       $2])],
                  [AC_MSG_WARN([SIGAR SENSOR SUPPORT REQUESTED])
-                  AC_MSG_WARN([BUT ONLY SUPPORTED ON LINUX AND MAC])
+                  AC_MSG_WARN([BUT ONLY SUPPORCMD ON LINUX AND MAC])
                   AC_MSG_ERROR([CANNOT CONTINUE])
                   $2])],
           [$2])
 
-    AC_DEFINE_UNQUOTED(ORTE_SIGAR_LINUX, [test "$opal_found_linux" = "yes"],
+    AC_DEFINE_UNQUOTED(ORCM_SIGAR_LINUX, [test "$opal_found_linux" = "yes"],
                        [Which name to use for the sigar library on this OS])
     AC_SUBST(sensor_sigar_CPPFLAGS)
     AC_SUBST(sensor_sigar_LDFLAGS)

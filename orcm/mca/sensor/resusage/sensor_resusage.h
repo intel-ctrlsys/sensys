@@ -12,8 +12,8 @@
  *
  * Process Resource Utilization sensor 
  */
-#ifndef ORTE_SENSOR_RESUSAGE_H
-#define ORTE_SENSOR_RESUSAGE_H
+#ifndef ORCM_SENSOR_RESUSAGE_H
+#define ORCM_SENSOR_RESUSAGE_H
 
 #include "orcm_config.h"
 
@@ -31,7 +31,7 @@ struct orcm_sensor_resusage_component_t {
 };
 typedef struct orcm_sensor_resusage_component_t orcm_sensor_resusage_component_t;
 
-ORTE_MODULE_DECLSPEC extern orcm_sensor_resusage_component_t mca_sensor_resusage_component;
+ORCM_MODULE_DECLSPEC extern orcm_sensor_resusage_component_t mca_sensor_resusage_component;
 extern orcm_sensor_base_module_t orcm_sensor_resusage_module;
 
 

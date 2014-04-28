@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  * 
@@ -12,8 +13,8 @@
  *
  * File movement sensor 
  */
-#ifndef ORTE_SENSOR_FILE_H
-#define ORTE_SENSOR_FILE_H
+#ifndef ORCM_SENSOR_FILE_H
+#define ORCM_SENSOR_FILE_H
 
 #include "orcm_config.h"
 
@@ -32,7 +33,7 @@ struct orcm_sensor_file_component_t {
 };
 typedef struct orcm_sensor_file_component_t orcm_sensor_file_component_t;
 
-ORTE_MODULE_DECLSPEC extern orcm_sensor_file_component_t mca_sensor_file_component;
+ORCM_MODULE_DECLSPEC extern orcm_sensor_file_component_t mca_sensor_file_component;
 extern orcm_sensor_base_module_t orcm_sensor_file_module;
 
 

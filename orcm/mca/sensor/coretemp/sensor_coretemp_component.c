@@ -11,7 +11,6 @@
 #include "opal/mca/base/base.h"
 #include "opal/mca/base/mca_base_var.h"
 
-#include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_coretemp.h"
 
 /*
@@ -26,12 +25,12 @@ static int coretemp_component_register(void);
 orcm_sensor_coretemp_component_t mca_sensor_coretemp_component = {
     {
         {
-            ORTE_SENSOR_BASE_VERSION_1_0_0,
+            ORCM_SENSOR_BASE_VERSION_1_0_0,
             
             "coretemp", /* MCA component name */
-            ORTE_MAJOR_VERSION,  /* MCA component major version */
-            ORTE_MINOR_VERSION,  /* MCA component minor version */
-            ORTE_RELEASE_VERSION,  /* MCA component release version */
+            ORCM_MAJOR_VERSION,  /* MCA component major version */
+            ORCM_MINOR_VERSION,  /* MCA component minor version */
+            ORCM_RELEASE_VERSION,  /* MCA component release version */
             orcm_sensor_coretemp_open,  /* component open  */
             orcm_sensor_coretemp_close, /* component close */
             orcm_sensor_coretemp_query,  /* component query */
@@ -50,7 +49,7 @@ orcm_sensor_coretemp_component_t mca_sensor_coretemp_component = {
   */
 static int orcm_sensor_coretemp_open(void)
 {
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int orcm_sensor_coretemp_query(mca_base_module_t **module, int *priority)
@@ -64,7 +63,7 @@ static int orcm_sensor_coretemp_query(mca_base_module_t **module, int *priority)
      */
     *priority = 50;  /* ahead of heartbeat */
     *module = (mca_base_module_t *)&orcm_sensor_coretemp_module;
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 /**
@@ -73,7 +72,7 @@ static int orcm_sensor_coretemp_query(mca_base_module_t **module, int *priority)
 
 static int orcm_sensor_coretemp_close(void)
 {
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int coretemp_component_register(void)
@@ -87,5 +86,5 @@ static int coretemp_component_register(void)
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_coretemp_component.test);
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }

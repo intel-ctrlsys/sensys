@@ -13,8 +13,8 @@
  *
  * Heartbeat sensor 
  */
-#ifndef ORTE_SENSOR_HEARTBEAT_H
-#define ORTE_SENSOR_HEARTBEAT_H
+#ifndef ORCM_SENSOR_HEARTBEAT_H
+#define ORCM_SENSOR_HEARTBEAT_H
 
 #include "orcm_config.h"
 
@@ -22,7 +22,7 @@
 
 BEGIN_C_DECLS
 
-ORTE_MODULE_DECLSPEC extern orcm_sensor_base_component_t mca_sensor_heartbeat_component;
+ORCM_MODULE_DECLSPEC extern orcm_sensor_base_component_t mca_sensor_heartbeat_component;
 extern orcm_sensor_base_module_t orcm_sensor_heartbeat_module;
 
 

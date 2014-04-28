@@ -1,0 +1,19 @@
+# -*- text -*-
+#
+# Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
+# $COPYRIGHT$
+# 
+# Additional copyrights may follow
+# 
+# $HEADER$
+#
+#
+[lost-route]
+ORCM has detected failure of an orcm daemon:
+
+  Failure time:     %s
+  Reported from:    %s
+  Failed nodename:  %s
+
+Messages have been rerouted - a restart of the failed
+daemon and/or node may be required.

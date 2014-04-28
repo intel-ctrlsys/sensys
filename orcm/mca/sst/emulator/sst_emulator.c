@@ -70,8 +70,6 @@
 #include "orte/util/regex.h"
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/base/base.h"
-#include "orte/mca/sensor/base/base.h"
-#include "orte/mca/sensor/sensor.h"
 #include "orte/mca/state/base/base.h"
 #include "orte/mca/state/state.h"
 #include "orte/runtime/orte_cr.h"
@@ -82,6 +80,8 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/cfgi.h"
 #include "orcm/mca/scd/base/base.h"
+#include "orcm/mca/sensor/base/base.h"
+#include "orcm/mca/sensor/sensor.h"
 #include "orcm/util/utils.h"
 
 #include "orcm/mca/sst/base/base.h"

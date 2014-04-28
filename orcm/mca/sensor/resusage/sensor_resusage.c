@@ -2,7 +2,8 @@
  * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.  All rights
  *                         reserved. 
-  *
+ * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+ *
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -31,15 +32,15 @@
 #include "opal/mca/pstat/pstat.h"
 #include "opal/mca/db/db.h"
 
-#include "orcm/util/proc_info.h"
-#include "orcm/util/name_fns.h"
-#include "orcm/mca/errmgr/errmgr.h"
-#include "orcm/mca/odls/odls_types.h"
-#include "orcm/mca/odls/base/odls_private.h"
-#include "orcm/mca/rml/rml.h"
-#include "orcm/mca/state/state.h"
-#include "orcm/runtime/orcm_globals.h"
-#include "orcm/orcmd/orcmd.h"
+#include "orte/util/proc_info.h"
+#include "orte/util/name_fns.h"
+#include "orte/mca/errmgr/errmgr.h"
+#include "orte/mca/odls/odls_types.h"
+#include "orte/mca/odls/base/odls_private.h"
+#include "orte/mca/rml/rml.h"
+#include "orte/mca/state/state.h"
+#include "orte/runtime/orte_globals.h"
+#include "orte/orted/orted.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -62,32 +63,32 @@ orcm_sensor_base_module_t orcm_sensor_resusage_module = {
 };
 
 static bool log_enabled = true;
-static orcm_node_t *my_node;
-static orcm_proc_t *my_proc;
+static orte_node_t *my_node;
+static orte_proc_t *my_proc;
 
 static int init(void)
 {
-    orcm_job_t *jdata;
+    orte_job_t *jdata;
 
     /* ensure my_proc and my_node are available on the global arrays */
-    if (NULL == (jdata = orcm_get_job_data_object(ORTE_PROC_MY_NAME->jobid))) {
-        my_proc = OBJ_NEW(orcm_proc_t);
-        my_node = OBJ_NEW(orcm_node_t);
+    if (NULL == (jdata = orte_get_job_data_object(ORTE_PROC_MY_NAME->jobid))) {
+        my_proc = OBJ_NEW(orte_proc_t);
+        my_node = OBJ_NEW(orte_node_t);
     } else {
-        if (NULL == (my_proc = (orcm_proc_t*)opal_pointer_array_get_item(jdata->procs, ORTE_PROC_MY_NAME->vpid))) {
-            ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
-            return ORTE_ERR_NOT_FOUND;
+        if (NULL == (my_proc = (orte_proc_t*)opal_pointer_array_get_item(jdata->procs, ORTE_PROC_MY_NAME->vpid))) {
+            ORTE_ERROR_LOG(ORCM_ERR_NOT_FOUND);
+            return ORCM_ERR_NOT_FOUND;
         }
         if (NULL == (my_node = my_proc->node)) {
-            ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
-            return ORTE_ERR_NOT_FOUND;
+            ORTE_ERROR_LOG(ORCM_ERR_NOT_FOUND);
+            return ORCM_ERR_NOT_FOUND;
         }
         /* protect the objects */
         OBJ_RETAIN(my_proc);
         OBJ_RETAIN(my_node);
     }
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static void finalize(void)
@@ -106,7 +107,7 @@ static void sample(void)
     opal_pstats_t *stats, *st;
     opal_node_stats_t *nstats, *nst;
     int rc, i;
-    orcm_proc_t *child, *hog=NULL;
+    orte_proc_t *child, *hog=NULL;
     float in_use, max_mem;
     opal_buffer_t buf, *bptr;
     char *comp;
@@ -128,7 +129,7 @@ static void sample(void)
     /* update stats on ourself and the node */
     stats = OBJ_NEW(opal_pstats_t);
     nstats = OBJ_NEW(opal_node_stats_t);
-    if (ORTE_SUCCESS != (rc = opal_pstat.query(orcm_process_info.pid, stats, nstats))) {
+    if (ORCM_SUCCESS != (rc = opal_pstat.query(orte_process_info.pid, stats, nstats))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(stats);
         OBJ_RELEASE(nstats);
@@ -137,7 +138,7 @@ static void sample(void)
     }
 
     /* the stats framework can't know nodename or rank */
-    strncpy(stats->node, orcm_process_info.nodename, OPAL_PSTAT_MAX_STRING_LEN);
+    strncpy(stats->node, orte_process_info.nodename, OPAL_PSTAT_MAX_STRING_LEN);
     stats->rank = ORTE_PROC_MY_NAME->vpid;
     /* locally save the stats */
     if (NULL != (st = (opal_pstats_t*)opal_ring_buffer_push(&my_proc->stats, stats))) {
@@ -149,7 +150,7 @@ static void sample(void)
     }
 
     /* pack them */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &orcm_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&buf);
         return;
@@ -166,9 +167,9 @@ static void sample(void)
     }
 
     /* loop through our children and update their stats */
-    if (NULL != orcm_local_children) {
-        for (i=0; i < orcm_local_children->size; i++) {
-            if (NULL == (child = (orcm_proc_t*)opal_pointer_array_get_item(orcm_local_children, i))) {
+    if (NULL != orte_local_children) {
+        for (i=0; i < orte_local_children->size; i++) {
+            if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
                 continue;
             }
             if (!child->alive) {
@@ -179,7 +180,7 @@ static void sample(void)
                 continue;
             }
             stats = OBJ_NEW(opal_pstats_t);
-            if (ORTE_SUCCESS != opal_pstat.query(child->pid, stats, NULL)) {
+            if (ORCM_SUCCESS != opal_pstat.query(child->pid, stats, NULL)) {
                 /* may hit a race condition where the process has
                  * terminated, so just ignore any error
                  */
@@ -187,7 +188,7 @@ static void sample(void)
                 continue;
             }
             /* the stats framework can't know nodename or rank */
-            strncpy(stats->node, orcm_process_info.nodename, OPAL_PSTAT_MAX_STRING_LEN);
+            strncpy(stats->node, orte_process_info.nodename, OPAL_PSTAT_MAX_STRING_LEN);
             stats->rank = child->name.vpid;
             /* store it */
             if (NULL != (st = (opal_pstats_t*)opal_ring_buffer_push(&child->stats, stats))) {
@@ -229,8 +230,8 @@ static void sample(void)
             /* loop through our children and find the biggest hog */
             hog = NULL;
             max_mem = 0.0;
-            for (i=0; i < orcm_local_children->size; i++) {
-                if (NULL == (child = (orcm_proc_t*)opal_pointer_array_get_item(orcm_local_children, i))) {
+            for (i=0; i < orte_local_children->size; i++) {
+                if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
                     continue;
                 }
                 if (!child->alive) {
@@ -259,7 +260,7 @@ static void sample(void)
                 OPAL_OUTPUT_VERBOSE((2, orcm_sensor_base_framework.framework_output,
                                      "%s NO CHILD: COMMITTING SUICIDE",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-                orcm_errmgr.abort(ORTE_ERR_MEM_LIMIT_EXCEEDED, NULL);
+                orte_errmgr.abort(ORCM_ERR_MEM_LIMIT_EXCEEDED, NULL);
             } else {
                 /* report the problem */
                 OPAL_OUTPUT_VERBOSE((2, orcm_sensor_base_framework.framework_output,
@@ -281,8 +282,8 @@ static void sample(void)
                              "%s CHECKING PROC MEM",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         /* check my children first */
-        for (i=0; i < orcm_local_children->size; i++) {
-            if (NULL == (child = (orcm_proc_t*)opal_pointer_array_get_item(orcm_local_children, i))) {
+        for (i=0; i < orte_local_children->size; i++) {
+            if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
                 continue;
             }
             if (!child->alive) {
@@ -395,7 +396,7 @@ static void res_log(opal_buffer_t *sample)
         kv[i++].data.fval = nst->la15;
 
         /* store it */
-        if (ORTE_SUCCESS != (rc = opal_db.add_log("nodestats", kv, 12))) {
+        if (ORCM_SUCCESS != (rc = opal_db.add_log("nodestats", kv, 12))) {
             /* don't bark about it - just quietly disable the log */
             log_enabled = false;
         }
@@ -461,7 +462,7 @@ static void res_log(opal_buffer_t *sample)
             kv[13].data.tv.tv_sec = st->sample_time.tv_sec;
             kv[13].data.tv.tv_usec = st->sample_time.tv_usec;
             /* store it */
-            if (ORTE_SUCCESS != (rc = opal_db.add_log("procstats", kv, 14))) {
+            if (ORCM_SUCCESS != (rc = opal_db.add_log("procstats", kv, 14))) {
                 log_enabled = false;
             }
             for (i=0; i < 14; i++) {

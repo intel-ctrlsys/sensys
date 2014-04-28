@@ -70,8 +70,6 @@
 #include "orte/util/regex.h"
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/base/base.h"
-#include "orte/mca/sensor/base/base.h"
-#include "orte/mca/sensor/sensor.h"
 #include "orte/mca/state/base/base.h"
 #include "orte/mca/state/state.h"
 #include "orte/runtime/orte_cr.h"
@@ -81,6 +79,8 @@
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/base/base.h"
+#include "orcm/mca/sensor/base/base.h"
+#include "orcm/mca/sensor/sensor.h"
 
 #include "orcm/mca/sst/base/base.h"
 #include "orcm/mca/sst/orcmd/sst_orcmd.h"
@@ -550,18 +550,18 @@ static int orcmd_init(void)
     }
     
     /* setup the SENSOR framework */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_sensor_base_framework, 0))) {
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_sensor_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
-        error = "orte_sensor_base_open";
+        error = "orcm_sensor_base_open";
         goto error;
     }
-    if (ORTE_SUCCESS != (ret = orte_sensor_base_select())) {
+    if (ORTE_SUCCESS != (ret = orcm_sensor_base_select())) {
         ORTE_ERROR_LOG(ret);
-        error = "orte_sensor_select";
+        error = "orcm_sensor_select";
         goto error;
     }
     /* start the local sensors */
-    orte_sensor.start(ORTE_PROC_MY_NAME->jobid);
+    orcm_sensor.start(ORTE_PROC_MY_NAME->jobid);
     
     /* setup the DFS framework */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_dfs_base_framework, 0))) {
@@ -588,8 +588,8 @@ static int orcmd_init(void)
 static void orcmd_finalize(void)
 {
     /* stop the local sensors */
-    orte_sensor.stop(ORTE_PROC_MY_NAME->jobid);
-    (void) mca_base_framework_close(&orte_sensor_base_framework);
+    orcm_sensor.stop(ORTE_PROC_MY_NAME->jobid);
+    (void) mca_base_framework_close(&orcm_sensor_base_framework);
    
     if (signals_set) {
         /* Release all local signal handlers */

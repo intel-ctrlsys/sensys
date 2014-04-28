@@ -74,6 +74,10 @@ static int isolated_init(void)
 {
     int rc;
     
+    opal_output_verbose(1, orte_plm_base_framework.framework_output,
+                        "%s plm:isolated: registering state during init",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
     /* point to our launch command */
     if (ORTE_SUCCESS != (rc = orte_state.add_job_state(ORTE_JOB_STATE_LAUNCH_DAEMONS,
                                                        launch_daemons, ORTE_SYS_PRI))) {
@@ -100,6 +104,11 @@ static int remote_spawn(opal_buffer_t *launch)
 
 static int isolated_launch(orte_job_t *jdata)
 {
+    opal_output_verbose(1, orte_plm_base_framework.framework_output,
+                        "%s plm:isolated: launch job %s",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                        ORTE_JOBID_PRINT(jdata->jobid));
+
     if (ORTE_JOB_CONTROL_RESTART & jdata->controls) {
         /* this is a restart situation - skip to the mapping stage */
         ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_MAP);
@@ -114,6 +123,10 @@ static void launch_daemons(int fd, short args, void *cbdata)
 {
     orte_state_caddy_t *state = (orte_state_caddy_t*)cbdata;
 
+    opal_output_verbose(1, orte_plm_base_framework.framework_output,
+                        "%s plm:isolated: launch daemons",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
     /* there are no daemons to launch, so just trigger the
      * daemon-launch-complete state
      */
@@ -124,6 +137,10 @@ static void launch_daemons(int fd, short args, void *cbdata)
 static int isolated_terminate_orteds(void)
 {
     int rc;
+
+    opal_output_verbose(1, orte_plm_base_framework.framework_output,
+                        "%s plm:isolated: terminate daemons",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
     /* send ourselves the halt command */
     if (ORTE_SUCCESS != (rc = orte_plm_base_orted_exit(ORTE_DAEMON_EXIT_CMD))) {

@@ -12,8 +12,8 @@
  *
  * FREQ resource manager sensor 
  */
-#ifndef ORTE_SENSOR_FREQ_H
-#define ORTE_SENSOR_FREQ_H
+#ifndef ORCM_SENSOR_FREQ_H
+#define ORCM_SENSOR_FREQ_H
 
 #include "orcm_config.h"
 
@@ -26,7 +26,7 @@ typedef struct {
     bool test;
 } orcm_sensor_freq_component_t;
 
-ORTE_MODULE_DECLSPEC extern orcm_sensor_freq_component_t mca_sensor_freq_component;
+ORCM_MODULE_DECLSPEC extern orcm_sensor_freq_component_t mca_sensor_freq_component;
 extern orcm_sensor_base_module_t orcm_sensor_freq_module;
 
 

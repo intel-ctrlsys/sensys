@@ -29,9 +29,9 @@ BEGIN_C_DECLS
 /*
  * MCA Framework
  */
-ORTE_DECLSPEC extern mca_base_framework_t orcm_sensor_base_framework;
+ORCM_DECLSPEC extern mca_base_framework_t orcm_sensor_base_framework;
 /* select a component */
-ORTE_DECLSPEC int orcm_sensor_base_select(void);
+ORCM_DECLSPEC int orcm_sensor_base_select(void);
 
 
 END_C_DECLS

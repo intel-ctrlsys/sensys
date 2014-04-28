@@ -2,7 +2,8 @@
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.  All rights
  *                         reserved. 
-  *
+ * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+ *
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -28,14 +29,14 @@
 #include "opal/util/output.h"
 #include "opal/mca/event/event.h"
 
-#include "orcm/util/show_help.h"
-#include "orcm/util/proc_info.h"
-#include "orcm/util/name_fns.h"
-#include "orcm/mca/errmgr/errmgr.h"
-#include "orcm/mca/rml/rml.h"
-#include "orcm/mca/state/state.h"
-#include "orcm/runtime/orcm_wait.h"
-#include "orcm/runtime/orcm_globals.h"
+#include "orte/util/show_help.h"
+#include "orte/util/proc_info.h"
+#include "orte/util/name_fns.h"
+#include "orte/mca/errmgr/errmgr.h"
+#include "orte/mca/rml/rml.h"
+#include "orte/mca/state/state.h"
+#include "orte/runtime/orte_wait.h"
+#include "orte/runtime/orte_globals.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -44,7 +45,7 @@
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void start(orcm_jobid_t job);
+static void start(orte_jobid_t job);
 static void sample(void);
 
 /* instantiate the module */
@@ -59,12 +60,12 @@ orcm_sensor_base_module_t orcm_sensor_heartbeat_module = {
 
 /* declare the local functions */
 static void check_heartbeat(int fd, short event, void *arg);
-static void recv_beats(int status, orcm_process_name_t* sender,
+static void recv_beats(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
-                       orcm_rml_tag_t tag, void *cbdata);
+                       orte_rml_tag_t tag, void *cbdata);
 
 /* local globals */
-static orcm_job_t *daemons=NULL;
+static orte_job_t *daemons=NULL;
 static opal_event_t check_ev;
 static bool check_active = false;
 static struct timeval check_time;
@@ -77,22 +78,22 @@ static int init(void)
 
     /* setup to receive heartbeats */
     if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
-        orcm_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
                                 ORTE_RML_TAG_HEARTBEAT,
                                 ORTE_RML_PERSISTENT,
                                 recv_beats, NULL);
     }
 
     if (ORTE_PROC_IS_HNP) {
-        daemons = orcm_get_job_data_object(ORTE_PROC_MY_NAME->jobid);
+        daemons = orte_get_job_data_object(ORTE_PROC_MY_NAME->jobid);
     }
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static void finalize(void)
 {
-    orcm_rml.recv_cancel(ORTE_NAME_WILDCARD, ORTE_RML_TAG_HEARTBEAT);
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORTE_RML_TAG_HEARTBEAT);
     if (check_active) {
         opal_event_del(&check_ev);
         check_active = false;
@@ -100,13 +101,13 @@ static void finalize(void)
     return;
 }
 
-static void start(orcm_jobid_t job)
+static void start(orte_jobid_t job)
 {
     if (!check_active && NULL != daemons) {
         /* setup the check event */
         check_time.tv_sec = 3 * orcm_sensor_base.rate.tv_sec;
         check_time.tv_usec = 0;
-        opal_event_evtimer_set(orcm_event_base, &check_ev, check_heartbeat, &check_ev);
+        opal_event_evtimer_set(orte_event_base, &check_ev, check_heartbeat, &check_ev);
         opal_event_evtimer_add(&check_ev, &check_time);
         check_active = true;
     }
@@ -116,10 +117,10 @@ static void sample(void)
 {
     opal_buffer_t *buf;
     int rc;
-    orcm_process_name_t *tgt;
+    orte_process_name_t *tgt;
 
     /* if we are aborting or shutting down, ignore this */
-    if (orcm_abnormal_term_ordered || orcm_finalizing || !orcm_initialized) {
+    if (orte_abnormal_term_ordered || orte_finalizing || !orte_initialized) {
         return;
     }
 
@@ -152,9 +153,9 @@ static void sample(void)
     }
 
     /* send heartbeat */
-    if (ORTE_SUCCESS != (rc = orcm_rml.send_buffer_nb(tgt, buf,
+    if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, buf,
                                                       ORTE_RML_TAG_HEARTBEAT,
-                                                      orcm_rml_send_callback, NULL))) {
+                                                      orte_rml_send_callback, NULL))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
     }
@@ -167,7 +168,7 @@ static void sample(void)
 static void check_heartbeat(int fd, short dummy, void *arg)
 {
     int v;
-    orcm_proc_t *proc;
+    orte_proc_t *proc;
     opal_event_t *tmp = (opal_event_t*)arg;
 
     OPAL_OUTPUT_VERBOSE((3, orcm_sensor_base_framework.framework_output,
@@ -175,19 +176,19 @@ static void check_heartbeat(int fd, short dummy, void *arg)
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     
     /* if we are aborting or shutting down, ignore this */
-    if (orcm_abnormal_term_ordered || orcm_finalizing || !orcm_initialized) {
+    if (orte_abnormal_term_ordered || orte_finalizing || !orte_initialized) {
         OPAL_OUTPUT_VERBOSE((3,  orcm_sensor_base_framework.framework_output,
                              "%s IGNORING CHECK abnorm_term %s fin %s init %s",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                             orcm_abnormal_term_ordered ? "TRUE" : "FALSE",
-                             orcm_finalizing ? "TRUE" : "FALSE",
-                             orcm_initialized ? "TRUE" : "FALSE"));
+                             orte_abnormal_term_ordered ? "TRUE" : "FALSE",
+                             orte_finalizing ? "TRUE" : "FALSE",
+                             orte_initialized ? "TRUE" : "FALSE"));
         check_active = false;
         return;
     }
     
     for (v=0; v < daemons->procs->size; v++) {
-        if (NULL == (proc = (orcm_proc_t*)opal_pointer_array_get_item(daemons->procs, v))) {
+        if (NULL == (proc = (orte_proc_t*)opal_pointer_array_get_item(daemons->procs, v))) {
             continue;
         }
         /* ignore myself */
@@ -223,11 +224,11 @@ static void check_heartbeat(int fd, short dummy, void *arg)
     opal_event_evtimer_add(tmp, &check_time);
 }
 
-static void recv_beats(int status, orcm_process_name_t* sender,
+static void recv_beats(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
-                       orcm_rml_tag_t tag, void *cbdata)
+                       orte_rml_tag_t tag, void *cbdata)
 {
-    orcm_proc_t *proc;
+    orte_proc_t *proc;
     int rc, n;
     char *component=NULL;
     opal_buffer_t *buf;
@@ -238,13 +239,13 @@ static void recv_beats(int status, orcm_process_name_t* sender,
                         ORTE_NAME_PRINT(sender));
 
     /* if we are aborting or shutting down, ignore this */
-    if (orcm_abnormal_term_ordered || orcm_finalizing || !orcm_initialized) {
+    if (orte_abnormal_term_ordered || orte_finalizing || !orte_initialized) {
         return;
     }
 
     /* get this daemon's object */
     if (NULL != daemons) {
-        if (NULL != (proc = (orcm_proc_t*)opal_pointer_array_get_item(daemons->procs, sender->vpid))) {
+        if (NULL != (proc = (orte_proc_t*)opal_pointer_array_get_item(daemons->procs, sender->vpid))) {
             OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                                  "%s marked beat from %s",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),

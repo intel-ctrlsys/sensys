@@ -70,8 +70,6 @@
 #include "orte/util/regex.h"
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/base/base.h"
-#include "orte/mca/sensor/base/base.h"
-#include "orte/mca/sensor/sensor.h"
 #include "orte/mca/state/base/base.h"
 #include "orte/mca/state/state.h"
 #include "orte/runtime/orte_cr.h"

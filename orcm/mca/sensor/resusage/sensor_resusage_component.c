@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2010-2011 Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -12,10 +13,6 @@
 
 #include "opal/mca/base/base.h"
 #include "opal/util/output.h"
-#include "opal/class/opal_pointer_array.h"
-
-#include "orcm/util/proc_info.h"
-#include "orcm/util/show_help.h"
 
 #include "sensor_resusage.h"
 
@@ -30,12 +27,12 @@ static int orcm_sensor_resusage_query(mca_base_module_t **module, int *priority)
 orcm_sensor_resusage_component_t mca_sensor_resusage_component = {
     {
         {
-            ORTE_SENSOR_BASE_VERSION_1_0_0,
+            ORCM_SENSOR_BASE_VERSION_1_0_0,
             
             "resusage", /* MCA component name */
-            ORTE_MAJOR_VERSION,  /* MCA component major version */
-            ORTE_MINOR_VERSION,  /* MCA component minor version */
-            ORTE_RELEASE_VERSION,  /* MCA component release version */
+            ORCM_MAJOR_VERSION,  /* MCA component major version */
+            ORCM_MINOR_VERSION,  /* MCA component minor version */
+            ORCM_RELEASE_VERSION,  /* MCA component release version */
             orcm_sensor_resusage_open,  /* component open  */
             orcm_sensor_resusage_close, /* component close */
             orcm_sensor_resusage_query, /* component query */
@@ -67,7 +64,7 @@ static int orcm_sensor_resusage_register (void)
                                             &mca_sensor_resusage_component.sample_rate);
     if (mca_sensor_resusage_component.sample_rate < 0) {
         opal_output(0, "Illegal value %d - must be > 0", mca_sensor_resusage_component.sample_rate);
-        return ORTE_ERR_BAD_PARAM;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     node_memory_limit = 0;
@@ -102,20 +99,20 @@ static int orcm_sensor_resusage_register (void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             &mca_sensor_resusage_component.log_process_stats);
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int orcm_sensor_resusage_open(void)
 {
     if (mca_sensor_resusage_component.sample_rate < 0) {
         opal_output(0, "Illegal value %d - must be > 0", mca_sensor_resusage_component.sample_rate);
-        return ORTE_ERR_FATAL;
+        return ORCM_ERR_FATAL;
     }
 
     mca_sensor_resusage_component.node_memory_limit = (float) node_memory_limit/100.0;
     mca_sensor_resusage_component.proc_memory_limit = (float) proc_memory_limit;
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 
@@ -124,7 +121,7 @@ static int orcm_sensor_resusage_query(mca_base_module_t **module, int *priority)
     *priority = 100;  /* ahead of heartbeat */
     *module = (mca_base_module_t *)&orcm_sensor_resusage_module;
     
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 /**
@@ -133,5 +130,5 @@ static int orcm_sensor_resusage_query(mca_base_module_t **module, int *priority)
 
 static int orcm_sensor_resusage_close(void)
 {
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }

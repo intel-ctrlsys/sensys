@@ -22,7 +22,7 @@
 
 static bool mods_active = false;
 
-void orcm_sensor_base_start(orcm_jobid_t job)
+void orcm_sensor_base_start(orte_jobid_t job)
 {
     orcm_sensor_active_module_t *i_module;
     int i;
@@ -49,7 +49,7 @@ void orcm_sensor_base_start(orcm_jobid_t job)
              * for a data sample
              */
             orcm_sensor_base.active = true;
-            opal_event_evtimer_set(orcm_event_base, &orcm_sensor_base.sample_ev,
+            opal_event_evtimer_set(orte_event_base, &orcm_sensor_base.sample_ev,
                                    orcm_sensor_base_sample, NULL);
             opal_event_evtimer_add(&orcm_sensor_base.sample_ev, &orcm_sensor_base.rate);
         }
@@ -57,7 +57,7 @@ void orcm_sensor_base_start(orcm_jobid_t job)
     return;    
 }
 
-void orcm_sensor_base_stop(orcm_jobid_t job)
+void orcm_sensor_base_stop(orte_jobid_t job)
 {
     orcm_sensor_active_module_t *i_module;
     int i;

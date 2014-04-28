@@ -41,10 +41,10 @@
 #include "opal/util/output.h"
 #include "opal/mca/db/db.h"
 
-#include "orcm/util/name_fns.h"
-#include "orcm/util/show_help.h"
-#include "orcm/runtime/orcm_globals.h"
-#include "orcm/mca/errmgr/errmgr.h"
+#include "orte/util/name_fns.h"
+#include "orte/util/show_help.h"
+#include "orte/runtime/orte_globals.h"
+#include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -53,8 +53,8 @@
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void start(orcm_jobid_t job);
-static void stop(orcm_jobid_t job);
+static void start(orte_jobid_t job);
+static void stop(orte_jobid_t job);
 static void pwr_sample(void);
 static void pwr_log(opal_buffer_t *buf);
 
@@ -109,7 +109,7 @@ static int read_msr(int fd, long long *value, int offset)
         return ORTE_ERROR;
     }
     *value = (long long)data;
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 static int check_cpu_type(void);
 
@@ -128,9 +128,9 @@ static int init(void)
     /* we only handle certain cpu types as we have to know the binary
      * layout of the msr file
      */
-    if (ORTE_SUCCESS != check_cpu_type()) {
+    if (ORCM_SUCCESS != check_cpu_type()) {
         /* we provided a show help down below */
-        return ORTE_ERR_NOT_SUPPORTED;
+        return ORCM_ERR_NOT_SUPPORTED;
     }
 
     /*
@@ -138,8 +138,8 @@ static int init(void)
      */
     if (NULL == (cur_dirp = opendir("/dev/cpu"))) {
         OBJ_DESTRUCT(&tracking);
-        orcm_show_help("help-orcm-sensor-pwr.txt", "no-access",
-                       true, orcm_process_info.nodename,
+        orte_show_help("help-orcm-sensor-pwr.txt", "no-access",
+                       true, orte_process_info.nodename,
                        "/dev/cpu");
         return ORTE_ERROR;
     }
@@ -173,7 +173,7 @@ static int init(void)
             OBJ_RELEASE(trk);
             continue;
         }
-        if (ORTE_SUCCESS != read_msr(fd, &units, MSR_RAPL_POWER_UNIT)) {
+        if (ORCM_SUCCESS != read_msr(fd, &units, MSR_RAPL_POWER_UNIT)) {
             /* can't read required info */
             OBJ_RELEASE(trk);
             continue;
@@ -187,12 +187,12 @@ static int init(void)
 
     if (0 == opal_list_get_size(&tracking)) {
         /* nothing to read */
-        orcm_show_help("help-orcm-sensor-pwr.txt", "no-cores-found",
-                       true, orcm_process_info.nodename);
+        orte_show_help("help-orcm-sensor-pwr.txt", "no-cores-found",
+                       true, orte_process_info.nodename);
         return ORTE_ERROR;
     }
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static void finalize(void)
@@ -203,13 +203,13 @@ static void finalize(void)
 /*
  * Start monitoring of local temps
  */
-static void start(orcm_jobid_t jobid)
+static void start(orte_jobid_t jobid)
 {
     return;
 }
 
 
-static void stop(orcm_jobid_t jobid)
+static void stop(orte_jobid_t jobid)
 {
     return;
 }
@@ -250,7 +250,7 @@ static void pwr_sample(void)
     free(temp);
 
     /* store our hostname */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orcm_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
         return;
@@ -288,7 +288,7 @@ static void pwr_sample(void)
             OBJ_RELEASE(trk);
             continue;
         }
-        if (ORTE_SUCCESS != read_msr(fd, &value, MSR_PKG_POWER_INFO)) {
+        if (ORCM_SUCCESS != read_msr(fd, &value, MSR_PKG_POWER_INFO)) {
             /* disable this one - cannot read the file */
             opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                                 "%s failed to read pwr file %s - removing it",
@@ -394,7 +394,7 @@ static void pwr_log(opal_buffer_t *sample)
     }
 
     /* store it */
-    if (ORTE_SUCCESS != (rc = opal_db.add_log("pwr", kv, ncores+2))) {
+    if (ORCM_SUCCESS != (rc = opal_db.add_log("pwr", kv, ncores+2))) {
         /* don't bark about it - just quietly disable the log */
         log_enabled = false;
     }
@@ -431,7 +431,7 @@ static int check_cpu_type(void)
 
     if (NULL == (obj = hwloc_get_obj_by_type(opal_hwloc_topology, HWLOC_OBJ_SOCKET, 0))) {
         /* there are no sockets identified in this machine */
-        orcm_show_help("help-orcm-sensor-pwr.txt", "no-sockets", true);
+        orte_show_help("help-orcm-sensor-pwr.txt", "no-sockets", true);
         return ORTE_ERROR;
     }
 
@@ -445,25 +445,25 @@ static int check_cpu_type(void)
 		case CPU_SANDYBRIDGE:
                     opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                                         "sensor:pwr Found Sandybridge CPU");
-                    return ORTE_SUCCESS;
+                    return ORCM_SUCCESS;
 		case CPU_SANDYBRIDGE_EP:
                     opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                                         "sensor:pwr Found Sandybridge-EP CPU");
-                    return ORTE_SUCCESS;
+                    return ORCM_SUCCESS;
 		case CPU_IVYBRIDGE:
                     opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                                         "sensor:pwr Found Ivybridge CPU");
-                    return ORTE_SUCCESS;
+                    return ORCM_SUCCESS;
 		case CPU_IVYBRIDGE_EP:
                     opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                                         "sensor:pwr Found Ivybridge-EP CPU");
-                    return ORTE_SUCCESS;
+                    return ORCM_SUCCESS;
 		case CPU_HASWELL:
                     opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                                         "sensor:pwr Found Haswell CPU");
-                    return ORTE_SUCCESS;
+                    return ORCM_SUCCESS;
 		default:
-                    orcm_show_help("help-orcm-sensor-pwr.txt", "unsupporcmd-model",
+                    orte_show_help("help-orcm-sensor-pwr.txt", "unsupporcmd-model",
                                    true, mca_sensor_pwr_component.model);
                     return ORTE_ERROR;
                 }
@@ -471,7 +471,7 @@ static int check_cpu_type(void)
         }
         obj = obj->next_sibling;
     }
-    orcm_show_help("help-orcm-sensor-pwr.txt", "no-topo-info",
+    orte_show_help("help-orcm-sensor-pwr.txt", "no-topo-info",
                    true, mca_sensor_pwr_component.model);
     return ORTE_ERROR;
 }

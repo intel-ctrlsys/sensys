@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2010-2011 Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2012      Los Alamos National Security, Inc. All rights reserved.
+ * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -11,12 +12,13 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 
+#if HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "opal/mca/base/base.h"
 #include "opal/util/output.h"
 #include "opal/class/opal_pointer_array.h"
-
-#include "orcm/util/proc_info.h"
-#include "orcm/util/show_help.h"
 
 #include "sensor_ft_tester.h"
 
@@ -31,12 +33,12 @@ static int orcm_sensor_ft_tester_query(mca_base_module_t **module, int *priority
 orcm_sensor_ft_tester_component_t mca_sensor_ft_tester_component = {
     {
         {
-            ORTE_SENSOR_BASE_VERSION_1_0_0,
+            ORCM_SENSOR_BASE_VERSION_1_0_0,
             
             "ft_tester", /* MCA component name */
-            ORTE_MAJOR_VERSION,  /* MCA component major version */
-            ORTE_MINOR_VERSION,  /* MCA component minor version */
-            ORTE_RELEASE_VERSION,  /* MCA component release version */
+            ORCM_MAJOR_VERSION,  /* MCA component major version */
+            ORCM_MINOR_VERSION,  /* MCA component minor version */
+            ORCM_RELEASE_VERSION,  /* MCA component release version */
             orcm_sensor_ft_tester_open,  /* component open  */
             orcm_sensor_ft_tester_close, /* component close */
             orcm_sensor_ft_tester_query, /* component query */
@@ -82,7 +84,7 @@ static int orcm_sensor_ft_tester_register (void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             &daemon_fail_prob);
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int orcm_sensor_ft_tester_open(void)
@@ -108,7 +110,7 @@ static int orcm_sensor_ft_tester_open(void)
         mca_sensor_ft_tester_component.daemon_fail_prob = 0.0;
     }
     
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 
@@ -122,7 +124,7 @@ static int orcm_sensor_ft_tester_query(mca_base_module_t **module, int *priority
          * the same seed? 
          */
         opal_srand(&orcm_sensor_ft_rng_buff, (uint32_t) getpid());
-        return ORTE_SUCCESS;
+        return ORCM_SUCCESS;
     }
     *priority = 0;
     *module = NULL;
@@ -136,5 +138,5 @@ static int orcm_sensor_ft_tester_query(mca_base_module_t **module, int *priority
 
 static int orcm_sensor_ft_tester_close(void)
 {
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }

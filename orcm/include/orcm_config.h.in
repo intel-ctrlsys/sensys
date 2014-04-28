@@ -8,10 +8,10 @@
  * $HEADER$
  */
 
-#ifndef OPAL_CONFIG_H
-#define OPAL_CONFIG_H
+#ifndef ORCM_CONFIG_H
+#define ORCM_CONFIG_H
 
-#include "opal_config.h"
+#include "orte_config.h"
 
 #define ORCM_IDENT_STRING OPAL_IDENT_STRING
 
@@ -23,4 +23,4 @@
 #    define ORCM_MODULE_DECLSPEC
 #  endif
 
-#endif  /* OPAL_CONFIG_H */
+#endif  /* ORCM_CONFIG_H */

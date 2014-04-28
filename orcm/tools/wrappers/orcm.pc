@@ -3,7 +3,7 @@
 #
 Name: Open Resilient Cluster Manager (ORCM)
 Description: Open resilient cluster manager for embedded to exascale system
-Version: @ORCM_VERSION@
+Version: 1.9a1git
 URL: http://www.open-mpi.org/projects/orcm
 #
 prefix=/Users/rhc/openmpi/build/ORCM-GIT

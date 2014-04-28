@@ -30,7 +30,7 @@ mca_db_pmi_la_SOURCES = $(sources)
 mca_db_pmi_la_CPPFLAGS = $(db_pmi_CPPFLAGS)
 mca_db_pmi_la_LDFLAGS = -module -avoid-version $(db_pmi_LDFLAGS)
 mca_db_pmi_la_LIBADD = $(db_pmi_LIBS) \
-	$(top_ompi_builddir)/opal/mca/common/pmi/libmca_common_pmi.la
+	$(top_opal_builddir)/opal/mca/common/pmi/libmca_common_pmi.la
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_db_pmi_la_SOURCES =$(sources)

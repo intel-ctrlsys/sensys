@@ -22,6 +22,7 @@ SUBDIRS = \
 	include \
         $(LIBLTDL_SUBDIR) \
 	asm \
+        datatype \
         etc \
         util \
 	mca/base \
@@ -37,6 +38,7 @@ DIST_SUBDIRS = \
 	include \
 	$(LIBLTDL_SUBDIR) \
 	asm \
+        datatype \
         etc \
 	util \
 	mca/base \
@@ -50,6 +52,7 @@ libopen_pal_la_SOURCES =
 libopen_pal_la_LIBADD = \
         $(LIBLTDL) \
         asm/libasm.la \
+        datatype/libdatatype.la \
         mca/base/libmca_base.la \
         util/libopalutil.la \
 	$(MCA_opal_FRAMEWORK_LIBS)

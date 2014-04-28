@@ -72,9 +72,9 @@ EOF
            # Add some stuff to CPPFLAGS so that the rest of the source
            # tree can be built
            libevent_file=$libevent_basedir/libevent
-           CPPFLAGS="$CPPFLAGS -I$OMPI_TOP_SRCDIR/$libevent_file -I$OMPI_TOP_SRCDIR/$libevent_file/include"
-           AS_IF([test "$OMPI_TOP_BUILDDIR" != "$OMPI_TOP_SRCDIR"],
-                 [CPPFLAGS="$CPPFLAGS -I$OMPI_TOP_BUILDDIR/$libevent_file/include"])
+           CPPFLAGS="$CPPFLAGS -I$OPAL_TOP_SRCDIR/$libevent_file -I$OPAL_TOP_SRCDIR/$libevent_file/include"
+           AS_IF([test "$OPAL_TOP_BUILDDIR" != "$OPAL_TOP_SRCDIR"],
+                 [CPPFLAGS="$CPPFLAGS -I$OPAL_TOP_BUILDDIR/$libevent_file/include"])
            unset libevent_file
           ])
 ])
@@ -100,7 +100,7 @@ AC_DEFUN([MCA_opal_event_libevent2021_DO_THE_CONFIG], [
     CFLAGS_save="$CFLAGS"
     CFLAGS="$OMPI_CFLAGS_BEFORE_PICKY $OPAL_VISIBILITY_CFLAGS"
     CPPFLAGS_save="$CPPFLAGS"
-    CPPFLAGS="-I$OMPI_TOP_SRCDIR -I$OMPI_TOP_BUILDDIR -I$OMPI_TOP_SRCDIR/opal/include $CPPFLAGS"
+    CPPFLAGS="-I$OPAL_TOP_SRCDIR -I$OPAL_TOP_BUILDDIR -I$OPAL_TOP_SRCDIR/opal/include $CPPFLAGS"
 
     AC_MSG_CHECKING([libevent configuration args])
     event_args="--disable-dns --disable-http --disable-rpc --disable-openssl --enable-thread-support"

@@ -32,7 +32,7 @@ mcacomponent_LTLIBRARIES = $(component_install)
 mca_memchecker_valgrind_la_SOURCES = $(sources)
 mca_memchecker_valgrind_la_LDFLAGS = -module -avoid-version
 mca_memchecker_valgrind_la_LIBADD = \
-        $(top_ompi_builddir)/opal/libopal.la
+        $(top_opal_builddir)/opal/libopal.la
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_memchecker_valgrind_la_SOURCES =$(sources)

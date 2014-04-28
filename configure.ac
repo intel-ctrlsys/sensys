@@ -56,6 +56,7 @@ AC_CONFIG_MACRO_DIR(config)
 # Get our platform support file.  This has to be done very, very early
 # because it twiddles random bits of autoconf
 OPAL_LOAD_PLATFORM
+ORCM_LOAD_CONFIGURATION
 
 #
 # Start it up
@@ -104,17 +105,22 @@ opal_show_subtitle "Checking versions"
 
 # Get the version of ORCM that we are installing
 
-m4_ifdef([project_orte],
-         [OPAL_SAVE_VERSION([ORTE], [Open MPI Run-Time Environment], 
-                            [$srcdir/VERSION],
-                            [orte/include/orte/version.h])])
+OPAL_SAVE_VERSION([ORTE], [Open MPI Run-Time Environment], 
+                  [$srcdir/VERSION],
+                  [orte/include/orte/version.h])
 
-OPAL_SAVE_VERSION([OPAL], [Open Portable Access Layer], [$srcdir/VERSION],
+OPAL_SAVE_VERSION([ORCM], [Open Resilient Cluster Manager],
+                  [$srcdir/VERSION],
+                  [orcm/include/orcm/version.h])
+
+OPAL_SAVE_VERSION([OPAL], [Open Portable Access Layer],
+                  [$srcdir/VERSION],
                   [opal/include/opal/version.h])
 
 # Get shared library version numbers
 
 . $srcdir/VERSION
+AC_SUBST(liborcm_so_version)
 AC_SUBST(libopen_rte_so_version)
 AC_SUBST(libmca_opal_common_hwloc_so_version)
 AC_SUBST(libmca_opal_common_pmi_so_version)
@@ -136,8 +142,8 @@ AC_MSG_RESULT([$ltversion])
 # List header files to generate
 
 AC_CONFIG_HEADERS([opal/include/opal_config.h])
-m4_ifdef([project_orte],
-         [AC_CONFIG_HEADERS([orte/include/orte_config.h])])
+AC_CONFIG_HEADERS([orte/include/orte_config.h])
+AC_CONFIG_HEADER([orcm/include/orcm_config.h orcm/include/orcm.h])
 
 # override/fixup the version numbers set by AC_INIT, since on
 # developer builds, there's no good way to know what the version is
@@ -216,12 +222,8 @@ AC_SUBST(top_opal_builddir)
 
 OPAL_CONFIGURE_OPTIONS
 OPAL_CHECK_OS_FLAVORS
-m4_ifdef([project_orte], [ORTE_CONFIGURE_OPTIONS])
-
-# Set up project specific AM_CONDITIONALs
-AS_IF([test "$enable_orte" != "no"], [project_orte_amc=true], [project_orte_amc=false])
-m4_ifndef([project_orte], [project_orte_amc=false])
-AM_CONDITIONAL([PROJECT_ORTE], [$project_orte_amc])
+ORTE_CONFIGURE_OPTIONS
+ORCM_CONFIGURE_OPTIONS
 
 if test "$enable_binaries" = "no" -a "$enable_dist" = "yes"; then
     AC_MSG_WARN([--disable-binaries is incompatible with --enable dist])
@@ -1107,7 +1109,7 @@ if test "$OPAL_TOP_BUILDDIR" != "$OPAL_TOP_SRCDIR"; then
     # rather than have successive assignments to these shell
     # variables, lest the $(foo) names try to get evaluated here.
     # Yuck!
-    CPPFLAGS='-I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include)'" $CPPFLAGS"
+    CPPFLAGS='-I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include) -I$(top_srcdir)/orcm/include'" $CPPFLAGS"
 else
     CPPFLAGS='-I$(top_srcdir)'" $CPPFLAGS"
 fi

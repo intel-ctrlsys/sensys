@@ -250,17 +250,17 @@ sub mca_process_component {
 sub ignored {
     my ($dir) = @_;
 
-    # If this directory does not have .orcm_ignore, or if it has a
+    # If this directory does not have .opal_ignore, or if it has a
     # .orcm_unignore that has my username in it, then add it to the
     # list of components.
     my $ignored = 0;
 
-    if (-f "$dir/.orcm_ignore") {
+    if (-f "$dir/.opal_ignore") {
         $ignored = 1;
     }
-    if (-f "$dir/.orcm_unignore") {
-        open(UNIGNORE, "$dir/.orcm_unignore") ||
-            my_die "Can't open $dir/.orcm_unignore file";
+    if (-f "$dir/.opal_unignore") {
+        open(UNIGNORE, "$dir/.opal_unignore") ||
+            my_die "Can't open $dir/.opal_unignore file";
         my $unignore;
         $unignore .= $_
             while (<UNIGNORE>);

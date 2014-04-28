@@ -33,7 +33,6 @@
 
 #include "opal/constants.h"
 #include "opal/runtime/opal.h"
-#include "opal/datatype/opal_datatype.h"
 #include "opal/mca/base/mca_base_var.h"
 #include "opal/threads/mutex.h"
 #include "opal/threads/threads.h"
@@ -177,12 +176,6 @@ int opal_register_params(void)
 				 &opal_set_max_sys_limits);
     if (0 > ret) {
 	return ret;
-    }
-
-    /* The ddt engine has a few parameters */
-    ret = opal_datatype_register_params();
-    if (OPAL_SUCCESS != ret) {
-        return ret;
     }
 
     /* dss has parameters */

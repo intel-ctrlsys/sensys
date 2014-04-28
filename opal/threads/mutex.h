@@ -39,13 +39,6 @@ BEGIN_C_DECLS
  * Functions for locking of critical sections.
  */
 
-#if OMPI_ENABLE_THREAD_MULTIPLE
-/*
- * declaring this here so that CL does not complain
- */ 
-OPAL_DECLSPEC extern bool opal_uses_threads;
-#endif
-
 /**
  * Opaque mutex object
  */
@@ -143,11 +136,7 @@ BEGIN_C_DECLS
  * possibility that we may have multiple threads, true will be
  * returned.
  */
-#if OMPI_ENABLE_THREAD_MULTIPLE
-#define opal_using_threads()  opal_uses_threads
-#else
 #define opal_using_threads()  0
-#endif
 
 /**
  * Set whether the process is using multiple threads or not.
@@ -167,9 +156,6 @@ BEGIN_C_DECLS
  */
 static inline bool opal_set_using_threads(bool have)
 {
-#if OMPI_ENABLE_THREAD_MULTIPLE
-    opal_uses_threads = have;
-#endif
     return opal_using_threads();
 }
 

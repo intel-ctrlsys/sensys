@@ -7,7 +7,7 @@
 
 project=OPEN Resilient Cluster Manager
 project_short=ORCM
-version=@ORCM_VERSION@
+version=1.9a1git
 language=C
 compiler_env=CC
 compiler_flags_env=CFLAGS

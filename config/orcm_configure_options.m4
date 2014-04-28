@@ -1,6 +1,6 @@
 dnl -*- shell-script -*-
 dnl
-dnl Copyright (c) 2013      Intel, Inc.  All rights reserved.
+dnl Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
 dnl
 dnl $COPYRIGHT$
 dnl 
@@ -11,16 +11,7 @@ dnl
 
 
 AC_DEFUN([ORCM_CONFIGURE_OPTIONS],[
-orcm_show_subtitle "ORCM Configuration options"
-
-#
-# Disable ORCM?
-#
-AC_ARG_ENABLE([orcm],
-  [AC_HELP_STRING([--disable-orcm],
-     [Disable building the ORCM code])])
-
-
+opal_show_subtitle "ORCM Configuration options"
 ])dnl
 
 AC_DEFUN([ORCM_LOAD_CONFIGURATION],[

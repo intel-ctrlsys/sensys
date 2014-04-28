@@ -13,6 +13,7 @@
  * Copyright (c) 2009-2013 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2013      Mellanox Technologies, Inc.
  *                         All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -427,19 +428,6 @@ typedef unsigned char bool;
 
 #ifndef HAVE_VSNPRINTF
 # define vsnprintf opal_vsnprintf
-#endif
-
-/*
- * Some platforms (Solaris) have a broken qsort implementation.  Work
- * around by using our own.
- */
-#if OPAL_HAVE_BROKEN_QSORT
-#ifdef qsort
-#undef qsort
-#endif
-
-#include "opal/util/qsort.h"
-#define qsort opal_qsort
 #endif
 
 /*

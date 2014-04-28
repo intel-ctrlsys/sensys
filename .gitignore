@@ -832,7 +832,6 @@ contrib/platform/redstorm
 contrib/platform/snl/
 contrib/spread
 contrib/scaling
-opal/datatype
 opal/include/opal/frameworks.h
 opal/libltdl/
 opal/mca/event/libevent2021/libevent/Makefile.in
@@ -856,3 +855,4 @@ opal/mca/event/libevent2021/libevent/m4/lt~obsolete.m4
 opal/mca/event/libevent2021/libevent/missing
 orcm/include/orcm/frameworks.h
 orte/include/orte/frameworks.h
+orcm/tools/wrappers/orcmcc-wrapper-data.txt

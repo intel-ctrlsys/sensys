@@ -142,8 +142,6 @@ AC_MSG_RESULT([$ltversion])
 # List header files to generate
 
 AC_CONFIG_HEADERS([opal/include/opal_config.h])
-AC_CONFIG_HEADERS([orte/include/orte_config.h])
-AC_CONFIG_HEADER([orcm/include/orcm_config.h orcm/include/orcm.h])
 
 # override/fixup the version numbers set by AC_INIT, since on
 # developer builds, there's no good way to know what the version is
@@ -1099,9 +1097,10 @@ opal_show_subtitle "Compiler flags"]
 # '-I$(top_srcdir)' doesn't show up in any of the configure output --
 # purely aesthetic.
 #
-# Because opal_config.h, orte_config.h, and opal_config.h are all
-# created by AC_CONFIG_HEADERS, we don't need to -I the builddir for
-# <project>/include.  If we VPATH building, we do need to include the
+# Because opal_config.h and mpi.h are created by AC_CONFIG_HEADERS, we
+# don't need to -I the builddir for <opal,ompi>/include. However, we do
+# need to add it for orte as it doesn't have an AC_CONFIG_HEADERS that
+# will install it for us. If we VPATH building, we do need to include the
 # source directories, however.
 #
 if test "$OPAL_TOP_BUILDDIR" != "$OPAL_TOP_SRCDIR"; then
@@ -1111,7 +1110,7 @@ if test "$OPAL_TOP_BUILDDIR" != "$OPAL_TOP_SRCDIR"; then
     # Yuck!
     CPPFLAGS='-I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include) -I$(top_srcdir)/orcm/include'" $CPPFLAGS"
 else
-    CPPFLAGS='-I$(top_srcdir)'" $CPPFLAGS"
+    CPPFLAGS='-I$(top_srcdir) -I$(top_srcdir)/orte/include -I$(top_srcdir)/orcm/include'" $CPPFLAGS"
 fi
 
 # OMPI/ORTE wants some additional processing of the flags (e.g., get

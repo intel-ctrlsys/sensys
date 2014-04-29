@@ -1,6 +1,6 @@
 # -*- makefile -*-
 #
-# Copyright (c) 2013      Intel, Inc. All rights reserved.
+# Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
@@ -10,9 +10,8 @@
 
 # note - headers and nodist_headers will go in ${includedir}/openmpi,
 # not ${includedir}/
-headers =
-nodist_headers = \
-	orcm_config.h
+headers = orcm_config.h
+nodist_headers = 
 
 # Install these in $(includedir)
 include_HEADERS = 

@@ -832,6 +832,7 @@ contrib/platform/redstorm
 contrib/platform/snl/
 contrib/spread
 contrib/scaling
+opal/asm/generated
 opal/include/opal/frameworks.h
 opal/libltdl/
 opal/mca/event/libevent2021/libevent/Makefile.in

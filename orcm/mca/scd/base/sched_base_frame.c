@@ -35,7 +35,9 @@
 /*
  * Global variables
  */
-orcm_scd_base_module_t orcm_sched = {0};
+orcm_scd_API_module_t orcm_sched = {
+    orcm_sched_base_activate_session_state
+};
 orcm_scd_base_t orcm_scd_base;
 
 /* local vars */
@@ -58,13 +60,6 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
 
 static int orcm_scd_base_close(void)
 {
-    int rc;
-
-    /* Close the selected component */
-    if( NULL != orcm_sched.finalize ) {
-        orcm_sched.finalize();
-    }
-
     if (progress_thread_running) {
         orcm_scd_base.ev_active = false;
         /* break the event loop */
@@ -76,13 +71,12 @@ static int orcm_scd_base_close(void)
         opal_event_base_free(orcm_scd_base.ev_base);
     }
 
-    rc = mca_base_framework_components_close(&orcm_scd_base_framework, NULL);
-
     /* deconstruct the base objects */
+    OPAL_LIST_DESTRUCT(&orcm_scd_base.active_modules);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.states);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.queues);
 
-    return rc;
+    return mca_base_framework_components_close(&orcm_scd_base_framework, NULL);
 }
 
 /**
@@ -97,7 +91,10 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
     /* setup the base objects */
     orcm_scd_base.ev_active = false;
     OBJ_CONSTRUCT(&orcm_scd_base.states, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_scd_base.active_modules, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.queues, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_scd_base.nodes, opal_pointer_array_t);
+    opal_pointer_array_init(&orcm_scd_base.nodes, 8, INT_MAX, 8);
 
     if (OPAL_SUCCESS != (rc = mca_base_framework_components_open(&orcm_scd_base_framework, flags))) {
         return rc;
@@ -134,7 +131,6 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
 MCA_BASE_FRAMEWORK_DECLARE(orcm, scd, NULL, orcm_scd_base_register,
                            orcm_scd_base_open, orcm_scd_base_close,
                            mca_scd_base_static_components, 0);
-
 
 static void* progress_thread_engine(opal_object_t *obj)
 {
@@ -174,6 +170,20 @@ const char *orcm_session_state_to_str(orcm_session_state_t state)
 }
 
 /****    CLASS INSTANTIATIONS    ****/
+static void scd_des(orcm_scd_base_active_module_t *s)
+{
+    if (NULL != s->module->finalize) {
+        s->module->finalize();
+    }
+}
+OBJ_CLASS_INSTANCE(orcm_scd_base_active_module_t,
+                   opal_list_item_t,
+                   NULL, scd_des);
+
+OBJ_CLASS_INSTANCE(orcm_scheduler_caddy_t,
+                   opal_object_t,
+                   NULL, NULL);
+
 static void res_con(orcm_resource_t *p)
 {
     p->constraint = NULL;
@@ -229,9 +239,23 @@ OBJ_CLASS_INSTANCE(orcm_alloc_t,
                    opal_object_t,
                    alloc_con, alloc_des);
 
-OBJ_CLASS_INSTANCE(orcm_snode_t,
+static void cmn_con(orcm_cmpnode_t *c)
+{
+    c->node = NULL;
+    c->queue = NULL;
+}
+static void cmn_des(orcm_cmpnode_t *c)
+{
+    if (NULL != c->node) {
+        OBJ_RELEASE(c->node);
+    }
+    if (NULL != c->queue) {
+        OBJ_RELEASE(c->queue);
+    }
+}
+OBJ_CLASS_INSTANCE(orcm_cmpnode_t,
                    opal_list_item_t,
-                   NULL, NULL);
+                   cmn_con, cmn_des);
 
 OBJ_CLASS_INSTANCE(orcm_job_t,
                    opal_object_t,
@@ -247,7 +271,7 @@ static void step_con(orcm_step_t *p)
 static void step_des(orcm_step_t *p)
 {
     int i;
-    orcm_snode_t *n;
+    orcm_cmpnode_t *n;
 
     if (NULL != p->alloc) {
         OBJ_RELEASE(p->alloc);
@@ -256,7 +280,7 @@ static void step_des(orcm_step_t *p)
         OBJ_RELEASE(p->job);
     }
     for (i=0; i < p->nodes.size; i++) {
-        if (NULL != (n = (orcm_snode_t*)opal_pointer_array_get_item(&p->nodes, i))) {
+        if (NULL != (n = (orcm_cmpnode_t*)opal_pointer_array_get_item(&p->nodes, i))) {
             OBJ_RELEASE(n);
         }
     }
@@ -297,14 +321,14 @@ static void queue_con(orcm_queue_t *q)
 static void queue_des(orcm_queue_t *q)
 {
     orcm_session_t *s;
-    orcm_snode_t *n;
+    orcm_cmpnode_t *n;
     int i;
 
     if (NULL != q->name) {
         free(q->name);
     }
     for (i=0; i < q->nodes.size; i++) {
-        if (NULL != (n = (orcm_snode_t*)opal_pointer_array_get_item(&q->nodes, i))) {
+        if (NULL != (n = (orcm_cmpnode_t*)opal_pointer_array_get_item(&q->nodes, i))) {
             OBJ_RELEASE(n);
         }
     }
@@ -347,5 +371,5 @@ OBJ_CLASS_INSTANCE(orcm_session_caddy_t,
                    cd_con, cd_des);
 
 OBJ_CLASS_INSTANCE(orcm_state_t,
-                   opal_object_t,
+                   opal_list_item_t,
                    NULL, NULL);

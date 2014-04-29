@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
     opal_buffer_t *buf;
     int rc, n;
     opal_cmd_line_t cmd_line;
-    orcm_sched_cmd_flag_t command=ORCM_ALLOC_COMMAND;
+    orcm_sched_cmd_flag_t command=ORCM_SESSION_REQ_COMMAND;
     orcm_alloc_id_t id;
 
     opal_cmd_line_create(&cmd_line, cmd_line_init);

@@ -259,6 +259,11 @@ static int define_system(opal_list_t *config,
         scheduler = (orcm_scheduler_t*)opal_list_get_first(orcm_schedulers);
     } else {
         scheduler = NULL;
+        /* since no scheduler is in the system, let's assume
+         * for now that orun will act as the HNP and adjust
+         * all the vpid's for the daemons
+         */
+        vpid = 1;
     }
 
     /* cycle thru the cluster setting up the remaining names */

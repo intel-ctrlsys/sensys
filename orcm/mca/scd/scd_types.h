@@ -25,6 +25,8 @@
 #include "opal/class/opal_pointer_array.h"
 #include "opal/class/opal_list.h"
 
+#include "orcm/mca/cfgi/cfgi_types.h"
+
 BEGIN_C_DECLS
 
 /****    ALLOCATION TYPES    ****/
@@ -72,6 +74,45 @@ typedef struct {
 } orcm_alloc_t;
 OBJ_CLASS_DECLARATION(orcm_alloc_t);
 
+/****    QUEUE TYPE    ****/
+/* ORCM maintains a collection of queues for holding
+ * pending session requests. The configuration of
+ * queues (e.g., how many and their relative priority)
+ * is provided at startup from the orcm-site.xml
+ * configuration file. Addition and deletion of queues
+ * can be done dynamically via a console command.
+ * Individual nodes can only be assigned to one queue
+ * at a time, but can be moved across queues on-the-fly.
+ * Changing queues will not impact executing applications
+ *
+ * Each queue maintains a priority-ordered array of
+ * pending session requests, organized in "bins"
+ * according to the range of various resources. For
+ * example, a queue may contain a "power_binned" where
+ * each element in the array contains session requests
+ * that require power within a certain range. Thus,
+ * there might be an array of session requests whose
+ * power requirement falls between 100-200kw, and another
+ * array of requests whose power requirement falls
+ * in the 200-300kw range. This allows the scheduler
+ * to rapidly select a session to be started without
+ * having to consider all options in a linear manner.
+ *
+ * Note that a single session request could appear
+ * in multiple binned arrays - e.g., once for power
+ * and again for nodes.
+ */
+typedef struct {
+    opal_list_item_t super;
+    char *name;
+    int32_t priority;
+    opal_pointer_array_t nodes;
+    opal_pointer_array_t all_sessions;
+    opal_pointer_array_t power_binned;
+    opal_pointer_array_t node_binned;
+} orcm_queue_t;
+OBJ_CLASS_DECLARATION(orcm_queue_t);
+
 
 /****    NODE TYPE    ****/
 /* The ORCM scheduler doesn't need to track the detailed
@@ -84,8 +125,10 @@ OBJ_CLASS_DECLARATION(orcm_alloc_t);
  */
 typedef struct {
     opal_list_item_t super;
-} orcm_snode_t;
-OBJ_CLASS_DECLARATION(orcm_snode_t);
+    orcm_node_t *node;
+    orcm_queue_t *queue;
+} orcm_cmpnode_t;
+OBJ_CLASS_DECLARATION(orcm_cmpnode_t);
 
 
 /****    JOB TYPE    ****/
@@ -140,6 +183,7 @@ typedef struct {
 } orcm_session_t;
 OBJ_CLASS_DECLARATION(orcm_session_t);
 
+
 /* SESSION STATES */
 #define ORCM_SESSION_STATE_UNDEF          0
 #define ORCM_SESSION_STATE_INIT           1 // not yet assigned to a queue
@@ -171,46 +215,6 @@ typedef struct {
     orcm_session_t *session;
 } orcm_session_caddy_t;
 OBJ_CLASS_DECLARATION(orcm_session_caddy_t);
-
-
-/****    QUEUE TYPE    ****/
-/* ORCM maintains a collection of queues for holding
- * pending session requests. The configuration of
- * queues (e.g., how many and their relative priority)
- * is provided at startup from the orcm-site.xml
- * configuration file. Addition and deletion of queues
- * can be done dynamically via a console command.
- * Individual nodes can only be assigned to one queue
- * at a time, but can be moved across queues on-the-fly.
- * Changing queues will not impact executing applications
- *
- * Each queue maintains a priority-ordered array of
- * pending session requests, organized in "bins"
- * according to the range of various resources. For
- * example, a queue may contain a "power_binned" where
- * each element in the array contains session requests
- * that require power within a certain range. Thus,
- * there might be an array of session requests whose
- * power requirement falls between 100-200kw, and another
- * array of requests whose power requirement falls
- * in the 200-300kw range. This allows the scheduler
- * to rapidly select a session to be started without
- * having to consider all options in a linear manner.
- *
- * Note that a single session request could appear
- * in multiple binned arrays - e.g., once for power
- * and again for nodes.
- */
-typedef struct {
-    opal_list_item_t super;
-    char *name;
-    int32_t priority;
-    opal_pointer_array_t nodes;
-    opal_pointer_array_t all_sessions;
-    opal_pointer_array_t power_binned;
-    opal_pointer_array_t node_binned;
-} orcm_queue_t;
-OBJ_CLASS_DECLARATION(orcm_queue_t);
 
 
 /* define a few commands */

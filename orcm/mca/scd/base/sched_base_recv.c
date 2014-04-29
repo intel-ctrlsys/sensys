@@ -75,7 +75,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
 {
     orcm_sched_cmd_flag_t command;
     int rc, cnt;
-    orcm_alloc_t *alloc;
+    orcm_alloc_t *req;
     opal_buffer_t *ans;
     orcm_session_t *s;
 
@@ -100,13 +100,13 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
          * requested allocation to support the session
          */
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &alloc, &cnt, ORCM_ALLOC))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &req, &cnt, ORCM_ALLOC))) {
             ORTE_ERROR_LOG(rc);
             goto answer;
         }
         /* assign a session to it */
         s = OBJ_NEW(orcm_session_t);
-        s->alloc = alloc;
+        s->alloc = req;
         /* pass it to the scheduler */
         ORCM_ACTIVATE_SCHED_STATE(s, ORCM_SESSION_STATE_INIT);
         return;

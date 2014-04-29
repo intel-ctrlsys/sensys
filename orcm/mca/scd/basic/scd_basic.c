@@ -70,7 +70,7 @@ static int init(void)
     }
 
     /* define our state machine */
-    num_states = sizeof(states) / sizeof(orcm_state_t);
+    num_states = sizeof(states) / sizeof(orcm_session_state_t);
     for (i=0; i < num_states; i++) {
         if (ORCM_SUCCESS != (rc = orcm_sched_base_add_session_state(states[i],
                                                                     callbacks[i],

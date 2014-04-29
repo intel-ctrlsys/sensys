@@ -39,5 +39,8 @@ int orcm_sst_base_select(void)
     /* Save the winner */
     orcm_sst = *best_module;
 
-    return orcm_sst.init();
+    if (NULL != orcm_sst.init) {
+        return orcm_sst.init();
+    }
+    return ORCM_SUCCESS;
 }

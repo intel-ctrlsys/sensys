@@ -13,6 +13,7 @@
 
 #include "opal/mca/base/mca_base_var.h"
 
+#include "orcm/runtime/orcm_globals.h"
 #include "scd_basic.h"
 
 /*
@@ -55,17 +56,24 @@ orcm_scd_base_component_t mca_scd_basic_component = {
 
 static int scd_basic_open(void) 
 {
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int scd_basic_close(void)
 {
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int scd_basic_component_query(mca_base_module_t **module, int *priority)
 {
-    *priority = 5;
-    *module = (mca_base_module_t *)&orcm_scd_basic_module;
-    return ORTE_SUCCESS;
+    if (ORCM_PROC_IS_SCHED) {
+        *priority = 5;
+        *module = (mca_base_module_t *)&orcm_scd_basic_module;
+        return ORCM_SUCCESS;
+    }
+
+    /* otherwise, I am a tool and should be ignored */
+    *priority = 0;
+    *module = NULL;
+    return ORCM_ERR_TAKE_NEXT_OPTION;
 }

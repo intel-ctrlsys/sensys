@@ -6,7 +6,7 @@ Description: Open resilient cluster manager for embedded to exascale system
 Version: 1.0a1git
 URL: http://www.open-mpi.org/projects/orcm
 #
-prefix=/home/common/openmpi/build/orcm-git
+prefix=/Users/rhc/openmpi/build/ORCM-GIT
 exec_prefix=${prefix}
 includedir=${prefix}/include
 libdir=${exec_prefix}/lib
@@ -16,10 +16,10 @@ libdir=${exec_prefix}/lib
 # dependencies), so only list these in Libs.private.
 #
 Libs: -L${libdir}    -lorcm
-Libs.private: -lm -lnuma 
+Libs.private: -lm 
 #
 # It is safe to hard-wire the -I before the EXTRA_INCLUDES because we
 # will not be installing this .pc file unless --enable-devel-headers is
 # selected, meaning that there will definitely be a value in EXTRA_INCLUDES.
 #
-Cflags: -I${includedir} -I${includedir}/@ORCM_WRAPPER_EXTRA_INCLUDES@ -I${includedir}/openmpi -I${includedir}/openmpi/opal/mca/hwloc/hwloc172/hwloc/include -I${includedir}/openmpi/opal/mca/event/libevent2021/libevent -I${includedir}/openmpi/opal/mca/event/libevent2021/libevent/include   -pthread 
+Cflags: -I${includedir} -I${includedir}/@ORCM_WRAPPER_EXTRA_INCLUDES@ -I${includedir}/openmpi -I${includedir}/openmpi/opal/mca/hwloc/hwloc172/hwloc/include -I${includedir}/openmpi/opal/mca/event/libevent2021/libevent -I${includedir}/openmpi/opal/mca/event/libevent2021/libevent/include    

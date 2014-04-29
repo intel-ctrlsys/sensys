@@ -17,4 +17,5 @@ SUBDIRS += \
         tools/ops \
         tools/orcm-info \
         tools/orcmsched \
-        tools/orcm-emulator
+        tools/orcm-emulator \
+        tools/orun

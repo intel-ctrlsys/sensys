@@ -80,6 +80,7 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/cfgi/base/base.h"
+#include "orcm/mca/cfgi/cfgi_types.h"
 
 #include "orcm/mca/sst/base/base.h"
 #include "orcm/mca/sst/orcmsched/sst_orcmsched.h"
@@ -108,7 +109,6 @@ static opal_event_t sigusr2_handler;
 static void shutdown_signal(int fd, short flags, void *arg);
 static void signal_callback(int fd, short flags, void *arg);
 static void epipe_signal_callback(int fd, short flags, void *arg);
-static int construct_queues(orcm_scheduler_t *scheduler);
 
 static void setup_sighandler(int signal, opal_event_t *ev,
                              opal_event_cbfunc_t cbfunc)
@@ -123,10 +123,13 @@ static int orcmsched_init(void)
     int ret = ORTE_ERROR;
     char *error = NULL;
     opal_buffer_t buf;
-    orte_job_t *jdata;
     opal_list_t config;
     orcm_scheduler_t *scheduler;
-    orcm_node_t *mynode;
+    orcm_node_t *mynode=NULL, *node;
+    orcm_rack_t *rack;
+    orcm_row_t *row;
+    orcm_cluster_t *cluster;
+    orcm_cmpnode_t *cmpnode;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -139,48 +142,12 @@ static int orcmsched_init(void)
         goto error;
     }
 
-    /* setup the global job and node arrays */
-    orte_job_data = OBJ_NEW(opal_pointer_array_t);
-    if (ORTE_SUCCESS != (ret = opal_pointer_array_init(orte_job_data,
-                                                       1,
-                                                       ORTE_GLOBAL_ARRAY_MAX_SIZE,
-                                                       1))) {
-        ORTE_ERROR_LOG(ret);
-        error = "setup job array";
-        goto error;
-    }
-    
-    orte_node_pool = OBJ_NEW(opal_pointer_array_t);
-    if (ORTE_SUCCESS != (ret = opal_pointer_array_init(orte_node_pool,
-                                                       ORTE_GLOBAL_ARRAY_BLOCK_SIZE,
-                                                       ORTE_GLOBAL_ARRAY_MAX_SIZE,
-                                                       ORTE_GLOBAL_ARRAY_BLOCK_SIZE))) {
-        ORTE_ERROR_LOG(ret);
-        error = "setup node array";
-        goto error;
-    }
-    orte_node_topologies = OBJ_NEW(opal_pointer_array_t);
-    if (ORTE_SUCCESS != (ret = opal_pointer_array_init(orte_node_topologies,
-                                                       ORTE_GLOBAL_ARRAY_BLOCK_SIZE,
-                                                       ORTE_GLOBAL_ARRAY_MAX_SIZE,
-                                                       ORTE_GLOBAL_ARRAY_BLOCK_SIZE))) {
-        ORTE_ERROR_LOG(ret);
-        error = "setup node topologies array";
-        goto error;
-    }
-
     /* setup the scheduler framework */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_scd_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
         error = "orcm_scd_base_open";
         goto error;
     }
-
-    /* create a job tracker for the daemons */
-    jdata = OBJ_NEW(orte_job_t);
-    jdata->jobid = 0;
-    ORTE_PROC_MY_NAME->jobid = 0;
-    opal_pointer_array_set_item(orte_job_data, 0, jdata);
 
     /* read the site configuration */
     OBJ_CONSTRUCT(&config, opal_list_t);
@@ -236,18 +203,24 @@ static int orcmsched_init(void)
     setup_sighandler(SIGUSR2, &sigusr2_handler, signal_callback);
     signals_set = true;
 
-    /* now construct our queues as specified */
-    if (ORCM_SUCCESS != (ret = construct_queues(scheduler))) {
-        ORTE_ERROR_LOG(ret);
-        error = "construct queues";
-        goto error;
+    /* cycle thru the cluster and add the compute nodes to the scheduler */
+    OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
+        OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
+            OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
+                OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
+                    /* add the node to the scheduler pool */
+                    cmpnode = OBJ_NEW(orcm_cmpnode_t);
+                    OBJ_RETAIN(node);  // maintain accounting
+                    cmpnode->node = node;
+                    opal_output_verbose(2, orcm_sst_base_framework.framework_output,
+                                        "%s add node %s",
+                                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                        (NULL == node->name) ? "NULL" : node->name);
+                    opal_pointer_array_add(&orcm_scd_base.nodes, cmpnode);
+                }
+            }
+        }
     }
-
-    /* setup the global nidmap/pidmap object */
-    orte_nidmap.bytes = NULL;
-    orte_nidmap.size = 0;
-    orte_pidmap.bytes = NULL;
-    orte_pidmap.size = 0;
 
      /* open and setup the state machine */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_state_base_framework, 0))) {
@@ -414,6 +387,7 @@ static int orcmsched_init(void)
         error = "orcm_scd_select";
         goto error;
     }
+    ORCM_CONSTRUCT_QUEUES(scheduler);
 
     return ORCM_SUCCESS;
     
@@ -474,105 +448,4 @@ static void epipe_signal_callback(int fd, short flags, void *arg)
 static void signal_callback(int fd, short event, void *arg)
 {
     /* just ignore these signals */
-}
-
-static int construct_queues(orcm_scheduler_t *scheduler)
-{
-#if 0
-    opal_list_t pool;
-    orcm_queue_t *q, *q2, *def;
-    orte_node_t *n, *m;
-    int i, k, j, rc;
-    char **t1, **t2, **vals;
-    bool found;
-
-    /* push our default queue onto the stack */
-    def = OBJ_NEW(orcm_queue_t);
-    def->name = strdup("default");
-    def->priority = 0;
-    opal_list_append(&orcm_scd_base.queues, &def->super);
-
-    /* now create queues as defined in the config */
-    if (NULL != orcm_sst_base.schedulers.queues) {
-        for (i=0; NULL != orcm_sst_base.schedulers.queues[i]; i++) {
-            /* split on the colon delimiters */
-            t1 = opal_argv_split(orcm_sst_base.schedulers.queues[i], ':');
-            /* must have three entries */
-            if (3 != opal_argv_count(t1)) {
-                opal_argv_free(t1);
-                OPAL_LIST_DESTRUCT(&pool);
-                return ORCM_ERR_BAD_PARAM;
-            }
-            /* create the object */
-            q = OBJ_NEW(orcm_queue_t);
-            /* first position is the queue name */
-            q->name = strdup(t1[0]);
-            /* second is the priority */
-            q->priority = strtol(t1[1], NULL, 10);
-            /* last is the comma-separated list of
-             * regular expressions defining the nodes
-             * to be included in this queue
-             */
-            t2 = opal_argv_split(t1[2], ',');
-            for (k=0; NULL != t2[k]; k++) {
-                vals = NULL;
-                /* let the regular expression parser work on it */
-                if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(t2[k], &vals))) {
-                    ORTE_ERROR_LOG(rc);
-                    return rc;
-                }
-                for (j=0; NULL != vals[j]; j++) {
-                    found = false;
-                    OPAL_LIST_FOREACH(n, &pool, orte_node_t) {
-                        opal_output(0, "CHECKING %s AGAINST %s", vals[j], n->name);
-                        if (0 == strcmp(n->name, vals[j])) {
-                            opal_list_remove_item(&pool, &n->super);
-                            opal_pointer_array_add(&q->nodes, n);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        orte_show_help("help-orcm-sst.txt", "unknown-node",
-                                       true, q->name, vals[j]);
-                        return ORCM_ERR_SILENT;
-                    }
-                }
-                opal_argv_free(vals);
-            }
-            opal_argv_free(t2);
-            /* insert this queue in priority order from highest
-             * to lowest priority - we know the default queue
-             * will always be at the bottom
-             */
-            OPAL_LIST_FOREACH(q2, &orcm_scd_base.queues, orcm_queue_t) {
-                if (q->priority > q2->priority) {
-                    opal_list_insert_pos(&orcm_scd_base.queues,
-                                         &q2->super, &q->super);
-                    break;
-                }
-            }
-        }
-    }
-
-    /* all remaining nodes go into the default queue */
-    OPAL_LIST_FOREACH_SAFE(n, m, &pool, orte_node_t) {
-        opal_list_remove_item(&pool, &n->super);
-        opal_pointer_array_add(&def->nodes, n);
-    }
-    OBJ_DESTRUCT(&pool);
-
-    if (4 < opal_output_get_verbosity(orcm_sst_base_framework.framework_output)) {
-        /* print out the queue structure */
-        OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
-            opal_output(0, "QUEUE: %s PRI: %d", q->name, q->priority);
-            for (i=0; i < q->nodes.size; i++) {
-                if (NULL != (n = (orte_node_t*)opal_pointer_array_get_item(&q->nodes, i))) {
-                    opal_output(0, "\t%s", n->name);
-                }
-            }
-        }
-    }
-#endif
-    return ORCM_SUCCESS;
 }

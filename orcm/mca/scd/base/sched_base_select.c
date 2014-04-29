@@ -13,39 +13,107 @@
 #include "opal/mca/mca.h"
 #include "opal/mca/base/base.h"
 
+#include "orte/mca/errmgr/errmgr.h"
+
 #include "orcm/mca/scd/base/base.h"
 
+static bool selected = false;
 
 /**
- * Function for selecting one component from all those that are
+ * Function for selecting multiple components from all those that are
  * available.
  */
 int orcm_scd_base_select(void)
 {
-    int ret, exit_status = ORCM_SUCCESS;
-    orcm_scd_base_component_t *best_component = NULL;
-    orcm_scd_base_module_t *best_module = NULL;
+    mca_base_component_list_item_t *cli = NULL;
+    mca_base_component_t *component = NULL;
+    mca_base_module_t *module = NULL;
+    orcm_scd_base_module_t *nmodule;
+    orcm_scd_base_active_module_t *newmodule, *mod;
+    int rc, priority;
+    bool inserted;
 
-    /*
-     * Select the best component
-     */
-    if( OPAL_SUCCESS != mca_base_select("scd", orcm_scd_base_framework.framework_output,
-                                        &orcm_scd_base_framework.framework_components,
-                                        (mca_base_module_t **) &best_module,
-                                        (mca_base_component_t **) &best_component) ) {
-        /* This will only happen if no component was selected */
-        exit_status = ORCM_ERR_NOT_FOUND;
-        goto cleanup;
+    if (selected) {
+        /* ensure we don't do this twice */
+        return ORCM_SUCCESS;
+    }
+    selected = true;
+
+    /* Query all available components and ask if they have a module */
+    OPAL_LIST_FOREACH(cli, &orcm_scd_base_framework.framework_components, mca_base_component_list_item_t) {
+        component = (mca_base_component_t *) cli->cli_component;
+
+        opal_output_verbose(5, orcm_scd_base_framework.framework_output,
+                            "mca:scd:select: checking available component %s", component->mca_component_name);
+
+        /* If there's no query function, skip it */
+        if (NULL == component->mca_query_component) {
+            opal_output_verbose(5, orcm_scd_base_framework.framework_output,
+                                "mca:scd:select: Skipping component [%s]. It does not implement a query function",
+                                component->mca_component_name);
+            continue;
+        }
+
+        /* Query the component */
+        opal_output_verbose(5, orcm_scd_base_framework.framework_output,
+                            "mca:scd:select: Querying component [%s]",
+                            component->mca_component_name);
+        rc = component->mca_query_component(&module, &priority);
+
+        /* If no module was returned, then skip component */
+        if (ORCM_SUCCESS != rc || NULL == module) {
+            opal_output_verbose(5, orcm_scd_base_framework.framework_output,
+                                "mca:scd:select: Skipping component [%s]. Query failed to return a module",
+                                component->mca_component_name);
+            continue;
+        }
+
+        /* If we got a module, keep it */
+        nmodule = (orcm_scd_base_module_t*) module;
+        /* give the module a chance to init */
+        if (NULL != nmodule->init) {
+            if (ORCM_SUCCESS != (rc = nmodule->init())) {
+                opal_output_verbose(5, orcm_scd_base_framework.framework_output,
+                                    "mca:scd:select: Skipping component [%s]. Init returned error %s",
+                                    component->mca_component_name, ORTE_ERROR_NAME(rc));
+                continue;
+            }
+        }
+
+        /* add to the list of selected modules */
+        newmodule = OBJ_NEW(orcm_scd_base_active_module_t);
+        newmodule->pri = priority;
+        newmodule->module = nmodule;
+        newmodule->component = component;
+
+        /* maintain priority order */
+        inserted = false;
+        OPAL_LIST_FOREACH(mod, &orcm_scd_base.active_modules, orcm_scd_base_active_module_t) {
+            if (priority > mod->pri) {
+                opal_list_insert_pos(&orcm_scd_base.active_modules,
+                                     (opal_list_item_t*)mod, &newmodule->super);
+                inserted = true;
+                break;
+            }
+        }
+        if (!inserted) {
+            /* must be lowest priority - add to end */
+            opal_list_append(&orcm_scd_base.active_modules, &newmodule->super);
+        }
     }
 
-    /* Save the winner */
-    orcm_sched = *best_module;
-
-    if (ORCM_SUCCESS != (ret = orcm_sched.init()) ) {
-        exit_status = ret;
-        goto cleanup;
+    /* if we didn't get any plugins, that's an error */
+    if (0 == opal_list_get_size(&orcm_scd_base.active_modules)) {
+        return ORCM_ERR_NOT_FOUND;
     }
 
- cleanup:
-    return exit_status;
+    if (4 < opal_output_get_verbosity(orcm_scd_base_framework.framework_output)) {
+        opal_output(0, "%s: Final scheduler priorities", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        /* show the prioritized list */
+        OPAL_LIST_FOREACH(mod, &orcm_scd_base.active_modules, orcm_scd_base_active_module_t) {
+            opal_output(0, "\tScheduler: %s Priority: %d", mod->component->mca_component_name, mod->pri);
+        }
+    }
+
+    return ORCM_SUCCESS;;
 }

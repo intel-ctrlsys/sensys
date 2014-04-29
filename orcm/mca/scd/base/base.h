@@ -20,6 +20,7 @@
 #include "opal/mca/mca.h"
 #include "opal/mca/event/event.h"
 #include "opal/dss/dss_types.h"
+#include "opal/util/output.h"
 
 #include "orcm/mca/scd/scd.h"
 
@@ -36,6 +37,28 @@ ORCM_DECLSPEC extern mca_base_framework_t orcm_scd_base_framework;
 ORCM_DECLSPEC int orcm_scd_base_select(void);
 
 typedef struct {
+    opal_object_t super;
+    opal_event_t ev;
+    orcm_scheduler_t *scheduler;
+} orcm_scheduler_caddy_t;
+OBJ_CLASS_DECLARATION(orcm_scheduler_caddy_t);
+
+#define ORCM_CONSTRUCT_QUEUES(a)                                        \
+    do {                                                                \
+        orcm_scheduler_caddy_t *s;                                      \
+        opal_output_verbose(1, orcm_scd_base_framework.framework_output, \
+                            "%s CONSTRUCT QUEUES AT %s:%d",             \
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),         \
+                            __FILE__, __LINE__);			\
+        s = OBJ_NEW(orcm_scheduler_caddy_t);                            \
+        s->scheduler = (a);                                             \
+        opal_event_set(orcm_scd_base.ev_base, &s->ev, -1, OPAL_EV_WRITE, \
+                       orcm_scd_base_construct_queues, s);              \
+        opal_event_set_priority(&s->ev, ORCM_SCHED_PRI);                \
+        opal_event_active(&s->ev, OPAL_EV_WRITE, 1);                    \
+    } while(0);
+
+typedef struct {
     /* flag that we just want to test */
     bool test_mode;
     /* define an event base strictly for scheduling - this
@@ -47,10 +70,25 @@ typedef struct {
     bool ev_active;
     /* state machine */
     opal_list_t states;
+    /* list of active scheduler plugins */
+    opal_list_t active_modules;
     /* queues for pending session requests */
     opal_list_t queues;
+    /* available nodes */
+    opal_pointer_array_t nodes;
 } orcm_scd_base_t;
 ORCM_DECLSPEC extern orcm_scd_base_t orcm_scd_base;
+
+/**
+ * Select an scd component / module
+ */
+typedef struct {
+    opal_list_item_t super;
+    int pri;
+    orcm_scd_base_module_t *module;
+    mca_base_component_t *component;
+} orcm_scd_base_active_module_t;
+OBJ_CLASS_DECLARATION(orcm_scd_base_active_module_t);
 
 /* start/stop base receive */
 ORCM_DECLSPEC int orcm_scd_base_comm_start(void);
@@ -78,7 +116,7 @@ ORCM_DECLSPEC const char *orcm_session_state_to_str(orcm_session_state_t state);
 ORCM_DECLSPEC int orcm_sched_base_add_session_state(orcm_session_state_t state,
                                                     orcm_state_cbfunc_t cbfunc,
                                                     int priority);
-
+ORCM_DECLSPEC void orcm_scd_base_construct_queues(int fd, short args, void *cbdata);
 
 END_C_DECLS
 #endif

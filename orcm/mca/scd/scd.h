@@ -18,6 +18,8 @@
 #include "orcm/constants.h"
 
 #include "opal/mca/mca.h"
+#include "opal/mca/event/event.h"
+#include "opal/util/output.h"
 
 #include "orte/runtime/orte_globals.h"
 #include "orte/util/name_fns.h"
@@ -34,7 +36,7 @@ BEGIN_C_DECLS
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),         \
                             (a)->id, orcm_session_state_to_str((b)),    \
                             __FILE__, __LINE__);			\
-        orcm_sched_base_activate_session_state((a), (b));               \
+        orcm_sched.activate_session_state((a), (b));                    \
     } while(0);
 
 /*
@@ -53,26 +55,26 @@ typedef orcm_alloc_id_t (*orcm_scd_base_module_alloc_fn_t)(orcm_alloc_t *req);
 /*
  * Ver 1.0
  */
-struct orcm_scd_base_module_1_0_0_t {
+typedef struct {
     orcm_scd_base_module_init_fn_t        init;
     orcm_scd_base_module_finalize_fn_t    finalize;
     orcm_scd_base_module_alloc_fn_t       allocate;
-};
-
-typedef struct orcm_scd_base_module_1_0_0_t orcm_scd_base_module_1_0_0_t;
-typedef orcm_scd_base_module_1_0_0_t orcm_scd_base_module_t;
+} orcm_scd_base_module_t;
 
 /*
  * the standard component data structure
  */
-struct orcm_scd_base_component_1_0_0_t {
+typedef struct {
     mca_base_component_t base_version;
     mca_base_component_data_t base_data;
-};
-typedef struct orcm_scd_base_component_1_0_0_t orcm_scd_base_component_1_0_0_t;
-typedef orcm_scd_base_component_1_0_0_t orcm_scd_base_component_t;
+} orcm_scd_base_component_t;
 
-
+/* define an API module */
+typedef void (*orcm_scd_API_module_activate_session_state_fn_t)(orcm_session_t *s,
+                                                                orcm_session_state_t state);
+typedef struct {
+    orcm_scd_API_module_activate_session_state_fn_t  activate_session_state;
+} orcm_scd_API_module_t;
 
 /*
  * Macro for use in components that are of type scd v1.0.0
@@ -85,7 +87,7 @@ typedef orcm_scd_base_component_1_0_0_t orcm_scd_base_component_t;
 
 /* Global structure for accessing name server functions
  */
-ORCM_DECLSPEC extern orcm_scd_base_module_t orcm_sched;  /* holds selected module's function pointers */
+ORCM_DECLSPEC extern orcm_scd_API_module_t orcm_sched;  /* holds API function pointers */
 
 END_C_DECLS
 

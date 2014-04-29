@@ -105,6 +105,8 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
 {
     /* initialize globals */
     orcm_sensor_base.active = false;
+    orcm_sensor_base.dbhandle = -1;
+    orcm_sensor_base.dbhandle_requested = false;
 
     /* construct the array of modules */
     OBJ_CONSTRUCT(&orcm_sensor_base.modules, opal_pointer_array_t);

@@ -30,8 +30,8 @@
 #include "opal/dss/dss.h"
 #include "opal/util/output.h"
 #include "opal/mca/pstat/pstat.h"
-#include "opal/mca/db/db.h"
 
+#include "orte/mca/db/db.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/name_fns.h"
 #include "orte/mca/errmgr/errmgr.h"
@@ -308,12 +308,22 @@ static void sample(void)
     }
 }
 
+static void mycleanup(int dbhandle, int status,
+                      opal_list_t *kvs, void *cbdata)
+{
+    OPAL_LIST_RELEASE(kvs);
+    if (ORTE_SUCCESS != status) {
+        log_enabled = false;
+    }
+}
+
 static void res_log(opal_buffer_t *sample)
 {
     opal_pstats_t *st=NULL;
     opal_node_stats_t *nst=NULL;
-    int rc, n, i;
-    opal_value_t kv[14];
+    int rc, n;
+    opal_list_t *vals;
+    opal_value_t *kv;
     char *node;
 
     if (!log_enabled) {
@@ -335,73 +345,92 @@ static void res_log(opal_buffer_t *sample)
     }
 
     if (mca_sensor_resusage_component.log_node_stats) {
-        /* convert this into an array of opal_value_t's - no clean way
-         * to do this, so have to just manually map each field
-         */
-        for (i=0; i < 13; i++) {
-            OBJ_CONSTRUCT(&kv[i], opal_value_t);
-        }
-        i=0;
-        kv[i].key = strdup("ctime");
-        kv[i].type = OPAL_TIMEVAL;
-        kv[i].data.tv.tv_sec = nst->sample_time.tv_sec;
-        kv[i++].data.tv.tv_usec = nst->sample_time.tv_usec;
+        vals = OBJ_NEW(opal_list_t);
 
-        kv[i].key = "hostname";
-        kv[i].type = OPAL_STRING;
-        kv[i++].data.string = strdup(node);
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("ctime");
+        kv->type = OPAL_TIMEVAL;
+        kv->data.tv.tv_sec = nst->sample_time.tv_sec;
+        kv->data.tv.tv_usec = nst->sample_time.tv_usec;
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("total_mem");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->total_mem;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = "hostname";
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(node);
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("free_mem");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->free_mem;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("total_mem");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->total_mem;
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("buffers");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->buffers;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("free_mem");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->free_mem;
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("cached");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->cached;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("buffers");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->buffers;
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("swap_total");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->swap_total;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("cached");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->cached;
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("swap_free");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->swap_free;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("swap_total");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->swap_total;
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("mapped");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->mapped;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("swap_free");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->swap_free;
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("swap_cached");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->swap_cached;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("mapped");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->mapped;
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("la");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->la;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("swap_cached");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->swap_cached;
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("la5");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->la5;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("la");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->la;
+        opal_list_append(vals, &kv->super);
 
-        kv[i].key = strdup("la15");
-        kv[i].type = OPAL_FLOAT;
-        kv[i++].data.fval = nst->la15;
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("la5");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->la5;
+        opal_list_append(vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("la15");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = nst->la15;
+        opal_list_append(vals, &kv->super);
 
         /* store it */
-        if (ORCM_SUCCESS != (rc = opal_db.add_log("nodestats", kv, 12))) {
-            /* don't bark about it - just quietly disable the log */
-            log_enabled = false;
-        }
-        for (i=0; i < 12; i++) {
-            OBJ_DESTRUCT(&kv[i]);
+        if (0 <= orcm_sensor_base.dbhandle) {
+            orte_db.store(orcm_sensor_base.dbhandle, "nodestats", vals, mycleanup, NULL);
+        } else {
+            OPAL_LIST_RELEASE(vals);
         }
     }
 
@@ -411,62 +440,102 @@ static void res_log(opal_buffer_t *sample)
         /* unpack all process stats */
         n=1;
         while (OPAL_SUCCESS == (rc = opal_dss.unpack(sample, &st, &n, OPAL_PSTAT))) {
-            for (i=0; i < 14; i++) {
-                OBJ_CONSTRUCT(&kv[i], opal_value_t);
-            }
-            kv[0].key = strdup("node");
-            kv[0].type = OPAL_STRING;
-            kv[0].data.string = strdup(st->node);
-            kv[1].key = strdup("rank");
-            kv[1].type = OPAL_INT32;
-            kv[1].data.int32 = st->rank;
-            kv[2].key = strdup("pid");
-            kv[2].type = OPAL_PID;
-            kv[2].data.pid = st->pid;
-            kv[3].key = strdup("cmd");
-            kv[3].type = OPAL_STRING;
-            kv[3].data.string = strdup(st->cmd);
-            kv[4].key = strdup("state");
-            kv[4].type = OPAL_STRING;
-            kv[4].data.string = (char*)malloc(3 * sizeof(char));
-            kv[4].data.string[0] = st->state[0];
-            kv[4].data.string[1] = st->state[1];
-            kv[4].data.string[2] = '\0';
-            kv[5].key = strdup("time");
-            kv[5].type = OPAL_TIMEVAL;
-            kv[5].data.tv.tv_sec = st->time.tv_sec;
-            kv[5].data.tv.tv_usec = st->time.tv_usec;
-            kv[6].key = strdup("percent_cpu");
-            kv[6].type = OPAL_FLOAT;
-            kv[6].data.fval = st->percent_cpu;
-            kv[7].key = strdup("priority");
-            kv[7].type = OPAL_INT32;
-            kv[7].data.int32 = st->priority;
-            kv[8].key = strdup("num_threads");
-            kv[8].type = OPAL_INT16;
-            kv[8].data.int16 = st->num_threads;
-            kv[9].key = strdup("vsize");
-            kv[9].type = OPAL_FLOAT;
-            kv[9].data.fval = st->vsize;
-            kv[10].key = strdup("rss");
-            kv[10].type = OPAL_FLOAT;
-            kv[10].data.fval = st->rss;
-            kv[11].key = strdup("peak_vsize");
-            kv[11].type = OPAL_FLOAT;
-            kv[11].data.fval = st->peak_vsize;
-            kv[12].key = strdup("processor");
-            kv[12].type = OPAL_INT16;
-            kv[12].data.int16 = st->processor;
-            kv[13].key = strdup("sample_time");
-            kv[13].type = OPAL_TIMEVAL;
-            kv[13].data.tv.tv_sec = st->sample_time.tv_sec;
-            kv[13].data.tv.tv_usec = st->sample_time.tv_usec;
+            vals = OBJ_NEW(opal_list_t);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("node");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(st->node);
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("rank");
+            kv->type = OPAL_INT32;
+            kv->data.int32 = st->rank;
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("pid");
+            kv->type = OPAL_PID;
+            kv->data.pid = st->pid;
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("cmd");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(st->cmd);
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("state");
+            kv->type = OPAL_STRING;
+            kv->data.string = (char*)malloc(3 * sizeof(char));
+            kv->data.string[0] = st->state[0];
+            kv->data.string[1] = st->state[1];
+            kv->data.string[2] = '\0';
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("time");
+            kv->type = OPAL_TIMEVAL;
+            kv->data.tv.tv_sec = st->time.tv_sec;
+            kv->data.tv.tv_usec = st->time.tv_usec;
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("percent_cpu");
+            kv->type = OPAL_FLOAT;
+            kv->data.fval = st->percent_cpu;
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("priority");
+            kv->type = OPAL_INT32;
+            kv->data.int32 = st->priority;
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("num_threads");
+            kv->type = OPAL_INT16;
+            kv->data.int16 = st->num_threads;
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("vsize");
+            kv->type = OPAL_FLOAT;
+            kv->data.fval = st->vsize;
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("rss");
+            kv->type = OPAL_FLOAT;
+            kv->data.fval = st->rss;
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("peak_vsize");
+            kv->type = OPAL_FLOAT;
+            kv->data.fval = st->peak_vsize;
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("processor");
+            kv->type = OPAL_INT16;
+            kv->data.int16 = st->processor;
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("sample_time");
+            kv->type = OPAL_TIMEVAL;
+            kv->data.tv.tv_sec = st->sample_time.tv_sec;
+            kv->data.tv.tv_usec = st->sample_time.tv_usec;
+            opal_list_append(vals, &kv->super);
+
             /* store it */
-            if (ORCM_SUCCESS != (rc = opal_db.add_log("procstats", kv, 14))) {
-                log_enabled = false;
-            }
-            for (i=0; i < 14; i++) {
-                OBJ_DESTRUCT(&kv[i]);
+            if (0 <= orcm_sensor_base.dbhandle) {
+                orte_db.store(orcm_sensor_base.dbhandle, "procstats", vals, mycleanup, NULL);
+            } else {
+                OPAL_LIST_RELEASE(vals);
             }
             OBJ_RELEASE(st);
             n=1;

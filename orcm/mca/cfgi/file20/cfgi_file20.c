@@ -37,7 +37,6 @@
 #endif
 
 #include "opal/dss/dss.h"
-#include "opal/mca/db/base/base.h"
 #include "opal/mca/event/event.h"
 #include "opal/runtime/opal.h"
 #include "opal/runtime/opal_cr.h"

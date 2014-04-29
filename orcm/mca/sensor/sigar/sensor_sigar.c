@@ -37,8 +37,8 @@
 #include "opal/util/output.h"
 #include "opal/mca/pstat/pstat.h"
 #include "opal/mca/event/event.h"
-#include "opal/mca/db/db.h"
 
+#include "orte/mca/db/db.h"
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/mca/sensor/base/base.h"
@@ -557,16 +557,25 @@ static void sigar_sample(void)
     last_sample = now;
 }
 
+static void mycleanup(int dbhandle, int status,
+                      opal_list_t *kvs, void *cbdata)
+{
+    OPAL_LIST_RELEASE(kvs);
+    if (ORTE_SUCCESS != status) {
+        log_enabled = false;
+    }
+}
+
 static void sigar_log(opal_buffer_t *sample)
 {
     char *hostname;
     char *sampletime;
     int rc;
     int32_t n;
-    opal_value_t kv[24];
+    opal_list_t *vals;
+    opal_value_t *kv;
     uint64_t uint64;
     float fval;
-    int i;
 
     if (!log_enabled) {
         return;
@@ -584,12 +593,7 @@ static void sigar_log(opal_buffer_t *sample)
                         (NULL == hostname) ? "NULL" : hostname);
 
     /* prep the xfr storage */
-    for (i=0; i < 24; i++) {
-        OBJ_CONSTRUCT(&kv[i], opal_value_t);
-    }
-
-    /* unpack the incoming data and xfer it for storage */
-    i=0;
+    vals = OBJ_NEW(opal_list_t);
 
     /* sample time */
     n=1;
@@ -597,15 +601,19 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("ctime");
-    kv[i].type = OPAL_STRING;
-    kv[i++].data.string = strdup(sampletime);
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("ctime");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup(sampletime);
     free(sampletime);
+    opal_list_append(vals, &kv->super);
 
-    /* hostname */
-    kv[i].key = strdup("hostname");
-    kv[i].type = OPAL_STRING;
-    kv[i++].data.string = strdup(hostname);
+    /* load the hostname */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("hostname");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup(hostname);
+    opal_list_append(vals, &kv->super);
 
     /* total memory */
     n=1;
@@ -613,9 +621,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("mem_total");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("mem_total");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* total used memory */
     n=1;
@@ -623,9 +633,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("mem_used");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("mem_used");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* actual used memory */
     n=1;
@@ -633,9 +645,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("mem_actual_used");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("mem_actual_used");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* actual free memory */
     n=1;
@@ -643,9 +657,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("mem_actual_free");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("mem_actual_free");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* total swap memory */
     n=1;
@@ -653,9 +669,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("swap_total");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("swap_total");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* swap used */
     n=1;
@@ -663,9 +681,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("swap_used");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("swap_used");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* swap pages in */
     n=1;
@@ -673,9 +693,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("swap_page_in");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("swap_page_in");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* swap pages out */
     n=1;
@@ -683,9 +705,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("swap_page_out");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("swap_page_out");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* cpu user */
     n=1;
@@ -693,9 +717,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("cpu_user");
-    kv[i].type = OPAL_FLOAT;
-    kv[i++].data.fval = fval;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("cpu_user");
+    kv->type = OPAL_FLOAT;
+    kv->data.fval = fval;
+    opal_list_append(vals, &kv->super);
 
     /* cpu sys */
     n=1;
@@ -703,9 +729,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("cpu_sys");
-    kv[i].type = OPAL_FLOAT;
-    kv[i++].data.fval = fval;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("cpu_sys");
+    kv->type = OPAL_FLOAT;
+    kv->data.fval = fval;
+    opal_list_append(vals, &kv->super);
 
     /* cpu idle */
     n=1;
@@ -713,9 +741,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("cpu_idle");
-    kv[i].type = OPAL_FLOAT;
-    kv[i++].data.fval = fval;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("cpu_idle");
+    kv->type = OPAL_FLOAT;
+    kv->data.fval = fval;
+    opal_list_append(vals, &kv->super);
 
     /* la0 */
     n=1;
@@ -723,9 +753,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("load0");
-    kv[i].type = OPAL_FLOAT;
-    kv[i++].data.fval = fval;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("load0");
+    kv->type = OPAL_FLOAT;
+    kv->data.fval = fval;
+    opal_list_append(vals, &kv->super);
 
     /* la5 */
     n=1;
@@ -733,9 +765,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("load1");
-    kv[i].type = OPAL_FLOAT;
-    kv[i++].data.fval = fval;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("load1");
+    kv->type = OPAL_FLOAT;
+    kv->data.fval = fval;
+    opal_list_append(vals, &kv->super);
 
     /* la15 */
     n=1;
@@ -743,9 +777,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("load2");
-    kv[i].type = OPAL_FLOAT;
-    kv[i++].data.fval = fval;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("load2");
+    kv->type = OPAL_FLOAT;
+    kv->data.fval = fval;
+    opal_list_append(vals, &kv->super);
 
     /* disk read ops rate */
     n=1;
@@ -753,9 +789,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("disk_ro_rate");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("disk_ro_rate");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* disk write ops rate */
     n=1;
@@ -763,9 +801,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("disk_wo_rate");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("disk_wo_rate");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* disk read bytes/sec */
     n=1;
@@ -773,9 +813,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("disk_rb_rate");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("disk_rb_rate");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* disk write bytes/sec */
     n=1;
@@ -783,9 +825,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("disk_wb_rate");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("disk_wb_rate");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* net recv packet rate */
     n=1;
@@ -793,9 +837,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("net_rp_rate");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("net_rp_rate");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* net tx packet rate */
     n=1;
@@ -803,9 +849,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("net_wp_rate");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("net_wp_rate");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* net recv bytes rate */
     n=1;
@@ -813,9 +861,11 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("net_rb_rate");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("net_rb_rate");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* net tx bytes rate */
     n=1;
@@ -823,20 +873,19 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv[i].key = strdup("net_wb_rate");
-    kv[i].type = OPAL_UINT64;
-    kv[i++].data.uint64 = uint64;
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("net_wb_rate");
+    kv->type = OPAL_UINT64;
+    kv->data.uint64 = uint64;
+    opal_list_append(vals, &kv->super);
 
     /* store it */
-    if (ORCM_SUCCESS != (rc = opal_db.add_log("sigar", kv, 24))) {
-        /* don't bark about it - just quietly disable the log */
-        log_enabled = false;
+    if (0 <= orcm_sensor_base.dbhandle) {
+        orte_db.store(orcm_sensor_base.dbhandle, "sigar", vals, mycleanup, NULL);
+    } else {
+        OPAL_LIST_RELEASE(vals);
     }
 
-    /* cleanup the xfr storage */
-    for (i=0; i < 24; i++) {
-        OBJ_DESTRUCT(&kv[i]);
-    }
     if (NULL != hostname) {
         free(hostname);
     }

@@ -45,6 +45,8 @@ typedef struct {
     struct timeval rate;
     opal_event_t sample_ev;
     opal_buffer_t *samples;
+    int dbhandle;
+    bool dbhandle_requested;
 } orcm_sensor_base_t;
 
 typedef struct {

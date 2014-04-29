@@ -35,8 +35,9 @@
 #include "opal/util/if.h"
 #include "opal/util/net.h"
 #include "opal/dss/dss.h"
-#include "opal/mca/db/base/base.h"
+#include "opal/mca/dstore/base/base.h"
 
+#include "orte/mca/db/base/base.h"
 #include "orte/mca/errmgr/base/base.h"
 #include "orte/mca/ess/base/base.h"
 #include "orte/mca/rml/base/base.h"
@@ -107,6 +108,7 @@ static int tool_init(void)
     orte_vpid_t nprocs;
     orcm_scheduler_t *scheduler;
     orcm_node_t *mynode;
+    opal_value_t kv;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -127,18 +129,49 @@ static int tool_init(void)
     }
 
     /* setup the database */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&opal_db_base_framework, 0))) {
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_db_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
-        error = "opal_db_base_open";
+        error = "orte_db_base_open";
         goto error;
     }
-    if (ORTE_SUCCESS != (ret = opal_db_base_select(true))) {
+    if (ORTE_SUCCESS != (ret = orte_db_base_select())) {
         ORTE_ERROR_LOG(ret);
         error = "orte_db_base_select";
         goto error;
     }
-    /* set our id */
-    opal_db.set_id((opal_identifier_t*)ORTE_PROC_MY_NAME);
+
+    /* datastore - ensure we don't pickup the pmi component, but
+     * don't override anything set by user
+     */
+    if (NULL == getenv("OMPI_MCA_dstore")) {
+        putenv("OMPI_MCA_dstore=^pmi");
+    }
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&opal_dstore_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "opal_dstore_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = opal_dstore_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "opal_dstore_base_select";
+        goto error;
+    }
+    /* create the handles */
+    if (0 > (opal_dstore_peer = opal_dstore.open("PEER"))) {
+        error = "opal dstore global";
+        ret = ORTE_ERR_FATAL;
+        goto error;
+    }
+    if (0 > (opal_dstore_internal = opal_dstore.open("INTERNAL"))) {
+        error = "opal dstore internal";
+        ret = ORTE_ERR_FATAL;
+        goto error;
+    }
+    if (0 > (opal_dstore_nonpeer = opal_dstore.open("NONPEER"))) {
+        error = "opal dstore nonpeer";
+        ret = ORTE_ERR_FATAL;
+        goto error;
+    }
 
     /* read the site configuration */
     OBJ_CONSTRUCT(&config, opal_list_t);
@@ -169,12 +202,20 @@ static int tool_init(void)
     /* push the hostname into the database for use in
      * error messages
      */
-    if (OPAL_SUCCESS != (ret = opal_db.store((opal_identifier_t*)ORTE_PROC_MY_SCHEDULER,
-                                             OPAL_SCOPE_INTERNAL,
-                                             ORTE_DB_HOSTNAME, &scheduler->controller.name, OPAL_STRING))) {
+    OBJ_CONSTRUCT(&kv, opal_value_t);
+    kv.key = strdup(ORTE_DB_HOSTNAME);
+    if (NULL != scheduler->controller.name) {
+        kv.data.string = strdup(scheduler->controller.name);
+    }
+    kv.type = OPAL_STRING;
+    if (OPAL_SUCCESS != (ret = opal_dstore.store(opal_dstore_internal,
+                                                 (opal_identifier_t*)ORTE_PROC_MY_SCHEDULER,
+                                                 &kv))) {
+        OBJ_DESTRUCT(&kv);
         error = "store scheduler hostname";
         goto error;
     }
+    OBJ_DESTRUCT(&kv);
 
     /* construct the URI */
     OBJ_CONSTRUCT(&buf, opal_buffer_t);
@@ -352,7 +393,8 @@ static void tool_finalize(void)
     (void) mca_base_framework_close(&orte_oob_base_framework);
     (void) mca_base_framework_close(&orte_state_base_framework);
 
-    (void) mca_base_framework_close(&opal_db_base_framework);
+    (void) mca_base_framework_close(&orte_db_base_framework);
+    (void) mca_base_framework_close(&opal_dstore_base_framework);
 
 }
 

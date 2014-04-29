@@ -17,10 +17,19 @@
 #include "opal/dss/dss.h"
 #include "opal/mca/event/event.h"
 
+#include "orte/mca/db/db.h"
+
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 
 static bool mods_active = false;
+
+static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
+{
+    if (0 == status) {
+        orcm_sensor_base.dbhandle = handle;
+    }
+}
 
 void orcm_sensor_base_start(orte_jobid_t job)
 {
@@ -31,6 +40,12 @@ void orcm_sensor_base_start(orte_jobid_t job)
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor:base: starting sensors",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
+        if (!orcm_sensor_base.dbhandle_requested) {
+            orte_db.open("sensor", NULL, db_open_cb, NULL);
+            orcm_sensor_base.dbhandle_requested = true;
+        }
+
         /* call the start function of all modules in priority order */
         for (i=0; i < orcm_sensor_base.modules.size; i++) {
             if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {

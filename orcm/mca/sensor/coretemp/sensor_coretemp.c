@@ -32,8 +32,8 @@
 #include "opal/util/os_path.h"
 #include "opal/util/output.h"
 #include "opal/util/os_dirpath.h"
-#include "opal/mca/db/db.h"
 
+#include "orte/mca/db/db.h"
 #include "orte/util/name_fns.h"
 #include "orte/util/show_help.h"
 #include "orte/runtime/orte_globals.h"
@@ -364,13 +364,23 @@ static void coretemp_sample(void)
     OBJ_DESTRUCT(&data);
 }
 
+static void mycleanup(int dbhandle, int status,
+                      opal_list_t *kvs, void *cbdata)
+{
+    OPAL_LIST_RELEASE(kvs);
+    if (ORTE_SUCCESS != status) {
+        log_enabled = false;
+    }
+}
+
 static void coretemp_log(opal_buffer_t *sample)
 {
     char *hostname=NULL;
     char *sampletime;
     int rc;
     int32_t n, ncores;
-    opal_value_t *kv=NULL;
+    opal_list_t *vals;
+    opal_value_t *kv;
     float fval;
     int i;
 
@@ -404,48 +414,44 @@ static void coretemp_log(opal_buffer_t *sample)
                         (NULL == hostname) ? "NULL" : hostname, ncores);
 
     /* xfr to storage */
-    kv = malloc((ncores+2) * sizeof(opal_value_t));
+    vals = OBJ_NEW(opal_list_t);
 
     /* load the sample time at the start */
-    OBJ_CONSTRUCT(&kv[0], opal_value_t);
-    kv[0].key = strdup("ctime");
-    kv[0].type = OPAL_STRING;
-    kv[0].data.string = strdup(sampletime);
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("ctime");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup(sampletime);
     free(sampletime);
+    opal_list_append(vals, &kv->super);
 
     /* load the hostname */
-    OBJ_CONSTRUCT(&kv[1], opal_value_t);
-    kv[1].key = strdup("hostname");
-    kv[1].type = OPAL_STRING;
-    kv[1].data.string = strdup(hostname);
-
-    /* protect against segfault if we jump to cleanup */
-    for (i=0; i < ncores; i++) {
-        OBJ_CONSTRUCT(&kv[i+2], opal_value_t);
-    }
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("hostname");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup(hostname);
+    opal_list_append(vals, &kv->super);
 
     for (i=0; i < ncores; i++) {
-        asprintf(&kv[i+2].key, "core%d", i);
-        kv[i+2].type = OPAL_FLOAT;
+        kv = OBJ_NEW(opal_value_t);
+        asprintf(&kv->key, "core%d", i);
+        kv->type = OPAL_FLOAT;
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        kv[i+2].data.fval = fval;
+        kv->data.fval = fval;
+        opal_list_append(vals, &kv->super);
     }
 
     /* store it */
-    if (ORCM_SUCCESS != (rc = opal_db.add_log("coretemp", kv, ncores+2))) {
-        /* don't bark about it - just quietly disable the log */
-        log_enabled = false;
+    if (0 <= orcm_sensor_base.dbhandle) {
+        orte_db.store(orcm_sensor_base.dbhandle, "coretemp", vals, mycleanup, NULL);
+    } else {
+        OPAL_LIST_RELEASE(vals);
     }
 
  cleanup:
-    /* cleanup the xfr storage */
-    for (i=0; i < ncores+2; i++) {
-        OBJ_DESTRUCT(&kv[i]);
-    }
     if (NULL != hostname) {
         free(hostname);
     }

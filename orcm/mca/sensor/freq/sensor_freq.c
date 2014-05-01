@@ -34,11 +34,12 @@
 #include "opal/util/output.h"
 #include "opal/util/os_dirpath.h"
 
-#include "orte/mca/db/db.h"
 #include "orte/util/name_fns.h"
 #include "orte/util/show_help.h"
 #include "orte/runtime/orte_globals.h"
 #include "orte/mca/errmgr/errmgr.h"
+
+#include "orcm/mca/db/db.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -404,7 +405,7 @@ static void freq_log(opal_buffer_t *sample)
 
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
-        orte_db.store(orcm_sensor_base.dbhandle, "freq", vals, mycleanup, NULL);
+        orcm_db.store(orcm_sensor_base.dbhandle, "freq", vals, mycleanup, NULL);
     } else {
         OPAL_LIST_RELEASE(vals);
     }

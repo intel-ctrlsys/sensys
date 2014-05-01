@@ -13,34 +13,35 @@
  * entire components just to query their version and parameters.
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #include "opal/mca/base/base.h"
 #include "opal/mca/base/mca_base_var.h"
 
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/db/db.h"
-#include "orte/mca/db/base/base.h"
+
+#include "orcm/mca/db/db.h"
+#include "orcm/mca/db/base/base.h"
 #include "db_postgres.h"
 
 static int component_register(void);
 static bool component_avail(void);
-static orte_db_base_module_t *component_create(opal_list_t *props);
+static orcm_db_base_module_t *component_create(opal_list_t *props);
 
 /*
  * Instantiate the public struct with all of our public information
  * and pointers to our public functions in it
  */
-orte_db_base_component_t mca_db_postgres_component = {
+orcm_db_base_component_t mca_db_postgres_component = {
     {
-        ORTE_DB_BASE_VERSION_2_0_0,
+        ORCM_DB_BASE_VERSION_2_0_0,
 
         /* Component name and version */
         "postgres",
-        ORTE_MAJOR_VERSION,
-        ORTE_MINOR_VERSION,
-        ORTE_RELEASE_VERSION,
+        ORCM_MAJOR_VERSION,
+        ORCM_MINOR_VERSION,
+        ORCM_RELEASE_VERSION,
 
         /* Component open and close functions */
         NULL,
@@ -135,21 +136,21 @@ static bool component_avail(void)
     return true;
 }
 
-static orte_db_base_module_t *component_create(opal_list_t *props)
+static orcm_db_base_module_t *component_create(opal_list_t *props)
 {
     mca_db_postgres_module_t *mod;
     opal_value_t *kv;
 
     mod = (mca_db_postgres_module_t*)malloc(sizeof(mca_db_postgres_module_t));
     if (NULL == mod) {
-        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         return NULL;
     }
     memset(mod, 0, sizeof(mca_db_postgres_module_t));
     mod->num_worker_threads = -1;
 
     /* copy the APIs across */
-    memcpy(mod, &mca_db_postgres_module.api, sizeof(orte_db_base_module_t));
+    memcpy(mod, &mca_db_postgres_module.api, sizeof(orcm_db_base_module_t));
 
     /* if the props include db info, then use it */
     OPAL_LIST_FOREACH(kv, props, opal_value_t) {
@@ -203,11 +204,11 @@ static orte_db_base_module_t *component_create(opal_list_t *props)
     }
 
     /* let the module init */
-    if (ORTE_SUCCESS != mod->api.init((struct orte_db_base_module_t*)mod)) {
-        mod->api.finalize((struct orte_db_base_module_t*)mod);
+    if (ORCM_SUCCESS != mod->api.init((struct orcm_db_base_module_t*)mod)) {
+        mod->api.finalize((struct orcm_db_base_module_t*)mod);
         free(mod);
         return NULL;
     }
 
-    return (orte_db_base_module_t*)mod;
+    return (orcm_db_base_module_t*)mod;
 }

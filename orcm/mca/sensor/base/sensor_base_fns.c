@@ -17,7 +17,7 @@
 #include "opal/dss/dss.h"
 #include "opal/mca/event/event.h"
 
-#include "orte/mca/db/db.h"
+#include "orcm/mca/db/db.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -42,7 +42,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
         if (!orcm_sensor_base.dbhandle_requested) {
-            orte_db.open("sensor", NULL, db_open_cb, NULL);
+            orcm_db.open("sensor", NULL, db_open_cb, NULL);
             orcm_sensor_base.dbhandle_requested = true;
         }
 

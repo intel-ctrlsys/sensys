@@ -8,29 +8,29 @@
  * $HEADER$
  */
 
-#ifndef ORTE_DB_SQLITE_H
-#define ORTE_DB_SQLITE_H
+#ifndef ORCM_DB_SQLITE_H
+#define ORCM_DB_SQLITE_H
 
 #include <sqlite3.h>
 
-#include "orte/mca/db/db.h"
+#include "orcm/mca/db/db.h"
 
 BEGIN_C_DECLS
 
-ORTE_MODULE_DECLSPEC extern orte_db_base_component_t mca_db_sqlite_component;
+ORCM_MODULE_DECLSPEC extern orcm_db_base_component_t mca_db_sqlite_component;
 typedef struct {
-    orte_db_base_module_t api;
+    orcm_db_base_module_t api;
     char *dbfile;
     sqlite3 **dbhandles;
     int nthreads;
     int active;
 } mca_db_sqlite_module_t;
-ORTE_MODULE_DECLSPEC extern mca_db_sqlite_module_t mca_db_sqlite_module;
+ORCM_MODULE_DECLSPEC extern mca_db_sqlite_module_t mca_db_sqlite_module;
 
 
 
 /* Macros for manipulating sqlite */
-#define ORTE_SQLITE_CMD(f, db, r)                               \
+#define ORCM_SQLITE_CMD(f, db, r)                               \
     {                                                           \
         *(r) = sqlite3_ ## f;                                   \
         if (*(r) != SQLITE_OK) {                                \
@@ -39,7 +39,7 @@ ORTE_MODULE_DECLSPEC extern mca_db_sqlite_module_t mca_db_sqlite_module;
         }                                                       \
     }                                                           \
 
-#define ORTE_SQLITE_OP(f, x, db, r)                             \
+#define ORCM_SQLITE_OP(f, x, db, r)                             \
     {                                                           \
         *(r) = sqlite3_ ## f;                                   \
         if (*(r) != SQLITE_ ## x) {                             \
@@ -50,4 +50,4 @@ ORTE_MODULE_DECLSPEC extern mca_db_sqlite_module_t mca_db_sqlite_module;
 
 END_C_DECLS
 
-#endif /* ORTE_DB_SQLITE_H */
+#endif /* ORCM_DB_SQLITE_H */

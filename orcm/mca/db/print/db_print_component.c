@@ -8,34 +8,34 @@
  * $HEADER$
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #include "opal/mca/base/base.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 
-#include "orte/mca/db/db.h"
-#include "orte/mca/db/base/base.h"
+#include "orcm/mca/db/db.h"
+#include "orcm/mca/db/base/base.h"
 #include "db_print.h"
 
 static int component_register(void);
 static bool component_avail(void);
-static orte_db_base_module_t *component_create(opal_list_t *props);
+static orcm_db_base_module_t *component_create(opal_list_t *props);
 
 /*
  * Instantiate the public struct with all of our public information
  * and pointers to our public functions in it
  */
-orte_db_base_component_t mca_db_print_component = {
+orcm_db_base_component_t mca_db_print_component = {
     {
-        ORTE_DB_BASE_VERSION_2_0_0,
+        ORCM_DB_BASE_VERSION_2_0_0,
 
         /* Component name and version */
         "print",
-        ORTE_MAJOR_VERSION,
-        ORTE_MINOR_VERSION,
-        ORTE_RELEASE_VERSION,
+        ORCM_MAJOR_VERSION,
+        ORCM_MINOR_VERSION,
+        ORCM_RELEASE_VERSION,
 
         /* Component open and close functions */
         NULL,
@@ -65,7 +65,7 @@ static int component_register(void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             &filename);
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static bool component_avail(void)
@@ -74,7 +74,7 @@ static bool component_avail(void)
     return true;
 }
 
-static orte_db_base_module_t *component_create(opal_list_t *props)
+static orcm_db_base_module_t *component_create(opal_list_t *props)
 {
     mca_db_print_module_t *mod;
     opal_value_t *kv;
@@ -101,22 +101,22 @@ static orte_db_base_module_t *component_create(opal_list_t *props)
     }
     mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
     if (NULL == mod) {
-        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         return NULL;
     }
     /* copy the APIs across */
-    memcpy(mod, &mca_db_print_module.api, sizeof(orte_db_base_module_t));
+    memcpy(mod, &mca_db_print_module.api, sizeof(orcm_db_base_module_t));
 
     /* set the globals */
     mod->file = strdup(file);
     mod->fp = NULL;
 
     /* let the module init */
-    if (ORTE_SUCCESS != mod->api.init((struct orte_db_base_module_t*)mod)) {
+    if (ORCM_SUCCESS != mod->api.init((struct orcm_db_base_module_t*)mod)) {
         free(mod);
         return NULL;
     }
 
-    return (orte_db_base_module_t*)mod;
+    return (orcm_db_base_module_t*)mod;
 }
 

@@ -16,7 +16,7 @@ sources = \
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la
 # (for static builds).
 
-if MCA_BUILD_orte_db_postgres_DSO
+if MCA_BUILD_orcm_db_postgres_DSO
 component_noinst =
 component_install = mca_db_postgres.la
 else

@@ -48,7 +48,6 @@
 #include "opal/util/net.h"
 #include "opal/util/os_path.h"
 
-#include "orte/mca/db/base/base.h"
 #include "orte/mca/ess/base/base.h"
 #include "orte/mca/rml/base/base.h"
 #include "orte/mca/rml/base/rml_contact.h"
@@ -80,6 +79,7 @@
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/cfgi.h"
+#include "orcm/mca/db/base/base.h"
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/sensor.h"
@@ -310,15 +310,15 @@ static int emulator_init(void)
     }
     
     /* database */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_db_base_framework, 0))) {
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_db_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
-        error = "orte_db_base_open";
+        error = "orcm_db_base_open";
         goto error;
     }
     /* always restrict to local (i.e., non-PMI) database components */
-    if (ORTE_SUCCESS != (ret = orte_db_base_select())) {
+    if (ORTE_SUCCESS != (ret = orcm_db_base_select())) {
         ORTE_ERROR_LOG(ret);
-        error = "orte_db_base_select";
+        error = "orcm_db_base_select";
         goto error;
     }
 
@@ -478,7 +478,7 @@ static void emulator_finalize(void)
     (void) mca_base_framework_close(&orte_rml_base_framework);
     (void) mca_base_framework_close(&orte_oob_base_framework);
     (void) mca_base_framework_close(&orte_state_base_framework);
-    (void) mca_base_framework_close(&orte_db_base_framework);
+    (void) mca_base_framework_close(&orcm_db_base_framework);
     (void) mca_base_framework_close(&opal_dstore_base_framework);
 }
 

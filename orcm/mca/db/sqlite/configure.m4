@@ -11,8 +11,8 @@ dnl
 
 # MCA_db_sqlite_CONFIG([action-if-found], [action-if-not-found])
 # -----------------------------------------------------------
-AC_DEFUN([MCA_orte_db_sqlite_CONFIG], [
-    AC_CONFIG_FILES([orte/mca/db/sqlite/Makefile])
+AC_DEFUN([MCA_orcm_db_sqlite_CONFIG], [
+    AC_CONFIG_FILES([orcm/mca/db/sqlite/Makefile])
 
     AC_ARG_WITH([sqlite3],
                 [AC_HELP_STRING([--with-sqlite3],
@@ -22,13 +22,13 @@ AC_DEFUN([MCA_orte_db_sqlite_CONFIG], [
     # do not build if rte is disabled or support not requested
     AS_IF([test "$with_sqlite3" != "no"],
           [AS_IF([test ! -z "$with_sqlite3" -a "$with_sqlite3" != "yes"],
-                 [orte_check_sqlite3_dir="$with_sqlite3"])
+                 [orcm_check_sqlite3_dir="$with_sqlite3"])
            OPAL_CHECK_PACKAGE([db_sqlite],
                               [sqlite3.h],
                               [sqlite3],
                               [sqlite3_open],
                               [],
-                              [$orte_check_sqlite3_dir],
+                              [$orcm_check_sqlite3_dir],
                               [],
                               [$1],
                               [$2])],

@@ -38,8 +38,9 @@
 #include "opal/mca/pstat/pstat.h"
 #include "opal/mca/event/event.h"
 
-#include "orte/mca/db/db.h"
 #include "orte/mca/errmgr/errmgr.h"
+
+#include "orcm/mca/db/db.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -881,7 +882,7 @@ static void sigar_log(opal_buffer_t *sample)
 
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
-        orte_db.store(orcm_sensor_base.dbhandle, "sigar", vals, mycleanup, NULL);
+        orcm_db.store(orcm_sensor_base.dbhandle, "sigar", vals, mycleanup, NULL);
     } else {
         OPAL_LIST_RELEASE(vals);
     }

@@ -9,8 +9,8 @@
  *
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #include <string.h>
 #include <sys/types.h>
@@ -31,14 +31,14 @@
 #include "opal/util/argv.h"
 #include "opal/util/error.h"
 
-#include "orte/mca/db/base/base.h"
+#include "orcm/mca/db/base/base.h"
 #include "db_postgres.h"
 
-#define ORTE_PG_MAX_LINE_LENGTH 4096
+#define ORCM_PG_MAX_LINE_LENGTH 4096
 
-static int init(struct orte_db_base_module_t *imod);
-static void finalize(struct orte_db_base_module_t *imod);
-static int store(struct orte_db_base_module_t *imod,
+static int init(struct orcm_db_base_module_t *imod);
+static void finalize(struct orcm_db_base_module_t *imod);
+static int store(struct orcm_db_base_module_t *imod,
                  const char *primary_key,
                  opal_list_t *kvs);
 
@@ -53,7 +53,7 @@ mca_db_postgres_module_t mca_db_postgres_module = {
     },
 };
 
-static int init(struct orte_db_base_module_t *imod)
+static int init(struct orcm_db_base_module_t *imod)
 {
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
     char **login=NULL;
@@ -65,7 +65,7 @@ static int init(struct orte_db_base_module_t *imod)
         opal_output(0, "db:postgres: User info is invalid: %s",
                     mod->user);
         opal_argv_free(login);
-        return ORTE_ERR_BAD_PARAM;
+        return ORCM_ERR_BAD_PARAM;
     }
     /* break the uri */
     connection = opal_argv_split(mod->pguri, ':');
@@ -74,7 +74,7 @@ static int init(struct orte_db_base_module_t *imod)
         opal_argv_free(connection);
         opal_output(0, "db:postgres: Connection info is invalid: %s",
                     mod->pguri);
-        return ORTE_ERR_BAD_PARAM;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     conn = PQsetdbLogin(connection[0], connection[1],
@@ -95,17 +95,17 @@ static int init(struct orte_db_base_module_t *imod)
                     mod->dbname,
                     mod->user);
         opal_output(0, "\n***********************************************");
-        exit(ORTE_ERR_CONNECTION_FAILED);
-        return ORTE_ERR_CONNECTION_FAILED;
+        exit(ORCM_ERR_CONNECTION_FAILED);
+        return ORCM_ERR_CONNECTION_FAILED;
     }
-    opal_output_verbose(5, orte_db_base_framework.framework_output,
+    opal_output_verbose(5, orcm_db_base_framework.framework_output,
                         "db:postgres: Connection established to %s",
                         mod->dbname);
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
-static void finalize(struct orte_db_base_module_t *imod)
+static void finalize(struct orcm_db_base_module_t *imod)
 {
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
     if (NULL != mod->dbname) {
@@ -131,7 +131,7 @@ static void finalize(struct orte_db_base_module_t *imod)
     }
 }
 
-static int store(struct orte_db_base_module_t *imod,
+static int store(struct orcm_db_base_module_t *imod,
                  const char *primary_key,
                  opal_list_t *kvs)
 {
@@ -230,7 +230,7 @@ static int store(struct orte_db_base_module_t *imod,
     asprintf(&query, "INSERT INTO %s values (%s)", mod->table, vstr);
     free(vstr);
 
-    opal_output_verbose(2, orte_db_base_framework.framework_output,
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
                         "Executing query %s", query);
 
     /* execute it */
@@ -243,10 +243,10 @@ static int store(struct orte_db_base_module_t *imod,
         opal_output(0, "DATA. ABORTING");
         opal_output(0, "\n***********************************************");
         PQclear(res);
-        return ORTE_ERROR;
+        return ORCM_ERROR;
     }
 
-    opal_output_verbose(2, orte_db_base_framework.framework_output,
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
                         "Query succeeded");
 
     PQclear(res);

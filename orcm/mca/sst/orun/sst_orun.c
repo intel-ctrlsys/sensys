@@ -49,7 +49,6 @@
 #include "opal/util/net.h"
 #include "opal/util/os_path.h"
 
-#include "orte/mca/db/base/base.h"
 #include "orte/mca/ess/base/base.h"
 #include "orte/mca/rmaps/base/base.h"
 #include "orte/mca/rml/base/base.h"
@@ -82,6 +81,7 @@
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/base/base.h"
+#include "orcm/mca/db/base/base.h"
 
 #include "orcm/mca/sst/base/base.h"
 #include "orcm/mca/sst/orun/sst_orun.h"
@@ -487,17 +487,17 @@ static int orun_init(void)
     }
 
     /* database */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_db_base_framework, 0))) {
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_db_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&buf);
-        error = "orte_db_base_open";
+        error = "orcm_db_base_open";
         goto error;
     }
     /* always restrict daemons to local database components */
-    if (ORTE_SUCCESS != (ret = orte_db_base_select())) {
+    if (ORTE_SUCCESS != (ret = orcm_db_base_select())) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&buf);
-        error = "orte_db_base_select";
+        error = "orcm_db_base_select";
         goto error;
     }
 
@@ -810,7 +810,7 @@ static void orun_finalize(void)
     (void) mca_base_framework_close(&orte_oob_base_framework);
     (void) mca_base_framework_close(&orte_state_base_framework);
 
-    (void) mca_base_framework_close(&orte_db_base_framework);
+    (void) mca_base_framework_close(&orcm_db_base_framework);
     (void) mca_base_framework_close(&opal_dstore_base_framework);
 
     /* cleanup any lingering session directories */

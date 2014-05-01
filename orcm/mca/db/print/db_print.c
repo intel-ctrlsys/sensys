@@ -9,8 +9,8 @@
  *
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #include <time.h>
 #include <string.h>
@@ -31,12 +31,12 @@
 #include "opal/util/output.h"
 #include "opal_stdint.h"
 
-#include "orte/mca/db/base/base.h"
+#include "orcm/mca/db/base/base.h"
 #include "db_print.h"
 
-static int init(struct orte_db_base_module_t *imod);
-static void finalize(struct orte_db_base_module_t *imod);
-static int store(struct orte_db_base_module_t *imod,
+static int init(struct orcm_db_base_module_t *imod);
+static void finalize(struct orcm_db_base_module_t *imod);
+static int store(struct orcm_db_base_module_t *imod,
                  const char *primary_key,
                  opal_list_t *kvs);
 
@@ -51,7 +51,7 @@ mca_db_print_module_t mca_db_print_module = {
     },
 };
 
-static int init(struct orte_db_base_module_t *imod)
+static int init(struct orcm_db_base_module_t *imod)
 {
     mca_db_print_module_t *mod = (mca_db_print_module_t*)imod;
 
@@ -61,13 +61,13 @@ static int init(struct orte_db_base_module_t *imod)
         mod->fp = stderr;
     } else if (NULL == (mod->fp = fopen(mod->file, "w"))) {
         opal_output(0, "ERROR: cannot open log file %s", mod->file);
-        return ORTE_ERROR;
+        return ORCM_ERROR;
     }
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
-static void finalize(struct orte_db_base_module_t *imod)
+static void finalize(struct orcm_db_base_module_t *imod)
 {
     mca_db_print_module_t *mod = (mca_db_print_module_t*)imod;
 
@@ -78,7 +78,7 @@ static void finalize(struct orte_db_base_module_t *imod)
     }
 }
 
-static int store(struct orte_db_base_module_t *imod,
+static int store(struct orcm_db_base_module_t *imod,
                  const char *primary_key,
                  opal_list_t *kvs)
 {

@@ -9,8 +9,8 @@
  * $HEADER$
  */
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #include "opal/class/opal_list.h"
 #include "opal/mca/mca.h"
@@ -18,15 +18,15 @@
 #include "opal/mca/base/mca_base_component_repository.h"
 #include "opal/util/output.h"
 
-#include "orte/mca/db/base/base.h"
+#include "orcm/mca/db/base/base.h"
 
 static bool selected = false;
 
-int orte_db_base_select(void)
+int orcm_db_base_select(void)
 {
     mca_base_component_list_item_t *cli;
-    orte_db_base_component_t *component;
-    orte_db_base_active_component_t *active, *ncomponent;
+    orcm_db_base_component_t *component;
+    orcm_db_base_active_component_t *active, *ncomponent;
     bool inserted;
 
     if (selected) {
@@ -36,23 +36,23 @@ int orte_db_base_select(void)
     selected = true;
     
     /* Query all available components and ask if they have a module */
-    OPAL_LIST_FOREACH(cli, &orte_db_base_framework.framework_components, mca_base_component_list_item_t) {
-        component = (orte_db_base_component_t*)cli->cli_component;
+    OPAL_LIST_FOREACH(cli, &orcm_db_base_framework.framework_components, mca_base_component_list_item_t) {
+        component = (orcm_db_base_component_t*)cli->cli_component;
 
-        opal_output_verbose(5, orte_db_base_framework.framework_output,
+        opal_output_verbose(5, orcm_db_base_framework.framework_output,
                             "mca:db:select: checking available component %s",
                             component->base_version.mca_component_name);
 
         /* If there's no query function, skip it */
         if (NULL == component->available) {
-            opal_output_verbose(5, orte_db_base_framework.framework_output,
+            opal_output_verbose(5, orcm_db_base_framework.framework_output,
                                 "mca:db:select: Skipping component [%s]. It does not implement a query function",
                                 component->base_version.mca_component_name );
             continue;
         }
 
         /* Query the component */
-        opal_output_verbose(5, orte_db_base_framework.framework_output,
+        opal_output_verbose(5, orcm_db_base_framework.framework_output,
                             "mca:db:select: Querying component [%s]",
                             component->base_version.mca_component_name);
 
@@ -60,7 +60,7 @@ int orte_db_base_select(void)
          * it has no available interfaces
          */
         if (!component->available()) {
-            opal_output_verbose(5, orte_db_base_framework.framework_output,
+            opal_output_verbose(5, orcm_db_base_framework.framework_output,
                                 "mca:db:select: Skipping component [%s] - not available",
                                 component->base_version.mca_component_name );
             continue;
@@ -68,11 +68,11 @@ int orte_db_base_select(void)
 
         /* maintain priority order */
         inserted = false;
-        ncomponent = OBJ_NEW(orte_db_base_active_component_t);
+        ncomponent = OBJ_NEW(orcm_db_base_active_component_t);
         ncomponent->component = component;
-        OPAL_LIST_FOREACH(active, &orte_db_base.actives, orte_db_base_active_component_t) {
+        OPAL_LIST_FOREACH(active, &orcm_db_base.actives, orcm_db_base_active_component_t) {
             if (component->priority > active->component->priority) {
-                opal_list_insert_pos(&orte_db_base.actives,
+                opal_list_insert_pos(&orcm_db_base.actives,
                                      &active->super, &ncomponent->super);
                 inserted = true;
                 break;
@@ -80,19 +80,19 @@ int orte_db_base_select(void)
         }
         if (!inserted) {
             /* must be lowest priority - add to end */
-            opal_list_append(&orte_db_base.actives, &ncomponent->super);
+            opal_list_append(&orcm_db_base.actives, &ncomponent->super);
         }
     }
 
     /* if no components are available, that is an error */
-    if (0 == opal_list_get_size(&orte_db_base.actives)) {
-        return ORTE_ERR_NOT_FOUND;
+    if (0 == opal_list_get_size(&orcm_db_base.actives)) {
+        return ORCM_ERR_NOT_FOUND;
     }
 
-    if (4 < opal_output_get_verbosity(orte_db_base_framework.framework_output)) {
+    if (4 < opal_output_get_verbosity(orcm_db_base_framework.framework_output)) {
         opal_output(0, "Final db priorities");
         /* show the prioritized list */
-        OPAL_LIST_FOREACH(active, &orte_db_base.actives, orte_db_base_active_component_t) {
+        OPAL_LIST_FOREACH(active, &orcm_db_base.actives, orcm_db_base_active_component_t) {
             opal_output(0, "\tComponent: %s Store Priority: %d",
                         active->component->base_version.mca_component_name,
                         active->component->priority);

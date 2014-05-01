@@ -31,7 +31,6 @@
 #include "opal/util/output.h"
 #include "opal/mca/pstat/pstat.h"
 
-#include "orte/mca/db/db.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/name_fns.h"
 #include "orte/mca/errmgr/errmgr.h"
@@ -41,6 +40,8 @@
 #include "orte/mca/state/state.h"
 #include "orte/runtime/orte_globals.h"
 #include "orte/orted/orted.h"
+
+#include "orcm/mca/db/db.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -428,7 +429,7 @@ static void res_log(opal_buffer_t *sample)
 
         /* store it */
         if (0 <= orcm_sensor_base.dbhandle) {
-            orte_db.store(orcm_sensor_base.dbhandle, "nodestats", vals, mycleanup, NULL);
+            orcm_db.store(orcm_sensor_base.dbhandle, "nodestats", vals, mycleanup, NULL);
         } else {
             OPAL_LIST_RELEASE(vals);
         }
@@ -533,7 +534,7 @@ static void res_log(opal_buffer_t *sample)
 
             /* store it */
             if (0 <= orcm_sensor_base.dbhandle) {
-                orte_db.store(orcm_sensor_base.dbhandle, "procstats", vals, mycleanup, NULL);
+                orcm_db.store(orcm_sensor_base.dbhandle, "procstats", vals, mycleanup, NULL);
             } else {
                 OPAL_LIST_RELEASE(vals);
             }

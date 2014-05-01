@@ -9,8 +9,8 @@
  */
 
 
-#include "orte_config.h"
-#include "orte/constants.h"
+#include "orcm_config.h"
+#include "orcm/constants.h"
 
 #include "opal_stdint.h"
 #include "opal/mca/mca.h"
@@ -19,16 +19,16 @@
 #include "opal/mca/base/base.h"
 #include "opal/dss/dss_types.h"
 
-#include "orte/mca/db/base/base.h"
+#include "orcm/mca/db/base/base.h"
 
 
 static void process_open(int fd, short args, void *cbdata)
 {
-    orte_db_request_t *req = (orte_db_request_t*)cbdata;
-    orte_db_handle_t *hdl;
-    orte_db_base_module_t *mod;
-    orte_db_base_active_component_t *active;
-    orte_db_base_component_t *component;
+    orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
+    orcm_db_handle_t *hdl;
+    orcm_db_base_module_t *mod;
+    orcm_db_base_active_component_t *active;
+    orcm_db_base_component_t *component;
     int i, index;
     char **cmps = NULL;
     opal_value_t *kv;
@@ -46,7 +46,7 @@ static void process_open(int fd, short args, void *cbdata)
     /* cycle thru the available components until one saids
      * it can create a handle for these properties
      */
-    OPAL_LIST_FOREACH(active, &orte_db_base.actives, orte_db_base_active_component_t) {
+    OPAL_LIST_FOREACH(active, &orcm_db_base.actives, orcm_db_base_active_component_t) {
         component = active->component;
         found = true;
         if (NULL != cmps) {
@@ -62,10 +62,10 @@ static void process_open(int fd, short args, void *cbdata)
             /* let this component try */
             if (NULL != (mod = component->create_handle(req->properties))) {
                 /* create the handle */
-                hdl = OBJ_NEW(orte_db_handle_t);
+                hdl = OBJ_NEW(orcm_db_handle_t);
                 hdl->component = component;
                 hdl->module = mod;
-                index = opal_pointer_array_add(&orte_db_base.handles, hdl);
+                index = opal_pointer_array_add(&orcm_db_base.handles, hdl);
                 if (NULL != req->cbfunc) {
                     req->cbfunc(index, OPAL_SUCCESS, NULL, req->cbdata);
                 }
@@ -77,29 +77,29 @@ static void process_open(int fd, short args, void *cbdata)
 
     /* if we get here, we were unable to create the handle */
     if (NULL != req->cbfunc) {
-        req->cbfunc(-1, ORTE_ERROR, NULL, req->cbdata);
+        req->cbfunc(-1, ORCM_ERROR, NULL, req->cbdata);
     }
     OBJ_RELEASE(req);
 }
 
-void orte_db_base_open(char *name,
+void orcm_db_base_open(char *name,
                        opal_list_t *properties,
-                       orte_db_callback_fn_t cbfunc,
+                       orcm_db_callback_fn_t cbfunc,
                        void *cbdata)
 {
-    orte_db_request_t *req;
+    orcm_db_request_t *req;
 
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orte_db_request_t);
+    req = OBJ_NEW(orcm_db_request_t);
     /* transfer the name in the primary key */
     req->primary_key = name;
     req->properties = properties;
     req->cbfunc = cbfunc;
     req->cbdata = cbdata;
-    opal_event_set(orte_db_base.ev_base, &req->ev, -1,
+    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
                    OPAL_EV_WRITE,
                    process_open, req);
     opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
@@ -108,21 +108,21 @@ void orte_db_base_open(char *name,
 
 static void process_close(int fd, short args, void *cbdata) 
 {
-    orte_db_request_t *req = (orte_db_request_t*)cbdata;
-    orte_db_handle_t *hdl;
-    int rc=ORTE_SUCCESS;
+    orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
+    orcm_db_handle_t *hdl;
+    int rc=ORCM_SUCCESS;
 
     /* get the handle object */
-    if (NULL == (hdl = (orte_db_handle_t*)opal_pointer_array_get_item(&orte_db_base.handles, req->dbhandle))) {
-        rc = ORTE_ERR_NOT_FOUND;
+    if (NULL == (hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles, req->dbhandle))) {
+        rc = ORCM_ERR_NOT_FOUND;
         goto found;
     }
     if (NULL ==  hdl->module) {
-        rc = ORTE_ERR_NOT_FOUND;
+        rc = ORCM_ERR_NOT_FOUND;
         goto found;
     }
     if (NULL != hdl->module->finalize) {
-        hdl->module->finalize((struct orte_db_base_module_t*)hdl->module);
+        hdl->module->finalize((struct orcm_db_base_module_t*)hdl->module);
     }
 
  found:
@@ -130,26 +130,26 @@ static void process_close(int fd, short args, void *cbdata)
         req->cbfunc(req->dbhandle, rc, NULL, req->cbdata);
     }
     /* release the handle */
-    opal_pointer_array_set_item(&orte_db_base.handles, req->dbhandle, NULL);
+    opal_pointer_array_set_item(&orcm_db_base.handles, req->dbhandle, NULL);
     OBJ_RELEASE(hdl);
     OBJ_RELEASE(req);
 }
 
-void orte_db_base_close(int dbhandle,
-                        orte_db_callback_fn_t cbfunc,
+void orcm_db_base_close(int dbhandle,
+                        orcm_db_callback_fn_t cbfunc,
                         void *cbdata)
 {
-    orte_db_request_t *req;
+    orcm_db_request_t *req;
 
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orte_db_request_t);
+    req = OBJ_NEW(orcm_db_request_t);
     req->dbhandle = dbhandle;
     req->cbfunc = cbfunc;
     req->cbdata = cbdata;
-    opal_event_set(orte_db_base.ev_base, &req->ev, -1,
+    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
                    OPAL_EV_WRITE,
                    process_close, req);
     opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
@@ -159,21 +159,21 @@ void orte_db_base_close(int dbhandle,
 
 static void process_store(int fd, short args, void *cbdata) 
 {
-    orte_db_request_t *req = (orte_db_request_t*)cbdata;
-    orte_db_handle_t *hdl;
-    int rc=ORTE_SUCCESS;
+    orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
+    orcm_db_handle_t *hdl;
+    int rc=ORCM_SUCCESS;
 
     /* get the handle object */
-    if (NULL == (hdl = (orte_db_handle_t*)opal_pointer_array_get_item(&orte_db_base.handles, req->dbhandle))) {
-        rc = ORTE_ERR_NOT_FOUND;
+    if (NULL == (hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles, req->dbhandle))) {
+        rc = ORCM_ERR_NOT_FOUND;
         goto found;
     }
     if (NULL ==  hdl->module) {
-        rc = ORTE_ERR_NOT_FOUND;
+        rc = ORCM_ERR_NOT_FOUND;
         goto found;
     }
     if (NULL != hdl->module->store) {
-        rc = hdl->module->store((struct orte_db_base_module_t*)hdl->module, req->primary_key, req->kvs);
+        rc = hdl->module->store((struct orcm_db_base_module_t*)hdl->module, req->primary_key, req->kvs);
     }
 
  found:
@@ -183,25 +183,25 @@ static void process_store(int fd, short args, void *cbdata)
     OBJ_RELEASE(req);
 }
 
-void orte_db_base_store(int dbhandle,
+void orcm_db_base_store(int dbhandle,
                         const char *primary_key,
                         opal_list_t *kvs,
-                        orte_db_callback_fn_t cbfunc,
+                        orcm_db_callback_fn_t cbfunc,
                         void *cbdata)
 {
-    orte_db_request_t *req;
+    orcm_db_request_t *req;
 
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orte_db_request_t);
+    req = OBJ_NEW(orcm_db_request_t);
     req->dbhandle = dbhandle;
     req->primary_key = (char*)primary_key;
     req->kvs = kvs;
     req->cbfunc = cbfunc;
     req->cbdata = cbdata;
-    opal_event_set(orte_db_base.ev_base, &req->ev, -1,
+    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
                    OPAL_EV_WRITE,
                    process_store, req);
     opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
@@ -210,21 +210,21 @@ void orte_db_base_store(int dbhandle,
 
 static void process_commit(int fd, short args, void *cbdata) 
 {
-    orte_db_request_t *req = (orte_db_request_t*)cbdata;
-    orte_db_handle_t *hdl;
-    int rc=ORTE_SUCCESS;
+    orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
+    orcm_db_handle_t *hdl;
+    int rc=ORCM_SUCCESS;
 
     /* get the handle object */
-    if (NULL == (hdl = (orte_db_handle_t*)opal_pointer_array_get_item(&orte_db_base.handles, req->dbhandle))) {
-        rc = ORTE_ERR_NOT_FOUND;
+    if (NULL == (hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles, req->dbhandle))) {
+        rc = ORCM_ERR_NOT_FOUND;
         goto found;
     }
     if (NULL ==  hdl->module) {
-        rc = ORTE_ERR_NOT_FOUND;
+        rc = ORCM_ERR_NOT_FOUND;
         goto found;
     }
     if (NULL != hdl->module->commit) {
-        hdl->module->commit((struct orte_db_base_module_t*)hdl->module);
+        hdl->module->commit((struct orcm_db_base_module_t*)hdl->module);
     }
 
  found:
@@ -234,21 +234,21 @@ static void process_commit(int fd, short args, void *cbdata)
     OBJ_RELEASE(req);
 }
 
-void orte_db_base_commit(int dbhandle,
-                         orte_db_callback_fn_t cbfunc,
+void orcm_db_base_commit(int dbhandle,
+                         orcm_db_callback_fn_t cbfunc,
                          void *cbdata)
 {
-    orte_db_request_t *req;
+    orcm_db_request_t *req;
 
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orte_db_request_t);
+    req = OBJ_NEW(orcm_db_request_t);
     req->dbhandle = dbhandle;
     req->cbfunc = cbfunc;
     req->cbdata = cbdata;
-    opal_event_set(orte_db_base.ev_base, &req->ev, -1,
+    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
                    OPAL_EV_WRITE,
                    process_commit, req);
     opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
@@ -257,20 +257,20 @@ void orte_db_base_commit(int dbhandle,
 
 static void process_fetch(int fd, short args, void *cbdata) 
 {
-    orte_db_request_t *req = (orte_db_request_t*)cbdata;
-    orte_db_handle_t *hdl;
+    orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
+    orcm_db_handle_t *hdl;
     int rc;
 
     /* get the handle object */
-    if (NULL == (hdl = (orte_db_handle_t*)opal_pointer_array_get_item(&orte_db_base.handles, req->dbhandle))) {
-        rc = ORTE_ERR_NOT_FOUND;
+    if (NULL == (hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles, req->dbhandle))) {
+        rc = ORCM_ERR_NOT_FOUND;
         goto found;
     }
     if (NULL ==  hdl->module) {
-        rc = ORTE_ERR_NOT_FOUND;
+        rc = ORCM_ERR_NOT_FOUND;
         goto found;
     }
-    rc = hdl->module->fetch((struct orte_db_base_module_t*)hdl->module, req->primary_key, req->key, req->kvs);
+    rc = hdl->module->fetch((struct orcm_db_base_module_t*)hdl->module, req->primary_key, req->key, req->kvs);
  found:
     if (NULL != req->cbfunc) {
         req->cbfunc(req->dbhandle, rc, req->kvs, req->cbdata);
@@ -278,27 +278,27 @@ static void process_fetch(int fd, short args, void *cbdata)
     OBJ_RELEASE(req);
 }
 
-void orte_db_base_fetch(int dbhandle,
+void orcm_db_base_fetch(int dbhandle,
                         const char *primary_key,
                         const char *key,
                         opal_list_t *kvs,
-                        orte_db_callback_fn_t cbfunc,
+                        orcm_db_callback_fn_t cbfunc,
                         void *cbdata)
 {
-    orte_db_request_t *req;
+    orcm_db_request_t *req;
 
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orte_db_request_t);
+    req = OBJ_NEW(orcm_db_request_t);
     req->dbhandle = dbhandle;
     req->primary_key = (char*)primary_key;
     req->key = (char*)key;
     req->kvs = kvs;
     req->cbfunc = cbfunc;
     req->cbdata = cbdata;
-    opal_event_set(orte_db_base.ev_base, &req->ev, -1,
+    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
                    OPAL_EV_WRITE,
                    process_fetch, req);
     opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
@@ -307,20 +307,20 @@ void orte_db_base_fetch(int dbhandle,
 
 static void process_remove(int fd, short args, void *cbdata) 
 {
-    orte_db_request_t *req = (orte_db_request_t*)cbdata;
-    orte_db_handle_t *hdl;
+    orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
+    orcm_db_handle_t *hdl;
     int rc;
 
     /* get the handle object */
-    if (NULL == (hdl = (orte_db_handle_t*)opal_pointer_array_get_item(&orte_db_base.handles, req->dbhandle))) {
-        rc = ORTE_ERR_NOT_FOUND;
+    if (NULL == (hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles, req->dbhandle))) {
+        rc = ORCM_ERR_NOT_FOUND;
         goto found;
     }
     if (NULL ==  hdl->module) {
-        rc = ORTE_ERR_NOT_FOUND;
+        rc = ORCM_ERR_NOT_FOUND;
         goto found;
     }
-    rc = hdl->module->remove((struct orte_db_base_module_t*)hdl->module, req->primary_key, req->key);
+    rc = hdl->module->remove((struct orcm_db_base_module_t*)hdl->module, req->primary_key, req->key);
  found:
     if (NULL != req->cbfunc) {
         req->cbfunc(req->dbhandle, rc, NULL, req->cbdata);
@@ -328,25 +328,25 @@ static void process_remove(int fd, short args, void *cbdata)
     OBJ_RELEASE(req);
 }
 
-void orte_db_base_remove_data(int dbhandle,
+void orcm_db_base_remove_data(int dbhandle,
                               const char *primary_key,
                               const char *key,
-                              orte_db_callback_fn_t cbfunc,
+                              orcm_db_callback_fn_t cbfunc,
                               void *cbdata)
 {
-    orte_db_request_t *req;
+    orcm_db_request_t *req;
 
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orte_db_request_t);
+    req = OBJ_NEW(orcm_db_request_t);
     req->dbhandle = dbhandle;
     req->primary_key = (char*)primary_key;
     req->key = (char*)key;
     req->cbfunc = cbfunc;
     req->cbdata = cbdata;
-    opal_event_set(orte_db_base.ev_base, &req->ev, -1,
+    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
                    OPAL_EV_WRITE,
                    process_remove, req);
     opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);

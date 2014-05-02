@@ -113,14 +113,14 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &s->id, 1, ORCM_ALLOC_ID_T))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(ans);
-            return rc;
+            return;
         }
         if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
                                                           ORCM_RML_TAG_ALLOC,
                                                           orte_rml_send_callback, NULL))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(ans);
-            return rc;
+            return;
         }
 
         /* pass it to the scheduler */

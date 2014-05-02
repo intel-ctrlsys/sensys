@@ -130,7 +130,6 @@ static int orcmsched_init(void)
     orcm_rack_t *rack;
     orcm_row_t *row;
     orcm_cluster_t *cluster;
-    orcm_cmpnode_t *cmpnode;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -204,20 +203,20 @@ static int orcmsched_init(void)
     setup_sighandler(SIGUSR2, &sigusr2_handler, signal_callback);
     signals_set = true;
 
-    /* cycle thru the cluster and add the compute nodes to the scheduler */
+    /* cycle thru the cluster and set node states */
     OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
         OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     /* add the node to the scheduler pool */
-                    cmpnode = OBJ_NEW(orcm_cmpnode_t);
+                    //cmpnode = OBJ_NEW(orcm_cmpnode_t);
                     OBJ_RETAIN(node);  // maintain accounting
-                    cmpnode->node = node;
+                    //cmpnode->node = node;
                     opal_output_verbose(2, orcm_sst_base_framework.framework_output,
                                         "%s add node %s",
                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                         (NULL == node->name) ? "NULL" : node->name);
-                    opal_pointer_array_add(&orcm_scd_base.nodes, cmpnode);
+                    //opal_pointer_array_add(&orcm_scd_base.nodes, cmpnode);
                 }
             }
         }

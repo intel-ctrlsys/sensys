@@ -55,7 +55,7 @@ typedef struct {
 OBJ_CLASS_DECLARATION(orcm_resource_t);
 
 typedef struct {
-    opal_list_item_t super;
+    opal_object_t super;
     int32_t priority;         // session priority
     char *account;            // account to be charged
     char *name;               // user-assigned project name
@@ -106,29 +106,9 @@ typedef struct {
     opal_list_item_t super;
     char *name;
     int32_t priority;
-    opal_pointer_array_t nodes;
-    opal_pointer_array_t all_sessions;
-    opal_pointer_array_t power_binned;
-    opal_pointer_array_t node_binned;
+    opal_list_t sessions;
 } orcm_queue_t;
 OBJ_CLASS_DECLARATION(orcm_queue_t);
-
-
-/****    NODE TYPE    ****/
-/* The ORCM scheduler doesn't need to track the detailed
- * information found in the ORTE node object as the scheduler
- * isn't tasked with actually executing the job - e.g., it doesn't
- * need to know which processes are on what node. In the interest
- * of saving memory footprint, we therefore define a limited
- * node object that only contains the info required by the
- * scheduler
- */
-typedef struct {
-    opal_list_item_t super;
-    orcm_node_t *node;
-    orcm_queue_t *queue;
-} orcm_cmpnode_t;
-OBJ_CLASS_DECLARATION(orcm_cmpnode_t);
 
 
 /****    JOB TYPE    ****/
@@ -172,7 +152,7 @@ OBJ_CLASS_DECLARATION(orcm_step_t);
 typedef uint32_t orcm_session_state_t;
 typedef uint32_t orcm_session_id_t;
 typedef struct {
-    opal_object_t super;
+    opal_list_item_t super;
     orcm_session_id_t id;
     bool interactive;
     int32_t uid;
@@ -192,7 +172,7 @@ OBJ_CLASS_DECLARATION(orcm_session_t);
 #define ORCM_SESSION_STATE_ACTIVE         4 // job step(s) running
 #define ORCM_SESSION_STATE_TERMINATED     5 // allocation terminated
 
-#define ORCM_SESSION_STATE_SCHEDULE       9 // run schedulers
+#define ORCM_SESSION_STATE_SCHEDULE       6 // run schedulers
 #define ORCM_SESSION_STATE_ANY           10 // marker
 
 #define ORCM_SESSION_STATE_ERROR         20 // marker

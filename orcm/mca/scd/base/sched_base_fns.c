@@ -43,10 +43,6 @@ void orcm_sched_base_activate_session_state(orcm_session_t *session,
             continue;
         }
         if (s->state == state) {
-            OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
-                                 "%s ACTIVATING SESSION %d STATE %s PRI %d",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                 session->id, orcm_session_state_to_str(state), s->priority));
             if (NULL == s->cbfunc) {
                 OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
                                      "%s NULL CBFUNC FOR SESSION %d STATE %s",
@@ -127,10 +123,8 @@ void orcm_scd_base_construct_queues(int fd, short args, void *cbdata)
     orcm_scheduler_caddy_t *c = (orcm_scheduler_caddy_t*)cbdata;
     orcm_scheduler_t *scheduler = c->scheduler;
     orcm_queue_t *q, *q2, *def;
-    orcm_cmpnode_t *cmpnode;
-    int i, k, j, n, rc;
-    char **t1, **t2, **vals;
-    bool found;
+    int i;
+    char **t1;
 
     /* push our default queue onto the stack */
     def = OBJ_NEW(orcm_queue_t);
@@ -155,46 +149,6 @@ void orcm_scd_base_construct_queues(int fd, short args, void *cbdata)
             q->name = strdup(t1[0]);
             /* second is the priority */
             q->priority = strtol(t1[1], NULL, 10);
-            /* last is the comma-separated list of
-             * regular expressions defining the nodes
-             * to be included in this queue
-             */
-            t2 = opal_argv_split(t1[2], ',');
-            for (k=0; NULL != t2[k]; k++) {
-                vals = NULL;
-                /* let the regular expression parser work on it */
-                if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(t2[k], &vals))) {
-                    ORTE_ERROR_LOG(rc);
-                    OBJ_RELEASE(c);
-                    return;
-                }
-                for (j=0; NULL != vals[j]; j++) {
-                    found = false;
-                    for (n=0; n < orcm_scd_base.nodes.size; n++) {
-                        if (NULL == (cmpnode = (orcm_cmpnode_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, n))) {
-                            continue;
-                        }
-                        opal_output(0, "CHECKING %s AGAINST %s", vals[j], cmpnode->node->name);
-                        if (0 == strcmp(cmpnode->node->name, vals[j])) {
-                            OBJ_RETAIN(cmpnode);  // maintain accounting
-                            OBJ_RETAIN(q);  // maintina accounting
-                            cmpnode->queue = q;
-                            opal_output(0, "ADDING %s TO QUEUE %s", cmpnode->node->name, q->name);
-                            opal_pointer_array_add(&q->nodes, cmpnode);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        orte_show_help("help-orcm-scd.txt", "unknown-node",
-                                       true, q->name, vals[j]);
-                        OBJ_RELEASE(c);
-                        return;
-                    }
-                }
-                opal_argv_free(vals);
-            }
-            opal_argv_free(t2);
             /* insert this queue in priority order from highest
              * to lowest priority - we know the default queue
              * will always be at the bottom
@@ -209,30 +163,10 @@ void orcm_scd_base_construct_queues(int fd, short args, void *cbdata)
         }
     }
 
-    /* all remaining nodes go into the default queue */
-    for (n=0; n < orcm_scd_base.nodes.size; n++) {
-        if (NULL == (cmpnode = (orcm_cmpnode_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, n))) {
-            continue;
-        }
-        opal_output(0, "CHECKING %s FOR DEFAULT", cmpnode->node->name);
-        if (NULL == cmpnode->queue) {
-            OBJ_RETAIN(cmpnode);  // maintain accounting
-            OBJ_RETAIN(def);  // maintina accounting
-            cmpnode->queue = def;
-            opal_output(0, "ADDING %s TO QUEUE %s", cmpnode->node->name, def->name);
-            opal_pointer_array_add(&def->nodes, cmpnode);
-        }
-    }
-
     if (4 < opal_output_get_verbosity(orcm_scd_base_framework.framework_output)) {
         /* print out the queue structure */
         OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
             opal_output(0, "QUEUE: %s PRI: %d", q->name, q->priority);
-            for (i=0; i < q->nodes.size; i++) {
-                if (NULL != (cmpnode = (orcm_cmpnode_t*)opal_pointer_array_get_item(&q->nodes, i))) {
-                    opal_output(0, "\t%s", cmpnode->node->name);
-                }
-            }
         }
     }
 }

@@ -33,27 +33,6 @@ BEGIN_C_DECLS
 typedef int64_t orcm_alloc_id_t;
 #define ORCM_ALLOC_ID_T OPAL_INT64
 
-/* Provide an enum of resource types for use
- * in specifying constraints
- */
-typedef enum {
-    ORCM_RESOURCE_MEMORY,
-    ORCM_RESOURCE_CPU,
-    ORCM_RESOURCE_BANDWIDTH,
-    ORCM_RESOURCE_IMAGE
-} orcm_resource_type_t;
-
-/* Describe a resource constraint to be applied
- * when selecting nodes for an allocation. Includes
- * memory, network QoS, and OS image.
- */
-typedef struct {
-    opal_list_item_t super;
-    orcm_resource_type_t type;
-    char *constraint;
-} orcm_resource_t;
-OBJ_CLASS_DECLARATION(orcm_resource_t);
-
 typedef struct {
     opal_object_t super;
     int32_t priority;         // session priority
@@ -109,6 +88,23 @@ typedef struct {
     opal_list_t sessions;
 } orcm_queue_t;
 OBJ_CLASS_DECLARATION(orcm_queue_t);
+
+
+/****    NODE TYPE    ****/
+/* The ORCM scheduler doesn't need to track the detailed
+ * information found in the ORTE node object as the scheduler
+ * isn't tasked with actually executing the job - e.g., it doesn't
+ * need to know which processes are on what node. In the interest
+ * of saving memory footprint, we therefore define a limited
+ * node object that only contains the info required by the
+ * scheduler
+ */
+typedef struct {
+    opal_list_item_t super;
+    orcm_node_t *node;
+    orcm_queue_t *queue;
+} orcm_cmpnode_t;
+OBJ_CLASS_DECLARATION(orcm_cmpnode_t);
 
 
 /****    JOB TYPE    ****/

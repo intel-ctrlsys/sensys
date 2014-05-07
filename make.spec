@@ -20,7 +20,7 @@ orcm is a opensource resilency cluster management software implementation.
 %setup -q -c -T -a 0
 
 %build
-./autogen.pl --no-ompi --no-oshmem
+./autogen.pl
 mkdir -p obj
 cd obj
 pwd

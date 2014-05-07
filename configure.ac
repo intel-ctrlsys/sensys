@@ -817,6 +817,8 @@ AC_DEFINE_UNQUOTED([OPAL_HAVE__SC_NPROCESSORS_ONLN], [$result],
 
 AC_C_BIGENDIAN
 
+OPAL_CHECK_BROKEN_QSORT
+
 AC_CACHE_CHECK([if word-sized integers must be word-size aligned],
     [opal_cv_c_word_size_align],
     [AC_LANG_PUSH(C)

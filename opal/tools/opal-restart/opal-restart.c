@@ -647,7 +647,7 @@ static int post_env_vars(int prev_pid, opal_crs_base_snapshot_t *snapshot)
      * application process.
      */
     asprintf(&proc_file, "%s/%s-%d", opal_tmp_directory(), OPAL_CR_BASE_ENV_NAME, prev_pid);
-    asprintf(&command, "env | grep OPAL_ > %s", proc_file);
+    asprintf(&command, "env | grep OMPI_ > %s", proc_file);
 
     opal_output_verbose(5, opal_restart_globals.output,
                         "post_env_vars: Execute: <%s>", command);

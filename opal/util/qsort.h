@@ -1,18 +1,3 @@
-/***************************************************************************
- *                                                                         *
- *          Open MPI: Open Source High Performance Computing               *
- *                                                                         *
- *                   http://www.open-mpi.org/                              *
- *                                                                         *
- ***************************************************************************/
-
-#include "orterun.h"
-
-int main(int argc, char *argv[])
-{
-    return orterun(argc, argv);
-}
-
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -30,3 +15,24 @@ int main(int argc, char *argv[])
  * 
  * $HEADER$
  */
+
+#ifndef OPAL_QSORT_H
+#define OPAL_QSORT_H
+
+#if OPAL_HAVE_BROKEN_QSORT
+
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h> /* for size_t */
+#endif
+
+BEGIN_C_DECLS
+
+void opal_qsort(void *a, size_t n, size_t es, int (*cmp)(const void *, const void*));
+
+END_C_DECLS
+
+#else
+#error "Don't include opal/qsort/qsort.h directly"
+#endif /* OPAL_HAVE_BROKEN_QSORT */
+
+#endif

@@ -11,7 +11,7 @@
 #                         All rights reserved.
 # Copyright (c) 2007-2010 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2013      NVIDIA Corporation.  All rights reserved.
-# Copyright (c) 2013-2014 Intel, Inc. All rights reserved
+# Copyright (c) 2013      Intel, Inc. All rights reserved
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -60,6 +60,7 @@ headers = \
         output.h \
         path.h \
         printf.h \
+        qsort.h \
         show_help.h \
         show_help_lex.h \
         stacktrace.h \
@@ -93,6 +94,7 @@ libopalutil_la_SOURCES = \
         output.c \
         path.c \
         printf.c \
+        qsort.c \
         show_help.c \
         show_help_lex.l \
         stacktrace.c \

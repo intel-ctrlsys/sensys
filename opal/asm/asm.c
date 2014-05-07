@@ -9,7 +9,6 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -83,4 +82,4 @@ opal_atomic_sub_32(volatile int32_t *addr, int delta)
 }
 
 
-#endif /* OPAL_ASSEMBLY_ARCH == OMPI_SPARC32 */
+#endif /* OPAL_ASSEMBLY_ARCH == OPAL_SPARC32 */

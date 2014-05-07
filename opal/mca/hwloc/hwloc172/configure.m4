@@ -105,7 +105,7 @@ AC_DEFUN([MCA_opal_hwloc_hwloc172_CONFIG],[
 
                    # Build flags for our Makefile.am
                    opal_hwloc_hwloc172_LDFLAGS='$(HWLOC_EMBEDDED_LDFLAGS)'
-                   opal_hwloc_hwloc172_LIBS='$(top_opal_builddir)/'"$opal_hwloc_hwloc172_basedir"'/hwloc/src/libhwloc_embedded.la $(HWLOC_EMBEDDED_LIBS)'
+                   opal_hwloc_hwloc172_LIBS='$(OPAL_TOP_BUILDDIR)/'"$opal_hwloc_hwloc172_basedir"'/hwloc/src/libhwloc_embedded.la $(HWLOC_EMBEDDED_LIBS)'
                    opal_hwloc_hwloc172_support=yes
 
                    AC_DEFINE_UNQUOTED([HWLOC_HWLOC172_HWLOC_VERSION], 

@@ -186,7 +186,7 @@ main(int argc, char *argv[])
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
-    opal_output(0, "RECEIVED ALLOC ID %d", id);
+    opal_output(0, "RECEIVED ALLOC ID %d", (int)id);
 
     if (ORTE_SUCCESS != orcm_finalize()) {
         fprintf(stderr, "Failed orcm_finalize\n");

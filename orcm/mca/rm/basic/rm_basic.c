@@ -28,8 +28,7 @@ orcm_rm_base_module_t orcm_rm_basic_module = {
 
 static int init(void)
 {
-    int i, rc;
-    int num_states;
+    int rc;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
                          "%s rm:basic:init",

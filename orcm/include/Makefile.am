@@ -25,7 +25,7 @@ pkginclude_HEADERS =
 nodist_include_HEADERS = 
 
 if WANT_INSTALL_HEADERS 
-orcmdir = $(ompiincludedir)
+orcmdir = $(orcmincludedir)
 nobase_dist_orcm_HEADERS = $(headers)
 nobase_nodist_orcm_HEADERS = $(nodist_headers)
 else

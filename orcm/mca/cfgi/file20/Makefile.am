@@ -29,7 +29,7 @@ component =
 ponent_sources =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component)
 mca_cfgi_file20_la_SOURCES = $(component_sources)
 mca_cfgi_file20_la_LDFLAGS = -module -avoid-version

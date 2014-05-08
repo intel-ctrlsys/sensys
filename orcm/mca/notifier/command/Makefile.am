@@ -18,7 +18,7 @@
 # $HEADER$
 #
 
-dist_pkgdata_DATA = \
+dist_orcmdata_DATA = \
         help-orcm-notifier-command.txt
 
 sources = \
@@ -40,7 +40,7 @@ component_noinst = libmca_notifier_command.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_notifier_command_la_SOURCES = $(sources)
 mca_notifier_command_la_LDFLAGS = -module -avoid-version

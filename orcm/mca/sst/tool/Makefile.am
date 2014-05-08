@@ -31,7 +31,7 @@ component =
 ponent_sources =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component)
 mca_sst_tool_la_SOURCES = $(component_sources)
 mca_sst_tool_la_LDFLAGS = -module -avoid-version

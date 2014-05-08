@@ -40,7 +40,7 @@ component_noinst = libmca_notifier_hnp.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_notifier_hnp_la_SOURCES = $(sources)
 mca_notifier_hnp_la_LDFLAGS = -module -avoid-version

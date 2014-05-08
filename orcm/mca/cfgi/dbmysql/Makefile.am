@@ -24,7 +24,7 @@ component_noinst = libmca_cfgi_dbmysql.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_cfgi_dbmysql_la_SOURCES = $(sources)
 mca_cfgi_dbmysql_la_LDFLAGS = -module -avoid-version

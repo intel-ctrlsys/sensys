@@ -34,7 +34,7 @@ lib_LTLIBRARIES = liborcm.la
 liborcm_la_SOURCES =
 liborcm_la_LIBADD = \
 	$(MCA_orcm_FRAMEWORK_LIBS) \
-	$(top_opal_builddir)/orte/libopen-rte.la
+	$(ORTE_TOP_BUILDDIR)/orte/libopen-rte.la
 liborcm_la_DEPENDENCIES = $(liborcm_la_LIBADD)
 liborcm_la_LDFLAGS = \
         -version-info $(liborcm_so_version) \
@@ -52,7 +52,7 @@ nodist_man_MANS =
 # Conditionally install the header files
 
 if WANT_INSTALL_HEADERS
-orcmdir = $(ompiincludedir)/$(subdir)
+orcmdir = $(orcmincludedir)/$(subdir)
 nobase_orcm_HEADERS += $(headers)
 else
 orcmdir = $(includedir)

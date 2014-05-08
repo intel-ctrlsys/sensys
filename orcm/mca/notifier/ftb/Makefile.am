@@ -20,7 +20,7 @@
 
 AM_CPPFLAGS = $(notifier_ftb_CPPFLAGS)
 
-dist_pkgdata_DATA = \
+dist_orcmdata_DATA = \
 	help-orcm-notifier-ftb.txt \
 	help-ftb-event-schema.txt
 
@@ -41,7 +41,7 @@ component_noinst = libmca_notifier_ftb.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_notifier_ftb_la_SOURCES = $(sources)
 mca_notifier_ftb_la_LDFLAGS = -module -avoid-version $(notifier_ftb_LDFLAGS)

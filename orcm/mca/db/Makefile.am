@@ -23,7 +23,7 @@ libmca_db_la_SOURCES += $(headers)
 
 # Conditionally install the header files
 if WANT_INSTALL_HEADERS
-orcmdir = $(ompiincludedir)/$(subdir)
+orcmdir = $(orcmincludedir)/$(subdir)
 nobase_orcm_HEADERS = $(headers)
 endif
 

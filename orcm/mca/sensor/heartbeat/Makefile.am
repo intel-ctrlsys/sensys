@@ -27,7 +27,7 @@ component_noinst = libmca_sensor_heartbeat.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_sensor_heartbeat_la_SOURCES = $(sources)
 mca_sensor_heartbeat_la_LDFLAGS = -module -avoid-version

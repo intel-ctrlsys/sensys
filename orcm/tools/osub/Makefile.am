@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-osub.txt
+dist_orcmdata_DATA = help-osub.txt
 
 include $(top_srcdir)/Makefile.ompi-rules
 

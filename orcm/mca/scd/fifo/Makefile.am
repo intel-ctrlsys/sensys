@@ -24,7 +24,7 @@ component_noinst = libmca_scd_fifo.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_scd_fifo_la_SOURCES = $(sources)
 mca_scd_fifo_la_LDFLAGS = -module -avoid-version

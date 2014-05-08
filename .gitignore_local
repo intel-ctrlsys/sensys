@@ -83,3 +83,5 @@ orcm/tools/otop/otop.1
 orcm/tools/wrappers/orcm.pc
 orcm/tools/osub/osub
 orcm/tools/osub/osub.1
+orcm/test/orcm_alloc
+orcm/test/orte_sensor

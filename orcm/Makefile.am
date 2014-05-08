@@ -45,7 +45,7 @@ headers =
 noinst_LTLIBRARIES =
 include_HEADERS =
 nobase_orcm_HEADERS = 
-dist_ompidata_DATA = 
+dist_orcmdata_DATA = 
 liborcm_la_SOURCES += $(headers)
 nodist_man_MANS =
 

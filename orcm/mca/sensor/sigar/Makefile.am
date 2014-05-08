@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orcm-sensor-sigar.txt
+dist_orcmdata_DATA = help-orcm-sensor-sigar.txt
 
 sources = \
         sensor_sigar.c \

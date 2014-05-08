@@ -9,7 +9,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orcmsched.txt
+dist_orcmdata_DATA = help-orcmsched.txt
 
 include $(top_srcdir)/Makefile.ompi-rules
 

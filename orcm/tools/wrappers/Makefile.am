@@ -23,7 +23,7 @@
 if !OPAL_WANT_SCRIPT_WRAPPER_COMPILERS
 if OPAL_INSTALL_BINARIES
 
-nodist_ompidata_DATA = \
+nodist_orcmdata_DATA = \
 	orcmcc-wrapper-data.txt
 
 pkgconfigdir = $(libdir)/pkgconfig

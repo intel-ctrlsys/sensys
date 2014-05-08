@@ -46,7 +46,7 @@ if OPAL_INSTALL_BINARIES
 
 bin_PROGRAMS = orcm-info
 
-dist_ompidata_DATA = help-orcm-info.txt
+dist_orcmdata_DATA = help-orcm-info.txt
 
 nodist_man_MANS = $(man_pages)
 

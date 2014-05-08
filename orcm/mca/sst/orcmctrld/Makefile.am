@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-sst-orcmctrld.txt
+dist_orcmdata_DATA = help-sst-orcmctrld.txt
 
 sources = \
         sst_orcmctrld.h \

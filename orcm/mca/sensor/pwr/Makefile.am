@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orcm-sensor-pwr.txt
+dist_orcmdata_DATA = help-orcm-sensor-pwr.txt
 
 sources = \
         sensor_pwr.h \

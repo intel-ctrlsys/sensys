@@ -7,7 +7,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-db-sqlite.txt
+dist_orcmdata_DATA = help-db-sqlite.txt
 
 sources = \
         db_sqlite.h \

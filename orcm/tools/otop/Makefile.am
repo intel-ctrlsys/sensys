@@ -35,7 +35,7 @@ nodist_man_MANS = $(man_pages)
 # therefore the release date or version may have changed)
 $(nodist_man_MANS): $(top_builddir)/opal/include/opal_config.h
 
-dist_ompidata_DATA = help-otop.txt
+dist_orcmdata_DATA = help-otop.txt
 
 endif # OPAL_INSTALL_BINARIES
 

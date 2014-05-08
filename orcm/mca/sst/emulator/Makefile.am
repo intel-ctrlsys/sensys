@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-sst-emulator.txt
+dist_orcmdata_DATA = help-sst-emulator.txt
 
 sources = \
         sst_emulator.h \

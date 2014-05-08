@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orcm-sensor-freq.txt
+dist_orcmdata_DATA = help-orcm-sensor-freq.txt
 
 sources = \
         sensor_freq.c \

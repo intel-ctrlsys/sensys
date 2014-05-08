@@ -15,7 +15,7 @@ noinst_LTLIBRARIES = libmca_db.la
 libmca_db_la_SOURCES =
 
 # pkgdata setup
-dist_ompidata_DATA =
+dist_orcmdata_DATA =
 
 # local files
 headers = db.h

@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orcm-sensor-resusage.txt
+dist_orcmdata_DATA = help-orcm-sensor-resusage.txt
 
 sources = \
         sensor_resusage.c \

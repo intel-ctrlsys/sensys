@@ -21,6 +21,10 @@
 #include <sys/time.h> /* for time_t */
 #endif
 
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h> /* for uid_t, gid_t */
+#endif
+
 #include "opal/class/opal_object.h"
 #include "opal/class/opal_pointer_array.h"
 #include "opal/class/opal_list.h"
@@ -46,6 +50,8 @@ typedef struct {
     time_t begin;             // desired start time for allocation
     time_t walltime;          // max execution time
     bool exclusive;           // true if nodes to be exclusively allocated (i.e., not shared across sessions)
+    uid_t caller_uid;         // uid of submission request
+    gid_t caller_gid;         // gid of submission request
     char *nodefile;           // file listing names and/or regex of candidate nodes to be used
     char *nodes;              // regex of nodes to be used
     char *queues;             // comma-delimited list of queue names
@@ -163,12 +169,11 @@ OBJ_CLASS_DECLARATION(orcm_session_t);
 /* SESSION STATES */
 #define ORCM_SESSION_STATE_UNDEF          0
 #define ORCM_SESSION_STATE_INIT           1 // not yet assigned to a queue
-#define ORCM_SESSION_STATE_QUEUED         2 // assigned to queue and pending
+#define ORCM_SESSION_STATE_SCHEDULE       2 // run schedulers
 #define ORCM_SESSION_STATE_ALLOCD         3 // allocated, job not started
 #define ORCM_SESSION_STATE_ACTIVE         4 // job step(s) running
 #define ORCM_SESSION_STATE_TERMINATED     5 // allocation terminated
 
-#define ORCM_SESSION_STATE_SCHEDULE       6 // run schedulers
 #define ORCM_SESSION_STATE_ANY           10 // marker
 
 #define ORCM_SESSION_STATE_ERROR         20 // marker

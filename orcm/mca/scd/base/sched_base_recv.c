@@ -80,8 +80,8 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
     orcm_session_t *s;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
-                         "%s scd:base:receive processing msg",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+                         "%s scd:base:receive processing msg from %s",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ORTE_NAME_PRINT(sender)));
 
     /* always pass some answer back to the caller so they
      * don't hang

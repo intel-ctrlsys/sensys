@@ -24,7 +24,7 @@ component_noinst = libmca_scd_proxy.la
 component_install =
 endif
 
-mcacomponentdir = $(orcmlibdir)
+mcacomponentdir = $(ompilibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_scd_proxy_la_SOURCES = $(sources)
 mca_scd_proxy_la_LDFLAGS = -module -avoid-version

@@ -29,29 +29,28 @@ orcm_scd_base_module_t orcm_scd_fifo_module = {
 
 static void fifo_undef(int sd, short args, void *cbdata);
 static void fifo_find_queue(int sd, short args, void *cbdata);
-static void fifo_queued(int sd, short args, void *cbdata);
 static void fifo_allocated(int sd, short args, void *cbdata);
 static void fifo_active(int sd, short args, void *cbdata);
 static void fifo_terminated(int sd, short args, void *cbdata);
 static void fifo_schedule(int sd, short args, void *cbdata);
 
+char* fifo_prettyprint_queue(orcm_queue_t* queue);
+
 static orcm_session_state_t states[] = {
     ORCM_SESSION_STATE_UNDEF,
     ORCM_SESSION_STATE_INIT,
-    ORCM_SESSION_STATE_QUEUED,
+    ORCM_SESSION_STATE_SCHEDULE,
     ORCM_SESSION_STATE_ALLOCD,
     ORCM_SESSION_STATE_ACTIVE,
-    ORCM_SESSION_STATE_TERMINATED,
-    ORCM_SESSION_STATE_SCHEDULE
+    ORCM_SESSION_STATE_TERMINATED
 };
 static orcm_state_cbfunc_t callbacks[] = {
     fifo_undef,
     fifo_find_queue,
-    fifo_queued,
+    fifo_schedule,
     fifo_allocated,
     fifo_active,
-    fifo_terminated,
-    fifo_schedule
+    fifo_terminated
 };
 
 static int init(void)
@@ -106,6 +105,7 @@ static void fifo_find_queue(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
 
+    char* printbuf;
     orcm_queue_t *q;
 
     /* cycle across the queues and select the one that best
@@ -118,7 +118,14 @@ static void fifo_find_queue(int sd, short args, void *cbdata)
         if (0 == strcmp(q->name, "default")) {
             caddy->session->alloc->queues = strdup(q->name);
             opal_list_append(&q->sessions, &caddy->session->super);
-            ORCM_ACTIVATE_SCHED_STATE(caddy->session, ORCM_SESSION_STATE_QUEUED);
+            ORCM_ACTIVATE_SCHED_STATE(caddy->session, ORCM_SESSION_STATE_SCHEDULE);
+
+            printbuf = fifo_prettyprint_queue(q);
+            OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                                 "%s scd:fifo:find_queue\n%s\n",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), printbuf));
+            free(printbuf);
+
             break;
         }
     }
@@ -126,14 +133,26 @@ static void fifo_find_queue(int sd, short args, void *cbdata)
     OBJ_RELEASE(caddy);
 }
 
-static void fifo_queued(int sd, short args, void *cbdata)
+static void fifo_schedule(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
 
-    /* see if we can run the next job, otherwise wait for nodes to free
-     */
+    orcm_queue_t *q;
 
-    ORCM_ACTIVATE_SCHED_STATE(caddy->session, ORCM_SESSION_STATE_ALLOCD);
+    /* search the queues for the next allocation to be scheduled */
+
+    OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
+        if (0 == strcmp(q->name, "default")) {
+            if (opal_list_is_empty(&q->sessions)) {
+                OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                                     "%s scd:fifo:find_schedule - no (more) sessions found on queue\n",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+                return;
+            }
+            caddy->session = (orcm_session_t*)opal_list_remove_first(&q->sessions);
+            ORCM_ACTIVATE_SCHED_STATE(caddy->session, ORCM_SESSION_STATE_ALLOCD);
+        }
+    }
 
     OBJ_RELEASE(caddy);
 }
@@ -169,26 +188,28 @@ static void fifo_terminated(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
 
+    ORCM_ACTIVATE_SCHED_STATE(caddy->session, ORCM_SESSION_STATE_SCHEDULE);
+
     OBJ_RELEASE(caddy);
 }
 
-static void fifo_schedule(int sd, short args, void *cbdata)
+char* fifo_prettyprint_queue(orcm_queue_t* queue)
 {
-    orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
+    orcm_session_t *session;
+    char* buffer;
 
-    orcm_queue_t *q;
+    if (asprintf(&buffer, "current sessions on queue: %s\n", queue->name) == -1) {
+        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+        return buffer;
+    }
 
-    /* search the queues for the next allocation to be scheduled */
-
-    OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
-        if (0 == strcmp(q->name, "default")) {
-            if (opal_list_is_empty(&q->sessions)) {
-                return;
-            }
-            caddy->session = (orcm_session_t*)opal_list_remove_first(&q->sessions);
-            ORCM_ACTIVATE_SCHED_STATE(caddy->session, ORCM_SESSION_STATE_QUEUED);
+    OPAL_LIST_FOREACH(session, &queue->sessions, orcm_session_t) {
+        if (asprintf(&buffer, "%s%d\n", buffer, (int)session->id) == -1) {
+            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            return buffer;
         }
     }
 
-    OBJ_RELEASE(caddy);
+    return buffer;
+
 }

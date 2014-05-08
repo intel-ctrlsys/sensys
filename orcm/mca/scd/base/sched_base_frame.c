@@ -157,8 +157,8 @@ const char *orcm_session_state_to_str(orcm_session_state_t state)
     case ORCM_SESSION_STATE_INIT:
         s = "PENDING QUEUE ASSIGNMENT";
         break;
-    case ORCM_SESSION_STATE_QUEUED:
-        s = "QUEUED";
+    case ORCM_SESSION_STATE_SCHEDULE:
+        s = "RUNNING SCHEDULERS";
         break;
     case ORCM_SESSION_STATE_ALLOCD:
         s = "ALLOCATED";
@@ -230,6 +230,24 @@ static void alloc_des(orcm_alloc_t *p)
 OBJ_CLASS_INSTANCE(orcm_alloc_t,
                    opal_object_t,
                    alloc_con, alloc_des);
+
+static void cmn_con(orcm_cmpnode_t *c)
+{
+    c->node = NULL;
+    c->queue = NULL;
+}
+static void cmn_des(orcm_cmpnode_t *c)
+{
+    if (NULL != c->node) {
+        OBJ_RELEASE(c->node);
+    }
+    if (NULL != c->queue) {
+        OBJ_RELEASE(c->queue);
+    }
+}
+OBJ_CLASS_INSTANCE(orcm_cmpnode_t,
+                   opal_list_item_t,
+                   cmn_con, cmn_des);
 
 OBJ_CLASS_INSTANCE(orcm_job_t,
                    opal_object_t,

@@ -147,6 +147,9 @@ main(int argc, char *argv[])
     /* alloc.nodes = NULL;  */    // regex of nodes to be used
     /* alloc.constraints;   */    // list of resource constraints to be applied when selecting hosts
 
+    /* alloc.caller_uid = getuid(); // uid of user, not from args
+     * alloc.caller_gid = getgid(); // gid of user, not from args
+     */
 
     /* setup to receive the result */
     OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);

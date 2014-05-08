@@ -185,6 +185,7 @@ AH_TOP([/* -*- c -*-
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -209,10 +210,15 @@ AH_BOTTOM([
 
 OPAL_BASIC_SETUP
 
-top_opal_srcdir="$OPAL_TOP_SRCDIR"
-AC_SUBST(top_opal_srcdir)
-top_opal_builddir="$OPAL_TOP_BUILDDIR"
-AC_SUBST(top_opal_builddir)
+ORTE_TOP_SRCDIR="$OPAL_TOP_SRCDIR"
+ORTE_TOP_BUILDDIR="$OPAL_TOP_BUILDDIR"
+AC_SUBST(ORTE_TOP_SRCDIR)
+AC_SUBST(ORTE_TOP_BUILDDIR)
+
+ORCM_TOP_SRCDIR="$OPAL_TOP_SRCDIR"
+ORCM_TOP_BUILDDIR="$OPAL_TOP_BUILDDIR"
+AC_SUBST(ORCM_TOP_SRCDIR)
+AC_SUBST(ORCM_TOP_BUILDDIR)
 
 ############################################################################
 # Configuration options
@@ -1208,16 +1214,38 @@ case "`uname`" in
     ;;
 esac
 
-# ompidatadir, ompilibdir, and ompiinclude are essentially the same as
+# opaldatadir, opallibdir, and opalinclude are essentially the same as
 # pkg*dir, but will always be */openmpi.  This is to make it a bit
 # easier to deal with the problem of opal, orte, and ompi built from
 # their own tarballs, with their own PACKAGE variables.
-ompidatadir='${datadir}/openmpi'
-ompilibdir='${libdir}/openmpi'
-ompiincludedir='${includedir}/openmpi'
-AC_SUBST(ompidatadir)
-AC_SUBST(ompilibdir)
-AC_SUBST(ompiincludedir)
+opaldatadir='${datadir}/openmpi'
+opallibdir='${libdir}/openmpi'
+opalincludedir='${includedir}/openmpi'
+AC_SUBST(opaldatadir)
+AC_SUBST(opallibdir)
+AC_SUBST(opalincludedir)
+
+m4_ifdef([project_orte],
+         [ortedatadir="$opaldatadir"
+          AC_SUBST(ortedatadir)
+          ortelibdir="$opallibdir"
+          AC_SUBST(ortelibdir)
+          orteincludedir="$opalincludedir"
+          AC_SUBST(orteincludedir)])
+m4_ifdef([project_ompi],
+         [ompidatadir="$opaldatadir"
+          AC_SUBST(ompidatadir)
+          ompilibdir="$opallibdir"
+          AC_SUBST(ompilibdir)
+          ompiincludedir="$opalincludedir"
+          AC_SUBST(ompiincludedir)])
+m4_ifdef([project_oshmem],
+         [oshmemdatadir="$opaldatadir"
+          AC_SUBST(oshmemdatadir)
+          oshmemlibdir="$opallibdir"
+          AC_SUBST(oshmemlibdir)
+          oshmemincludedir="$opalincludedir"
+          AC_SUBST(oshmemincludedir)])
 
 opal_show_subtitle "Final output"
 

@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
     OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
     xfer.active = true;
     orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
-                            ORCM_RML_TAG_ALLOC,
+                            ORCM_RML_TAG_SCD,
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, &xfer);
 
@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
         return rc;
     }
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
-                                                      ORCM_RML_TAG_ALLOC,
+                                                      ORCM_RML_TAG_SCD,
                                                       orte_rml_send_callback, NULL))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);

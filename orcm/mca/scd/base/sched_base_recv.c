@@ -41,7 +41,7 @@ int orcm_scd_base_comm_start(void)
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     
     orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
-                            ORCM_RML_TAG_ALLOC,
+                            ORCM_RML_TAG_SCD,
                             ORTE_RML_PERSISTENT,
                             orcm_scd_base_recv,
                             NULL);
@@ -61,7 +61,7 @@ int orcm_scd_base_comm_stop(void)
                          "%s scd:base:receive stop comm",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     
-    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ALLOC);
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
     recv_issued = false;
     
     return ORTE_SUCCESS;
@@ -107,6 +107,22 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         /* assign a session to it */
         s = OBJ_NEW(orcm_session_t);
         s->alloc = req;
+        s->id = orcm_scd_base_get_next_session_id();
+
+        /* send session id back to sender */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &s->id, 1, ORCM_ALLOC_ID_T))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
+        if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
+                                                          ORCM_RML_TAG_SCD,
+                                                          orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
+
         /* pass it to the scheduler */
         ORCM_ACTIVATE_SCHED_STATE(s, ORCM_SESSION_STATE_INIT);
         return;
@@ -114,7 +130,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
 
  answer:
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
-                                                      ORCM_RML_TAG_ALLOC,
+                                                      ORCM_RML_TAG_SCD,
                                                       orte_rml_send_callback, NULL))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(ans);

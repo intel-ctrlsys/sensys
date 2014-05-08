@@ -44,6 +44,12 @@ orcm_scd_base_t orcm_scd_base;
 static opal_thread_t progress_thread;
 static void* progress_thread_engine(opal_object_t *obj);
 static bool progress_thread_running = false;
+orcm_session_id_t last_session_id = 0;
+
+int orcm_scd_base_get_next_session_id() {
+    last_session_id++;
+    return last_session_id;
+}
 
 static int orcm_scd_base_register(mca_base_register_flag_t flags)
 {
@@ -184,20 +190,6 @@ OBJ_CLASS_INSTANCE(orcm_scheduler_caddy_t,
                    opal_object_t,
                    NULL, NULL);
 
-static void res_con(orcm_resource_t *p)
-{
-    p->constraint = NULL;
-}
-static void res_des(orcm_resource_t *p)
-{
-    if (NULL != p->constraint) {
-        free(p->constraint);
-    }
-}
-OBJ_CLASS_INSTANCE(orcm_resource_t,
-                   opal_list_item_t,
-                   res_con, res_des);
-
 static void alloc_con(orcm_alloc_t *p)
 {
     p->priority = 0;
@@ -239,24 +231,6 @@ OBJ_CLASS_INSTANCE(orcm_alloc_t,
                    opal_object_t,
                    alloc_con, alloc_des);
 
-static void cmn_con(orcm_cmpnode_t *c)
-{
-    c->node = NULL;
-    c->queue = NULL;
-}
-static void cmn_des(orcm_cmpnode_t *c)
-{
-    if (NULL != c->node) {
-        OBJ_RELEASE(c->node);
-    }
-    if (NULL != c->queue) {
-        OBJ_RELEASE(c->queue);
-    }
-}
-OBJ_CLASS_INSTANCE(orcm_cmpnode_t,
-                   opal_list_item_t,
-                   cmn_con, cmn_des);
-
 OBJ_CLASS_INSTANCE(orcm_job_t,
                    opal_object_t,
                    NULL, NULL);
@@ -271,7 +245,6 @@ static void step_con(orcm_step_t *p)
 static void step_des(orcm_step_t *p)
 {
     int i;
-    orcm_cmpnode_t *n;
 
     if (NULL != p->alloc) {
         OBJ_RELEASE(p->alloc);
@@ -280,9 +253,7 @@ static void step_des(orcm_step_t *p)
         OBJ_RELEASE(p->job);
     }
     for (i=0; i < p->nodes.size; i++) {
-        if (NULL != (n = (orcm_cmpnode_t*)opal_pointer_array_get_item(&p->nodes, i))) {
-            OBJ_RELEASE(n);
-        }
+             /* set node state to unalloc */
     }
     OBJ_DESTRUCT(&p->nodes);
 }
@@ -303,54 +274,21 @@ static void sess_des(orcm_session_t *s)
     OPAL_LIST_DESTRUCT(&s->steps);
 }
 OBJ_CLASS_INSTANCE(orcm_session_t,
-                   opal_object_t,
+                   opal_list_item_t,
                    sess_con, sess_des);
 
 static void queue_con(orcm_queue_t *q)
 {
     q->name = NULL;
-    OBJ_CONSTRUCT(&q->nodes, opal_pointer_array_t);
-    opal_pointer_array_init(&q->nodes, 1, INT_MAX, 8);
-    OBJ_CONSTRUCT(&q->all_sessions, opal_pointer_array_t);
-    opal_pointer_array_init(&q->all_sessions, 1, INT_MAX, 8);
-    OBJ_CONSTRUCT(&q->power_binned, opal_pointer_array_t);
-    opal_pointer_array_init(&q->power_binned, 1, INT_MAX, 8);
-    OBJ_CONSTRUCT(&q->node_binned, opal_pointer_array_t);
-    opal_pointer_array_init(&q->node_binned, 1, INT_MAX, 8);
+    q->priority = 1;
+    OBJ_CONSTRUCT(&q->sessions, opal_list_t);
 }
 static void queue_des(orcm_queue_t *q)
 {
-    orcm_session_t *s;
-    orcm_cmpnode_t *n;
-    int i;
-
     if (NULL != q->name) {
         free(q->name);
     }
-    for (i=0; i < q->nodes.size; i++) {
-        if (NULL != (n = (orcm_cmpnode_t*)opal_pointer_array_get_item(&q->nodes, i))) {
-            OBJ_RELEASE(n);
-        }
-    }
-    OBJ_DESTRUCT(&q->nodes);
-    for (i=0; i < q->all_sessions.size; i++) {
-        if (NULL != (s = (orcm_session_t*)opal_pointer_array_get_item(&q->all_sessions, i))) {
-            OBJ_RELEASE(s);
-        }
-    }
-    OBJ_DESTRUCT(&q->all_sessions);
-    for (i=0; i < q->power_binned.size; i++) {
-        if (NULL != (s = (orcm_session_t*)opal_pointer_array_get_item(&q->power_binned, i))) {
-            OBJ_RELEASE(s);
-        }
-    }
-    OBJ_DESTRUCT(&q->power_binned);
-    for (i=0; i < q->node_binned.size; i++) {
-        if (NULL != (s = (orcm_session_t*)opal_pointer_array_get_item(&q->node_binned, i))) {
-            OBJ_RELEASE(s);
-        }
-    }
-    OBJ_DESTRUCT(&q->node_binned);
+    OPAL_LIST_DESTRUCT(&q->sessions);
 }
 OBJ_CLASS_INSTANCE(orcm_queue_t,
                    opal_list_item_t,

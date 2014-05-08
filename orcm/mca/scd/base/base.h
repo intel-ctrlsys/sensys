@@ -43,19 +43,19 @@ typedef struct {
 } orcm_scheduler_caddy_t;
 OBJ_CLASS_DECLARATION(orcm_scheduler_caddy_t);
 
-#define ORCM_CONSTRUCT_QUEUES(a)                                        \
-    do {                                                                \
-        orcm_scheduler_caddy_t *s;                                      \
+#define ORCM_CONSTRUCT_QUEUES(a)                                         \
+    do {                                                                 \
+        orcm_scheduler_caddy_t *s;                                       \
         opal_output_verbose(1, orcm_scd_base_framework.framework_output, \
-                            "%s CONSTRUCT QUEUES AT %s:%d",             \
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),         \
-                            __FILE__, __LINE__);			\
-        s = OBJ_NEW(orcm_scheduler_caddy_t);                            \
-        s->scheduler = (a);                                             \
+                            "%s CONSTRUCT QUEUES AT %s:%d",              \
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),          \
+                            __FILE__, __LINE__);                         \
+        s = OBJ_NEW(orcm_scheduler_caddy_t);                             \
+        s->scheduler = (a);                                              \
         opal_event_set(orcm_scd_base.ev_base, &s->ev, -1, OPAL_EV_WRITE, \
-                       orcm_scd_base_construct_queues, s);              \
-        opal_event_set_priority(&s->ev, ORCM_SCHED_PRI);                \
-        opal_event_active(&s->ev, OPAL_EV_WRITE, 1);                    \
+                       orcm_scd_base_construct_queues, s);               \
+        opal_event_set_priority(&s->ev, ORCM_SCHED_PRI);                 \
+        opal_event_active(&s->ev, OPAL_EV_WRITE, 1);                     \
     } while(0);
 
 typedef struct {
@@ -117,6 +117,7 @@ ORCM_DECLSPEC int orcm_sched_base_add_session_state(orcm_session_state_t state,
                                                     orcm_state_cbfunc_t cbfunc,
                                                     int priority);
 ORCM_DECLSPEC void orcm_scd_base_construct_queues(int fd, short args, void *cbdata);
+ORCM_DECLSPEC int orcm_scd_base_get_next_session_id(void);
 
 END_C_DECLS
 #endif

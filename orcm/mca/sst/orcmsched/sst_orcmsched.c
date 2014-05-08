@@ -78,6 +78,7 @@
 #include "orte/runtime/orte_quit.h"
 
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/mca/rm/base/base.h"
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/cfgi/cfgi_types.h"
@@ -143,6 +144,13 @@ static int orcmsched_init(void)
         goto error;
     }
 
+    /* setup the resource manager framework */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_rm_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_rm_base_open";
+        goto error;
+    }
+
     /* setup the scheduler framework */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_scd_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -204,7 +212,7 @@ static int orcmsched_init(void)
     setup_sighandler(SIGUSR2, &sigusr2_handler, signal_callback);
     signals_set = true;
 
-    /* cycle thru the cluster and add the compute nodes to the scheduler */
+    /* cycle thru the cluster and set node states */
     OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
         OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
@@ -217,7 +225,7 @@ static int orcmsched_init(void)
                                         "%s add node %s",
                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                         (NULL == node->name) ? "NULL" : node->name);
-                    opal_pointer_array_add(&orcm_scd_base.nodes, cmpnode);
+                    opal_pointer_array_add(&orcm_rm_base.nodes, cmpnode);
                 }
             }
         }
@@ -293,6 +301,39 @@ static int orcmsched_init(void)
     if (ORTE_SUCCESS != (ret = orcm_db_base_select())) {
         ORTE_ERROR_LOG(ret);
         error = "orcm_db_base_select";
+        goto error;
+    }
+
+    /* datastore - ensure we don't pickup the pmi component, but
+     * don't override anything set by user
+     */
+    if (NULL == getenv("OMPI_MCA_dstore")) {
+        putenv("OMPI_MCA_dstore=^pmi");
+    }
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&opal_dstore_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "opal_dstore_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = opal_dstore_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "opal_dstore_base_select";
+        goto error;
+    }
+    /* create the handles */
+    if (0 > (opal_dstore_peer = opal_dstore.open("PEER"))) {
+        error = "opal dstore global";
+        ret = ORTE_ERR_FATAL;
+        goto error;
+    }
+    if (0 > (opal_dstore_internal = opal_dstore.open("INTERNAL"))) {
+        error = "opal dstore internal";
+        ret = ORTE_ERR_FATAL;
+        goto error;
+    }
+    if (0 > (opal_dstore_nonpeer = opal_dstore.open("NONPEER"))) {
+        error = "opal dstore nonpeer";
+        ret = ORTE_ERR_FATAL;
         goto error;
     }
 
@@ -380,6 +421,13 @@ static int orcmsched_init(void)
         goto error;
     }
 
+    /* select and start the resource manager */
+    if (ORTE_SUCCESS != (ret = orcm_rm_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_rm_select";
+        goto error;
+    }
+
     /* select and start the scheduler */
     if (ORTE_SUCCESS != (ret = orcm_scd_base_select())) {
         ORTE_ERROR_LOG(ret);
@@ -411,6 +459,7 @@ static void orcmsched_finalize(void)
     
     /* close frameworks */
     (void) mca_base_framework_close(&orcm_scd_base_framework);
+    (void) mca_base_framework_close(&orcm_rm_base_framework);
     (void) mca_base_framework_close(&orte_filem_base_framework);
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);
     (void) mca_base_framework_close(&orte_iof_base_framework);

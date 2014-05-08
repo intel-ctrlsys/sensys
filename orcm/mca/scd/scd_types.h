@@ -33,29 +33,8 @@ BEGIN_C_DECLS
 typedef int64_t orcm_alloc_id_t;
 #define ORCM_ALLOC_ID_T OPAL_INT64
 
-/* Provide an enum of resource types for use
- * in specifying constraints
- */
-typedef enum {
-    ORCM_RESOURCE_MEMORY,
-    ORCM_RESOURCE_CPU,
-    ORCM_RESOURCE_BANDWIDTH,
-    ORCM_RESOURCE_IMAGE
-} orcm_resource_type_t;
-
-/* Describe a resource constraint to be applied
- * when selecting nodes for an allocation. Includes
- * memory, network QoS, and OS image.
- */
 typedef struct {
-    opal_list_item_t super;
-    orcm_resource_type_t type;
-    char *constraint;
-} orcm_resource_t;
-OBJ_CLASS_DECLARATION(orcm_resource_t);
-
-typedef struct {
-    opal_list_item_t super;
+    opal_object_t super;
     int32_t priority;         // session priority
     char *account;            // account to be charged
     char *name;               // user-assigned project name
@@ -106,10 +85,7 @@ typedef struct {
     opal_list_item_t super;
     char *name;
     int32_t priority;
-    opal_pointer_array_t nodes;
-    opal_pointer_array_t all_sessions;
-    opal_pointer_array_t power_binned;
-    opal_pointer_array_t node_binned;
+    opal_list_t sessions;
 } orcm_queue_t;
 OBJ_CLASS_DECLARATION(orcm_queue_t);
 
@@ -172,7 +148,7 @@ OBJ_CLASS_DECLARATION(orcm_step_t);
 typedef uint32_t orcm_session_state_t;
 typedef uint32_t orcm_session_id_t;
 typedef struct {
-    opal_object_t super;
+    opal_list_item_t super;
     orcm_session_id_t id;
     bool interactive;
     int32_t uid;
@@ -192,7 +168,7 @@ OBJ_CLASS_DECLARATION(orcm_session_t);
 #define ORCM_SESSION_STATE_ACTIVE         4 // job step(s) running
 #define ORCM_SESSION_STATE_TERMINATED     5 // allocation terminated
 
-#define ORCM_SESSION_STATE_SCHEDULE       9 // run schedulers
+#define ORCM_SESSION_STATE_SCHEDULE       6 // run schedulers
 #define ORCM_SESSION_STATE_ANY           10 // marker
 
 #define ORCM_SESSION_STATE_ERROR         20 // marker

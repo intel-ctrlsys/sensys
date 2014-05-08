@@ -69,7 +69,8 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 
 
 /* extend the ORTE RML tags to add our own */
-#define ORCM_RML_TAG_ALLOC   (ORTE_RML_TAG_MAX + 1)
+#define ORCM_RML_TAG_SCD   (ORTE_RML_TAG_MAX + 1)
+#define ORCM_RML_TAG_RM    (ORTE_RML_TAG_MAX + 2)
 
 
 /* define event base priorities */

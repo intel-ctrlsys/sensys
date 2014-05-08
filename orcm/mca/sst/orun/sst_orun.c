@@ -130,10 +130,9 @@ static int orun_init(void)
     orte_proc_t *proc;
     orte_node_t *node;
     opal_list_t config;
-    orcm_node_t *mynode=NULL, *onode;
+    orcm_node_t *mynode=NULL;
     orcm_rack_t *rack, *rk;
     orcm_row_t *row;
-    orcm_cluster_t *cluster;
 
     if (initialized) {
         return ORCM_SUCCESS;

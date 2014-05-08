@@ -78,6 +78,7 @@
 #include "orte/runtime/orte_quit.h"
 
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/mca/rm/base/base.h"
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/cfgi/cfgi_types.h"
@@ -130,6 +131,7 @@ static int orcmsched_init(void)
     orcm_rack_t *rack;
     orcm_row_t *row;
     orcm_cluster_t *cluster;
+    orcm_cmpnode_t *cmpnode;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -139,6 +141,13 @@ static int orcmsched_init(void)
     /* Initialize the ORTE data type support */
     if (ORTE_SUCCESS != (ret = orte_ess_base_std_prolog())) {
         error = "orte_std_prolog";
+        goto error;
+    }
+
+    /* setup the resource manager framework */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_rm_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_rm_base_open";
         goto error;
     }
 
@@ -209,14 +218,14 @@ static int orcmsched_init(void)
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     /* add the node to the scheduler pool */
-                    //cmpnode = OBJ_NEW(orcm_cmpnode_t);
+                    cmpnode = OBJ_NEW(orcm_cmpnode_t);
                     OBJ_RETAIN(node);  // maintain accounting
-                    //cmpnode->node = node;
+                    cmpnode->node = node;
                     opal_output_verbose(2, orcm_sst_base_framework.framework_output,
                                         "%s add node %s",
                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                         (NULL == node->name) ? "NULL" : node->name);
-                    //opal_pointer_array_add(&orcm_scd_base.nodes, cmpnode);
+                    opal_pointer_array_add(&orcm_rm_base.nodes, cmpnode);
                 }
             }
         }
@@ -412,6 +421,13 @@ static int orcmsched_init(void)
         goto error;
     }
 
+    /* select and start the resource manager */
+    if (ORTE_SUCCESS != (ret = orcm_rm_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_rm_select";
+        goto error;
+    }
+
     /* select and start the scheduler */
     if (ORTE_SUCCESS != (ret = orcm_scd_base_select())) {
         ORTE_ERROR_LOG(ret);
@@ -443,6 +459,7 @@ static void orcmsched_finalize(void)
     
     /* close frameworks */
     (void) mca_base_framework_close(&orcm_scd_base_framework);
+    (void) mca_base_framework_close(&orcm_rm_base_framework);
     (void) mca_base_framework_close(&orte_filem_base_framework);
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);
     (void) mca_base_framework_close(&orte_iof_base_framework);

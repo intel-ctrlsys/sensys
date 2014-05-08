@@ -182,10 +182,10 @@ static void fifo_schedule(int sd, short args, void *cbdata)
 
     OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
         if (0 == strcmp(q->name, "default")) {
-            if (opal_list_is_empty(&q->super)) {
+            if (opal_list_is_empty(&q->sessions)) {
                 return;
             }
-            caddy->session = opal_list_remove_first(&q->super);
+            caddy->session = (orcm_session_t*)opal_list_remove_first(&q->sessions);
             ORCM_ACTIVATE_SCHED_STATE(caddy->session, ORCM_SESSION_STATE_QUEUED);
         }
     }

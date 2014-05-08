@@ -11,11 +11,12 @@
 
 SUBDIRS += \
         tools/orcmd \
-	tools/wrappers \
+				tools/wrappers \
         tools/orcmctrld \
         tools/otop \
         tools/ops \
         tools/orcm-info \
         tools/orcmsched \
         tools/orcm-emulator \
-        tools/orun
+        tools/orun \
+        tools/osub

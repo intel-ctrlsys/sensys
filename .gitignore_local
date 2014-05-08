@@ -6,9 +6,8 @@ oshmem
 examples
 test
 README.JAVA.txt
-RMA_TODO.txt
-autogen.pl
-autogen.sh
+./autogen.pl
+./autogen.sh
 NEWS
 ./Makefile.am
 ./configure.ac

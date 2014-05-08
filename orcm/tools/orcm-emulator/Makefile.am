@@ -12,7 +12,7 @@ if OPAL_INSTALL_BINARIES
 bin_PROGRAMS = orcm-emulator
 
 
-dist_ompidata_DATA = help-emulator.txt
+dist_orcmdata_DATA = help-emulator.txt
 
 endif # OPAL_INSTALL_BINARIES
 

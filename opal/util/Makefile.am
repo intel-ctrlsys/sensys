@@ -11,7 +11,7 @@
 #                         All rights reserved.
 # Copyright (c) 2007-2010 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2013      NVIDIA Corporation.  All rights reserved.
-# Copyright (c) 2013-2014 Intel, Inc. All rights reserved
+# Copyright (c) 2013      Intel, Inc. All rights reserved
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -21,7 +21,7 @@
 
 SUBDIRS = keyval
 
-dist_ompidata_DATA = help-opal-util.txt
+dist_opaldata_DATA = help-opal-util.txt
 
 AM_LFLAGS = -Popal_show_help_yy
 LEX_OUTPUT_ROOT = lex.opal_show_help_yy
@@ -60,6 +60,7 @@ headers = \
         output.h \
         path.h \
         printf.h \
+        qsort.h \
         show_help.h \
         show_help_lex.h \
         stacktrace.h \
@@ -93,6 +94,7 @@ libopalutil_la_SOURCES = \
         output.c \
         path.c \
         printf.c \
+        qsort.c \
         show_help.c \
         show_help_lex.l \
         stacktrace.c \
@@ -108,6 +110,6 @@ libopalutil_la_DEPENDENCIES = \
 # Conditionally install the header files
 
 if WANT_INSTALL_HEADERS
-opaldir = $(ompiincludedir)/$(subdir)
+opaldir = $(opalincludedir)/$(subdir)
 opal_HEADERS = $(headers)
 endif

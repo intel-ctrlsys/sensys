@@ -433,6 +433,7 @@ syntax: glob
 ./ompi/mca/pml/bfo/Makefile.in
 ./ompi/mca/pml/cm/Makefile.in
 ./ompi/mca/pml/crcpw/Makefile.in
+./ompi/mca/pml/example/Makefile.in
 ./ompi/mca/pml/ob1/Makefile.in
 ./ompi/mca/pml/v/Makefile.in
 ./ompi/mca/pml/v/autogen.vprotocols
@@ -469,6 +470,7 @@ syntax: glob
 ./ompi/mca/topo/basic/Makefile.in
 ./ompi/mca/vprotocol/Makefile.in
 ./ompi/mca/vprotocol/base/Makefile.in
+./ompi/mca/vprotocol/example/Makefile.in
 ./ompi/mca/vprotocol/pessimist/Makefile.in
 ./ompi/mpi/Makefile.in
 ./ompi/mpi/c/Makefile.in
@@ -715,10 +717,6 @@ syntax: glob
 ./orte/include/stamp-h*
 ./orte/include/orte/version.h
 ./orte/include/orte/frameworks.h
-./orte/mca/db/Makefile.in
-./orte/mca/db/postgres/Makefile.in
-./orte/mca/db/print/Makefile.in
-./orte/mca/db/sqlite/Makefile.in
 ./orte/mca/dfs/Makefile.in
 ./orte/mca/dfs/vc70.pdb
 ./orte/mca/dfs/app/Makefile.in
@@ -809,6 +807,9 @@ syntax: glob
 ./orte/mca/routed/debruijn/Makefile.in
 ./orte/mca/routed/direct/Makefile.in
 ./orte/mca/routed/radix/Makefile.in
+./orte/mca/rtc/Makefile.in
+./orte/mca/rtc/base/*.obj
+./orte/mca/rtc/hwloc/Makefile.in
 ./orte/mca/snapc/Makefile.in
 ./orte/mca/snapc/orte_snapc.7
 ./orte/mca/snapc/base/Makefile.in

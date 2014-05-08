@@ -14,7 +14,7 @@ dnl we only want one :)
 m4_define(MCA_opal_memchecker_CONFIGURE_MODE, STOP_AT_FIRST)
 
 AC_DEFUN([MCA_opal_memchecker_CONFIG],[
-    ompi_show_subsubtitle "Pre-configuring the framework memchecker"
+    opal_show_subsubtitle "Pre-configuring the framework memchecker"
 
     AC_MSG_CHECKING([if --enable-memchecker was specified])
     AC_ARG_ENABLE(memchecker,
@@ -28,7 +28,7 @@ AC_DEFUN([MCA_opal_memchecker_CONFIG],[
         WANT_MEMCHECKER=0
 
         # Setting this environment variable causes
-        # MCA_COMONENT_BUILD_CHECK (in ompi_mca.m4, invoked by
+        # MCA_COMONENT_BUILD_CHECK (in opal_mca.m4, invoked by
         # MCA_CONFIGURE_FRAMEWORK, below) to rule that the component
         # should not be built.  It is effectively the same as adding
         # "memchecker" to the --enable-mca-no-build list.

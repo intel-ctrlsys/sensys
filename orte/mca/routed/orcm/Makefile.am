@@ -7,7 +7,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-routed-orcm.txt
+dist_ortedata_DATA = help-routed-orcm.txt
 
 sources = \
 	routed_orcm.h \
@@ -26,7 +26,7 @@ component_noinst = libmca_routed_orcm.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(ortelibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_routed_orcm_la_SOURCES = $(sources)
 mca_routed_orcm_la_LDFLAGS = -module -avoid-version

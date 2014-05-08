@@ -10,7 +10,7 @@
 
 # This makefile.am does not stand on its own - it is included from orcm/Makefile.am
 
-dist_ompidata_DATA += runtime/help-orcm-runtime.txt
+dist_orcmdata_DATA += runtime/help-orcm-runtime.txt
 
 headers += \
         runtime/runtime.h \

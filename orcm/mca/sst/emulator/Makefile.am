@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-sst-emulator.txt
+dist_orcmdata_DATA = help-sst-emulator.txt
 
 sources = \
         sst_emulator.h \
@@ -31,7 +31,7 @@ component =
 ponent_sources =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component)
 mca_sst_emulator_la_SOURCES = $(component_sources)
 mca_sst_emulator_la_LDFLAGS = -module -avoid-version

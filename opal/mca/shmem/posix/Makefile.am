@@ -37,7 +37,7 @@ component_noinst = libmca_shmem_posix.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(opallibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_shmem_posix_la_SOURCES = $(sources)
 mca_shmem_posix_la_LDFLAGS = -module -avoid-version
@@ -47,4 +47,4 @@ libmca_shmem_posix_la_SOURCES = $(sources)
 libmca_shmem_posix_la_LDFLAGS = -module -avoid-version
 
 # help file
-dist_ompidata_DATA = help-opal-shmem-posix.txt
+dist_opaldata_DATA = help-opal-shmem-posix.txt

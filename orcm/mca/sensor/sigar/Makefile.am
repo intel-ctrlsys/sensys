@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orcm-sensor-sigar.txt
+dist_orcmdata_DATA = help-orcm-sensor-sigar.txt
 
 sources = \
         sensor_sigar.c \
@@ -27,7 +27,7 @@ component_noinst = libmca_sensor_sigar.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_sensor_sigar_la_CPPFLAGS = $(sensor_sigar_CPPFLAGS)
 mca_sensor_sigar_la_SOURCES = $(sources)

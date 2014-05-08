@@ -11,7 +11,7 @@ dnl Copyright (c) 2004-2005 The Regents of the University of California.
 dnl                         All rights reserved.
 dnl Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
 dnl Copyright (c) 2009-2011 Oak Ridge National Labs.  All rights reserved.
-dnl Copyright (c) 2014      Intel, Inc. All rights reserved.
+dnl Copyright (c) 2014      Intel, Inc. All rights reserved
 dnl $COPYRIGHT$
 dnl 
 dnl Additional copyrights may follow
@@ -108,6 +108,22 @@ else
     THREAD_CXXCPPFLAGS=
     THREAD_LDFLAGS=
     THREAD_LIBS=
+    if test "$THREAD_TYPE" != "none" ; then
+        cat <<EOF
+
+************************************************************************
+
+Open MPI was unable to find threading support on your system.  The
+OMPI development team is considering requiring threading support for
+proper OMPI execution.  This is in part because we are not aware of
+any OpenFabrics users that do not have thread support -- so we need
+you to e-mail the Open MPI Users mailing list to tell us if this is a
+problem for you.
+
+************************************************************************
+
+EOF
+    fi
 fi
 
 AM_CONDITIONAL(OPAL_HAVE_POSIX_THREADS, test "$THREAD_TYPE" = "posix")

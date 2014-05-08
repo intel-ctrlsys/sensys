@@ -7,7 +7,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-ras-simulator.txt
+dist_ortedata_DATA = help-ras-simulator.txt
 
 sources = \
         ras_sim.h \
@@ -30,7 +30,7 @@ component =
 component_sources =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(ortelibdir)
 mcacomponent_LTLIBRARIES = $(component)
 mca_ras_simulator_la_SOURCES = $(component_sources)
 mca_ras_simulator_la_LDFLAGS = -module -avoid-version

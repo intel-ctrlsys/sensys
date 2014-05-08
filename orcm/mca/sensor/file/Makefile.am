@@ -7,7 +7,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orcm-sensor-file.txt
+dist_orcmdata_DATA = help-orcm-sensor-file.txt
 
 sources = \
         sensor_file.c \
@@ -26,7 +26,7 @@ component_noinst = libmca_sensor_file.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_sensor_file_la_SOURCES = $(sources)
 mca_sensor_file_la_LDFLAGS = -module -avoid-version

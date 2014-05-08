@@ -49,4 +49,4 @@ EXTRA_DIST = \
 	platform/intel/bend/linux-optimized \
 	platform/intel/bend/linux-optimized.conf
 
-dist_ompidata_DATA = openmpi-valgrind.supp
+dist_opaldata_DATA = openmpi-valgrind.supp

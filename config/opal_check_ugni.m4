@@ -12,7 +12,7 @@
 #                         All rights reserved.
 # Copyright (c) 2006      QLogic Corp. All rights reserved.
 # Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
-# Copyright (c) 2011-2012 Los Alamos National Security, LLC.
+# Copyright (c) 2011-2014 Los Alamos National Security, LLC.
 #                         All rights reserved.
 # Copyright (c) 2014      Intel, Inc. All rights reserved
 # $COPYRIGHT$
@@ -22,7 +22,7 @@
 # $HEADER$
 #
 
-# ORTE_CHECK_UGNI(prefix, [action-if-found], [action-if-not-found])
+# OPAL_CHECK_UGNI(prefix, [action-if-found], [action-if-not-found])
 # --------------------------------------------------------
 # check if GNI support can be found.  sets prefix_{CPPFLAGS,
 # LDFLAGS, LIBS} as needed and runs action-if-found if there is
@@ -37,7 +37,7 @@
 #
 # --with-ugni=/opt/cray/ugni/default --with-ugni-includedir=/opt/cray/gni-headers/default/include
 
-AC_DEFUN([ORTE_CHECK_UGNI], [
+AC_DEFUN([OPAL_CHECK_UGNI], [
     AC_ARG_WITH([ugni], [AC_HELP_STRING([--with-ugni(=DIR)],
         [Build GNI (Cray Gemini) support, optionally adding DIR/include, DIR/lib, and DIR/lib64 to the search path for headers and libraries])])
 
@@ -56,43 +56,43 @@ AC_DEFUN([ORTE_CHECK_UGNI], [
     AS_IF([test "$with_ugni_includedir" != "" -a "$with_ugni_includedir" != "yes" -a "$with_ugni_includedir" != "no"],
           [$1_CPPFLAGS="$$1_CPPFLAGS -I$with_ugni_includedir"])
 
-    orte_check_ugni_$1_save_CPPFLAGS="$CPPFLAGS"
-    orte_check_ugni_$1_save_LDFLAGS="$LDFLAGS"
-    orte_check_ugni_$1_save_LIBS="$LIBS"
+    opal_check_ugni_$1_save_CPPFLAGS="$CPPFLAGS"
+    opal_check_ugni_$1_save_LDFLAGS="$LDFLAGS"
+    opal_check_ugni_$1_save_LIBS="$LIBS"
 
     AS_IF([test "$with_ugni" != "no"], [
         AS_IF([test ! -z "$with_ugni" -a "$with_ugni" != "yes"], [
-            orte_check_ugni_dir="$with_ugni"])
+            opal_check_ugni_dir="$with_ugni"])
         AS_IF([test ! -z "$with_ugni_libdir" -a "$with_ugni_libdir" != "yes"], [
-            orte_check_ugni_libdir="$with_ugni_libdir"])
+            opal_check_ugni_libdir="$with_ugni_libdir"])
 
         OPAL_CHECK_PACKAGE([$1],
             [ugni.h],
             [ugni],
             [GNI_CdmCreate],
             [],
-            [$orte_check_ugni_dir],
-            [$orte_check_ugni_libdir],
-            [orte_check_ugni_happy="yes"],
-            [orte_check_ugni_happy="no"])],
-          [orte_check_ugni_happy="no"])
+            [$opal_check_ugni_dir],
+            [$opal_check_ugni_libdir],
+            [opal_check_ugni_happy="yes"],
+            [opal_check_ugni_happy="no"])],
+          [opal_check_ugni_happy="no"])
 
     LIBS="$LIBS $$1_LIBS"
     LDFLAGS="$LDFLAGS $$1_LDFLAGS"
 
-    AS_IF([test "$orte_check_ugni_happy" = "yes"],
+    AS_IF([test "$opal_check_ugni_happy" = "yes"],
           [AC_CHECK_FUNCS([GNI_GetJobResInfo])])
 
-    CPPFLAGS="$orte_check_ugni_$1_save_CPPFLAGS"
-    LDFLAGS="$orte_check_ugni_$1_save_LDFLAGS"
-    LIBS="$orte_check_ugni_$1_save_LIBS"
+    CPPFLAGS="$opal_check_ugni_$1_save_CPPFLAGS"
+    LDFLAGS="$opal_check_ugni_$1_save_LDFLAGS"
+    LIBS="$opal_check_ugni_$1_save_LIBS"
 
     dnl XXX not sure if this is true, but will assume so...
-    AS_IF([test "$orte_check_ugni_happy" = "yes" -a "$enable_progress_threads" = "yes"],
+    AS_IF([test "$opal_check_ugni_happy" = "yes" -a "$enable_progress_threads" = "yes"],
           [AC_MSG_WARN([GNI driver does not currently support progress threads.  Disabling.])
-           orte_check_ugni_happy="no"])
+           opal_check_ugni_happy="no"])
 
-    AS_IF([test "$orte_check_ugni_happy" = "yes"],
+    AS_IF([test "$opal_check_ugni_happy" = "yes"],
           [$2],
           [AS_IF([test ! -z "$with_ugni" -a "$with_ugni" != "no"],
                  [AC_MSG_ERROR([GNI support requested but not found.  Cannot continue.])])

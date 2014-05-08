@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orte-rmaps-resilient.txt
+dist_ortedata_DATA = help-orte-rmaps-resilient.txt
 
 sources = \
         rmaps_resilient.c \
@@ -27,7 +27,7 @@ component_noinst = libmca_rmaps_resilient.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(ortelibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_rmaps_resilient_la_SOURCES = $(sources)
 mca_rmaps_resilient_la_LDFLAGS = -module -avoid-version

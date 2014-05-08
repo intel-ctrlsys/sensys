@@ -10,7 +10,6 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
-# Copyright (c) 2014      Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
@@ -62,13 +61,13 @@ libopen_pal_la_LDFLAGS = -version-info $(libopen_pal_so_version)
 # included subdirectory Makefile.am's and appended-to variables
 headers =
 noinst_LTLIBRARIES =
-dist_ompidata_DATA =
+dist_opaldata_DATA =
 libopen_pal_la_SOURCES += $(headers)
 
 # Conditionally install the header files
 
 if WANT_INSTALL_HEADERS
-opaldir = $(ompiincludedir)/$(subdir)
+opaldir = $(opalincludedir)/$(subdir)
 nobase_opal_HEADERS = $(headers)
 
 # This is somewhat of a hack -- libltdl is installed by libtoolize,

@@ -98,7 +98,7 @@ AC_DEFUN([MCA_opal_event_libevent2021_CONFIG],[
 
 AC_DEFUN([MCA_opal_event_libevent2021_DO_THE_CONFIG], [
     CFLAGS_save="$CFLAGS"
-    CFLAGS="$OMPI_CFLAGS_BEFORE_PICKY $OPAL_VISIBILITY_CFLAGS"
+    CFLAGS="$OPAL_CFLAGS_BEFORE_PICKY $OPAL_VISIBILITY_CFLAGS"
     CPPFLAGS_save="$CPPFLAGS"
     CPPFLAGS="-I$OPAL_TOP_SRCDIR -I$OPAL_TOP_BUILDDIR -I$OPAL_TOP_SRCDIR/opal/include $CPPFLAGS"
 
@@ -165,7 +165,7 @@ AC_DEFUN([MCA_opal_event_libevent2021_DO_THE_CONFIG], [
     AC_MSG_RESULT([$event_args])
 
     OPAL_CONFIG_SUBDIR([$libevent_basedir/libevent], 
-        [$event_args $ompi_subdir_args],
+        [$event_args $opal_subdir_args],
         [libevent_happy="yes"], [libevent_happy="no"])
     if test "$libevent_happy" = "no"; then
         AC_MSG_WARN([Event library failed to configure])

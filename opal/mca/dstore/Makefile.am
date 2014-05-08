@@ -14,7 +14,7 @@ noinst_LTLIBRARIES = libmca_dstore.la
 libmca_dstore_la_SOURCES =
 
 # pkgdata setup
-dist_ompidata_DATA =
+dist_opaldata_DATA =
 
 # local files
 headers = dstore.h dstore_types.h
@@ -22,7 +22,7 @@ libmca_dstore_la_SOURCES += $(headers)
 
 # Conditionally install the header files
 if WANT_INSTALL_HEADERS
-opaldir = $(ompiincludedir)/$(subdir)
+opaldir = $(opalincludedir)/$(subdir)
 nobase_opal_HEADERS = $(headers)
 endif
 

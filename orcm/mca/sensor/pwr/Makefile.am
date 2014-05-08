@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orcm-sensor-pwr.txt
+dist_orcmdata_DATA = help-orcm-sensor-pwr.txt
 
 sources = \
         sensor_pwr.h \
@@ -27,7 +27,7 @@ component_noinst = libmca_sensor_pwr.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_sensor_pwr_la_SOURCES = $(sources)
 mca_sensor_pwr_la_LDFLAGS = -module -avoid-version

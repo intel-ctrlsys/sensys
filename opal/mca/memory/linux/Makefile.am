@@ -32,11 +32,11 @@ AM_CPPFLAGS += -I$(srcdir)/sysdeps/generic
 # software.  So install it in the same place that we install ROMIO's
 # copyright notices.
 
-docdir      = $(ompidatadir)/doc
+docdir      = $(opaldatadir)/doc
 doc_DATA    = COPYRIGHT-ptmalloc2.txt
 
 # Help file
-dist_ompidata_DATA = help-opal-memory-linux.txt
+dist_opaldata_DATA = help-opal-memory-linux.txt
 
 # This component is only ever built statically (i.e., slurped into
 # libopen-pal) -- it is never built as a DSO.

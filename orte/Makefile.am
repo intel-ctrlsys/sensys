@@ -37,20 +37,20 @@ lib_LTLIBRARIES = libopen-rte.la
 libopen_rte_la_SOURCES =
 libopen_rte_la_LIBADD = \
 	$(MCA_orte_FRAMEWORK_LIBS) \
-	$(top_opal_builddir)/opal/libopen-pal.la
+	$(ORTE_TOP_BUILDDIR)/opal/libopen-pal.la
 libopen_rte_la_DEPENDENCIES = $(libopen_rte_la_LIBADD)
 libopen_rte_la_LDFLAGS = -version-info $(libopen_rte_so_version)
 
 # included subdirectory Makefile.am's and appended-to variables
 headers =
 noinst_LTLIBRARIES =
-dist_ompidata_DATA =
+dist_ortedata_DATA =
 libopen_rte_la_SOURCES += $(headers)
 
 # Conditionally install the header files
 
 if WANT_INSTALL_HEADERS
-ortedir = $(ompiincludedir)/$(subdir)
+ortedir = $(orteincludedir)/$(subdir)
 nobase_orte_HEADERS = $(headers)
 endif
 

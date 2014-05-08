@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orcm-sensor-coretemp.txt
+dist_orcmdata_DATA = help-orcm-sensor-coretemp.txt
 
 sources = \
         sensor_coretemp.c \
@@ -27,7 +27,7 @@ component_noinst = libmca_sensor_coretemp.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_sensor_coretemp_la_SOURCES = $(sources)
 mca_sensor_coretemp_la_LDFLAGS = -module -avoid-version

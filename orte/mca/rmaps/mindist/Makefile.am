@@ -18,7 +18,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orte-rmaps-md.txt
+dist_ortedata_DATA = help-orte-rmaps-md.txt
 
 sources = \
         rmaps_mindist.h \
@@ -37,7 +37,7 @@ component_noinst = libmca_rmaps_mindist.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(ortelibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_rmaps_mindist_la_SOURCES = $(sources)
 mca_rmaps_mindist_la_LDFLAGS = -module -avoid-version

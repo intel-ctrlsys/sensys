@@ -10,8 +10,8 @@ RMA_TODO.txt
 autogen.pl
 autogen.sh
 NEWS
-Makefile.am
-configure.ac
+./Makefile.am
+./configure.ac
 config/ompi_*
 config/oshmem_*
 config/Makefile.am

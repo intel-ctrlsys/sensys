@@ -11,7 +11,7 @@ dnl                         University of Stuttgart.  All rights reserved.
 dnl Copyright (c) 2004-2005 The Regents of the University of California.
 dnl                         All rights reserved.
 dnl Copyright (c) 2012      Oracle and/or its affiliates.  All rights reserved.
-dnl Copyright (c) 2014      Intel, Inc. All rights reserved.
+dnl Copyright (c) 2014      Intel, Inc. All rights reserved
 dnl $COPYRIGHT$
 dnl 
 dnl Additional copyrights may follow
@@ -39,6 +39,29 @@ AC_DEFUN([OPAL_C_COMPILER_VENDOR], [
     $1="$opal_cv_c_compiler_vendor"
 ])
 
+
+# OPAL_CXX_COMPILER_VENDOR(VENDOR_VARIABLE)
+# ---------------------------------------
+# Set shell variable VENDOR_VARIABLE to the name of the compiler
+# vendor for the current C++ compiler.
+#
+# See comment for _OPAL_CHECK_COMPILER_VENDOR for a complete
+# list of currently detected compilers.
+AC_DEFUN([OPAL_CXX_COMPILER_VENDOR], [
+    AC_REQUIRE([AC_PROG_CXX])
+
+    AC_CACHE_CHECK([for the C++ compiler vendor],
+        [opal_cv_cxx_compiler_vendor],
+        [AC_LANG_PUSH(C++)
+         _OPAL_CHECK_COMPILER_VENDOR([opal_cv_cxx_compiler_vendor])
+         AC_LANG_POP(C++)])
+
+    $1="$opal_cv_c_compiler_vendor"
+])
+
+# workaround to avoid syntax error with Autoconf < 2.68:
+m4_ifndef([AC_LANG_DEFINES_PROVIDED],
+	  [m4_define([AC_LANG_DEFINES_PROVIDED])])
 
 # OPAL_IFDEF_IFELSE(symbol, [action-if-defined], 
 #                   [action-if-not-defined])
@@ -95,7 +118,7 @@ AC_DEFUN([_OPAL_CHECK_COMPILER_VENDOR], [
                # someone tries to use said compiler.  gccfss (gcc 
                # for SPARC Systems) is a compiler that is no longer 
                # supported by Oracle and it has some major flaws
-               # that prevents it from actually compiling OPAL code. 
+               # that prevents it from actually compiling OMPI code. 
                # So if we detect it we automatically bail.
 
                if ($CC --version | grep gccfss) >/dev/null 2>&1; then

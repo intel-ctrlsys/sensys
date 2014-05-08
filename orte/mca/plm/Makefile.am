@@ -22,7 +22,7 @@ noinst_LTLIBRARIES = libmca_plm.la
 libmca_plm_la_SOURCES =
 
 # pkgdata setup
-dist_ompidata_DATA =
+dist_ortedata_DATA =
 
 # local files
 headers = plm.h plm_types.h
@@ -30,7 +30,7 @@ libmca_plm_la_SOURCES += $(headers)
 
 # Conditionally install the header files
 if WANT_INSTALL_HEADERS
-ortedir = $(ompiincludedir)/$(subdir)
+ortedir = $(orteincludedir)/$(subdir)
 nobase_orte_HEADERS = $(headers)
 endif
 

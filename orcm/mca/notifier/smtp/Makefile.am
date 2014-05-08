@@ -20,7 +20,7 @@
 
 AM_CPPFLAGS = $(notifier_smtp_CPPFLAGS)
 
-dist_pkgdata_DATA = \
+dist_orcmdata_DATA = \
         help-orcm-notifier-smtp.txt
 
 sources = \
@@ -40,7 +40,7 @@ component_noinst = libmca_notifier_smtp.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_notifier_smtp_la_SOURCES = $(sources)
 mca_notifier_smtp_la_LDFLAGS = -module -avoid-version $(notifier_smtp_LDFLAGS)

@@ -15,7 +15,7 @@ noinst_LTLIBRARIES = libmca_db.la
 libmca_db_la_SOURCES =
 
 # pkgdata setup
-dist_ompidata_DATA =
+dist_orcmdata_DATA =
 
 # local files
 headers = db.h
@@ -23,7 +23,7 @@ libmca_db_la_SOURCES += $(headers)
 
 # Conditionally install the header files
 if WANT_INSTALL_HEADERS
-orcmdir = $(ompiincludedir)/$(subdir)
+orcmdir = $(orcmincludedir)/$(subdir)
 nobase_orcm_HEADERS = $(headers)
 endif
 

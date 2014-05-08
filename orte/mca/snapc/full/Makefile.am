@@ -15,7 +15,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orte-snapc-full.txt
+dist_ortedata_DATA = help-orte-snapc-full.txt
 
 sources = \
         snapc_full.h \
@@ -37,7 +37,7 @@ component_noinst = libmca_snapc_full.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(ortelibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_snapc_full_la_SOURCES = $(sources)
 mca_snapc_full_la_LDFLAGS = -module -avoid-version

@@ -17,7 +17,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = help-orte-rmaps-rr.txt
+dist_ortedata_DATA = help-orte-rmaps-rr.txt
 
 sources = \
         rmaps_rr.c \
@@ -37,7 +37,7 @@ component_noinst = libmca_rmaps_round_robin.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(ortelibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_rmaps_round_robin_la_SOURCES = $(sources)
 mca_rmaps_round_robin_la_LDFLAGS = -module -avoid-version

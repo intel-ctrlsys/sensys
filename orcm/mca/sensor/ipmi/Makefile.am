@@ -8,7 +8,7 @@
 # $HEADER$
 #
 
-dist_pkgdata_DATA = help-orcm-sensor-ipmi.txt
+dist_orcmdata_DATA = help-orcm-sensor-ipmi.txt
 
 sources = \
         sensor_ipmi.c \
@@ -27,7 +27,7 @@ component_noinst = libmca_sensor_ipmi.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_sensor_ipmi_la_CPPFLAGS = $(sensor_ipmi_CPPFLAGS)
 mca_sensor_ipmi_la_SOURCES = $(sources)

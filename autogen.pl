@@ -251,7 +251,7 @@ sub ignored {
     my ($dir) = @_;
 
     # If this directory does not have .opal_ignore, or if it has a
-    # .orcm_unignore that has my username in it, then add it to the
+    # .opal_unignore that has my username in it, then add it to the
     # list of components.
     my $ignored = 0;
 
@@ -344,7 +344,7 @@ sub mca_process_framework {
 
                 # Check ignore status
                 if (ignored("$dir/$d")) {
-                    verbose "    => Ignored (found .orcm_ignore file)\n";
+                    verbose "    => Ignored (found .opal_ignore file)\n";
                 } else {
                     mca_process_component($topdir, $project, $framework, $d);
                 }

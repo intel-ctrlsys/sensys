@@ -7,7 +7,7 @@
 # $HEADER$
 #
 
-dist_ompidata_DATA = base/help-orcm-cfgi.txt
+dist_orcmdata_DATA = base/help-orcm-cfgi.txt
 
 headers += \
         base/base.h

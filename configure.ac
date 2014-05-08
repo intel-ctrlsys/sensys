@@ -185,6 +185,7 @@ AH_TOP([/* -*- c -*-
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -209,10 +210,15 @@ AH_BOTTOM([
 
 OPAL_BASIC_SETUP
 
-top_opal_srcdir="$OPAL_TOP_SRCDIR"
-AC_SUBST(top_opal_srcdir)
-top_opal_builddir="$OPAL_TOP_BUILDDIR"
-AC_SUBST(top_opal_builddir)
+ORTE_TOP_SRCDIR="$OPAL_TOP_SRCDIR"
+ORTE_TOP_BUILDDIR="$OPAL_TOP_BUILDDIR"
+AC_SUBST(ORTE_TOP_SRCDIR)
+AC_SUBST(ORTE_TOP_BUILDDIR)
+
+ORCM_TOP_SRCDIR="$OPAL_TOP_SRCDIR"
+ORCM_TOP_BUILDDIR="$OPAL_TOP_BUILDDIR"
+AC_SUBST(ORCM_TOP_SRCDIR)
+AC_SUBST(ORCM_TOP_BUILDDIR)
 
 ############################################################################
 # Configuration options
@@ -817,6 +823,8 @@ AC_DEFINE_UNQUOTED([OPAL_HAVE__SC_NPROCESSORS_ONLN], [$result],
 
 AC_C_BIGENDIAN
 
+OPAL_CHECK_BROKEN_QSORT
+
 AC_CACHE_CHECK([if word-sized integers must be word-size aligned],
     [opal_cv_c_word_size_align],
     [AC_LANG_PUSH(C)
@@ -1127,10 +1135,35 @@ ORTE_SETUP_DEBUGGER_FLAGS
 AC_SUBST(CFLAGS)
 AC_SUBST(CPPFLAGS)
 
+# opaldatadir, opallibdir, and opalinclude are essentially the same as
+# pkg*dir, but will always be */openmpi.  This is to make it a bit
+# easier to deal with the problem of opal, orte, and ompi built from
+# their own tarballs, with their own PACKAGE variables.
+opaldatadir='${datadir}/openmpi'
+opallibdir='${libdir}/openmpi'
+opalincludedir='${includedir}/openmpi'
+AC_SUBST(opaldatadir)
+AC_SUBST(opallibdir)
+AC_SUBST(opalincludedir)
+
+ortedatadir="$opaldatadir"
+AC_SUBST(ortedatadir)
+ortelibdir="$opallibdir"
+AC_SUBST(ortelibdir)
+orteincludedir="$opalincludedir"
+AC_SUBST(orteincludedir)
+
+orcmdatadir="$opaldatadir"
+AC_SUBST(orcmdatadir)
+orcmlibdir="$opallibdir"
+AC_SUBST(orcmlibdir)
+orcmincludedir="$opalincludedir"
+AC_SUBST(orcmincludedir)
+
 #
 # Aggregate MCA parameters directory
 #
-AC_SUBST([AMCA_PARAM_SETS_DIR], ['$(ompidatadir)/amca-param-sets'])
+AC_SUBST([AMCA_PARAM_SETS_DIR], ['$(opaldatadir)/amca-param-sets'])
 
 ############################################################################
 # final wrapper compiler config
@@ -1205,17 +1238,6 @@ case "`uname`" in
     AC_MSG_RESULT([no])
     ;;
 esac
-
-# ompidatadir, ompilibdir, and ompiinclude are essentially the same as
-# pkg*dir, but will always be */openmpi.  This is to make it a bit
-# easier to deal with the problem of opal, orte, and ompi built from
-# their own tarballs, with their own PACKAGE variables.
-ompidatadir='${datadir}/openmpi'
-ompilibdir='${libdir}/openmpi'
-ompiincludedir='${includedir}/openmpi'
-AC_SUBST(ompidatadir)
-AC_SUBST(ompilibdir)
-AC_SUBST(ompiincludedir)
 
 opal_show_subtitle "Final output"
 

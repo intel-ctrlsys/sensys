@@ -215,6 +215,9 @@ static int define_system(opal_list_t *config,
     orcm_row_t *row;
     orcm_rack_t *rack;
     orcm_node_t *node;
+    int32_t num;
+    opal_buffer_t uribuf, clusterbuf, rowbuf, rackbuf;
+    opal_buffer_t *bptr;
 
     /* set default */
     *mynode = NULL;
@@ -295,6 +298,8 @@ static int define_system(opal_list_t *config,
     }
 
     /* cycle thru the cluster setting up the remaining names */
+    OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
+    OBJ_CONSTRUCT(&clusterbuf, opal_buffer_t);
     OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
         if (ORTE_NODE_STATE_UNDEF != cluster->controller.state) {
             /* the cluster includes a system controller node */
@@ -312,7 +317,16 @@ static int define_system(opal_list_t *config,
             }
             ++vpid;
         }
+        /* pack the cluster controller */
+        opal_dss.pack(&clusterbuf, &cluster->controller.daemon, 1, ORTE_NAME);
+        /* pack the number of rows */
+        num = opal_list_get_size(&cluster->rows);
+        opal_dss.pack(&clusterbuf, &num, 1, OPAL_INT32);
         OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
+            OBJ_CONSTRUCT(&rowbuf, opal_buffer_t);
+            /* pack the number of racks */
+            num = opal_list_get_size(&row->racks);
+            opal_dss.pack(&rowbuf, &num, 1, OPAL_INT32);
             if (ORTE_NODE_STATE_UNDEF != row->controller.state) {
                 /* the row includes a controller */
                 row->controller.daemon.jobid = 0;
@@ -329,7 +343,11 @@ static int define_system(opal_list_t *config,
                 }
                 ++vpid;
             }
+            /* pack the name of the row controller, which will be invalid
+             * if we don't have one in the config */
+            opal_dss.pack(&rowbuf, &row->controller.daemon, 1, ORTE_NAME);
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
+                OBJ_CONSTRUCT(&rackbuf, opal_buffer_t);
                 if (ORTE_NODE_STATE_UNDEF != rack->controller.state) {
                     /* the rack includes a controller */
                     rack->controller.daemon.jobid = 0;
@@ -346,6 +364,9 @@ static int define_system(opal_list_t *config,
                     }
                     ++vpid;
                 }
+                /* pack the name of the rack controller, which will be invalid
+                 * if we don't have one in the config */
+                opal_dss.pack(&rackbuf, &rack->controller.daemon, 1, ORTE_NAME);
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     node->daemon.jobid = 0;
                     node->daemon.vpid = vpid;
@@ -356,8 +377,15 @@ static int define_system(opal_list_t *config,
                         }
                     }
                     ++vpid;
+                    opal_dss.pack(&rackbuf, &node->daemon, 1, ORTE_NAME);
                 }
+                bptr = &rackbuf;
+                opal_dss.pack(&rowbuf, &bptr, 1, OPAL_BUFFER);
+                OBJ_DESTRUCT(&rackbuf);
             }
+            bptr = &rowbuf;
+            opal_dss.pack(&clusterbuf, &bptr, 1, OPAL_BUFFER);
+            OBJ_DESTRUCT(&rowbuf);
         }
     }
 
@@ -372,6 +400,12 @@ static int define_system(opal_list_t *config,
 
     /* return the number of procs in the system */
     *num_procs = vpid;
+    bptr = &uribuf;
+    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
+    OBJ_DESTRUCT(&uribuf);
+    bptr = &clusterbuf;
+    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
+    OBJ_DESTRUCT(&clusterbuf);
 
     return ORTE_SUCCESS;
 }

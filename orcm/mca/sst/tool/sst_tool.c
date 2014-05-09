@@ -186,6 +186,7 @@ static int tool_init(void)
         goto error;
     }
     scheduler = (orcm_scheduler_t*)opal_list_get_first(orcm_schedulers);
+    OBJ_DESTRUCT(&buf);
 
     /* if we didn't find a scheduler, then abort */
     if (NULL == scheduler) {
@@ -216,10 +217,6 @@ static int tool_init(void)
         goto error;
     }
     OBJ_DESTRUCT(&kv);
-
-    /* construct the URI */
-    OBJ_CONSTRUCT(&buf, opal_buffer_t);
-    orcm_util_construct_uri(&buf, &scheduler->controller);
 
     /* setup callback for SIGPIPE */
     setup_sighandler(SIGPIPE, &epipe_handler, epipe_signal_callback);
@@ -299,6 +296,8 @@ static int tool_init(void)
     /* since I am a tool, then all I really want to do is communicate.
      * So setup communications and be done - load the hash tables
      */
+    OBJ_CONSTRUCT(&buf, opal_buffer_t);
+    orcm_util_construct_uri(&buf, &scheduler->controller);
     if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(&buf))) {
         ORTE_ERROR_LOG(ret);
     }

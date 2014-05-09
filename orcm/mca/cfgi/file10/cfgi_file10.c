@@ -179,6 +179,7 @@ static int define_system(opal_list_t *config,
     orcm_node_t *node;
     int32_t num;
     opal_buffer_t uribuf, clusterbuf, rowbuf, rackbuf;
+    opal_buffer_t *bptr;
 
     /* set default */
     *mynode = NULL;
@@ -327,12 +328,12 @@ static int define_system(opal_list_t *config,
                     }
                 }
                 ++vpid;
-                opal_dss.pack(&rackbuf, &row_controller.daemon, 1, ORTE_NAME);
             }
+            /* pack the name of the row controller, which will be invalid
+             * if we don't have one in the config */
+            opal_dss.pack(&rowbuf, &row->controller.daemon, 1, ORTE_NAME);
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
-                /* pack the number of nodes */
-                num = opal_list_get_size(&rack->nodes);
-                opal_dss.pack(&rackbuf, &num, 1, OPAL_INT32);
+                OBJ_CONSTRUCT(&rackbuf, opal_buffer_t);
                 /* if we have aggregators, assign one to each rack */
                 if (NULL != aggregators &&
                     nagg < opal_argv_count(aggregators) &&
@@ -382,8 +383,10 @@ static int define_system(opal_list_t *config,
                         }
                     }
                     ++vpid;
-                    opal_dss.pack(&rackbuf, &rack_controller.daemon, 1, ORTE_NAME);
                 }
+                /* pack the name of the rack controller, which will be invalid
+                 * if we don't have one in the config */
+                opal_dss.pack(&rackbuf, &rack->controller.daemon, 1, ORTE_NAME);
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     /* nodes always include a daemon */
                     node->daemon.jobid = 0;
@@ -432,10 +435,12 @@ static int define_system(opal_list_t *config,
                     ++vpid;
                     opal_dss.pack(&rackbuf, &node->daemon, 1, ORTE_NAME);
                 }
-                opal_dss.pack(&rowbuf, &rackbuf, 1, OPAL_BUFFER);
+                bptr = &rackbuf;
+                opal_dss.pack(&rowbuf, &bptr, 1, OPAL_BUFFER);
                 OBJ_DESTRUCT(&rackbuf);
             }
-            opal_dss.pack(&clusterbuf, &rowbuf, 1, OPAL_BUFFER);
+            bptr = &rowbuf;
+            opal_dss.pack(&clusterbuf, &bptr, 1, OPAL_BUFFER);
             OBJ_DESTRUCT(&rowbuf);
         }
         if (30 < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
@@ -445,9 +450,11 @@ static int define_system(opal_list_t *config,
 
     /* return the number of procs in the system */
     *num_procs = vpid;
-    opal_dss.pack(buf, &uribuf, 1, OPAL_BUFFER);
+    bptr = &uribuf;
+    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
     OBJ_DESTRUCT(&uribuf);
-    opal_dss.pack(buf, &clusterbuf, 1, OPAL_BUFFER);
+    bptr = &clusterbuf;
+    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
     OBJ_DESTRUCT(&clusterbuf);
 
     return ORTE_SUCCESS;

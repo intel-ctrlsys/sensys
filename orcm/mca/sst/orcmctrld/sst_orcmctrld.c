@@ -119,9 +119,9 @@ static void setup_sighandler(int signal, opal_event_t *ev,
 
 static int orcmctrld_init(void)
 {
-    int ret = ORTE_ERROR;
+    int ret = ORTE_ERROR, n;
     char *error = NULL;
-    opal_buffer_t buf;
+    opal_buffer_t buf, *clusterbuf, *uribuf;
     orte_job_t *jdata;
     opal_list_t config;
     orte_vpid_t nprocs;
@@ -295,7 +295,6 @@ static int orcmctrld_init(void)
         error = "orcm_db_base_open";
         goto error;
     }
-    /* always restrict to local database components */
     if (ORTE_SUCCESS != (ret = orcm_db_base_select())) {
         ORTE_ERROR_LOG(ret);
         error = "orcm_db_base_select";
@@ -342,13 +341,44 @@ static int orcmctrld_init(void)
         goto error;
     }
 
-    /* load the hash tables */
-    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(&buf))) {
+    /* extract the buffers */
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &uribuf, &n, OPAL_BUFFER))) {
         ORTE_ERROR_LOG(ret);
-        error = "load hash tables";
+        OBJ_DESTRUCT(&buf);
+        error = "extract uri buffer";
+        goto error;
+    }
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &clusterbuf, &n, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(uribuf);
+        error = "orte_util_nidmap_init";
         goto error;
     }
     OBJ_DESTRUCT(&buf);
+
+    /* setup the routed info - the orcm routed component
+     * will know what to do. 
+     */
+    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_RELEASE(clusterbuf);
+        OBJ_RELEASE(uribuf);
+        error = "orte_routed.init_routes";
+        goto error;
+    }
+    OBJ_RELEASE(clusterbuf);
+
+    /* load the hash tables */
+    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(uribuf))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_RELEASE(uribuf);
+        error = "load hash tables";
+        goto error;
+    }
+    OBJ_RELEASE(uribuf);
 
     /*
      * Group communications
@@ -368,18 +398,6 @@ static int orcmctrld_init(void)
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);
         error = "orte_rml.enable_comm";
-        goto error;
-    }
-    
-    /* update the routing tree */
-    orte_routed.update_routing_plan();
-    
-    /* setup the routed info - the selected routed component
-     * will know what to do. 
-     */
-    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, NULL))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_routed.init_routes";
         goto error;
     }
     

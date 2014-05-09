@@ -167,7 +167,67 @@ static int delete_route(orte_process_name_t *proc)
 static int update_route(orte_process_name_t *target,
                         orte_process_name_t *route)
 {
-    /* nothing to do here */
+    orte_namelist_t *nm;
+    local_route_t *rt, *rptr;
+
+    if (ORTE_PROC_IS_TOOL || target->jobid != ORTE_PROC_MY_NAME->jobid) {
+        return ORTE_SUCCESS;
+    }
+
+    /* do we already know about this target? */
+    OPAL_LIST_FOREACH(nm, &names, orte_namelist_t) {
+        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
+                                                        &nm->name, target)) {
+            return ORTE_SUCCESS;
+        }
+    }
+    /* maintain track of who we know about */
+    nm = OBJ_NEW(orte_namelist_t);
+    nm->name = *target;
+    opal_list_append(&names, &nm->super);
+
+    /* if the two procs are the same, then this is a
+     * direct route
+     */
+    if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
+                                                    target, route)) {
+        rt = OBJ_NEW(local_route_t);
+        rt->target = *target;
+        rt->peers = &routes;
+        opal_list_append(&routes, &rt->super);
+        /* set our parent/lifeline if not done yet */
+        if (NULL == lifeline) {
+            lifeline = rt;
+            ORTE_PROC_MY_PARENT->jobid = rt->target.jobid;
+            ORTE_PROC_MY_PARENT->vpid = rt->target.vpid;
+        }
+        return ORTE_SUCCESS;
+    }
+    
+    /* find the intermediate route */
+    OPAL_LIST_FOREACH(rptr, &routes, local_route_t) {
+        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
+                                                        &rptr->target, route)) {
+            /* mark that we get to the target via this route */
+            rt = OBJ_NEW(local_route_t);
+            rt->target = *target;
+            rt->peers = &rptr->routes;
+            opal_list_append(&rptr->routes, &rt->super);
+            return ORTE_SUCCESS;
+        }
+    }
+    /* if we get here, then we didn't find the intermediate
+     * route, so add it
+     */
+    rptr = OBJ_NEW(local_route_t);
+    rptr->target = *route;
+    rptr->peers = &routes;
+    opal_list_append(&routes, &rptr->super);
+    rt = OBJ_NEW(local_route_t);
+    rt->target = *target;
+    rt->peers = &rptr->routes;
+    opal_list_append(&rptr->routes, &rt->super);
+
     return ORTE_SUCCESS;
 }
 
@@ -188,30 +248,18 @@ static orte_process_name_t get_route(orte_process_name_t *target)
         goto found;
     }
 
-    /* if the target is from outside my jobid, send direct */
+    /* if the target is from a different jobid, go direct */
     if (target->jobid != ORTE_PROC_MY_NAME->jobid) {
         ret = target;
         goto found;
     }
 
-    /* if I am a compute node daemon, then my route is
-     * always thru my lifeline
-     */
-    if (ORTE_PROC_IS_DAEMON) {
-        /* our route is our lifeline */
-        if (NULL != lifeline) {
-            ret = &lifeline->target;
-        } else {
-            /* if we get here, then we didn't find the route */
-            ret = ORTE_NAME_INVALID;
-        }
-    } else if (ORTE_PROC_IS_AGGREGATOR) {
-    } else if (ORTE_PROC_IS_SCHEDULER) {
-        /* my route is always to the first available
-         * row controller - if no rows are defined,
-         * then to the first available rack controller.
-         * If we don't have any of those, then direct
-         */
+    /* our route is our lifeline */
+    if (NULL != lifeline) {
+        ret = &lifeline->target;
+    } else {
+        /* if we get here, then we didn't find the route */
+        ret = ORTE_NAME_INVALID;
     }
 
 found:
@@ -253,6 +301,11 @@ static int route_lost(const orte_process_name_t *route)
      * in the orcm groups reconnect as required
      */
     if (ORTE_PROC_IS_SCHEDULER) {
+        return ORTE_SUCCESS;
+    }
+
+    /* if from another jobid, ignore it */
+    if (route->jobid != ORTE_PROC_MY_NAME->jobid) {
         return ORTE_SUCCESS;
     }
 

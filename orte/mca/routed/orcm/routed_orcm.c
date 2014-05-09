@@ -90,29 +90,44 @@ orte_routed_module_t orte_routed_orcm_module = {
 /* local tracker */
 typedef struct {
     opal_list_item_t super;
-    orte_process_name_t target;
-    opal_list_t routes;
-    opal_list_t *peers;
+    orte_process_name_t cntlr;
     bool alive;
-} local_route_t;
-static void rt_con(local_route_t *p)
+    opal_list_t nodes;  // orte_namelist_t
+} rack_t;
+static void rk_con(rack_t *p)
 {
-    OBJ_CONSTRUCT(&p->routes, opal_list_t);
-    p->peers = NULL;
+    OBJ_CONSTRUCT(&p->nodes, opal_list_t);
     p->alive = true;
 }
-static void rt_des(local_route_t *p)
+static void rk_des(rack_t *p)
 {
-    OPAL_LIST_DESTRUCT(&p->routes);
+    OPAL_LIST_DESTRUCT(&p->nodes);
 }
-OBJ_CLASS_INSTANCE(local_route_t,
+OBJ_CLASS_INSTANCE(rack_t,
                    opal_list_item_t,
-                   rt_con, rt_des);
+                   rk_con, rk_des);
+typedef struct {
+    opal_list_item_t super;
+    orte_process_name_t cntlr;
+    bool alive;
+    opal_list_t racks;  // rack_t
+} row_t;
+static void rw_con(row_t *p)
+{
+    OBJ_CONSTRUCT(&p->racks, opal_list_t);
+    p->alive = true;
+}
+static void rw_des(row_t *p)
+{
+    OPAL_LIST_DESTRUCT(&p->racks);
+}
+OBJ_CLASS_INSTANCE(row_t,
+                   opal_list_item_t,
+                   rw_con, rw_des);
 
 /* local globals */
-static local_route_t *lifeline=NULL;
-static opal_list_t names;
-static opal_list_t routes;
+static orte_namelist_t *lifeline=NULL;
+static opal_list_t cluster;
 
 
 static int init(void)
@@ -126,13 +141,7 @@ static int init(void)
     /* setup the tracking list of who we've been
      * told about
      */
-    OBJ_CONSTRUCT(&names, opal_list_t);
-
-    /* setup the list of routing layers
-     * so we retain a view of how to
-     * recover from failures
-     */
-    OBJ_CONSTRUCT(&routes, opal_list_t);
+    OBJ_CONSTRUCT(&cluster, opal_list_t);
 
     return ORTE_SUCCESS;
 }
@@ -140,8 +149,7 @@ static int init(void)
 static int finalize(void)
 {
     if (!ORTE_PROC_IS_TOOL) {
-        OPAL_LIST_DESTRUCT(&names);
-        OPAL_LIST_DESTRUCT(&routes);
+        OPAL_LIST_DESTRUCT(&cluster);
     }
 
     return ORTE_SUCCESS;
@@ -159,67 +167,7 @@ static int delete_route(orte_process_name_t *proc)
 static int update_route(orte_process_name_t *target,
                         orte_process_name_t *route)
 {
-    orte_namelist_t *nm;
-    local_route_t *rt, *rptr;
-
-    if (ORTE_PROC_IS_TOOL) {
-        return ORTE_SUCCESS;
-    }
-
-    /* do we already know about this target? */
-    OPAL_LIST_FOREACH(nm, &names, orte_namelist_t) {
-        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                        &nm->name, target)) {
-            return ORTE_SUCCESS;
-        }
-    }
-    /* maintain track of who we know about */
-    nm = OBJ_NEW(orte_namelist_t);
-    nm->name = *target;
-    opal_list_append(&names, &nm->super);
-
-    /* if the two procs are the same, then this is a
-     * direct route
-     */
-    if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                    target, route)) {
-        rt = OBJ_NEW(local_route_t);
-        rt->target = *target;
-        rt->peers = &routes;
-        opal_list_append(&routes, &rt->super);
-        /* set our parent/lifeline if not done yet */
-        if (NULL == lifeline) {
-            lifeline = rt;
-            ORTE_PROC_MY_PARENT->jobid = rt->target.jobid;
-            ORTE_PROC_MY_PARENT->vpid = rt->target.vpid;
-        }
-        return ORTE_SUCCESS;
-    }
-    
-    /* find the intermediate route */
-    OPAL_LIST_FOREACH(rptr, &routes, local_route_t) {
-        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                        &rptr->target, route)) {
-            /* mark that we get to the target via this route */
-            rt = OBJ_NEW(local_route_t);
-            rt->target = *target;
-            rt->peers = &rptr->routes;
-            opal_list_append(&rptr->routes, &rt->super);
-            return ORTE_SUCCESS;
-        }
-    }
-    /* if we get here, then we didn't find the intermediate
-     * route, so add it
-     */
-    rptr = OBJ_NEW(local_route_t);
-    rptr->target = *route;
-    rptr->peers = &routes;
-    opal_list_append(&routes, &rptr->super);
-    rt = OBJ_NEW(local_route_t);
-    rt->target = *target;
-    rt->peers = &rptr->routes;
-    opal_list_append(&rptr->routes, &rt->super);
-
+    /* nothing to do here */
     return ORTE_SUCCESS;
 }
 
@@ -240,12 +188,30 @@ static orte_process_name_t get_route(orte_process_name_t *target)
         goto found;
     }
 
-    /* our route is our lifeline */
-    if (NULL != lifeline) {
-        ret = &lifeline->target;
-    } else {
-        /* if we get here, then we didn't find the route */
-        ret = ORTE_NAME_INVALID;
+    /* if the target is from outside my jobid, send direct */
+    if (target->jobid != ORTE_PROC_MY_NAME->jobid) {
+        ret = target;
+        goto found;
+    }
+
+    /* if I am a compute node daemon, then my route is
+     * always thru my lifeline
+     */
+    if (ORTE_PROC_IS_DAEMON) {
+        /* our route is our lifeline */
+        if (NULL != lifeline) {
+            ret = &lifeline->target;
+        } else {
+            /* if we get here, then we didn't find the route */
+            ret = ORTE_NAME_INVALID;
+        }
+    } else if (ORTE_PROC_IS_AGGREGATOR) {
+    } else if (ORTE_PROC_IS_SCHEDULER) {
+        /* my route is always to the first available
+         * row controller - if no rows are defined,
+         * then to the first available rack controller.
+         * If we don't have any of those, then direct
+         */
     }
 
 found:
@@ -260,6 +226,10 @@ found:
 
 static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
 {
+    /* the cluster definition comes to us in a set of packed
+     * opal_buffer_t objects
+     */
+
     return ORTE_SUCCESS;
 }
 

@@ -162,7 +162,7 @@ static int update_route(orte_process_name_t *target,
     orte_namelist_t *nm;
     local_route_t *rt, *rptr;
 
-    if (ORTE_PROC_IS_TOOL) {
+    if (ORTE_PROC_IS_TOOL || target->jobid != ORTE_PROC_MY_NAME->jobid) {
         return ORTE_SUCCESS;
     }
 
@@ -240,6 +240,12 @@ static orte_process_name_t get_route(orte_process_name_t *target)
         goto found;
     }
 
+    /* if the target is from a different jobid, go direct */
+    if (target->jobid != ORTE_PROC_MY_NAME->jobid) {
+        ret = target;
+        goto found;
+    }
+
     /* our route is our lifeline */
     if (NULL != lifeline) {
         ret = &lifeline->target;
@@ -283,6 +289,11 @@ static int route_lost(const orte_process_name_t *route)
      * in the orcm groups reconnect as required
      */
     if (ORTE_PROC_IS_SCHEDULER) {
+        return ORTE_SUCCESS;
+    }
+
+    /* if from another jobid, ignore it */
+    if (route->jobid != ORTE_PROC_MY_NAME->jobid) {
         return ORTE_SUCCESS;
     }
 

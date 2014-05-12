@@ -76,6 +76,8 @@ static void orcm_rm_base_recv(int status, orte_process_name_t* sender,
     orcm_rm_cmd_flag_t command;
     int rc, cnt;
     opal_buffer_t *ans;
+    char *state;
+    orte_process_name_t node;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
                          "%s rm:base:receive processing msg",
@@ -93,7 +95,21 @@ static void orcm_rm_base_recv(int status, orte_process_name_t* sender,
         goto answer;
     }
     
-    if (ORCM_NODESTATE_REQ_COMMAND == command) {
+    if (ORCM_NODESTATE_UPDATE_COMMAND == command) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &state, &cnt, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            goto answer;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &node, &cnt, ORTE_NAME))) {
+            ORTE_ERROR_LOG(rc);
+            goto answer;
+        }
+
+        /* set node to state */
+
+        return;
+    }
+    else if (ORCM_NODESTATE_REQ_COMMAND == command) {
         /* get state of all nodes and pass back to caller
          */
         return;

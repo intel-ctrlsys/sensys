@@ -126,6 +126,9 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         /* pass it to the scheduler */
         ORCM_ACTIVATE_SCHED_STATE(s, ORCM_SESSION_STATE_INIT);
         return;
+    } else if (ORCM_SESSION_INFO_COMMAND == command) {
+
+    } else if (ORCM_RUN_COMMAND == command) {
     }
 
  answer:

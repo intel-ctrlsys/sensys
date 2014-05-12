@@ -23,7 +23,6 @@
 #include <ifaddrs.h>
 #endif
 
-#include "opal/dss/dss.h"
 #include "opal/util/argv.h"
 #include "opal/util/if.h"
 #include "opal/util/net.h"
@@ -177,9 +176,6 @@ static int define_system(opal_list_t *config,
     orcm_row_t *row;
     orcm_rack_t *rack;
     orcm_node_t *node;
-    int32_t num;
-    opal_buffer_t uribuf, clusterbuf, rowbuf, rackbuf;
-    opal_buffer_t *bptr;
 
     /* set default */
     *mynode = NULL;
@@ -228,7 +224,7 @@ static int define_system(opal_list_t *config,
      */
     found_me = false;
     OPAL_LIST_FOREACH(scheduler, orcm_schedulers, orcm_scheduler_t) {
-        if (ORTE_NODE_STATE_UNDEF != scheduler->controller.state) {
+        if (ORCM_NODE_STATE_UNDEF != scheduler->controller.state) {
             /* the cluster includes a scheduler */
             scheduler->controller.daemon.jobid = 0;
             scheduler->controller.daemon.vpid = vpid;
@@ -273,19 +269,9 @@ static int define_system(opal_list_t *config,
     /* cycle thru the cluster setting up the remaining names */
     nagg = 0;
     found_me = false;
-    OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
-    OBJ_CONSTRUCT(&clusterbuf, opal_buffer_t);
     OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
         /* this format doesn't have a way of defining a cluster controller */
-        opal_dss.pack(&clusterbuf, ORTE_NAME_INVALID, 1, ORTE_NAME);
-        /* pack the number of rows */
-        num = opal_list_get_size(&cluster->rows);
-        opal_dss.pack(&clusterbuf, &num, 1, OPAL_INT32);
         OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
-            OBJ_CONSTRUCT(&rowbuf, opal_buffer_t);
-            /* pack the number of racks */
-            num = opal_list_get_size(&row->racks);
-            opal_dss.pack(&rowbuf, &num, 1, OPAL_INT32);
             /* if we have aggregators, assign one to each row */
             if (NULL != aggregators &&
                 nagg < opal_argv_count(aggregators) &&
@@ -296,10 +282,10 @@ static int define_system(opal_list_t *config,
                 row->controller.daemon.jobid = 0;
                 row->controller.daemon.vpid = vpid;
                 row->controller.config.aggregator = true;
-                row->controller.state = ORTE_NODE_STATE_UNKNOWN;
+                row->controller.state = ORCM_NODE_STATE_UNKNOWN;
                 if (NULL != agg_cfg.port) {
                     row->controller.config.port = strdup(agg_cfg.port);
-                    orcm_util_construct_uri(&uribuf, &row->controller);
+                    orcm_util_construct_uri(buf, &row->controller);
                 }
                 if (NULL != agg_cfg.mca_params) {
                     row->controller.config.mca_params = opal_argv_copy(agg_cfg.mca_params);
@@ -329,11 +315,7 @@ static int define_system(opal_list_t *config,
                 }
                 ++vpid;
             }
-            /* pack the name of the row controller, which will be invalid
-             * if we don't have one in the config */
-            opal_dss.pack(&rowbuf, &row->controller.daemon, 1, ORTE_NAME);
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
-                OBJ_CONSTRUCT(&rackbuf, opal_buffer_t);
                 /* if we have aggregators, assign one to each rack */
                 if (NULL != aggregators &&
                     nagg < opal_argv_count(aggregators) &&
@@ -344,10 +326,10 @@ static int define_system(opal_list_t *config,
                     rack->controller.daemon.jobid = 0;
                     rack->controller.daemon.vpid = vpid;
                     rack->controller.config.aggregator = true;
-                    rack->controller.state = ORTE_NODE_STATE_UNKNOWN;
+                    rack->controller.state = ORCM_NODE_STATE_UNKNOWN;
                     if (NULL != agg_cfg.port) {
                         rack->controller.config.port = strdup(agg_cfg.port);
-                        orcm_util_construct_uri(&uribuf, &rack->controller);
+                        orcm_util_construct_uri(buf, &rack->controller);
                     }
                     if (NULL != agg_cfg.mca_params) {
                         rack->controller.config.mca_params = opal_argv_copy(agg_cfg.mca_params);
@@ -372,21 +354,13 @@ static int define_system(opal_list_t *config,
                                 ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_NAME->jobid;
                                 ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_NAME->vpid;
                             }
-                            /* define my row controller as my aggregator, if available */
-                            if (ORTE_NODE_STATE_UNDEF != row->controller.state) {
-                                ORTE_PROC_MY_DAEMON->jobid = row->controller.daemon.jobid;
-                                ORTE_PROC_MY_DAEMON->vpid = row->controller.daemon.vpid;
-                            } else {
-                                ORTE_PROC_MY_DAEMON->jobid = ORTE_PROC_MY_NAME->jobid;
-                                ORTE_PROC_MY_DAEMON->vpid = ORTE_PROC_MY_NAME->vpid;
-                            }
+                            /* define my daemon as myself */
+                            ORTE_PROC_MY_DAEMON->jobid = ORTE_PROC_MY_NAME->jobid;
+                            ORTE_PROC_MY_DAEMON->vpid = ORTE_PROC_MY_NAME->vpid;
                         }
                     }
                     ++vpid;
                 }
-                /* pack the name of the rack controller, which will be invalid
-                 * if we don't have one in the config */
-                opal_dss.pack(&rackbuf, &rack->controller.daemon, 1, ORTE_NAME);
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     /* nodes always include a daemon */
                     node->daemon.jobid = 0;
@@ -407,7 +381,7 @@ static int define_system(opal_list_t *config,
                             OBJ_RETAIN(node);
                             node->rack = (struct orcm_rack_t*)rack;
                             OBJ_RETAIN(rack);
-                            if (ORTE_NODE_STATE_UNDEF != rack->controller.state) {
+                            if (ORCM_NODE_STATE_UNDEF != rack->controller.state) {
                                 /* define my daemon */
                                 ORTE_PROC_MY_DAEMON->jobid = rack->controller.daemon.jobid;
                                 ORTE_PROC_MY_DAEMON->vpid = rack->controller.daemon.vpid;
@@ -420,9 +394,6 @@ static int define_system(opal_list_t *config,
                                     ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_DAEMON->jobid;
                                     ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_DAEMON->vpid;
                                 }
-                            } else if (ORTE_NODE_STATE_UNDEF != row->controller.state) {
-                                ORTE_PROC_MY_DAEMON->jobid = row->controller.daemon.jobid;
-                                ORTE_PROC_MY_DAEMON->vpid = row->controller.daemon.vpid;
                             } else if (NULL != scheduler) {
                                 /* fallback to the scheduler */
                                 ORTE_PROC_MY_DAEMON->jobid = scheduler->controller.daemon.jobid;
@@ -433,15 +404,8 @@ static int define_system(opal_list_t *config,
                         }
                     }
                     ++vpid;
-                    opal_dss.pack(&rackbuf, &node->daemon, 1, ORTE_NAME);
                 }
-                bptr = &rackbuf;
-                opal_dss.pack(&rowbuf, &bptr, 1, OPAL_BUFFER);
-                OBJ_DESTRUCT(&rackbuf);
             }
-            bptr = &rowbuf;
-            opal_dss.pack(&clusterbuf, &bptr, 1, OPAL_BUFFER);
-            OBJ_DESTRUCT(&rowbuf);
         }
         if (30 < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
             opal_dss.dump(0, cluster, ORCM_CLUSTER);
@@ -450,12 +414,6 @@ static int define_system(opal_list_t *config,
 
     /* return the number of procs in the system */
     *num_procs = vpid;
-    bptr = &uribuf;
-    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
-    OBJ_DESTRUCT(&uribuf);
-    bptr = &clusterbuf;
-    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
-    OBJ_DESTRUCT(&clusterbuf);
 
     return ORTE_SUCCESS;
 }
@@ -691,7 +649,8 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
                 /* add this node */
                 node = OBJ_NEW(orcm_node_t);
                 node->name = strdup(val);
-                node->state = ORTE_NODE_STATE_UNKNOWN;
+                node->state = ORCM_NODE_STATE_UNKNOWN;
+                node->scd_state = ORCM_SCD_NODE_STATE_UNKNOWN;
                 OBJ_RETAIN(rack);
                 node->rack = (struct orcm_rack_t*)rack;
                 opal_list_append(&rack->nodes, &node->super);
@@ -845,7 +804,7 @@ static int parse_scheduler(orcm_cfgi_xml_parser_t *xml)
                 /* add this node */
                 scheduler = OBJ_NEW(orcm_scheduler_t);
                 scheduler->controller.name = strdup(val);
-                scheduler->controller.state = ORTE_NODE_STATE_UNKNOWN;
+                scheduler->controller.state = ORCM_NODE_STATE_UNKNOWN;
                 opal_list_append(orcm_schedulers, &scheduler->super);
             }
         }

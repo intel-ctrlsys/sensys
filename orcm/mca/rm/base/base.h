@@ -50,7 +50,7 @@ typedef struct {
     opal_list_t states;
     /* list of active resource manager plugins */
     opal_list_t active_modules;
-    /* available nodes */
+    /* node tracking */
     opal_pointer_array_t nodes;
 } orcm_rm_base_t;
 ORCM_DECLSPEC extern orcm_rm_base_t orcm_rm_base;

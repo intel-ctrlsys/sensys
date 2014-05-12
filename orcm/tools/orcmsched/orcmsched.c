@@ -154,6 +154,8 @@ int main(int argc, char *argv[])
         if (1000 < i) i=0;        
     }
     
+    opal_progress_set_event_flag(OPAL_EVLOOP_ONCE);
+
     /* init the ORCM library */
     if (ORCM_SUCCESS != (ret = orcm_init(ORCM_SCHED))) {
         fprintf(stderr, "Failed to init: error %d\n", ret);

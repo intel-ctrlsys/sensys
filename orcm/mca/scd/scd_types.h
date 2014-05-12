@@ -28,10 +28,30 @@
 #include "opal/class/opal_object.h"
 #include "opal/class/opal_pointer_array.h"
 #include "opal/class/opal_list.h"
-
-#include "orcm/mca/cfgi/cfgi_types.h"
+#include "opal/mca/event/event.h"
 
 BEGIN_C_DECLS
+
+/* Provide an enum of resource types for use
+ * in specifying constraints
+ */
+typedef enum {
+    ORCM_RESOURCE_MEMORY,
+    ORCM_RESOURCE_CPU,
+    ORCM_RESOURCE_BANDWIDTH,
+    ORCM_RESOURCE_IMAGE
+} orcm_resource_type_t;
+
+/* Describe a resource constraint to be applied
+ * when selecting nodes for an allocation. Includes
+ * memory, network QoS, and OS image.
+ */
+typedef struct {
+    opal_list_item_t super;
+    orcm_resource_type_t type;
+    char *constraint;
+} orcm_resource_t;
+OBJ_CLASS_DECLARATION(orcm_resource_t);
 
 /****    ALLOCATION TYPES    ****/
 typedef int64_t orcm_alloc_id_t;
@@ -43,10 +63,10 @@ typedef struct {
     char *account;            // account to be charged
     char *name;               // user-assigned project name
     int32_t gid;              // group id to be run under
-    uint64_t max_nodes;       // max number of nodes
-    uint64_t max_pes;         // max number of processing elements
-    uint64_t min_nodes;       // min number of nodes required
-    uint64_t min_pes;         // min number of pe's required
+    int32_t max_nodes;        // max number of nodes
+    int32_t max_pes;          // max number of processing elements
+    int32_t min_nodes;        // min number of nodes required
+    int32_t min_pes;          // min number of pe's required
     time_t begin;             // desired start time for allocation
     time_t walltime;          // max execution time
     bool exclusive;           // true if nodes to be exclusively allocated (i.e., not shared across sessions)
@@ -96,21 +116,15 @@ typedef struct {
 OBJ_CLASS_DECLARATION(orcm_queue_t);
 
 
-/****    NODE TYPE    ****/
-/* The ORCM scheduler doesn't need to track the detailed
- * information found in the ORTE node object as the scheduler
- * isn't tasked with actually executing the job - e.g., it doesn't
- * need to know which processes are on what node. In the interest
- * of saving memory footprint, we therefore define a limited
- * node object that only contains the info required by the
- * scheduler
- */
-typedef struct {
-    opal_list_item_t super;
-    orcm_node_t *node;
-    orcm_queue_t *queue;
-} orcm_cmpnode_t;
-OBJ_CLASS_DECLARATION(orcm_cmpnode_t);
+/****    NODESTATE TYPE    ****/
+typedef int8_t orcm_scd_node_state_t;
+#define ORCM_SCD_NODE_STATE_T OPAL_INT8
+
+#define ORCM_SCD_NODE_STATE_UNDEF      0  // Node is undefined
+#define ORCM_SCD_NODE_STATE_UNKNOWN    1  // Node is unknown
+#define ORCM_SCD_NODE_STATE_UNALLOC    2  // Node is unallocated
+#define ORCM_SCD_NODE_STATE_ALLOC      3  // Node is allocated
+#define ORCM_SCD_NODE_STATE_EXCLUSIVE  4  // Node is exclusively allocated
 
 
 /****    JOB TYPE    ****/
@@ -203,7 +217,8 @@ typedef uint8_t orcm_sched_cmd_flag_t;
 #define ORCM_SCHED_CMD_T OPAL_UINT8
 
 #define ORCM_SESSION_REQ_COMMAND   1
-#define ORCM_RUN_COMMAND           2
+#define ORCM_SESSION_INFO_COMMAND  2
+#define ORCM_RUN_COMMAND           3
 
 
 END_C_DECLS

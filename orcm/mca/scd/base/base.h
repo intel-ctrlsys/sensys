@@ -23,6 +23,7 @@
 #include "opal/util/output.h"
 
 #include "orcm/mca/scd/scd.h"
+#include "orcm/mca/cfgi/cfgi_types.h"
 
 
 BEGIN_C_DECLS
@@ -72,9 +73,9 @@ typedef struct {
     opal_list_t states;
     /* list of active scheduler plugins */
     opal_list_t active_modules;
-    /* queues for pending session requests */
+    /* queues for tracking session requests */
     opal_list_t queues;
-    /* available nodes */
+    /* node tracking */
     opal_pointer_array_t nodes;
 } orcm_scd_base_t;
 ORCM_DECLSPEC extern orcm_scd_base_t orcm_scd_base;

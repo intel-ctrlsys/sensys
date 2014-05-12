@@ -215,9 +215,6 @@ static int define_system(opal_list_t *config,
     orcm_row_t *row;
     orcm_rack_t *rack;
     orcm_node_t *node;
-    int32_t num;
-    opal_buffer_t uribuf, clusterbuf, rowbuf, rackbuf;
-    opal_buffer_t *bptr;
 
     /* set default */
     *mynode = NULL;
@@ -298,10 +295,8 @@ static int define_system(opal_list_t *config,
     }
 
     /* cycle thru the cluster setting up the remaining names */
-    OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
-    OBJ_CONSTRUCT(&clusterbuf, opal_buffer_t);
     OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
-        if (ORTE_NODE_STATE_UNDEF != cluster->controller.state) {
+        if (ORCM_NODE_STATE_UNDEF != cluster->controller.state) {
             /* the cluster includes a system controller node */
             cluster->controller.daemon.jobid = 0;
             cluster->controller.daemon.vpid = vpid;
@@ -317,17 +312,8 @@ static int define_system(opal_list_t *config,
             }
             ++vpid;
         }
-        /* pack the cluster controller */
-        opal_dss.pack(&clusterbuf, &cluster->controller.daemon, 1, ORTE_NAME);
-        /* pack the number of rows */
-        num = opal_list_get_size(&cluster->rows);
-        opal_dss.pack(&clusterbuf, &num, 1, OPAL_INT32);
         OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
-            OBJ_CONSTRUCT(&rowbuf, opal_buffer_t);
-            /* pack the number of racks */
-            num = opal_list_get_size(&row->racks);
-            opal_dss.pack(&rowbuf, &num, 1, OPAL_INT32);
-            if (ORTE_NODE_STATE_UNDEF != row->controller.state) {
+            if (ORCM_NODE_STATE_UNDEF != row->controller.state) {
                 /* the row includes a controller */
                 row->controller.daemon.jobid = 0;
                 row->controller.daemon.vpid = vpid;
@@ -343,12 +329,8 @@ static int define_system(opal_list_t *config,
                 }
                 ++vpid;
             }
-            /* pack the name of the row controller, which will be invalid
-             * if we don't have one in the config */
-            opal_dss.pack(&rowbuf, &row->controller.daemon, 1, ORTE_NAME);
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
-                OBJ_CONSTRUCT(&rackbuf, opal_buffer_t);
-                if (ORTE_NODE_STATE_UNDEF != rack->controller.state) {
+                if (ORCM_NODE_STATE_UNDEF != rack->controller.state) {
                     /* the rack includes a controller */
                     rack->controller.daemon.jobid = 0;
                     rack->controller.daemon.vpid = vpid;
@@ -364,9 +346,6 @@ static int define_system(opal_list_t *config,
                     }
                     ++vpid;
                 }
-                /* pack the name of the rack controller, which will be invalid
-                 * if we don't have one in the config */
-                opal_dss.pack(&rackbuf, &rack->controller.daemon, 1, ORTE_NAME);
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     node->daemon.jobid = 0;
                     node->daemon.vpid = vpid;
@@ -377,15 +356,8 @@ static int define_system(opal_list_t *config,
                         }
                     }
                     ++vpid;
-                    opal_dss.pack(&rackbuf, &node->daemon, 1, ORTE_NAME);
                 }
-                bptr = &rackbuf;
-                opal_dss.pack(&rowbuf, &bptr, 1, OPAL_BUFFER);
-                OBJ_DESTRUCT(&rackbuf);
             }
-            bptr = &rowbuf;
-            opal_dss.pack(&clusterbuf, &bptr, 1, OPAL_BUFFER);
-            OBJ_DESTRUCT(&rowbuf);
         }
     }
 
@@ -400,12 +372,6 @@ static int define_system(opal_list_t *config,
 
     /* return the number of procs in the system */
     *num_procs = vpid;
-    bptr = &uribuf;
-    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
-    OBJ_DESTRUCT(&uribuf);
-    bptr = &clusterbuf;
-    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
-    OBJ_DESTRUCT(&clusterbuf);
 
     return ORTE_SUCCESS;
 }
@@ -784,7 +750,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
             asprintf(&rack->name, "%s%0*d", rack->row->name, digits, idx);
         }
         rack->controller.name = strdup(rack->name);
-        rack->controller.state = ORTE_NODE_STATE_UNKNOWN;
+        rack->controller.state = ORCM_NODE_STATE_UNKNOWN;
         /* parse any config that is attached to the rack controller */
         OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
             if (ORCM_SUCCESS != (rc = parse_orcm_config(&rack->controller.config, xx))) {
@@ -811,7 +777,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
             for (n=0; n < nnodes; n++) {
                 node = OBJ_NEW(orcm_node_t);
                 node->rack = (struct orcm_rack_t*)rack;
-                node->state = ORTE_NODE_STATE_UNKNOWN;
+                node->state = ORCM_NODE_STATE_UNKNOWN;
                 opal_list_append(&rack->nodes, &node->super);
                 /* now cycle thru the rest of this config element and apply
                  * those values to this node
@@ -837,7 +803,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
                 node->name = strdup(x->value[0]);
                 OBJ_RETAIN(rack);
                 node->rack = (struct orcm_rack_t*)rack;
-                node->state = ORTE_NODE_STATE_UNKNOWN;
+                node->state = ORCM_NODE_STATE_UNKNOWN;
                 opal_list_append(&rack->nodes, &node->super);
             }
             /* now cycle thru the rest of this config element and apply
@@ -873,7 +839,7 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
             return ORTE_ERR_BAD_PARAM;
         }
         row->controller.name = pack_charname(row->name[0], x->value[0]);
-        row->controller.state = ORTE_NODE_STATE_UNKNOWN;
+        row->controller.state = ORCM_NODE_STATE_UNKNOWN;
         /* parse any subvals that are attached to the row controller */
         OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
             if (ORCM_SUCCESS != (rc = parse_orcm_config(&row->controller.config, xx))) {
@@ -963,7 +929,7 @@ static int parse_cluster(orcm_cluster_t *cluster,
                 return ORTE_ERR_BAD_PARAM;
             }
             cluster->controller.name = strdup(x->value[0]);
-            cluster->controller.state = ORTE_NODE_STATE_UNKNOWN;
+            cluster->controller.state = ORCM_NODE_STATE_UNKNOWN;
             /* parse any subvals that are attached to the cluster controller */
             OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
                 if (ORCM_SUCCESS != (rc = parse_orcm_config(&cluster->controller.config, xx))) {

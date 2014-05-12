@@ -10,6 +10,7 @@ Vendor: Intel Corporation
 URL: https://bitbucket.org/rhc/orcm/
 Source0: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+Prefix: /usr
 
 %{!?configure_flags: %define configure_flags ""}
 

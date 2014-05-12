@@ -135,17 +135,3 @@ OBJ_CLASS_INSTANCE(orcm_rm_base_active_module_t,
 OBJ_CLASS_INSTANCE(orcm_resource_caddy_t,
                    opal_object_t,
                    NULL, NULL);
-
-static void res_con(orcm_resource_t *p)
-{
-    p->constraint = NULL;
-}
-static void res_des(orcm_resource_t *p)
-{
-    if (NULL != p->constraint) {
-        free(p->constraint);
-    }
-}
-OBJ_CLASS_INSTANCE(orcm_resource_t,
-                   opal_list_item_t,
-                   res_con, res_des);

@@ -22,8 +22,9 @@
 #include "opal/dss/dss_types.h"
 
 #include "orte/types.h"
-#include "orte/mca/plm/plm_types.h"
 
+#include "orcm/mca/rm/rm_types.h"
+#include "orcm/mca/scd/scd_types.h"
 
 /*
  * Global functions for MCA overall collective open and close
@@ -58,7 +59,8 @@ typedef struct {
     struct orcm_rack_t *rack;
     orte_process_name_t daemon;
     orcm_config_t config;
-    orte_node_state_t state;
+    orcm_node_state_t state;         //writable *only* by rm after init
+    orcm_scd_node_state_t scd_state; //writable *only* by scd after init
 } orcm_node_t;
 OBJ_CLASS_DECLARATION(orcm_node_t);
 

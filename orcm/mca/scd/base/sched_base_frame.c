@@ -203,6 +203,8 @@ static void alloc_con(orcm_alloc_t *p)
     memset(&p->begin, 0, sizeof(time_t));
     memset(&p->walltime, 0, sizeof(time_t));
     p->exclusive = true;
+    p->caller_uid = 0;
+    p->caller_gid = 0;
     p->nodefile = NULL;
     p->nodes = NULL;
     p->queues = NULL;
@@ -230,24 +232,6 @@ static void alloc_des(orcm_alloc_t *p)
 OBJ_CLASS_INSTANCE(orcm_alloc_t,
                    opal_object_t,
                    alloc_con, alloc_des);
-
-static void cmn_con(orcm_cmpnode_t *c)
-{
-    c->node = NULL;
-    c->queue = NULL;
-}
-static void cmn_des(orcm_cmpnode_t *c)
-{
-    if (NULL != c->node) {
-        OBJ_RELEASE(c->node);
-    }
-    if (NULL != c->queue) {
-        OBJ_RELEASE(c->queue);
-    }
-}
-OBJ_CLASS_INSTANCE(orcm_cmpnode_t,
-                   opal_list_item_t,
-                   cmn_con, cmn_des);
 
 OBJ_CLASS_INSTANCE(orcm_job_t,
                    opal_object_t,
@@ -329,3 +313,17 @@ OBJ_CLASS_INSTANCE(orcm_session_caddy_t,
 OBJ_CLASS_INSTANCE(orcm_state_t,
                    opal_list_item_t,
                    NULL, NULL);
+
+static void res_con(orcm_resource_t *p)
+{
+    p->constraint = NULL;
+}
+static void res_des(orcm_resource_t *p)
+{
+    if (NULL != p->constraint) {
+        free(p->constraint);
+    }
+}
+OBJ_CLASS_INSTANCE(orcm_resource_t,
+                   opal_list_item_t,
+                   res_con, res_des);

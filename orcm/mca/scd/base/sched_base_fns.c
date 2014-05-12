@@ -126,6 +126,12 @@ void orcm_scd_base_construct_queues(int fd, short args, void *cbdata)
     int i;
     char **t1;
 
+    /* push our running queue onto the stack */
+    def = OBJ_NEW(orcm_queue_t);
+    def->name = strdup("running");
+    def->priority = 0;
+    opal_list_append(&orcm_scd_base.queues, &def->super);
+
     /* push our default queue onto the stack */
     def = OBJ_NEW(orcm_queue_t);
     def->name = strdup("default");

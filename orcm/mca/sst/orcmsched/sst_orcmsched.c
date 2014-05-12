@@ -80,6 +80,7 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/rm/base/base.h"
 #include "orcm/mca/scd/base/base.h"
+#include "orcm/mca/scd/scd_types.h"
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/cfgi/cfgi_types.h"
 #include "orcm/mca/db/base/base.h"
@@ -122,16 +123,15 @@ static void setup_sighandler(int signal, opal_event_t *ev,
 
 static int orcmsched_init(void)
 {
-    int ret = ORTE_ERROR, n;
+    int ret = ORTE_ERROR;
     char *error = NULL;
-    opal_buffer_t buf, *clusterbuf, *uribuf;
+    opal_buffer_t buf;
     opal_list_t config;
     orcm_scheduler_t *scheduler;
     orcm_node_t *mynode=NULL, *node;
     orcm_rack_t *rack;
     orcm_row_t *row;
     orcm_cluster_t *cluster;
-    orcm_cmpnode_t *cmpnode;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -218,14 +218,14 @@ static int orcmsched_init(void)
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     /* add the node to the scheduler pool */
-                    cmpnode = OBJ_NEW(orcm_cmpnode_t);
-                    OBJ_RETAIN(node);  // maintain accounting
-                    cmpnode->node = node;
                     opal_output_verbose(2, orcm_sst_base_framework.framework_output,
-                                        "%s add node %s",
+                                        "%s adding node %s",
                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                         (NULL == node->name) ? "NULL" : node->name);
-                    opal_pointer_array_add(&orcm_rm_base.nodes, cmpnode);
+                    OBJ_RETAIN(node);  // maintain accounting
+                    opal_pointer_array_add(&orcm_scd_base.nodes, node);
+                    OBJ_RETAIN(node);  // maintain accounting
+                    opal_pointer_array_add(&orcm_rm_base.nodes, node);
                 }
             }
         }
@@ -297,6 +297,7 @@ static int orcmsched_init(void)
         error = "orcm_db_base_open";
         goto error;
     }
+    /* always restrict to local (i.e., non-PMI) database components */
     if (ORTE_SUCCESS != (ret = orcm_db_base_select())) {
         ORTE_ERROR_LOG(ret);
         error = "orcm_db_base_select";
@@ -343,44 +344,13 @@ static int orcmsched_init(void)
         goto error;
     }
 
-    /* extract the buffers */
-    n = 1;
-    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &uribuf, &n, OPAL_BUFFER))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&buf);
-        error = "extract uri buffer";
-        goto error;
-    }
-    n = 1;
-    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &clusterbuf, &n, OPAL_BUFFER))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&buf);
-        OBJ_RELEASE(uribuf);
-        error = "orte_util_nidmap_init";
-        goto error;
-    }
-    OBJ_DESTRUCT(&buf);
-
-    /* setup the routed info - the orcm routed component
-     * will know what to do. 
-     */
-    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_RELEASE(clusterbuf);
-        OBJ_RELEASE(uribuf);
-        error = "orte_routed.init_routes";
-        goto error;
-    }
-    OBJ_RELEASE(clusterbuf);
-
     /* load the hash tables */
-    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(uribuf))) {
+    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(&buf))) {
         ORTE_ERROR_LOG(ret);
-        OBJ_RELEASE(uribuf);
         error = "load hash tables";
         goto error;
     }
-    OBJ_RELEASE(uribuf);
+    OBJ_DESTRUCT(&buf);
 
     /*
      * Group communications
@@ -400,6 +370,18 @@ static int orcmsched_init(void)
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);
         error = "orte_rml.enable_comm";
+        goto error;
+    }
+    
+    /* update the routing tree */
+    orte_routed.update_routing_plan();
+    
+    /* setup the routed info - the selected routed component
+     * will know what to do. 
+     */
+    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, NULL))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_routed.init_routes";
         goto error;
     }
     

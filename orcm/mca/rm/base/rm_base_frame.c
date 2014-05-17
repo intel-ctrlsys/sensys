@@ -35,6 +35,9 @@
 /*
  * Global variables
  */
+orcm_rm_API_module_t orcm_rm = {
+    orcm_rm_base_activate_session_state
+};
 orcm_rm_base_t orcm_rm_base;
 
 /* local vars */
@@ -117,8 +120,29 @@ static void* progress_thread_engine(opal_object_t *obj)
 {
     while (orcm_rm_base.ev_active) {
         opal_event_loop(orcm_rm_base.ev_base, OPAL_EVLOOP_ONCE);
+        usleep(1000);
     }
     return OPAL_THREAD_CANCELLED;
+}
+
+const char *orcm_rm_session_state_to_str(orcm_rm_session_state_t state)
+{
+    char *s;
+
+    switch (state) {
+    case ORCM_SESSION_STATE_UNDEF:
+        s = "UNDEF";
+        break;
+    case ORCM_SESSION_STATE_ACTIVE:
+        s = "GATHERING RESOURCES";
+        break;
+    case ORCM_SESSION_STATE_TERMINATED:
+        s = "TERMINATED";
+        break;
+    default:
+        s = "UNKNOWN";
+    }
+    return s;
 }
 
 /****    CLASS INSTANTIATIONS    ****/
@@ -132,6 +156,6 @@ OBJ_CLASS_INSTANCE(orcm_rm_base_active_module_t,
                    opal_list_item_t,
                    NULL, rm_des);
 
-OBJ_CLASS_INSTANCE(orcm_resource_caddy_t,
-                   opal_object_t,
+OBJ_CLASS_INSTANCE(orcm_rm_state_t,
+                   opal_list_item_t,
                    NULL, NULL);

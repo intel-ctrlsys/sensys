@@ -34,7 +34,7 @@ static void basic_active(int sd, short args, void *cbdata);
 static void basic_terminated(int sd, short args, void *cbdata);
 static void basic_schedule(int sd, short args, void *cbdata);
 
-static orcm_session_state_t states[] = {
+static orcm_scd_session_state_t states[] = {
     ORCM_SESSION_STATE_UNDEF,
     ORCM_SESSION_STATE_INIT,
     ORCM_SESSION_STATE_ALLOCD,
@@ -42,7 +42,7 @@ static orcm_session_state_t states[] = {
     ORCM_SESSION_STATE_TERMINATED,
     ORCM_SESSION_STATE_SCHEDULE
 };
-static orcm_state_cbfunc_t callbacks[] = {
+static orcm_scd_state_cbfunc_t callbacks[] = {
     basic_undef,
     basic_find_queue,
     basic_allocated,
@@ -71,9 +71,9 @@ static int init(void)
      * which is a bug
      */
     /* define our state machine */
-    num_states = sizeof(states) / sizeof(orcm_session_state_t);
+    num_states = sizeof(states) / sizeof(orcm_scd_session_state_t);
     for (i=0; i < num_states; i++) {
-        if (ORCM_SUCCESS != (rc = orcm_sched_base_add_session_state(states[i],
+        if (ORCM_SUCCESS != (rc = orcm_scd_base_add_session_state(states[i],
                                                                     callbacks[i],
                                                                     ORTE_SYS_PRI))) {
             ORTE_ERROR_LOG(rc);

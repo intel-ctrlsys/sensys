@@ -9,8 +9,8 @@
 /** @file:
  */
 
-#ifndef MCA_SCHED_BASE_H
-#define MCA_SCHED_BASE_H
+#ifndef MCA_SCD_BASE_H
+#define MCA_SCD_BASE_H
 
 /*
  * includes
@@ -55,7 +55,7 @@ OBJ_CLASS_DECLARATION(orcm_scheduler_caddy_t);
         s->scheduler = (a);                                              \
         opal_event_set(orcm_scd_base.ev_base, &s->ev, -1, OPAL_EV_WRITE, \
                        orcm_scd_base_construct_queues, s);               \
-        opal_event_set_priority(&s->ev, ORCM_SCHED_PRI);                 \
+        opal_event_set_priority(&s->ev, ORCM_SCHED_PRI);                   \
         opal_event_active(&s->ev, OPAL_EV_WRITE, 1);                     \
     } while(0);
 
@@ -96,8 +96,8 @@ ORCM_DECLSPEC int orcm_scd_base_comm_start(void);
 ORCM_DECLSPEC int orcm_scd_base_comm_stop(void);
 
 /* base code stubs */
-ORCM_DECLSPEC void orcm_sched_base_activate_session_state(orcm_session_t *s,
-                                                          orcm_session_state_t state);
+ORCM_DECLSPEC void orcm_scd_base_activate_session_state(orcm_session_t *s,
+                                                        orcm_scd_session_state_t state);
 
 /* datatype support */
 ORCM_DECLSPEC int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
@@ -113,10 +113,10 @@ ORCM_DECLSPEC int orcm_copy_alloc(orcm_alloc_t **dest,
 ORCM_DECLSPEC int orcm_print_alloc(char **output, char *prefix,
                                    orcm_alloc_t *src, opal_data_type_t type);
 
-ORCM_DECLSPEC const char *orcm_session_state_to_str(orcm_session_state_t state);
-ORCM_DECLSPEC int orcm_sched_base_add_session_state(orcm_session_state_t state,
-                                                    orcm_state_cbfunc_t cbfunc,
-                                                    int priority);
+ORCM_DECLSPEC const char *orcm_scd_session_state_to_str(orcm_scd_session_state_t state);
+ORCM_DECLSPEC int orcm_scd_base_add_session_state(orcm_scd_session_state_t state,
+                                                  orcm_scd_state_cbfunc_t cbfunc,
+                                                  int priority);
 ORCM_DECLSPEC void orcm_scd_base_construct_queues(int fd, short args, void *cbdata);
 ORCM_DECLSPEC int orcm_scd_base_get_next_session_id(void);
 

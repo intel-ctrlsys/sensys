@@ -35,8 +35,8 @@
 /*
  * Global variables
  */
-orcm_scd_API_module_t orcm_sched = {
-    orcm_sched_base_activate_session_state
+orcm_scd_API_module_t orcm_scd = {
+    orcm_scd_base_activate_session_state
 };
 orcm_scd_base_t orcm_scd_base;
 
@@ -142,11 +142,12 @@ static void* progress_thread_engine(opal_object_t *obj)
 {
     while (orcm_scd_base.ev_active) {
         opal_event_loop(orcm_scd_base.ev_base, OPAL_EVLOOP_ONCE);
+        usleep(100000);
     }
     return OPAL_THREAD_CANCELLED;
 }
 
-const char *orcm_session_state_to_str(orcm_session_state_t state)
+const char *orcm_scd_session_state_to_str(orcm_scd_session_state_t state)
 {
     char *s;
 
@@ -310,7 +311,7 @@ OBJ_CLASS_INSTANCE(orcm_session_caddy_t,
                    opal_object_t,
                    cd_con, cd_des);
 
-OBJ_CLASS_INSTANCE(orcm_state_t,
+OBJ_CLASS_INSTANCE(orcm_scd_state_t,
                    opal_list_item_t,
                    NULL, NULL);
 

@@ -185,8 +185,6 @@ static void fifo_schedule(int sd, short args, void *cbdata)
                                      "%s scd:fifo:schedule - (session: %d) not enough free nodes (required: %d found: %d), re-queueing session\n",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), sessionptr->id, sessionptr->alloc->min_nodes, free_nodes));
                 opal_list_prepend(&q->sessions, &sessionptr->super);
-                /* this could be bad, feels like we could be in an endless loop of badness here */
-                ORCM_ACTIVATE_SCD_STATE(sessionptr, ORCM_SESSION_STATE_SCHEDULE);
             }
         }
     }

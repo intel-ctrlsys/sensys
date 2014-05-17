@@ -177,7 +177,7 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
     int8_t k;
 
     /* unpack into array of orcm_alloc_t objects */
-    allocs = (orcm_alloc_t**) dest;
+    allocs = (orcm_alloc_t**)dest;
     for (i=0; i < *num_vals; i++) {
 
         /* create the orcm_alloc_t object */

@@ -113,7 +113,7 @@ opal_cmd_line_init_t cmd_line_opts[] = {
 int
 main(int argc, char *argv[])
 {
-    orcm_alloc_t *allocs;
+    orcm_alloc_t **allocs;
     orte_rml_recv_cb_t xfer;
     opal_buffer_t *buf;
     int rc, i, j, n, num_queues, num_sessions;
@@ -176,9 +176,9 @@ main(int argc, char *argv[])
             return rc;
         }
         if (0 < num_sessions) {
-            allocs = (orcm_alloc_t*)malloc(num_sessions * sizeof(orcm_alloc_t));
+            allocs = (orcm_alloc_t**)malloc(num_sessions * sizeof(orcm_alloc_t*));
             /* get the sessions on the queue */
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &allocs, &num_sessions, ORCM_ALLOC))) {
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, allocs, &num_sessions, ORCM_ALLOC))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_DESTRUCT(&xfer);
                 return rc;
@@ -186,12 +186,13 @@ main(int argc, char *argv[])
             fprintf(stdout,"got %i sessions\n", num_sessions);
             for (j = 0; j < num_sessions; j++) {
                 fprintf(stdout, "%lld\t%u|%u\t%i\t%s\t%s\n", 
-                        allocs[j].id, 
-                        allocs[j].caller_uid, 
-                        allocs[j].caller_gid, 
-                        allocs[j].min_nodes, 
-                        allocs[j].exclusive ? "EX" : "SH",
-                        allocs[j].interactive ? "I" : "B" );
+                        allocs[j]->id, 
+                        allocs[j]->caller_uid, 
+                        allocs[j]->caller_gid, 
+                        allocs[j]->min_nodes, 
+                        allocs[j]->exclusive ? "EX" : "SH",
+                        allocs[j]->interactive ? "I" : "B" );
+                OBJ_DESTRUCT(allocs[j]);
             }
             free(allocs);
         }

@@ -166,7 +166,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                     allocs[i] = session->alloc;
                     i++;
                 }
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, allocs, cnt, ORCM_ALLOC))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, allocs, i, ORCM_ALLOC))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;

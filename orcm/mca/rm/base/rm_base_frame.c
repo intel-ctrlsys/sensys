@@ -89,6 +89,7 @@ static int orcm_rm_base_open(mca_base_open_flag_t flags)
     /* setup the base objects */
     orcm_rm_base.ev_active = false;
     OBJ_CONSTRUCT(&orcm_rm_base.active_modules, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_rm_base.states, opal_list_t);
     OBJ_CONSTRUCT(&orcm_rm_base.nodes, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_rm_base.nodes, 8, INT_MAX, 8);
 

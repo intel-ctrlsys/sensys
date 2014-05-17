@@ -75,8 +75,8 @@ int main(int argc, char *argv[])
     char *ctmp;
     time_t now;
     opal_buffer_t *buf;
-    orcm_rm_cmd_flag_t command=ORCM_NODESTATE_UPDATE_COMMAND;
-    const char *state = "up";
+    orcm_rm_cmd_flag_t command = ORCM_NODESTATE_UPDATE_COMMAND;
+    orcm_node_state_t state = ORCM_NODE_STATE_UP;
 
     /* process the cmd line arguments to get any MCA params on them */
     opal_cmd_line_create(&cmd_line, cmd_line_init);
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
         OBJ_RELEASE(buf);
         return ret;
     }
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &state, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &state, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(ret);
         OBJ_RELEASE(buf);
         return ret;

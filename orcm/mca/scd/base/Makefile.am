@@ -8,11 +8,11 @@
 #
 
 headers += \
-        base/base.h
+    base/base.h
 
 libmca_scd_la_SOURCES += \
-	base/sched_base_frame.c \
-	base/sched_base_select.c \
-        base/sched_base_recv.c \
-        base/sched_dt_fns.c \
-        base/sched_base_fns.c
+    base/scd_base_frame.c \
+    base/scd_base_select.c \
+    base/scd_base_recv.c \
+    base/scd_dt_fns.c \
+    base/scd_base_fns.c

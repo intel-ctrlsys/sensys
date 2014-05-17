@@ -70,5 +70,16 @@ OBJ_CLASS_DECLARATION(orcm_rm_base_active_module_t);
 ORCM_DECLSPEC int orcm_rm_base_comm_start(void);
 ORCM_DECLSPEC int orcm_rm_base_comm_stop(void);
 
+/* base code stubs */
+ORCM_DECLSPEC void orcm_rm_base_activate_session_state(orcm_session_t *s,
+                                                        orcm_rm_session_state_t state);
+
+/* datatype support */
+ORCM_DECLSPEC const char *orcm_rm_session_state_to_str(orcm_rm_session_state_t state);
+ORCM_DECLSPEC int orcm_rm_base_add_session_state(orcm_rm_session_state_t state,
+                                                 orcm_rm_state_cbfunc_t cbfunc,
+                                                 int priority);
+
+
 END_C_DECLS
 #endif

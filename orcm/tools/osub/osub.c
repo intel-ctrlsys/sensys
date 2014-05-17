@@ -95,6 +95,7 @@ typedef struct {
     char *starttime;
     char *walltime;
     bool exclusive;
+    bool interactive;
     char *nodefile;
     char *resources;
 } orcm_osub_globals_t;
@@ -175,6 +176,12 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "Do not share allocated nodes with other sessions" },
 
     { NULL,
+      'e', NULL, "interactive",
+      0,
+      &orcm_osub_globals.interactive, OPAL_CMD_LINE_TYPE_BOOL,
+      "Do not share allocated nodes with other sessions" },
+
+    { NULL,
       'f', NULL, "nodefile",
       1,
       &orcm_osub_globals.nodefile, OPAL_CMD_LINE_TYPE_STRING,
@@ -201,7 +208,7 @@ main(int argc, char *argv[])
     orte_rml_recv_cb_t xfer;
     opal_buffer_t *buf;
     int rc, n;
-    orcm_sched_cmd_flag_t command=ORCM_SESSION_REQ_COMMAND;
+    orcm_scd_cmd_flag_t command=ORCM_SESSION_REQ_COMMAND;
     orcm_alloc_id_t id;
     struct timeval tv;
 
@@ -211,16 +218,17 @@ main(int argc, char *argv[])
     /* create an allocation request */
     OBJ_CONSTRUCT(&alloc, orcm_alloc_t);
 
-    alloc.priority = 1;                              // session priority
-    alloc.account = orcm_osub_globals.account;       // account to be charged
-    alloc.name = orcm_osub_globals.name;             // user-assigned project name
-    alloc.gid = orcm_osub_globals.gid;               // group id to be run under
-    alloc.max_nodes = orcm_osub_globals.max_nodes;   // max number of nodes
-    alloc.max_pes = orcm_osub_globals.max_pes;       // max number of processing elements
-    alloc.min_nodes = orcm_osub_globals.min_nodes;   // min number of nodes required
-    alloc.min_pes = orcm_osub_globals.min_pes;       // min number of pe's required
-    alloc.exclusive = orcm_osub_globals.exclusive;   // true if nodes to be exclusively allocated (i.e., not shared across sessions)
-    alloc.nodes = '\0';                              // regex of nodes to be used
+    alloc.priority = 1;                                // session priority
+    alloc.account = orcm_osub_globals.account;         // account to be charged
+    alloc.name = orcm_osub_globals.name;               // user-assigned project name
+    alloc.gid = orcm_osub_globals.gid;                 // group id to be run under
+    alloc.max_nodes = orcm_osub_globals.max_nodes;     // max number of nodes
+    alloc.max_pes = orcm_osub_globals.max_pes;         // max number of processing elements
+    alloc.min_nodes = orcm_osub_globals.min_nodes;     // min number of nodes required
+    alloc.min_pes = orcm_osub_globals.min_pes;         // min number of pe's required
+    alloc.exclusive = orcm_osub_globals.exclusive;     // true if nodes to be exclusively allocated (i.e., not shared across sessions)
+    alloc.interactive = orcm_osub_globals.interactive; // true if in interactive mode
+    alloc.nodes = '\0';                                // regex of nodes to be used
     /* alloc.constraints = orcm_osub_globals.resources */ ; // list of resource constraints to be applied when selecting hosts
 
     alloc.caller_uid = getuid();   // caller uid, not from args
@@ -255,7 +263,7 @@ main(int argc, char *argv[])
     /* send it to the scheduler */
     buf = OBJ_NEW(opal_buffer_t);
     /* pack the alloc command flag */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,1, ORCM_SCHED_CMD_T))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,1, ORCM_SCD_CMD_T))) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }
@@ -309,6 +317,7 @@ static int parse_args(int argc, char *argv[])
                                 '\0',     /* starttime */
                                 '\0',     /* walltime */
                                 false,    /* exclusive */
+                                false,    /* interactive */
                                 '\0',     /* nodefile */
                                 '\0'};    /* resources */
 

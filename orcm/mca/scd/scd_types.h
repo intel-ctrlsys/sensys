@@ -7,8 +7,8 @@
  * $HEADER$
  */
 
-#ifndef MCA_SCHED_TYPES_H
-#define MCA_SCHED_TYPES_H
+#ifndef MCA_SCD_TYPES_H
+#define MCA_SCD_TYPES_H
 
 /*
  * includes
@@ -59,6 +59,7 @@ typedef int64_t orcm_alloc_id_t;
 
 typedef struct {
     opal_object_t super;
+    orcm_alloc_id_t id;       // unique id
     int32_t priority;         // session priority
     char *account;            // account to be charged
     char *name;               // user-assigned project name
@@ -72,6 +73,9 @@ typedef struct {
     bool exclusive;           // true if nodes to be exclusively allocated (i.e., not shared across sessions)
     uid_t caller_uid;         // uid of submission request
     gid_t caller_gid;         // gid of submission request
+    bool interactive;         // interactive or batch
+    orte_process_name_t hnp;  // hnp process name
+    char *hnpname;            // hnp string name
     char *nodefile;           // file listing names and/or regex of candidate nodes to be used
     char *nodes;              // regex of nodes to be used
     char *queues;             // comma-delimited list of queue names
@@ -165,15 +169,13 @@ OBJ_CLASS_DECLARATION(orcm_step_t);
  * "obatch" command that contains an execution script, or issuing
  * an "orun" command from outside an existing allocation.
  */
-typedef uint32_t orcm_session_state_t;
+typedef uint32_t orcm_scd_session_state_t;
 typedef uint32_t orcm_session_id_t;
 typedef struct {
     opal_list_item_t super;
     orcm_session_id_t id;
-    bool interactive;
     int32_t uid;
     orte_process_name_t requestor;
-    orcm_session_state_t state;
     orcm_alloc_t *alloc;  // master allocation for the session
     opal_list_t steps;
 } orcm_session_t;
@@ -194,15 +196,15 @@ OBJ_CLASS_DECLARATION(orcm_session_t);
 
 
 /****    STATE MACHINE    ****/
-typedef void (*orcm_state_cbfunc_t)(int fd, short args, void* cb);
+typedef void (*orcm_scd_state_cbfunc_t)(int fd, short args, void* cb);
 
 typedef struct {
     opal_list_item_t super;
-    orcm_session_state_t state;
-    orcm_state_cbfunc_t cbfunc;
+    orcm_scd_session_state_t state;
+    orcm_scd_state_cbfunc_t cbfunc;
     int priority;
-} orcm_state_t;
-ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_state_t);
+} orcm_scd_state_t;
+ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_scd_state_t);
 
 typedef struct {
     opal_object_t super;
@@ -213,12 +215,13 @@ OBJ_CLASS_DECLARATION(orcm_session_caddy_t);
 
 
 /* define a few commands */
-typedef uint8_t orcm_sched_cmd_flag_t;
-#define ORCM_SCHED_CMD_T OPAL_UINT8
+typedef uint8_t orcm_scd_cmd_flag_t;
+#define ORCM_SCD_CMD_T OPAL_UINT8
 
 #define ORCM_SESSION_REQ_COMMAND   1
 #define ORCM_SESSION_INFO_COMMAND  2
-#define ORCM_RUN_COMMAND           3
+#define ORCM_NODE_INFO_COMMAND     3
+#define ORCM_RUN_COMMAND           4
 
 
 END_C_DECLS

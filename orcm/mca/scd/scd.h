@@ -29,14 +29,14 @@
 
 BEGIN_C_DECLS
 
-#define ORCM_ACTIVATE_SCHED_STATE(a, b)                                 \
-    do {                                                                \
+#define ORCM_ACTIVATE_SCD_STATE(a, b)                                  \
+    do {                                                                 \
         opal_output_verbose(1, orcm_scd_base_framework.framework_output, \
-                            "%s ACTIVATE SESSION %d STATE %s AT %s:%d",	\
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),         \
-                            (a)->id, orcm_session_state_to_str((b)),    \
-                            __FILE__, __LINE__);			\
-        orcm_sched.activate_session_state((a), (b));                    \
+                            "%s ACTIVATE SESSION %d STATE %s AT %s:%d",  \
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),          \
+                            (a)->id, orcm_scd_session_state_to_str((b)), \
+                            __FILE__, __LINE__);                         \
+        orcm_scd.activate_scd_session_state((a), (b));                 \
     } while(0);
 
 /*
@@ -70,10 +70,10 @@ typedef struct {
 } orcm_scd_base_component_t;
 
 /* define an API module */
-typedef void (*orcm_scd_API_module_activate_session_state_fn_t)(orcm_session_t *s,
-                                                                orcm_session_state_t state);
+typedef void (*orcm_scd_API_module_activate_scd_session_state_fn_t)(orcm_session_t *s,
+                                                                orcm_scd_session_state_t state);
 typedef struct {
-    orcm_scd_API_module_activate_session_state_fn_t  activate_session_state;
+    orcm_scd_API_module_activate_scd_session_state_fn_t  activate_scd_session_state;
 } orcm_scd_API_module_t;
 
 /*
@@ -87,7 +87,7 @@ typedef struct {
 
 /* Global structure for accessing name server functions
  */
-ORCM_DECLSPEC extern orcm_scd_API_module_t orcm_sched;  /* holds API function pointers */
+ORCM_DECLSPEC extern orcm_scd_API_module_t orcm_scd;  /* holds API function pointers */
 
 END_C_DECLS
 

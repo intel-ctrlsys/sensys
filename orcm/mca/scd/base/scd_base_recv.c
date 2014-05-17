@@ -14,6 +14,7 @@
 
 #include "opal/mca/mca.h"
 #include "opal/util/output.h"
+#include "opal/util/malloc.h"
 #include "opal/mca/base/base.h"
 
 #include "orte/types.h"
@@ -73,11 +74,12 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                opal_buffer_t* buffer, orte_rml_tag_t tag,
                                void* cbdata)
 {
-    orcm_sched_cmd_flag_t command;
-    int rc, cnt;
-    orcm_alloc_t *req;
+    orcm_scd_cmd_flag_t command;
+    int rc, i, cnt;
+    orcm_alloc_t *alloc, **allocs;
     opal_buffer_t *ans;
-    orcm_session_t *s;
+    orcm_session_t *session;
+    orcm_queue_t *q;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:receive processing msg from %s",
@@ -90,7 +92,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
 
     /* unpack the command */
     cnt = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command, &cnt, ORCM_SCHED_CMD_T))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command, &cnt, ORCM_SCD_CMD_T))) {
         ORTE_ERROR_LOG(rc);
         goto answer;
     }
@@ -100,17 +102,18 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
          * requested allocation to support the session
          */
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &req, &cnt, ORCM_ALLOC))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &alloc, &cnt, ORCM_ALLOC))) {
             ORTE_ERROR_LOG(rc);
             goto answer;
         }
         /* assign a session to it */
-        s = OBJ_NEW(orcm_session_t);
-        s->alloc = req;
-        s->id = orcm_scd_base_get_next_session_id();
+        session = OBJ_NEW(orcm_session_t);
+        session->alloc = alloc;
+        session->id = orcm_scd_base_get_next_session_id();
+        session->alloc->id = session->id;
 
         /* send session id back to sender */
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &s->id, 1, ORCM_ALLOC_ID_T))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &session->id, 1, ORCM_ALLOC_ID_T))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(ans);
             return;
@@ -124,11 +127,65 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         }
 
         /* pass it to the scheduler */
-        ORCM_ACTIVATE_SCHED_STATE(s, ORCM_SESSION_STATE_INIT);
+        ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_INIT);
         return;
     } else if (ORCM_SESSION_INFO_COMMAND == command) {
+        /* pack the number of queues we have */
+        cnt = opal_list_get_size(&orcm_scd_base.queues);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &cnt, 1, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
 
+        /* for each queue, */
+        OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
+            /* pack the name */
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &q->name, 1, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+
+            /* pack the count of sessions on the queue */
+            cnt = (int)opal_list_get_size(&q->sessions);
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &cnt, 1, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+            if (0 < cnt) {
+                /* pack all the sessions on the queue */
+                allocs = (orcm_alloc_t**)malloc(cnt * sizeof(orcm_alloc_t*));
+                if (!allocs) {
+                    ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+                    return;
+                }
+                i = 0;
+                OPAL_LIST_FOREACH(session, &q->sessions, orcm_session_t) {
+                    allocs[i] = session->alloc;
+                    i++;
+                }
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, allocs, cnt, ORCM_ALLOC))) {
+                    ORTE_ERROR_LOG(rc);
+                    OBJ_RELEASE(ans);
+                    return;
+                }
+                free(allocs);
+            }
+        }
+        if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
+                                                          ORCM_RML_TAG_SCD,
+                                                          orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
+        return;
+    } else if (ORCM_NODE_INFO_COMMAND == command) {
+        return;
     } else if (ORCM_RUN_COMMAND == command) {
+        return;
     }
 
  answer:

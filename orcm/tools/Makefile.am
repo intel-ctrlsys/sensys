@@ -11,7 +11,7 @@
 
 SUBDIRS += \
         tools/orcmd \
-				tools/wrappers \
+        tools/wrappers \
         tools/orcmctrld \
         tools/otop \
         tools/ops \
@@ -19,4 +19,5 @@ SUBDIRS += \
         tools/orcmsched \
         tools/orcm-emulator \
         tools/orun \
-        tools/osub
+        tools/osub \
+        tools/oqueue

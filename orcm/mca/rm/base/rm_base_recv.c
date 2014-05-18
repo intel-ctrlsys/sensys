@@ -20,8 +20,10 @@
 #include "orte/mca/rml/rml.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/util/name_fns.h"
+#include "orte/util/regex.h"
 
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/mca/cfgi/cfgi_types.h"
 #include "orcm/mca/rm/base/base.h"
 
 static bool recv_issued=false;
@@ -74,42 +76,60 @@ static void orcm_rm_base_recv(int status, orte_process_name_t* sender,
                                void* cbdata)
 {
     orcm_rm_cmd_flag_t command;
-    int rc, cnt;
+    int rc, cnt, i;
     opal_buffer_t *ans;
+    orcm_node_state_t state;
+    orte_process_name_t node;
+    orcm_node_t *nodeptr;
+    bool found;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
                          "%s rm:base:receive processing msg",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
-    /* always pass some answer back to the caller so they
-     * don't hang
-     */
     ans = OBJ_NEW(opal_buffer_t);
 
     /* unpack the command */
     cnt = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command, &cnt, ORCM_RM_CMD_T))) {
         ORTE_ERROR_LOG(rc);
-        goto answer;
+        return;
     }
     
-    if (ORCM_NODESTATE_REQ_COMMAND == command) {
-        /* get state of all nodes and pass back to caller
-         */
-        return;
-    }
-    else if (ORCM_RESOURCE_REQ_COMMAND == command) {
-        /* resource request - verify state of resource, and set to allocated
-         */
-        return;
+    if (ORCM_NODESTATE_UPDATE_COMMAND == command) {
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &state, &cnt, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &node, &cnt, ORTE_NAME))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+
+        /* set node to state */
+        found = false;
+        for (i = orcm_rm_base.nodes.lowest_free + 1; i < orcm_rm_base.nodes.size; i++) {
+            if (NULL == (nodeptr = 
+                         (orcm_node_t*)opal_pointer_array_get_item(&orcm_rm_base.nodes, i))) {
+                continue;
+            }
+            if (OPAL_SUCCESS == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &nodeptr->daemon, &node)) {
+                found = true;
+                nodeptr->state = state;
+                break;
+            }
+        }
+
+        if (!found) {
+            OPAL_OUTPUT_VERBOSE((1, orcm_rm_base_framework.framework_output,
+                                 "%s rm:base:receive Couldn't find node %s to update state",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),ORTE_NAME_PRINT(&node)));
+        }
+
     }
 
- answer:
-    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
-                                                      ORCM_RML_TAG_RM,
-                                                      orte_rml_send_callback, NULL))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(ans);
-        return;
-    }
+    OBJ_RELEASE(ans);
+    return;
 }

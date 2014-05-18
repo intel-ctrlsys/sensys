@@ -29,25 +29,22 @@ orcm_scd_base_module_t orcm_scd_basic_module = {
 
 static void basic_undef(int sd, short args, void *cbdata);
 static void basic_find_queue(int sd, short args, void *cbdata);
-static void basic_queued(int sd, short args, void *cbdata);
 static void basic_allocated(int sd, short args, void *cbdata);
 static void basic_active(int sd, short args, void *cbdata);
 static void basic_terminated(int sd, short args, void *cbdata);
 static void basic_schedule(int sd, short args, void *cbdata);
 
-static orcm_session_state_t states[] = {
+static orcm_scd_session_state_t states[] = {
     ORCM_SESSION_STATE_UNDEF,
     ORCM_SESSION_STATE_INIT,
-    ORCM_SESSION_STATE_QUEUED,
     ORCM_SESSION_STATE_ALLOCD,
     ORCM_SESSION_STATE_ACTIVE,
     ORCM_SESSION_STATE_TERMINATED,
     ORCM_SESSION_STATE_SCHEDULE
 };
-static orcm_state_cbfunc_t callbacks[] = {
+static orcm_scd_state_cbfunc_t callbacks[] = {
     basic_undef,
     basic_find_queue,
-    basic_queued,
     basic_allocated,
     basic_active,
     basic_terminated,
@@ -74,9 +71,9 @@ static int init(void)
      * which is a bug
      */
     /* define our state machine */
-    num_states = sizeof(states) / sizeof(orcm_session_state_t);
+    num_states = sizeof(states) / sizeof(orcm_scd_session_state_t);
     for (i=0; i < num_states; i++) {
-        if (ORCM_SUCCESS != (rc = orcm_sched_base_add_session_state(states[i],
+        if (ORCM_SUCCESS != (rc = orcm_scd_base_add_session_state(states[i],
                                                                     callbacks[i],
                                                                     ORTE_SYS_PRI))) {
             ORTE_ERROR_LOG(rc);
@@ -113,15 +110,6 @@ static void basic_find_queue(int sd, short args, void *cbdata)
     /* cycle across the queues and select the one that best
      * fits this session request
      */
-
-    OBJ_RELEASE(caddy);
-}
-
-static void basic_queued(int sd, short args, void *cbdata)
-{
-    orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
-
-    /* queue has been assigned */
 
     OBJ_RELEASE(caddy);
 }

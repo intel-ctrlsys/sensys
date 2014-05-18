@@ -87,33 +87,9 @@ orte_routed_module_t orte_routed_orcm_module = {
 #endif
 };
 
-/* local tracker */
-typedef struct {
-    opal_list_item_t super;
-    orte_process_name_t target;
-    opal_list_t routes;
-    opal_list_t *peers;
-    bool alive;
-} local_route_t;
-static void rt_con(local_route_t *p)
-{
-    OBJ_CONSTRUCT(&p->routes, opal_list_t);
-    p->peers = NULL;
-    p->alive = true;
-}
-static void rt_des(local_route_t *p)
-{
-    OPAL_LIST_DESTRUCT(&p->routes);
-}
-OBJ_CLASS_INSTANCE(local_route_t,
-                   opal_list_item_t,
-                   rt_con, rt_des);
-
 /* local globals */
-static local_route_t *lifeline=NULL;
-static opal_list_t names;
-static opal_list_t routes;
-
+static orte_process_name_t *lifeline=NULL;
+static opal_list_t my_children;  // orte_routed_tree_t's
 
 static int init(void)
 {
@@ -126,13 +102,7 @@ static int init(void)
     /* setup the tracking list of who we've been
      * told about
      */
-    OBJ_CONSTRUCT(&names, opal_list_t);
-
-    /* setup the list of routing layers
-     * so we retain a view of how to
-     * recover from failures
-     */
-    OBJ_CONSTRUCT(&routes, opal_list_t);
+    OBJ_CONSTRUCT(&my_children, opal_list_t);
 
     return ORTE_SUCCESS;
 }
@@ -140,8 +110,7 @@ static int init(void)
 static int finalize(void)
 {
     if (!ORTE_PROC_IS_TOOL) {
-        OPAL_LIST_DESTRUCT(&names);
-        OPAL_LIST_DESTRUCT(&routes);
+        OPAL_LIST_DESTRUCT(&my_children);
     }
 
     return ORTE_SUCCESS;
@@ -159,75 +128,17 @@ static int delete_route(orte_process_name_t *proc)
 static int update_route(orte_process_name_t *target,
                         orte_process_name_t *route)
 {
-    orte_namelist_t *nm;
-    local_route_t *rt, *rptr;
-
-    if (ORTE_PROC_IS_TOOL) {
-        return ORTE_SUCCESS;
-    }
-
-    /* do we already know about this target? */
-    OPAL_LIST_FOREACH(nm, &names, orte_namelist_t) {
-        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                        &nm->name, target)) {
-            return ORTE_SUCCESS;
-        }
-    }
-    /* maintain track of who we know about */
-    nm = OBJ_NEW(orte_namelist_t);
-    nm->name = *target;
-    opal_list_append(&names, &nm->super);
-
-    /* if the two procs are the same, then this is a
-     * direct route
-     */
-    if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                    target, route)) {
-        rt = OBJ_NEW(local_route_t);
-        rt->target = *target;
-        rt->peers = &routes;
-        opal_list_append(&routes, &rt->super);
-        /* set our parent/lifeline if not done yet */
-        if (NULL == lifeline) {
-            lifeline = rt;
-            ORTE_PROC_MY_PARENT->jobid = rt->target.jobid;
-            ORTE_PROC_MY_PARENT->vpid = rt->target.vpid;
-        }
-        return ORTE_SUCCESS;
-    }
-    
-    /* find the intermediate route */
-    OPAL_LIST_FOREACH(rptr, &routes, local_route_t) {
-        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                        &rptr->target, route)) {
-            /* mark that we get to the target via this route */
-            rt = OBJ_NEW(local_route_t);
-            rt->target = *target;
-            rt->peers = &rptr->routes;
-            opal_list_append(&rptr->routes, &rt->super);
-            return ORTE_SUCCESS;
-        }
-    }
-    /* if we get here, then we didn't find the intermediate
-     * route, so add it
-     */
-    rptr = OBJ_NEW(local_route_t);
-    rptr->target = *route;
-    rptr->peers = &routes;
-    opal_list_append(&routes, &rptr->super);
-    rt = OBJ_NEW(local_route_t);
-    rt->target = *target;
-    rt->peers = &rptr->routes;
-    opal_list_append(&rptr->routes, &rt->super);
-
+    /* nothing to do here */
     return ORTE_SUCCESS;
 }
 
 
 static orte_process_name_t get_route(orte_process_name_t *target)
 {
-    orte_process_name_t *ret;
+    orte_process_name_t *ret, daemon;
+    orte_routed_tree_t *child;
 
+    /* if I am a tool, or routing isn't enabled, go direct */
     if (!orte_routing_is_enabled || ORTE_PROC_IS_TOOL) {
         ret = target;
         goto found;
@@ -240,13 +151,47 @@ static orte_process_name_t get_route(orte_process_name_t *target)
         goto found;
     }
 
-    /* our route is our lifeline */
-    if (NULL != lifeline) {
-        ret = &lifeline->target;
-    } else {
-        /* if we get here, then we didn't find the route */
-        ret = ORTE_NAME_INVALID;
+    /* if the target is from a different jobid, go direct */
+    if (target->jobid != ORTE_PROC_MY_NAME->jobid) {
+        ret = target;
+        goto found;
     }
+
+    daemon.jobid = ORTE_PROC_MY_NAME->jobid;
+    /* if I am on a compute node, I can only go upward */
+    if (ORTE_PROC_IS_DAEMON) {
+        daemon.vpid = ORTE_PROC_MY_PARENT->vpid;
+        ret = &daemon;
+        goto found;
+    }
+
+    /* get here if I am an aggregator, which means I am a
+     * row or rack controller. My first step is to see if
+     * the target is beneath me - if so, route thru the
+     * appropriate child. In the case of a rack controller,
+     * this will be a direct route as the compute nodes
+     * directly connect to me (for now).
+     */
+    OPAL_LIST_FOREACH(child, &my_children, orte_routed_tree_t) {
+        if (child->vpid == target->vpid) {
+            /* the child is the target - send it directly there */
+            ret = target;
+            goto found;
+        }
+        /* otherwise, see if the target is below the child */
+        if (opal_bitmap_is_set_bit(&child->relatives, target->vpid)) {
+            /* yep - we need to step through this child */
+            daemon.vpid = child->vpid;
+            ret = &daemon;
+            goto found;
+        }
+    }
+
+    /* if we get here, then the target is not beneath
+     * any of our children, so we have to step up through our parent
+     */
+    daemon.vpid = ORTE_PROC_MY_PARENT->vpid;
+    ret = &daemon;
 
 found:
     OPAL_OUTPUT_VERBOSE((1, orte_routed_base_framework.framework_output,
@@ -260,6 +205,186 @@ found:
 
 static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
 {
+    opal_buffer_t *row, *rack;
+    orte_process_name_t name, cluster_name, row_name, rack_name;
+    int32_t i, j, nrows, nracks, cnt;
+    int rc;
+    bool cluster_ctlr = false;
+    bool row_ctlr = false;
+    bool rack_ctlr = false;
+    orte_routed_tree_t *child;
+
+    if (NULL == ndat || job != ORTE_PROC_MY_NAME->jobid) {
+        /* nothing to do */
+        return ORTE_SUCCESS;
+    }
+
+    /* the cluster definition comes to us in a set of packed
+     * opal_buffer_t objects, so unpack them in order
+     */
+    cluster_name = *ORTE_NAME_INVALID;
+    row_name = *ORTE_NAME_INVALID;
+    rack_name = *ORTE_NAME_INVALID;
+    
+    /* first, we unpack the process name of the cluster controller */
+    cnt = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(ndat, &name, &cnt, ORTE_NAME))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    cluster_name = name;
+    if (name.jobid == ORTE_PROC_MY_NAME->jobid &&
+        name.vpid == ORTE_PROC_MY_NAME->vpid) {
+        /* it's me - so the row controllers will be my direct children */
+        cluster_ctlr = true;
+    }
+    /* and the number of rows in the system */
+    cnt = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(ndat, &nrows, &cnt, OPAL_INT32))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    opal_output_verbose(1, orte_routed_base_framework.framework_output,
+                        "%s init_routes: cluster %s has %d rows",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                        ORTE_NAME_PRINT(&name), nrows);
+
+    /* for each row, unpack the row buffer */
+    for (i=0; i < nrows; i++) {
+        row_ctlr = false;
+        rack_ctlr = false;
+        child = NULL;
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(ndat, &row, &cnt, OPAL_BUFFER))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+        /* unpack the number of racks in this row */
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(row, &nracks, &cnt, OPAL_INT32))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+        /* get the name of the row controller */
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(row, &name, &cnt, ORTE_NAME))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+        opal_output_verbose(1, orte_routed_base_framework.framework_output,
+                            "%s init_routes: row %d(%s) has %d racks",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                            i, ORTE_NAME_PRINT(&name), nracks);
+        row_name = name;
+        if (cluster_ctlr) {
+            /* I am the cluster controller - all rows are my children */
+            child = OBJ_NEW(orte_routed_tree_t);
+            child->vpid = name.vpid;
+            opal_bitmap_init(&child->relatives, orte_process_info.num_procs);
+            opal_list_append(&my_children, &child->super);
+            /* track my name */
+            cluster_name = name;
+        } else if (name.jobid == ORTE_PROC_MY_NAME->jobid &&
+                   name.vpid == ORTE_PROC_MY_NAME->vpid) {
+            /* it's me - so the rack controllers in this row will be my direct children */
+            row_ctlr = true;
+            /* point my parent at the cluster controller */
+            ORTE_PROC_MY_PARENT->jobid = cluster_name.jobid;
+            ORTE_PROC_MY_PARENT->vpid = cluster_name.vpid;
+            /* set the lifeline */
+            lifeline = ORTE_PROC_MY_PARENT;
+        }
+        /* for each rack, unpack the rack buffer */
+        cnt = 1;
+        for (j=0; j < nracks; j++) {
+            opal_output_verbose(1, orte_routed_base_framework.framework_output,
+                                "%s init_routes: unpacking rack %d",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), j);
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(row, &rack, &cnt, OPAL_BUFFER))) {
+                ORTE_ERROR_LOG(rc);
+                return rc;
+            }
+            /* get the name of the rack controller */
+            cnt = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(rack, &name, &cnt, ORTE_NAME))) {
+                ORTE_ERROR_LOG(rc);
+                return rc;
+            }
+            opal_output_verbose(1, orte_routed_base_framework.framework_output,
+                                "%s init_routes: rack %d controller %s",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), j,
+                                ORTE_NAME_PRINT(&name));
+            rack_name = name;
+            if (NULL != child) {
+                /* add this daemon to the current child */
+                opal_bitmap_set_bit(&child->relatives, name.vpid);
+            } else if (row_ctlr) {
+                /* this rack is a child of this row */
+                child = OBJ_NEW(orte_routed_tree_t);
+                child->vpid = name.vpid;
+                opal_bitmap_init(&child->relatives, orte_process_info.num_procs);
+                opal_list_append(&my_children, &child->super);
+            } else if (name.jobid == ORTE_PROC_MY_NAME->jobid &&
+                       name.vpid == ORTE_PROC_MY_NAME->vpid) {
+                /* it's me - so the daemons in this rack will be my direct children */
+                rack_ctlr = true;
+                /* point my parent at the row controller */
+                ORTE_PROC_MY_PARENT->jobid = row_name.jobid;
+                ORTE_PROC_MY_PARENT->vpid = row_name.vpid;
+                opal_output_verbose(1, orte_routed_base_framework.framework_output,
+                                    "%s init_routes: rack %d controller %s parent %s",
+                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), j,
+                                    ORTE_NAME_PRINT(&name), ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT));
+                /* set the lifeline */
+                lifeline = ORTE_PROC_MY_PARENT;
+            }
+            /* we don't need the number of nodes in the rack - the rack buffer
+             * was just packed with names, so read them until the end */
+            cnt = 1;
+            while (OPAL_SUCCESS == (rc = opal_dss.unpack(rack, &name, &cnt, ORTE_NAME))) {
+                if (NULL != child) {
+                    /* add this daemon to the current child */
+                    opal_bitmap_set_bit(&child->relatives, name.vpid);
+                } else if (rack_ctlr) {
+                    /* this node is a child of this rack */
+                    child = OBJ_NEW(orte_routed_tree_t);
+                    child->vpid = name.vpid;
+                    opal_bitmap_init(&child->relatives, orte_process_info.num_procs);
+                    opal_list_append(&my_children, &child->super);
+                }
+                if (ORTE_PROC_MY_NAME->jobid == name.jobid &&
+                    ORTE_PROC_MY_NAME->vpid == name.vpid) {
+                    /* point my parent at the rack controller, if present */
+                    if (rack_name.vpid != ORTE_VPID_INVALID) {
+                        ORTE_PROC_MY_PARENT->jobid = rack_name.jobid;
+                        ORTE_PROC_MY_PARENT->vpid = rack_name.vpid;
+                    } else if (row_name.vpid != ORTE_VPID_INVALID) {
+                        /* fall back to the row controller, if present */
+                        ORTE_PROC_MY_PARENT->jobid = row_name.jobid;
+                        ORTE_PROC_MY_PARENT->vpid = row_name.vpid;
+                    } else if (cluster_name.vpid != ORTE_VPID_INVALID) {
+                        /* fall back to the cluster controller */
+                        ORTE_PROC_MY_PARENT->jobid = cluster_name.jobid;
+                        ORTE_PROC_MY_PARENT->vpid = cluster_name.vpid;
+                    }
+                    opal_output_verbose(1, orte_routed_base_framework.framework_output,
+                                        "%s init_routes: node %s parent %s",
+                                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                        ORTE_NAME_PRINT(&name),
+                                        ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT));
+                    /* set the lifeline */
+                    lifeline = ORTE_PROC_MY_PARENT;
+                }
+                cnt = 1;
+            }
+            if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
+                ORTE_ERROR_LOG(rc);
+                return rc;
+            }
+        }
+    }
+
     return ORTE_SUCCESS;
 }
 
@@ -267,7 +392,6 @@ static int route_lost(const orte_process_name_t *route)
 {
     char *ctmp;
     time_t now;
-    local_route_t *rt, *rptr, *r2;
 
     OPAL_OUTPUT_VERBOSE((2, orte_routed_base_framework.framework_output,
                          "%s route to %s lost",
@@ -286,6 +410,12 @@ static int route_lost(const orte_process_name_t *route)
         return ORTE_SUCCESS;
     }
 
+    /* if from another jobid, ignore it */
+    if (route->jobid != ORTE_PROC_MY_NAME->jobid) {
+        return ORTE_SUCCESS;
+    }
+
+
     /* ensure a log message is delivered and printed on the orcm master */
     now = time(NULL);
     ctmp = ctime(&now);
@@ -299,47 +429,10 @@ static int route_lost(const orte_process_name_t *route)
         return ORTE_SUCCESS;
     }
 
-    /* see if this proc is in our routing table */
-    r2 = NULL;
-    OPAL_LIST_FOREACH(rptr, &routes, local_route_t) {
-        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                        route, &rptr->target)) {
-            r2 = rptr;
-            goto found;
-        }
-        OPAL_LIST_FOREACH(rt, &rptr->routes, local_route_t) {
-            if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                        route, &rt->target)) {
-                r2 = rt;
-                goto found;
-            }
-        }
-    }
- found:
-    if (NULL == r2) {
-        /* don't care */
-        return ORTE_SUCCESS;
-    }
-    /* mark the route as down */
-    r2->alive = false;
+    /* if this is my parent, then reconnect to someone above it */
 
-    /* if we don't have a lifeline, or this isn't
-     * the lifeline, then we don't care
-     */
-    if (NULL == lifeline || r2 != lifeline) {
-        return ORTE_SUCCESS;
-    }
+    /* if this is someone under me, then just record it */
 
-    /* if we lose the connection to the lifeline and we are NOT already,
-     * in finalize, attempt to rewire to a peer of the lifeline 
-     */
-    OPAL_LIST_FOREACH(rt, &lifeline->routes, local_route_t) {
-        if (rt->alive) {
-            lifeline = rt;
-            return ORTE_SUCCESS;
-        }
-    }
- 
     /* if we can't find a replacement, then error */
     return ORTE_ERR_FATAL;
 }
@@ -351,25 +444,7 @@ static bool route_is_defined(const orte_process_name_t *target)
 }
 
 static int set_lifeline(orte_process_name_t *proc)
-{
-    local_route_t *rt, *rptr;
-
-    /* find this proc in our routes */
-    OPAL_LIST_FOREACH(rt, &routes, local_route_t) {
-        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                        &rt->target, proc)) {
-            lifeline = rt;
-            return ORTE_SUCCESS;
-        }
-        OPAL_LIST_FOREACH(rptr, &rt->routes, local_route_t) {
-            if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                            &rptr->target, proc)) {
-            lifeline = rptr;
-            return ORTE_SUCCESS;
-            }
-        }
-    }
-    
+{    
     return ORTE_ERR_NOT_FOUND;
 }
 

@@ -80,6 +80,7 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/rm/base/base.h"
 #include "orcm/mca/scd/base/base.h"
+#include "orcm/mca/scd/scd_types.h"
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/cfgi/cfgi_types.h"
 #include "orcm/mca/db/base/base.h"
@@ -131,7 +132,6 @@ static int orcmsched_init(void)
     orcm_rack_t *rack;
     orcm_row_t *row;
     orcm_cluster_t *cluster;
-    orcm_cmpnode_t *cmpnode;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -218,14 +218,14 @@ static int orcmsched_init(void)
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     /* add the node to the scheduler pool */
-                    cmpnode = OBJ_NEW(orcm_cmpnode_t);
-                    OBJ_RETAIN(node);  // maintain accounting
-                    cmpnode->node = node;
                     opal_output_verbose(2, orcm_sst_base_framework.framework_output,
-                                        "%s add node %s",
+                                        "%s adding node %s",
                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                         (NULL == node->name) ? "NULL" : node->name);
-                    opal_pointer_array_add(&orcm_rm_base.nodes, cmpnode);
+                    OBJ_RETAIN(node);  // maintain accounting
+                    opal_pointer_array_add(&orcm_scd_base.nodes, node);
+                    OBJ_RETAIN(node);  // maintain accounting
+                    opal_pointer_array_add(&orcm_rm_base.nodes, node);
                 }
             }
         }

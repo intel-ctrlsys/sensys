@@ -29,7 +29,7 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
 {
     int ret = OPAL_SUCCESS;
     orcm_alloc_t **allocs, *alloc;
-    int i;
+    int32_t i;
     int32_t j;
     orcm_resource_t *r;
     int8_t k;
@@ -42,6 +42,11 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
     for (i=0; i < num_vals; i++) {
         alloc = allocs[i];
         opal_dss.dump(0, alloc, ORCM_ALLOC);
+        /* pack the id */
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->id, 1, OPAL_INT64))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
         /* pack the priority */
         if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->priority, 1, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
@@ -63,22 +68,22 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
             return ret;
         }
         /* pack the max_nodes */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->max_nodes, 1, OPAL_UINT64))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->max_nodes, 1, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the max_pes */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->max_pes, 1, OPAL_UINT64))) {
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->max_pes, 1, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the min_nodes */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->min_nodes, 1, OPAL_UINT64))) {
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->min_nodes, 1, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the min_pes */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->min_pes, 1, OPAL_UINT64))) {
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->min_pes, 1, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -94,6 +99,31 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
         }
         /* pack the exclusive flag */
             if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->exclusive, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* pack the caller_uid */
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->caller_uid, 1, OPAL_UINT32))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* pack the caller_gid */
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->caller_gid, 1, OPAL_UINT32))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* pack the interactive flag */
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->interactive, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* pack the hnp daemon */
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->hnp, 1, ORTE_NAME))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* pack the hnp name */
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->hnpname, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -147,7 +177,7 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
     int8_t k;
 
     /* unpack into array of orcm_alloc_t objects */
-    allocs = (orcm_alloc_t**) dest;
+    allocs = (orcm_alloc_t**)dest;
     for (i=0; i < *num_vals; i++) {
 
         /* create the orcm_alloc_t object */
@@ -158,6 +188,12 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
         }
         a = allocs[i];
 
+        /* unpack the id */
+        n=1;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->id, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
         /* unpack the priority */
         n=1;
         if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->priority, &n, OPAL_INT32))) {
@@ -184,25 +220,25 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
         }
         /* unpack the max_nodes */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->max_nodes, &n, OPAL_UINT64))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->max_nodes, &n, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the max_pes */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->max_pes, &n, OPAL_UINT64))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->max_pes, &n, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the min_nodes */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->min_nodes, &n, OPAL_UINT64))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->min_nodes, &n, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the min_pes */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->min_pes, &n, OPAL_UINT64))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->min_pes, &n, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -221,6 +257,36 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
         /* unpack the exclusive flag */
         n=1;
         if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->exclusive, &n, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* unpack the caller_uid */
+        n=1;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->caller_uid, &n, OPAL_UINT32))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* unpack the caller_gid */
+        n=1;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->caller_gid, &n, OPAL_UINT32))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* unpack the interactive flag */
+        n=1;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->interactive, &n, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* unpack the hnp daemon */
+        n=1;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->hnp, &n, ORTE_NAME))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* unpack the hnp name */
+        n=1;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->hnpname, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -287,38 +353,38 @@ int orcm_copy_alloc(orcm_alloc_t **dest, orcm_alloc_t *src, opal_data_type_t typ
 
 int orcm_print_alloc(char **output, char *prefix, orcm_alloc_t *src, opal_data_type_t type)
 {
-    char *tmp, *tmp2, *pfx2;
+    char *tmp, *pfx;
 
     /* set default result */
     *output = NULL;
 
     /* protect against NULL prefix */
     if (NULL == prefix) {
-        asprintf(&pfx2, " ");
+        asprintf(&pfx, " ");
     } else {
-        asprintf(&pfx2, "%s", prefix);
+        asprintf(&pfx, "%s", prefix);
     }
 
-    asprintf(&tmp, "\n%sData for allocation object: Pri: %d\tAccount: %s\tProject: %s",
-             pfx2, src->priority, (NULL == src->account) ? "N/A" : src->account,
+    asprintf(&tmp, "\n%sData for allocation object:\n\tPri: %d\tAccount: %s\tProject: %s",
+             pfx, src->priority, (NULL == src->account) ? "N/A" : src->account,
              (NULL == src->name) ? "N/A" : src->name);
 
-    asprintf(&tmp2, "%s\n%s\tGID: %d\t#nodes: %"PRIu64":%"PRIu64"\t#pes: %"PRIu64":%"PRIu64"\tMode: %s",
-             tmp, pfx2, src->gid,
+    asprintf(&tmp, "%s\n%s\tGID: %d\t#nodes: %d:%d\t#pes: %d:%d\tMode: %s",
+             tmp, pfx, src->gid,
              src->max_nodes, src->min_nodes, src->max_pes, src->min_pes,
              src->exclusive ? "EXCLUSIVE" : "SHARED");
-    free(tmp);
-    tmp = tmp2;
 
-    asprintf(&tmp2, "%s\n%s\tNodefile: %s\tNodes: %s\tQueues: %s\n",
-             tmp, pfx2,
+    asprintf(&tmp, "%s\n%s\tNodefile: %s\tNodes: %s\tQueues: %s",
+             tmp, pfx,
              (NULL == src->nodefile) ? "N/A" : src->nodefile,
              (NULL == src->nodes) ? "N/A" : src->nodes,
              (NULL == src->queues) ? "N/A" : src->queues);
-    *output = tmp2;
-    free(tmp);
+
+    asprintf(&tmp, "%s\n%s\tUSER: %u\tGROUP: %u\n",
+             tmp, pfx, src->caller_uid, src->caller_gid);
+    *output = tmp;
     
-    free(pfx2);
+    free(pfx);
 
     return ORTE_SUCCESS;
 }

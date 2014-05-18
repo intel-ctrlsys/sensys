@@ -10,9 +10,8 @@
 headers += \
     base/base.h
 
-libmca_scd_la_SOURCES += \
-    base/scd_base_frame.c \
-    base/scd_base_select.c \
-    base/scd_base_recv.c \
-    base/scd_dt_fns.c \
-    base/scd_base_fns.c
+libmca_rm_la_SOURCES += \
+    base/rm_base_fns.c \
+    base/rm_base_frame.c \
+    base/rm_base_select.c \
+    base/rm_base_recv.c

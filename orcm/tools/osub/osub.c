@@ -85,33 +85,117 @@ typedef struct {
     bool help;
     bool verbose;
     int output;
-    int nodes;
+    char *account;
+    char *name;
+    int gid;
+    int max_nodes;
+    int max_pes;
+    int min_nodes;
+    int min_pes;
+    char *starttime;
+    char *walltime;
+    bool exclusive;
+    bool interactive;
+    char *nodefile;
+    char *resources;
 } orcm_osub_globals_t;
 
 orcm_osub_globals_t orcm_osub_globals;
 
 opal_cmd_line_init_t cmd_line_opts[] = {
     { NULL,
-      'h', NULL, "help", 
+      'h', NULL, "help",
       0,
       &orcm_osub_globals.help, OPAL_CMD_LINE_TYPE_BOOL,
       "This help message" },
 
     { NULL,
-      'v', NULL, "verbose", 
+      'v', NULL, "verbose",
       0,
       &orcm_osub_globals.verbose, OPAL_CMD_LINE_TYPE_BOOL,
       "Be Verbose" },
 
     { NULL,
-      'n', NULL, "nodes", 
+      'a', NULL, "account",
+      1,
+      &orcm_osub_globals.account, OPAL_CMD_LINE_TYPE_STRING,
+      "Account to be charged" },
+
+    { NULL,
+      '\0', NULL, "project",
+      1,
+      &orcm_osub_globals.name, OPAL_CMD_LINE_TYPE_STRING,
+      "User assigned project name" },
+
+    { NULL,
+      'g', NULL, "gid",
+      1,
+      &orcm_osub_globals.gid, OPAL_CMD_LINE_TYPE_INT,
+      "Group id to run session under" },
+
+    { NULL,
+      'N', NULL, "max-node",
+      1,
+      &orcm_osub_globals.max_nodes, OPAL_CMD_LINE_TYPE_INT,
+      "Max nodes allowed in allocation" },
+
+    { NULL,
+      'P', NULL, "max-pe",
+      1,
+      &orcm_osub_globals.max_pes, OPAL_CMD_LINE_TYPE_INT,
+      "Max PEs allowed in allocation" },
+
+    { NULL,
+      'n', NULL, "node",
+      1,
+      &orcm_osub_globals.min_nodes, OPAL_CMD_LINE_TYPE_INT,
+      "Minimum number of nodes required for allocation" },
+
+    { NULL,
+      'p', NULL, "pe",
+      1,
+      &orcm_osub_globals.min_pes, OPAL_CMD_LINE_TYPE_INT,
+      "Minimum number of PEs required for allocation" },
+
+    { NULL,
+      's', NULL, "start",
+      1,
+      &orcm_osub_globals.starttime, OPAL_CMD_LINE_TYPE_STRING,
+      "Earliest Date/Time required to start job" },
+
+    { NULL,
+      'w', NULL, "walltime",
+      1,
+      &orcm_osub_globals.walltime, OPAL_CMD_LINE_TYPE_STRING,
+      "Maximum duration before job is terminated" },
+
+    { NULL,
+      'e', NULL, "exclusive",
       0,
-      &orcm_osub_globals.verbose, OPAL_CMD_LINE_TYPE_INT,
-      "Number Nodes Requested" },
+      &orcm_osub_globals.exclusive, OPAL_CMD_LINE_TYPE_BOOL,
+      "Do not share allocated nodes with other sessions" },
+
+    { NULL,
+      'e', NULL, "interactive",
+      0,
+      &orcm_osub_globals.interactive, OPAL_CMD_LINE_TYPE_BOOL,
+      "Do not share allocated nodes with other sessions" },
+
+    { NULL,
+      'f', NULL, "nodefile",
+      1,
+      &orcm_osub_globals.nodefile, OPAL_CMD_LINE_TYPE_STRING,
+      "Path to file listing names of candidate nodes" },
+
+    { NULL,
+      'c', NULL, "constraints",
+      1,
+      &orcm_osub_globals.resources, OPAL_CMD_LINE_TYPE_STRING,
+      "Resource constraints to be applied" },
 
     /* End of list */
     { NULL,
-      '\0', NULL, NULL, 
+      '\0', NULL, NULL,
       0,
       NULL, OPAL_CMD_LINE_TYPE_NULL,
       NULL }
@@ -124,8 +208,9 @@ main(int argc, char *argv[])
     orte_rml_recv_cb_t xfer;
     opal_buffer_t *buf;
     int rc, n;
-    orcm_sched_cmd_flag_t command=ORCM_SESSION_REQ_COMMAND;
+    orcm_scd_cmd_flag_t command=ORCM_SESSION_REQ_COMMAND;
     orcm_alloc_id_t id;
+    struct timeval tv;
 
     /* initialize, parse command line, and setup frameworks */
     orcm_osub_init(argc, argv);
@@ -133,20 +218,39 @@ main(int argc, char *argv[])
     /* create an allocation request */
     OBJ_CONSTRUCT(&alloc, orcm_alloc_t);
 
-    /* alloc.priority = 10; */    // session priority
-    alloc.account = "TESTACCT";   // account to be charged
-    alloc.name = "TESTPROJ";      // user-assigned project name
-    /* alloc.gid = 0;       */    // group id to be run under
-    /* alloc.max_nodes = 1; */    // max number of nodes
-    /* alloc.max_pes = 1;   */    // max number of processing elements
-    alloc.min_nodes = 1;          // min number of nodes required
-    /* alloc.min_pes = 1;   */    // min number of pe's required
-    /* alloc.begin;         */    // desired start time for allocation
-    /* alloc.walltime = ;   */    // max execution time
-    /* alloc.exclusive = 1; */    // true if nodes to be exclusively allocated (i.e., not shared across sessions)
-    /* alloc.nodes = NULL;  */    // regex of nodes to be used
-    /* alloc.constraints;   */    // list of resource constraints to be applied when selecting hosts
+    alloc.priority = 1;                                // session priority
+    alloc.account = orcm_osub_globals.account;         // account to be charged
+    alloc.name = orcm_osub_globals.name;               // user-assigned project name
+    alloc.gid = orcm_osub_globals.gid;                 // group id to be run under
+    alloc.max_nodes = orcm_osub_globals.max_nodes;     // max number of nodes
+    alloc.max_pes = orcm_osub_globals.max_pes;         // max number of processing elements
+    alloc.min_nodes = orcm_osub_globals.min_nodes;     // min number of nodes required
+    alloc.min_pes = orcm_osub_globals.min_pes;         // min number of pe's required
+    alloc.exclusive = orcm_osub_globals.exclusive;     // true if nodes to be exclusively allocated (i.e., not shared across sessions)
+    alloc.interactive = orcm_osub_globals.interactive; // true if in interactive mode
+    alloc.nodes = '\0';                                // regex of nodes to be used
+    /* alloc.constraints = orcm_osub_globals.resources */ ; // list of resource constraints to be applied when selecting hosts
 
+    alloc.caller_uid = getuid();   // caller uid, not from args
+    alloc.caller_gid = getgid();   // caller gid, not from args
+
+    if (NULL == orcm_osub_globals.starttime || 0 == strncmp(orcm_osub_globals.starttime, '\0', 1)) {
+        gettimeofday(&tv,NULL);
+        /* desired start time for allocation deafults to now */
+        alloc.begin = tv.tv_sec;
+    } else {
+        /* TODO: eventually parse the string to figure out what user means, for now its now */
+        gettimeofday(&tv,NULL);
+        alloc.begin = tv.tv_sec;
+    }
+
+    if (NULL == orcm_osub_globals.walltime || 0 == strncmp(orcm_osub_globals.walltime, '\0', 1)) {
+        /* desired walltime default to 10 min */
+        alloc.walltime = 600;
+    } else {
+        /* get this in seconds for now, but will be parsed for more complexity later */
+        alloc.walltime = (time_t)strtol(orcm_osub_globals.walltime, NULL, 10);                               // max execution time
+    }
 
     /* setup to receive the result */
     OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
@@ -159,7 +263,7 @@ main(int argc, char *argv[])
     /* send it to the scheduler */
     buf = OBJ_NEW(opal_buffer_t);
     /* pack the alloc command flag */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,1, ORCM_SCHED_CMD_T))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,1, ORCM_SCD_CMD_T))) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }
@@ -200,12 +304,25 @@ static int parse_args(int argc, char *argv[])
 {
     int ret;
     opal_cmd_line_t cmd_line;
-    orcm_osub_globals_t tmp = { false,                    /* help */
-                                false,                    /* verbose */
-                                -1,                       /* output */
-                                0};                       /* nodes */
+    orcm_osub_globals_t tmp = { false,    /* help */
+                                false,    /* verbose */
+                                -1,       /* output */
+                                '\0',     /* account */
+                                '\0',     /* name */
+                                -1,       /* gid */
+                                0,        /* max_nodes */
+                                0,        /* max_pes */
+                                1,        /* min_nodes */
+                                1,        /* min_pes */
+                                '\0',     /* starttime */
+                                '\0',     /* walltime */
+                                false,    /* exclusive */
+                                false,    /* interactive */
+                                '\0',     /* nodefile */
+                                '\0'};    /* resources */
 
     orcm_osub_globals = tmp;
+    char str[10];
 
     /* Parse the command line options */
     opal_cmd_line_create(&cmd_line, cmd_line_opts);
@@ -237,6 +354,21 @@ static int parse_args(int argc, char *argv[])
         /* If we show the help message, that should be all we do */
         exit(0);
     }
+
+    /* if user hasn't supplied a group to run under, use effective gid of caller */
+    /* TODO: double check if user is in group */
+    /* do we also need to support the name as well as id? */
+    if (-1 == orcm_osub_globals.gid) {
+        sprintf(str, "%u", getgid());
+        orcm_osub_globals.gid = (int)strtol(str, NULL, 10);
+    }
+
+    if (orcm_osub_globals.max_nodes < orcm_osub_globals.min_nodes) {
+       orcm_osub_globals.max_nodes = orcm_osub_globals.min_nodes;
+    } 
+    if (orcm_osub_globals.max_pes < orcm_osub_globals.min_pes) {
+       orcm_osub_globals.max_pes = orcm_osub_globals.min_pes;
+    } 
 
     /*
      * Since this process can now handle MCA/GMCA parameters, make sure to

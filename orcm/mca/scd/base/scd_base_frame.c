@@ -35,8 +35,8 @@
 /*
  * Global variables
  */
-orcm_scd_API_module_t orcm_sched = {
-    orcm_sched_base_activate_session_state
+orcm_scd_API_module_t orcm_scd = {
+    orcm_scd_base_activate_session_state
 };
 orcm_scd_base_t orcm_scd_base;
 
@@ -142,11 +142,12 @@ static void* progress_thread_engine(opal_object_t *obj)
 {
     while (orcm_scd_base.ev_active) {
         opal_event_loop(orcm_scd_base.ev_base, OPAL_EVLOOP_ONCE);
+        usleep(100000);
     }
     return OPAL_THREAD_CANCELLED;
 }
 
-const char *orcm_session_state_to_str(orcm_session_state_t state)
+const char *orcm_scd_session_state_to_str(orcm_scd_session_state_t state)
 {
     char *s;
 
@@ -157,8 +158,8 @@ const char *orcm_session_state_to_str(orcm_session_state_t state)
     case ORCM_SESSION_STATE_INIT:
         s = "PENDING QUEUE ASSIGNMENT";
         break;
-    case ORCM_SESSION_STATE_QUEUED:
-        s = "QUEUED";
+    case ORCM_SESSION_STATE_SCHEDULE:
+        s = "RUNNING SCHEDULERS";
         break;
     case ORCM_SESSION_STATE_ALLOCD:
         s = "ALLOCATED";
@@ -203,6 +204,8 @@ static void alloc_con(orcm_alloc_t *p)
     memset(&p->begin, 0, sizeof(time_t));
     memset(&p->walltime, 0, sizeof(time_t));
     p->exclusive = true;
+    p->caller_uid = 0;
+    p->caller_gid = 0;
     p->nodefile = NULL;
     p->nodes = NULL;
     p->queues = NULL;
@@ -308,6 +311,20 @@ OBJ_CLASS_INSTANCE(orcm_session_caddy_t,
                    opal_object_t,
                    cd_con, cd_des);
 
-OBJ_CLASS_INSTANCE(orcm_state_t,
+OBJ_CLASS_INSTANCE(orcm_scd_state_t,
                    opal_list_item_t,
                    NULL, NULL);
+
+static void res_con(orcm_resource_t *p)
+{
+    p->constraint = NULL;
+}
+static void res_des(orcm_resource_t *p)
+{
+    if (NULL != p->constraint) {
+        free(p->constraint);
+    }
+}
+OBJ_CLASS_INSTANCE(orcm_resource_t,
+                   opal_list_item_t,
+                   res_con, res_des);

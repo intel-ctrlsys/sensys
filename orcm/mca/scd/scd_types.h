@@ -7,8 +7,8 @@
  * $HEADER$
  */
 
-#ifndef MCA_SCHED_TYPES_H
-#define MCA_SCHED_TYPES_H
+#ifndef MCA_SCD_TYPES_H
+#define MCA_SCD_TYPES_H
 
 /*
  * includes
@@ -21,13 +21,37 @@
 #include <sys/time.h> /* for time_t */
 #endif
 
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h> /* for uid_t, gid_t */
+#endif
+
 #include "opal/class/opal_object.h"
 #include "opal/class/opal_pointer_array.h"
 #include "opal/class/opal_list.h"
-
-#include "orcm/mca/cfgi/cfgi_types.h"
+#include "opal/mca/event/event.h"
 
 BEGIN_C_DECLS
+
+/* Provide an enum of resource types for use
+ * in specifying constraints
+ */
+typedef enum {
+    ORCM_RESOURCE_MEMORY,
+    ORCM_RESOURCE_CPU,
+    ORCM_RESOURCE_BANDWIDTH,
+    ORCM_RESOURCE_IMAGE
+} orcm_resource_type_t;
+
+/* Describe a resource constraint to be applied
+ * when selecting nodes for an allocation. Includes
+ * memory, network QoS, and OS image.
+ */
+typedef struct {
+    opal_list_item_t super;
+    orcm_resource_type_t type;
+    char *constraint;
+} orcm_resource_t;
+OBJ_CLASS_DECLARATION(orcm_resource_t);
 
 /****    ALLOCATION TYPES    ****/
 typedef int64_t orcm_alloc_id_t;
@@ -35,17 +59,23 @@ typedef int64_t orcm_alloc_id_t;
 
 typedef struct {
     opal_object_t super;
+    orcm_alloc_id_t id;       // unique id
     int32_t priority;         // session priority
     char *account;            // account to be charged
     char *name;               // user-assigned project name
     int32_t gid;              // group id to be run under
-    uint64_t max_nodes;       // max number of nodes
-    uint64_t max_pes;         // max number of processing elements
-    uint64_t min_nodes;       // min number of nodes required
-    uint64_t min_pes;         // min number of pe's required
+    int32_t max_nodes;        // max number of nodes
+    int32_t max_pes;          // max number of processing elements
+    int32_t min_nodes;        // min number of nodes required
+    int32_t min_pes;          // min number of pe's required
     time_t begin;             // desired start time for allocation
     time_t walltime;          // max execution time
     bool exclusive;           // true if nodes to be exclusively allocated (i.e., not shared across sessions)
+    uid_t caller_uid;         // uid of submission request
+    gid_t caller_gid;         // gid of submission request
+    bool interactive;         // interactive or batch
+    orte_process_name_t hnp;  // hnp process name
+    char *hnpname;            // hnp string name
     char *nodefile;           // file listing names and/or regex of candidate nodes to be used
     char *nodes;              // regex of nodes to be used
     char *queues;             // comma-delimited list of queue names
@@ -90,21 +120,15 @@ typedef struct {
 OBJ_CLASS_DECLARATION(orcm_queue_t);
 
 
-/****    NODE TYPE    ****/
-/* The ORCM scheduler doesn't need to track the detailed
- * information found in the ORTE node object as the scheduler
- * isn't tasked with actually executing the job - e.g., it doesn't
- * need to know which processes are on what node. In the interest
- * of saving memory footprint, we therefore define a limited
- * node object that only contains the info required by the
- * scheduler
- */
-typedef struct {
-    opal_list_item_t super;
-    orcm_node_t *node;
-    orcm_queue_t *queue;
-} orcm_cmpnode_t;
-OBJ_CLASS_DECLARATION(orcm_cmpnode_t);
+/****    NODESTATE TYPE    ****/
+typedef int8_t orcm_scd_node_state_t;
+#define ORCM_SCD_NODE_STATE_T OPAL_INT8
+
+#define ORCM_SCD_NODE_STATE_UNDEF      0  // Node is undefined
+#define ORCM_SCD_NODE_STATE_UNKNOWN    1  // Node is unknown
+#define ORCM_SCD_NODE_STATE_UNALLOC    2  // Node is unallocated
+#define ORCM_SCD_NODE_STATE_ALLOC      3  // Node is allocated
+#define ORCM_SCD_NODE_STATE_EXCLUSIVE  4  // Node is exclusively allocated
 
 
 /****    JOB TYPE    ****/
@@ -145,15 +169,13 @@ OBJ_CLASS_DECLARATION(orcm_step_t);
  * "obatch" command that contains an execution script, or issuing
  * an "orun" command from outside an existing allocation.
  */
-typedef uint32_t orcm_session_state_t;
+typedef uint32_t orcm_scd_session_state_t;
 typedef uint32_t orcm_session_id_t;
 typedef struct {
     opal_list_item_t super;
     orcm_session_id_t id;
-    bool interactive;
     int32_t uid;
     orte_process_name_t requestor;
-    orcm_session_state_t state;
     orcm_alloc_t *alloc;  // master allocation for the session
     opal_list_t steps;
 } orcm_session_t;
@@ -163,27 +185,26 @@ OBJ_CLASS_DECLARATION(orcm_session_t);
 /* SESSION STATES */
 #define ORCM_SESSION_STATE_UNDEF          0
 #define ORCM_SESSION_STATE_INIT           1 // not yet assigned to a queue
-#define ORCM_SESSION_STATE_QUEUED         2 // assigned to queue and pending
+#define ORCM_SESSION_STATE_SCHEDULE       2 // run schedulers
 #define ORCM_SESSION_STATE_ALLOCD         3 // allocated, job not started
 #define ORCM_SESSION_STATE_ACTIVE         4 // job step(s) running
 #define ORCM_SESSION_STATE_TERMINATED     5 // allocation terminated
 
-#define ORCM_SESSION_STATE_SCHEDULE       6 // run schedulers
 #define ORCM_SESSION_STATE_ANY           10 // marker
 
 #define ORCM_SESSION_STATE_ERROR         20 // marker
 
 
 /****    STATE MACHINE    ****/
-typedef void (*orcm_state_cbfunc_t)(int fd, short args, void* cb);
+typedef void (*orcm_scd_state_cbfunc_t)(int fd, short args, void* cb);
 
 typedef struct {
     opal_list_item_t super;
-    orcm_session_state_t state;
-    orcm_state_cbfunc_t cbfunc;
+    orcm_scd_session_state_t state;
+    orcm_scd_state_cbfunc_t cbfunc;
     int priority;
-} orcm_state_t;
-ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_state_t);
+} orcm_scd_state_t;
+ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_scd_state_t);
 
 typedef struct {
     opal_object_t super;
@@ -194,11 +215,13 @@ OBJ_CLASS_DECLARATION(orcm_session_caddy_t);
 
 
 /* define a few commands */
-typedef uint8_t orcm_sched_cmd_flag_t;
-#define ORCM_SCHED_CMD_T OPAL_UINT8
+typedef uint8_t orcm_scd_cmd_flag_t;
+#define ORCM_SCD_CMD_T OPAL_UINT8
 
 #define ORCM_SESSION_REQ_COMMAND   1
-#define ORCM_RUN_COMMAND           2
+#define ORCM_SESSION_INFO_COMMAND  2
+#define ORCM_NODE_INFO_COMMAND     3
+#define ORCM_RUN_COMMAND           4
 
 
 END_C_DECLS

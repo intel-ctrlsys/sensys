@@ -123,11 +123,11 @@ static void setup_sighandler(int signal, opal_event_t *ev,
 
 static int emulator_init(void)
 {
-    int ret = ORTE_ERROR;
+    int ret = ORTE_ERROR, n;
     char *error = NULL;
     orte_job_t *jdata;
     opal_list_t config;
-    opal_buffer_t buf;
+    opal_buffer_t buf, *clusterbuf, *uribuf;
     char **tgts;
     orcm_cluster_t *cluster;
     orcm_scheduler_t *scheduler;
@@ -315,7 +315,6 @@ static int emulator_init(void)
         error = "orcm_db_base_open";
         goto error;
     }
-    /* always restrict to local (i.e., non-PMI) database components */
     if (ORTE_SUCCESS != (ret = orcm_db_base_select())) {
         ORTE_ERROR_LOG(ret);
         error = "orcm_db_base_select";
@@ -362,13 +361,31 @@ static int emulator_init(void)
         goto error;
     }
 
+    /* extract the buffers */
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &uribuf, &n, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "extract uri buffer";
+        goto error;
+    }
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &clusterbuf, &n, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(uribuf);
+        error = "orte_util_nidmap_init";
+        goto error;
+    }
+    OBJ_DESTRUCT(&buf);
+
     /* load the RML hash table */
-    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(&buf))) {
+    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(uribuf))) {
         ORTE_ERROR_LOG(ret);
         error = "load hash tables";
         goto error;
     }
-    OBJ_DESTRUCT(&buf);
+    OBJ_RELEASE(uribuf);
 
     /* take the first scheduler as our HNP */
     scheduler = (orcm_scheduler_t*)opal_list_get_first(orcm_schedulers);
@@ -376,7 +393,15 @@ static int emulator_init(void)
     ORTE_PROC_MY_HNP->vpid = scheduler->controller.daemon.vpid;
 
     /* set all our internal routes for emulation */
-    
+    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_RELEASE(clusterbuf);
+        OBJ_RELEASE(uribuf);
+        error = "orte_routed.init_routes";
+        goto error;
+    }
+    OBJ_RELEASE(clusterbuf);
+
     /*
      * Group communications
      */
@@ -395,18 +420,6 @@ static int emulator_init(void)
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);
         error = "orte_rml.enable_comm";
-        goto error;
-    }
-    
-    /* update the routing tree */
-    orte_routed.update_routing_plan();
-    
-    /* setup the routed info - the selected routed component
-     * will know what to do. 
-     */
-    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, NULL))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_routed.init_routes";
         goto error;
     }
     

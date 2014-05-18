@@ -219,7 +219,8 @@ static void nd_con(orcm_node_t *p)
     p->rack = NULL;
     p->daemon = *ORTE_NAME_INVALID;
     OBJ_CONSTRUCT(&p->config, orcm_config_t);
-    p->state = ORTE_NODE_STATE_UNDEF;
+    p->state = ORCM_NODE_STATE_UNDEF;
+    p->scd_state = ORCM_SCD_NODE_STATE_UNDEF;
 }
 static void nd_des(orcm_node_t *p)
 {

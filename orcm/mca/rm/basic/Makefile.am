@@ -24,7 +24,7 @@ component_noinst = libmca_rm_basic.la
 component_install =
 endif
 
-mcacomponentdir = $(ompilibdir)
+mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_rm_basic_la_SOURCES = $(sources)
 mca_rm_basic_la_LDFLAGS = -module -avoid-version

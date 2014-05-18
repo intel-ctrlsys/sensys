@@ -35,6 +35,9 @@
 /*
  * Global variables
  */
+orcm_rm_API_module_t orcm_rm = {
+    orcm_rm_base_activate_session_state
+};
 orcm_rm_base_t orcm_rm_base;
 
 /* local vars */
@@ -86,6 +89,7 @@ static int orcm_rm_base_open(mca_base_open_flag_t flags)
     /* setup the base objects */
     orcm_rm_base.ev_active = false;
     OBJ_CONSTRUCT(&orcm_rm_base.active_modules, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_rm_base.states, opal_list_t);
     OBJ_CONSTRUCT(&orcm_rm_base.nodes, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_rm_base.nodes, 8, INT_MAX, 8);
 
@@ -117,8 +121,29 @@ static void* progress_thread_engine(opal_object_t *obj)
 {
     while (orcm_rm_base.ev_active) {
         opal_event_loop(orcm_rm_base.ev_base, OPAL_EVLOOP_ONCE);
+        usleep(1000);
     }
     return OPAL_THREAD_CANCELLED;
+}
+
+const char *orcm_rm_session_state_to_str(orcm_rm_session_state_t state)
+{
+    char *s;
+
+    switch (state) {
+    case ORCM_SESSION_STATE_UNDEF:
+        s = "UNDEF";
+        break;
+    case ORCM_SESSION_STATE_ACTIVE:
+        s = "GATHERING RESOURCES";
+        break;
+    case ORCM_SESSION_STATE_TERMINATED:
+        s = "TERMINATED";
+        break;
+    default:
+        s = "UNKNOWN";
+    }
+    return s;
 }
 
 /****    CLASS INSTANTIATIONS    ****/
@@ -132,20 +157,6 @@ OBJ_CLASS_INSTANCE(orcm_rm_base_active_module_t,
                    opal_list_item_t,
                    NULL, rm_des);
 
-OBJ_CLASS_INSTANCE(orcm_resource_caddy_t,
-                   opal_object_t,
-                   NULL, NULL);
-
-static void res_con(orcm_resource_t *p)
-{
-    p->constraint = NULL;
-}
-static void res_des(orcm_resource_t *p)
-{
-    if (NULL != p->constraint) {
-        free(p->constraint);
-    }
-}
-OBJ_CLASS_INSTANCE(orcm_resource_t,
+OBJ_CLASS_INSTANCE(orcm_rm_state_t,
                    opal_list_item_t,
-                   res_con, res_des);
+                   NULL, NULL);

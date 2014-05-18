@@ -26,13 +26,13 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/scd/base/base.h"
 
-void orcm_sched_base_activate_session_state(orcm_session_t *session,
-                                            orcm_session_state_t state)
+void orcm_scd_base_activate_session_state(orcm_session_t *session,
+                                            orcm_scd_session_state_t state)
 {
-    orcm_state_t *s, *any=NULL, *error=NULL;
+    orcm_scd_state_t *s, *any=NULL, *error=NULL;
     orcm_session_caddy_t *caddy;
 
-    OPAL_LIST_FOREACH(s, &orcm_scd_base.states, orcm_state_t) {
+    OPAL_LIST_FOREACH(s, &orcm_scd_base.states, orcm_scd_state_t) {
         if (s->state == ORCM_SESSION_STATE_ANY) {
             /* save this place */
             any = s;
@@ -47,7 +47,7 @@ void orcm_sched_base_activate_session_state(orcm_session_t *session,
                 OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
                                      "%s NULL CBFUNC FOR SESSION %d STATE %s",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                     session->id, orcm_session_state_to_str(state)));
+                                     session->id, orcm_scd_session_state_to_str(state)));
                 return;
             }
             caddy = OBJ_NEW(orcm_session_caddy_t);
@@ -82,30 +82,30 @@ void orcm_sched_base_activate_session_state(orcm_session_t *session,
     OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
                          "%s ACTIVATING SESSION %d STATE %s PRI %d",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                         session->id, orcm_session_state_to_str(state), s->priority));
+                         session->id, orcm_scd_session_state_to_str(state), s->priority));
     opal_event_set(orcm_scd_base.ev_base, &caddy->ev, -1, OPAL_EV_WRITE, s->cbfunc, caddy);
     opal_event_set_priority(&caddy->ev, s->priority);
     opal_event_active(&caddy->ev, OPAL_EV_WRITE, 1);
 }
 
 
-int orcm_sched_base_add_session_state(orcm_session_state_t state,
-                                      orcm_state_cbfunc_t cbfunc,
+int orcm_scd_base_add_session_state(orcm_scd_session_state_t state,
+                                      orcm_scd_state_cbfunc_t cbfunc,
                                       int priority)
 {
-    orcm_state_t *st;
+    orcm_scd_state_t *st;
 
     /* check for uniqueness */
-    OPAL_LIST_FOREACH(st, &orcm_scd_base.states, orcm_state_t) {
+    OPAL_LIST_FOREACH(st, &orcm_scd_base.states, orcm_scd_state_t) {
         if (st->state == state) {
             OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
                                  "DUPLICATE STATE DEFINED: %s",
-                                 orcm_session_state_to_str(state)));
+                                 orcm_scd_session_state_to_str(state)));
             return ORCM_ERR_BAD_PARAM;
         }
     }
 
-    st = OBJ_NEW(orcm_state_t);
+    st = OBJ_NEW(orcm_scd_state_t);
     st->state = state;
     st->cbfunc = cbfunc;
     st->priority = priority;
@@ -113,7 +113,7 @@ int orcm_sched_base_add_session_state(orcm_session_state_t state,
 
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "SESSION STATE %s registered",
-                         orcm_session_state_to_str(state)));
+                         orcm_scd_session_state_to_str(state)));
 
     return ORCM_SUCCESS;
 }
@@ -125,6 +125,12 @@ void orcm_scd_base_construct_queues(int fd, short args, void *cbdata)
     orcm_queue_t *q, *q2, *def;
     int i;
     char **t1;
+
+    /* push our running queue onto the stack */
+    def = OBJ_NEW(orcm_queue_t);
+    def->name = strdup("running");
+    def->priority = 0;
+    opal_list_append(&orcm_scd_base.queues, &def->super);
 
     /* push our default queue onto the stack */
     def = OBJ_NEW(orcm_queue_t);

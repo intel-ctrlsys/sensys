@@ -24,51 +24,45 @@
 #include "opal/class/opal_object.h"
 #include "opal/class/opal_pointer_array.h"
 #include "opal/class/opal_list.h"
+#include "opal/mca/event/event.h"
 
-#include "orcm/mca/cfgi/cfgi_types.h"
 
 BEGIN_C_DECLS
 
-/* Provide an enum of resource types for use
- * in specifying constraints
- */
-typedef enum {
-    ORCM_RESOURCE_MEMORY,
-    ORCM_RESOURCE_CPU,
-    ORCM_RESOURCE_BANDWIDTH,
-    ORCM_RESOURCE_IMAGE
-} orcm_resource_type_t;
+/****    NODESTATE TYPE    ****/
+typedef int8_t orcm_node_state_t;
+#define ORCM_NODE_STATE_T OPAL_INT8
 
-/* Describe a resource constraint to be applied
- * when selecting nodes for an allocation. Includes
- * memory, network QoS, and OS image.
- */
-typedef struct {
-    opal_list_item_t super;
-    orcm_resource_type_t type;
-    char *constraint;
-} orcm_resource_t;
-OBJ_CLASS_DECLARATION(orcm_resource_t);
+#define ORCM_NODE_STATE_UNDEF         0  // Node is undefined
+#define ORCM_NODE_STATE_UNKNOWN       1  // Node is in unknown state
+#define ORCM_NODE_STATE_UP            2  // Node is up
+#define ORCM_NODE_STATE_DOWN          3  // Node is down
+#define ORCM_NODE_STATE_SESTERM       4  // Node is terminating session
+
+
+/****    SESSION STATES GOING THROUGH RM    ****/
+typedef uint32_t orcm_rm_session_state_t;
+#define ORCM_SESSION_STATE_UNDEF         0  // Node is undefined
+#define ORCM_SESSION_STATE_REQ           1  // Node is undefined
+
+/****    STATE MACHINE    ****/
+typedef void (*orcm_rm_state_cbfunc_t)(int fd, short args, void* cb);
 
 typedef struct {
     opal_list_item_t super;
-    orte_node_state_t state;
-} orcm_node_state_t;
-ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_node_state_t);
-
-typedef struct {
-    opal_object_t super;
-    opal_event_t ev;
-    orcm_resource_t *resource;
-} orcm_resource_caddy_t;
-OBJ_CLASS_DECLARATION(orcm_resource_caddy_t);
+    orcm_rm_session_state_t state;
+    orcm_rm_state_cbfunc_t cbfunc;
+    int priority;
+} orcm_rm_state_t;
+ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_rm_state_t);
 
 /* define a few commands */
 typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_RM_CMD_T OPAL_UINT8
 
-#define ORCM_NODESTATE_REQ_COMMAND   1
-#define ORCM_RESOURCE_REQ_COMMAND    2
+#define ORCM_NODESTATE_REQ_COMMAND    1
+#define ORCM_RESOURCE_REQ_COMMAND     2
+#define ORCM_NODESTATE_UPDATE_COMMAND 3
 
 
 END_C_DECLS

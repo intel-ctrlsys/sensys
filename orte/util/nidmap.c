@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -9,10 +10,12 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2012-2013 Los Alamos National Security, LLC.
+ * Copyright (c) 2012-2014 Los Alamos National Security, LLC.
  *                         All rights reserved.
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved
  *
+ * Copyright (c) 2014      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -126,6 +129,7 @@ int orte_util_nidmap_init(opal_buffer_t *buffer)
         return rc;
     }
     /* the bytes in the object were free'd by the decode */
+    free(bo);
     
     /* extract the byte object holding the process map */
     cnt=1;
@@ -139,6 +143,7 @@ int orte_util_nidmap_init(opal_buffer_t *buffer)
         return rc;
     }
     /* the bytes in the object were free'd by the decode */
+    free(bo);
 
     return ORTE_SUCCESS;
 }
@@ -148,6 +153,11 @@ void orte_util_nidmap_finalize(void)
 #if OPAL_HAVE_HWLOC
     /* destroy the topology */
     if (NULL != opal_hwloc_topology) {
+        hwloc_obj_t root;
+        root = hwloc_get_root_obj(opal_hwloc_topology);
+        if (NULL != root->userdata) {
+            OBJ_RELEASE(root->userdata);
+        }
         hwloc_topology_destroy(opal_hwloc_topology);
         opal_hwloc_topology = NULL;
     }
@@ -606,6 +616,7 @@ int orte_util_decode_nodemap(opal_byte_object_t *bo)
             }
             OBJ_DESTRUCT(&kv);
         }
+        free (nodename);
     }
     if (ORTE_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
         ORTE_ERROR_LOG(rc);
@@ -646,7 +657,7 @@ int orte_util_decode_daemon_nodemap(opal_byte_object_t *bo)
     /* xfer the byte object to a buffer for unpacking */
     OBJ_CONSTRUCT(&buf, opal_buffer_t);
     opal_dss.load(&buf, bo->bytes, bo->size);
-    
+
     /* unpack the number of procs */
     n=1;
     if (ORTE_SUCCESS != (rc = opal_dss.unpack(&buf, &num_daemons, &n, ORTE_VPID))) {
@@ -951,8 +962,6 @@ int orte_util_decode_pidmap(opal_byte_object_t *bo)
     orte_app_idx_t app_idx;
     int32_t restarts;
     orte_process_name_t proc, dmn;
-    orte_namelist_t *nm;
-    opal_list_t jobs;
     uint8_t flag;
     opal_buffer_t *bptr;
     bool barrier;
@@ -965,23 +974,18 @@ int orte_util_decode_pidmap(opal_byte_object_t *bo)
         ORTE_ERROR_LOG(rc);
         goto cleanup;
     }
-    
+
     /* set the daemon jobid */
     dmn.jobid = ORTE_DAEMON_JOBID(ORTE_PROC_MY_NAME->jobid);
 
     n = 1;
     /* cycle through the buffer */
-    OBJ_CONSTRUCT(&jobs, opal_list_t);
     orte_process_info.num_local_peers = 0;
     while (ORTE_SUCCESS == (rc = opal_dss.unpack(&buf, &proc.jobid, &n, ORTE_JOBID))) {
         OPAL_OUTPUT_VERBOSE((2, orte_nidmap_output,
                              "%s orte:util:decode:pidmap working job %s",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              ORTE_JOBID_PRINT(proc.jobid)));
-        /* record the jobid */
-        nm = OBJ_NEW(orte_namelist_t);
-        nm->name.jobid = proc.jobid;
-        opal_list_append(&jobs, &nm->super);
 
         /* unpack and store the number of procs */
         n=1;

@@ -76,7 +76,6 @@ ORCM_DECLSPEC void orcm_rm_base_activate_session_state(orcm_session_t *s,
 
 /* datatype support */
 ORCM_DECLSPEC const char *orcm_rm_session_state_to_str(orcm_rm_session_state_t state);
-ORCM_DECLSPEC const char *orcm_rm_node_state_to_str(orcm_node_state_t state);
 ORCM_DECLSPEC int orcm_rm_base_add_session_state(orcm_rm_session_state_t state,
                                                  orcm_rm_state_cbfunc_t cbfunc,
                                                  int priority);

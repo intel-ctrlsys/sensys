@@ -178,7 +178,7 @@ static int define_system(opal_list_t *config,
     orcm_rack_t *rack;
     orcm_node_t *node;
     int32_t num;
-    opal_buffer_t uribuf, schedbuf, clusterbuf, rowbuf, rackbuf;
+    opal_buffer_t uribuf, clusterbuf, rowbuf, rackbuf;
     opal_buffer_t *bptr;
 
     /* set default */
@@ -213,7 +213,6 @@ static int define_system(opal_list_t *config,
     OBJ_CONSTRUCT(&agg_cfg, orcm_config_t);
     OBJ_CONSTRUCT(&scd_cfg, orcm_config_t);
     OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
-    OBJ_CONSTRUCT(&clusterbuf, opal_buffer_t);
 
     /* parse the config to extract the daemon, aggregator, and scheduler info */
     OPAL_LIST_FOREACH(x, config, orcm_cfgi_xml_parser_t) {
@@ -229,7 +228,7 @@ static int define_system(opal_list_t *config,
      * in the assignment of process names
      */
     found_me = false;
-    OBJ_CONSTRUCT(&schedbuf, opal_buffer_t);
+    OBJ_CONSTRUCT(&clusterbuf, opal_buffer_t);  // reuse this buffer
     OPAL_LIST_FOREACH(scheduler, orcm_schedulers, orcm_scheduler_t) {
         if (ORTE_NODE_STATE_UNDEF != scheduler->controller.state) {
             /* the cluster includes a scheduler */
@@ -237,7 +236,6 @@ static int define_system(opal_list_t *config,
             scheduler->controller.daemon.vpid = vpid;
             if (NULL != scd_cfg.port) {
                 scheduler->controller.config.port = strdup(scd_cfg.port);
-                orcm_util_construct_uri(&uribuf, &scheduler->controller);  // record its URI
             }
             if (NULL != scd_cfg.mca_params) {
                 scheduler->controller.config.mca_params = opal_argv_copy(scd_cfg.mca_params);
@@ -256,19 +254,17 @@ static int define_system(opal_list_t *config,
                     OBJ_RETAIN(*mynode);
                 }
             }
-            /* add to the scheduler definitions */
-            opal_dss.pack(&schedbuf, &scheduler->controller.daemon, 1, ORTE_NAME);
-            /* roll to the next vpid */
+            opal_dss.pack(&clusterbuf, &scheduler->controller.daemon, 1, ORTE_NAME);
             ++vpid;
             if (30 < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
                 opal_dss.dump(0, scheduler, ORCM_SCHEDULER);
             }
         }
     }
-    /* transfer the scheduler section to the cluster definition */
-    bptr = &schedbuf;
-    opal_dss.pack(&clusterbuf, &bptr, 1, OPAL_BUFFER);
-    OBJ_DESTRUCT(&schedbuf);
+    /* transfer the scheduler section */
+    bptr = &clusterbuf;
+    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
+    OBJ_DESTRUCT(&clusterbuf);
     /* take the first scheduler as our own */
     if (0 < opal_list_get_size(orcm_schedulers)) {
         scheduler = (orcm_scheduler_t*)opal_list_get_first(orcm_schedulers);
@@ -284,6 +280,7 @@ static int define_system(opal_list_t *config,
     /* cycle thru the cluster setting up the remaining names */
     nagg = 0;
     found_me = false;
+    OBJ_CONSTRUCT(&clusterbuf, opal_buffer_t);
     OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
         /* this format doesn't have a way of defining a cluster controller */
         opal_dss.pack(&clusterbuf, ORTE_NAME_INVALID, 1, ORTE_NAME);
@@ -459,13 +456,10 @@ static int define_system(opal_list_t *config,
 
     /* return the number of procs in the system */
     *num_procs = vpid;
-    /* provide the cluster definition first */
     bptr = &clusterbuf;
     opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
-    /* now add the URIs */
     bptr = &uribuf;
     opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
-    /* cleanup */
     OBJ_DESTRUCT(&uribuf);
     OBJ_DESTRUCT(&clusterbuf);
 

@@ -234,7 +234,7 @@ main(int argc, char *argv[])
     alloc.caller_uid = getuid();   // caller uid, not from args
     alloc.caller_gid = getgid();   // caller gid, not from args
 
-    if (NULL == orcm_osub_globals.starttime || 0 == strncmp(orcm_osub_globals.starttime, '\0', 1)) {
+    if (NULL == orcm_osub_globals.starttime || 0 == strlen(orcm_osub_globals.starttime)) {
         gettimeofday(&tv,NULL);
         /* desired start time for allocation deafults to now */
         alloc.begin = tv.tv_sec;
@@ -244,7 +244,7 @@ main(int argc, char *argv[])
         alloc.begin = tv.tv_sec;
     }
 
-    if (NULL == orcm_osub_globals.walltime || 0 == strncmp(orcm_osub_globals.walltime, '\0', 1)) {
+    if (NULL == orcm_osub_globals.walltime || 0 == strlen(orcm_osub_globals.walltime)) {
         /* desired walltime default to 10 min */
         alloc.walltime = 600;
     } else {

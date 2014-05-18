@@ -185,8 +185,8 @@ main(int argc, char *argv[])
             }
             fprintf(stdout,"got %i sessions\n", num_sessions);
             for (j = 0; j < num_sessions; j++) {
-                fprintf(stdout, "%lld\t%u|%u\t%i\t%s\t%s\n", 
-                        allocs[j]->id, 
+                fprintf(stdout, "%d\t%u|%u\t%i\t%s\t%s\n", 
+                        (int)allocs[j]->id, 
                         allocs[j]->caller_uid, 
                         allocs[j]->caller_gid, 
                         allocs[j]->min_nodes, 

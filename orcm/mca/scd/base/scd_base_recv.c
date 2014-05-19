@@ -75,11 +75,12 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                void* cbdata)
 {
     orcm_scd_cmd_flag_t command;
-    int rc, i, cnt;
+    int rc, i, j, cnt;
     orcm_alloc_t *alloc, **allocs;
     opal_buffer_t *ans;
     orcm_session_t *session;
     orcm_queue_t *q;
+    orcm_node_t **nodes;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:receive processing msg from %s",
@@ -174,6 +175,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                 free(allocs);
             }
         }
+        /* send back results */
         if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
                                                           ORCM_RML_TAG_SCD,
                                                           orte_rml_send_callback, NULL))) {
@@ -199,6 +201,49 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
 
         return;
     } else if (ORCM_NODE_INFO_COMMAND == command) {
+        /* pack the number of nodes we have */
+        cnt = orcm_scd_base.nodes.lowest_free;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &cnt, 1, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
+        if (0 < cnt) {
+            /* pack all the nodes */
+            nodes = (orcm_node_t**)malloc(cnt * sizeof(orcm_node_t*));
+            if (!nodes) {
+                ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+                return;
+            }
+            i = 0;
+            fprintf(stdout, "lowestfree: %i, size: %i\n", (int)orcm_scd_base.nodes.lowest_free, (int)orcm_scd_base.nodes.size);
+            for (j = 0; j < orcm_scd_base.nodes.lowest_free; j++) {
+                if (NULL == (nodes[i] = (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, j))) {
+                    continue;
+                }
+                OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                                     "%s scd:base:receive PACKING NODE: %s (%s)",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), 
+                                     nodes[i]->name, 
+                                     ORTE_NAME_PRINT(&nodes[i]->daemon)));
+                i++;
+            }
+
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, nodes, i, ORCM_NODE))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+            free(nodes);
+        }
+        /* send back results */
+        if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
+                                                          ORCM_RML_TAG_SCD,
+                                                          orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
         return;
     } else if (ORCM_RUN_COMMAND == command) {
         return;

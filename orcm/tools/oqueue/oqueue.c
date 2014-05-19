@@ -71,6 +71,7 @@
 #include "orcm/runtime/runtime.h"
 
 #include "orcm/mca/scd/base/base.h"
+#include "orcm/mca/rm/base/base.h"
 
 /******************
  * Local Functions
@@ -114,9 +115,10 @@ int
 main(int argc, char *argv[])
 {
     orcm_alloc_t **allocs;
+    orcm_node_t **nodes;
     orte_rml_recv_cb_t xfer;
     opal_buffer_t *buf;
-    int rc, i, j, n, num_queues, num_sessions;
+    int rc, i, j, n, num_queues, num_sessions, num_nodes;
     orcm_scd_cmd_flag_t command;
     char *name;
 
@@ -158,6 +160,8 @@ main(int argc, char *argv[])
         return rc;
     }
 
+    fprintf(stdout, "********\nQUEUES\n********\n");
+
     /* for each queue */
     for (i = 0; i < num_queues; i++) {
         /* get the name */
@@ -167,7 +171,6 @@ main(int argc, char *argv[])
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        fprintf(stdout, "%s\n********\n", name);
         /* get the number of sessions on the queue */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &num_sessions, &n, OPAL_INT))) {
@@ -175,6 +178,9 @@ main(int argc, char *argv[])
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
+
+        fprintf(stdout,"%s (%i sessions)\n----------\n", name, num_sessions);
+        
         if (0 < num_sessions) {
             allocs = (orcm_alloc_t**)malloc(num_sessions * sizeof(orcm_alloc_t*));
             /* get the sessions on the queue */
@@ -183,7 +189,6 @@ main(int argc, char *argv[])
                 OBJ_DESTRUCT(&xfer);
                 return rc;
             }
-            fprintf(stdout,"got %i sessions\n", num_sessions);
             for (j = 0; j < num_sessions; j++) {
                 fprintf(stdout, "%d\t%u|%u\t%i\t%s\t%s\n", 
                         (int)allocs[j]->id, 
@@ -197,6 +202,64 @@ main(int argc, char *argv[])
             free(allocs);
         }
     }
+
+    OBJ_DESTRUCT(&xfer);
+
+    /* setup to receive the result */
+    OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
+    xfer.active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                            ORCM_RML_TAG_SCD,
+                            ORTE_RML_NON_PERSISTENT,
+                            orte_rml_recv_callback, &xfer);
+
+    buf = OBJ_NEW(opal_buffer_t);
+
+    command = ORCM_NODE_INFO_COMMAND;
+    /* pack the alloc command flag */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_SCD_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    /* send it to the scheduler */
+    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
+                                                      ORCM_RML_TAG_SCD,
+                                                      orte_rml_send_callback, NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
+    /* unpack number of nodes */
+    ORTE_WAIT_FOR_COMPLETION(xfer.active);
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &num_nodes, &n, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
+    fprintf(stdout, "\n********\nNODES (%i)\n********\n", num_nodes);
+    if (0 < num_nodes) {
+        nodes = (orcm_node_t**)malloc(num_nodes * sizeof(orcm_node_t*));
+        /* get the sessions on the queue */
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, nodes, &num_nodes, ORCM_NODE))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        for (i = 0; i < num_nodes; i++) {
+            fprintf(stdout, "node: %s \n\tSCD_STATE:\t\"%s\" \n\tRM_STATE:\t\"%s\"\n\n", 
+                    nodes[i]->name, 
+                    orcm_scd_session_state_to_str(nodes[i]->scd_state),
+                    orcm_rm_session_state_to_str(nodes[i]->state));
+            OBJ_DESTRUCT(nodes[i]);
+        }
+        free(nodes);
+    }
+
+    OBJ_DESTRUCT(&xfer);
 
     if (ORTE_SUCCESS != orcm_finalize()) {
         fprintf(stderr, "Failed orcm_finalize\n");

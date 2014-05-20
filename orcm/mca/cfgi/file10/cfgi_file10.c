@@ -354,9 +354,14 @@ static int define_system(opal_list_t *config,
                                 ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_NAME->jobid;
                                 ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_NAME->vpid;
                             }
-                            /* define my daemon as myself */
-                            ORTE_PROC_MY_DAEMON->jobid = ORTE_PROC_MY_NAME->jobid;
-                            ORTE_PROC_MY_DAEMON->vpid = ORTE_PROC_MY_NAME->vpid;
+                            /* define my row controller as my aggregator, if available */
+                            if (ORCM_NODE_STATE_UNDEF != row->controller.state) {
+                                ORTE_PROC_MY_DAEMON->jobid = row->controller.daemon.jobid;
+                                ORTE_PROC_MY_DAEMON->vpid = row->controller.daemon.vpid;
+                            } else {
+                                ORTE_PROC_MY_DAEMON->jobid = ORTE_PROC_MY_NAME->jobid;
+                                ORTE_PROC_MY_DAEMON->vpid = ORTE_PROC_MY_NAME->vpid;
+                            }
                         }
                     }
                     ++vpid;
@@ -394,6 +399,9 @@ static int define_system(opal_list_t *config,
                                     ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_DAEMON->jobid;
                                     ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_DAEMON->vpid;
                                 }
+                            } else if (ORCM_NODE_STATE_UNDEF != row->controller.state) {
+                                ORTE_PROC_MY_DAEMON->jobid = row->controller.daemon.jobid;
+                                ORTE_PROC_MY_DAEMON->vpid = row->controller.daemon.vpid;
                             } else if (NULL != scheduler) {
                                 /* fallback to the scheduler */
                                 ORTE_PROC_MY_DAEMON->jobid = scheduler->controller.daemon.jobid;

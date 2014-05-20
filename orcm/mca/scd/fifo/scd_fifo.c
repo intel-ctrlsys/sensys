@@ -35,8 +35,6 @@ static void fifo_allocated(int sd, short args, void *cbdata);
 static void fifo_terminated(int sd, short args, void *cbdata);
 static void fifo_schedule(int sd, short args, void *cbdata);
 
-char* fifo_prettyprint_queue(orcm_queue_t* queue);
-
 static orcm_scd_session_state_t states[] = {
     ORCM_SESSION_STATE_UNDEF,
     ORCM_SESSION_STATE_INIT,
@@ -103,8 +101,6 @@ static void fifo_undef(int sd, short args, void *cbdata)
 static void fifo_find_queue(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
-
-    char* printbuf;
     orcm_queue_t *q;
 
     /* cycle across the queues and select the one that best
@@ -118,12 +114,9 @@ static void fifo_find_queue(int sd, short args, void *cbdata)
             opal_list_append(&q->sessions, &caddy->session->super);
             ORCM_ACTIVATE_SCD_STATE(caddy->session, ORCM_SESSION_STATE_SCHEDULE);
 
-            printbuf = fifo_prettyprint_queue(q);
             OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                                  "%s scd:fifo:find_queue\n%s\n",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), printbuf));
-            free(printbuf);
-
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), q->name));
             break;
         }
     }
@@ -159,7 +152,7 @@ static void fifo_schedule(int sd, short args, void *cbdata)
             /* find out how many nodes are available */
             free_nodes = 0;
             if (orcm_scd_base.nodes.number_free > 0) {
-                for (i = orcm_scd_base.nodes.lowest_free + 1; i < orcm_scd_base.nodes.size; i++) {
+                for (i = 0; i < orcm_scd_base.nodes.size; i++) {
                     if (NULL == (nodeptr = (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, i))) {
                         continue;
                     }
@@ -196,9 +189,25 @@ static void fifo_allocated(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
     char **nodenames = NULL;
-    int rc, num_nodes, i, j;
+    int rc, num_nodes, i, j, k;
     orcm_node_t *nodeptr;
     orcm_queue_t *q;
+
+    OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                         "%s scd:fifo:allocated - (session: %d) got nodelist %s\n",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), 
+                         caddy->session->id,
+                         caddy->session->alloc->nodes));
+
+    /* put session on running queue
+     */
+    OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
+        if (0 == strcmp(q->name, "running")) {
+            caddy->session->alloc->queues = strdup(q->name);
+            opal_list_append(&q->sessions, &caddy->session->super);
+            break;
+        }
+    }
 
     if (0 == strcmp(caddy->session->alloc->nodes, "ERROR")) {
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
@@ -221,17 +230,20 @@ static void fifo_allocated(int sd, short args, void *cbdata)
     if (num_nodes != caddy->session->alloc->min_nodes) {
         /* what happened? we didn't get all of the nodes we needed? */
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
-                             "%s scd:fifo:allocated - (session: %d) nodelist did not contain same number of nodes as requested\n",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), caddy->session->id));
+                             "%s scd:fifo:allocated - (session: %d) nodelist did not contain same number of nodes as requested, expected: %i got: %i\n",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), 
+                             caddy->session->id,
+                             caddy->session->alloc->min_nodes,
+                             num_nodes));
         goto ERROR;
     }
 
     /* set hnp name to first in the list */
     caddy->session->alloc->hnpname = strdup(nodenames[0]);
-    rc = 0;
+    k = 0;
     /* node array should be indexed by node num, if we change to lookup by index that would be faster */
     for (i = 0; i < num_nodes; i++) {
-        for (j = orcm_rm_base.nodes.lowest_free + 1; j < orcm_rm_base.nodes.size; j++) {
+        for (j = 0; j < orcm_rm_base.nodes.size; j++) {
             if (NULL == (nodeptr =
                          (orcm_node_t*)opal_pointer_array_get_item(&orcm_rm_base.nodes, j))) {
                 continue;
@@ -243,24 +255,27 @@ static void fifo_allocated(int sd, short args, void *cbdata)
                     caddy->session->alloc->hnp.vpid = nodeptr->daemon.vpid;
                 }
                 nodeptr->scd_state = ORCM_SCD_NODE_STATE_ALLOC;
-                rc++;
+                k++;
                 /* TODO SEND ALLOC TO NODE */
             }
         }
     }
 
-    if (rc != num_nodes) {
+    if (k != num_nodes) {
         /* what happened? we didn't allocate the correct number of nodes? */
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
-                             "%s scd:fifo:allocated - (session: %d) didn't allocate same number of nodes as requested\n",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), caddy->session->id));
+                             "%s scd:fifo:allocated - (session: %d) didn't allocate same number of nodes as requested, expected: %i got: %i\n",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), 
+                             caddy->session->id,
+                             num_nodes,
+                             k));
         /* now we are in a really bad state because the nodes are marked as allocated, 
          * how to get out of here gracefully??? 
-         * */
+         */
         goto ERROR;
     }
 
-    if (nodenames) {
+    if (NULL != nodenames) {
         opal_argv_free(nodenames);
     }
 
@@ -268,8 +283,16 @@ static void fifo_allocated(int sd, short args, void *cbdata)
     return;
 
 ERROR:
-    if (nodenames) {
+    if (NULL != nodenames) {
         opal_argv_free(nodenames);
+    }
+    /* remove session from running queue
+     */
+    OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
+        if (0 == strcmp(q->name, "running")) {
+            opal_list_remove_first(&q->sessions);
+            break;
+        }
     }
     /* try to find the default queue and requeue session */
     OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
@@ -289,25 +312,4 @@ static void fifo_terminated(int sd, short args, void *cbdata)
     ORCM_ACTIVATE_SCD_STATE(caddy->session, ORCM_SESSION_STATE_SCHEDULE);
 
     OBJ_RELEASE(caddy);
-}
-
-char* fifo_prettyprint_queue(orcm_queue_t* queue)
-{
-    orcm_session_t *session;
-    char* buffer;
-
-    if (asprintf(&buffer, "current sessions on queue: %s\n", queue->name) == -1) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return buffer;
-    }
-
-    OPAL_LIST_FOREACH(session, &queue->sessions, orcm_session_t) {
-        if (asprintf(&buffer, "%s%d\n", buffer, (int)session->id) == -1) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return buffer;
-        }
-    }
-
-    return buffer;
-
 }

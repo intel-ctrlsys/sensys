@@ -42,8 +42,8 @@ typedef int8_t orcm_node_state_t;
 
 /****    SESSION STATES GOING THROUGH RM    ****/
 typedef uint32_t orcm_rm_session_state_t;
-#define ORCM_SESSION_STATE_UNDEF         0  // Node is undefined
-#define ORCM_SESSION_STATE_REQ           1  // Node is undefined
+#define ORCM_SESSION_STATE_UNDEF         0  // Session state is undefined
+#define ORCM_SESSION_STATE_REQ           1  // Session requesting resources
 
 /****    STATE MACHINE    ****/
 typedef void (*orcm_rm_state_cbfunc_t)(int fd, short args, void* cb);

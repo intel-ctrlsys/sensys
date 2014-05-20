@@ -98,7 +98,7 @@ static void orcm_rm_base_recv(int status, orte_process_name_t* sender,
     
     if (ORCM_NODESTATE_UPDATE_COMMAND == command) {
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &state, &cnt, OPAL_INT))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &state, &cnt, OPAL_INT8))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
@@ -110,14 +110,20 @@ static void orcm_rm_base_recv(int status, orte_process_name_t* sender,
 
         /* set node to state */
         found = false;
-        for (i = orcm_rm_base.nodes.lowest_free + 1; i < orcm_rm_base.nodes.size; i++) {
+        for (i = 0; i < orcm_rm_base.nodes.size; i++) {
             if (NULL == (nodeptr = 
                          (orcm_node_t*)opal_pointer_array_get_item(&orcm_rm_base.nodes, i))) {
                 continue;
             }
-            if (OPAL_SUCCESS == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &nodeptr->daemon, &node)) {
+            if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &nodeptr->daemon, &node)) {
                 found = true;
                 nodeptr->state = state;
+                nodeptr->scd_state = 2; /* set to available for now, eventually pass this off to scheduler */
+                OPAL_OUTPUT_VERBOSE((1, orcm_rm_base_framework.framework_output,
+                                     "%s rm:base:receive Setting node %s to state %i (%s)",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                     ORTE_NAME_PRINT(&node),
+                                     (int)state, orcm_rm_node_state_to_str(state)));
                 break;
             }
         }

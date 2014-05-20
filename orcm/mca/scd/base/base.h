@@ -114,6 +114,7 @@ ORCM_DECLSPEC int orcm_print_alloc(char **output, char *prefix,
                                    orcm_alloc_t *src, opal_data_type_t type);
 
 ORCM_DECLSPEC const char *orcm_scd_session_state_to_str(orcm_scd_session_state_t state);
+ORCM_DECLSPEC const char *orcm_scd_node_state_to_str(orcm_scd_node_state_t state);
 ORCM_DECLSPEC int orcm_scd_base_add_session_state(orcm_scd_session_state_t state,
                                                   orcm_scd_state_cbfunc_t cbfunc,
                                                   int priority);

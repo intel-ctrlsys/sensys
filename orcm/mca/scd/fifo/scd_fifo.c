@@ -14,6 +14,7 @@
 
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/util/regex.h"
+#include "orte/mca/rml/rml.h"
 
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/rm/base/base.h"
@@ -192,6 +193,7 @@ static void fifo_allocated(int sd, short args, void *cbdata)
     int rc, num_nodes, i, j, k;
     orcm_node_t *nodeptr;
     orcm_queue_t *q;
+    opal_buffer_t *buf;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:fifo:allocated - (session: %d) got nodelist %s\n",
@@ -240,6 +242,14 @@ static void fifo_allocated(int sd, short args, void *cbdata)
 
     /* set hnp name to first in the list */
     caddy->session->alloc->hnpname = strdup(nodenames[0]);
+
+    buf = OBJ_NEW(opal_buffer_t);
+    /* pack the alloc */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &caddy->session->alloc, 1, ORCM_ALLOC))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
     k = 0;
     /* node array should be indexed by node num, if we change to lookup by index that would be faster */
     for (i = 0; i < num_nodes; i++) {
@@ -256,7 +266,15 @@ static void fifo_allocated(int sd, short args, void *cbdata)
                 }
                 nodeptr->scd_state = ORCM_SCD_NODE_STATE_ALLOC;
                 k++;
-                /* TODO SEND ALLOC TO NODE */
+                /* SEND ALLOC TO NODE */
+                if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(&nodeptr->daemon, buf,
+                                                                  ORTE_RML_TAG_LAUNCH_VM,
+                                                                  orte_rml_send_callback, NULL))) {
+                    ORTE_ERROR_LOG(rc);
+                    OBJ_RELEASE(buf);
+                    return;
+                }
+
             }
         }
     }
@@ -272,6 +290,7 @@ static void fifo_allocated(int sd, short args, void *cbdata)
         /* now we are in a really bad state because the nodes are marked as allocated, 
          * how to get out of here gracefully??? 
          */
+        /* we should cancel all the cntrlds and stepds at this point */
         goto ERROR;
     }
 

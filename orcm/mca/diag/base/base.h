@@ -50,7 +50,7 @@ typedef struct {
      * any other daemon functions
      */
     opal_event_base_t *ev_base;
-    bool ev_active;
+    volatile bool ev_active;
     /* list of active diagnostic plugins */
     opal_list_t modules;
     /* buffer to hold diagnostic results */

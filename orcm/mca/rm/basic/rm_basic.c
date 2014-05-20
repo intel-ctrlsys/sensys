@@ -92,21 +92,26 @@ static void basic_request(int sd, short args, void *cbdata)
     orcm_node_t *nodeptr;
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
     int i, rc, num_nodes;
-    char *nodelist, *noderegex;
+    char *nodelist = NULL;
+    char *noderegex;
 
     num_nodes = caddy->session->alloc->min_nodes;
 
     if (0 < num_nodes) {
-        for (i = orcm_rm_base.nodes.lowest_free + 1; i < orcm_rm_base.nodes.size; i++) {
+        for (i = 0; i < orcm_rm_base.nodes.size; i++) {
             if (NULL == (nodeptr =
                          (orcm_node_t*)opal_pointer_array_get_item(&orcm_rm_base.nodes, i))) {
                 continue;
             }
             if (ORCM_SCD_NODE_STATE_UNALLOC == nodeptr->scd_state && ORCM_NODE_STATE_UP == nodeptr->state) {
-                if (nodelist) {
+                OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
+                                     "%s rm:basic:request adding node %s to list",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                     nodeptr->name));
+                if (NULL != nodelist) {
                     asprintf(&nodelist, "%s,%s", nodelist, nodeptr->name);
                 } else {
-                    asprintf(&nodelist, "%s", nodelist);
+                    asprintf(&nodelist, "%s", nodeptr->name);
                 }
                 num_nodes--;
                 if (0 == num_nodes) {
@@ -114,6 +119,12 @@ static void basic_request(int sd, short args, void *cbdata)
                 }
             }
         }
+
+        OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
+                             "%s rm:basic:request giving allocation %i nodelist %s",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             caddy->session->alloc->id,
+                             nodelist));
 
         if (0 == num_nodes) {
             if (ORTE_SUCCESS != (rc = orte_regex_create(nodelist, &noderegex))) {
@@ -124,9 +135,15 @@ static void basic_request(int sd, short args, void *cbdata)
             }
         } /* else, error? not enough nodes found? */
 
+        OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
+                             "%s rm:basic:request giving allocation %i noderegex %s",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             caddy->session->alloc->id,
+                             noderegex));
+
         ORCM_ACTIVATE_SCD_STATE(caddy->session, ORCM_SESSION_STATE_ALLOCD);
 
-        if(nodelist) {
+        if(nodelist != NULL) {
             free(nodelist);
         }
     } /* else, error? no nodes requested */

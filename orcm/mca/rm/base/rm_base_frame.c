@@ -134,14 +134,37 @@ const char *orcm_rm_session_state_to_str(orcm_rm_session_state_t state)
     case ORCM_SESSION_STATE_UNDEF:
         s = "UNDEF";
         break;
-    case ORCM_SESSION_STATE_ACTIVE:
-        s = "GATHERING RESOURCES";
-        break;
-    case ORCM_SESSION_STATE_TERMINATED:
-        s = "TERMINATED";
+    case ORCM_SESSION_STATE_REQ:
+        s = "REQUESTING RESOURCES";
         break;
     default:
         s = "UNKNOWN";
+    }
+    return s;
+}
+
+const char *orcm_rm_node_state_to_str(orcm_node_state_t state)
+{
+    char *s;
+
+    switch (state) {
+    case ORCM_NODE_STATE_UNDEF:
+        s = "UNDEF";
+        break;
+    case ORCM_NODE_STATE_UNKNOWN:
+        s = "UNKNOWN";
+        break;
+    case ORCM_NODE_STATE_UP:
+        s = "UP";
+        break;
+    case ORCM_NODE_STATE_DOWN:
+        s = "DOWN";
+        break;
+    case ORCM_NODE_STATE_SESTERM:
+        s = "SESSION TERMINATING";
+        break;
+    default:
+        s = "STATEUNDEF";
     }
     return s;
 }

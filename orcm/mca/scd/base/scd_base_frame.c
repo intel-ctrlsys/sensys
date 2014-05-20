@@ -176,6 +176,32 @@ const char *orcm_scd_session_state_to_str(orcm_scd_session_state_t state)
     return s;
 }
 
+const char *orcm_scd_node_state_to_str(orcm_scd_node_state_t state)
+{
+    char *s;
+
+    switch (state) {
+    case ORCM_SCD_NODE_STATE_UNDEF:
+        s = "UNDEF";
+        break;
+    case ORCM_SCD_NODE_STATE_UNKNOWN:
+        s = "UNKNOWN";
+        break;     
+    case ORCM_SCD_NODE_STATE_UNALLOC:
+        s = "UNALLOCATED";
+        break;     
+    case ORCM_SCD_NODE_STATE_ALLOC:
+        s = "ALLOCATED";
+        break;
+    case ORCM_SCD_NODE_STATE_EXCLUSIVE:
+        s = "EXCLUSIVELY ALLOCATED";
+        break;
+    default:
+        s = "STATEUNDEF";
+    }
+    return s;
+}
+
 /****    CLASS INSTANTIATIONS    ****/
 static void scd_des(orcm_scd_base_active_module_t *s)
 {

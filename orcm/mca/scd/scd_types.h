@@ -222,6 +222,7 @@ typedef uint8_t orcm_scd_cmd_flag_t;
 #define ORCM_SESSION_INFO_COMMAND  2
 #define ORCM_NODE_INFO_COMMAND     3
 #define ORCM_RUN_COMMAND           4
+#define ORCM_VM_READY_COMMAND      5
 
 
 END_C_DECLS

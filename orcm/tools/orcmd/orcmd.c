@@ -28,6 +28,7 @@
 #include "orte/runtime/orte_globals.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/rml/rml.h"
+#include "orcm/mca/slm/slm.h"
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/rm/base/base.h"
@@ -115,39 +116,43 @@ int main(int argc, char *argv[])
     /* strip the trailing newline */
     ctmp[strlen(ctmp)-1] = '\0';
 
+    //orcm_slm.launch_stepd(NULL);
+
     if (ORCM_PROC_IS_AGGREGATOR) {
         opal_output(0, "%s: ORCM aggregator %s started",
                     ctmp, ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     } else {
-        opal_output(0, "%s: ORCM daemon %s started and connected to aggregator %s",
+        opal_output(0, "\n******************************\n%s: ORCM daemon %s started and connected to aggregator %s\nMy scheduler: %s\nMy parent: %s\n******************************\n",
                     ctmp, ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_DAEMON));
-    }
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_DAEMON),
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_SCHEDULER),
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT));
 
-    /* inform the scheduler */
-    buf = OBJ_NEW(opal_buffer_t);
-    /* pack the alloc command flag */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &command,1, ORCM_RM_CMD_T))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_RELEASE(buf);
-        return ret;
-    }
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &state, 1, OPAL_INT))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_RELEASE(buf);
-        return ret;
-    }
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, ORTE_PROC_MY_NAME, 1, ORTE_NAME))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_RELEASE(buf);
-        return ret;
-    }
-    if (ORTE_SUCCESS != (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
-                                                      ORCM_RML_TAG_RM,
-                                                      orte_rml_send_callback, NULL))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_RELEASE(buf);
-        return ret;
+        /* inform the scheduler */
+        buf = OBJ_NEW(opal_buffer_t);
+        /* pack the alloc command flag */
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &command,1, ORCM_RM_CMD_T))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_RELEASE(buf);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &state, 1, OPAL_INT8))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_RELEASE(buf);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, ORTE_PROC_MY_NAME, 1, ORTE_NAME))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_RELEASE(buf);
+            return ret;
+        }
+        if (ORTE_SUCCESS != (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
+                                                          ORCM_RML_TAG_RM,
+                                                          orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_RELEASE(buf);
+            return ret;
+        }
     }
 
     while (orte_event_base_active) {

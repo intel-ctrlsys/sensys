@@ -22,7 +22,7 @@ AC_DEFUN([MCA_orcm_sensor_coretemp_CONFIG], [
     AS_IF([test "$with_coretemp" != "no"],
           [AS_IF([test "$opal_found_linux" = "yes"],
                  [$1],
-                 [AC_MSG_WARN([Core temperature sensing was requested but is only supporcmd on Linux systems])
+                 [AC_MSG_WARN([Core temperature sensing was requested but is only supported on Linux systems])
                   AC_MSG_ERROR([Cannot continue])
                   $2])
           ],

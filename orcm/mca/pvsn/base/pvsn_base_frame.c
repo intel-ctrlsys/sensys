@@ -17,7 +17,6 @@
 #include "opal/mca/event/event.h"
 #include "opal/dss/dss.h"
 #include "opal/threads/threads.h"
-#include "opal/util/fd.h"
 #include "opal/util/output.h"
 
 #include "orte/mca/errmgr/errmgr.h"

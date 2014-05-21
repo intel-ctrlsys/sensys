@@ -22,7 +22,7 @@ AC_DEFUN([MCA_orcm_sensor_pwr_CONFIG], [
     AS_IF([test "$with_pwr" != "no"],
           [AS_IF([test "$opal_found_linux" = "yes"],
                  [$1],
-                 [AC_MSG_WARN([Core power sensing was requested but is only supporcmd on Intel-based Linux systems])
+                 [AC_MSG_WARN([Core power sensing was requested but is only supported on Intel-based Linux systems])
                   AC_MSG_ERROR([Cannot continue])
                   $2])],
           [$2])

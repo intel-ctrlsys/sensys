@@ -187,8 +187,8 @@ OBJ_CLASS_DECLARATION(orcm_session_t);
 #define ORCM_SESSION_STATE_INIT           1 // not yet assigned to a queue
 #define ORCM_SESSION_STATE_SCHEDULE       2 // run schedulers
 #define ORCM_SESSION_STATE_ALLOCD         3 // allocated, job not started
-#define ORCM_SESSION_STATE_ACTIVE         4 // job step(s) running
-#define ORCM_SESSION_STATE_TERMINATED     5 // allocation terminated
+#define ORCM_SESSION_STATE_TERMINATED     4 // allocation terminated
+#define ORCM_SESSION_STATE_CANCEL         5 // allocation cancelled
 
 #define ORCM_SESSION_STATE_ANY           10 // marker
 
@@ -218,12 +218,11 @@ OBJ_CLASS_DECLARATION(orcm_session_caddy_t);
 typedef uint8_t orcm_scd_cmd_flag_t;
 #define ORCM_SCD_CMD_T OPAL_UINT8
 
-#define ORCM_SESSION_REQ_COMMAND   1
-#define ORCM_SESSION_INFO_COMMAND  2
-#define ORCM_NODE_INFO_COMMAND     3
-#define ORCM_RUN_COMMAND           4
-#define ORCM_VM_READY_COMMAND      5
-
+#define ORCM_SESSION_REQ_COMMAND    1
+#define ORCM_SESSION_INFO_COMMAND   2
+#define ORCM_SESSION_CANCEL_COMMAND 3
+#define ORCM_NODE_INFO_COMMAND      4
+#define ORCM_RUN_COMMAND            5
 
 END_C_DECLS
 

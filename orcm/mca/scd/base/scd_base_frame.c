@@ -164,9 +164,6 @@ const char *orcm_scd_session_state_to_str(orcm_scd_session_state_t state)
     case ORCM_SESSION_STATE_ALLOCD:
         s = "ALLOCATED";
         break;
-    case ORCM_SESSION_STATE_ACTIVE:
-        s = "ACTIVE";
-        break;
     case ORCM_SESSION_STATE_TERMINATED:
         s = "TERMINATED";
         break;

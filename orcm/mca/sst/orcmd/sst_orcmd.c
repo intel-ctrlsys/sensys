@@ -82,6 +82,7 @@
 #include "orcm/mca/db/base/base.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/sensor.h"
+#include "orcm/mca/scd/base/base.h"
 #include "orcm/util/utils.h"
 
 #include "orcm/mca/sst/base/base.h"
@@ -224,15 +225,16 @@ static int orcmd_init(void)
     /* take the first scheduler */
     ORTE_PROC_MY_SCHEDULER->jobid = scheduler->controller.daemon.jobid;
     ORTE_PROC_MY_SCHEDULER->vpid = scheduler->controller.daemon.vpid;
-    ORTE_PROC_MY_PARENT->jobid = ORTE_PROC_MY_SCHEDULER->jobid;
-    ORTE_PROC_MY_PARENT->vpid = ORTE_PROC_MY_SCHEDULER->vpid;
+
+    /* hack to get around routed for now */
+    ORTE_PROC_MY_PARENT->jobid = scheduler->controller.daemon.jobid;
+    ORTE_PROC_MY_PARENT->vpid = scheduler->controller.daemon.vpid;
 
     /* construct the URI */
     OBJ_CONSTRUCT(&buf, opal_buffer_t);
     orcm_util_construct_uri(&buf, &scheduler->controller);
 
 
-#if 0
     /* register the ORTE-level params at this time now that the
      * config has had a chance to push things into the environ
      */
@@ -241,7 +243,6 @@ static int orcmd_init(void)
         error = "orte_register_params";
         goto error;
     }
-#endif
 
     /* setup callback for SIGPIPE */
     setup_sighandler(SIGPIPE, &epipe_handler, epipe_signal_callback);
@@ -476,7 +477,6 @@ static int orcmd_init(void)
         goto error;
     }
 
-#if 0 
     /* initialize the nidmaps */
     if (ORTE_SUCCESS != (ret = orte_util_nidmap_init(NULL))) {
         ORTE_ERROR_LOG(ret);
@@ -484,8 +484,6 @@ static int orcmd_init(void)
         error = "orte_util_nidmap_init";
         goto error;
     }
-#endif
-#if 0
     /* setup our routing table */
     if (NULL != mynode->rack) {
         rack = (orcm_rack_t*)mynode->rack;
@@ -518,7 +516,6 @@ static int orcmd_init(void)
         orte_routed.update_route(ORTE_PROC_MY_HNP,
                                  ORTE_PROC_MY_HNP);
     }
-#endif
     /* load the hash tables */
     if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(&buf))) {
         ORTE_ERROR_LOG(ret);
@@ -561,7 +558,6 @@ static int orcmd_init(void)
         goto error;
     }
     
-#if 0
     /* update the routing tree */
     orte_routed.update_routing_plan();
     
@@ -586,7 +582,6 @@ static int orcmd_init(void)
         goto error;
     }
     
-#endif
     /* setup the FileM */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_filem_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -637,6 +632,12 @@ static int orcmd_init(void)
         goto error;
     }
 
+    /* open the scd framework for some datatype routines */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_scd_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_scd_base_open";
+        goto error;
+    }
     return ORTE_SUCCESS;
     
  error:

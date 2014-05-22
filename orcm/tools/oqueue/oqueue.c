@@ -252,8 +252,8 @@ main(int argc, char *argv[])
         for (i = 0; i < num_nodes; i++) {
             fprintf(stdout, "node: %s \n\tSCD_STATE:\t\"%s\" \n\tRM_STATE:\t\"%s\"\n\n", 
                     nodes[i]->name, 
-                    orcm_scd_session_state_to_str(nodes[i]->scd_state),
-                    orcm_rm_session_state_to_str(nodes[i]->state));
+                    orcm_scd_node_state_to_str(nodes[i]->scd_state),
+                    orcm_rm_node_state_to_str(nodes[i]->state));
             OBJ_DESTRUCT(nodes[i]);
         }
         free(nodes);

@@ -198,7 +198,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         }
 
         session = OBJ_NEW(orcm_session_t);
-        session->id = orcm_scd_base_get_next_session_id();
+        session->id = sessionid;
         /* pass it to the scheduler */
         ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_CANCEL);
 

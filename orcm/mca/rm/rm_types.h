@@ -41,10 +41,13 @@ typedef int8_t orcm_node_state_t;
 
 
 /****    SESSION STATES GOING THROUGH RM    ****/
+/* the name prefix is shared with the ORCM_SESSION_STATE* in scd_types.h, 
+ * they must not conflict.. or at least agree on number */
 typedef uint32_t orcm_rm_session_state_t;
 #define ORCM_SESSION_STATE_UNDEF         0  // Session state is undefined
 #define ORCM_SESSION_STATE_REQ           1  // Session requesting resources
 #define ORCM_SESSION_STATE_ACTIVE        2  // Session activating allocation
+#define ORCM_SESSION_STATE_KILL          3  // Session running needs to be killed
 
 /****    STATE MACHINE    ****/
 typedef void (*orcm_rm_state_cbfunc_t)(int fd, short args, void* cb);

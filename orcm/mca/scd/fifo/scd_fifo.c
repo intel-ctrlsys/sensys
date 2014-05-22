@@ -336,10 +336,24 @@ static void fifo_terminated(int sd, short args, void *cbdata)
 static void fifo_cancel(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
+    orcm_queue_t *q;
+    orcm_session_t *session;
 
     /* if session is queued, find it and delete it */
-    /* if session is running, send cancel launch command */
-    /* if session is neither, return */
+    OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
+        OPAL_LIST_FOREACH(session, &q->sessions, orcm_session_t) {
+            if (session->id == caddy->session->id) {
+                /* if session is running, send cancel launch command */
+                if (0 == strcmp(q->name, "running")) {
+                    ORCM_ACTIVATE_RM_STATE(caddy->session, ORCM_SESSION_STATE_KILL);
+                } else {
+                    opal_list_remove_item(&q->sessions, &session->super);
+                    ORCM_ACTIVATE_SCD_STATE(caddy->session, ORCM_SESSION_STATE_SCHEDULE);
+                }
+                break;
+            }
+        }
+    }
 
     OBJ_RELEASE(caddy);
 }

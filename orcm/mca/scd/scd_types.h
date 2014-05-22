@@ -183,6 +183,8 @@ OBJ_CLASS_DECLARATION(orcm_session_t);
 
 
 /* SESSION STATES */
+/* the name prefix is shared with the ORCM_SESSION_STATE* in rm_types.h, 
+ * they must not conflict.. or at least agree on number */
 #define ORCM_SESSION_STATE_UNDEF          0
 #define ORCM_SESSION_STATE_INIT           1 // not yet assigned to a queue
 #define ORCM_SESSION_STATE_SCHEDULE       2 // run schedulers

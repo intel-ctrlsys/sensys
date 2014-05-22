@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013      Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -28,7 +28,7 @@
 #include "orte/runtime/orte_globals.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/rml/rml.h"
-#include "orcm/mca/slm/slm.h"
+// #include "orcm/mca/slm/slm.h"
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/rm/base/base.h"

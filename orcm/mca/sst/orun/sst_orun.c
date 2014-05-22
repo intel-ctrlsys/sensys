@@ -124,15 +124,14 @@ static int orun_init(void)
 {
     int ret = ORTE_ERROR;
     char *error = NULL;
-    opal_buffer_t buf;
+    opal_buffer_t buf, *clusterbuf, *uribuf;
     orte_job_t *jdata;
     orte_app_context_t *app;
     orte_proc_t *proc;
     orte_node_t *node;
     opal_list_t config;
     orcm_node_t *mynode=NULL;
-    orcm_rack_t *rack, *rk;
-    orcm_row_t *row;
+    int32_t n;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -200,7 +199,7 @@ static int orun_init(void)
      */
     ORTE_PROC_MY_NAME->jobid = 0;
     ORTE_PROC_MY_NAME->vpid = 0;
-    /* I am no own daemon and HNP */
+    /* I am my own daemon and HNP */
     ORTE_PROC_MY_DAEMON->jobid = 0;
     ORTE_PROC_MY_DAEMON->vpid = 0;
     ORTE_PROC_MY_HNP->jobid = 0;
@@ -541,47 +540,41 @@ static int orun_init(void)
         goto error;
     }
 
-    /* setup our routing table */
-    if (NULL != mynode && NULL != mynode->rack) {
-        rack = (orcm_rack_t*)mynode->rack;
-        row = rack->row;
-        if (ORCM_PROC_IS_DAEMON) {
-            /* set my default route to start with my "daemon" */
-            orte_routed.update_route(ORTE_PROC_MY_DAEMON,
-                                     ORTE_PROC_MY_DAEMON);
-            /* if my rack controller is available, then
-             * designate any other rack controllers as failover paths
-             * by telling the routed component to route to them via
-             * my rack controller
-             */
-            if (ORTE_NODE_STATE_UNDEF != rack->controller.state) {
-                OPAL_LIST_FOREACH(rk, &row->racks, orcm_rack_t) {
-                    if (rk != rack && ORTE_NODE_STATE_UNDEF != rk->controller.state) {
-                        orte_routed.update_route(&rk->controller.daemon,
-                                                 &rack->controller.daemon);
-                    }
-                }
-            }
-        } else {
-            /* must be an aggregator - set my default
-             * route to be my HNP
-             */
-            orte_routed.update_route(ORTE_PROC_MY_HNP,
-                                     ORTE_PROC_MY_HNP);
-        }
-    } else {
-        orte_routed.update_route(ORTE_PROC_MY_HNP,
-                                 ORTE_PROC_MY_HNP);
-    }
-
-    /* load the hash tables */
-    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(&buf))) {
+    /* extract the cluster description and setup the routed info - the orcm routed component
+     * will know what to do. */
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &clusterbuf, &n, OPAL_BUFFER))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&buf);
+        error = "extract cluster buf";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(clusterbuf);
+        error = "orte_routed.init_routes";
+        goto error;
+    }
+    OBJ_RELEASE(clusterbuf);
+
+    /* extract the uri buffer and load the hash tables */
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &uribuf, &n, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "extract uri buffer";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(uribuf))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(uribuf);
         error = "load hash tables";
         goto error;
     }
     OBJ_DESTRUCT(&buf);
+    OBJ_RELEASE(uribuf);
 
     /*
      * Group communications

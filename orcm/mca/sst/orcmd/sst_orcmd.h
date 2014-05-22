@@ -12,7 +12,12 @@
 
 #include "orcm/mca/sst/sst.h"
 
-ORCM_DECLSPEC extern orcm_sst_base_component_t mca_orcm_sst_orcmd_component;
+typedef struct {
+    orcm_sst_base_component_t super;
+    bool scheduler_reqd;
+} orcm_sst_orcmd_component_t;
+
+ORCM_DECLSPEC extern orcm_sst_orcmd_component_t mca_sst_orcmd_component;
 ORCM_DECLSPEC extern orcm_sst_base_module_t orcm_sst_orcmd_module;
 
 #endif /* SST_ORCMD_H */

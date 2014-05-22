@@ -21,23 +21,26 @@
 static int component_open(void);
 static int component_close(void);
 static int component_query(mca_base_module_t **module, int *priority);
+static int component_register(void);
 
-orcm_sst_base_component_t mca_sst_orcmd_component = {
+orcm_sst_orcmd_component_t mca_sst_orcmd_component = {
     {
-        ORCM_SST_BASE_VERSION_1_0_0,
+        {
+            ORCM_SST_BASE_VERSION_1_0_0,
 
-        "orcmd",
-        ORCM_MAJOR_VERSION,
-        ORCM_MINOR_VERSION,
-        ORCM_RELEASE_VERSION,
-        component_open,
-        component_close,
-        component_query,
-        NULL
-    },
-    {
-        /* The component is checkpoint ready */
-        MCA_BASE_METADATA_PARAM_CHECKPOINT
+            "orcmd",
+            ORCM_MAJOR_VERSION,
+            ORCM_MINOR_VERSION,
+            ORCM_RELEASE_VERSION,
+            component_open,
+            component_close,
+            component_query,
+            component_register
+        },
+        {
+            /* The component is checkpoint ready */
+            MCA_BASE_METADATA_PARAM_CHECKPOINT
+        }
     }
 };
 
@@ -62,4 +65,17 @@ static int component_query(mca_base_module_t **module, int *priority)
     *module = NULL;
     *priority = 0;
     return ORCM_ERROR;
+}
+
+static int component_register(void)
+{
+    mca_sst_orcmd_component.scheduler_reqd = true;
+    (void) mca_base_component_var_register(&mca_sst_orcmd_component.super.base_version,
+                                           "scheduler_reqd",
+                                           "Whether or not a scheduler is required - allows testing in non-scheduled environments",
+                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sst_orcmd_component.scheduler_reqd);
+    return ORTE_SUCCESS;
 }

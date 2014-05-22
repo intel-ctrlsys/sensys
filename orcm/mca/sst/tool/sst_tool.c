@@ -103,12 +103,13 @@ static int tool_init(void)
 {
     int ret;
     char *error;
-    opal_buffer_t buf;
+    opal_buffer_t buf, *clusterbuf, *uribuf;
     opal_list_t config;
     orte_vpid_t nprocs;
     orcm_scheduler_t *scheduler;
     orcm_node_t *mynode;
     opal_value_t kv;
+    int32_t n;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -293,16 +294,42 @@ static int tool_init(void)
         goto error;
     }
     
-    /* since I am a tool, then all I really want to do is communicate.
-     * So setup communications and be done - load the hash tables
-     */
-    OBJ_CONSTRUCT(&buf, opal_buffer_t);
-    orcm_util_construct_uri(&buf, &scheduler->controller);
-    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(&buf))) {
+    /* extract the cluster description and setup the routed info - the orcm routed component
+     * will know what to do. */
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &clusterbuf, &n, OPAL_BUFFER))) {
         ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "extract cluster buf";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(clusterbuf);
+        error = "orte_routed.init_routes";
+        goto error;
+    }
+    OBJ_RELEASE(clusterbuf);
+
+    /* extract the uri buffer and load the hash tables */
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &uribuf, &n, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "extract uri buffer";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(uribuf))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(uribuf);
+        error = "load hash tables";
+        goto error;
     }
     OBJ_DESTRUCT(&buf);
-    
+    OBJ_RELEASE(uribuf);
+
     /* construct the thread object */
     OBJ_CONSTRUCT(&progress_thread, opal_thread_t);
     /* fork off a thread to progress it */
@@ -321,15 +348,6 @@ static int tool_init(void)
         goto error;
     }
  
-    /* setup the routed info - the selected routed component
-     * will know what to do. 
-     */
-    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, NULL))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_routed.init_routes";
-        goto error;
-    }
-
     /* need the scheduler framework to get the proxy module */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_scd_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);

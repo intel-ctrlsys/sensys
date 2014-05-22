@@ -119,13 +119,14 @@ static void setup_sighandler(int signal, opal_event_t *ev,
 
 static int orcmctrld_init(void)
 {
-    int ret = ORTE_ERROR, n;
+    int ret = ORTE_ERROR;
     char *error = NULL;
     opal_buffer_t buf, *clusterbuf, *uribuf;
     orte_job_t *jdata;
     opal_list_t config;
     orte_vpid_t nprocs;
     orcm_node_t *mynode;
+    int32_t n;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -341,7 +342,25 @@ static int orcmctrld_init(void)
         goto error;
     }
 
-    /* extract the buffers */
+    /* extract the cluster description and setup the routed info - the orcm routed component
+     * will know what to do. */
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &clusterbuf, &n, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "extract cluster buf";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(clusterbuf);
+        error = "orte_routed.init_routes";
+        goto error;
+    }
+    OBJ_RELEASE(clusterbuf);
+
+    /* extract the uri buffer and load the hash tables */
     n = 1;
     if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &uribuf, &n, OPAL_BUFFER))) {
         ORTE_ERROR_LOG(ret);
@@ -349,35 +368,14 @@ static int orcmctrld_init(void)
         error = "extract uri buffer";
         goto error;
     }
-    n = 1;
-    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &clusterbuf, &n, OPAL_BUFFER))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&buf);
-        OBJ_RELEASE(uribuf);
-        error = "orte_util_nidmap_init";
-        goto error;
-    }
-    OBJ_DESTRUCT(&buf);
-
-    /* setup the routed info - the orcm routed component
-     * will know what to do. 
-     */
-    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_RELEASE(clusterbuf);
-        OBJ_RELEASE(uribuf);
-        error = "orte_routed.init_routes";
-        goto error;
-    }
-    OBJ_RELEASE(clusterbuf);
-
-    /* load the hash tables */
     if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(uribuf))) {
         ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
         OBJ_RELEASE(uribuf);
         error = "load hash tables";
         goto error;
     }
+    OBJ_DESTRUCT(&buf);
     OBJ_RELEASE(uribuf);
 
     /*

@@ -205,7 +205,7 @@ found:
 
 static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
 {
-    opal_buffer_t *row, *rack;
+    opal_buffer_t *row, *rack, *sched;
     orte_process_name_t name, cluster_name, row_name, rack_name;
     int32_t i, j, nrows, nracks, cnt;
     int rc;
@@ -226,6 +226,20 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
     row_name = *ORTE_NAME_INVALID;
     rack_name = *ORTE_NAME_INVALID;
     
+    /* if I am a scheduler, then we automatically wire the row controllers
+     * to point to us in parallel with the cluster controller
+     */
+    if (ORTE_PROC_IS_SCHEDULER) {
+        cluster_ctlr = true;
+    }
+
+    /* first unpack the scheduler section */
+    cnt = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(ndat, &sched, &cnt, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
     /* first, we unpack the process name of the cluster controller */
     cnt = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(ndat, &name, &cnt, ORTE_NAME))) {

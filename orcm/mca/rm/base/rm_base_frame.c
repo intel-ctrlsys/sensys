@@ -137,6 +137,12 @@ const char *orcm_rm_session_state_to_str(orcm_rm_session_state_t state)
     case ORCM_SESSION_STATE_REQ:
         s = "REQUESTING RESOURCES";
         break;
+    case ORCM_SESSION_STATE_ACTIVE:
+        s = "LAUNCHING SESSION";
+        break;
+    case ORCM_SESSION_STATE_KILL:
+        s = "KILLING SESSION";
+        break;
     default:
         s = "UNKNOWN";
     }

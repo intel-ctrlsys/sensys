@@ -28,10 +28,11 @@
 #include "orte/runtime/orte_globals.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/rml/rml.h"
-// #include "orcm/mca/slm/slm.h"
+//#include "orcm/mca/slm/slm.h"
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/rm/base/base.h"
+#include "orcm/mca/scd/base/base.h"
 
 #include "orcm/runtime/runtime.h"
 
@@ -68,6 +69,10 @@ static opal_cmd_line_init_t cmd_line_init[] = {
     { NULL, '\0', NULL, NULL, 0,
       NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
 };
+
+static void orcmd_recv(int status, orte_process_name_t* sender,
+                       opal_buffer_t* buffer, orte_rml_tag_t tag,
+                       void* cbdata);
 
 int main(int argc, char *argv[])
 {
@@ -116,7 +121,12 @@ int main(int argc, char *argv[])
     /* strip the trailing newline */
     ctmp[strlen(ctmp)-1] = '\0';
 
-    //orcm_slm.launch_stepd(NULL);
+    /* setup to recieve commands, even aggregators might need to answer to commands */
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                            ORCM_RML_TAG_RM,
+                            ORTE_RML_PERSISTENT,
+                            orcmd_recv,
+                            NULL);
 
     if (ORCM_PROC_IS_AGGREGATOR) {
         opal_output(0, "%s: ORCM aggregator %s started",
@@ -184,4 +194,57 @@ int main(int argc, char *argv[])
     orcm_finalize();
 
     return ret;
+}
+
+/* process incoming messages in order of receipt */
+static void orcmd_recv(int status, orte_process_name_t* sender,
+                       opal_buffer_t* buffer, orte_rml_tag_t tag,
+                       void* cbdata)
+{
+    orcm_rm_cmd_flag_t command;
+    int n, rc;
+    orcm_alloc_t *alloc;
+    opal_buffer_t *buf;
+
+    n = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command, &n, ORCM_RM_CMD_T))) {
+        ORTE_ERROR_LOG (rc);
+        return;
+    }
+
+    if (ORCM_LAUNCH_STEPD_COMMAND == command) {
+        opal_output(0, "%s: ORCM daemon got launch command, executing hostname",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
+        n = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &alloc, &n, ORCM_ALLOC))) {
+            ORTE_ERROR_LOG (rc);
+            return;
+        }
+
+        system("hostname");
+        sleep(5);
+
+        command = ORCM_STEPD_COMPLETE_COMMAND;
+        buf = OBJ_NEW(opal_buffer_t);
+        /* pack the complete command flag */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_RM_CMD_T))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &alloc, 1, ORCM_ALLOC))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
+                                                          ORCM_RML_TAG_RM,
+                                                          orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(buf);
+            return;
+        }
+    } else if (ORCM_CANCEL_STEPD_COMMAND == command) {
+    }
+
+    return;
 }

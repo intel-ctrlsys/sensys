@@ -82,6 +82,7 @@
 #include "orcm/mca/db/base/base.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/sensor.h"
+#include "orcm/mca/scd/base/base.h"
 #include "orcm/util/utils.h"
 
 #include "orcm/mca/sst/base/base.h"
@@ -597,6 +598,12 @@ static int orcmd_init(void)
         goto error;
     }
 
+    /* open the scd framework for some datatype routines */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_scd_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_scd_base_open";
+        goto error;
+    }
     return ORTE_SUCCESS;
     
  error:

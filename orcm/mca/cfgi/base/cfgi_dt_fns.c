@@ -94,6 +94,16 @@ int orcm_pack_node(opal_buffer_t *buffer, const void *src,
             ORTE_ERROR_LOG(ret);
             return ret;
         }
+        /* pack the node rm state */
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&node->state, 1, OPAL_INT8))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* pack the node scd state */
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&node->scd_state, 1, OPAL_INT8))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
     }
 
     return ret;
@@ -353,6 +363,18 @@ int orcm_unpack_node(opal_buffer_t *buffer, void *dest,
         /* unpack the config */
         n=1;
         if (OPAL_SUCCESS != (ret = unpack_config(&node->config, buffer))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* unpack the node rm state */
+        n=1;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &node->state, &n, OPAL_INT8))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* unpack the node scd state */
+        n=1;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &node->scd_state, &n, OPAL_INT8))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }

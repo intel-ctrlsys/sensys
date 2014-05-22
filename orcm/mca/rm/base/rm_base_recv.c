@@ -24,6 +24,7 @@
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/cfgi_types.h"
+#include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/rm/base/base.h"
 
 static bool recv_issued=false;
@@ -81,13 +82,13 @@ static void orcm_rm_base_recv(int status, orte_process_name_t* sender,
     orcm_node_state_t state;
     orte_process_name_t node;
     orcm_node_t *nodeptr;
+    orcm_alloc_t *alloc;
+    orcm_session_t *session;
     bool found;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
                          "%s rm:base:receive processing msg",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-
-    ans = OBJ_NEW(opal_buffer_t);
 
     /* unpack the command */
     cnt = 1;
@@ -97,6 +98,10 @@ static void orcm_rm_base_recv(int status, orte_process_name_t* sender,
     }
     
     if (ORCM_NODESTATE_UPDATE_COMMAND == command) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
+                             "%s rm:base:receive got ORCM_NODESTATE_UPDATE_COMMAND",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+        ans = OBJ_NEW(opal_buffer_t);
         cnt = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &state, &cnt, OPAL_INT8))) {
             ORTE_ERROR_LOG(rc);
@@ -134,8 +139,23 @@ static void orcm_rm_base_recv(int status, orte_process_name_t* sender,
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),ORTE_NAME_PRINT(&node)));
         }
 
+        OBJ_RELEASE(ans);
+    } else if (ORCM_STEPD_COMPLETE_COMMAND == command) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
+                             "%s rm:base:receive got ORCM_STEPD_COMPLETE_COMMAND",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &alloc, &cnt, ORCM_ALLOC))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+
+        /* hack, fix this by pushing the logic into the basic plugin */
+        session = OBJ_NEW(orcm_session_t);
+        session->alloc = alloc;
+        session->id = session->alloc->id;
+        ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_TERMINATED);
     }
 
-    OBJ_RELEASE(ans);
     return;
 }

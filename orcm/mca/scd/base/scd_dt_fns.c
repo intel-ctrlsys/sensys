@@ -41,7 +41,7 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
 
     for (i=0; i < num_vals; i++) {
         alloc = allocs[i];
-        opal_dss.dump(0, alloc, ORCM_ALLOC);
+        //opal_dss.dump(0, alloc, ORCM_ALLOC);
         /* pack the id */
         if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->id, 1, OPAL_INT64))) {
             ORTE_ERROR_LOG(ret);

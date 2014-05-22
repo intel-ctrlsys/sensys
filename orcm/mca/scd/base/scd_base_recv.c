@@ -200,6 +200,22 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_CANCEL);
 
         return;
+    } else if (ORCM_SESSION_CANCEL_COMMAND == command) {
+        /* session cancel - this comes in the form of a
+         * session id to be cancelled
+         */
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sessionid, &cnt, ORCM_ALLOC_ID_T))) {
+            ORTE_ERROR_LOG(rc);
+            goto answer;
+        }
+
+        session = OBJ_NEW(orcm_session_t);
+        session->id = sessionid;
+        /* pass it to the scheduler */
+        ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_CANCEL);
+
+        return;
     } else if (ORCM_NODE_INFO_COMMAND == command) {
         /* pack the number of nodes we have */
         cnt = orcm_scd_base.nodes.lowest_free;

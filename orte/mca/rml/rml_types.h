@@ -149,8 +149,6 @@ BEGIN_C_DECLS
 /* notifier support */
 #define ORTE_RML_TAG_NOTIFIER_HNP           50
 
-#define ORTE_RML_TAG_LAUNCH_VM              51
-
 #define ORTE_RML_TAG_MAX                   100
 
 

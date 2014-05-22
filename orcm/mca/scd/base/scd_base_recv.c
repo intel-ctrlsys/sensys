@@ -81,6 +81,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
     orcm_session_t *session;
     orcm_queue_t *q;
     orcm_node_t **nodes;
+    orcm_session_id_t sessionid;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:receive processing msg from %s",
@@ -129,6 +130,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
 
         /* pass it to the scheduler */
         ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_INIT);
+
         return;
     } else if (ORCM_SESSION_INFO_COMMAND == command) {
         /* pack the number of queues we have */
@@ -183,21 +185,6 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             OBJ_RELEASE(ans);
             return;
         }
-        return;
-    } else if (ORCM_SESSION_CANCEL_COMMAND == command) {
-        /* session cancel - this comes in the form of a
-         * session id to be cancelled
-         */
-        cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sessionid, &cnt, ORCM_ALLOC_ID_T))) {
-            ORTE_ERROR_LOG(rc);
-            goto answer;
-        }
-
-        session = OBJ_NEW(orcm_session_t);
-        session->id = sessionid;
-        /* pass it to the scheduler */
-        ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_CANCEL);
 
         return;
     } else if (ORCM_SESSION_CANCEL_COMMAND == command) {
@@ -224,6 +211,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             OBJ_RELEASE(ans);
             return;
         }
+
         if (0 < cnt) {
             /* pack all the nodes */
             nodes = (orcm_node_t**)malloc(cnt * sizeof(orcm_node_t*));
@@ -252,6 +240,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             }
             free(nodes);
         }
+
         /* send back results */
         if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
                                                           ORCM_RML_TAG_SCD,
@@ -260,7 +249,17 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             OBJ_RELEASE(ans);
             return;
         }
+
         return;
+    } else if (ORCM_VM_READY_COMMAND == command) {
+        /* get session id to see which one is ready */
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sessionid, &cnt, ORCM_ALLOC_ID_T))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
+        /* TODO tell orun that VM is ready */
     } else if (ORCM_RUN_COMMAND == command) {
         return;
     }

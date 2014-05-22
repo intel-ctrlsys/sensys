@@ -179,13 +179,6 @@ static void basic_active(int sd, short args, void *cbdata)
     /* set hnp name to first in the list */
     caddy->session->alloc->hnpname = strdup(nodenames[0]);
 
-    buf = OBJ_NEW(opal_buffer_t);
-    /* pack the command */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_RM_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-
     /* node array should be indexed by node num, if we change to lookup by index that would be faster */
     for (i = 0; i < caddy->session->alloc->min_nodes; i++) {
         for (j = 0; j < orcm_rm_base.nodes.size; j++) {
@@ -198,11 +191,17 @@ static void basic_active(int sd, short args, void *cbdata)
                     /* if this is the first node in the list, then set the hnp daemon info */
                     caddy->session->alloc->hnp.jobid = nodeptr->daemon.jobid;
                     caddy->session->alloc->hnp.vpid = nodeptr->daemon.vpid;
-                    /* pack the alloc */
-                    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &caddy->session->alloc, 1, ORCM_ALLOC))) {
-                        ORTE_ERROR_LOG(rc);
-                        return;
-                    }
+                }
+                buf = OBJ_NEW(opal_buffer_t);
+                /* pack the command */
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_RM_CMD_T))) {
+                    ORTE_ERROR_LOG(rc);
+                    return;
+                }
+                /* pack the alloc */
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &caddy->session->alloc, 1, ORCM_ALLOC))) {
+                    ORTE_ERROR_LOG(rc);
+                    return;
                 }
                 /* SEND ALLOC TO NODE */
                 if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(&nodeptr->daemon, buf,

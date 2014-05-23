@@ -82,7 +82,6 @@
 #include "orcm/mca/db/base/base.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/sensor.h"
-#include "orcm/mca/scd/base/base.h"
 #include "orcm/util/utils.h"
 
 #include "orcm/mca/sst/base/base.h"
@@ -126,13 +125,12 @@ static int orcmd_init(void)
 {
     int ret = ORTE_ERROR;
     char *error = NULL;
-    opal_buffer_t buf;
+    opal_buffer_t buf, *clusterbuf, *uribuf;
     orte_job_t *jdata;
     opal_list_t config;
     orcm_scheduler_t *scheduler;
     orcm_node_t *mynode=NULL;
-    orcm_rack_t *rack, *rk;
-    orcm_row_t *row;
+    int32_t n;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -213,27 +211,22 @@ static int orcmd_init(void)
         return ORTE_ERR_SILENT;
     }
 
+    /* For now, we only support a single scheduler daemon in the system.
+     * This *may* change someday in the future */
     scheduler = (orcm_scheduler_t*)opal_list_get_first(orcm_schedulers);
 
-    /* if we didn't find a scheduler, then abort */
+    /* If we are in test mode, then we don't *require* that a scheduler
+     * be defined in the system - otherwise, we do */
     if (NULL == scheduler) {
-        error = "no scheduler found";
-        ret = ORTE_ERR_NOT_FOUND;
-        goto error;
+        if (mca_sst_orcmd_component.scheduler_reqd) {
+            error = "no scheduler found";
+            ret = ORTE_ERR_NOT_FOUND;
+            goto error;
+        }
+    } else {
+        ORTE_PROC_MY_SCHEDULER->jobid = scheduler->controller.daemon.jobid;
+        ORTE_PROC_MY_SCHEDULER->vpid = scheduler->controller.daemon.vpid;
     }
-
-    /* take the first scheduler */
-    ORTE_PROC_MY_SCHEDULER->jobid = scheduler->controller.daemon.jobid;
-    ORTE_PROC_MY_SCHEDULER->vpid = scheduler->controller.daemon.vpid;
-
-    /* hack to get around routed for now */
-    ORTE_PROC_MY_PARENT->jobid = scheduler->controller.daemon.jobid;
-    ORTE_PROC_MY_PARENT->vpid = scheduler->controller.daemon.vpid;
-
-    /* construct the URI */
-    OBJ_CONSTRUCT(&buf, opal_buffer_t);
-    orcm_util_construct_uri(&buf, &scheduler->controller);
-
 
     /* register the ORTE-level params at this time now that the
      * config has had a chance to push things into the environ
@@ -484,46 +477,42 @@ static int orcmd_init(void)
         error = "orte_util_nidmap_init";
         goto error;
     }
-    /* setup our routing table */
-    if (NULL != mynode->rack) {
-        rack = (orcm_rack_t*)mynode->rack;
-        row = rack->row;
-        if (ORCM_PROC_IS_DAEMON) {
-            /* set my default route to start with my "daemon" */
-            orte_routed.update_route(ORTE_PROC_MY_DAEMON,
-                                     ORTE_PROC_MY_DAEMON);
-            /* if my rack controller is available, then
-             * designate any other rack controllers as failover paths
-             * by telling the routed component to route to them via
-             * my rack controller
-             */
-            if (ORTE_NODE_STATE_UNDEF != rack->controller.state) {
-                OPAL_LIST_FOREACH(rk, &row->racks, orcm_rack_t) {
-                    if (rk != rack && ORTE_NODE_STATE_UNDEF != rk->controller.state) {
-                        orte_routed.update_route(&rk->controller.daemon,
-                                                 &rack->controller.daemon);
-                    }
-                }
-            }
-        } else {
-            /* must be an aggregator - set my default
-             * route to be my HNP
-             */
-            orte_routed.update_route(ORTE_PROC_MY_HNP,
-                                     ORTE_PROC_MY_HNP);
-        }
-    } else {
-        orte_routed.update_route(ORTE_PROC_MY_HNP,
-                                 ORTE_PROC_MY_HNP);
-    }
-    /* load the hash tables */
-    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(&buf))) {
+
+    /* extract the cluster description and setup the routed info - the orcm routed component
+     * will know what to do. */
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &clusterbuf, &n, OPAL_BUFFER))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&buf);
+        error = "extract cluster buf";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(clusterbuf);
+        error = "orte_routed.init_routes";
+        goto error;
+    }
+    OBJ_RELEASE(clusterbuf);
+
+    /* extract the uri buffer and load the hash tables */
+    n = 1;
+    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &uribuf, &n, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "extract uri buffer";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(uribuf))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(uribuf);
         error = "load hash tables";
         goto error;
     }
     OBJ_DESTRUCT(&buf);
+    OBJ_RELEASE(uribuf);
 
     /*
      * Group communications
@@ -555,30 +544,6 @@ static int orcmd_init(void)
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);
         error = "orte_rml.enable_comm";
-        goto error;
-    }
-    
-    /* update the routing tree */
-    orte_routed.update_routing_plan();
-    
-    /* setup the routed info - the selected routed component
-     * will know what to do. 
-     */
-    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, NULL))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_routed.init_routes";
-        goto error;
-    }
-    
-    /* setup I/O forwarding system - must come after we init routes */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_iof_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_iof_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_iof_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_iof_base_select";
         goto error;
     }
     
@@ -632,12 +597,6 @@ static int orcmd_init(void)
         goto error;
     }
 
-    /* open the scd framework for some datatype routines */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_scd_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orcm_scd_base_open";
-        goto error;
-    }
     return ORTE_SUCCESS;
     
  error:

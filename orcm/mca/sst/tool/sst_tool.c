@@ -187,7 +187,6 @@ static int tool_init(void)
         goto error;
     }
     scheduler = (orcm_scheduler_t*)opal_list_get_first(orcm_schedulers);
-    OBJ_DESTRUCT(&buf);
 
     /* if we didn't find a scheduler, then abort */
     if (NULL == scheduler) {

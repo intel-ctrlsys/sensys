@@ -36,27 +36,27 @@
 #include "orcm/mca/db/base/base.h"
 #include "db_odbc.h"
 
-static int init(struct orcm_db_base_module_t *imod);
-static void finalize(struct orcm_db_base_module_t *imod);
-static int store(struct orcm_db_base_module_t *imod,
-                 const char *primary_key,
-                 opal_list_t *kvs);
-static int fetch(struct orcm_db_base_module_t *imod,
-                 const char *primary_key,
-                 const char *key,
-                 opal_list_t *kvs);
-static int remove(struct orcm_db_base_module_t *imod,
-                  const char *primary_key,
-                  const char *key);
+static int odbc_init(struct orcm_db_base_module_t *imod);
+static void odbc_finalize(struct orcm_db_base_module_t *imod);
+static int odbc_store(struct orcm_db_base_module_t *imod,
+                      const char *primary_key,
+                      opal_list_t *kvs);
+static int odbc_fetch(struct orcm_db_base_module_t *imod,
+                      const char *primary_key,
+                      const char *key,
+                      opal_list_t *kvs);
+static int odbc_remove(struct orcm_db_base_module_t *imod,
+                      const char *primary_key,
+                      const char *key);
 
 mca_db_odbc_module_t mca_db_odbc_module = {
     {
-        init,
-        finalize,
-        store,
+        odbc_init,
+        odbc_finalize,
+        odbc_store,
         NULL,
-        fetch,
-        remove
+        odbc_fetch,
+        odbc_remove
     },
 };
 
@@ -68,7 +68,7 @@ mca_db_odbc_module_t mca_db_odbc_module = {
     opal_output(0, "\n\tUser: %s", mod->user); \
     opal_output(0, "\n***********************************************");
 
-static int init(struct orcm_db_base_module_t *imod)
+static int odbc_init(struct orcm_db_base_module_t *imod)
 {
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
     char **login = NULL;
@@ -140,12 +140,12 @@ static int init(struct orcm_db_base_module_t *imod)
 
     opal_output_verbose(5, orcm_db_base_framework.framework_output,
                         "db:odbc: Connection established to %s",
-                        mod->dbname);
+                        mod->odbcdsn);
 
     return ORCM_SUCCESS;
 }
 
-static void finalize(struct orcm_db_base_module_t *imod)
+static void odbc_finalize(struct orcm_db_base_module_t *imod)
 {
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
     
@@ -172,15 +172,15 @@ static void finalize(struct orcm_db_base_module_t *imod)
     opal_output(0, "\nUnable to log data"); \
     opal_output(0, "\n***********************************************");
 
-static int store(struct orcm_db_base_module_t *imod,
-                 const char *primary_key,
-                 opal_list_t *kvs)
+static int odbc_store(struct orcm_db_base_module_t *imod,
+                      const char *primary_key,
+                      opal_list_t *kvs)
 {
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
     char *query, *vstr;
     char **cmdargs=NULL;
     time_t nowtime;
-    struct tm *nowtm;
+    struct tm nowtm;
     char tbuf[1024];
     opal_value_t *kv;
     
@@ -307,10 +307,10 @@ static int store(struct orcm_db_base_module_t *imod,
     opal_output(0, "\nUnable fetch data"); \
     opal_output(0, "\n***********************************************");
 
-static int fetch(struct orcm_db_base_module_t *imod,
-                 const char *primary_key,
-                 const char *key,
-                 opal_list_t *kvs)
+static int odbc_fetch(struct orcm_db_base_module_t *imod,
+                      const char *primary_key,
+                      const char *key,
+                      opal_list_t *kvs)
 {
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
 
@@ -414,7 +414,7 @@ static int fetch(struct orcm_db_base_module_t *imod,
         
         kv = OBJ_NEW(opal_value_t);
         *kv = temp_kv;
-        opal_list_append(kvs, kv);
+        opal_list_append(kvs, &kv->super);
     }
     
     return OPAL_SUCCESS;
@@ -427,9 +427,9 @@ static int fetch(struct orcm_db_base_module_t *imod,
     opal_output(0, "\nUnable remove data"); \
     opal_output(0, "\n***********************************************");
 
-static int remove(struct orcm_db_base_module_t *imod,
-                  const char *primary_key,
-                  const char *key)
+static int odbc_remove(struct orcm_db_base_module_t *imod,
+                       const char *primary_key,
+                       const char *key)
 {
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
 

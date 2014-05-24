@@ -105,8 +105,6 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
 {
     mca_db_odbc_module_t *mod;
     opal_value_t *kv;
-    mod->envhandle = NULL;
-    mod->dbhandle = NULL;
 
     mod = (mca_db_odbc_module_t*)malloc(sizeof(mca_db_odbc_module_t));
     if (NULL == mod) {
@@ -114,7 +112,6 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
         return NULL;
     }
     memset(mod, 0, sizeof(mca_db_odbc_module_t));
-    mod->num_worker_threads = -1;
 
     /* copy the APIs across */
     memcpy(mod, &mca_db_odbc_module.api, sizeof(orcm_db_base_module_t));

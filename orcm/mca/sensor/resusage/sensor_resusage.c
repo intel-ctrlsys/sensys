@@ -50,7 +50,7 @@
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void sample(void);
+static void sample(orcm_sensor_sampler_t *sampler);
 static void res_log(opal_buffer_t *sample);
 
 /* instantiate the module */
@@ -103,7 +103,7 @@ static void finalize(void)
     return;
 }
 
-static void sample(void)
+static void sample(orcm_sensor_sampler_t *sampler)
 {
     opal_pstats_t *stats, *st;
     opal_node_stats_t *nstats, *nst;
@@ -207,7 +207,7 @@ static void sample(void)
     /* xfer any data for transmission */
     if (0 < buf.bytes_used) {
         bptr = &buf;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(orcm_sensor_base.samples, &bptr, 1, OPAL_BUFFER))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&buf);
             return;

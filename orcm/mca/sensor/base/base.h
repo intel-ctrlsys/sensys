@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights reserved.
+ * Copyright (c) 2014      Intel, Inc.  All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -32,7 +33,6 @@ BEGIN_C_DECLS
 ORCM_DECLSPEC extern mca_base_framework_t orcm_sensor_base_framework;
 /* select a component */
 ORCM_DECLSPEC int orcm_sensor_base_select(void);
-
 
 END_C_DECLS
 #endif

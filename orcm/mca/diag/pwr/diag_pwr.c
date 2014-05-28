@@ -49,8 +49,7 @@ static void calibrate(void)
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
  
     /* set the sensor framework to "on-demand" so we can sample
-     * data when we want
-     */
+     * data when we want */
 
     /* get a list of all cpus on this system */
 

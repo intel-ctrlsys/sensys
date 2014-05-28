@@ -51,7 +51,7 @@ static int init(void);
 static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
-static void sigar_sample(void);
+static void sigar_sample(orcm_sensor_sampler_t *sampler);
 static void sigar_log(opal_buffer_t *buf);
 
 /* instantiate the module */
@@ -242,7 +242,7 @@ static void stop(orte_jobid_t jobid)
     return;
 }
 
-static void sigar_sample(void)
+static void sigar_sample(orcm_sensor_sampler_t *sampler)
 {
     sigar_mem_t mem;
     sigar_swap_t swap;
@@ -268,7 +268,7 @@ static void sigar_sample(void)
     if (mca_sensor_sigar_component.test) {
         /* just send the test vector */
         bptr = &test_vector;
-        opal_dss.pack(orcm_sensor_base.samples, &bptr, 1, OPAL_BUFFER);
+        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
         return;
     }
 
@@ -547,7 +547,7 @@ static void sigar_sample(void)
     /* xfer the data for transmission - need at least one prior sample before doing so */
     if (0 < last_sample) {
         bptr = &data;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(orcm_sensor_base.samples, &bptr, 1, OPAL_BUFFER))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             return;

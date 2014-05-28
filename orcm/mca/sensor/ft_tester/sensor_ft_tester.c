@@ -41,7 +41,7 @@
 #include "sensor_ft_tester.h"
 
 /* declare the API functions */
-static void sample(void);
+static void sample(orcm_sensor_sampler_t *sampler);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_ft_tester_module = {
@@ -53,7 +53,7 @@ orcm_sensor_base_module_t orcm_sensor_ft_tester_module = {
     NULL
 };
 
-static void sample(void)
+static void sample(orcm_sensor_sampler_t *sampler)
 {
     float prob;
     orte_proc_t *child;

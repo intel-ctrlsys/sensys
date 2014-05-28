@@ -27,6 +27,8 @@
 
 #include "orte/types.h"
 
+#include "orcm/mca/sensor/sensor_types.h"
+
 BEGIN_C_DECLS
 
 /*
@@ -39,6 +41,15 @@ typedef void (*orcm_sensor_API_module_start_fn_t)(orte_jobid_t job);
 /* stop collecting data */
 typedef void (*orcm_sensor_API_module_stop_fn_t)(orte_jobid_t job);
 
+/* manually take a sample, providing a comma-separated list of
+ * sensors to be sampled. If NULL is provided, then sample
+ * all active components. Otherwise, only sample the specified ones.
+ * The provided callback function will be called once the sample
+ * has been taken. */
+typedef void (*orcm_sensor_API_module_sample_fn_t)(char *sensors,
+                                                   orcm_sensor_sample_cb_fn_t cbfunc,
+                                                   void *cbdata);
+
 /* API module */
 /*
  * Ver 1.0
@@ -46,6 +57,7 @@ typedef void (*orcm_sensor_API_module_stop_fn_t)(orte_jobid_t job);
 struct orcm_sensor_base_API_module_1_0_0_t {
     orcm_sensor_API_module_start_fn_t      start;
     orcm_sensor_API_module_stop_fn_t       stop;
+    orcm_sensor_API_module_sample_fn_t     sample;
 };
 
 typedef struct orcm_sensor_base_API_module_1_0_0_t orcm_sensor_base_API_module_1_0_0_t;
@@ -57,8 +69,12 @@ typedef int (*orcm_sensor_base_module_init_fn_t)(void);
 /* finalize the module */
 typedef void (*orcm_sensor_base_module_finalize_fn_t)(void);
 
-/* tell the module to sample its sensor */
-typedef void (*orcm_sensor_base_module_sample_fn_t)(void);
+/* tell the module to sample its sensor, placing the results
+ * in the bucket in the provided sampler. Note that the sampler will *always*
+ * be controlled by the frame event base - thus, any component-level
+ * sampling thread must push its data into the frame event base
+ * before adding it to the given bucket */
+typedef void (*orcm_sensor_base_module_sample_fn_t)(orcm_sensor_sampler_t *sampler);
 
 /* pass a buffer to the module for logging */
 typedef void (*orcm_sensor_base_module_log_fn_t)(opal_buffer_t *sample);

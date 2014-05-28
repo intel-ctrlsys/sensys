@@ -49,7 +49,7 @@
 static int init(void);
 static void finalize(void);
 static void start(orte_jobid_t job);
-static void sample(void);
+static void sample(orcm_sensor_sampler_t *sampler);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_heartbeat_module = {
@@ -108,7 +108,7 @@ static void start(orte_jobid_t job)
 {
     if (!check_active && NULL != daemons) {
         /* setup the check event */
-        check_time.tv_sec = 3 * orcm_sensor_base.rate.tv_sec;
+        check_time.tv_sec = 3 * orcm_sensor_base.sample_rate;
         check_time.tv_usec = 0;
         opal_event_evtimer_set(orte_event_base, &check_ev, check_heartbeat, &check_ev);
         opal_event_evtimer_add(&check_ev, &check_time);
@@ -116,7 +116,7 @@ static void start(orte_jobid_t job)
     }
 }
 
-static void sample(void)
+static void sample(orcm_sensor_sampler_t *sampler)
 {
     opal_buffer_t *buf;
     int rc;
@@ -149,10 +149,10 @@ static void sample(void)
     /* if we want sampled data included, point to the bucket */
     buf = OBJ_NEW(opal_buffer_t);
     if (orcm_sensor_base.log_samples) {
-        opal_dss.copy_payload(buf, orcm_sensor_base.samples);
-        OBJ_RELEASE(orcm_sensor_base.samples);
-        /* start a new sample bucket */
-        orcm_sensor_base.samples = OBJ_NEW(opal_buffer_t);
+        opal_dss.copy_payload(buf, &sampler->bucket);
+        /* cycle this bucket to clear it */
+        OBJ_DESTRUCT(&sampler->bucket);
+        OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
     }
 
     /* send heartbeat */

@@ -49,7 +49,7 @@ static int init(void);
 static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
-static void coretemp_sample(void);
+static void coretemp_sample(orcm_sensor_sampler_t *sampler);
 static void coretemp_log(opal_buffer_t *buf);
 
 /* instantiate the module */
@@ -250,7 +250,7 @@ static void stop(orte_jobid_t jobid)
     return;
 }
 
-static void coretemp_sample(void)
+static void coretemp_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     coretemp_tracker_t *trk, *nxt;
@@ -356,7 +356,7 @@ static void coretemp_sample(void)
     /* xfer the data for transmission */
     if (packed) {
         bptr = &data;
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(orcm_sensor_base.samples, &bptr, 1, OPAL_BUFFER))) {
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
             return;

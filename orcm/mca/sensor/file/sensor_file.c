@@ -57,7 +57,7 @@ static int init(void);
 static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
-static void file_sample(void);
+static void file_sample(orcm_sensor_sampler_t *sampler);
 static void file_log(opal_buffer_t *sample);
 
 /* instantiate the module */
@@ -275,7 +275,7 @@ static void stop(orte_jobid_t jobid)
     return;
 }
 
-static void file_sample(void)
+static void file_sample(orcm_sensor_sampler_t *sampler)
 {
     struct stat buf;
     opal_list_item_t *item;

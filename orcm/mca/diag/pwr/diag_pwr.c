@@ -221,9 +221,11 @@ static int init(void)
         /* trailing digits are the core id */
         for (k=strlen(entry->d_name)-1; 0 <= k; k--) {
             if (!isdigit(entry->d_name[k])) {
+                k++;
                 break;
             }
         }
+        opal_output(0, "Entry: %s core %s", entry->d_name, &entry->d_name[k]);
         trk->core = strtoul(&entry->d_name[k], NULL, 10);
         trk->directory = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", NULL);
         

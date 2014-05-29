@@ -360,6 +360,7 @@ static void sensor_sample(opal_buffer_t *buf, void *cbdata)
 
 static int set_freq(tracker_t *trk, float freq);
 static int spawn_one(int core);
+static void reset_freq(tracker_t *trk);
 
 static void calibrate(void)
 {
@@ -432,6 +433,28 @@ static void calibrate(void)
     }
 
     /* kill all our child viral programs */
+
+    /* reset everything to the system settings */
+    OPAL_LIST_FOREACH(trk, &tracking, tracker_t) {
+        filename = opal_os_path(false, trk->directory, "scaling_governor", NULL);
+        if (NULL == (fp = fopen(filename, "w"))) {
+            /* not allowed */
+            opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                                "%s pwr:calibrate cannot reset governor on core %d",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), trk->core);
+            free(filename);
+            continue;
+        }
+        opal_output_verbose(2, orcm_diag_base_framework.framework_output,
+                            "%s Resetting governor to %s for core %d",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                            trk->system_governor, trk->core);
+        fprintf(fp, "%s\n", trk->system_governor);
+        fclose(fp);
+        free(filename);
+        /* set the cpu to its initial freqs */
+        reset_freq(trk);
+    }
 
     /* now report those readings to our database - for now, just print
      * the results until the db integration is available */
@@ -512,3 +535,40 @@ static int spawn_one(int core)
     return ORCM_SUCCESS;
 }
 
+static void reset_freq(tracker_t *trk)
+{
+    char *filename;
+    FILE *fp;
+
+    filename = opal_os_path(false, trk->directory, "scaling_min_freq", NULL);
+    if (NULL == (fp = fopen(filename, "w"))) {
+        /* not allowed */
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                            "%s pwr:calibrate cannot reset min-freq on core %d",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), trk->core);
+    } else {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                            "%s pwr:calibrate reset min-freq on core %d to %f",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                            trk->core, trk->system_min_freq);
+        fprintf(fp, "%ld\n", (unsigned long)(trk->system_min_freq * 1000000.0));
+        fclose(fp);
+    }
+    free(filename);
+
+    filename = opal_os_path(false, trk->directory, "scaling_max_freq", NULL);
+    if (NULL == (fp = fopen(filename, "w"))) {
+        /* not allowed */
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                            "%s pwr:calibrate cannot reset max-freq on core %d",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), trk->core);
+    } else {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                            "%s pwr:calibrate reset max-freq on core %d to %f",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                            trk->core, trk->system_max_freq);
+        fprintf(fp, "%ld\n", (unsigned long)(trk->system_max_freq * 1000000.0));
+        fclose(fp);
+    }
+    free(filename);
+}

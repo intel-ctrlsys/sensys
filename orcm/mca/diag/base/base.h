@@ -38,13 +38,6 @@ ORCM_DECLSPEC extern mca_base_framework_t orcm_diag_base_framework;
 ORCM_DECLSPEC int orcm_diag_base_select(void);
 
 typedef struct {
-    opal_object_t super;
-    opal_event_t ev;
-    orcm_scheduler_t *scheduler;
-} orcm_scheduler_caddy_t;
-OBJ_CLASS_DECLARATION(orcm_scheduler_caddy_t);
-
-typedef struct {
     /* define an event base strictly for diagnostics - this
      * allows diagnostics to be run without interfering with
      * any other daemon functions

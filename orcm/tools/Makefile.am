@@ -20,4 +20,5 @@ SUBDIRS += \
         tools/orcm-emulator \
         tools/orun \
         tools/osub \
-        tools/oqueue
+        tools/oqueue \
+        tools/opwrvirus

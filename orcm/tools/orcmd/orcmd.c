@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013      Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -32,6 +32,7 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/rm/base/base.h"
 #include "orcm/mca/scd/base/base.h"
+#include "orcm/mca/diag/diag.h"
 
 #include "orcm/runtime/runtime.h"
 
@@ -211,7 +212,8 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
         return;
     }
 
-    if (ORCM_LAUNCH_STEPD_COMMAND == command) {
+    switch(command) {
+    case ORCM_LAUNCH_STEPD_COMMAND:
         opal_output(0, "%s: ORCM daemon got launch command, executing hostname",
                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
@@ -242,7 +244,22 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
             OBJ_RELEASE(buf);
             return;
         }
-    } else if (ORCM_CANCEL_STEPD_COMMAND == command) {
+        break;
+
+    case ORCM_CANCEL_STEPD_COMMAND:
+        opal_output(0, "%s: CANCEL STEP COMMAND NOT IMPLEMENTED",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        break;
+
+    case ORCM_CALIBRATE:
+        opal_output(0, "%s: RUNNING CALIBRATION",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        orcm_diag.calibrate();
+        break;
+
+    default:
+        opal_output(0, "%s: COMMAND UNKNOWN",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     }
 
     return;

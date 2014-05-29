@@ -109,6 +109,11 @@ examples/ring_oshmem
 examples/hello_oshmem
 examples/ring_oshmemfh
 examples/hello_oshmemfh
+examples/oshmem_circular_shift
+examples/oshmem_max_reduction
+examples/oshmem_shmalloc
+examples/oshmem_strided_puts
+examples/oshmem_symmetric_data
 ompi/libltdl
 ompi/GPATH
 ompi/GRTAGS
@@ -706,6 +711,12 @@ oshmem/shmem/fortran/profile/pmy_pe_f.c
 oshmem/shmem/fortran/profile/pshpalloc_f.c
 oshmem/shmem/fortran/profile/pnum_pes_f.c
 oshmem/shmem/fortran/profile/pstart_pes_f.c
+oshmem/shmem/java/java/shmem.jar
+oshmem/shmem/java/java/doc
+oshmem/shmem/java/java/shmem_Constant.h
+oshmem/shmem/java/java/shmem_ShMem.h
+oshmem/shmem/java/java/shmem
+oshmem/shmem/java/java/shmem_Addr.h
 oshmem/tools/oshmem_info/oshmem_info
 oshmem/tools/oshmem_info/oshmem_info.1
 oshmem/tools/wrappers/shmemcc-wrapper-data.txt
@@ -883,3 +894,4 @@ orcm/test/orcm_alloc
 orcm/test/orte_sensor
 orcm/tools/oqueue/oqueue
 orcm/tools/oqueue/oqueue.1
+orcm/tools/opwrvirus/opwrvirus

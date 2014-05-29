@@ -87,3 +87,4 @@ orcm/test/orcm_alloc
 orcm/test/orte_sensor
 orcm/tools/oqueue/oqueue
 orcm/tools/oqueue/oqueue.1
+orcm/tools/opwrvirus/opwrvirus

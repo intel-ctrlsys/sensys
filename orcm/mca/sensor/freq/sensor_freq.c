@@ -392,6 +392,7 @@ static void freq_log(opal_buffer_t *sample)
     opal_list_append(vals, &kv->super);
 
     for (i=0; i < ncores; i++) {
+        kv = OBJ_NEW(opal_value_t);
         asprintf(&kv->key, "core%d", i);
         kv->type = OPAL_FLOAT;
         n=1;

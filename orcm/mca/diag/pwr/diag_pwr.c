@@ -27,10 +27,13 @@
 #include "opal/util/output.h"
 #include "opal/util/os_dirpath.h"
 #include "opal/util/os_path.h"
+#include "opal/mca/installdirs/installdirs.h"
+#include "opal/mca/hwloc/hwloc.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 
-#include "orcm/mca/sensor/sensor.h"
+#include "orcm/mca/db/db.h"
+#include "orcm/mca/sensor/base/sensor_private.h"
 
 #include "orcm/mca/diag/base/base.h"
 #include "diag_pwr.h"
@@ -128,19 +131,12 @@ OBJ_CLASS_INSTANCE(tracker_t,
 typedef struct {
     opal_object_t super;
     volatile bool active;
-    opal_buffer_t bucket;
+    int32_t n_active_cores;
+    float freq;
 } collector_t;
-static void colcon(collector_t *p)
-{
-    OBJ_CONSTRUCT(&p->bucket, opal_buffer_t);
-}
-static void delcon(collector_t *p)
-{
-    OBJ_DESTRUCT(&p->bucket);
-}
 OBJ_CLASS_INSTANCE(collector_t,
                    opal_object_t,
-                   colcon, delcon);
+                   NULL, NULL);
 
 static char *orte_getline(FILE *fp)
 {
@@ -342,18 +338,140 @@ static void finalize(void)
     OPAL_LIST_DESTRUCT(&tracking);
 }
 
+/*** REMINDER: THIS CALLBACK IS EXECUTED IN THE
+ * DB EVENT BASE ***/
+static void mycleanup(int dbhandle, int status,
+                      opal_list_t *kvs, void *cbdata)
+{
+    OPAL_LIST_RELEASE(kvs);
+}
+
 /*** REMINDER: THIS CALLBACK IS EXECUTED IN THE SENSOR
  * EVENT BASE ***/
-static void sensor_sample(opal_buffer_t *buf, void *cbdata)
+static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
 {
     collector_t *coll = (collector_t*)cbdata;
+    opal_buffer_t *buf=NULL;
+    char *hostname=NULL, *component;
+    char *sampletime;
+    int rc;
+    int32_t n, ncores;
+    opal_list_t *vals;
+    opal_value_t *kv;
+    float fval;
+    int i;
 
     opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                         "%s pwr:calibrate recvd pwr reading",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
-    /* collect the sample in our bucket */
-    opal_dss.copy_payload(&coll->bucket, buf);
+    /* unpack the buffer object that is in the incoming buffer */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &buf, &n, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(rc);
+        goto cleanup;
+    }
+    /* unpack the pwr sensor component name */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &component, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        goto cleanup;
+    }
+    /* unpack the host this came from */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &hostname, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        goto cleanup;
+    }
+    /* and the number of cores on that host */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &ncores, &n, OPAL_INT32))) {
+        ORTE_ERROR_LOG(rc);
+        goto cleanup;
+    }
+
+    /* sample time */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &sampletime, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        goto cleanup;
+    }
+
+    opal_output_verbose(3, orcm_diag_base_framework.framework_output,
+                        "%s Received calib from host %s with %d cores",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                        (NULL == hostname) ? "NULL" : hostname, ncores);
+
+    /* xfr to storage */
+    vals = OBJ_NEW(opal_list_t);
+
+    /* start by marking this as calib data */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("CALIB");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("PWR");
+    opal_list_append(vals, &kv->super);
+
+    /* load the sample time */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("ctime");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup(sampletime);
+    free(sampletime);
+    opal_list_append(vals, &kv->super);
+
+    /* load the hostname */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("hostname");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup(hostname);
+    opal_list_append(vals, &kv->super);
+
+    /* load the number of cpus that were running the virus */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("nactive");
+    kv->type = OPAL_INT32;
+    kv->data.int32 = coll->n_active_cores;
+    opal_list_append(vals, &kv->super);
+
+    /* load the frequency */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("nactive");
+    kv->type = OPAL_FLOAT;
+    kv->data.fval = coll->freq;
+    opal_list_append(vals, &kv->super);
+
+    /* load the power reading from each cpu */
+    for (i=0; i < ncores; i++) {
+        kv = OBJ_NEW(opal_value_t);
+        asprintf(&kv->key, "core%d", i);
+        kv->type = OPAL_FLOAT;
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &fval, &n, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        kv->data.fval = fval;
+        opal_list_append(vals, &kv->super);
+    }
+
+    /* store it */
+    if (0 <= orcm_sensor_base.dbhandle) {
+        /* the database framework will release the values */
+        orcm_db.store(orcm_sensor_base.dbhandle, "pwr-calib", vals, mycleanup, NULL);
+    } else {
+        /* cleanup the xfr storage */
+        OPAL_LIST_RELEASE(vals);
+    }
+
+ cleanup:
+    if (NULL != hostname) {
+        free(hostname);
+    }
+    if (NULL != buf) {
+        OBJ_RELEASE(buf);
+    }
+
     /* mark that wthe sample was collected */
     coll->active = false;
 }
@@ -369,6 +487,7 @@ static void calibrate(void)
     FILE *fp;
     opal_value_t *kv, *nkv;
     collector_t *collector;
+    int rc;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_diag_base_framework.framework_output,
                          "%s diag:pwr:calibrate",
@@ -409,13 +528,21 @@ static void calibrate(void)
      * any executing applications */
     collector = OBJ_NEW(collector_t);
     collector->active = true;
+    collector->n_active_cores = 0;
+    collector->freq = trk->system_min_freq;
     orcm_sensor.sample("pwr", sensor_sample, collector);
     ORTE_WAIT_FOR_COMPLETION(collector->active);
 
     /* loop over all cpus */
     OPAL_LIST_FOREACH(trk, &tracking, tracker_t) {
         /* fork/exec our viral program and bind it to this cpu */
-        trk->pid = spawn_one(trk->core);
+        rc = spawn_one(trk->core);
+        if (rc < 0) {
+            ORTE_ERROR_LOG(rc);
+            continue;
+        }
+        trk->pid = rc;
+        collector->n_active_cores++;
         /* for each freq available to this cpu */
         OPAL_LIST_FOREACH_SAFE(kv, nkv, &trk->frequencies, opal_value_t) {
             /* set the frequency of this cpu to this value */
@@ -427,15 +554,22 @@ static void calibrate(void)
             }
             /* sample the power, adding the measurement to the same bucket */
             collector->active = true;
+            collector->freq = kv->data.fval;
             orcm_sensor.sample("pwr", sensor_sample, collector);
             ORTE_WAIT_FOR_COMPLETION(collector->active);
         }
     }
 
-    /* kill all our child viral programs */
-
-    /* reset everything to the system settings */
+    /* reset everything to the system settings and kill all child
+     * viral programs */
     OPAL_LIST_FOREACH(trk, &tracking, tracker_t) {
+        if (0 <= trk->pid) {
+            opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                                "%s pwr:calibrate terminating power virus pid %lu",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                (unsigned long)trk->pid);            
+            kill(trk->pid, SIGKILL);
+        }
         filename = opal_os_path(false, trk->directory, "scaling_governor", NULL);
         if (NULL == (fp = fopen(filename, "w"))) {
             /* not allowed */
@@ -532,7 +666,40 @@ static int set_freq(tracker_t *trk, float freq)
 
 static int spawn_one(int core)
 {
-    return ORCM_SUCCESS;
+    pid_t pid;
+    hwloc_obj_t obj;
+    char **argv=NULL;
+    char *app;
+
+    pid = fork();
+    if (pid < 0) {
+        ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_CHILDREN);
+        return ORTE_ERR_SYS_LIMITS_CHILDREN;
+    }
+
+    if (0 == pid) {
+        /* we are the child */
+        /* get the topological object of the specified core */
+        if (NULL == (obj = hwloc_get_obj_by_type(opal_hwloc_topology, HWLOC_OBJ_PU, core))) {
+            opal_output(0, "GOT NULL HWLOC OBJ");
+            exit(1);
+        }
+        /* bind us to the specified PU */
+        hwloc_set_cpubind(opal_hwloc_topology, obj->cpuset, 0);
+
+        /* set the path to the virus */
+        app = opal_os_path(false, opal_install_dirs.bindir, "opwrvirus", NULL);
+        opal_argv_append_nosize(&argv, "opwrvirus");
+
+        /* exec the virus */
+        execv(app, argv);
+
+        /* error if we get here */
+        opal_output(0, "PWR DIAG FAILED TO EXEC VIRUS");
+    }
+
+    /* record the pid */
+    return pid;
 }
 
 static void reset_freq(tracker_t *trk)

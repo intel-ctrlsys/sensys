@@ -10,16 +10,18 @@
 #
 
 SUBDIRS += \
-        tools/orcmd \
-        tools/wrappers \
-        tools/orcmctrld \
-        tools/otop \
+        tools/octl \
         tools/ops \
-        tools/orcm-info \
-        tools/orcmsched \
+        tools/opwrvirus \
+        tools/oqueue \
+        tools/oqueue \
         tools/orcm-emulator \
+        tools/orcm-info \
+        tools/orcmctrld \
+        tools/orcmd \
+        tools/orcmsched \
         tools/orun \
         tools/osub \
-        tools/oqueue \
-        tools/opwrvirus \
-        tools/otestcmd
+        tools/otestcmd \
+        tools/otop \
+        tools/wrappers

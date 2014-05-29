@@ -155,6 +155,9 @@ const char *orcm_scd_session_state_to_str(orcm_scd_session_state_t state)
     case ORCM_SESSION_STATE_TERMINATED:
         s = "TERMINATED";
         break;
+    case ORCM_SESSION_STATE_CANCEL:
+        s = "CANCEL";
+        break;
     default:
         s = "UNKNOWN";
     }

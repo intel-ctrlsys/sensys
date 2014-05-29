@@ -129,8 +129,10 @@ static int init(void)
     /* we only handle certain cpu types as we have to know the binary
      * layout of the msr file
      */
-    if (ORCM_SUCCESS != check_cpu_type()) {
-        /* we provided a show help down below */
+    if (ORCM_SUCCESS != check_cpu_type() &&
+        !mca_sensor_pwr_component.test) {
+        orte_show_help("help-orcm-sensor-pwr.txt", "no-topo-info",
+                       true, mca_sensor_pwr_component.model);
         return ORCM_ERR_NOT_SUPPORTED;
     }
 
@@ -168,18 +170,20 @@ static int init(void)
         trk->core = strtoul(entry->d_name, NULL, 10);
         trk->file = opal_os_path(false, "/dev/cpu", entry->d_name, "msr", NULL);
         
-        /* get the power units for this core */
-        if (0 >= (fd = open(trk->file, O_RDONLY))) {
-            /* can't access file */
-            OBJ_RELEASE(trk);
-            continue;
+        if (!mca_sensor_pwr_component.test) {
+            /* get the power units for this core */
+            if (0 >= (fd = open(trk->file, O_RDONLY))) {
+                /* can't access file */
+                OBJ_RELEASE(trk);
+                continue;
+            }
+            if (ORCM_SUCCESS != read_msr(fd, &units, MSR_RAPL_POWER_UNIT)) {
+                /* can't read required info */
+                OBJ_RELEASE(trk);
+                continue;
+            }
+            trk->units = pow(0.5,(double)(units & POWER_UNIT_MASK));
         }
-        if (ORCM_SUCCESS != read_msr(fd, &units, MSR_RAPL_POWER_UNIT)) {
-            /* can't read required info */
-            OBJ_RELEASE(trk);
-            continue;
-        }
-        trk->units = pow(0.5,(double)(units & POWER_UNIT_MASK));
 
         /* add to our list */
         opal_list_append(&tracking, &trk->super);
@@ -229,7 +233,7 @@ static void pwr_sample(orcm_sensor_sampler_t *sampler)
     char *temp;
     bool packed;
 
-    if (0 == opal_list_get_size(&tracking)) {
+    if (0 == opal_list_get_size(&tracking) && !mca_sensor_pwr_component.test) {
         return;
     }
 
@@ -279,28 +283,32 @@ static void pwr_sample(orcm_sensor_sampler_t *sampler)
     free(timestamp_str);
 
     OPAL_LIST_FOREACH_SAFE(trk, nxt, &tracking, corepwr_tracker_t) {
-        if (0 >= (fd = open(trk->file, O_RDONLY))) {
-            /* disable this one - cannot read the file */
-            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
-                                "%s access denied to pwr file %s - removing it",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                trk->file);
-            opal_list_remove_item(&tracking, &trk->super);
-            OBJ_RELEASE(trk);
-            continue;
+        if (mca_sensor_pwr_component.test) {
+            power = 1.2345;
+        } else {
+            if (0 >= (fd = open(trk->file, O_RDONLY))) {
+                /* disable this one - cannot read the file */
+                opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
+                                    "%s access denied to pwr file %s - removing it",
+                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                    trk->file);
+                opal_list_remove_item(&tracking, &trk->super);
+                OBJ_RELEASE(trk);
+                continue;
+            }
+            if (ORCM_SUCCESS != read_msr(fd, &value, MSR_PKG_POWER_INFO)) {
+                /* disable this one - cannot read the file */
+                opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
+                                    "%s failed to read pwr file %s - removing it",
+                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                    trk->file);
+                opal_list_remove_item(&tracking, &trk->super);
+                OBJ_RELEASE(trk);
+                close(fd);
+                continue;
+            }
+            power = trk->units * (double)(value & 0x7fff);
         }
-        if (ORCM_SUCCESS != read_msr(fd, &value, MSR_PKG_POWER_INFO)) {
-            /* disable this one - cannot read the file */
-            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
-                                "%s failed to read pwr file %s - removing it",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                trk->file);
-            opal_list_remove_item(&tracking, &trk->super);
-            OBJ_RELEASE(trk);
-            close(fd);
-            continue;
-        }
-        power = trk->units * (double)(value & 0x7fff);
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &power, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
@@ -368,7 +376,7 @@ static void pwr_log(opal_buffer_t *sample)
     }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                        "%s Received log from host %s with %d cores",
+                        "%s Received power log from host %s with %d cores",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname, ncores);
 
@@ -391,6 +399,7 @@ static void pwr_log(opal_buffer_t *sample)
     opal_list_append(vals, &kv->super);
 
     for (i=0; i < ncores; i++) {
+        kv = OBJ_NEW(opal_value_t);
         asprintf(&kv->key, "core%d", i);
         kv->type = OPAL_FLOAT;
         n=1;
@@ -404,16 +413,14 @@ static void pwr_log(opal_buffer_t *sample)
 
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
+        /* the database framework will release the values */
         orcm_db.store(orcm_sensor_base.dbhandle, "pwr", vals, mycleanup, NULL);
     } else {
+        /* cleanup the xfr storage */
         OPAL_LIST_RELEASE(vals);
     }
 
  cleanup:
-    /* cleanup the xfr storage */
-    for (i=0; i < ncores+2; i++) {
-        OBJ_DESTRUCT(&kv[i]);
-    }
     if (NULL != hostname) {
         free(hostname);
     }
@@ -481,7 +488,5 @@ static int check_cpu_type(void)
         }
         obj = obj->next_sibling;
     }
-    orte_show_help("help-orcm-sensor-pwr.txt", "no-topo-info",
-                   true, mca_sensor_pwr_component.model);
     return ORTE_ERROR;
 }

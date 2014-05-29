@@ -80,6 +80,7 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/db/base/base.h"
+#include "orcm/mca/diag/base/base.h"
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/sensor.h"
@@ -605,6 +606,18 @@ static int orcmd_init(void)
         goto error;
     }
 
+    /* open and setup the DIAG framework */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_diag_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_diag_base_open";
+        goto error;
+    }
+    if (ORCM_SUCCESS != (ret = orcm_diag_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_diag_select";
+        goto error;
+    }
+
     return ORTE_SUCCESS;
     
  error:
@@ -636,6 +649,7 @@ static void orcmd_finalize(void)
     }
 
     /* close frameworks */
+    (void) mca_base_framework_close(&orcm_diag_base_framework);
     (void) mca_base_framework_close(&orte_filem_base_framework);
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);
     (void) mca_base_framework_close(&orte_iof_base_framework);

@@ -88,3 +88,4 @@ orcm/test/orte_sensor
 orcm/tools/oqueue/oqueue
 orcm/tools/oqueue/oqueue.1
 orcm/tools/opwrvirus/opwrvirus
+orcm/tools/otestcmd/otestcmd

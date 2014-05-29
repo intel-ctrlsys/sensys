@@ -28,5 +28,6 @@ AC_DEFUN([ORCM_CONFIG_FILES],[
     orcm/tools/wrappers/orcmcc-wrapper-data.txt
     orcm/tools/orcm-emulator/Makefile
     orcm/tools/opwrvirus/Makefile
+    orcm/tools/otestcmd/Makefile
     ])
 ])

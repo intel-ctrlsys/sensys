@@ -21,4 +21,5 @@ SUBDIRS += \
         tools/orun \
         tools/osub \
         tools/oqueue \
-        tools/opwrvirus
+        tools/opwrvirus \
+        tools/otestcmd

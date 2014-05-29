@@ -82,9 +82,18 @@ int orcm_diag_base_select(void)
                                 component->mca_component_name );
             continue;
         }
-
-        /* If we got a module, keep it */
         nmodule = (orcm_diag_base_module_t*) module;
+
+        /* If we got a module, init it */
+        if (NULL != nmodule->init) {
+            if (ORCM_SUCCESS != nmodule->init()) {
+                opal_output_verbose(5, orcm_diag_base_framework.framework_output,
+                                    "mca:diag:select: Skipping component [%s]. Init returned error",
+                                    component->mca_component_name );
+                continue;
+            }
+        }
+
         /* add to the list of selected modules */
         newmodule = OBJ_NEW(orcm_diag_active_module_t);
         newmodule->pri = priority;

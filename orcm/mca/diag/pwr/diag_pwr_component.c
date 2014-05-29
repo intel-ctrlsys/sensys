@@ -66,7 +66,7 @@ static int diag_pwr_close(void)
 
 static int diag_pwr_component_query(mca_base_module_t **module, int *priority)
 {
-    if (ORCM_PROC_IS_DAEMON) {
+    if (ORCM_PROC_IS_DAEMON || ORCM_PROC_IS_AGGREGATOR) {
         *priority = 5;
         *module = (mca_base_module_t *)&orcm_diag_pwr_module;
         return ORCM_SUCCESS;

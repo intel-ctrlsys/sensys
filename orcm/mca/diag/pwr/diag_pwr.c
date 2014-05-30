@@ -93,36 +93,6 @@ static void ctr_des(tracker_t *trk)
     }
     OPAL_LIST_DESTRUCT(&trk->governors);
     OPAL_LIST_DESTRUCT(&trk->frequencies);
-    if (trk->child_alive) {
-        /* kill the child process */
-#if HAVE_SETPGID
-        {
-            pid_t pgrp;
-
-            pgrp = getpgid(trk->pid);
-            if (-1 != pgrp) {
-                /* target the lead process of the process
-                 * group so we ensure that the signal is
-                 * seen by all members of that group. This
-                 * ensures that the signal is seen by any
-                 * child processes our child may have
-                 * started
-                 */
-                trk->pid = pgrp;
-            }
-        }
-#endif
-        if (0 != kill(trk->pid, -9)) {
-            if (ESRCH != errno) {
-                opal_output_verbose(2, orcm_diag_base_framework.framework_output,
-                                    "%s diag:pwr: SENT KILL TO PID %d GOT ERRNO %d",
-                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (int)trk->pid, errno);
-            }
-        }
-        opal_output_verbose(2, orcm_diag_base_framework.framework_output,
-                            "%s diag:pwr: SENT KILL TO PID %d SUCCESS",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (int)trk->pid);
-    }
 }
 OBJ_CLASS_INSTANCE(tracker_t,
                    opal_list_item_t,
@@ -221,7 +191,6 @@ static int init(void)
                 break;
             }
         }
-        opal_output(0, "Entry: %s core %s", entry->d_name, &entry->d_name[k]);
         trk->core = strtoul(&entry->d_name[k], NULL, 10);
         trk->directory = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", NULL);
         
@@ -542,6 +511,7 @@ static void calibrate(void)
             continue;
         }
         trk->pid = rc;
+        trk->child_alive = true;
         collector->n_active_cores++;
         /* for each freq available to this cpu */
         OPAL_LIST_FOREACH_SAFE(kv, nkv, &trk->frequencies, opal_value_t) {
@@ -563,12 +533,13 @@ static void calibrate(void)
     /* reset everything to the system settings and kill all child
      * viral programs */
     OPAL_LIST_FOREACH(trk, &tracking, tracker_t) {
-        if (0 <= trk->pid) {
+        if (trk->child_alive) {
             opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                                 "%s pwr:calibrate terminating power virus pid %lu",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 (unsigned long)trk->pid);            
             kill(trk->pid, SIGKILL);
+            trk->child_alive = false;
         }
         filename = opal_os_path(false, trk->directory, "scaling_governor", NULL);
         if (NULL == (fp = fopen(filename, "w"))) {

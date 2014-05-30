@@ -18,6 +18,7 @@
 #include "opal/dss/dss.h"
 #include "opal/threads/threads.h"
 #include "opal/util/output.h"
+#include "opal/util/fd.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 
@@ -44,6 +45,8 @@ orcm_diag_base_t orcm_diag_base;
 static opal_thread_t progress_thread;
 static void* progress_thread_engine(opal_object_t *obj);
 static bool progress_thread_running = false;
+static opal_event_t blocking_ev;
+static int block_pipe[2];
 
 static int orcm_diag_base_close(void)
 {
@@ -56,6 +59,7 @@ static int orcm_diag_base_close(void)
         OBJ_DESTRUCT(&progress_thread);
         progress_thread_running = false;
         opal_event_base_free(orcm_diag_base.ev_base);
+        close(block_pipe[1]);
     }
 
     /* deconstruct the base objects */
@@ -63,6 +67,13 @@ static int orcm_diag_base_close(void)
     OBJ_DESTRUCT(&orcm_diag_base.bucket);
 
     return mca_base_framework_components_close(&orcm_diag_base_framework, NULL);
+}
+
+static void wakeup(int fd, short args, void *cbdata)
+{
+    opal_output_verbose(10, orcm_diag_base_framework.framework_output,
+                        "%s diag:wakeup invoked",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 }
 
 /**
@@ -85,6 +96,23 @@ static int orcm_diag_base_open(mca_base_open_flag_t flags)
     /* create the event base */
     orcm_diag_base.ev_base = opal_event_base_create();
     orcm_diag_base.ev_active = true;
+    /* add an event it can block on */
+    if (0 > pipe(block_pipe)) {
+        ORTE_ERROR_LOG(ORTE_ERR_IN_ERRNO);
+        return ORTE_ERR_IN_ERRNO;
+    }
+    /* Make sure the pipe FDs are set to close-on-exec so that
+       they don't leak into children */
+    if (opal_fd_set_cloexec(block_pipe[0]) != OPAL_SUCCESS ||
+        opal_fd_set_cloexec(block_pipe[1]) != OPAL_SUCCESS) {
+        close(block_pipe[0]);
+        close(block_pipe[1]);
+        ORTE_ERROR_LOG(ORTE_ERR_IN_ERRNO);
+        return ORTE_ERR_IN_ERRNO;
+    }
+    opal_event_set(orcm_diag_base.ev_base, &blocking_ev, block_pipe[0], OPAL_EV_READ, wakeup, NULL);
+    opal_event_add(&blocking_ev, 0);
+
     /* construct the thread object */
     OBJ_CONSTRUCT(&progress_thread, opal_thread_t);
     /* fork off a thread to progress it */

@@ -21,6 +21,7 @@
 
 #include "opal/mca/mca.h"
 #include "opal/util/argv.h"
+#include "opal/util/fd.h"
 #include "opal/util/output.h"
 #include "opal/mca/base/base.h"
 #include "opal/class/opal_pointer_array.h"
@@ -49,6 +50,8 @@ orcm_sensor_base_API_module_t orcm_sensor = {
 };
 orcm_sensor_base_t orcm_sensor_base;
 
+static opal_event_t blocking_ev;
+static int block_pipe[2];
 
 static int orcm_sensor_base_register(mca_base_register_flag_t flags)
 {
@@ -104,6 +107,13 @@ static int orcm_sensor_base_close(void)
     return mca_base_framework_components_close(&orcm_sensor_base_framework, NULL);
 }
 
+static void wakeup(int fd, short args, void *cbdata)
+{
+    opal_output_verbose(10, orcm_sensor_base_framework.framework_output,
+                        "%s sensor:wakeup invoked",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+}
+
 /**
  * Function for finding and opening either all MCA components, or the one
  * that was specifically requested via a MCA parameter.
@@ -129,6 +139,22 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
     orcm_sensor_base.ev_base = opal_event_base_create();
     orcm_sensor_base.ev_active = false;
     orcm_sensor_base.progress_thread_running = false;
+    /* add an event it can block on */
+    if (0 > pipe(block_pipe)) {
+        ORTE_ERROR_LOG(ORTE_ERR_IN_ERRNO);
+        return ORTE_ERR_IN_ERRNO;
+    }
+    /* Make sure the pipe FDs are set to close-on-exec so that
+       they don't leak into children */
+    if (opal_fd_set_cloexec(block_pipe[0]) != OPAL_SUCCESS ||
+        opal_fd_set_cloexec(block_pipe[1]) != OPAL_SUCCESS) {
+        close(block_pipe[0]);
+        close(block_pipe[1]);
+        ORTE_ERROR_LOG(ORTE_ERR_IN_ERRNO);
+        return ORTE_ERR_IN_ERRNO;
+    }
+    opal_event_set(orcm_sensor_base.ev_base, &blocking_ev, block_pipe[0], OPAL_EV_READ, wakeup, NULL);
+    opal_event_add(&blocking_ev, 0);
 
     return OPAL_SUCCESS;
 }

@@ -15,9 +15,11 @@ dist_orcmdata_DATA += runtime/help-orcm-runtime.txt
 headers += \
         runtime/runtime.h \
         runtime/orcm_globals.h \
-        runtime/orcm_info_support.h
+        runtime/orcm_info_support.h \
+        runtime/orcm_progress.h
 
 liborcm_la_SOURCES += \
         runtime/orcm_finalize.c \
         runtime/orcm_init.c \
-        runtime/orcm_info_support.c
+        runtime/orcm_info_support.c \
+        runtime/orcm_progress.c

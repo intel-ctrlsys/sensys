@@ -20,7 +20,7 @@
 #include "opal/mca/event/event.h"
 
 #include "orcm/mca/db/db.h"
-
+#include "orcm/runtime/orcm_progress.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 
@@ -46,7 +46,7 @@ static void* progress_thread_engine(opal_object_t *obj)
 void orcm_sensor_base_start(orte_jobid_t job)
 {
     orcm_sensor_active_module_t *i_module;
-    int i, rc;
+    int i;
     orcm_sensor_sampler_t *sampler;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -74,6 +74,16 @@ void orcm_sensor_base_start(orte_jobid_t job)
             }
         }
 
+        /* create the event base and start the progress engine, if necessary */
+        if (!orcm_sensor_base.ev_active) {
+            orcm_sensor_base.ev_active = true;
+            if (NULL == (orcm_sensor_base.ev_base = orcm_start_progress_thread("sensor", progress_thread_engine))) {
+                orcm_sensor_base.ev_active = false;
+                return;
+            }
+        }
+
+
         if (mods_active && 0 < orcm_sensor_base.sample_rate) {
             /* startup a timer to wake us up periodically
              * for a data sample, and pass in the sampler
@@ -88,25 +98,12 @@ void orcm_sensor_base_start(orte_jobid_t job)
             opal_event_evtimer_set(orcm_sensor_base.ev_base, &sampler->ev,
                                    take_sample, sampler);
             opal_event_evtimer_add(&sampler->ev, &sampler->rate);
-
-            /* start the progress thread, if required */
-            if (!orcm_sensor_base.progress_thread_running) {
-                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                                    "%s sensor:base: starting sensor progress thread",
-                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-                /* construct the thread object */
-                OBJ_CONSTRUCT(&orcm_sensor_base.progress_thread, opal_thread_t);
-                /* fork off a thread to progress it */
-                orcm_sensor_base.progress_thread.t_run = progress_thread_engine;
-                orcm_sensor_base.progress_thread_running = true;
-                orcm_sensor_base.ev_active = true;
-                if (OPAL_SUCCESS != (rc = opal_thread_start(&orcm_sensor_base.progress_thread))) {
-                    ORTE_ERROR_LOG(rc);
-                    orcm_sensor_base.progress_thread_running = false;
-                }
-            }
         }
+    } else if (!orcm_sensor_base.ev_active) {
+        orcm_sensor_base.ev_active = true;
+        orcm_restart_progress_thread("sensor");
     }
+
     return;    
 }
 
@@ -124,14 +121,10 @@ void orcm_sensor_base_stop(orte_jobid_t job)
                         "%s sensor:base: stopping sensors",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
-    if (orcm_sensor_base.progress_thread_running) {
+    if (orcm_sensor_base.ev_active) {
         orcm_sensor_base.ev_active = false;
-        /* break the event loop */
-        opal_event_base_loopbreak(orcm_sensor_base.ev_base);
-        /* wait for thread to exit */
-        opal_thread_join(&orcm_sensor_base.progress_thread, NULL);
-        OBJ_DESTRUCT(&orcm_sensor_base.progress_thread);
-        orcm_sensor_base.progress_thread_running = false;
+        /* stop the thread without releasing the event base */
+        orcm_stop_progress_thread("sensor", false);
     }
 
     /* call the stop function of all modules in priority order */

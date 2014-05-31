@@ -45,8 +45,6 @@ typedef struct {
     opal_pointer_array_t modules;
     bool log_samples;
     int sample_rate;
-    opal_thread_t progress_thread;
-    bool progress_thread_running;
     int dbhandle;
     bool dbhandle_requested;
 } orcm_sensor_base_t;

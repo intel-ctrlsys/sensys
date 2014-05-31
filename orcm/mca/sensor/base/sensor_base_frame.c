@@ -29,6 +29,7 @@
 
 #include "orte/mca/errmgr/errmgr.h"
 
+#include "orcm/runtime/orcm_progress.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 
@@ -49,9 +50,6 @@ orcm_sensor_base_API_module_t orcm_sensor = {
     orcm_sensor_base_manually_sample
 };
 orcm_sensor_base_t orcm_sensor_base;
-
-static opal_event_t blocking_ev;
-static int block_pipe[2];
 
 static int orcm_sensor_base_register(mca_base_register_flag_t flags)
 {
@@ -82,15 +80,10 @@ static int orcm_sensor_base_close(void)
     orcm_sensor_active_module_t *i_module;
     int i;
     
-    if (orcm_sensor_base.progress_thread_running) {
+    if (orcm_sensor_base.ev_active) {
         orcm_sensor_base.ev_active = false;
-        /* break the event loop */
-        opal_event_base_loopbreak(orcm_sensor_base.ev_base);
-        /* wait for thread to exit */
-        opal_thread_join(&orcm_sensor_base.progress_thread, NULL);
-        OBJ_DESTRUCT(&orcm_sensor_base.progress_thread);
-        orcm_sensor_base.progress_thread_running = false;
-        opal_event_base_free(orcm_sensor_base.ev_base);
+        /* stop the thread */
+        orcm_stop_progress_thread("sensor", true);
     }
 
     for (i=0; i < orcm_sensor_base.modules.size; i++) {
@@ -107,13 +100,6 @@ static int orcm_sensor_base_close(void)
     return mca_base_framework_components_close(&orcm_sensor_base_framework, NULL);
 }
 
-static void wakeup(int fd, short args, void *cbdata)
-{
-    opal_output_verbose(10, orcm_sensor_base_framework.framework_output,
-                        "%s sensor:wakeup invoked",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-}
-
 /**
  * Function for finding and opening either all MCA components, or the one
  * that was specifically requested via a MCA parameter.
@@ -125,6 +111,7 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
     /* initialize globals */
     orcm_sensor_base.dbhandle = -1;
     orcm_sensor_base.dbhandle_requested = false;
+    orcm_sensor_base.ev_active = false;
 
     /* construct the array of modules */
     OBJ_CONSTRUCT(&orcm_sensor_base.modules, opal_pointer_array_t);
@@ -134,27 +121,6 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
     if (OPAL_SUCCESS != (rc = mca_base_framework_components_open(&orcm_sensor_base_framework, flags))) {
         return rc;
     }
-
-    /* create the event base */
-    orcm_sensor_base.ev_base = opal_event_base_create();
-    orcm_sensor_base.ev_active = false;
-    orcm_sensor_base.progress_thread_running = false;
-    /* add an event it can block on */
-    if (0 > pipe(block_pipe)) {
-        ORTE_ERROR_LOG(ORTE_ERR_IN_ERRNO);
-        return ORTE_ERR_IN_ERRNO;
-    }
-    /* Make sure the pipe FDs are set to close-on-exec so that
-       they don't leak into children */
-    if (opal_fd_set_cloexec(block_pipe[0]) != OPAL_SUCCESS ||
-        opal_fd_set_cloexec(block_pipe[1]) != OPAL_SUCCESS) {
-        close(block_pipe[0]);
-        close(block_pipe[1]);
-        ORTE_ERROR_LOG(ORTE_ERR_IN_ERRNO);
-        return ORTE_ERR_IN_ERRNO;
-    }
-    opal_event_set(orcm_sensor_base.ev_base, &blocking_ev, block_pipe[0], OPAL_EV_READ, wakeup, NULL);
-    opal_event_add(&blocking_ev, 0);
 
     return OPAL_SUCCESS;
 }

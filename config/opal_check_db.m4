@@ -78,3 +78,38 @@ AC_DEFUN([OPAL_CHECK_MYSQL],[
                             opal_mysql_incdir="$with_mysql/include"
                             AC_MSG_RESULT([found ($opal_mysql_incdir/mysql.h)])])])])])
 ])
+
+AC_DEFUN([OPAL_CHECK_ODBC],[
+    AC_ARG_WITH([odbc],
+                [AC_HELP_STRING([--with-odbc(=DIR)],
+                                [Build ODBC support, optionally adding DIR to the search path (default: no)])],
+	                        [], with_odbc=no)
+
+    AC_MSG_CHECKING([if ODBC support requested])
+    AS_IF([test "$with_odbc" = "no" -o "x$with_odbc" = "x"],
+      [opal_check_odbc_happy=no
+       AC_MSG_RESULT([no])],
+      [AS_IF([test "$with_odbc" = "yes"],
+             [AS_IF([test "x`ls /usr/include/sql.h 2> /dev/null`" = "x"],
+                    [AC_MSG_RESULT([not found in standard location])
+                     AC_MSG_WARN([Expected file /usr/include/sql.h not found])
+                     AC_MSG_ERROR([Cannot continue])],
+                    [AC_MSG_RESULT([found])
+                     opal_check_odbc_happy=yes
+                     opal_odbc_incdir="/usr/include"])],
+             [AS_IF([test ! -d "$with_odbc"],
+                    [AC_MSG_RESULT([not found])
+                     AC_MSG_WARN([Directory $with_odbc not found])
+                     AC_MSG_ERROR([Cannot continue])],
+                    [AS_IF([test "x`ls $with_odbc/include/sql.h 2> /dev/null`" = "x"],
+                           [AS_IF([test "x`ls $with_odbc/sql.h 2> /dev/null`" = "x"],
+                                  [AC_MSG_RESULT([not found])
+                                   AC_MSG_WARN([Could not find sql.h in $with_odbc/include or $with_odbc])
+                                   AC_MSG_ERROR([Cannot continue])],
+                                  [opal_check_odbc_happy=yes
+                                   opal_odbc_incdir=$with_odbc
+                                   AC_MSG_RESULT([found ($with_odbc/sql.h)])])],
+                           [opal_check_odbc_happy=yes
+                            opal_odbc_incdir="$with_odbc/include"
+                            AC_MSG_RESULT([found ($opal_odbc_incdir/sql.h)])])])])])
+])

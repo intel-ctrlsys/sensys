@@ -26,8 +26,7 @@ static void finalize(void);
 
 orcm_scd_base_module_t orcm_scd_fifo_module = {
     init,
-    finalize,
-    NULL  // never directly called inside scheduler
+    finalize
 };
 
 static void fifo_undef(int sd, short args, void *cbdata);

@@ -73,7 +73,6 @@ static int orcm_scd_base_close(void)
     }
 
     /* deconstruct the base objects */
-    OPAL_LIST_DESTRUCT(&orcm_scd_base.active_modules);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.states);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.queues);
 
@@ -92,7 +91,6 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
     /* setup the base objects */
     orcm_scd_base.ev_active = false;
     OBJ_CONSTRUCT(&orcm_scd_base.states, opal_list_t);
-    OBJ_CONSTRUCT(&orcm_scd_base.active_modules, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.queues, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.nodes, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_scd_base.nodes, 8, INT_MAX, 8);
@@ -191,16 +189,6 @@ const char *orcm_scd_node_state_to_str(orcm_scd_node_state_t state)
 }
 
 /****    CLASS INSTANTIATIONS    ****/
-static void scd_des(orcm_scd_base_active_module_t *s)
-{
-    if (NULL != s->module->finalize) {
-        s->module->finalize();
-    }
-}
-OBJ_CLASS_INSTANCE(orcm_scd_base_active_module_t,
-                   opal_list_item_t,
-                   NULL, scd_des);
-
 OBJ_CLASS_INSTANCE(orcm_scheduler_caddy_t,
                    opal_object_t,
                    NULL, NULL);

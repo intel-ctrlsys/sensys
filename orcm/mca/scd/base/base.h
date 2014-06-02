@@ -55,7 +55,7 @@ OBJ_CLASS_DECLARATION(orcm_scheduler_caddy_t);
         s->scheduler = (a);                                              \
         opal_event_set(orcm_scd_base.ev_base, &s->ev, -1, OPAL_EV_WRITE, \
                        orcm_scd_base_construct_queues, s);               \
-        opal_event_set_priority(&s->ev, ORCM_SCHED_PRI);                   \
+        opal_event_set_priority(&s->ev, ORCM_SCHED_PRI);                 \
         opal_event_active(&s->ev, OPAL_EV_WRITE, 1);                     \
     } while(0);
 
@@ -71,25 +71,14 @@ typedef struct {
     bool ev_active;
     /* state machine */
     opal_list_t states;
-    /* list of active scheduler plugins */
-    opal_list_t active_modules;
+    /* selected plugin */
+    orcm_scd_base_module_t *module;
     /* queues for tracking session requests */
     opal_list_t queues;
     /* node tracking */
     opal_pointer_array_t nodes;
 } orcm_scd_base_t;
 ORCM_DECLSPEC extern orcm_scd_base_t orcm_scd_base;
-
-/**
- * Select an scd component / module
- */
-typedef struct {
-    opal_list_item_t super;
-    int pri;
-    orcm_scd_base_module_t *module;
-    mca_base_component_t *component;
-} orcm_scd_base_active_module_t;
-OBJ_CLASS_DECLARATION(orcm_scd_base_active_module_t);
 
 /* start/stop base receive */
 ORCM_DECLSPEC int orcm_scd_base_comm_start(void);

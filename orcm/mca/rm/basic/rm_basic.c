@@ -101,7 +101,7 @@ static void basic_request(int sd, short args, void *cbdata)
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
     int i, rc, num_nodes;
     char *nodelist = NULL;
-    char *noderegex;
+    char *noderegex = NULL;
 
     num_nodes = caddy->session->alloc->min_nodes;
 

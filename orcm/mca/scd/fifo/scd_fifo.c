@@ -156,15 +156,15 @@ static void fifo_schedule(int sd, short args, void *cbdata)
             free_nodes = 0;
             if (orcm_scd_base.nodes.number_free > 0) {
                 for (i = 0; i < orcm_scd_base.nodes.size; i++) {
-                    if (NULL == (nodeptr = (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, i))) {
+                    if (NULL ==
+                        (nodeptr =
+                         (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, i))) {
                         continue;
                     }
                     /* TODO need to add logic for partially allocated nodes */
-                    /* TODO need to add interface to query rm status for external rm compat
-                     * getting rm state from nodeptr->state is cheating
-                     * it should be safe since its only reading it though, right? */
                     /* TODO check for other constraints, but how? */
-                    if (ORCM_SCD_NODE_STATE_UNALLOC == nodeptr->scd_state && ORCM_NODE_STATE_UP == nodeptr->state) {
+                    if (ORCM_SCD_NODE_STATE_UNALLOC == nodeptr->scd_state
+                        && ORCM_NODE_STATE_UP == nodeptr->state) {
                         free_nodes++;
                     }
                 }
@@ -179,7 +179,10 @@ static void fifo_schedule(int sd, short args, void *cbdata)
             } else {
                 OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                                      "%s scd:fifo:schedule - (session: %d) not enough free nodes (required: %d found: %d), re-queueing session\n",
-                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), sessionptr->id, sessionptr->alloc->min_nodes, free_nodes));
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                     sessionptr->id,
+                                     sessionptr->alloc->min_nodes,
+                                     free_nodes));
                 opal_list_prepend(&q->sessions, &sessionptr->super);
             }
         }
@@ -202,8 +205,7 @@ static void fifo_allocated(int sd, short args, void *cbdata)
                          caddy->session->id,
                          caddy->session->alloc->nodes));
 
-    /* put session on running queue
-     */
+    /* put session on running queue */
     OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
         if (0 == strcmp(q->name, "running")) {
             caddy->session->alloc->queues = strdup(q->name);
@@ -215,7 +217,8 @@ static void fifo_allocated(int sd, short args, void *cbdata)
     if (0 == strcmp(caddy->session->alloc->nodes, "ERROR")) {
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                              "%s scd:fifo:allocated - (session: %d) nodelist came back as ERROR\n",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), caddy->session->id));
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             caddy->session->id));
         goto ERROR;
     }
 
@@ -223,11 +226,14 @@ static void fifo_allocated(int sd, short args, void *cbdata)
 
     /* set nodes to ALLOC
     */
-    if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(caddy->session->alloc->nodes, &nodenames))) {
+    if (ORTE_SUCCESS !=
+        (rc = orte_regex_extract_node_names(caddy->session->alloc->nodes,
+                                            &nodenames))) {
         ORTE_ERROR_LOG(rc);
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                              "%s scd:fifo:allocated - (session: %d) could not extract nodelist\n",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), caddy->session->id));
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             caddy->session->id));
         goto ERROR;
     }
 
@@ -243,7 +249,9 @@ static void fifo_allocated(int sd, short args, void *cbdata)
         goto ERROR;
     }
 
-    /* node array should be indexed by node num, if we change to lookup by index that would be faster */
+    /* node array should be indexed by node num, 
+     * if we change to lookup by index that would be faster 
+     */
     for (i = 0; i < num_nodes; i++) {
         for (j = 0; j < orcm_scd_base.nodes.size; j++) {
             if (NULL == (nodeptr =
@@ -293,17 +301,22 @@ static void fifo_terminated(int sd, short args, void *cbdata)
 
     /* set nodes to UNALLOC
     */
-    if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(caddy->session->alloc->nodes, &nodenames))) {
+    if (ORTE_SUCCESS !=
+        (rc = orte_regex_extract_node_names(caddy->session->alloc->nodes,
+                                            &nodenames))) {
         ORTE_ERROR_LOG(rc);
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                              "%s scd:fifo:terminated - (session: %d) could not extract nodelist\n",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), caddy->session->id));
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             caddy->session->id));
         return;
     }
 
     num_nodes = opal_argv_count(nodenames);
 
-    /* node array should be indexed by node num, if we change to lookup by index that would be faster */
+    /* node array should be indexed by node num, 
+     * if we change to lookup by index that would be faster 
+     */
     for (i = 0; i < num_nodes; i++) {
         for (j = 0; j < orcm_scd_base.nodes.size; j++) {
             if (NULL == (nodeptr =

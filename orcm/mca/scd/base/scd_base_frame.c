@@ -95,25 +95,30 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
     OBJ_CONSTRUCT(&orcm_scd_base.nodes, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_scd_base.nodes, 8, INT_MAX, 8);
 
-    if (OPAL_SUCCESS != (rc = mca_base_framework_components_open(&orcm_scd_base_framework, flags))) {
+    if (OPAL_SUCCESS !=
+        (rc = mca_base_framework_components_open(&orcm_scd_base_framework,
+                                                 flags))) {
         return rc;
     }
 
     /* register the scheduler types for packing/unpacking services */
     tmp = ORCM_ALLOC;
-    if (OPAL_SUCCESS != (rc = opal_dss.register_type(orcm_pack_alloc,
-                                                     orcm_unpack_alloc,
-                                                     (opal_dss_copy_fn_t)orcm_copy_alloc,
-                                                     (opal_dss_compare_fn_t)orcm_compare_alloc,
-                                                     (opal_dss_print_fn_t)orcm_print_alloc,
-                                                     OPAL_DSS_STRUCTURED,
-                                                     "ORCM_ALLOC", &tmp))) {
+    if (OPAL_SUCCESS !=
+        (rc = opal_dss.register_type(orcm_pack_alloc,
+                                     orcm_unpack_alloc,
+                                     (opal_dss_copy_fn_t)orcm_copy_alloc,
+                                     (opal_dss_compare_fn_t)orcm_compare_alloc,
+                                     (opal_dss_print_fn_t)orcm_print_alloc,
+                                     OPAL_DSS_STRUCTURED,
+                                     "ORCM_ALLOC", &tmp))) {
         ORTE_ERROR_LOG(rc);
     }
 
     /* create the event base */
     orcm_scd_base.ev_active = true;
-    if (NULL == (orcm_scd_base.ev_base = orcm_start_progress_thread("scd", progress_thread_engine))) {
+    if (NULL ==
+        (orcm_scd_base.ev_base = orcm_start_progress_thread("scd",
+                                                            progress_thread_engine))) {
         orcm_scd_base.ev_active = false;
         return ORCM_ERR_OUT_OF_RESOURCE;
     }

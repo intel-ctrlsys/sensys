@@ -44,16 +44,19 @@ void orcm_scd_base_activate_session_state(orcm_session_t *session,
         }
         if (s->state == state) {
             if (NULL == s->cbfunc) {
-                OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
+                OPAL_OUTPUT_VERBOSE((1,
+                                     orcm_scd_base_framework.framework_output,
                                      "%s NULL CBFUNC FOR SESSION %d STATE %s",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                     session->id, orcm_scd_session_state_to_str(state)));
+                                     session->id,
+                                     orcm_scd_session_state_to_str(state)));
                 return;
             }
             caddy = OBJ_NEW(orcm_session_caddy_t);
             caddy->session = session;
             OBJ_RETAIN(session);
-            opal_event_set(orcm_scd_base.ev_base, &caddy->ev, -1, OPAL_EV_WRITE, s->cbfunc, caddy);
+            opal_event_set(orcm_scd_base.ev_base, &caddy->ev, -1,
+                           OPAL_EV_WRITE, s->cbfunc, caddy);
             opal_event_set_priority(&caddy->ev, s->priority);
             opal_event_active(&caddy->ev, OPAL_EV_WRITE, 1);
             return;
@@ -82,8 +85,11 @@ void orcm_scd_base_activate_session_state(orcm_session_t *session,
     OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
                          "%s ACTIVATING SESSION %d STATE %s PRI %d",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                         session->id, orcm_scd_session_state_to_str(state), s->priority));
-    opal_event_set(orcm_scd_base.ev_base, &caddy->ev, -1, OPAL_EV_WRITE, s->cbfunc, caddy);
+                         session->id,
+                         orcm_scd_session_state_to_str(state),
+                         s->priority));
+    opal_event_set(orcm_scd_base.ev_base, &caddy->ev, -1,
+                   OPAL_EV_WRITE, s->cbfunc, caddy);
     opal_event_set_priority(&caddy->ev, s->priority);
     opal_event_active(&caddy->ev, OPAL_EV_WRITE, 1);
 }

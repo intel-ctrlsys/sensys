@@ -29,14 +29,14 @@
 
 BEGIN_C_DECLS
 
-#define ORCM_ACTIVATE_SCD_STATE(a, b)                                  \
+#define ORCM_ACTIVATE_SCD_STATE(a, b)                                    \
     do {                                                                 \
         opal_output_verbose(1, orcm_scd_base_framework.framework_output, \
                             "%s ACTIVATE SESSION %d STATE %s AT %s:%d",  \
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),          \
                             (a)->id, orcm_scd_session_state_to_str((b)), \
                             __FILE__, __LINE__);                         \
-        orcm_scd.activate_scd_session_state((a), (b));                 \
+        orcm_scd.activate_scd_session_state((a), (b));                   \
     } while(0);
 
 /*

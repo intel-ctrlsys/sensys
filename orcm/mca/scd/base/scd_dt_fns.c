@@ -43,119 +43,211 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
         alloc = allocs[i];
         //opal_dss.dump(0, alloc, ORCM_ALLOC);
         /* pack the id */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->id, 1, OPAL_INT64))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->id,
+                                        1,
+                                        OPAL_INT64))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the priority */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->priority, 1, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->priority,
+                                        1,
+                                        OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the account */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->account, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->account,
+                                        1,
+                                        OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the project name */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->name, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->name,
+                                        1,
+                                        OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the gid */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->gid, 1, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->gid,
+                                        1,
+                                        OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the max_nodes */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->max_nodes, 1, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->max_nodes,
+                                        1,
+                                        OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the max_pes */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->max_pes, 1, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->max_pes,
+                                        1,
+                                        OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the min_nodes */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->min_nodes, 1, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->min_nodes,
+                                        1,
+                                        OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the min_pes */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->min_pes, 1, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->min_pes,
+                                        1,
+                                        OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the beginning time */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->begin, 1, OPAL_TIME))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->begin,
+                                        1,
+                                        OPAL_TIME))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the walltime */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->walltime, 1, OPAL_TIME))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->walltime,
+                                        1,
+                                        OPAL_TIME))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the exclusive flag */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->exclusive, 1, OPAL_BOOL))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->exclusive,
+                                        1,
+                                        OPAL_BOOL))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the caller_uid */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->caller_uid, 1, OPAL_UINT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->caller_uid,
+                                        1,
+                                        OPAL_UINT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the caller_gid */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->caller_gid, 1, OPAL_UINT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->caller_gid,
+                                        1,
+                                        OPAL_UINT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the interactive flag */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->interactive, 1, OPAL_BOOL))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->interactive,
+                                        1,
+                                        OPAL_BOOL))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the hnp daemon */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->hnp, 1, ORTE_NAME))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->hnp,
+                                        1,
+                                        ORTE_NAME))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the hnp name */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->hnpname, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->hnpname,
+                                        1,
+                                        OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the nodefile */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->nodefile, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->nodefile,
+                                        1,
+                                        OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the nodes */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->nodes, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->nodes,
+                                        1,
+                                        OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the queues */
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&alloc->queues, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->queues,
+                                        1,
+                                        OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the resource constraints */
         j = (int32_t)opal_list_get_size(&alloc->constraints);
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&j, 1, OPAL_INT32))) {
+            if (OPAL_SUCCESS !=
+                (ret = opal_dss_pack_buffer(buffer,
+                                            (void*)&j,
+                                            1,
+                                            OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         if (0 < j) {
             OPAL_LIST_FOREACH(r, &alloc->constraints, orcm_resource_t) {
                 k = r->type;
-                if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&k, 1, OPAL_INT8))) {
+                if (OPAL_SUCCESS !=
+                    (ret = opal_dss_pack_buffer(buffer,
+                                                (void*)&k,
+                                                1,
+                                                OPAL_INT8))) {
                     ORTE_ERROR_LOG(ret);
                     return ret;
                 }
-                    if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&r->constraint, 1, OPAL_STRING))) {
+                    if (OPAL_SUCCESS !=
+                        (ret = opal_dss_pack_buffer(buffer,
+                                                    (void*)&r->constraint,
+                                                    1,
+                                                    OPAL_STRING))) {
                     ORTE_ERROR_LOG(ret);
                     return ret;
                 }
@@ -190,140 +282,232 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
 
         /* unpack the id */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->id, &n, OPAL_INT64))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->id,
+                                          &n,
+                                          OPAL_INT64))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the priority */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->priority, &n, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->priority,
+                                          &n,
+                                          OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the account */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->account, &n, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->account,
+                                          &n,
+                                          OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the project name */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->name, &n, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->name,
+                                          &n,
+                                          OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the gid */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->gid, &n, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->gid,
+                                          &n,
+                                          OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the max_nodes */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->max_nodes, &n, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->max_nodes,
+                                          &n,
+                                          OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the max_pes */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->max_pes, &n, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->max_pes,
+                                          &n,
+                                          OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the min_nodes */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->min_nodes, &n, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->min_nodes,
+                                          &n,
+                                          OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the min_pes */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->min_pes, &n, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->min_pes,
+                                          &n,
+                                          OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the beginning time */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->begin, &n, OPAL_TIME))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->begin,
+                                          &n,
+                                          OPAL_TIME))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the walltime */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->walltime, &n, OPAL_TIME))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->walltime,
+                                          &n,
+                                          OPAL_TIME))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the exclusive flag */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->exclusive, &n, OPAL_BOOL))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->exclusive,
+                                          &n,
+                                          OPAL_BOOL))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the caller_uid */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->caller_uid, &n, OPAL_UINT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->caller_uid,
+                                          &n,
+                                          OPAL_UINT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the caller_gid */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->caller_gid, &n, OPAL_UINT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->caller_gid,
+                                          &n,
+                                          OPAL_UINT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the interactive flag */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->interactive, &n, OPAL_BOOL))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->interactive,
+                                          &n,
+                                          OPAL_BOOL))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the hnp daemon */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->hnp, &n, ORTE_NAME))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->hnp,
+                                          &n,
+                                          ORTE_NAME))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the hnp name */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->hnpname, &n, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->hnpname,
+                                          &n,
+                                          OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the nodefile */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->nodefile, &n, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->nodefile,
+                                          &n,
+                                          OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the nodes */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->nodes, &n, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->nodes,
+                                          &n,
+                                          OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the queues */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &a->queues, &n, OPAL_STRING))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->queues,
+                                          &n,
+                                          OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* unpack the constraints */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &j, &n, OPAL_INT32))) {
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &j,
+                                          &n,
+                                          OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         for (m=0; m < j; m++) {
             r = OBJ_NEW(orcm_resource_t);
             n=1;
-            if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &k, &n, OPAL_INT8))) {
+            if (OPAL_SUCCESS !=
+                (ret = opal_dss_unpack_buffer(buffer,
+                                              &k,
+                                              &n,
+                                              OPAL_INT8))) {
                 ORTE_ERROR_LOG(ret);
                 return ret;
             }
             r->type = (orcm_resource_type_t)k;
             n=1;
-            if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &r->constraint, &n, OPAL_STRING))) {
+            if (OPAL_SUCCESS !=
+                (ret = opal_dss_unpack_buffer(buffer,
+                                              &r->constraint,
+                                              &n,
+                                              OPAL_STRING))) {
                 ORTE_ERROR_LOG(ret);
                 return ret;
             }

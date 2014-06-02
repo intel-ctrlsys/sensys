@@ -49,16 +49,12 @@ typedef int (*orcm_scd_base_module_init_fn_t)(void);
 /* finalize the selected module */
 typedef void (*orcm_scd_base_module_finalize_fn_t)(void);
 
-/* activate a session state */
-typedef orcm_alloc_id_t (*orcm_scd_base_module_alloc_fn_t)(orcm_alloc_t *req);
-
 /*
  * Ver 1.0
  */
 typedef struct {
     orcm_scd_base_module_init_fn_t        init;
     orcm_scd_base_module_finalize_fn_t    finalize;
-    orcm_scd_base_module_alloc_fn_t       allocate;
 } orcm_scd_base_module_t;
 
 /*
@@ -71,9 +67,9 @@ typedef struct {
 
 /* define an API module */
 typedef void (*orcm_scd_API_module_activate_scd_session_state_fn_t)(orcm_session_t *s,
-                                                                orcm_scd_session_state_t state);
+                                                                    orcm_scd_session_state_t state);
 typedef struct {
-    orcm_scd_API_module_activate_scd_session_state_fn_t  activate_scd_session_state;
+    orcm_scd_API_module_activate_scd_session_state_fn_t activate_scd_session_state;
 } orcm_scd_API_module_t;
 
 /*
@@ -87,7 +83,8 @@ typedef struct {
 
 /* Global structure for accessing name server functions
  */
-ORCM_DECLSPEC extern orcm_scd_API_module_t orcm_scd;  /* holds API function pointers */
+/* holds API function pointers */
+ORCM_DECLSPEC extern orcm_scd_API_module_t orcm_scd;
 
 END_C_DECLS
 

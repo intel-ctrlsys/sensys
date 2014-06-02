@@ -75,7 +75,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                void* cbdata)
 {
     orcm_scd_cmd_flag_t command;
-    int rc, i, j, cnt;
+    int rc, i, j, cnt, result;
     orcm_alloc_t *alloc, **allocs;
     opal_buffer_t *ans;
     orcm_session_t *session;
@@ -202,6 +202,20 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         /* pass it to the scheduler */
         ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_CANCEL);
 
+        /* send confirmation back to sender */
+        result = 0;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
+        if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
+                                                          ORCM_RML_TAG_SCD,
+                                                          orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
         return;
     } else if (ORCM_NODE_INFO_COMMAND == command) {
         /* pack the number of nodes we have */
@@ -220,7 +234,6 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                 return;
             }
             i = 0;
-            fprintf(stdout, "lowestfree: %i, size: %i\n", (int)orcm_scd_base.nodes.lowest_free, (int)orcm_scd_base.nodes.size);
             for (j = 0; j < orcm_scd_base.nodes.lowest_free; j++) {
                 if (NULL == (nodes[i] = (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, j))) {
                     continue;

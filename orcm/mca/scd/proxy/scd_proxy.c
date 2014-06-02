@@ -19,12 +19,10 @@
 
 static int init(void);
 static void finalize(void);
-static orcm_alloc_id_t alloc(orcm_alloc_t *req);
 
 orcm_scd_base_module_t orcm_scd_proxy_module = {
     init,
-    finalize,
-    alloc
+    finalize
 };
 
 
@@ -43,15 +41,4 @@ static void finalize(void)
                          "%s scd:proxy:finalize",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     
-}
-
-static orcm_alloc_id_t alloc(orcm_alloc_t *req)
-{
-    /* package the request and send it to the scheduler */
-
-    /* wait for a response */
-
-    /* return the allocation id */
-
-    return ORCM_ERR_NOT_IMPLEMENTED;
 }

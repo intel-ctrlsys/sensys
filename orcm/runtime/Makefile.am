@@ -20,6 +20,7 @@ headers += \
 
 liborcm_la_SOURCES += \
         runtime/orcm_finalize.c \
+        runtime/orcm_globals.c \
         runtime/orcm_init.c \
         runtime/orcm_info_support.c \
         runtime/orcm_progress.c

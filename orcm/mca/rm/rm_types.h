@@ -60,19 +60,6 @@ typedef struct {
 } orcm_rm_state_t;
 ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_rm_state_t);
 
-/* define a few commands */
-typedef uint8_t orcm_rm_cmd_flag_t;
-#define ORCM_RM_CMD_T OPAL_UINT8
-
-#define ORCM_NODESTATE_REQ_COMMAND    1
-#define ORCM_RESOURCE_REQ_COMMAND     2
-#define ORCM_NODESTATE_UPDATE_COMMAND 3
-#define ORCM_VM_READY_COMMAND         4
-#define ORCM_LAUNCH_STEPD_COMMAND     5
-#define ORCM_CANCEL_STEPD_COMMAND     6
-#define ORCM_STEPD_COMPLETE_COMMAND   7
-#define ORCM_CALIBRATE                8
-
 END_C_DECLS
 
 #endif

@@ -873,6 +873,8 @@ orcm/include/orcm/frameworks.h
 orte/include/orte/frameworks.h
 orcm/tools/wrappers/orcmcc-wrapper-data.txt
 orcm/include/orcm/version.h
+orcm/tools/octl/octl
+orcm/tools/octl/octl.1
 orcm/tools/ops/ops
 orcm/tools/ops/ops.1
 orcm/tools/orcm-emulator/orcm-emulator

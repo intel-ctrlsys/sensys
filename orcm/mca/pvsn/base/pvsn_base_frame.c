@@ -37,7 +37,11 @@
 /*
  * Global variables
  */
-orcm_pvsn_base_module_t orcm_pvsn;
+orcm_pvsn_API_module_t orcm_pvsn = {
+    orcm_pvsn_base_query_avail,
+    orcm_pvsn_base_query_status,
+    orcm_pvsn_base_provision
+};
 orcm_pvsn_base_t orcm_pvsn_base;
 
 /* local vars */
@@ -90,3 +94,50 @@ static void* progress_thread_engine(opal_object_t *obj)
     }
     return OPAL_THREAD_CANCELLED;
 }
+
+/***   CLASS INSTANTIATIONS   ***/
+static void imcon(orcm_pvsn_image_t *p)
+{
+    p->name = NULL;
+    OBJ_CONSTRUCT(&p->attributes, opal_list_t);
+}
+static void imdes(orcm_pvsn_image_t *p)
+{
+    if (NULL != p->name) {
+        free(p->name);
+    }
+    OPAL_LIST_DESTRUCT(&p->attributes);
+}
+OBJ_CLASS_INSTANCE(orcm_pvsn_image_t,
+                   opal_list_item_t,
+                   imcon, imdes);
+
+static void pvcon(orcm_pvsn_provision_t *p)
+{
+    p->nodes = NULL;
+    OBJ_CONSTRUCT(&p->image, orcm_pvsn_image_t);
+}
+static void pvdes(orcm_pvsn_provision_t *p)
+{
+    if (NULL != p->nodes) {
+        free(p->nodes);
+    }
+    OBJ_DESTRUCT(&p->image);
+}
+OBJ_CLASS_INSTANCE(orcm_pvsn_provision_t,
+                   opal_list_item_t,
+                   pvcon, pvdes);
+
+static void cdcon(orcm_pvsn_caddy_t *p)
+{
+    p->nodes = NULL;
+    p->image = NULL;
+    p->attributes = NULL;
+    p->pvsn_cbfunc = NULL;
+    p->query_cbfunc = NULL;
+    p->cbdata = NULL;
+    p->next_stage = NULL;
+}
+OBJ_CLASS_INSTANCE(orcm_pvsn_caddy_t,
+                   opal_object_t,
+                   cdcon, NULL);

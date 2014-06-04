@@ -86,7 +86,6 @@ static int orcm_scd_base_close(void)
 static int orcm_scd_base_open(mca_base_open_flag_t flags)
 {
     int rc;
-    opal_data_type_t tmp;
 
     /* setup the base objects */
     orcm_scd_base.ev_active = false;
@@ -99,19 +98,6 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
         (rc = mca_base_framework_components_open(&orcm_scd_base_framework,
                                                  flags))) {
         return rc;
-    }
-
-    /* register the scheduler types for packing/unpacking services */
-    tmp = ORCM_ALLOC;
-    if (OPAL_SUCCESS !=
-        (rc = opal_dss.register_type(orcm_pack_alloc,
-                                     orcm_unpack_alloc,
-                                     (opal_dss_copy_fn_t)orcm_copy_alloc,
-                                     (opal_dss_compare_fn_t)orcm_compare_alloc,
-                                     (opal_dss_print_fn_t)orcm_print_alloc,
-                                     OPAL_DSS_STRUCTURED,
-                                     "ORCM_ALLOC", &tmp))) {
-        ORTE_ERROR_LOG(rc);
     }
 
     /* create the event base */

@@ -22,3 +22,4 @@ with_freq=yes
 with_pwr=yes
 with_postgres=yes
 with_slurm=no
+with_warewulf=yes

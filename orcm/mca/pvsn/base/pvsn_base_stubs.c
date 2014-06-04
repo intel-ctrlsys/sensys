@@ -32,22 +32,25 @@ static void query_avail(int fd, short args, void *cbdata)
 
     OBJ_CONSTRUCT(&images, opal_list_t);
     if (NULL != orcm_pvsn_base.active.get_available) {
-        rc = orcm_pvsn_base.active.get_available(&images);
+        rc = orcm_pvsn_base.active.get_available(caddy->nodes, &images);
     }
 
     if (NULL != caddy->query_cbfunc) {
-        caddy->query_cbfunc(rc, &images, cbdata);
+        caddy->query_cbfunc(rc, &images, caddy->cbdata);
     }
     OPAL_LIST_DESTRUCT(&images);
     OBJ_RELEASE(caddy);
 }
 
-void orcm_pvsn_base_query_avail(orcm_pvsn_query_cbfunc_t cbfunc, void *cbdata)
+void orcm_pvsn_base_query_avail(char *resources,
+                                orcm_pvsn_query_cbfunc_t cbfunc,
+                                void *cbdata)
 {
     orcm_pvsn_caddy_t *caddy;
 
     /* push the request into the event thread */
     caddy = OBJ_NEW(orcm_pvsn_caddy_t);
+    caddy->nodes = resources;  // reuse this field
     caddy->query_cbfunc = cbfunc;
     caddy->cbdata = cbdata;
     opal_event_set(orcm_pvsn_base.ev_base,
@@ -69,7 +72,7 @@ static void query_status(int fd, short args, void *cbdata)
     }
 
     if (NULL != caddy->query_cbfunc) {
-        caddy->query_cbfunc(rc, &images, cbdata);
+        caddy->query_cbfunc(rc, &images, caddy->cbdata);
     }
     OPAL_LIST_DESTRUCT(&images);
     OBJ_RELEASE(caddy);

@@ -141,3 +141,15 @@ static void cdcon(orcm_pvsn_caddy_t *p)
 OBJ_CLASS_INSTANCE(orcm_pvsn_caddy_t,
                    opal_object_t,
                    cdcon, NULL);
+
+static void rscon(orcm_pvsn_resource_t *p)
+{
+    OBJ_CONSTRUCT(&p->kv, opal_value_t);
+}
+static void rsdes(orcm_pvsn_resource_t *p)
+{
+    OBJ_DESTRUCT(&p->kv);
+}
+OBJ_CLASS_INSTANCE(orcm_pvsn_resource_t,
+                   opal_list_item_t,
+                   rscon, rsdes);

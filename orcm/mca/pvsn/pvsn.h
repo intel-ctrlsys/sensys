@@ -55,6 +55,17 @@
 
 BEGIN_C_DECLS
 
+/* define an object to describe a provisionable resource. The
+ * type is a name (e.g., "file"), and the attributes are a list
+ * of orte_attribute_t objects that describe what is known
+ * about that resource */
+typedef struct {
+    opal_list_item_t super;
+    char *type;
+    opal_list_t attributes;
+} orcm_pvsn_resource_t;
+OBJ_CLASS_DECLARATION(orcm_pvsn_resource_t);
+
 /* define an image object to describe an image
  * we can provision */
 typedef struct {
@@ -81,11 +92,11 @@ OBJ_CLASS_DECLARATION(orcm_pvsn_provision_t);
  * or not the request succeeded, plus any user-provided data */
 typedef void (*orcm_pvsn_provision_cbfunc_t)(int status, void *cbdata);
 
-/* define the callback function for image queries that
+/* define the callback function for resource queries that
  * return a status indicating any error. In the case of
- * a query for available images, the list will contain
- * orcm_pvsn_image_t objects that describe the currently-available
- * images. In the case of a query for current provisioning,
+ * a query for available resources, the list will contain
+ * opal_value_t objects that describe the currently-available
+ * resources. In the case of a query for current provisioning,
  * the list will contain orcm_pvsn_provision_t objects.
  * In both cases, the PVSN calling function will OWN the
  * list members - thus, if the callback function wishes
@@ -108,8 +119,8 @@ typedef int (*orcm_pvsn_base_module_init_fn_t)(void);
 /* finalize the selected module */
 typedef void (*orcm_pvsn_base_module_finalize_fn_t)(void);
 
-/* query the provisioning agent for a list of available images */
-typedef int (*orcm_pvsn_base_module_avail_fn_t)(opal_list_t *images);
+/* query the provisioning agent for a list of available resources.  */
+typedef int (*orcm_pvsn_base_module_avail_fn_t)(char *resource, opal_list_t *available);
 
 /* query the provisioning status of a set of nodes */
 typedef int (*orcm_pvsn_base_module_status_fn_t)(char *nodes, opal_list_t *images);
@@ -148,8 +159,12 @@ typedef void (*orcm_pvsn_base_API_query_status_fn_t)(char *nodes,
                                                      orcm_pvsn_query_cbfunc_t cbfunc,
                                                      void *cbdata);
 
-/* define a public API for querying info on available images */
-typedef void (*orcm_pvsn_base_API_query_avail_fn_t)(orcm_pvsn_query_cbfunc_t cbfunc, void *cbdata);
+/* define a public API for querying info on available provisioning resources. The
+ * type of resources of interest can be specified as a comma-separated
+ * list. The returned list will consist of orcm_pvsn_resource_t objects */
+typedef void (*orcm_pvsn_base_API_query_avail_fn_t)(char *resource,
+                                                    orcm_pvsn_query_cbfunc_t cbfunc,
+                                                    void *cbdata);
 
 typedef struct {
     orcm_pvsn_base_API_query_avail_fn_t    get_available_images;

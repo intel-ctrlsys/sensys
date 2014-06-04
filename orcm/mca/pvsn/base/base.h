@@ -65,7 +65,7 @@ typedef struct {
 OBJ_CLASS_DECLARATION(orcm_pvsn_caddy_t);
 
 /* stub functions */
-ORCM_DECLSPEC void orcm_pvsn_base_query_avail(orcm_pvsn_query_cbfunc_t cbfunc, void *cbdata);
+ORCM_DECLSPEC void orcm_pvsn_base_query_avail(char *resource, orcm_pvsn_query_cbfunc_t cbfunc, void *cbdata);
 ORCM_DECLSPEC void orcm_pvsn_base_query_status(char *nodes,
                                                orcm_pvsn_query_cbfunc_t cbfunc,
                                                void *cbdata);

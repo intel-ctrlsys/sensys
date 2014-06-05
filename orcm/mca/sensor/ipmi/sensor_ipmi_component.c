@@ -77,12 +77,12 @@ static int ipmi_component_register(void)
 {
     mca_base_component_t *c = &mca_sensor_ipmi_component.super.base_version;
 
-     mca_sensor_ipmi_component.sensors = NULL;
-    (void) mca_base_component_var_register (c, "sensors",
-                                            "List of sensors to monitor",
-                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
+    mca_sensor_ipmi_component.test = false;
+    (void) mca_base_component_var_register (c, "test",
+                                            "Generate and pass test vector",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
-                                            &mca_sensor_ipmi_component.sensors);
+                                            & mca_sensor_ipmi_component.test);
     return ORCM_SUCCESS;
 }

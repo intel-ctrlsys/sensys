@@ -260,7 +260,7 @@ static void track_procs(int fd, short argc, void *cbdata)
                         ORTE_ERROR_LOG(rc);
                         goto cleanup;
                     }
-                    if (pptr->mpi_proc) {
+                    if (ORTE_FLAG_TEST(pptr, ORTE_PROC_FLAG_AS_MPI)) {
                         flag = 1;
                     } else {
                         flag = 0;
@@ -296,10 +296,10 @@ static void track_procs(int fd, short argc, void *cbdata)
          * while we are still trying to notify the HNP of
          * successful launch for short-lived procs
          */
-        pdata->iof_complete = true;
-        if (pdata->waitpid_recvd) {
+        ORTE_FLAG_SET(pdata, ORTE_PROC_FLAG_IOF_COMPLETE);
+        if (ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_WAITPID)) {
             /* the proc has terminated */
-            pdata->alive = false;
+            ORTE_FLAG_UNSET(pdata, ORTE_PROC_FLAG_ALIVE);
             pdata->state = ORTE_PROC_STATE_TERMINATED;
             /* Clean up the session directory as if we were the process
              * itself.  This covers the case where the process died abnormally
@@ -347,10 +347,10 @@ static void track_procs(int fd, short argc, void *cbdata)
          * while we are still trying to notify the HNP of
          * successful launch for short-lived procs
          */
-        pdata->waitpid_recvd = true;
-        if (pdata->iof_complete) {
+        ORTE_FLAG_SET(pdata, ORTE_PROC_FLAG_WAITPID);
+        if (ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_IOF_COMPLETE)) {
             /* the proc has terminated */
-            pdata->alive = false;
+            ORTE_FLAG_UNSET(pdata, ORTE_PROC_FLAG_ALIVE);
             pdata->state = ORTE_PROC_STATE_TERMINATED;
             /* Clean up the session directory as if we were the process
              * itself.  This covers the case where the process died abnormally

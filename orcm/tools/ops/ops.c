@@ -554,6 +554,7 @@ static int pretty_print_vpids(orte_job_t *job) {
 #if OPAL_ENABLE_FT_CR == 1
     char *state_str = NULL;
 #endif
+    char *nodename;
 
     /*
      * Caculate segment lengths
@@ -609,8 +610,10 @@ static int pretty_print_vpids(orte_job_t *job) {
             len_rank = strlen(rankstr);
         free(rankstr);
 
-        if( NULL != vpid->nodename && (int)strlen(vpid->nodename) > len_node) {
-            len_node = strlen(vpid->nodename);
+        nodename = NULL;
+        if( orte_get_attribute(&vpid->attributes, ORTE_PROC_NODENAME, (void**)&nodename, OPAL_STRING) &&
+            (int)strlen(nodename) > len_node) {
+            len_node = strlen(nodename);
         } else if ((int)strlen("Unknown") > len_node) {
             len_node = strlen("Unknown");
         }
@@ -692,7 +695,7 @@ static int pretty_print_vpids(orte_job_t *job) {
         printf("%*s | ",  len_o_proc_name, o_proc_name);
         printf("%*u | ",  len_rank       , (uint)vpid->local_rank);
         printf("%*d | ",  len_pid        , vpid->pid);
-        printf("%*s | ",  len_node       , (NULL == vpid->nodename) ? "Unknown" : vpid->nodename);
+        printf("%*s | ",  len_node       , (NULL == nodename) ? "Unknown" : nodename);
         printf("%*s | ",  len_state      , orte_proc_state_to_str(vpid->state));
         
 #if OPAL_ENABLE_FT_CR == 1
@@ -707,7 +710,9 @@ static int pretty_print_vpids(orte_job_t *job) {
         printf("\n");
         
     }
-    
+    if (NULL != nodename) {
+        free(nodename);
+    }
     return ORTE_SUCCESS;
 }
 
@@ -825,6 +830,7 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
     orte_app_context_t *app;
     char *appname;
     int i, j;
+    char *nodename;
 
     /* don't include the daemon job in the number of jobs reported */
     printf("mpirun:num nodes:%d:num jobs:%d\n",
@@ -858,10 +864,12 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
             } else {
                 appname = opal_basename(app->app);
             }
+            nodename = NULL;
+            orte_get_attribute(&proc->attributes, ORTE_PROC_NODENAME, (void**)&nodename, OPAL_STRING);
             printf("process:%s:rank:%s:pid:%lu:node:%s:state:%s\n",
                    appname, ORTE_VPID_PRINT(proc->name.vpid),
                    (unsigned long)proc->pid,
-                   (NULL == proc->nodename) ? "unknown" : proc->nodename,
+                   (NULL == nodename) ? "unknown" : nodename,
                    orte_proc_state_to_str(proc->state));
             free(appname);
         }

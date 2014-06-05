@@ -176,6 +176,7 @@ static void check_heartbeat(int fd, short dummy, void *arg)
     opal_buffer_t *buf;
     orcm_rm_cmd_flag_t command=ORCM_NODESTATE_UPDATE_COMMAND;
     const char *state = "down";
+    int32_t beats, *bptr;
 
     OPAL_OUTPUT_VERBOSE((3, orcm_sensor_base_framework.framework_output,
                          "%s sensor:check_heartbeat",
@@ -209,7 +210,10 @@ static void check_heartbeat(int fd, short dummy, void *arg)
             continue;
         }
 
-        if (0 == proc->beat) {
+        beats = 0;
+        bptr = &beats;
+        orte_get_attribute(&proc->attributes, ORTE_PROC_NBEATS, (void**)bptr, OPAL_INT32);
+        if (0 == beats) {
             /* no heartbeat recvd in last window */
             OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                                  "%s sensor:check_heartbeat FAILED for daemon %s",
@@ -247,10 +251,11 @@ static void check_heartbeat(int fd, short dummy, void *arg)
             OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                                  "%s HEARTBEAT DETECTED FOR %s: NUM BEATS %d",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                 ORTE_NAME_PRINT(&proc->name), proc->beat));
+                                 ORTE_NAME_PRINT(&proc->name), beats));
         }
         /* reset for next period */
-        proc->beat = 0;
+        beats = 0;
+        orte_set_attribute(&proc->attributes, ORTE_PROC_NBEATS, ORTE_ATTR_LOCAL, (void*)bptr, OPAL_INT32);
     }
 
     /* reset the timer */
@@ -265,6 +270,7 @@ static void recv_beats(int status, orte_process_name_t* sender,
     int rc, n;
     char *component=NULL;
     opal_buffer_t *buf;
+    int32_t beats, *bptr;
 
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "%s received beat from %s",
@@ -283,7 +289,11 @@ static void recv_beats(int status, orte_process_name_t* sender,
                                  "%s marked beat from %s",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                  ORTE_NAME_PRINT(sender)));
-            proc->beat++;
+            beats = 0;
+            bptr = &beats;
+            orte_get_attribute(&proc->attributes, ORTE_PROC_NBEATS, (void**)bptr, OPAL_INT32);
+            beats++;
+            orte_set_attribute(&proc->attributes, ORTE_PROC_NBEATS, ORTE_ATTR_LOCAL, (void*)bptr, OPAL_INT32);
             /* if this daemon has reappeared, reset things */
             if (ORTE_PROC_STATE_HEARTBEAT_FAILED == proc->state) {
                 proc->state = ORTE_PROC_STATE_RUNNING;

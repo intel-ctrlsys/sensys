@@ -143,11 +143,11 @@ OBJ_CLASS_INSTANCE(orcm_pvsn_caddy_t,
 
 static void rscon(orcm_pvsn_resource_t *p)
 {
-    OBJ_CONSTRUCT(&p->kv, opal_value_t);
+    OBJ_CONSTRUCT(&p->attributes, opal_list_t);
 }
 static void rsdes(orcm_pvsn_resource_t *p)
 {
-    OBJ_DESTRUCT(&p->kv);
+    OPAL_LIST_DESTRUCT(&p->attributes);
 }
 OBJ_CLASS_INSTANCE(orcm_pvsn_resource_t,
                    opal_list_item_t,

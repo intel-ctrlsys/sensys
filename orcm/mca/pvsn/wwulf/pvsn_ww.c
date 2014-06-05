@@ -25,7 +25,7 @@
 
 static int init(void);
 static void finalize(void);
-static int avail(opal_list_t *images);
+static int avail(char *resources, opal_list_t *available);
 static int status(char *nodes, opal_list_t *images);
 static int provision(char *nodes,
                      char *image,
@@ -80,11 +80,12 @@ static void finalize(void)
     }
 }
 
-static int avail(opal_list_t *images)
+static int avail(char *resources, opal_list_t *available)
 {
     char *query, *line, *ptr;
     FILE *fp;
-    orcm_pvsn_image_t *img;
+    orcm_pvsn_resource_t *res;
+    orte_attribute_t *attr;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_pvsn_base_framework.framework_output,
                          "%s pvsn:wwulf:avail",
@@ -113,9 +114,12 @@ static int avail(opal_list_t *images)
             free(line);
             continue;
         }
-        img = OBJ_NEW(orcm_pvsn_image_t);
-        img->image = query;
-        opal_list_append(images, &img->super);
+        res = OBJ_NEW(orcm_pvsn_resource_t);
+        res->type = strdup("image");
+        opal_list_append(available, &res->super);
+        attr = OBJ_NEW(orte_attribute_t);
+        attr->type = 2;  // already malloc'd
+        opal_list_append(&res->attributes, &attr->super);
         if (NULL == ptr) {
             /* nothing else on line */
             free(line);
@@ -178,4 +182,5 @@ static char *orcm_getline(FILE *fp)
 
 static char *parse_next(char *line, char **ptr)
 {
+    return NULL;
 }

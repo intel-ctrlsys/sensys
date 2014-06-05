@@ -671,7 +671,7 @@ int orun(int argc, char *argv[])
     
     /* if we want the argv's indexed, indicate that */
     if (orun_globals.index_argv) {
-        jdata->controls |= ORTE_JOB_CONTROL_INDEX_ARGV;
+        orte_set_attribute(&jdata->attributes, ORTE_JOB_INDEX_ARGV, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
     }
 
     /* Parse each app, adding it to the job object */
@@ -1431,10 +1431,10 @@ static int create_app(int argc, char* argv[],
             /* construct the absolute path */
             app->cwd = opal_os_path(false, cwd, orun_globals.wdir, NULL);
         }
-        app->user_specified_cwd = true;
+        orte_set_attribute(&app->attributes, ORTE_APP_USER_CWD, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
     } else if (orun_globals.set_cwd_to_session_dir) {
-        app->set_cwd_to_session_dir = true;
-        app->user_specified_cwd = true;
+        orte_set_attribute(&app->attributes, ORTE_APP_SSNDIR_CWD, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
+        orte_set_attribute(&app->attributes, ORTE_APP_USER_CWD, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
     } else {
         if (OPAL_SUCCESS != (rc = opal_getcwd(cwd, sizeof(cwd)))) {
             orte_show_help("help-orun.txt", "orun:init-failure",
@@ -1442,7 +1442,7 @@ static int create_app(int argc, char* argv[],
             goto cleanup;
         }
         app->cwd = strdup(cwd);
-        app->user_specified_cwd = false;
+        orte_remove_attribute(&app->attributes, ORTE_APP_USER_CWD);
     }
 
     /* if this is the first app_context, check for prefix directions.
@@ -1509,7 +1509,7 @@ static int create_app(int argc, char* argv[],
                     }
                 }
 
-                app->prefix_dir = strdup(param);
+                orte_set_attribute(&app->attributes, ORTE_APP_PREFIX_DIR, ORTE_ATTR_GLOBAL, (void**)&param, OPAL_STRING);
                 free(param);
             }
         }
@@ -1526,26 +1526,31 @@ static int create_app(int argc, char* argv[],
             return ORTE_ERR_FATAL;
         } else {
             value = opal_cmd_line_get_param(&cmd_line, "hostfile", 0, 0);
-            app->hostfile = strdup(value);
+            orte_set_attribute(&app->attributes, ORTE_APP_HOSTFILE, ORTE_ATTR_GLOBAL, (void**)&value, OPAL_STRING);
         }
     }
     if (0 < (j = opal_cmd_line_get_ninsts(&cmd_line, "machinefile"))) {
-        if(1 < j || NULL != app->hostfile) {
+        if(1 < j || orte_get_attribute(&app->attributes, ORTE_APP_HOSTFILE, NULL, OPAL_STRING)) {
             orte_show_help("help-orun.txt", "orun:multiple-hostfiles",
                            true, orte_basename, NULL);
             return ORTE_ERR_FATAL;
         } else {
             value = opal_cmd_line_get_param(&cmd_line, "machinefile", 0, 0);
-            app->hostfile = strdup(value);
+            orte_set_attribute(&app->attributes, ORTE_APP_HOSTFILE, ORTE_ATTR_GLOBAL, (void**)&value, OPAL_STRING);
         }
     }
  
     /* Did the user specify any hosts? */
     if (0 < (j = opal_cmd_line_get_ninsts(&cmd_line, "host"))) {
+        char **dh=NULL, *dptr;
         for (i = 0; i < j; ++i) {
             value = opal_cmd_line_get_param(&cmd_line, "host", i, 0);
-            opal_argv_append_nosize(&app->dash_host, value);
+            opal_argv_append_nosize(&dh, value);
         }
+        dptr = opal_argv_join(dh, ',');
+        opal_argv_free(dh);
+        orte_set_attribute(&app->attributes, ORTE_APP_DASH_HOST, ORTE_ATTR_GLOBAL, (void**)&dptr, OPAL_STRING);
+        free(dptr);
     }
 
     /* check for bozo error */
@@ -1560,22 +1565,23 @@ static int create_app(int argc, char* argv[],
     total_num_apps++;
 
     /* Capture any preload flags */
-    app->preload_binary = orun_globals.preload_binaries;
+    if (orun_globals.preload_binaries) {
+        orte_set_attribute(&app->attributes, ORTE_APP_PRELOAD_BIN, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
+    }
     /* if we were told to cwd to the session dir and the app was given in
      * relative syntax, then we need to preload the binary to
      * find the app - don't do this for java apps, however, as we
      * can't easily find the class on the cmd line. Java apps have to
      * preload their binary via the preload_files option
      */
-    if (app->set_cwd_to_session_dir &&
+    if (orte_get_attribute(&app->attributes, ORTE_APP_SSNDIR_CWD, NULL, OPAL_BOOL) &&
         !opal_path_is_absolute(app->argv[0]) &&
         NULL == strstr(app->argv[0], "java")) {
-        app->preload_binary = true;
+        orte_set_attribute(&app->attributes, ORTE_APP_PRELOAD_BIN, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
     }
     if (NULL != orun_globals.preload_files) {
-        app->preload_files  = strdup(orun_globals.preload_files);
-    } else {
-        app->preload_files = NULL;
+        orte_set_attribute(&app->attributes, ORTE_APP_PRELOAD_FILES, ORTE_ATTR_GLOBAL,
+                           (void*)orun_globals.preload_files, OPAL_STRING);
     }
 
 #if OPAL_ENABLE_FT_CR == 1

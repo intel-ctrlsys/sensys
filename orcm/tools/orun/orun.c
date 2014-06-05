@@ -107,6 +107,8 @@
 #include "orte/runtime/orte_locks.h"
 #include "orte/runtime/orte_quit.h"
 
+#include "orcm/mca/scd/base/base.h"
+#include "orcm/mca/scd/scd_types.h"
 #include "orcm/runtime/runtime.h"
 
 /* ensure I can behave like a daemon */
@@ -571,9 +573,6 @@ static opal_cmd_line_init_t cmd_line_init[] = {
     { NULL, '\0', NULL, NULL, 0,
       NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
 
-    /* End of list */
-    { NULL, '\0', NULL, NULL, 0,
-      NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
 };
 
 /*
@@ -597,6 +596,11 @@ int orun(int argc, char *argv[])
     opal_cmd_line_t cmd_line;
     char *param;
     orte_job_t *jdata=NULL;
+    orcm_alloc_t alloc;
+    opal_buffer_t uribuf;
+    char *error = NULL;
+    orte_proc_t *proc;
+    orte_node_t *node;
 
     /* find our basename (the name of the executable) so that we can
        use it in pretty-print error messages */
@@ -732,6 +736,9 @@ int orun(int argc, char *argv[])
 
     /* Check for some "global" command line params */
     parse_globals(argc, argv, &cmd_line);
+    /* check for new allocation request */
+    parse_args_sched(argc, argv, &cmd_line);
+
     OBJ_DESTRUCT(&cmd_line);
 
     /* create a new job object to hold the info for this one - the
@@ -772,12 +779,37 @@ int orun(int argc, char *argv[])
     }
 
     /* Intialize ORCM */
-    if (ORCM_SUCCESS != (rc = orcm_init(ORCM_TOOLS))) {
+    if (ORCM_SUCCESS != (rc = orcm_init(ORCM_TOOL))) {
         /* cannot call ORTE_ERROR_LOG as it could be the errmgr
          * never got loaded!
          */
         return rc;
     }
+
+    /* setup my session directory */
+    if (orte_create_session_dirs) {
+        OPAL_OUTPUT_VERBOSE((2, orte_debug_output,
+                             "%s setting up session dir with\n\ttmpdir: %s\n\thost %s",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             (NULL == orte_process_info.tmpdir_base) ? "UNDEF" : orte_process_info.tmpdir_base,
+                             orte_process_info.nodename));
+        
+        if (ORTE_SUCCESS != (rc = orte_session_dir(true,
+                                                    orte_process_info.tmpdir_base,
+                                                    orte_process_info.nodename, NULL,
+                                                    ORTE_PROC_MY_NAME))) {
+            ORTE_ERROR_LOG(rc);
+            error = "orte_session_dir";
+            goto DONE;
+        }
+        
+        /* Once the session directory location has been established, set
+           the opal_output hnp file location to be in the
+           proc-specific session directory. */
+        opal_output_set_output_file_info(orte_process_info.proc_session_dir,
+                                         "output-", NULL, NULL);
+    }
+
     /* finalize the OPAL utils. As they are opened again from orte_init->opal_init
      * we continue to have a reference count on them. So we have to finalize them twice...
      */
@@ -821,6 +853,35 @@ int orun(int argc, char *argv[])
         orte_rml_base_update_contact_info(&uribuf);
         printf("orte_process_myhnp %s\n", orte_process_info.my_hnp_uri);
     }
+
+#if 0
+    /* create and store a node object where we are */
+    node = OBJ_NEW(orte_node_t);
+    node->name =strdup(orte_process_info.nodename);
+    node->index = opal_pointer_array_set_item(orte_node_pool, 0, node);
+
+    /* create and store a proc object for us */
+    proc = OBJ_NEW(orte_proc_t);
+    proc->name.jobid = ORTE_PROC_MY_NAME->jobid;
+    proc->name.vpid = ORTE_PROC_MY_NAME->vpid;
+
+    proc->pid = orte_process_info.pid;
+    proc->state = ORTE_PROC_STATE_RUNNING;
+    OBJ_RETAIN(node);  /* keep accounting straight */
+    proc->node = node;
+    opal_pointer_array_set_item(jdata->procs, proc->name.vpid, proc);
+
+    /* record that the daemon (i.e., us) is on this node 
+     * NOTE: we do not add the proc object to the node's
+     * proc array because we are not an application proc.
+     * Instead, we record it in the daemon field of the
+     * node object
+     */
+    OBJ_RETAIN(proc);   /* keep accounting straight */
+    node->daemon = proc;
+    node->state = ORTE_NODE_STATE_UP;
+#endif
+
     
     /* spawn the job and its daemons */
     rc = orte_plm.spawn(jdata);

@@ -63,6 +63,24 @@ struct orun_globals_t {
     bool disable_recovery;
     bool preload_binaries;
     bool index_argv;
+
+/* Scheduler options*/
+    char *account;
+    char *name;
+    int gid;
+    bool alloc_request;
+    int max_nodes;
+    int max_pes;
+    int min_nodes;
+    int min_pes;
+    char *starttime;
+    char *walltime;
+    bool exclusive;
+    bool interactive;
+    char *nodefile;
+    char *resource;
+    char *nodes;
+    char *hnp_uri;
 };
 
 /**

@@ -121,6 +121,7 @@ static char **global_mca_env = NULL;
 static orte_std_cntr_t total_num_apps = 0;
 static bool want_prefix_by_default = (bool) ORTE_WANT_ORTERUN_PREFIX_BY_DEFAULT;
 static char *ompi_server=NULL;
+static char *my_hnp_uri=NULL;
 
 /*
  * Globals
@@ -489,6 +490,87 @@ static opal_cmd_line_init_t cmd_line_init[] = {
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Used staged execution if inadequate resources are present (cannot support MPI jobs)" },
 
+    /* Scheduler options for new allocation */
+    { NULL,
+      'a', NULL, "account",
+      1,
+      &orun_globals.account, OPAL_CMD_LINE_TYPE_STRING,
+      "Account to be charged" },
+
+    { NULL,
+      '\0', NULL, "project",
+      1,
+      &orun_globals.name, OPAL_CMD_LINE_TYPE_STRING,
+      "User assigned project name" },
+
+    { NULL,
+      'g', NULL, "gid",
+      1,
+      &orun_globals.gid, OPAL_CMD_LINE_TYPE_INT,
+      "Group id to run session under" },
+
+    { NULL,
+      'N', NULL, "max-node",
+      1,
+      &orun_globals.max_nodes, OPAL_CMD_LINE_TYPE_INT,
+      "Max nodes allowed in allocation" },
+
+    { NULL,
+      'P', NULL, "max-pe",
+      1,
+      &orun_globals.max_pes, OPAL_CMD_LINE_TYPE_INT,
+      "Max PEs allowed in allocation" },
+
+    { NULL,
+      'M', NULL, "node",
+      1,
+      &orun_globals.min_nodes, OPAL_CMD_LINE_TYPE_INT,
+      "Minimum number of nodes required for allocation" },
+
+    { NULL,
+      'p', NULL, "pe",
+      1,
+      &orun_globals.min_pes, OPAL_CMD_LINE_TYPE_INT,
+      "Minimum number of PEs required for allocation" },
+
+    { NULL,
+      's', NULL, "start",
+      1,
+      &orun_globals.starttime, OPAL_CMD_LINE_TYPE_STRING,
+      "Earliest Date/Time required to start job" },
+
+    { NULL,
+      'w', NULL, "walltime",
+      1,
+      &orun_globals.walltime, OPAL_CMD_LINE_TYPE_STRING,
+      "Maximum duration before job is terminated" },
+
+    { NULL,
+      'e', NULL, "exclusive",
+      0,
+      &orun_globals.exclusive, OPAL_CMD_LINE_TYPE_BOOL,
+      "Do not share allocated nodes with other sessions" },
+
+    { NULL,
+      'f', NULL, "nodefile",
+      0,
+      &orun_globals.nodefile, OPAL_CMD_LINE_TYPE_STRING,
+      "Path to file listing names of candidate nodes" },
+
+    { NULL,
+      'c', NULL, "constraints",
+      1,
+      &orun_globals.resource, OPAL_CMD_LINE_TYPE_STRING,
+      "Resource constraints to be applied" },
+
+    {"orte_hnp_uri", '\0', "hnp-uri", "hnp-uri", 1,
+      &my_hnp_uri, OPAL_CMD_LINE_TYPE_STRING,
+      "URI for the HNP"},
+
+    /* End of list */
+    { NULL, '\0', NULL, NULL, 0,
+      NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
+
     /* End of list */
     { NULL, '\0', NULL, NULL, 0,
       NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
@@ -505,6 +587,9 @@ static int init_globals(void);
 static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line);
 static int parse_locals(orte_job_t *jdata, int argc, char* argv[]);
 static int parse_appfile(orte_job_t *jdata, char *filename, char ***env);
+static int init_sched_args(void);
+static int parse_args_sched(int argc, char *argv[], opal_cmd_line_t *cmd_line);
+static int alloc_request( orcm_alloc_t *alloc );
 
 int orun(int argc, char *argv[])
 {
@@ -527,6 +612,7 @@ int orun(int argc, char *argv[])
 
     /* Setup and parse the command line */
     init_globals();
+    init_sched_args();
     opal_cmd_line_create(&cmd_line, cmd_line_init);
     mca_base_cmd_line_setup(&cmd_line);
     if (OPAL_SUCCESS != (rc = opal_cmd_line_parse(&cmd_line, true,
@@ -686,7 +772,7 @@ int orun(int argc, char *argv[])
     }
 
     /* Intialize ORCM */
-    if (ORCM_SUCCESS != (rc = orcm_init(ORTE_PROC_CM | ORTE_PROC_HNP))) {
+    if (ORCM_SUCCESS != (rc = orcm_init(ORCM_TOOLS))) {
         /* cannot call ORTE_ERROR_LOG as it could be the errmgr
          * never got loaded!
          */
@@ -715,6 +801,26 @@ int orun(int argc, char *argv[])
                             ORTE_RML_PERSISTENT, orte_daemon_recv, NULL);
     
     /* create the allocation object */
+    if(orun_globals.alloc_request)
+    {
+        OBJ_CONSTRUCT(&alloc, orcm_alloc_t);
+        if (ORTE_SUCCESS != (rc = alloc_request(&alloc))) {
+            ORTE_ERROR_LOG(rc);
+            orte_show_help("help-orun.txt", "orun:alloc_request", false,
+                       orte_basename, NULL, NULL, rc);
+            ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
+            goto DONE;
+        }
+    }
+    
+    if(my_hnp_uri) {
+        ORTE_PROC_MY_HNP->jobid = 65536;
+        ORTE_PROC_MY_HNP->vpid = 0;
+        OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
+        opal_dss.pack(&uribuf, &my_hnp_uri, 1, OPAL_STRING);
+        orte_rml_base_update_contact_info(&uribuf);
+        printf("orte_process_myhnp %s\n", orte_process_info.my_hnp_uri);
+    }
     
     /* spawn the job and its daemons */
     rc = orte_plm.spawn(jdata);
@@ -1881,5 +1987,145 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
     /* All done */
 
     free(filename);
+    return ORTE_SUCCESS;
+}
+
+/* scheduler specific arguments */
+static int init_sched_args(void)
+{
+    /* Only CONSTRUCT things once */
+    orun_globals.alloc_request = false;     /* new allocation */
+    orun_globals.account = '\0';     /* account */
+    orun_globals.name = '\0';     /* name */
+    orun_globals.gid =   -1;       /* gid */
+    orun_globals.max_nodes = 0;        /* max_nodes */
+    orun_globals.max_pes = 0;        /* max_pes */
+    orun_globals.min_nodes = 0;        /* min_nodes */
+    orun_globals.min_pes = 0;        /* min_pes */
+    orun_globals.starttime = '\0';     /* starttime */
+    orun_globals.walltime =  '\0';     /* walltime */
+    orun_globals.exclusive = false;    /* exclusive */
+    orun_globals.interactive = true;    /* interactive */
+    orun_globals.nodefile = '\0';     /* nodefile */
+    orun_globals.resource = '\0';    /* resources */
+
+    return ORTE_SUCCESS;
+}
+
+
+static int parse_args_sched(int argc, char *argv[], opal_cmd_line_t *cmd_line)
+{
+    char *str = NULL;
+    /**
+     * Now start parsing scheduler specific arguments
+     */
+
+    /* if user hasn't supplied a group to run under, use effective gid of caller */
+    /* TODO: double check if user is in group */
+    /* do we also need to support the name as well as id? */
+
+    if (orun_globals.max_nodes || orun_globals.min_nodes) {
+       orun_globals.alloc_request = true;
+    } 
+
+    if (-1 == orun_globals.gid) {
+        asprintf(&str, "%u", getgid());
+        orun_globals.gid = (int)strtol(str, NULL, 10);
+        free(str);
+    }
+
+    if (orun_globals.max_nodes < orun_globals.min_nodes) {
+       orun_globals.max_nodes = orun_globals.min_nodes;
+    } 
+    if (orun_globals.max_pes < orun_globals.min_pes) {
+       orun_globals.max_pes = orun_globals.min_pes;
+    } 
+
+    return ORTE_SUCCESS;
+}
+
+static int alloc_request( orcm_alloc_t *alloc )
+{
+    orte_rml_recv_cb_t xfer;
+    opal_buffer_t *buf;
+    int rc, n;
+    orcm_scd_cmd_flag_t command=ORCM_SESSION_REQ_COMMAND;
+    orcm_alloc_id_t id;
+    struct timeval tv;
+
+    alloc->id = 0;                                // session priority
+    alloc->priority = 1;                                // session priority
+    alloc->account = orun_globals.account;         // account to be charged
+    alloc->name = orun_globals.name;               // user-assigned project name
+    alloc->gid = orun_globals.gid;                 // group id to be run under
+    alloc->max_nodes = orun_globals.max_nodes;     // max number of nodes
+    alloc->max_pes = orun_globals.max_pes;         // max number of processing elements
+    alloc->min_nodes = orun_globals.min_nodes;     // min number of nodes required
+    alloc->min_pes = orun_globals.min_pes;         // min number of pe's required
+    alloc->exclusive = orun_globals.exclusive;     // true if nodes to be exclusively allocated (i.e., not shared across sessions)
+    alloc->interactive = orun_globals.interactive; // true if in interactive mode
+    alloc->nodes = '\0';                                // regex of nodes to be used
+    /* alloc->constraints = orun_globals.resources */ ; // list of resource constraints to be applied when selecting hosts
+
+    alloc->caller_uid = getuid();   // caller uid, not from args
+    alloc->caller_gid = getgid();   // caller gid, not from args
+    alloc->hnpname='\0';
+
+    if (NULL == orun_globals.starttime || 0 == strlen(orun_globals.starttime)) {
+        gettimeofday(&tv,NULL);
+        /* desired start time for allocation deafults to now */
+        alloc->begin = tv.tv_sec;
+    } else {
+        /* TODO: eventually parse the string to figure out what user means, for now its now */
+        gettimeofday(&tv,NULL);
+        alloc->begin = tv.tv_sec;
+    }
+
+    if (NULL == orun_globals.walltime || 0 == strlen(orun_globals.walltime)) {
+        /* desired walltime default to 10 min */
+        alloc->walltime = 600;
+    } else {
+        /* get this in seconds for now, but will be parsed for more complexity later */
+        alloc->walltime = (time_t)strtol(orun_globals.walltime, NULL, 10);                               // max execution time
+    }
+
+    /* setup to receive the result */
+    OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
+    xfer.active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                            ORCM_RML_TAG_SCD,
+                            ORTE_RML_NON_PERSISTENT,
+                            orte_rml_recv_callback, &xfer);
+
+    /* send it to the scheduler */
+    buf = OBJ_NEW(opal_buffer_t);
+    /* pack the alloc command flag */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,1, ORCM_SCD_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &alloc, 1, ORCM_ALLOC))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
+                                                      ORCM_RML_TAG_SCD,
+                                                      orte_rml_send_callback, NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
+    /* get our allocated jobid */
+    n=1;
+    ORTE_WAIT_FOR_COMPLETION(xfer.active);
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &id, &n, ORCM_ALLOC_ID_T))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
     return ORTE_SUCCESS;
 }

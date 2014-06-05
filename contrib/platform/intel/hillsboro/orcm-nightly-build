@@ -35,4 +35,4 @@ with_freq=yes
 with_pwr=yes
 with_postgres=no
 with_slurm=no
-with_ipmi=no
+with_ipmi=yes

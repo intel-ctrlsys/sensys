@@ -17,11 +17,19 @@
 #ifdef HAVE_SIGNAL_H
 #include <signal.h>
 #endif
+#include <stdarg.h>
+#include <pwd.h>
+#include <unistd.h>
 
+#include "opal/types.h"
+#include "opal/dss/dss.h"
+#include "opal/util/path.h"
+#include "opal/util/argv.h"
 #include "opal/util/cmd_line.h"
 #include "opal/util/opal_environ.h"
 #include "opal/util/show_help.h"
 #include "opal/mca/base/mca_base_var.h"
+#include "opal/mca/installdirs/installdirs.h"
 #include "opal/mca/event/event.h"
 
 #include "orte/util/show_help.h"

@@ -252,13 +252,6 @@ static int orcmd_init(void)
     setup_sighandler(SIGUSR2, &sigusr2_handler, signal_callback);
     signals_set = true;
 
-    /* setup the global nidmap/pidmap object */
-    orte_nidmap.bytes = NULL;
-    orte_nidmap.size = 0;
-    orte_pidmap.bytes = NULL;
-    orte_pidmap.size = 0;
-
- 
 #if OPAL_HAVE_HWLOC
     {
         hwloc_obj_t obj;

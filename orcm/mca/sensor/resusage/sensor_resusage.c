@@ -105,11 +105,10 @@ static void finalize(void)
 
 static void sample(orcm_sensor_sampler_t *sampler)
 {
-    opal_pstats_t *stats, *st;
-    opal_node_stats_t *nstats, *nst;
+    opal_pstats_t *stats;
+    opal_node_stats_t *nstats;
     int rc, i;
-    orte_proc_t *child, *hog=NULL;
-    float in_use, max_mem;
+    orte_proc_t *child;
     opal_buffer_t buf, *bptr;
     char *comp;
 
@@ -141,6 +140,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
     /* the stats framework can't know nodename or rank */
     strncpy(stats->node, orte_process_info.nodename, OPAL_PSTAT_MAX_STRING_LEN);
     stats->rank = ORTE_PROC_MY_NAME->vpid;
+#if 0
     /* locally save the stats */
     if (NULL != (st = (opal_pstats_t*)opal_ring_buffer_push(&my_proc->stats, stats))) {
         OBJ_RELEASE(st);
@@ -149,6 +149,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
         /* release the popped value */
         OBJ_RELEASE(nst);
     }
+#endif
 
     /* pack them */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &orte_process_info.nodename, 1, OPAL_STRING))) {
@@ -173,7 +174,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
             if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
                 continue;
             }
-            if (!child->alive) {
+            if (!ORTE_FLAG_TEST(child, ORTE_PROC_FLAG_ALIVE)) {
                 continue;
             }
             if (0 == child->pid) {
@@ -191,10 +192,12 @@ static void sample(orcm_sensor_sampler_t *sampler)
             /* the stats framework can't know nodename or rank */
             strncpy(stats->node, orte_process_info.nodename, OPAL_PSTAT_MAX_STRING_LEN);
             stats->rank = child->name.vpid;
+#if 0
             /* store it */
             if (NULL != (st = (opal_pstats_t*)opal_ring_buffer_push(&child->stats, stats))) {
                 OBJ_RELEASE(st);
             }
+#endif
             /* pack them */
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &stats, 1, OPAL_PSTAT))) {
                 ORTE_ERROR_LOG(rc);
@@ -215,6 +218,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
     }
     OBJ_DESTRUCT(&buf);
 
+#if 0
     /* are there any issues with node-level usage? */
     nst = (opal_node_stats_t*)opal_ring_buffer_poke(&my_node->stats, -1);
     if (NULL != nst && 0.0 < mca_sensor_resusage_component.node_memory_limit) {
@@ -235,7 +239,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
                 if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
                     continue;
                 }
-                if (!child->alive) {
+                if (!ORTE_FLAG_TEST(child, ORTE_PROC_IS_ALIVE)) {
                     continue;
                 }
                 if (0 == child->pid) {
@@ -287,7 +291,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
             if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
                 continue;
             }
-            if (!child->alive) {
+            if (!ORTE_FLAG_TEST(child, ORTE_PROC_IS_ALIVE)) {
                 continue;
             }
             if (0 == child->pid) {
@@ -307,6 +311,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
             }
         }
     }
+#endif
 }
 
 static void mycleanup(int dbhandle, int status,

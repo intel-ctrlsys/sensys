@@ -44,8 +44,36 @@ typedef struct {
      */
     opal_event_base_t *ev_base;
     bool ev_active;
+    orcm_pvsn_base_module_t active;
 } orcm_pvsn_base_t;
 ORCM_DECLSPEC extern orcm_pvsn_base_t orcm_pvsn_base;
+
+typedef struct {
+    opal_object_t super;
+    opal_event_t ev;
+    /* carry across any input params */
+    char *nodes;
+    char *image;
+    opal_list_t *attributes;
+    /* carry across any user-provided cbfunc and cbdata */
+    orcm_pvsn_provision_cbfunc_t pvsn_cbfunc;
+    orcm_pvsn_query_cbfunc_t query_cbfunc;
+    void *cbdata;
+    /* intermediate callback for internal staging */
+    opal_event_cbfunc_t next_stage;
+} orcm_pvsn_caddy_t;
+OBJ_CLASS_DECLARATION(orcm_pvsn_caddy_t);
+
+/* stub functions */
+ORCM_DECLSPEC void orcm_pvsn_base_query_avail(char *resource, orcm_pvsn_query_cbfunc_t cbfunc, void *cbdata);
+ORCM_DECLSPEC void orcm_pvsn_base_query_status(char *nodes,
+                                               orcm_pvsn_query_cbfunc_t cbfunc,
+                                               void *cbdata);
+ORCM_DECLSPEC void orcm_pvsn_base_provision(char *nodes,
+                                            char *image,
+                                            opal_list_t *attributes,
+                                            orcm_pvsn_provision_cbfunc_t cbfunc,
+                                            void *cbdata);
 
 END_C_DECLS
 #endif

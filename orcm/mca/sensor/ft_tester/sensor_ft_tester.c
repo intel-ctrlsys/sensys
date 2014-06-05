@@ -31,6 +31,7 @@
 #include "opal/util/alfg.h"
 #include "opal/util/output.h"
 
+#include "orte/util/attr.h"
 #include "orte/util/error_strings.h"
 #include "orte/util/name_fns.h"
 #include "orte/mca/errmgr/errmgr.h"
@@ -87,13 +88,13 @@ static void sample(orcm_sensor_sampler_t *sampler)
             if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
                 continue;
             }
-            if (!child->alive || 0 == child->pid ||
+            if (ORTE_FLAG_TEST(child, ORTE_PROC_FLAG_ALIVE) || 0 == child->pid ||
                 ORTE_PROC_STATE_UNTERMINATED < child->state) {
                 OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                                      "%s sample:ft_tester ignoring child: %s alive %s pid %lu state %s",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                      ORTE_NAME_PRINT(&child->name),
-                                     child->alive ? "TRUE" : "FALSE",
+                                     ORTE_FLAG_TEST(child, ORTE_PROC_FLAG_ALIVE) ? "TRUE" : "FALSE",
                                      (unsigned long)child->pid, orte_proc_state_to_str(child->state)));
                 continue;
             }

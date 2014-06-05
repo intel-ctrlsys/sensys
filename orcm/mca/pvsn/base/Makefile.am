@@ -11,5 +11,6 @@ headers += \
     base/base.h
 
 libmca_pvsn_la_SOURCES += \
-    base/pvsn_base_frame.c \
-    base/pvsn_base_select.c
+        base/pvsn_base_frame.c \
+        base/pvsn_base_select.c \
+        base/pvsn_base_stubs.c

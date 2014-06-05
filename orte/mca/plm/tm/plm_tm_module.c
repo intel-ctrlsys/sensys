@@ -150,7 +150,7 @@ static int plm_tm_init(void)
 
 static int plm_tm_launch_job(orte_job_t *jdata)
 {
-    if (ORTE_JOB_CONTROL_RESTART & jdata->controls) {
+    if (ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_RESTART)) {
         /* this is a restart situation - skip to the mapping stage */
         ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_MAP);
     } else {
@@ -187,13 +187,15 @@ static void launch_daemons(int fd, short args, void *cbdata)
     char* vpid_string;
     orte_job_t *daemons, *jdata;
     orte_state_caddy_t *state = (orte_state_caddy_t*)cbdata;
+    int32_t launchid, *ldptr;
+    char *prefix_dir = NULL;
 
     jdata = state->jdata;
 
     /* if we are launching debugger daemons, then just go
      * do it - no new daemons will be launched
      */
-    if (ORTE_JOB_CONTROL_DEBUGGER_DAEMON & jdata->controls) {
+    if (ORTE_FLAG_TEST(state->jdata, ORTE_JOB_FLAG_DEBUGGER_DAEMON)) {
         jdata->state = ORTE_JOB_STATE_DAEMONS_LAUNCHED;
         ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_DAEMONS_REPORTED);
         OBJ_RELEASE(state);
@@ -269,7 +271,7 @@ static void launch_daemons(int fd, short args, void *cbdata)
         }
         
         /* if this daemon already exists, don't launch it! */
-        if (node->daemon_launched) {
+        if (ORTE_FLAG_TEST(node, ORTE_NODE_FLAG_DAEMON_LAUNCHED)) {
             continue;
         }
         
@@ -318,25 +320,26 @@ static void launch_daemons(int fd, short args, void *cbdata)
     /* add our umask -- see big note in orted.c */
     current_umask = umask(0);
     umask(current_umask);
-    asprintf(&var, "0%o", current_umask);
+    (void)asprintf(&var, "0%o", current_umask);
     opal_setenv("ORTE_DAEMON_UMASK_VALUE", var, true, &env);
     free(var);
     
     /* If we have a prefix, then modify the PATH and
-        LD_LIBRARY_PATH environment variables. We only allow
-        a single prefix to be specified. Since there will
-        always be at least one app_context, we take it from
-        there
+       LD_LIBRARY_PATH environment variables. We only allow
+       a single prefix to be specified. Since there will
+       always be at least one app_context, we take it from
+       there
     */
     app = (orte_app_context_t*)opal_pointer_array_get_item(jdata->apps, 0);
-    if (NULL != app->prefix_dir) {
+    orte_get_attribute(&app->attributes, ORTE_APP_PREFIX_DIR, (void**)&prefix_dir, OPAL_STRING);
+    if (NULL != prefix_dir) {
         char *newenv;
         
         for (i = 0; NULL != env && NULL != env[i]; ++i) {
             /* Reset PATH */
             if (0 == strncmp("PATH=", env[i], 5)) {
-                asprintf(&newenv, "%s/%s:%s", 
-                            app->prefix_dir, bin_base, env[i] + 5);
+                (void)asprintf(&newenv, "%s/%s:%s", 
+                               prefix_dir, bin_base, env[i] + 5);
                 OPAL_OUTPUT_VERBOSE((1, orte_plm_base_framework.framework_output,
                                      "%s plm:tm: resetting PATH: %s",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
@@ -347,8 +350,8 @@ static void launch_daemons(int fd, short args, void *cbdata)
             
             /* Reset LD_LIBRARY_PATH */
             else if (0 == strncmp("LD_LIBRARY_PATH=", env[i], 16)) {
-                asprintf(&newenv, "%s/%s:%s", 
-                            app->prefix_dir, lib_base, env[i] + 16);
+                (void)asprintf(&newenv, "%s/%s:%s", 
+                               prefix_dir, lib_base, env[i] + 16);
                 OPAL_OUTPUT_VERBOSE((1, orte_plm_base_framework.framework_output,
                                      "%s plm:tm: resetting LD_LIBRARY_PATH: %s",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
@@ -357,17 +360,19 @@ static void launch_daemons(int fd, short args, void *cbdata)
                 free(newenv);
             } 
         }
+        free(prefix_dir);
     }
     
     /* Iterate through each of the nodes and spin
      * up a daemon.
      */
+    ldptr = &launchid;
     for (i = 0; i < map->nodes->size; i++) {
         if (NULL == (node = (orte_node_t*)opal_pointer_array_get_item(map->nodes, i))) {
             continue;
         }
         /* if this daemon already exists, don't launch it! */
-        if (node->daemon_launched) {
+        if (ORTE_FLAG_TEST(node, ORTE_NODE_FLAG_DAEMON_LAUNCHED)) {
             continue;
         }
  
@@ -396,10 +401,15 @@ static void launch_daemons(int fd, short args, void *cbdata)
             if (NULL != param) free(param);
         }
         
-        rc = tm_spawn(argc, argv, env, node->launch_id, tm_task_ids + launched, tm_events + launched);
+        launchid = 0;
+        if (!orte_get_attribute(&node->attributes, ORTE_NODE_LAUNCH_ID, (void**)&ldptr, OPAL_INT32)) {
+            orte_show_help("help-plm-tm.txt", "tm-spawn-failed", true, argv[0], node->name, 0);
+            rc = ORTE_ERROR;
+            goto cleanup;
+        }
+        rc = tm_spawn(argc, argv, env, launchid, tm_task_ids + launched, tm_events + launched);
         if (TM_SUCCESS != rc) {
-            orte_show_help("help-plm-tm.txt", "tm-spawn-failed",
-                           true, argv[0], node->name, node->launch_id);
+            orte_show_help("help-plm-tm.txt", "tm-spawn-failed", true, argv[0], node->name, launchid);
             rc = ORTE_ERROR;
             goto cleanup;
         }

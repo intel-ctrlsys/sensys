@@ -100,6 +100,6 @@ int orcm_pvsn_base_select(void)
         return ORCM_ERR_NOT_FOUND;
     }
 
-    orcm_pvsn = *best_module;
+    orcm_pvsn_base.active = *best_module;
     return ORCM_SUCCESS;;
 }

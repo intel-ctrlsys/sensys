@@ -896,3 +896,5 @@ orcm/tools/oqueue/oqueue
 orcm/tools/oqueue/oqueue.1
 orcm/tools/opwrvirus/opwrvirus
 orcm/tools/otestcmd/otestcmd
+orcm/tools/octl/octl
+orcm/tools/octl/octl.1

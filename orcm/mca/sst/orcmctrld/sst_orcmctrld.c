@@ -224,12 +224,6 @@ static int orcmctrld_init(void)
     setup_sighandler(SIGUSR2, &sigusr2_handler, signal_callback);
     signals_set = true;
 
-    /* setup the global nidmap/pidmap object */
-    orte_nidmap.bytes = NULL;
-    orte_nidmap.size = 0;
-    orte_pidmap.bytes = NULL;
-    orte_pidmap.size = 0;
-
      /* open and setup the state machine */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_state_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);

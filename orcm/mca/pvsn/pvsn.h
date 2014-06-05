@@ -125,9 +125,7 @@ typedef void (*orcm_pvsn_base_module_finalize_fn_t)(void);
 typedef int (*orcm_pvsn_base_module_avail_fn_t)(char *resource, opal_list_t *available);
 
 /* query the provisioning status of a set of nodes. This will return a
- * list of orcm_pvsn_image_t objects that contain a regular expression
- * for the node name(s), the name  of the base image on them, and any
- * customized attributes. One object will  be returned for each unique
+ * list of orcm_pvsn_provision_t objects. One object will  be returned for each unique
  * combination of image+attributes. The  node names for which info is
  * being requested can be NULL (to request info  for all nodes), or a
  * regular expression parseable by the orte_regex fns */

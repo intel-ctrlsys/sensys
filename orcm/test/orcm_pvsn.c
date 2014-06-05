@@ -45,6 +45,25 @@ static void callback(int status,
     *active = false;
 }
 
+static void callback_pvsn(int status,
+                          opal_list_t *images,
+                          void *cbdata)
+{
+    bool *active = (bool*)cbdata;
+    orcm_pvsn_provision_t *res;
+    opal_value_t *kv;
+
+    /* print the result */
+    OPAL_LIST_FOREACH(res, images, orcm_pvsn_provision_t) {
+        fprintf(stderr, "NODES: %s  IMAGE: %s\n", res->nodes, res->image.name);
+        OPAL_LIST_FOREACH(kv, &res->image.attributes, opal_value_t) {
+            opal_dss.dump(0, kv, OPAL_VALUE);
+        }
+    }
+
+    *active = false;
+}
+
 int main(int argc, char* argv[])
 {
     int rc, n;
@@ -86,6 +105,11 @@ int main(int argc, char* argv[])
     /* request available images */
     active = true;
     orcm_pvsn.get_available_images(NULL, callback, &active);
+    ORTE_WAIT_FOR_COMPLETION(active);
+
+    /* request current provisioning */
+    active = true;
+    orcm_pvsn.get_current_status(NULL, callback_pvsn, &active);
     ORTE_WAIT_FOR_COMPLETION(active);
 
     if (ORTE_SUCCESS != orcm_finalize()) {

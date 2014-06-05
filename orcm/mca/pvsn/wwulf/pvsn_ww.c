@@ -19,6 +19,7 @@
 #include "opal/util/path.h"
 
 #include "orte/mca/errmgr/errmgr.h"
+#include "orte/util/regex.h"
 #include "orte/util/show_help.h"
 
 #include "orcm/mca/pvsn/base/base.h"
@@ -264,6 +265,7 @@ static int avail(char *resources, opal_list_t *available)
                 }
                 free(line);
             }
+            pclose(fp);
         } else {
             orte_show_help("help-pvsn-ww.txt", "unknown-type", true, types[i]);
             rc = ORTE_ERR_BAD_PARAM;
@@ -280,10 +282,103 @@ static int avail(char *resources, opal_list_t *available)
 
 static int status(char *nodes, opal_list_t *images)
 {
+    char *query, *line, *ptr;
+    FILE *fp;
+    orcm_pvsn_provision_t *pvn, *pvnptr;
+    opal_value_t *attr;
+    int i, rc=ORTE_SUCCESS;
+    int j;
+    char **nodelist, **ranges;
+
     OPAL_OUTPUT_VERBOSE((5, orcm_pvsn_base_framework.framework_output,
                          "%s pvsn:wwulf:status",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    return ORCM_ERR_NOT_IMPLEMENTED;
+
+    /* if nodes is NULL, then get the info for all nodes. Note
+     * that this could be a *lot* of info for a large cluster */
+    if (NULL == nodes) {
+        (void)asprintf(&query, "%s provision print", cmd);
+    } else {
+        /* could be a comma-separated regex, so parse it */
+        ranges = opal_argv_split(nodes, ',');
+        nodelist = NULL;
+        for (i=0; NULL != ranges[i]; i++) {
+            if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(ranges[i], &nodelist))) {
+                ORTE_ERROR_LOG(rc);
+                opal_argv_free(ranges);
+                return rc;
+            }
+        }
+        opal_argv_free(ranges);
+        ptr = opal_argv_join(nodelist, ' ');
+        opal_argv_free(nodelist);
+        (void)asprintf(&query, "%s provision print %s", cmd, ptr);
+        free(ptr);
+    }
+
+    if (NULL == (fp = popen(query, "r"))) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_pvsn_base_framework.framework_output,
+                             "%s pvsn:wwulf:avail query for provisioning status failed",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+        free(query);
+        return ORCM_ERROR;
+    }
+    free(query);
+    while (NULL != (line = orcm_getline(fp))) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_pvsn_base_framework.framework_output,
+                             "%s pvsn:wwulf:status got input %s",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), line));
+        /* if the line starts with #, it can be ignored */
+        if ('#' == line[0]) {
+            free(line);
+            continue;
+        }
+        /* we want the following sections of the output line:
+         * 0  => node name
+         * 1  => attribute
+         * 3  => value
+         */
+        ptr = line;
+        j=0;
+        while (NULL != (query = parse_next(ptr, &ptr))) {
+            switch(j) {
+            case 0:
+                /* see if we already have this node */
+                pvn = NULL;
+                OPAL_LIST_FOREACH(pvnptr, images, orcm_pvsn_provision_t) {
+                    if (0 == strcmp(pvnptr->nodes, query)) {
+                        pvn = pvnptr;
+                        break;
+                    }
+                }
+                if (NULL == pvn) {
+                    pvn = OBJ_NEW(orcm_pvsn_provision_t);
+                    opal_list_append(images, &pvn->super);
+                    pvn->nodes = strdup(query);
+                    /* need to come up with a naming scheme for images */
+                    pvn->image.name = strdup(query);
+                }
+                break;
+            case 1:
+                attr = OBJ_NEW(opal_value_t);
+                attr->key = strdup(query);
+                opal_list_append(&pvn->image.attributes, &attr->super);
+                break;
+            case 3:
+                attr->type = OPAL_STRING;
+                attr->data.string = strdup(query);
+                break;
+            default:
+                /* just ignore it */
+                break;
+            }
+            j++;
+        }
+        free(line);
+    }
+    pclose(fp);
+
+    return ORCM_SUCCESS;
 }
 
 static int provision(char *nodes,

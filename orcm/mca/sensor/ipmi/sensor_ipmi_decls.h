@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ *
+ * $COPYRIGHT$
+ * 
+ * Additional copyrights may follow
+ * 
+ * $HEADER$
+ */
+/**
+ * @file
+ *
+ * IPMI resource manager sensor 
+ */
 #ifndef ORTE_SENSOR_IPMI_DECLS_H
 #define ORTE_SENSOR_IPMI_DECLS_H
 

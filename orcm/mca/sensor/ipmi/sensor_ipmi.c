@@ -595,8 +595,7 @@ void ipmi_exec_call(ipmi_capsule_t *cap)
     memset(rdata,0xff,256);
     memset(idata,0xff,4);
     fclose(stdout);
-    //opal_output(0,"Running ipmi_exec_call for:");
-    //opal_output(0,"%s - %s - %s", cap->node.node_ip, cap->node.user, cap->node.pasw);
+    opal_output(0,"Running ipmi_exec_call for: %s - %s - %s", cap->node.node_ip, cap->node.user, cap->node.pasw);
     if (cap->capability[BMC_REV] & cap->capability[IPMI_VER])
     {
         ret = set_lan_options(cap->node.node_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);

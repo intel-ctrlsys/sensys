@@ -4,7 +4,7 @@
 #define uchar unsigned char
 #define GET_ACPI_POWER           (0x07 | (NETFN_APP << 8))
 // The total number of Compute Nodes/Child nodes present under each aggregator
-#define TOTAL_NODES 1
+#define TOTAL_NODES 2
 // The total number of parameters that need to be gathered for each node
 // Eventually this number should equal the items under ipmi_property_t
 #define TOTAL_PROPERTIES_PER_NODE   14

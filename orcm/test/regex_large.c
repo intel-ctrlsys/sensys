@@ -24,14 +24,16 @@ int main(int argc, char **argv)
     char *regex;
     char *nodes=NULL;
     long numnodes, i;
-    struct timeval tv_start, tv_end;
+    struct timeval tv_start, tv_start2, tv_end;
     float elapsed=0;
     
     if (argc < 1 || NULL == argv[1]) {
         fprintf(stderr, "usage: regex_large <number of nodes>\n");
         return 1;
     }
-    
+
+    gettimeofday(&tv_start, 0);
+
     numnodes = strtol(argv[1], '\0', 10);
     for (i = 1; i <= numnodes; i++) {
         if (1 == i) {
@@ -41,7 +43,7 @@ int main(int argc, char **argv)
         }
     }
     
-    gettimeofday(&tv_start, 0);
+    gettimeofday(&tv_start2, 0);
     
     if (ORCM_SUCCESS != (rc = orcm_regex_create(nodes, &regex))) {
         ORTE_ERROR_LOG(rc);
@@ -51,9 +53,13 @@ int main(int argc, char **argv)
     }
     
     gettimeofday(&tv_end, 0);
+    elapsed = (tv_end.tv_sec-tv_start2.tv_sec)*1000000 + tv_end.tv_usec-tv_start2.tv_usec;
+    elapsed = elapsed/1000000;
+    fprintf(stderr, "regex elapsed time: %g sec\n", elapsed);
     elapsed = (tv_end.tv_sec-tv_start.tv_sec)*1000000 + tv_end.tv_usec-tv_start.tv_usec;
     elapsed = elapsed/1000000;
-    fprintf(stderr, "elapsed time: %g sec\n", elapsed);
+    fprintf(stderr, "total elapsed time: %g sec\n", elapsed);
+
     
     return 0;
 }

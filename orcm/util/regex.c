@@ -53,7 +53,6 @@ int orcm_regex_create(char *nodes, char **regexp) {
     node_array = opal_argv_split_with_empty(nodes, ',');
     orcm_regex_sort(node_array);
     nodes = opal_argv_join(node_array, ',');
-    printf("sorted: %s\n", nodes);
     orte_regex_create(nodes, regexp);
     
     opal_argv_free(node_array);

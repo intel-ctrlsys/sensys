@@ -753,6 +753,9 @@ int orun(int argc, char *argv[])
         return ORTE_ERR_OUT_OF_RESOURCE;
     }
     
+    /* add a map object */
+    jdata->map = OBJ_NEW(orte_job_map_t);
+
     /* check what user wants us to do with stdin */
     if (0 == strcmp(orun_globals.stdin_target, "all")) {
         jdata->stdin_target = ORTE_VPID_WILDCARD;

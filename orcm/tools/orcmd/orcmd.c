@@ -312,6 +312,14 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
         opal_output(0,
                 "%s: ORCM daemon got cancel stepd command, executing hostname",
                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+            
+        n = 1;
+        if (OPAL_SUCCESS !=
+            (rc = opal_dss.unpack(buffer, &alloc, &n, ORCM_ALLOC))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+
         orte_rml.recv_cancel(ORTE_NAME_WILDCARD,
                      ORTE_RML_TAG_ABORT);
         close(death_pipe[1]);

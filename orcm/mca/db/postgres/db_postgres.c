@@ -250,5 +250,5 @@ static int store(struct orcm_db_base_module_t *imod,
                         "Query succeeded");
 
     PQclear(res);
-    return OPAL_SUCCESS;
+    return ORCM_SUCCESS;
 }

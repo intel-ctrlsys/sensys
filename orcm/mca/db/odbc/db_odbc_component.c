@@ -92,7 +92,7 @@ static int component_register(void) {
                                           MCA_BASE_VAR_SCOPE_READONLY,
                                           &user);
 
-    return OPAL_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static bool component_avail(void)

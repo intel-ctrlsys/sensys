@@ -67,7 +67,7 @@ static void process_open(int fd, short args, void *cbdata)
                 hdl->module = mod;
                 index = opal_pointer_array_add(&orcm_db_base.handles, hdl);
                 if (NULL != req->cbfunc) {
-                    req->cbfunc(index, OPAL_SUCCESS, NULL, req->cbdata);
+                    req->cbfunc(index, ORCM_SUCCESS, NULL, req->cbdata);
                 }
                 OBJ_RELEASE(req);
                 return;

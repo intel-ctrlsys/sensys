@@ -52,7 +52,7 @@ static int orcm_db_base_register(mca_base_register_flag_t flags)
                           OPAL_INFO_LVL_9,
                           MCA_BASE_VAR_SCOPE_READONLY,
                           &orcm_db_base_create_evbase);
-    return OPAL_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int orcm_db_base_frame_close(void)

@@ -127,7 +127,7 @@ static int component_register(void) {
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             &num_worker_threads);
 
-    return OPAL_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static bool component_avail(void)

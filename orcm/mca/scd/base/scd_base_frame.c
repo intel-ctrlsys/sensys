@@ -179,7 +179,7 @@ const char *orcm_scd_node_state_to_str(orcm_scd_node_state_t state)
     return s;
 }
 
-const char *orcm_rm_session_state_to_str(orcm_rm_session_state_t state)
+const char *orcm_rm_session_state_to_str(orcm_scd_base_rm_session_state_t state)
 {
     char *s;
     

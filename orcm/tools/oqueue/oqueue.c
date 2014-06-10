@@ -71,7 +71,6 @@
 #include "orcm/runtime/runtime.h"
 
 #include "orcm/mca/scd/base/base.h"
-#include "orcm/mca/rm/base/base.h"
 
 /******************
  * Local Functions
@@ -253,7 +252,7 @@ main(int argc, char *argv[])
             fprintf(stdout, "node: %s \n\tSCD_STATE:\t\"%s\" \n\tRM_STATE:\t\"%s\"\n\n", 
                     nodes[i]->name, 
                     orcm_scd_node_state_to_str(nodes[i]->scd_state),
-                    orcm_rm_node_state_to_str(nodes[i]->state));
+                    orcm_node_state_to_str(nodes[i]->state));
             OBJ_DESTRUCT(nodes[i]);
         }
         free(nodes);

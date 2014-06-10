@@ -39,14 +39,14 @@ BEGIN_C_DECLS
         orcm_scd.activate_scd_session_state((a), (b));                   \
     } while(0);
 
-#define ORCM_ACTIVATE_RM_STATE(a, b)                                    \
-    do {                                                                \
-        opal_output_verbose(1, orcm_rm_base_framework.framework_output, \
-                            "%s ACTIVATE SESSION %d STATE %s AT %s:%d", \
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),         \
-                            (a)->id, orcm_rm_session_state_to_str((b)), \
-                            __FILE__, __LINE__);                        \
-        orcm_rm.activate_rm_session_state((a), (b));                    \
+#define ORCM_ACTIVATE_RM_STATE(a, b)                                     \
+    do {                                                                 \
+        opal_output_verbose(1, orcm_scd_base_framework.framework_output, \
+                            "%s ACTIVATE SESSION %d STATE %s AT %s:%d",  \
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),          \
+                            (a)->id, orcm_rm_session_state_to_str((b)),  \
+                            __FILE__, __LINE__);                         \
+        orcm_scd.activate_rm_session_state((a), (b));                    \
     } while(0);
 
 
@@ -79,8 +79,12 @@ typedef struct {
 /* define an API module */
 typedef void (*orcm_scd_API_module_activate_scd_session_state_fn_t)(orcm_session_t *s,
                                                                     orcm_scd_session_state_t state);
+typedef void (*orcm_scd_API_module_activate_rm_session_state_fn_t)(orcm_session_t *s,
+                                                                   orcm_scd_base_rm_session_state_t state);
+
 typedef struct {
     orcm_scd_API_module_activate_scd_session_state_fn_t activate_scd_session_state;
+    orcm_scd_API_module_activate_scd_session_state_fn_t activate_rm_session_state;
 } orcm_scd_API_module_t;
 
 /*

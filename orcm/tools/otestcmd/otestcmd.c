@@ -71,7 +71,6 @@
 #include "orcm/runtime/runtime.h"
 
 #include "orcm/mca/scd/base/base.h"
-#include "orcm/mca/rm/base/base.h"
 
 /*****************************************
  * Global Vars for Command line Arguments

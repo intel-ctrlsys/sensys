@@ -182,7 +182,7 @@ typedef struct {
 OBJ_CLASS_DECLARATION(orcm_session_t);
 
 /****    SESSION STATES FOR RM    ****/
-typedef uint32_t orcm_rm_session_state_t;
+typedef uint32_t orcm_scd_base_rm_session_state_t;
 #define ORCM_SESSION_STATE_UNDEF        0  // Session state is undefined
 #define ORCM_SESSION_STATE_REQ          1  // Session requesting resources
 #define ORCM_SESSION_STATE_ACTIVE       2  // Session activating allocation
@@ -203,6 +203,8 @@ typedef uint32_t orcm_rm_session_state_t;
 
 /****    STATE MACHINE    ****/
 typedef void (*orcm_scd_state_cbfunc_t)(int fd, short args, void* cb);
+typedef void (*orcm_scd_base_rm_state_cbfunc_t)(int fd, short args, void* cb);
+
 
 typedef struct {
     opal_list_item_t super;
@@ -211,6 +213,14 @@ typedef struct {
     int priority;
 } orcm_scd_state_t;
 ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_scd_state_t);
+
+typedef struct {
+    opal_list_item_t super;
+    orcm_scd_base_rm_session_state_t state;
+    orcm_scd_state_cbfunc_t cbfunc;
+    int priority;
+} orcm_scd_base_rm_state_t;
+ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_scd_base_rm_state_t);
 
 typedef struct {
     opal_object_t super;

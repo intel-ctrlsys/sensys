@@ -25,7 +25,6 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/cfgi_types.h"
 #include "orcm/mca/scd/base/base.h"
-#include "orcm/mca/rm/base/base.h"
 
 static bool rm_recv_issued=false;
 
@@ -33,9 +32,9 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                                opal_buffer_t* buffer, orte_rml_tag_t tag,
                                void* cbdata);
 
-int orcm_scd_base_rm_base_comm_start(void)
+int orcm_scd_base_rm_comm_start(void)
 {
-    if (recv_issued) {
+    if (rm_recv_issued) {
         return ORTE_SUCCESS;
     }
     
@@ -46,7 +45,7 @@ int orcm_scd_base_rm_base_comm_start(void)
     orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
                             ORCM_RML_TAG_RM,
                             ORTE_RML_PERSISTENT,
-                            orcm_rm_base_recv,
+                            orcm_scd_base_rm_base_recv,
                             NULL);
     rm_recv_issued = true;
     
@@ -54,7 +53,7 @@ int orcm_scd_base_rm_base_comm_start(void)
 }
 
 
-int orcm_scd_base_rm_base_comm_stop(void)
+int orcm_scd_base_rm_comm_stop(void)
 {
     if (!rm_recv_issued) {
         return ORTE_SUCCESS;
@@ -86,7 +85,7 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
     orcm_session_t *session;
     bool found;
 
-    OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
+    OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:rm:receive processing msg",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
@@ -136,7 +135,7 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                      ORTE_NAME_PRINT(&node),
                                      (int)state,
-                                     orcm_rm_node_state_to_str(state)));
+                                     orcm_node_state_to_str(state)));
                 break;
             }
         }

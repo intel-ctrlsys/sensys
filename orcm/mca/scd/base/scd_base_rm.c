@@ -19,7 +19,6 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/scd/base/base.h"
-#include "scd_base_rm.h"
 
 static int scd_base_rm_init(void);
 static void scd_base_rm_finalize(void);
@@ -36,10 +35,10 @@ static orcm_scd_base_rm_session_state_t states[] = {
     ORCM_SESSION_STATE_KILL
 };
 static orcm_scd_base_rm_state_cbfunc_t callbacks[] = {
-    basic_undef,
-    basic_request,
-    basic_active,
-    basic_kill
+    scd_base_rm_undef,
+    scd_base_rm_request,
+    scd_base_rm_active,
+    scd_base_rm_kill
 };
 
 static int scd_base_rm_init(void)
@@ -53,7 +52,7 @@ static int scd_base_rm_init(void)
     }
 
     /* define our state machine */
-    num_states = sizeof(states) / sizeof(orcm_rm_session_state_t);
+    num_states = sizeof(states) / sizeof(orcm_scd_base_rm_session_state_t);
     for (i=0; i < num_states; i++) {
         if (ORCM_SUCCESS !=
             (rc = orcm_scd_base_rm_add_session_state(states[i],
@@ -69,7 +68,7 @@ static int scd_base_rm_init(void)
 
 static void scd_base_rm_finalize(void)
 {
-    orcm_scd_base_rm_base_comm_stop();
+    orcm_scd_base_rm_comm_stop();
 }
 
 static void scd_base_rm_undef(int sd, short args, void *cbdata)
@@ -92,7 +91,7 @@ static void scd_base_rm_request(int sd, short args, void *cbdata)
     num_nodes = caddy->session->alloc->min_nodes;
 
     if (0 < num_nodes) {
-        for (i = 0; i < orcm_rm_base.nodes.size; i++) {
+        for (i = 0; i < orcm_scd_base.nodes.size; i++) {
             if (NULL ==
                 (nodeptr =
                  (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
@@ -254,7 +253,7 @@ static void scd_base_rm_kill(int sd, short args, void *cbdata)
         for (j = 0; j < orcm_scd_base.nodes.size; j++) {
             if (NULL ==
                 (nodeptr =
-                 (orcm_node_t*)opal_pointer_array_get_item(&orcm_rm_base.nodes,
+                 (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
                                                            j))) {
                 continue;
             }

@@ -19,8 +19,6 @@
 
 #include "orte/mca/errmgr/errmgr.h"
 
-#include "orcm/mca/rm/rm_types.h"
-
 #include "orcm/mca/scd/scd_types.h"
 #include "orcm/mca/scd/base/base.h"
 

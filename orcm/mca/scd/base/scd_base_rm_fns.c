@@ -9,15 +9,15 @@
 #include "orte/util/show_help.h"
 
 #include "orcm/runtime/orcm_globals.h"
-#include "orcm/mca/rm/base/base.h"
+#include "orcm/mca/scd/base/base.h"
 
 void orcm_scd_base_rm_activate_session_state(orcm_session_t *session,
-                                             orcm_rm_session_state_t state)
+                                             orcm_scd_base_rm_session_state_t state)
 {
-    orcm_rm_state_t *s, *any=NULL, *error=NULL;
+    orcm_scd_base_rm_state_t *s, *any=NULL, *error=NULL;
     orcm_session_caddy_t *caddy;
 
-    OPAL_LIST_FOREACH(s, &orcm_scd_base.rmstates, orcm_rm_state_t) {
+    OPAL_LIST_FOREACH(s, &orcm_scd_base.rmstates, orcm_scd_base_rm_state_t) {
         if (s->state == ORCM_SESSION_STATE_ANY) {
             /* save this place */
             any = s;
@@ -78,14 +78,14 @@ void orcm_scd_base_rm_activate_session_state(orcm_session_t *session,
 }
 
 
-int orcm_scd_base_rm_add_session_state(orcm_rm_session_state_t state,
-                                       orcm_rm_state_cbfunc_t cbfunc,
+int orcm_scd_base_rm_add_session_state(orcm_scd_base_rm_session_state_t state,
+                                       orcm_scd_base_rm_state_cbfunc_t cbfunc,
                                        int priority)
 {
-    orcm_rm_state_t *st;
+    orcm_scd_base_rm_state_t *st;
 
     /* check for uniqueness */
-    OPAL_LIST_FOREACH(st, &orcm_scd_base.rmstates, orcm_rm_state_t) {
+    OPAL_LIST_FOREACH(st, &orcm_scd_base.rmstates, orcm_scd_base_rm_state_t) {
         if (st->state == state) {
             OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
                                  "DUPLICATE RM STATE DEFINED: %s",
@@ -94,7 +94,7 @@ int orcm_scd_base_rm_add_session_state(orcm_rm_session_state_t state,
         }
     }
 
-    st = OBJ_NEW(orcm_rm_state_t);
+    st = OBJ_NEW(orcm_scd_base_rm_state_t);
     st->state = state;
     st->cbfunc = cbfunc;
     st->priority = priority;

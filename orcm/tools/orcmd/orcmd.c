@@ -30,7 +30,6 @@
 #include "orte/mca/rml/rml.h"
 
 #include "orcm/runtime/orcm_globals.h"
-#include "orcm/mca/rm/base/base.h"
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/diag/diag.h"
 

@@ -601,6 +601,9 @@ int orun(int argc, char *argv[])
     char *error = NULL;
     orte_proc_t *proc;
     orte_node_t *node;
+    char *endptr;
+    char *dstr;
+    long sessionid;
 
     /* find our basename (the name of the executable) so that we can
        use it in pretty-print error messages */
@@ -846,15 +849,24 @@ int orun(int argc, char *argv[])
             ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
             goto DONE;
         }
-    }
-    
-    if(my_hnp_uri) {
-        ORTE_PROC_MY_HNP->jobid = 65536;
+        sleep(1);
+        ORTE_PROC_MY_HNP->jobid = alloc.id <<16;
         ORTE_PROC_MY_HNP->vpid = 0;
+        asprintf(&my_hnp_uri, "%i.0;tcp://10.10.39.77:12346", ORTE_PROC_MY_HNP->jobid);
+        printf("\n hnp-uri %s\n", my_hnp_uri);
+    }
+            
+    if(my_hnp_uri) {
         OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
         opal_dss.pack(&uribuf, &my_hnp_uri, 1, OPAL_STRING);
         orte_rml_base_update_contact_info(&uribuf);
-        printf("orte_process_myhnp %s\n", orte_process_info.my_hnp_uri);
+        dstr=strstr(my_hnp_uri,".");
+        *dstr='\0'; 
+        sessionid = strtol(my_hnp_uri,&endptr,10);
+        ORTE_PROC_MY_HNP->jobid = sessionid;
+        ORTE_PROC_MY_HNP->vpid = 0;
+        orte_process_info.my_hnp_uri=my_hnp_uri;
+        printf("orte_process_myhnp %d %s\n", sessionid, orte_process_info.my_hnp_uri);
     }
 
 #if 0
@@ -2190,6 +2202,7 @@ static int alloc_request( orcm_alloc_t *alloc )
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
+    alloc->id = id;
 
     return ORTE_SUCCESS;
 }

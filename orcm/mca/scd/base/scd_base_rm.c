@@ -20,9 +20,6 @@
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/scd/base/base.h"
 
-static int scd_base_rm_init(void);
-static void scd_base_rm_finalize(void);
-
 static void scd_base_rm_undef(int sd, short args, void *cbdata);
 static void scd_base_rm_request(int sd, short args, void *cbdata);
 static void scd_base_rm_active(int sd, short args, void *cbdata);
@@ -41,7 +38,7 @@ static orcm_scd_base_rm_state_cbfunc_t callbacks[] = {
     scd_base_rm_kill
 };
 
-static int scd_base_rm_init(void)
+int scd_base_rm_init(void)
 {
     int i, rc, num_states;
 
@@ -66,7 +63,7 @@ static int scd_base_rm_init(void)
     return ORCM_SUCCESS;
 }
 
-static void scd_base_rm_finalize(void)
+void scd_base_rm_finalize(void)
 {
     orcm_scd_base_rm_comm_stop();
 }

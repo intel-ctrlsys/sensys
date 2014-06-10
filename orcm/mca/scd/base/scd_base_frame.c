@@ -75,6 +75,9 @@ static int orcm_scd_base_close(void)
     /* deconstruct the base objects */
     OPAL_LIST_DESTRUCT(&orcm_scd_base.states);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.queues);
+    
+    /* finalize the resource management service */
+    scd_base_rm_finalize();
 
     return mca_base_framework_components_close(&orcm_scd_base_framework, NULL);
 }
@@ -108,6 +111,9 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
         orcm_scd_base.ev_active = false;
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
+    
+    /* initialize the resource management service */
+    scd_base_rm_init();
 
     return rc;
 }

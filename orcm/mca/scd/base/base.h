@@ -85,8 +85,13 @@ ORCM_DECLSPEC extern orcm_scd_base_t orcm_scd_base;
 /* start/stop base receive */
 ORCM_DECLSPEC int orcm_scd_base_comm_start(void);
 ORCM_DECLSPEC int orcm_scd_base_comm_stop(void);
+
+/* start/stop resource management service */
+ORCM_DECLSPEC int scd_base_rm_init(void);
+ORCM_DECLSPEC void scd_base_rm_finalize(void);
 ORCM_DECLSPEC int orcm_scd_base_rm_comm_start(void);
 ORCM_DECLSPEC int orcm_scd_base_rm_comm_stop(void);
+
 /* base code stubs */
 ORCM_DECLSPEC void orcm_scd_base_activate_session_state(orcm_session_t *s,
                                                         orcm_scd_session_state_t state);

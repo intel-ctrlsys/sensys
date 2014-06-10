@@ -54,6 +54,16 @@ typedef orte_proc_type_t orcm_proc_type_t;
 #define ORCM_PROC_IS_MASTER      ORTE_PROC_IS_MASTER
 #define ORCM_PROC_IS_EMULATOR    ORTE_PROC_IS_EMULATOR
 
+/****    NODESTATE TYPE    ****/
+typedef int8_t orcm_node_state_t;
+#define ORCM_NODE_STATE_T OPAL_INT8
+
+#define ORCM_NODE_STATE_UNDEF         0  // Node is undefined
+#define ORCM_NODE_STATE_UNKNOWN       1  // Node is in unknown state
+#define ORCM_NODE_STATE_UP            2  // Node is up
+#define ORCM_NODE_STATE_DOWN          3  // Node is down
+#define ORCM_NODE_STATE_SESTERM       4  // Node is terminating session
+
 /* define a few commands for sending between orcmd's and orcmsched */
 typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_RM_CMD_T OPAL_UINT8
@@ -99,6 +109,8 @@ ORCM_DECLSPEC extern opal_list_t *orcm_schedulers;
  * Init the ORCM datatype support
  */
 ORCM_DECLSPEC int orcm_dt_init(void);
+
+const char *orcm_node_state_to_str(orcm_node_state_t state)
 
 END_C_DECLS
 

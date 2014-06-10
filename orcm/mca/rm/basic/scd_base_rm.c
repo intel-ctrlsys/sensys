@@ -19,46 +19,35 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/scd/base/base.h"
-#include "orcm/mca/rm/base/base.h"
-#include "rm_basic.h"
+#include "scd_base_rm.h"
 
-static int init(void);
-static void finalize(void);
+static int scd_base_rm_init(void);
+static void scd_base_rm_finalize(void);
 
+static void scd_base_rm_undef(int sd, short args, void *cbdata);
+static void scd_base_rm_request(int sd, short args, void *cbdata);
+static void scd_base_rm_active(int sd, short args, void *cbdata);
+static void scd_base_rm_kill(int sd, short args, void *cbdata);
 
-orcm_rm_base_module_t orcm_rm_basic_module = {
-    init,
-    finalize
-};
-
-static void basic_undef(int sd, short args, void *cbdata);
-static void basic_request(int sd, short args, void *cbdata);
-static void basic_active(int sd, short args, void *cbdata);
-static void basic_kill(int sd, short args, void *cbdata);
-
-static orcm_rm_session_state_t states[] = {
+static orcm_scd_base_rm_session_state_t states[] = {
     ORCM_SESSION_STATE_UNDEF,
     ORCM_SESSION_STATE_REQ,
     ORCM_SESSION_STATE_ACTIVE,
     ORCM_SESSION_STATE_KILL
 };
-static orcm_rm_state_cbfunc_t callbacks[] = {
+static orcm_scd_base_rm_state_cbfunc_t callbacks[] = {
     basic_undef,
     basic_request,
     basic_active,
     basic_kill
 };
 
-static int init(void)
+static int scd_base_rm_init(void)
 {
     int i, rc, num_states;
 
-    OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
-                         "%s rm:basic:init",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    
     /* start the receive */
-    if (ORCM_SUCCESS != (rc = orcm_rm_base_comm_start())) {
+    if (ORCM_SUCCESS != (rc = orcm_scd_base_rm_comm_start())) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }
@@ -66,9 +55,10 @@ static int init(void)
     /* define our state machine */
     num_states = sizeof(states) / sizeof(orcm_rm_session_state_t);
     for (i=0; i < num_states; i++) {
-        if (ORCM_SUCCESS != (rc = orcm_rm_base_add_session_state(states[i],
-                                                                 callbacks[i],
-                                                                 ORTE_SYS_PRI))) {
+        if (ORCM_SUCCESS !=
+            (rc = orcm_scd_base_rm_add_session_state(states[i],
+                                                     callbacks[i],
+                                                     ORTE_SYS_PRI))) {
             ORTE_ERROR_LOG(rc);
             return rc;
         }
@@ -77,16 +67,12 @@ static int init(void)
     return ORCM_SUCCESS;
 }
 
-static void finalize(void)
+static void scd_base_rm_finalize(void)
 {
-    OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
-                         "%s rm:basic:finalize",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    
-    orcm_rm_base_comm_stop();
+    orcm_scd_base_rm_base_comm_stop();
 }
 
-static void basic_undef(int sd, short args, void *cbdata)
+static void scd_base_rm_undef(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
     /* this isn't defined - so just report the error */
@@ -95,7 +81,7 @@ static void basic_undef(int sd, short args, void *cbdata)
     OBJ_RELEASE(caddy);
 }
 
-static void basic_request(int sd, short args, void *cbdata)
+static void scd_base_rm_request(int sd, short args, void *cbdata)
 {
     orcm_node_t *nodeptr;
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
@@ -107,13 +93,16 @@ static void basic_request(int sd, short args, void *cbdata)
 
     if (0 < num_nodes) {
         for (i = 0; i < orcm_rm_base.nodes.size; i++) {
-            if (NULL == (nodeptr =
-                         (orcm_node_t*)opal_pointer_array_get_item(&orcm_rm_base.nodes, i))) {
+            if (NULL ==
+                (nodeptr =
+                 (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
+                                                           i))) {
                 continue;
             }
-            if (ORCM_SCD_NODE_STATE_UNALLOC == nodeptr->scd_state && ORCM_NODE_STATE_UP == nodeptr->state) {
-                OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
-                                     "%s rm:basic:request adding node %s to list",
+            if (ORCM_SCD_NODE_STATE_UNALLOC == nodeptr->scd_state
+                && ORCM_NODE_STATE_UP == nodeptr->state) {
+                OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                                     "%s scd:rm:request adding node %s to list",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                      nodeptr->name));
                 if (NULL != nodelist) {
@@ -128,8 +117,8 @@ static void basic_request(int sd, short args, void *cbdata)
             }
         }
 
-        OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
-                             "%s rm:basic:request giving allocation %i nodelist %s",
+        OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                             "%s scd:rm:request giving allocation %i nodelist %s",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              (int)caddy->session->alloc->id,
                              nodelist));
@@ -143,8 +132,8 @@ static void basic_request(int sd, short args, void *cbdata)
             }
         } /* else, error? not enough nodes found? */
 
-        OPAL_OUTPUT_VERBOSE((5, orcm_rm_base_framework.framework_output,
-                             "%s rm:basic:request giving allocation %i noderegex %s",
+        OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                             "%s scd:rm:request giving allocation %i noderegex %s",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              (int)caddy->session->alloc->id,
                              noderegex));
@@ -159,7 +148,7 @@ static void basic_request(int sd, short args, void *cbdata)
     OBJ_RELEASE(caddy);
 }
 
-static void basic_active(int sd, short args, void *cbdata)
+static void scd_base_rm_active(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
     char **nodenames = NULL;
@@ -168,11 +157,14 @@ static void basic_active(int sd, short args, void *cbdata)
     opal_buffer_t *buf;
     orcm_rm_cmd_flag_t command = ORCM_LAUNCH_STEPD_COMMAND;
 
-    if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(caddy->session->alloc->nodes, &nodenames))) {
+    if (ORTE_SUCCESS !=
+        (rc = orte_regex_extract_node_names(caddy->session->alloc->nodes,
+                                            &nodenames))) {
         ORTE_ERROR_LOG(rc);
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
-                             "%s rm:basic:active - (session: %d) could not extract nodelist\n",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), caddy->session->id));
+                             "%s scd:rm:active - (session: %d) could not extract nodelist\n",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             caddy->session->id));
         if (NULL != nodenames) {
             opal_argv_free(nodenames);
         }
@@ -182,34 +174,43 @@ static void basic_active(int sd, short args, void *cbdata)
     /* set hnp name to first in the list */
     caddy->session->alloc->hnpname = strdup(nodenames[0]);
 
-    /* node array should be indexed by node num, if we change to lookup by index that would be faster */
+    /* node array should be indexed by node num, 
+     * if we change to lookup by index that would be faster */
     for (i = 0; i < caddy->session->alloc->min_nodes; i++) {
-        for (j = 0; j < orcm_rm_base.nodes.size; j++) {
-            if (NULL == (nodeptr =
-                         (orcm_node_t*)opal_pointer_array_get_item(&orcm_rm_base.nodes, j))) {
+        for (j = 0; j < orcm_scd_base.nodes.size; j++) {
+            if (NULL ==
+                (nodeptr =
+                 (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
+                                                           j))) {
                 continue;
             }
             if (0 == strcmp(nodeptr->name, nodenames[i])) {
                 if (0 == i) {
-                    /* if this is the first node in the list, then set the hnp daemon info */
+                    /* if this is the first node in the list, 
+                     * then set the hnp daemon info */
                     caddy->session->alloc->hnp.jobid = nodeptr->daemon.jobid;
                     caddy->session->alloc->hnp.vpid = nodeptr->daemon.vpid;
                 }
                 buf = OBJ_NEW(opal_buffer_t);
                 /* pack the command */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_RM_CMD_T))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
+                                                        1, ORCM_RM_CMD_T))) {
                     ORTE_ERROR_LOG(rc);
                     return;
                 }
-                /* pack the alloc */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &caddy->session->alloc, 1, ORCM_ALLOC))) {
+                /* pack the allocation info */
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(buf,
+                                                        &caddy->session->alloc,
+                                                        1, ORCM_ALLOC))) {
                     ORTE_ERROR_LOG(rc);
                     return;
                 }
                 /* SEND ALLOC TO NODE */
-                if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(&nodeptr->daemon, buf,
-                                                                  ORCM_RML_TAG_RM,
-                                                                  orte_rml_send_callback, NULL))) {
+                if (ORTE_SUCCESS !=
+                    (rc = orte_rml.send_buffer_nb(&nodeptr->daemon, buf,
+                                                  ORCM_RML_TAG_RM,
+                                                  orte_rml_send_callback,
+                                                  NULL))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(buf);
                     return;
@@ -224,7 +225,7 @@ static void basic_active(int sd, short args, void *cbdata)
     OBJ_RELEASE(caddy);
 }
 
-static void basic_kill(int sd, short args, void *cbdata)
+static void scd_base_rm_kill(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
     char **nodenames = NULL;
@@ -233,40 +234,51 @@ static void basic_kill(int sd, short args, void *cbdata)
     opal_buffer_t *buf;
     orcm_rm_cmd_flag_t command = ORCM_CANCEL_STEPD_COMMAND;
 
-    if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(caddy->session->alloc->nodes, &nodenames))) {
+    if (ORTE_SUCCESS !=
+        (rc = orte_regex_extract_node_names(caddy->session->alloc->nodes,
+                                            &nodenames))) {
         ORTE_ERROR_LOG(rc);
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
-                             "%s rm:basic:kill - (session: %d) could not extract nodelist\n",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), caddy->session->id));
+                             "%s scd:rm:kill - (session: %d) could not extract nodelist\n",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             caddy->session->id));
         if (NULL != nodenames) {
             opal_argv_free(nodenames);
         }
         return;
     }
 
-    /* node array should be indexed by node num, if we change to lookup by index that would be faster */
+    /* node array should be indexed by node num, 
+     * if we change to lookup by index that would be faster */
     for (i = 0; i < caddy->session->alloc->min_nodes; i++) {
-        for (j = 0; j < orcm_rm_base.nodes.size; j++) {
-            if (NULL == (nodeptr =
-                         (orcm_node_t*)opal_pointer_array_get_item(&orcm_rm_base.nodes, j))) {
+        for (j = 0; j < orcm_scd_base.nodes.size; j++) {
+            if (NULL ==
+                (nodeptr =
+                 (orcm_node_t*)opal_pointer_array_get_item(&orcm_rm_base.nodes,
+                                                           j))) {
                 continue;
             }
             if (0 == strcmp(nodeptr->name, nodenames[i])) {
                 buf = OBJ_NEW(opal_buffer_t);
                 /* pack the command */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_RM_CMD_T))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
+                                                        1, ORCM_RM_CMD_T))) {
                     ORTE_ERROR_LOG(rc);
                     return;
                 }
                 /* pack the alloc so that nodes know which session to kill */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &caddy->session->alloc, 1, ORCM_ALLOC))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(buf,
+                                                        &caddy->session->alloc,
+                                                        1, ORCM_ALLOC))) {
                     ORTE_ERROR_LOG(rc);
                     return;
                 }
                 /* SEND ALLOC TO NODE */
-                if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(&nodeptr->daemon, buf,
-                                                                  ORCM_RML_TAG_RM,
-                                                                  orte_rml_send_callback, NULL))) {
+                if (ORTE_SUCCESS !=
+                    (rc = orte_rml.send_buffer_nb(&nodeptr->daemon, buf,
+                                                  ORCM_RML_TAG_RM,
+                                                  orte_rml_send_callback,
+                                                  NULL))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(buf);
                     return;

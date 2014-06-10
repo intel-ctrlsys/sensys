@@ -225,8 +225,6 @@ static int orcmsched_init(void)
                                         (NULL == node->name) ? "NULL" : node->name);
                     OBJ_RETAIN(node);  // maintain accounting
                     opal_pointer_array_add(&orcm_scd_base.nodes, node);
-                    OBJ_RETAIN(node);  // maintain accounting
-                    opal_pointer_array_add(&orcm_rm_base.nodes, node);
                 }
             }
         }

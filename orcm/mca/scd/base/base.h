@@ -69,8 +69,10 @@ typedef struct {
      */
     opal_event_base_t *ev_base;
     bool ev_active;
-    /* state machine */
+    /* scd state machine */
     opal_list_t states;
+    /* rm state machine */
+    opal_list_t rmstates;
     /* selected plugin */
     orcm_scd_base_module_t *module;
     /* queues for tracking session requests */

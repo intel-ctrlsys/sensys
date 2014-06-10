@@ -179,6 +179,29 @@ const char *orcm_scd_node_state_to_str(orcm_scd_node_state_t state)
     return s;
 }
 
+const char *orcm_rm_session_state_to_str(orcm_rm_session_state_t state)
+{
+    char *s;
+    
+    switch (state) {
+        case ORCM_SESSION_STATE_UNDEF:
+            s = "UNDEF";
+            break;
+        case ORCM_SESSION_STATE_REQ:
+            s = "REQUESTING RESOURCES";
+            break;
+        case ORCM_SESSION_STATE_ACTIVE:
+            s = "LAUNCHING SESSION";
+            break;
+        case ORCM_SESSION_STATE_KILL:
+            s = "KILLING SESSION";
+            break;
+        default:
+            s = "UNKNOWN";
+    }
+    return s;
+}
+
 /****    CLASS INSTANTIATIONS    ****/
 OBJ_CLASS_INSTANCE(orcm_scheduler_caddy_t,
                    opal_object_t,

@@ -34,3 +34,29 @@ int orcm_dt_init(void)
     
     return ORCM_SUCCESS;
 }
+
+const char *orcm_node_state_to_str(orcm_node_state_t state)
+{
+    char *s;
+    
+    switch (state) {
+        case ORCM_NODE_STATE_UNDEF:
+            s = "UNDEF";
+            break;
+        case ORCM_NODE_STATE_UNKNOWN:
+            s = "UNKNOWN";
+            break;
+        case ORCM_NODE_STATE_UP:
+            s = "UP";
+            break;
+        case ORCM_NODE_STATE_DOWN:
+            s = "DOWN";
+            break;
+        case ORCM_NODE_STATE_SESTERM:
+            s = "SESSION TERMINATING";
+            break;
+        default:
+            s = "STATEUNDEF";
+    }
+    return s;
+}

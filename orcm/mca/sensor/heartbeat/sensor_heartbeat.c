@@ -169,10 +169,9 @@ static void sample(orcm_sensor_sampler_t *sampler)
  */
 static void check_heartbeat(int fd, short dummy, void *arg)
 {
-    int v, rc;
+    int v;
     orte_proc_t *proc;
     opal_event_t *tmp = (opal_event_t*)arg;
-    opal_buffer_t *buf;
     int32_t beats, *bptr;
 
     OPAL_OUTPUT_VERBOSE((3, orcm_sensor_base_framework.framework_output,

@@ -38,7 +38,8 @@
  * Global variables
  */
 orcm_scd_API_module_t orcm_scd = {
-    orcm_scd_base_activate_session_state
+    orcm_scd_base_activate_session_state,
+    orcm_scd_base_rm_activate_session_state
 };
 orcm_scd_base_t orcm_scd_base;
 
@@ -74,6 +75,7 @@ static int orcm_scd_base_close(void)
 
     /* deconstruct the base objects */
     OPAL_LIST_DESTRUCT(&orcm_scd_base.states);
+    OPAL_LIST_DESTRUCT(&orcm_scd_base.rmstates);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.queues);
     
     /* finalize the resource management service */
@@ -93,6 +95,7 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
     /* setup the base objects */
     orcm_scd_base.ev_active = false;
     OBJ_CONSTRUCT(&orcm_scd_base.states, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_scd_base.rmstates, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.queues, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.nodes, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_scd_base.nodes, 8, INT_MAX, 8);
@@ -112,9 +115,6 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
     
-    /* initialize the resource management service */
-    scd_base_rm_init();
-
     return rc;
 }
 
@@ -334,6 +334,10 @@ OBJ_CLASS_INSTANCE(orcm_session_caddy_t,
                    cd_con, cd_des);
 
 OBJ_CLASS_INSTANCE(orcm_scd_state_t,
+                   opal_list_item_t,
+                   NULL, NULL);
+
+OBJ_CLASS_INSTANCE(orcm_scd_base_rm_state_t,
                    opal_list_item_t,
                    NULL, NULL);
 

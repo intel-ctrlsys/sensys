@@ -84,7 +84,7 @@ typedef void (*orcm_scd_API_module_activate_rm_session_state_fn_t)(orcm_session_
 
 typedef struct {
     orcm_scd_API_module_activate_scd_session_state_fn_t activate_scd_session_state;
-    orcm_scd_API_module_activate_scd_session_state_fn_t activate_rm_session_state;
+    orcm_scd_API_module_activate_rm_session_state_fn_t activate_rm_session_state;
 } orcm_scd_API_module_t;
 
 /*

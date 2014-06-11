@@ -116,22 +116,26 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
     /* copy the APIs across */
     memcpy(mod, &mca_db_odbc_module.api, sizeof(orcm_db_base_module_t));
 
-    /* if the props include db info, then use it */
-    OPAL_LIST_FOREACH(kv, props, opal_value_t) {
-        if (0 == strcmp(kv->key, "odbcdsn")) {
-            mod->odbcdsn = strdup(kv->data.string);
-        } else if (0 == strcmp(kv->key, "table")) {
-            mod->table = strdup(kv->data.string);
-        } else if (0 == strcmp(kv->key, "user")) {
-            mod->user = strdup(kv->data.string);
+    /* if props are provided and include db info, then use it */
+    if (NULL != props) {
+        OPAL_LIST_FOREACH(kv, props, opal_value_t) {
+            if (0 == strcmp(kv->key, "odbcdsn")) {
+                mod->odbcdsn = strdup(kv->data.string);
+            } else if (0 == strcmp(kv->key, "table")) {
+                mod->table = strdup(kv->data.string);
+            } else if (0 == strcmp(kv->key, "user")) {
+                mod->user = strdup(kv->data.string);
+            }
         }
     }
+    
     if (NULL == mod->odbcdsn) {
         if (NULL == odbcdsn) {
             /* nothing was provided - opt out */
             free(mod);
             return NULL;
         }
+        mod->odbcdsn = odbcdsn;
     }
     if (NULL == mod->table) {
         if (NULL == table) {
@@ -141,6 +145,7 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
         }
         mod->table = strdup(table);
     }
+
     /* all other entries are optional */
     if (NULL == mod->user && NULL != user) {
         mod->user = strdup(user);

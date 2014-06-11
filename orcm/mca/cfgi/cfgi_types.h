@@ -23,7 +23,7 @@
 
 #include "orte/types.h"
 
-#include "orcm/mca/rm/rm_types.h"
+#include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/scd/scd_types.h"
 
 /*

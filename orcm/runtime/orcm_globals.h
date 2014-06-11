@@ -54,6 +54,29 @@ typedef orte_proc_type_t orcm_proc_type_t;
 #define ORCM_PROC_IS_MASTER      ORTE_PROC_IS_MASTER
 #define ORCM_PROC_IS_EMULATOR    ORTE_PROC_IS_EMULATOR
 
+/****    NODESTATE TYPE    ****/
+typedef int8_t orcm_node_state_t;
+#define ORCM_NODE_STATE_T OPAL_INT8
+
+#define ORCM_NODE_STATE_UNDEF         0  // Node is undefined
+#define ORCM_NODE_STATE_UNKNOWN       1  // Node is in unknown state
+#define ORCM_NODE_STATE_UP            2  // Node is up
+#define ORCM_NODE_STATE_DOWN          3  // Node is down
+#define ORCM_NODE_STATE_SESTERM       4  // Node is terminating session
+
+/* define a few commands for sending between orcmd's and orcmsched */
+typedef uint8_t orcm_rm_cmd_flag_t;
+#define ORCM_RM_CMD_T OPAL_UINT8
+
+#define ORCM_NODESTATE_REQ_COMMAND    1
+#define ORCM_RESOURCE_REQ_COMMAND     2
+#define ORCM_NODESTATE_UPDATE_COMMAND 3
+#define ORCM_VM_READY_COMMAND         4
+#define ORCM_LAUNCH_STEPD_COMMAND     5
+#define ORCM_CANCEL_STEPD_COMMAND     6
+#define ORCM_STEPD_COMPLETE_COMMAND   7
+#define ORCM_CALIBRATE                8
+
 /** version string of ORCM */
 ORCM_DECLSPEC extern const char openrcm_version_string[];
 
@@ -81,6 +104,13 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 /* system descriptions */
 ORCM_DECLSPEC extern opal_list_t *orcm_clusters;
 ORCM_DECLSPEC extern opal_list_t *orcm_schedulers;
+
+/**
+ * Init the ORCM datatype support
+ */
+ORCM_DECLSPEC int orcm_dt_init(void);
+
+const char *orcm_node_state_to_str(orcm_node_state_t state);
 
 END_C_DECLS
 

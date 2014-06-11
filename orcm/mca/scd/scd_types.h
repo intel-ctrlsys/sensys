@@ -203,7 +203,6 @@ typedef uint32_t orcm_scd_base_rm_session_state_t;
 
 /****    STATE MACHINE    ****/
 typedef void (*orcm_scd_state_cbfunc_t)(int fd, short args, void* cb);
-typedef void (*orcm_scd_base_rm_state_cbfunc_t)(int fd, short args, void* cb);
 
 
 typedef struct {

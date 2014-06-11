@@ -79,13 +79,13 @@ void orcm_scd_base_rm_activate_session_state(orcm_session_t *session,
 
 
 int orcm_scd_base_rm_add_session_state(orcm_scd_base_rm_session_state_t state,
-                                       orcm_scd_base_rm_state_cbfunc_t cbfunc,
+                                       orcm_scd_state_cbfunc_t cbfunc,
                                        int priority)
 {
     orcm_scd_base_rm_state_t *st;
 
     /* check for uniqueness */
-    OPAL_LIST_FOREACH(st, &orcm_scd_base.rmstates, orcm_scd_base_rm_state_t) {
+    OPAL_LIST_FOREACH(st, &orcm_scd_base.rmstates, orcm_scd_base_rm_session_state_t) {
         if (st->state == state) {
             OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
                                  "DUPLICATE RM STATE DEFINED: %s",

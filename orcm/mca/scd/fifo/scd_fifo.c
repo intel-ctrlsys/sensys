@@ -66,6 +66,9 @@ static int init(void)
         ORTE_ERROR_LOG(rc);
         return rc;
     }
+    
+    /* initialize the resource management service */
+    scd_base_rm_init();
 
     /* define our state machine */
     num_states = sizeof(states) / sizeof(orcm_scd_session_state_t);

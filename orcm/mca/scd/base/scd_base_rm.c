@@ -31,7 +31,7 @@ static orcm_scd_base_rm_session_state_t states[] = {
     ORCM_SESSION_STATE_ACTIVE,
     ORCM_SESSION_STATE_KILL
 };
-static orcm_scd_base_rm_state_cbfunc_t callbacks[] = {
+static orcm_scd_state_cbfunc_t callbacks[] = {
     scd_base_rm_undef,
     scd_base_rm_request,
     scd_base_rm_active,

@@ -36,6 +36,9 @@
 #include "opal/util/net.h"
 #include "opal/dss/dss.h"
 #include "opal/mca/dstore/base/base.h"
+#include "opal/mca/hwloc/base/base.h"
+#include "opal/mca/pstat/base/base.h"
+#include "opal/mca/pstat/pstat.h"
 
 #include "orte/mca/errmgr/base/base.h"
 #include "orte/mca/ess/base/base.h"
@@ -49,6 +52,11 @@
 #include "orte/mca/rmaps/base/base.h"
 #include "orte/mca/rmaps/rmaps.h"
 #include "orte/mca/state/base/base.h"
+#include "orte/mca/iof/base/base.h"
+#include "orte/mca/grpcomm/base/base.h"
+#include "orte/mca/odls/base/base.h"
+#include "orte/mca/rtc/base/base.h"
+#include "orte/util/regex.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/show_help.h"
 #include "orte/runtime/orte_wait.h"
@@ -67,6 +75,7 @@
 /* API functions */
 
 static int ojobd_init(void);
+static int ojobd_setup_node_pool(void);
 static void ojobd_finalize(void);
 
 /* The module struct */
@@ -84,9 +93,6 @@ static opal_event_t int_handler;
 static opal_event_t epipe_handler;
 static opal_event_t sigusr1_handler;
 static opal_event_t sigusr2_handler;
-static opal_thread_t progress_thread;
-static void* progress_thread_engine(opal_object_t *obj);
-static bool progress_thread_running = false;
 
 
 static void shutdown_signal(int fd, short flags, void *arg);
@@ -108,9 +114,7 @@ static int ojobd_init(void)
     opal_buffer_t buf, *clusterbuf, *uribuf;
     opal_list_t config;
     orte_vpid_t nprocs;
-    orcm_scheduler_t *scheduler;
     orcm_node_t *mynode;
-    opal_value_t kv;
     int32_t n;
 
     if (initialized) {
@@ -176,6 +180,19 @@ static int ojobd_init(void)
         goto error;
     }
 
+    /* read the site configuration */
+    OBJ_CONSTRUCT(&config, opal_list_t);
+    if (ORCM_SUCCESS != (ret = orcm_cfgi.read_config(&config))) {
+        error = "getting config";
+        goto error;
+    }
+    /* define the cluster */
+    OBJ_CONSTRUCT(&buf, opal_buffer_t);
+    if (ORCM_SUCCESS != (ret = orcm_cfgi.define_system(&config, &mynode, &nprocs, &buf))) {
+        error = "define system";
+        goto error;
+    }
+
     /* setup callback for SIGPIPE */
     setup_sighandler(SIGPIPE, &epipe_handler, epipe_signal_callback);
     /* Set signal handlers to catch kill signals so we can properly clean up
@@ -189,6 +206,65 @@ static int ojobd_init(void)
     setup_sighandler(SIGUSR2, &sigusr2_handler, signal_callback);
     signals_set = true;
 
+#if OPAL_HAVE_HWLOC
+    {
+        hwloc_obj_t obj;
+        unsigned i, j;
+        
+        /* get the local topology */
+        if (NULL == opal_hwloc_topology) {
+            if (OPAL_SUCCESS != opal_hwloc_base_get_topology()) {
+                error = "topology discovery";
+                goto error;
+            }
+        }
+        
+        /* remove the hostname from the topology. Unfortunately, hwloc
+         * decided to add the source hostname to the "topology", thus
+         * rendering it unusable as a pure topological description. So
+         * we remove that information here.
+         */
+        obj = hwloc_get_root_obj(opal_hwloc_topology);
+        for (i=0; i < obj->infos_count; i++) {
+            if (NULL == obj->infos[i].name ||
+                NULL == obj->infos[i].value) {
+                continue;
+            }
+            if (0 == strncmp(obj->infos[i].name, "HostName", strlen("HostName"))) {
+                free(obj->infos[i].name);
+                free(obj->infos[i].value);
+                /* left justify the array */
+                for (j=i; j < obj->infos_count-1; j++) {
+                    obj->infos[j] = obj->infos[j+1];
+                }
+                obj->infos[obj->infos_count-1].name = NULL;
+                obj->infos[obj->infos_count-1].value = NULL;
+                obj->infos_count--;
+                break;
+            }
+        }
+        
+        if (4 < opal_output_get_verbosity(orte_ess_base_framework.framework_output)) {
+            opal_output(0, "%s Topology Info:", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+            opal_dss.dump(0, opal_hwloc_topology, OPAL_HWLOC_TOPO);
+        }
+    }
+#endif
+    
+    /* open and setup the opal_pstat framework so we can provide
+     * process stats if requested
+     */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&opal_pstat_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "opal_pstat_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = opal_pstat_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "opal_pstat_base_select";
+        goto error;
+    }
+    
     /* open and setup the state machine */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_state_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -266,6 +342,44 @@ static int ojobd_init(void)
         error = "orte_rmaps_base_select";
         goto error;
     }
+
+    /*
+     * Group communications
+     */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_grpcomm_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_grpcomm_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_grpcomm_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_grpcomm_base_select";
+        goto error;
+    }
+    
+    /* Open/select the odls */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_odls_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_odls_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_odls_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_odls_base_select";
+        goto error;
+    }
+    
+    /* Open/select the rtc */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_rtc_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_rtc_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_rtc_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_rtc_base_select";
+        goto error;
+    }
     
     /* extract the cluster description and setup the routed info - the orcm routed component
      * will know what to do. */
@@ -303,33 +417,157 @@ static int ojobd_init(void)
     OBJ_DESTRUCT(&buf);
     OBJ_RELEASE(uribuf);
 
-    /* construct the thread object */
-    OBJ_CONSTRUCT(&progress_thread, opal_thread_t);
-    /* fork off a thread to progress it */
-    progress_thread.t_run = progress_thread_engine;
-    progress_thread_running = true;
-    if (OPAL_SUCCESS != (ret = opal_thread_start(&progress_thread))) {
-        error = "progress thread start";
-        progress_thread_running = false;
-        goto error;
-    }
-
     /* enable communication via the rml */
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);
         error = "orte_rml.enable_comm";
         goto error;
     }
+
+    /* setup the routed info - the selected routed component
+     * will know what to do. 
+     */
+    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, NULL))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_routed.init_routes";
+        goto error;
+    }
+    
+    /* setup I/O forwarding system - must come after we init routes */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_iof_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_iof_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_iof_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_iof_base_select";
+        goto error;
+    }
+
+    if (ORTE_SUCCESS != (ret = ojobd_setup_node_pool())) {
+        ORTE_ERROR_LOG(ret);
+        error = "ojobd_setup_node_pool";
+        goto error;
+    }
  
     return ORCM_SUCCESS;
 
  error:
-    if (!progress_thread_running) {
-        /* can't send the help message, so ensure it
-         * comes out locally
-         */
-        orte_show_help_finalize();
+    orte_show_help("help-orte-runtime.txt",
+                   "orte_init:startup:internal-failure",
+                   true, error, ORTE_ERROR_NAME(ret), ret);
+    
+    return ORTE_ERR_SILENT;
+}
+
+static int ojobd_setup_node_pool(void)
+{
+    int ret = ORTE_ERROR;
+    int i = 0;
+    char *error = NULL;
+    orte_job_t *jdata;
+    orte_proc_t *proc;
+    orte_app_context_t *app;
+    orte_node_t *node;
+    char **hosts;
+    char *myhostname;
+
+    if (NULL != orte_node_regex) {
+    /* extract the nodes */
+        if (ORTE_SUCCESS != (ret = orte_regex_extract_node_names(orte_node_regex, &hosts))) {
+            error = "orte_regex_extract_node_names";
+            goto error;
+        }
+    } else {
+        myhostname = strdup( orte_process_info.nodename );
+        hosts[0] = myhostname;
+        hosts[1] = NULL;
     }
+
+    /* setup the global job and node arrays */
+    orte_job_data = OBJ_NEW(opal_pointer_array_t);
+    if (ORTE_SUCCESS != (ret = opal_pointer_array_init(orte_job_data,
+        1, ORTE_GLOBAL_ARRAY_MAX_SIZE, 1))) {
+        ORTE_ERROR_LOG(ret);
+        error = "setup job array";
+        goto error;
+    }
+    
+    orte_node_pool = OBJ_NEW(opal_pointer_array_t);
+    if (ORTE_SUCCESS != (ret = opal_pointer_array_init(orte_node_pool,
+        ORTE_GLOBAL_ARRAY_BLOCK_SIZE, ORTE_GLOBAL_ARRAY_MAX_SIZE,
+        ORTE_GLOBAL_ARRAY_BLOCK_SIZE))) {
+        ORTE_ERROR_LOG(ret);
+        error = "setup node array";
+    }
+    orte_node_topologies = OBJ_NEW(opal_pointer_array_t);
+    if (ORTE_SUCCESS != (ret = opal_pointer_array_init(orte_node_topologies,
+        ORTE_GLOBAL_ARRAY_BLOCK_SIZE, ORTE_GLOBAL_ARRAY_MAX_SIZE,
+        ORTE_GLOBAL_ARRAY_BLOCK_SIZE))) {
+        ORTE_ERROR_LOG(ret);
+        error = "setup node topologies array";
+        goto error;
+    }
+
+
+    for(i=0; hosts[i] != NULL; i++) {
+        /* Setup the job data object for the daemons */        
+        /* create and store the job data object */
+        jdata = OBJ_NEW(orte_job_t);
+        jdata->jobid = ORTE_PROC_MY_NAME->jobid;
+        opal_pointer_array_set_item(orte_job_data, 0, jdata);
+    
+        /* every job requires at least one app */
+        app = OBJ_NEW(orte_app_context_t);
+        opal_pointer_array_set_item(jdata->apps, 0, app);
+        jdata->num_apps++;
+    
+        /* create and store a node object where we are */
+        node = OBJ_NEW(orte_node_t);
+        node->name = strdup(hosts[i]);
+        node->index = opal_pointer_array_set_item(orte_node_pool, (ORTE_PROC_MY_NAME->vpid + i), node);
+#if OPAL_HAVE_HWLOC
+        /* point our topology to the one detected locally */
+        node->topology = opal_hwloc_topology;
+#endif
+
+        /* create and store a proc object for us */
+        proc = OBJ_NEW(orte_proc_t);
+        proc->name.jobid = ORTE_PROC_MY_NAME->jobid;
+        proc->name.vpid = ORTE_PROC_MY_NAME->vpid + i;
+    
+        proc->pid = orte_process_info.pid;
+        proc->rml_uri = orte_rml.get_contact_info();
+        proc->state = ORTE_PROC_STATE_RUNNING;
+        opal_pointer_array_set_item(jdata->procs, proc->name.vpid, proc);
+    
+        /* record that the daemon (i.e., us) is on this node 
+         * NOTE: we do not add the proc object to the node's
+         * proc array because we are not an application proc.
+         * Instead, we record it in the daemon field of the
+         * node object
+         */
+        OBJ_RETAIN(proc);   /* keep accounting straight */
+        node->daemon = proc;
+        ORTE_FLAG_SET(node, ORTE_NODE_FLAG_DAEMON_LAUNCHED);
+        node->state = ORTE_NODE_STATE_UP;
+    
+        /* now point our proc node field to the node */
+        OBJ_RETAIN(node);   /* keep accounting straight */
+        proc->node = node;
+
+        /* record that the daemon job is running */
+        jdata->num_procs = 1;
+        jdata->state = ORTE_JOB_STATE_RUNNING;
+        /* obviously, we have "reported" */
+        jdata->num_reported = 1;
+    }
+    
+
+    return ORTE_SUCCESS;
+    
+ error:
     orte_show_help("help-orte-runtime.txt",
                    "orte_init:startup:internal-failure",
                    true, error, ORTE_ERROR_NAME(ret), ret);
@@ -348,29 +586,13 @@ static void ojobd_finalize(void)
         opal_event_signal_del(&sigusr2_handler);
     }
     
+    (void) mca_base_framework_close(&orte_grpcomm_base_framework);
+    (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
     (void) mca_base_framework_close(&orte_routed_base_framework);
-
-    orte_wait_finalize();
-    if (progress_thread_running) {
-        /* we had to leave the progress thread running until
-         * we closed the routed framework as that closure
-         * sends a "sync" message to the local daemon. it
-         * is now safe to stop the progress thread
-         */
-        orte_event_base_active = false;
-        /* break the event loop */
-        opal_event_base_loopbreak(orte_event_base);
-        /* wait for thread to exit */
-        opal_thread_join(&progress_thread, NULL);
-        OBJ_DESTRUCT(&progress_thread);
-        progress_thread_running = false;
-    }
-
     (void) mca_base_framework_close(&orte_rml_base_framework);
     (void) mca_base_framework_close(&orte_oob_base_framework);
     (void) mca_base_framework_close(&orte_state_base_framework);
-
     (void) mca_base_framework_close(&orcm_db_base_framework);
     (void) mca_base_framework_close(&opal_dstore_base_framework);
 

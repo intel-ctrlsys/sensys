@@ -91,10 +91,13 @@ ORCM_DECLSPEC extern int orcm_debug_output;
 ORCM_DECLSPEC extern int orcm_debug_verbosity;
 
 
-/* extend the ORTE RML tags to add our own */
+/* extend the ORTE RML tags to add ORCM DAEMONS tags */
 #define ORCM_RML_TAG_SCD   (ORTE_RML_TAG_MAX + 1)
 #define ORCM_RML_TAG_RM    (ORTE_RML_TAG_MAX + 2)
 
+/* extend the ORTE RML tags to add Job Daemons tags */
+#define ORCM_RML_TAG_HNP   (ORTE_RML_TAG_MAX + 3)
+#define ORCM_RML_TAG_DAEMON (ORTE_RML_TAG_MAX + 4)
 
 /* define event base priorities */
 #define ORCM_SCHED_PRI OPAL_EV_MSG_HI_PRI

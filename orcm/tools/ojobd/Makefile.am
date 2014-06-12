@@ -44,7 +44,7 @@ ojobd_SOURCES = ojobd.c
 #  nice for systems that don't have all the shared 
 #  libraries on the computes 
 ojobd_LDFLAGS =
-ojobd_LDADD = $(top_builddir)/orte/libopen-rte.la $(top_builddir)/opal/libopen-pal.la
+ojobd_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/libopen-rte.la $(top_builddir)/opal/libopen-pal.la
 
 distclean-local:
 	rm -f $(man_pages)

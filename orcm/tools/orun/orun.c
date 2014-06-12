@@ -599,8 +599,6 @@ int orun(int argc, char *argv[])
     orcm_alloc_t alloc;
     opal_buffer_t uribuf;
     char *error = NULL;
-    orte_proc_t *proc;
-    orte_node_t *node;
     char *endptr;
     char *dstr;
     long sessionid;
@@ -866,7 +864,7 @@ int orun(int argc, char *argv[])
         ORTE_PROC_MY_HNP->jobid = sessionid;
         ORTE_PROC_MY_HNP->vpid = 0;
         orte_process_info.my_hnp_uri=my_hnp_uri;
-        printf("orte_process_myhnp %d %s\n", sessionid, orte_process_info.my_hnp_uri);
+        printf("orte_process_myhnp %i %s\n", sessionid, orte_process_info.my_hnp_uri);
     }
 
 #if 0

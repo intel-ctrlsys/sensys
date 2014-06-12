@@ -18,7 +18,18 @@
 
 #include "orcm/mca/pvsn/base/base.h"
 #include "orcm/runtime/runtime.h"
+#include "orcm/util/cli.h"
 #include "orcm/mca/scd/scd.h"
+
+static orcm_cli_init_t cli_init[] = {
+    {NULL, "query", 0, 1, "Query information"},
+
+    {"query", "images", 0, 0, "Image info"},
+
+    {"query", "verbose", 1, 0, "Verbose output"},
+
+    {NULL, NULL, 0, 0, NULL}  // end of array tag
+};
 
 static opal_cmd_line_init_t cmd_line_init[] = {
     /* End of list */
@@ -69,6 +80,9 @@ int main(int argc, char* argv[])
     int rc, n;
     opal_cmd_line_t cmd_line;
     bool active;
+    orcm_cli_t cli;
+    orcm_cli_cmd_t *cmd;
+    char *mycmd;
 
     opal_cmd_line_create(&cmd_line, cmd_line_init);
     mca_base_cmd_line_setup(&cmd_line);
@@ -80,6 +94,14 @@ int main(int argc, char* argv[])
         }
         return rc;
     }
+
+    orcm_cli_create(&cli, cli_init);
+    OPAL_LIST_FOREACH(cmd, &cli.cmds, orcm_cli_cmd_t) {
+        orcm_cli_print_cmd(cmd, NULL);
+    }
+
+    orcm_cli_get_cmd("cmd", &cli, &mycmd);
+    fprintf(stderr, "CMD: %s\n", mycmd);
 
     /*
      * Since this process can now handle MCA/GMCA parameters, make sure to

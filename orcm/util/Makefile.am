@@ -12,9 +12,11 @@
 
 headers += \
         util/utils.h \
+        util/cli.h \
         util/regex.h
 
 liborcm_la_SOURCES += \
         util/error_strings.c \
         util/utils.c \
+        util/cli.c \
         util/regex.c

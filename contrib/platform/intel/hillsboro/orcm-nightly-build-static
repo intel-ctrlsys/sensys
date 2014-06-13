@@ -36,4 +36,4 @@ with_pwr=yes
 with_postgres=no
 with_slurm=no
 with_ipmi=yes
-with_odbc=no
+with_odbc=yes

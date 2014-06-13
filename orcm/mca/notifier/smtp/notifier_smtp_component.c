@@ -25,7 +25,7 @@
 
 #include "orcm_config.h"
 
-#include "opal/mca/base/mca_base_param.h"
+#include "opal/mca/base/mca_base_var.h"
 
 #include "orcm/constants.h"
 #include "orte/util/show_help.h"

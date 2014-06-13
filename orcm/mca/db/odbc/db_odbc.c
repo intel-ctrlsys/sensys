@@ -578,7 +578,7 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
                 ret = SQLGetData(stmt, i, SQL_C_UTINYINT, &temp_kv.data.byte,
                                  sizeof(temp_kv.data.byte), NULL);
                 break;
-            /* TODO: add support for dates and times in opal_value_t??? */
+            /* TODO: add support for dates and times */
             /*case SQL_TYPE_DATE:
             case SQL_TYPE_TIME:*/
             case SQL_TYPE_TIMESTAMP:

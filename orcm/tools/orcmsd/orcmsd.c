@@ -370,7 +370,7 @@ int main(int argc, char *argv[])
      * up incorrect infrastructure that only a singleton would
      * require.
      */
-    if(ORTE_PROC_IS_HNP) {
+    if(orcmsd_globals.hnp) {
         if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL|ORTE_PROC_HNP))) {
             return ret;
         }

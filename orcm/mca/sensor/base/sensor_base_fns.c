@@ -209,7 +209,7 @@ void orcm_sensor_base_log(char *comp, opal_buffer_t *data)
         return;
     }
 
-    if (NULL == comp) {
+    if (NULL == comp || orcm_sensor_base.dbhandle < 0) {
         /* nothing we can do */
         return;
     }

@@ -370,23 +370,16 @@ int main(int argc, char *argv[])
      * up incorrect infrastructure that only a singleton would
      * require.
      */
-    if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL|ORTE_PROC_HNP))) {
-        return ret;
-    }
-
-    /*
-    if (orcmsd_globals.hnp) {
-        if (ORTE_SUCCESS != (ret = orcm_init(&argc, &argv, ORTE_PROC_HNP))) {
-            ORTE_ERROR_LOG(ret);
+    if(ORTE_PROC_IS_HNP) {
+        if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL|ORTE_PROC_HNP))) {
             return ret;
         }
     } else {
-        if (ORTE_SUCCESS != (ret = orcm_init(&argc, &argv, ORTE_PROC_DAEMON))) {
-            ORTE_ERROR_LOG(ret);
+        if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL|ORTE_PROC_DAEMON))) {
             return ret;
         }
     }
-    */
+
     /* finalize the OPAL utils. As they are opened again from orte_init->opal_init
      * we continue to have a reference count on them. So we have to finalize them twice...
      */

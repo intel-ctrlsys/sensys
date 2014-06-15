@@ -61,10 +61,6 @@
 #include "orte/mca/odls/base/base.h"
 #include "orte/mca/rtc/base/base.h"
 #include "orte/mca/dfs/base/base.h"
-#if OPAL_ENABLE_FT_CR == 1
-#include "orte/mca/snapc/base/base.h"
-#include "orte/mca/sstore/base/base.h"
-#endif
 #include "orte/util/regex.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/show_help.h"
@@ -146,10 +142,21 @@ static int orcmsd_init(void)
         goto error;
     }
 
+    /* open the ESS and select the correct module for this environment */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_ess_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_ess_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_ess_base_select())) {
+        error = "orte_ess_base_select";
+        goto error;
+    }
+
     /* define a name for myself */
     /* if we were spawned by a singleton, our jobid was given to us */
-    if (NULL != orcm_stepd_base_jobid) {
-        if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_jobid(&ORTE_PROC_MY_NAME->jobid, orcm_stepd_base_jobid))) {
+    if (NULL != orte_ess_base_jobid) {
+        if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_jobid(&ORTE_PROC_MY_NAME->jobid, orte_ess_base_jobid))) {
             ORTE_ERROR_LOG(ret);
             error = "convert_string_to_jobid";
             goto error;
@@ -157,11 +164,11 @@ static int orcmsd_init(void)
         if (ORTE_PROC_IS_HNP) {
             ORTE_PROC_MY_NAME->vpid = 0;
         } else {
-            if(NULL == orcm_stepd_base_vpid) {
+            if(NULL == orte_ess_base_vpid) {
                 ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
                 return ORTE_ERR_NOT_FOUND;
             }
-            if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_vpid(&ORTE_PROC_MY_NAME->vpid, orcm_stepd_base_vpid))) {
+            if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_vpid(&ORTE_PROC_MY_NAME->vpid, orte_ess_base_vpid))) {
                 ORTE_ERROR_LOG(ret);
                 error = "convert_string_to_vpid";
                 goto error;
@@ -446,6 +453,9 @@ static int orcmsd_init(void)
         }
     }
 
+    if (!ORCM_PROC_IS_HNP) {
+        return ORCM_SUCCESS;
+    }
     /*
      * Setup the remaining resource
      * management and errmgr frameworks - application procs
@@ -504,74 +514,7 @@ static int orcmsd_init(void)
     /* we are also officially a daemon, so better update that field too */
     orte_process_info.my_daemon_uri = strdup(orte_process_info.my_hnp_uri);
     
-    /* setup the orte_show_help system to recv remote output */
-    /*
-    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_SHOW_HELP,
-                            ORTE_RML_PERSISTENT, orte_show_help_recv, NULL);
-    */
-
-    /* setup my session directory */
-    if (orte_create_session_dirs) {
-        OPAL_OUTPUT_VERBOSE((2, orte_debug_output,
-                             "%s setting up session dir with\n\ttmpdir: %s\n\thost %s",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                             (NULL == orte_process_info.tmpdir_base) ? "UNDEF" : orte_process_info.tmpdir_base,
-                             orte_process_info.nodename));
-        
-        /* take a pass thru the session directory code to fillin the
-         * tmpdir names - don't create anything yet
-         */
-        if (ORTE_SUCCESS != (ret = orte_session_dir(false,
-                                                    orte_process_info.tmpdir_base,
-                                                    orte_process_info.nodename, NULL,
-                                                    ORTE_PROC_MY_NAME))) {
-            ORTE_ERROR_LOG(ret);
-            error = "orte_session_dir define";
-            goto error;
-        }
-        /* clear the session directory just in case there are
-         * stale directories laying around
-         */
-        orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);
-
-        /* now actually create the directory tree */
-        if (ORTE_SUCCESS != (ret = orte_session_dir(true,
-                                                    orte_process_info.tmpdir_base,
-                                                    orte_process_info.nodename, NULL,
-                                                    ORTE_PROC_MY_NAME))) {
-            ORTE_ERROR_LOG(ret);
-            error = "orte_session_dir";
-            goto error;
-        }
-        
-        /* Once the session directory location has been established, set
-           the opal_output hnp file location to be in the
-           proc-specific session directory. */
-        opal_output_set_output_file_info(orte_process_info.proc_session_dir,
-                                         "output-", NULL, NULL);
-        
-        /* save my contact info in a file for others to find */
-        jobfam_dir = opal_dirname(orte_process_info.job_session_dir);
-        contact_path = opal_os_path(false, jobfam_dir, "contact.txt", NULL);
-        free(jobfam_dir);
-        
-        OPAL_OUTPUT_VERBOSE((2, orte_debug_output,
-                             "%s writing contact file %s",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                             contact_path));
-        
-        if (ORTE_SUCCESS != (ret = orte_write_hnp_contact_file(contact_path))) {
-            OPAL_OUTPUT_VERBOSE((2, orte_debug_output,
-                                 "%s writing contact file failed with error %s",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                 ORTE_ERROR_NAME(ret)));
-        } else {
-            OPAL_OUTPUT_VERBOSE((2, orte_debug_output,
-                                 "%s wrote contact file",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        }
-        free(contact_path);
-    }
+    orte_create_session_dirs = false;
 
     /* extract the cluster description and setup the routed info - the orcm routed component
      * will know what to do. */
@@ -638,36 +581,8 @@ static int orcmsd_init(void)
         error = "orte_iof_base_select";
         goto error;
     }
-#if OPAL_ENABLE_FT_CR == 1
-    /*
-     * Setup the SnapC
-     */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_snapc_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_snapc_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_sstore_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_sstore_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_snapc_base_select(ORTE_PROC_IS_HNP, ORTE_PROC_IS_APP))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_snapc_base_select";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_sstore_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_sstore_base_select";
-        goto error;
-    }
 
-    /* For HNP, ORTE doesn't need the OPAL CR stuff */
     opal_cr_set_enabled(false);
-#else
-    opal_cr_set_enabled(false);
-#endif
 
     /*
      * Initalize the CR setup
@@ -742,28 +657,17 @@ static int orcmsd_setup_node_pool(void)
     orte_app_context_t *app;
     orte_node_t *node;
     char **hosts = NULL;
-    char *myhostname;
-    char *node_regex = NULL;
+    char *myhostname[2] = { NULL, NULL};
 
-    (void) mca_base_var_register ("orte", "orte", NULL, "node_regex",
-                               "node_regex of allocated nodes.",
-                               MCA_BASE_VAR_TYPE_STRING, NULL, 0,
-                               MCA_BASE_VAR_FLAG_INTERNAL,
-                               OPAL_INFO_LVL_9,
-                               MCA_BASE_VAR_SCOPE_CONSTANT,
-                               &node_regex);
-
-    if (NULL != node_regex) {
+    if (NULL != orcm_sst_base_node_regex) {
     /* extract the nodes */
-        if (ORTE_SUCCESS != (ret = orte_regex_extract_node_names(node_regex, &hosts))) {
+        if (ORTE_SUCCESS != (ret = orte_regex_extract_node_names(orcm_sst_base_node_regex, &hosts))) {
             error = "orte_regex_extract_node_names";
             goto error;
         }
-        free(node_regex);
     } else {
-        myhostname = strdup( orte_process_info.nodename );
-        hosts[0] = myhostname;
-        hosts[1] = NULL;
+        myhostname[0] = strdup( orte_process_info.nodename );
+        hosts = myhostname;
     }
 
     /* setup the global job and node arrays */
@@ -870,15 +774,22 @@ static void orcmsd_finalize(void)
         opal_event_signal_del(&sigusr2_handler);
     }
     
-    (void) mca_base_framework_close(&orte_grpcomm_base_framework);
-    (void) mca_base_framework_close(&orte_iof_base_framework);
-    (void) mca_base_framework_close(&orte_errmgr_base_framework);
-    (void) mca_base_framework_close(&orte_routed_base_framework);
-    (void) mca_base_framework_close(&orte_rml_base_framework);
-    (void) mca_base_framework_close(&orte_oob_base_framework);
-    (void) mca_base_framework_close(&orte_state_base_framework);
     (void) mca_base_framework_close(&orcm_db_base_framework);
     (void) mca_base_framework_close(&opal_dstore_base_framework);
+    (void) mca_base_framework_close(&opal_pstat_base_framework);
+    (void) mca_base_framework_close(&orte_state_base_framework);
+    (void) mca_base_framework_close(&orte_errmgr_base_framework);
+    (void) mca_base_framework_close(&orte_plm_base_framework);
+    (void) mca_base_framework_close(&orte_oob_base_framework);
+    (void) mca_base_framework_close(&orte_rml_base_framework);
+    (void) mca_base_framework_close(&orte_routed_base_framework);
+    (void) mca_base_framework_close(&orte_grpcomm_base_framework);
+    (void) mca_base_framework_close(&orte_ras_base_framework);
+    (void) mca_base_framework_close(&orte_rmaps_base_framework);
+    (void) mca_base_framework_close(&orte_odls_base_framework);
+    (void) mca_base_framework_close(&orte_rtc_base_framework);
+    (void) mca_base_framework_close(&orte_iof_base_framework);
+    (void) mca_base_framework_close(&orte_dfs_base_framework);
 
 }
 

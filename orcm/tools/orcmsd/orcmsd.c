@@ -371,11 +371,11 @@ int main(int argc, char *argv[])
      * require.
      */
     if(orcmsd_globals.hnp) {
-        if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL|ORTE_PROC_HNP))) {
+        if (ORCM_SUCCESS != (ret = orcm_init(ORCM_DAEMON | ORTE_PROC_HNP))) {
             return ret;
         }
     } else {
-        if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL|ORTE_PROC_DAEMON))) {
+        if (ORCM_SUCCESS != (ret = orcm_init(ORCM_DAEMON |ORCM_STEPD))) {
             return ret;
         }
     }
@@ -494,6 +494,23 @@ int main(int argc, char *argv[])
         /* setup the orcms ctrl or hnp daemon command receive function */
         orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_HNP,
                             ORTE_RML_PERSISTENT, orcms_hnp_recv, NULL);
+    } else {
+        (void) mca_base_var_register ("orte", "orte", NULL, "hnp_uri",
+                                  "URI for the hnp.",
+                                  MCA_BASE_VAR_TYPE_STRING, NULL, 0,
+                                  MCA_BASE_VAR_FLAG_INTERNAL,
+                                  OPAL_INFO_LVL_9,
+                                  MCA_BASE_VAR_SCOPE_CONSTANT,
+                                  &orte_process_info.my_hnp_uri);
+        if (NULL != orte_process_info.my_hnp_uri) {
+            /* set the contact info into the hash table */
+            orte_rml.set_contact_info(orte_process_info.my_hnp_uri);
+            ret = orte_rml_base_parse_uris(orte_process_info.my_hnp_uri, ORTE_PROC_MY_HNP, NULL);
+            if (ORTE_SUCCESS != ret) {
+                ORTE_ERROR_LOG(ret);
+                goto DONE;
+            }
+        }
     }
     
     /* setup the primary daemon command receive function */
@@ -541,6 +558,8 @@ int main(int argc, char *argv[])
 
     /* if requested, report my uri to the indicated pipe */
     if (orcmsd_globals.uri_pipe > 0) {
+        /*char *sysinfo, *tmp;
+         */
         orte_job_t *jdata;
         orte_proc_t *proc;
         orte_node_t *node;
@@ -959,7 +978,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
 
     /* get the daemon job, if necessary */
     if (NULL == jdatorted) {
-        jdatorted = orte_get_job_data_object(ORTE_PROC_MY_NAME->jobid);
+        jdatorted = orte_get_job_data_object(ORTE_PROC_MY_NAME->vpid);
     }
 
     /* multiple daemons could be in this buffer, so unpack until we exhaust the data */

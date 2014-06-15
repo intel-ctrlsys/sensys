@@ -91,7 +91,7 @@ static int component_close(void)
 
 static int component_query(mca_base_module_t **module, int *priority)
 {
-    if (ORCM_PROC_IS_TOOL) {
+    if (ORCM_PROC_IS_HNP || ORCM_PROC_IS_STEPD) {
         *module = (mca_base_module_t*)&orcm_sst_orcmsd_module;
         *priority = 100;
         return ORCM_SUCCESS;

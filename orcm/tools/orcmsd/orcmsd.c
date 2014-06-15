@@ -371,11 +371,11 @@ int main(int argc, char *argv[])
      * require.
      */
     if(orcmsd_globals.hnp) {
-        if (ORCM_SUCCESS != (ret = orcm_init(ORCM_DAEMON | ORTE_PROC_HNP))) {
+        if (ORCM_SUCCESS != (ret = orcm_init(ORCM_HNP))) {
             return ret;
         }
     } else {
-        if (ORCM_SUCCESS != (ret = orcm_init(ORCM_DAEMON |ORCM_STEPD))) {
+        if (ORCM_SUCCESS != (ret = orcm_init(ORCM_STEPD))) {
             return ret;
         }
     }

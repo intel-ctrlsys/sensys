@@ -148,8 +148,8 @@ static int orcmsd_init(void)
 
     /* define a name for myself */
     /* if we were spawned by a singleton, our jobid was given to us */
-    if (NULL != orte_ess_base_jobid) {
-        if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_jobid(&ORTE_PROC_MY_NAME->jobid, orte_ess_base_jobid))) {
+    if (NULL != orcm_stepd_base_jobid) {
+        if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_jobid(&ORTE_PROC_MY_NAME->jobid, orcm_stepd_base_jobid))) {
             ORTE_ERROR_LOG(ret);
             error = "convert_string_to_jobid";
             goto error;
@@ -582,6 +582,7 @@ static int orcmsd_init(void)
         error = "extract cluster buf";
         goto error;
     }
+    /*
     if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&buf);
@@ -589,6 +590,7 @@ static int orcmsd_init(void)
         error = "orte_routed.init_routes";
         goto error;
     }
+    */
     OBJ_RELEASE(clusterbuf);
 
     /* extract the uri buffer and load the hash tables */

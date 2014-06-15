@@ -29,21 +29,43 @@
  * Global variables
  */
 orcm_sst_base_module_t orcm_sst = {0};
-char *orcm_sst_base_node_regex = NULL;
+char *orcm_node_regex = NULL;
+char *orcm_base_jobid = NULL;
+char *orcm_base_vpid = NULL;
 
 static int orcm_sst_base_register(mca_base_register_flag_t flags)
 {
-    char *node_regex = NULL;
     int ret = 0;
 
+    orcm_node_regex = NULL;
     (void) mca_base_var_register ("orcm", "orcm", NULL, "node_regex",
                                "node_regex of allocated nodes.",
                                MCA_BASE_VAR_TYPE_STRING, NULL, 0,
                                MCA_BASE_VAR_FLAG_INTERNAL,
                                OPAL_INFO_LVL_9,
                                MCA_BASE_VAR_SCOPE_CONSTANT,
-                               &orcm_sst_base_node_regex);
+                               &orcm_node_regex);
     mca_base_var_register_synonym(ret, "orcm", "orcm", NULL,"node_regx", 0);
+
+    orcm_base_jobid = NULL;
+    (void) mca_base_var_register ("orcm", "orcm", "base", "jobid",
+                               "orcmsd base jobid.",
+                               MCA_BASE_VAR_TYPE_STRING, NULL, 0,
+                               MCA_BASE_VAR_FLAG_INTERNAL,
+                               OPAL_INFO_LVL_9,
+                               MCA_BASE_VAR_SCOPE_CONSTANT,
+                               &orcm_base_jobid);
+    mca_base_var_register_synonym(ret, "orcm", "orcm", "base","jobid", 0);
+
+    orcm_base_vpid = NULL;
+    (void) mca_base_var_register ("orcm", "orcm", "base", "vpid",
+                               "orcmsd base vpid",
+                               MCA_BASE_VAR_TYPE_STRING, NULL, 0,
+                               MCA_BASE_VAR_FLAG_INTERNAL,
+                               OPAL_INFO_LVL_9,
+                               MCA_BASE_VAR_SCOPE_CONSTANT,
+                               &orcm_base_vpid);
+    mca_base_var_register_synonym(ret, "orcm", "orcm", "base","vpid", 0);
 
     return ORCM_SUCCESS;
 }

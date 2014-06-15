@@ -29,9 +29,22 @@
  * Global variables
  */
 orcm_sst_base_module_t orcm_sst = {0};
+char *orcm_sst_base_node_regex = NULL;
 
 static int orcm_sst_base_register(mca_base_register_flag_t flags)
 {
+    char *node_regex = NULL;
+    int ret = 0;
+
+    (void) mca_base_var_register ("orcm", "orcm", NULL, "node_regex",
+                               "node_regex of allocated nodes.",
+                               MCA_BASE_VAR_TYPE_STRING, NULL, 0,
+                               MCA_BASE_VAR_FLAG_INTERNAL,
+                               OPAL_INFO_LVL_9,
+                               MCA_BASE_VAR_SCOPE_CONSTANT,
+                               &orcm_sst_base_node_regex);
+    mca_base_var_register_synonym(ret, "orcm", "orcm", NULL,"node_regx", 0);
+
     return ORCM_SUCCESS;
 }
 

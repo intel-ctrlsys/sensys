@@ -197,10 +197,6 @@ opal_cmd_line_init_t orte_cmd_line_opts[] = {
       &orcmsd_globals.set_sid, OPAL_CMD_LINE_TYPE_BOOL,
       "Direct the orted to separate from the current session"},
     
-    { "tmpdir_base", '\0', NULL, "tmpdir", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Set the root for the session directory tree" },
-
     { NULL, '\0', NULL, "report-uri", 1,
       &orcmsd_globals.uri_pipe, OPAL_CMD_LINE_TYPE_INT,
       "Report this process' uri on indicated pipe"},
@@ -248,9 +244,6 @@ int main(int argc, char *argv[])
     int i;
     opal_buffer_t *buffer;
     char hostname[100];
-#if OPAL_ENABLE_FT_CR == 1
-    char *tmp_env_var = NULL;
-#endif
     char *umask_str = getenv("ORTE_DAEMON_UMASK_VALUE");
     if (NULL != umask_str) {
         char *endptr;
@@ -342,14 +335,6 @@ int main(int argc, char *argv[])
     }
 #endif
 
-#if OPAL_ENABLE_FT_CR == 1
-    /* Mark as a tool program */
-    (void) mca_base_var_env_name ("opal_cr_is_tool", &tmp_env_var);
-    opal_setenv(tmp_env_var,
-                "1",
-                true, &environ);
-    free(tmp_env_var);
-#endif
 
     /* if mapreduce set, flag it */
     if (orcmsd_globals.mapreduce) {
@@ -460,12 +445,6 @@ int main(int argc, char *argv[])
                 opal_output(0, "%s is executing clean %s", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                             orcmsd_globals.abort ? "abort" : "abnormal termination");
 
-                /* do -not- call finalize as this will send a message to the HNP
-                 * indicating clean termination! Instead, just forcibly cleanup
-                 * the local session_dir tree and exit
-                 */
-                orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);
-                
                 /* if we were ordered to abort, do so */
                 if (orcmsd_globals.abort) {
                     abort();
@@ -558,17 +537,22 @@ int main(int argc, char *argv[])
 
     /* if requested, report my uri to the indicated pipe */
     if (orcmsd_globals.uri_pipe > 0) {
-        /*char *sysinfo, *tmp;
-         */
-        orte_job_t *jdata;
+        /*
         orte_proc_t *proc;
         orte_node_t *node;
         orte_app_context_t *app;
-        char *tmp, *nptr, *sysinfo;
+        char *tmp, *sysinfo;
         int32_t ljob;
+         */
+        char *sysinfo, *tmp, *nptr;
+        orte_job_t *jdata;
         orte_grpcomm_collective_t *coll;
         orte_namelist_t *nm;
 
+    /* get the daemon job, if necessary */
+        jdata = orte_get_job_data_object(ORTE_PROC_MY_NAME->vpid);
+
+#if 0
         /* setup the singleton's job */
         jdata = OBJ_NEW(orte_job_t);
         /*
@@ -577,6 +561,7 @@ int main(int argc, char *argv[])
         jdata->jobid=ORTE_PROC_MY_NAME->jobid;
         ljob = ORTE_LOCAL_JOBID(jdata->jobid);
         opal_pointer_array_set_item(orte_job_data, ljob, jdata);
+#endif
 
         /* must create a map for it (even though it has no
          * info in it) so that the job info will be picked
@@ -585,6 +570,7 @@ int main(int argc, char *argv[])
          */
         jdata->map = OBJ_NEW(orte_job_map_t);
 
+#if 0
         /* setup an app_context for the singleton */
         app = OBJ_NEW(orte_app_context_t);
         app->app = strdup("singleton");
@@ -623,6 +609,7 @@ int main(int argc, char *argv[])
         proc->state = ORTE_PROC_STATE_RUNNING;
         proc->app_idx = 0;
         ORTE_FLAG_SET(proc, ORTE_PROC_FLAG_LOCAL);
+#endif
 
         /* account for the collectives in its modex/barriers */
         jdata->peer_modex = orte_grpcomm_base_get_coll_id();
@@ -645,22 +632,6 @@ int main(int argc, char *argv[])
         nm->name.jobid = jdata->jobid;
         nm->name.vpid = ORTE_VPID_WILDCARD;
         opal_list_append(&coll->participants, &nm->super);
-
-#if OPAL_ENABLE_FT_CR == 1
-        jdata->snapc_init_barrier = orte_grpcomm_base_get_coll_id();
-        coll = orte_grpcomm_base_setup_collective(jdata->snapc_init_barrier);
-        nm = OBJ_NEW(orte_namelist_t);
-        nm->name.jobid = jdata->jobid;
-        nm->name.vpid = ORTE_VPID_WILDCARD;
-        opal_list_append(&coll->participants, &nm->super);
-
-        jdata->snapc_fini_barrier = orte_grpcomm_base_get_coll_id();
-        coll = orte_grpcomm_base_setup_collective(jdata->snapc_fini_barrier);
-        nm = OBJ_NEW(orte_namelist_t);
-        nm->name.jobid = jdata->jobid;
-        nm->name.vpid = ORTE_VPID_WILDCARD;
-        opal_list_append(&coll->participants, &nm->super);
-#endif
 
         /* create a string that contains our uri + sysinfo */
         orte_util_convert_sysinfo_to_string(&sysinfo, orte_local_cpu_type, orte_local_cpu_model);
@@ -915,7 +886,7 @@ int main(int argc, char *argv[])
     ORTE_UPDATE_EXIT_STATUS(ret);
 
     /* cleanup and leave */
-    orte_finalize();
+    orcm_finalize();
 
     if (orte_debug_flag) {
         fprintf(stderr, "exiting with status %d\n", orte_exit_status);
@@ -949,7 +920,6 @@ static void shutdown_callback(int fd, short flags, void *arg)
          * local procs, forcibly cleanup the local session_dir tree, and abort
          */
         orte_odls.kill_local_procs(NULL);
-        orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);
         abort();
     }
     opal_output(0, "%s is executing clean abnormal termination", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -958,7 +928,6 @@ static void shutdown_callback(int fd, short flags, void *arg)
      * the local session_dir tree and exit
      */
     orte_odls.kill_local_procs(NULL);
-    orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);
     exit(ORTE_ERROR_DEFAULT_EXIT_CODE);
 }
 

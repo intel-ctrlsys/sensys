@@ -791,6 +791,8 @@ int orun(int argc, char *argv[])
     }
 
     /* setup my session directory */
+    orte_create_session_dirs = false;
+#if 0
     if (orte_create_session_dirs) {
         OPAL_OUTPUT_VERBOSE((2, orte_debug_output,
                              "%s setting up session dir with\n\ttmpdir: %s\n\thost %s",
@@ -813,6 +815,7 @@ int orun(int argc, char *argv[])
         opal_output_set_output_file_info(orte_process_info.proc_session_dir,
                                          "output-", NULL, NULL);
     }
+#endif
 
     /* finalize the OPAL utils. As they are opened again from orte_init->opal_init
      * we continue to have a reference count on them. So we have to finalize them twice...

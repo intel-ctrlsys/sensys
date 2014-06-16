@@ -597,6 +597,9 @@ static int orcmsd_init(void)
         goto error;
     }
 
+    /* update the routing plan */
+    orte_routed.update_routing_plan();
+
     /* if a tool has launched us and is requesting event reports,
      * then set its contact info into the comm system
      */
@@ -688,6 +691,9 @@ static int orcmsd_setup_node_pool(void)
     /* init the nidmap - just so we register that verbosity */
     orte_util_nidmap_init(NULL);
 
+
+    /* initialize the nidmap for the hosts */
+    orte_util_nidmap_init(hosts);
 
     /* Setup the job data object for the daemons */        
     /* create and store the job data object */

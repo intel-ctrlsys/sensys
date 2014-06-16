@@ -590,6 +590,13 @@ static int init_sched_args(void);
 static int parse_args_sched(int argc, char *argv[], opal_cmd_line_t *cmd_line);
 static int alloc_request( orcm_alloc_t *alloc );
 
+void orcms_daemon_recv(int status, orte_process_name_t* sender,
+                      opal_buffer_t *buffer, orte_rml_tag_t tag,
+                      void* cbdata)
+{
+    return;
+}
+
 int orun(int argc, char *argv[])
 {
     int rc;
@@ -598,7 +605,6 @@ int orun(int argc, char *argv[])
     orte_job_t *jdata=NULL;
     orcm_alloc_t alloc;
     opal_buffer_t uribuf;
-    char *error = NULL;
     char *endptr;
     char *dstr;
     long sessionid;
@@ -792,30 +798,6 @@ int orun(int argc, char *argv[])
 
     /* setup my session directory */
     orte_create_session_dirs = false;
-#if 0
-    if (orte_create_session_dirs) {
-        OPAL_OUTPUT_VERBOSE((2, orte_debug_output,
-                             "%s setting up session dir with\n\ttmpdir: %s\n\thost %s",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                             (NULL == orte_process_info.tmpdir_base) ? "UNDEF" : orte_process_info.tmpdir_base,
-                             orte_process_info.nodename));
-        
-        if (ORTE_SUCCESS != (rc = orte_session_dir(true,
-                                                    orte_process_info.tmpdir_base,
-                                                    orte_process_info.nodename, NULL,
-                                                    ORTE_PROC_MY_NAME))) {
-            ORTE_ERROR_LOG(rc);
-            error = "orte_session_dir";
-            goto DONE;
-        }
-        
-        /* Once the session directory location has been established, set
-           the opal_output hnp file location to be in the
-           proc-specific session directory. */
-        opal_output_set_output_file_info(orte_process_info.proc_session_dir,
-                                         "output-", NULL, NULL);
-    }
-#endif
 
     /* finalize the OPAL utils. As they are opened again from orte_init->opal_init
      * we continue to have a reference count on them. So we have to finalize them twice...
@@ -837,7 +819,7 @@ int orun(int argc, char *argv[])
      * to receive it too
      */
     orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_DAEMON,
-                            ORTE_RML_PERSISTENT, orte_daemon_recv, NULL);
+                            ORTE_RML_PERSISTENT, orcms_daemon_recv, NULL);
     
     /* create the allocation object */
     if(orun_globals.alloc_request)
@@ -853,7 +835,10 @@ int orun(int argc, char *argv[])
         sleep(1);
         ORTE_PROC_MY_HNP->jobid = alloc.id <<16;
         ORTE_PROC_MY_HNP->vpid = 0;
+        /*
         asprintf(&my_hnp_uri, "%i.0;tcp://10.10.39.77:12346", ORTE_PROC_MY_HNP->jobid);
+        my_hnp_uri = strdup(alloc.hnp_uri);
+        */
         printf("\n hnp-uri %s\n", my_hnp_uri);
     }
             
@@ -870,35 +855,6 @@ int orun(int argc, char *argv[])
         printf("orte_process_myhnp %i %s\n", sessionid, orte_process_info.my_hnp_uri);
     }
 
-#if 0
-    /* create and store a node object where we are */
-    node = OBJ_NEW(orte_node_t);
-    node->name =strdup(orte_process_info.nodename);
-    node->index = opal_pointer_array_set_item(orte_node_pool, 0, node);
-
-    /* create and store a proc object for us */
-    proc = OBJ_NEW(orte_proc_t);
-    proc->name.jobid = ORTE_PROC_MY_NAME->jobid;
-    proc->name.vpid = ORTE_PROC_MY_NAME->vpid;
-
-    proc->pid = orte_process_info.pid;
-    proc->state = ORTE_PROC_STATE_RUNNING;
-    OBJ_RETAIN(node);  /* keep accounting straight */
-    proc->node = node;
-    opal_pointer_array_set_item(jdata->procs, proc->name.vpid, proc);
-
-    /* record that the daemon (i.e., us) is on this node 
-     * NOTE: we do not add the proc object to the node's
-     * proc array because we are not an application proc.
-     * Instead, we record it in the daemon field of the
-     * node object
-     */
-    OBJ_RETAIN(proc);   /* keep accounting straight */
-    node->daemon = proc;
-    node->state = ORTE_NODE_STATE_UP;
-#endif
-
-    
     /* spawn the job and its daemons */
     rc = orte_plm.spawn(jdata);
 

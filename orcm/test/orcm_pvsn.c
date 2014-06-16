@@ -22,11 +22,14 @@
 #include "orcm/mca/scd/scd.h"
 
 static orcm_cli_init_t cli_init[] = {
+    // query command
     {NULL, "query", 0, 1, "Query information"},
 
+    // images subcommand
     {"query", "images", 0, 0, "Image info"},
 
-    {"query", "verbose", 1, 0, "Verbose output"},
+    // verbose option, including two dashes and requires no argument
+    {"query", "--verbose", 1, 0, "Verbose output"},
 
     {NULL, NULL, 0, 0, NULL}  // end of array tag
 };
@@ -101,7 +104,9 @@ int main(int argc, char* argv[])
     }
 
     orcm_cli_get_cmd("cmd", &cli, &mycmd);
-    fprintf(stderr, "CMD: %s\n", mycmd);
+    fprintf(stderr, "\nCMD: %s\n", mycmd);
+
+    return 0;
 
     /*
      * Since this process can now handle MCA/GMCA parameters, make sure to

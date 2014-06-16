@@ -19,7 +19,7 @@
 
 typedef struct {
     char *parent;  // name of the parent command - NULL indicates top-level cmd
-    char *cmd;     // name of this command
+    char *cmd;     // name of this command, must include the dashes if an option that needs them
     bool option;   // is this an option or a sublevel command
     int nargs;     // number of arguments this option or command takes
     char *help;    // help message to display at a help request

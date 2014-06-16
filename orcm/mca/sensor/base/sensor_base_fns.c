@@ -53,6 +53,11 @@ void orcm_sensor_base_start(orte_jobid_t job)
                         "%s sensor:base: sensor start called",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
+    /* if no modules are active, then there is nothing to do */
+    if (0 == orcm_sensor_base.modules.size) {
+        return;
+    }
+
     if (!mods_active) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor:base: starting sensors",
@@ -199,7 +204,12 @@ void orcm_sensor_base_log(char *comp, opal_buffer_t *data)
     int i;
     orcm_sensor_active_module_t *i_module;
 
-    if (NULL == comp) {
+    /* if no modules are available, then there is nothing to do */
+    if (0 == orcm_sensor_base.modules.size) {
+        return;
+    }
+
+    if (NULL == comp || orcm_sensor_base.dbhandle < 0) {
         /* nothing we can do */
         return;
     }

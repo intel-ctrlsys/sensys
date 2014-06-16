@@ -41,6 +41,9 @@ static void odbc_finalize(struct orcm_db_base_module_t *imod);
 static int odbc_store(struct orcm_db_base_module_t *imod,
                       const char *primary_key,
                       opal_list_t *kvs);
+static int odbc_store_sample(struct orcm_db_base_module_t *imod,
+                             const char *primary_key,
+                             opal_list_t *kvs);
 static int odbc_fetch(struct orcm_db_base_module_t *imod,
                       const char *primary_key,
                       const char *key,
@@ -53,14 +56,14 @@ mca_db_odbc_module_t mca_db_odbc_module = {
     {
         odbc_init,
         odbc_finalize,
-        odbc_store,
+        odbc_store_sample,
         NULL,
         odbc_fetch,
         odbc_remove
     },
 };
 
-#define INIT_ERROR_MSG(mod, msg, ...) \
+#define INIT_ERROR_MSG_FMT(mod, msg, ...) \
     opal_output(0, "***********************************************\n"); \
     opal_output(0, "db:odbc: Connection failed: "); \
     opal_output(0, msg, ##__VA_ARGS__); \
@@ -88,7 +91,7 @@ static int odbc_init(struct orcm_db_base_module_t *imod)
     if (!(SQL_SUCCEEDED(ret))) {
         opal_argv_free(login);
         mod->envhandle = NULL;
-        INIT_ERROR_MSG(mod, "SQLAllocHandle returned: %d", ret);
+        INIT_ERROR_MSG_FMT(mod, "SQLAllocHandle returned: %d", ret);
         return ORCM_ERR_CONNECTION_FAILED;
     }
     
@@ -98,7 +101,7 @@ static int odbc_init(struct orcm_db_base_module_t *imod)
         opal_argv_free(login);
         SQLFreeHandle(SQL_HANDLE_ENV, mod->envhandle);
         mod->envhandle = NULL;
-        INIT_ERROR_MSG(mod, "SQLSetEnvAttr returned: %d", ret);
+        INIT_ERROR_MSG_FMT(mod, "SQLSetEnvAttr returned: %d", ret);
         return ORCM_ERR_CONNECTION_FAILED;
     }
     
@@ -108,7 +111,7 @@ static int odbc_init(struct orcm_db_base_module_t *imod)
         mod->dbhandle = NULL;
         SQLFreeHandle(SQL_HANDLE_ENV, mod->envhandle);
         mod->envhandle = NULL;
-        INIT_ERROR_MSG(mod, "SQLAllocHandle returned: %d", ret);
+        INIT_ERROR_MSG_FMT(mod, "SQLAllocHandle returned: %d", ret);
         return ORCM_ERR_CONNECTION_FAILED;
     }
     
@@ -119,7 +122,7 @@ static int odbc_init(struct orcm_db_base_module_t *imod)
         mod->dbhandle = NULL;
         SQLFreeHandle(SQL_HANDLE_ENV, mod->envhandle);
         mod->envhandle = NULL;
-        INIT_ERROR_MSG(mod, "SQLSetConnectAttr returned: %d", ret);
+        INIT_ERROR_MSG_FMT(mod, "SQLSetConnectAttr returned: %d", ret);
         return ORCM_ERR_CONNECTION_FAILED;
     }
     
@@ -132,7 +135,7 @@ static int odbc_init(struct orcm_db_base_module_t *imod)
         mod->dbhandle = NULL;
         SQLFreeHandle(SQL_HANDLE_ENV, mod->envhandle);
         mod->envhandle = NULL;
-        INIT_ERROR_MSG(mod, "SQLConnect returned: %d", ret);
+        INIT_ERROR_MSG_FMT(mod, "SQLConnect returned: %d", ret);
         return ORCM_ERR_CONNECTION_FAILED;
     }
     
@@ -165,9 +168,16 @@ static void odbc_finalize(struct orcm_db_base_module_t *imod)
     }
 }
 
-#define STORE_ERR_MSG(msg, ...) \
+#define STORE_ERR_MSG(msg) \
     opal_output(0, "***********************************************\n"); \
-    opal_output(0, "ODBC 'insert' command failed: "); \
+    opal_output(0, "ODBC component store command failed: "); \
+    opal_output(0, msg); \
+    opal_output(0, "\nUnable to log data"); \
+    opal_output(0, "\n***********************************************");
+
+#define STORE_ERR_MSG_FMT(msg, ...) \
+    opal_output(0, "***********************************************\n"); \
+    opal_output(0, "ODBC component store command failed: "); \
     opal_output(0, msg, ##__VA_ARGS__); \
     opal_output(0, "\nUnable to log data"); \
     opal_output(0, "\n***********************************************");
@@ -279,7 +289,7 @@ static int odbc_store(struct orcm_db_base_module_t *imod,
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
         free(query);
-        STORE_ERR_MSG("SQLAllocHandle returned: %d", ret);
+        STORE_ERR_MSG_FMT("SQLAllocHandle returned: %d", ret);
         return ORCM_ERROR;
     }
     
@@ -287,7 +297,7 @@ static int odbc_store(struct orcm_db_base_module_t *imod,
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         free(query);
-        STORE_ERR_MSG("SQLExecDirect returned: %d", ret);
+        STORE_ERR_MSG_FMT("SQLExecDirect returned: %d", ret);
         return ORCM_ERROR;
     }
     
@@ -297,12 +307,178 @@ static int odbc_store(struct orcm_db_base_module_t *imod,
     opal_output_verbose(2, orcm_db_base_framework.framework_output,
                         "Query succeeded");
 
-    return OPAL_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
-#define FETCH_ERR_MSG(msg, ...) \
+static int odbc_store_sample(struct orcm_db_base_module_t *imod,
+                             const char *data_group,
+                             opal_list_t *kvs)
+{
+    mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
+    opal_value_t *kv;
+    opal_list_item_t *item;
+    char *sampletime_str;
+    struct tm time_info;
+    
+    SQL_TIMESTAMP_STRUCT sampletime;
+    char *hostname;
+    char data_item[150];
+    double value;
+    
+    SQLRETURN ret;
+    SQLHSTMT stmt;
+    
+    if (NULL == data_group) {
+        STORE_ERR_MSG("No data group specified");
+        return ORCM_ERROR;
+    }
+    
+    if (NULL == kvs) {
+        STORE_ERR_MSG("No value list specified");
+        return ORCM_ERROR;
+    }
+    
+    item = opal_list_get_first(kvs);
+    kv = (opal_value_t *)item;
+    if (item == opal_list_get_end(kvs) || kv->type != OPAL_STRING) {
+        STORE_ERR_MSG("No time stamp provided");
+        return ORCM_ERROR;
+    }
+    sampletime_str = kv->data.string;
+    
+    item = opal_list_get_next(item);
+    kv = (opal_value_t *)item;
+    if (item == opal_list_get_end(kvs) || kv->type != OPAL_STRING) {
+        STORE_ERR_MSG("No hostname provided");
+        return ORCM_ERROR;
+    }
+    hostname = kv->data.string;
+    
+    strptime(sampletime_str, "%F %T%z", &time_info);
+    sampletime.year = time_info.tm_year + 1900;
+    sampletime.month = time_info.tm_mon + 1;
+    sampletime.day = time_info.tm_mday;
+    sampletime.hour = time_info.tm_hour;
+    sampletime.minute = time_info.tm_min;
+    sampletime.second = time_info.tm_sec;
+    sampletime.fraction = 0;
+    
+    ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
+    if (!(SQL_SUCCEEDED(ret))) {
+        STORE_ERR_MSG_FMT("SQLAllocHandle returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    
+    ret = SQLPrepare(stmt, (SQLCHAR *)"{call add_data_sample(?, ?, ?, ?, ?)}",
+                     SQL_NTS);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        STORE_ERR_MSG_FMT("SQLPrepare returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    
+    ret = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, hostname, strlen(hostname), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        STORE_ERR_MSG_FMT("SQLBindParameter returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    ret = SQLBindParameter(stmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)data_group, strlen(data_group),
+                           NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        STORE_ERR_MSG_FMT("SQLBindParameter returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    ret = SQLBindParameter(stmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)data_item, sizeof(data_item),
+                           NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        STORE_ERR_MSG_FMT("SQLBindParameter returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    ret = SQLBindParameter(stmt, 4, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
+                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&sampletime,
+                           sizeof(sampletime), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        STORE_ERR_MSG_FMT("SQLBindParameter returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE, SQL_DOUBLE,
+                           0, 0, (SQLPOINTER)&value, 0, NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        STORE_ERR_MSG_FMT("SQLBindParameter returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    
+    for (item = opal_list_get_next(item);
+         item != opal_list_get_end(kvs);
+         item = opal_list_get_next(item)) {
+        kv = (opal_value_t *)item;
+        switch (kv->type) {
+        case OPAL_FLOAT:
+            value = kv->data.fval;
+            break;
+        case OPAL_DOUBLE:
+            value = kv->data.dval;
+            break;
+        case OPAL_INT:
+            value = kv->data.integer;
+            break;
+        case OPAL_INT8:
+            value = kv->data.int8;
+            break;
+        case OPAL_INT16:
+            value = kv->data.int16;
+            break;
+        case OPAL_INT32:
+            value = kv->data.int32;
+            break;
+        case OPAL_UINT:
+            value = kv->data.uint;
+            break;
+        case OPAL_UINT8:
+            value = kv->data.uint8;
+            break;
+        case OPAL_UINT16:
+            value = kv->data.uint16;
+            break;
+        case OPAL_UINT32:
+            value = kv->data.uint32;
+            break;
+        default:
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            STORE_ERR_MSG("Incorrect sample value type");
+            return ORCM_ERROR;
+        }
+
+        strncpy(data_item, kv->key, 149);
+        data_item[149] = '\0';
+        
+        ret = SQLExecute(stmt);
+        if (!(SQL_SUCCEEDED(ret))) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            STORE_ERR_MSG_FMT("SQLExecute returned: %d", ret);
+            return ORCM_ERROR;
+        }
+        
+        opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                            "Query succeeded");
+    }
+     
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    
+    return ORCM_SUCCESS;
+}
+
+#define FETCH_ERR_MSG_FMT(msg, ...) \
     opal_output(0, "***********************************************\n"); \
-    opal_output(0, "ODBC 'delete' command failed: "); \
+    opal_output(0, "ODBC component fetch command failed: "); \
     opal_output(0, msg, ##__VA_ARGS__); \
     opal_output(0, "\nUnable fetch data"); \
     opal_output(0, "\n***********************************************");
@@ -322,6 +498,8 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
     char query[1024];
     opal_value_t *kv;
     opal_value_t temp_kv;
+    SQL_TIMESTAMP_STRUCT time_stamp;
+    struct tm temp_tm;
     SQLUSMALLINT i;
     
     snprintf(query, sizeof(query), "select * from %s where %s",
@@ -329,28 +507,28 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
     
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
-        FETCH_ERR_MSG("SQLAllocHandle returned: %d", ret);
+        FETCH_ERR_MSG_FMT("SQLAllocHandle returned: %d", ret);
         return ORCM_ERROR;
     }
     
     ret = SQLExecDirect(stmt, (SQLCHAR *)query, SQL_NTS);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        FETCH_ERR_MSG("SQLExecDirect returned: %d", ret);
+        FETCH_ERR_MSG_FMT("SQLExecDirect returned: %d", ret);
         return ORCM_ERROR;
     }
     
     ret = SQLNumResultCols(stmt, &cols);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        FETCH_ERR_MSG("SQLNumResultCols returned: %d", ret);
+        FETCH_ERR_MSG_FMT("SQLNumResultCols returned: %d", ret);
         return ORCM_ERROR;
     }
     
     ret = SQLFetch(stmt);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        FETCH_ERR_MSG("SQLFetch returned: %d", ret);
+        FETCH_ERR_MSG_FMT("SQLFetch returned: %d", ret);
         return ORCM_ERROR;
     }
     
@@ -358,7 +536,7 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
         ret = SQLDescribeCol(stmt, i, NULL, 0, NULL, &type, &len, NULL, NULL);
         if (!(SQL_SUCCEEDED(ret))) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-            FETCH_ERR_MSG("SQLDescribeCol returned: %d", ret);
+            FETCH_ERR_MSG_FMT("SQLDescribeCol returned: %d", ret);
             return ORCM_ERROR;
         }
         
@@ -375,12 +553,14 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
             case SQL_NUMERIC:
             case SQL_REAL:
             case SQL_FLOAT:
-            case SQL_DOUBLE:
-                /* TODO: add support for double in opal_value_t (treating as 
-                    float for now) */
                 temp_kv.type = OPAL_FLOAT;
                 ret = SQLGetData(stmt, i, SQL_C_FLOAT, &temp_kv.data.fval,
                                  sizeof(temp_kv.data.fval), NULL);
+                break;
+            case SQL_DOUBLE:
+                temp_kv.type = OPAL_DOUBLE;
+                ret = SQLGetData(stmt, i, SQL_C_DOUBLE, &temp_kv.data.dval,
+                                 sizeof(temp_kv.data.dval), NULL);
                 break;
             case SQL_SMALLINT:
                 temp_kv.type = OPAL_INT16;
@@ -398,17 +578,33 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
                 ret = SQLGetData(stmt, i, SQL_C_UTINYINT, &temp_kv.data.byte,
                                  sizeof(temp_kv.data.byte), NULL);
                 break;
-            /* TODO: add support for dates and time stamps in opal_value_t */
+            /* TODO: add support for dates and times */
             /*case SQL_TYPE_DATE:
-            case SQL_TYPE_TIME:
-            case SQL_TYPE_TIMESTAMP:*/
+            case SQL_TYPE_TIME:*/
+            case SQL_TYPE_TIMESTAMP:
+                temp_kv.type = OPAL_TIMEVAL;
+                ret = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &time_stamp,
+                                 sizeof(time_stamp), NULL);
+                /* The year in tm represents the number of years since 1900 */
+                temp_tm.tm_year = time_stamp.year - 1900;
+                /* The month in tm is zero-based */
+                memset(&temp_tm, 0, sizeof(temp_tm));
+                temp_tm.tm_mon = time_stamp.month - 1;
+                temp_tm.tm_mday = time_stamp.day;
+                temp_tm.tm_hour = time_stamp.hour;
+                temp_tm.tm_min = time_stamp.minute;
+                temp_tm.tm_sec = time_stamp.second;
+                
+                temp_kv.data.tv.tv_sec = mktime(&temp_tm);
+                temp_kv.data.tv.tv_usec = 0;
+                break;
             default:
                 /* TODO: unsupported type (ignore for now) */
                 continue;
         }
         if (!(SQL_SUCCEEDED(ret))) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-            FETCH_ERR_MSG("SQLGetData returned: %d", ret);
+            FETCH_ERR_MSG_FMT("SQLGetData returned: %d", ret);
             return ORCM_ERROR;
         }
         
@@ -417,14 +613,14 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
         opal_list_append(kvs, &kv->super);
     }
     
-    return OPAL_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
-#define REMOVE_ERR_MSG(msg, ...) \
+#define REMOVE_ERR_MSG_FMT(msg, ...) \
     opal_output(0, "***********************************************\n"); \
-    opal_output(0, "ODBC 'delete' command failed: "); \
+    opal_output(0, "ODBC component remove command failed: "); \
     opal_output(0, msg, ##__VA_ARGS__); \
-    opal_output(0, "\nUnable remove data"); \
+    opal_output(0, "\nUnable to remove data"); \
     opal_output(0, "\n***********************************************");
 
 static int odbc_remove(struct orcm_db_base_module_t *imod,
@@ -442,19 +638,19 @@ static int odbc_remove(struct orcm_db_base_module_t *imod,
     
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
-        REMOVE_ERR_MSG("SQLAllocHandle returned: %d", ret);
+        REMOVE_ERR_MSG_FMT("SQLAllocHandle returned: %d", ret);
         return ORCM_ERROR;
     }
     
     ret = SQLExecDirect(stmt, (SQLCHAR *)query, SQL_NTS);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        REMOVE_ERR_MSG("SQLExecDirect returned: %d", ret);
+        REMOVE_ERR_MSG_FMT("SQLExecDirect returned: %d", ret);
         return ORCM_ERROR;
     }
     
     SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     
-    return OPAL_SUCCESS;
+    return ORCM_SUCCESS;
 }
 

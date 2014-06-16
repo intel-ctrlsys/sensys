@@ -39,7 +39,6 @@
 #include "orte/runtime/orte_globals.h"
 
 #include "orcm/runtime/orcm_globals.h"
-#include "orcm/mca/rm/base/base.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -170,12 +169,9 @@ static void sample(orcm_sensor_sampler_t *sampler)
  */
 static void check_heartbeat(int fd, short dummy, void *arg)
 {
-    int v, rc;
+    int v;
     orte_proc_t *proc;
     opal_event_t *tmp = (opal_event_t*)arg;
-    opal_buffer_t *buf;
-    orcm_rm_cmd_flag_t command=ORCM_NODESTATE_UPDATE_COMMAND;
-    const char *state = "down";
     int32_t beats, *bptr;
 
     OPAL_OUTPUT_VERBOSE((3, orcm_sensor_base_framework.framework_output,
@@ -220,33 +216,6 @@ static void check_heartbeat(int fd, short dummy, void *arg)
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                  ORTE_NAME_PRINT(&proc->name)));
             ORTE_ACTIVATE_PROC_STATE(&proc->name, ORTE_PROC_STATE_HEARTBEAT_FAILED);
-
-            /* inform the scheduler */
-            /* howto handle errors?  */
-            buf = OBJ_NEW(opal_buffer_t);
-            /* pack the alloc command flag */
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,1, ORCM_RM_CMD_T))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(buf);
-                continue;
-            }
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &state, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(buf);
-                continue;
-            }
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &proc->name, 1, ORTE_NAME))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(buf);
-                continue;
-            }
-            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
-                                                              ORCM_RML_TAG_RM,
-                                                              orte_rml_send_callback, NULL))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(buf);
-                continue;
-            }
         } else {
             OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                                  "%s HEARTBEAT DETECTED FOR %s: NUM BEATS %d",

@@ -14,5 +14,8 @@ libmca_scd_la_SOURCES += \
     base/scd_base_frame.c \
     base/scd_base_select.c \
     base/scd_base_recv.c \
+    base/scd_base_rm.c \
+    base/scd_base_rm_fns.c \
+    base/scd_base_rm_recv.c \
     base/scd_dt_fns.c \
     base/scd_base_fns.c

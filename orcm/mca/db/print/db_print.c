@@ -171,5 +171,5 @@ static int store(struct orcm_db_base_module_t *imod,
     free(vstr);
     opal_argv_free(cmdargs);
 
-    return OPAL_SUCCESS;
+    return ORCM_SUCCESS;
 }

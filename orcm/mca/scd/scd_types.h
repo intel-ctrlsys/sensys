@@ -181,24 +181,29 @@ typedef struct {
 } orcm_session_t;
 OBJ_CLASS_DECLARATION(orcm_session_t);
 
+/****    SESSION STATES FOR RM    ****/
+typedef uint32_t orcm_scd_base_rm_session_state_t;
+#define ORCM_SESSION_STATE_UNDEF        0  // Session state is undefined
+#define ORCM_SESSION_STATE_REQ          1  // Session requesting resources
+#define ORCM_SESSION_STATE_ACTIVE       2  // Session activating allocation
+#define ORCM_SESSION_STATE_KILL         3  // Session running needs to be killed
 
-/* SESSION STATES */
-/* the name prefix is shared with the ORCM_SESSION_STATE* in rm_types.h, 
- * they must not conflict.. or at least agree on number */
-#define ORCM_SESSION_STATE_UNDEF          0
-#define ORCM_SESSION_STATE_INIT           1 // not yet assigned to a queue
-#define ORCM_SESSION_STATE_SCHEDULE       2 // run schedulers
-#define ORCM_SESSION_STATE_ALLOCD         3 // allocated, job not started
-#define ORCM_SESSION_STATE_TERMINATED     4 // allocation terminated
-#define ORCM_SESSION_STATE_CANCEL         5 // allocation cancelled
+/****    SESSION STATES FOR SCD   ****/
+/* #define ORCM_SESSION_STATE_UNDEF     0 // defined above */
+#define ORCM_SESSION_STATE_INIT         1 // not yet assigned to a queue
+#define ORCM_SESSION_STATE_SCHEDULE     2 // run schedulers
+#define ORCM_SESSION_STATE_ALLOCD       3 // allocated, job not started
+#define ORCM_SESSION_STATE_TERMINATED   4 // allocation terminated
+#define ORCM_SESSION_STATE_CANCEL       5 // allocation cancelled
 
-#define ORCM_SESSION_STATE_ANY           10 // marker
+#define ORCM_SESSION_STATE_ANY          10 // marker
 
-#define ORCM_SESSION_STATE_ERROR         20 // marker
+#define ORCM_SESSION_STATE_ERROR        20 // marker
 
 
 /****    STATE MACHINE    ****/
 typedef void (*orcm_scd_state_cbfunc_t)(int fd, short args, void* cb);
+
 
 typedef struct {
     opal_list_item_t super;
@@ -207,6 +212,14 @@ typedef struct {
     int priority;
 } orcm_scd_state_t;
 ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_scd_state_t);
+
+typedef struct {
+    opal_list_item_t super;
+    orcm_scd_base_rm_session_state_t state;
+    orcm_scd_state_cbfunc_t cbfunc;
+    int priority;
+} orcm_scd_base_rm_state_t;
+ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orcm_scd_base_rm_state_t);
 
 typedef struct {
     opal_object_t super;

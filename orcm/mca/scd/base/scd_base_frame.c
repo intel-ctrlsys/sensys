@@ -38,7 +38,8 @@
  * Global variables
  */
 orcm_scd_API_module_t orcm_scd = {
-    orcm_scd_base_activate_session_state
+    orcm_scd_base_activate_session_state,
+    orcm_scd_base_rm_activate_session_state
 };
 orcm_scd_base_t orcm_scd_base;
 
@@ -74,7 +75,11 @@ static int orcm_scd_base_close(void)
 
     /* deconstruct the base objects */
     OPAL_LIST_DESTRUCT(&orcm_scd_base.states);
+    OPAL_LIST_DESTRUCT(&orcm_scd_base.rmstates);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.queues);
+    
+    /* finalize the resource management service */
+    scd_base_rm_finalize();
 
     return mca_base_framework_components_close(&orcm_scd_base_framework, NULL);
 }
@@ -86,38 +91,30 @@ static int orcm_scd_base_close(void)
 static int orcm_scd_base_open(mca_base_open_flag_t flags)
 {
     int rc;
-    opal_data_type_t tmp;
 
     /* setup the base objects */
     orcm_scd_base.ev_active = false;
     OBJ_CONSTRUCT(&orcm_scd_base.states, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_scd_base.rmstates, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.queues, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.nodes, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_scd_base.nodes, 8, INT_MAX, 8);
 
-    if (OPAL_SUCCESS != (rc = mca_base_framework_components_open(&orcm_scd_base_framework, flags))) {
+    if (OPAL_SUCCESS !=
+        (rc = mca_base_framework_components_open(&orcm_scd_base_framework,
+                                                 flags))) {
         return rc;
-    }
-
-    /* register the scheduler types for packing/unpacking services */
-    tmp = ORCM_ALLOC;
-    if (OPAL_SUCCESS != (rc = opal_dss.register_type(orcm_pack_alloc,
-                                                     orcm_unpack_alloc,
-                                                     (opal_dss_copy_fn_t)orcm_copy_alloc,
-                                                     (opal_dss_compare_fn_t)orcm_compare_alloc,
-                                                     (opal_dss_print_fn_t)orcm_print_alloc,
-                                                     OPAL_DSS_STRUCTURED,
-                                                     "ORCM_ALLOC", &tmp))) {
-        ORTE_ERROR_LOG(rc);
     }
 
     /* create the event base */
     orcm_scd_base.ev_active = true;
-    if (NULL == (orcm_scd_base.ev_base = orcm_start_progress_thread("scd", progress_thread_engine))) {
+    if (NULL ==
+        (orcm_scd_base.ev_base = orcm_start_progress_thread("scd",
+                                                            progress_thread_engine))) {
         orcm_scd_base.ev_active = false;
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
-
+    
     return rc;
 }
 
@@ -184,6 +181,29 @@ const char *orcm_scd_node_state_to_str(orcm_scd_node_state_t state)
         break;
     default:
         s = "STATEUNDEF";
+    }
+    return s;
+}
+
+const char *orcm_rm_session_state_to_str(orcm_scd_base_rm_session_state_t state)
+{
+    char *s;
+    
+    switch (state) {
+        case ORCM_SESSION_STATE_UNDEF:
+            s = "UNDEF";
+            break;
+        case ORCM_SESSION_STATE_REQ:
+            s = "REQUESTING RESOURCES";
+            break;
+        case ORCM_SESSION_STATE_ACTIVE:
+            s = "LAUNCHING SESSION";
+            break;
+        case ORCM_SESSION_STATE_KILL:
+            s = "KILLING SESSION";
+            break;
+        default:
+            s = "UNKNOWN";
     }
     return s;
 }
@@ -314,6 +334,10 @@ OBJ_CLASS_INSTANCE(orcm_session_caddy_t,
                    cd_con, cd_des);
 
 OBJ_CLASS_INSTANCE(orcm_scd_state_t,
+                   opal_list_item_t,
+                   NULL, NULL);
+
+OBJ_CLASS_INSTANCE(orcm_scd_base_rm_state_t,
                    opal_list_item_t,
                    NULL, NULL);
 

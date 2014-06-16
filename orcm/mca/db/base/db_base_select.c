@@ -31,7 +31,7 @@ int orcm_db_base_select(void)
 
     if (selected) {
         /* ensure we don't do this twice */
-        return OPAL_SUCCESS;
+        return ORCM_SUCCESS;
     }
     selected = true;
     
@@ -99,5 +99,5 @@ int orcm_db_base_select(void)
         }
     }
 
-    return OPAL_SUCCESS;;
+    return ORCM_SUCCESS;;
 }

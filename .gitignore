@@ -717,6 +717,7 @@ oshmem/shmem/java/java/shmem_Constant.h
 oshmem/shmem/java/java/shmem_ShMem.h
 oshmem/shmem/java/java/shmem
 oshmem/shmem/java/java/shmem_Addr.h
+oshmem/shmem/java/java/shmem_PSync.h
 oshmem/tools/oshmem_info/oshmem_info
 oshmem/tools/oshmem_info/oshmem_info.1
 oshmem/tools/wrappers/shmemcc-wrapper-data.txt
@@ -808,10 +809,10 @@ test/util/*.trs
 .DS_Store
 .gitignore
 .mailmap
-ompi
-oshmem
-examples
-test
+./ompi
+./oshmem
+./examples
+./test
 README.JAVA.txt
 ./autogen.pl
 ./autogen.sh
@@ -872,6 +873,8 @@ orcm/include/orcm/frameworks.h
 orte/include/orte/frameworks.h
 orcm/tools/wrappers/orcmcc-wrapper-data.txt
 orcm/include/orcm/version.h
+orcm/tools/octl/octl
+orcm/tools/octl/octl.1
 orcm/tools/ops/ops
 orcm/tools/ops/ops.1
 orcm/tools/orcm-emulator/orcm-emulator
@@ -892,6 +895,7 @@ orcm/tools/osub/osub
 orcm/tools/osub/osub.1
 orcm/test/orcm_alloc
 orcm/test/orte_sensor
+orcm/test/orcm_pvsn
 orcm/tools/oqueue/oqueue
 orcm/tools/oqueue/oqueue.1
 orcm/tools/opwrvirus/opwrvirus

@@ -177,6 +177,12 @@ int orcm_init(orcm_proc_type_t flags)
         error = "opal_output_init";
         goto error;
     }
+
+    /* initialize orcm datatype support */
+    if (ORCM_SUCCESS != (ret = orcm_dt_init())) {
+        error = "orcm_dt_init";
+        goto error;
+    }
     
     /* flag that orte is initialized so things can work */
     orte_initialized = true;

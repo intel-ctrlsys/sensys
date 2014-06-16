@@ -57,7 +57,7 @@ BEGIN_C_DECLS
 
 /* define an object to describe a provisionable resource. The
  * type is a name (e.g., "file"), and the attributes are a list
- * of orte_attribute_t objects that describe what is known
+ * of opal_value_t objects that describe what is known
  * about that resource */
 typedef struct {
     opal_list_item_t super;
@@ -95,7 +95,7 @@ typedef void (*orcm_pvsn_provision_cbfunc_t)(int status, void *cbdata);
 /* define the callback function for resource queries that
  * return a status indicating any error. In the case of
  * a query for available resources, the list will contain
- * opal_value_t objects that describe the currently-available
+ * orcm_pvsn_resource_t objects that describe the currently-available
  * resources. In the case of a query for current provisioning,
  * the list will contain orcm_pvsn_provision_t objects.
  * In both cases, the PVSN calling function will OWN the
@@ -125,9 +125,7 @@ typedef void (*orcm_pvsn_base_module_finalize_fn_t)(void);
 typedef int (*orcm_pvsn_base_module_avail_fn_t)(char *resource, opal_list_t *available);
 
 /* query the provisioning status of a set of nodes. This will return a
- * list of orcm_pvsn_image_t objects that contain a regular expression
- * for the node name(s), the name  of the base image on them, and any
- * customized attributes. One object will  be returned for each unique
+ * list of orcm_pvsn_provision_t objects. One object will  be returned for each unique
  * combination of image+attributes. The  node names for which info is
  * being requested can be NULL (to request info  for all nodes), or a
  * regular expression parseable by the orte_regex fns */

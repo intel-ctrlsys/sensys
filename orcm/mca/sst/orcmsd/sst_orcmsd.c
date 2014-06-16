@@ -693,7 +693,7 @@ static int orcmsd_setup_node_pool(void)
 
 
     /* initialize the nidmap for the hosts */
-    orte_util_nidmap_init(hosts);
+    orte_util_build_daemon_nidmap(hosts);
 
     /* Setup the job data object for the daemons */        
     /* create and store the job data object */

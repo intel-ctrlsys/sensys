@@ -142,17 +142,6 @@ static int orcmsd_init(void)
         goto error;
     }
 
-    /* open the ESS and select the correct module for this environment */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_ess_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_ess_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_ess_base_select())) {
-        error = "orte_ess_base_select";
-        goto error;
-    }
-
     /* define a name for myself */
     /* if we were spawned by a singleton, our jobid was given to us */
     if (NULL != orcm_base_jobid) {
@@ -453,9 +442,6 @@ static int orcmsd_init(void)
         }
     }
 
-    if (!ORCM_PROC_IS_HNP) {
-        return ORCM_SUCCESS;
-    }
     /*
      * Setup the remaining resource
      * management and errmgr frameworks - application procs
@@ -508,11 +494,15 @@ static int orcmsd_init(void)
         goto error;
     }
 
+    if (ORCM_PROC_IS_HNP) {
     /* we are an hnp, so update the contact info field for later use */
-    orte_process_info.my_hnp_uri = orte_rml.get_contact_info();
+        orte_process_info.my_hnp_uri = orte_rml.get_contact_info();
 
     /* we are also officially a daemon, so better update that field too */
-    orte_process_info.my_daemon_uri = strdup(orte_process_info.my_hnp_uri);
+        orte_process_info.my_daemon_uri = strdup(orte_process_info.my_hnp_uri);
+    } else {
+        orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
+    }
     
     orte_create_session_dirs = false;
 
@@ -607,6 +597,9 @@ static int orcmsd_init(void)
         goto error;
     }
 
+    /* update the routing plan */
+    orte_routed.update_routing_plan();
+
     /* if a tool has launched us and is requesting event reports,
      * then set its contact info into the comm system
      */
@@ -698,6 +691,9 @@ static int orcmsd_setup_node_pool(void)
     /* init the nidmap - just so we register that verbosity */
     orte_util_nidmap_init(NULL);
 
+
+    /* initialize the nidmap for the hosts */
+    orte_util_nidmap_init(hosts);
 
     /* Setup the job data object for the daemons */        
     /* create and store the job data object */

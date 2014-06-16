@@ -217,7 +217,7 @@ opal_cmd_line_init_t orte_cmd_line_opts[] = {
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Whether to report process bindings to stderr" },
 
-    { "orte_node_regex", '\0', "nodes", "nodes", 1,
+    { "orcm_node_regex", '\0', "nodes", "nodes", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Regular expression defining nodes in system" },
 

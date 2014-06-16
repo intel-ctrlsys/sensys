@@ -816,3 +816,4 @@ static void signal_callback(int fd, short event, void *arg)
 {
     /* just ignore these signals */
 }
+

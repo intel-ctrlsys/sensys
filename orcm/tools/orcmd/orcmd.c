@@ -290,11 +290,13 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
         if (OPAL_SUCCESS !=
             (rc = opal_dss.pack(buf, &command, 1, ORCM_RM_CMD_T))) {
             ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(buf);
             return;
         }
         if (OPAL_SUCCESS !=
             (rc = opal_dss.pack(buf, &alloc, 1, ORCM_ALLOC))) {
             ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(buf);
             return;
         }
         if (ORTE_SUCCESS !=
@@ -413,9 +415,25 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
     }
 
     /* okay, setup an appropriate argv */
-    opal_argv_append(&argc, &argv, "orted");
+    opal_argv_append(&argc, &argv, "orcmsd");
+
+    /* pass it a jobid to match my job family */
+    opal_argv_append(&argc, &argv, "-mca");
+    opal_argv_append(&argc, &argv, "ess_base_jobid");
+    if (ORTE_SUCCESS !=
+        (rc = orte_util_convert_jobid_to_string(&param, jobid))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    opal_argv_append(&argc, &argv, param);
+    free(param);
 
     if( hnp ) {
+        /* setup to pass the vpid */
+        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "orcm_base_vpid");
+        opal_argv_append(&argc, &argv, "0");
+
         /* tell the daemon it is to be the HNP */
         opal_argv_append(&argc, &argv, "--hnp");
 
@@ -423,16 +441,6 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         opal_argv_append(&argc, &argv, "--report-uri");
         opal_argv_append(&argc, &argv, "1");
 
-        /* pass it a jobid to match my job family */
-        opal_argv_append(&argc, &argv, "-mca");
-        opal_argv_append(&argc, &argv, "ess_base_jobid");
-        if (ORTE_SUCCESS !=
-            (rc = orte_util_convert_jobid_to_string(&param, jobid))) {
-            ORTE_ERROR_LOG(rc);
-            return rc;
-        }
-        opal_argv_append(&argc, &argv, param);
-        free(param);
         opal_argv_append(&argc, &argv, "-mca");
         opal_argv_append(&argc, &argv, "oob_tcp_static_ipv4_ports");
         if (0 > asprintf(&param, "%d", port_num)) {
@@ -453,6 +461,10 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         free(param);
 
     } else {
+        /* setup to pass the vpid */
+        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "orcm_base_vpid");
+        opal_argv_append(&argc, &argv, "1");
         /* pass the uri of the hnp */
         asprintf(&param, "\"%s\"", hnp_uri);
         opal_argv_append(&argc, &argv, "-mca");
@@ -463,24 +475,12 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         opal_argv_append(&argc, &argv, "oob_tcp_static_ipv4_ports");
         opal_argv_append(&argc, &argv, "0");
 
-        /* pass the daemon jobid */
-        opal_argv_append(&argc, &argv, "-mca");
-        opal_argv_append(&argc, &argv, "orte_ess_jobid");
-        opal_argv_append(&argc, &argv, "0");
+    }
 
-        /* setup to pass the vpid */
-        opal_argv_append(&argc, &argv, "-mca");
-        opal_argv_append(&argc, &argv, "orte_ess_vpid");
-        opal_argv_append(&argc, &argv, "0");
-
-        /* setup to pass the num_procs */
-        num_procs = orte_process_info.num_procs;
-        opal_argv_append(&argc, &argv, "-mca");
-        opal_argv_append(&argc, &argv, "orte_ess_num_procs");
-        asprintf(&param, "%lu", num_procs);
-        opal_argv_append(&argc, &argv, param);
-        free(param);
-
+    /* if we have static ports, pass the node list */
+    if (NULL != nodes) {
+        opal_argv_append(&argc, &argv, "--nodes");
+        opal_argv_append(&argc, &argv, nodes);
     }
 
     /* add any debug flags */
@@ -497,16 +497,12 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         opal_argv_append(&argc, &argv, "--debug-daemons-file");
     }
 
-
-    /* if we have static ports, pass the node list */
-    if (NULL != nodes) {
-        opal_argv_append(&argc, &argv, "--nodes");
-        opal_argv_append(&argc, &argv, nodes);
-    }
-
-    if (orte_debug_daemons_file_flag) {
+    if (orte_debug_flag) {
         opal_argv_append(&argc, &argv, "-mca");
         opal_argv_append(&argc, &argv, "oob_base_verbose");
+        opal_argv_append(&argc, &argv, "100");
+        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "plm_base_verbose");
         opal_argv_append(&argc, &argv, "100");
     }
 

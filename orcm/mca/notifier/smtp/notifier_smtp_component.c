@@ -76,7 +76,7 @@ static int smtp_register(void)
                                            &mca_notifier_smtp_component.server);
 
     mca_notifier_smtp_component.port = 25;
-    (void) mca_base_component_var_register(&mca_notifier_stmp_component.super.base_version, "port",
+    (void) mca_base_component_var_register(&mca_notifier_smtp_component.super.base_version, "port",
                                            "SMTP server port",
                                            MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                            OPAL_INFO_LVL_9,
@@ -131,7 +131,7 @@ static int smtp_register(void)
 
     /* Priority */
     mca_notifier_smtp_component.priority = 10;
-    (void) mca_base_component_var_register(&mca_notifier_stmp_component.super.base_version, "priority",
+    (void) mca_base_component_var_register(&mca_notifier_smtp_component.super.base_version, "priority",
                                            "Priority of this component",
                                            MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                            OPAL_INFO_LVL_9,

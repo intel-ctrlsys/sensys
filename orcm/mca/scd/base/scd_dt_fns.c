@@ -193,6 +193,15 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
             ORTE_ERROR_LOG(ret);
             return ret;
         }
+        /* pack the hnp uri */
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->hnpuri,
+                                        1,
+                                        OPAL_STRING))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
         /* pack the nodefile */
         if (OPAL_SUCCESS !=
             (ret = opal_dss_pack_buffer(buffer,
@@ -443,6 +452,16 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
         if (OPAL_SUCCESS !=
             (ret = opal_dss_unpack_buffer(buffer,
                                           &a->hnpname,
+                                          &n,
+                                          OPAL_STRING))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* unpack the hnp uri */
+        n=1;
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->hnpuri,
                                           &n,
                                           OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);

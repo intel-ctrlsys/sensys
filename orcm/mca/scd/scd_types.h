@@ -76,6 +76,7 @@ typedef struct {
     bool interactive;         // interactive or batch
     orte_process_name_t hnp;  // hnp process name
     char *hnpname;            // hnp string name
+    char *hnpuri;             // hnp uri  name
     char *nodefile;           // file listing names and/or regex of candidate nodes to be used
     char *nodes;              // regex of nodes to be used
     char *queues;             // comma-delimited list of queue names

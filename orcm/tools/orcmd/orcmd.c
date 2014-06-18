@@ -275,6 +275,7 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
             hnp_ip = strdup(inet_ntoa(*addr_list[0]));
             sprintf(hnp_uri, "%i.0;tcp://%s:%i[$.$]", jobid, hnp_ip,
                 port_num);
+            alloc->hnpuri = strdup(hnp_uri);
             free(hnp_ip);
         }
 

@@ -221,8 +221,12 @@ int main(int argc, char *argv[])
     char *rml_uri;
     int i;
     opal_buffer_t *buffer;
+    orte_job_t *jdata_obj;
+    orte_grpcomm_collective_t *coll;
+    orte_namelist_t *nm;
     char hostname[100];
     char *umask_str = getenv("ORTE_DAEMON_UMASK_VALUE");
+
     if (NULL != umask_str) {
         char *endptr;
         long mask = strtol(umask_str, &endptr, 8);
@@ -474,81 +478,41 @@ int main(int argc, char *argv[])
        but what the heck... :-) */
     opal_progress_set_event_flag(OPAL_EVLOOP_ONCE);
 
-    /* if requested, report my uri to the indicated pipe */
-    if (orcmsd_globals.uri_pipe > 0) {
-        char *sysinfo, *tmp, *nptr;
-        orte_job_t *jdata;
-        orte_grpcomm_collective_t *coll;
-        orte_namelist_t *nm;
 
     /* get the daemon job, if necessary */
-        jdata = orte_get_job_data_object(ORTE_PROC_MY_NAME->vpid);
+    jdata_obj=orte_get_job_data_object(0);
+    /* must create a map for it (even though it has no
+     * info in it) so that the job info will be picked
+     * up in subsequent pidmaps or other daemons won't
+     * know how to route
+     */
+    jdata_obj->map = OBJ_NEW(orte_job_map_t);
 
-        /* must create a map for it (even though it has no
-         * info in it) so that the job info will be picked
-         * up in subsequent pidmaps or other daemons won't
-         * know how to route
-         */
-        jdata->map = OBJ_NEW(orte_job_map_t);
+    /* account for the collectives in its modex/barriers */
+    jdata_obj->peer_modex = orte_grpcomm_base_get_coll_id();
+    coll = orte_grpcomm_base_setup_collective(jdata_obj->peer_modex);
+    nm = OBJ_NEW(orte_namelist_t);
+    nm->name.jobid = jdata_obj->jobid;
+    nm->name.vpid = ORTE_VPID_WILDCARD;
+    opal_list_append(&coll->participants, &nm->super);
 
-        /* account for the collectives in its modex/barriers */
-        jdata->peer_modex = orte_grpcomm_base_get_coll_id();
-        coll = orte_grpcomm_base_setup_collective(jdata->peer_modex);
-        nm = OBJ_NEW(orte_namelist_t);
-        nm->name.jobid = jdata->jobid;
-        nm->name.vpid = ORTE_VPID_WILDCARD;
-        opal_list_append(&coll->participants, &nm->super);
+    jdata_obj->peer_init_barrier = orte_grpcomm_base_get_coll_id();
+    coll = orte_grpcomm_base_setup_collective(jdata_obj->peer_init_barrier);
+    nm = OBJ_NEW(orte_namelist_t);
+    nm->name.jobid = jdata_obj->jobid;
+    nm->name.vpid = ORTE_VPID_WILDCARD;
+    opal_list_append(&coll->participants, &nm->super);
 
-        jdata->peer_init_barrier = orte_grpcomm_base_get_coll_id();
-        coll = orte_grpcomm_base_setup_collective(jdata->peer_init_barrier);
-        nm = OBJ_NEW(orte_namelist_t);
-        nm->name.jobid = jdata->jobid;
-        nm->name.vpid = ORTE_VPID_WILDCARD;
-        opal_list_append(&coll->participants, &nm->super);
-
-        jdata->peer_fini_barrier = orte_grpcomm_base_get_coll_id();
-        coll = orte_grpcomm_base_setup_collective(jdata->peer_fini_barrier);
-        nm = OBJ_NEW(orte_namelist_t);
-        nm->name.jobid = jdata->jobid;
-        nm->name.vpid = ORTE_VPID_WILDCARD;
-        opal_list_append(&coll->participants, &nm->super);
-
-        /* create a string that contains our uri + sysinfo */
-        orte_util_convert_sysinfo_to_string(&sysinfo, orte_local_cpu_type, orte_local_cpu_model);
-        asprintf(&tmp, "%s[%s]", orte_process_info.my_daemon_uri, sysinfo);
-	free(sysinfo);
-
-        /* pass that info to the singleton */
-        write(orcmsd_globals.uri_pipe, tmp, strlen(tmp)+1); /* need to add 1 to get the NULL */
-
-        /* cleanup */
-        free(tmp);
-
-        /* since a singleton spawned us, we need to harvest
-         * any MCA params from the local environment so
-         * we can pass them along to any subsequent daemons
-         * we may start as the result of a comm_spawn
-         */
-        for (i=0; NULL != environ[i]; i++) {
-            if (0 == strncmp(environ[i], "OMPI_MCA", 8)) {
-                /* make a copy to manipulate */
-                tmp = strdup(environ[i]);
-                /* find the equal sign */
-                nptr = strchr(tmp, '=');
-                *nptr = '\0';
-                nptr++;
-                /* add the mca param to the orted cmd line */
-                opal_argv_append_nosize(&orted_cmd_line, "-mca");
-                opal_argv_append_nosize(&orted_cmd_line, &tmp[9]);
-                opal_argv_append_nosize(&orted_cmd_line, nptr);
-                free(tmp);
-            }
-        }
-    }
+    jdata_obj->peer_fini_barrier = orte_grpcomm_base_get_coll_id();
+    coll = orte_grpcomm_base_setup_collective(jdata_obj->peer_fini_barrier);
+    nm = OBJ_NEW(orte_namelist_t);
+    nm->name.jobid = jdata_obj->jobid;
+    nm->name.vpid = ORTE_VPID_WILDCARD;
+    opal_list_append(&coll->participants, &nm->super);
 
     /* if we were given a pipe to monitor for singleton termination, set that up */
     if (orcmsd_globals.singleton_died_pipe > 0) {
-        /* register shutdown handler */
+    /* register shutdown handler */
         pipe_handler = (opal_event_t*)malloc(sizeof(opal_event_t));
         opal_event_set(orte_event_base, pipe_handler,
                        orcmsd_globals.singleton_died_pipe,
@@ -556,51 +520,6 @@ int main(int argc, char *argv[])
                        pipe_closed,
                        pipe_handler);
         opal_event_add(pipe_handler, NULL);
-    }
-
-    /* If I have a parent, then save his contact info so
-     * any messages we send can flow thru him.
-     */
-
-    orte_parent_uri = NULL;
-    (void) mca_base_var_register ("orte", "orte", NULL, "parent_uri",
-                                  "URI for the parent if tree launch is enabled.",
-                                  MCA_BASE_VAR_TYPE_STRING, NULL, 0,
-                                  MCA_BASE_VAR_FLAG_INTERNAL,
-                                  OPAL_INFO_LVL_9,
-                                  MCA_BASE_VAR_SCOPE_CONSTANT,
-                                  &orte_parent_uri);
-    if (NULL != orte_parent_uri) {
-        orte_process_name_t parent;
-
-        /* set the contact info into the hash table */
-        orte_rml.set_contact_info(orte_parent_uri);
-        ret = orte_rml_base_parse_uris(orte_parent_uri, &parent, NULL);
-        if (ORTE_SUCCESS != ret) {
-            ORTE_ERROR_LOG(ret);
-            free (orte_parent_uri);
-            orte_parent_uri = NULL;
-            goto DONE;
-        }
-
-        /* don't need this value anymore */
-        free(orte_parent_uri);
-        orte_parent_uri = NULL;
-
-        /* tell the routed module that we have a path
-         * back to the HNP
-         */
-        if (ORTE_SUCCESS != (ret = orte_routed.update_route(ORTE_PROC_MY_HNP, &parent))) {
-            ORTE_ERROR_LOG(ret);
-            goto DONE;
-        }
-        /* set the lifeline to point to our parent so that we
-         * can handle the situation if that lifeline goes away
-         */
-        if (ORTE_SUCCESS != (ret = orte_routed.set_lifeline(&parent))) {
-            ORTE_ERROR_LOG(ret);
-            goto DONE;
-        }
     }
 
     /* if we are not the HNP...the only time we will be an HNP
@@ -621,48 +540,6 @@ int main(int argc, char *argv[])
             ORTE_ERROR_LOG(ret);
             OBJ_RELEASE(buffer);
             goto DONE;
-        }
-        /* for now, always include our contact info, even if we are using
-         * static ports. Eventually, this will be removed
-         */
-        rml_uri = orte_rml.get_contact_info();
-        if (ORTE_SUCCESS != (ret = opal_dss.pack(buffer, &rml_uri, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_RELEASE(buffer);
-            goto DONE;
-        }
-
-        /* include our node name */
-        opal_dss.pack(buffer, &orte_process_info.nodename, 1, OPAL_STRING);
-
-        /* if requested, include any non-loopback aliases for this node */
-        if (orte_retain_aliases) {
-            char **aliases=NULL;
-            uint8_t naliases, ni;
-            char hostname[ORTE_MAX_HOSTNAME_SIZE];
-
-            /* if we stripped the prefix or removed the fqdn,
-             * include full hostname as an alias
-             */
-            gethostname(hostname, ORTE_MAX_HOSTNAME_SIZE);
-            if (strlen(orte_process_info.nodename) < strlen(hostname)) {
-                opal_argv_append_nosize(&aliases, hostname);
-            }
-            opal_ifgetaliases(&aliases);
-            naliases = opal_argv_count(aliases);
-            if (ORTE_SUCCESS != (ret = opal_dss.pack(buffer, &naliases, 1, OPAL_UINT8))) {
-                ORTE_ERROR_LOG(ret);
-                OBJ_RELEASE(buffer);
-                goto DONE;
-            }
-            for (ni=0; ni < naliases; ni++) {
-                if (ORTE_SUCCESS != (ret = opal_dss.pack(buffer, &aliases[ni], 1, OPAL_STRING))) {
-                    ORTE_ERROR_LOG(ret);
-                    OBJ_RELEASE(buffer);
-                    goto DONE;
-                }
-            }
-            opal_argv_free(aliases);
         }
 
         /* send to the HNP's callback - will be routed if routes are available */
@@ -711,6 +588,7 @@ static void pipe_closed(int fd, short flags, void *arg)
     ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_DAEMONS_TERMINATED);
 }
 
+
 static void shutdown_callback(int fd, short flags, void *arg)
 {
     orte_timer_t *tm = (orte_timer_t*)arg;
@@ -755,28 +633,12 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
 
     /* get the daemon job, if necessary */
     if (NULL == jdatorted) {
-        jdatorted = orte_get_job_data_object(ORTE_PROC_MY_NAME->vpid);
+        jdatorted = orte_get_job_data_object(0);
     }
 
     /* multiple daemons could be in this buffer, so unpack until we exhaust the data */
     idx = 1;
     while (OPAL_SUCCESS == (rc = opal_dss.unpack(buffer, &dname, &idx, ORTE_NAME))) {
-        /* unpack its contact info */
-        idx = 1;
-        if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &rml_uri, &idx, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            orted_failed_launch = true;
-            goto CLEANUP;
-        }
-        
-        /* set the contact info into the hash table */
-        orte_rml.set_contact_info(rml_uri);
-
-        OPAL_OUTPUT_VERBOSE((5, orte_plm_base_framework.framework_output,
-                             "%s plm:base:orted_report_launch from daemon %s",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                             ORTE_NAME_PRINT(&dname)));
-        
         /* update state and record for this daemon contact info */
         if (NULL == (daemon = (orte_proc_t*)opal_pointer_array_get_item(jdatorted->procs, dname.vpid))) {
             ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
@@ -784,74 +646,8 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
             goto CLEANUP;
         }
         daemon->state = ORTE_PROC_STATE_RUNNING;
-        daemon->rml_uri = rml_uri;
         /* record that this daemon is alive */
         ORTE_FLAG_SET(daemon, ORTE_PROC_FLAG_ALIVE);
-
-        /* unpack the node name */
-        idx = 1;
-        if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &nodename, &idx, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            orted_failed_launch = true;
-            goto CLEANUP;
-        }
-        if (!orte_have_fqdn_allocation) {
-            /* remove any domain info */
-            if (NULL != (ptr = strchr(nodename, '.'))) {
-                *ptr = '\0';
-                ptr = strdup(nodename);
-                free(nodename);
-                nodename = ptr;
-            }
-        }
-        
-        OPAL_OUTPUT_VERBOSE((5, orte_plm_base_framework.framework_output,
-                             "%s plm:base:orted_report_launch from daemon %s on node %s",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                             ORTE_NAME_PRINT(&dname), nodename));
-        
-        /* look this node up, if necessary */
-        if (!orte_plm_globals.daemon_nodes_assigned_at_launch) {
-            OPAL_OUTPUT_VERBOSE((5, orte_plm_base_framework.framework_output,
-                                 "%s plm:base:orted_report_launch attempting to assign daemon %s to node %s",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                 ORTE_NAME_PRINT(&dname), nodename));
-            for (idx=0; idx < orte_node_pool->size; idx++) {
-                if (NULL == (node = (orte_node_t*)opal_pointer_array_get_item(orte_node_pool, idx))) {
-                    continue;
-                }
-                if (ORTE_FLAG_TEST(node, ORTE_NODE_FLAG_LOC_VERIFIED)) {
-                    /* already assigned */
-                    continue;
-                }
-                if (0 == strcmp(nodename, node->name)) {
-                    /* flag that we verified the location */
-                    ORTE_FLAG_SET(node, ORTE_NODE_FLAG_LOC_VERIFIED);
-                    if (node == daemon->node) {
-                        /* it wound up right where it should */
-                        break;
-                    }
-                    /* remove the prior association */
-                    if (NULL != daemon->node) {
-                        OBJ_RELEASE(daemon->node);
-                    }
-                    if (NULL != node->daemon) {
-                        OBJ_RELEASE(node->daemon);
-                    }
-                    /* associate this daemon with the node */
-                    node->daemon = daemon;
-                    OBJ_RETAIN(daemon);
-                    /* associate this node with the daemon */
-                    daemon->node = node;
-                    OBJ_RETAIN(node);
-                    OPAL_OUTPUT_VERBOSE((5, orte_plm_base_framework.framework_output,
-                                         "%s plm:base:orted_report_launch assigning daemon %s to node %s",
-                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                         ORTE_NAME_PRINT(&daemon->name), node->name));
-                    break;
-                }
-            }
-        }
 
         node = daemon->node;
         if (NULL == node) {
@@ -864,42 +660,8 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
             goto CLEANUP;
         }
         
-        /* mark the daemon as launched */
-        ORTE_FLAG_SET(node, ORTE_NODE_FLAG_DAEMON_LAUNCHED);
-
-        if (orte_retain_aliases) {
-            char *alias, **atmp=NULL;
-            uint8_t naliases, ni;
-            /* first, store the nodename itself as an alias. We do
-             * this in case the nodename isn't the same as what we
-             * were given by the allocation. For example, a hostfile
-             * might contain an IP address instead of the value returned
-             * by gethostname, yet the daemon will have returned the latter
-             * and apps may refer to the host by that name
-             */
-            opal_argv_append_nosize(&atmp, nodename);
-            /* unpack and store the provided aliases */
-            idx = 1;
-            if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &naliases, &idx, OPAL_UINT8))) {
-                ORTE_ERROR_LOG(rc);
-                orted_failed_launch = true;
-                goto CLEANUP;
-            }
-            for (ni=0; ni < naliases; ni++) {
-                idx = 1;
-                if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &alias, &idx, OPAL_STRING))) {
-                    ORTE_ERROR_LOG(rc);
-                    orted_failed_launch = true;
-                    goto CLEANUP;
-                }
-                opal_argv_append_nosize(&atmp, alias);
-                free(alias);
-            }
-            alias = opal_argv_join(atmp, ',');
-            opal_argv_free(atmp);
-            orte_set_attribute(&node->attributes, ORTE_NODE_ALIAS, ORTE_ATTR_LOCAL, alias, OPAL_STRING);
-            free(alias);
-        }
+        /* mark the daemon as added */
+        node->state = ORTE_NODE_STATE_ADDED;
 
     CLEANUP:
         OPAL_OUTPUT_VERBOSE((5, orte_plm_base_framework.framework_output,
@@ -929,13 +691,6 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
     if (ORTE_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
         ORTE_ERROR_LOG(rc);
         ORTE_ACTIVATE_JOB_STATE(jdatorted, ORTE_JOB_STATE_FAILED_TO_START);
-    } else if (NULL != orte_tree_launch_cmd) {
-        /* if a tree-launch is underway, send the cmd back */
-        relay = OBJ_NEW(opal_buffer_t);
-        opal_dss.copy_payload(relay, orte_tree_launch_cmd);
-        orte_rml.send_buffer_nb(sender, relay,
-                                ORTE_RML_TAG_DAEMON,
-                                orte_rml_send_callback, NULL);
     }
 }
 
@@ -1092,89 +847,6 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
         }
         break;
            
-    case ORTE_DAEMON_ABORT_PROCS_CALLED:
-        if (orte_debug_daemons_flag) {
-            opal_output(0, "%s orted_cmd: received abort_procs report",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        }
-
-        /* Number of processes */
-        n = 1;
-        if (ORTE_SUCCESS != (ret = opal_dss.unpack(buffer, &num_procs, &n, ORTE_STD_CNTR)) ) {
-            ORTE_ERROR_LOG(ret);
-            goto CLEANUP;
-        }
-
-        /* Retrieve list of processes */
-        procs_to_kill = OBJ_NEW(opal_pointer_array_t);
-        opal_pointer_array_init(procs_to_kill, num_procs, INT32_MAX, 2);
-
-        /* Keep track of previously terminated, so we don't keep ordering the
-         * same processes to die.
-         */
-        if( NULL == procs_prev_ordered_to_terminate ) {
-            procs_prev_ordered_to_terminate = OBJ_NEW(opal_pointer_array_t);
-            opal_pointer_array_init(procs_prev_ordered_to_terminate, num_procs+1, INT32_MAX, 8);
-        }
-
-        num_new_procs = 0;
-        for( i = 0; i < num_procs; ++i) {
-            cur_proc = OBJ_NEW(orte_proc_t);
-
-            n = 1;
-            if (ORTE_SUCCESS != (ret = opal_dss.unpack(buffer, &(cur_proc->name), &n, ORTE_NAME)) ) {
-                ORTE_ERROR_LOG(ret);
-                goto CLEANUP;
-            }
-
-            /* See if duplicate */
-            found = false;
-            for( p = 0; p < procs_prev_ordered_to_terminate->size; ++p) {
-                if( NULL == (prev_proc = (orte_proc_t*)opal_pointer_array_get_item(procs_prev_ordered_to_terminate, p))) {
-                    continue;
-                }
-                if(OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                               &cur_proc->name,
-                                                               &prev_proc->name) ) {
-                    found = true;
-                    break;
-                }
-            }
-
-            OPAL_OUTPUT_VERBOSE((2, orte_debug_output,
-                                 "%s orted:comm:abort_procs Application %s requests term. of %s (%2d of %2d) %3s.",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                 ORTE_NAME_PRINT(sender),
-                                 ORTE_NAME_PRINT(&(cur_proc->name)), i, num_procs,
-                                 (found ? "Dup" : "New") ));
-
-            /* If not a duplicate, then add to the to_kill list */
-            if( !found ) {
-                opal_pointer_array_add(procs_to_kill, (void*)cur_proc);
-                OBJ_RETAIN(cur_proc);
-                opal_pointer_array_add(procs_prev_ordered_to_terminate, (void*)cur_proc);
-                num_new_procs++;
-            }
-        }
-
-        /*
-         * Send the request to termiante
-         */
-        if( num_new_procs > 0 ) {
-            OPAL_OUTPUT_VERBOSE((2, orte_debug_output,
-                                 "%s orted:comm:abort_procs Terminating application requested processes (%2d / %2d).",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                 num_new_procs, num_procs));
-            orte_plm.terminate_procs(procs_to_kill);
-        } else {
-            OPAL_OUTPUT_VERBOSE((2, orte_debug_output,
-                                 "%s orted:comm:abort_procs No new application processes to terminating from request (%2d / %2d).",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                 num_new_procs, num_procs));
-        }
-
-        break;
-
         /****    DELIVER A MESSAGE TO THE LOCAL PROCS    ****/
     case ORTE_DAEMON_MESSAGE_LOCAL_PROCS:
         if (orte_debug_daemons_flag) {

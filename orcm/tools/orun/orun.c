@@ -835,10 +835,7 @@ int orun(int argc, char *argv[])
         sleep(1);
         ORTE_PROC_MY_HNP->jobid = alloc.id <<16;
         ORTE_PROC_MY_HNP->vpid = 0;
-        /*
-        asprintf(&my_hnp_uri, "%i.0;tcp://10.10.39.77:12346", ORTE_PROC_MY_HNP->jobid);
-        my_hnp_uri = strdup(alloc.hnp_uri);
-        */
+        my_hnp_uri = strdup(alloc.hnpuri);
         printf("\n hnp-uri %s\n", my_hnp_uri);
     }
             

@@ -97,7 +97,6 @@ orcm_sst_base_module_t orcm_sst_orcmsd_module = {
 };
 
 /* local globals */
-static bool plm_in_use = false;
 static bool initialized = false;
 static bool signals_set = false;
 static opal_event_t term_handler;
@@ -126,7 +125,7 @@ static int orcmsd_init(void)
     char *error;
     char *contact_path, *jobfam_dir;
     char *param;
-    opal_buffer_t buf, *clusterbuf, *uribuf;
+    opal_buffer_t *uribuf;
     opal_list_t config;
     orte_vpid_t nprocs;
     orcm_node_t *mynode;
@@ -163,25 +162,6 @@ static int orcmsd_init(void)
                 goto error;
             }
         }
-
-    } else {
-        if (ORTE_SUCCESS != (ret = orte_plm.set_hnp_name())) {
-            ORTE_ERROR_LOG(ret);
-            error = "orte_plm_set_hnp_name";
-            goto error;
-        }
-    }
-
-    /* setup the database */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_db_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orcm_db_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orcm_db_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orcm_db_base_select";
-        goto error;
     }
 
     /* datastore - ensure we don't pickup the pmi component, but
@@ -214,19 +194,6 @@ static int orcmsd_init(void)
     if (0 > (opal_dstore_nonpeer = opal_dstore.open("NONPEER"))) {
         error = "opal dstore nonpeer";
         ret = ORTE_ERR_FATAL;
-        goto error;
-    }
-
-    /* read the site configuration */
-    OBJ_CONSTRUCT(&config, opal_list_t);
-    if (ORCM_SUCCESS != (ret = orcm_cfgi.read_config(&config))) {
-        error = "getting config";
-        goto error;
-    }
-    /* define the cluster */
-    OBJ_CONSTRUCT(&buf, opal_buffer_t);
-    if (ORCM_SUCCESS != (ret = orcm_cfgi.define_system(&config, &mynode, &nprocs, &buf))) {
-        error = "define system";
         goto error;
     }
 
@@ -327,19 +294,6 @@ static int orcmsd_init(void)
      * respective environment - hence, we have to open the PLM
      * first and select that component.
      */
-        plm_in_use = 1;
-    } else {
-    /* some environments allow remote launches - e.g., ssh - so
-     * open and select something -only- if we are given
-     * a specific module to use
-     */
-        (void) mca_base_var_env_name("plm", &param);
-
-        plm_in_use = !!(getenv(param));
-        free (param);
-    }
-
-    if (plm_in_use)  {
         if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_plm_base_framework, 0))) {
             ORTE_ERROR_LOG(ret);
             error = "orte_plm_base_open";
@@ -434,7 +388,7 @@ static int orcmsd_init(void)
      * needs to occur AFTER the communications are setup
      * as it may involve starting a non-blocking recv
      */
-    if (plm_in_use) {
+    if (ORCM_PROC_IS_HNP) {
         if (ORTE_SUCCESS != (ret = orte_plm.init())) {
             ORTE_ERROR_LOG(ret);
             error = "orte_plm_init";
@@ -448,26 +402,28 @@ static int orcmsd_init(void)
      * and daemons do not open these frameworks as they only use
      * the hnp proxy support in the PLM framework.
      */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_ras_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_ras_base_open";
-        goto error;
-    }    
-    if (ORTE_SUCCESS != (ret = orte_ras_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_ras_base_find_available";
-        goto error;
-    }
+    if (ORTE_PROC_IS_HNP) {
+        if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_ras_base_framework, 0))) {
+            ORTE_ERROR_LOG(ret);
+            error = "orte_ras_base_open";
+            goto error;
+        }    
+        if (ORTE_SUCCESS != (ret = orte_ras_base_select())) {
+            ORTE_ERROR_LOG(ret);
+            error = "orte_ras_base_find_available";
+            goto error;
+        }
     
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_rmaps_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_rmaps_base_open";
-        goto error;
-    }    
-    if (ORTE_SUCCESS != (ret = orte_rmaps_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_rmaps_base_find_available";
-        goto error;
+        if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_rmaps_base_framework, 0))) {
+            ORTE_ERROR_LOG(ret);
+            error = "orte_rmaps_base_open";
+            goto error;
+        }    
+        if (ORTE_SUCCESS != (ret = orte_rmaps_base_select())) {
+            ORTE_ERROR_LOG(ret);
+            error = "orte_rmaps_base_find_available";
+            goto error;
+        }
     }
 
     /* Open/select the odls */
@@ -502,47 +458,14 @@ static int orcmsd_init(void)
         orte_process_info.my_daemon_uri = strdup(orte_process_info.my_hnp_uri);
     } else {
         orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
+        printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
+        OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
+        opal_dss.pack(&uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
+        orte_rml_base_update_contact_info(&uribuf);
+        orte_process_info.proc_type = ORCM_DAEMON;
     }
     
     orte_create_session_dirs = false;
-
-    /* extract the cluster description and setup the routed info - the orcm routed component
-     * will know what to do. */
-    n = 1;
-    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &clusterbuf, &n, OPAL_BUFFER))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&buf);
-        error = "extract cluster buf";
-        goto error;
-    }
-    /*
-    if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&buf);
-        OBJ_RELEASE(clusterbuf);
-        error = "orte_routed.init_routes";
-        goto error;
-    }
-    */
-    OBJ_RELEASE(clusterbuf);
-
-    /* extract the uri buffer and load the hash tables */
-    n = 1;
-    if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &uribuf, &n, OPAL_BUFFER))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&buf);
-        error = "extract uri buffer";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_rml_base_update_contact_info(uribuf))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&buf);
-        OBJ_RELEASE(uribuf);
-        error = "load hash tables";
-        goto error;
-    }
-    OBJ_DESTRUCT(&buf);
-    OBJ_RELEASE(uribuf);
 
     /* enable communication via the rml */
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
@@ -642,22 +565,22 @@ static int orcmsd_setup_node_pool(void)
     int ret = ORTE_ERROR;
     int i = 0;
     char *error = NULL;
+    char **hosts = NULL;
     orte_job_t *jdata;
     orte_proc_t *proc;
     orte_app_context_t *app;
     orte_node_t *node;
-    char **hosts = NULL;
-    char *myhostname[2] = { NULL, NULL};
+    opal_buffer_t *uribuf;
 
     if (NULL != orcm_node_regex) {
     /* extract the nodes */
+        printf ("NODE-REGEX %s\n", orcm_node_regex);
         if (ORTE_SUCCESS != (ret = orte_regex_extract_node_names(orcm_node_regex, &hosts))) {
             error = "orte_regex_extract_node_names";
             goto error;
         }
     } else {
-        myhostname[0] = strdup( orte_process_info.nodename );
-        hosts = myhostname;
+        opal_argv_append_nosize(&hosts, orte_process_info.nodename);
     }
 
     /* setup the global job and node arrays */
@@ -741,8 +664,22 @@ static int orcmsd_setup_node_pool(void)
         /* num reported only one for now */
         jdata->num_reported = 1;
     }
-    
 
+
+    if (ORCM_PROC_IS_HNP) {
+    /* we are an hnp, so update the contact info field for later use */
+        orte_process_info.my_hnp_uri = orte_rml.get_contact_info();
+
+    /* we are also officially a daemon, so better update that field too */
+        orte_process_info.my_daemon_uri = strdup(orte_process_info.my_hnp_uri);
+    } else {
+        orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
+        printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
+        OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
+        opal_dss.pack(&uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
+        orte_rml_base_update_contact_info(&uribuf);
+    }
+    
     return ORTE_SUCCESS;
     
  error:
@@ -769,17 +706,19 @@ static void orcmsd_finalize(void)
     (void) mca_base_framework_close(&opal_pstat_base_framework);
     (void) mca_base_framework_close(&orte_state_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
-    (void) mca_base_framework_close(&orte_plm_base_framework);
     (void) mca_base_framework_close(&orte_oob_base_framework);
     (void) mca_base_framework_close(&orte_rml_base_framework);
     (void) mca_base_framework_close(&orte_routed_base_framework);
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);
-    (void) mca_base_framework_close(&orte_ras_base_framework);
-    (void) mca_base_framework_close(&orte_rmaps_base_framework);
     (void) mca_base_framework_close(&orte_odls_base_framework);
     (void) mca_base_framework_close(&orte_rtc_base_framework);
     (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_dfs_base_framework);
+    if (ORCM_PROC_IS_HNP) {
+        (void) mca_base_framework_close(&orte_plm_base_framework);
+        (void) mca_base_framework_close(&orte_ras_base_framework);
+        (void) mca_base_framework_close(&orte_rmaps_base_framework);
+    }
 
 }
 

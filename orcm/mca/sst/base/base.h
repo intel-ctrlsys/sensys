@@ -36,9 +36,6 @@ ORCM_DECLSPEC extern mca_base_framework_t orcm_sst_base_framework;
  * Select an available component.
  */
 ORCM_DECLSPEC int orcm_sst_base_select(void);
-ORCM_DECLSPEC extern char *orcm_node_regex;
-ORCM_DECLSPEC extern char *orcm_base_jobid;
-ORCM_DECLSPEC extern char *orcm_base_vpid;
 
 END_C_DECLS
 #endif

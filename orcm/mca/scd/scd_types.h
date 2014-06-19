@@ -74,6 +74,7 @@ typedef struct {
     uid_t caller_uid;         // uid of submission request
     gid_t caller_gid;         // gid of submission request
     bool interactive;         // interactive or batch
+    orte_process_name_t originator;  // originator process name
     orte_process_name_t hnp;  // hnp process name
     char *hnpname;            // hnp string name
     char *hnpuri;             // hnp uri  name

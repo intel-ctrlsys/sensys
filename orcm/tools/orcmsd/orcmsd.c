@@ -110,13 +110,10 @@
  * Globals
  */
 static opal_event_t *pipe_handler;
-static opal_pointer_array_t *procs_prev_ordered_to_terminate = NULL;
-static char *orte_parent_uri;
 static bool orted_failed_launch;
 static orte_job_t *jdatorted=NULL;
 
 int orcms_daemon(int argc, char *argv[]);
-static void shutdown_callback(int fd, short flags, void *arg);
 static void pipe_closed(int fd, short flags, void *arg);
 static char *get_orcmsd_comm_cmd_str(int command);
 void orcms_hnp_recv(int status, orte_process_name_t* sender,
@@ -218,7 +215,6 @@ int main(int argc, char *argv[])
 {
     int ret = 0;
     opal_cmd_line_t *cmd_line = NULL;
-    char *rml_uri;
     int i;
     opal_buffer_t *buffer;
     orte_job_t *jdata_obj;
@@ -589,47 +585,16 @@ static void pipe_closed(int fd, short flags, void *arg)
 }
 
 
-static void shutdown_callback(int fd, short flags, void *arg)
-{
-    orte_timer_t *tm = (orte_timer_t*)arg;
-
-    if (NULL != tm) {
-        /* release the timer */
-        OBJ_RELEASE(tm);
-    }
-    
-    /* if we were ordered to abort, do so */
-    if (orcmsd_globals.abort) {
-        opal_output(0, "%s is executing clean abort", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        /* do -not- call finalize as this will send a message to the HNP
-         * indicating clean termination! Instead, just kill our
-         * local procs, forcibly cleanup the local session_dir tree, and abort
-         */
-        orte_odls.kill_local_procs(NULL);
-        abort();
-    }
-    opal_output(0, "%s is executing clean abnormal termination", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    /* do -not- call finalize as this will send a message to the HNP
-     * indicating clean termination! Instead, just forcibly cleanup
-     * the local session_dir tree and exit
-     */
-    orte_odls.kill_local_procs(NULL);
-    exit(ORTE_ERROR_DEFAULT_EXIT_CODE);
-}
-
-
 void orcms_hnp_recv(int status, orte_process_name_t* sender,
                       opal_buffer_t *buffer, orte_rml_tag_t tag,
                       void* cbdata)
 {
-    char *rml_uri = NULL, *ptr;
     int rc, idx;
     orte_proc_t *daemon=NULL;
-    char *nodename;
+    char *nodename = NULL;
     orte_node_t *node;
     orte_job_t *jdata;
     orte_process_name_t dname;
-    opal_buffer_t *relay;
 
     /* get the daemon job, if necessary */
     if (NULL == jdatorted) {
@@ -716,10 +681,6 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
     opal_pointer_array_t procarray;
     orte_proc_t *proct;
     char *cmd_str = NULL;
-    opal_pointer_array_t *procs_to_kill = NULL;
-    orte_std_cntr_t num_procs, num_new_procs = 0, p;
-    orte_proc_t *cur_proc = NULL, *prev_proc = NULL;
-    bool found = false;
 
     /* unpack the command */
     n = 1;

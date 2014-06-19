@@ -578,6 +578,9 @@ static opal_cmd_line_init_t cmd_line_init[] = {
 /*
  * Local functions
  */
+void orcms_daemon_recv(int status, orte_process_name_t* sender,
+                      opal_buffer_t *buffer, orte_rml_tag_t tag,
+                      void* cbdata);
 static int create_app(int argc, char* argv[],
                       orte_job_t *jdata,
                       orte_app_context_t **app,
@@ -849,7 +852,7 @@ int orun(int argc, char *argv[])
         ORTE_PROC_MY_HNP->jobid = sessionid;
         ORTE_PROC_MY_HNP->vpid = 0;
         orte_process_info.my_hnp_uri=my_hnp_uri;
-        printf("orte_process_myhnp %i %s\n", sessionid, orte_process_info.my_hnp_uri);
+        printf("orte_process_myhnp %l %s\n", sessionid, orte_process_info.my_hnp_uri);
     }
 
     /* spawn the job and its daemons */

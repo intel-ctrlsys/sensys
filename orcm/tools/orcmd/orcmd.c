@@ -391,7 +391,6 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
     int rc;
     char *foo;
     int stepd_pid;
-    int num_procs;
 
 
     /* we also have to give the HNP a pipe it can watch to know when

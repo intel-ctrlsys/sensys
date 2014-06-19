@@ -121,14 +121,8 @@ static void setup_sighandler(int signal, opal_event_t *ev,
 static int orcmsd_init(void)
 {
     int ret;
-    int32_t n;
     char *error;
-    char *contact_path, *jobfam_dir;
-    char *param;
     opal_buffer_t *uribuf;
-    opal_list_t config;
-    orte_vpid_t nprocs;
-    orcm_node_t *mynode;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -460,8 +454,8 @@ static int orcmsd_init(void)
         orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
         printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
         OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
-        opal_dss.pack(&uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
-        orte_rml_base_update_contact_info(&uribuf);
+        opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
+        orte_rml_base_update_contact_info(uribuf);
         orte_process_info.proc_type = ORCM_DAEMON;
     }
     
@@ -558,6 +552,7 @@ static int orcmsd_init(void)
                        "orte_init:startup:internal-failure",
                        true, error, ORTE_ERROR_NAME(ret), ret);
     }
+    return ret;
 }
 
 static int orcmsd_setup_node_pool(void)
@@ -676,8 +671,8 @@ static int orcmsd_setup_node_pool(void)
         orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
         printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
         OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
-        opal_dss.pack(&uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
-        orte_rml_base_update_contact_info(&uribuf);
+        opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
+        orte_rml_base_update_contact_info(uribuf);
     }
     
     return ORTE_SUCCESS;
@@ -720,14 +715,6 @@ static void orcmsd_finalize(void)
         (void) mca_base_framework_close(&orte_rmaps_base_framework);
     }
 
-}
-
-static void* progress_thread_engine(opal_object_t *obj)
-{
-    while (orte_event_base_active) {
-        opal_event_loop(orte_event_base, OPAL_EVLOOP_ONCE);
-    }
-    return OPAL_THREAD_CANCELLED;
 }
 
 static void shutdown_signal(int fd, short flags, void *arg)

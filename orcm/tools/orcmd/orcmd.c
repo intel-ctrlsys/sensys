@@ -420,7 +420,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
 
     /* pass it a jobid to match my job family */
     opal_argv_append(&argc, &argv, "-mca");
-    opal_argv_append(&argc, &argv, "ess_base_jobid");
+    opal_argv_append(&argc, &argv, "orcm_base_jobid");
     if (ORTE_SUCCESS !=
         (rc = orte_util_convert_jobid_to_string(&param, jobid))) {
         ORTE_ERROR_LOG(rc);

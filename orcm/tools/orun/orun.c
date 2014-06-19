@@ -852,7 +852,7 @@ int orun(int argc, char *argv[])
         ORTE_PROC_MY_HNP->jobid = sessionid;
         ORTE_PROC_MY_HNP->vpid = 0;
         orte_process_info.my_hnp_uri=my_hnp_uri;
-        printf("orte_process_myhnp %l %s\n", sessionid, orte_process_info.my_hnp_uri);
+        printf("orte_process_myhnp %li %s\n", sessionid, orte_process_info.my_hnp_uri);
     }
 
     /* spawn the job and its daemons */

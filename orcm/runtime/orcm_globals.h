@@ -41,6 +41,9 @@ typedef orte_proc_type_t orcm_proc_type_t;
 #define ORCM_SCHED          (ORTE_PROC_SCHEDULER | ORTE_PROC_CM)
 #define ORCM_MASTER         (ORTE_PROC_MASTER | ORTE_PROC_CM)
 #define ORCM_EMULATOR       (ORTE_PROC_EMULATOR | ORTE_PROC_CM)
+/* reuse ORTE_PROC_NON_MPI as ORCM_STED here.*/
+#define ORCM_STEPD          (0x0010 | ORTE_PROC_CM)
+#define ORCM_HNP            (ORTE_PROC_HNP | ORTE_PROC_CM)
 
 /* just define these tests to their ORTE equivalent
  * as otherwise they will always be true since anything
@@ -53,6 +56,8 @@ typedef orte_proc_type_t orcm_proc_type_t;
 #define ORCM_PROC_IS_IOF_ENDPT   ORTE_PROC_IS_IOF_ENDPT
 #define ORCM_PROC_IS_MASTER      ORTE_PROC_IS_MASTER
 #define ORCM_PROC_IS_EMULATOR    ORTE_PROC_IS_EMULATOR
+#define ORCM_PROC_IS_HNP         ORTE_PROC_IS_HNP
+#define ORCM_PROC_IS_STEPD       (0x0010 & orte_process_info.proc_type)
 
 /****    NODESTATE TYPE    ****/
 typedef int8_t orcm_node_state_t;
@@ -91,10 +96,13 @@ ORCM_DECLSPEC extern int orcm_debug_output;
 ORCM_DECLSPEC extern int orcm_debug_verbosity;
 
 
-/* extend the ORTE RML tags to add our own */
+/* extend the ORTE RML tags to add ORCM DAEMONS tags */
 #define ORCM_RML_TAG_SCD   (ORTE_RML_TAG_MAX + 1)
 #define ORCM_RML_TAG_RM    (ORTE_RML_TAG_MAX + 2)
 
+/* extend the ORTE RML tags to add Job Daemons tags */
+#define ORCM_RML_TAG_HNP   (ORTE_RML_TAG_MAX + 3)
+#define ORCM_RML_TAG_DAEMON (ORTE_RML_TAG_MAX + 4)
 
 /* define event base priorities */
 #define ORCM_SCHED_PRI OPAL_EV_MSG_HI_PRI

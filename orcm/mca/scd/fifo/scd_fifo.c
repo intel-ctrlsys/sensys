@@ -359,7 +359,7 @@ static void fifo_cancel(int sd, short args, void *cbdata)
             if (session->id == caddy->session->id) {
                 /* if session is running, send cancel launch command */
                 if (0 == strcmp(q->name, "running")) {
-                    ORCM_ACTIVATE_RM_STATE(caddy->session, ORCM_SESSION_STATE_KILL);
+                    ORCM_ACTIVATE_RM_STATE(session, ORCM_SESSION_STATE_KILL);
                 } else {
                     opal_list_remove_item(&q->sessions, &session->super);
                     ORCM_ACTIVATE_SCD_STATE(caddy->session, ORCM_SESSION_STATE_SCHEDULE);

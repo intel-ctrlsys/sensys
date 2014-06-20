@@ -24,4 +24,5 @@ SUBDIRS += \
         tools/osub \
         tools/otestcmd \
         tools/otop \
+        tools/orcmsd \
         tools/wrappers

@@ -147,8 +147,9 @@ static int orcmsd_init(void)
             ORTE_PROC_MY_NAME->vpid = 0;
         } else {
             if(NULL == orcm_base_vpid) {
-                ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
-                return ORTE_ERR_NOT_FOUND;
+                ret = ORTE_ERR_NOT_FOUND;
+                error = "requires a vpid";
+                goto error;
             }
             if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_vpid(&ORTE_PROC_MY_NAME->vpid, orcm_base_vpid))) {
                 ORTE_ERROR_LOG(ret);
@@ -156,6 +157,10 @@ static int orcmsd_init(void)
                 goto error;
             }
         }
+    } else {
+        ret = ORTE_ERR_NOT_FOUND;
+        error = "requires a jobid";
+        goto error;
     }
 
     /* datastore - ensure we don't pickup the pmi component, but
@@ -548,8 +553,8 @@ static int orcmsd_init(void)
 
  error:
     if (ORTE_ERR_SILENT != ret && !orte_report_silent_errors) {
-        orte_show_help("help-orte-runtime.txt",
-                       "orte_init:startup:internal-failure",
+        orte_show_help("help-orcmsd.txt",
+                       "orcmsd_init:startup:internal-failure",
                        true, error, ORTE_ERROR_NAME(ret), ret);
     }
     return ret;
@@ -678,8 +683,8 @@ static int orcmsd_setup_node_pool(void)
     return ORTE_SUCCESS;
     
  error:
-    orte_show_help("help-orte-runtime.txt",
-                   "orte_init:startup:internal-failure",
+    orte_show_help("help-orcmsd.txt",
+                   "orcmsd_init:startup:internal-failure",
                    true, error, ORTE_ERROR_NAME(ret), ret);
     
     return ORTE_ERR_SILENT;

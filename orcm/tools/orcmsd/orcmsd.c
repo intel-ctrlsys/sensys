@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
     if (orcmsd_globals.help) {
         char *args = NULL;
         args = opal_cmd_line_get_usage_msg(cmd_line);
-        orte_show_help("help-orted.txt", "orted:usage", false,
+        orte_show_help("help-orcmsd.txt", "orted:usage", false,
                        argv[0], args);
         free(args);
         return 1;
@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
                      */
                     orte_show_help_finalize();
                     /* the message will now come out locally */
-                    orte_show_help("help-orted.txt", "orted:cannot-bind",
+                    orte_show_help("help-orcmsd.txt", "orted:cannot-bind",
                                    true, orte_process_info.nodename,
                                    orte_daemon_cores);
                     ret = ORTE_ERR_NOT_SUPPORTED;

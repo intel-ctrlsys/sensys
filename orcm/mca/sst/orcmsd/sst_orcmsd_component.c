@@ -18,6 +18,9 @@
 #include "orcm/mca/sst/sst.h"
 #include "orcm/mca/sst/orcmsd/sst_orcmsd.h"
 
+char *orcm_node_regex;
+char *orcm_base_jobid;
+char *orcm_base_vpid;
 
 static int component_register(void);
 static int component_open(void);

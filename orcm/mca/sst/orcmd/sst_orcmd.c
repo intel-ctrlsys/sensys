@@ -128,6 +128,8 @@ static int orcmd_init(void)
     char *error = NULL;
     opal_buffer_t buf, *clusterbuf, *uribuf;
     orte_job_t *jdata;
+    orte_node_t *node;
+    orte_proc_t *proc;
     opal_list_t config;
     orcm_scheduler_t *scheduler;
     orcm_node_t *mynode=NULL;
@@ -211,6 +213,28 @@ static int orcmd_init(void)
         OBJ_DESTRUCT(&buf);
         return ORTE_ERR_SILENT;
     }
+
+    /* define a node and proc object for ourselves as some parts
+     * of ORTE and ORCM require it */
+    if (NULL == (node = OBJ_NEW(orte_node_t))) {
+        ret = ORTE_ERR_OUT_OF_RESOURCE;
+        error = "out of memory";
+        goto error;
+    }
+    node->name = strdup(orte_process_info.nodename);
+    opal_pointer_array_set_item(orte_node_pool, ORTE_PROC_MY_NAME->vpid, node);
+    if (NULL == (proc = OBJ_NEW(orte_proc_t))) {
+        ret = ORTE_ERR_OUT_OF_RESOURCE;
+        error = "out of memory";
+        goto error;
+    }
+    proc->name.jobid = ORTE_PROC_MY_NAME->jobid;
+    proc->name.vpid = ORTE_PROC_MY_NAME->vpid;
+    OBJ_RETAIN(proc);
+    node->daemon = proc;
+    OBJ_RETAIN(node);
+    proc->node = node;
+    opal_pointer_array_set_item(jdata->procs, ORTE_PROC_MY_NAME->vpid, proc);
 
     /* For now, we only support a single scheduler daemon in the system.
      * This *may* change someday in the future */
@@ -344,6 +368,20 @@ static int orcmd_init(void)
         }
     }
 #endif            
+
+    /* open and select the pstat framework */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&opal_pstat_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "opal_pstat_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = opal_pstat_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "opal_pstat_base_select";
+        goto error;
+    }
 
     /* open and setup the state machine */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_state_base_framework, 0))) {
@@ -618,7 +656,8 @@ static void orcmd_finalize(void)
     /* stop the local sensors */
     orcm_sensor.stop(ORTE_PROC_MY_NAME->jobid);
     (void) mca_base_framework_close(&orcm_sensor_base_framework);
-   
+       (void) mca_base_framework_close(&opal_pstat_base_framework);
+
     if (signals_set) {
         /* Release all local signal handlers */
         opal_event_del(&epipe_handler);

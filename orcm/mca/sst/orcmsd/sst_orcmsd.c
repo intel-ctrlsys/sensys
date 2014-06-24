@@ -137,8 +137,8 @@ static int orcmsd_init(void)
 
     /* define a name for myself */
     /* if we were spawned by a singleton, our jobid was given to us */
-    if (NULL != orcm_base_jobid) {
-        if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_jobid(&ORTE_PROC_MY_NAME->jobid, orcm_base_jobid))) {
+    if (NULL != mca_orcm_sst_orcmsd_component.base_jobid) {
+        if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_jobid(&ORTE_PROC_MY_NAME->jobid, mca_orcm_sst_orcmsd_component.base_jobid))) {
             ORTE_ERROR_LOG(ret);
             error = "convert_string_to_jobid";
             goto error;
@@ -146,11 +146,11 @@ static int orcmsd_init(void)
         if (ORTE_PROC_IS_HNP) {
             ORTE_PROC_MY_NAME->vpid = 0;
         } else {
-            if(NULL == orcm_base_vpid) {
+            if(NULL == mca_orcm_sst_orcmsd_component.base_vpid) {
                 ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
                 return ORTE_ERR_NOT_FOUND;
             }
-            if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_vpid(&ORTE_PROC_MY_NAME->vpid, orcm_base_vpid))) {
+            if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_vpid(&ORTE_PROC_MY_NAME->vpid, mca_orcm_sst_orcmsd_component.base_vpid))) {
                 ORTE_ERROR_LOG(ret);
                 error = "convert_string_to_vpid";
                 goto error;
@@ -567,10 +567,10 @@ static int orcmsd_setup_node_pool(void)
     orte_node_t *node;
     opal_buffer_t *uribuf;
 
-    if (NULL != orcm_node_regex) {
+    if (NULL != mca_orcm_sst_orcmsd_component.node_regex) {
     /* extract the nodes */
-        printf ("NODE-REGEX %s\n", orcm_node_regex);
-        if (ORTE_SUCCESS != (ret = orte_regex_extract_node_names(orcm_node_regex, &hosts))) {
+        printf ("NODE-REGEX %s\n", mca_orcm_sst_orcmsd_component.node_regex);
+        if (ORTE_SUCCESS != (ret = orte_regex_extract_node_names(mca_orcm_sst_orcmsd_component.node_regex, &hosts))) {
             error = "orte_regex_extract_node_names";
             goto error;
         }

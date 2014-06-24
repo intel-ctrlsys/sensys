@@ -153,6 +153,15 @@ static void fifo_schedule(int sd, short args, void *cbdata)
             }
             /* as per FIFO rules, get the first session on the queue */
             sessionptr = (orcm_session_t*)opal_list_remove_first(&q->sessions);
+            if (NULL == sessionptr) {
+                /* should never be able to get here, this function should only be called after sessions 
+                 * are already placed on a queue */
+                OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                                     "%s scd:fifo:schedule - no sessions found on queue when there should have been!\n",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+                OBJ_RELEASE(caddy);
+                return;
+            }
 
             /* find out how many nodes are available */
             free_nodes = 0;
@@ -266,6 +275,10 @@ static void fifo_allocated(int sd, short args, void *cbdata)
         }
     }
 
+    if (NULL != nodenames) {
+        opal_argv_free(nodenames);
+    }
+
     OBJ_RELEASE(caddy);
     return;
 
@@ -311,6 +324,11 @@ static void fifo_terminated(int sd, short args, void *cbdata)
                              "%s scd:fifo:terminated - (session: %d) could not extract nodelist\n",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              caddy->session->id));
+
+        if (NULL != nodenames) {
+            opal_argv_free(nodenames);
+        }
+
         return;
     }
 
@@ -345,6 +363,9 @@ static void fifo_terminated(int sd, short args, void *cbdata)
     ORCM_ACTIVATE_SCD_STATE(caddy->session, ORCM_SESSION_STATE_SCHEDULE);
 
     OBJ_RELEASE(caddy);
+    if (NULL != nodenames) {
+        opal_argv_free(nodenames);
+    }
 }
 
 static void fifo_cancel(int sd, short args, void *cbdata)

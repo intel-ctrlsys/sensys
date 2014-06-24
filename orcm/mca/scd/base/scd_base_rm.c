@@ -168,9 +168,17 @@ static void scd_base_rm_active(int sd, short args, void *cbdata)
     }
 
     /* set hnp name to first in the list */
-    caddy->session->alloc->hnpname = strdup(nodenames[0]);
+    if (NULL != nodenames) {
+        caddy->session->alloc->hnpname = strdup(nodenames[0]);
+    } else {
+        OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                             "%s scd:rm:active - (session: %d) got NULL nodelist\n",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             caddy->session->id));
+        return;
+    }
 
-    /* node array should be indexed by node num, 
+    /* node array should be indexed by node num,
      * if we change to lookup by index that would be faster */
     for (i = 0; i < caddy->session->alloc->min_nodes; i++) {
         for (j = 0; j < orcm_scd_base.nodes.size; j++) {
@@ -192,6 +200,7 @@ static void scd_base_rm_active(int sd, short args, void *cbdata)
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                                         1, ORCM_RM_CMD_T))) {
                     ORTE_ERROR_LOG(rc);
+                    opal_argv_free(nodenames);
                     return;
                 }
                 /* pack the allocation info */
@@ -199,6 +208,7 @@ static void scd_base_rm_active(int sd, short args, void *cbdata)
                                                         &caddy->session->alloc,
                                                         1, ORCM_ALLOC))) {
                     ORTE_ERROR_LOG(rc);
+                    opal_argv_free(nodenames);
                     return;
                 }
                 /* SEND ALLOC TO NODE */
@@ -209,15 +219,14 @@ static void scd_base_rm_active(int sd, short args, void *cbdata)
                                                   NULL))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(buf);
+                    opal_argv_free(nodenames);
                     return;
                 }
             }
         }
     }
 
-    if (NULL != nodenames) {
-        opal_argv_free(nodenames);
-    }
+    opal_argv_free(nodenames);
     OBJ_RELEASE(caddy);
 }
 
@@ -243,8 +252,15 @@ static void scd_base_rm_kill(int sd, short args, void *cbdata)
         }
         return;
     }
+    if (NULL == nodenames) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                             "%s scd:rm:kill - (session: %d) got NULL nodelist\n",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             caddy->session->id));
+        return;
+    }
 
-    /* node array should be indexed by node num, 
+    /* node array should be indexed by node num,
      * if we change to lookup by index that would be faster */
     for (i = 0; i < caddy->session->alloc->min_nodes; i++) {
         for (j = 0; j < orcm_scd_base.nodes.size; j++) {
@@ -260,6 +276,7 @@ static void scd_base_rm_kill(int sd, short args, void *cbdata)
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                                         1, ORCM_RM_CMD_T))) {
                     ORTE_ERROR_LOG(rc);
+                    opal_argv_free(nodenames);
                     return;
                 }
                 /* pack the alloc so that nodes know which session to kill */
@@ -267,6 +284,7 @@ static void scd_base_rm_kill(int sd, short args, void *cbdata)
                                                         &caddy->session->alloc,
                                                         1, ORCM_ALLOC))) {
                     ORTE_ERROR_LOG(rc);
+                    opal_argv_free(nodenames);
                     return;
                 }
                 /* SEND ALLOC TO NODE */
@@ -277,14 +295,13 @@ static void scd_base_rm_kill(int sd, short args, void *cbdata)
                                                   NULL))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(buf);
+                    opal_argv_free(nodenames);
                     return;
                 }
             }
         }
     }
 
-    if (NULL != nodenames) {
-        opal_argv_free(nodenames);
-    }
+    opal_argv_free(nodenames);
     OBJ_RELEASE(caddy);
 }

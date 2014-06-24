@@ -146,7 +146,7 @@ static int orcmsd_init(void)
         if (ORTE_PROC_IS_HNP) {
             ORTE_PROC_MY_NAME->vpid = 0;
         } else {
-            if(NULL == orcm_base_vpid) {
+            if (NULL == mca_sst_orcmsd_component.base_vpid) {
                 ret = ORTE_ERR_NOT_FOUND;
                 error = "requires a vpid";
                 goto error;

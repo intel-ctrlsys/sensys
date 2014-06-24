@@ -19,7 +19,7 @@ typedef struct {
     char *base_vpid;
 } orcm_sst_orcmsd_component_t;
 
-ORCM_DECLSPEC extern orcm_sst_orcmsd_component_t mca_orcm_sst_orcmsd_component;
+ORCM_DECLSPEC extern orcm_sst_orcmsd_component_t mca_sst_orcmsd_component;
 ORCM_DECLSPEC extern orcm_sst_base_module_t orcm_sst_orcmsd_module;
 
 #endif /* SST_ORCMSD_H */

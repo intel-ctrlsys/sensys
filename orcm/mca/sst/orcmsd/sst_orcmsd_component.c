@@ -27,7 +27,7 @@ static int component_open(void);
 static int component_close(void);
 static int component_query(mca_base_module_t **module, int *priority);
 
-orcm_sst_orcmsd_component_t mca_sst_orcmsd_component = {
+orcm_sst_orcmsd_component_t mca_orcm_sst_orcmsd_component = {
     {
         {
             ORCM_SST_BASE_VERSION_1_0_0,

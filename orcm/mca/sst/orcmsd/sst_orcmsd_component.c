@@ -18,10 +18,6 @@
 #include "orcm/mca/sst/sst.h"
 #include "orcm/mca/sst/orcmsd/sst_orcmsd.h"
 
-char *orcm_node_regex;
-char *orcm_base_jobid;
-char *orcm_base_vpid;
-
 static int component_register(void);
 static int component_open(void);
 static int component_close(void);
@@ -51,32 +47,40 @@ orcm_sst_orcmsd_component_t mca_sst_orcmsd_component = {
 
 static int component_register(void)
 {
+    int var_id;
+    mca_base_component_t *component = & mca_sst_orcmsd_component.super.base_version;
     mca_sst_orcmsd_component.node_regex = NULL;
-    (void) mca_base_var_register ("orcm", "orcm", NULL, "node_regex",
+    var_id =  mca_base_component_var_register (component, "node_regex",
                                "node_regex of allocated nodes.",
                                MCA_BASE_VAR_TYPE_STRING, NULL, 0,
                                MCA_BASE_VAR_FLAG_INTERNAL,
                                OPAL_INFO_LVL_9,
-                               MCA_BASE_VAR_SCOPE_CONSTANT,
+                               MCA_BASE_VAR_SCOPE_READONLY,
                                &mca_sst_orcmsd_component.node_regex);
+    (void) mca_base_var_register_synonym(var_id, "orcm", "orcm", NULL,
+                               "node_regex", 0);
 
     mca_sst_orcmsd_component.base_jobid = NULL;
-    (void) mca_base_var_register ("orcm", "orcm", "base", "jobid",
+    var_id =  mca_base_component_var_register (component, "jobid",
                                "orcmsd base jobid.",
                                MCA_BASE_VAR_TYPE_STRING, NULL, 0,
                                MCA_BASE_VAR_FLAG_INTERNAL,
                                OPAL_INFO_LVL_9,
-                               MCA_BASE_VAR_SCOPE_CONSTANT,
+                               MCA_BASE_VAR_SCOPE_READONLY,
                                &mca_sst_orcmsd_component.base_jobid);
+    (void) mca_base_var_register_synonym(var_id, "orcm", "orcm", "base",
+                               "jobid", 0);
 
     mca_sst_orcmsd_component.base_vpid = NULL;
-    (void) mca_base_var_register ("orcm", "orcm", "base", "vpid",
+    var_id =  mca_base_component_var_register (component, "vpid",
                                "orcmsd base vpid",
                                MCA_BASE_VAR_TYPE_STRING, NULL, 0,
                                MCA_BASE_VAR_FLAG_INTERNAL,
                                OPAL_INFO_LVL_9,
                                MCA_BASE_VAR_SCOPE_CONSTANT,
                                &mca_sst_orcmsd_component.base_vpid);
+    (void) mca_base_var_register_synonym(var_id, "orcm", "orcm", "base",
+                               "vpid", 0);
 
     return ORCM_SUCCESS;
 }

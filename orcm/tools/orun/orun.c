@@ -734,6 +734,7 @@ int orun(int argc, char *argv[])
                 if (0 == param_len) {
                     orte_show_help("help-orun.txt", "orun:empty-prefix",
                                    true, orte_basename, orte_basename);
+                    free(param);
                     return ORTE_ERR_FATAL;
                 }
             }
@@ -1468,9 +1469,11 @@ static int create_app(int argc, char* argv[],
              */
             param = strdup(environ[i]);
             value = strchr(param, '=');
-            *value = '\0';
-            value++;
-            opal_setenv(param, value, false, &app->env);
+            if (value != NULL) {
+                *value = '\0';
+                value++;
+                opal_setenv(param, value, false, &app->env);
+            }
             free(param);
         }
     }
@@ -1537,7 +1540,7 @@ static int create_app(int argc, char* argv[],
                         free(value2);
                     }
                 } else {
-                    opal_output(0, "Warning: could not find environment variable \"%s\"\n", param);
+                    opal_output(0, "Warning: could not find environment variable \"%s\"\n", vars[i]);
                 }
             }
         }
@@ -1644,6 +1647,7 @@ static int create_app(int argc, char* argv[],
                     if (0 == param_len) {
                         orte_show_help("help-orun.txt", "orun:empty-prefix",
                                        true, orte_basename, orte_basename);
+                        free(param);
                         return ORTE_ERR_FATAL;
                     }
                 }
@@ -1992,6 +1996,7 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
             if (NULL != *env) {
                 tmp_env = opal_argv_copy(*env);
                 if (NULL == tmp_env) {
+                    fclose(fp);
                     return ORTE_ERR_OUT_OF_RESOURCE;
                 }
             } else {
@@ -2002,6 +2007,7 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
             if (ORTE_SUCCESS != rc) {
                 /* Assume that the error message has already been
                    printed; no need to cleanup -- we can just exit */
+                fclose(fp);
                 exit(1);
             }
             if (NULL != tmp_env) {

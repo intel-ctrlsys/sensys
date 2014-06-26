@@ -18,6 +18,8 @@
 # $HEADER$
 #
 
+dist_orcmdata_DATA = help-orcmsd.txt
+
 include $(top_srcdir)/Makefile.ompi-rules
 
 man_pages = orcmsd.1

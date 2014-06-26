@@ -202,7 +202,15 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Redirect output from application processes into filename.rank" },
     
-    { "orcm_node_regex", '\0', "nodes", "nodes", 1,
+    { "sst_orcmsd_node_regex", '\0', "node_regex", "node_regex", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Regular expression defining nodes in system" },
+
+    { "sst_orcmsd_jobid", '\0', "jobid", "jobid", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Regular expression defining nodes in system" },
+
+    { "sst_orcmsd_vpid", '\0', "vpid", "vpid", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Regular expression defining nodes in system" },
 
@@ -301,7 +309,7 @@ int main(int argc, char *argv[])
     if (orcmsd_globals.help) {
         char *args = NULL;
         args = opal_cmd_line_get_usage_msg(cmd_line);
-        orte_show_help("help-orted.txt", "orted:usage", false,
+        orte_show_help("help-orcmsd.txt", "orted:usage", false,
                        argv[0], args);
         free(args);
         return 1;
@@ -368,7 +376,7 @@ int main(int argc, char *argv[])
                      */
                     orte_show_help_finalize();
                     /* the message will now come out locally */
-                    orte_show_help("help-orted.txt", "orted:cannot-bind",
+                    orte_show_help("help-orcmsd.txt", "orted:cannot-bind",
                                    true, orte_process_info.nodename,
                                    orte_daemon_cores);
                     ret = ORTE_ERR_NOT_SUPPORTED;

@@ -189,7 +189,6 @@ static int init(void)
 
         /* add to our list */
         opal_list_append(&tracking, &trk->super);
-        OBJ_RELEASE(trk);
     }
     closedir(cur_dirp);
 
@@ -317,7 +316,6 @@ static void pwr_sample(orcm_sensor_sampler_t *sampler)
                 continue;
             }
             power = trk->units * (double)(value & 0x7fff);
-            OBJ_RELEASE(trk);
             close(fd);
         }
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &power, 1, OPAL_FLOAT))) {

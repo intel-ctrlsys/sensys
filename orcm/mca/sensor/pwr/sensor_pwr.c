@@ -235,6 +235,7 @@ static void pwr_sample(orcm_sensor_sampler_t *sampler)
     float power;
     char *temp;
     bool packed;
+    struct tm *sample_time;
 
     if (0 == opal_list_get_size(&tracking) && !mca_sensor_pwr_component.test) {
         return;
@@ -275,7 +276,12 @@ static void pwr_sample(orcm_sensor_sampler_t *sampler)
     /* get the sample time */
     now = time(NULL);
     /* pass the time along as a simple string */
-    strftime(time_str, sizeof(time_str), "%F %T%z", localtime(&now));
+    sample_time = localtime(&now);
+    if (NULL == sample_time) {
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        return;
+    }
+    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
     asprintf(&timestamp_str, "%s", time_str);
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
@@ -387,6 +393,10 @@ static void pwr_log(opal_buffer_t *sample)
     vals = OBJ_NEW(opal_list_t);
 
     /* load the sample time at the start */
+    if (NULL == sampletime) {
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        return;
+    }
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("ctime");
     kv->type = OPAL_STRING;
@@ -395,6 +405,10 @@ static void pwr_log(opal_buffer_t *sample)
     opal_list_append(vals, &kv->super);
 
     /* load the hostname */
+    if (NULL == hostname) {
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        return;
+    }
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("hostname");
     kv->type = OPAL_STRING;

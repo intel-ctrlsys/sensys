@@ -295,6 +295,10 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     tdiff = difftime(now, last_sample);
     /* pass the time along as a simple string */
     sample_time = localtime(&now);
+    if (NULL == sample_time) {
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        return;
+    }
     strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
     asprintf(&timestamp_str, "%s", time_str);
 
@@ -605,7 +609,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     if (NULL == sampletime) {
-        ORTE_ERROR_LOG(-5);
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
         return;
     }
     kv = OBJ_NEW(opal_value_t);
@@ -617,7 +621,7 @@ static void sigar_log(opal_buffer_t *sample)
 
     /* load the hostname */
     if (NULL == hostname) {
-        ORTE_ERROR_LOG(-5);
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
         return;
     }
     kv = OBJ_NEW(opal_value_t);
@@ -901,9 +905,6 @@ static void sigar_log(opal_buffer_t *sample)
         free(hostname);
     }
 
-    if (NULL != sampletime) {
-        free(sampletime);
-    }
 }
 
 /* Helper function to calculate the metric differences */

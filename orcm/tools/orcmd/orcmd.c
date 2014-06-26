@@ -403,10 +403,10 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         return ORTE_ERR_SYS_LIMITS_PIPES;
     }
 
-    /* find the orted binary using the install_dirs support - this also
+    /* find the orcmsd binary using the install_dirs support - this also
      * checks to ensure that we can see this executable and it *is* executable by us
      */
-    cmd = opal_path_access("orted", opal_install_dirs.bindir, X_OK);
+    cmd = opal_path_access("orcmsd", opal_install_dirs.bindir, X_OK);
     if (NULL == cmd) {
 
         /* guess we couldn't do it - best to abort */
@@ -463,7 +463,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
     } else {
         /* setup to pass the vpid */
         opal_argv_append(&argc, &argv, "-mca");
-        opal_argv_append(&argc, &argv, "orcm_base_vpid");
+        opal_argv_append(&argc, &argv, "sst_orcmsd_vpid");
         opal_argv_append(&argc, &argv, "1");
         /* pass the uri of the hnp */
         asprintf(&param, "\"%s\"", hnp_uri);

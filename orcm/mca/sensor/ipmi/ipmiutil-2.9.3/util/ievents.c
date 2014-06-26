@@ -568,7 +568,7 @@ char *decode_entity_id(int id)
 {
    char *str = NULL;
    if (id < 0) id = 0;
-   if (id > NENTID) {
+   if (id >= NENTID) {
       if (id >= 0x90 && id < 0xB0) str = "Chassis-specific";
       else if (id >= 0xB0 && id < 0xD0) str = "Board-specific";
       else if (id >= 0xD0 && id <= 0xFF) str = "OEM-specific";

@@ -419,7 +419,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
 
     /* pass it a jobid to match my job family */
     opal_argv_append(&argc, &argv, "-mca");
-    opal_argv_append(&argc, &argv, "orcm_base_jobid");
+    opal_argv_append(&argc, &argv, "sst_orcmsd_jobid");
     if (ORTE_SUCCESS !=
         (rc = orte_util_convert_jobid_to_string(&param, jobid))) {
         ORTE_ERROR_LOG(rc);
@@ -431,7 +431,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
     if( hnp ) {
         /* setup to pass the vpid */
         opal_argv_append(&argc, &argv, "-mca");
-        opal_argv_append(&argc, &argv, "orcm_base_vpid");
+        opal_argv_append(&argc, &argv, "sst_orcmsd_vpid");
         opal_argv_append(&argc, &argv, "0");
 
         /* tell the daemon it is to be the HNP */
@@ -479,7 +479,8 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
 
     /* if we have static ports, pass the node list */
     if (NULL != nodes) {
-        opal_argv_append(&argc, &argv, "--nodes");
+        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "sst_orcmsd_node_regex");
         opal_argv_append(&argc, &argv, nodes);
     }
 

@@ -202,7 +202,15 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Redirect output from application processes into filename.rank" },
     
-    { "orcm_node_regex", '\0', "nodes", "nodes", 1,
+    { "sst_orcmsd_node_regex", '\0', "node_regex", "node_regex", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Regular expression defining nodes in system" },
+
+    { "sst_orcmsd_jobid", '\0', "orcm_base_jobid", "orcm_base_jobid", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Regular expression defining nodes in system" },
+
+    { "sst_orcmsd_vpid", '\0', "orcm_base_vpid", "orcm_base_vpid", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Regular expression defining nodes in system" },
 

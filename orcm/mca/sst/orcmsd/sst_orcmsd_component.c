@@ -57,8 +57,6 @@ static int component_register(void)
                                OPAL_INFO_LVL_9,
                                MCA_BASE_VAR_SCOPE_READONLY,
                                &mca_sst_orcmsd_component.node_regex);
-    (void) mca_base_var_register_synonym(var_id, "orcm", "orcm", NULL,
-                               "node_regex", 0);
 
     mca_sst_orcmsd_component.base_jobid = NULL;
     var_id =  mca_base_component_var_register (component, "jobid",
@@ -68,8 +66,6 @@ static int component_register(void)
                                OPAL_INFO_LVL_9,
                                MCA_BASE_VAR_SCOPE_READONLY,
                                &mca_sst_orcmsd_component.base_jobid);
-    (void) mca_base_var_register_synonym(var_id, "orcm", "orcm", "base",
-                               "jobid", 0);
 
     mca_sst_orcmsd_component.base_vpid = NULL;
     var_id =  mca_base_component_var_register (component, "vpid",
@@ -79,8 +75,6 @@ static int component_register(void)
                                OPAL_INFO_LVL_9,
                                MCA_BASE_VAR_SCOPE_CONSTANT,
                                &mca_sst_orcmsd_component.base_vpid);
-    (void) mca_base_var_register_synonym(var_id, "orcm", "orcm", "base",
-                               "vpid", 0);
 
     return ORCM_SUCCESS;
 }

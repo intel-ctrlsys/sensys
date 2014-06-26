@@ -1540,7 +1540,7 @@ static int create_app(int argc, char* argv[],
                         free(value2);
                     }
                 } else {
-                    opal_output(0, "Warning: could not find environment variable \"%s\"\n", vars);
+                    opal_output(0, "Warning: could not find environment variable \"%s\"\n", vars[i]);
                 }
             }
         }

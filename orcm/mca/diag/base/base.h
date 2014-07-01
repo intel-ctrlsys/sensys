@@ -64,6 +64,8 @@ OBJ_CLASS_DECLARATION(orcm_diag_active_module_t);
 
 /* base code stubs */
 ORCM_DECLSPEC void orcm_diag_base_calibrate(void);
+ORCM_DECLSPEC int  orcm_diag_base_diag_read(opal_list_t *config);
+ORCM_DECLSPEC int  orcm_diag_base_diag_check(opal_list_t *config);
 
 END_C_DECLS
 #endif

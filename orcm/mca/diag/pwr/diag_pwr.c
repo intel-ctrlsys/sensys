@@ -45,7 +45,9 @@ static void calibrate(void);
 orcm_diag_base_module_t orcm_diag_pwr_module = {
     init,
     finalize,
-    calibrate
+    calibrate,
+    NULL,
+    NULL
 };
 
 typedef struct {

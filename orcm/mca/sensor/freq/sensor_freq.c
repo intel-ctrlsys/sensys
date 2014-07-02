@@ -161,7 +161,7 @@ static int init(void)
                 break;
             }
         }
-        trk->core = strtoul(&entry->d_name[k], NULL, 10);
+        trk->core = strtoul(&entry->d_name[k+1], NULL, 10);
         trk->file = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_cur_freq", NULL);
         
         /* read the static info */

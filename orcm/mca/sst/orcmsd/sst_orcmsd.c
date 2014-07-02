@@ -129,6 +129,11 @@ static int orcmsd_init(void)
     }
     initialized = true;
 
+    if (!ORTE_PROC_IS_HNP) {
+    /* if not HNP this is a step daemon set it to ORCM_DAEMON */
+        orte_process_info.proc_type = ORCM_DAEMON;
+    }
+
     /* Initialize the ORTE data type support */
     if (ORTE_SUCCESS != (ret = orte_ess_base_std_prolog())) {
         error = "orte_std_prolog";
@@ -458,10 +463,9 @@ static int orcmsd_init(void)
     } else {
         orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
         printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
-        OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
+        uribuf = OBJ_NEW(opal_buffer_t);
         opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
         orte_rml_base_update_contact_info(uribuf);
-        orte_process_info.proc_type = ORCM_DAEMON;
     }
     
     orte_create_session_dirs = false;
@@ -675,7 +679,7 @@ static int orcmsd_setup_node_pool(void)
     } else {
         orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
         printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
-        OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
+        uribuf = OBJ_NEW(opal_buffer_t);
         opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
         orte_rml_base_update_contact_info(uribuf);
     }

@@ -131,8 +131,8 @@ static struct {
     bool hnp;
     bool daemonize;
     char* name;
-    char* vpid_start;
     char* num_procs;
+    char* parent_uri;
     int uri_pipe;
     int singleton_died_pipe;
     int fail;
@@ -182,8 +182,8 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "URI for the HNP"},
     
-    { "orte_parent_uri", '\0', NULL, "parent-uri", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
+    { "sst_orcmsd_parent_uri", '\0', "parent-uri", "parent-uri", 1,
+      &orcmsd_globals.parent_uri, OPAL_CMD_LINE_TYPE_STRING,
       "URI for the parent if tree launch is enabled."},
     
     { NULL, '\0', NULL, "set-sid", 0,
@@ -202,7 +202,7 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Redirect output from application processes into filename.rank" },
     
-    { "sst_orcmsd_node_regex", '\0', "node_regex", "node_regex", 1,
+    { "sst_orcmsd_node_regex", '\0', "node-regex", "node-regex", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Regular expression defining nodes in system" },
 
@@ -603,6 +603,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
     orte_node_t *node;
     orte_job_t *jdata;
     orte_process_name_t dname;
+    orte_process_name_t my_parent;
 
     /* get the daemon job, if necessary */
     if (NULL == jdatorted) {
@@ -618,6 +619,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
             orted_failed_launch = true;
             goto CLEANUP;
         }
+
         daemon->state = ORTE_PROC_STATE_RUNNING;
         /* record that this daemon is alive */
         ORTE_FLAG_SET(daemon, ORTE_PROC_FLAG_ALIVE);
@@ -647,9 +649,28 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
         jdatorted->num_reported++;
         if (jdatorted->num_procs == jdatorted->num_reported) {
             jdatorted->state = ORTE_JOB_STATE_DAEMONS_REPORTED;
+#if 0
+            /* send vm ready to the parent */
+            if ( NULL != orcmsd_globals.parent_uri) {
+                /* set the contact info into the hash table */
+                orte_rml.set_contact_info(orcmsd_globals.parent_uri);
+                rc = orte_rml_base_parse_uris(orcmsd_globals.parent_uri, my_parent, NULL);
+                if (ORTE_SUCCESS != rc) {
+                    ORTE_ERROR_LOG(rc);
+                    return;
+                }
+                if ((rc = orte_rml.send_buffer_nb(my_parent, relay_msg, ORTE_RML_TAG_DAEMON,
+                                                   orte_rml_send_callback, NULL)) < 0) {
+                    ORTE_ERROR_LOG(rc);
+                    OBJ_RELEASE(relay_msg);
+                    return;
+                }
+            }
+#endif
             /* activate the daemons_reported state for all jobs
              * whose daemons were launched
              */
+
             for (idx=1; idx < orte_job_data->size; idx++) {
                 if (NULL == (jdata = (orte_job_t*)opal_pointer_array_get_item(orte_job_data, idx))) {
                     continue;

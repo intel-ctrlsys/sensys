@@ -190,26 +190,65 @@ static int init(void)
             *ptr = '\0';
             /* look for critical, max, and label info */
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "label");
-            fp = fopen(filename, "r");
-            trk->label = orte_getline(fp);
-            fclose(fp);
-            free(filename);
-
+            if (NULL != (fp = fopen(filename, "r")))
+            {
+                if(NULL != (trk->label = orte_getline(fp)))
+                {
+                    fclose(fp);
+                    free(filename);
+                } else {
+                    ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                    fclose(fp);
+                    free(filename);
+                    return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
+                }
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
+                free(filename);
+                return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
+            }
+            
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "crit");
-            fp = fopen(filename, "r");
-            ptr = orte_getline(fp);
-            fclose(fp);
-            trk->critical_temp = strtol(ptr, NULL, 10)/1000.0;
-            free(ptr);
-            free(filename);
+            if (NULL != (fp = fopen(filename, "r")))
+            {
+                if(NULL != (ptr = orte_getline(fp)))
+                {
+                    trk->critical_temp = strtol(ptr, NULL, 10)/1000.0;
+                    free(ptr);
+                    fclose(fp);
+                    free(filename);
+                } else {
+                    ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                    fclose(fp);
+                    free(filename);
+                    return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
+                }
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
+                free(filename);
+                return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
+            }
 
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "max");
-            fp = fopen(filename, "r");
-            ptr = orte_getline(fp);
-            fclose(fp);
-            trk->max_temp = strtol(ptr, NULL, 10)/1000.0;
-            free(ptr);
-            free(filename);
+            if(NULL != (fp = fopen(filename, "r")))
+            {
+                if(NULL != (ptr = orte_getline(fp)))
+                {
+                    trk->max_temp = strtol(ptr, NULL, 10)/1000.0;
+                    free(ptr);
+                    fclose(fp);
+                    free(filename);
+                } else {
+                    ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                    fclose(fp);
+                    free(filename);
+                    return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
+                }
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
+                free(filename);
+                return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
+            }
 
             /* add to our list */
             opal_list_append(&tracking, &trk->super);

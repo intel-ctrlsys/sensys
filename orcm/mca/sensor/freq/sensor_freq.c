@@ -167,18 +167,26 @@ static int init(void)
         /* read the static info */
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_max_freq", NULL);
         fp = fopen(filename, "r");
-        tmp = orte_getline(fp);
-        fclose(fp);
-        trk->max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
-        free(filename);
-
+        if(NULL != fp) {
+            tmp = orte_getline(fp);
+            if(NULL!=tmp) {
+                trk->max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
+                free(tmp);
+            }
+            fclose(fp);
+            free(filename);
+        }
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_min_freq", NULL);
         fp = fopen(filename, "r");
-        tmp = orte_getline(fp);
-        fclose(fp);
-        trk->min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
-        free(filename);
-
+        if(NULL != fp) {
+            tmp = orte_getline(fp);
+            if(NULL!=tmp) {
+                trk->min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
+                free(tmp);
+            }
+            fclose(fp);
+            free(filename);
+        }
         /* add to our list */
         opal_list_append(&tracking, &trk->super);
         /* cleanup */

@@ -87,14 +87,14 @@ typedef struct {
     char baseboard_serial[16];
     char sys_power_state[16];
     char dev_power_state[16];
-    char ps1_usage[16];
-    char ps1_temp[16];
-    char ps2_usage[16];
-    char ps2_temp[16];
-    char fan1_cpu_rpm[16];
-    char fan2_cpu_rpm[16];
-    char fan1_sys_rpm[16];
-    char fan2_sys_rpm[16];
+    float ps1_usage;
+    float ps1_temp;
+    float ps2_usage;
+    float ps2_temp;
+    float fan1_cpu_rpm;
+    float fan2_cpu_rpm;
+    float fan1_sys_rpm;
+    float fan2_sys_rpm;
 } ipmi_properties_t;
 
 

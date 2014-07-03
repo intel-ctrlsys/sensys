@@ -199,7 +199,7 @@ static int init(void)
             fp = fopen(filename, "r");
             ptr = orte_getline(fp);
             fclose(fp);
-            trk->critical_temp = strtol(ptr, NULL, 10)/100.0;
+            trk->critical_temp = strtol(ptr, NULL, 10)/1000.0;
             free(ptr);
             free(filename);
 
@@ -207,7 +207,7 @@ static int init(void)
             fp = fopen(filename, "r");
             ptr = orte_getline(fp);
             fclose(fp);
-            trk->max_temp = strtol(ptr, NULL, 10)/100.0;
+            trk->max_temp = strtol(ptr, NULL, 10)/1000.0;
             free(ptr);
             free(filename);
 
@@ -328,7 +328,7 @@ static void coretemp_sample(orcm_sensor_sampler_t *sampler)
             continue;
         }
         while (NULL != (temp = orte_getline(fp))) {
-            degc = strtoul(temp, NULL, 10) / 100.0;
+            degc = strtoul(temp, NULL, 10) / 1000.0;
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "%s sensor:coretemp: Socket %d %s temp %f max %f critical %f",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),

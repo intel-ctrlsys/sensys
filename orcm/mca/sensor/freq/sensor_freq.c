@@ -166,31 +166,45 @@ static int init(void)
         
         /* read the static info */
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_max_freq", NULL);
-        fp = fopen(filename, "r");
-        if(NULL != fp) {
-            tmp = orte_getline(fp);
-            if(NULL!=tmp) {
+        if(NULL != (fp = fopen(filename, "r")))
+        {
+            if(NULL!=(tmp = orte_getline(fp))) {
                 trk->max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
                 free(tmp);
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                free(filename);
+                return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
             }
             fclose(fp);
+        } else {
+            ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
             free(filename);
+            return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
         }
+           
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_min_freq", NULL);
+
         fp = fopen(filename, "r");
-        if(NULL != fp) {
-            tmp = orte_getline(fp);
-            if(NULL!=tmp) {
+        if(NULL != (fp = fopen(filename, "r")))
+        {
+            if(NULL!=(tmp = orte_getline(fp))) {
                 trk->min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
                 free(tmp);
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                free(filename);
+                return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
             }
             fclose(fp);
+        } else {
+            ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
             free(filename);
+            return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
         }
+
         /* add to our list */
         opal_list_append(&tracking, &trk->super);
-        /* cleanup */
-        free(tmp);
     }
     closedir(cur_dirp);
 

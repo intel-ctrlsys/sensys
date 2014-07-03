@@ -40,3 +40,35 @@ void orcm_diag_base_calibrate(void)
         }
     }
 }
+
+int orcm_diag_base_diag_read(opal_list_t *config)
+{
+    orcm_diag_active_module_t *mod;
+
+    OPAL_LIST_FOREACH(mod, &orcm_diag_base.modules, orcm_diag_active_module_t) {
+        if (NULL != mod->module->diag_read) {
+            opal_output_verbose(5, orcm_diag_base_framework.framework_output,
+                                "%s diag:base: diagnostics read component %s",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                mod->component->mca_component_name);
+            mod->module->diag_read(config);
+        }
+    }
+    return ORCM_SUCCESS;    
+}
+
+int orcm_diag_base_diag_check(opal_list_t *config)
+{
+    orcm_diag_active_module_t *mod;
+
+    OPAL_LIST_FOREACH(mod, &orcm_diag_base.modules, orcm_diag_active_module_t) {
+        if (NULL != mod->module->diag_check) {
+            opal_output_verbose(5, orcm_diag_base_framework.framework_output,
+                                "%s diag:base: diagnostics check component %s",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                mod->component->mca_component_name);
+            mod->module->diag_check(config);
+        }
+    }
+    return ORCM_SUCCESS;
+}

@@ -7,7 +7,7 @@
 
 <orcm-aggregators>
   <nodes>
-    <value>hostname</value>
+    <value>localhost</value>
   </nodes>
   <port>
     <value>55805</value>
@@ -33,7 +33,7 @@
   <description>Identify the node that houses the ORCM scheduler. Only
   one allowed at this time</description>
   <nodes>
-    <value>hostname</value>
+    <value>localhost</value>
   </nodes>
   <port>
     <value>55820</value>

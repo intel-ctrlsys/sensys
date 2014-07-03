@@ -37,3 +37,4 @@ with_postgres=no
 with_slurm=no
 with_ipmi=yes
 with_odbc=yes
+with_memtest=no

@@ -59,7 +59,7 @@ orcm_diag_base_module_t orcm_diag_memtest_module = {
     diag_check
 };
 
-static struct { int *addr; size_t size; long num; long length; } memcheck_t;
+static struct { unsigned int *addr; size_t size; long num; unsigned long length; } memcheck_t;
 
 static int init(void)
 {
@@ -81,7 +81,7 @@ static void finalize(void)
 static void *memcheck_thread(void *arg) {
 
     long pos = (long)arg;
-    int *myaddr;
+    unsigned int *myaddr;
     size_t mysize, i;
     unsigned int x, y, z, w, t;
 
@@ -123,14 +123,14 @@ static void *memcheck_thread(void *arg) {
         if (w != myaddr[i]) {
             opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s memdiag: memory error on %p : it should be 0x%08x, but 0x%08x; diffs : 0x%08x",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), myaddr + i, w, myaddr[i], w ^ myaddr[i]);
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (void *)(myaddr + i), w, myaddr[i], w ^ myaddr[i]);
         }
     }
 
     return NULL;
 }
 
-static void memcheck(int *addr, size_t size) {
+static void memcheck(unsigned int *addr, size_t size) {
 
     long i, numprocs;
     pthread_t *threads;
@@ -169,7 +169,8 @@ static int diag_read(opal_list_t *config)
 static int diag_check(opal_list_t *config)
 {
     struct sysinfo info;
-    void *addr, *p;
+    void *addr;
+    char *p;
     size_t size, rest;
   
     sysinfo(&info);
@@ -193,7 +194,7 @@ static int diag_check(opal_list_t *config)
             opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s memdiag: out of memory",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-            return;
+            return ORCM_ERROR;
         }
 
     } while (addr == (void *)-1);
@@ -201,7 +202,7 @@ static int diag_check(opal_list_t *config)
     opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                         "%s memdiag: %ld MB is used for test",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), info.freeram >> 20);
-    p    = addr;
+    p    = (char *)addr;
     rest = size;
   
     while ((long)rest > 0) {
@@ -211,7 +212,7 @@ static int diag_check(opal_list_t *config)
         rest -= NPAGE_SIZE;
     }
   
-    memcheck((int *)addr, size / sizeof(int));
+    memcheck((unsigned int *)addr, size / sizeof(int));
   
     munmap(addr, size);
   
@@ -219,7 +220,7 @@ static int diag_check(opal_list_t *config)
                         "%s Checking memory:                        [  OK  ]",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
 
-    return;
+    return ORCM_SUCCESS;
 }
 
 

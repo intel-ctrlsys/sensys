@@ -151,11 +151,13 @@ static void orte_iof_base_write_event_destruct(orte_iof_write_event_t* wev)
 {
     opal_event_free(wev->ev);
     if (ORTE_PROC_IS_HNP) {
-        int xmlfd = fileno(orte_xml_fp);
-        if (xmlfd == wev->fd) {
-            /* don't close this one - will get it later */
-            OBJ_DESTRUCT(&wev->outputs);
-            return;
+        if (orte_xml_fp) {
+            int xmlfd = fileno(orte_xml_fp);
+            if (xmlfd == wev->fd) {
+                /* don't close this one - will get it later */
+                OBJ_DESTRUCT(&wev->outputs);
+                return;
+            }
         }
     }
     

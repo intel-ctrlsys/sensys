@@ -39,6 +39,7 @@ static void process_open(int fd, short args, void *cbdata)
         OPAL_LIST_FOREACH(kv, req->properties, opal_value_t) {
             if (0 == strcmp(kv->key, "components")) {
                 cmps = opal_argv_split(kv->data.string, ',');
+                break;
             }
         }
     }
@@ -69,6 +70,7 @@ static void process_open(int fd, short args, void *cbdata)
                 if (NULL != req->cbfunc) {
                     req->cbfunc(index, ORCM_SUCCESS, NULL, req->cbdata);
                 }
+                opal_argv_free(cmps);
                 OBJ_RELEASE(req);
                 return;
             }
@@ -79,6 +81,7 @@ static void process_open(int fd, short args, void *cbdata)
     if (NULL != req->cbfunc) {
         req->cbfunc(-1, ORCM_ERROR, NULL, req->cbdata);
     }
+    opal_argv_free(cmps);
     OBJ_RELEASE(req);
 }
 

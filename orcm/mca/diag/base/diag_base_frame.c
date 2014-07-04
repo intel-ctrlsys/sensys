@@ -36,7 +36,9 @@
  * Global variables
  */
 orcm_diag_API_module_t orcm_diag = {
-    orcm_diag_base_calibrate
+    orcm_diag_base_calibrate,
+    orcm_diag_base_diag_read,
+    orcm_diag_base_diag_check
 };
 orcm_diag_base_t orcm_diag_base;
 

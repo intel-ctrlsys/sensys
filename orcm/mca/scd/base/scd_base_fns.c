@@ -172,6 +172,7 @@ void orcm_scd_base_construct_queues(int fd, short args, void *cbdata)
                     break;
                 }
             }
+            opal_argv_free(t1);
         }
     }
 
@@ -181,4 +182,6 @@ void orcm_scd_base_construct_queues(int fd, short args, void *cbdata)
             opal_output(0, "QUEUE: %s PRI: %d", q->name, q->priority);
         }
     }
+
+    OBJ_RELEASE(c);
 }

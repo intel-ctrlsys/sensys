@@ -96,6 +96,7 @@
 #include "orte/runtime/orte_globals.h"
 #include "orte/runtime/orte_locks.h"
 #include "orte/runtime/orte_quit.h"
+#include "orte/runtime/orte_wait.h"
 
 #include "orte/orted/orted.h"
 
@@ -530,6 +531,7 @@ int orte_daemon(int argc, char *argv[])
         int32_t ljob;
         orte_grpcomm_collective_t *coll;
         orte_namelist_t *nm;
+        orte_grpcomm_coll_id_t id;
 
         /* setup the singleton's job */
         jdata = OBJ_NEW(orte_job_t);
@@ -584,37 +586,42 @@ int orte_daemon(int argc, char *argv[])
         ORTE_FLAG_SET(proc, ORTE_PROC_FLAG_LOCAL);
 
         /* account for the collectives in its modex/barriers */
-        jdata->peer_modex = orte_grpcomm_base_get_coll_id();
-        coll = orte_grpcomm_base_setup_collective(jdata->peer_modex);
+        id = orte_grpcomm_base_get_coll_id();
+        orte_set_attribute(&jdata->attributes, ORTE_JOB_PEER_MODX_ID, ORTE_ATTR_GLOBAL, &id, ORTE_GRPCOMM_COLL_ID_T);
+        coll = orte_grpcomm_base_setup_collective(id);
         nm = OBJ_NEW(orte_namelist_t);
         nm->name.jobid = jdata->jobid;
         nm->name.vpid = ORTE_VPID_WILDCARD;
         opal_list_append(&coll->participants, &nm->super);
 
-        jdata->peer_init_barrier = orte_grpcomm_base_get_coll_id();
-        coll = orte_grpcomm_base_setup_collective(jdata->peer_init_barrier);
+        id = orte_grpcomm_base_get_coll_id();
+        orte_set_attribute(&jdata->attributes, ORTE_JOB_INIT_BAR_ID, ORTE_ATTR_GLOBAL, &id, ORTE_GRPCOMM_COLL_ID_T);
+        coll = orte_grpcomm_base_setup_collective(id);
         nm = OBJ_NEW(orte_namelist_t);
         nm->name.jobid = jdata->jobid;
         nm->name.vpid = ORTE_VPID_WILDCARD;
         opal_list_append(&coll->participants, &nm->super);
 
-        jdata->peer_fini_barrier = orte_grpcomm_base_get_coll_id();
-        coll = orte_grpcomm_base_setup_collective(jdata->peer_fini_barrier);
+        id = orte_grpcomm_base_get_coll_id();
+        orte_set_attribute(&jdata->attributes, ORTE_JOB_FINI_BAR_ID, ORTE_ATTR_GLOBAL, &id, ORTE_GRPCOMM_COLL_ID_T);
+        coll = orte_grpcomm_base_setup_collective(id);
         nm = OBJ_NEW(orte_namelist_t);
         nm->name.jobid = jdata->jobid;
         nm->name.vpid = ORTE_VPID_WILDCARD;
         opal_list_append(&coll->participants, &nm->super);
 
 #if OPAL_ENABLE_FT_CR == 1
-        jdata->snapc_init_barrier = orte_grpcomm_base_get_coll_id();
-        coll = orte_grpcomm_base_setup_collective(jdata->snapc_init_barrier);
+        id = orte_grpcomm_base_get_coll_id();
+        orte_set_attribute(&jdata->attributes, ORTE_JOB_SNAPC_INIT_BAR, ORTE_ATTR_GLOBAL, &id, ORTE_GRPCOMM_COLL_ID_T);
+        coll = orte_grpcomm_base_setup_collective(id);
         nm = OBJ_NEW(orte_namelist_t);
         nm->name.jobid = jdata->jobid;
         nm->name.vpid = ORTE_VPID_WILDCARD;
         opal_list_append(&coll->participants, &nm->super);
 
-        jdata->snapc_fini_barrier = orte_grpcomm_base_get_coll_id();
-        coll = orte_grpcomm_base_setup_collective(jdata->snapc_fini_barrier);
+        id = orte_grpcomm_base_get_coll_id();
+        orte_set_attribute(&jdata->attributes, ORTE_JOB_SNAPC_FINI_BAR, ORTE_ATTR_GLOBAL, &id, ORTE_GRPCOMM_COLL_ID_T);
+        coll = orte_grpcomm_base_setup_collective(id);
         nm = OBJ_NEW(orte_namelist_t);
         nm->name.jobid = jdata->jobid;
         nm->name.vpid = ORTE_VPID_WILDCARD;

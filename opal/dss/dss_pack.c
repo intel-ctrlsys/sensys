@@ -616,7 +616,6 @@ int opal_dss_pack_node_stat(opal_buffer_t *buffer, const void *src,
     opal_node_stats_t **ptr;
     int32_t i, j;
     int ret;
-    opal_list_item_t *item;
     opal_diskstats_t *ds;
     opal_netstats_t *ns;
 
@@ -664,13 +663,12 @@ int opal_dss_pack_node_stat(opal_buffer_t *buffer, const void *src,
         if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, &j, 1, OPAL_INT32))) {
             return ret;
         }
-        /* pack them */
-        for (item = opal_list_get_first(&ptr[i]->diskstats);
-             item != opal_list_get_end(&ptr[i]->diskstats);
-             item = opal_list_get_next(item)) {
-            ds = (opal_diskstats_t*)item;
-            if (OPAL_SUCCESS != (ret = pack_disk_stats(buffer, ds))) {
-                return ret;
+        if (0 < j) {
+            /* pack them */
+            OPAL_LIST_FOREACH(ds, &ptr[i]->diskstats, opal_diskstats_t) {
+                if (OPAL_SUCCESS != (ret = pack_disk_stats(buffer, ds))) {
+                    return ret;
+                }
             }
         }
         /* pack the number of net stat objects on the list */
@@ -678,13 +676,12 @@ int opal_dss_pack_node_stat(opal_buffer_t *buffer, const void *src,
         if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, &j, 1, OPAL_INT32))) {
             return ret;
         }
-        /* pack them */
-        for (item = opal_list_get_first(&ptr[i]->netstats);
-             item != opal_list_get_end(&ptr[i]->netstats);
-             item = opal_list_get_next(item)) {
-            ns = (opal_netstats_t*)item;
-            if (OPAL_SUCCESS != (ret = pack_net_stats(buffer, ns))) {
-                return ret;
+        if (0 < j) {
+            /* pack them */
+            OPAL_LIST_FOREACH(ns, &ptr[i]->netstats, opal_netstats_t) {
+                if (OPAL_SUCCESS != (ret = pack_net_stats(buffer, ns))) {
+                    return ret;
+                }
             }
         }
     }

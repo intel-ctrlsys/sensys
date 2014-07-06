@@ -23,6 +23,7 @@
 #include <ctype.h>
 
 #include "opal/class/opal_list.h"
+#include "opal/dss/dss.h"
 #include "opal/util/argv.h"
 #include "opal/util/output.h"
 #include "opal/util/os_dirpath.h"
@@ -31,6 +32,7 @@
 #include "opal/mca/hwloc/hwloc.h"
 
 #include "orte/mca/errmgr/errmgr.h"
+#include "orte/runtime/orte_wait.h"
 
 #include "orcm/mca/db/db.h"
 #include "orcm/mca/sensor/base/sensor_private.h"

@@ -17,6 +17,7 @@
 #include <string.h>
 #endif
 
+#include "opal/dss/dss.h"
 #include "opal/util/output.h"
 
 #include "orte/mca/errmgr/errmgr.h"

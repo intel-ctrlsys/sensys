@@ -29,6 +29,7 @@
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/util/show_help.h"
 #include "opal/class/opal_hash_table.h"
+#include "opal/dss/dss.h"
 
 #include "notifier_hnp.h"
 

@@ -958,6 +958,7 @@ my $projects;
 push(@{$projects}, { name => "opal", dir => "opal", need_base => 1 });
 push(@{$projects}, { name => "orte", dir => "orte", need_base => 1 });
 push(@{$projects}, { name => "orcm", dir => "orcm", need_base => 1 });
+push(@{$projects}, { name => "scon", dir => "scon", need_base => 1 });
 
 $m4 .= "dnl Separate m4 define for each project\n";
 foreach my $p (@$projects) {

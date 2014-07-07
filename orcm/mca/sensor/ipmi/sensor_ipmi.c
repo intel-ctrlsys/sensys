@@ -7,6 +7,8 @@
  * $HEADER$
  */
 
+#include "opal/dss/dss.h"
+
 #include "orcm_config.h"
 #include "orcm/constants.h"
 #include "orcm/types.h"

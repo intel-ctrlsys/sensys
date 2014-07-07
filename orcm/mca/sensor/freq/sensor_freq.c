@@ -171,12 +171,14 @@ static int init(void)
             if(NULL!=(tmp = orte_getline(fp))) {
                 trk->max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
                 free(tmp);
+                fclose(fp);
+                free(filename);
             } else {
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                fclose(fp);
                 free(filename);
                 return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
             }
-            fclose(fp);
         } else {
             ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
             free(filename);
@@ -191,12 +193,14 @@ static int init(void)
             if(NULL!=(tmp = orte_getline(fp))) {
                 trk->min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
                 free(tmp);
+                fclose(fp);
+                free(filename);
             } else {
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                fclose(fp);
                 free(filename);
                 return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
             }
-            fclose(fp);
         } else {
             ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
             free(filename);
@@ -332,6 +336,7 @@ static void freq_sample(orcm_sensor_sampler_t *sampler)
                 ORTE_ERROR_LOG(ret);
                 OBJ_DESTRUCT(&data);
                 free(freq);
+                fclose(fp);
                 return;
             }
             packed = true;

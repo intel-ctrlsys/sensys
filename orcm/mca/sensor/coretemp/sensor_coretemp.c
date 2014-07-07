@@ -376,6 +376,7 @@ static void coretemp_sample(orcm_sensor_sampler_t *sampler)
                 ORTE_ERROR_LOG(ret);
                 OBJ_DESTRUCT(&data);
                 free(temp);
+                fclose(fp);
                 return;
             }
             free(temp);

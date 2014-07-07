@@ -172,7 +172,7 @@ static int init(void)
         
         if (!mca_sensor_pwr_component.test) {
             /* get the power units for this core */
-            if (0 >= (fd = open(trk->file, O_RDONLY))) {
+            if (0 >= (fd = open(trk->file, O_RDONLY))) { // @VINFIX, is this correct? open will return >=0 if success, but comments seem to mean otherwise
                 /* can't access file */
                 OBJ_RELEASE(trk);
                 continue;
@@ -294,7 +294,7 @@ static void pwr_sample(orcm_sensor_sampler_t *sampler)
         if (mca_sensor_pwr_component.test) {
             power = 1.2345;
         } else {
-            if (0 >= (fd = open(trk->file, O_RDONLY))) {
+            if (0 >= (fd = open(trk->file, O_RDONLY))) { // @VINFIX, is this correct? open will return >=0 if success, but comments seem to mean otherwise
                 /* disable this one - cannot read the file */
                 opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                                     "%s access denied to pwr file %s - removing it",

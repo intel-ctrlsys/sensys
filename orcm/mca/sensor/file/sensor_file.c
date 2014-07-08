@@ -199,13 +199,13 @@ static void start(orte_jobid_t jobid)
         }
         filename = strdup(mca_sensor_file_component.file);
     }
-            
+
     /* create the tracking object */
     ft = OBJ_NEW(file_tracker_t);
     ft->jobid = jobid;
     ft->file = strdup(filename);
     free(filename);
-     
+
     /* search the environ to see what we are checking */
     if (!find_value(app, "OMPI_MCA_sensor_file_check_size", &ptr)) {
         /* was a default value given */

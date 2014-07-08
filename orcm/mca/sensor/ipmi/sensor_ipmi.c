@@ -144,7 +144,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         cap.capability[BMC_REV]         = 1;
         cap.capability[IPMI_VER]        = 1;
         cap.capability[SYS_POWER_STATE] = 1;
-        cap.capability[DEV_POWER_STATE] = 1; 
+        cap.capability[DEV_POWER_STATE] = 1;
         cap.capability[PS1_USAGE]       = 1;
         cap.capability[PS1_TEMP]        = 1;
         cap.capability[FAN1_CPU_RPM]    = 1;

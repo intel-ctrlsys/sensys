@@ -200,11 +200,13 @@ static int init(void)
                     ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
                     fclose(fp);
                     free(filename);
+                    free(tmp);
                     return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
                 }
             } else {
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
                 free(filename);
+                free(tmp);
                 return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
             }
             
@@ -221,11 +223,13 @@ static int init(void)
                     ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
                     fclose(fp);
                     free(filename);
+                    free(tmp);
                     return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
                 }
             } else {
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
                 free(filename);
+                free(tmp);
                 return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
             }
 
@@ -242,6 +246,7 @@ static int init(void)
                     ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
                     fclose(fp);
                     free(filename);
+                    free(tmp);
                     return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
                 }
             } else {

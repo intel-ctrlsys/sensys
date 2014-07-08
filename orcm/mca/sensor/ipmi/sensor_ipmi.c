@@ -25,7 +25,7 @@
 #include "sensor_ipmi.h"
 #include <pthread.h>
 
-/* declare the API functions */
+// declare the API functions
 static int init(void);
 static void finalize(void);
 static void start(orte_jobid_t job);
@@ -34,7 +34,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler);
 static void ipmi_log(opal_buffer_t *buf);
 int count_log = 0;
 unsigned char disable_ipmi = 0;
-/* instantiate the module */
+// instantiate the module
 orcm_sensor_base_module_t orcm_sensor_ipmi_module = {
     init,
     finalize,
@@ -44,7 +44,7 @@ orcm_sensor_base_module_t orcm_sensor_ipmi_module = {
     ipmi_log
 };
 
-/* local variables */
+// local variables
 static opal_buffer_t test_vector;
 static void generate_test_vector(opal_buffer_t *v);
 static time_t last_sample = 0;
@@ -58,22 +58,22 @@ static int init(void)
     //opal_output(0,"IPMI Init - Create the linked list for all nodes");
 
     if (mca_sensor_ipmi_component.test) {
-        /* generate test vector */
+        // generate test vector
         OBJ_CONSTRUCT(&test_vector, opal_buffer_t);
         generate_test_vector(&test_vector);
         return OPAL_SUCCESS;
     }
 
-    /* Currently NOT using the linked list to store the data, rather using a
-     * temporary variable to store and pack the data
-    while(count > 0)
-    {
-        cur_node = (struct ipmi_properties*)malloc(sizeof(struct ipmi_properties ));
-        cur_node->next = first_node;
-        first_node = cur_node;
-        count--;
-    }
-    */
+    // Currently NOT using the linked list to store the data, rather using a
+    // temporary variable to store and pack the data
+    //while(count > 0)
+    //{
+    //    cur_node = (struct ipmi_properties*)malloc(sizeof(struct ipmi_properties ));
+    //    cur_node->next = first_node;
+    //    first_node = cur_node;
+    //    count--;
+    //}
+    
     return OPAL_SUCCESS;
 }
 
@@ -82,9 +82,7 @@ static void finalize(void)
     opal_output(0,"IPMI_FINALIZE");
 }
 
-/*
- * Start monitoring of local processes
- */
+//Start monitoring of local processes
 static void start(orte_jobid_t jobid)
 {
     opal_output(0,"IPMI Start");
@@ -112,15 +110,15 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     struct tm *sample_time;
 
     if (mca_sensor_ipmi_component.test) {
-        /* just send the test vector */
+        // just send the test vector
         bptr = &test_vector;
         opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
         return;
     }
 
-    /* prep the buffer to collect the data */
+    // prep the buffer to collect the data
     OBJ_CONSTRUCT(&data, opal_buffer_t);
-    /* pack our name */
+    // pack our name
     ipmi = strdup("ipmi");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &ipmi, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
@@ -140,11 +138,17 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     {
         // Clear all memory for the ipmi_capsule
         memset(&(cap.prop), '\0', sizeof(cap.prop));
-        cap.capability[BMC_REV] = cap.capability[IPMI_VER] = 1;
-        cap.capability[SYS_POWER_STATE] = cap.capability[DEV_POWER_STATE] = 
-        cap.capability[PS1_USAGE] =  cap.capability[PS1_TEMP] = cap.capability[FAN1_CPU_RPM] = 
-        cap.capability[FAN2_CPU_RPM] = cap.capability[FAN1_SYS_RPM] = 
-        cap.capability[FAN2_SYS_RPM] = 1;
+        // Enable/Disable the property/metric to be sampled
+        cap.capability[BMC_REV]         = 1;
+        cap.capability[IPMI_VER]        = 1;
+        cap.capability[SYS_POWER_STATE] = 1;
+        cap.capability[DEV_POWER_STATE] = 1;         
+        cap.capability[PS1_USAGE]       = 1;
+        cap.capability[PS1_TEMP]        = 1;
+        cap.capability[FAN1_CPU_RPM]    = 1;
+        cap.capability[FAN2_CPU_RPM]    = 1;
+        cap.capability[FAN1_SYS_RPM]    = 1;
+        cap.capability[FAN2_SYS_RPM]    = 1;
 
         strncpy(cap.node.node_ip, node[i], sizeof(node[i]));
         ipmi_exec_call(&cap);
@@ -155,7 +159,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         //             , cap.prop.bmc_rev, cap.prop.ipmi_ver
         //             , cap.prop.sys_power_state, cap.prop.dev_power_state
         //             , cap.prop.ps1_usage);
-        /* Pack each IP address */
+        // Pack each IP address
         sample_str = strdup(cap.node.node_ip);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -165,10 +169,10 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
         free(sample_str);
 
-        /* get the sample time */
+        // get the sample time
         now = time(NULL);
         tdiff = difftime(now, last_sample);
-        /* pass the time along as a simple string */
+        // pass the time along as a simple string
         sample_time = localtime(&now);
         if (NULL == sample_time) {
             ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
@@ -184,7 +188,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
         free(timestamp_str);
 
-        /*  Pack the BMC FW Rev */
+        //  Pack the BMC FW Rev
         sample_str = strdup(cap.prop.bmc_rev);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -194,7 +198,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
         free(sample_str);
 
-        /*  Pack the IPMI VER */
+        //  Pack the IPMI VER
         sample_str = strdup(cap.prop.ipmi_ver);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -204,7 +208,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
         free(sample_str);
 
-        /*  Pack the Manufacturer ID */
+        //  Pack the Manufacturer ID
         sample_str = strdup(cap.prop.man_id);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -214,7 +218,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
         free(sample_str);
 
-        /*  Pack the System Power State */
+        //  Pack the System Power State
         sample_str = strdup(cap.prop.sys_power_state);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -224,7 +228,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
         free(sample_str);
 
-        /*  Pack the Device Power State */
+        //  Pack the Device Power State
         sample_str = strdup(cap.prop.dev_power_state);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -234,14 +238,14 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
         free(sample_str);
 
-        /*  Pack the PS1 Power Usage */
+        //  Pack the PS1 Power Usage
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &cap.prop.ps1_usage, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             return;
         }
 
-        /*  Pack the PS1 Temperature */
+        //  Pack the PS1 Temperature
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &cap.prop.ps1_temp, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
@@ -277,7 +281,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
     }
-    /* xfer the data for transmission - need at least one prior sample before doing so */
+    // xfer the data for transmission - need at least one prior sample before doing so
     if (0 < last_sample) {
         bptr = &data;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
@@ -288,7 +292,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     }
     OBJ_DESTRUCT(&data);
     last_sample = now;
-    /* this is currently a no-op */
+    // this is currently a no-op
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "IPMI sensors just got implemented! ----------- ;)");
 }
@@ -334,7 +338,7 @@ static void ipmi_log(opal_buffer_t *sample)
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                             (NULL == hostname) ? "NULL" : hostname);
 
-        /* prep the xfr storage */
+        // prep the xfr storage
         vals = OBJ_NEW(opal_list_t);
 
         // sample time
@@ -598,21 +602,21 @@ void ipmi_exec_call(ipmi_capsule_t *cap)
         //                                         , devid.bits.manufacturer_id[1], devid.bits.manufacturer_id[0]);
         // Copy all retrieved information in a global buffer
 
-        /*  Pack the BMC FW Rev */
+        //  Pack the BMC FW Rev
         sprintf(test,"%x", devid.bits.fw_rev_1&0x7F);
         sprintf(test1,"%x", devid.bits.fw_rev_2&0xFF);
         strcat(test,".");
         strcat(test,test1);
         strncpy(cap->prop.bmc_rev, test, sizeof(test));
 
-        /*  Pack the IPMI VER */
+        //  Pack the IPMI VER
         sprintf(test,"%x", devid.bits.ipmi_ver&0xF);
         sprintf(test1,"%x", devid.bits.ipmi_ver&0xF0);
         strcat(test,".");
         strcat(test,test1);
         strncpy(cap->prop.ipmi_ver, test, sizeof(test));
 
-        /*  Pack the Manufacturer ID */
+        //  Pack the Manufacturer ID
         sprintf(test,"%02x", devid.bits.manufacturer_id[1]);
         sprintf(test1,"%02x", devid.bits.manufacturer_id[0]);
         strcat(test,test1);
@@ -621,7 +625,7 @@ void ipmi_exec_call(ipmi_capsule_t *cap)
     }
 
     if  (cap->capability[SYS_POWER_STATE] & cap->capability[DEV_POWER_STATE])
-    {    
+    { 
         memset(rdata,0xff,256);
         memset(idata,0xff,4);
         ret = set_lan_options(cap->node.node_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
@@ -659,8 +663,8 @@ void ipmi_exec_call(ipmi_capsule_t *cap)
     ret = get_sdr_cache(&sdrlist);
     while(find_sdr_next(sdrbuf,sdrlist,id) == 0) 
     {
-        id = sdrbuf[0] + (sdrbuf[1] << 8); /*this SDR id*/
-        if (sdrbuf[3] != 0x01) continue; /*full SDR*/
+        id = sdrbuf[0] + (sdrbuf[1] << 8); //this SDR id//
+        if (sdrbuf[3] != 0x01) continue; //full SDR//
 	    strncpy(tag,&sdrbuf[48],16);
         tag[16] = 0;
 	    snum = sdrbuf[7];
@@ -684,7 +688,7 @@ void ipmi_exec_call(ipmi_capsule_t *cap)
         {
             if(!strncmp("PS1 Power In",tag,sizeof("PS1 Power In")))
             {
-                /*  Pack the PS1 Power Usage */
+                //  Pack the PS1 Power Usage
                 cap->prop.ps1_usage = val;
             }
         }
@@ -692,7 +696,7 @@ void ipmi_exec_call(ipmi_capsule_t *cap)
         {
             if(!strncmp("PS1 Temperature",tag,sizeof("PS1 Temperature")))
             {
-                /*  Pack the PS1 Power Usage */
+                //  Pack the PS1 Power Usage
                 cap->prop.ps1_temp = val;
             }
         }

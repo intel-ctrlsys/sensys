@@ -163,7 +163,7 @@ static int init(void)
         }
         trk->core = strtoul(&entry->d_name[k+1], NULL, 10);
         trk->file = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_cur_freq", NULL);
-        
+
         /* read the static info */
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_max_freq", NULL);
         if(NULL != (fp = fopen(filename, "r")))
@@ -177,16 +177,17 @@ static int init(void)
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
                 fclose(fp);
                 free(filename);
-                return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
+                OBJ_RELEASE(trk);
+                continue;
             }
         } else {
             ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
             free(filename);
-            return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
+            OBJ_RELEASE(trk);
+            continue;
         }
-           
-        filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_min_freq", NULL);
 
+        filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_min_freq", NULL);
         fp = fopen(filename, "r");
         if(NULL != (fp = fopen(filename, "r")))
         {
@@ -199,12 +200,14 @@ static int init(void)
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
                 fclose(fp);
                 free(filename);
-                return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
+                OBJ_RELEASE(trk);
+                continue;
             }
         } else {
             ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
             free(filename);
-            return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
+            OBJ_RELEASE(trk);
+            continue;
         }
 
         /* add to our list */

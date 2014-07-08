@@ -197,7 +197,7 @@ static void start(orte_jobid_t jobid)
                                  ORTE_JOBID_PRINT(jobid)));
             return;
         }
-        filename = mca_sensor_file_component.file;
+        filename = strdup(mca_sensor_file_component.file);
     }
             
     /* create the tracking object */

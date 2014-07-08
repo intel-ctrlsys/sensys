@@ -201,15 +201,16 @@ static int init(void)
                     fclose(fp);
                     free(filename);
                     free(tmp);
-                    return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
+                    OBJ_RELEASE(trk);
+                    continue;
                 }
             } else {
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
                 free(filename);
                 free(tmp);
-                return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
+                OBJ_RELEASE(trk);
+                    continue;
             }
-            
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "crit");
             if (NULL != (fp = fopen(filename, "r")))
             {
@@ -224,13 +225,15 @@ static int init(void)
                     fclose(fp);
                     free(filename);
                     free(tmp);
-                    return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
+                    OBJ_RELEASE(trk);
+                    continue;
                 }
             } else {
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
                 free(filename);
                 free(tmp);
-                return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
+                OBJ_RELEASE(trk);
+                continue;
             }
 
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "max");
@@ -247,12 +250,14 @@ static int init(void)
                     fclose(fp);
                     free(filename);
                     free(tmp);
-                    return ORTE_ERR_FILE_READ_FAILURE; // @VINFIX : Should we return here if we cannot get the data?
+                    OBJ_RELEASE(trk);
+                    continue;
                 }
             } else {
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
                 free(filename);
-                return ORTE_ERR_FILE_OPEN_FAILURE; // @VINFIX : Should we return here if we cannot open the file?
+                OBJ_RELEASE(trk);
+                continue;
             }
 
             /* add to our list */

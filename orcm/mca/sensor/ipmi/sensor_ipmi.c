@@ -161,7 +161,9 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         *             , cap.prop.bmc_rev, cap.prop.ipmi_ver
         *             , cap.prop.sys_power_state, cap.prop.dev_power_state
         *             , cap.prop.ps1_usage);
-        */ Pack each IP address
+        */
+
+        /* Pack each IP address*/ 
         sample_str = strdup(cap.node.node_ip);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);

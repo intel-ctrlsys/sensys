@@ -19,7 +19,7 @@
 # $HEADER$
 #
 
-SUBDIRS = config contrib $(MCA_PROJECT_SUBDIRS) scon
+SUBDIRS = config contrib $(MCA_PROJECT_SUBDIRS)
 EXTRA_DIST = README INSTALL VERSION Doxyfile LICENSE autogen.pl
 
 dist-hook:

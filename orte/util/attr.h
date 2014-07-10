@@ -91,8 +91,8 @@ typedef uint16_t orte_job_flags_t;
 #define ORTE_JOB_MAX_LAUNCH_MSG_RECVD   (ORTE_JOB_START_KEY + 3)     // timeval - max time for launch msg to be received
 #define ORTE_JOB_FILE_MAPS              (ORTE_JOB_START_KEY + 4)     // opal_buffer_t - file maps associates with this job
 #define ORTE_JOB_CKPT_STATE             (ORTE_JOB_START_KEY + 5)     // size_t - ckpt state
-#define ORTE_JOB_CKPT_SNAPSHOT_REF      (ORTE_JOB_START_KEY + 6)     // string - snapshot reference
-#define ORTE_JOB_SNAP_LOC               (ORTE_JOB_START_KEY + 7)     // string - snapshot location
+#define ORTE_JOB_SNAPSHOT_REF           (ORTE_JOB_START_KEY + 6)     // string - snapshot reference
+#define ORTE_JOB_SNAPSHOT_LOC           (ORTE_JOB_START_KEY + 7)     // string - snapshot location
 #define ORTE_JOB_SNAPC_INIT_BAR         (ORTE_JOB_START_KEY + 8)     // orte_grpcomm_coll_id_t - collective id
 #define ORTE_JOB_SNAPC_FINI_BAR         (ORTE_JOB_START_KEY + 9)     // orte_grpcomm_coll_id_t - collective id
 #define ORTE_JOB_NUM_NONZERO_EXIT       (ORTE_JOB_START_KEY + 10)    // int32 - number of procs with non-zero exit codes
@@ -113,6 +113,11 @@ typedef uint16_t orte_job_flags_t;
 #define ORTE_JOB_MAX_FREQ               (ORTE_JOB_START_KEY + 25)    // string - max freq setting for nodes in job
 #define ORTE_JOB_MIN_FREQ               (ORTE_JOB_START_KEY + 26)    // string - min freq setting for nodes in job
 #define ORTE_JOB_GOVERNOR               (ORTE_JOB_START_KEY + 27)    // string - governor used for nodes in job
+#define ORTE_JOB_FAIL_NOTIFIED          (ORTE_JOB_START_KEY + 28)    // bool - abnormal term of proc within job has been reported
+#define ORTE_JOB_TERM_NOTIFIED          (ORTE_JOB_START_KEY + 29)    // bool - normal term of job has been reported
+#define ORTE_JOB_PEER_MODX_ID           (ORTE_JOB_START_KEY + 30)    // orte_grpcomm_coll_id_t - collective id
+#define ORTE_JOB_INIT_BAR_ID            (ORTE_JOB_START_KEY + 31)    // orte_grpcomm_coll_id_t - collective id
+#define ORTE_JOB_FINI_BAR_ID            (ORTE_JOB_START_KEY + 32)    // orte_grpcomm_coll_id_t - collective id
 
 #define ORTE_JOB_MAX_KEY   300
 
@@ -129,7 +134,8 @@ typedef uint16_t orte_proc_flags_t;
 #define ORTE_PROC_FLAG_AS_MPI        0x0080  // proc is MPI process
 #define ORTE_PROC_FLAG_IOF_COMPLETE  0x0100  // IOF has completed
 #define ORTE_PROC_FLAG_WAITPID       0x0200  // waitpid fired
-
+#define ORTE_PROC_FLAG_COMPLETE      0x0300  // both IOF and waitpid have been reported
+#define ORTE_PROC_FLAG_RECORDED      0x0400  // termination has been recorded
 
 
 /***   PROCESS ATTRIBUTE KEYS   ***/
@@ -144,8 +150,8 @@ typedef uint16_t orte_proc_flags_t;
 #define ORTE_PROC_RESTART_TIME    (ORTE_PROC_START_KEY +  7)           // timeval - time of last restart
 #define ORTE_PROC_FAST_FAILS      (ORTE_PROC_START_KEY +  8)           // int32 - number of failures in "fast" window
 #define ORTE_PROC_CKPT_STATE      (ORTE_PROC_START_KEY +  9)           // size_t - ckpt state
-#define ORTE_PROC_CKPT_SNAP_REF   (ORTE_PROC_START_KEY + 10)           // string - snapshot reference
-#define ORTE_PROC_SNAP_LOC        (ORTE_PROC_START_KEY + 11)           // string - snapshot location
+#define ORTE_PROC_SNAPSHOT_REF    (ORTE_PROC_START_KEY + 10)           // string - snapshot reference
+#define ORTE_PROC_SNAPSHOT_LOC    (ORTE_PROC_START_KEY + 11)           // string - snapshot location
 #define ORTE_PROC_NODENAME        (ORTE_PROC_START_KEY + 12)           // string - node where proc is located, used only by tools
 #define ORTE_PROC_CGROUP          (ORTE_PROC_START_KEY + 13)           // string - name of cgroup this proc shall be assigned to
 #define ORTE_PROC_NBEATS          (ORTE_PROC_START_KEY + 14)           // int32 - number of heartbeats in current window

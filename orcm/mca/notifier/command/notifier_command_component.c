@@ -237,7 +237,7 @@ static int command_component_query(mca_base_module_t **module, int *priority)
     close(mca_notifier_command_component.to_parent[1]);
 
     /* Let's find out if the child unexpectedly dies */
-    orte_wait_cb(mca_notifier_command_component.child_pid, child_death_cb, 0);
+    // orte_wait_cb(mca_notifier_command_component.child_pid, child_death_cb, 0);
 
     *priority = 10;
     *module = (mca_base_module_t *) &orcm_notifier_command_module;

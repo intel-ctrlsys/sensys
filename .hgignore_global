@@ -264,7 +264,6 @@ syntax: glob
 ./ompi/mca/btl/openib/btl_openib_lex.c
 ./ompi/mca/btl/portals4/Makefile.in
 ./ompi/mca/btl/scif/Makefile.in
-./ompi/mca/btl/sctp/Makefile.in
 ./ompi/mca/btl/self/Makefile.in
 ./ompi/mca/btl/sm/Makefile.in
 ./ompi/mca/btl/smcuda/Makefile.in
@@ -503,14 +502,11 @@ syntax: glob
 ./ompi/mpi/fortran/use-mpi-tkr/Makefile.in
 ./ompi/mpi/fortran/use-mpi-tkr/fortran_kinds.sh
 ./ompi/mpi/fortran/use-mpi-tkr/fortran_sizes.h
-./ompi/mpi/fortran/use-mpi-tkr/mpi_*.f90
 ./ompi/mpi/fortran/use-mpi-tkr/mpi.mod
 ./ompi/mpi/fortran/use-mpi-tkr/MPI.mod
 ./ompi/mpi/fortran/use-mpi-tkr/mpi_kinds.mod
 ./ompi/mpi/fortran/use-mpi-tkr/mpi_kinds.ompi_module
-./ompi/mpi/fortran/use-mpi-tkr/mpi-f90-interfaces.h
 ./ompi/mpi/fortran/use-mpi-tkr/libmpi_f90.a
-./ompi/mpi/fortran/use-mpi-tkr/scripts/Makefile.in
 ./ompi/mpi/java/Makefile.in
 ./ompi/mpi/java/c/Makefile.in
 ./ompi/mpi/java/java/mpi

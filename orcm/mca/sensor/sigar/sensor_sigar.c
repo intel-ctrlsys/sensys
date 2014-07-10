@@ -944,8 +944,10 @@ static void generate_test_vector(opal_buffer_t *v)
     now = time(NULL);
     /* pass the time along as a simple string */
     ctmp = ctime(&now);
-    /* strip the trailing newline */
-    ctmp[strlen(ctmp)-1] = '\0';
+    if(NULL != ctmp) {
+        /* strip the trailing newline */
+        ctmp[strlen(ctmp)-1] = '\0';
+    }
     opal_dss.pack(v, &ctmp, 1, OPAL_STRING);
     /* mem_total */
     ui64 = 1;

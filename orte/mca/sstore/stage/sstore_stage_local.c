@@ -193,7 +193,7 @@ static int wait_all_apps_updated(orte_sstore_stage_local_snapshot_info_t *handle
 
 static int start_compression(orte_sstore_stage_local_snapshot_info_t *handle_info,
                              orte_sstore_stage_local_app_snapshot_info_t *app_info);
-static void sstore_stage_local_compress_waitpid_cb(pid_t pid, int status, void* cbdata);
+static void sstore_stage_local_compress_waitpid_cb(orte_proc_t *proc, void* cbdata);
 static int wait_all_compressed(orte_sstore_stage_local_snapshot_info_t *handle_info);
 
 static int orte_sstore_stage_local_preload_files(char **local_location, bool *skip_xfer,
@@ -696,26 +696,27 @@ int orte_sstore_stage_local_fetch_app_deps(orte_app_context_t *app)
     orte_proc_t *child = NULL;
     int loc_argc = 0;
     bool skip_xfer = false;
+    char *sload = NULL;
 
-    if( !app->used_on_node || NULL == app->sstore_load ) {
+    orte_get_attribute(&app->attributes, ORTE_APP_SSTORE_LOAD, (void **)&sload, OPAL_STRING);
+
+    if(!ORTE_FLAG_TEST(app, ORTE_APP_FLAG_USED_ON_NODE) || NULL == sload) {
         OPAL_OUTPUT_VERBOSE((30, mca_sstore_stage_component.super.output_handle,
                              "sstore:stage:(local): fetch_app_deps(%3d): Not for this daemon (%s, %d, %s)",
-                             app->idx,
-                             (app->used_on_node ? "T" : "F"),
-                             (int)app->num_procs,
-                             app->sstore_load));
+                             app->idx, (ORTE_FLAG_TEST(app, ORTE_APP_FLAG_USED_ON_NODE) ? "T" : "F"),
+                             (int)app->num_procs, sload));
         /* Nothing to do */
         goto cleanup;
     }
 
     OPAL_OUTPUT_VERBOSE((10, mca_sstore_stage_component.super.output_handle,
                          "sstore:stage:(local): fetch_app_deps(%3d): %s",
-                         app->idx, app->sstore_load));
+                         app->idx, sload));
 
     /*
      * Extract the 'ref:seq' parameter
      */
-    sstore_args = opal_argv_split(app->sstore_load, ':');
+    sstore_args = opal_argv_split(sload, ':');
     req_snap_loc        = strdup(sstore_args[0]);
     req_snap_global_ref = strdup(sstore_args[1]);
     req_snap_ref        = strdup(sstore_args[2]);
@@ -1490,6 +1491,7 @@ static int start_compression(orte_sstore_stage_local_snapshot_info_t *handle_inf
 {
     int ret, exit_status = ORTE_SUCCESS;
     char * postfix = NULL;
+    orte_proc_t *proc;
 
     /* Sanity Check */
     if( !orte_sstore_stage_enabled_compression ) {
@@ -1531,11 +1533,12 @@ static int start_compression(orte_sstore_stage_local_snapshot_info_t *handle_inf
                          app_info->compress_pid,
                          ORTE_NAME_PRINT(&(app_info->name)) ));
 
-    if( ORTE_SUCCESS != (ret = orte_wait_cb(app_info->compress_pid, sstore_stage_local_compress_waitpid_cb, app_info) ) ) {
-        ORTE_ERROR_LOG(ret);
-        exit_status = ret;
-        goto cleanup;
-    }
+    proc = OBJ_NEW(orte_proc_t);
+    proc->pid = app_info->compress_pid;
+    /* be sure to mark it as alive so we don't instantly fire */
+    ORTE_FLAG_SET(proc, ORTE_PROC_FLAG_ALIVE);
+
+    orte_wait_cb(proc, sstore_stage_local_compress_waitpid_cb, app_info);
 
  cleanup:
     if( NULL != postfix ) {
@@ -1546,7 +1549,7 @@ static int start_compression(orte_sstore_stage_local_snapshot_info_t *handle_inf
     return exit_status;
 }
 
-static void sstore_stage_local_compress_waitpid_cb(pid_t pid, int status, void* cbdata)
+static void sstore_stage_local_compress_waitpid_cb(orte_proc_t *proc, void* cbdata)
 {
     orte_sstore_stage_local_app_snapshot_info_t *app_info = NULL;
 
@@ -1554,10 +1557,11 @@ static void sstore_stage_local_compress_waitpid_cb(pid_t pid, int status, void* 
 
     OPAL_OUTPUT_VERBOSE((10, mca_sstore_stage_component.super.output_handle,
                          "sstore:stage:(local): waitpid(%6d) Compression finished for Process %s",
-                         (int)pid,
+                         (int)proc->pid,
                          ORTE_NAME_PRINT(&(app_info->name)) ));
 
     app_info->compress_pid = 0;
+    OBJ_RELEASE(proc);
 }
 
 static int wait_all_compressed(orte_sstore_stage_local_snapshot_info_t *handle_info)

@@ -49,6 +49,7 @@
 #include <dirent.h>
 #endif  /* HAVE_DIRENT_H */
 
+#include "opal/dss/dss.h"
 #include "opal/mca/mca.h"
 #include "opal/mca/base/base.h"
 #include "opal/mca/event/event.h"
@@ -63,6 +64,7 @@
 #include "opal/runtime/opal_cr.h"
 #endif
 
+#include "orte/runtime/orte_wait.h"
 #include "orte/util/error_strings.h"
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/errmgr.h"

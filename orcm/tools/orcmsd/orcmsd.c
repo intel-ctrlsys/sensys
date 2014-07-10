@@ -226,8 +226,6 @@ int main(int argc, char *argv[])
     int i;
     opal_buffer_t *buffer;
     orte_job_t *jdata_obj;
-    orte_grpcomm_collective_t *coll;
-    orte_namelist_t *nm;
     char hostname[100];
     char *umask_str = getenv("ORTE_DAEMON_UMASK_VALUE");
 
@@ -491,28 +489,6 @@ int main(int argc, char *argv[])
      * know how to route
      */
     jdata_obj->map = OBJ_NEW(orte_job_map_t);
-
-    /* account for the collectives in its modex/barriers */
-    jdata_obj->peer_modex = orte_grpcomm_base_get_coll_id();
-    coll = orte_grpcomm_base_setup_collective(jdata_obj->peer_modex);
-    nm = OBJ_NEW(orte_namelist_t);
-    nm->name.jobid = jdata_obj->jobid;
-    nm->name.vpid = ORTE_VPID_WILDCARD;
-    opal_list_append(&coll->participants, &nm->super);
-
-    jdata_obj->peer_init_barrier = orte_grpcomm_base_get_coll_id();
-    coll = orte_grpcomm_base_setup_collective(jdata_obj->peer_init_barrier);
-    nm = OBJ_NEW(orte_namelist_t);
-    nm->name.jobid = jdata_obj->jobid;
-    nm->name.vpid = ORTE_VPID_WILDCARD;
-    opal_list_append(&coll->participants, &nm->super);
-
-    jdata_obj->peer_fini_barrier = orte_grpcomm_base_get_coll_id();
-    coll = orte_grpcomm_base_setup_collective(jdata_obj->peer_fini_barrier);
-    nm = OBJ_NEW(orte_namelist_t);
-    nm->name.jobid = jdata_obj->jobid;
-    nm->name.vpid = ORTE_VPID_WILDCARD;
-    opal_list_append(&coll->participants, &nm->super);
 
     /* if we were given a pipe to monitor for singleton termination, set that up */
     if (orcmsd_globals.singleton_died_pipe > 0) {

@@ -169,7 +169,7 @@ static int init(void)
         trk = OBJ_NEW(corepwr_tracker_t);
         trk->core = strtoul(entry->d_name, NULL, 10);
         trk->file = opal_os_path(false, "/dev/cpu", entry->d_name, "msr", NULL);
-        
+
         if (!mca_sensor_pwr_component.test) {
             /* get the power units for this core */
             if (0 >= (fd = open(trk->file, O_RDONLY))) {

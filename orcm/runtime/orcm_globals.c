@@ -8,6 +8,10 @@
  * $HEADER$
  */
 
+#include "orcm_config.h"
+
+#include "opal/dss/dss.h"
+
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/runtime/orcm_globals.h"

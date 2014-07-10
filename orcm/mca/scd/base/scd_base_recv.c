@@ -12,6 +12,7 @@
 #include "orcm/constants.h"
 #include "orcm/types.h"
 
+#include "opal/dss/dss.h"
 #include "opal/mca/mca.h"
 #include "opal/util/output.h"
 #include "opal/util/malloc.h"

@@ -454,20 +454,6 @@ static int orcmsd_init(void)
         goto error;
     }
 
-    if (ORCM_PROC_IS_HNP) {
-    /* we are an hnp, so update the contact info field for later use */
-        orte_process_info.my_hnp_uri = orte_rml.get_contact_info();
-
-    /* we are also officially a daemon, so better update that field too */
-        orte_process_info.my_daemon_uri = strdup(orte_process_info.my_hnp_uri);
-    } else {
-        orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
-        printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
-        uribuf = OBJ_NEW(opal_buffer_t);
-        opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
-        orte_rml_base_update_contact_info(uribuf);
-    }
-    
     orte_create_session_dirs = false;
 
     /* enable communication via the rml */
@@ -486,6 +472,8 @@ static int orcmsd_init(void)
         goto error;
     }
     
+    orte_routed.update_route(ORTE_PROC_MY_HNP, ORTE_PROC_MY_HNP);
+
     /* setup I/O forwarding system - must come after we init routes */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_iof_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -621,6 +609,8 @@ static int orcmsd_setup_node_pool(void)
     jdata = OBJ_NEW(orte_job_t);
     jdata->jobid = ORTE_PROC_MY_NAME->jobid;
     opal_pointer_array_set_item(orte_job_data, 0, jdata);
+    /* set number of daemons reported to zero */
+    jdata->num_reported = 0;
     
     /* every job requires at least one app */
     app = OBJ_NEW(orte_app_context_t);
@@ -665,19 +655,25 @@ static int orcmsd_setup_node_pool(void)
         /* record that the daemon job is running */
         jdata->num_procs++;
         jdata->state = ORTE_JOB_STATE_RUNNING;
-        /* num reported only one for now */
-        jdata->num_reported = 1;
     }
 
 
     if (ORCM_PROC_IS_HNP) {
     /* we are an hnp, so update the contact info field for later use */
         orte_process_info.my_hnp_uri = orte_rml.get_contact_info();
+        ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_NAME->jobid;
+        ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_NAME->vpid;
+        ORTE_PROC_MY_DAEMON->jobid = ORTE_PROC_MY_NAME->jobid;
+        ORTE_PROC_MY_DAEMON->vpid = ORTE_PROC_MY_NAME->vpid;
 
     /* we are also officially a daemon, so better update that field too */
         orte_process_info.my_daemon_uri = strdup(orte_process_info.my_hnp_uri);
+
     } else {
         orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
+        /* set the parent to my HNP for step daemons */
+        ORTE_PROC_MY_PARENT->jobid = ORTE_PROC_MY_HNP->jobid;
+        ORTE_PROC_MY_PARENT->vpid = ORTE_PROC_MY_HNP->vpid;
         printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
         uribuf = OBJ_NEW(opal_buffer_t);
         opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);

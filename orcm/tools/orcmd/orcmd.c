@@ -86,7 +86,8 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
                        opal_buffer_t* buffer, orte_rml_tag_t tag,
                        void* cbdata);
 static int slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
-                       char *nodes, int port_num, int hnp, char *hnp_uri);
+                       char *nodes, int port_num, int hnp, char *hnp_uri, 
+                       char *parent_uri);
 
 int main(int argc, char *argv[])
 {
@@ -210,8 +211,7 @@ int main(int argc, char *argv[])
     return ret;
 }
 
-#define ORCM_URI_MSG_LGTH   256
-    static int death_pipe[2];
+static int death_pipe[2];
 /* process incoming messages in order of receipt */
 static void orcmd_recv(int status, orte_process_name_t* sender,
                        opal_buffer_t* buffer, orte_rml_tag_t tag,
@@ -224,7 +224,8 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
     orte_jobid_t jobid;
     int hnp = 0;
     int port_num = HNP_PORT_NUM;
-    char hnp_uri[ORCM_URI_MSG_LGTH];
+    char *hnp_uri;
+    char *parent_uri;
     char *hnp_ip;
     struct hostent *hnp_hostent = NULL;
     struct in_addr **addr_list;
@@ -273,18 +274,14 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
 
             addr_list = (struct in_addr **)hnp_hostent->h_addr_list;
             hnp_ip = strdup(inet_ntoa(*addr_list[0]));
-            sprintf(hnp_uri, "%i.0;tcp://%s:%i[$.$]", jobid, hnp_ip,
+            asprintf(&hnp_uri, "%i.0;tcp://%s:%i[$.$]", jobid, hnp_ip,
                 port_num);
-            alloc->hnpuri = strdup(hnp_uri);
-            free(hnp_ip);
+            alloc->hnpuri = hnp_uri;
         }
 
         slm_fork_hnp_procs(jobid, alloc->caller_uid,
-                     alloc->caller_gid, alloc->nodes, port_num, hnp, hnp_uri);
+                     alloc->caller_gid, alloc->nodes, port_num, hnp, hnp_uri, alloc->parent_uri);
 
-        
-        system("hostname");
-        sleep(5);
         command = ORCM_VM_READY_COMMAND;
         buf = OBJ_NEW(opal_buffer_t);
         /* pack the complete command flag */
@@ -381,7 +378,7 @@ static void set_handler_default(int sig)
 /* Launch hnp procs */
 static int
 slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
-         char *nodes, int port_num, int hnp, char * hnp_uri)
+         char *nodes, int port_num, int hnp, char * hnp_uri, char *parent_uri)
 {
     char *cmd;
     char **argv = NULL;
@@ -440,6 +437,12 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         /* tell the daemon to report back its uri so we can connect to it */
         opal_argv_append(&argc, &argv, "--report-uri");
         opal_argv_append(&argc, &argv, "1");
+
+        /* add my parents uri to send the vm ready from the session HNP */
+        if ( NULL != parent_uri ) {
+            opal_argv_append(&argc, &argv, "--parent-uri");
+            opal_argv_append(&argc, &argv, parent_uri);
+        }
 
         opal_argv_append(&argc, &argv, "-mca");
         opal_argv_append(&argc, &argv, "oob_tcp_static_ipv4_ports");

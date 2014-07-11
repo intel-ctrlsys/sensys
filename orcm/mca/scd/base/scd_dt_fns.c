@@ -211,6 +211,24 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
             ORTE_ERROR_LOG(ret);
             return ret;
         }
+        /* pack the parent name */
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->parent_name,
+                                        1,
+                                        OPAL_STRING))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* pack the parent uri */
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_pack_buffer(buffer,
+                                        (void*)&alloc->parent_uri,
+                                        1,
+                                        OPAL_STRING))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
         /* pack the nodefile */
         if (OPAL_SUCCESS !=
             (ret = opal_dss_pack_buffer(buffer,
@@ -481,6 +499,26 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
         if (OPAL_SUCCESS !=
             (ret = opal_dss_unpack_buffer(buffer,
                                           &a->hnpuri,
+                                          &n,
+                                          OPAL_STRING))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* unpack the parent name */
+        n=1;
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->parent_name,
+                                          &n,
+                                          OPAL_STRING))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        /* unpack the parent uri */
+        n=1;
+        if (OPAL_SUCCESS !=
+            (ret = opal_dss_unpack_buffer(buffer,
+                                          &a->parent_uri,
                                           &n,
                                           OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);

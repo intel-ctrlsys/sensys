@@ -131,8 +131,8 @@ static struct {
     bool hnp;
     bool daemonize;
     char* name;
-    char* vpid_start;
     char* num_procs;
+    char* parent_uri;
     int uri_pipe;
     int singleton_died_pipe;
     int fail;
@@ -182,8 +182,8 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "URI for the HNP"},
     
-    { "orte_parent_uri", '\0', NULL, "parent-uri", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
+    { NULL, '\0', "parent-uri", "parent-uri", 1,
+      &orcmsd_globals.parent_uri, OPAL_CMD_LINE_TYPE_STRING,
       "URI for the parent if tree launch is enabled."},
     
     { NULL, '\0', NULL, "set-sid", 0,
@@ -202,7 +202,7 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Redirect output from application processes into filename.rank" },
     
-    { "sst_orcmsd_node_regex", '\0', "node_regex", "node_regex", 1,
+    { "sst_orcmsd_node_regex", '\0', "node-regex", "node-regex", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Regular expression defining nodes in system" },
 
@@ -411,31 +411,10 @@ int main(int argc, char *argv[])
     
     /* if I am also the hnp, then update that contact info field too */
     if (ORTE_PROC_IS_HNP) {
-        orte_process_info.my_hnp_uri = orte_rml.get_contact_info();
-        ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_NAME->jobid;
-        ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_NAME->vpid;
-
         /* setup the orcms ctrl or hnp daemon command receive function */
         orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_HNP,
                             ORTE_RML_PERSISTENT, orcms_hnp_recv, NULL);
-    } else {
-        (void) mca_base_var_register ("orte", "orte", NULL, "hnp_uri",
-                                  "URI for the hnp.",
-                                  MCA_BASE_VAR_TYPE_STRING, NULL, 0,
-                                  MCA_BASE_VAR_FLAG_INTERNAL,
-                                  OPAL_INFO_LVL_9,
-                                  MCA_BASE_VAR_SCOPE_CONSTANT,
-                                  &orte_process_info.my_hnp_uri);
-        if (NULL != orte_process_info.my_hnp_uri) {
-            /* set the contact info into the hash table */
-            orte_rml.set_contact_info(orte_process_info.my_hnp_uri);
-            ret = orte_rml_base_parse_uris(orte_process_info.my_hnp_uri, ORTE_PROC_MY_HNP, NULL);
-            if (ORTE_SUCCESS != ret) {
-                ORTE_ERROR_LOG(ret);
-                goto DONE;
-            }
-        }
-    }
+    } 
     
     /* setup the primary daemon command receive function */
     orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_DAEMON,
@@ -506,30 +485,28 @@ int main(int argc, char *argv[])
      * is if we are launched by a singleton to provide support
      * for it
      */
-    if (!ORTE_PROC_IS_HNP) {
-        /* send the information to the orted report-back point - this function
-         * will process the data, but also counts the number of
-         * orteds that reported back so the launch procedure can continue.
-         * We need to do this at the last possible second as the HNP
-         * can turn right around and begin issuing orders to us
-         */
+    /* send the information to the orted report-back point - this function
+     * will process the data, but also counts the number of
+     * orteds that reported back so the launch procedure can continue.
+     * We need to do this at the last possible second as the HNP
+     * can turn right around and begin issuing orders to us
+     */
 
-        buffer = OBJ_NEW(opal_buffer_t);
-        /* insert our name for rollup purposes */
-        if (ORTE_SUCCESS != (ret = opal_dss.pack(buffer, ORTE_PROC_MY_NAME, 1, ORTE_NAME))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_RELEASE(buffer);
-            goto DONE;
-        }
+    buffer = OBJ_NEW(opal_buffer_t);
+    /* insert our name for rollup purposes */
+    if (ORTE_SUCCESS != (ret = opal_dss.pack(buffer, ORTE_PROC_MY_NAME, 1, ORTE_NAME))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_RELEASE(buffer);
+        goto DONE;
+    }
 
-        /* send to the HNP's callback - will be routed if routes are available */
-        if (0 > (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, buffer,
-                                               ORCM_RML_TAG_HNP,
-                                               orte_rml_send_callback, NULL))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_RELEASE(buffer);
-            goto DONE;
-        }
+    /* send to the HNP's callback - will be routed if routes are available */
+    if (0 > (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, buffer,
+                                           ORCM_RML_TAG_HNP,
+                                           orte_rml_send_callback, NULL))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_RELEASE(buffer);
+        goto DONE;
     }
 
             
@@ -579,6 +556,9 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
     orte_node_t *node;
     orte_job_t *jdata;
     orte_process_name_t dname;
+    orcm_rm_cmd_flag_t command;
+    opal_buffer_t *vmready_msg;
+    char *contact_info;
 
     /* get the daemon job, if necessary */
     if (NULL == jdatorted) {
@@ -594,6 +574,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
             orted_failed_launch = true;
             goto CLEANUP;
         }
+
         daemon->state = ORTE_PROC_STATE_RUNNING;
         /* record that this daemon is alive */
         ORTE_FLAG_SET(daemon, ORTE_PROC_FLAG_ALIVE);
@@ -621,11 +602,13 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
                              (NULL == daemon) ? "UNKNOWN" : daemon->rml_uri));
         
         jdatorted->num_reported++;
+        printf("hnp_recv: Number of daemons reported %d\n", jdatorted->num_reported);
         if (jdatorted->num_procs == jdatorted->num_reported) {
             jdatorted->state = ORTE_JOB_STATE_DAEMONS_REPORTED;
             /* activate the daemons_reported state for all jobs
              * whose daemons were launched
              */
+
             for (idx=1; idx < orte_job_data->size; idx++) {
                 if (NULL == (jdata = (orte_job_t*)opal_pointer_array_get_item(orte_job_data, idx))) {
                     continue;
@@ -633,6 +616,48 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
                 if (ORTE_JOB_STATE_DAEMONS_LAUNCHED == jdata->state) {
                     ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_DAEMONS_REPORTED);
                 }
+            }
+
+            /* send vm ready to the parent */
+            if ( NULL != orcmsd_globals.parent_uri) {
+                /* set the contact info into the hash table */
+                orte_rml.set_contact_info(orcmsd_globals.parent_uri);
+                rc = orte_rml_base_parse_uris(orcmsd_globals.parent_uri, ORTE_PROC_MY_PARENT, NULL);
+                
+                if (ORTE_SUCCESS != rc) {
+                    ORTE_ERROR_LOG(rc);
+                    return;
+                }
+
+                orte_routed.update_route(ORTE_PROC_MY_PARENT,ORTE_PROC_MY_PARENT);
+
+                /* pack the VM_READY MESSAGE */
+                command = ORCM_VM_READY_COMMAND;
+                contact_info = orte_rml.get_contact_info();
+                vmready_msg = OBJ_NEW(opal_buffer_t);
+                if (OPAL_SUCCESS !=
+                    (rc = opal_dss.pack(vmready_msg, &command, 1, ORCM_RM_CMD_T))) {
+                    ORTE_ERROR_LOG(rc);
+                    OBJ_RELEASE(vmready_msg);
+                    return;
+                }
+
+                if (OPAL_SUCCESS !=
+                    (rc = opal_dss.pack(vmready_msg, &contact_info, 1, OPAL_STRING))) {
+                    ORTE_ERROR_LOG(rc);
+                    OBJ_RELEASE(vmready_msg);
+                    return;
+                }
+
+            printf("hnp_recv: send VM Ready to the originator %s:%s\n", ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT), orcmsd_globals.parent_uri);
+                if ((rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_PARENT, 
+                    vmready_msg, ORTE_RML_TAG_TOOL,
+                    orte_rml_send_callback, NULL)) < 0) {
+                    ORTE_ERROR_LOG(rc);
+                    OBJ_RELEASE(vmready_msg);
+                    return;
+                }
+                printf("hnp_recv: After send VM Ready to the originator %s:%s\n", ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT), orcmsd_globals.parent_uri);
             }
         }
         idx = 1;

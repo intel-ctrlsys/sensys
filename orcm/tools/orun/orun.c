@@ -124,10 +124,6 @@ static orte_std_cntr_t total_num_apps = 0;
 static bool want_prefix_by_default = (bool) ORTE_WANT_ORTERUN_PREFIX_BY_DEFAULT;
 static char *ompi_server=NULL;
 static char *my_hnp_uri=NULL;
-
-/*
- * Globals
- */
 struct orun_globals_t orun_globals;
 static bool globals_init = false;
 
@@ -602,15 +598,15 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
 
 int orun(int argc, char *argv[])
 {
-    int rc;
+    int rc, n;
     opal_cmd_line_t cmd_line;
     char *param;
     orte_job_t *jdata=NULL;
     orcm_alloc_t alloc;
-    opal_buffer_t uribuf;
-    char *endptr;
-    char *dstr;
     long sessionid;
+    orcm_rm_cmd_flag_t command;
+    char *hnp_uri;
+    orte_rml_recv_cb_t xbuffer;
 
     /* find our basename (the name of the executable) so that we can
        use it in pretty-print error messages */
@@ -822,12 +818,27 @@ int orun(int argc, char *argv[])
      * there are times I need to send a command to "all daemons", and that means *I* have
      * to receive it too
      */
-    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_DAEMON,
-                            ORTE_RML_PERSISTENT, orcms_daemon_recv, NULL);
+    /* setup to receive the result */
+    OBJ_CONSTRUCT(&xbuffer, orte_rml_recv_cb_t);
+    xbuffer.active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_TOOL,
+                            ORTE_RML_NON_PERSISTENT,
+                            orte_rml_recv_callback, &xbuffer);
     
+    if(my_hnp_uri) {
+        /* set the contact info to the hash table */
+        orte_rml.set_contact_info(my_hnp_uri);
+        rc = orte_rml_base_parse_uris(my_hnp_uri, ORTE_PROC_MY_HNP, NULL);
+        if (ORTE_SUCCESS != rc) {
+            ORTE_ERROR_LOG(rc);
+            goto DONE;
+        }
+        printf("orte_process_myhnp %li %s\n", sessionid, orte_process_info.my_hnp_uri);
+
+    }
+
     /* create the allocation object */
-    if(orun_globals.alloc_request)
-    {
+    if ( true == orun_globals.alloc_request ) {
         OBJ_CONSTRUCT(&alloc, orcm_alloc_t);
         if (ORTE_SUCCESS != (rc = alloc_request(&alloc))) {
             ORTE_ERROR_LOG(rc);
@@ -836,26 +847,40 @@ int orun(int argc, char *argv[])
             ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
             goto DONE;
         }
-        sleep(1);
-        ORTE_PROC_MY_HNP->jobid = alloc.id <<16;
-        ORTE_PROC_MY_HNP->vpid = 0;
-        my_hnp_uri = strdup(alloc.hnpuri);
-        printf("\n hnp-uri %s\n", my_hnp_uri);
+
+        ORTE_WAIT_FOR_COMPLETION(xbuffer.active);
+        /* unpack the command */
+        n = 1;
+        if (ORTE_SUCCESS != (rc = opal_dss.unpack(&xbuffer.data, &command, &n, ORCM_RM_CMD_T))) {
+            ORTE_ERROR_LOG(rc);
+            goto DONE;
+         }
+
+         /* now process the command locally */
+         switch(command) {
+
+         case ORCM_VM_READY_COMMAND:
+             n = 1;
+             if (ORTE_SUCCESS != (rc = opal_dss.unpack(&xbuffer.data, &hnp_uri, &n, OPAL_STRING))) {
+                 ORTE_ERROR_LOG(rc);
+                 goto DONE;
+             }
+             orte_rml.set_contact_info(hnp_uri);
+             rc = orte_rml_base_parse_uris(hnp_uri, ORTE_PROC_MY_HNP, NULL);
+             if (ORTE_SUCCESS != rc) {
+                 ORTE_ERROR_LOG(rc);
+                 goto DONE;
+             }
+             /* spawn the job and its daemons */
+             break;
+
+         default:
+            ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
+             goto DONE;
+         }
+
     }
             
-    if(my_hnp_uri) {
-        OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
-        opal_dss.pack(&uribuf, &my_hnp_uri, 1, OPAL_STRING);
-        orte_rml_base_update_contact_info(&uribuf);
-        dstr=strstr(my_hnp_uri,".");
-        *dstr='\0'; 
-        sessionid = strtol(my_hnp_uri,&endptr,10);
-        ORTE_PROC_MY_HNP->jobid = sessionid;
-        ORTE_PROC_MY_HNP->vpid = 0;
-        orte_process_info.my_hnp_uri=my_hnp_uri;
-        printf("orte_process_myhnp %li %s\n", sessionid, orte_process_info.my_hnp_uri);
-    }
-
     /* spawn the job and its daemons */
     rc = orte_plm.spawn(jdata);
 
@@ -2108,7 +2133,9 @@ static int alloc_request( orcm_alloc_t *alloc )
 
     alloc->caller_uid = getuid();   // caller uid, not from args
     alloc->caller_gid = getgid();   // caller gid, not from args
-    alloc->hnpname='\0';
+    alloc->hnpname = '\0';
+    alloc->parent_name = ORTE_NAME_PRINT(ORTE_PROC_MY_NAME);
+    alloc->parent_uri = orte_rml.get_contact_info();
 
     if (NULL == orun_globals.starttime || 0 == strlen(orun_globals.starttime)) {
         gettimeofday(&tv,NULL);

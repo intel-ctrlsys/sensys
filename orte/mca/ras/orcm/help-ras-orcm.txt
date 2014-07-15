@@ -2,9 +2,9 @@
 #
 # Copyright (c) 2014      Intel, Inc. All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 # This is the US/English help file for Open MPI MCA error messages.
@@ -14,7 +14,7 @@ While trying to determine what resources are available, the orcm
 resource allocator expects to find the following environment variables:
 
     ORCM_NODELIST
-    
+
 However, it was unable to find the following environment variable:
 
     %s
@@ -25,7 +25,7 @@ While trying to determine what resources are available, the orcm
 resource allocator uses the following environment variables:
 
     ORCM_NODELIST       value: %s
-    
+
 However, an error was encountered when trying to parse the following variable:
 
     %s

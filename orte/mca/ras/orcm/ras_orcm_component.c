@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -38,13 +38,13 @@ orte_ras_orcm_component_t mca_ras_orcm_component = {
 
         {
             ORTE_RAS_BASE_VERSION_2_0_0,
-        
+
             /* Component name and version */
             "orcm",
             ORTE_MAJOR_VERSION,
             ORTE_MINOR_VERSION,
             ORTE_RELEASE_VERSION,
-        
+
             /* Component open and close functions */
             ras_orcm_open,
             ras_orcm_close,
@@ -76,7 +76,7 @@ static int ras_orcm_close(void)
 
 static int orte_ras_orcm_component_query(mca_base_module_t **module, int *priority)
 {
-    /* 
+    /*
      * If I am not in a orcm allocation
      * then disqualify myself
      */

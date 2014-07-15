@@ -1,9 +1,9 @@
 #
-# Copyright (c) 2014     Intel, Inc. All rights reserved. 
+# Copyright (c) 2014     Intel, Inc. All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
@@ -23,7 +23,7 @@ sources = \
 
 if MCA_BUILD_orte_ras_orcm_DSO
 lib =
-lib_sources = 
+lib_sources =
 component = mca_ras_orcm.la
 component_sources = $(sources)
 else

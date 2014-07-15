@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "orte_config.h"
@@ -63,14 +63,14 @@ static int init(void)
 /**
  * Discover available (pre-allocated) nodes.  Allocate the
  * requested number of nodes/process slots to the job.
- *  
+ *
  */
 static int orte_ras_orcm_allocate(orte_job_t *jdata, opal_list_t *nodes)
 {
     int ret;
     char *orcm_node_str, *regexp;
     char *orcm_sessionid;
-    
+
     if (NULL == (orcm_sessionid = getenv("ORCM_SESSIONID"))) {
         opal_output_verbose(2, orte_ras_base_framework.framework_output,
                             "%s ras:orcm: no prior allocation",
@@ -80,9 +80,9 @@ static int orte_ras_orcm_allocate(orte_job_t *jdata, opal_list_t *nodes)
         /* save this value in the global job ident string for
          * later use in any error reporting
          */
-    	orte_job_ident = strdup(orcm_sessionid);
+        orte_job_ident = strdup(orcm_sessionid);
     }
-    
+
     orcm_node_str = getenv("ORCM_NODELIST");
     if (NULL == orcm_node_str) {
         orte_show_help("help-ras-orcm.txt", "orcm-env-var-not-found", 1,
@@ -90,7 +90,7 @@ static int orte_ras_orcm_allocate(orte_job_t *jdata, opal_list_t *nodes)
         return ORTE_ERR_NOT_FOUND;
     }
     regexp = strdup(orcm_node_str);
-    
+
     if(NULL == regexp) {
         ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
         return ORTE_ERR_OUT_OF_RESOURCE;
@@ -128,7 +128,7 @@ static int orte_ras_orcm_finalize(void)
 
 /**
  * Discover the available resources.
- * 
+ *
  * @param *regexp A node regular expression from orcm (i.e. ORCM_NODELIST)
  * @param *nodelist A list which has already been constucted to return
  *                  the found nodes in
@@ -138,12 +138,12 @@ static int orte_ras_orcm_discover(char *regexp, opal_list_t* nodelist)
     int i, ret, num_nodes;
     char **names = NULL;
     int *slots;
-    
+
     OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                          "%s ras:orcm:allocate:discover: checking nodelist: %s",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          regexp));
-    
+
     if (ORTE_SUCCESS != (ret = orte_regex_extract_node_names(regexp, &names))) {
         OPAL_OUTPUT_VERBOSE((5, orte_ras_base_framework.framework_output,
                              "%s ras:orcm:allocate:discover: regex returned null nodelist",
@@ -152,12 +152,12 @@ static int orte_ras_orcm_discover(char *regexp, opal_list_t* nodelist)
             opal_argv_free(names);
         }
         return ret;
-    } 
+    }
     if (NULL == names) {
         ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
         return ORTE_ERR_OUT_OF_RESOURCE;
     }
-    
+
     num_nodes = opal_argv_count(names);
 
     /* Find the number of slots per node */
@@ -168,17 +168,17 @@ static int orte_ras_orcm_discover(char *regexp, opal_list_t* nodelist)
         return ORTE_ERR_OUT_OF_RESOURCE;
     }
     memset(slots, 0, sizeof(int) * num_nodes);
-    
+
     /* Convert the argv of node names to a list of node_t's */
 
     for (i = 0; NULL != names && NULL != names[i]; ++i) {
         orte_node_t *node;
-        
+
         OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                              "%s ras:orcm:allocate:discover: adding node %s (%d slot%s)",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              names[i], slots[i], (1 == slots[i]) ? "" : "s"));
-        
+
         node = OBJ_NEW(orte_node_t);
         if (NULL == node) {
             ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);

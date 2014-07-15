@@ -14,6 +14,7 @@ While trying to determine what resources are available, the orcm
 resource allocator expects to find the following environment variables:
 
     ORCM_NODELIST
+    ORCM_SLOTS_PER_NODE
 
 However, it was unable to find the following environment variable:
 

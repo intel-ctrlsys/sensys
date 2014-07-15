@@ -51,7 +51,8 @@ orte_ras_base_module_t orte_ras_orcm_module = {
 };
 
 /* Local functions */
-static int orte_ras_orcm_discover(char *regexp, opal_list_t *nodelist);
+static int orte_ras_orcm_discover(char *regexp, char* slots_per_node, 
+                                  opal_list_t *nodelist);
 
 
 /* init the module */
@@ -68,7 +69,7 @@ static int init(void)
 static int orte_ras_orcm_allocate(orte_job_t *jdata, opal_list_t *nodes)
 {
     int ret;
-    char *orcm_node_str, *regexp;
+    char *orcm_node_str, *regexp, *node_slots;
     char *orcm_sessionid;
 
     if (NULL == (orcm_sessionid = getenv("ORCM_SESSIONID"))) {
@@ -96,7 +97,15 @@ static int orte_ras_orcm_allocate(orte_job_t *jdata, opal_list_t *nodes)
         return ORTE_ERR_OUT_OF_RESOURCE;
     }
 
-    ret = orte_ras_orcm_discover(regexp, nodes);
+    /* get the number of process slots we were assigned on each node */
+    node_slots = getenv("ORCM_SLOTS_PER_NODE");
+    if (NULL == node_slots) {
+        orte_show_help("help-ras-orcm.txt", "orcm-env-var-not-found", 1,
+                       "ORCM_SLOTS_PER_NODE");
+        return ORTE_ERR_NOT_FOUND;
+    }
+
+    ret = orte_ras_orcm_discover(regexp, node_slots, nodes);
     free(regexp);
     if (ORTE_SUCCESS != ret) {
         OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
@@ -130,14 +139,18 @@ static int orte_ras_orcm_finalize(void)
  * Discover the available resources.
  *
  * @param *regexp A node regular expression from orcm (i.e. ORCM_NODELIST)
+ * @param *slots_per_node A tasks per node expression from ORCM
+ *                        (i.e. ORCM_SLOTS_PER_NODE)
  * @param *nodelist A list which has already been constucted to return
  *                  the found nodes in
  */
-static int orte_ras_orcm_discover(char *regexp, opal_list_t* nodelist)
+static int orte_ras_orcm_discover(char *regexp, char *slots_per_node, 
+                                  opal_list_t* nodelist)
 {
     int i, ret, num_nodes;
     char **names = NULL;
     int *slots;
+    int slot;
 
     OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                          "%s ras:orcm:allocate:discover: checking nodelist: %s",
@@ -167,7 +180,17 @@ static int orte_ras_orcm_discover(char *regexp, opal_list_t* nodelist)
         ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
         return ORTE_ERR_OUT_OF_RESOURCE;
     }
-    memset(slots, 0, sizeof(int) * num_nodes);
+
+    /* for now, just assign the slots/nodes to each node
+     * but we need to do something smarter when this
+     * really gets imlemented in ORCM
+     */
+    slot = atoi(slots_per_node);
+    if (0 < slot) {
+        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+        return ORTE_ERR_OUT_OF_RESOURCE;
+    }
+    memset(slots, slot, sizeof(int) * num_nodes);
 
     /* Convert the argv of node names to a list of node_t's */
 

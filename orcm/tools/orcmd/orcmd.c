@@ -277,7 +277,7 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
             asprintf(&hnp_uri, "%i.0;tcp://%s:%i[$.$]", jobid, hnp_ip,
                 port_num);
             alloc->hnpuri = hnp_uri;
-        }
+        } 
 
         slm_fork_hnp_procs(jobid, alloc->caller_uid,
                      alloc->caller_gid, alloc->nodes, port_num, hnp, hnp_uri, alloc->parent_uri);
@@ -388,6 +388,8 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
     int rc;
     char *foo;
     int stepd_pid;
+    char **hosts = NULL;
+    int i, vpid = 1;
 
 
     /* we also have to give the HNP a pipe it can watch to know when
@@ -464,16 +466,31 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         free(param);
 
     } else {
+        /* extract the hosts */
+        if (NULL != nodes) {
+            printf ("REGEX ### nodes = %s \n", nodes);
+            orte_regex_extract_node_names (nodes, &hosts); 
+            for (i=0; hosts[i] != NULL; i++) {
+                if (0 == strcmp(orte_process_info.nodename, hosts[i])) {
+                    printf ("REGEX ### node name = %s vpid = %d \n", hosts[i], i);
+                    vpid = i;
+                }
+            }
+        }
+
         /* setup to pass the vpid */
         opal_argv_append(&argc, &argv, "-mca");
         opal_argv_append(&argc, &argv, "sst_orcmsd_vpid");
-        opal_argv_append(&argc, &argv, "1");
-        /* pass the uri of the hnp */
-        asprintf(&param, "\"%s\"", hnp_uri);
-        opal_argv_append(&argc, &argv, "-mca");
-        opal_argv_append(&argc, &argv, "orte_hnp_uri");
+        if (0 > asprintf(&param, "%d", vpid)) {
+            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            return ORTE_ERR_OUT_OF_RESOURCE;
+        }
         opal_argv_append(&argc, &argv, param);
         free(param);
+        /* pass the uri of the hnp */
+        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "orte_hnp_uri");
+        opal_argv_append(&argc, &argv, hnp_uri);
         opal_argv_append(&argc, &argv, "-mca");
         opal_argv_append(&argc, &argv, "oob_tcp_static_ipv4_ports");
         opal_argv_append(&argc, &argv, "0");

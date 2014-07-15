@@ -1,0 +1,33 @@
+# -*- text -*-
+#
+# Copyright (c) 2014      Intel, Inc. All rights reserved.
+# $COPYRIGHT$
+#
+# Additional copyrights may follow
+#
+# $HEADER$
+#
+# This is the US/English help file for Open MPI MCA error messages.
+#
+[orcm-env-var-not-found]
+While trying to determine what resources are available, the orcm
+resource allocator expects to find the following environment variables:
+
+    ORCM_NODELIST
+    ORCM_SLOTS_PER_NODE
+
+However, it was unable to find the following environment variable:
+
+    %s
+
+#This is a fatal error.
+[orcm-env-var-bad-value]
+While trying to determine what resources are available, the orcm
+resource allocator uses the following environment variables:
+
+    ORCM_NODELIST       value: %s
+
+However, an error was encountered when trying to parse the following variable:
+
+    %s
+

@@ -190,7 +190,9 @@ static int orte_ras_orcm_discover(char *regexp, char *slots_per_node,
         ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
         return ORTE_ERR_OUT_OF_RESOURCE;
     }
-    memset(slots, slot, sizeof(int) * num_nodes);
+    for (i = 0; i < num_nodes; i++) {
+        slots[i] = slot;
+    }
 
     /* Convert the argv of node names to a list of node_t's */
 

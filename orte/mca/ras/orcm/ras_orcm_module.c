@@ -186,7 +186,7 @@ static int orte_ras_orcm_discover(char *regexp, char *slots_per_node,
      * really gets imlemented in ORCM
      */
     slot = atoi(slots_per_node);
-    if (0 < slot) {
+    if (0 > slot) {
         ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
         return ORTE_ERR_OUT_OF_RESOURCE;
     }

@@ -1,0 +1,30 @@
+/* -*- c -*-
+ *
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * $COPYRIGHT$
+ * 
+ * Additional copyrights may follow
+ * 
+ * $HEADER$
+ *
+ * This file should be included by any file that needs full
+ * version information for ORCMAPI
+ */
+
+#ifndef ORCMAPI_VERSIONS_H
+#define ORCMAPI_VERSIONS_H
+
+#define ORCMAPI_MAJOR_VERSION @ORCMAPI_MAJOR_VERSION@
+#define ORCMAPI_MINOR_VERSION @ORCMAPI_MINOR_VERSION@
+#define ORCMAPI_RELEASE_VERSION @ORCMAPI_RELEASE_VERSION@
+#define ORCMAPI_GREEK_VERSION "@ORCMAPI_GREEK_VERSION@"
+#define ORCMAPI_WANT_REPO_REV @ORCMAPI_WANT_REPO_REV@
+#define ORCMAPI_REPO_REV "@ORCMAPI_REPO_REV@"
+#ifdef ORCMAPI_VERSION
+/* If we included version.h, we want the real version, not the
+   stripped (no-r number) version */
+#undef ORCMAPI_VERSION
+#endif
+#define ORCMAPI_VERSION "@ORCMAPI_VERSION@"
+
+#endif

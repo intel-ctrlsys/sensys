@@ -30,6 +30,9 @@ ORCM_MODULE_DECLSPEC extern orcm_scd_base_component_t mca_scd_external_component
 
 ORCM_DECLSPEC extern orcm_scd_base_module_t orcm_scd_external_module;
 
+ORCM_DECLSPEC int external_launch(orcm_session_t *session); 
+ORCM_DECLSPEC int external_cancel(orcm_alloc_id_t sessionid); 
+
 END_C_DECLS
 
 #endif /* MCA_scd_external_EXPORT_H */

@@ -27,9 +27,6 @@ orcm_scd_base_module_t orcm_scd_external_module = {
     finalize
 };
 
-static int external_launch(orcm_alloc_t alloc);
-static int external_cancel(orcm_alloc_id_t session);
-
 static void external_terminated(int sd, short args, void *cbdata);
 
 static orcm_scd_session_state_t states[] = {
@@ -79,7 +76,7 @@ static void finalize(void)
     orcm_scd_base_comm_stop();
 }
 
-static void external_launch(orcm_session_t session)
+int external_launch(orcm_session_t *session)
 {
     char **nodenames = NULL;
     int rc, num_nodes, i, j;
@@ -146,8 +143,7 @@ static void external_launch(orcm_session_t session)
         opal_argv_free(nodenames);
     }
 
-    OBJ_RELEASE(caddy);
-    return;
+    return ORCM_SUCCESS;
 
 ERROR:
     if (NULL != nodenames) {
@@ -161,18 +157,18 @@ ERROR:
             break;
         }
     }
+    return ORCM_ERR_OUT_OF_RESOURCE;
 }
 
-static void external_cancel(int sd, short args, void *cbdata)
+int external_cancel(orcm_alloc_id_t sessionid)
 {
-    orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
     orcm_queue_t *q;
     orcm_session_t *session;
 
     /* if session is queued, find it and delete it */
     OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
         OPAL_LIST_FOREACH(session, &q->sessions, orcm_session_t) {
-            if (session->id == caddy->session->id) {
+            if (session->id == sessionid) {
                 /* if session is running, send cancel launch command */
                 if (0 == strcmp(q->name, "running")) {
                     ORCM_ACTIVATE_RM_STATE(session, ORCM_SESSION_STATE_KILL);
@@ -183,8 +179,7 @@ static void external_cancel(int sd, short args, void *cbdata)
             }
         }
     }
-
-    OBJ_RELEASE(caddy);
+    return ORCM_SUCCESS;
 }
 
 static void external_terminated(int sd, short args, void *cbdata)

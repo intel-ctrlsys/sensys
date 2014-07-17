@@ -11,6 +11,9 @@
 #include "orcm/constants.h"
 
 #include <stdio.h>
+#ifdef HAVE_PWD_H
+#include <pwd.h>
+#endif  /* HAVE_PWD_H */
 #include <errno.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -49,6 +52,7 @@
 #endif
 
 #include "orte/util/error_strings.h"
+#include "orte/util/regex.h"
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/rml/rml.h"
@@ -57,6 +61,7 @@
 #include "orcm/runtime/runtime.h"
 
 #include "orcm/mca/scd/base/base.h"
+#include "orcm/mca/scd/external/scd_external.h"
 
 #include "orcmapi/version.h"
 #include "orcmapi/orcmapi.h"
@@ -155,10 +160,42 @@ int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count)
     return ORCM_SUCCESS;
 }
 
-int orcmapi_launch_session(int min_nodes, char *nodes, int64_t id, uid_t uid, gid_t gid)
+int orcmapi_launch_session(int id, int min_nodes, char *nodes, char *user)
 {
     orcm_session_t *session;
     orcm_alloc_t *alloc;
+    struct passwd *pwd;
+    size_t buf_len;
+    char *buf;
+    int rc;
+
+#ifdef HAVE_PWD_H
+    pwd = calloc(1, sizeof(struct passwd));
+
+    if (NULL == pwd) {
+        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+        return ORTE_ERR_OUT_OF_RESOURCE;
+    }
+
+    buf_len = sysconf(_SC_GETPW_R_SIZE_MAX) * sizeof(char);
+
+    buf = malloc(buf_len);
+    if (NULL == buf) {
+        free(pwd);
+        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+        return ORTE_ERR_OUT_OF_RESOURCE;
+    }
+
+    getpwnam_r(user, pwd, buf, buf_len, &pwd);
+    if(NULL == pwd)
+    {
+        free(pwd);
+        free(buf);
+        return ORCM_ERROR;
+    }
+#else
+    return ORCM_ERROR;
+#endif
 
     session = OBJ_NEW(orcm_session_t);
     session->alloc = OBJ_NEW(orcm_alloc_t);
@@ -168,11 +205,13 @@ int orcmapi_launch_session(int min_nodes, char *nodes, int64_t id, uid_t uid, gi
     orte_regex_create(nodes, &(alloc->nodes));
     alloc->id = id;
     session->id = id;
-    alloc->uid = uid;
-    alloc->gid = gid;
-    alloc->caller_uid = uid;
-    alloc->caller_gid = gid;
+    alloc->gid = pwd->pw_gid;
+    alloc->caller_uid = pwd->pw_uid;
+    alloc->caller_gid = pwd->pw_gid;
     alloc->interactive = true;
-    
-    external_launch(session);
+
+    rc = external_launch(session);
+    free(pwd);
+    free(buf);
+    return rc;
 }

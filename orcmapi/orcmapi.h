@@ -28,6 +28,8 @@ ORCM_DECLSPEC void orcmapi_finalize(void);
 
 /* get node info/states */
 ORCM_DECLSPEC int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count);
+/* launch session */
+ORCM_DECLSPEC int orcmapi_launch_session(int id, int min_nodes, char *nodes, char *user);
 
 END_C_DECLS
 

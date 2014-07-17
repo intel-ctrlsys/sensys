@@ -135,7 +135,7 @@ int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count)
         *nodes = (liborcm_node_t**)malloc(num_nodes * sizeof(liborcm_node_t*));
         if (NULL == nodes) {
             ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-            return -1;
+            return ORTE_ERR_OUT_OF_RESOURCE;
         }
 
         i = 0;
@@ -155,3 +155,24 @@ int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count)
     return ORCM_SUCCESS;
 }
 
+int orcmapi_launch_session(int min_nodes, char *nodes, int64_t id, uid_t uid, gid_t gid)
+{
+    orcm_session_t *session;
+    orcm_alloc_t *alloc;
+
+    session = OBJ_NEW(orcm_session_t);
+    session->alloc = OBJ_NEW(orcm_alloc_t);
+    alloc = session->alloc;
+
+    alloc->min_nodes = min_nodes;
+    orte_regex_create(nodes, &(alloc->nodes));
+    alloc->id = id;
+    session->id = id;
+    alloc->uid = uid;
+    alloc->gid = gid;
+    alloc->caller_uid = uid;
+    alloc->caller_gid = gid;
+    alloc->interactive = true;
+    
+    external_launch(session);
+}

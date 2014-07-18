@@ -21,10 +21,14 @@
 
 static int init(void);
 static void finalize(void);
+static int external_launch(orcm_session_t *session);
+static int external_cancel(orcm_session_id_t sessionid);
 
 orcm_scd_base_module_t orcm_scd_external_module = {
     init,
-    finalize
+    finalize,
+    external_launch,
+    external_cancel
 };
 
 static void external_terminated(int sd, short args, void *cbdata);
@@ -76,7 +80,7 @@ static void finalize(void)
     orcm_scd_base_comm_stop();
 }
 
-int external_launch(orcm_session_t *session)
+static int external_launch(orcm_session_t *session)
 {
     char **nodenames = NULL;
     int rc, num_nodes, i, j;
@@ -160,7 +164,7 @@ ERROR:
     return ORCM_ERR_OUT_OF_RESOURCE;
 }
 
-int external_cancel(orcm_alloc_id_t sessionid)
+static int external_cancel(orcm_session_id_t sessionid)
 {
     orcm_queue_t *q;
     orcm_session_t *session;

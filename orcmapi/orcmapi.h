@@ -21,7 +21,7 @@ typedef struct {
  * API Functions
  ******************/
 /* Initialize the ORCMAPI library */
-ORCM_DECLSPEC int orcmapi_init(void);
+ORCM_DECLSPEC void orcmapi_init(void *ptr);
 
 /* Finalize the ORCMAPI library */
 ORCM_DECLSPEC void orcmapi_finalize(void);
@@ -30,6 +30,8 @@ ORCM_DECLSPEC void orcmapi_finalize(void);
 ORCM_DECLSPEC int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count);
 /* launch session */
 ORCM_DECLSPEC int orcmapi_launch_session(int id, int min_nodes, char *nodes, char *user);
+/* cancel session */
+ORCM_DECLSPEC int orcmapi_cancel_session(int id);
 
 END_C_DECLS
 

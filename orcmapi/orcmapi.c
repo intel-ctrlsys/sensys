@@ -61,7 +61,6 @@
 #include "orcm/runtime/runtime.h"
 
 #include "orcm/mca/scd/base/base.h"
-#include "orcm/mca/scd/external/scd_external.h"
 
 #include "orcmapi/version.h"
 #include "orcmapi/orcmapi.h"
@@ -75,11 +74,10 @@ static opal_cmd_line_init_t cmd_line_opts[] = {
       NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
 };
 
-int orcmapi_init(void)
+void orcmapi_init(void *ptr)
 {
     int ret = 0;
     opal_cmd_line_t *cmd_line = NULL;
-    pid_t child;
 
     /* setup to check common command line options that just report and die */
     cmd_line = OBJ_NEW(opal_cmd_line_t);
@@ -103,22 +101,12 @@ int orcmapi_init(void)
         exit(1);
     }
     
-    child = fork();
-
-    /* start the event loop in a new thread */
-    if(child >= 0) {
-        if(child == 0) {
-            while (orte_event_base_active) {
-                opal_event_loop(orte_event_base, OPAL_EVLOOP_ONCE);
-            }
-            orcm_finalize();
-            return ORCM_SUCCESS;
-        } else {
-            return ret;
-        }
-    } else {
-        return ORTE_ERR_OUT_OF_RESOURCE;
+    while (orte_event_base_active) {
+        opal_event_loop(orte_event_base, OPAL_EVLOOP_ONCE);
     }
+
+    orcm_finalize();
+    return;
 }
 
 void orcmapi_finalize(void)
@@ -156,6 +144,8 @@ int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count)
             i++;
         }
     }
+    
+    *count = num_nodes;
 
     return ORCM_SUCCESS;
 }
@@ -210,8 +200,16 @@ int orcmapi_launch_session(int id, int min_nodes, char *nodes, char *user)
     alloc->caller_gid = pwd->pw_gid;
     alloc->interactive = true;
 
-    rc = external_launch(session);
+    rc = orcm_scd_base.module->launch(session);
     free(pwd);
     free(buf);
+    return rc;
+}
+
+int orcmapi_cancel_session(int id)
+{
+    int rc;
+
+    rc = orcm_scd_base.module->cancel(id);
     return rc;
 }

@@ -68,7 +68,7 @@ static int scd_external_component_query(mca_base_module_t **module, int *priorit
 {
     if (ORCM_PROC_IS_SCHED) {
         /* I should only be selected if specifically asked for from library interface */
-        *priority = 90;
+        *priority = 1;
         *module = (mca_base_module_t *)&orcm_scd_external_module;
         return ORCM_SUCCESS;
     }

@@ -16,7 +16,6 @@ AC_DEFUN([MCA_orcm_db_odbc_CONFIG], [
     AC_REQUIRE([OPAL_CHECK_ODBC])
     
     # do not build if support not requested
-    # TODO: replace orcm->opal???
     AS_IF([test "$opal_check_odbc_happy" == "yes"],
           [orcm_db_odbc_check_save_CPPFLAGS=$CPPFLAGS
            orcm_db_odbc_check_save_LDFLAGS=$LDFLAGS

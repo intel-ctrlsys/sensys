@@ -58,7 +58,7 @@ typedef union {
 struct ipmi_properties{
     char node_name[16];
     int bmc_rev[2];
-    int ipmi_ver[2];
+    int ipmi_ver[2];    
     int man_id[8];
     char sys_power_state[10];
     char dev_power_state[10];
@@ -67,7 +67,9 @@ struct ipmi_properties{
 
 // Node Details
 typedef struct {
-    char node_ip[16];
+    char name[64];
+    char bmc_ip[16];
+    char host_ip[16];
     char device_id[16];
     char user[16];
     char pasw[16];
@@ -107,6 +109,19 @@ typedef struct {
     ipmi_properties_t prop;
 } ipmi_capsule_t;
 
+
+typedef struct {
+    char node_name[64];
+    char host_ipaddr[16];
+    char bmc_ipaddr[16];
+    char username[16];
+    char password[16];
+    struct orcm_sensor_hosts_t *next;
+}orcm_sensor_hosts_t;
+
+/* @VINFIX: Change this 'link' in a linked-list to OPAL_LIST */
+orcm_sensor_hosts_t *active_hosts;
+
 // List of all properties to be scanned by the IPMI Plugin
 // This total number should correspond to the value TOTAL_PROPERTIES_PER_NODE!!
 typedef enum {
@@ -130,6 +145,6 @@ typedef enum {
 void get_system_power_state(uchar in, char* str);
 void get_device_power_state(uchar in, char* str);
 
-void ipmi_exec_call(ipmi_capsule_t *cap);
+int ipmi_exec_call(ipmi_capsule_t *cap);
 
 #endif

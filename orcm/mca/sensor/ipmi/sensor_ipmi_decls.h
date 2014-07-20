@@ -119,8 +119,6 @@ typedef struct {
     struct orcm_sensor_hosts_t *next;
 }orcm_sensor_hosts_t;
 
-/* @VINFIX: Change this 'link' in a linked-list to OPAL_LIST */
-orcm_sensor_hosts_t *active_hosts;
 
 // List of all properties to be scanned by the IPMI Plugin
 // This total number should correspond to the value TOTAL_PROPERTIES_PER_NODE!!

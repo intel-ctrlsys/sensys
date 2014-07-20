@@ -34,6 +34,10 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler);
 static void ipmi_log(opal_buffer_t *buf);
 int count_log = 0;
 unsigned char disable_ipmi = 0;
+/* @VINFIX: Change this 'link' in a linked-list to OPAL_LIST */
+orcm_sensor_hosts_t *active_hosts;
+
+
 orcm_sensor_hosts_t cur_host; // Object to store the current node's access details
 
 /* instantiate the module */
@@ -90,6 +94,7 @@ static void finalize(void)
 static void start(orte_jobid_t jobid)
 {
     opal_output(0,"IPMI Start");
+    active_hosts = NULL;
     return;
 }
 
@@ -197,6 +202,8 @@ int addhost(char *nodename, char *host_ip, char *bmc_ip)
     if (NULL == active_hosts)
     {
         active_hosts = (orcm_sensor_hosts_t*)malloc(sizeof(orcm_sensor_hosts_t));
+        /* Set the next link as NULL for the last member*/
+        active_hosts->next = NULL;
     } else {
         top = (orcm_sensor_hosts_t*)malloc(sizeof(orcm_sensor_hosts_t));
         top->next = active_hosts;
@@ -361,32 +368,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         *             , cap.prop.ps1_usage);
         */
 
-        
-        /* Pack the nodeName - 2 */
-        sample_str = strdup(cap.node.name);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-            "***** NodeName: %s",sample_str);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            free(sample_str);
-            return;
-        }
-        free(sample_str);
-
-
-        /* Pack the host_ip of each node - 3 */
-        sample_str = strdup(cap.node.host_ip);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-            "***** HostIP: %s",sample_str);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            free(sample_str);
-            return;
-        }
-        free(sample_str);
-            
         /* get the sample time */
         now = time(NULL);
         tdiff = difftime(now, last_sample);
@@ -401,13 +382,37 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
         opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
             "***** TimeStamp: %s",timestamp_str);
-        /* Pack the Sample Time - 4 */
+        /* Pack the Sample Time - 2 */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             return;
         }
         free(timestamp_str);
+ 
+        /* Pack the nodeName - 3 */
+        sample_str = strdup(cap.node.name);
+        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+            "***** NodeName: %s",sample_str);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            free(sample_str);
+            return;
+        }
+        free(sample_str);
+
+        /* Pack the host_ip of each node - 4 */
+        sample_str = strdup(cap.node.host_ip);
+        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+            "***** HostIP: %s",sample_str);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            free(sample_str);
+            return;
+        }
+        free(sample_str);
 
         /* Pack BMC IP address - 5 */ 
         sample_str = strdup(cap.node.bmc_ip);
@@ -418,7 +423,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
         free(sample_str);
-
 
         /*  Pack the BMC FW Rev  - 6 */
         sample_str = strdup(cap.prop.bmc_rev);
@@ -660,42 +664,7 @@ static void ipmi_log(opal_buffer_t *sample)
     {
         vals = OBJ_NEW(opal_list_t);
 
-        /* Unpack the node_name - 2 */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("nodename");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(hostname);
-        opal_list_append(vals, &kv->super);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-            "UnPacked NodeName: %s", hostname);
-        strncpy(nodename,hostname,strlen(hostname)+1);
-        free(hostname);
-
-        /* Unpack the host_ip - 3 */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        if (NULL == hostname) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
-        }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("host_ip");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(hostname);
-        opal_list_append(vals, &kv->super);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-            "UnPacked host_ip: %s", hostname);
-        free(hostname);
-
-        /* sample time - 4 */
+        /* sample time - 2 */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -713,6 +682,42 @@ static void ipmi_log(opal_buffer_t *sample)
         opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
             "UnPacked cTime: %s", sampletime);
         free(sampletime);
+
+
+        /* Unpack the node_name - 3 */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("nodename");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(hostname);
+        opal_list_append(vals, &kv->super);
+        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+            "UnPacked NodeName: %s", hostname);
+        strncpy(nodename,hostname,strlen(hostname)+1);
+        free(hostname);
+
+        /* Unpack the host_ip - 4 */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        if (NULL == hostname) {
+            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("host_ip");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(hostname);
+        opal_list_append(vals, &kv->super);
+        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+            "UnPacked host_ip: %s", hostname);
+        free(hostname);
 
         /* BMC IP - 5 */
         n=1;

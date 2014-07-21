@@ -178,6 +178,7 @@ static int orte_ras_orcm_discover(char *regexp, char *slots_per_node,
     slots = malloc(sizeof(int) * num_nodes);
     if (NULL == slots) {
         ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+        opal_argv_free(names);
         return ORTE_ERR_OUT_OF_RESOURCE;
     }
 
@@ -186,8 +187,10 @@ static int orte_ras_orcm_discover(char *regexp, char *slots_per_node,
      * really gets imlemented in ORCM
      */
     slot = atoi(slots_per_node);
-    if (0 > slot) {
+    if (1 > slot) {
         ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+        opal_argv_free(names);
+        free(slots);
         return ORTE_ERR_OUT_OF_RESOURCE;
     }
     for (i = 0; i < num_nodes; i++) {
@@ -208,6 +211,7 @@ static int orte_ras_orcm_discover(char *regexp, char *slots_per_node,
         if (NULL == node) {
             ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
             free(slots);
+            opal_argv_free(names);
             return ORTE_ERR_OUT_OF_RESOURCE;
         }
         node->name = strdup(names[i]);

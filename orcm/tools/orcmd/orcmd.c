@@ -589,7 +589,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         execv(cmd, argv);
 
         /* if I get here, the execv failed! */
-        orte_show_help("help-ess-base.txt", "ess-base:execv-error",
+        orte_show_help("help-orcmd.txt", "orcmd:execv-error",
                    true, cmd, strerror(errno));
         exit(1);
     } else {

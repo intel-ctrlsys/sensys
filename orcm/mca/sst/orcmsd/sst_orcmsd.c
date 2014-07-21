@@ -122,7 +122,6 @@ static int orcmsd_init(void)
 {
     int ret;
     char *error;
-    opal_buffer_t *uribuf;
 
     if (initialized) {
         return ORCM_SUCCESS;
@@ -138,6 +137,35 @@ static int orcmsd_init(void)
     if (ORTE_SUCCESS != (ret = orte_ess_base_std_prolog())) {
         error = "orte_std_prolog";
         goto error;
+    }
+
+    /*
+     * Report errors when required cmdline arguments are not provided 
+     */
+    if (NULL == mca_sst_orcmsd_component.base_jobid) {
+        fprintf(stderr, "orcmsd: jobid is required\n");
+        ret = ORTE_ERR_NOT_FOUND;
+        return (ret);
+    }
+
+    if (NULL == mca_sst_orcmsd_component.base_vpid) {
+        fprintf(stderr, "orcmsd: vpid is required\n");
+        ret = ORTE_ERR_NOT_FOUND;
+        return (ret);
+    }
+
+    /*
+    if (NULL == mca_sst_orcmsd_component.node_regex) {
+        fprintf(stderr, "orcmsd: node-regex is required\n");
+        ret = ORTE_ERR_NOT_FOUND;
+        return (ret);
+    }
+    */
+
+    if ((!ORTE_PROC_IS_HNP) && (NULL == orte_process_info.my_hnp_uri)) {
+        fprintf(stderr, "orcmsd: hnp-uri is required for non hnp session daemons\n");
+        ret = ORTE_ERR_NOT_FOUND;
+        return (ret);
     }
 
     /* define a name for myself */
@@ -674,7 +702,6 @@ static int orcmsd_setup_node_pool(void)
         /* set the parent to my HNP for step daemons */
         ORTE_PROC_MY_PARENT->jobid = ORTE_PROC_MY_HNP->jobid;
         ORTE_PROC_MY_PARENT->vpid = ORTE_PROC_MY_HNP->vpid;
-        printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
         uribuf = OBJ_NEW(opal_buffer_t);
         opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
         orte_rml_base_update_contact_info(uribuf);

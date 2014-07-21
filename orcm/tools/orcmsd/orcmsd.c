@@ -126,14 +126,12 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
 
 static struct {
     bool debug;
+    bool debug_daemons;
     bool help;
-    bool set_sid;
     bool hnp;
-    bool daemonize;
     char* name;
     char* num_procs;
     char* parent_uri;
-    int uri_pipe;
     int singleton_died_pipe;
     int fail;
     int fail_delay;
@@ -147,32 +145,17 @@ static struct {
  */
 opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
     /* Various "obvious" options */
-    { NULL, 'h', NULL, "help", 0,
-      &orcmsd_globals.help, OPAL_CMD_LINE_TYPE_BOOL,
-      "This help message" },
-    { NULL, '\0', NULL, "debug-failure", 1,
-      &orcmsd_globals.fail, OPAL_CMD_LINE_TYPE_INT,
-      "Have the specified orted fail after init for debugging purposes" },
-    
-    { NULL, '\0', NULL, "debug-failure-delay", 1,
-      &orcmsd_globals.fail_delay, OPAL_CMD_LINE_TYPE_INT,
-      "Have the orted specified for failure delay for the provided number of seconds before failing" },
-    
-    { "orte_debug", 'd', NULL, "debug", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Debug the OpenRTE" },
-        
-    { "orte_daemonize", '\0', NULL, "daemonize", 0,
-      &orcmsd_globals.daemonize, OPAL_CMD_LINE_TYPE_BOOL,
-      "Daemonize the orted into the background" },
+    { "sst_orcmsd_jobid", '\0', "jobid", "jobid", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Regular expression defining nodes in system" },
 
-    { "orte_debug_daemons", '\0', NULL, "debug-daemons", 0,
-      &orcmsd_globals.debug, OPAL_CMD_LINE_TYPE_BOOL,
-      "Enable debugging of OpenRTE daemons" },
+    { "sst_orcmsd_vpid", '\0', "vpid", "vpid", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Regular expression defining nodes in system" },
 
-    { "orte_debug_daemons_file", '\0', NULL, "debug-daemons-file", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Enable debugging of OpenRTE daemons, storing output in files" },
+    { "sst_orcmsd_node_regex", '\0', "node-regex", "node-regex", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Regular expression defining nodes in system" },
 
     { NULL, '\0', NULL, "hnp", 0,
       &orcmsd_globals.hnp, OPAL_CMD_LINE_TYPE_BOOL,
@@ -185,14 +168,6 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
     { NULL, '\0', "parent-uri", "parent-uri", 1,
       &orcmsd_globals.parent_uri, OPAL_CMD_LINE_TYPE_STRING,
       "URI for the parent if tree launch is enabled."},
-    
-    { NULL, '\0', NULL, "set-sid", 0,
-      &orcmsd_globals.set_sid, OPAL_CMD_LINE_TYPE_BOOL,
-      "Direct the orted to separate from the current session"},
-    
-    { NULL, '\0', NULL, "report-uri", 1,
-      &orcmsd_globals.uri_pipe, OPAL_CMD_LINE_TYPE_INT,
-      "Report this process' uri on indicated pipe"},
 
     { NULL, '\0', NULL, "singleton-died-pipe", 1,
       &orcmsd_globals.singleton_died_pipe, OPAL_CMD_LINE_TYPE_INT,
@@ -202,18 +177,18 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Redirect output from application processes into filename.rank" },
     
-    { "sst_orcmsd_node_regex", '\0', "node-regex", "node-regex", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Regular expression defining nodes in system" },
+    { NULL, 'h', NULL, "help", 0,
+      &orcmsd_globals.help, OPAL_CMD_LINE_TYPE_BOOL,
+      "This help message" },
+    
+    { "orte_debug", 'd', NULL, "debug", 0,
+      &orcmsd_globals.debug, OPAL_CMD_LINE_TYPE_BOOL,
+      "Debug the OpenRTE" },
 
-    { "sst_orcmsd_jobid", '\0', "jobid", "jobid", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Regular expression defining nodes in system" },
-
-    { "sst_orcmsd_vpid", '\0', "vpid", "vpid", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Regular expression defining nodes in system" },
-
+    { "orte_debug_daemons", 'd', NULL, "debug-daemons", 0,
+      &orcmsd_globals.debug_daemons, OPAL_CMD_LINE_TYPE_BOOL,
+      "Debug the OpenRTE" },
+        
     /* End of list */
     { NULL, '\0', NULL, NULL, 0,
       NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
@@ -226,7 +201,6 @@ int main(int argc, char *argv[])
     int i;
     opal_buffer_t *buffer;
     orte_job_t *jdata_obj;
-    char hostname[100];
     char *umask_str = getenv("ORTE_DAEMON_UMASK_VALUE");
 
     if (NULL != umask_str) {
@@ -241,8 +215,6 @@ int main(int argc, char *argv[])
     memset(&orcmsd_globals, 0, sizeof(orcmsd_globals));
     /* initialize the singleton died pipe to an illegal value so we can detect it was set */
     orcmsd_globals.singleton_died_pipe = -1;
-    /* init the failure orted vpid to an invalid value */
-    orcmsd_globals.fail = ORTE_VPID_INVALID;
     
     /* setup to check common command line options that just report and die */
     cmd_line = OBJ_NEW(opal_cmd_line_t);
@@ -266,7 +238,8 @@ int main(int argc, char *argv[])
      * process them.
      */
     mca_base_cmd_line_process_args(cmd_line, &environ, &environ);
-    
+
+
     /* Ensure that enough of OPAL is setup for us to be able to run */
     /*
      * NOTE: (JJH)
@@ -298,37 +271,22 @@ int main(int argc, char *argv[])
     /* if orte_daemon_debug is set, let someone know we are alive right
      * away just in case we have a problem along the way
      */
-    if (orcmsd_globals.debug) {
-        gethostname(hostname, 100);
-        fprintf(stderr, "Daemon was launched on %s - beginning to initialize\n", hostname);
-    }
     
     /* check for help request */
     if (orcmsd_globals.help) {
         char *args = NULL;
         args = opal_cmd_line_get_usage_msg(cmd_line);
-        orte_show_help("help-orcmsd.txt", "orted:usage", false,
+        orte_show_help("help-orcmsd.txt", "orcmsd:usage", false,
                        argv[0], args);
         free(args);
         return 1;
     }
 #if defined(HAVE_SETSID)
     /* see if we were directed to separate from current session */
-    if (orcmsd_globals.set_sid) {
-        setsid();
-    }
+    setsid();
 #endif
 
 
-    /* detach from controlling terminal
-     * otherwise, remain attached so output can get to us
-     */
-    if(!orte_debug_flag &&
-       !orte_debug_daemons_flag &&
-       orcmsd_globals.daemonize) {
-        opal_daemon_init(NULL);
-    }
-    
     /* Set the flag telling OpenRTE that I am NOT a
      * singleton, but am "infrastructure" - prevents setting
      * up incorrect infrastructure that only a singleton would
@@ -374,7 +332,7 @@ int main(int argc, char *argv[])
                      */
                     orte_show_help_finalize();
                     /* the message will now come out locally */
-                    orte_show_help("help-orcmsd.txt", "orted:cannot-bind",
+                    orte_show_help("help-orcmsd.txt", "orcmsd:cannot-bind",
                                    true, orte_process_info.nodename,
                                    orte_daemon_cores);
                     ret = ORTE_ERR_NOT_SUPPORTED;
@@ -411,24 +369,35 @@ int main(int argc, char *argv[])
     
     /* if I am also the hnp, then update that contact info field too */
     if (ORTE_PROC_IS_HNP) {
+
         /* setup the orcms ctrl or hnp daemon command receive function */
         orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_HNP,
                             ORTE_RML_PERSISTENT, orcms_hnp_recv, NULL);
-    } 
     
+        if (orcmsd_globals.debug) {
+            opal_output(0, "%s orcmsd hnp jobid: %d vpid: %d\n",
+                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ORTE_PROC_MY_NAME->jobid, 
+                ORTE_PROC_MY_NAME->vpid);
+            opal_output(0, "%s orcmsd hnp pid: %ld hnp-uri: %s host: %s\n",
+                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), 
+                (long) orte_process_info.pid, orte_process_info.my_daemon_uri,
+                orte_process_info.nodename);
+        } 
+    } else { 
+        if (orcmsd_globals.debug) {
+            opal_output(0, "%s orcmsd daemon jobid: %d vpid: %d\n",
+                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ORTE_PROC_MY_NAME->jobid, 
+                ORTE_PROC_MY_NAME->vpid);
+            opal_output(0, "%s orcmsd daemon pid: %ld hnp-uri: %s host: %s\n",
+                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), 
+                (long) orte_process_info.pid, orte_process_info.my_hnp_uri,
+                orte_process_info.nodename);
+        } 
+    } 
     /* setup the primary daemon command receive function */
     orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_DAEMON,
                             ORTE_RML_PERSISTENT, orcms_daemon_recv, NULL);
     
-    /* output a message indicating we are alive, our name, and our pid
-     * for debugging purposes
-     */
-    if (orte_debug_daemons_flag) {
-        fprintf(stderr, "Daemon %s checking in as pid %ld on host %s\n",
-                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (long)orte_process_info.pid,
-                orte_process_info.nodename);
-    }
-
     /* We actually do *not* want the orted to voluntarily yield() the
        processor more than necessary.  The orted already blocks when
        it is doing nothing, so it doesn't use any more CPU cycles than
@@ -510,9 +479,7 @@ int main(int argc, char *argv[])
     }
 
             
-    if (orte_debug_daemons_flag) {
-        opal_output(0, "%s orted: up and running - waiting for commands!", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    }
+    opal_output(0, "%s orcmsd: up and running - waiting for commands!", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     ret = ORTE_SUCCESS;
 
     /* loop the event lib until an exit event is detected */
@@ -530,9 +497,7 @@ int main(int argc, char *argv[])
     /* cleanup and leave */
     orcm_finalize();
 
-    if (orte_debug_flag) {
-        fprintf(stderr, "exiting with status %d\n", orte_exit_status);
-    }
+    opal_output(0, "%s orcmsd: exiting with status %d\n", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), orte_exit_status);
     exit(orte_exit_status);
 }
 
@@ -584,7 +549,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
             /* this shouldn't happen - it indicates an error in the
              * prior node matching logic, so report it and error out
              */
-            orte_show_help("help-plm-base.txt", "daemon-no-assigned-node", true,
+            orte_show_help("help-orcmsd.txt", "daemon-no-assigned-node", true,
                            ORTE_NAME_PRINT(&daemon->name), nodename);
             orted_failed_launch = true;
             goto CLEANUP;
@@ -594,7 +559,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
         node->state = ORTE_NODE_STATE_ADDED;
 
     CLEANUP:
-        OPAL_OUTPUT_VERBOSE((5, orte_plm_base_framework.framework_output,
+        OPAL_OUTPUT_VERBOSE((5, orcm_debug_output,
                              "%s plm:base:orted_report_launch %s for daemon %s at contact %s",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              orted_failed_launch ? "failed" : "completed",
@@ -602,7 +567,9 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
                              (NULL == daemon) ? "UNKNOWN" : daemon->rml_uri));
         
         jdatorted->num_reported++;
-        printf("hnp_recv: Number of daemons reported %d\n", jdatorted->num_reported);
+        if (orcmsd_globals.debug) {
+            opal_output(0, "%s orcmsd: hnp_recv Number of daemons reported %d\n", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), jdatorted->num_reported);
+        }
         if (jdatorted->num_procs == jdatorted->num_reported) {
             jdatorted->state = ORTE_JOB_STATE_DAEMONS_REPORTED;
             /* activate the daemons_reported state for all jobs
@@ -649,7 +616,12 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
                     return;
                 }
 
-            printf("hnp_recv: send VM Ready to the originator %s:%s\n", ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT), orcmsd_globals.parent_uri);
+                if (orcmsd_globals.debug_daemons) {
+                    opal_output(0, orcm_debug_output,
+                                        "hnp_recv: send VM Ready to the originator %s:%s\n", 
+                                        ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT), 
+                                        orcmsd_globals.parent_uri);
+                }
                 if ((rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_PARENT, 
                     vmready_msg, ORTE_RML_TAG_TOOL,
                     orte_rml_send_callback, NULL)) < 0) {
@@ -657,7 +629,12 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
                     OBJ_RELEASE(vmready_msg);
                     return;
                 }
-                printf("hnp_recv: After send VM Ready to the originator %s:%s\n", ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT), orcmsd_globals.parent_uri);
+                if (orcmsd_globals.debug_daemons) {
+                    opal_output(0, orcm_debug_output,
+                                        "hnp_recv: after sending VM Ready to the originator %s:%s\n", 
+                                        ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT), 
+                                        orcmsd_globals.parent_uri);
+                }
             }
         }
         idx = 1;
@@ -699,7 +676,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
     }
 
     cmd_str = get_orcmsd_comm_cmd_str(command);
-    OPAL_OUTPUT_VERBOSE((1, orte_debug_output,
+    OPAL_OUTPUT_VERBOSE((1, orcm_debug_output,
                          "%s orted:comm:process_commands() Processing Command: %s",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), cmd_str));
     free(cmd_str);
@@ -779,7 +756,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
 
         /* Convert SIGTSTP to SIGSTOP so we can suspend a.out */
         if (SIGTSTP == signal) {
-            if (orte_debug_daemons_flag) {
+            if (orcmsd_globals.debug_daemons) {
                 opal_output(0, "%s orted_cmd: converted SIGTSTP to SIGSTOP before delivering",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
             }
@@ -791,7 +768,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
             jdata->state &= ~ORTE_JOB_STATE_SUSPENDED;
         }
 
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_cmd: received signal_local_procs, delivering signal %d",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         signal);
@@ -805,13 +782,13 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
 
         /****    ADD_LOCAL_PROCS   ****/
     case ORTE_DAEMON_ADD_LOCAL_PROCS:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_cmd: received add_local_procs",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         }
         /* launch the processes */
         if (ORTE_SUCCESS != (ret = orte_odls.launch_local_procs(buffer))) {
-            OPAL_OUTPUT_VERBOSE((1, orte_debug_output,
+            OPAL_OUTPUT_VERBOSE((1, orcm_debug_output,
                                  "%s orted:comm:add_procs failed to launch on error %s",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ORTE_ERROR_NAME(ret)));
         }
@@ -819,7 +796,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
            
         /****    DELIVER A MESSAGE TO THE LOCAL PROCS    ****/
     case ORTE_DAEMON_MESSAGE_LOCAL_PROCS:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_cmd: received message_local_procs",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         }
@@ -838,7 +815,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
             goto CLEANUP;
         }
                 
-        OPAL_OUTPUT_VERBOSE((1, orte_debug_output,
+        OPAL_OUTPUT_VERBOSE((1, orcm_debug_output,
                              "%s orted:comm:message_local_procs delivering message to job %s tag %d",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              ORTE_JOBID_PRINT(job), (int)target_tag));
@@ -900,7 +877,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
     
         /****    EXIT COMMAND    ****/
     case ORTE_DAEMON_EXIT_CMD:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_cmd: received exit cmd",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         }
@@ -918,7 +895,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
                 }
             }
             /* call our appropriate exit procedure */
-            if (orte_debug_daemons_flag) {
+            if (orcmsd_globals.debug_daemons) {
                 opal_output(0, "%s orted_cmd: all routes and children gone - exiting",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
             }
@@ -928,7 +905,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
         break;
             
     case ORTE_DAEMON_HALT_VM_CMD:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_cmd: received halt_vm cmd",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         }
@@ -947,7 +924,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
                     }
                 }
                 /* call our appropriate exit procedure */
-                if (orte_debug_daemons_flag) {
+                if (orcmsd_globals.debug_daemons) {
                     opal_output(0, "%s orted_cmd: all routes and children gone - exiting",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
                 }
@@ -961,7 +938,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
 
         /****    SPAWN JOB COMMAND    ****/
     case ORTE_DAEMON_SPAWN_JOB_CMD:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_cmd: received spawn job",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         }
@@ -1000,7 +977,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
             
         /****     CONTACT QUERY COMMAND    ****/
     case ORTE_DAEMON_CONTACT_QUERY_CMD:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_cmd: received contact query",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         }
@@ -1030,7 +1007,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
             
         /****     REPORT_JOB_INFO_CMD COMMAND    ****/
     case ORTE_DAEMON_REPORT_JOB_INFO_CMD:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_cmd: received job info query",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         }
@@ -1129,7 +1106,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
             
         /****     REPORT_NODE_INFO_CMD COMMAND    ****/
     case ORTE_DAEMON_REPORT_NODE_INFO_CMD:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_cmd: received node info query",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         }
@@ -1224,7 +1201,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
             
         /****     REPORT_PROC_INFO_CMD COMMAND    ****/
     case ORTE_DAEMON_REPORT_PROC_INFO_CMD:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_cmd: received proc info query",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         }
@@ -1374,7 +1351,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
             
         /****    SYNC FROM LOCAL PROC    ****/
     case ORTE_DAEMON_SYNC_BY_PROC:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_recv: received sync from local proc %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         ORTE_NAME_PRINT(sender));
@@ -1386,7 +1363,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
         break;
             
     case ORTE_DAEMON_SYNC_WANT_NIDMAP:
-        if (orte_debug_daemons_flag) {
+        if (orcmsd_globals.debug_daemons) {
             opal_output(0, "%s orted_recv: received sync+nidmap from local proc %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         ORTE_NAME_PRINT(sender));

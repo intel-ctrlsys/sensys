@@ -60,12 +60,18 @@ typedef int (*orcm_scd_base_module_init_fn_t)(void);
 /* finalize the selected module */
 typedef void (*orcm_scd_base_module_finalize_fn_t)(void);
 
+/* API functions */
+typedef int (*orcm_scd_API_module_launch_fn_t)(orcm_session_t *session);
+typedef int (*orcm_scd_API_module_cancel_fn_t)(orcm_session_id_t sessionid);
+
 /*
  * Ver 1.0
  */
 typedef struct {
-    orcm_scd_base_module_init_fn_t        init;
-    orcm_scd_base_module_finalize_fn_t    finalize;
+    orcm_scd_base_module_init_fn_t     init;
+    orcm_scd_base_module_finalize_fn_t finalize;
+    orcm_scd_API_module_launch_fn_t    launch;
+    orcm_scd_API_module_cancel_fn_t    cancel;
 } orcm_scd_base_module_t;
 
 /*
@@ -84,7 +90,7 @@ typedef void (*orcm_scd_API_module_activate_rm_session_state_fn_t)(orcm_session_
 
 typedef struct {
     orcm_scd_API_module_activate_scd_session_state_fn_t activate_scd_session_state;
-    orcm_scd_API_module_activate_rm_session_state_fn_t activate_rm_session_state;
+    orcm_scd_API_module_activate_rm_session_state_fn_t  activate_rm_session_state;
 } orcm_scd_API_module_t;
 
 /*

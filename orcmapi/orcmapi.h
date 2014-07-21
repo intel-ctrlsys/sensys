@@ -21,7 +21,7 @@ typedef struct {
  * API Functions
  ******************/
 /* Initialize the ORCMAPI library */
-ORCM_DECLSPEC void orcmapi_init(void *ptr);
+ORCM_DECLSPEC int orcmapi_init(void);
 
 /* Finalize the ORCMAPI library */
 ORCM_DECLSPEC void orcmapi_finalize(void);

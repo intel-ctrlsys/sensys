@@ -36,6 +36,7 @@
 #ifdef HAVE_DIRENT_H
 #include <dirent.h>
 #endif  /* HAVE_DIRENT_H */
+#include <pthread.h>
 
 #include "opal/mca/mca.h"
 #include "opal/mca/base/base.h"
@@ -74,7 +75,10 @@ static opal_cmd_line_init_t cmd_line_opts[] = {
       NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
 };
 
-void orcmapi_init(void *ptr)
+static void* progress_thread(void *ptr);
+pthread_t orcmapi_progress_thread;
+
+int orcmapi_init(void)
 {
     int ret = 0;
     opal_cmd_line_t *cmd_line = NULL;
@@ -100,19 +104,29 @@ void orcmapi_init(void *ptr)
         fprintf(stderr, "Failed to init: error %d\n", ret);
         exit(1);
     }
-    
+
+    pthread_create(&orcmapi_progress_thread, NULL, &progress_thread, (void *)NULL);
+    return ret;
+}
+
+void* progress_thread(void *ptr)
+{
     while (orte_event_base_active) {
         opal_event_loop(orte_event_base, OPAL_EVLOOP_ONCE);
     }
 
     orcm_finalize();
-    return;
+    return ORCM_SUCCESS;
 }
 
 void orcmapi_finalize(void)
 {
+    void *res;
+
     ORTE_UPDATE_EXIT_STATUS(ORTE_ERR_INTERUPTED);
     ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_FORCED_EXIT);
+
+    pthread_join(orcmapi_progress_thread, &res);
 
     return;
 }
@@ -144,7 +158,7 @@ int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count)
             i++;
         }
     }
-    
+
     *count = num_nodes;
 
     return ORCM_SUCCESS;
@@ -199,6 +213,18 @@ int orcmapi_launch_session(int id, int min_nodes, char *nodes, char *user)
     alloc->caller_uid = pwd->pw_uid;
     alloc->caller_gid = pwd->pw_gid;
     alloc->interactive = true;
+    alloc->parent_uri = orte_rml.get_contact_info();
+    alloc->parent_name = ORTE_NAME_PRINT(ORTE_PROC_MY_NAME);
+
+    /*rest of alloc*/
+    alloc->account = strdup("");
+    alloc->name = strdup("");
+    alloc->exclusive = true;
+    alloc->interactive = true;
+    alloc->hnpname = strdup("");
+    alloc->hnpuri = strdup("");
+    alloc->nodefile = strdup("");
+    alloc->queues = strdup("");
 
     rc = orcm_scd_base.module->launch(session);
     free(pwd);

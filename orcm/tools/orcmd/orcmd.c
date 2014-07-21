@@ -225,7 +225,6 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
     int hnp = 0;
     int port_num = HNP_PORT_NUM;
     char *hnp_uri;
-    char *parent_uri;
     char *hnp_ip;
     struct hostent *hnp_hostent = NULL;
     struct in_addr **addr_list;

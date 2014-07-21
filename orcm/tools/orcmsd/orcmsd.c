@@ -617,8 +617,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
                 }
 
                 if (orcmsd_globals.debug_daemons) {
-                    opal_output(0, orcm_debug_output,
-                                        "hnp_recv: send VM Ready to the originator %s:%s\n", 
+                    opal_output(0, "hnp_recv: send VM Ready to the originator %s:%s\n", 
                                         ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT), 
                                         orcmsd_globals.parent_uri);
                 }
@@ -630,8 +629,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
                     return;
                 }
                 if (orcmsd_globals.debug_daemons) {
-                    opal_output(0, orcm_debug_output,
-                                        "hnp_recv: after sending VM Ready to the originator %s:%s\n", 
+                    opal_output(0, "hnp_recv: after sending VM Ready to the originator %s:%s\n", 
                                         ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT), 
                                         orcmsd_globals.parent_uri);
                 }

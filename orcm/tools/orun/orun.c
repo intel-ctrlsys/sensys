@@ -603,7 +603,6 @@ int orun(int argc, char *argv[])
     char *param;
     orte_job_t *jdata=NULL;
     orcm_alloc_t alloc;
-    long sessionid;
     orcm_rm_cmd_flag_t command;
     char *hnp_uri;
     orte_rml_recv_cb_t xbuffer;
@@ -833,7 +832,6 @@ int orun(int argc, char *argv[])
             ORTE_ERROR_LOG(rc);
             goto DONE;
         }
-        printf("orte_process_myhnp %li %s\n", sessionid, orte_process_info.my_hnp_uri);
 
     }
 

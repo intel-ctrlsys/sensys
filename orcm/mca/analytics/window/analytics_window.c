@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * $COPYRIGHT$
+ * 
+ * Additional copyrights may follow
+ * 
+ * $HEADER$
+ */
+
+#include "orcm_config.h"
+#include "orcm/constants.h"
+
+#include <stdio.h>
+#include <ctype.h>
+
+#include "opal/util/output.h"
+
+#include "orte/util/name_fns.h"
+#include "orte/runtime/orte_globals.h"
+
+#include "orcm/mca/analytics/base/base.h"
+#include "analytics_window.h"
+
+static int init(void);
+static void finalize(void);
+
+orcm_analytics_base_module_t orcm_analytics_window_module = {
+    init,
+    finalize
+};
+
+static int init(void)
+{
+    return ORCM_SUCCESS;
+}
+
+static void finalize(void)
+{
+    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                         "%s analytics:window:finalize",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+}

@@ -94,3 +94,5 @@ orcm/tools/octl/octl
 orcm/tools/octl/octl.1
 orcm/tools/orcmsd/orcmsd
 orcm/tools/orcmsd/orcmsd.1
+orcmapi/version.h
+scon/version.h

@@ -57,25 +57,10 @@ orcm_sensor_base_module_t orcm_sensor_test_module = {
     test_log
 };
 
-typedef struct {
-    opal_list_item_t super;
-} test_tracker_t;
-static void ctr_con(test_tracker_t *trk)
-{
-}
-static void ctr_des(test_tracker_t *trk)
-{
-}
-OBJ_CLASS_INSTANCE(test_tracker_t,
-                   opal_list_item_t,
-                   ctr_con, ctr_des);
-
 static opal_list_t tracking;
 
 static int init(void)
 {
-    test_tracker_t *trk;
-
     /* always construct this so we don't segfault in finalize */
     OBJ_CONSTRUCT(&tracking, opal_list_t);
 
@@ -108,11 +93,11 @@ static void stop(orte_jobid_t jobid)
 static void test_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
-    test_tracker_t *trk, *nxt;
     opal_buffer_t data, *bptr;
     time_t now;
     char time_str[40];
     char *timestamp_str;
+    char *temp;
     bool packed;
     struct tm *sample_time;
 
@@ -158,9 +143,6 @@ static void test_sample(orcm_sensor_sampler_t *sampler)
     }
     free(timestamp_str);
 
-    OPAL_LIST_FOREACH_SAFE(trk, nxt, &tracking, test_tracker_t) {
-    }
-
     /* xfer the data for transmission */
     if (packed) {
         bptr = &data;
@@ -179,14 +161,6 @@ static void test_log(opal_buffer_t *sample)
     char *sampletime;
     int rc;
     int32_t n;
-    opal_list_t *vals;
-    opal_value_t *kv;
-    float fval;
-    int i;
-
-    if (!log_enabled) {
-        return;
-    }
 
     /* unpack the host this came from */
     n=1;
@@ -207,7 +181,6 @@ static void test_log(opal_buffer_t *sample)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname);
 
- cleanup:
     if (NULL != hostname) {
         free(hostname);
     }

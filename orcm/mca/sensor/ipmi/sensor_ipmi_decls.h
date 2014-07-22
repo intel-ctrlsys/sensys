@@ -25,6 +25,9 @@
 // The total number of IPMI Calls that need to be called for each node
 #define TOTAL_CALLS_PER_NODE        2
 
+
+unsigned char disable_ipmi;
+
 // GET_DEVICE_ID
 typedef struct {
     uchar   dev_id;

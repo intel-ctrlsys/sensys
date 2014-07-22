@@ -33,7 +33,6 @@ static void stop(orte_jobid_t job);
 static void ipmi_sample(orcm_sensor_sampler_t *sampler);
 static void ipmi_log(opal_buffer_t *buf);
 int count_log = 0;
-unsigned char disable_ipmi = 0;
 /* @VINFIX: Change this 'link' in a linked-list to OPAL_LIST */
 orcm_sensor_hosts_t *active_hosts;
 
@@ -61,6 +60,7 @@ static int init(void)
     /* int count = TOTAL_NODES;
     *  struct ipmi_properties *cur_node;
     */
+    disable_ipmi = 0;
 
     /* opal_output(0,"IPMI Init - Create the linked list for all nodes"); */
 
@@ -137,19 +137,22 @@ int get_bmc_cred(orcm_sensor_hosts_t *host)
             sprintf(bmc_ip,"%d.%d.%d.%d",rdata[1], rdata[2], rdata[3], rdata[4]);
             opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "RETRIEVED BMC's IP ADDRESS: %s",bmc_ip);
+            strncpy(host->bmc_ipaddr,bmc_ip,strlen(bmc_ip)+1);
+            strncpy(host->username,"CUR_USERNAME",strlen("CUR_USERNAME")+1);
+            strncpy(host->password,"CUR_PASSWORD",strlen("CUR_PASSWORD")+1);
+            return ORCM_SUCCESS;
+
             break;
+
         } else {
             opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "Received a non-zero ccode: %d, relen:%d", ccode, rlen);
         }
         rlen=20;
     }
+    return ORCM_ERROR;
      
 
-    strncpy(host->bmc_ipaddr,bmc_ip,strlen(bmc_ip)+1);
-    strncpy(host->username,"CUR_USERNAME",strlen("CUR_USERNAME")+1);
-    strncpy(host->password,"CUR_PASSWORD",strlen("CUR_PASSWORD")+1);
-    return ORCM_SUCCESS;
 }
 
 /* int found (char* nodename)

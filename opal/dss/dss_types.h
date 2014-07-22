@@ -98,6 +98,88 @@ typedef uint64_t opal_identifier_t;
 #define OPAL_VALUE2_GREATER  -1
 #define OPAL_EQUAL            0
 
+/* List types for opal_value_t, needs number of elements and a pointer */
+/* float array object */
+typedef struct {
+    size_t size;
+    float *data;
+} opal_float_array_t;
+/* double array object */
+typedef struct {
+    size_t size;
+    double *data;
+} opal_double_array_t;
+/* string array object */
+typedef struct {
+    size_t size;
+    char **data;
+} opal_string_array_t;
+/* bool array object */
+typedef struct {
+    size_t size;
+    bool *data;
+} opal_bool_array_t;
+/* size array object */
+typedef struct {
+    size_t size;
+    size_t *data;
+} opal_size_array_t;
+/* opal byte object array object */
+typedef struct {
+    size_t size;
+    opal_byte_object_t *data;
+} opal_byte_object_array_t;
+/* int array object */
+typedef struct {
+    size_t size;
+    int *data;
+} opal_int_array_t;
+/* int8 array object */
+typedef struct {
+    size_t size;
+    int8_t *data;
+} opal_int8_array_t;
+/* int16 array object */
+typedef struct {
+    size_t size;
+    int16_t *data;
+} opal_int16_array_t;
+/* int32 array object */
+typedef struct {
+    size_t size;
+    int32_t *data;
+} opal_int32_array_t;
+/* int64 array object */
+typedef struct {
+    size_t size;
+    int64_t *data;
+} opal_int64_array_t;
+/* uint array object */
+typedef struct {
+    size_t size;
+    unsigned int *data;
+} opal_uint_array_t;
+/* uint8 array object */
+typedef struct {
+    size_t size;
+    uint8_t *data;
+} opal_uint8_array_t;
+/* uint16 array object */
+typedef struct {
+    size_t size;
+    uint16_t *data;
+} opal_uint16_array_t;
+/* uint32 array object */
+typedef struct {
+    size_t size;
+    uint32_t *data;
+} opal_uint32_array_t;
+/* uint64 array object */
+typedef struct {
+    size_t size;
+    uint64_t *data;
+} opal_uint64_array_t;
+
 /* Data value object */
 typedef struct {
     opal_list_item_t super;             /* required for this to be on lists */
@@ -123,6 +205,23 @@ typedef struct {
         float fval;
         double dval;
         struct timeval tv;
+        opal_bool_array_t flag_array;
+        opal_unint8_array_t byte_array;
+        opal_string_array_t string_array;
+        opal_size_array_t size_array;
+        opal_int_array_t integer_array;
+        opal_int8_array_t int8_array;
+        opal_int16_array_t int16_array;
+        opal_int32_array_t int32_array;
+        opal_int64_array_t int64_array;
+        opal_uint_array_t uint_array;
+        opal_uint8_array_t uint8_array;
+        opal_uint16_array_t uint16_array;
+        opal_uint32_array_t uint32_array;
+        opal_uint64_array_t uint64_array;
+        opal_byte_object_array_t bo_array;
+        opal_float_array_t fval_array;
+        opal_double_array_t dval_array;
         void *ptr;  // never packed or passed anywhere
     } data;
 } opal_value_t;

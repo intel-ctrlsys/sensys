@@ -206,7 +206,7 @@ typedef struct {
         double dval;
         struct timeval tv;
         opal_bool_array_t flag_array;
-        opal_unint8_array_t byte_array;
+        opal_uint8_array_t byte_array;
         opal_string_array_t string_array;
         opal_size_array_t size_array;
         opal_int_array_t integer_array;

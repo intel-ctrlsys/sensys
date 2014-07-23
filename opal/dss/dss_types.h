@@ -90,8 +90,25 @@ typedef uint64_t opal_identifier_t;
 #define    OPAL_VALUE               (opal_data_type_t)   26 /**< opal value structure */
 #define    OPAL_BUFFER              (opal_data_type_t)   27 /**< pack the remaining contents of a buffer as an object */
 #define    OPAL_PTR                 (opal_data_type_t)   28 /**< pointer to void* */
-
+    /* OPAL Dynamic */
 #define    OPAL_DSS_ID_DYNAMIC      (opal_data_type_t)   30
+    /* OPAL Array types */
+#define    OPAL_FLOAT_ARRAY         (opal_data_type_t)   31
+#define    OPAL_DOUBLE_ARRAY        (opal_data_type_t)   32
+#define    OPAL_STRING_ARRAY        (opal_data_type_t)   33
+#define    OPAL_BOOL_ARRAY          (opal_data_type_t)   34
+#define    OPAL_SIZE_ARRAY          (opal_data_type_t)   35
+#define    OPAL_BYTE_ARRAY          (opal_data_type_t)   36
+#define    OPAL_INT_ARRAY           (opal_data_type_t)   37
+#define    OPAL_INT8_ARRAY          (opal_data_type_t)   38
+#define    OPAL_INT16_ARRAY         (opal_data_type_t)   39
+#define    OPAL_INT32_ARRAY         (opal_data_type_t)   40
+#define    OPAL_INT64_ARRAY         (opal_data_type_t)   41
+#define    OPAL_UINT_ARRAY          (opal_data_type_t)   42
+#define    OPAL_UINT8_ARRAY         (opal_data_type_t)   43
+#define    OPAL_UINT16_ARRAY        (opal_data_type_t)   44
+#define    OPAL_UINT32_ARRAY        (opal_data_type_t)   45
+#define    OPAL_UINT64_ARRAY        (opal_data_type_t)   46
 
 /* define the results values for comparisons so we can change them in only one place */
 #define OPAL_VALUE1_GREATER  +1

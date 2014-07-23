@@ -462,6 +462,14 @@ int orun(int argc, char *argv[])
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, &xbuffer);
     
+    if (!my_hnp_uri && (false == orun_globals.alloc_request)) {
+        orte_show_help("help-orun.txt", "orun:allocation-not-specified",
+                       false, orte_basename, orte_basename);
+        rc = ORCM_ERR_BAD_PARAM;
+        ORTE_ERROR_LOG(rc);
+        goto DONE;
+    }
+
     if(my_hnp_uri) {
         /* set the contact info to the hash table */
         orte_rml.set_contact_info(my_hnp_uri);
@@ -1110,7 +1118,7 @@ static int create_app(int argc, char* argv[],
      * Get mca parameters so we can pass them to the daemons.
      * Use the count determined above to make sure we do not go past
      * the executable name. Example:
-     *   mpirun -np 2 -mca foo bar ./my-app -mca bip bop
+     *   orun -np 2 -mca foo bar ./my-app -mca bip bop
      * We want to pick up '-mca foo bar' but not '-mca bip bop'
      */
     if (ORTE_SUCCESS != (rc = capture_cmd_line_params(argc, count, argv))) {

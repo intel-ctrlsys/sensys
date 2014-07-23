@@ -36,6 +36,10 @@ Report bugs to %s
 %s (%s) %s
 
 Report bugs to %s
+[orun:allocation-not-specified]
+No allocation was specified on the %s command line.
+
+Aborting.
 [orun:allocate-resources]
 %s was unable to allocate enough resources to start your application.
 This might be a transient error (too many nodes in the cluster were

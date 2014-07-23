@@ -21,8 +21,8 @@
 
 #include "orte/mca/errmgr/errmgr.h"
 
-#include "opal/runtime/opal_progress_threads.h"
 #include "orcm/mca/analytics/base/base.h"
+#include "orcm/mca/analytics/base/analytics_private.h"
 
 
 /*
@@ -41,6 +41,8 @@ orcm_analytics_base_t orcm_analytics_base;
 
 static int orcm_analytics_base_close(void)
 {
+    orcm_analytics_base_comm_stop();
+
     /* deconstruct the base objects */
     OPAL_LIST_DESTRUCT(&orcm_analytics_base.workflows);
 
@@ -54,17 +56,29 @@ static int orcm_analytics_base_close(void)
  */
 static int orcm_analytics_base_open(mca_base_open_flag_t flags)
 {
+    int rc;
+    
     /* setup the base objects */
     OBJ_CONSTRUCT(&orcm_analytics_base.workflows, opal_list_t);
 
-    return mca_base_framework_components_open(&orcm_analytics_base_framework,
-                                              flags);
+    if (OPAL_SUCCESS !=
+        (rc = mca_base_framework_components_open(&orcm_analytics_base_framework,
+                                                 flags))) {
+        return rc;
+    }
+    
+    /* start the receive */
+    if (ORCM_SUCCESS != (rc = orcm_analytics_base_comm_start())) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    
+    return rc;
 }
 
 MCA_BASE_FRAMEWORK_DECLARE(orcm, analytics, NULL, NULL,
                            orcm_analytics_base_open, orcm_analytics_base_close,
                            mca_analytics_base_static_components, 0);
-
 
 /****    INSTANCE CLASSES    ****/
 static void wkstep_con(orcm_workflow_step_t *p)

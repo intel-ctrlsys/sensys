@@ -26,7 +26,7 @@
 #endif
 
 #include "opal/class/opal_object.h"
-#include "opal/class/opal_pointer_array.h"
+#include "opal/class/opal_value_array.h"
 #include "opal/class/opal_list.h"
 #include "opal/mca/event/event.h"
 
@@ -45,13 +45,20 @@ OBJ_CLASS_DECLARATION(orcm_workflow_step_t);
 
 /* define a workflow object */
 typedef struct {
-    opal_object_t super;
+    opal_list_item_t super;
     char *name;
     int workflow_id;
     opal_list_t steps;
     opal_event_base_t *ev_base;
 } orcm_workflow_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_t);
+
+/* define a few commands */
+typedef uint8_t orcm_analytics_cmd_flag_t;
+#define ORCM_ANALYTICS_CMD_T OPAL_UINT8
+
+#define ORCM_ANALYTICS_WORKFLOW_CREATE    1
+#define ORCM_ANALYTICS_WORKFLOW_DELETE    2
 
 END_C_DECLS
 

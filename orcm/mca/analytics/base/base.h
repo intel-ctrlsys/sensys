@@ -31,34 +31,17 @@ BEGIN_C_DECLS
  * MCA framework
  */
 ORCM_DECLSPEC extern mca_base_framework_t orcm_analytics_base_framework;
+
 /*
- * Select an available component.
+ * select for workflow
  */
-ORCM_DECLSPEC int orcm_analytics_base_select(void);
+ORCM_DECLSPEC int orcm_analytics_base_select_workflow(orcm_workflow_t *workflow);
 
 typedef struct {
-    /* define an event base strictly for analytics - this
-     * allows analytics workflows to be run without interfering with
-     * any other daemon functions
-     */
-    opal_event_base_t *ev_base;
-    /* list of active analytics plugins */
-    opal_list_t modules;
-    /* buffer to hold analytics results */
-    opal_buffer_t bucket;
+    /* list of active workflows */
+    opal_list_t workflows;
 } orcm_analytics_base_t;
 ORCM_DECLSPEC extern orcm_analytics_base_t orcm_analytics_base;
-
-/**
- * Select an analytics component / module
- */
-typedef struct {
-    opal_list_item_t super;
-    int pri;
-    orcm_analytics_base_module_t *module;
-    mca_base_component_t *component;
-} orcm_analytics_active_module_t;
-OBJ_CLASS_DECLARATION(orcm_analytics_active_module_t);
 
 /* base code stubs */
 

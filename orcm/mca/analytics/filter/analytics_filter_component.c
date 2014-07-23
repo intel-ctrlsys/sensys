@@ -13,6 +13,9 @@
 
 #include "opal/mca/base/mca_base_var.h"
 
+#include "orte/mca/errmgr/errmgr.h"
+
+#include "orcm/runtime/orcm_globals.h"
 #include "analytics_filter.h"
 
 /*
@@ -24,9 +27,8 @@ const char *orcm_analytics_filter_component_version_string =
 /*
  * Local functionality
  */
-static int analytics_filter_open(void);
-static int analytics_filter_close(void);
-static int analytics_filter_component_query(mca_base_module_t **module, int *priority);
+static bool component_avail(void);
+static orcm_analytics_base_module_t *component_create(void);
 
 /*
  * Instantiate the public struct with all of our public information
@@ -42,30 +44,43 @@ orcm_analytics_base_component_t mca_analytics_filter_component = {
         ORCM_RELEASE_VERSION,
         
         /* Component open and close functions */
-        analytics_filter_open,
-        analytics_filter_close,
-        analytics_filter_component_query,
+        NULL,
+        NULL,
+        NULL,
         NULL
     },
     {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },
+    1,
+    component_avail,
+    component_create,
+    NULL
 };
 
-static int analytics_filter_open(void)
+static bool component_avail(void)
 {
-    return ORCM_SUCCESS;
+    /* we are always available */
+    return true;
 }
 
-static int analytics_filter_close(void)
+static orcm_analytics_base_module_t *component_create(void)
 {
-    return ORCM_SUCCESS;
-}
-
-static int analytics_filter_component_query(mca_base_module_t **module, int *priority)
-{
-    *priority = 5;
-    *module = (mca_base_module_t *)&orcm_analytics_filter_module;
-    return ORCM_SUCCESS;
+    mca_analytics_filter_module_t *mod;
+    
+    mod = (mca_analytics_filter_module_t*)malloc(sizeof(mca_analytics_filter_module_t));
+    if (NULL == mod) {
+        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+        return NULL;
+    }
+    /* copy the APIs across */
+    memcpy(mod, &orcm_analytics_filter_module.api, sizeof(orcm_analytics_base_module_t));
+    /* let the module init itself */
+    if (OPAL_SUCCESS != mod->api.init((struct orcm_analytics_base_module_t*)mod)) {
+        /* release the module and return the error */
+        free(mod);
+        return NULL;
+    }
+    return (orcm_analytics_base_module_t*)mod;
 }

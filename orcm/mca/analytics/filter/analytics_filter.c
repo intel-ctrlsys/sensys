@@ -21,20 +21,22 @@
 #include "orcm/mca/analytics/base/base.h"
 #include "analytics_filter.h"
 
-static int init(void);
-static void finalize(void);
+static int init(struct orcm_analytics_base_module_t *imod);
+static void finalize(struct orcm_analytics_base_module_t *imod);
 
-orcm_analytics_base_module_t orcm_analytics_filter_module = {
-    init,
-    finalize
+mca_analytics_filter_module_t orcm_analytics_filter_module = {
+    {
+        init,
+        finalize
+    }
 };
 
-static int init(void)
+static int init(struct orcm_analytics_base_module_t *imod)
 {
     return ORCM_SUCCESS;
 }
 
-static void finalize(void)
+static void finalize(struct orcm_analytics_base_module_t *imod)
 {
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                          "%s analytics:filter:finalize",

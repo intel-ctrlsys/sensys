@@ -30,32 +30,44 @@
 #include "orcm/mca/analytics/base/base.h"
 
 
-static bool selected = false;
+static int workflow_id = 0;
 
 /**
  * Function for weeding out analytics components that don't want to run.
  *
  * Call the init function on all available components to find out if
- * they want to run.  Select all components that don't fail.  Failing
- * components will be closed and unloaded.  The selected modules will
- * be returned to the caller in a opal_list_t.
+ * they want to run.  Select all components that are requested and that don't 
+ * fail.  Failing components will be closed and unloaded.  
+ * The selected modules will be stored in workflow's opal_list_t.
  */
-int orcm_analytics_base_select(void)
+
+/* this will look odd, but we need to intialize each module for each step
+ * separately because each instatiation of a module will potentially
+ * have different attributes that need to be intialized as well as 
+ * workflows will be running in simultaneous threads so we need
+ * separate modules between threads as well
+ */
+
+int orcm_analytics_base_select_workflow(orcm_workflow_t *workflow)
 {
     mca_base_component_list_item_t *cli = NULL;
     mca_base_component_t *component = NULL;
     mca_base_module_t *module = NULL;
     orcm_analytics_base_module_t *nmodule;
-    orcm_analytics_active_module_t *newmodule, *mod;
     int rc, priority;
-    bool inserted;
 
-    if (selected) {
-        /* ensure we don't do this twice */
-        return ORTE_SUCCESS;
-    }
-    selected = true;
-
+    workflow->workflow_id = workflow_id;
+    workflow_id++;
+    
+    /* Logic needs to be:
+     * For each module in ordered_list_of_modules
+     *   make sure the module is selectable
+     *   initialize with specified attributes
+     *   create a new workflow step
+     *   save module in workflow step
+     *   append workflow step to step list
+     */
+    
     /* Query all available components and ask if they have a module */
     OPAL_LIST_FOREACH(cli, &orcm_analytics_base_framework.framework_components, mca_base_component_list_item_t) {
         component = (mca_base_component_t *) cli->cli_component;
@@ -88,44 +100,8 @@ int orcm_analytics_base_select(void)
         nmodule = (orcm_analytics_base_module_t*) module;
 
         /* If we got a module, init it */
-        if (NULL != nmodule->init) {
-            if (ORCM_SUCCESS != nmodule->init()) {
-                opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
-                                    "mca:analytics:select: Skipping component [%s]. Init returned error",
-                                    component->mca_component_name );
-                continue;
-            }
-        }
+        /* component_create will init */
+     }
 
-        /* add to the list of selected modules */
-        newmodule = OBJ_NEW(orcm_analytics_active_module_t);
-        newmodule->pri = priority;
-        newmodule->module = nmodule;
-        newmodule->component = component;
-
-        /* maintain priority order */
-        inserted = false;
-        OPAL_LIST_FOREACH(mod, &orcm_analytics_base.modules, orcm_analytics_active_module_t) {
-            if (priority > mod->pri) {
-                opal_list_insert_pos(&orcm_analytics_base.modules,
-                                     (opal_list_item_t*)mod, &newmodule->super);
-                inserted = true;
-                break;
-            }
-        }
-        if (!inserted) {
-            /* must be lowest priority - add to end */
-            opal_list_append(&orcm_analytics_base.modules, &newmodule->super);
-        }
-    }
-
-    if (4 < opal_output_get_verbosity(orcm_analytics_base_framework.framework_output)) {
-        opal_output(0, "%s: Final analytics priorities", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        /* show the prioritized list */
-        OPAL_LIST_FOREACH(mod, &orcm_analytics_base.modules, orcm_analytics_active_module_t) {
-            opal_output(0, "\tAnalytics: %s Priority: %d", mod->component->mca_component_name, mod->pri);
-        }
-    }
-
-    return ORTE_SUCCESS;;
+    return ORTE_SUCCESS;
 }

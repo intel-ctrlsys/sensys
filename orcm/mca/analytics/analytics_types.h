@@ -37,7 +37,9 @@ BEGIN_C_DECLS
  * on the input */
 typedef struct {
     opal_list_item_t super;
+    opal_value_array_t attributes;
     char *analytic;
+    struct orcm_analytics_base_module_t *mod;
 } orcm_workflow_step_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_step_t);
 
@@ -45,6 +47,7 @@ OBJ_CLASS_DECLARATION(orcm_workflow_step_t);
 typedef struct {
     opal_object_t super;
     char *name;
+    int workflow_id;
     opal_list_t steps;
     opal_event_base_t *ev_base;
 } orcm_workflow_t;

@@ -41,16 +41,11 @@ orcm_analytics_base_t orcm_analytics_base;
 
 static int orcm_analytics_base_close(void)
 {
-    /* stop the thread */
-    if (NULL != orcm_analytics_base.ev_base) {
-        opal_stop_progress_thread("analytics", true);
-    }
-
     /* deconstruct the base objects */
-    OPAL_LIST_DESTRUCT(&orcm_analytics_base.modules);
-    OBJ_DESTRUCT(&orcm_analytics_base.bucket);
+    OPAL_LIST_DESTRUCT(&orcm_analytics_base.workflows);
 
-    return mca_base_framework_components_close(&orcm_analytics_base_framework, NULL);
+    return mca_base_framework_components_close(&orcm_analytics_base_framework,
+                                               NULL);
 }
 
 /**
@@ -59,23 +54,11 @@ static int orcm_analytics_base_close(void)
  */
 static int orcm_analytics_base_open(mca_base_open_flag_t flags)
 {
-    int rc;
-
     /* setup the base objects */
-    OBJ_CONSTRUCT(&orcm_analytics_base.modules, opal_list_t);
-    OBJ_CONSTRUCT(&orcm_analytics_base.bucket, opal_buffer_t);
-    orcm_analytics_base.ev_base = NULL;
+    OBJ_CONSTRUCT(&orcm_analytics_base.workflows, opal_list_t);
 
-    if (OPAL_SUCCESS != (rc = mca_base_framework_components_open(&orcm_analytics_base_framework, flags))) {
-        return rc;
-    }
-
-    /* create the event base and start the progress thread */
-    if (NULL == (orcm_analytics_base.ev_base = opal_start_progress_thread("analytics", true))) {
-        return ORCM_ERR_OUT_OF_RESOURCE;
-    }
-
-    return rc;
+    return mca_base_framework_components_open(&orcm_analytics_base_framework,
+                                              flags);
 }
 
 MCA_BASE_FRAMEWORK_DECLARE(orcm, analytics, NULL, NULL,
@@ -84,16 +67,14 @@ MCA_BASE_FRAMEWORK_DECLARE(orcm, analytics, NULL, NULL,
 
 
 /****    INSTANCE CLASSES    ****/
-OBJ_CLASS_INSTANCE(orcm_analytics_active_module_t,
-                   opal_list_item_t,
-                   NULL, NULL);
-
 static void wkstep_con(orcm_workflow_step_t *p)
 {
+    OBJ_CONSTRUCT(&p->attributes, opal_value_array_t);
     p->analytic = NULL;
 }
 static void wkstep_des(orcm_workflow_step_t *p)
 {
+    OBJ_DESTRUCT(&p->attributes);
     if (NULL != p->analytic) {
         free(p->analytic);
     }

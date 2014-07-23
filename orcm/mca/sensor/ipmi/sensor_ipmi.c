@@ -113,7 +113,7 @@ int get_bmc_cred(orcm_sensor_hosts_t *host)
     int rlen = 20;
     int ret = 0;
 
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "RETRIEVING LAN CREDENTIALS");
     strncpy(host->host_ipaddr,"CUR_HOST_IP",strlen("CUR_HOST_IP")+1);
 
@@ -121,7 +121,11 @@ int get_bmc_cred(orcm_sensor_hosts_t *host)
      *  KCS driver
      */
     memset(idata,0x00,4);
-    idata[1] = 0x03; /* Read IP Address */
+
+    /* Read IP Address - Ref Table 23-* LAN Config Parameters of 
+     * IPMI v2 Rev 1.1
+     */
+    idata[1] = GET_BMC_IP_CMD; 
     for(idata[0] = 0; idata[0]<16;idata[0]++)
     {
         ret = ipmi_cmd(GET_LAN_CONFIG, idata, 4, rdata, &rlen,&ccode, 0);
@@ -135,7 +139,7 @@ int get_bmc_cred(orcm_sensor_hosts_t *host)
         if(ccode == 0)
         {
             sprintf(bmc_ip,"%d.%d.%d.%d",rdata[1], rdata[2], rdata[3], rdata[4]);
-            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "RETRIEVED BMC's IP ADDRESS: %s",bmc_ip);
             strncpy(host->bmc_ipaddr,bmc_ip,strlen(bmc_ip)+1);
             strncpy(host->username,"CUR_USERNAME",strlen("CUR_USERNAME")+1);
@@ -145,7 +149,7 @@ int get_bmc_cred(orcm_sensor_hosts_t *host)
             break;
 
         } else {
-            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                         "Received a non-zero ccode: %d, relen:%d", ccode, rlen);
         }
         rlen=20;
@@ -162,7 +166,7 @@ int get_bmc_cred(orcm_sensor_hosts_t *host)
 int found(char *nodename)
 {
     orcm_sensor_hosts_t *top = active_hosts;
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Finding Node: %s", nodename);
     if(NULL == top)
     {
@@ -192,7 +196,7 @@ unsigned int counthosts()
         count++;
         top = top->next;
     }
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "FOUND HOSTS: %d", count);
     return count;
 }
@@ -200,7 +204,7 @@ unsigned int counthosts()
 
 int addhost(char *nodename, char *host_ip, char *bmc_ip)
 {
-    opal_output(0, "Adding New Host: %s - %s", nodename, bmc_ip);
+    opal_output(0, "Adding New Node: %s, with BMC IP: %s", nodename, bmc_ip);
     orcm_sensor_hosts_t *top;
     if (NULL == active_hosts)
     {
@@ -243,7 +247,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     }
     if(disable_ipmi == 1)
         return;
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+    opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
         "========================SAMPLE: %d===============================", count_log);
 
     /* prep the buffer to collect the data */
@@ -265,7 +269,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     cap.node.ciph = 3; /* Cipher suite No. 3 */
     if(count_log == 0)  // The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it.
     {
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "First Sample: Packing Credentials");
         /* pack the numerical identifier for number of nodes*/
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_count, 1, OPAL_INT))) {
@@ -306,7 +310,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             free(sample_str);
             return;
         }
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "Packing BMC IP: %s",sample_str);
         free(sample_str);
 
@@ -336,7 +340,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
     for(int i =0;i<sample_count;i++)
     {
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "Scanning metrics from node: %s",top->node_name);
         /* Clear all memory for the ipmi_capsule */
         memset(&(cap.prop), '\0', sizeof(cap.prop));
@@ -359,12 +363,8 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             strncpy(cap.node.host_ip, top->host_ipaddr, strlen(top->host_ipaddr)+1);
         }
         /* Running a sample for a Node */
-        if(ORCM_SUCCESS != (rc = ipmi_exec_call(&cap)))
-        {
-            continue;
-        }
-
-
+        ipmi_exec_call(&cap);
+        
         /*opal_output(0," *^*^*^* %s - %s - %s - %s - %s - %s", cap.node.bmc_ip
         *             , cap.prop.bmc_rev, cap.prop.ipmi_ver
         *             , cap.prop.sys_power_state, cap.prop.dev_power_state
@@ -383,7 +383,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
         asprintf(&timestamp_str, "%s", time_str);
 
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** TimeStamp: %s",timestamp_str);
         /* Pack the Sample Time - 2 */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
@@ -395,7 +395,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
  
         /* Pack the nodeName - 3 */
         sample_str = strdup(cap.node.name);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** NodeName: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -407,7 +407,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
         /* Pack the host_ip of each node - 4 */
         sample_str = strdup(cap.node.host_ip);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** HostIP: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -429,7 +429,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
         /*  Pack the BMC FW Rev  - 6 */
         sample_str = strdup(cap.prop.bmc_rev);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** bmcrev: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -441,7 +441,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
         /*  Pack the IPMI VER - 7 */
         sample_str = strdup(cap.prop.ipmi_ver);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** IPMIVER: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -453,7 +453,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
         /*  Pack the Manufacturer ID - 8 */
         sample_str = strdup(cap.prop.man_id);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** MANUF-ID: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -465,7 +465,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
         /*  Pack the System Power State - 9 */
         sample_str = strdup(cap.prop.sys_power_state);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** SYS_PSTATE: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -477,7 +477,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
         /*  Pack the Device Power State - 10 */
         sample_str = strdup(cap.prop.dev_power_state);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** DEV_PSTATE: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -488,7 +488,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         free(sample_str);
 
         /*  Pack the PS1 Power Usage - 11 */
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** PS1_USAGE: %f",cap.prop.ps1_usage);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &cap.prop.ps1_usage, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
@@ -497,7 +497,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /*  Pack the PS1 Temperature - 12 */
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** PS1_TEMP: %f",cap.prop.ps1_temp);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &cap.prop.ps1_temp, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
@@ -506,7 +506,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /*  Pack the Processor Fan 1 speed - 13 */
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** PROC_FAN_1: %f",cap.prop.fan1_cpu_rpm);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &cap.prop.fan1_cpu_rpm, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
@@ -515,7 +515,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /*  Pack the Processor Fan 2 speed - 14 */
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** PROC_FAN_2: %f",cap.prop.fan2_cpu_rpm);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &cap.prop.fan2_cpu_rpm, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
@@ -524,7 +524,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /*  Pack the System Fan 1 speed - 15 */
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** SYS_FAN_1: %f",cap.prop.fan1_sys_rpm);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &cap.prop.fan1_sys_rpm, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
@@ -533,7 +533,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /*  Pack the System Fan 2 speed - 16 */
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** SYS_FAN_2: %f",cap.prop.fan2_sys_rpm);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &cap.prop.fan2_sys_rpm, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
@@ -555,10 +555,10 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
     OBJ_DESTRUCT(&data);
     last_sample = now;
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Total nodes sampled: %d",int_count);
     /* this is currently a no-op */
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "IPMI sensors just got implemented! ----------- ;)");
 }
 
@@ -586,10 +586,10 @@ static void ipmi_log(opal_buffer_t *sample)
     }
     if(disable_ipmi == 1)
         return;
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+    opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
         "----------------------LOG: %d----------------------------", count_log);
     count_log++;
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Count Log: %d", count_log);
 
     /* Unpack the sample_count identifer */
@@ -621,7 +621,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
                 return;
             }
-            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked host_ip(3a): %s",hostname);
             strncpy(hostip,hostname,strlen(hostname)+1);
             free(hostname);
@@ -636,7 +636,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
                 return;
             }
-            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked BMC_IP(4a): %s",hostname);
             strncpy(bmcip,hostname,strlen(hostname)+1);
             
@@ -655,11 +655,11 @@ static void ipmi_log(opal_buffer_t *sample)
             }
             return;
         } else {
-            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                 "IPMI_LOG -> Node Found; Logging metrics");
         }
     }
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Total Samples to be unpacked: %d", sample_count);
 
     /* START UNPACKING THE DATA and Store it in a opal_list_t item. */
@@ -682,7 +682,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->type = OPAL_STRING;
         kv->data.string = strdup(sampletime);
         opal_list_append(vals, &kv->super);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked cTime: %s", sampletime);
         free(sampletime);
 
@@ -698,7 +698,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->type = OPAL_STRING;
         kv->data.string = strdup(hostname);
         opal_list_append(vals, &kv->super);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked NodeName: %s", hostname);
         strncpy(nodename,hostname,strlen(hostname)+1);
         free(hostname);
@@ -718,7 +718,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->type = OPAL_STRING;
         kv->data.string = strdup(hostname);
         opal_list_append(vals, &kv->super);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked host_ip: %s", hostname);
         free(hostname);
 
@@ -733,7 +733,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->type = OPAL_STRING;
         kv->data.string = strdup(hostname);
         opal_list_append(vals, &kv->super);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked bmcip: %s", hostname);
         free(hostname);
 
@@ -748,7 +748,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->type = OPAL_STRING;
         kv->data.string = strdup(sample_item);
         opal_list_append(vals, &kv->super);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked bmcfwrev: %s", sample_item);
         free(sample_item);
 
@@ -763,7 +763,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->type = OPAL_STRING;
         kv->data.string = strdup(sample_item);
         opal_list_append(vals, &kv->super);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked ipmiver: %s", sample_item);
         free(sample_item);
 
@@ -778,7 +778,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->type = OPAL_STRING;
         kv->data.string = strdup(sample_item);
         opal_list_append(vals, &kv->super);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked MANUF-ID: %s", sample_item);
         free(sample_item);
 
@@ -806,7 +806,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->type = OPAL_STRING;
         kv->data.string = strdup(sample_item);
         opal_list_append(vals, &kv->super);
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked DEV_PSTATE: %s", sample_item);
         free(sample_item);
 
@@ -820,7 +820,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->key = strdup("ps1_usage");
         kv->type = OPAL_FLOAT;
         kv->data.fval = float_item;
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked PS1_USAGE: %f", float_item);
         opal_list_append(vals, &kv->super);
 
@@ -834,7 +834,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->key = strdup("ps1_temp");
         kv->type = OPAL_FLOAT;
         kv->data.fval = float_item;
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked PS1_TEMP: %f", float_item);
         opal_list_append(vals, &kv->super);
 
@@ -848,7 +848,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->key = strdup("cpu_fan_1");
         kv->type = OPAL_FLOAT;
         kv->data.fval = float_item;
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked CPU_FAN_1: %f", float_item);
         opal_list_append(vals, &kv->super);
 
@@ -862,7 +862,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->key = strdup("cpu_fan_2");
         kv->type = OPAL_FLOAT;
         kv->data.fval = float_item;
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked CPU_FAN_2: %f", float_item);
         opal_list_append(vals, &kv->super);
 
@@ -876,7 +876,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->key = strdup("sys_fan_1");
         kv->type = OPAL_FLOAT;
         kv->data.fval = float_item;
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked SYS_FAN_1: %f", float_item);
         opal_list_append(vals, &kv->super);
 
@@ -890,7 +890,7 @@ static void ipmi_log(opal_buffer_t *sample)
         kv->key = strdup("sys_fan_2");
         kv->type = OPAL_FLOAT;
         kv->data.fval = float_item;
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked SYS_FAN_2: %f", float_item);
         opal_list_append(vals, &kv->super);
 
@@ -979,10 +979,8 @@ int ipmi_exec_call(ipmi_capsule_t *cap)
         if(ret)
         {
             //disable_ipmi = 1;
-            opal_output(0,"Unable to reach IPMI device(s), plugin will be restarted!!");
+            opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
             opal_output(0,"ipmi_cmd_mc RETURN CODE : %d \n", ret);
-            //ipmi_close();
-            //return ret;
         }
         ipmi_close();
         memcpy(&devid.raw, rdata, sizeof(devid));

@@ -16,7 +16,8 @@
 #define ORTE_SENSOR_IPMI_DECLS_H
 
 #define uchar unsigned char
-#define GET_ACPI_POWER           (0x07 | (NETFN_APP << 8))
+#define GET_ACPI_POWER          (0x07 | (NETFN_APP << 8))
+#define GET_BMC_IP_CMD          0x03
 // The total number of Compute Nodes/Child nodes present under each aggregator
 #define TOTAL_NODES 2
 // The total number of parameters that need to be gathered for each node

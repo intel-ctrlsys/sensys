@@ -265,6 +265,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     char time_str[40];
     char *timestamp_str;
     struct tm *sample_time;
+    char *error_string;
 
     if (mca_sensor_sigar_component.test) {
         /* just send the test vector */
@@ -312,7 +313,8 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     /* get the memory usage for this node */
     memset(&mem, 0, sizeof(mem));
     if (SIGAR_OK != (rc = sigar_mem_get(sigar, &mem))) {
-        perror("sigar_mem_get failed");
+        error_string = strerror(rc);
+        opal_output(0, "sigar_mem_get failed: %s", error_string);
     }
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "mem total: %" PRIu64 " used: %" PRIu64 " actual used: %" PRIu64 " actual free: %" PRIu64 "",
@@ -342,7 +344,8 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     /* get swap data */
     memset(&swap, 0, sizeof(swap));
     if (SIGAR_OK != (rc = sigar_swap_get(sigar, &swap))) {
-        perror("sigar_swap_get failed");
+        error_string = strerror(rc);
+        opal_output(0, "sigar_swap_get failed: %s", error_string);
     }
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "swap total: %" PRIu64 " used: %" PRIu64 "page_in: %" PRIu64 " page_out: %" PRIu64 "\n",
@@ -374,7 +377,8 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     /* get the cpu usage */
     memset(&cpu, 0, sizeof(cpu));
     if (SIGAR_OK != (rc = sigar_cpu_get(sigar, &cpu))) {
-        perror("sigar_cpu_get failed");
+        error_string = strerror(rc);
+        opal_output(0, "sigar_cpu_get failed: %s", error_string);
     }
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "cpu user: %" PRIu64 " sys: %" PRIu64 " idle: %" PRIu64 " wait: %" PRIu64 " nice: %" PRIu64 " total: %" PRIu64 "", 
@@ -410,7 +414,8 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     /* get load average data */
     memset(&loadavg, 0, sizeof(loadavg));
     if (SIGAR_OK != (rc = sigar_loadavg_get(sigar, &loadavg))) {
-        perror("sigar_loadavg_get failed");
+        error_string = strerror(rc);
+        opal_output(0, "sigar_loadavg_get failed: %s", error_string);
     }
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "load_avg: %e %e %e",
@@ -439,7 +444,8 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     memset(&tdisk, 0, sizeof(tdisk));
     OPAL_LIST_FOREACH(dit, &fslist, sensor_sigar_disks_t) {
         if (SIGAR_OK != sigar_file_system_usage_get(sigar, dit->mount_pt, &fsusage)) {
-            perror("sigar_file_system_usage_get failed");
+            error_string = strerror(rc);
+            opal_output(0, "sigar_file_system_usage_get failed: %s", error_string);
             opal_output(0, "%s Failed to get usage data for filesystem %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), dit->mount_pt);
         } else {
@@ -502,7 +508,8 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     OPAL_LIST_FOREACH(sit, &netlist, sensor_sigar_interface_t) {
         memset(&ifc, 0, sizeof(ifc));
         if (SIGAR_OK != sigar_net_interface_stat_get(sigar, sit->interface, &ifc)) {
-            perror("sigar_net_interface_stat_get failed");
+            error_string = strerror(rc);
+            opal_output(0, "sigar_net_interface_stat_get failed: %s", error_string);
             opal_output(0, "%s Failed to get usage data for interface %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), sit->interface);
         } else {

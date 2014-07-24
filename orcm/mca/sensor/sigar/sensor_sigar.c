@@ -637,7 +637,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("mem_total");
+    kv->key = strdup("mem_total:kB");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -649,7 +649,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("mem_used");
+    kv->key = strdup("mem_used:kB");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -661,7 +661,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("mem_actual_used");
+    kv->key = strdup("mem_actual_used:kB");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -673,7 +673,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("mem_actual_free");
+    kv->key = strdup("mem_actual_free:kB");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -685,7 +685,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("swap_total");
+    kv->key = strdup("swap_total:kB");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -697,7 +697,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("swap_used");
+    kv->key = strdup("swap_used:kB");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -709,7 +709,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("swap_page_in");
+    kv->key = strdup("swap_page_in:kB");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -721,7 +721,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("swap_page_out");
+    kv->key = strdup("swap_page_out:kB");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -733,7 +733,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("cpu_user");
+    kv->key = strdup("cpu_user:%");
     kv->type = OPAL_FLOAT;
     kv->data.fval = fval;
     opal_list_append(vals, &kv->super);
@@ -745,7 +745,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("cpu_sys");
+    kv->key = strdup("cpu_sys:%");
     kv->type = OPAL_FLOAT;
     kv->data.fval = fval;
     opal_list_append(vals, &kv->super);
@@ -757,7 +757,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("cpu_idle");
+    kv->key = strdup("cpu_idle:%");
     kv->type = OPAL_FLOAT;
     kv->data.fval = fval;
     opal_list_append(vals, &kv->super);
@@ -805,7 +805,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("disk_ro_rate");
+    kv->key = strdup("disk_ro_rate:reads/sec");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -817,7 +817,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("disk_wo_rate");
+    kv->key = strdup("disk_wo_rate:writes/sec");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -829,7 +829,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("disk_rb_rate");
+    kv->key = strdup("disk_rb_rate:bytes/sec");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -841,7 +841,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("disk_wb_rate");
+    kv->key = strdup("disk_wb_rate:bytes/sec");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -853,7 +853,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("net_rp_rate");
+    kv->key = strdup("net_rp_rate:packets/sec");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -865,7 +865,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("net_wp_rate");
+    kv->key = strdup("net_wp_rate:packets/sec");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -877,7 +877,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("net_rb_rate");
+    kv->key = strdup("net_rb_rate:bytes/sec");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -889,7 +889,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("net_wb_rate");
+    kv->key = strdup("net_wb_rate:bytes/sec");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);

@@ -28,9 +28,8 @@
 #include "orte/runtime/orte_globals.h"
 
 #include "orcm/mca/analytics/base/base.h"
+#include "orcm/mca/analytics/base/analytics_private.h"
 
-
-static int workflow_id = 0;
 
 /**
  * Function for weeding out analytics components that don't want to run.
@@ -48,7 +47,7 @@ static int workflow_id = 0;
  * separate modules between threads as well
  */
 
-int orcm_analytics_base_select_workflow(orcm_workflow_t *workflow)
+int orcm_analytics_base_select_workflow(orcm_workflow_step_t *workstep)
 {
     mca_base_component_list_item_t *cli = NULL;
     mca_base_component_t *component = NULL;
@@ -56,8 +55,6 @@ int orcm_analytics_base_select_workflow(orcm_workflow_t *workflow)
     orcm_analytics_base_module_t *nmodule;
     int rc, priority;
 
-    workflow->workflow_id = workflow_id;
-    workflow_id++;
     
     /* Logic needs to be:
      * For each module in ordered_list_of_modules

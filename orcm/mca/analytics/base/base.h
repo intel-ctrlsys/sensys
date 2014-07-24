@@ -32,10 +32,8 @@ BEGIN_C_DECLS
  */
 ORCM_DECLSPEC extern mca_base_framework_t orcm_analytics_base_framework;
 
-/*
- * select for workflow
- */
-ORCM_DECLSPEC int orcm_analytics_base_select_workflow(orcm_workflow_t *workflow);
+/* sensors send data to framework to pass to each workflow */
+ORCM_DECLSPEC int orcm_analytics_base_send_data(opal_value_t *data);
 
 typedef struct {
     /* list of active workflows */

@@ -77,7 +77,7 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
                                      opal_buffer_t* buffer, orte_rml_tag_t tag,
                                      void* cbdata)
 {
-    int cnt, rc;
+    int cnt, rc, id, ret;
     opal_buffer_t *ans;
     orcm_analytics_cmd_flag_t command;
 
@@ -99,18 +99,48 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
     
     switch (command) {
         case ORCM_ANALYTICS_WORKFLOW_CREATE:
+            rc = orcm_analytics_base_workflow_create(buffer, &id);
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(ans, &id, 1, OPAL_INT))) {
+                OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                                     "%s analytics:base:receive cant pack workflow id, sender %s is likely hung",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                     ORTE_NAME_PRINT(sender)));
+                /* FIXME should we delete the workflow if the sender can't track it ? */
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
             break;
         case ORCM_ANALYTICS_WORKFLOW_DELETE:
+            /* unpack the command */
+            cnt = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &id,
+                                                      &cnt, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                goto answer;
+            }
+            rc = orcm_analytics_base_workflow_delete(id);
             break;
         default:
             OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                                  "%s analytics:base:receive got unknown command from %s",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                  ORTE_NAME_PRINT(sender)));
+            rc = ORCM_ERR_BAD_PARAM;
             break;
     }
 
 answer:
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(ans, &rc, 1, OPAL_INT))) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                             "%s analytics:base:receive cant pack return value, sender %s is likely hung",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             ORTE_NAME_PRINT(sender)));
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(ans);
+        return;
+    }
+    
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
                                                       ORCM_RML_TAG_ANALYTICS,
                                                       orte_rml_send_callback,

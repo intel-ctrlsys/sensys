@@ -58,7 +58,6 @@ typedef struct {
 } orcm_sensor_active_module_t;
 OBJ_CLASS_DECLARATION(orcm_sensor_active_module_t);
 
-
 ORCM_DECLSPEC extern orcm_sensor_base_t orcm_sensor_base;
 ORCM_DECLSPEC void orcm_sensor_base_start(orte_jobid_t job);
 ORCM_DECLSPEC void orcm_sensor_base_stop(orte_jobid_t job);
@@ -67,7 +66,5 @@ ORCM_DECLSPEC void orcm_sensor_base_log(char *comp, opal_buffer_t *data);
 ORCM_DECLSPEC void orcm_sensor_base_manually_sample(char *sensors,
                                                     orcm_sensor_sample_cb_fn_t cbfunc,
                                                     void *cbdata);
-
-
 END_C_DECLS
 #endif

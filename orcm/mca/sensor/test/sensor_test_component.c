@@ -54,9 +54,15 @@ static int orcm_sensor_test_open(void)
 
 static int orcm_sensor_test_query(mca_base_module_t **module, int *priority)
 {
-    *priority = 50;  /* ahead of heartbeat */
+    *priority = 0;
+    *module = NULL;
+    return ORCM_ERROR;
+
+    /*
+    *priority = 50;
     *module = (mca_base_module_t *)&orcm_sensor_test_module;
     return ORCM_SUCCESS;
+    */
 }
 
 /**

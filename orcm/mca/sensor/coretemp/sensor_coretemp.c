@@ -498,7 +498,7 @@ static void coretemp_log(opal_buffer_t *sample)
 
     for (i=0; i < ncores; i++) {
         kv = OBJ_NEW(opal_value_t);
-        asprintf(&kv->key, "core%d:degC", i);
+        asprintf(&kv->key, "core%d:degrees C", i);
         kv->type = OPAL_FLOAT;
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {

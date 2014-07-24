@@ -443,7 +443,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     /* get disk usage data */
     memset(&tdisk, 0, sizeof(tdisk));
     OPAL_LIST_FOREACH(dit, &fslist, sensor_sigar_disks_t) {
-        if (SIGAR_OK != sigar_file_system_usage_get(sigar, dit->mount_pt, &fsusage)) {
+        if (SIGAR_OK != (rc = sigar_file_system_usage_get(sigar, dit->mount_pt, &fsusage))) {
             error_string = strerror(rc);
             opal_output(0, "sigar_file_system_usage_get failed: %s", error_string);
             opal_output(0, "%s Failed to get usage data for filesystem %s",
@@ -507,7 +507,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     memset(&tnet, 0, sizeof(tnet));
     OPAL_LIST_FOREACH(sit, &netlist, sensor_sigar_interface_t) {
         memset(&ifc, 0, sizeof(ifc));
-        if (SIGAR_OK != sigar_net_interface_stat_get(sigar, sit->interface, &ifc)) {
+        if (SIGAR_OK != (rc = sigar_net_interface_stat_get(sigar, sit->interface, &ifc))) {
             error_string = strerror(rc);
             opal_output(0, "sigar_net_interface_stat_get failed: %s", error_string);
             opal_output(0, "%s Failed to get usage data for interface %s",

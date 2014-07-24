@@ -67,7 +67,7 @@ typedef struct {
 typedef bool (*mca_analytics_base_component_avail_fn_t)(void);
 
 /* create and return an analytics module */
-typedef orcm_analytics_base_module_t* (*mca_analytics_base_component_create_hdl_fn_t)(void);
+typedef struct orcm_analytics_base_module_t* (*mca_analytics_base_component_create_hdl_fn_t)(void);
 
 /* provide a chance for the component to finalize */
 typedef void (*mca_analytics_base_component_finalize_fn_t)(void);

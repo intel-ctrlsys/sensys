@@ -17,20 +17,14 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h> /* for time_t */
-#endif
-
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h> /* for uid_t, gid_t */
-#endif
-
 #include "opal/class/opal_object.h"
 #include "opal/class/opal_value_array.h"
 #include "opal/class/opal_list.h"
 #include "opal/mca/event/event.h"
 
 BEGIN_C_DECLS
+
+struct orcm_analytics_base_module_t;
 
 /* define a workflow "step" object - this object
  * specifies what operation is to be performed

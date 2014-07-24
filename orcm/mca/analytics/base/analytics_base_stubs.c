@@ -20,12 +20,17 @@
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
 
+int parse_attributes(opal_value_array_t *attr_array, char *attr_string);
+
 static int workflow_id = 0;
+
+int parse_attributes(opal_value_array_t *attr_array, char *attr_string) {
+    return ORCM_SUCCESS;
+}
 
 int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
 {
     int num_steps, i, cnt, rc;
-    char *mod_name = NULL;
     char *mod_attrs = NULL;
     orcm_workflow_step_t *wf_step = NULL;
     orcm_workflow_t *wf;
@@ -42,30 +47,39 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
     workflow_id++;
     *wfid = wf->workflow_id;
     
-    /* FIXME handle new event base */
+    /* FIXME create new event base for workflow */
 
     for (i = 0; i < num_steps; i++) {
+        wf_step = OBJ_NEW(orcm_workflow_step_t);
         /* unpack the requested module name */
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &mod_name,
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &wf_step->analytic,
                                                   &cnt, OPAL_STRING))) {
+            OBJ_RELEASE(wf_step);
             goto error;
         }
         cnt = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &mod_attrs,
                                                   &cnt, OPAL_STRING))) {
+            OBJ_RELEASE(wf_step);
             goto error;
         }
-        wf_step = OBJ_NEW(orcm_workflow_step_t);
-        wf_step->analytic = strdup(mod_name);
         
         if (ORCM_SUCCESS !=
-            (rc = orcm_analytics_base_select_workflow(wf_step))) {
+            (rc = parse_attributes(&wf_step->attributes, mod_attrs))) {
             OBJ_RELEASE(wf_step);
+            goto error;
+        }
+        
+        if (ORCM_SUCCESS !=
+            (rc = orcm_analytics_base_select_workflow_step(wf_step))) {
+            OBJ_RELEASE(wf_step);
+            free(mod_attrs);
             /* skip this module ? */
             continue;
         }
         opal_list_append(&wf->steps, &wf_step->super);
+        free(mod_attrs);
     }
     
     opal_list_append(&orcm_analytics_base.workflows, &wf->super);
@@ -74,9 +88,6 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
 
 error:
     ORTE_ERROR_LOG(rc);
-    if (mod_name) {
-        free(mod_name);
-    }
     if (mod_attrs) {
         free(mod_attrs);
     }

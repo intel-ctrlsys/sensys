@@ -805,7 +805,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("disk_ro_rate:reads/sec");
+    kv->key = strdup("disk_ro_rate:ops/sec");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);
@@ -817,7 +817,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     }
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("disk_wo_rate:writes/sec");
+    kv->key = strdup("disk_wo_rate:ops/sec");
     kv->type = OPAL_UINT64;
     kv->data.uint64 = uint64;
     opal_list_append(vals, &kv->super);

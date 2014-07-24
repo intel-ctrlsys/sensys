@@ -98,9 +98,19 @@ typedef void (*orcm_db_base_API_close_fn_t)(int dbhandle,
                                             void *cbdata);
 
 /*
- * Store one or more data elements against the primary key  - overwrites any data
- * of matching key that is already present. The data is copied into the database
- * and therefore does not need to be preserved by the caller.
+ * Store one or more data elements against a primary key.  The values are
+ * passed as a key-value list in the kvs parameter.  The semantics of the 
+ * primary key and list of values will depend on the data that needs to be 
+ * stored.
+ *
+ * At the moment the API store function is designed to handle storing data 
+ * collected by the sensor framework components.  In this case, the primary key 
+ * is a name for the group of data being passed (to classify the data and avoid 
+ * naming conflicts with other data items collected by other sensors) and the 
+ * list of values shall contain: the time stamp, the hostname and the values. 
+ * For the values, sensors may optionally provide the data units in the key 
+ * field using the following format: <data item name>:<data units>.  Note that 
+ * this means the colon (":") is a reserved character.
  */
 typedef void (*orcm_db_base_API_store_fn_t)(int dbhandle,
                                             const char *primary_key,

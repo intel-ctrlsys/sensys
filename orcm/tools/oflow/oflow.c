@@ -109,11 +109,12 @@ main(int argc, char *argv[])
 {
     orte_rml_recv_cb_t xfer;
     opal_buffer_t *buf;
-    int rc, i, n;
+    int rc, i, n, wfid;
     orcm_analytics_cmd_flag_t command;
     FILE *fp;
     opal_value_t *oflow_value;
     opal_value_t **oflow_array;
+    orte_process_name_t wf_agg;
     
     /* initialize, parse command line, and setup frameworks */
     orcm_oflow_init(argc, argv);
@@ -130,14 +131,22 @@ main(int argc, char *argv[])
     i = 0;
     oflow_value = oflow_parse_next_line(fp);
     while(oflow_value) {
+        if (0 == strncmp("VPID", oflow_value->key, ORCM_MAX_LINE_LENGTH)) {
+            wf_agg.jobid = 0;
+            wf_agg.vpid = (orte_vpid_t)strtol(oflow_value->data.string, (char **)NULL, 10);
+            printf("Sending to %s\n", ORTE_NAME_PRINT(&wf_agg));
+            oflow_value = oflow_parse_next_line(fp);
+            continue;
+        }
         printf("KEY: %s \n\tVALUE: %s\n", oflow_value->key, oflow_value->data.string);
         oflow_array = (opal_value_t**)realloc(oflow_array, (sizeof(opal_value_t*)));
         oflow_array[i] = oflow_value;
         oflow_value = oflow_parse_next_line(fp);
+        i++;
     }
     
     fclose(fp);
-#if 0
+
     /* setup to receive the result */
     OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
     xfer.active = true;
@@ -154,8 +163,18 @@ main(int argc, char *argv[])
         ORTE_ERROR_LOG(rc);
         return rc;
     }
+    /* pack the length of the array */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &i, 1, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    /* pack the array */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, oflow_array, i, OPAL_VALUE))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
     /* send it to the aggregator */
-    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(wf_agg, buf,
+    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(&wf_agg, buf,
                                                       ORCM_RML_TAG_ANALYTICS,
                                                       orte_rml_send_callback, NULL))) {
         ORTE_ERROR_LOG(rc);
@@ -167,15 +186,16 @@ main(int argc, char *argv[])
     /* unpack number of queues */
     ORTE_WAIT_FOR_COMPLETION(xfer.active);
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &num_queues, &n, OPAL_INT))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &wfid, &n, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
 
+    printf("Workflow created with id: %i\n", wfid);
 
     OBJ_DESTRUCT(&xfer);
-#endif
+
 
     if (ORTE_SUCCESS != orcm_finalize()) {
         fprintf(stderr, "Failed orcm_finalize\n");

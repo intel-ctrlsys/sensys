@@ -116,7 +116,7 @@ static void stop(orte_jobid_t jobid)
     return;
 }
 
-int get_bmc_cred(orcm_sensor_hosts_t *host)
+static int sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
 {
     unsigned char idata[4], rdata[20];
 	unsigned char ccode;
@@ -170,11 +170,11 @@ int get_bmc_cred(orcm_sensor_hosts_t *host)
 
 }
 
-/* int found (char* nodename)
+/* int sensor_ipmi_found (char* nodename)
  * Return 0 if nodename matches an existing node
  * Return 1 if nodename doesn't match
  */
-int found(char *nodename)
+static int sensor_ipmi_found(char *nodename)
 {
     orcm_sensor_hosts_t *top = active_hosts;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -195,10 +195,10 @@ int found(char *nodename)
     }    
 }
 
-/* int counthosts (char* nodename)
+/* int sensor_ipmi_counthosts (char* nodename)
  * Return total number of hosts added to the list
  */
-unsigned int counthosts(void)
+static unsigned int sensor_ipmi_counthosts(void)
 {
     orcm_sensor_hosts_t *top = active_hosts;
     unsigned int count = 0;
@@ -213,7 +213,7 @@ unsigned int counthosts(void)
 }
 
 
-void addhost(char *nodename, char *host_ip, char *bmc_ip)
+static void sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
 {
     opal_output(0, "Adding New Node: %s, with BMC IP: %s", nodename, bmc_ip);
     orcm_sensor_hosts_t *top;
@@ -296,7 +296,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
 
-        rc = get_bmc_cred(&cur_host);
+        rc = sensor_ipmi_get_bmc_cred(&cur_host);
         if(ORCM_SUCCESS != rc)
         {
             ORTE_ERROR_LOG(rc);
@@ -341,7 +341,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
         return;
     }
-    sample_count = counthosts();
+    sample_count = sensor_ipmi_counthosts();
     /* pack the numerical identifier for number of nodes*/
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_count, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
@@ -376,7 +376,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             strncpy(cap.node.host_ip, top->host_ipaddr, strlen(top->host_ipaddr)+1);
         }
         /* Running a sample for a Node */
-        ipmi_exec_call(&cap);
+        sensor_ipmi_exec_call(&cap);
         
         /*opal_output(0," *^*^*^* %s - %s - %s - %s - %s - %s", cap.node.bmc_ip
         *             , cap.prop.bmc_rev, cap.prop.ipmi_ver
@@ -625,9 +625,9 @@ static void ipmi_log(opal_buffer_t *sample)
              * re-started has to be removed first, and then added again afresh,
              * just so that we update our list with the latest credentials
              */
-            if(!found(nodename))
+            if(!sensor_ipmi_found(nodename))
             {
-                addhost(nodename, hostip, bmcip); /* Add the node to the slave list of the aggregator */
+                sensor_ipmi_addhost(nodename, hostip, bmcip); /* Add the node to the slave list of the aggregator */
             } else {
                 opal_output(0,"Node already populated; Not gonna be added again");
             }
@@ -832,7 +832,7 @@ static void generate_test_vector(opal_buffer_t *v)
 {
 
 }
-void get_system_power_state(uchar in, char* str)
+static void sensor_ipmi_get_system_power_state(uchar in, char* str)
 {
     char in_r = in & 0x7F;
     switch(in_r) {
@@ -853,7 +853,7 @@ void get_system_power_state(uchar in, char* str)
         default:    strncpy(str,"Illegal",sizeof("Illegal")); break;
     }
 }
-void get_device_power_state(uchar in, char* str)
+static void sensor_ipmi_get_device_power_state(uchar in, char* str)
 {
     char in_r = in & 0x7F;
     switch(in_r) {
@@ -866,7 +866,7 @@ void get_device_power_state(uchar in, char* str)
     }
 }
 
-void ipmi_exec_call(ipmi_capsule_t *cap)
+static void sensor_ipmi_exec_call(ipmi_capsule_t *cap)
 {
     char addr[16];
     int ret = 0;
@@ -952,8 +952,8 @@ void ipmi_exec_call(ipmi_capsule_t *cap)
         }
         ipmi_close();
         memcpy(&pwr_state.raw, rdata, sizeof(pwr_state));
-        get_system_power_state(pwr_state.bits.sys_power_state, sys_pwr_state_str);
-        get_device_power_state(pwr_state.bits.dev_power_state, dev_pwr_state_str);
+        sensor_ipmi_get_system_power_state(pwr_state.bits.sys_power_state, sys_pwr_state_str);
+        sensor_ipmi_get_device_power_state(pwr_state.bits.dev_power_state, dev_pwr_state_str);
         /*opal_output(0, "Sys State: %s - Dev State: %s", sys_pwr_state_str, dev_pwr_state_str); */
         /* Copy all retrieved information in a global buffer */
         memcpy(cap->prop.sys_power_state,sys_pwr_state_str,sizeof(sys_pwr_state_str));

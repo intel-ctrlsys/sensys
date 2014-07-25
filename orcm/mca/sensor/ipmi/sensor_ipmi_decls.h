@@ -131,14 +131,12 @@ typedef enum {
 } ipmi_property_t;
 
 // Function Declarations
-void get_system_power_state(uchar in, char* str);
-void get_device_power_state(uchar in, char* str);
-int get_bmc_cred(orcm_sensor_hosts_t *host);
-int found(char *nodename);
-unsigned int counthosts(void);
-void addhost(char *nodename, char *host_ip, char *bmc_ip);
-
-
-void ipmi_exec_call(ipmi_capsule_t *cap);
+static void sensor_ipmi_get_system_power_state(uchar in, char* str);
+static void sensor_ipmi_get_device_power_state(uchar in, char* str);
+static int sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host);
+static int sensor_ipmi_found(char *nodename);
+static unsigned int sensor_ipmi_counthosts(void);
+static void sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip);
+static void sensor_ipmi_exec_call(ipmi_capsule_t *cap);
 
 #endif

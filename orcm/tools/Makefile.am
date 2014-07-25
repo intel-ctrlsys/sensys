@@ -11,6 +11,7 @@
 
 SUBDIRS += \
         tools/octl \
+        tools/oflow \
         tools/ops \
         tools/opwrvirus \
         tools/oqueue \

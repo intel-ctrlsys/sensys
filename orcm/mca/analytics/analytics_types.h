@@ -53,6 +53,7 @@ typedef uint8_t orcm_analytics_cmd_flag_t;
 
 #define ORCM_ANALYTICS_WORKFLOW_CREATE    1
 #define ORCM_ANALYTICS_WORKFLOW_DELETE    2
+#define ORCM_ANALYTICS_WORKFLOW_LIST      3
 
 END_C_DECLS
 

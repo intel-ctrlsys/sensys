@@ -20,11 +20,11 @@
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
 
-int parse_attributes(opal_value_array_t *attr_array, char *attr_string);
+static int parse_attributes(opal_value_array_t *attr_array, char *attr_string);
 
 static int workflow_id = 0;
 
-int parse_attributes(opal_value_array_t *attr_array, char *attr_string) {
+static int parse_attributes(opal_value_array_t *attr_array, char *attr_string) {
     return ORCM_SUCCESS;
 }
 

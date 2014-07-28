@@ -161,6 +161,11 @@ static opal_cmd_line_init_t cmd_line_init[] = {
     { "orte_debug_daemons_file", '\0', "debug-daemons-file", "debug-daemons-file", 0,
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Enable debugging of any OpenRTE daemons used by this application, storing output in files" },
+
+    /* Use an appfile */
+    { NULL, '\0', NULL, "app", 1,
+      &orun_globals.appfile, OPAL_CMD_LINE_TYPE_STRING,
+      "Provide an appfile; ignore all other command line options" },
     
     /* Scheduler options for new allocation */
     { NULL,
@@ -212,9 +217,6 @@ static opal_cmd_line_init_t cmd_line_init[] = {
 /*
  * Local functions
  */
-void orcms_daemon_recv(int status, orte_process_name_t* sender,
-                      opal_buffer_t *buffer, orte_rml_tag_t tag,
-                      void* cbdata);
 static int create_app(int argc, char* argv[],
                       orte_job_t *jdata,
                       orte_app_context_t **app,
@@ -226,13 +228,6 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env);
 static int init_sched_args(void);
 static int parse_args_sched(int argc, char *argv[], opal_cmd_line_t *cmd_line);
 static int alloc_request( orcm_alloc_t *alloc );
-
-void orcms_daemon_recv(int status, orte_process_name_t* sender,
-                      opal_buffer_t *buffer, orte_rml_tag_t tag,
-                      void* cbdata)
-{
-    return;
-}
 
 int orun(int argc, char *argv[])
 {
@@ -1778,6 +1773,7 @@ static int alloc_request( orcm_alloc_t *alloc )
     alloc->caller_uid = getuid();   // caller uid, not from args
     alloc->caller_gid = getgid();   // caller gid, not from args
     alloc->hnpname = '\0';
+    alloc->hnpuri = '\0';
     alloc->parent_name = ORTE_NAME_PRINT(ORTE_PROC_MY_NAME);
     alloc->parent_uri = orte_rml.get_contact_info();
 

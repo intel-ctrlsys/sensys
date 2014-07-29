@@ -66,15 +66,8 @@ static int diag_memtest_close(void)
 
 static int diag_memtest_component_query(mca_base_module_t **module, int *priority)
 {
-    if (ORCM_PROC_IS_DAEMON || ORCM_PROC_IS_AGGREGATOR) {
-        *priority = 50;
-        *module = (mca_base_module_t *)&orcm_diag_memtest_module;
-        return ORCM_SUCCESS;
-    }
+    *priority = 50;
+    *module = (mca_base_module_t *)&orcm_diag_memtest_module;
+    return ORCM_SUCCESS;
 
-    /* otherwise, I am a tool and should be ignored */
-    
-    *priority = 0;
-    *module = NULL;
-    return ORCM_ERR_TAKE_NEXT_OPTION;
 }

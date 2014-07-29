@@ -108,7 +108,6 @@ static opal_event_t sigusr2_handler;
 
 static void shutdown_signal(int fd, short flags, void *arg);
 static void signal_callback(int fd, short flags, void *arg);
-static void epipe_signal_callback(int fd, short flags, void *arg);
 
 static void setup_sighandler(int signal, opal_event_t *ev,
                              opal_event_cbfunc_t cbfunc)
@@ -230,7 +229,7 @@ static int orcmsd_init(void)
     }
 
     /* setup callback for SIGPIPE */
-    setup_sighandler(SIGPIPE, &epipe_handler, epipe_signal_callback);
+    setup_sighandler(SIGPIPE, &epipe_handler, signal_callback);
     /* Set signal handlers to catch kill signals so we can properly clean up
      * after ourselves. 
      */
@@ -594,7 +593,6 @@ static int orcmsd_setup_node_pool(void)
 
     if (NULL != mca_sst_orcmsd_component.node_regex) {
     /* extract the nodes */
-        printf ("NODE-REGEX %s\n", mca_sst_orcmsd_component.node_regex);
         if (ORTE_SUCCESS != (ret = orte_regex_extract_node_names(mca_sst_orcmsd_component.node_regex, &hosts))) {
             error = "orte_regex_extract_node_names";
             goto error;
@@ -762,16 +760,11 @@ static void shutdown_signal(int fd, short flags, void *arg)
 /**
  * Deal with sigpipe errors
  */
-static void epipe_signal_callback(int fd, short flags, void *arg)
+static void signal_callback(int fd, short flags, void *arg)
 {
     /* for now, we just announce and ignore them */
-    opal_output(0, "%s reports a SIGPIPE error on fd %d",
+    opal_output(0, "%s reports a SIGNAL error on fd %d",
                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), fd);
     return;
-}
-
-static void signal_callback(int fd, short event, void *arg)
-{
-    /* just ignore these signals */
 }
 

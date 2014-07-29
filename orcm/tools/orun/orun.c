@@ -404,11 +404,6 @@ int orun(int argc, char *argv[])
         jdata->stdin_target = strtoul(orun_globals.stdin_target, NULL, 10);
     }
     
-    /* if we want the argv's indexed, indicate that */
-    if (orun_globals.index_argv) {
-        orte_set_attribute(&jdata->attributes, ORTE_JOB_INDEX_ARGV, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
-    }
-
     /* Parse each app, adding it to the job object */
     parse_locals(jdata, argc, argv);
     
@@ -547,16 +542,8 @@ static int init_globals(void)
     if (!globals_init) {
         orun_globals.env_val =     NULL;
         orun_globals.appfile =     NULL;
-        orun_globals.wdir =        NULL;
         orun_globals.path =        NULL;
-        orun_globals.ompi_server = NULL;
-        orun_globals.wait_for_server = false;
-        orun_globals.server_wait_timeout = 10;
         orun_globals.stdin_target = "0";
-        orun_globals.report_pid        = NULL;
-        orun_globals.report_uri        = NULL;
-        orun_globals.disable_recovery = false;
-        orun_globals.index_argv = false;
     }
 
     /* Reset the other fields every time */
@@ -572,16 +559,9 @@ static int init_globals(void)
     if( NULL != orun_globals.appfile )
         free( orun_globals.appfile );
     orun_globals.appfile =     NULL;
-    if( NULL != orun_globals.wdir )
-        free( orun_globals.wdir );
-    orun_globals.set_cwd_to_session_dir = false;
-    orun_globals.wdir =        NULL;
     if( NULL != orun_globals.path )
         free( orun_globals.path );
     orun_globals.path =        NULL;
-
-    orun_globals.preload_binaries = false;
-    orun_globals.preload_files  = NULL;
 
 #if OPAL_ENABLE_FT_CR == 1
     orun_globals.sstore_load = NULL;
@@ -598,12 +578,7 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
     /* print version if requested.  Do this before check for help so
        that --version --help works as one might expect. */
     if (orun_globals.version) {
-        char *str, *project_name = NULL;
-        if (0 == strcmp(orte_basename, "mpirun")) {
-            project_name = "Open MPI";
-        } else {
-            project_name = "OpenRTE";
-        }
+        char *str, *project_name = "orun";
         str = opal_show_help_string("help-orun.txt", "orun:version", 
                                     false,
                                     orte_basename, project_name, OPAL_VERSION,
@@ -618,12 +593,7 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
     /* Check for help request */
     if (orun_globals.help) {
         char *str, *args = NULL;
-        char *project_name = NULL;
-        if (0 == strcmp(orte_basename, "mpirun")) {
-            project_name = "Open MPI";
-        } else {
-            project_name = "OpenRTE";
-        }
+        char *project_name = "orun";
         args = opal_cmd_line_get_usage_msg(cmd_line);
         str = opal_show_help_string("help-orun.txt", "orun:usage", false,
                                     orte_basename, project_name, OPAL_VERSION,
@@ -639,33 +609,6 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
         exit(0);
     }
 
-    /* check for request to report pid */
-    if (NULL != orun_globals.report_pid) {
-        FILE *fp;
-        if (0 == strcmp(orun_globals.report_pid, "-")) {
-            /* if '-', then output to stdout */
-            printf("%d\n", (int)getpid());
-        } else if (0 == strcmp(orun_globals.report_pid, "+")) {
-            /* if '+', output to stderr */
-            fprintf(stderr, "%d\n", (int)getpid());
-        } else {
-            fp = fopen(orun_globals.report_pid, "w");
-            if (NULL == fp) {
-                orte_show_help("help-orun.txt", "orun:write_file", false,
-                               orte_basename, "pid", orun_globals.report_pid);
-                exit(0);
-            }
-            fprintf(fp, "%d\n", (int)getpid());
-            fclose(fp);
-        }
-    }
-    
-     /* if recovery was disabled on the cmd line, do so */
-    if (orun_globals.disable_recovery) {
-        orte_enable_recovery = false;
-        orte_max_restarts = 0;
-    }
-
     return ORTE_SUCCESS;
 }
 
@@ -678,130 +621,6 @@ static int parse_locals(orte_job_t *jdata, int argc, char* argv[])
     orte_app_context_t *app;
     bool made_app;
     orte_std_cntr_t j, size1;
-
-    /* if the ompi-server was given, then set it up here */
-    if (NULL != orun_globals.ompi_server) {
-        /* someone could have passed us a file instead of a uri, so
-         * we need to first check to see what we have - if it starts
-         * with "file", then we know it is a file. Otherwise, we assume
-         * it is a uri as provided by the ompi-server's output
-         * of an ORTE-standard string. Note that this is NOT a standard
-         * uri as it starts with the process name!
-         */
-        if (0 == strncmp(orun_globals.ompi_server, "file", strlen("file")) ||
-            0 == strncmp(orun_globals.ompi_server, "FILE", strlen("FILE"))) {
-            char input[1024], *filename;
-            FILE *fp;
-            
-            /* it is a file - get the filename */
-            filename = strchr(orun_globals.ompi_server, ':');
-            if (NULL == filename) {
-                /* filename is not correctly formatted */
-                orte_show_help("help-orun.txt", "orun:ompi-server-filename-bad", true,
-                               orte_basename, orun_globals.ompi_server);
-                exit(1);
-            }
-            ++filename; /* space past the : */
-            
-            if (0 >= strlen(filename)) {
-                /* they forgot to give us the name! */
-                orte_show_help("help-orun.txt", "orun:ompi-server-filename-missing", true,
-                               orte_basename, orun_globals.ompi_server);
-                exit(1);
-            }
-            
-            /* open the file and extract the uri */
-            fp = fopen(filename, "r");
-            if (NULL == fp) { /* can't find or read file! */
-                orte_show_help("help-orun.txt", "orun:ompi-server-filename-access", true,
-                               orte_basename, orun_globals.ompi_server);
-                exit(1);
-            }
-            if (NULL == fgets(input, 1024, fp)) {
-                /* something malformed about file */
-                fclose(fp);
-                orte_show_help("help-orun.txt", "orun:ompi-server-file-bad", true,
-                               orte_basename, orun_globals.ompi_server,
-                               orte_basename);
-                exit(1);
-            }
-            fclose(fp);
-            input[strlen(input)-1] = '\0';  /* remove newline */
-            ompi_server = strdup(input);
-        } else if (0 == strncmp(orun_globals.ompi_server, "pid", strlen("pid")) ||
-                   0 == strncmp(orun_globals.ompi_server, "PID", strlen("PID"))) {
-            opal_list_t hnp_list;
-            opal_list_item_t *item;
-            orte_hnp_contact_t *hnp;
-            char *ptr;
-            pid_t pid;
-            
-            ptr = strchr(orun_globals.ompi_server, ':');
-            if (NULL == ptr) {
-                /* pid is not correctly formatted */
-                orte_show_help("help-orun.txt", "orun:ompi-server-pid-bad", true,
-                               orte_basename, orte_basename,
-                               orun_globals.ompi_server, orte_basename);
-                exit(1);
-            }
-            ++ptr; /* space past the : */
-            
-            if (0 >= strlen(ptr)) {
-                /* they forgot to give us the pid! */
-                orte_show_help("help-orun.txt", "orun:ompi-server-pid-bad", true,
-                               orte_basename, orte_basename,
-                               orun_globals.ompi_server, orte_basename);
-                exit(1);
-            }
-            
-            pid = strtoul(ptr, NULL, 10);
-            
-            /* to search the local mpirun's, we have to partially initialize the
-             * orte_process_info structure. This won't fully be setup until orte_init,
-             * but we finagle a little bit of it here
-             */
-            if (ORTE_SUCCESS != (rc = orte_session_dir_get_name(NULL, &orte_process_info.tmpdir_base,
-                                                                &orte_process_info.top_session_dir,
-                                                                NULL, NULL, NULL))) {
-                orte_show_help("help-orun.txt", "orun:ompi-server-could-not-get-hnp-list", true,
-                               orte_basename, orte_basename);
-                exit(1);
-            }
-            
-            OBJ_CONSTRUCT(&hnp_list, opal_list_t);
-            
-            /* get the list of HNPs, but do -not- setup contact info to them in the RML */
-            if (ORTE_SUCCESS != (rc = orte_list_local_hnps(&hnp_list, false))) {
-                orte_show_help("help-orun.txt", "orun:ompi-server-could-not-get-hnp-list", true,
-                               orte_basename, orte_basename);
-                exit(1);
-            }
-            
-            /* search the list for the desired pid */
-            while (NULL != (item = opal_list_remove_first(&hnp_list))) {
-                hnp = (orte_hnp_contact_t*)item;
-                if (pid == hnp->pid) {
-                    ompi_server = strdup(hnp->rml_uri);
-                    goto hnp_found;
-                }
-                OBJ_RELEASE(item);
-            }
-            /* if we got here, it wasn't found */
-            orte_show_help("help-orun.txt", "orun:ompi-server-pid-not-found", true,
-                           orte_basename, orte_basename, pid, orun_globals.ompi_server,
-                           orte_basename);
-            OBJ_DESTRUCT(&hnp_list);
-            exit(1);
-        hnp_found:
-            /* cleanup rest of list */
-            while (NULL != (item = opal_list_remove_first(&hnp_list))) {
-                OBJ_RELEASE(item);
-            }
-            OBJ_DESTRUCT(&hnp_list);
-        } else {
-            ompi_server = strdup(orun_globals.ompi_server);
-        }
-    }
 
     /* Make the apps */
 

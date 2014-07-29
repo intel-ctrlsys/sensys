@@ -93,7 +93,8 @@ date="Unreleased developer copy"
 libopen_rte_so_version=0:0:0
 libopen_pal_so_version=0:0:0
 liborcm_so_version=0:0:0
-liboshmem_java_so_version=0:0:0
+libscon_so_version=0:0:0
+liborcmapi_so_version=0:0:0
 
 # OPAL layer
 libmca_opal_common_pmi_so_version=0:0:0

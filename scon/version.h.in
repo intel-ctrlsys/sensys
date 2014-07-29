@@ -1,0 +1,30 @@
+/* -*- c -*-
+ *
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * $COPYRIGHT$
+ * 
+ * Additional copyrights may follow
+ * 
+ * $HEADER$
+ *
+ * This file should be included by any file that needs full
+ * version information for the SCON project
+ */
+
+#ifndef SCON_VERSIONS_H
+#define SCON_VERSIONS_H
+
+#define SCON_MAJOR_VERSION @SCON_MAJOR_VERSION@
+#define SCON_MINOR_VERSION @SCON_MINOR_VERSION@
+#define SCON_RELEASE_VERSION @SCON_RELEASE_VERSION@
+#define SCON_GREEK_VERSION "@SCON_GREEK_VERSION@"
+#define SCON_WANT_REPO_REV @SCON_WANT_REPO_REV@
+#define SCON_REPO_REV "@SCON_REPO_REV@"
+#ifdef SCON_VERSION
+/* If we included version.h, we want the real version, not the
+   stripped (no-r number) verstion */
+#undef SCON_VERSION
+#endif
+#define SCON_VERSION "@SCON_VERSION@"
+
+#endif

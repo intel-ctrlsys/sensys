@@ -322,8 +322,13 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
     
     SQL_TIMESTAMP_STRUCT sampletime;
     char *hostname;
-    char data_item[150];
-    double value;
+    char **data_item_argv;
+    int argv_count;
+    int numeric = 1;
+    int change_value_binding = 1;
+    double value_num;
+    char *value_str;
+    SQLLEN null_len = SQL_NULL_DATA;
     
     SQLRETURN ret;
     SQLHSTMT stmt;
@@ -348,7 +353,7 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
     
     item = opal_list_get_next(item);
     kv = (opal_value_t *)item;
-    if (!item || item == opal_list_get_end(kvs) || kv->type != OPAL_STRING) {
+    if (item == opal_list_get_end(kvs) || kv->type != OPAL_STRING) {
         STORE_ERR_MSG("No hostname provided");
         return ORCM_ERROR;
     }
@@ -369,7 +374,8 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
     
-    ret = SQLPrepare(stmt, (SQLCHAR *)"{call add_data_sample(?, ?, ?, ?, ?)}",
+    ret = SQLPrepare(stmt,
+                     (SQLCHAR *)"{call add_data_sample(?, ?, ?, ?, ?, ?, ?)}",
                      SQL_NTS);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
@@ -377,99 +383,218 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
     
+    /* Bind hostname parameter. */
     ret = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
                            0, 0, hostname, strlen(hostname), NULL);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        STORE_ERR_MSG_FMT("SQLBindParameter returned: %d", ret);
+        STORE_ERR_MSG_FMT("SQLBindParameter 1 returned: %d", ret);
         return ORCM_ERROR;
     }
+    /* Bind data group parameter. */
     ret = SQLBindParameter(stmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
                            0, 0, (SQLPOINTER)data_group, strlen(data_group),
                            NULL);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        STORE_ERR_MSG_FMT("SQLBindParameter returned: %d", ret);
+        STORE_ERR_MSG_FMT("SQLBindParameter 2 returned: %d", ret);
         return ORCM_ERROR;
     }
-    ret = SQLBindParameter(stmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
-                           0, 0, (SQLPOINTER)data_item, sizeof(data_item),
-                           NULL);
-    if (!(SQL_SUCCEEDED(ret))) {
-        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        STORE_ERR_MSG_FMT("SQLBindParameter returned: %d", ret);
-        return ORCM_ERROR;
-    }
+    /* Bind time stamp parameter. */
     ret = SQLBindParameter(stmt, 4, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
                            SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&sampletime,
                            sizeof(sampletime), NULL);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        STORE_ERR_MSG_FMT("SQLBindParameter returned: %d", ret);
+        STORE_ERR_MSG_FMT("SQLBindParameter 4 returned: %d", ret);
         return ORCM_ERROR;
     }
+    /* Bind numeric value parameter (assuming the value is numeric for now). */
     ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE, SQL_DOUBLE,
-                           0, 0, (SQLPOINTER)&value, 0, NULL);
+                           0, 0, (SQLPOINTER)&value_num,
+                           sizeof(value_num), NULL);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        STORE_ERR_MSG_FMT("SQLBindParameter returned: %d", ret);
+        STORE_ERR_MSG_FMT("SQLBindParameter 5 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind string value parameter (assuming NULL for now). */
+    ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, NULL, 0, &null_len);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        STORE_ERR_MSG_FMT("SQLBindParameter 6 returned: %d", ret);
         return ORCM_ERROR;
     }
     
-    for (item = opal_list_get_next(item);
-         item && item != opal_list_get_end(kvs);
+    for (item = opal_list_get_next(item); item != opal_list_get_end(kvs);
          item = opal_list_get_next(item)) {
         kv = (opal_value_t *)item;
         switch (kv->type) {
         case OPAL_FLOAT:
-            value = kv->data.fval;
+            value_num = kv->data.fval;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
             break;
         case OPAL_DOUBLE:
-            value = kv->data.dval;
+            value_num = kv->data.dval;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
             break;
         case OPAL_INT:
-            value = kv->data.integer;
+            value_num = kv->data.integer;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
             break;
         case OPAL_INT8:
-            value = kv->data.int8;
+            value_num = kv->data.int8;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
             break;
         case OPAL_INT16:
-            value = kv->data.int16;
+            value_num = kv->data.int16;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
             break;
         case OPAL_INT32:
-            value = kv->data.int32;
+            value_num = kv->data.int32;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
             break;
         case OPAL_UINT:
-            value = kv->data.uint;
+            value_num = kv->data.uint;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
             break;
         case OPAL_UINT8:
-            value = kv->data.uint8;
+            value_num = kv->data.uint8;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
             break;
         case OPAL_UINT16:
-            value = kv->data.uint16;
+            value_num = kv->data.uint16;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
             break;
         case OPAL_UINT32:
-            value = kv->data.uint32;
+            value_num = kv->data.uint32;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
+            break;
+        case OPAL_STRING:
+            value_str = kv->data.string;
+            change_value_binding = 1;
+            numeric = 0;
             break;
         default:
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             STORE_ERR_MSG("Incorrect sample value type");
             return ORCM_ERROR;
         }
-
-        strncpy(data_item, kv->key, 149);
-        data_item[149] = '\0';
+        
+        /* kv->key will contain: <data item>:<units> */
+        data_item_argv = opal_argv_split(kv->key, ':');
+        argv_count = opal_argv_count(data_item_argv);
+        if (argv_count == 0) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            opal_argv_free(data_item_argv);
+            STORE_ERR_MSG("No data item specified");
+            return ORCM_ERROR;
+        }
+        /* Bind the data item parameter. */
+        ret = SQLBindParameter(stmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR,
+                               SQL_VARCHAR, 0, 0, (SQLPOINTER)data_item_argv[0],
+                               strlen(data_item_argv[0]), NULL);
+        if (!(SQL_SUCCEEDED(ret))) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            opal_argv_free(data_item_argv);
+            STORE_ERR_MSG_FMT("SQLBindParameter 3 returned: %d", ret);
+            return ORCM_ERROR;
+        }
+        
+        if (argv_count > 1) {
+            /* Bind the units parameter. */
+            ret = SQLBindParameter(stmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0,
+                                   (SQLPOINTER)data_item_argv[1],
+                                   strlen(data_item_argv[1]), NULL);
+            if (!(SQL_SUCCEEDED(ret))) {
+                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                opal_argv_free(data_item_argv);
+                STORE_ERR_MSG_FMT("SQLBindParameter 7 returned: %d", ret);
+                return ORCM_ERROR;
+            }
+        } else {
+            /* No units provided, bind NULL. */
+            ret = SQLBindParameter(stmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0, NULL, 0, &null_len);
+            if (!(SQL_SUCCEEDED(ret))) {
+                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                opal_argv_free(data_item_argv);
+                STORE_ERR_MSG_FMT("SQLBindParameter 7 returned: %d", ret);
+                return ORCM_ERROR;
+            }
+        }
+        
+        if (change_value_binding) {
+            if (numeric) {
+                /* Value is numeric, bind to the appropriate value. */
+                ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                       SQL_DOUBLE, 0, 0, (SQLPOINTER)&value_num,
+                                       sizeof(value_num), NULL);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    opal_argv_free(data_item_argv);
+                    STORE_ERR_MSG_FMT("SQLBindParameter 5 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                /* Pass NULL as the string value. */
+                ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                       SQL_VARCHAR, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    opal_argv_free(data_item_argv);
+                    STORE_ERR_MSG_FMT("SQLBindParameter 6 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+            } else {
+                /* Pass NULL as the numeric value. */
+                ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                       SQL_DOUBLE, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    opal_argv_free(data_item_argv);
+                    STORE_ERR_MSG_FMT("SQLBindParameter 5 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                /* Value is string, bind to the appropriate value. */
+                ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                       SQL_VARCHAR, 0, 0, (SQLPOINTER)value_str,
+                                       strlen(value_str), NULL);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    opal_argv_free(data_item_argv);
+                    STORE_ERR_MSG_FMT("SQLBindParameter 6 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+            }
+        }
         
         ret = SQLExecute(stmt);
         if (!(SQL_SUCCEEDED(ret))) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            opal_argv_free(data_item_argv);
             STORE_ERR_MSG_FMT("SQLExecute returned: %d", ret);
             return ORCM_ERROR;
         }
         
-        opal_output_verbose(2, orcm_db_base_framework.framework_output,
-                            "Query succeeded");
+        opal_argv_free(data_item_argv);
     }
+    
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                        "odbc_store succeeded");
      
     SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     

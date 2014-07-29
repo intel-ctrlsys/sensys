@@ -16,7 +16,8 @@
 #define ORTE_SENSOR_IPMI_DECLS_H
 
 #define uchar unsigned char
-#define GET_ACPI_POWER           (0x07 | (NETFN_APP << 8))
+#define GET_ACPI_POWER          (0x07 | (NETFN_APP << 8))
+#define GET_BMC_IP_CMD          0x03
 // The total number of Compute Nodes/Child nodes present under each aggregator
 #define TOTAL_NODES 2
 // The total number of parameters that need to be gathered for each node
@@ -24,6 +25,9 @@
 #define TOTAL_PROPERTIES_PER_NODE   14
 // The total number of IPMI Calls that need to be called for each node
 #define TOTAL_CALLS_PER_NODE        2
+
+
+unsigned char disable_ipmi;
 
 // GET_DEVICE_ID
 typedef struct {
@@ -58,7 +62,7 @@ typedef union {
 struct ipmi_properties{
     char node_name[16];
     int bmc_rev[2];
-    int ipmi_ver[2];
+    int ipmi_ver[2];    
     int man_id[8];
     char sys_power_state[10];
     char dev_power_state[10];
@@ -67,7 +71,9 @@ struct ipmi_properties{
 
 // Node Details
 typedef struct {
-    char node_ip[16];
+    char name[64];
+    char bmc_ip[16];
+    char host_ip[16];
     char device_id[16];
     char user[16];
     char pasw[16];
@@ -87,14 +93,14 @@ typedef struct {
     char baseboard_serial[16];
     char sys_power_state[16];
     char dev_power_state[16];
-    char ps1_usage[16];
-    char ps1_temp[16];
-    char ps2_usage[16];
-    char ps2_temp[16];
-    char fan1_cpu_rpm[16];
-    char fan2_cpu_rpm[16];
-    char fan1_sys_rpm[16];
-    char fan2_sys_rpm[16];
+    float ps1_usage;
+    float ps1_temp;
+    float ps2_usage;
+    float ps2_temp;
+    float fan1_cpu_rpm;
+    float fan2_cpu_rpm;
+    float fan1_sys_rpm;
+    float fan2_sys_rpm;
 } ipmi_properties_t;
 
 
@@ -106,6 +112,17 @@ typedef struct {
     // Node Properties
     ipmi_properties_t prop;
 } ipmi_capsule_t;
+
+
+typedef struct {
+    char node_name[64];
+    char host_ipaddr[16];
+    char bmc_ipaddr[16];
+    char username[16];
+    char password[16];
+    struct orcm_sensor_hosts_t *next;
+}orcm_sensor_hosts_t;
+
 
 // List of all properties to be scanned by the IPMI Plugin
 // This total number should correspond to the value TOTAL_PROPERTIES_PER_NODE!!
@@ -130,6 +147,6 @@ typedef enum {
 void get_system_power_state(uchar in, char* str);
 void get_device_power_state(uchar in, char* str);
 
-void ipmi_exec_call(ipmi_capsule_t *cap);
+int ipmi_exec_call(ipmi_capsule_t *cap);
 
 #endif

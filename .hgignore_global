@@ -264,7 +264,6 @@ syntax: glob
 ./ompi/mca/btl/openib/btl_openib_lex.c
 ./ompi/mca/btl/portals4/Makefile.in
 ./ompi/mca/btl/scif/Makefile.in
-./ompi/mca/btl/sctp/Makefile.in
 ./ompi/mca/btl/self/Makefile.in
 ./ompi/mca/btl/sm/Makefile.in
 ./ompi/mca/btl/smcuda/Makefile.in
@@ -503,14 +502,11 @@ syntax: glob
 ./ompi/mpi/fortran/use-mpi-tkr/Makefile.in
 ./ompi/mpi/fortran/use-mpi-tkr/fortran_kinds.sh
 ./ompi/mpi/fortran/use-mpi-tkr/fortran_sizes.h
-./ompi/mpi/fortran/use-mpi-tkr/mpi_*.f90
 ./ompi/mpi/fortran/use-mpi-tkr/mpi.mod
 ./ompi/mpi/fortran/use-mpi-tkr/MPI.mod
 ./ompi/mpi/fortran/use-mpi-tkr/mpi_kinds.mod
 ./ompi/mpi/fortran/use-mpi-tkr/mpi_kinds.ompi_module
-./ompi/mpi/fortran/use-mpi-tkr/mpi-f90-interfaces.h
 ./ompi/mpi/fortran/use-mpi-tkr/libmpi_f90.a
-./ompi/mpi/fortran/use-mpi-tkr/scripts/Makefile.in
 ./ompi/mpi/java/Makefile.in
 ./ompi/mpi/java/c/Makefile.in
 ./ompi/mpi/java/java/mpi
@@ -863,6 +859,7 @@ syntax: glob
 ./orte/test/mpi/ziaprobe
 ./orte/test/mpi/ziatest
 ./orte/test/mpi/.gdb_history
+./orte/test/mpi/*.dwarf
 ./orte/test/mpi/junk*
 ./orte/test/mpi/sio
 ./orte/test/mpi/sendrecv_blaster
@@ -884,6 +881,7 @@ syntax: glob
 ./orte/test/mpi/pconnect
 ./orte/test/mpi/thread_init
 ./orte/test/mpi/memcached-dummy
+./orte/test/mpi/coll_test
 ./orte/test/system/radix
 ./orte/test/system/sigusr_trap
 ./orte/test/system/orte_no_op

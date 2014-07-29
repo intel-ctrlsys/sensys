@@ -108,7 +108,6 @@ static opal_event_t sigusr2_handler;
 
 static void shutdown_signal(int fd, short flags, void *arg);
 static void signal_callback(int fd, short flags, void *arg);
-static void epipe_signal_callback(int fd, short flags, void *arg);
 
 static void setup_sighandler(int signal, opal_event_t *ev,
                              opal_event_cbfunc_t cbfunc)
@@ -122,17 +121,50 @@ static int orcmsd_init(void)
 {
     int ret;
     char *error;
-    opal_buffer_t *uribuf;
 
     if (initialized) {
         return ORCM_SUCCESS;
     }
     initialized = true;
 
+    if (!ORTE_PROC_IS_HNP) {
+    /* if not HNP this is a step daemon set it to ORCM_DAEMON */
+        orte_process_info.proc_type = ORCM_DAEMON;
+    }
+
     /* Initialize the ORTE data type support */
     if (ORTE_SUCCESS != (ret = orte_ess_base_std_prolog())) {
         error = "orte_std_prolog";
         goto error;
+    }
+
+    /*
+     * Report errors when required cmdline arguments are not provided 
+     */
+    if (NULL == mca_sst_orcmsd_component.base_jobid) {
+        fprintf(stderr, "orcmsd: jobid is required\n");
+        ret = ORTE_ERR_NOT_FOUND;
+        return (ret);
+    }
+
+    if (NULL == mca_sst_orcmsd_component.base_vpid) {
+        fprintf(stderr, "orcmsd: vpid is required\n");
+        ret = ORTE_ERR_NOT_FOUND;
+        return (ret);
+    }
+
+    /*
+    if (NULL == mca_sst_orcmsd_component.node_regex) {
+        fprintf(stderr, "orcmsd: node-regex is required\n");
+        ret = ORTE_ERR_NOT_FOUND;
+        return (ret);
+    }
+    */
+
+    if ((!ORTE_PROC_IS_HNP) && (NULL == orte_process_info.my_hnp_uri)) {
+        fprintf(stderr, "orcmsd: hnp-uri is required for non hnp session daemons\n");
+        ret = ORTE_ERR_NOT_FOUND;
+        return (ret);
     }
 
     /* define a name for myself */
@@ -197,7 +229,7 @@ static int orcmsd_init(void)
     }
 
     /* setup callback for SIGPIPE */
-    setup_sighandler(SIGPIPE, &epipe_handler, epipe_signal_callback);
+    setup_sighandler(SIGPIPE, &epipe_handler, signal_callback);
     /* Set signal handlers to catch kill signals so we can properly clean up
      * after ourselves. 
      */
@@ -449,21 +481,6 @@ static int orcmsd_init(void)
         goto error;
     }
 
-    if (ORCM_PROC_IS_HNP) {
-    /* we are an hnp, so update the contact info field for later use */
-        orte_process_info.my_hnp_uri = orte_rml.get_contact_info();
-
-    /* we are also officially a daemon, so better update that field too */
-        orte_process_info.my_daemon_uri = strdup(orte_process_info.my_hnp_uri);
-    } else {
-        orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
-        printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
-        OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
-        opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
-        orte_rml_base_update_contact_info(uribuf);
-        orte_process_info.proc_type = ORCM_DAEMON;
-    }
-    
     orte_create_session_dirs = false;
 
     /* enable communication via the rml */
@@ -482,6 +499,8 @@ static int orcmsd_init(void)
         goto error;
     }
     
+    orte_routed.update_route(ORTE_PROC_MY_HNP, ORTE_PROC_MY_HNP);
+
     /* setup I/O forwarding system - must come after we init routes */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_iof_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -574,7 +593,6 @@ static int orcmsd_setup_node_pool(void)
 
     if (NULL != mca_sst_orcmsd_component.node_regex) {
     /* extract the nodes */
-        printf ("NODE-REGEX %s\n", mca_sst_orcmsd_component.node_regex);
         if (ORTE_SUCCESS != (ret = orte_regex_extract_node_names(mca_sst_orcmsd_component.node_regex, &hosts))) {
             error = "orte_regex_extract_node_names";
             goto error;
@@ -617,6 +635,8 @@ static int orcmsd_setup_node_pool(void)
     jdata = OBJ_NEW(orte_job_t);
     jdata->jobid = ORTE_PROC_MY_NAME->jobid;
     opal_pointer_array_set_item(orte_job_data, 0, jdata);
+    /* set number of daemons reported to zero */
+    jdata->num_reported = 0;
     
     /* every job requires at least one app */
     app = OBJ_NEW(orte_app_context_t);
@@ -661,21 +681,26 @@ static int orcmsd_setup_node_pool(void)
         /* record that the daemon job is running */
         jdata->num_procs++;
         jdata->state = ORTE_JOB_STATE_RUNNING;
-        /* num reported only one for now */
-        jdata->num_reported = 1;
     }
 
 
     if (ORCM_PROC_IS_HNP) {
     /* we are an hnp, so update the contact info field for later use */
         orte_process_info.my_hnp_uri = orte_rml.get_contact_info();
+        ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_NAME->jobid;
+        ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_NAME->vpid;
+        ORTE_PROC_MY_DAEMON->jobid = ORTE_PROC_MY_NAME->jobid;
+        ORTE_PROC_MY_DAEMON->vpid = ORTE_PROC_MY_NAME->vpid;
 
     /* we are also officially a daemon, so better update that field too */
         orte_process_info.my_daemon_uri = strdup(orte_process_info.my_hnp_uri);
+
     } else {
         orte_process_info.my_daemon_uri = orte_rml.get_contact_info();
-        printf ("HNP-URI %s\n", orte_process_info.my_hnp_uri);
-        OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
+        /* set the parent to my HNP for step daemons */
+        ORTE_PROC_MY_PARENT->jobid = ORTE_PROC_MY_HNP->jobid;
+        ORTE_PROC_MY_PARENT->vpid = ORTE_PROC_MY_HNP->vpid;
+        uribuf = OBJ_NEW(opal_buffer_t);
         opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
         orte_rml_base_update_contact_info(uribuf);
     }
@@ -735,16 +760,11 @@ static void shutdown_signal(int fd, short flags, void *arg)
 /**
  * Deal with sigpipe errors
  */
-static void epipe_signal_callback(int fd, short flags, void *arg)
+static void signal_callback(int fd, short flags, void *arg)
 {
     /* for now, we just announce and ignore them */
-    opal_output(0, "%s reports a SIGPIPE error on fd %d",
+    opal_output(0, "%s reports a SIGNAL error on fd %d",
                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), fd);
     return;
-}
-
-static void signal_callback(int fd, short event, void *arg)
-{
-    /* just ignore these signals */
 }
 

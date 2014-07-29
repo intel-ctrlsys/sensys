@@ -34,7 +34,6 @@
 #include "opal/mca/base/base.h"
 #include "opal/mca/crs/crs.h"
 #include "opal/mca/crs/base/base.h"
-#include "opal/mca/db/db.h"
 
 #include "orte/util/name_fns.h"
 #include "orte/util/proc_info.h"
@@ -258,7 +257,7 @@ int global_coord_setup_job(orte_jobid_t jobid) {
             return ORTE_ERR_NOT_FOUND;
         }
 
-        if( ORTE_JOB_CONTROL_RESTART == jdata->controls ) {
+        if (ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_RESTART)) {
             OPAL_OUTPUT_VERBOSE((10, mca_snapc_full_component.super.output_handle,
                                  "Global) Restarting Job %s...",
                                  ORTE_JOBID_PRINT(jobid)));
@@ -513,11 +512,18 @@ int global_coord_end_ckpt(orte_snapc_base_quiesce_t *datum)
     if( currently_migrating ) {
         OPAL_OUTPUT_VERBOSE((10, mca_snapc_full_component.super.output_handle,
                              "Global) End Ckpt: Flush the modex cached data\n"));
-        if (OPAL_SUCCESS != (ret = opal_db.remove(NULL, NULL))) {
+
+        /* TODO: You can't pass NULL as the identifier - what you'll need to do is
+         * close all open dstore handles, and then open the ones you need
+         */
+#if 0
+        if (OPAL_SUCCESS != (ret = opal_dstore.remove(NULL, NULL))) {
             ORTE_ERROR_LOG(ret);
             exit_status = ret;
             goto cleanup;
         }
+#endif
+
         orte_grpcomm.finalize();
         if (ORTE_SUCCESS != (ret = orte_grpcomm.init())) {
             ORTE_ERROR_LOG(ret);

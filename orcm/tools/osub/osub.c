@@ -49,6 +49,7 @@
 #include <dirent.h>
 #endif  /* HAVE_DIRENT_H */
 
+#include "opal/dss/dss.h"
 #include "opal/mca/mca.h"
 #include "opal/mca/base/base.h"
 #include "opal/mca/event/event.h"
@@ -63,6 +64,7 @@
 #include "opal/runtime/opal_cr.h"
 #endif
 
+#include "orte/runtime/orte_wait.h"
 #include "orte/util/error_strings.h"
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/errmgr.h"
@@ -229,6 +231,7 @@ main(int argc, char *argv[])
     alloc.exclusive = orcm_osub_globals.exclusive;     // true if nodes to be exclusively allocated (i.e., not shared across sessions)
     alloc.interactive = orcm_osub_globals.interactive; // true if in interactive mode
     alloc.nodes = '\0';                                // regex of nodes to be used
+    alloc.parent_uri = '\0';                           // my_daemon uri address
     /* alloc.constraints = orcm_osub_globals.resources */ ; // list of resource constraints to be applied when selecting hosts
 
     alloc.caller_uid = getuid();   // caller uid, not from args

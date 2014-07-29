@@ -190,26 +190,75 @@ static int init(void)
             *ptr = '\0';
             /* look for critical, max, and label info */
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "label");
-            fp = fopen(filename, "r");
-            trk->label = orte_getline(fp);
-            fclose(fp);
-            free(filename);
-
+            if (NULL != (fp = fopen(filename, "r")))
+            {
+                if(NULL != (trk->label = orte_getline(fp)))
+                {
+                    fclose(fp);
+                    free(filename);
+                } else {
+                    ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                    fclose(fp);
+                    free(filename);
+                    free(tmp);
+                    OBJ_RELEASE(trk);
+                    continue;
+                }
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
+                free(filename);
+                free(tmp);
+                OBJ_RELEASE(trk);
+                    continue;
+            }
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "crit");
-            fp = fopen(filename, "r");
-            ptr = orte_getline(fp);
-            fclose(fp);
-            trk->critical_temp = strtol(ptr, NULL, 10)/1000.0;
-            free(ptr);
-            free(filename);
+            if (NULL != (fp = fopen(filename, "r")))
+            {
+                if(NULL != (ptr = orte_getline(fp)))
+                {
+                    trk->critical_temp = strtol(ptr, NULL, 10)/1000.0;
+                    free(ptr);
+                    fclose(fp);
+                    free(filename);
+                } else {
+                    ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                    fclose(fp);
+                    free(filename);
+                    free(tmp);
+                    OBJ_RELEASE(trk);
+                    continue;
+                }
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
+                free(filename);
+                free(tmp);
+                OBJ_RELEASE(trk);
+                continue;
+            }
 
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "max");
-            fp = fopen(filename, "r");
-            ptr = orte_getline(fp);
-            fclose(fp);
-            trk->max_temp = strtol(ptr, NULL, 10)/1000.0;
-            free(ptr);
-            free(filename);
+            if(NULL != (fp = fopen(filename, "r")))
+            {
+                if(NULL != (ptr = orte_getline(fp)))
+                {
+                    trk->max_temp = strtol(ptr, NULL, 10)/1000.0;
+                    free(ptr);
+                    fclose(fp);
+                    free(filename);
+                } else {
+                    ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                    fclose(fp);
+                    free(filename);
+                    free(tmp);
+                    OBJ_RELEASE(trk);
+                    continue;
+                }
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
+                free(filename);
+                OBJ_RELEASE(trk);
+                continue;
+            }
 
             /* add to our list */
             opal_list_append(&tracking, &trk->super);
@@ -337,6 +386,7 @@ static void coretemp_sample(orcm_sensor_sampler_t *sampler)
                 ORTE_ERROR_LOG(ret);
                 OBJ_DESTRUCT(&data);
                 free(temp);
+                fclose(fp);
                 return;
             }
             free(temp);
@@ -448,7 +498,7 @@ static void coretemp_log(opal_buffer_t *sample)
 
     for (i=0; i < ncores; i++) {
         kv = OBJ_NEW(opal_value_t);
-        asprintf(&kv->key, "core%d", i);
+        asprintf(&kv->key, "core%d:degrees C", i);
         kv->type = OPAL_FLOAT;
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {

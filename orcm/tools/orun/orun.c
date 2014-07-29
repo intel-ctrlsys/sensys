@@ -124,10 +124,6 @@ static orte_std_cntr_t total_num_apps = 0;
 static bool want_prefix_by_default = (bool) ORTE_WANT_ORTERUN_PREFIX_BY_DEFAULT;
 static char *ompi_server=NULL;
 static char *my_hnp_uri=NULL;
-
-/*
- * Globals
- */
 struct orun_globals_t orun_globals;
 static bool globals_init = false;
 
@@ -139,295 +135,22 @@ static opal_cmd_line_init_t cmd_line_init[] = {
     { NULL, 'V', NULL, "version", 0,
       &orun_globals.version, OPAL_CMD_LINE_TYPE_BOOL,
       "Print version and exit" },
-    { NULL, 'v', NULL, "verbose", 0,
-      &orun_globals.verbose, OPAL_CMD_LINE_TYPE_BOOL,
-      "Be verbose" },
-    { "orte_execute_quiet", 'q', NULL, "quiet", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Suppress helpful messages" },
-    { NULL, '\0', "report-pid", "report-pid", 1,
-      &orun_globals.report_pid, OPAL_CMD_LINE_TYPE_STRING,
-      "Printout pid on stdout [-], stderr [+], or a file [anything else]" },
-    { NULL, '\0', "report-uri", "report-uri", 1,
-      &orun_globals.report_uri, OPAL_CMD_LINE_TYPE_STRING,
-      "Printout URI on stdout [-], stderr [+], or a file [anything else]" },
-    
-    /* exit status reporting */
-    { "orte_report_child_jobs_separately", '\0', "report-child-jobs-separately", "report-child-jobs-separately", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Return the exit status of the primary job only" },
-    
-    /* hetero apps */
-    { "orte_hetero_apps", '\0', NULL, "hetero-apps", 0,
-        NULL, OPAL_CMD_LINE_TYPE_BOOL,
-    "Indicates that multiple app_contexts are being provided that are a mix of 32/64 bit binaries" },
-    
-    /* select XML output */
-    { "orte_xml_output", '\0', "xml", "xml", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Provide all output in XML format" },
-    { "orte_xml_file", '\0', "xml-file", "xml-file", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Provide all output in XML format to the specified file" },
 
-    /* tag output */
-    { "orte_tag_output", '\0', "tag-output", "tag-output", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Tag all output with [job,rank]" },
-    { "orte_timestamp_output", '\0', "timestamp-output", "timestamp-output", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Timestamp all application process output" },
-    { "orte_output_filename", '\0', "output-filename", "output-filename", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Redirect output from application processes into filename.rank" },
-    { "orte_xterm", '\0', "xterm", "xterm", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Create a new xterm window and display output from the specified ranks there" },
-
-    /* select stdin option */
-    { NULL, '\0', "stdin", "stdin", 1,
-      &orun_globals.stdin_target, OPAL_CMD_LINE_TYPE_STRING,
-      "Specify procs to receive stdin [rank, all, none] (default: 0, indicating rank 0)" },
-    
-    /* request that argv[0] be indexed */
-    { NULL, '\0', "index-argv-by-rank", "index-argv-by-rank", 0,
-      &orun_globals.index_argv, OPAL_CMD_LINE_TYPE_BOOL,
-      "Uniquely index argv[0] for each process using its rank" },
-
-    /* Specify the launch agent to be used */
-    { "orte_launch_agent", '\0', "launch-agent", "launch-agent", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Command used to start processes on remote nodes (default: orted)" },
-    
-    /* Preload the binary on the remote machine */
-    { NULL, 's', NULL, "preload-binary", 0,
-      &orun_globals.preload_binaries, OPAL_CMD_LINE_TYPE_BOOL,
-      "Preload the binary on the remote machine before starting the remote process." },
-
-    /* Preload files on the remote machine */
-    { NULL, '\0', NULL, "preload-files", 1,
-      &orun_globals.preload_files, OPAL_CMD_LINE_TYPE_STRING,
-      "Preload the comma separated list of files to the remote machines current working directory before starting the remote process." },
-
-    /* Use an appfile */
-    { NULL, '\0', NULL, "app", 1,
-      &orun_globals.appfile, OPAL_CMD_LINE_TYPE_STRING,
-      "Provide an appfile; ignore all other command line options" },
-
-    /* Number of processes; -c, -n, --n, -np, and --np are all
+    /* Number of processes; -np, and --np are all
        synonyms */
-    { NULL, 'c', "np", "np", 1,
-      &orun_globals.num_procs, OPAL_CMD_LINE_TYPE_INT,
-      "Number of processes to run" },
-    { NULL, '\0', "n", "n", 1,
+    { NULL, '\0', "np", "np", 1,
       &orun_globals.num_procs, OPAL_CMD_LINE_TYPE_INT,
       "Number of processes to run" },
     
-    /* maximum size of VM - typically used to subdivide an allocation */
-    { "orte_max_vm_size", '\0', "max-vm-size", "max-vm-size", 1,
-      NULL, OPAL_CMD_LINE_TYPE_INT,
-      "Number of processes to run" },
-
-    /* Set a hostfile */
-    { NULL, '\0', "hostfile", "hostfile", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Provide a hostfile" },
-    { NULL, '\0', "machinefile", "machinefile", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Provide a hostfile" },
-    { "orte_default_hostfile", '\0', "default-hostfile", "default-hostfile", 1,
-        NULL, OPAL_CMD_LINE_TYPE_STRING,
-    "Provide a default hostfile" },
-    { "opal_if_do_not_resolve", '\0', "do-not-resolve", "do-not-resolve", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Do not attempt to resolve interfaces" },
-    
-    /* uri of Open MPI server, or at least where to get it */
-    { NULL, '\0', "ompi-server", "ompi-server", 1,
-      &orun_globals.ompi_server, OPAL_CMD_LINE_TYPE_STRING,
-      "Specify the URI of the Open MPI server, or the name of the file (specified as file:filename) that contains that info" },
-    { NULL, '\0', "wait-for-server", "wait-for-server", 0,
-      &orun_globals.wait_for_server, OPAL_CMD_LINE_TYPE_BOOL,
-      "If ompi-server is not already running, wait until it is detected (default: false)" },
-    { NULL, '\0', "server-wait-time", "server-wait-time", 1,
-      &orun_globals.server_wait_timeout, OPAL_CMD_LINE_TYPE_INT,
-      "Time in seconds to wait for ompi-server (default: 10 sec)" },
-    
-    { "carto_file_path", '\0', "cf", "cartofile", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Provide a cartography file" },
-
-    { "orte_rankfile", '\0', "rf", "rankfile", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Provide a rankfile file" },
-
-    /* Export environment variables; potentially used multiple times,
-       so it does not make sense to set into a variable */
-    { NULL, 'x', NULL, NULL, 1,
-      NULL, OPAL_CMD_LINE_TYPE_NULL,
-      "Export an environment variable, optionally specifying a value (e.g., \"-x foo\" exports the environment variable foo and takes its value from the current environment; \"-x foo=bar\" exports the environment variable name foo and sets its value to \"bar\" in the started processes)" },
-
-      /* Mapping controls */
-    { "rmaps_base_display_map", '\0', "display-map", "display-map", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Display the process map just before launch"},
-    { "rmaps_base_display_devel_map", '\0', "display-devel-map", "display-devel-map", 0,
-       NULL, OPAL_CMD_LINE_TYPE_BOOL,
-       "Display a detailed process map (mostly intended for developers) just before launch"},
-    { "rmaps_base_display_topo_with_map", '\0', "display-topo", "display-topo", 0,
-       NULL, OPAL_CMD_LINE_TYPE_BOOL,
-       "Display the topology as part of the process map (mostly intended for developers) just before launch"},
-    { "rmaps_base_display_diffable_map", '\0', "display-diffable-map", "display-diffable-map", 0,
-       NULL, OPAL_CMD_LINE_TYPE_BOOL,
-       "Display a diffable process map (mostly intended for developers) just before launch"},
-    { NULL, 'H', "host", "host", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "List of hosts to invoke processes on" },
-    { "rmaps_base_no_schedule_local", '\0', "nolocal", "nolocal", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Do not run any MPI applications on the local node" },
-    { "rmaps_base_no_oversubscribe", '\0', "nooversubscribe", "nooversubscribe", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Nodes are not to be oversubscribed, even if the system supports such operation"},
-    { "rmaps_base_oversubscribe", '\0', "oversubscribe", "oversubscribe", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Nodes are allowed to be oversubscribed, even on a managed system"},
-    { "rmaps_base_cpus_per_rank", '\0', "cpus-per-proc", "cpus-per-proc", 1,
-      NULL, OPAL_CMD_LINE_TYPE_INT,
-      "Number of cpus to use for each process [default=1]" },
-    { "rmaps_base_cpus_per_rank", '\0', "cpus-per-rank", "cpus-per-rank", 1,
-      NULL, OPAL_CMD_LINE_TYPE_INT,
-      "Synonym for cpus-per-proc" },
-
-    /* backward compatiblity */
-    { "rmaps_base_bycore", '\0', "bycore", "bycore", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Whether to map and rank processes round-robin by core" },
-    { "rmaps_base_bynode", '\0', "bynode", "bynode", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Whether to map and rank processes round-robin by node" },
-    { "rmaps_base_byslot", '\0', "byslot", "byslot", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Whether to map and rank processes round-robin by slot" },
-
-    /* Nperxxx options that do not require topology and are always
-     * available - included for backwards compatibility
-     */
-    { "rmaps_ppr_pernode", '\0', "pernode", "pernode", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Launch one process per available node" },
-    { "rmaps_ppr_n_pernode", '\0', "npernode", "npernode", 1,
-        NULL, OPAL_CMD_LINE_TYPE_INT,
-        "Launch n processes per node on all allocated nodes" },
     { "rmaps_ppr_n_pernode", '\0', "N", NULL, 1,
         NULL, OPAL_CMD_LINE_TYPE_INT,
         "Launch n processes per node on all allocated nodes (synonym for npernode)" },
-
-#if OPAL_HAVE_HWLOC
-    /* declare hardware threads as independent cpus */
-    { "hwloc_base_use_hwthreads_as_cpus", '\0', "use-hwthread-cpus", "use-hwthread-cpus", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Use hardware threads as independent cpus" },
-
-    /* include npersocket for backwards compatibility */
-    { "rmaps_ppr_n_persocket", '\0', "npersocket", "npersocket", 1,
-      NULL, OPAL_CMD_LINE_TYPE_INT,
-      "Launch n processes per socket on all allocated nodes" },
-
-    /* Mapping options */
-    { "rmaps_base_mapping_policy", '\0', NULL, "map-by", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Mapping Policy [slot | hwthread | core | socket (default) | numa | board | node]" },
-
-      /* Ranking options */
-    { "rmaps_base_ranking_policy", '\0', NULL, "rank-by", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Ranking Policy [slot (default) | hwthread | core | socket | numa | board | node]" },
-
-      /* Binding options */
-    { "hwloc_base_binding_policy", '\0', NULL, "bind-to", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Policy for binding processes [none | hwthread | core (default) | socket | numa | board] (supported qualifiers: overload-allowed,if-supported)" },
-
-    /* backward compatiblity */
-    { "hwloc_base_bind_to_core", '\0', "bind-to-core", "bind-to-core", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Bind processes to cores" },
-    { "hwloc_base_bind_to_socket", '\0', "bind-to-socket", "bind-to-socket", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Bind processes to sockets" },
-
-    { "hwloc_base_report_bindings", '\0', "report-bindings", "report-bindings", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Whether to report process bindings to stderr" },
-
-    /* slot list option */
-    { "hwloc_base_slot_list", '\0', "slot-list", "slot-list", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "List of processor IDs to bind processes to [default=NULL]"},
-
-    /* generalized pattern mapping option */
-    { "rmaps_ppr_pattern", '\0', NULL, "ppr", 1,
-        NULL, OPAL_CMD_LINE_TYPE_STRING,
-        "Comma-separated list of number of processes on a given resource type [default: none]" },
-#else
-    /* Mapping options */
-    { "rmaps_base_mapping_policy", '\0', NULL, "map-by", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Mapping Policy [slot (default) | node]" },
-
-      /* Ranking options */
-    { "rmaps_base_ranking_policy", '\0', NULL, "rank-by", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Ranking Policy [slot (default) | node]" },
-#endif
-
-    /* Allocation options */
-    { "orte_display_alloc", '\0', "display-allocation", "display-allocation", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Display the allocation being used by this job"},
-    { "orte_display_devel_alloc", '\0', "display-devel-allocation", "display-devel-allocation", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Display a detailed list (mostly intended for developers) of the allocation being used by this job"},
-#if OPAL_HAVE_HWLOC
-    { "hwloc_base_cpu_set", '\0', "cpu-set", "cpu-set", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Comma-separated list of ranges specifying logical cpus allocated to this job [default: none]"},
-#endif
-    { NULL, 'H', "host", "host", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "List of hosts to invoke processes on" },
-
-    /* mpiexec-like arguments */
-    { NULL, '\0', "wdir", "wdir", 1,
-      &orun_globals.wdir, OPAL_CMD_LINE_TYPE_STRING,
-      "Set the working directory of the started processes" },
-    { NULL, '\0', "wd", "wd", 1,
-      &orun_globals.wdir, OPAL_CMD_LINE_TYPE_STRING,
-      "Synonym for --wdir" },
-    { NULL, '\0', "set-cwd-to-session-dir", "set-cwd-to-session-dir", 0,
-      &orun_globals.set_cwd_to_session_dir, OPAL_CMD_LINE_TYPE_BOOL,
-      "Set the working directory of the started processes to their session directory" },
     { NULL, '\0', "path", "path", 1,
       &orun_globals.path, OPAL_CMD_LINE_TYPE_STRING,
       "PATH to be used to look for executables to start processes" },
 
-    /* User-level debugger arguments */
-    { NULL, '\0', "tv", "tv", 0,
-      &orun_globals.debugger, OPAL_CMD_LINE_TYPE_BOOL,
-      "Deprecated backwards compatibility flag; synonym for \"--debug\"" },
-    { NULL, '\0', "debug", "debug", 0,
-      &orun_globals.debugger, OPAL_CMD_LINE_TYPE_BOOL,
-      "Invoke the user-level debugger indicated by the orte_base_user_debugger MCA parameter" },
-    { "orte_base_user_debugger", '\0', "debugger", "debugger", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Sequence of debuggers to search for when \"--debug\" is used" },
-    { "orte_output_debugger_proctable", '\0', "output-proctable", "output-proctable", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Output the debugger proctable after launch" },
-    
     /* OpenRTE arguments */
-    { "orte_debug", 'd', "debug-devel", "debug-devel", 0,
+    { "orte_debug", 'd', "debug", "debug", 0,
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Enable debugging of OpenRTE" },
     
@@ -438,63 +161,15 @@ static opal_cmd_line_init_t cmd_line_init[] = {
     { "orte_debug_daemons_file", '\0', "debug-daemons-file", "debug-daemons-file", 0,
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Enable debugging of any OpenRTE daemons used by this application, storing output in files" },
+
+    /* Use an appfile */
+    { NULL, '\0', NULL, "app", 1,
+      &orun_globals.appfile, OPAL_CMD_LINE_TYPE_STRING,
+      "Provide an appfile; ignore all other command line options" },
     
-    { "orte_leave_session_attached", '\0', "leave-session-attached", "leave-session-attached", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Enable debugging of OpenRTE" },
-
-    { "orte_do_not_launch", '\0', "do-not-launch", "do-not-launch", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Perform all necessary operations to prepare to launch the application, but do not actually launch it" },
-    
-    { NULL, '\0', NULL, "prefix", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Prefix where Open MPI is installed on remote nodes" },
-    { NULL, '\0', NULL, "noprefix", 0,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Disable automatic --prefix behavior" },
-
-    { "orte_report_launch_progress", '\0', "show-progress", "show-progress", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Output a brief periodic report on launch progress" },
-
-    { "orte_use_regexp", '\0', "use-regexp", "use-regexp", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Use regular expressions for launch" },
-
-    { "orte_report_events", '\0', "report-events", "report-events", 1,
-      NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Report events to a tool listening at the specified URI" },
-
-    { "orte_enable_recovery", '\0', "enable-recovery", "enable-recovery", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Enable recovery from process failure [Default = disabled]" },
-
-    { "orte_max_restarts", '\0', "max-restarts", "max-restarts", 1,
-      NULL, OPAL_CMD_LINE_TYPE_INT,
-      "Max number of times to restart a failed process" },
-
-#if OPAL_HAVE_HWLOC
-    { "orte_hetero_nodes", '\0', NULL, "hetero-nodes", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Nodes in cluster may differ in topology, so send the topology back from each node [Default = false]" },
-#endif
-
-    { NULL, '\0', "disable-recovery", "disable-recovery", 0,
-      &orun_globals.disable_recovery, OPAL_CMD_LINE_TYPE_BOOL,
-      "Disable recovery (resets all recovery options to off)" },
-
-    { "state_novm_select", '\0', "novm", "novm", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Execute without creating an allocation-spanning virtual machine (only start daemons on nodes hosting application procs)" },
-
-    { "orte_staged_execution", '\0', "staged", "staged", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Used staged execution if inadequate resources are present (cannot support MPI jobs)" },
-
     /* Scheduler options for new allocation */
     { NULL,
-      'a', NULL, "account",
+      '\0', NULL, "account",
       1,
       &orun_globals.account, OPAL_CMD_LINE_TYPE_STRING,
       "Account to be charged" },
@@ -506,64 +181,28 @@ static opal_cmd_line_init_t cmd_line_init[] = {
       "User assigned project name" },
 
     { NULL,
-      'g', NULL, "gid",
+      '\0', NULL, "gid",
       1,
       &orun_globals.gid, OPAL_CMD_LINE_TYPE_INT,
       "Group id to run session under" },
 
     { NULL,
-      'N', NULL, "max-node",
+      '\0', NULL, "max-node",
       1,
       &orun_globals.max_nodes, OPAL_CMD_LINE_TYPE_INT,
       "Max nodes allowed in allocation" },
 
     { NULL,
-      'P', NULL, "max-pe",
-      1,
-      &orun_globals.max_pes, OPAL_CMD_LINE_TYPE_INT,
-      "Max PEs allowed in allocation" },
-
-    { NULL,
-      'M', NULL, "node",
+      '\0', NULL, "min-node",
       1,
       &orun_globals.min_nodes, OPAL_CMD_LINE_TYPE_INT,
       "Minimum number of nodes required for allocation" },
 
     { NULL,
-      'p', NULL, "pe",
+      '\0', NULL, "node",
       1,
-      &orun_globals.min_pes, OPAL_CMD_LINE_TYPE_INT,
-      "Minimum number of PEs required for allocation" },
-
-    { NULL,
-      's', NULL, "start",
-      1,
-      &orun_globals.starttime, OPAL_CMD_LINE_TYPE_STRING,
-      "Earliest Date/Time required to start job" },
-
-    { NULL,
-      'w', NULL, "walltime",
-      1,
-      &orun_globals.walltime, OPAL_CMD_LINE_TYPE_STRING,
-      "Maximum duration before job is terminated" },
-
-    { NULL,
-      'e', NULL, "exclusive",
-      0,
-      &orun_globals.exclusive, OPAL_CMD_LINE_TYPE_BOOL,
-      "Do not share allocated nodes with other sessions" },
-
-    { NULL,
-      'f', NULL, "nodefile",
-      0,
-      &orun_globals.nodefile, OPAL_CMD_LINE_TYPE_STRING,
-      "Path to file listing names of candidate nodes" },
-
-    { NULL,
-      'c', NULL, "constraints",
-      1,
-      &orun_globals.resource, OPAL_CMD_LINE_TYPE_STRING,
-      "Resource constraints to be applied" },
+      &orun_globals.min_nodes, OPAL_CMD_LINE_TYPE_INT,
+      "Minimum number of nodes required for allocation" },
 
     {"orte_hnp_uri", '\0', "hnp-uri", "hnp-uri", 1,
       &my_hnp_uri, OPAL_CMD_LINE_TYPE_STRING,
@@ -578,9 +217,6 @@ static opal_cmd_line_init_t cmd_line_init[] = {
 /*
  * Local functions
  */
-void orcms_daemon_recv(int status, orte_process_name_t* sender,
-                      opal_buffer_t *buffer, orte_rml_tag_t tag,
-                      void* cbdata);
 static int create_app(int argc, char* argv[],
                       orte_job_t *jdata,
                       orte_app_context_t **app,
@@ -593,24 +229,16 @@ static int init_sched_args(void);
 static int parse_args_sched(int argc, char *argv[], opal_cmd_line_t *cmd_line);
 static int alloc_request( orcm_alloc_t *alloc );
 
-void orcms_daemon_recv(int status, orte_process_name_t* sender,
-                      opal_buffer_t *buffer, orte_rml_tag_t tag,
-                      void* cbdata)
-{
-    return;
-}
-
 int orun(int argc, char *argv[])
 {
-    int rc;
+    int rc, n;
     opal_cmd_line_t cmd_line;
     char *param;
     orte_job_t *jdata=NULL;
     orcm_alloc_t alloc;
-    opal_buffer_t uribuf;
-    char *endptr;
-    char *dstr;
-    long sessionid;
+    orcm_rm_cmd_flag_t command;
+    char *hnp_uri;
+    orte_rml_recv_cb_t xbuffer;
 
     /* find our basename (the name of the executable) so that we can
        use it in pretty-print error messages */
@@ -776,11 +404,6 @@ int orun(int argc, char *argv[])
         jdata->stdin_target = strtoul(orun_globals.stdin_target, NULL, 10);
     }
     
-    /* if we want the argv's indexed, indicate that */
-    if (orun_globals.index_argv) {
-        orte_set_attribute(&jdata->attributes, ORTE_JOB_INDEX_ARGV, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
-    }
-
     /* Parse each app, adding it to the job object */
     parse_locals(jdata, argc, argv);
     
@@ -822,12 +445,34 @@ int orun(int argc, char *argv[])
      * there are times I need to send a command to "all daemons", and that means *I* have
      * to receive it too
      */
-    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_DAEMON,
-                            ORTE_RML_PERSISTENT, orcms_daemon_recv, NULL);
+    /* setup to receive the result */
+    OBJ_CONSTRUCT(&xbuffer, orte_rml_recv_cb_t);
+    xbuffer.active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_TOOL,
+                            ORTE_RML_NON_PERSISTENT,
+                            orte_rml_recv_callback, &xbuffer);
     
+    if (!my_hnp_uri && (false == orun_globals.alloc_request)) {
+        orte_show_help("help-orun.txt", "orun:allocation-not-specified",
+                       false, orte_basename, orte_basename);
+        rc = ORCM_ERR_BAD_PARAM;
+        ORTE_ERROR_LOG(rc);
+        goto DONE;
+    }
+
+    if(my_hnp_uri) {
+        /* set the contact info to the hash table */
+        orte_rml.set_contact_info(my_hnp_uri);
+        rc = orte_rml_base_parse_uris(my_hnp_uri, ORTE_PROC_MY_HNP, NULL);
+        if (ORTE_SUCCESS != rc) {
+            ORTE_ERROR_LOG(rc);
+            goto DONE;
+        }
+
+    }
+
     /* create the allocation object */
-    if(orun_globals.alloc_request)
-    {
+    if ( true == orun_globals.alloc_request ) {
         OBJ_CONSTRUCT(&alloc, orcm_alloc_t);
         if (ORTE_SUCCESS != (rc = alloc_request(&alloc))) {
             ORTE_ERROR_LOG(rc);
@@ -836,26 +481,40 @@ int orun(int argc, char *argv[])
             ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
             goto DONE;
         }
-        sleep(1);
-        ORTE_PROC_MY_HNP->jobid = alloc.id <<16;
-        ORTE_PROC_MY_HNP->vpid = 0;
-        my_hnp_uri = strdup(alloc.hnpuri);
-        printf("\n hnp-uri %s\n", my_hnp_uri);
+
+        ORTE_WAIT_FOR_COMPLETION(xbuffer.active);
+        /* unpack the command */
+        n = 1;
+        if (ORTE_SUCCESS != (rc = opal_dss.unpack(&xbuffer.data, &command, &n, ORCM_RM_CMD_T))) {
+            ORTE_ERROR_LOG(rc);
+            goto DONE;
+         }
+
+         /* now process the command locally */
+         switch(command) {
+
+         case ORCM_VM_READY_COMMAND:
+             n = 1;
+             if (ORTE_SUCCESS != (rc = opal_dss.unpack(&xbuffer.data, &hnp_uri, &n, OPAL_STRING))) {
+                 ORTE_ERROR_LOG(rc);
+                 goto DONE;
+             }
+             orte_rml.set_contact_info(hnp_uri);
+             rc = orte_rml_base_parse_uris(hnp_uri, ORTE_PROC_MY_HNP, NULL);
+             if (ORTE_SUCCESS != rc) {
+                 ORTE_ERROR_LOG(rc);
+                 goto DONE;
+             }
+             /* spawn the job and its daemons */
+             break;
+
+         default:
+            ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
+             goto DONE;
+         }
+
     }
             
-    if(my_hnp_uri) {
-        OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
-        opal_dss.pack(&uribuf, &my_hnp_uri, 1, OPAL_STRING);
-        orte_rml_base_update_contact_info(&uribuf);
-        dstr=strstr(my_hnp_uri,".");
-        *dstr='\0'; 
-        sessionid = strtol(my_hnp_uri,&endptr,10);
-        ORTE_PROC_MY_HNP->jobid = sessionid;
-        ORTE_PROC_MY_HNP->vpid = 0;
-        orte_process_info.my_hnp_uri=my_hnp_uri;
-        printf("orte_process_myhnp %li %s\n", sessionid, orte_process_info.my_hnp_uri);
-    }
-
     /* spawn the job and its daemons */
     rc = orte_plm.spawn(jdata);
 
@@ -883,16 +542,8 @@ static int init_globals(void)
     if (!globals_init) {
         orun_globals.env_val =     NULL;
         orun_globals.appfile =     NULL;
-        orun_globals.wdir =        NULL;
         orun_globals.path =        NULL;
-        orun_globals.ompi_server = NULL;
-        orun_globals.wait_for_server = false;
-        orun_globals.server_wait_timeout = 10;
         orun_globals.stdin_target = "0";
-        orun_globals.report_pid        = NULL;
-        orun_globals.report_uri        = NULL;
-        orun_globals.disable_recovery = false;
-        orun_globals.index_argv = false;
     }
 
     /* Reset the other fields every time */
@@ -908,16 +559,9 @@ static int init_globals(void)
     if( NULL != orun_globals.appfile )
         free( orun_globals.appfile );
     orun_globals.appfile =     NULL;
-    if( NULL != orun_globals.wdir )
-        free( orun_globals.wdir );
-    orun_globals.set_cwd_to_session_dir = false;
-    orun_globals.wdir =        NULL;
     if( NULL != orun_globals.path )
         free( orun_globals.path );
     orun_globals.path =        NULL;
-
-    orun_globals.preload_binaries = false;
-    orun_globals.preload_files  = NULL;
 
 #if OPAL_ENABLE_FT_CR == 1
     orun_globals.sstore_load = NULL;
@@ -934,12 +578,7 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
     /* print version if requested.  Do this before check for help so
        that --version --help works as one might expect. */
     if (orun_globals.version) {
-        char *str, *project_name = NULL;
-        if (0 == strcmp(orte_basename, "mpirun")) {
-            project_name = "Open MPI";
-        } else {
-            project_name = "OpenRTE";
-        }
+        char *str, *project_name = "orun";
         str = opal_show_help_string("help-orun.txt", "orun:version", 
                                     false,
                                     orte_basename, project_name, OPAL_VERSION,
@@ -954,12 +593,7 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
     /* Check for help request */
     if (orun_globals.help) {
         char *str, *args = NULL;
-        char *project_name = NULL;
-        if (0 == strcmp(orte_basename, "mpirun")) {
-            project_name = "Open MPI";
-        } else {
-            project_name = "OpenRTE";
-        }
+        char *project_name = "orun";
         args = opal_cmd_line_get_usage_msg(cmd_line);
         str = opal_show_help_string("help-orun.txt", "orun:usage", false,
                                     orte_basename, project_name, OPAL_VERSION,
@@ -975,33 +609,6 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
         exit(0);
     }
 
-    /* check for request to report pid */
-    if (NULL != orun_globals.report_pid) {
-        FILE *fp;
-        if (0 == strcmp(orun_globals.report_pid, "-")) {
-            /* if '-', then output to stdout */
-            printf("%d\n", (int)getpid());
-        } else if (0 == strcmp(orun_globals.report_pid, "+")) {
-            /* if '+', output to stderr */
-            fprintf(stderr, "%d\n", (int)getpid());
-        } else {
-            fp = fopen(orun_globals.report_pid, "w");
-            if (NULL == fp) {
-                orte_show_help("help-orun.txt", "orun:write_file", false,
-                               orte_basename, "pid", orun_globals.report_pid);
-                exit(0);
-            }
-            fprintf(fp, "%d\n", (int)getpid());
-            fclose(fp);
-        }
-    }
-    
-     /* if recovery was disabled on the cmd line, do so */
-    if (orun_globals.disable_recovery) {
-        orte_enable_recovery = false;
-        orte_max_restarts = 0;
-    }
-
     return ORTE_SUCCESS;
 }
 
@@ -1014,130 +621,6 @@ static int parse_locals(orte_job_t *jdata, int argc, char* argv[])
     orte_app_context_t *app;
     bool made_app;
     orte_std_cntr_t j, size1;
-
-    /* if the ompi-server was given, then set it up here */
-    if (NULL != orun_globals.ompi_server) {
-        /* someone could have passed us a file instead of a uri, so
-         * we need to first check to see what we have - if it starts
-         * with "file", then we know it is a file. Otherwise, we assume
-         * it is a uri as provided by the ompi-server's output
-         * of an ORTE-standard string. Note that this is NOT a standard
-         * uri as it starts with the process name!
-         */
-        if (0 == strncmp(orun_globals.ompi_server, "file", strlen("file")) ||
-            0 == strncmp(orun_globals.ompi_server, "FILE", strlen("FILE"))) {
-            char input[1024], *filename;
-            FILE *fp;
-            
-            /* it is a file - get the filename */
-            filename = strchr(orun_globals.ompi_server, ':');
-            if (NULL == filename) {
-                /* filename is not correctly formatted */
-                orte_show_help("help-orun.txt", "orun:ompi-server-filename-bad", true,
-                               orte_basename, orun_globals.ompi_server);
-                exit(1);
-            }
-            ++filename; /* space past the : */
-            
-            if (0 >= strlen(filename)) {
-                /* they forgot to give us the name! */
-                orte_show_help("help-orun.txt", "orun:ompi-server-filename-missing", true,
-                               orte_basename, orun_globals.ompi_server);
-                exit(1);
-            }
-            
-            /* open the file and extract the uri */
-            fp = fopen(filename, "r");
-            if (NULL == fp) { /* can't find or read file! */
-                orte_show_help("help-orun.txt", "orun:ompi-server-filename-access", true,
-                               orte_basename, orun_globals.ompi_server);
-                exit(1);
-            }
-            if (NULL == fgets(input, 1024, fp)) {
-                /* something malformed about file */
-                fclose(fp);
-                orte_show_help("help-orun.txt", "orun:ompi-server-file-bad", true,
-                               orte_basename, orun_globals.ompi_server,
-                               orte_basename);
-                exit(1);
-            }
-            fclose(fp);
-            input[strlen(input)-1] = '\0';  /* remove newline */
-            ompi_server = strdup(input);
-        } else if (0 == strncmp(orun_globals.ompi_server, "pid", strlen("pid")) ||
-                   0 == strncmp(orun_globals.ompi_server, "PID", strlen("PID"))) {
-            opal_list_t hnp_list;
-            opal_list_item_t *item;
-            orte_hnp_contact_t *hnp;
-            char *ptr;
-            pid_t pid;
-            
-            ptr = strchr(orun_globals.ompi_server, ':');
-            if (NULL == ptr) {
-                /* pid is not correctly formatted */
-                orte_show_help("help-orun.txt", "orun:ompi-server-pid-bad", true,
-                               orte_basename, orte_basename,
-                               orun_globals.ompi_server, orte_basename);
-                exit(1);
-            }
-            ++ptr; /* space past the : */
-            
-            if (0 >= strlen(ptr)) {
-                /* they forgot to give us the pid! */
-                orte_show_help("help-orun.txt", "orun:ompi-server-pid-bad", true,
-                               orte_basename, orte_basename,
-                               orun_globals.ompi_server, orte_basename);
-                exit(1);
-            }
-            
-            pid = strtoul(ptr, NULL, 10);
-            
-            /* to search the local mpirun's, we have to partially initialize the
-             * orte_process_info structure. This won't fully be setup until orte_init,
-             * but we finagle a little bit of it here
-             */
-            if (ORTE_SUCCESS != (rc = orte_session_dir_get_name(NULL, &orte_process_info.tmpdir_base,
-                                                                &orte_process_info.top_session_dir,
-                                                                NULL, NULL, NULL))) {
-                orte_show_help("help-orun.txt", "orun:ompi-server-could-not-get-hnp-list", true,
-                               orte_basename, orte_basename);
-                exit(1);
-            }
-            
-            OBJ_CONSTRUCT(&hnp_list, opal_list_t);
-            
-            /* get the list of HNPs, but do -not- setup contact info to them in the RML */
-            if (ORTE_SUCCESS != (rc = orte_list_local_hnps(&hnp_list, false))) {
-                orte_show_help("help-orun.txt", "orun:ompi-server-could-not-get-hnp-list", true,
-                               orte_basename, orte_basename);
-                exit(1);
-            }
-            
-            /* search the list for the desired pid */
-            while (NULL != (item = opal_list_remove_first(&hnp_list))) {
-                hnp = (orte_hnp_contact_t*)item;
-                if (pid == hnp->pid) {
-                    ompi_server = strdup(hnp->rml_uri);
-                    goto hnp_found;
-                }
-                OBJ_RELEASE(item);
-            }
-            /* if we got here, it wasn't found */
-            orte_show_help("help-orun.txt", "orun:ompi-server-pid-not-found", true,
-                           orte_basename, orte_basename, pid, orun_globals.ompi_server,
-                           orte_basename);
-            OBJ_DESTRUCT(&hnp_list);
-            exit(1);
-        hnp_found:
-            /* cleanup rest of list */
-            while (NULL != (item = opal_list_remove_first(&hnp_list))) {
-                OBJ_RELEASE(item);
-            }
-            OBJ_DESTRUCT(&hnp_list);
-        } else {
-            ompi_server = strdup(orun_globals.ompi_server);
-        }
-    }
 
     /* Make the apps */
 
@@ -1449,7 +932,7 @@ static int create_app(int argc, char* argv[],
      * Get mca parameters so we can pass them to the daemons.
      * Use the count determined above to make sure we do not go past
      * the executable name. Example:
-     *   mpirun -np 2 -mca foo bar ./my-app -mca bip bop
+     *   orun -np 2 -mca foo bar ./my-app -mca bip bop
      * We want to pick up '-mca foo bar' but not '-mca bip bop'
      */
     if (ORTE_SUCCESS != (rc = capture_cmd_line_params(argc, count, argv))) {
@@ -2108,7 +1591,10 @@ static int alloc_request( orcm_alloc_t *alloc )
 
     alloc->caller_uid = getuid();   // caller uid, not from args
     alloc->caller_gid = getgid();   // caller gid, not from args
-    alloc->hnpname='\0';
+    alloc->hnpname = '\0';
+    alloc->hnpuri = '\0';
+    alloc->parent_name = ORTE_NAME_PRINT(ORTE_PROC_MY_NAME);
+    alloc->parent_uri = orte_rml.get_contact_info();
 
     if (NULL == orun_globals.starttime || 0 == strlen(orun_globals.starttime)) {
         gettimeofday(&tv,NULL);

@@ -10,6 +10,7 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 
+#include "opal/dss/dss.h"
 #include "opal/util/output.h"
 
 #include "orte/mca/errmgr/errmgr.h"

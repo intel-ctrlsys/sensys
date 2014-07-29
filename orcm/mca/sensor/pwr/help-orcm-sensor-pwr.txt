@@ -20,12 +20,12 @@ We will continue to operate, but will not monitor power.
 [no-sockets]
 Power sensing was requested, but your topology doesn't
 identify sockets and we are therefore unable to verify
-the processor type as supporcmd.
+the processor type as supported.
 
 We will continue to operate, but will not monitor power.
-[unsupporcmd-model]
+[unsupported-model]
 Power sensing was requested, but your processor type
-is not currently supporcmd.
+is not currently supported.
 
   Detected model: %d
 

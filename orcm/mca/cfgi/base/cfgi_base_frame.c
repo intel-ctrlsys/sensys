@@ -11,6 +11,7 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 
+#include "opal/dss/dss.h"
 #include "opal/mca/mca.h"
 #include "opal/util/argv.h"
 #include "opal/util/output.h"

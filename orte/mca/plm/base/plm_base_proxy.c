@@ -12,7 +12,7 @@
  * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.
  *                         All rights reserved. 
- * Copyright (c) 2013      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -36,6 +36,7 @@
 #include "orte/mca/rml/rml_types.h"
 #include "orte/mca/routed/routed.h"
 #include "orte/runtime/orte_globals.h"
+#include "orte/runtime/orte_wait.h"
 
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/plm/base/plm_private.h"
@@ -209,7 +210,6 @@ int orte_plm_base_fork_hnp(void)
     int buffer_length, num_chars_read, chunk;
     char *orted_uri;
     int rc;
-    char *foo;
     orte_jobid_t jobid;
 
     /* A pipe is used to communicate between the parent and child to
@@ -300,10 +300,6 @@ int orte_plm_base_fork_hnp(void)
     }
     opal_argv_append(&argc, &argv, param);
     free(param);
-
-    foo = opal_argv_join(argv, ' ');
-    opal_output(0, "%s FORKING HNP: %s", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), foo);
-    free(foo);
 
     /* Fork off the child */
     orte_process_info.hnp_pid = fork();

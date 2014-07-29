@@ -163,26 +163,55 @@ static int init(void)
         }
         trk->core = strtoul(&entry->d_name[k+1], NULL, 10);
         trk->file = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_cur_freq", NULL);
-        
+
         /* read the static info */
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_max_freq", NULL);
-        fp = fopen(filename, "r");
-        tmp = orte_getline(fp);
-        fclose(fp);
-        trk->max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
-        free(filename);
+        if(NULL != (fp = fopen(filename, "r")))
+        {
+            if(NULL!=(tmp = orte_getline(fp))) {
+                trk->max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
+                free(tmp);
+                fclose(fp);
+                free(filename);
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                fclose(fp);
+                free(filename);
+                OBJ_RELEASE(trk);
+                continue;
+            }
+        } else {
+            ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
+            free(filename);
+            OBJ_RELEASE(trk);
+            continue;
+        }
 
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_min_freq", NULL);
         fp = fopen(filename, "r");
-        tmp = orte_getline(fp);
-        fclose(fp);
-        trk->min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
-        free(filename);
+        if(NULL != (fp = fopen(filename, "r")))
+        {
+            if(NULL!=(tmp = orte_getline(fp))) {
+                trk->min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
+                free(tmp);
+                fclose(fp);
+                free(filename);
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                fclose(fp);
+                free(filename);
+                OBJ_RELEASE(trk);
+                continue;
+            }
+        } else {
+            ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
+            free(filename);
+            OBJ_RELEASE(trk);
+            continue;
+        }
 
         /* add to our list */
         opal_list_append(&tracking, &trk->super);
-        /* cleanup */
-        free(tmp);
     }
     closedir(cur_dirp);
 
@@ -310,6 +339,7 @@ static void freq_sample(orcm_sensor_sampler_t *sampler)
                 ORTE_ERROR_LOG(ret);
                 OBJ_DESTRUCT(&data);
                 free(freq);
+                fclose(fp);
                 return;
             }
             packed = true;
@@ -407,7 +437,7 @@ static void freq_log(opal_buffer_t *sample)
 
     for (i=0; i < ncores; i++) {
         kv = OBJ_NEW(opal_value_t);
-        asprintf(&kv->key, "core%d", i);
+        asprintf(&kv->key, "core%d:GHz", i);
         kv->type = OPAL_FLOAT;
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {

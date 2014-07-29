@@ -22,7 +22,9 @@ static void finalize(void);
 
 orcm_scd_base_module_t orcm_scd_proxy_module = {
     init,
-    finalize
+    finalize,
+    NULL,
+    NULL
 };
 
 

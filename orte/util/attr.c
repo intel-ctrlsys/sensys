@@ -11,6 +11,8 @@
 #include "orte/types.h"
 #include "orte/constants.h"
 
+#include "opal/dss/dss.h"
+
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orte/util/attr.h"
@@ -145,10 +147,10 @@ const char *orte_attr_key_to_str(orte_attribute_key_t key)
         return "JOB-FILE-MAPS";
     case ORTE_JOB_CKPT_STATE:
         return "JOB-CKPT-STATE";
-    case ORTE_JOB_CKPT_SNAPSHOT_REF:
-        return "JOB-CKPT-SNAPSHOT-REF";
-    case ORTE_JOB_SNAP_LOC:
-        return "JOB-SNAP-LOCATION";
+    case ORTE_JOB_SNAPSHOT_REF:
+        return "JOB-SNAPSHOT-REF";
+    case ORTE_JOB_SNAPSHOT_LOC:
+        return "JOB-SNAPSHOT-LOC";
     case ORTE_JOB_SNAPC_INIT_BAR:
         return "JOB-SNAPC-INIT-BARRIER-ID";
     case ORTE_JOB_SNAPC_FINI_BAR:
@@ -189,6 +191,17 @@ const char *orte_attr_key_to_str(orte_attribute_key_t key)
         return "JOB-MIN_FREQ";
     case ORTE_JOB_GOVERNOR:
         return "JOB-FREQ-GOVERNOR";
+    case ORTE_JOB_FAIL_NOTIFIED:
+        return "JOB-FAIL-NOTIFIED";
+    case ORTE_JOB_TERM_NOTIFIED:
+        return "JOB-TERM-NOTIFIED";
+    case ORTE_JOB_PEER_MODX_ID:
+        return "JOB-PEER-MODX-ID";
+    case ORTE_JOB_INIT_BAR_ID:
+        return "JOB-INIT-BAR-ID";
+    case ORTE_JOB_FINI_BAR_ID:
+        return "JOB-FINI-BAR-ID";
+
     case ORTE_PROC_NOBARRIER:
         return "PROC-NOBARRIER";
     case ORTE_PROC_CPU_BITMAP:
@@ -207,10 +220,10 @@ const char *orte_attr_key_to_str(orte_attribute_key_t key)
         return "PROC-FAST-FAILS";
     case ORTE_PROC_CKPT_STATE:
         return "PROC-CKPT-STATE";
-    case ORTE_PROC_CKPT_SNAP_REF:
-        return "PROC-CKPT-SNAP-REF";
-    case ORTE_PROC_SNAP_LOC:
-        return "PROC-SNAP-LOC";
+    case ORTE_PROC_SNAPSHOT_REF:
+        return "PROC-SNAPHOT-REF";
+    case ORTE_PROC_SNAPSHOT_LOC:
+        return "PROC-SNAPSHOT-LOC";
     case ORTE_PROC_NODENAME:
         return "PROC-NODENAME";
     case ORTE_PROC_CGROUP:

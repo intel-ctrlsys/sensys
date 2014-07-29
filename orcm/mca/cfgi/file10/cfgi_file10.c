@@ -643,14 +643,16 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
     bool foundlocal = false;
 
     if (0 == strcmp(xml->name, "port")) {
-        if (NULL != xml->value && NULL != xml->value[0]) {
+        if (NULL != xml->value && NULL != xml->value[0] &&
+            0 < strlen(xml->value[0])) {
             /* specifies the orcm-port to be used */
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-PORT %s", xml->value[0]);
             daemon_cfg.port = strdup(xml->value[0]);
         }
     } else if (0 == strcmp(xml->name, "cores")) {
-        if (NULL != xml->value && NULL != xml->value[0]) {
+        if (NULL != xml->value && NULL != xml->value[0] &&
+            0 < strlen(xml->value[0])) {
             /* specifies the cores to be used */
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-CORES %s", xml->value[0]);
@@ -659,7 +661,8 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
             opal_argv_append_nosize(&daemon_cfg.mca_params, val);
             free(val);
         }
-    } else if (0 == strcmp(xml->name, "mca-params")) {
+    } else if (0 == strcmp(xml->name, "mca-params") &&
+            0 < strlen(xml->value[0])) {
         if (NULL != xml->value && NULL != xml->value[0]) {
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-MCA-PARAMS %s", xml->value[0]);
@@ -892,11 +895,16 @@ static int parse_configuration(orcm_cfgi_xml_parser_t *xml,
 
     if (0 == strcmp(xml->name, "orcm-log")) {
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                            "\tORCM-LOG %s", xml->value[0]);
+                            "\tORCM-LOG %s",
+                            (NULL == xml->value) ? "NULL" :
+                            ((NULL == xml->value[0]) ? "NULL" : xml->value[0]));
         /* this format specified a common log option for all daemons,
          * so cache it here and we will apply it later
          */
-        log = strdup(xml->value[0]);
+        if (NULL != xml->value && NULL != xml->value[0] &&
+            0 < strlen(xml->value[0])) {
+            log = strdup(xml->value[0]);
+        }
         return ORTE_SUCCESS;
     } else if (0 == strcmp(xml->name, "orcm-daemons")) {
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,

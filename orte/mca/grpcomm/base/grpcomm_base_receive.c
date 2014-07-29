@@ -140,6 +140,8 @@ static void coll_id_req(int status, orte_process_name_t* sender,
     opal_buffer_t *relay;
     int rc;
     int32_t num, n;
+    uint8_t flag;
+    orte_daemon_cmd_flag_t cmd;
 
     /* unpack the number of id's being requested */
     n=1;
@@ -151,6 +153,19 @@ static void coll_id_req(int status, orte_process_name_t* sender,
         /* assume one id was requested */
         num = 1;
     }
+    if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
+        /* read the flag */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &flag, &n, OPAL_UINT8))) {
+            if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            /* assume this was not a global request */
+            flag = 0;
+        }
+    }
+
     id = (orte_grpcomm_coll_id_t*)malloc(num * sizeof(orte_grpcomm_coll_id_t));
     for (n=0; n < num; n++) {
         id[n] = orte_grpcomm_base_get_coll_id();
@@ -160,19 +175,49 @@ static void coll_id_req(int status, orte_process_name_t* sender,
                          "%s grpcomm:base:receive proc %s requested %d coll id's",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          ORTE_NAME_PRINT(sender), num));
-    relay = OBJ_NEW(opal_buffer_t);
-    if (ORTE_SUCCESS != (rc = opal_dss.pack(relay, id, num, ORTE_GRPCOMM_COLL_ID_T))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(relay);
+    if (0 == flag) {
+        relay = OBJ_NEW(opal_buffer_t);
+        if (ORTE_SUCCESS != (rc = opal_dss.pack(relay, id, num, ORTE_GRPCOMM_COLL_ID_T))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(relay);
+            free(id);
+            return;
+        }
         free(id);
-        return;
-    }
-    free(id);
-    if (0 > (rc = orte_rml.send_buffer_nb(sender, relay, ORTE_RML_TAG_COLL_ID,
-                                          orte_rml_send_callback, NULL))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(relay);
-        return;
+        if (0 > (rc = orte_rml.send_buffer_nb(sender, relay, ORTE_RML_TAG_COLL_ID,
+                                              orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(relay);
+            return;
+        }
+    } else {
+        relay = OBJ_NEW(opal_buffer_t);
+        /* pack the coll_id cmd */
+        cmd = ORTE_DAEMON_NEW_COLL_ID;
+        if (ORTE_SUCCESS != (rc = opal_dss.pack(relay, &cmd, 1, ORTE_DAEMON_CMD))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(relay);
+            free(id);
+            return;
+        }
+        /* pack the jobid of the requestor */
+        if (ORTE_SUCCESS != (rc = opal_dss.pack(relay, &sender->jobid, 1, ORTE_JOBID))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(relay);
+            free(id);
+            return;
+        }
+        /* pack the id */
+        if (ORTE_SUCCESS != (rc = opal_dss.pack(relay, id, num, ORTE_GRPCOMM_COLL_ID_T))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(relay);
+            free(id);
+            return;
+        }
+        free(id);
+        /* xcast it to the daemons as they need to process it
+         * prior to passing it down to their procs */
+        orte_grpcomm.xcast(ORTE_PROC_MY_NAME->jobid, relay, ORTE_RML_TAG_DAEMON);
     }
 }
 

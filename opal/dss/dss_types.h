@@ -109,6 +109,10 @@ typedef uint64_t opal_identifier_t;
 #define    OPAL_UINT16_ARRAY        (opal_data_type_t)   44
 #define    OPAL_UINT32_ARRAY        (opal_data_type_t)   45
 #define    OPAL_UINT64_ARRAY        (opal_data_type_t)   46
+#define    OPAL_BYTE_OBJECT_ARRAY   (opal_data_type_t)   47
+#define    OPAL_PID_ARRAY           (opal_data_type_t)   48
+#define    OPAL_TIMEVAL_ARRAY       (opal_data_type_t)   49
+
 
 /* define the results values for comparisons so we can change them in only one place */
 #define OPAL_VALUE1_GREATER  +1
@@ -196,6 +200,16 @@ typedef struct {
     int32_t size;
     uint64_t *data;
 } opal_uint64_array_t;
+/* pid array object */
+typedef struct {
+    int32_t size;
+    pid_t *data;
+} opal_pid_array_t;
+/* timeval array object */
+typedef struct {
+    int32_t size;
+    struct timeval *data;
+} opal_timeval_array_t;
 
 /* Data value object */
 typedef struct {
@@ -239,6 +253,8 @@ typedef struct {
         opal_byte_object_array_t bo_array;
         opal_float_array_t fval_array;
         opal_double_array_t dval_array;
+        opal_pid_array_t pid_array;
+        opal_timeval_array_t tv_array;
         void *ptr;  // never packed or passed anywhere
     } data;
 } opal_value_t;

@@ -558,6 +558,7 @@ int opal_dss_print_node_stat(char **output, char *prefix, opal_node_stats_t *src
 int opal_dss_print_value(char **output, char *prefix, opal_value_t *src, opal_data_type_t type)
 {
     char *prefx;
+    int i;
 
     /* deal with NULL prefix */
     if (NULL == prefix) asprintf(&prefx, " ");
@@ -571,6 +572,10 @@ int opal_dss_print_value(char **output, char *prefix, opal_value_t *src, opal_da
     }
     
     switch (src->type) {
+    case OPAL_BOOL:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_BOOL\tKey: %s\tValue: %s",
+                 prefx, src->key, src->data.flag ? "true" : "false");
+        break;
     case OPAL_BYTE:
         asprintf(output, "%sOPAL_VALUE: Data type: OPAL_BYTE\tKey: %s\tValue: %x",
                  prefx, src->key, src->data.byte);
@@ -645,6 +650,139 @@ int opal_dss_print_value(char **output, char *prefix, opal_value_t *src, opal_da
         break;
     case OPAL_PTR:
         asprintf(output, "%sOPAL_VALUE: Data type: OPAL_PTR\tKey: %s", prefx, src->key);
+        break;
+    case OPAL_FLOAT_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_FLOAT_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.fval_array.size);
+        for (i = 0; i < src->data.fval_array.size; i++) {
+            asprintf(output, "%f ", src->data.fval_array.data[i]);
+        }
+        break;
+    case OPAL_DOUBLE_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_DOUBLE_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.dval_array.size);
+        for (i = 0; i < src->data.dval_array.size; i++) {
+            asprintf(output, "%f ", src->data.dval_array.data[i]);
+        }
+        break;
+    case OPAL_STRING_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_STRING_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.string_array.size);
+        for (i = 0; i < src->data.string_array.size; i++) {
+            asprintf(output, "%s ", src->data.string_array.data[i]);
+        }
+        break;
+    case OPAL_BOOL_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_BOOL_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.flag_array.size);
+        for (i = 0; i < src->data.flag_array.size; i++) {
+            asprintf(output, "%s ", src->data.flag_array.data[i] ? "true" : "false");
+        }
+        break;
+    case OPAL_SIZE_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_SIZE_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.size_array.size);
+        for (i = 0; i < src->data.size_array.size; i++) {
+            asprintf(output, "%lu ", (unsigned long)src->data.size_array.data[i]);
+        }
+        break;
+    case OPAL_BYTE_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_BYTE_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.byte_array.size);
+        for (i = 0; i < src->data.byte_array.size; i++) {
+            asprintf(output, "%d ", (int)src->data.byte_array.data[i]);
+        }
+        break;
+    case OPAL_INT_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_INT_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.integer_array.size);
+        for (i = 0; i < src->data.integer_array.size; i++) {
+            asprintf(output, "%d ", src->data.integer_array.data[i]);
+        }
+        break;
+    case OPAL_INT8_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_INT8_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.int8_array.size);
+        for (i = 0; i < src->data.int8_array.size; i++) {
+            asprintf(output, "%d ", (int)src->data.int8_array.data[i]);
+        }
+        break;
+    case OPAL_INT16_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_INT16_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.int16_array.size);
+        for (i = 0; i < src->data.int16_array.size; i++) {
+            asprintf(output, "%d ", (int)src->data.int16_array.data[i]);
+        }
+        break;
+    case OPAL_INT32_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_INT32_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.int32_array.size);
+        for (i = 0; i < src->data.int32_array.size; i++) {
+            asprintf(output, "%d ", src->data.int32_array.data[i]);
+        }
+        break;
+    case OPAL_INT64_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_INT64_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.int64_array.size);
+        for (i = 0; i < src->data.int64_array.size; i++) {
+            asprintf(output, "%ld ", (long)src->data.int64_array.data[i]);
+        }
+        break;
+    case OPAL_UINT_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_UINT_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.uint_array.size);
+        for (i = 0; i < src->data.uint_array.size; i++) {
+            asprintf(output, "%u ", src->data.uint_array.data[i]);
+        }
+        break;
+    case OPAL_UINT8_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_UINT8_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.uint8_array.size);
+        for (i = 0; i < src->data.uint8_array.size; i++) {
+            asprintf(output, "%u ", (unsigned int)src->data.uint8_array.data[i]);
+        }
+        break;
+    case OPAL_UINT16_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_UINT16_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.uint16_array.size);
+        for (i = 0; i < src->data.uint16_array.size; i++) {
+            asprintf(output, "%u ", (unsigned int)src->data.uint16_array.data[i]);
+        }
+        break;
+    case OPAL_UINT32_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_UINT32_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.uint32_array.size);
+        for (i = 0; i < src->data.uint32_array.size; i++) {
+            asprintf(output, "%u ", src->data.uint32_array.data[i]);
+        }
+        break;
+    case OPAL_UINT64_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_UINT64_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.uint64_array.size);
+        for (i = 0; i < src->data.uint64_array.size; i++) {
+            asprintf(output, "%lu ", (unsigned long)src->data.uint64_array.data[i]);
+        }
+        break;
+    case OPAL_BYTE_OBJECT_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_BYTE_OBJECT_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.bo_array.size);
+        for (i = 0; i < src->data.bo_array.size; i++) {
+            asprintf(output, "Data: %s\tSize: %lu ", (NULL == src->data.bo_array.data[i].bytes) ? "NULL" : "NON-NULL", (unsigned long)src->data.bo_array.data[i].size);
+        }
+        break;
+    case OPAL_PID_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_PID_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.pid_array.size);
+        for (i = 0; i < src->data.pid_array.size; i++) {
+            asprintf(output, "%lu ", (unsigned long)src->data.pid_array.data[i]);
+        }
+        break;
+    case OPAL_TIMEVAL_ARRAY:
+        asprintf(output, "%sOPAL_VALUE: Data type: OPAL_TIMEVAL_ARRAY\tKey: %s \tSIZE: %d \tDATA: ",
+                 prefx, src->key, src->data.tv_array.size);
+        for (i = 0; i < src->data.tv_array.size; i++) {
+            asprintf(output, "%ld.%06ld ", (long)src->data.tv_array.data[i].tv_sec, (long)src->data.tv_array.data[i].tv_usec);
+        }
         break;
     default:
         asprintf(output, "%sOPAL_VALUE: Data type: UNKNOWN\tKey: %s\tValue: UNPRINTABLE",

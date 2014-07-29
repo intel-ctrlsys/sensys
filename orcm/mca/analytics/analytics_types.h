@@ -44,6 +44,7 @@ typedef struct {
     int workflow_id;
     opal_list_t steps;
     opal_event_base_t *ev_base;
+    bool ev_active;
 } orcm_workflow_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_t);
 

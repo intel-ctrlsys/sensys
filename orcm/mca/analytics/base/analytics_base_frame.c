@@ -43,14 +43,14 @@ static int orcm_analytics_base_close(void)
 {
     orcm_analytics_base_comm_stop();
 
-    /* deconstruct the base objects */
+    /* destruct the base objects */
     OPAL_LIST_DESTRUCT(&orcm_analytics_base.workflows);
 
     return mca_base_framework_components_close(&orcm_analytics_base_framework,
                                                NULL);
 }
 
-/**
+/*
  * Function for finding and opening either all MCA components, or the one
  * that was specifically requested via a MCA parameter.
  */

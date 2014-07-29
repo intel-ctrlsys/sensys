@@ -79,7 +79,7 @@ static int orcm_diag_base_open(mca_base_open_flag_t flags)
 
     /* create the event base and start the progress thread */
     orcm_diag_base.ev_active = true;
-    if (NULL == (orcm_diag_base.ev_base = orcm_start_progress_thread("diag", progress_thread_engine))) {
+    if (NULL == (orcm_diag_base.ev_base = orcm_start_progress_thread("diag", progress_thread_engine, NULL))) {
         orcm_diag_base.ev_active = false;
         return ORCM_ERR_OUT_OF_RESOURCE;
     }

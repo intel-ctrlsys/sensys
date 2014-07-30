@@ -435,10 +435,6 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         /* tell the daemon it is to be the HNP */
         opal_argv_append(&argc, &argv, "--hnp");
 
-        /* tell the daemon to report back its uri so we can connect to it */
-        opal_argv_append(&argc, &argv, "--report-uri");
-        opal_argv_append(&argc, &argv, "1");
-
         /* add my parents uri to send the vm ready from the session HNP */
         if ( NULL != parent_uri ) {
             opal_argv_append(&argc, &argv, "--parent-uri");

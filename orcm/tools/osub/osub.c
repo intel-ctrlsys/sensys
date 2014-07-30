@@ -231,8 +231,11 @@ main(int argc, char *argv[])
     alloc.exclusive = orcm_osub_globals.exclusive;     // true if nodes to be exclusively allocated (i.e., not shared across sessions)
     alloc.interactive = orcm_osub_globals.interactive; // true if in interactive mode
     alloc.nodes = '\0';                                // regex of nodes to be used
+    alloc->parent_name = ORTE_NAME_PRINT(ORTE_PROC_MY_NAME);
     alloc.parent_uri = '\0';                           // my_daemon uri address
     /* alloc.constraints = orcm_osub_globals.resources */ ; // list of resource constraints to be applied when selecting hosts
+    alloc->hnpname = '\0';
+    alloc->hnpuri = '\0';
 
     alloc.caller_uid = getuid();   // caller uid, not from args
     alloc.caller_gid = getgid();   // caller gid, not from args

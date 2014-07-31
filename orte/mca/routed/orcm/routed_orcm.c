@@ -138,8 +138,14 @@ static orte_process_name_t get_route(orte_process_name_t *target)
     orte_process_name_t *ret, daemon;
     orte_routed_tree_t *child;
 
-    /* if I am a tool, or routing isn't enabled, go direct */
-    if (!orte_routing_is_enabled || ORTE_PROC_IS_TOOL) {
+    /* if I am a tool, go to scheduler */
+    if (ORTE_PROC_IS_TOOL) {
+        ret = ORTE_PROC_MY_SCHEDULER;
+        goto found;
+    }
+
+    /* if  routing isn't enabled, go direct */
+    if (!orte_routing_is_enabled) {
         ret = target;
         goto found;
     }

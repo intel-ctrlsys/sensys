@@ -113,6 +113,7 @@ static void start(orte_jobid_t jobid)
 static void stop(orte_jobid_t jobid)
 {
     opal_output(0,"IPMI Stop");
+    count_log = 0;
     return;
 }
 

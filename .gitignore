@@ -120,6 +120,9 @@ orcm/tools/orcmsd/orcmsd
 orcm/tools/orcmsd/orcmsd.1
 orcmapi/version.h
 scon/version.h
+orcm/tools/oflow/oflow
+orcm/tools/oflow/oflow.1
+
 config.cache
 aclocal.m4
 autom4te.cache

@@ -29,7 +29,23 @@
 #include "base.h"
 #include "mpool_base_tree.h"
 #include "mpool_base_mem_cb.h"
+#if defined(TODO_BTL_GB)
 #include "ompi/info/info.h" /* TODO */
+#else
+struct ompi_info_t {
+  opal_list_t super;
+  /**< generic list pointer which is the container for (key,value)
+       pairs */
+  int i_f_to_c_index;
+  /**< fortran handle for info. This is needed for translation from
+       fortran to C and vice versa */
+  opal_mutex_t *i_lock;
+  /**< Mutex for thread safety */
+  bool i_freed;
+  /**< Whether this info has been freed or not */
+};
+typedef struct ompi_info_t ompi_info_t;
+#endif
 
 /**
  * Memory Pool Registration

@@ -34,7 +34,9 @@
 #include "opal/mca/btl/base/btl_base_error.h"
 #include "opal/mca/mpool/mpool.h"
 
+#if defined(TODO_BTL_GB)
 #include "ompi/group/group.h"
+#endif
 
 BEGIN_C_DECLS
 

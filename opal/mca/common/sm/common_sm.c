@@ -33,6 +33,7 @@
 
 #include "opal/align.h"
 #include "opal/util/argv.h"
+#include "opal/util/error.h"
 #include "opal/util/show_help.h"
 #include "opal/mca/shmem/base/base.h"
 #if OPAL_ENABLE_FT_CR == 1

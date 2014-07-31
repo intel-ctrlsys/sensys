@@ -98,3 +98,8 @@ liborcmapi_so_version=0:0:0
 
 # OPAL layer
 libmca_opal_common_pmi_so_version=0:0:0
+libmca_common_cuda_so_version=0:0:0
+libmca_common_ofacm_so_version=0:0:0
+libmca_common_sm_so_version=0:0:0
+libmca_common_ugni_so_version=0:0:0
+libmca_common_verbs_so_version=0:0:0

@@ -157,10 +157,12 @@ static orte_process_name_t get_route(orte_process_name_t *target)
         goto found;
     }
 
-    /* if the target is from a different jobid, go direct */
+    /* if the target is from a different jobid, go up to scheduler then to target */
     if (target->jobid != ORTE_PROC_MY_NAME->jobid) {
-        ret = target;
-        goto found;
+        if (ORTE_PROC_IS_SCHEDULER) {
+            ret = target;
+            goto found;
+        }
     }
 
     daemon.jobid = ORTE_PROC_MY_NAME->jobid;

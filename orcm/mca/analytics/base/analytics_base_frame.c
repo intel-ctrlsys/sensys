@@ -114,5 +114,5 @@ static void wk_des(orcm_workflow_t *p)
     OPAL_LIST_DESTRUCT(&p->steps);
 }
 OBJ_CLASS_INSTANCE(orcm_workflow_t,
-                   opal_object_t,
+                   opal_list_item_t,
                    wk_con, wk_des);

@@ -49,6 +49,9 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
     char *mod_attrs = NULL;
     orcm_workflow_step_t *wf_step = NULL;
     orcm_workflow_t *wf;
+    opal_value_t module_name;
+    opal_value_t module_attr;
+    opal_value_t **values;
     char *threadname = NULL;
     
     /* unpack the number of steps */
@@ -73,32 +76,38 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
         wf->ev_active = false;
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
-
+    
+    OBJ_CONSTRUCT(&module_name, opal_value_t);
+    OBJ_CONSTRUCT(&module_attr, opal_value_t);
+    
+    values = (opal_value_t**)malloc(2 * sizeof(opal_value_t *));
+    values[0] = &module_name;
+    values[1] = &module_attr;
+    
     /* create each step (module) of the workflow */
-    for (i = 0; i < num_steps; i++) {
+    for (i = 0; i < num_steps; i = i+2) {
         wf_step = OBJ_NEW(orcm_workflow_step_t);
-        /* unpack the requested module name */
-        cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &wf_step->analytic,
-                                                  &cnt, OPAL_STRING))) {
-            OBJ_RELEASE(wf_step);
-            goto error;
-        }
-        cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &mod_attrs,
-                                                  &cnt, OPAL_STRING))) {
+        /* unpack the requested module name and attributes stored in opal_values */
+        cnt = 2;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, values,
+                                                  &cnt, OPAL_VALUE))) {
+            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(wf_step);
             goto error;
         }
         
+        wf_step->analytic = strdup(values[0]->data.string);
+        
         if (ORCM_SUCCESS !=
-            (rc = parse_attributes(&wf_step->attributes, mod_attrs))) {
+            (rc = parse_attributes(&wf_step->attributes, values[1]->data.string))) {
+            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(wf_step);
             goto error;
         }
         
         if (ORCM_SUCCESS !=
             (rc = orcm_analytics_base_select_workflow_step(wf_step))) {
+            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(wf_step);
             free(mod_attrs);
             /* skip this module ? */
@@ -109,13 +118,16 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
         free(mod_attrs);
     }
     
+    OBJ_DESTRUCT(&module_name);
+    OBJ_DESTRUCT(&module_attr);
+    free(values);
+    
     /* add workflow to the master list of workflows */
     opal_list_append(&orcm_analytics_base.workflows, &wf->super);
     
     return ORCM_SUCCESS;
 
 error:
-    ORTE_ERROR_LOG(rc);
     if (mod_attrs) {
         free(mod_attrs);
     }

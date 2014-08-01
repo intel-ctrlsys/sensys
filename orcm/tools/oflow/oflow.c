@@ -367,13 +367,17 @@ static void orcm_oflow_recv(int status, orte_process_name_t* sender,
     }
 
     /* unpack the values */
+    /* FIXME change this to pack 2 at a time, analytic name and attributes
+     * because thats what the other side is expecting 
+     */
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, value_list,
                                               &num_values, OPAL_VALUE))) {
         ORTE_ERROR_LOG(rc);
     }
     
     for (i = 0; i < num_values; i++) {
-        if (ORTE_SUCCESS != (rc = opal_dss.print(&output, "OFLOW ", value_list[i], OPAL_VALUE))) {
+        if (ORTE_SUCCESS != (rc = opal_dss.print(&output, "OFLOW ", value_list[i],
+                                                 OPAL_VALUE))) {
             ORTE_ERROR_LOG(rc);
             return;
         }

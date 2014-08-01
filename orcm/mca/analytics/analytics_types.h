@@ -48,6 +48,15 @@ typedef struct {
 } orcm_workflow_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_t);
 
+/* define a workflow caddy object */
+typedef struct {
+    opal_object_t super;
+    opal_event_t ev;
+    orcm_workflow_step_t *wf_step;
+    opal_value_array_t *data;
+} orcm_workflow_caddy_t;
+OBJ_CLASS_DECLARATION(orcm_workflow_caddy_t);
+
 /* define a few commands */
 typedef uint8_t orcm_analytics_cmd_flag_t;
 #define ORCM_ANALYTICS_CMD_T OPAL_UINT8

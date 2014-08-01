@@ -29,17 +29,50 @@ BEGIN_C_DECLS
  *  OBJ_RELEASE(data)
  * else
  */
-#define ORCM_ACTIVATE_WORKFLOW_STEP(a, b)                                      \
-    do {                                                                       \
-        opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
-                            "%s ACTIVATE WORKFLOW %d STATE %s AT %s:%d",       \
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
-                            (a)->workflow_id, orcm_analytics_step_to_str((b)), \
-                            __FILE__, __LINE__);                               \
-        orcm_analytics.activate_analytics_workflow_step((a), (b));             \
-    } while(0);
+#define ORCM_ACTIVATE_WORKFLOW_STEP(a, b)                                          \
+    do {                                                                           \
+        opal_list_item_t *list_item = opal_list_get_next(&(a)->steps);             \
+        orcm_workflow_step_t *wf_step_item = (orcm_workflow_step_t *)list_item;    \
+        if (list_item == opal_list_get_end(&(a)->steps)) {                         \
+            opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
+                                "%s TRIED TO ACTIVATE EMPTY WORKFLOW %d AT %s:%d", \
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
+                                (a)->workflow_id,                                  \
+                                __FILE__, __LINE__);                               \
+        } else {                                                                   \
+            opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
+                                "%s ACTIVATE WORKFLOW %d MODULE %s AT %s:%d",      \
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
+                                (a)->workflow_id, wf_step_item->analytic,          \
+                                __FILE__, __LINE__);                               \
+            orcm_analytics.activate_analytics_workflow_step((a),                   \
+                                                            wf_step_item,          \
+                                                            (b));                  \
+        }                                                                          \
+    }while(0);
 
-struct orcm_analytics_base_module_t;
+#define ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(a, b)                                     \
+    do {                                                                           \
+        opal_list_item_t *list_item = opal_list_get_next(&(a)->steps);             \
+        orcm_workflow_step_t *wf_step_item = (orcm_workflow_step_t *)list_item;    \
+        if (list_item == opal_list_get_end(&(a)->steps)) {                         \
+            opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
+                                "%s END OF WORKFLOW %d AT %s:%d",                  \
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
+                                (a)->workflow_id,                                  \
+                                __FILE__, __LINE__);                               \
+        } else {                                                                   \
+            opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
+                                "%s ACTIVATE NEXT WORKFLOW %d MODULE %s AT %s:%d", \
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
+                                (a)->workflow_id, wf_step_item->analytic,          \
+                                __FILE__, __LINE__);                               \
+            orcm_analytics.activate_analytics_workflow_step((a),                   \
+                                                            wf_step_item,          \
+                                                            (b));                  \
+        }                                                                          \
+    }while(0);
+
 
 /* Module functions */
 
@@ -49,12 +82,16 @@ typedef int (*orcm_analytics_base_module_init_fn_t)(struct orcm_analytics_base_m
 /* finalize the selected module */
 typedef void (*orcm_analytics_base_module_finalize_fn_t)(struct orcm_analytics_base_module_t *mod);
 
+/* do the real work in the selected module */
+typedef void (*orcm_analytics_base_module_analyze_fn_t)(int fd, short args, void* cb);
+
 /*
  * Ver 1.0
  */
 typedef struct {
     orcm_analytics_base_module_init_fn_t        init;
     orcm_analytics_base_module_finalize_fn_t    finalize;
+    orcm_analytics_base_module_analyze_fn_t     analyze;
 } orcm_analytics_base_module_t;
 
 /*
@@ -82,10 +119,12 @@ typedef struct {
 } orcm_analytics_base_component_t;
 
 /* define an API module */
-typedef void (*orcm_analytics_API_module_foo_fn_t)(void);
+typedef void (*orcm_analytics_API_module_activate_analytics_workflow_step_fn_t)(orcm_workflow_t *wf,
+                                                                                orcm_workflow_step_t *wf_step,
+                                                                                opal_value_array_t *data);
 
 typedef struct {
-    orcm_analytics_API_module_foo_fn_t foo;
+    orcm_analytics_API_module_activate_analytics_workflow_step_fn_t activate_analytics_workflow_step;
 } orcm_analytics_API_module_t;
 
 /*

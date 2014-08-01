@@ -36,7 +36,9 @@
 /*
  * Global variables
  */
-orcm_analytics_API_module_t orcm_analytics = {0};
+orcm_analytics_API_module_t orcm_analytics = {
+    orcm_analytics_base_activate_analytics_workflow_step
+};
 orcm_analytics_base_t orcm_analytics_base;
 
 static int orcm_analytics_base_close(void)
@@ -83,7 +85,13 @@ MCA_BASE_FRAMEWORK_DECLARE(orcm, analytics, NULL, NULL,
 /****    INSTANCE CLASSES    ****/
 static void wkstep_con(orcm_workflow_step_t *p)
 {
+    int rc;
+    
     OBJ_CONSTRUCT(&p->attributes, opal_value_array_t);
+    if (OPAL_SUCCESS !=
+        (rc = opal_value_array_init(&p->attributes, (sizeof(opal_value_t))))) {
+        ORTE_ERROR_LOG(rc);
+    }
     p->analytic = NULL;
 }
 static void wkstep_des(orcm_workflow_step_t *p)
@@ -116,3 +124,17 @@ static void wk_des(orcm_workflow_t *p)
 OBJ_CLASS_INSTANCE(orcm_workflow_t,
                    opal_list_item_t,
                    wk_con, wk_des);
+
+static void wkcaddy_con(orcm_workflow_caddy_t *p)
+{
+    p->wf_step = NULL;
+    p->data = NULL;
+}
+static void wkcaddy_des(orcm_workflow_caddy_t *p)
+{
+    OBJ_RELEASE(p->wf_step);
+    OBJ_RELEASE(p->data);
+}
+OBJ_CLASS_INSTANCE(orcm_workflow_caddy_t,
+                   opal_object_t,
+                   wkcaddy_con, wkcaddy_des);

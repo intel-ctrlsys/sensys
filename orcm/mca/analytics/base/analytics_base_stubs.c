@@ -28,7 +28,55 @@ static void* progress_thread_engine(opal_object_t *obj);
 
 static int workflow_id = 0;
 
+void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
+                                                          orcm_workflow_step_t *wf_step,
+                                                          opal_value_array_t *data) {
+    orcm_workflow_caddy_t *caddy;
+    orcm_analytics_base_module_t *module = (orcm_analytics_base_module_t *)wf_step->mod;
+    
+    caddy = OBJ_NEW(orcm_workflow_caddy_t);
+    
+    OBJ_RETAIN(wf_step);
+    caddy->wf_step = wf_step;
+    /* data was retain'd before it got here */
+    caddy->data = data;
+    
+    opal_event_set(wf->ev_base, &caddy->ev, -1,
+                   OPAL_EV_WRITE, module->analyze, caddy);
+    opal_event_active(&caddy->ev, OPAL_EV_WRITE, 1);
+}
+
 static int parse_attributes(opal_value_array_t *attr_array, char *attr_string) {
+    char **tokens = NULL;
+    char **subtokens = NULL;
+    int i, array_length, subarray_length;
+    opal_value_t *tokenized;
+    char *output;
+    
+    tokens = opal_argv_split(attr_string, ',');
+    array_length = opal_argv_count(tokens);
+    tokenized = (opal_value_t *)malloc(sizeof(opal_value_t));
+
+    for (i = 0; i < array_length; i++) {
+        subtokens = opal_argv_split(tokens[i], '=');
+        subarray_length = opal_argv_count(subtokens);
+        if (2 == subarray_length) {
+            tokenized->type = OPAL_STRING;
+            tokenized->key = subtokens[0];
+            tokenized->data.string = subtokens[1];
+            opal_value_array_append_item(attr_array, tokenized);
+            opal_dss.print(&output, "", tokenized, OPAL_VALUE);
+            OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                                 "%s analytics:base:stubs parse_attributes got attr %s",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                 output));
+            free(output);
+        } else {
+            return ORCM_ERR_BAD_PARAM;
+        }
+    }
+    free(tokenized);
+
     return ORCM_SUCCESS;
 }
 
@@ -162,12 +210,13 @@ int orcm_analytics_base_workflow_delete(int workflow_id)
     return ORCM_SUCCESS;
 }
 
-int orcm_analytics_base_send_data(opal_value_t *data)
+int orcm_analytics_base_send_data(opal_value_array_t *data)
 {
     orcm_workflow_t *wf;
     
     OPAL_LIST_FOREACH(wf, &orcm_analytics_base.workflows, orcm_workflow_t) {
-        /* OBJ_RETAIN(data), ORCM_ACTIVATE_WORKFLOW_STEP first step */
+        OBJ_RETAIN(data);
+        ORCM_ACTIVATE_WORKFLOW_STEP(wf, data);
     }
     return ORCM_SUCCESS;
 }

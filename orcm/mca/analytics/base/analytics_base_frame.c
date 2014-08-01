@@ -85,19 +85,13 @@ MCA_BASE_FRAMEWORK_DECLARE(orcm, analytics, NULL, NULL,
 /****    INSTANCE CLASSES    ****/
 static void wkstep_con(orcm_workflow_step_t *p)
 {
-    int rc;
-    
-    OBJ_CONSTRUCT(&p->attributes, opal_value_array_t);
-    if (OPAL_SUCCESS !=
-        (rc = opal_value_array_init(&p->attributes, (sizeof(opal_value_t))))) {
-        ORTE_ERROR_LOG(rc);
-    }
+    OBJ_CONSTRUCT(&p->attributes, opal_list_t);
     p->analytic = NULL;
     p->mod = NULL;
 }
 static void wkstep_des(orcm_workflow_step_t *p)
 {
-    OBJ_DESTRUCT(&p->attributes);
+    OPAL_LIST_DESTRUCT(&p->attributes);
     if (NULL != p->analytic) {
         free(p->analytic);
     }

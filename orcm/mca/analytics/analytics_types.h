@@ -31,7 +31,7 @@ struct orcm_analytics_base_module_t;
  * on the input */
 typedef struct {
     opal_list_item_t super;
-    opal_value_array_t attributes;
+    opal_list_t attributes;
     char *analytic;
     struct orcm_analytics_base_module_t *mod;
 } orcm_workflow_step_t;

@@ -17,13 +17,15 @@
 #include "opal/util/output.h"
 
 #include "orte/mca/errmgr/errmgr.h"
+#include "orte/mca/rml/rml.h"
+#include "orte/util/name_fns.h"
 
 #include "orcm/runtime/orcm_progress.h"
 
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
 
-static int parse_attributes(opal_value_array_t *attr_array, char *attr_string);
+static int parse_attributes(opal_list_t *attr_list, char *attr_string);
 static void* progress_thread_engine(opal_object_t *obj);
 
 static int workflow_id = 0;
@@ -33,6 +35,12 @@ void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
                                                           opal_value_array_t *data) {
     orcm_workflow_caddy_t *caddy;
     orcm_analytics_base_module_t *module = (orcm_analytics_base_module_t *)wf_step->mod;
+    opal_value_t *attr;
+    char *taphost = NULL;
+    orte_rml_tag_t taptag = 0;
+    struct orte_process_name_t tapproc;
+    int rc;
+    opal_buffer_t *buf;
     
     caddy = OBJ_NEW(orcm_workflow_caddy_t);
     
@@ -42,12 +50,54 @@ void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
     caddy->data = data;
     caddy->imod = wf_step->mod;
     
+    OPAL_LIST_FOREACH(attr, &wf_step->attributes, opal_value_t) {
+        if (0 == strncmp("taphost", attr->key, 10)) {
+            taphost = strdup(attr->data.string);
+        }
+        if (0 == strncmp("taptag", attr->key, 10)) {
+            taptag = (orte_rml_tag_t)strtol(attr->data.string, NULL, 10);
+        }
+    }
+    
+    if (taptag && taphost) {
+        /* pack data */
+        buf = OBJ_NEW(opal_buffer_t);
+        /* size */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &data->array_size,1, OPAL_SIZE))) {
+            ORTE_ERROR_LOG(rc);
+        }
+        /* data */
+        if ((OPAL_SUCCESS == rc) &&
+            (OPAL_SUCCESS !=
+             (rc = opal_dss.pack(buf, &data->array_items,
+                                 data->array_size, OPAL_VALUE)))) {
+            ORTE_ERROR_LOG(rc);
+        }
+        
+        if (OPAL_SUCCESS == rc) {
+            if (OPAL_SUCCESS == (rc = orte_util_convert_string_to_process_name(&tapproc, taphost))) {
+                OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                                     "%s analytics:base:stubs sending tap to %s",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                     ORTE_NAME_PRINT(&tapproc)));
+                if (ORTE_SUCCESS !=
+                    (rc = orte_rml.send_buffer_nb(&tapproc, buf, taptag,
+                                                  orte_rml_send_callback, NULL))) {
+                    ORTE_ERROR_LOG(rc);
+                }
+            } else {
+                ORTE_ERROR_LOG(rc);
+            }
+        }
+        OBJ_RELEASE(buf);
+    }
+    
     opal_event_set(wf->ev_base, &caddy->ev, -1,
                    OPAL_EV_WRITE, module->analyze, caddy);
     opal_event_active(&caddy->ev, OPAL_EV_WRITE, 1);
 }
 
-static int parse_attributes(opal_value_array_t *attr_array, char *attr_string) {
+static int parse_attributes(opal_list_t *attr_list, char *attr_string) {
     char **tokens = NULL;
     char **subtokens = NULL;
     int i, array_length, subarray_length;
@@ -65,7 +115,7 @@ static int parse_attributes(opal_value_array_t *attr_array, char *attr_string) {
             tokenized->type = OPAL_STRING;
             tokenized->key = subtokens[0];
             tokenized->data.string = subtokens[1];
-            opal_value_array_append_item(attr_array, tokenized);
+            opal_list_append(attr_list, &tokenized->super);
             opal_dss.print(&output, "", tokenized, OPAL_VALUE);
             OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                                  "%s analytics:base:stubs parse_attributes got attr %s",

@@ -40,6 +40,7 @@ void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
     caddy->wf_step = wf_step;
     /* data was retain'd before it got here */
     caddy->data = data;
+    caddy->imod = wf_step->mod;
     
     opal_event_set(wf->ev_base, &caddy->ev, -1,
                    OPAL_EV_WRITE, module->analyze, caddy);

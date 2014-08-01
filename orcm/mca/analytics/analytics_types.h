@@ -54,6 +54,7 @@ typedef struct {
     opal_event_t ev;
     orcm_workflow_step_t *wf_step;
     opal_value_array_t *data;
+    struct orcm_analytics_base_module_t *imod;
 } orcm_workflow_caddy_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_caddy_t);
 

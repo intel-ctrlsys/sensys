@@ -93,6 +93,7 @@ static void wkstep_con(orcm_workflow_step_t *p)
         ORTE_ERROR_LOG(rc);
     }
     p->analytic = NULL;
+    p->mod = NULL;
 }
 static void wkstep_des(orcm_workflow_step_t *p)
 {
@@ -129,6 +130,7 @@ static void wkcaddy_con(orcm_workflow_caddy_t *p)
 {
     p->wf_step = NULL;
     p->data = NULL;
+    p->imod = NULL;
 }
 static void wkcaddy_des(orcm_workflow_caddy_t *p)
 {

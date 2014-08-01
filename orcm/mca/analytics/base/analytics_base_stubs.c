@@ -106,12 +106,12 @@ static int parse_attributes(opal_list_t *attr_list, char *attr_string) {
     
     tokens = opal_argv_split(attr_string, ',');
     array_length = opal_argv_count(tokens);
-    tokenized = (opal_value_t *)malloc(sizeof(opal_value_t));
 
     for (i = 0; i < array_length; i++) {
         subtokens = opal_argv_split(tokens[i], '=');
         subarray_length = opal_argv_count(subtokens);
         if (2 == subarray_length) {
+            tokenized = OBJ_NEW(opal_value_t);
             tokenized->type = OPAL_STRING;
             tokenized->key = subtokens[0];
             tokenized->data.string = subtokens[1];
@@ -126,7 +126,6 @@ static int parse_attributes(opal_list_t *attr_list, char *attr_string) {
             return ORCM_ERR_BAD_PARAM;
         }
     }
-    free(tokenized);
 
     return ORCM_SUCCESS;
 }

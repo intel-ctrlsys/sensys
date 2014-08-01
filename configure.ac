@@ -128,13 +128,22 @@ OPAL_SAVE_VERSION([OPAL], [Open Portable Access Layer],
 # Get shared library version numbers
 
 . $srcdir/VERSION
+# ORCM level
 AC_SUBST(liborcm_so_version)
 AC_SUBST(liborcmapi_so_version)
+# SCON level
+AC_SUBST(libscon_so_version)
+# ORTE level
 AC_SUBST(libopen_rte_so_version)
+# OPAL level
+AC_SUBST(libopen_pal_so_version)
 AC_SUBST(libmca_opal_common_hwloc_so_version)
 AC_SUBST(libmca_opal_common_pmi_so_version)
-AC_SUBST(libopen_pal_so_version)
-AC_SUBST(libscon_so_version)
+AC_SUBST(libmca_common_cuda_so_version)
+AC_SUBST(libmca_common_ofacm_so_version)
+AC_SUBST(libmca_common_sm_so_version)
+AC_SUBST(libmca_common_ugni_so_version)
+AC_SUBST(libmca_common_verbs_so_version)
 
 #
 # Get the versions of the autotools that were used to bootstrap us

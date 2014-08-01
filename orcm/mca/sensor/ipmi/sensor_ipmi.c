@@ -982,7 +982,8 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
     if(ret)
     {
         error_string = decode_rv(ret);
-        opal_output(0,"Set LAN OPTIONS RETURN CODE : %s \n", error_string);
+        opal_output(0,"Set LAN OPTIONS ERROR : %s \n", error_string);
+        return;
     }
     ret = get_sdr_cache(&sdrlist);
     while(find_sdr_next(sdrbuf,sdrlist,id) == 0) 

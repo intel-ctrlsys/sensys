@@ -945,7 +945,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
         ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
         if(0 == ret)
         {
-            ret = ipmi_cmd_mc(GET_DEVICE_ID, idata, 0, rdata, &rlen, &ccode, fdebug);
+            ret = ipmi_cmd_mc(GET_ACPI_POWER, idata, 0, rdata, &rlen, &ccode, fdebug);
             if(0 == ret)
             {
                 ipmi_close();

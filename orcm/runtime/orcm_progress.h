@@ -19,7 +19,7 @@
  * also create a pipe so that libevent has something to block
  * against, thus keeping the thread from free-running
  */
-ORCM_DECLSPEC opal_event_base_t *orcm_start_progress_thread(char *name, opal_thread_fn_t func);
+ORCM_DECLSPEC opal_event_base_t *orcm_start_progress_thread(char *name, opal_thread_fn_t func, void* args);
 
 /* stop the progress thread of the provided name. This function will
  * also cleanup the blocking pipes and release the event base if

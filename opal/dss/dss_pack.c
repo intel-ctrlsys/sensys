@@ -1072,6 +1072,38 @@ int opal_dss_pack_value(opal_buffer_t *buffer, const void *src,
                 return ret;
             }
             break;
+        case OPAL_PID_ARRAY:
+            if (OPAL_SUCCESS !=
+                (ret = opal_dss_pack_buffer(buffer,
+                                            &ptr[i]->data.pid_array.size,
+                                            1,
+                                            OPAL_INT32))) {
+                return ret;
+            }
+            if (OPAL_SUCCESS !=
+                (ret = opal_dss_pack_buffer(buffer,
+                                            ptr[i]->data.pid_array.data,
+                                            ptr[i]->data.pid_array.size,
+                                            OPAL_PID))) {
+                return ret;
+            }
+            break;
+        case OPAL_TIMEVAL_ARRAY:
+            if (OPAL_SUCCESS !=
+                (ret = opal_dss_pack_buffer(buffer,
+                                            &ptr[i]->data.tv_array.size,
+                                            1,
+                                            OPAL_INT32))) {
+                return ret;
+            }
+            if (OPAL_SUCCESS !=
+                (ret = opal_dss_pack_buffer(buffer,
+                                            ptr[i]->data.tv_array.data,
+                                            ptr[i]->data.tv_array.size,
+                                            OPAL_TIMEVAL))) {
+                return ret;
+            }
+            break;
         default:
             opal_output(0, "PACK-OPAL-VALUE: UNSUPPORTED TYPE %d", (int)ptr[i]->type);
             return OPAL_ERROR;

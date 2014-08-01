@@ -37,8 +37,6 @@ int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workstep)
     mca_base_component_list_item_t *cli = NULL;
     orcm_analytics_base_component_t *component = NULL;
     mca_base_component_t *basecomp = NULL;
-    mca_base_module_t *module = NULL;
-    int rc, priority;
 
     /* Find requested component, and ask if it is available */
     OPAL_LIST_FOREACH(cli,
@@ -53,26 +51,10 @@ int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workstep)
             opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
                                 "mca:analytics:select: found requested component %s",
                                 basecomp->mca_component_name);
-            /* check for query function */
-            if (NULL == basecomp->mca_query_component) {
-                opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
-                                    "mca:analytics:select: Skipping component [%s]. It does not implement a query function",
-                                    basecomp->mca_component_name );
+            
+            if (!component->available()) {
                 ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
                 return ORCM_ERR_NOT_AVAILABLE;
-            }
-            /* query the component */
-            opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
-                                "mca:analytics:select: Querying component [%s]",
-                                basecomp->mca_component_name);
-            rc = basecomp->mca_query_component(&module, &priority);
-            
-            /* check if module was returned */
-            if (ORTE_SUCCESS != rc || NULL == module) {
-                opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
-                                    "mca:analytics:select: Skipping component [%s]. Query failed to return a module",
-                                    basecomp->mca_component_name );
-                return rc;
             }
             
             /* create a handle to the module, store in workstep */

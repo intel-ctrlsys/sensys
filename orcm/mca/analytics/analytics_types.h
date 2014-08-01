@@ -31,7 +31,7 @@ struct orcm_analytics_base_module_t;
  * on the input */
 typedef struct {
     opal_list_item_t super;
-    opal_value_array_t attributes;
+    opal_list_t attributes;
     char *analytic;
     struct orcm_analytics_base_module_t *mod;
 } orcm_workflow_step_t;
@@ -44,8 +44,19 @@ typedef struct {
     int workflow_id;
     opal_list_t steps;
     opal_event_base_t *ev_base;
+    bool ev_active;
 } orcm_workflow_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_t);
+
+/* define a workflow caddy object */
+typedef struct {
+    opal_object_t super;
+    opal_event_t ev;
+    orcm_workflow_step_t *wf_step;
+    opal_value_array_t *data;
+    struct orcm_analytics_base_module_t *imod;
+} orcm_workflow_caddy_t;
+OBJ_CLASS_DECLARATION(orcm_workflow_caddy_t);
 
 /* define a few commands */
 typedef uint8_t orcm_analytics_cmd_flag_t;

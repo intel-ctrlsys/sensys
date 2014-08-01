@@ -138,8 +138,14 @@ static orte_process_name_t get_route(orte_process_name_t *target)
     orte_process_name_t *ret, daemon;
     orte_routed_tree_t *child;
 
-    /* if I am a tool, or routing isn't enabled, go direct */
-    if (!orte_routing_is_enabled || ORTE_PROC_IS_TOOL) {
+    /* if I am a tool, go to scheduler */
+    if (ORTE_PROC_IS_TOOL) {
+        ret = ORTE_PROC_MY_SCHEDULER;
+        goto found;
+    }
+
+    /* if  routing isn't enabled, go direct */
+    if (!orte_routing_is_enabled) {
         ret = target;
         goto found;
     }
@@ -151,10 +157,12 @@ static orte_process_name_t get_route(orte_process_name_t *target)
         goto found;
     }
 
-    /* if the target is from a different jobid, go direct */
+    /* if the target is from a different jobid, go up to scheduler then to target */
     if (target->jobid != ORTE_PROC_MY_NAME->jobid) {
-        ret = target;
-        goto found;
+        if (ORTE_PROC_IS_SCHEDULER) {
+            ret = target;
+            goto found;
+        }
     }
 
     daemon.jobid = ORTE_PROC_MY_NAME->jobid;

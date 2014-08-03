@@ -124,6 +124,7 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
     char bmc_ip[16];
     int rlen = 20;
     int ret = 0;
+    char *error_string;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "RETRIEVING LAN CREDENTIALS");
@@ -143,7 +144,8 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
         ret = ipmi_cmd(GET_LAN_CONFIG, idata, 4, rdata, &rlen,&ccode, 0);
         if(ret)
         {
-            opal_output(0,"ipmi_cmd_mc RETURN CODE : %d \n", ret);
+            error_string = decode_rv(ret);
+            opal_output(0,"ipmi_cmd_mc RETURN CODE : %s \n", error_string);
             rlen=20;
             continue;
         }
@@ -878,6 +880,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
     unsigned short int id = 0;
     unsigned char sdrbuf[SDR_SZ];
     unsigned char *sdrlist;
+    char *error_string;
 
     char sys_pwr_state_str[16], dev_pwr_state_str[16];
     char test[16], test1[16];
@@ -887,45 +890,52 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
     if (cap->capability[BMC_REV] & cap->capability[IPMI_VER])
     {
         ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
-        if(ret)
+        if(0 == ret)
         {
-            opal_output(0,"Set LAN OPTIONS RETURN CODE : %d \n", ret);
+            ret = ipmi_cmd_mc(GET_DEVICE_ID, idata, 0, rdata, &rlen, &ccode, fdebug);
+            if(0 == ret)
+            {
+                ipmi_close();
+                memcpy(&devid.raw, rdata, sizeof(devid));
+                /*opal_output(0, "%x.%xv : IPMI %x.%x : Manufacturer %02x%02x", (devid.bits.fw_rev_1&0x7F), (devid.bits.fw_rev_2&0xFF)
+                *                                        , (devid.bits.ipmi_ver&0xF), (devid.bits.ipmi_ver&0xF0)
+                *                                        , devid.bits.manufacturer_id[1], devid.bits.manufacturer_id[0]);
+                * Copy all retrieved information in a global buffer
+                */
+
+                /*  Pack the BMC FW Rev */
+                sprintf(test,"%x", devid.bits.fw_rev_1&0x7F);
+                sprintf(test1,"%x", devid.bits.fw_rev_2&0xFF);
+                strcat(test,".");
+                strcat(test,test1);
+                strncpy(cap->prop.bmc_rev, test, sizeof(test));
+
+                /*  Pack the IPMI VER */
+                sprintf(test,"%x", devid.bits.ipmi_ver&0xF);
+                sprintf(test1,"%x", devid.bits.ipmi_ver&0xF0);
+                strcat(test,".");
+                strcat(test,test1);
+                strncpy(cap->prop.ipmi_ver, test, sizeof(test));
+
+                /*  Pack the Manufacturer ID */
+                sprintf(test,"%02x", devid.bits.manufacturer_id[1]);
+                sprintf(test1,"%02x", devid.bits.manufacturer_id[0]);
+                strcat(test,test1);
+                strncpy(cap->prop.man_id, test, sizeof(test));
+            }
+
+            else {
+                //disable_ipmi = 1;
+                error_string = decode_rv(ret);
+                opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
+                opal_output(0,"ipmi_cmd_mc ERROR : %s \n", error_string);
+            }
         }
-        ret = ipmi_cmd_mc(GET_DEVICE_ID, idata, 0, rdata, &rlen, &ccode, fdebug);
-        if(ret)
-        {
-            //disable_ipmi = 1;
-            opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
-            opal_output(0,"ipmi_cmd_mc RETURN CODE : %d \n", ret);
+
+        else {
+            error_string = decode_rv(ret);
+            opal_output(0,"Set LAN OPTIONS ERROR : %s \n", error_string);
         }
-        ipmi_close();
-        memcpy(&devid.raw, rdata, sizeof(devid));
-        /*opal_output(0, "%x.%xv : IPMI %x.%x : Manufacturer %02x%02x", (devid.bits.fw_rev_1&0x7F), (devid.bits.fw_rev_2&0xFF)
-        *                                        , (devid.bits.ipmi_ver&0xF), (devid.bits.ipmi_ver&0xF0)
-        *                                        , devid.bits.manufacturer_id[1], devid.bits.manufacturer_id[0]);
-        * Copy all retrieved information in a global buffer
-        */
-
-        /*  Pack the BMC FW Rev */
-        sprintf(test,"%x", devid.bits.fw_rev_1&0x7F);
-        sprintf(test1,"%x", devid.bits.fw_rev_2&0xFF);
-        strcat(test,".");
-        strcat(test,test1);
-        strncpy(cap->prop.bmc_rev, test, sizeof(test));
-
-        /*  Pack the IPMI VER */
-        sprintf(test,"%x", devid.bits.ipmi_ver&0xF);
-        sprintf(test1,"%x", devid.bits.ipmi_ver&0xF0);
-        strcat(test,".");
-        strcat(test,test1);
-        strncpy(cap->prop.ipmi_ver, test, sizeof(test));
-
-        /*  Pack the Manufacturer ID */
-        sprintf(test,"%02x", devid.bits.manufacturer_id[1]);
-        sprintf(test1,"%02x", devid.bits.manufacturer_id[0]);
-        strcat(test,test1);
-        strncpy(cap->prop.man_id, test, sizeof(test));
-
     }
 
     if  (cap->capability[SYS_POWER_STATE] & cap->capability[DEV_POWER_STATE])
@@ -933,23 +943,31 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
         memset(rdata,0xff,256);
         memset(idata,0xff,4);
         ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
-        if(ret)
+        if(0 == ret)
         {
-            opal_output(0,"Set LAN OPTIONS RETURN CODE : %d \n", ret);
+            ret = ipmi_cmd_mc(GET_ACPI_POWER, idata, 0, rdata, &rlen, &ccode, fdebug);
+            if(0 == ret)
+            {
+                ipmi_close();
+                memcpy(&pwr_state.raw, rdata, sizeof(pwr_state));
+                orcm_sensor_ipmi_get_system_power_state(pwr_state.bits.sys_power_state, sys_pwr_state_str);
+                orcm_sensor_ipmi_get_device_power_state(pwr_state.bits.dev_power_state, dev_pwr_state_str);
+                /*opal_output(0, "Sys State: %s - Dev State: %s", sys_pwr_state_str, dev_pwr_state_str); */
+                /* Copy all retrieved information in a global buffer */
+                memcpy(cap->prop.sys_power_state,sys_pwr_state_str,sizeof(sys_pwr_state_str));
+                memcpy(cap->prop.dev_power_state,dev_pwr_state_str,sizeof(dev_pwr_state_str));
+            }
+
+            else {
+                error_string = decode_rv(ret);
+                opal_output(0,"ipmi_cmd_mc ERROR : %s \n", error_string);
+            }
         }
-        ret = ipmi_cmd_mc(GET_ACPI_POWER, idata, 0, rdata, &rlen, &ccode, fdebug);
-        if(ret)
-        {
-            opal_output(0,"ipmi_cmd_mc RETURN CODE : %d \n", ret);
+
+        else {
+            error_string = decode_rv(ret);
+            opal_output(0,"Set LAN OPTIONS ERROR : %s \n", error_string);
         }
-        ipmi_close();
-        memcpy(&pwr_state.raw, rdata, sizeof(pwr_state));
-        orcm_sensor_ipmi_get_system_power_state(pwr_state.bits.sys_power_state, sys_pwr_state_str);
-        orcm_sensor_ipmi_get_device_power_state(pwr_state.bits.dev_power_state, dev_pwr_state_str);
-        /*opal_output(0, "Sys State: %s - Dev State: %s", sys_pwr_state_str, dev_pwr_state_str); */
-        /* Copy all retrieved information in a global buffer */
-        memcpy(cap->prop.sys_power_state,sys_pwr_state_str,sizeof(sys_pwr_state_str));
-        memcpy(cap->prop.dev_power_state,dev_pwr_state_str,sizeof(dev_pwr_state_str));
     }
 
     /* BEGIN: Gathering SDRs */
@@ -963,7 +981,9 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
     ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
     if(ret)
     {
-        opal_output(0,"Set LAN OPTIONS RETURN CODE : %d \n", ret);
+        error_string = decode_rv(ret);
+        opal_output(0,"Set LAN OPTIONS ERROR : %s \n", error_string);
+        return;
     }
     ret = get_sdr_cache(&sdrlist);
     while(find_sdr_next(sdrbuf,sdrlist,id) == 0) 

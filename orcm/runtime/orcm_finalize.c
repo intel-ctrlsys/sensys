@@ -19,6 +19,7 @@
 #include "orte/util/name_fns.h"
 
 #include "orcm/mca/cfgi/base/base.h"
+#include "orcm/mca/sst/base/base.h"
 
 #include "orte/runtime/runtime.h"
 #include "runtime/runtime.h"
@@ -52,7 +53,10 @@ int orcm_finalize(void)
 
     /* close the ess itself */
     (void) mca_base_framework_close(&orte_ess_base_framework);
-    
+
+    /* close the sst itself */
+    (void) mca_base_framework_close(&orcm_sst_base_framework);
+
     /* cleanup the process info */
     orte_proc_info_finalize();
 
@@ -60,7 +64,7 @@ int orcm_finalize(void)
 
     /* Close the general debug stream */
     opal_output_close(orte_debug_output);
-    
+
     /* finalize the opal utilities */
     opal_finalize();
 

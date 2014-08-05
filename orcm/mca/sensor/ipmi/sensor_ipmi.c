@@ -355,16 +355,23 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
         if(NULL != top)
         {
-            if ((NULL != mca_sensor_ipmi_component.bmc_username) && (NULL != mca_sensor_ipmi_component.bmc_password)) {
+
+            //If the bmc username was passed as an mca parameter, set it.
+            if (NULL != mca_sensor_ipmi_component.bmc_username) {
                 strncpy(top->capsule.node.user, mca_sensor_ipmi_component.bmc_username, sizeof(mca_sensor_ipmi_component.bmc_username));
-                strncpy(top->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password, sizeof(mca_sensor_ipmi_component.bmc_password));
             }
 
+            //If not, set it to root by default.
             else {
                 strncpy(top->capsule.node.user, "root", sizeof("root"));
-                strncpy(top->capsule.node.pasw, "knc@123", sizeof("knc@123"));
             }
 
+            //If the bmc password was passed as an mca parameter, set it.
+            //Otherwise, leave it as null.
+            if (NULL != mca_sensor_ipmi_component.bmc_password) {
+                strncpy(top->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password, sizeof(mca_sensor_ipmi_component.bmc_password));
+            }
+            
             top->capsule.node.auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
             top->capsule.node.priv = IPMI_PRIV_LEVEL_ADMIN;
             top->capsule.node.ciph = 3; /* Cipher suite No. 3 */

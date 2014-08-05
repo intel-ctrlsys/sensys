@@ -355,8 +355,8 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
         if(NULL != top)
         {
-            strncpy(top->capsule.node.user,"root", sizeof("root"));
-            strncpy(top->capsule.node.pasw,"knc@123", sizeof("knc@123"));
+            strncpy(top->capsule.node.user, mca_sensor_ipmi_component.bmc_username, sizeof(mca_sensor_ipmi_component.bmc_username));
+            strncpy(top->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password, sizeof(mca_sensor_ipmi_component.bmc_password));
 
             top->capsule.node.auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
             top->capsule.node.priv = IPMI_PRIV_LEVEL_ADMIN;

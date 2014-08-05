@@ -88,18 +88,18 @@ static int ipmi_component_register(void)
     mca_sensor_ipmi_component.bmc_username = NULL;
     (void) mca_base_component_var_register (c, "bmc_username",
                                             "Username for the BMC",
-                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
-                                            & mca_sensor_ipmi_compnent.bmc_username);
+                                            & mca_sensor_ipmi_component.bmc_username);
 
     mca_sensor_ipmi_component.bmc_password = NULL;
     (void) mca_base_component_var_register (c, "bmc_password",
                                             "Password for the BMC",
-                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
-                                            & mca_sensor_ipmi_compnent.bmc_password);
+                                            & mca_sensor_ipmi_component.bmc_password);
 
     return ORCM_SUCCESS;
 }

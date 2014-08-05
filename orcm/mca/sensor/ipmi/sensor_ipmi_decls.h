@@ -62,7 +62,7 @@ typedef union {
 } acpi_power_state_t;
 
 /* Metric string identifiers*/
-char metric_string[TOTAL_FLOAT_METRICS][MAX_METRIC_NAME];
+//char metric_string[TOTAL_FLOAT_METRICS][MAX_METRIC_NAME];
 
 // Node Details
 typedef struct {
@@ -75,7 +75,6 @@ typedef struct {
     int auth;
     int priv;
     int ciph;
-    unsigned char ccode;
 } ipmi_node_details_t;
 
 // Node Properties
@@ -86,6 +85,9 @@ typedef struct {
     char baseboard_serial[16];
     char sys_power_state[16];
     char dev_power_state[16];
+    /* Metric string identifiers*/
+    char metric_string[TOTAL_FLOAT_METRICS][MAX_METRIC_NAME];
+
     float collection_metrics[TOTAL_FLOAT_METRICS];  /* Array to store all non-string metrics */
     char collection_metrics_units[TOTAL_FLOAT_METRICS][MAX_UNIT_LENGTH]; /* Array to store units for all non-string metrics */
 } ipmi_properties_t;
@@ -100,11 +102,7 @@ typedef struct {
 } ipmi_capsule_t;
 
 typedef struct _orcm_sensor_hosts_t {
-    char node_name[64];
-    char host_ipaddr[16];
-    char bmc_ipaddr[16];
-    char username[16];
-    char password[16];
+    ipmi_capsule_t  capsule;
     struct _orcm_sensor_hosts_t *next;
 }orcm_sensor_hosts_t;
 

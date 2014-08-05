@@ -95,17 +95,6 @@ static void start(orte_jobid_t jobid)
 {
     opal_output(0,"IPMI Start");
     active_hosts = NULL;
-
-    /* Initialize all metric identiers */
-    strncpy(metric_string[PS1_USAGE],"ps1_usage",sizeof("ps1_usage"));
-    strncpy(metric_string[PS1_TEMP],"ps1_temp",sizeof("ps1_temp"));
-    strncpy(metric_string[PS2_USAGE],"ps2_usage",sizeof("ps2_usage"));
-    strncpy(metric_string[PS2_TEMP],"ps2_temp",sizeof("ps2_temp"));
-    strncpy(metric_string[FAN1_CPU_RPM],"cpu_fan_1",sizeof("cpu_fan_1"));
-    strncpy(metric_string[FAN2_CPU_RPM],"cpu_fan_2",sizeof("cpu_fan_2"));
-    strncpy(metric_string[FAN1_SYS_RPM],"sys_fan_1",sizeof("sys_fan_1"));
-    strncpy(metric_string[FAN2_SYS_RPM],"sys_fan_2",sizeof("sys_fan_2"));
-
     return;
 }
 
@@ -128,7 +117,7 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "RETRIEVING LAN CREDENTIALS");
-    strncpy(host->host_ipaddr,"CUR_HOST_IP",strlen("CUR_HOST_IP")+1);
+    strncpy(host->capsule.node.host_ip,"CUR_HOST_IP",strlen("CUR_HOST_IP")+1);
 
     /* This IPMI call reading the BMC's IP address runs through the
      *  KCS driver
@@ -155,9 +144,9 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             sprintf(bmc_ip,"%d.%d.%d.%d",rdata[1], rdata[2], rdata[3], rdata[4]);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "RETRIEVED BMC's IP ADDRESS: %s",bmc_ip);
-            strncpy(host->bmc_ipaddr,bmc_ip,strlen(bmc_ip)+1);
-            strncpy(host->username,"CUR_USERNAME",strlen("CUR_USERNAME")+1);
-            strncpy(host->password,"CUR_PASSWORD",strlen("CUR_PASSWORD")+1);
+            strncpy(host->capsule.node.bmc_ip,bmc_ip,strlen(bmc_ip)+1);
+            strncpy(host->capsule.node.user,"CUR_USERNAME",strlen("CUR_USERNAME")+1);
+            strncpy(host->capsule.node.pasw,"CUR_PASSWORD",strlen("CUR_PASSWORD")+1);
             return ORCM_SUCCESS;
 
             break;
@@ -187,7 +176,7 @@ int orcm_sensor_ipmi_found(char *nodename)
         return 0;
     } else {
         while(NULL != top){
-            if(!strcmp(nodename,top->node_name))
+            if(!strcmp(nodename,top->capsule.node.name))
             {
                 return 1;
             } else {
@@ -231,17 +220,14 @@ void orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
         active_hosts = top;
     }
 
-    strncpy(active_hosts->node_name,nodename,strlen(nodename)+1);
-    strncpy(active_hosts->host_ipaddr,host_ip,strlen(host_ip)+1);
-    strncpy(active_hosts->bmc_ipaddr,bmc_ip,strlen(bmc_ip)+1);
+    strncpy(active_hosts->capsule.node.name,nodename,strlen(nodename)+1);
+    strncpy(active_hosts->capsule.node.host_ip,host_ip,strlen(host_ip)+1);
+    strncpy(active_hosts->capsule.node.bmc_ip,bmc_ip,strlen(bmc_ip)+1);
 }
 
 static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 {
-    ipmi_capsule_t cap;
     int rc;
-    //char node[TOTAL_NODES][16]={"192.168.0.102","192.168.0.100"};
-    //char node_temp[TOTAL_NODES][16]={"HOST_1","HOST_2"};
     opal_buffer_t data, *bptr;
     char *ipmi;
     time_t now;
@@ -275,12 +261,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     }
     free(ipmi);
 
-    strncpy(cap.node.user,"root", sizeof("root"));
-    strncpy(cap.node.pasw,"knc@123", sizeof("knc@123"));
-
-    cap.node.auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
-    cap.node.priv = IPMI_PRIV_LEVEL_ADMIN;
-    cap.node.ciph = 3; /* Cipher suite No. 3 */
     if(count_log == 0)  // The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it.
     {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -307,7 +287,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
         /* Pack the host's IP Address - 3a*/
-        sample_str = strdup(cur_host.host_ipaddr);
+        sample_str = strdup(cur_host.capsule.node.host_ip);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
@@ -317,7 +297,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         free(sample_str);
 
         /* Pack the BMC IP Address - 4a*/
-        sample_str = strdup(cur_host.bmc_ipaddr);
+        sample_str = strdup(cur_host.capsule.node.bmc_ip);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
@@ -354,37 +334,45 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
     for(int i =0;i<sample_count;i++)
     {
+
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "Scanning metrics from node: %s",top->node_name);
+            "Scanning metrics from node: %s",top->capsule.node.name);
         /* Clear all memory for the ipmi_capsule */
-        memset(&(cap.prop), '\0', sizeof(cap.prop));
+        memset(&(top->capsule.prop), '\0', sizeof(top->capsule.prop));
         /* Enable/Disable the property/metric to be sampled */
-        cap.capability[BMC_REV]         = 1;
-        cap.capability[IPMI_VER]        = 1;
-        cap.capability[SYS_POWER_STATE] = 1;
-        cap.capability[DEV_POWER_STATE] = 1;
-        cap.capability[PS1_USAGE]       = 1;
-        cap.capability[PS1_TEMP]        = 1;
-        cap.capability[PS2_USAGE]       = 1;
-        cap.capability[PS2_TEMP]        = 1;
-        cap.capability[FAN1_CPU_RPM]    = 1;
-        cap.capability[FAN2_CPU_RPM]    = 1;
-        cap.capability[FAN1_SYS_RPM]    = 1;
-        cap.capability[FAN2_SYS_RPM]    = 1;
+        top->capsule.capability[BMC_REV]         = 1;
+        top->capsule.capability[IPMI_VER]        = 1;
+        top->capsule.capability[SYS_POWER_STATE] = 1;
+        top->capsule.capability[DEV_POWER_STATE] = 1;
+        top->capsule.capability[PS1_USAGE]       = 1;
+        top->capsule.capability[PS1_TEMP]        = 1;
+        top->capsule.capability[PS2_USAGE]       = 1;
+        top->capsule.capability[PS2_TEMP]        = 1;
+        top->capsule.capability[FAN1_CPU_RPM]    = 1;
+        top->capsule.capability[FAN2_CPU_RPM]    = 1;
+        top->capsule.capability[FAN1_SYS_RPM]    = 1;
+        top->capsule.capability[FAN2_SYS_RPM]    = 1;
 
         if(NULL != top)
         {
-            strncpy(cap.node.name, top->node_name, strlen(top->node_name)+1);
-            strncpy(cap.node.bmc_ip, top->bmc_ipaddr, strlen(top->bmc_ipaddr)+1);
-            strncpy(cap.node.host_ip, top->host_ipaddr, strlen(top->host_ipaddr)+1);
+            strncpy(top->capsule.node.user,"root", sizeof("root"));
+            strncpy(top->capsule.node.pasw,"knc@123", sizeof("knc@123"));
+
+            top->capsule.node.auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
+            top->capsule.node.priv = IPMI_PRIV_LEVEL_ADMIN;
+            top->capsule.node.ciph = 3; /* Cipher suite No. 3 */
+
+            //strncpy(top->capsule.node.name, top->capsule.node.name, strlen(top->capsule.node.name)+1);
+            //strncpy(top->capsule.node.bmc_ip, top->capsule.node.bmc_ip, strlen(top->capsule.node.bmc_ip)+1);
+            //strncpy(top->capsule.node.host_ip, top->capsule.node.host_ip, strlen(top->capsule.node.host_ip)+1);
         }
         /* Running a sample for a Node */
-        orcm_sensor_ipmi_exec_call(&cap);
+        orcm_sensor_ipmi_exec_call(&top->capsule);
         
-        /*opal_output(0," *^*^*^* %s - %s - %s - %s - %s - %s", cap.node.bmc_ip
-        *             , cap.prop.bmc_rev, cap.prop.ipmi_ver
-        *             , cap.prop.sys_power_state, cap.prop.dev_power_state
-        *             , cap.prop.ps1_usage);
+        /*opal_output(0," *^*^*^* %s - %s - %s - %s - %s - %s", top->capsule.node.bmc_ip
+        *             , top->capsule.prop.bmc_rev, top->capsule.prop.ipmi_ver
+        *             , top->capsule.prop.sys_power_state, top->capsule.prop.dev_power_state
+        *             , top->capsule.prop.ps1_usage);
         */
 
         /* get the sample time */
@@ -410,7 +398,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         free(timestamp_str);
  
         /* Pack the nodeName - 3 */
-        sample_str = &cap.node.name;
+        sample_str = &top->capsule.node.name;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** NodeName: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
@@ -420,28 +408,8 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
 
-        /* Pack the host_ip of each node - 4 */
-        sample_str = &cap.node.host_ip;
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "***** HostIP: %s",sample_str);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            free(sample_str);
-            return;
-        }
-
-        /* Pack BMC IP address - 5 */ 
-        sample_str = &cap.node.bmc_ip;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            free(sample_str);
-            return;
-        }
-
         /*  Pack the BMC FW Rev  - 6 */
-        sample_str = &cap.prop.bmc_rev;
+        sample_str = &top->capsule.prop.bmc_rev;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** bmcrev: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
@@ -452,7 +420,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /*  Pack the IPMI VER - 7 */
-        sample_str = &cap.prop.ipmi_ver;
+        sample_str = &top->capsule.prop.ipmi_ver;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** IPMIVER: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
@@ -463,7 +431,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /*  Pack the Manufacturer ID - 8 */
-        sample_str = &cap.prop.man_id;
+        sample_str = &top->capsule.prop.man_id;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** MANUF-ID: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
@@ -474,7 +442,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /*  Pack the System Power State - 9 */
-        sample_str = &cap.prop.sys_power_state;
+        sample_str = &top->capsule.prop.sys_power_state;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** SYS_PSTATE: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
@@ -485,7 +453,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /*  Pack the Device Power State - 10 */
-        sample_str = &cap.prop.dev_power_state;
+        sample_str = &top->capsule.prop.dev_power_state;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "***** DEV_PSTATE: %s",sample_str);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
@@ -499,13 +467,22 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         for(int count_metrics=0;count_metrics<TOTAL_FLOAT_METRICS;count_metrics++)
         {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "***** %s: %f",metric_string[count_metrics], cap.prop.collection_metrics[count_metrics]);
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &cap.prop.collection_metrics[count_metrics], 1, OPAL_FLOAT))) {
+                "***** %s: %f",top->capsule.prop.metric_string[count_metrics], top->capsule.prop.collection_metrics[count_metrics]);
+
+            sample_str = &top->capsule.prop.metric_string[count_metrics];
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_DESTRUCT(&data);
                 return;
             }
-            sample_str = &cap.prop.collection_metrics_units[count_metrics];
+
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &top->capsule.prop.collection_metrics[count_metrics], 1, OPAL_FLOAT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
+
+            sample_str = &top->capsule.prop.collection_metrics_units[count_metrics];
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_DESTRUCT(&data);
@@ -544,7 +521,7 @@ static void mycleanup(int dbhandle, int status,
 
 static void ipmi_log(opal_buffer_t *sample)
 {
-    char *hostname, *sampletime, *sample_item;
+    char *hostname, *sampletime, *sample_item, *sample_name, *sample_unit;
     char nodename[64], hostip[16], bmcip[16];
     float float_item;
     int rc;
@@ -675,40 +652,6 @@ static void ipmi_log(opal_buffer_t *sample)
         strncpy(nodename,hostname,strlen(hostname)+1);
         free(hostname);
 
-        /* Unpack the host_ip - 4 */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        if (NULL == hostname) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
-        }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("host_ip");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(hostname);
-        opal_list_append(vals, &kv->super);
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "UnPacked host_ip: %s", hostname);
-        free(hostname);
-
-        /* BMC IP - 5 */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("bmcip");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(hostname);
-        opal_list_append(vals, &kv->super);
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "UnPacked bmcip: %s", hostname);
-        free(hostname);
-
         /* BMC FW REV - 6 */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
@@ -785,23 +728,30 @@ static void ipmi_log(opal_buffer_t *sample)
         /* Log All non-string metrics here */
         for(int count_metrics=0;count_metrics<TOTAL_FLOAT_METRICS;count_metrics++)
         {
-            /* PS1 Power Usage - 11*/
+            /* Metric Name */
+            n=1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_name, &n, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            
+            /* Metric Value*/
             n=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &float_item, &n, OPAL_FLOAT))) {
                 ORTE_ERROR_LOG(rc);
                 return;
             }
 
-            /* Device Power State - 10 */
+            /* Metric Units */
             n=1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_unit, &n, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
                 return;
             }
             memset(key_unit,'\0',sizeof(key_unit));
-            strncpy(key_unit,metric_string[count_metrics],strlen(metric_string[count_metrics]));
+            strncpy(key_unit,sample_name,sizeof(key_unit));
             strcat(key_unit,":");
-            strcat(key_unit,sample_item);
+            strcat(key_unit,sample_unit);
 
             kv = OBJ_NEW(opal_value_t);
             kv->key = strdup(key_unit);
@@ -810,7 +760,8 @@ static void ipmi_log(opal_buffer_t *sample)
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "UnPacked %s: %f", key_unit, float_item);
             opal_list_append(vals, &kv->super);
-            free(sample_item);
+            //opal_output(0,"PACKED DATA: %s:%f", kv->key, kv->data.fval);
+            free(sample_unit);
         }
         /* Send the unpacked data for one Node */
         /* store it */
@@ -1010,6 +961,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 /*  Pack the PS1 Power Usage */
                 cap->prop.collection_metrics[PS1_USAGE]=val;
                 strncpy(cap->prop.collection_metrics_units[PS1_USAGE],typestr,strlen(typestr)+1);
+                strncpy(cap->prop.metric_string[PS1_USAGE],tag,sizeof(cap->prop.metric_string[PS1_USAGE]));
             }
         }
         if  (cap->capability[PS1_TEMP])
@@ -1019,6 +971,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 /*  Pack the PS1 Temperature */
                 cap->prop.collection_metrics[PS1_TEMP]=val;
                 strncpy(cap->prop.collection_metrics_units[PS1_TEMP],typestr,strlen(typestr)+1);
+                strncpy(cap->prop.metric_string[PS1_TEMP],tag,sizeof(cap->prop.metric_string[PS1_TEMP]));
             }
         }
         if  (cap->capability[PS2_USAGE])
@@ -1028,6 +981,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 /*  Pack the PS2 Power Usage */
                 cap->prop.collection_metrics[PS2_USAGE]=val;
                 strncpy(cap->prop.collection_metrics_units[PS2_USAGE],typestr,strlen(typestr)+1);
+                strncpy(cap->prop.metric_string[PS2_USAGE],tag,sizeof(cap->prop.metric_string[PS2_USAGE]));
 
             }
         }
@@ -1038,6 +992,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 /*  Pack the PS2 Temperature */
                 cap->prop.collection_metrics[PS2_TEMP]=val;
                 strncpy(cap->prop.collection_metrics_units[PS2_TEMP],typestr,strlen(typestr)+1);
+                strncpy(cap->prop.metric_string[PS2_TEMP],tag,sizeof(cap->prop.metric_string[PS2_TEMP]));
             }
         }
         if  (cap->capability[FAN1_CPU_RPM])
@@ -1047,6 +1002,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 /* Pack the Processor Fan 1 Speed */
                 cap->prop.collection_metrics[FAN1_CPU_RPM]=val;
                 strncpy(cap->prop.collection_metrics_units[FAN1_CPU_RPM],typestr,strlen(typestr)+1);
+                strncpy(cap->prop.metric_string[FAN1_CPU_RPM],tag,sizeof(cap->prop.metric_string[FAN1_CPU_RPM]));
             }
         }
         if  (cap->capability[FAN2_CPU_RPM])
@@ -1056,6 +1012,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 /* Pack the Processor Fan 2 Speed */
                 cap->prop.collection_metrics[FAN2_CPU_RPM]=val;
                 strncpy(cap->prop.collection_metrics_units[FAN2_CPU_RPM],typestr,strlen(typestr)+1);
+                strncpy(cap->prop.metric_string[FAN2_CPU_RPM],tag,sizeof(cap->prop.metric_string[FAN2_CPU_RPM]));
             }
         }
         if  (cap->capability[FAN1_SYS_RPM])
@@ -1065,6 +1022,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 /* Pack the System Fan 1 Speed */
                 cap->prop.collection_metrics[FAN1_SYS_RPM]=val;
                 strncpy(cap->prop.collection_metrics_units[FAN1_SYS_RPM],typestr,strlen(typestr)+1);
+                strncpy(cap->prop.metric_string[FAN1_SYS_RPM],tag,sizeof(cap->prop.metric_string[FAN1_SYS_RPM]));
             }
         }
         if  (cap->capability[FAN2_SYS_RPM])
@@ -1074,6 +1032,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 /* Pack the System Fan 2 Speed */
                 cap->prop.collection_metrics[FAN2_SYS_RPM]=val;
                 strncpy(cap->prop.collection_metrics_units[FAN2_SYS_RPM],typestr,strlen(typestr)+1);
+                strncpy(cap->prop.metric_string[FAN2_SYS_RPM],tag,sizeof(cap->prop.metric_string[FAN2_SYS_RPM]));
             }
         }
 	    memset(sdrbuf,0,SDR_SZ);

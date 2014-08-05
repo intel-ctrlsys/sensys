@@ -101,5 +101,13 @@ static int ipmi_component_register(void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_ipmi_component.bmc_password);
 
+    mca_sensor_ipmi_component.sensor_list = NULL;
+    (void) mca_base_component_var_register (c, "sensor_list",
+                                            "Pass the BMC sensors to be sampled",
+                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_ipmi_component.sensor_list);
+
     return ORCM_SUCCESS;
 }

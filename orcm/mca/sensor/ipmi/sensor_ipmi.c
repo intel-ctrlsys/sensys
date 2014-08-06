@@ -221,7 +221,7 @@ void orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
     strncpy(active_hosts->capsule.node.bmc_ip,bmc_ip,strlen(bmc_ip)+1);
 }
 
-int orcm_sensor_ipmi_find_sensor_label(char *sensor_label)
+int orcm_sensor_ipmi_label_found(char *sensor_label)
 {
     int i;
     for (i = 0; i< opal_argv_count(sensor_list_token);i++)
@@ -497,9 +497,9 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         for(int count_metrics=0;count_metrics<top->capsule.prop.total_metrics;count_metrics++)
         {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "***** %s: %f",top->capsule.prop.metric_string[count_metrics], top->capsule.prop.collection_metrics[count_metrics]);
+                "***** %s: %f",top->capsule.prop.metric_label[count_metrics], top->capsule.prop.collection_metrics[count_metrics]);
 
-            sample_str = (char *)&top->capsule.prop.metric_string[count_metrics];
+            sample_str = (char *)&top->capsule.prop.metric_label[count_metrics];
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_DESTRUCT(&data);
@@ -988,37 +988,37 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
         {
             val = RawToFloat(reading[0], sdrbuf);
             typestr = get_unit_type( sdrbuf[20], sdrbuf[21], sdrbuf[22],0);
+            if(orcm_sensor_ipmi_label_found(tag))
+            {
+                //opal_output(0, "Found Sensor Label matching:%s",tag);
+                /*  Pack the Sensor Metric */
+                cap->prop.collection_metrics[sensor_count]=val;
+                strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
+                strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
+                sensor_count++;
+            } else if(NULL!=mca_sensor_ipmi_component.sensor_group)
+            {
+                if(NULL!=strcasestr(tag, mca_sensor_ipmi_component.sensor_group))
+                {
+                    //opal_output(0, "Found Sensor Label '%s' matching group:%s", tag, mca_sensor_ipmi_component.sensor_group);
+                    /*  Pack the Sensor Metric */
+                    cap->prop.collection_metrics[sensor_count]=val;
+                    strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
+                    strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
+                    sensor_count++;
+                }
+            }
+            if (sensor_count == TOTAL_FLOAT_METRICS)
+            {
+                opal_output(0, "Max 'sensor' sampling reached for IPMI Plugin: %d",
+                    sensor_count);
+                break;
+            }
         } else {
             val = 0;
             typestr = "na";
             //opal_output(0, "%04x: get sensor %x reading ret = %d\n",id,snum,ret);
-        }        
-        if(orcm_sensor_ipmi_find_sensor_label(tag))
-        {
-            opal_output(0, "Found Sensor Label matching:%s",tag);
-            /*  Pack the Sensor Metric */
-            cap->prop.collection_metrics[sensor_count]=val;
-            strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
-            strncpy(cap->prop.metric_string[sensor_count],tag,sizeof(cap->prop.metric_string[sensor_count]));
-            sensor_count++;
-        } else if(NULL!=mca_sensor_ipmi_component.sensor_group)
-        {
-            if(NULL!=strcasestr(tag, mca_sensor_ipmi_component.sensor_group))
-            {
-                opal_output(0, "Found Sensor Label '%s' matching group:%s", tag, mca_sensor_ipmi_component.sensor_group);
-                /*  Pack the Sensor Metric */
-                cap->prop.collection_metrics[sensor_count]=val;
-                strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
-                strncpy(cap->prop.metric_string[sensor_count],tag,sizeof(cap->prop.metric_string[sensor_count]));
-                sensor_count++;
-            }
         }
-        if (sensor_count == TOTAL_FLOAT_METRICS)
-        {
-            opal_output(0, "Max 'sensor' sampling reached for IPMI Plugin: %d",
-                sensor_count);
-            break;
-        }                
         memset(sdrbuf,0,SDR_SZ);
     }
     cap->prop.total_metrics = sensor_count;

@@ -84,7 +84,7 @@ typedef struct {
     char dev_power_state[16];
     int total_metrics;
     /* Metric string identifiers*/
-    char metric_string[TOTAL_FLOAT_METRICS][MAX_METRIC_NAME];
+    char metric_label[TOTAL_FLOAT_METRICS][MAX_METRIC_NAME];
 
     float collection_metrics[TOTAL_FLOAT_METRICS];  /* Array to store all non-string metrics */
     char collection_metrics_units[TOTAL_FLOAT_METRICS][MAX_UNIT_LENGTH]; /* Array to store units for all non-string metrics */
@@ -134,5 +134,5 @@ int orcm_sensor_ipmi_found(char *nodename);
 unsigned int orcm_sensor_ipmi_counthosts(void);
 void orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip);
 void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap);
-int orcm_sensor_ipmi_find_sensor_label(char * tag);
+int orcm_sensor_ipmi_label_found(char * tag);
 #endif

@@ -23,7 +23,7 @@
 // The total number of parameters that need to be gathered for each node
 // Eventually this number should equal the items under ipmi_property_t
 #define TOTAL_PROPERTIES_PER_NODE   14
-#define TOTAL_FLOAT_METRICS     8
+#define TOTAL_FLOAT_METRICS     50
 #define MAX_UNIT_LENGTH         20
 #define MAX_METRIC_NAME         20
 // The total number of IPMI Calls that need to be called for each node
@@ -61,9 +61,6 @@ typedef union {
     _acpi_power_state_t bits;
 } acpi_power_state_t;
 
-/* Metric string identifiers*/
-char metric_string[TOTAL_FLOAT_METRICS][MAX_METRIC_NAME];
-
 // Node Details
 typedef struct {
     char name[64];
@@ -75,7 +72,6 @@ typedef struct {
     int auth;
     int priv;
     int ciph;
-    unsigned char ccode;
 } ipmi_node_details_t;
 
 // Node Properties
@@ -86,6 +82,10 @@ typedef struct {
     char baseboard_serial[16];
     char sys_power_state[16];
     char dev_power_state[16];
+    int total_metrics;
+    /* Metric string identifiers*/
+    char metric_label[TOTAL_FLOAT_METRICS][MAX_METRIC_NAME];
+
     float collection_metrics[TOTAL_FLOAT_METRICS];  /* Array to store all non-string metrics */
     char collection_metrics_units[TOTAL_FLOAT_METRICS][MAX_UNIT_LENGTH]; /* Array to store units for all non-string metrics */
 } ipmi_properties_t;
@@ -100,11 +100,7 @@ typedef struct {
 } ipmi_capsule_t;
 
 typedef struct _orcm_sensor_hosts_t {
-    char node_name[64];
-    char host_ipaddr[16];
-    char bmc_ipaddr[16];
-    char username[16];
-    char password[16];
+    ipmi_capsule_t  capsule;
     struct _orcm_sensor_hosts_t *next;
 }orcm_sensor_hosts_t;
 
@@ -138,5 +134,5 @@ int orcm_sensor_ipmi_found(char *nodename);
 unsigned int orcm_sensor_ipmi_counthosts(void);
 void orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip);
 void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap);
-
+int orcm_sensor_ipmi_label_found(char * tag);
 #endif

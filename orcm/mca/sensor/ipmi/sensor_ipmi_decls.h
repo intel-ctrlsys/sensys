@@ -134,4 +134,5 @@ int orcm_sensor_ipmi_found(char *nodename);
 unsigned int orcm_sensor_ipmi_counthosts(void);
 void orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip);
 void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap);
+int orcm_sensor_ipmi_find_sensor_label(char * tag);
 #endif

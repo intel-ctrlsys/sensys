@@ -30,7 +30,6 @@ ORCM_MODULE_DECLSPEC extern orcm_analytics_base_component_t mca_analytics_window
 
 typedef struct {
     orcm_analytics_base_module_t api;
-    /* workflow id ? */
 } mca_analytics_window_module_t;
 ORCM_DECLSPEC extern mca_analytics_window_module_t orcm_analytics_window_module;
 

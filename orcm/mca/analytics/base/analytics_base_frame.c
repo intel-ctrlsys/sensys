@@ -36,21 +36,23 @@
 /*
  * Global variables
  */
-orcm_analytics_API_module_t orcm_analytics = {0};
+orcm_analytics_API_module_t orcm_analytics = {
+    orcm_analytics_base_activate_analytics_workflow_step
+};
 orcm_analytics_base_t orcm_analytics_base;
 
 static int orcm_analytics_base_close(void)
 {
     orcm_analytics_base_comm_stop();
 
-    /* deconstruct the base objects */
+    /* destruct the base objects */
     OPAL_LIST_DESTRUCT(&orcm_analytics_base.workflows);
 
     return mca_base_framework_components_close(&orcm_analytics_base_framework,
                                                NULL);
 }
 
-/**
+/*
  * Function for finding and opening either all MCA components, or the one
  * that was specifically requested via a MCA parameter.
  */
@@ -83,12 +85,13 @@ MCA_BASE_FRAMEWORK_DECLARE(orcm, analytics, NULL, NULL,
 /****    INSTANCE CLASSES    ****/
 static void wkstep_con(orcm_workflow_step_t *p)
 {
-    OBJ_CONSTRUCT(&p->attributes, opal_value_array_t);
+    OBJ_CONSTRUCT(&p->attributes, opal_list_t);
     p->analytic = NULL;
+    p->mod = NULL;
 }
 static void wkstep_des(orcm_workflow_step_t *p)
 {
-    OBJ_DESTRUCT(&p->attributes);
+    OPAL_LIST_DESTRUCT(&p->attributes);
     if (NULL != p->analytic) {
         free(p->analytic);
     }
@@ -114,5 +117,20 @@ static void wk_des(orcm_workflow_t *p)
     OPAL_LIST_DESTRUCT(&p->steps);
 }
 OBJ_CLASS_INSTANCE(orcm_workflow_t,
-                   opal_object_t,
+                   opal_list_item_t,
                    wk_con, wk_des);
+
+static void wkcaddy_con(orcm_workflow_caddy_t *p)
+{
+    p->wf_step = NULL;
+    p->data = NULL;
+    p->imod = NULL;
+}
+static void wkcaddy_des(orcm_workflow_caddy_t *p)
+{
+    OBJ_RELEASE(p->wf_step);
+    OBJ_RELEASE(p->data);
+}
+OBJ_CLASS_INSTANCE(orcm_workflow_caddy_t,
+                   opal_object_t,
+                   wkcaddy_con, wkcaddy_des);

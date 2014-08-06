@@ -76,7 +76,8 @@ static void wakeup(int fd, short args, void *cbdata)
 
 
 opal_event_base_t *orcm_start_progress_thread(char *name,
-                                              opal_thread_fn_t func)
+                                              opal_thread_fn_t func,
+                                              void* args)
 {
     orcm_progress_tracker_t *trk;
     int rc;
@@ -112,6 +113,7 @@ opal_event_base_t *orcm_start_progress_thread(char *name,
     trk->engine_defined = true;
     /* fork off a thread to progress it */
     trk->engine.t_run = func;
+    trk->engine.t_arg = args;
     if (OPAL_SUCCESS != (rc = opal_thread_start(&trk->engine))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(trk);

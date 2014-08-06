@@ -28,7 +28,7 @@ const char *orcm_analytics_filter_component_version_string =
  * Local functionality
  */
 static bool component_avail(void);
-static orcm_analytics_base_module_t *component_create(void);
+static struct orcm_analytics_base_module_t *component_create(void);
 
 /*
  * Instantiate the public struct with all of our public information
@@ -65,7 +65,7 @@ static bool component_avail(void)
     return true;
 }
 
-static orcm_analytics_base_module_t *component_create(void)
+static struct orcm_analytics_base_module_t *component_create(void)
 {
     mca_analytics_filter_module_t *mod;
     
@@ -82,5 +82,5 @@ static orcm_analytics_base_module_t *component_create(void)
         free(mod);
         return NULL;
     }
-    return (orcm_analytics_base_module_t*)mod;
+    return (struct orcm_analytics_base_module_t*)mod;
 }

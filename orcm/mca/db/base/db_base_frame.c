@@ -57,7 +57,7 @@ static int orcm_db_base_register(mca_base_register_flag_t flags)
 
 static int orcm_db_base_frame_close(void)
 {
-    orcm_db_base_component_t *component;
+    orcm_db_base_active_component_t *active;
     int i;
     orcm_db_handle_t *hdl;
 
@@ -72,9 +72,9 @@ static int orcm_db_base_frame_close(void)
     /* cycle across all the active db components and let them cleanup - order
      * doesn't matter in this case
      */
-    while (NULL != (component = (orcm_db_base_component_t*)opal_list_remove_first(&orcm_db_base.actives))) {
-        if (NULL != component->finalize) {
-            component->finalize();
+    while (NULL != (active = (orcm_db_base_active_component_t*)opal_list_remove_first(&orcm_db_base.actives))) {
+        if (NULL != active->component->finalize) {
+            active->component->finalize();
         }
     }
     OBJ_DESTRUCT(&orcm_db_base.actives);

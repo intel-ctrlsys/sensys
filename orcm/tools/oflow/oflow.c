@@ -64,6 +64,9 @@
 static int orcm_oflow_init(int argc, char *argv[]);
 static int parse_args(int argc, char *argv[]);
 static opal_value_t *oflow_parse_next_line(FILE *fp);
+static void orcm_oflow_recv(int status, orte_process_name_t* sender,
+                            opal_buffer_t* buffer, orte_rml_tag_t tag,
+                            void* cbdata);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -139,7 +142,7 @@ main(int argc, char *argv[])
             continue;
         }
         printf("KEY: %s \n\tVALUE: %s\n", oflow_value->key, oflow_value->data.string);
-        oflow_array = (opal_value_t**)realloc(oflow_array, (sizeof(opal_value_t*)));
+        oflow_array = (opal_value_t**)realloc(oflow_array, (sizeof(oflow_array) + sizeof(opal_value_t*)));
         oflow_array[i] = oflow_value;
         oflow_value = oflow_parse_next_line(fp);
         i++;
@@ -154,6 +157,13 @@ main(int argc, char *argv[])
                             ORCM_RML_TAG_ANALYTICS,
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, &xfer);
+    
+    /* setup to recieve workflow output */
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                            12345,
+                            ORTE_RML_PERSISTENT,
+                            orcm_oflow_recv,
+                            NULL);
 
     buf = OBJ_NEW(opal_buffer_t);
 
@@ -183,7 +193,7 @@ main(int argc, char *argv[])
         return rc;
     }
 
-    /* unpack number of queues */
+    /* unpack workflow id */
     ORTE_WAIT_FOR_COMPLETION(xfer.active);
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &wfid, &n, OPAL_INT))) {
@@ -339,4 +349,41 @@ static opal_value_t *oflow_parse_next_line(FILE *fp)
     }
     
     return NULL;
+}
+
+static void orcm_oflow_recv(int status, orte_process_name_t* sender,
+                            opal_buffer_t* buffer, orte_rml_tag_t tag,
+                            void* cbdata)
+{
+    int rc, i, cnt, num_values;
+    opal_value_t **value_list = NULL;
+    char *output;
+    
+    /* unpack the number of values */
+    cnt = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &num_values,
+                                              &cnt, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+    }
+
+    /* unpack the values */
+    /* FIXME change this to pack 2 at a time, analytic name and attributes
+     * because thats what the other side is expecting 
+     */
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, value_list,
+                                              &num_values, OPAL_VALUE))) {
+        ORTE_ERROR_LOG(rc);
+    }
+    
+    for (i = 0; i < num_values; i++) {
+        if (ORTE_SUCCESS != (rc = opal_dss.print(&output, "OFLOW ", value_list[i],
+                                                 OPAL_VALUE))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        if (output) {
+            printf("%s\n", output);
+            free(output);
+        }
+    }
 }

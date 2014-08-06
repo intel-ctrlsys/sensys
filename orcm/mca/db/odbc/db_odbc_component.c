@@ -68,7 +68,7 @@ static int component_register(void) {
 
     /* retrieve the data source name */
     odbcdsn = NULL;
-    (void)mca_base_component_var_register(c, "odbcdsn",
+    (void)mca_base_component_var_register(c, "dsn",
                                           "ODBC data source name",
                                           MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
                                           OPAL_INFO_LVL_9,

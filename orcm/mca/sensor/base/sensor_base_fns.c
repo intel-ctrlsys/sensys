@@ -82,7 +82,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
         /* create the event base and start the progress engine, if necessary */
         if (!orcm_sensor_base.ev_active) {
             orcm_sensor_base.ev_active = true;
-            if (NULL == (orcm_sensor_base.ev_base = orcm_start_progress_thread("sensor", progress_thread_engine))) {
+            if (NULL == (orcm_sensor_base.ev_base = orcm_start_progress_thread("sensor", progress_thread_engine, NULL))) {
                 orcm_sensor_base.ev_active = false;
                 return;
             }

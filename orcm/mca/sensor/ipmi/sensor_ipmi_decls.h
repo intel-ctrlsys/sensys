@@ -23,6 +23,9 @@
 // The total number of parameters that need to be gathered for each node
 // Eventually this number should equal the items under ipmi_property_t
 #define TOTAL_PROPERTIES_PER_NODE   14
+#define TOTAL_FLOAT_METRICS     8
+#define MAX_UNIT_LENGTH         20
+#define MAX_METRIC_NAME         20
 // The total number of IPMI Calls that need to be called for each node
 #define TOTAL_CALLS_PER_NODE        2
 
@@ -58,16 +61,8 @@ typedef union {
     _acpi_power_state_t bits;
 } acpi_power_state_t;
 
-// IPMI Properties (To be deprecated)
-struct ipmi_properties{
-    char node_name[16];
-    int bmc_rev[2];
-    int ipmi_ver[2];    
-    int man_id[8];
-    char sys_power_state[10];
-    char dev_power_state[10];
-    struct ipmi_properties *next;
-};
+/* Metric string identifiers*/
+char metric_string[TOTAL_FLOAT_METRICS][MAX_METRIC_NAME];
 
 // Node Details
 typedef struct {
@@ -83,8 +78,6 @@ typedef struct {
     unsigned char ccode;
 } ipmi_node_details_t;
 
-// Node Capabilities
-unsigned char capability;
 // Node Properties
 typedef struct {
     char bmc_rev[16];
@@ -93,16 +86,9 @@ typedef struct {
     char baseboard_serial[16];
     char sys_power_state[16];
     char dev_power_state[16];
-    float ps1_usage;
-    float ps1_temp;
-    float ps2_usage;
-    float ps2_temp;
-    float fan1_cpu_rpm;
-    float fan2_cpu_rpm;
-    float fan1_sys_rpm;
-    float fan2_sys_rpm;
+    float collection_metrics[TOTAL_FLOAT_METRICS];  /* Array to store all non-string metrics */
+    char collection_metrics_units[TOTAL_FLOAT_METRICS][MAX_UNIT_LENGTH]; /* Array to store units for all non-string metrics */
 } ipmi_properties_t;
-
 
 typedef struct {
     // Node Details
@@ -113,40 +99,44 @@ typedef struct {
     ipmi_properties_t prop;
 } ipmi_capsule_t;
 
-
-typedef struct {
+typedef struct _orcm_sensor_hosts_t {
     char node_name[64];
     char host_ipaddr[16];
     char bmc_ipaddr[16];
     char username[16];
     char password[16];
-    struct orcm_sensor_hosts_t *next;
+    struct _orcm_sensor_hosts_t *next;
 }orcm_sensor_hosts_t;
-
 
 // List of all properties to be scanned by the IPMI Plugin
 // This total number should correspond to the value TOTAL_PROPERTIES_PER_NODE!!
 typedef enum {
-    BMC_REV = 0,
-    IPMI_VER,
-    MAN_ID,
-    BASEBOARD_SERIAL,
-    SYS_POWER_STATE,
-    DEV_POWER_STATE,
-    PS1_USAGE,
-    PS1_TEMP,
-    PS2_USAGE,
-    PS2_TEMP,
-    FAN1_CPU_RPM,
-    FAN2_CPU_RPM,
-    FAN1_SYS_RPM,
-    FAN2_SYS_RPM
+    /* Add non-string numeric metrics under this section */
+    PS1_USAGE = 0,
+    PS1_TEMP = 1,
+    PS2_USAGE = 2,
+    PS2_TEMP = 3,
+    FAN1_CPU_RPM = 4,
+    FAN2_CPU_RPM = 5,
+    FAN1_SYS_RPM = 6,
+    FAN2_SYS_RPM = 7,
+
+    /*Add string/character metrics under this section */
+    BMC_REV = 8,
+    IPMI_VER = 9,
+    MAN_ID = 10,
+    BASEBOARD_SERIAL = 11,
+    SYS_POWER_STATE = 12,
+    DEV_POWER_STATE = 13,    
 } ipmi_property_t;
 
 // Function Declarations
-void get_system_power_state(uchar in, char* str);
-void get_device_power_state(uchar in, char* str);
-
-int ipmi_exec_call(ipmi_capsule_t *cap);
+void orcm_sensor_ipmi_get_system_power_state(uchar in, char* str);
+void orcm_sensor_ipmi_get_device_power_state(uchar in, char* str);
+int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host);
+int orcm_sensor_ipmi_found(char *nodename);
+unsigned int orcm_sensor_ipmi_counthosts(void);
+void orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip);
+void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap);
 
 #endif

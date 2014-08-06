@@ -51,6 +51,8 @@ static void finalize(void);
 static int diag_read(opal_list_t *config);
 static int diag_check(opal_list_t *config);
 
+static int mem_diag_ret = ORCM_SUCCESS;
+
 orcm_diag_base_module_t orcm_diag_memtest_module = {
     init,
     finalize,
@@ -124,6 +126,7 @@ static void *memcheck_thread(void *arg) {
             opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s memdiag: memory error on %p : it should be 0x%08x, but 0x%08x; diffs : 0x%08x",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (void *)(myaddr + i), w, myaddr[i], w ^ myaddr[i]);
+            mem_diag_ret = ORCM_ERR_COMPARE_FAILURE;
         }
     }
 
@@ -194,7 +197,11 @@ static int diag_check(opal_list_t *config)
             opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s memdiag: out of memory",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-            return ORCM_ERROR;
+            mem_diag_ret = ORCM_ERR_FAILED_TO_MAP;
+            opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                                "%s Checking memory:                        [NOTRUN]",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+            return mem_diag_ret;
         }
 
     } while (addr == (void *)-1);
@@ -211,16 +218,22 @@ static int diag_check(opal_list_t *config)
         p    += NPAGE_SIZE;
         rest -= NPAGE_SIZE;
     }
-  
+
+    mem_diag_ret = ORCM_SUCCESS;
     memcheck((unsigned int *)addr, size / sizeof(int));
   
     munmap(addr, size);
-  
-    opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                        "%s Checking memory:                        [  OK  ]",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+    if ( ORCM_SUCCESS == mem_diag_ret ) {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                            "%s Checking memory:                        [  OK  ]",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+    } else {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                            "%s Checking memory:                        [ FAIL ]",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+    }
 
-    return ORCM_SUCCESS;
+    return mem_diag_ret;
 }
 
 

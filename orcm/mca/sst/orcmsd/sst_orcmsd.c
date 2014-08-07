@@ -726,24 +726,24 @@ static void orcmsd_finalize(void)
         opal_event_signal_del(&sigusr2_handler);
     }
     
-    (void) mca_base_framework_close(&orcm_db_base_framework);
-    (void) mca_base_framework_close(&opal_dstore_base_framework);
-    (void) mca_base_framework_close(&opal_pstat_base_framework);
-    (void) mca_base_framework_close(&orte_state_base_framework);
-    (void) mca_base_framework_close(&orte_errmgr_base_framework);
-    (void) mca_base_framework_close(&orte_oob_base_framework);
-    (void) mca_base_framework_close(&orte_rml_base_framework);
-    (void) mca_base_framework_close(&orte_routed_base_framework);
-    (void) mca_base_framework_close(&orte_grpcomm_base_framework);
-    (void) mca_base_framework_close(&orte_odls_base_framework);
-    (void) mca_base_framework_close(&orte_rtc_base_framework);
-    (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_dfs_base_framework);
+    (void) mca_base_framework_close(&orte_iof_base_framework);
+    (void) mca_base_framework_close(&orte_rtc_base_framework);
+    (void) mca_base_framework_close(&orte_odls_base_framework);
     if (ORCM_PROC_IS_HNP) {
-        (void) mca_base_framework_close(&orte_plm_base_framework);
-        (void) mca_base_framework_close(&orte_ras_base_framework);
         (void) mca_base_framework_close(&orte_rmaps_base_framework);
+        (void) mca_base_framework_close(&orte_ras_base_framework);
+        (void) mca_base_framework_close(&orte_plm_base_framework);
     }
+    (void) mca_base_framework_close(&orte_grpcomm_base_framework);
+    (void) mca_base_framework_close(&orte_routed_base_framework);
+    (void) mca_base_framework_close(&orte_rml_base_framework);
+    (void) mca_base_framework_close(&orte_oob_base_framework);
+    (void) mca_base_framework_close(&orte_errmgr_base_framework);
+    (void) mca_base_framework_close(&orte_state_base_framework);
+    (void) mca_base_framework_close(&opal_pstat_base_framework);
+    (void) mca_base_framework_close(&opal_dstore_base_framework);
+    (void) mca_base_framework_close(&orcm_db_base_framework);
 
 }
 

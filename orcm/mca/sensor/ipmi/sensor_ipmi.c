@@ -976,7 +976,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
         return;
     }
     ret = get_sdr_cache(&sdrlist);
-    while(find_sdr_next(sdrbuf,sdrlist,id) == 0) 
+    while(find_sdr_next(sdrbuf,sdrlist,id) == 0)
     {
         id = sdrbuf[0] + (sdrbuf[1] << 8); /* this SDR id */
         if (sdrbuf[3] != 0x01) continue; /* full SDR */
@@ -1021,6 +1021,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
         }
         memset(sdrbuf,0,SDR_SZ);
     }
+    free_sdr_cache(sdrlist);
     cap->prop.total_metrics = sensor_count;
     ipmi_close();
     /* End: gathering SDRs */

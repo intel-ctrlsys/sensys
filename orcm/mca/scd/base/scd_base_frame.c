@@ -216,6 +216,7 @@ OBJ_CLASS_INSTANCE(orcm_scheduler_caddy_t,
 
 static void alloc_con(orcm_alloc_t *p)
 {
+    p->id = 0;
     p->priority = 0;
     p->account = NULL;
     p->name = NULL;
@@ -229,6 +230,15 @@ static void alloc_con(orcm_alloc_t *p)
     p->exclusive = true;
     p->caller_uid = 0;
     p->caller_gid = 0;
+    p->interactive = false;
+    p->originator.jobid = 0;
+    p->originator.vpid = 0;
+    p->hnp.jobid = 0;
+    p->hnp.vpid = 0;
+    p->hnpname = NULL;
+    p->hnpuri = NULL;
+    p->parent_name = NULL;
+    p->parent_uri = NULL;
     p->nodefile = NULL;
     p->nodes = NULL;
     p->queues = NULL;
@@ -241,6 +251,18 @@ static void alloc_des(orcm_alloc_t *p)
     }
     if (NULL != p->name) {
         free(p->name);
+    }
+    if (NULL != p->hnpname) {
+        free(p->hnpname);
+    }
+    if (NULL != p->hnpuri) {
+        free(p->hnpuri);
+    }
+    if (NULL != p->parent_name) {
+        free(p->parent_name);
+    }
+    if (NULL != p->parent_uri) {
+        free(p->parent_uri);
     }
     if (NULL != p->nodefile) {
         free(p->nodefile);

@@ -27,6 +27,7 @@ AC_DEFUN([ORCM_CONFIG_FILES],[
     orcm/tools/orcmsd/Makefile
     orcm/tools/orun/Makefile
     orcm/tools/osub/Makefile
+    orcm/tools/odiag/Makefile
     orcm/tools/otestcmd/Makefile
     orcm/tools/otop/Makefile
     orcm/tools/wrappers/Makefile

@@ -23,6 +23,7 @@ SUBDIRS += \
         tools/orcmsched \
         tools/orun \
         tools/osub \
+        tools/odiag \
         tools/otestcmd \
         tools/otop \
         tools/orcmsd \

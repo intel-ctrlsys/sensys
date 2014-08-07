@@ -1,0 +1,77 @@
+.\"
+.\" Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
+.\"                         University Research and Technology
+.\"                         Corporation.  All rights reserved.
+.\" Copyright (c) 2008-2009 Sun Microsystems, Inc.  All rights reserved.
+.\" Copyright (c) 2014      Intel, Inc.  All rights reserved.
+.\"
+.\" Man page for ORCM's odiag command
+.\" 
+.\" .TH name     section center-footer   left-footer  center-header
+.TH ORCM-ODIAG 1 "#OPAL_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
+.\" **************************
+.\"    Name Section
+.\" **************************
+.SH NAME
+.
+odiag \- ORCM system diagnostics utility
+.
+.PP
+.
+.\" **************************
+.\"    Synopsis Section
+.\" **************************
+.SH SYNOPSIS
+.
+.B odiag
+.B [ options ]
+.
+.\" **************************
+.\"    Options Section
+.\" **************************
+.SH Options
+.
+\fIodiag\fR will execute node diagnostic checks
+.
+.TP 10
+.B -h | --help
+Display help for this command
+.
+.
+.TP
+.B -v | --verbose
+Enable verbose output for debugging
+.
+.
+.TP
+.B -m | --mem
+Enable memory diagnostic check
+.
+.
+.TP
+.B -gmca | --gmca \fR<key> <value>\fP
+Pass global MCA parameters that are applicable to all contexts. \fI<key>\fP is
+the parameter name; \fI<value>\fP is the parameter value.
+.
+.
+.TP
+.B -mca | --mca <key> <value>
+Send arguments to various MCA modules.
+.
+.
+.\" **************************
+.\"    Description Section
+.\" **************************
+.SH DESCRIPTION
+.
+.PP
+\fIodiag\fR executes node diagnostic check
+.
+.
+.\" **************************
+.\"    See Also Section
+.\" **************************
+.
+.SH SEE ALSO
+orun(1)
+.

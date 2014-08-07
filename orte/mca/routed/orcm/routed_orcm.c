@@ -138,9 +138,16 @@ static orte_process_name_t get_route(orte_process_name_t *target)
     orte_process_name_t *ret, daemon;
     orte_routed_tree_t *child;
 
-    /* if I am a tool, go to scheduler */
+    /* if I am a tool */
     if (ORTE_PROC_IS_TOOL) {
-        ret = ORTE_PROC_MY_SCHEDULER;
+        /* if we are trying to get to orcm daemons in the cluster */
+        if (0 == target->jobid) {
+            /* go to scheduler */
+            ret = ORTE_PROC_MY_SCHEDULER;
+        } else {
+            /* otherwise just go direct (session daemons, etc) */
+            ret = target;
+        }
         goto found;
     }
 

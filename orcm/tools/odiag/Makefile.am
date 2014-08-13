@@ -28,7 +28,7 @@ $(nodist_man_MANS): $(top_builddir)/orcm/include/orcm_config.h
 
 endif # OPAL_INSTALL_BINARIES
 
-osub_SOURCES = odiag.c
+odiag_SOURCES = odiag.c
 # the following empty odiag_LDFLAGS is used 
 #  so that the odiag can be compiled statically 
 #  by simply changing the value of this from 

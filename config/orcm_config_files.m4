@@ -14,6 +14,7 @@ AC_DEFUN([ORCM_CONFIG_FILES],[
     orcm/etc/Makefile
     orcm/include/Makefile
 
+    orcm/tools/ocli/Makefile
     orcm/tools/octl/Makefile
     orcm/tools/oflow/Makefile
     orcm/tools/ops/Makefile

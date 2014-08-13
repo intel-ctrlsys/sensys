@@ -11,7 +11,7 @@
 # This is the US/English help file for Open Resilient Cluster Manager Tool
 #
 [usage]
-osub [OPTIONS]
+odiag [OPTIONS]
   Open Resilient Cluster Manager "odiag" Tool
 
 %s

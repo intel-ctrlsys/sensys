@@ -83,10 +83,10 @@ static void start(orte_jobid_t jobid)
     /* Select sensor list if no sensors are specified by the user */
     if((NULL==mca_sensor_ipmi_component.sensor_list) & (NULL==mca_sensor_ipmi_component.sensor_group))
     {
-        mca_sensor_ipmi_component.sensor_list = "PS1 Power In,PS1 Temperature";
+        sensor_list_token = opal_argv_split("PS1 Power In,PS1 Temperature",',');
+    } else {
+        sensor_list_token = opal_argv_split(mca_sensor_ipmi_component.sensor_list,',');
     }
-    sensor_list_token = opal_argv_split(mca_sensor_ipmi_component.sensor_list,',');
-    opal_output(0, "sensor_list: %s", mca_sensor_ipmi_component.sensor_list);
     for(int i =0; i <opal_argv_count(sensor_list_token);i++)
     {
         opal_output(0,"Sensor %d: %s",i,sensor_list_token[i]);

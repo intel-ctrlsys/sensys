@@ -10,6 +10,7 @@
 #
 
 SUBDIRS += \
+        tools/ocli \
         tools/octl \
         tools/oflow \
         tools/ops \

@@ -51,7 +51,7 @@ void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
     caddy->imod = wf_step->mod;
     
     OPAL_LIST_FOREACH(attr, &wf_step->attributes, opal_value_t) {
-        if (0 == strncmp("taphost", attr->key, 10)) {
+        if ((0 == strncmp("taphost", attr->key, 10)) && (!taphost)) {
             taphost = strdup(attr->data.string);
         }
         if (0 == strncmp("taptag", attr->key, 10)) {
@@ -90,6 +90,11 @@ void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
             }
         }
         OBJ_RELEASE(buf);
+        free(taphost);
+    } else {
+        if (taphost) {
+            free(taphost);
+        }
     }
     
     opal_event_set(wf->ev_base, &caddy->ev, -1,
@@ -146,7 +151,7 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
     int num_steps, i, cnt, rc;
     char *mod_attrs = NULL;
     orcm_workflow_step_t *wf_step = NULL;
-    orcm_workflow_t *wf;
+    orcm_workflow_t *wf = NULL;
     opal_value_t module_name;
     opal_value_t module_attr;
     opal_value_t **values;
@@ -172,8 +177,10 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
                                                   progress_thread_engine,
                                                   (void *)wf))) {
         wf->ev_active = false;
+        free(threadname);
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
+    free(threadname);
     
     OBJ_CONSTRUCT(&module_name, opal_value_t);
     OBJ_CONSTRUCT(&module_attr, opal_value_t);
@@ -207,13 +214,17 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
             (rc = orcm_analytics_base_select_workflow_step(wf_step))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(wf_step);
-            free(mod_attrs);
+            if (mod_attrs) {
+                free(mod_attrs);
+            }
             /* skip this module ? */
             /* FIXME log something */
             continue;
         }
         opal_list_append(&wf->steps, &wf_step->super);
-        free(mod_attrs);
+        if (mod_attrs) {
+            free(mod_attrs);
+        }
     }
     
     OBJ_DESTRUCT(&module_name);
@@ -255,6 +266,9 @@ int orcm_analytics_base_workflow_delete(int workflow_id)
             /* remove workflow from the master list */
             opal_list_remove_item(&orcm_analytics_base.workflows, &wf->super);
             OBJ_RELEASE(wf);
+            if (threadname) {
+                free(threadname);
+            }
         }
     }
     return ORCM_SUCCESS;

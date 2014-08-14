@@ -116,7 +116,7 @@ main(int argc, char *argv[])
     orcm_analytics_cmd_flag_t command;
     FILE *fp;
     opal_value_t *oflow_value;
-    opal_value_t **oflow_array;
+    opal_value_t **oflow_array = NULL;
     orte_process_name_t wf_agg;
     
     /* initialize, parse command line, and setup frameworks */
@@ -178,10 +178,12 @@ main(int argc, char *argv[])
         ORTE_ERROR_LOG(rc);
         return rc;
     }
-    /* pack the array */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, oflow_array, i, OPAL_VALUE))) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
+    if (oflow_array) {
+        /* pack the array */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, oflow_array, i, OPAL_VALUE))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
     }
     /* send it to the aggregator */
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(&wf_agg, buf,
@@ -375,15 +377,17 @@ static void orcm_oflow_recv(int status, orte_process_name_t* sender,
         ORTE_ERROR_LOG(rc);
     }
     
-    for (i = 0; i < num_values; i++) {
-        if (ORTE_SUCCESS != (rc = opal_dss.print(&output, "OFLOW ", value_list[i],
-                                                 OPAL_VALUE))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        if (output) {
-            printf("%s\n", output);
-            free(output);
+    if (value_list) {
+        for (i = 0; i < num_values; i++) {
+            if (ORTE_SUCCESS != (rc = opal_dss.print(&output, "OFLOW ", value_list[i],
+                                                     OPAL_VALUE))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            if (output) {
+                printf("%s\n", output);
+                free(output);
+            }
         }
     }
 }

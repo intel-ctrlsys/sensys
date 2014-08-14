@@ -751,53 +751,55 @@ static void print_ranks(opal_list_t *statlist)
             }
         }
         memset(pretty_time, 0, sizeof(pretty_time));
-        if (pstats->time.tv_sec >= 3600) {
-            snprintf(pretty_time, sizeof(pretty_time), "%5.1fH", 
-                     (double)pstats->time.tv_sec / (double)(3600));
-        } else {
-            snprintf(pretty_time, sizeof(pretty_time), "%3ld:%02ld",
-                     (unsigned long)pstats->time.tv_sec/60,
-                     (unsigned long)pstats->time.tv_sec % 60);
-        }
-        
-        if (bynode) {
-            /* print blanks in the nodename field */
-            for (i=0; i < lennode; i++) {
-                fprintf(fp, " ");
+        if (pstats) {
+            if (pstats->time.tv_sec >= 3600) {
+                snprintf(pretty_time, sizeof(pretty_time), "%5.1fH",
+                         (double)pstats->time.tv_sec / (double)(3600));
+            } else {
+                snprintf(pretty_time, sizeof(pretty_time), "%3ld:%02ld",
+                         (unsigned long)pstats->time.tv_sec/60,
+                         (unsigned long)pstats->time.tv_sec % 60);
             }
-            fprintf(fp, " | ");
-            /* print fields */
-            fprintf(fp, "%*d | ", lenrank, pstats->rank);
-        } else {
-            fprintf(fp, "%*d | ", lenrank, pstats->rank);
-            fprintf(fp, "%*s | ", lennode, pstats->node);
+            
+            if (bynode) {
+                /* print blanks in the nodename field */
+                for (i=0; i < lennode; i++) {
+                    fprintf(fp, " ");
+                }
+                fprintf(fp, " | ");
+                /* print fields */
+                fprintf(fp, "%*d | ", lenrank, pstats->rank);
+            } else {
+                fprintf(fp, "%*d | ", lenrank, pstats->rank);
+                fprintf(fp, "%*s | ", lennode, pstats->node);
+            }
+            fprintf(fp, "%*s | ", lencmd, pstats->cmd);
+            fprintf(fp, "%*lu | ", lenpid, (unsigned long)pstats->pid);
+            fprintf(fp, "%*c | ", lenstate, pstats->state[0]);
+            fprintf(fp, "%*s | ", lentime, pretty_time);
+            if (pri_found) {
+                fprintf(fp, "%*d | ", lenpri, pstats->priority);
+            }
+            if (thr_found) {
+                fprintf(fp, "%*d | ", lenthr, pstats->num_threads);
+            }
+            if (vsize_found) {
+                fprintf(fp, "%*lu | ", lenvsize, (unsigned long)pstats->vsize);
+            }
+            if (rss_found) {
+                fprintf(fp, "%*lu | ", lenvsize, (unsigned long)pstats->rss);
+            }
+            if (pkv_found) {
+                fprintf(fp, "%*lu | ", lenpkv, (unsigned long)pstats->peak_vsize);
+            }
+            if (p_found) {
+                fprintf(fp, "%*d | ", lenp, pstats->processor);
+            }
+            fprintf(fp, "\n");
+            num_lines++;
+            opal_list_remove_item(statlist, &pstats->super);
+            OBJ_RELEASE(pstats);
         }
-        fprintf(fp, "%*s | ", lencmd, pstats->cmd);
-        fprintf(fp, "%*lu | ", lenpid, (unsigned long)pstats->pid);
-        fprintf(fp, "%*c | ", lenstate, pstats->state[0]);
-        fprintf(fp, "%*s | ", lentime, pretty_time);
-        if (pri_found) {
-            fprintf(fp, "%*d | ", lenpri, pstats->priority);
-        }
-        if (thr_found) {
-            fprintf(fp, "%*d | ", lenthr, pstats->num_threads);
-        }
-        if (vsize_found) {
-            fprintf(fp, "%*lu | ", lenvsize, (unsigned long)pstats->vsize);
-        }
-        if (rss_found) {
-            fprintf(fp, "%*lu | ", lenvsize, (unsigned long)pstats->rss);
-        }
-        if (pkv_found) {
-            fprintf(fp, "%*lu | ", lenpkv, (unsigned long)pstats->peak_vsize);
-        }
-        if (p_found) {
-            fprintf(fp, "%*d | ", lenp, pstats->processor);
-        }
-        fprintf(fp, "\n");
-        num_lines++;
-        opal_list_remove_item(statlist, &pstats->super);
-        OBJ_RELEASE(pstats);
     }
 }
 

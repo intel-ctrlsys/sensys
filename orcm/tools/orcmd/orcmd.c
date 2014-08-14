@@ -278,8 +278,10 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
             alloc->hnpuri = hnp_uri;
         } 
 
-        slm_fork_hnp_procs(jobid, alloc->caller_uid,
-                     alloc->caller_gid, alloc->nodes, port_num, hnp, hnp_uri, alloc->parent_uri);
+        if (hnp_uri) {
+            slm_fork_hnp_procs(jobid, alloc->caller_uid,
+                               alloc->caller_gid, alloc->nodes, port_num, hnp, hnp_uri, alloc->parent_uri);
+        }
 
         command = ORCM_VM_READY_COMMAND;
         buf = OBJ_NEW(opal_buffer_t);
@@ -288,21 +290,38 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
             (rc = opal_dss.pack(buf, &command, 1, ORCM_RM_CMD_T))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
+            if (hnp_ip) {
+                free(hnp_ip);
+            }
+            if (hnp_uri) {
+                free(hnp_uri);
+            }
             return;
         }
         if (OPAL_SUCCESS !=
             (rc = opal_dss.pack(buf, &alloc, 1, ORCM_ALLOC))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
+            if (hnp_ip) {
+                free(hnp_ip);
+            }
+            if (hnp_uri) {
+                free(hnp_uri);
+            }
             return;
         }
         if (ORTE_SUCCESS !=
-            (rc =
-             orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
-                         ORCM_RML_TAG_RM,
-                         orte_rml_send_callback, NULL))) {
+            (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
+                                          ORCM_RML_TAG_RM,
+                                          orte_rml_send_callback, NULL))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
+            if (hnp_ip) {
+                free(hnp_ip);
+            }
+            if (hnp_uri) {
+                free(hnp_uri);
+            }
             return;
         }
         break;
@@ -360,6 +379,12 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     }
 
+    if (hnp_ip) {
+        free(hnp_ip);
+    }
+    if (hnp_uri) {
+        free(hnp_uri);
+    }
     return;
 }
 

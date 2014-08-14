@@ -279,9 +279,9 @@ static void show_mca_version(const mca_base_component_t* component,
             tmp = NULL;
         }
         
-        orcm_info_out(message, NULL, tmp);
-        free(message);
         if (NULL != tmp) {
+            orcm_info_out(message, NULL, tmp);
+            free(message);
             free(tmp);
         }
         

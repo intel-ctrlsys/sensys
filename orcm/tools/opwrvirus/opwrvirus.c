@@ -19,19 +19,23 @@ int main(int argc, char *argv[])
 
     /* grab and init a chunk of memory */
     pwrvirus_heap = (float*)malloc(ORCM_PWRVIRUS_HEAP_SIZE * sizeof(float));
-    for (i=0; i < ORCM_PWRVIRUS_HEAP_SIZE; i++) {
-        pwrvirus_heap[i] = 3.1459 * (float)i;
-    }
-
-    /* burn the cpu by computing and shoving things in/out of memory */
-    while (1) {
-        for (i=1; i < ORCM_PWRVIRUS_HEAP_SIZE; i++) {
-            pwrvirus_heap[i-1] = pwrvirus_heap[i] * pwrvirus_heap[i-1] / 1.2345;
+    if(pwrvirus_heap) {
+        for (i=0; i < ORCM_PWRVIRUS_HEAP_SIZE; i++) {
+            pwrvirus_heap[i] = 3.1459 * (float)i;
         }
-        for (i=0; i < ORCM_PWRVIRUS_HEAP_SIZE-1; i++) {
-            pwrvirus_heap[i] = (pwrvirus_heap[i+1] / pwrvirus_heap[i]) * 1.2345;
+        
+        /* burn the cpu by computing and shoving things in/out of memory */
+        while (1) {
+            for (i=1; i < ORCM_PWRVIRUS_HEAP_SIZE; i++) {
+                pwrvirus_heap[i-1] = pwrvirus_heap[i] * pwrvirus_heap[i-1] / 1.2345;
+            }
+            for (i=0; i < ORCM_PWRVIRUS_HEAP_SIZE-1; i++) {
+                pwrvirus_heap[i] = (pwrvirus_heap[i+1] / pwrvirus_heap[i]) * 1.2345;
+            }
         }
+        
+        return 0;
+    } else {
+        return 1;
     }
-
-    return 0;
 }

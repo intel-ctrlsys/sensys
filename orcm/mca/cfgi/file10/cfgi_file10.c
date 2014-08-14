@@ -499,32 +499,37 @@ static char *orcm_getline(FILE *fp)
 static char* extract_tag(char *filename, char *line)
 {
     char *start, *end;
-    char *tmp, *ret;
+    char *tmp;
+    char *ret = NULL;
 
     tmp = strdup(line);
-    /* find the start of the tag */
-    start = strchr(tmp, '<');
-    if (NULL == start) {
-        fprintf(stderr, "Error parsing tag in configuration file %s: xml format error in %s\n",
-                filename, line);
-        return NULL;
-    }
-    start++;
-    /* if it is the end character, skip over */
-    if ('/' == *start) {
+    if (tmp) {
+        /* find the start of the tag */
+        start = strchr(tmp, '<');
+        if (NULL == start) {
+            fprintf(stderr, "Error parsing tag in configuration file %s: xml format error in %s\n",
+                    filename, line);
+            free(tmp);
+            return NULL;
+        }
         start++;
+        /* if it is the end character, skip over */
+        if ('/' == *start) {
+            start++;
+        }
+        /* find the end of the tag */
+        end = strchr(start, '>');
+        if (NULL == end) {
+            fprintf(stderr, "Error parsing tag in configuration file %s: xml format error in %s\n",
+                    filename, line);
+            free(tmp);
+            return NULL;
+        }
+        *end = '\0';
+        /* pass it back */
+        ret = strdup(start);
+        free(tmp);
     }
-    /* find the end of the tag */
-    end = strchr(start, '>');
-    if (NULL == end) {
-        fprintf(stderr, "Error parsing tag in configuration file %s: xml format error in %s\n",
-                filename, line);
-        return NULL;
-    }
-    *end = '\0';
-    /* pass it back */
-    ret = strdup(start);
-    free(tmp);
     return ret;
 }
 
@@ -637,7 +642,8 @@ static void parse_config(FILE *fp,
 static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
                          orcm_rack_t *rack)
 {
-    char *val, **vals;
+    char *val = NULL;
+    char **vals;
     int n;
     orcm_node_t *node;
     bool foundlocal = false;
@@ -663,7 +669,7 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
         }
     } else if (0 == strcmp(xml->name, "mca-params") &&
             0 < strlen(xml->value[0])) {
-        if (NULL != xml->value && NULL != xml->value[0]) {
+        if (NULL != xml->value[0]) {
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-MCA-PARAMS %s", xml->value[0]);
             vals = opal_argv_split(xml->value[0], ',');
@@ -693,14 +699,26 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
                                        true, "multiple instances of localhost",
                                        ORTE_ERROR_NAME(ORTE_ERR_NOT_SUPPORTED),
                                        ORTE_ERR_NOT_SUPPORTED);
+                        if (val) {
+                            free(val);
+                        }
                         return ORTE_ERR_NOT_SUPPORTED;
                     }
                     foundlocal = true;
                     orte_standalone_operation = true;
+                    if (val) {
+                        free(val);
+                    }
                     val = orte_process_info.nodename;
                 } else if (opal_ifislocal(xml->value[n])) {
+                    if (val) {
+                        free(val);
+                    }
                     val = strdup(orte_process_info.nodename);
                 } else {
+                    if (val) {
+                        free(val);
+                    }
                     val = xml->value[n];
                 }
                 /* add this node */
@@ -794,7 +812,8 @@ static int parse_aggregators(orcm_cfgi_xml_parser_t *xml,
 
 static int parse_scheduler(orcm_cfgi_xml_parser_t *xml)
 {
-    char *val, **vals;
+    char *val = NULL;
+    char **vals;
     int n;
     orcm_scheduler_t *scheduler;
     bool foundlocal = false;
@@ -847,14 +866,26 @@ static int parse_scheduler(orcm_cfgi_xml_parser_t *xml)
                                        true, "multiple instances of localhost",
                                        ORTE_ERROR_NAME(ORTE_ERR_NOT_SUPPORTED),
                                        ORTE_ERR_NOT_SUPPORTED);
+                        if (val) {
+                            free(val);
+                        }
                         return ORTE_ERR_NOT_SUPPORTED;
                     }
                     foundlocal = true;
                     orte_standalone_operation = true;
+                    if (val) {
+                        free(val);
+                    }
                     val = orte_process_info.nodename;
                 } else if (opal_ifislocal(xml->value[n])) {
+                    if (val) {
+                        free(val);
+                    }
                     val = strdup(orte_process_info.nodename);
                 } else {
+                    if (val) {
+                        free(val);
+                    }
                     val = xml->value[n];
                 }
                 /* add this node */

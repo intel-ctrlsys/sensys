@@ -261,7 +261,7 @@ int opal_value_unload(opal_value_t *kv,
     if (type != kv->type) {
         return OPAL_ERR_TYPE_MISMATCH;
     }
-    if (NULL == data && OPAL_STRING != type && OPAL_BYTE_OBJECT != type) {
+    if (NULL == data) {
         OPAL_ERROR_LOG(OPAL_ERR_BAD_PARAM);
         return OPAL_ERR_BAD_PARAM;
     }

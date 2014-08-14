@@ -899,9 +899,6 @@ static int parse_scheduler(orcm_cfgi_xml_parser_t *xml)
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                             "\tUNKNOWN TAG: %s", xml->name);
     }
-    if (val) {
-        free(val);
-    }
     return ORTE_SUCCESS;
 }
 

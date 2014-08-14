@@ -308,9 +308,6 @@ static void show_mca_version(const mca_base_component_t* component,
     free (mca_version);
     free (api_version);
     free (component_version);
-    if (NULL != message) {
-        free (message);
-    }
 }
 
 

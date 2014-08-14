@@ -544,7 +544,8 @@ int orcm_unpack_scheduler(opal_buffer_t *buffer, void *dest,
 {
     int ret;
     int32_t i, n;
-    orcm_scheduler_t **schedulers, *scheduler;
+    orcm_scheduler_t **schedulers;
+    orcm_scheduler_t *scheduler = NULL;
     int32_t j, k;
     char *tmp;
 
@@ -561,28 +562,33 @@ int orcm_unpack_scheduler(opal_buffer_t *buffer, void *dest,
         scheduler = schedulers[i];
 
     }
-    /* unpack the controller */
-    n=1;
-    if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &scheduler->controller, &n, ORCM_NODE))) {
-        ORTE_ERROR_LOG(ret);
-        return ret;
-    }
-    /* unpack the queues */
-    n=1;
-    if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &k, &n, OPAL_INT32))) {
-        ORTE_ERROR_LOG(ret);
-        return ret;
-    }
-    if (0 < k) {
-        for (j=0; j < k; j++) {
-            n=1;
-            if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &tmp, &n, OPAL_STRING))) {
-                ORTE_ERROR_LOG(ret);
-                return ret;
-            }
-            opal_argv_append_nosize(&scheduler->queues, tmp);
-            free(tmp);
+    if (scheduler) {
+        /* unpack the controller */
+        n=1;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &scheduler->controller, &n, ORCM_NODE))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
         }
+        /* unpack the queues */
+        n=1;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &k, &n, OPAL_INT32))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (0 < k) {
+            for (j=0; j < k; j++) {
+                n=1;
+                if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &tmp, &n, OPAL_STRING))) {
+                    ORTE_ERROR_LOG(ret);
+                    return ret;
+                }
+                opal_argv_append_nosize(&scheduler->queues, tmp);
+                free(tmp);
+            }
+        }
+    } else {
+        /* FIXME: better return value? or other error handling? */
+        return ORTE_ERR_OUT_OF_RESOURCE;
     }
 
     return ORTE_SUCCESS;
@@ -924,6 +930,11 @@ int orcm_print_scheduler(char **output, char *prefix, orcm_scheduler_t *src, opa
         }
     }
     *output = tmp;
+    if (tmp != tmp2) {
+        if (tmp2) {
+            free (tmp2);
+        }
+    }
     free(pfx2);
 
     return ORTE_SUCCESS;

@@ -139,7 +139,8 @@ static int init(void)
     int k;
     DIR *cur_dirp = NULL;
     struct dirent *entry;
-    char *filename, *tmp, **vals;
+    char *filename, **vals;
+    char *tmp = NULL;
     FILE *fp;
     tracker_t *trk;
     opal_value_t *kv;
@@ -182,14 +183,14 @@ static int init(void)
             continue;
         }
         /* if it ends in other than a digit, then it isn't a cpu directory */
-        if (!isdigit(entry->d_name[strlen(entry->d_name)-1])) {
+        if (!isdigit(entry->d_name[strnlen(entry->d_name, sizeof(entry->d_name))-1])) {
             continue;
         }
 
         /* track the info for this core */
         trk = OBJ_NEW(tracker_t);
         /* trailing digits are the core id */
-        for (k=strlen(entry->d_name)-1; 0 <= k; k--) {
+        for (k=strnlen(entry->d_name, sizeof(entry->d_name))-1; 0 <= k; k--) {
             if (!isdigit(entry->d_name[k])) {
                 k++;
                 break;
@@ -201,28 +202,49 @@ static int init(void)
         /* read/save the current settings */
         filename = opal_os_path(false, trk->directory, "scaling_governor", NULL);
         fp = fopen(filename, "r");
-        trk->system_governor = orte_getline(fp);
-        trk->current_governor = strdup(trk->system_governor);
-        fclose(fp);
-        free(filename);
-
-        filename = opal_os_path(false, trk->directory, "scaling_max_freq", NULL);
-        fp = fopen(filename, "r");
-        tmp = orte_getline(fp);
-        fclose(fp);
-        trk->system_max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
-        trk->current_max_freq = trk->system_max_freq;
-        free(filename);
-        free(tmp);
-
-        filename = opal_os_path(false, trk->directory, "scaling_min_freq", NULL);
-        fp = fopen(filename, "r");
-        tmp = orte_getline(fp);
-        fclose(fp);
-        trk->system_min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
+        if(fp) {
+            trk->system_governor = orte_getline(fp);
+            if(trk->system_governor) {
+                trk->current_governor = strdup(trk->system_governor);
+            }
+            fclose(fp);
+            free(filename);
+            
+            filename = opal_os_path(false, trk->directory, "scaling_max_freq", NULL);
+            fp = fopen(filename, "r");
+            if(fp) {
+                tmp = orte_getline(fp);
+                fclose(fp);
+                if (tmp) {
+                    trk->system_max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
+                } else {
+                    /* FIXME: what should we do if we cant get the max freq */
+                    trk->system_max_freq = 0;
+                }
+                trk->current_max_freq = trk->system_max_freq;
+                free(filename);
+                if (tmp) {
+                    free(tmp);
+                }
+                
+                filename = opal_os_path(false, trk->directory, "scaling_min_freq", NULL);
+                fp = fopen(filename, "r");
+                if (fp) {
+                    tmp = orte_getline(fp);
+                    fclose(fp);
+                }
+            }
+        }
+        if (tmp) {
+            trk->system_min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
+        } else {
+            trk->system_min_freq = 0;
+        }
         trk->current_min_freq = trk->system_min_freq;
         free(filename);
-        free(tmp);
+        if (tmp) {
+            free(tmp);
+        }
 
         /* get the list of available governors */
         filename = opal_os_path(false, trk->directory, "scaling_available_governors", NULL);
@@ -397,7 +419,11 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("hostname");
     kv->type = OPAL_STRING;
-    kv->data.string = strdup(hostname);
+    if (hostname) {
+        kv->data.string = strdup(hostname);
+    } else {
+        kv->data.string = strdup("unknown");
+    }
     opal_list_append(vals, &kv->super);
 
     /* load the number of cpus that were running the virus */
@@ -592,8 +618,10 @@ static int set_freq(tracker_t *trk, float freq)
         /* restore the governor */
         filename = opal_os_path(false, trk->directory, "scaling_governor", NULL);
         fp = fopen(filename, "w");
-        fprintf(fp, "%s\n", trk->system_governor);
-        fclose(fp);
+        if (fp) {
+            fprintf(fp, "%s\n", trk->system_governor);
+            fclose(fp);
+        }
         free(filename);
         return ORCM_ERROR;
     }
@@ -618,14 +646,18 @@ static int set_freq(tracker_t *trk, float freq)
             /* restore the governor */
             filename = opal_os_path(false, trk->directory, "scaling_governor", NULL);
             fp = fopen(filename, "w");
-            fprintf(fp, "%s\n", trk->system_governor);
-            fclose(fp);
+            if(fp) {
+                fprintf(fp, "%s\n", trk->system_governor);
+                fclose(fp);
+            }
             free(filename);
             /* restore the min freq */
             filename = opal_os_path(false, trk->directory, "scaling_min_freq", NULL);
             fp = fopen(filename, "w");
-            fprintf(fp, "%ld\n", (unsigned long)(trk->system_min_freq * 1000000.0));
-            fclose(fp);
+            if(fp) {
+                fprintf(fp, "%ld\n", (unsigned long)(trk->system_min_freq * 1000000.0));
+                fclose(fp);
+            }
             free(filename);
             return ORCM_ERROR;
         }

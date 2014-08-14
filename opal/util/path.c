@@ -178,7 +178,8 @@ char *opal_path_findv(char *fname, int mode, char **envv, char *wrkdir)
                 found_dot = true;
                 free(dirv[i]);
                 dirv[i] = strdup(wrkdir);
-                if (NULL == dirv[i]){
+                if (NULL == dirv[i]) {
+                    opal_argv_free(dirv);
                     return NULL;
                 }
             }

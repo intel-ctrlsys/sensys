@@ -934,6 +934,7 @@ int opal_cr_refresh_environ(int prev_pid) {
      */
     asprintf(&file_name, "%s/%s-%d", opal_tmp_directory(), OPAL_CR_BASE_ENV_NAME, prev_pid);
     if(0 != stat(file_name, &file_status) ){
+        free(file_name);
         return OPAL_SUCCESS;
     }
 
@@ -1021,7 +1022,7 @@ static int extract_env_vars(int prev_pid, char * file_name)
         }
         
         opal_setenv(t_set[0], t_set[1], true, &environ);
-
+        opal_argv_free(t_set);
         free(tmp_str);
         tmp_str = NULL;
     }

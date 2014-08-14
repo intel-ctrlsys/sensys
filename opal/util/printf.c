@@ -259,10 +259,13 @@ int opal_snprintf(char *str, size_t size, const char *fmt, ...)
 int opal_vsnprintf(char *str, size_t size, const char *fmt, va_list ap)
 {
     int length;
-    char *buf;
+    char *buf=NULL;
 
     length = opal_vasprintf(&buf, fmt, ap);
     if (length < 0) {
+        if (NULL != buf) {
+            free(buf);
+        }
         return length;
     }
 

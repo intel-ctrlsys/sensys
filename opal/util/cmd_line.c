@@ -344,10 +344,10 @@ int opal_cmd_line_parse(opal_cmd_line_t *cmd, bool ignore_unknown,
                     } else {
                         is_unknown_option = true;
                     }
-                    opal_argv_free(shortsv);
                 } else {
                     is_unknown_option = true;
                 }
+                opal_argv_free(shortsv);
             }
 
             if (NULL != option) {
@@ -622,6 +622,7 @@ char *opal_cmd_line_get_usage_msg(opal_cmd_line_t *cmd)
             if (NULL == desc) {
                 free(sorted);
                 opal_mutex_unlock(&cmd->lcl_mutex);
+                opal_argv_free(argv);
                 return strdup("");
             }
             start = desc;

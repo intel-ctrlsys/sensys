@@ -158,6 +158,10 @@ static int open_file(const char *base, const char *topic)
             filename = opal_os_path( false, search_dirs[i], base, NULL );
             opal_show_help_yyin = fopen(filename, "r");
             if (NULL == opal_show_help_yyin) {
+                if (NULL != err_msg) {
+                    free(err_msg);
+                    err_msg = NULL;
+                }
                 asprintf(&err_msg, "%s: %s", filename, strerror(errno));
                 base_len = strlen(base);
                 if (4 > base_len || 0 != strcmp(base + base_len - 4, ".txt")) {
@@ -256,6 +260,7 @@ static int read_topic(char ***array)
                 return OPAL_ERR_OUT_OF_RESOURCE;
             }
             opal_argv_append_nosize(array, tmp);
+            free(tmp);
             break;
 
         default:

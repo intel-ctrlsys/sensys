@@ -477,6 +477,7 @@ main(int argc, char *argv[])
 
     if (OPAL_SUCCESS != (ret = data_init(base_argv0))) {
         fprintf(stderr, "Error parsing data file %s: %s\n", base_argv0, opal_strerror(ret));
+        free(base_argv0);
         return ret;
     }
 

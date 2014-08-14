@@ -154,6 +154,7 @@ opal_net_init()
         private_ipv4 = (private_ipv4_t*)malloc( (count + 1) * sizeof(private_ipv4_t));
         if( NULL == private_ipv4 ) {
             opal_output(0, "Unable to allocate memory for the private addresses array" );
+            opal_argv_free(args);
             goto do_local_init;
         }
         for( i = 0; i < count; i++ ) {

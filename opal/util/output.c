@@ -405,6 +405,9 @@ char *opal_output_string(int level, int output_id, const char *format, ...)
         rc = make_string(&ret, &info[output_id], format, arglist);
         va_end(arglist);
         if (OPAL_SUCCESS != rc) {
+            if (NULL != ret) {
+                free(ret);
+            }
             ret = NULL;
         }
     }
@@ -426,6 +429,9 @@ char *opal_output_vstring(int level, int output_id, const char *format,
         info[output_id].ldi_verbose_level >= level) {
         rc = make_string(&ret, &info[output_id], format, arglist);
         if (OPAL_SUCCESS != rc) {
+            if (NULL != ret) {
+                free(ret);
+            }
             ret = NULL;
         }
     }
@@ -725,16 +731,16 @@ static int open_file(int i)
         if (NULL == filename) {
             return OPAL_ERR_OUT_OF_RESOURCE;
         }
-        strncpy(filename, output_dir, OPAL_PATH_MAX);
-        strcat(filename, "/");
+        memset(filename, 0, OPAL_PATH_MAX);
+        snprintf(filename, OPAL_PATH_MAX, "%s/", output_dir);
         if (NULL != output_prefix) {
-            strcat(filename, output_prefix);
+            snprintf(filename, OPAL_PATH_MAX, "%s%s", filename, output_prefix);
         }
         if (info[i].ldi_file_suffix != NULL) {
-            strcat(filename, info[i].ldi_file_suffix);
+            snprintf(filename, OPAL_PATH_MAX, "%s%s", filename, info[i].ldi_file_suffix);
         } else {
             info[i].ldi_file_suffix = NULL;
-            strcat(filename, "output.txt");
+            snprintf(filename, OPAL_PATH_MAX, "%s%s", filename, "output.txt");
         }
         flags = O_CREAT | O_RDWR;
         if (!info[i].ldi_file_want_append) {
@@ -887,7 +893,7 @@ static int make_string(char **no_newline_string, output_desc_t *ldi,
 static int output(int output_id, const char *format, va_list arglist)
 {
     int rc = OPAL_SUCCESS;
-    char *str, *out = NULL;
+    char *str=NULL, *out = NULL;
     output_desc_t *ldi;
 
     /* Setup */
@@ -905,6 +911,9 @@ static int output(int output_id, const char *format, va_list arglist)
 
         /* Make the strings */
         if (OPAL_SUCCESS != (rc = make_string(&str, ldi, format, arglist))) {
+            if (NULL != str) {
+                free(str);
+            }
             OPAL_THREAD_UNLOCK(&mutex);
             return rc;
         }

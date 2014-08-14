@@ -187,7 +187,7 @@ int orcm_cli_get_cmd(char *prompt,
                 for (i=0; NULL != options[i]; i++) {
                     printf("%s  ", options[i]);
                 }
-                printf("\n%s", input);
+                printf("\n%s> %s", prompt, input);
                 opal_argv_free(options);
                 found = true;
                 break;
@@ -246,12 +246,12 @@ int orcm_cli_get_cmd(char *prompt,
                     }
                 }
                 if (0 < opal_list_get_size(&c3->subcmds)) {
-                    printf("\nCMDS: ");
+                    printf("\n\t");
                     OPAL_LIST_FOREACH(c2, &c3->subcmds, orcm_cli_cmd_t) {
                         printf("%s  ", c2->cmd);
                     }
                 }
-                printf("\n%s", input);
+                printf("\n%s> %s", prompt, input);
                 found = true;
                 break;
             }
@@ -298,7 +298,7 @@ int orcm_cli_get_cmd(char *prompt,
                         for (k=0; NULL != completions[k]; k++) {
                             printf("%s  ", completions[k]);
                         }
-                        printf("\n%s", input);
+                        printf("\n%s> %s", prompt, input);
                     }
                     /* break out of the options loop */
                     i = opal_argv_count(options) + 1;
@@ -354,7 +354,7 @@ int orcm_cli_get_cmd(char *prompt,
                             for (k=0; NULL != completions[k]; k++) {
                                 printf("%s  ", completions[k]);
                             }
-                            printf("\n%s", input);
+                            printf("\n%s> %s", prompt, input);
                         }
                         found = true;
                         i = opal_argv_count(options) + 1;  // break out of the completion loop
@@ -381,12 +381,12 @@ int orcm_cli_get_cmd(char *prompt,
                     }
                 }
                 if (0 < opal_list_get_size(&c3->subcmds)) {
-                    printf("\nCMDS: ");
+                    printf("\n\t");
                     OPAL_LIST_FOREACH(c2, &c3->subcmds, orcm_cli_cmd_t) {
                         printf("%s  ", c2->cmd);
                     }
                 }
-                printf("\n%s", input);
+                printf("\n%s> %s", prompt, input);
             }
             opal_argv_free(options);
             break;

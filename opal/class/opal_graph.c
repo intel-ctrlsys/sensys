@@ -302,7 +302,7 @@ int opal_graph_add_edge(opal_graph_t *graph, opal_graph_edge_t *edge)
      * if one of the vertices either the start or the end is not
      * found - return an error.
      */
-    if (false == start_found && false == end_found) {
+    if (false == start_found || false == end_found) {
         return OPAL_ERROR;
     }
     /* point the edge to the adjacency list of the start vertex (for easy search) */
@@ -618,7 +618,7 @@ uint32_t opal_graph_spf(opal_graph_t *graph, opal_graph_vertex_t *vertex1, opal_
      */
     for (i = 0; i < items_in_distance_array; i++) {
         vertex_distance = opal_value_array_get_item(distance_array, i);
-        if (vertex_distance->vertex == vertex2) {
+        if (NULL != vertex_distance && vertex_distance->vertex == vertex2) {
             spf = vertex_distance->weight;
             break;
         }

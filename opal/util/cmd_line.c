@@ -333,7 +333,7 @@ int opal_cmd_line_parse(opal_cmd_line_t *cmd, bool ignore_unknown,
                                    &(cmd->lcl_argv[i + 1]),
                                    &shortsc, &shortsv, 
                                    &num_args_used, ignore_unknown);
-                if (OPAL_SUCCESS == ret) {
+                if (OPAL_SUCCESS == ret && NULL != shortsv) {
                     option = find_option(cmd, shortsv[0] + 1);
 
                     if (NULL != option) {
@@ -341,6 +341,7 @@ int opal_cmd_line_parse(opal_cmd_line_t *cmd, bool ignore_unknown,
 			                 &cmd->lcl_argv, i,
                                          1 + num_args_used);
                         opal_argv_insert(&cmd->lcl_argv, i, shortsv);
+                        assert(cmd->lcl_argv);
                         cmd->lcl_argc = opal_argv_count(cmd->lcl_argv);
                     } else {
                         is_unknown_option = true;

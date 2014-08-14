@@ -430,6 +430,9 @@ char **opal_argv_copy(char **argv)
   /* create an "empty" list, so that we return something valid if we
      were passed a valid list with no contained elements */
   dupv = (char**) malloc(sizeof(char*));
+  if (NULL == dupv) {
+      return NULL;
+  }
   dupv[0] = NULL;
 
   while (NULL != *argv) {
@@ -531,6 +534,9 @@ int opal_argv_insert(char ***target, int start, char **source)
 
         *target = (char**) realloc(*target, 
                                    sizeof(char *) * (target_count + source_count + 1));
+        if (NULL == *target) {
+            return OPAL_ERR_OUT_OF_RESOURCE;
+        }
 
         /* Move suffix items down to the end */
 
@@ -576,7 +582,10 @@ int opal_argv_insert_element(char ***target, int location, char *source)
     /* Alloc out new space */
     *target = (char**) realloc(*target, 
                                sizeof(char*) * (target_count + 2));
-    
+    if (NULL == *target) {
+        return OPAL_ERR_OUT_OF_RESOURCE;
+    }
+
     /* Move suffix items down to the end */
     suffix_count = target_count - location;
     for (i = suffix_count - 1; i >= 0; --i) {

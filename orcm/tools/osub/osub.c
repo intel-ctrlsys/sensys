@@ -315,7 +315,7 @@ static int parse_args(int argc, char *argv[])
                                 -1,       /* output */
                                 '\0',     /* account */
                                 '\0',     /* name */
-                                -1,       /* gid */
+                                -1,        /* gid */
                                 0,        /* max_nodes */
                                 0,        /* max_pes */
                                 1,        /* min_nodes */
@@ -328,7 +328,6 @@ static int parse_args(int argc, char *argv[])
                                 '\0'};    /* resources */
 
     orcm_osub_globals = tmp;
-    char str[10];
 
     /* Parse the command line options */
     opal_cmd_line_create(&cmd_line, cmd_line_opts);
@@ -365,8 +364,7 @@ static int parse_args(int argc, char *argv[])
     /* TODO: double check if user is in group */
     /* do we also need to support the name as well as id? */
     if (-1 == orcm_osub_globals.gid) {
-        sprintf(str, "%u", getgid());
-        orcm_osub_globals.gid = (int)strtol(str, NULL, 10);
+        orcm_osub_globals.gid = getgid();
     }
 
     if (orcm_osub_globals.max_nodes < orcm_osub_globals.min_nodes) {

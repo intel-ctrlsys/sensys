@@ -106,7 +106,7 @@ static int opal_setlimit(int resource, char *value, rlim_t *out)
 
 int opal_util_init_sys_limits(char **errmsg)
 {
-    char **lims, **lim=NULL, *setlim;
+    char **lims=NULL, **lim=NULL, *setlim;
     int i;
     rlim_t value;
 
@@ -117,6 +117,10 @@ int opal_util_init_sys_limits(char **errmsg)
 
     /* parse the requested limits to set */
     lims = opal_argv_split(opal_set_max_sys_limits, ',');
+    /* if nothing was requested, then go home */
+    if (NULL == lims) {
+        return OPAL_SUCCESS;
+    }
 
     /* each limit is expressed as a "param:value" pair */
     for (i=0; NULL != lims[i]; i++) {
@@ -232,6 +236,7 @@ int opal_util_init_sys_limits(char **errmsg)
             return OPAL_ERROR;
         }
         opal_argv_free(lim);
+        lim = NULL;
     }
 
     if (NULL != lim) {

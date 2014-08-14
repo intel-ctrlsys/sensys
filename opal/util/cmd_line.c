@@ -264,6 +264,7 @@ int opal_cmd_line_parse(opal_cmd_line_t *cmd, bool ignore_unknown,
 
     cmd->lcl_argc = argc;
     cmd->lcl_argv = opal_argv_copy(argv);
+    assert(cmd->lcl_argv);
 
     /* Check up front: do we have a --help option? */
 

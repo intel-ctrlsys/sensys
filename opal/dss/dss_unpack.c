@@ -670,6 +670,7 @@ static int unpack_disk_stats(opal_buffer_t *buffer, opal_node_stats_t *ns)
     /* unpack them */
     for (i=0; i < n; i++) {
         dk = OBJ_NEW(opal_diskstats_t);
+        assert(dk);
         m=1;
         if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &dk->disk, &m, OPAL_STRING))) {
             OPAL_ERROR_LOG(ret);
@@ -774,6 +775,7 @@ static int unpack_net_stats(opal_buffer_t *buffer, opal_node_stats_t *ns)
     /* unpack them */
     for (i=0; i < n; i++) {
         net = OBJ_NEW(opal_netstats_t);
+        assert(net);
         m=1;
         if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &net->net_interface, &m, OPAL_STRING))) {
             OPAL_ERROR_LOG(ret);

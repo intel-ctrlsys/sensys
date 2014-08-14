@@ -488,7 +488,14 @@ void opal_info_do_params(bool want_all_in, bool want_internal,
         for (i = 0; i < count; ++i) {
             type = opal_cmd_line_get_param(opal_info_cmd_line, p, (int)i, 0);
             component = opal_cmd_line_get_param(opal_info_cmd_line, p, (int)i, 1);
-            
+            if (NULL == type || NULL == component) {
+                char *usage = opal_cmd_line_get_usage_msg(opal_info_cmd_line);
+                opal_show_help("help-opal_info.txt", "not-found", true,
+                               (NULL == type) ? "NULL" : type);
+                free(usage);
+                exit(1);
+            }
+
             for (found = false, i = 0; i < mca_types->size; ++i) {
                 if (NULL == (str = (char *)opal_pointer_array_get_item(mca_types, i))) {
                     continue;
@@ -564,6 +571,12 @@ void opal_info_do_type(opal_cmd_line_t *opal_info_cmd_line)
 
     for (k = 0; k < count; ++k) {
         type = opal_cmd_line_get_param(opal_info_cmd_line, p, k, 0);
+        if (NULL == type) {
+            char *usage = opal_cmd_line_get_usage_msg(opal_info_cmd_line);
+            opal_show_help("help-opal_info.txt", "not-found", true, "NULL");
+            free(usage);
+            exit(1);
+        }
         for (i = 0; i < len; ++i) {
             ret = mca_base_var_get (i, &var);
             if (OPAL_SUCCESS != ret) {

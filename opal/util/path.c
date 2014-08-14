@@ -169,6 +169,9 @@ char *opal_path_findv(char *fname, int mode, char **envv, char *wrkdir)
     if (NULL != (path = list_env_get("PATH", envv))) {
         path_env_load(path, &dirc, &dirv);
     }
+    if (NULL == dirv) {
+        return NULL;
+    }
 
     /* Replace the "." path by the working directory. */
 

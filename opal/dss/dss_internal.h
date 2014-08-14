@@ -156,15 +156,16 @@ BEGIN_C_DECLS
 /* NOTE: do not need to deal with endianness here, as the unpacking of
    the underling sender-side type will do that for us.  Repeat: the
    data in tmpbuf[] is already in host byte order. */
-#define UNPACK_SIZE_MISMATCH_FOUND(unpack_type, tmptype, tmpdsstype)        \
-    do {                                                                    \
-        int32_t i;                                                          \
-        tmptype *tmpbuf = (tmptype*)malloc(sizeof(tmptype) * (*num_vals));  \
+#define UNPACK_SIZE_MISMATCH_FOUND(unpack_type, tmptype, tmpdsstype)    \
+    do {                                                                \
+        int32_t i;                                                      \
+        tmptype *tmpbuf = (tmptype*)malloc(sizeof(tmptype) * (*num_vals)); \
+        assert(tmpbuf);                                                 \
         ret = opal_dss_unpack_buffer(buffer, tmpbuf, num_vals, tmpdsstype); \
-        for (i = 0 ; i < *num_vals ; ++i) {                                 \
-            ((unpack_type*) dest)[i] = (unpack_type)(tmpbuf[i]);            \
-        }                                                                   \
-        free(tmpbuf);                                                       \
+        for (i = 0 ; i < *num_vals ; ++i) {                             \
+            ((unpack_type*) dest)[i] = (unpack_type)(tmpbuf[i]);        \
+        }                                                               \
+        free(tmpbuf);                                                   \
     } while (0)
             
             

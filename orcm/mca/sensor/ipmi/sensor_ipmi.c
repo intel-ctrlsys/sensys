@@ -146,9 +146,9 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             strncpy(host->capsule.node.bmc_ip,bmc_ip,strlen(bmc_ip)+1);
             strncpy(host->capsule.node.user,"CUR_USERNAME",strlen("CUR_USERNAME")+1);
             strncpy(host->capsule.node.pasw,"CUR_PASSWORD",strlen("CUR_PASSWORD")+1);
+            
+            orcm_sensor_get_fru_inv();
             return ORCM_SUCCESS;
-
-            break;
 
         } else {
             opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
@@ -156,7 +156,148 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
         }
         rlen=20;
     }
+
     return ORCM_ERROR;
+}
+
+void orcm_sensor_get_fru_inv()
+{
+    int ret = 0;
+    unsigned char idata[4], rdata[MAX_FRU_DEVICES][256];
+    unsigned char ccode;
+    int rlen = 256;
+    int id;
+    int max_id = 0;;
+    unsigned char hex_val;
+    long int fru_area;
+    long int max_fru_area = 0;
+
+    memset(idata,0x00,4);
+    
+    hex_val = 0x00;
+
+    for (id = 0; id < MAX_FRU_DEVICES; id++) {
+        memset(rdata[id], 0x00, 256);
+        *idata = hex_val;
+        ret = ipmi_cmd(GET_FRU_INV_AREA, idata, 1, rdata[id], &rlen, &ccode, 0);
+        ipmi_close();
+        hex_val++;
+
+        if (ret) {
+            printf("my ipmi_cmd to get fru inv area failed\n");
+            //return;
+        }
+
+    }
+
+    //printf("rlen is: %d\n", rlen);
+
+    hex_val = 0x00;
+
+    for (id = 0; id < MAX_FRU_DEVICES; id++) {
+        fru_area = rdata[id][0] | (rdata[id][1] << 8) | (rdata[id][2] << 16) | (rdata[id][3] << 24);
+
+        if (fru_area > max_fru_area) {
+            max_fru_area = fru_area;
+            max_id = id;
+        }
+
+        hex_val++;
+        //printf("\n");
+    }
+
+    /*
+    Now set them to the max value, as that will be the fru device that
+    we want to read from here on out.
+    */
+    id = max_id;
+    fru_area = max_fru_area;
+
+    orcm_sensor_get_fru_data(id, fru_area);
+
+}
+
+void orcm_sensor_get_fru_data(int id, long int fru_area)
+{
+    int ret;
+    int i;
+    int rlen = 256;
+    unsigned char idata[4];
+    unsigned char tempdata[17];
+    unsigned char *rdata;
+    unsigned char ccode;
+    int rdata_offset = 0;
+    unsigned char fru_offset;
+
+    unsigned char board_manuf_length; //holds the length (in bytes) of board manuf name
+    unsigned char *board_manuf; //hold board manufacturer
+    unsigned char board_product_length; //holds the length (in bytes) of board product name
+    unsigned char *board_product_name; //holds board product name
+    unsigned char board_serial_length; //holds length (in bytes) of board serial number
+    unsigned char *board_serial_num; //will hold board serial number
+
+    rdata = (unsigned char*) malloc(fru_area);
+
+    memset(idata,0x00,4);
+
+    idata[0] = id;
+    idata[1] = 0x00; /*LSByte of the offset*/
+    idata[2] = 0x00; /*MSbyte of the offset*/
+    idata[3] = 0x10; /*reading 16 bytes at a time*/
+    
+    for (i = 0; i < (fru_area/16); i++) {
+        memset(tempdata, 0x00, 17);
+        ret = ipmi_cmd(READ_FRU_DATA, idata, 4, tempdata, &rlen, &ccode, 0);
+        ipmi_close;
+
+        memcpy(rdata + rdata_offset, &tempdata[1], 16);
+        rdata_offset += 16;
+
+        /*We need to increment the MSByte instead of the LSByte*/
+        if (idata[1] == 240) {
+            idata[1] = 0x00;
+            idata[2] = idata[2] + 0x01;
+        }
+
+        else {
+            idata[1] += 0x10;
+        }
+    }
+
+    fru_offset = rdata[3] * 8;
+    
+    board_manuf_length = rdata[fru_offset + 6] & 0x3f;
+    board_manuf = (unsigned char*) malloc (board_manuf_length + 1); // + 1 for the Null Character
+
+    for(i = 0; i < board_manuf_length; i++){
+        board_manuf[i] = rdata[fru_offset + 7 + i]; //you add 4 to the offset to start accesisng part number
+    }
+
+    board_manuf[i] = '\0';
+
+    printf("Board Manuf is: %s\n",board_manuf);
+
+    board_product_length = rdata[fru_offset + 7 + board_manuf_length] & 0x3f;
+    board_product_name = (unsigned char*) malloc (board_product_length + 1); // + 1 for the Null Character
+
+    for(i = 0; i < board_product_length; i++) {
+        board_product_name[i] = rdata[fru_offset + 7 + board_manuf_length + 1 + i];
+    }
+
+    board_product_name[i] = '\0';
+    printf("Board product name is: %s\n",board_product_name);
+
+    board_serial_length = rdata[fru_offset + 7 + board_manuf_length + 1 + board_product_length] & 0x3f;
+    board_serial_num = (unsigned char*) malloc (board_serial_length + 1); // + 1 for the Null Character
+
+    for(i = 0; i < board_serial_length; i++) {
+        board_serial_num[i] = rdata[fru_offset + 7 + board_manuf_length + 1 + board_product_length + 1 + i];
+    }
+
+    board_serial_num[i] = '\0';
+    printf("Board serial number is: %s\n",board_serial_num);
+
+    free(rdata);
 }
 
 /* int orcm_sensor_ipmi_found (char* nodename)
@@ -304,6 +445,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             OBJ_DESTRUCT(&data);
             return;
         }
+
         /* Pack the host's IP Address - 3a*/
         sample_str = strdup(cur_host.capsule.node.host_ip);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
@@ -340,6 +482,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         } else {
             opal_output(0,"PROC_IS_AGGREGATOR");
         }
+
         return;
     }
     sample_count = orcm_sensor_ipmi_counthosts();

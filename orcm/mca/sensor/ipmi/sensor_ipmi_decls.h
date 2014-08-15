@@ -28,7 +28,7 @@
 #define MAX_METRIC_NAME         20
 // The total number of IPMI Calls that need to be called for each node
 #define TOTAL_CALLS_PER_NODE        2
-
+#define MAX_FRU_DEVICES  254
 
 unsigned char disable_ipmi;
 
@@ -135,4 +135,6 @@ unsigned int orcm_sensor_ipmi_counthosts(void);
 int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip);
 void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap);
 int orcm_sensor_ipmi_label_found(char * tag);
+void orcm_sensor_get_fru_inv(void);
+void orcm_sensor_get_fru_data(int id, long int fru_area);
 #endif

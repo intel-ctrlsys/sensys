@@ -50,11 +50,20 @@ int opal_hotel_init(opal_hotel_t *h, int num_rooms,
     h->eviction_timeout.tv_sec = eviction_timeout / 1000000;
     h->evict_callback_fn = evict_callback_fn;
     h->rooms = (opal_hotel_room_t*)malloc(num_rooms * sizeof(opal_hotel_room_t));
+    if (NULL == h->rooms) {
+        return OPAL_ERR_OUT_OF_RESOURCE;
+    }
     if (NULL != evict_callback_fn) {
         h->eviction_args = 
             (opal_hotel_room_eviction_callback_arg_t*)malloc(num_rooms * sizeof(opal_hotel_room_eviction_callback_arg_t));
+        if (NULL == h->eviction_args) {
+            return OPAL_ERR_OUT_OF_RESOURCE;
+        }
     }
     h->unoccupied_rooms = (int*) malloc(num_rooms * sizeof(int));
+    if (NULL == h->unoccupied_rooms) {
+        return OPAL_ERR_OUT_OF_RESOURCE;
+    }
     h->last_unoccupied_room = num_rooms - 1;
 
     for (i = 0; i < num_rooms; ++i) {

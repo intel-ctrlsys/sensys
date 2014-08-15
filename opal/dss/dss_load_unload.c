@@ -321,9 +321,16 @@ int opal_value_unload(opal_value_t *kv,
 
     case OPAL_BYTE_OBJECT:
         boptr = (opal_byte_object_t*)malloc(sizeof(opal_byte_object_t));
+        if (NULL == boptr) {
+            return OPAL_ERR_OUT_OF_RESOURCE;
+        }
         if (NULL != kv->data.bo.bytes && 0 < kv->data.bo.size) {
             boptr->bytes = (uint8_t *) malloc(kv->data.bo.size);
-            memcpy(boptr->bytes, kv->data.bo.bytes, kv->data.bo.size);
+            if (NULL == boptr->bytes) {
+                free(boptr);
+                return OPAL_ERR_OUT_OF_RESOURCE;
+            }
+             memcpy(boptr->bytes, kv->data.bo.bytes, kv->data.bo.size);
             boptr->size = kv->data.bo.size;
         } else {
             boptr->bytes = NULL;

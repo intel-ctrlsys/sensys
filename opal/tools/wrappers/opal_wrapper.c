@@ -103,6 +103,9 @@ static void
 options_data_init(struct options_data_t *data)
 {
     data->compiler_args = (char **) malloc(sizeof(char*));
+    if (NULL == data->compiler_args) {
+        return;
+    }
     data->compiler_args[0] = NULL;
     data->language = NULL;
     data->compiler = NULL;
@@ -112,16 +115,34 @@ options_data_init(struct options_data_t *data)
     data->compiler_env = NULL;
     data->compiler_flags_env = NULL;
     data->preproc_flags = (char **) malloc(sizeof(char*));
+    if (NULL == data->preproc_flags) {
+        return;
+    }
     data->preproc_flags[0] = NULL;
     data->comp_flags = (char **) malloc(sizeof(char*));
+    if (NULL == data->comp_flags) {
+        return;
+    }
     data->comp_flags[0] = NULL;
     data->comp_flags_prefix = (char **) malloc(sizeof(char*));
+    if (NULL == data->comp_flags_prefix) {
+        return;
+    }
     data->comp_flags_prefix[0] = NULL;
     data->link_flags = (char **) malloc(sizeof(char*));
+    if (NULL == data->link_flags) {
+        return;
+    }
     data->link_flags[0] = NULL;
     data->libs = (char **) malloc(sizeof(char*));
+    if (NULL == data->libs) {
+        return;
+    }
     data->libs[0] = NULL;
     data->libs_static = (char **) malloc(sizeof(char*));
+    if (NULL == data->libs_static) {
+        return;
+    }
     data->libs_static[0] = NULL;
     data->dyn_lib_file = NULL;
     data->static_lib_file = NULL;
@@ -459,6 +480,9 @@ main(int argc, char *argv[])
      ****************************************************/
 
     base_argv0 = opal_basename(argv[0]);
+    if (NULL == base_argv0) {
+        return OPAL_ERR_OUT_OF_RESOURCE;
+    }
 #if defined(EXEEXT)
     if( 0 != strlen(EXEEXT) ) {
         char extension[] = EXEEXT;

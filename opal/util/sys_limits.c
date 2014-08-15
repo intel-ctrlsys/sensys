@@ -125,6 +125,10 @@ int opal_util_init_sys_limits(char **errmsg)
     /* each limit is expressed as a "param:value" pair */
     for (i=0; NULL != lims[i]; i++) {
         lim = opal_argv_split(lims[i], ':');
+        if (NULL == lim) {
+            opal_argv_free(lims);
+            return OPAL_ERROR;
+        }
         if (1 == opal_argv_count(lim)) {
             setlim = "max";
         } else {

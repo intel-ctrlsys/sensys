@@ -244,6 +244,9 @@ static int info_register_framework (mca_base_framework_t *framework, opal_pointe
 
     if (NULL != component_map) {
         map = OBJ_NEW(opal_info_component_map_t);
+        if (NULL == map) {
+            return OPAL_ERR_OUT_OF_RESOURCE;
+        }
         map->type = strdup(framework->framework_name);
         map->components = &framework->framework_components;
         opal_pointer_array_add(component_map, map);
@@ -349,7 +352,7 @@ void opal_info_do_path(bool want_all, opal_cmd_line_t *cmd_line)
     count = opal_cmd_line_get_ninsts(cmd_line, "path");
     for (i = 0; i < count; ++i) {
         scope = opal_cmd_line_get_param(cmd_line, "path", i, 0);
-        if (0 == strcmp("all", scope)) {
+        if (NULL != scope && 0 == strcmp("all", scope)) {
             want_all = true;
             break;
         }
@@ -468,7 +471,7 @@ void opal_info_do_params(bool want_all_in, bool want_internal,
         count = opal_cmd_line_get_ninsts(opal_info_cmd_line, p);
         for (i = 0; i < count; ++i) {
             type = opal_cmd_line_get_param(opal_info_cmd_line, p, (int)i, 0);
-            if (0 == strcmp(opal_info_type_all, type)) {
+            if (NULL != type && 0 == strcmp(opal_info_type_all, type)) {
                 want_all = true;
                 break;
             }

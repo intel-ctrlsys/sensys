@@ -576,6 +576,9 @@ opal_tree_item_t *opal_tree_dup_item(opal_tree_t *base, opal_tree_item_t *from)
     opal_tree_serialize(from, buffer);
 
     new_item = OBJ_NEW(opal_tree_item_t);
+    if (NULL == new_item) {
+        return NULL;
+    }
     opal_tree_deserialize(buffer, new_item);
 
     OBJ_RELEASE(buffer);

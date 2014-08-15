@@ -73,6 +73,9 @@ char *opal_filename_to_uri(const char *filename,
     /* escape them if necessary */
     if (0 < n) {
         fn = (char*)malloc(strlen(filename) + n + 1);
+        if (NULL == fn) {
+            return NULL;
+        }
         i=0;
         for (k=0; k < strlen(filename)-1; k++) {
             for (j=0; j < strlen(uri_reserved_path_chars)-1; j++) {

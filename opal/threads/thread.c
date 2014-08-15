@@ -81,6 +81,9 @@ bool opal_thread_self_compare(opal_thread_t *t)
 opal_thread_t *opal_thread_get_self(void)
 {
     opal_thread_t *t = OBJ_NEW(opal_thread_t);
+    if (NULL == t) {
+        return NULL;
+    }
     t->t_handle = pthread_self();
     return t;
 }

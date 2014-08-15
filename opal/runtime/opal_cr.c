@@ -933,6 +933,9 @@ int opal_cr_refresh_environ(int prev_pid) {
      *  2) The file has been deleted on the previous round.
      */
     asprintf(&file_name, "%s/%s-%d", opal_tmp_directory(), OPAL_CR_BASE_ENV_NAME, prev_pid);
+    if (NULL == file_name) {
+        return OPAL_ERR_OUT_OF_RESOURCE;
+    }
     if(0 != stat(file_name, &file_status) ){
         free(file_name);
         return OPAL_SUCCESS;

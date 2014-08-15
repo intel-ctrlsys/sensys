@@ -94,6 +94,9 @@ opal_event_base_t *opal_start_progress_thread(char *name,
     int rc;
 
     trk = OBJ_NEW(opal_progress_tracker_t);
+    if (NULL == trk) {
+        return NULL;
+    }
     trk->name = strdup(name);
     if (NULL == (trk->ev_base = opal_event_base_create())) {
         OPAL_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);

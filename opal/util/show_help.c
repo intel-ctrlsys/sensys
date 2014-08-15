@@ -156,6 +156,9 @@ static int open_file(const char *base, const char *topic)
          */
         for (i=0; NULL != search_dirs[i]; i++) {
             filename = opal_os_path( false, search_dirs[i], base, NULL );
+            if (NULL == filename) {
+                return OPAL_ERR_OUT_OF_RESOURCE;
+            }
             opal_show_help_yyin = fopen(filename, "r");
             if (NULL == opal_show_help_yyin) {
                 if (NULL != err_msg) {

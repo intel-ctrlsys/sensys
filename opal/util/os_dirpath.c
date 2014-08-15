@@ -78,6 +78,9 @@ int opal_os_dirpath_create(const char *path, const mode_t mode)
        incoming path + 1 (for \0) */
 
     tmp = (char*)malloc(strlen(path) + 1);
+    if (NULL == tmp) {
+        return OPAL_ERR_OUT_OF_RESOURCE;
+    }
     tmp[0] = '\0';
 
     /* Iterate through all the subdirectory names in the path,

@@ -158,7 +158,6 @@ int GetSensorReading(uchar sens_num, void *psdr, uchar *sens_data);
 double RawToFloat(uchar raw, uchar *psdr);
 char *decode_entity_id(int id);
 char *get_unit_type(int iunits, int ibase, int imod, int fshort);
-void free_sdr_cache(uchar *ptr);
 
 /* 
  * decode_comp_reading

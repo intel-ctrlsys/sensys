@@ -183,6 +183,9 @@ options_data_expand(const char *value)
     /* make space for the new set of args */
     parse_options_idx++;
     options_data = (struct options_data_t *) realloc(options_data, sizeof(struct options_data_t) * (parse_options_idx + 1));
+    if (NULL == options_data) {
+        return;
+    }
     options_data_init(&(options_data[parse_options_idx]));
 
     /* if there are values, this is not the default case.

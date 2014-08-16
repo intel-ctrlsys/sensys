@@ -147,7 +147,7 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             strncpy(host->capsule.node.user,"CUR_USERNAME",strlen("CUR_USERNAME")+1);
             strncpy(host->capsule.node.pasw,"CUR_PASSWORD",strlen("CUR_PASSWORD")+1);
             
-            orcm_sensor_get_fru_inv();
+            orcm_sensor_get_fru_inv(host);
             return ORCM_SUCCESS;
 
         } else {
@@ -160,7 +160,7 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
     return ORCM_ERROR;
 }
 
-void orcm_sensor_get_fru_inv()
+void orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
 {
     int ret = 0;
     unsigned char idata[4], rdata[MAX_FRU_DEVICES][256];
@@ -182,15 +182,8 @@ void orcm_sensor_get_fru_inv()
         ret = ipmi_cmd(GET_FRU_INV_AREA, idata, 1, rdata[id], &rlen, &ccode, 0);
         ipmi_close();
         hex_val++;
-
-        if (ret) {
-            printf("my ipmi_cmd to get fru inv area failed\n");
-            //return;
-        }
-
     }
 
-    //printf("rlen is: %d\n", rlen);
 
     hex_val = 0x00;
 
@@ -203,7 +196,6 @@ void orcm_sensor_get_fru_inv()
         }
 
         hex_val++;
-        //printf("\n");
     }
 
     /*
@@ -213,11 +205,11 @@ void orcm_sensor_get_fru_inv()
     id = max_id;
     fru_area = max_fru_area;
 
-    orcm_sensor_get_fru_data(id, fru_area);
+    orcm_sensor_get_fru_data(id, fru_area, host);
 
 }
 
-void orcm_sensor_get_fru_data(int id, long int fru_area)
+void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *host)
 {
     int ret;
     int i;
@@ -275,7 +267,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area)
 
     board_manuf[i] = '\0';
 
-    printf("Board Manuf is: %s\n",board_manuf);
+    //printf("Board Manuf is: %s\n",board_manuf);
 
     board_product_length = rdata[fru_offset + 7 + board_manuf_length] & 0x3f;
     board_product_name = (unsigned char*) malloc (board_product_length + 1); // + 1 for the Null Character
@@ -285,7 +277,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area)
     }
 
     board_product_name[i] = '\0';
-    printf("Board product name is: %s\n",board_product_name);
+    //printf("Board product name is: %s\n",board_product_name);
 
     board_serial_length = rdata[fru_offset + 7 + board_manuf_length + 1 + board_product_length] & 0x3f;
     board_serial_num = (unsigned char*) malloc (board_serial_length + 1); // + 1 for the Null Character
@@ -295,7 +287,8 @@ void orcm_sensor_get_fru_data(int id, long int fru_area)
     }
 
     board_serial_num[i] = '\0';
-    printf("Board serial number is: %s\n",board_serial_num);
+    //printf("Board serial number is: %s\n",board_serial_num);
+    strncpy(host->capsule.prop.baseboard_serial, board_serial_num, sizeof(host->capsule.prop.baseboard_serial));
 
     free(rdata);
 }
@@ -467,6 +460,15 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "Packing BMC IP: %s",sample_str);
         free(sample_str);
+
+        /* Pack the Baseboard Serial Number - 5a*/
+        sample_str = strdup(cur_host.capsule.prop.baseboard_serial);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            free(sample_str);
+            return;
+        }
 
         /* Pack the buffer, to pass to heartbeat - FINAL */
         bptr = &data;
@@ -699,7 +701,7 @@ static void mycleanup(int dbhandle, int status,
 static void ipmi_log(opal_buffer_t *sample)
 {
     char *hostname, *sampletime, *sample_item, *sample_name, *sample_unit;
-    char nodename[64], hostip[16], bmcip[16];
+    char nodename[64], hostip[16], bmcip[16], baseboard_serial[16];
     float float_item;
     unsigned uint_item;
     int rc;
@@ -766,6 +768,20 @@ static void ipmi_log(opal_buffer_t *sample)
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked BMC_IP(4a): %s",hostname);
             strncpy(bmcip,hostname,strlen(hostname)+1);
+
+            /* Unpack the Baseboard Serial Number - 5a */
+            n=1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            if (NULL == hostname) {
+                ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+                return;
+            }
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Unpacked Baseboard Serial Number(5a): %s",hostname);
+            strncpy(baseboard_serial,hostname,strlen(hostname)+1);
             
             /* Add the node only if it has not been added previously, for the 
              * off chance that the compute node daemon was started once before,

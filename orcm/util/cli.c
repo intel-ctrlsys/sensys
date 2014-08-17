@@ -157,9 +157,7 @@ int orcm_cli_get_cmd(char *prompt,
             /* init the search */
             options = NULL;
             if (0 == j) {
-                /* if they are at the start of the command, then print
-                 * out all allowed possibilities */
-                putchar('\n');
+                /* if they are at the start of the command */
                 OPAL_LIST_FOREACH(c2, &cli->cmds, orcm_cli_cmd_t) {
                     opal_argv_append(&argc, &options, c2->cmd);
                 }
@@ -308,6 +306,18 @@ int orcm_cli_get_cmd(char *prompt,
                 /* if completions are NULL, then either we didn't find a matching
                  * subcommand, or we found the subcommand but it was complete. In the
                  * latter case, since i was incremented, we can just look at the next position */
+                if ((size_t)opal_argv_count(options) == i) {
+                    /* we found everything on the list, so they must want
+                     * a suggestion of any remaining options */
+                    if (0 < opal_list_get_size(&c3->options)) {
+                        printf("\nOPTIONS: ");
+                        OPAL_LIST_FOREACH(kv, &c3->options, opal_value_t) {
+                            printf("%s  ", kv->key);
+                        }
+                    }
+                    printf("\n%s> %s", prompt, input);
+                    break;
+                }
                 if (i < (size_t)opal_argv_count(options)) {
                     OPAL_LIST_FOREACH(kv, &c3->options, opal_value_t) {
                         if (0 == strncmp(kv->key, options[i], strlen(options[i]))) {
@@ -371,23 +381,6 @@ int orcm_cli_get_cmd(char *prompt,
             if (!found) {
                 BONK;
             }
-            if ((size_t)opal_argv_count(options) == i) {
-                /* we found everything on the list, so they must want
-                 * a suggestion of any remaining options */
-                if (0 < opal_list_get_size(&c3->options)) {
-                    printf("\nOPTIONS: ");
-                    OPAL_LIST_FOREACH(kv, &c3->options, opal_value_t) {
-                        printf("%s  ", kv->key);
-                    }
-                }
-                if (0 < opal_list_get_size(&c3->subcmds)) {
-                    printf("\n\t");
-                    OPAL_LIST_FOREACH(c2, &c3->subcmds, orcm_cli_cmd_t) {
-                        printf("%s  ", c2->cmd);
-                    }
-                }
-                printf("\n%s> %s", prompt, input);
-            }
             opal_argv_free(options);
             break;
 
@@ -424,6 +417,40 @@ int orcm_cli_get_cmd(char *prompt,
                 space = true;
             }
             break;
+                
+        case 0x1b:
+            c = getchar();
+            switch(c) {
+            case '[':
+                c = getchar();
+                switch(c) {
+                case 'A':
+                    /* up arrow */
+                case 'B':
+                    /* down arrow */
+                case 'C':
+                    /* right arrow */
+                case 'D':
+                    /* left arrow */
+                default:
+                    break;
+                }
+            }
+            break;
+
+        case '?':
+            printf("\nPossible Commands:\n");
+            if (c3) {
+                OPAL_LIST_FOREACH(c2, &c3->subcmds, orcm_cli_cmd_t) {
+                    orcm_cli_print_cmd(c2, NULL);
+                }
+            } else {
+                OPAL_LIST_FOREACH(c2, &cli->cmds, orcm_cli_cmd_t) {
+                    orcm_cli_print_cmd(c2, NULL);
+                }
+            }
+            printf("\n%s> %s", prompt, input);
+            break;
 
         default:
             space = false;
@@ -452,21 +479,13 @@ int orcm_cli_get_cmd(char *prompt,
 void orcm_cli_print_cmd(orcm_cli_cmd_t *cmd, char *prefix)
 {
     opal_value_t *kv;
-    orcm_cli_cmd_t *sub;
-    char *pf2;
-
-    (void)asprintf(&pf2, "%s\t", (NULL == prefix) ? "" : prefix);
-    opal_output(0, "%sCMD: %s HELP %s",
+    opal_output(0, "%-2s %-20s %-10s",
                 (NULL == prefix) ? "" : prefix,
                 (NULL == cmd->cmd) ? "NULL" : cmd->cmd,
                 (NULL == cmd->help) ? "NULL" : cmd->help);
     OPAL_LIST_FOREACH(kv, &cmd->options, opal_value_t) {
         opal_output(0, "\tOPTION: %s nargs %d", kv->key, kv->data.integer);
     }
-    OPAL_LIST_FOREACH(sub, &cmd->subcmds, orcm_cli_cmd_t) {
-        orcm_cli_print_cmd(sub, pf2);
-    }
-    free(pf2);
 }
 
 /***   CLASS INSTANCES   ***/

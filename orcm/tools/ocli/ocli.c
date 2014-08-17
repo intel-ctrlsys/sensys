@@ -90,6 +90,29 @@ typedef struct {
 
 orcm_ocli_globals_t orcm_ocli_globals;
 
+static orcm_cli_init_t cli_init[] = {
+    /****** resource command ******/
+    {NULL, "resource", 0, 1, "Resource Information"},
+    // status subcommand
+    {"resource", "status", 0, 0, "Resource Status"},
+    // availability subcommand
+    {"resource", "availability", 0, 0, "Resource Availability"},
+
+    /****** queue command ******/
+    {NULL, "queue", 0, 1, "Queue Information"},
+    // status subcommand
+    {"queue", "status", 0, 0, "Queue Status"},
+    // status subcommand
+    {"queue", "policy", 0, 0, "Queue Policies"},
+    // status subcommand
+    {"queue", "session", 0, 0, "Session Status"},
+    
+    /****** next level test command ******/
+    {"status", "test", 0, 0, "test"},
+    
+    {NULL, NULL, 0, 0, NULL}  // end of array tag
+};
+
 opal_cmd_line_init_t cmd_line_opts[] = {
     { NULL,
       'h', NULL, "help",
@@ -122,7 +145,7 @@ main(int argc, char *argv[])
         exit(1);
     }
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int parse_args(int argc, char *argv[]) 
@@ -136,6 +159,11 @@ static int parse_args(int argc, char *argv[])
     orcm_ocli_globals = tmp;
     char *args = NULL;
     char *str = NULL;
+    orcm_cli_t cli;
+    orcm_cli_cmd_t *cmd;
+    char *mycmd;
+    int tailc;
+    char **tailv;
 
     /* Parse the command line options */
     opal_cmd_line_create(&cmd_line, cmd_line_opts);
@@ -149,6 +177,22 @@ static int parse_args(int argc, char *argv[])
                     opal_strerror(ret));
         }
         return ret;
+    }
+
+    opal_cmd_line_get_tail(&cmd_line, &tailc, &tailv);
+    
+    if (0 == tailc) {
+        /* if the user hasn't specified any commands, run cli to help build it */
+        orcm_cli_create(&cli, cli_init);
+        OPAL_LIST_FOREACH(cmd, &cli.cmds, orcm_cli_cmd_t) {
+            orcm_cli_print_cmd(cmd, NULL);
+        }
+        
+        orcm_cli_get_cmd("ocli", &cli, &mycmd);
+        fprintf(stderr, "\nCMD: %s\n", mycmd);
+    } else {
+        /* otherwise use the user specified command */
+        fprintf(stderr, "\nCMD: %s\n", opal_argv_join(tailv, ' '));
     }
 
     /**
@@ -173,7 +217,7 @@ static int parse_args(int argc, char *argv[])
      */
     mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 static int orcm_ocli_init(int argc, char *argv[])
@@ -185,14 +229,14 @@ static int orcm_ocli_init(int argc, char *argv[])
      * to ensure installdirs is setup properly
      * before calling mca_base_open();
      */
-    if( ORTE_SUCCESS != (ret = opal_init_util(&argc, &argv)) ) {
+    if( OPAL_SUCCESS != (ret = opal_init_util(&argc, &argv)) ) {
         return ret;
     }
 
     /*
      * Parse Command Line Arguments
      */
-    if (ORTE_SUCCESS != (ret = parse_args(argc, argv))) {
+    if (ORCM_SUCCESS != (ret = parse_args(argc, argv))) {
         return ret;
     }
 

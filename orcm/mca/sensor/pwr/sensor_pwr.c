@@ -155,6 +155,10 @@ static int init(void)
         /*
          * Skip the obvious
          */
+        if ((NULL == entry) || (NULL == entry->d_name)) {
+            continue;
+        }
+
         if (0 == strncmp(entry->d_name, ".", strlen(".")) ||
             0 == strncmp(entry->d_name, "..", strlen(".."))) {
             continue;
@@ -175,6 +179,7 @@ static int init(void)
             if (0 >= (fd = open(trk->file, O_RDONLY))) {
                 /* can't access file */
                 OBJ_RELEASE(trk);
+                close(fd);
                 continue;
             }
             if (ORCM_SUCCESS != read_msr(fd, &units, MSR_RAPL_POWER_UNIT)) {

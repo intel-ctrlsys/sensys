@@ -138,6 +138,10 @@ static int init(void)
         /*
          * Skip the obvious
          */
+        if ((NULL == entry) || (NULL == entry->d_name)) {
+            continue;
+        }
+
         if (0 == strncmp(entry->d_name, ".", strlen(".")) ||
             0 == strncmp(entry->d_name, "..", strlen(".."))) {
             continue;
@@ -188,7 +192,6 @@ static int init(void)
         }
 
         filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_min_freq", NULL);
-        fp = fopen(filename, "r");
         if(NULL != (fp = fopen(filename, "r")))
         {
             if(NULL!=(tmp = orte_getline(fp))) {

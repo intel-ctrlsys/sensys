@@ -156,6 +156,10 @@ static int init(void)
             /*
              * Skip the obvious
              */
+            if ((NULL == entry) || (NULL == entry->d_name)) {
+                continue;
+            }
+
             if (0 == strncmp(entry->d_name, ".", strlen(".")) ||
                 0 == strncmp(entry->d_name, "..", strlen(".."))) {
                 continue;
@@ -257,6 +261,7 @@ static int init(void)
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
                 free(filename);
                 OBJ_RELEASE(trk);
+                free(tmp);
                 continue;
             }
 
@@ -265,6 +270,7 @@ static int init(void)
             /* cleanup */
             free(tmp);
         }
+        free(dirname);
         closedir(tdir);
         socket++;
     }

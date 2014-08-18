@@ -176,6 +176,9 @@ int orcm_sensor_base_select(void)
 
         if( low_i >= 0 ) {
             tmp_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&tmp_array, low_i);
+            if ( NULL == tmp_module ) {
+                continue;
+            }
             opal_pointer_array_set_item(&tmp_array, low_i, NULL);
             j--; /* Try this entry again, if it is not the lowest */
         } else {

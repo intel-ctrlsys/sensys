@@ -29,6 +29,7 @@
 // The total number of IPMI Calls that need to be called for each node
 #define TOTAL_CALLS_PER_NODE        2
 #define MAX_FRU_DEVICES  254
+#define BOARD_INFO_DATA_START 6
 
 unsigned char disable_ipmi;
 

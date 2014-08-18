@@ -135,7 +135,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>
 #include <sys/types.h>
 #endif
-#include "ipmicmd.h"
+#include <ipmicmd.h>
 #include "isensor.h"
 #include <unistd.h>
 #include <sys/types.h>

@@ -70,7 +70,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #include <time.h>
 
-#include "ipmicmd.h" 
+#include <ipmicmd.h>
 #include "ievents.h" 
  
 #define  SELprintf  printf  

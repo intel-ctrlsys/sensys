@@ -18,7 +18,7 @@
 #include "orcm_config.h"
 
 #include "orcm/mca/sensor/sensor.h"
-#include "ipmiutil-2.9.3/util/ipmicmd.h"
+#include <ipmicmd.h>
 #include "ipmiutil-2.9.3/util/isensor.h"
 #include "sensor_ipmi_decls.h"
 

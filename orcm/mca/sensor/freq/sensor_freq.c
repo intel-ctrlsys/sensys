@@ -138,7 +138,7 @@ static int init(void)
         /*
          * Skip the obvious
          */
-        if ((NULL == entry) || (NULL == entry->d_name)) {
+        if (NULL == entry->d_name) {
             continue;
         }
 

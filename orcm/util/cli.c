@@ -92,7 +92,7 @@ static int make_opt(orcm_cli_t *cli, orcm_cli_init_t *e)
                     }
                     opal_list_append(&parent->subcmds, &cmd->super);
                 }
-                return ORCM_SUCCESS;;
+                return ORCM_SUCCESS;
             }
         }
         /* if the parent wasn't found, then that's an error */

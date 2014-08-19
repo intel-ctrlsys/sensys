@@ -161,7 +161,7 @@ static int parse_args(int argc, char *argv[])
     char *str = NULL;
     orcm_cli_t cli;
     orcm_cli_cmd_t *cmd;
-    char *mycmd;
+    char *mycmd = NULL;
     int tailc;
     char **tailv;
 
@@ -189,7 +189,12 @@ static int parse_args(int argc, char *argv[])
         }
         
         orcm_cli_get_cmd("ocli", &cli, &mycmd);
-        fprintf(stderr, "\nCMD: %s\n", mycmd);
+        if (mycmd) {
+            fprintf(stderr, "\nCMD: %s\n", mycmd);
+            free(mycmd);
+        } else {
+            fprintf(stderr, "\nERR: NO COMMAND RETURNED\n");
+        }
     } else {
         /* otherwise use the user specified command */
         fprintf(stderr, "\nCMD: %s\n", opal_argv_join(tailv, ' '));

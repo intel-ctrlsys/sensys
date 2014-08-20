@@ -149,14 +149,12 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             
             orcm_sensor_get_fru_inv(host);
             return ORCM_SUCCESS;
-
         } else {
             opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                         "Received a non-zero ccode: %d, relen:%d", ccode, rlen);
         }
         rlen=20;
     }
-
     return ORCM_ERROR;
 }
 
@@ -183,7 +181,6 @@ void orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
         ipmi_close();
         hex_val++;
     }
-
     /*
     Now that we have the size of each fru device, we want to find the one
     with the largest size, as that is the one we'll want to read from.
@@ -273,7 +270,6 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     */
 
     /* Board Info */
-
     fru_offset = rdata[3] * 8; /*Board starting offset is stored in 3, multiples of 8 bytes*/
    
     /*
@@ -795,17 +791,19 @@ static void ipmi_log(opal_buffer_t *sample)
 
             /* Unpack the Baseboard Serial Number - 5a */
             n=1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
                 return;
             }
-            if (NULL == hostname) {
+            if (NULL == sample_item) {
                 ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
                 return;
             }
+            opal_output(0, "Unpacked Baseboard Serial Number(5a): %s", sample_item);
+
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "Unpacked Baseboard Serial Number(5a): %s",hostname);
-            strncpy(baseboard_serial,hostname,strlen(hostname)+1);
+                "Unpacked Baseboard Serial Number(5a): %s", sample_item);
+            strncpy(baseboard_serial,sample_item,strlen(sample_item)+1);
             
             /* Add the node only if it has not been added previously, for the 
              * off chance that the compute node daemon was started once before,
@@ -823,6 +821,37 @@ static void ipmi_log(opal_buffer_t *sample)
                 }
             } else {
                 opal_output(0,"Node already populated; Not gonna be added again");
+            }
+            /* Log the static information to database */
+            /* @VINFIX: Currently will log into the same database as sensor data
+             * But will eventually get moved to a different database (read
+             * Inventory)
+             */
+            vals = OBJ_NEW(opal_list_t);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("nodename");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(nodename);
+            opal_list_append(vals, &kv->super);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "UnPacked NodeName: %s", nodename);
+
+            /* Add Baseboard serial number */
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("BBserial");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(baseboard_serial);
+            opal_list_append(vals, &kv->super);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "UnPacked NodeName: %s", nodename);
+
+            /* Send the unpacked data for one Node */
+            /* store it */
+            if (0 <= orcm_sensor_base.dbhandle) {
+                orcm_db.store(orcm_sensor_base.dbhandle, "ipmi", vals, mycleanup, NULL);
+            } else {
+                OPAL_LIST_RELEASE(vals);
             }
             return;
         } else {

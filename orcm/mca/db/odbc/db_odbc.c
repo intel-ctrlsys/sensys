@@ -589,6 +589,8 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
             STORE_ERR_MSG_FMT("SQLExecute returned: %d", ret);
             return ORCM_ERROR;
         }
+        
+        SQLCloseCursor(stmt);
 
         opal_argv_free(data_item_argv);
     }

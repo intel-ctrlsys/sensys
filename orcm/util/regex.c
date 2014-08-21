@@ -137,8 +137,8 @@ int orcm_regex_add_node(char **regexp, char *name) {
     /* extract regex to an array */
     if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(*regexp, &nodes))) {
         ORTE_ERROR_LOG(rc);
-        if (names) {
-            free(names);
+        if (name) {
+            free(name);
         }
         return rc;
     }
@@ -187,8 +187,8 @@ int orcm_regex_remove_node(char **regexp, char *name) {
     }
     if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(*regexp, &nodes))) {
         ORTE_ERROR_LOG(rc);
-        if (names) {
-            free(names);
+        if (name) {
+            free(name);
         }
         return rc;
     }

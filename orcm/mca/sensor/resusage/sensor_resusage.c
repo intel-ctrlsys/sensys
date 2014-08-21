@@ -190,7 +190,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
                 continue;
             }
             /* the stats framework can't know nodename or rank */
-            strncpy(stats->node, orte_process_info.nodename, OPAL_PSTAT_MAX_STRING_LEN);
+            strncpy(stats->node, orte_process_info.nodename, (OPAL_PSTAT_MAX_STRING_LEN - 1));
             stats->rank = child->name.vpid;
 #if 0
             /* store it */

@@ -128,7 +128,7 @@ static int emulator_init(void)
     orte_job_t *jdata;
     opal_list_t config;
     opal_buffer_t buf, *clusterbuf, *uribuf;
-    char **tgts;
+    char **tgts = NULL;
     orcm_cluster_t *cluster;
     orcm_scheduler_t *scheduler;
     orcm_row_t *row, *r;
@@ -460,7 +460,9 @@ static int emulator_init(void)
                    "orte_init:startup:internal-failure",
                    true, error, ORTE_ERROR_NAME(ret), ret);
 
-    opal_argv_free(tgts);
+    if (tgts) {
+        opal_argv_free(tgts);
+    }
     
     return ORCM_ERR_SILENT;
 }

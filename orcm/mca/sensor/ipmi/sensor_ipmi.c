@@ -231,19 +231,20 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     idata[1] = 0x00; /*LSByte of the offset, start at 0*/
     idata[2] = 0x00; /*MSbyte of the offset, start at 0*/
     idata[3] = 0x10; /*reading 16 bytes at a time*/
-    
+    ret = 0;
     for (i = 0; i < (fru_area/16); i++) {
         memset(tempdata, 0x00, sizeof(tempdata));
+        if(ret)
+            opal_output(0,"FRU Read Number %d failed\n", i);
+
         ret = ipmi_cmd(READ_FRU_DATA, idata, 4, tempdata, &rlen, &ccode, 0);
         
         if (ret) {
-            error_string = decode_rv(ret);
-            opal_output(0,"ipmi_cmd RETURN CODE : %s \n", error_string);
-            opal_output(0,"FRU Read Number %d failed\n", id);
-            free(rdata);
-            return;
+            opal_output(0,"FRU Read Number %d retrying in block %d\n", id, i);
+            ipmi_close();
+            i--;
+            continue;
         }
-
         ipmi_close();
 
         /*

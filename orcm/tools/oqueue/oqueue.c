@@ -184,6 +184,9 @@ main(int argc, char *argv[])
         
         if (0 < num_sessions) {
             allocs = (orcm_alloc_t**)malloc(num_sessions * sizeof(orcm_alloc_t*));
+            if (NULL == allocs) {
+                return ORCM_ERR_OUT_OF_RESOURCE;
+            }
             /* get the sessions on the queue */
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, allocs, &num_sessions, ORCM_ALLOC))) {
                 ORTE_ERROR_LOG(rc);

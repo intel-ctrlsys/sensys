@@ -36,7 +36,7 @@ int count_log = 0;
 /* @VINFIX: Change this 'link' in a linked-list to OPAL_LIST */
 orcm_sensor_hosts_t *active_hosts;
 
-orcm_sensor_hosts_t cur_host; // Object to store the current node's access details
+orcm_sensor_hosts_t cur_host; /* Object to store the current node's access details */
 
 char **sensor_list_token;
 
@@ -146,10 +146,9 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             strncpy(host->capsule.node.bmc_ip,bmc_ip,strlen(bmc_ip)+1);
             strncpy(host->capsule.node.user,"CUR_USERNAME",strlen("CUR_USERNAME")+1);
             strncpy(host->capsule.node.pasw,"CUR_PASSWORD",strlen("CUR_PASSWORD")+1);
+            
+            orcm_sensor_get_fru_inv(host);
             return ORCM_SUCCESS;
-
-            break;
-
         } else {
             opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                         "Received a non-zero ccode: %d, relen:%d", ccode, rlen);
@@ -157,6 +156,170 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
         rlen=20;
     }
     return ORCM_ERROR;
+}
+
+void orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
+{
+    int ret = 0;
+    unsigned char idata[4], rdata[MAX_FRU_DEVICES][256];
+    unsigned char ccode;
+    int rlen = 256;
+    int id;
+    int max_id = 0;;
+    unsigned char hex_val;
+    long int fru_area;
+    long int max_fru_area = 0;
+
+    memset(idata,0x00,4);
+    
+    hex_val = 0x00;
+
+    for (id = 0; id < MAX_FRU_DEVICES; id++) {
+        memset(rdata[id], 0x00, 256);
+        *idata = hex_val;
+        ret = ipmi_cmd(GET_FRU_INV_AREA, idata, 1, rdata[id], &rlen, &ccode, 0);
+        ipmi_close();
+        hex_val++;
+    }
+    /*
+    Now that we have the size of each fru device, we want to find the one
+    with the largest size, as that is the one we'll want to read from.
+    */
+    for (id = 0; id < MAX_FRU_DEVICES; id++) {
+        /* Convert the hex value in rdata to decimal so we can compare it.*/
+        fru_area = rdata[id][0] | (rdata[id][1] << 8) | (rdata[id][2] << 16) | (rdata[id][3] << 24);
+
+        /* 
+        If the newest area is the larget, set the max size to that and
+        mark the max id to be that id.
+        */
+        if (fru_area > max_fru_area) {
+            max_fru_area = fru_area;
+            max_id = id;
+        }
+    }
+
+    orcm_sensor_get_fru_data(max_id, max_fru_area, host);
+
+}
+
+void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *host)
+{
+    int ret;
+    int i;
+    int rlen = 256;
+    unsigned char idata[4];
+    unsigned char tempdata[17];
+    unsigned char *rdata;
+    unsigned char ccode;
+    int rdata_offset = 0;
+    unsigned char fru_offset;
+    char *error_string;
+
+    unsigned char board_manuf_length; /*holds the length (in bytes) of board manuf name*/
+    unsigned char *board_manuf; /*hold board manufacturer*/
+    unsigned char board_product_length; /*holds the length (in bytes) of board product name*/
+    unsigned char *board_product_name; /*holds board product name*/
+    unsigned char board_serial_length; /*holds length (in bytes) of board serial number*/
+    unsigned char *board_serial_num; /*will hold board serial number*/
+
+    rdata = (unsigned char*) malloc(fru_area);
+
+    memset(idata,0x00,sizeof(idata));
+
+    idata[0] = id;   /*id of the fru device to read from*/
+    idata[1] = 0x00; /*LSByte of the offset, start at 0*/
+    idata[2] = 0x00; /*MSbyte of the offset, start at 0*/
+    idata[3] = 0x10; /*reading 16 bytes at a time*/
+    
+    for (i = 0; i < (fru_area/16); i++) {
+        memset(tempdata, 0x00, sizeof(tempdata));
+        ret = ipmi_cmd(READ_FRU_DATA, idata, 4, tempdata, &rlen, &ccode, 0);
+        
+        if (ret) {
+            error_string = decode_rv(ret);
+            opal_output(0,"ipmi_cmd RETURN CODE : %s \n", error_string);
+            opal_output(0,"FRU Read Number %d failed\n", id);
+            free(rdata);
+            return;
+        }
+
+        ipmi_close();
+
+        /*
+        Copy what was read in to the next 16 byte section of rdata
+        and then increment the offset by another 16 for the next read
+        */
+        memcpy(rdata + rdata_offset, &tempdata[1], 16);
+        rdata_offset += 16;
+
+        /*We need to increment the MSByte instead of the LSByte*/
+        if (idata[1] == 240) {
+            idata[1] = 0x00;
+            idata[2]++;
+        }
+
+        else {
+            idata[1] += 0x10;
+        }
+    }
+
+    /*
+        Source: Platform Management Fru Document (Rev 1.2)
+        Fru data is stored in the following fashion:
+        1 Byte - N number of bytes to follow that holds some information
+        N Bytes - The information we are after
+
+        So the location of information within rdata is always relative to the
+        location of the information that came before it.
+
+        To get to the size of the information to follow, skip past all the
+        information you've already read. To the read that information, skip
+        past all the information you've already read + 1, then read that number
+        of bytes.
+    */
+
+    /* Board Info */
+    fru_offset = rdata[3] * 8; /*Board starting offset is stored in 3, multiples of 8 bytes*/
+   
+    /*
+        The 2 most significant bytes correspont to the length "type code".
+        We assume, via the 0x3f mask, that the data is in English ASCII.
+    */
+
+    board_manuf_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
+    board_manuf = (unsigned char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
+
+    for(i = 0; i < board_manuf_length; i++){
+        board_manuf[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + i];
+    }
+
+    board_manuf[i] = '\0';
+
+    board_product_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length] & 0x3f;
+    board_product_name = (unsigned char*) malloc (board_product_length + 1); /* + 1 for the Null Character */
+
+    for(i = 0; i < board_product_length; i++) {
+        board_product_name[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + i];
+    }
+
+    board_product_name[i] = '\0';
+
+    board_serial_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length] & 0x3f;
+    board_serial_num = (unsigned char*) malloc (board_serial_length + 1); /* + 1 for the Null Character */
+
+    for(i = 0; i < board_serial_length; i++) {
+        board_serial_num[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length + 1 + i];
+    }
+
+    board_serial_num[i] = '\0';
+    strncpy(host->capsule.prop.baseboard_serial, board_serial_num, sizeof(host->capsule.prop.baseboard_serial)-1);
+    host->capsule.prop.baseboard_serial[sizeof(host->capsule.prop.baseboard_serial)-1] = '\0';
+
+    free(rdata);
+    free(board_manuf);
+    free(board_product_name);
+    free(board_serial_num);
 }
 
 /* int orcm_sensor_ipmi_found (char* nodename)
@@ -279,7 +442,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     }
     free(ipmi);
 
-    if(count_log == 0)  // The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it.
+    if(count_log == 0)  /* The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it. */
     {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "First Sample: Packing Credentials");
@@ -304,6 +467,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             OBJ_DESTRUCT(&data);
             return;
         }
+
         /* Pack the host's IP Address - 3a*/
         sample_str = strdup(cur_host.capsule.node.host_ip);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
@@ -326,6 +490,21 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             "Packing BMC IP: %s",sample_str);
         free(sample_str);
 
+        /* Pack the Baseboard Serial Number - 5a*/
+        if (NULL == cur_host.capsule.prop.baseboard_serial) {
+            sample_str = strdup("Board Serial n/a");
+        }
+        else {
+            sample_str = strdup(cur_host.capsule.prop.baseboard_serial);
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            free(sample_str);
+            return;
+        }
+        free(sample_str);
+
         /* Pack the buffer, to pass to heartbeat - FINAL */
         bptr = &data;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
@@ -340,6 +519,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         } else {
             opal_output(0,"PROC_IS_AGGREGATOR");
         }
+
         return;
     }
     sample_count = orcm_sensor_ipmi_counthosts();
@@ -374,18 +554,20 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             top->capsule.capability[FAN2_SYS_RPM]    = 1;
 
 
-            //If the bmc username was passed as an mca parameter, set it.
+            /* If the bmc username was passed as an mca parameter, set it. */
             if (NULL != mca_sensor_ipmi_component.bmc_username) {
                 strncpy(top->capsule.node.user, mca_sensor_ipmi_component.bmc_username, sizeof(mca_sensor_ipmi_component.bmc_username));
             }
 
-            //If not, set it to root by default.
+            /* If not, set it to root by default. */
             else {
                 strncpy(top->capsule.node.user, "root", sizeof("root"));
             }
 
-            //If the bmc password was passed as an mca parameter, set it.
-            //Otherwise, leave it as null.
+            /*
+            If the bmc password was passed as an mca parameter, set it.
+            Otherwise, leave it as null.
+            */
             if (NULL != mca_sensor_ipmi_component.bmc_password) {
                 strncpy(top->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password, sizeof(mca_sensor_ipmi_component.bmc_password));
             }
@@ -556,7 +738,7 @@ static void mycleanup(int dbhandle, int status,
 static void ipmi_log(opal_buffer_t *sample)
 {
     char *hostname, *sampletime, *sample_item, *sample_name, *sample_unit;
-    char nodename[64], hostip[16], bmcip[16];
+    char nodename[64], hostip[16], bmcip[16], baseboard_serial[16];
     float float_item;
     unsigned uint_item;
     int rc;
@@ -623,6 +805,23 @@ static void ipmi_log(opal_buffer_t *sample)
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked BMC_IP(4a): %s",hostname);
             strncpy(bmcip,hostname,strlen(hostname)+1);
+
+            /* Unpack the Baseboard Serial Number - 5a */
+            n=1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            if (NULL == sample_item) {
+                ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+                return;
+            }
+            opal_output(0, "Unpacked Baseboard Serial Number(5a): %s", sample_item);
+
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Unpacked Baseboard Serial Number(5a): %s", sample_item);
+            strncpy(baseboard_serial,sample_item,(sizeof(baseboard_serial)-1));
+            baseboard_serial[sizeof(baseboard_serial)-1] = '\0';
             
             /* Add the node only if it has not been added previously, for the 
              * off chance that the compute node daemon was started once before,
@@ -639,7 +838,38 @@ static void ipmi_log(opal_buffer_t *sample)
                     return;
                 }
             } else {
-                opal_output(0,"Node already populated; Not gonna be added again");
+                opal_output(0,"Node already populated; Not going be added again");
+            }
+            /* Log the static information to database */
+            /* @VINFIX: Currently will log into the same database as sensor data
+             * But will eventually get moved to a different database (read
+             * Inventory)
+             */
+            vals = OBJ_NEW(opal_list_t);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("nodename");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(nodename);
+            opal_list_append(vals, &kv->super);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "UnPacked NodeName: %s", nodename);
+
+            /* Add Baseboard serial number */
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("BBserial");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(baseboard_serial);
+            opal_list_append(vals, &kv->super);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "UnPacked NodeName: %s", nodename);
+
+            /* Send the unpacked data for one Node */
+            /* store it */
+            if (0 <= orcm_sensor_base.dbhandle) {
+                orcm_db.store(orcm_sensor_base.dbhandle, "ipmi", vals, mycleanup, NULL);
+            } else {
+                OPAL_LIST_RELEASE(vals);
             }
             return;
         } else {
@@ -771,7 +1001,7 @@ static void ipmi_log(opal_buffer_t *sample)
             return;
         }
     
-        //opal_output(0, "Total metrics packed:%d", uint_item);
+        /*opal_output(0, "Total metrics packed:%d", uint_item);*/
 
         /* Log All non-string metrics here */
         for(unsigned int count_metrics=0;count_metrics<uint_item;count_metrics++)
@@ -927,7 +1157,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
             }
 
             else {
-                //disable_ipmi = 1;
+                /*disable_ipmi = 1;*/
                 error_string = decode_rv(ret);
                 opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
                 opal_output(0,"ipmi_cmd_mc ERROR : %s \n", error_string);
@@ -1001,7 +1231,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
             typestr = get_unit_type( sdrbuf[20], sdrbuf[21], sdrbuf[22],0);
             if(orcm_sensor_ipmi_label_found(tag))
             {
-                //opal_output(0, "Found Sensor Label matching:%s",tag);
+                /*opal_output(0, "Found Sensor Label matching:%s",tag);*/
                 /*  Pack the Sensor Metric */
                 cap->prop.collection_metrics[sensor_count]=val;
                 strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
@@ -1011,7 +1241,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
             {
                 if(NULL!=strcasestr(tag, mca_sensor_ipmi_component.sensor_group))
                 {
-                    //opal_output(0, "Found Sensor Label '%s' matching group:%s", tag, mca_sensor_ipmi_component.sensor_group);
+                    /*opal_output(0, "Found Sensor Label '%s' matching group:%s", tag, mca_sensor_ipmi_component.sensor_group);*/
                     /*  Pack the Sensor Metric */
                     cap->prop.collection_metrics[sensor_count]=val;
                     strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
@@ -1028,7 +1258,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
         } else {
             val = 0;
             typestr = "na";
-            //opal_output(0, "%04x: get sensor %x reading ret = %d\n",id,snum,ret);
+            /*opal_output(0, "%04x: get sensor %x reading ret = %d\n",id,snum,ret);*/
         }
         memset(sdrbuf,0,SDR_SZ);
     }

@@ -138,10 +138,6 @@ static int init(void)
         /*
          * Skip the obvious
          */
-        if (NULL == entry->d_name) {
-            continue;
-        }
-
         if (0 == strncmp(entry->d_name, ".", strlen(".")) ||
             0 == strncmp(entry->d_name, "..", strlen(".."))) {
             continue;

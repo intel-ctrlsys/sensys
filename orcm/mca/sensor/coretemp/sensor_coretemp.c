@@ -189,9 +189,6 @@ static int init(void)
             /* take the part up to the first underscore as this will
              * be used as the start of all the related files
              */
-            if (NULL != tmp) {
-                free(tmp);
-            }
             tmp = strdup(entry->d_name);
             if (NULL == (ptr = strchr(tmp, '_'))) {
                 /* unrecognized format */

@@ -476,6 +476,9 @@ static void res_log(opal_buffer_t *sample)
             kv->key = strdup("state");
             kv->type = OPAL_STRING;
             kv->data.string = (char*)malloc(3 * sizeof(char));
+            if (NULL == kv->data.string) {
+                return;
+            }
             kv->data.string[0] = st->state[0];
             kv->data.string[1] = st->state[1];
             kv->data.string[2] = '\0';

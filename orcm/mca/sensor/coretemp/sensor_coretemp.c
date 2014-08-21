@@ -148,6 +148,9 @@ static int init(void)
         }
 
         /* open that directory */
+        if (NULL != dirname) {
+            free(dirname);
+        }
         dirname = opal_os_path(false, "/sys/bus/platform/devices", dir_entry->d_name, NULL );
         if (NULL == (tdir = opendir(dirname))) {
             continue;
@@ -184,6 +187,9 @@ static int init(void)
             /* take the part up to the first underscore as this will
              * be used as the start of all the related files
              */
+            if (NULL != tmp) {
+                free(tmp);
+            }
             tmp = strdup(entry->d_name);
             if (NULL == (ptr = strchr(tmp, '_'))) {
                 /* unrecognized format */

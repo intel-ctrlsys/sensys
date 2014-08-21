@@ -201,7 +201,7 @@ unsigned int orcm_sensor_ipmi_counthosts(void)
     return count;
 }
 
-void orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
+int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
 {
     opal_output(0, "Adding New Node: %s, with BMC IP: %s", nodename, bmc_ip);
     orcm_sensor_hosts_t *top;
@@ -209,16 +209,24 @@ void orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
     {
         active_hosts = (orcm_sensor_hosts_t*)malloc(sizeof(orcm_sensor_hosts_t));
         /* Set the next link as NULL for the last member*/
-        active_hosts->next = NULL;
+        if (NULL != active_hosts)
+        {
+            active_hosts->next = NULL;
+        } else {
+            return ORCM_ERROR;
+        }
     } else {
         top = (orcm_sensor_hosts_t*)malloc(sizeof(orcm_sensor_hosts_t));
         top->next = active_hosts;
         active_hosts = top;
     }
 
-    strncpy(active_hosts->capsule.node.name,nodename,strlen(nodename)+1);
-    strncpy(active_hosts->capsule.node.host_ip,host_ip,strlen(host_ip)+1);
-    strncpy(active_hosts->capsule.node.bmc_ip,bmc_ip,strlen(bmc_ip)+1);
+    if(NULL != active_hosts)
+    {
+        strncpy(active_hosts->capsule.node.name,nodename,sizeof(active_hosts->capsule.node.name)-1);
+        strncpy(active_hosts->capsule.node.host_ip,host_ip,sizeof(active_hosts->capsule.node.host_ip)-1);
+        strncpy(active_hosts->capsule.node.bmc_ip,bmc_ip,sizeof(active_hosts->capsule.node.bmc_ip)-1);
+    }
 }
 
 int orcm_sensor_ipmi_label_found(char *sensor_label)
@@ -344,26 +352,26 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     for(int i =0;i<sample_count;i++)
     {
 
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "Scanning metrics from node: %s",top->capsule.node.name);
-        /* Clear all memory for the ipmi_capsule */
-        memset(&(top->capsule.prop), '\0', sizeof(top->capsule.prop));
-        /* Enable/Disable the property/metric to be sampled */
-        top->capsule.capability[BMC_REV]         = 1;
-        top->capsule.capability[IPMI_VER]        = 1;
-        top->capsule.capability[SYS_POWER_STATE] = 1;
-        top->capsule.capability[DEV_POWER_STATE] = 1;
-        top->capsule.capability[PS1_USAGE]       = 1;
-        top->capsule.capability[PS1_TEMP]        = 1;
-        top->capsule.capability[PS2_USAGE]       = 1;
-        top->capsule.capability[PS2_TEMP]        = 1;
-        top->capsule.capability[FAN1_CPU_RPM]    = 1;
-        top->capsule.capability[FAN2_CPU_RPM]    = 1;
-        top->capsule.capability[FAN1_SYS_RPM]    = 1;
-        top->capsule.capability[FAN2_SYS_RPM]    = 1;
-
         if(NULL != top)
         {
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Scanning metrics from node: %s",top->capsule.node.name);
+            /* Clear all memory for the ipmi_capsule */
+            memset(&(top->capsule.prop), '\0', sizeof(top->capsule.prop));
+            /* Enable/Disable the property/metric to be sampled */
+            top->capsule.capability[BMC_REV]         = 1;
+            top->capsule.capability[IPMI_VER]        = 1;
+            top->capsule.capability[SYS_POWER_STATE] = 1;
+            top->capsule.capability[DEV_POWER_STATE] = 1;
+            top->capsule.capability[PS1_USAGE]       = 1;
+            top->capsule.capability[PS1_TEMP]        = 1;
+            top->capsule.capability[PS2_USAGE]       = 1;
+            top->capsule.capability[PS2_TEMP]        = 1;
+            top->capsule.capability[FAN1_CPU_RPM]    = 1;
+            top->capsule.capability[FAN2_CPU_RPM]    = 1;
+            top->capsule.capability[FAN1_SYS_RPM]    = 1;
+            top->capsule.capability[FAN2_SYS_RPM]    = 1;
+
 
             //If the bmc username was passed as an mca parameter, set it.
             if (NULL != mca_sensor_ipmi_component.bmc_username) {
@@ -385,13 +393,10 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             top->capsule.node.priv = IPMI_PRIV_LEVEL_ADMIN;
             top->capsule.node.ciph = 3; /* Cipher suite No. 3 */
 
-            //strncpy(top->capsule.node.name, top->capsule.node.name, strlen(top->capsule.node.name)+1);
-            //strncpy(top->capsule.node.bmc_ip, top->capsule.node.bmc_ip, strlen(top->capsule.node.bmc_ip)+1);
-            //strncpy(top->capsule.node.host_ip, top->capsule.node.host_ip, strlen(top->capsule.node.host_ip)+1);
+            /* Running a sample for a Node */
+            orcm_sensor_ipmi_exec_call(&top->capsule);
         }
-        /* Running a sample for a Node */
-        orcm_sensor_ipmi_exec_call(&top->capsule);
-        
+
         /*opal_output(0," *^*^*^* %s - %s - %s - %s - %s - %s", top->capsule.node.bmc_ip
         *             , top->capsule.prop.bmc_rev, top->capsule.prop.ipmi_ver
         *             , top->capsule.prop.sys_power_state, top->capsule.prop.dev_power_state
@@ -627,7 +632,11 @@ static void ipmi_log(opal_buffer_t *sample)
              */
             if(!orcm_sensor_ipmi_found(nodename))
             {
-                orcm_sensor_ipmi_addhost(nodename, hostip, bmcip); /* Add the node to the slave list of the aggregator */
+                if(ORCM_SUCCESS != orcm_sensor_ipmi_addhost(nodename, hostip, bmcip)) /* Add the node to the slave list of the aggregator */
+                {
+                    opal_output(0,"Unable to add the new host! Try restarting orcm daemon");
+                    return;
+                }
             } else {
                 opal_output(0,"Node already populated; Not gonna be added again");
             }
@@ -787,9 +796,10 @@ static void ipmi_log(opal_buffer_t *sample)
                 return;
             }
             memset(key_unit,'\0',sizeof(key_unit));
-            strncpy(key_unit,sample_name,sizeof(key_unit));
-            strcat(key_unit,":");
-            strcat(key_unit,sample_unit);
+            strncpy(key_unit,sample_name,sizeof(key_unit)-1);
+            key_unit[sizeof(key_unit)-1] = '\0';
+            strncat(key_unit,":",sizeof(key_unit)-strlen(key_unit)-1);
+            strncat(key_unit,sample_unit,sizeof(key_unit)-strlen(key_unit)-1);
 
             kv = OBJ_NEW(opal_value_t);
             kv->key = strdup(key_unit);

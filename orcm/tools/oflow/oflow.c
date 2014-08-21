@@ -213,10 +213,12 @@ main(int argc, char *argv[])
     return ORTE_SUCCESS;
     
 ERROR:
-    for (n = 0; n < i; n++) {
-        OBJ_RELEASE(oflow_array[n]);
+    if (NULL != oflow_array) {
+        for (n = 0; n < i; n++) {
+            OBJ_RELEASE(oflow_array[n]);
+        }
+        free(oflow_array);
     }
-    free(oflow_array);
     ORTE_ERROR_LOG(rc);
     OBJ_RELEASE(buf);
     OBJ_DESTRUCT(&xfer);

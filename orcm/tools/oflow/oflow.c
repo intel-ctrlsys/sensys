@@ -145,6 +145,7 @@ main(int argc, char *argv[])
         printf("KEY: %s \n\tVALUE: %s\n", oflow_value->key, oflow_value->data.string);
         oflow_array = (opal_value_t**)realloc(oflow_array, (sizeof(oflow_array) + sizeof(opal_value_t*)));
         if (!oflow_array) {
+            fclose(fp);
             return ORCM_ERR_OUT_OF_RESOURCE;
         }
         oflow_array[i] = oflow_value;

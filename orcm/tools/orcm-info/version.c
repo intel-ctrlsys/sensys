@@ -105,7 +105,7 @@ void orcm_info_do_version(bool want_all, opal_cmd_line_t *cmd_line)
             
             /* Specific type and component */
             
-            else if (NULL != (pos = strchr(arg1, ':'))) {
+            else if (NULL != arg1 && NULL != scope && NULL != (pos = strchr(arg1, ':'))) {
                 *pos = '\0';
                 type = arg1;
                 pos++;

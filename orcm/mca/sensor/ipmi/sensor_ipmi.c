@@ -214,6 +214,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     unsigned char ccode;
     int rdata_offset = 0;
     unsigned char fru_offset;
+    char *error_string;
 
     unsigned char board_manuf_length; /*holds the length (in bytes) of board manuf name*/
     unsigned char *board_manuf; /*hold board manufacturer*/
@@ -234,6 +235,13 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     for (i = 0; i < (fru_area/16); i++) {
         memset(tempdata, 0x00, sizeof(tempdata));
         ret = ipmi_cmd(READ_FRU_DATA, idata, 4, tempdata, &rlen, &ccode, 0);
+        
+        if (ret) {
+            error_string = decode_rv(ret);
+            opal_output(0,"ipmi_cmd RETURN CODE : %s \n", error_string);
+            opal_output(0,"FRU Read Number %d failed\n", id);
+        }
+
         ipmi_close();
 
         /*
@@ -481,7 +489,12 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         free(sample_str);
 
         /* Pack the Baseboard Serial Number - 5a*/
-        sample_str = strdup(cur_host.capsule.prop.baseboard_serial);
+        if (NULL == cur_host.capsule.prop.baseboard_serial) {
+            sample_str = strdup("Baseboard Serial Not Found");
+        }
+        else {
+            sample_str = strdup(cur_host.capsule.prop.baseboard_serial);
+        }
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);

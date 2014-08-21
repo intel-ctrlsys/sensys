@@ -642,8 +642,7 @@ static void parse_config(FILE *fp,
 static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
                          orcm_rack_t *rack)
 {
-    char *val = NULL;
-    char **vals;
+    char *val, **vals;
     int n;
     orcm_node_t *node;
     bool foundlocal = false;
@@ -699,26 +698,14 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
                                        true, "multiple instances of localhost",
                                        ORTE_ERROR_NAME(ORTE_ERR_NOT_SUPPORTED),
                                        ORTE_ERR_NOT_SUPPORTED);
-                        if (val) {
-                            free(val);
-                        }
                         return ORTE_ERR_NOT_SUPPORTED;
                     }
                     foundlocal = true;
                     orte_standalone_operation = true;
-                    if (val) {
-                        free(val);
-                    }
                     val = orte_process_info.nodename;
                 } else if (opal_ifislocal(xml->value[n])) {
-                    if (val) {
-                        free(val);
-                    }
                     val = strdup(orte_process_info.nodename);
                 } else {
-                    if (val) {
-                        free(val);
-                    }
                     val = xml->value[n];
                 }
                 /* add this node */
@@ -728,6 +715,7 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
                 OBJ_RETAIN(rack);
                 node->rack = (struct orcm_rack_t*)rack;
                 opal_list_append(&rack->nodes, &node->super);
+                free(val);
             }
         }
     } else {
@@ -812,8 +800,7 @@ static int parse_aggregators(orcm_cfgi_xml_parser_t *xml,
 
 static int parse_scheduler(orcm_cfgi_xml_parser_t *xml)
 {
-    char *val = NULL;
-    char **vals;
+    char *val, **vals;
     int n;
     orcm_scheduler_t *scheduler;
     bool foundlocal = false;
@@ -866,33 +853,22 @@ static int parse_scheduler(orcm_cfgi_xml_parser_t *xml)
                                        true, "multiple instances of localhost",
                                        ORTE_ERROR_NAME(ORTE_ERR_NOT_SUPPORTED),
                                        ORTE_ERR_NOT_SUPPORTED);
-                        if (val) {
-                            free(val);
-                        }
                         return ORTE_ERR_NOT_SUPPORTED;
                     }
                     foundlocal = true;
                     orte_standalone_operation = true;
-                    if (val) {
-                        free(val);
-                    }
-                    val = orte_process_info.nodename;
+                    val = strdup(orte_process_info.nodename);
                 } else if (opal_ifislocal(xml->value[n])) {
-                    if (val) {
-                        free(val);
-                    }
                     val = strdup(orte_process_info.nodename);
                 } else {
-                    if (val) {
-                        free(val);
-                    }
-                    val = xml->value[n];
+                    val = strdup(xml->value[n]);
                 }
                 /* add this node */
                 scheduler = OBJ_NEW(orcm_scheduler_t);
                 scheduler->controller.name = strdup(val);
                 scheduler->controller.state = ORTE_NODE_STATE_UNKNOWN;
                 opal_list_append(orcm_schedulers, &scheduler->super);
+                free(val);
             }
         }
     } else {

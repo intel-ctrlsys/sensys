@@ -234,8 +234,6 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     ret = 0;
     for (i = 0; i < (fru_area/16); i++) {
         memset(tempdata, 0x00, sizeof(tempdata));
-        if(ret)
-            opal_output(0,"FRU Read Number %d failed\n", i);
 
         ret = ipmi_cmd(READ_FRU_DATA, idata, 4, tempdata, &rlen, &ccode, 0);
         
@@ -249,6 +247,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
                 return;
             } else {                
                 i--;
+                ffail_count++;
                 continue;
             }
         }
@@ -271,6 +270,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
             idata[1] += 0x10;
         }
     }
+    opal_output(0,"FRU Read success!");
 
     /*
         Source: Platform Management Fru Document (Rev 1.2)

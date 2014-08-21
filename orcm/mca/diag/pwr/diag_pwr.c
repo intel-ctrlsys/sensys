@@ -264,6 +264,7 @@ static int init(void)
                 opal_argv_free(vals);
             }
         }
+        free(filename);
 
         /* get the list of available frequencies - these come in a list from
          * max to min */
@@ -284,6 +285,7 @@ static int init(void)
                 opal_argv_free(vals);
             }
         }
+        free(filename);
 
         /* see if setspeed is supported */
         filename = opal_os_path(false, trk->directory, "scaling_setspeed", NULL);
@@ -703,6 +705,8 @@ static int spawn_one(int core)
 
         /* error if we get here */
         opal_output(0, "PWR DIAG FAILED TO EXEC VIRUS");
+        free(app);
+        opal_argv_free(argv);
     }
 
     /* record the pid */

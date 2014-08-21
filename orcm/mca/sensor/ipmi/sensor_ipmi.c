@@ -227,7 +227,7 @@ int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
         strncpy(active_hosts->capsule.node.host_ip,host_ip,sizeof(active_hosts->capsule.node.host_ip)-1);
         strncpy(active_hosts->capsule.node.bmc_ip,bmc_ip,sizeof(active_hosts->capsule.node.bmc_ip)-1);
     }
-    return ORCM_SUCCESS
+    return ORCM_SUCCESS;
 }
 
 int orcm_sensor_ipmi_label_found(char *sensor_label)

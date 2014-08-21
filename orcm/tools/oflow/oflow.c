@@ -138,11 +138,15 @@ main(int argc, char *argv[])
             wf_agg.jobid = 0;
             wf_agg.vpid = (orte_vpid_t)strtol(oflow_value->data.string, (char **)NULL, 10);
             printf("Sending to %s\n", ORTE_NAME_PRINT(&wf_agg));
+            free(oflow_value);
             oflow_value = oflow_parse_next_line(fp);
             continue;
         }
         printf("KEY: %s \n\tVALUE: %s\n", oflow_value->key, oflow_value->data.string);
         oflow_array = (opal_value_t**)realloc(oflow_array, (sizeof(oflow_array) + sizeof(opal_value_t*)));
+        if (!oflow_array) {
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
         oflow_array[i] = oflow_value;
         oflow_value = oflow_parse_next_line(fp);
         i++;
@@ -170,38 +174,30 @@ main(int argc, char *argv[])
     command = ORCM_ANALYTICS_WORKFLOW_CREATE;
     /* pack the alloc command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
+        goto ERROR;
     }
     /* pack the length of the array */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &i, 1, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
+        goto ERROR;
     }
     if (oflow_array) {
         /* pack the array */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, oflow_array, i, OPAL_VALUE))) {
-            ORTE_ERROR_LOG(rc);
-            return rc;
+            goto ERROR;
         }
     }
     /* send it to the aggregator */
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(&wf_agg, buf,
                                                       ORCM_RML_TAG_ANALYTICS,
                                                       orte_rml_send_callback, NULL))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(buf);
-        OBJ_DESTRUCT(&xfer);
-        return rc;
+        goto ERROR;
     }
 
     /* unpack workflow id */
     ORTE_WAIT_FOR_COMPLETION(xfer.active);
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &wfid, &n, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&xfer);
-        return rc;
+        goto ERROR;
     }
 
     printf("Workflow created with id: %i\n", wfid);
@@ -215,9 +211,19 @@ main(int argc, char *argv[])
     }
 
     return ORTE_SUCCESS;
+    
+ERROR:
+    for (n = 0; n < i; n++) {
+        OBJ_RELEASE(oflow_array[n]);
+    }
+    free(oflow_array);
+    ORTE_ERROR_LOG(rc);
+    OBJ_RELEASE(buf);
+    OBJ_DESTRUCT(&xfer);
+    return rc;
 }
 
-static int parse_args(int argc, char *argv[]) 
+static int parse_args(int argc, char *argv[])
 {
     int ret;
     opal_cmd_line_t cmd_line;
@@ -343,11 +349,17 @@ static opal_value_t *oflow_parse_next_line(FILE *fp)
         array_length = opal_argv_count(tokens);
         if (2 == array_length) {
             tokenized = (opal_value_t *)malloc(sizeof(opal_value_t));
+            if (!tokenized) {
+                opal_argv_free(tokens);
+                return NULL;
+            }
             tokenized->type = OPAL_STRING;
             tokenized->key = tokens[0];
             tokenized->data.string = tokens[1];
+            opal_argv_free(tokens);
             return tokenized;
         }
+        opal_argv_free(tokens);
     }
     
     return NULL;

@@ -704,7 +704,7 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
                     orte_standalone_operation = true;
                     val = orte_process_info.nodename;
                 } else if (opal_ifislocal(xml->value[n])) {
-                    val = strdup(orte_process_info.nodename);
+                    val = orte_process_info.nodename;
                 } else {
                     val = xml->value[n];
                 }
@@ -715,7 +715,6 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
                 OBJ_RETAIN(rack);
                 node->rack = (struct orcm_rack_t*)rack;
                 opal_list_append(&rack->nodes, &node->super);
-                free(val);
             }
         }
     } else {
@@ -857,18 +856,17 @@ static int parse_scheduler(orcm_cfgi_xml_parser_t *xml)
                     }
                     foundlocal = true;
                     orte_standalone_operation = true;
-                    val = strdup(orte_process_info.nodename);
+                    val = orte_process_info.nodename;
                 } else if (opal_ifislocal(xml->value[n])) {
-                    val = strdup(orte_process_info.nodename);
+                    val = orte_process_info.nodename;
                 } else {
-                    val = strdup(xml->value[n]);
+                    val = xml->value[n];
                 }
                 /* add this node */
                 scheduler = OBJ_NEW(orcm_scheduler_t);
                 scheduler->controller.name = strdup(val);
                 scheduler->controller.state = ORTE_NODE_STATE_UNKNOWN;
                 opal_list_append(orcm_schedulers, &scheduler->super);
-                free(val);
             }
         }
     } else {

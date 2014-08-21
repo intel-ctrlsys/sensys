@@ -839,7 +839,7 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
     orte_app_context_t *app;
     char *appname;
     int i, j;
-    char *nodename;
+    char *nodename = NULL;
     char *tmp;
 
     /* don't include the daemon job in the number of jobs reported */

@@ -459,6 +459,8 @@ static int emulator_init(void)
     orte_show_help("help-orte-runtime.txt",
                    "orte_init:startup:internal-failure",
                    true, error, ORTE_ERROR_NAME(ret), ret);
+
+    opal_argv_free(tgts);
     
     return ORCM_ERR_SILENT;
 }

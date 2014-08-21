@@ -263,8 +263,9 @@ static int init(void)
                 }
                 opal_argv_free(vals);
             }
+        } else {
+            free(filename);
         }
-        free(filename);
 
         /* get the list of available frequencies - these come in a list from
          * max to min */

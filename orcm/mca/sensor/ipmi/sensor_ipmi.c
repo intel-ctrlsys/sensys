@@ -206,7 +206,7 @@ void orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
 void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *host)
 {
     int ret;
-    int i;
+    int i, ffail_count=0;
     int rlen = 256;
     unsigned char idata[4];
     unsigned char tempdata[17];
@@ -242,8 +242,15 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
         if (ret) {
             opal_output(0,"FRU Read Number %d retrying in block %d\n", id, i);
             ipmi_close();
-            i--;
-            continue;
+            if (ffail_count > 15)
+            {
+                opal_output(0,"Max FRU Read retries over");
+                free(rdata);
+                return;
+            } else {                
+                i--;
+                continue;
+            }
         }
         ipmi_close();
 

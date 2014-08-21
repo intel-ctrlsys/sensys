@@ -240,6 +240,8 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
             error_string = decode_rv(ret);
             opal_output(0,"ipmi_cmd RETURN CODE : %s \n", error_string);
             opal_output(0,"FRU Read Number %d failed\n", id);
+            free(rdata);
+            return;
         }
 
         ipmi_close();
@@ -490,7 +492,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
         /* Pack the Baseboard Serial Number - 5a*/
         if (NULL == cur_host.capsule.prop.baseboard_serial) {
-            sample_str = strdup("Baseboard Serial Not Found");
+            sample_str = strdup("Board Serial n/a");
         }
         else {
             sample_str = strdup(cur_host.capsule.prop.baseboard_serial);

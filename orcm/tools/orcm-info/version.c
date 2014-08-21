@@ -99,7 +99,7 @@ void orcm_info_do_version(bool want_all, opal_cmd_line_t *cmd_line)
             
             /* Version of Open MPI */
             
-            if (0 == strcmp(orcm_info_type_orcm, arg1)) {
+            if (NULL != arg1 && NULL != scope && 0 == strcmp(orcm_info_type_orcm, arg1)) {
                 orcm_info_show_orcm_version(scope);
             } 
             

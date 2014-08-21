@@ -285,8 +285,9 @@ static int init(void)
                 }
                 opal_argv_free(vals);
             }
+        } else {
+            free(filename);
         }
-        free(filename);
 
         /* see if setspeed is supported */
         filename = opal_os_path(false, trk->directory, "scaling_setspeed", NULL);

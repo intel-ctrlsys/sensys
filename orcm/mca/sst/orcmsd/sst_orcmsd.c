@@ -252,6 +252,10 @@ static int orcmsd_init(void)
                 error = "topology discovery";
                 goto error;
             }
+            if (NULL == opal_hwloc_topology) {
+                error = "topology discovery";
+                goto error;
+            }
         }
         
         /* remove the hostname from the topology. Unfortunately, hwloc
@@ -598,7 +602,10 @@ static int orcmsd_setup_node_pool(void)
             goto error;
         }
     } else {
-        opal_argv_append_nosize(&hosts, orte_process_info.nodename);
+    if (OPAL_SUCCESS != opal_argv_append_nosize(&hosts, orte_process_info.nodename)) {
+            error = "opal_argv_append_nosize";
+            goto error;
+        } 
     }
 
     /* setup the global job and node arrays */
@@ -616,6 +623,7 @@ static int orcmsd_setup_node_pool(void)
         ORTE_GLOBAL_ARRAY_BLOCK_SIZE))) {
         ORTE_ERROR_LOG(ret);
         error = "setup node array";
+        goto error;
     }
     orte_node_topologies = OBJ_NEW(opal_pointer_array_t);
     if (ORTE_SUCCESS != (ret = opal_pointer_array_init(orte_node_topologies,
@@ -704,10 +712,17 @@ static int orcmsd_setup_node_pool(void)
         opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
         orte_rml_base_update_contact_info(uribuf);
     }
+
+    for(i=0; hosts[i] != NULL; i++) {
+        free(hosts[i]);
+    }
     
     return ORTE_SUCCESS;
     
  error:
+    for(i=0; hosts[i] != NULL; i++) {
+        free(hosts[i]);
+    }
     orte_show_help("help-orcmsd.txt",
                    "orcmsd_init:startup:internal-failure",
                    true, error, ORTE_ERROR_NAME(ret), ret);

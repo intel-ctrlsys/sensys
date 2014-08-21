@@ -961,7 +961,7 @@ static void generate_test_vector(opal_buffer_t *v)
     now = time(NULL);
     /* pass the time along as a simple string */
     ctmp = ctime(&now);
-    if(NULL != ctmp) {
+    if(NULL != ctmp && 0 != strlen(ctmp)) {
         /* strip the trailing newline */
         ctmp[strlen(ctmp)-1] = '\0';
     }

@@ -132,7 +132,7 @@ void orcm_sensor_ipmi_get_device_power_state(uchar in, char* str);
 int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host);
 int orcm_sensor_ipmi_found(char *nodename);
 unsigned int orcm_sensor_ipmi_counthosts(void);
-void orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip);
+int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip);
 void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap);
 int orcm_sensor_ipmi_label_found(char * tag);
 #endif

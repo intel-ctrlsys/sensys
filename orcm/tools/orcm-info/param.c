@@ -91,7 +91,7 @@ void orcm_info_do_params(bool want_all_in, bool want_internal)
         count = opal_cmd_line_get_ninsts(orcm_info_cmd_line, "param");
         for (i = 0; i < count; ++i) {
             type = opal_cmd_line_get_param(orcm_info_cmd_line, "param", (int)i, 0);
-            if (0 == strcmp(orcm_info_type_all, type)) {
+            if (NULL != type && 0 == strcmp(orcm_info_type_all, type)) {
                 want_all = true;
                 break;
             }
@@ -115,7 +115,7 @@ void orcm_info_do_params(bool want_all_in, bool want_internal)
                 if (NULL == (str = (char *)opal_pointer_array_get_item(&mca_types, i))) {
                     continue;
                 }
-                if (0 == strcmp(str, type)) {
+                if (NULL != type && 0 == strcmp(str, type)) {
                     found = true;
                     break;
                 }
@@ -128,7 +128,9 @@ void orcm_info_do_params(bool want_all_in, bool want_internal)
                 exit(1);
             }
             
-            orcm_info_show_mca_params(type, component, want_internal);
+            if (NULL != type && NULL != component) {
+                orcm_info_show_mca_params(type, component, want_internal);
+            }
         }
     }
 }
@@ -197,7 +199,9 @@ void orcm_info_show_mca_params(const char *type, const char *component,
 
         (void) mca_base_var_group_get(ret, &group);
 
-        orcm_info_show_mca_group_params(group, want_internal);
+        if (NULL != group) {
+            orcm_info_show_mca_group_params(group, want_internal);
+        }
     } else {
         ret = mca_base_var_group_find("*", type, component);
         if (0 > ret) {
@@ -205,7 +209,9 @@ void orcm_info_show_mca_params(const char *type, const char *component,
         }
 
         (void) mca_base_var_group_get(ret, &group);
-        orcm_info_show_mca_group_params(group, want_internal);
+        if (NULL != group) {
+            orcm_info_show_mca_group_params(group, want_internal);
+        }
     }
 }
 
@@ -218,7 +224,7 @@ void orcm_info_do_path(bool want_all, opal_cmd_line_t *cmd_line)
     count = opal_cmd_line_get_ninsts(cmd_line, "path");
     for (i = 0; i < count; ++i) {
         scope = opal_cmd_line_get_param(cmd_line, "path", i, 0);
-        if (0 == strcmp("all", scope)) {
+        if (NULL != scope && 0 == strcmp("all", scope)) {
             want_all = true;
             break;
         }
@@ -248,7 +254,7 @@ void orcm_info_do_path(bool want_all, opal_cmd_line_t *cmd_line)
         for (i = 0; i < count; ++i) {
             scope = opal_cmd_line_get_param(cmd_line, "path", i, 0);
             
-            if (0 == strcmp(orcm_info_path_prefix, scope)) {
+            if (NULL != scope && 0 == strcmp(orcm_info_path_prefix, scope)) {
                 orcm_info_show_path(orcm_info_path_prefix, opal_install_dirs.prefix);
             } else if (0 == strcmp(orcm_info_path_bindir, scope)) {
                 orcm_info_show_path(orcm_info_path_bindir, opal_install_dirs.bindir);

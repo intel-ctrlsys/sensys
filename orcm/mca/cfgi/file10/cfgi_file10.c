@@ -693,32 +693,25 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
             for (n=0; NULL != xml->value[n]; n++) {
                 if (0 == strcmp(xml->value[n], "localhost")) {
                     /* there can be only ONE such entry in the config */
+                    if (val) {
+                        free(val);
+                        val = NULL;
+                    }
+                    
                     if (foundlocal) {
                         orte_show_help("help-orte-runtime.txt",
                                        "orte_init:startup:internal-failure",
                                        true, "multiple instances of localhost",
                                        ORTE_ERROR_NAME(ORTE_ERR_NOT_SUPPORTED),
                                        ORTE_ERR_NOT_SUPPORTED);
-                        if (val) {
-                            free(val);
-                        }
                         return ORTE_ERR_NOT_SUPPORTED;
                     }
                     foundlocal = true;
                     orte_standalone_operation = true;
-                    if (val) {
-                        free(val);
-                    }
                     val = orte_process_info.nodename;
                 } else if (opal_ifislocal(xml->value[n])) {
-                    if (val) {
-                        free(val);
-                    }
                     val = strdup(orte_process_info.nodename);
                 } else {
-                    if (val) {
-                        free(val);
-                    }
                     val = xml->value[n];
                 }
                 /* add this node */

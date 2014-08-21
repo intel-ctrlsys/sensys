@@ -115,7 +115,9 @@ static int init(void)
 {
     DIR *cur_dirp = NULL, *tdir;
     struct dirent *dir_entry, *entry;
-    char *dirname, *filename, *ptr, *tmp;
+    char *dirname = NULL;
+    char *filename, *ptr;
+    char *tmp = NULL;
     size_t tlen = strlen("temp");
     size_t ilen = strlen("_input");
     FILE *fp;

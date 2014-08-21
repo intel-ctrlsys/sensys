@@ -224,7 +224,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
 
     rdata = (unsigned char*) malloc(fru_area);
 
-    memset(idata,0x00,4);
+    memset(idata,0x00,sizeof(idata));
 
     idata[0] = id;   /*id of the fru device to read from*/
     idata[1] = 0x00; /*LSByte of the offset, start at 0*/
@@ -232,9 +232,9 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     idata[3] = 0x10; /*reading 16 bytes at a time*/
     
     for (i = 0; i < (fru_area/16); i++) {
-        memset(tempdata, 0x00, 17);
+        memset(tempdata, 0x00, sizeof(tempdata));
         ret = ipmi_cmd(READ_FRU_DATA, idata, 4, tempdata, &rlen, &ccode, 0);
-        ipmi_close;
+        ipmi_close();
 
         /*
         Copy what was read in to the next 16 byte section of rdata
@@ -303,7 +303,8 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     }
 
     board_serial_num[i] = '\0';
-    strncpy(host->capsule.prop.baseboard_serial, board_serial_num, sizeof(host->capsule.prop.baseboard_serial));
+    strncpy(host->capsule.prop.baseboard_serial, board_serial_num, sizeof(host->capsule.prop.baseboard_serial)-1);
+    host->capsule.prop.baseboard_serial[sizeof(host->capsule.prop.baseboard_serial)-1] = '\0';
 
     free(rdata);
     free(board_manuf);
@@ -487,6 +488,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             free(sample_str);
             return;
         }
+        free(sample_str);
 
         /* Pack the buffer, to pass to heartbeat - FINAL */
         bptr = &data;
@@ -803,7 +805,8 @@ static void ipmi_log(opal_buffer_t *sample)
 
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked Baseboard Serial Number(5a): %s", sample_item);
-            strncpy(baseboard_serial,sample_item,strlen(sample_item)+1);
+            strncpy(baseboard_serial,sample_item,(sizeof(baseboard_serial)-1));
+            baseboard_serial[sizeof(baseboard_serial)-1] = '\0';
             
             /* Add the node only if it has not been added previously, for the 
              * off chance that the compute node daemon was started once before,
@@ -820,7 +823,7 @@ static void ipmi_log(opal_buffer_t *sample)
                     return;
                 }
             } else {
-                opal_output(0,"Node already populated; Not gonna be added again");
+                opal_output(0,"Node already populated; Not going be added again");
             }
             /* Log the static information to database */
             /* @VINFIX: Currently will log into the same database as sensor data

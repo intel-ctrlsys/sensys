@@ -225,6 +225,11 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
 
     rdata = (unsigned char*) malloc(fru_area);
 
+    if (NULL == rdata) {
+        return;
+    }
+
+    memset(rdata,0x00,sizeof(rdata));
     memset(idata,0x00,sizeof(idata));
 
     idata[0] = id;   /*id of the fru device to read from*/
@@ -297,6 +302,11 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
 
     board_manuf_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
     board_manuf = (unsigned char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
+    
+    if (NULL == board_manuf) {
+        free(rdata);
+        return;
+    }
 
     for(i = 0; i < board_manuf_length; i++){
         board_manuf[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + i];
@@ -307,6 +317,12 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     board_product_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length] & 0x3f;
     board_product_name = (unsigned char*) malloc (board_product_length + 1); /* + 1 for the Null Character */
 
+    if (NULL == board_product_name) {
+        free(rdata);
+        free(board_manuf);
+        return;
+    }
+
     for(i = 0; i < board_product_length; i++) {
         board_product_name[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + i];
     }
@@ -315,6 +331,13 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
 
     board_serial_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length] & 0x3f;
     board_serial_num = (unsigned char*) malloc (board_serial_length + 1); /* + 1 for the Null Character */
+
+    if (NULL == board_serial_num) {
+        free(rdata);
+        free(board_manuf);
+        free(board_product_name);
+        return;
+    }
 
     for(i = 0; i < board_serial_length; i++) {
         board_serial_num[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length + 1 + i];
@@ -388,8 +411,12 @@ int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
         }
     } else {
         top = (orcm_sensor_hosts_t*)malloc(sizeof(orcm_sensor_hosts_t));
-        top->next = active_hosts;
-        active_hosts = top;
+        if (NULL != top) {
+            top->next = active_hosts;
+            active_hosts = top;
+        } else {
+            return ORCM_ERROR;
+        }
     }
 
     if(NULL != active_hosts)
@@ -586,6 +613,8 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
             /* Running a sample for a Node */
             orcm_sensor_ipmi_exec_call(&top->capsule);
+        } else {
+            return;
         }
 
         /*opal_output(0," *^*^*^* %s - %s - %s - %s - %s - %s", top->capsule.node.bmc_ip

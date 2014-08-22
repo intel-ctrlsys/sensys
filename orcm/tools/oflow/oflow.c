@@ -146,6 +146,7 @@ main(int argc, char *argv[])
         oflow_array = (opal_value_t**)realloc(oflow_array, (sizeof(oflow_array) + sizeof(opal_value_t*)));
         if (!oflow_array) {
             fclose(fp);
+            free(oflow_value);
             return ORCM_ERR_OUT_OF_RESOURCE;
         }
         oflow_array[i] = oflow_value;

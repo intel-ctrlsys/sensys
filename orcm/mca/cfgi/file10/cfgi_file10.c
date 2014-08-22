@@ -967,9 +967,6 @@ static void setup_environ(char **env)
         return;
     }
 
-    /* get a copy of our environment */
-    tmp = opal_argv_copy(environ);
-
     /* go thru the provided environment and *only* set
      * envars that were not previously set. This allows
      * users to override the config file on the cmd line

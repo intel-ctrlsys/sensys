@@ -371,7 +371,6 @@ static int pretty_print_nodes(orte_node_t **nodes, orte_std_cntr_t num_nodes) {
         len_slots_m = 0;
     orte_node_t *node;
     orte_std_cntr_t i;
-    char *tmp;
 
     /*
      * Caculate segment lengths
@@ -385,15 +384,12 @@ static int pretty_print_nodes(orte_node_t **nodes, orte_std_cntr_t num_nodes) {
     for(i=0; i < num_nodes; i++) {
         node = nodes[i];
         
-        if(NULL != node->name && (int)strlen(node->name) > len_name) {
+        if( NULL != node->name &&
+            (int)strlen(node->name) > len_name)
             len_name = (int) strlen(node->name);
-        }
-
-        tmp = pretty_node_state(node->state);
-        if((int)strlen(tmp) > len_state) {
-            len_state = (int)strlen(tmp);
-        }
-        free(tmp);
+                
+        if( (int)strlen(pretty_node_state(node->state)) > len_state )
+            len_state = (int)strlen(pretty_node_state(node->state));
     }
     
     line_len = (len_name    + 3 +
@@ -421,9 +417,7 @@ static int pretty_print_nodes(orte_node_t **nodes, orte_std_cntr_t num_nodes) {
         node = nodes[i];
         
         printf("%*s | ", len_name,    node->name);
-        tmp = pretty_node_state(node->state);
-        printf("%*s | ", len_state,   tmp);
-        free(tmp);
+        printf("%*s | ", len_state,   pretty_node_state(node->state));
         printf("%*d | ", len_slots,   (uint)node->slots);
         printf("%*d | ", len_slots_m, (uint)node->slots_max);
         printf("%*d | ", len_slots_i, (uint)node->slots_inuse);
@@ -560,7 +554,7 @@ static int pretty_print_vpids(orte_job_t *job) {
 #if OPAL_ENABLE_FT_CR == 1
     char *state_str = NULL;
 #endif
-    char *nodename = NULL;
+    char *nodename;
 
     /*
      * Caculate segment lengths
@@ -616,13 +610,10 @@ static int pretty_print_vpids(orte_job_t *job) {
             len_rank = strlen(rankstr);
         free(rankstr);
 
-        if (NULL != nodename) {
-            free(nodename);
-        }
-        if (orte_get_attribute(&vpid->attributes, ORTE_PROC_NODENAME, (void**)&nodename, OPAL_STRING) && nodename) {
-            if ((int)strlen(nodename) > len_node) {
-                len_node = strlen(nodename);
-            }
+        nodename = NULL;
+        if( orte_get_attribute(&vpid->attributes, ORTE_PROC_NODENAME, (void**)&nodename, OPAL_STRING) &&
+            (int)strlen(nodename) > len_node) {
+            len_node = strlen(nodename);
         } else if ((int)strlen("Unknown") > len_node) {
             len_node = strlen("Unknown");
         }
@@ -839,8 +830,7 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
     orte_app_context_t *app;
     char *appname;
     int i, j;
-    char *nodename = NULL;
-    char *tmp;
+    char *nodename;
 
     /* don't include the daemon job in the number of jobs reported */
     printf("mpirun:num nodes:%d:num jobs:%d\n",
@@ -849,11 +839,9 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
     if (orte_ps_globals.nodes) {
         nodes = hnpinfo->nodes;
         for (i=0; i < hnpinfo->num_nodes; i++) {
-            tmp = pretty_node_state(nodes[i]->state);
             printf("node:%s:state:%s:slots:%d:in use:%d\n",
-                   nodes[i]->name, tmp,
+                   nodes[i]->name, pretty_node_state(nodes[i]->state),
                    nodes[i]->slots, nodes[i]->slots_inuse);
-            free(tmp);
         }
     }
 
@@ -876,9 +864,7 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
             } else {
                 appname = opal_basename(app->app);
             }
-            if (NULL != nodename) {
-                free(nodename);
-            }
+            nodename = NULL;
             orte_get_attribute(&proc->attributes, ORTE_PROC_NODENAME, (void**)&nodename, OPAL_STRING);
             printf("process:%s:rank:%s:pid:%lu:node:%s:state:%s\n",
                    appname, ORTE_VPID_PRINT(proc->name.vpid),
@@ -887,10 +873,6 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
                    orte_proc_state_to_str(proc->state));
             free(appname);
         }
-    }
-
-    if (NULL != nodename) {
-        free(nodename);
     }
 
     return ORTE_SUCCESS;

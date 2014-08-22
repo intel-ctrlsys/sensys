@@ -165,6 +165,10 @@ static int init(void)
         }
 
         /* if it contains anything other than a digit, then it isn't a cpu directory */
+        if ( strlen(entry->d_name) < 1 ) {
+            continue;
+        }
+
         if (!isdigit(entry->d_name[strlen(entry->d_name)-1])) {
             continue;
         }

@@ -589,6 +589,8 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
             STORE_ERR_MSG_FMT("SQLExecute returned: %d", ret);
             return ORCM_ERROR;
         }
+        
+        SQLCloseCursor(stmt);
 
         opal_argv_free(data_item_argv);
     }
@@ -735,6 +737,8 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
 
         opal_list_append(kvs, &kv->super);
     }
+    
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     
     return ORCM_SUCCESS;
 }

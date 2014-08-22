@@ -715,6 +715,10 @@ static int orcmsd_setup_node_pool(void)
 
     for(i=0; hosts[i] != NULL; i++) {
         free(hosts[i]);
+        hosts[i]= NULL;
+    }
+    if(hosts) {
+        free(hosts);
     }
     
     return ORTE_SUCCESS;
@@ -722,6 +726,10 @@ static int orcmsd_setup_node_pool(void)
  error:
     for(i=0; hosts[i] != NULL; i++) {
         free(hosts[i]);
+        hosts[i]= NULL;
+    }
+    if(hosts) {
+        free(hosts);
     }
     orte_show_help("help-orcmsd.txt",
                    "orcmsd_init:startup:internal-failure",

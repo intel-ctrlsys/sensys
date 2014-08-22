@@ -304,7 +304,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     board_manuf = (unsigned char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
     
     if (NULL == board_manuf) {
-        free(rdata)
+        free(rdata);
         return;
     }
 
@@ -411,8 +411,12 @@ int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
         }
     } else {
         top = (orcm_sensor_hosts_t*)malloc(sizeof(orcm_sensor_hosts_t));
-        top->next = active_hosts;
-        active_hosts = top;
+        if (NULL != top) {
+            top->next = active_hosts;
+            active_hosts = top;
+        } else {
+            return ORCM_ERROR;
+        }
     }
 
     if(NULL != active_hosts)
@@ -609,6 +613,8 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
             /* Running a sample for a Node */
             orcm_sensor_ipmi_exec_call(&top->capsule);
+        } else {
+            return;
         }
 
         /*opal_output(0," *^*^*^* %s - %s - %s - %s - %s - %s", top->capsule.node.bmc_ip

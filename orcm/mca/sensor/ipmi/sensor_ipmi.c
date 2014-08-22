@@ -229,6 +229,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
         return;
     }
 
+    memset(rdata,0x00,sizeof(rdata));
     memset(idata,0x00,sizeof(idata));
 
     idata[0] = id;   /*id of the fru device to read from*/

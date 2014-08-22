@@ -321,8 +321,12 @@ int orun(int argc, char *argv[])
         /* if both are given, check to see if they match */
         if (opal_cmd_line_is_taken(&cmd_line, "prefix") && NULL != orun_globals.path_to_mpirun) {
             char *tmp_basename;
+            char *cli_param;
             /* if they don't match, then that merits a warning */
-            param = strdup(opal_cmd_line_get_param(&cmd_line, "prefix", 0, 0));
+            cli_param = opal_cmd_line_get_param(&cmd_line, "prefix", 0, 0);
+            if ( NULL != cli_param ) {
+                param = strdup(cli_param);
+            }
             /* ensure we strip any trailing '/' */
             if (0 == strcmp(OPAL_PATH_SEP, &(param[strlen(param)-1]))) {
                 param[strlen(param)-1] = '\0';
@@ -343,11 +347,17 @@ int orun(int argc, char *argv[])
                 orun_globals.path_to_mpirun = NULL;
             }
             free(tmp_basename);
+            free(cli_param);
         } else if (NULL != orun_globals.path_to_mpirun) {
             param = orun_globals.path_to_mpirun;
         } else if (opal_cmd_line_is_taken(&cmd_line, "prefix")){
             /* must be --prefix alone */
-            param = strdup(opal_cmd_line_get_param(&cmd_line, "prefix", 0, 0));
+            char *cli_param;
+            cli_param = opal_cmd_line_get_param(&cmd_line, "prefix", 0, 0);
+            if ( NULL != cli_param ) {
+                param = strdup(cli_param);
+            }
+            free(cli_param);
         } else {
             /* --enable-orun-prefix-default was given to orun */
             param = strdup(opal_install_dirs.prefix);
@@ -1092,7 +1102,12 @@ static int create_app(int argc, char* argv[],
             if (opal_cmd_line_is_taken(&cmd_line, "prefix") &&
                 NULL != orun_globals.prefix) {
                 /* if they don't match, then that merits a warning */
-                param = strdup(opal_cmd_line_get_param(&cmd_line, "prefix", 0, 0));
+                char *cli_prefix_param;
+                cli_prefix_param = opal_cmd_line_get_param(&cmd_line, "prefix", 0, 0);
+                if ( NULL != cli_prefix_param ) {
+                    param = strdup(cli_prefix_param);
+                }
+                free(cli_prefix_param);
                 /* ensure we strip any trailing '/' */
                 if (0 == strcmp(OPAL_PATH_SEP, &(param[strlen(param)-1]))) {
                     param[strlen(param)-1] = '\0';
@@ -1115,7 +1130,12 @@ static int create_app(int argc, char* argv[],
                 param = orun_globals.prefix;
             } else if (opal_cmd_line_is_taken(&cmd_line, "prefix")){
                 /* must be --prefix alone */
-                param = strdup(opal_cmd_line_get_param(&cmd_line, "prefix", 0, 0));
+                char *cli_prefix_param;
+                cli_prefix_param = opal_cmd_line_get_param(&cmd_line, "prefix", 0, 0);
+                if ( NULL != cli_prefix_param ) {
+                    param = strdup(cli_prefix_param);
+                }
+                free(cli_prefix_param);
             } else {
                 /* --enable-orun-prefix-default was given to orun */
                 param = strdup(opal_install_dirs.prefix);

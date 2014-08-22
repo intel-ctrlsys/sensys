@@ -738,6 +738,8 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
         opal_list_append(kvs, &kv->super);
     }
     
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    
     return ORCM_SUCCESS;
 }
 

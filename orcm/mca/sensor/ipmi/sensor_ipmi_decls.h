@@ -80,7 +80,11 @@ typedef struct {
     char bmc_rev[16];
     char ipmi_ver[16];
     char man_id[16];
+    char baseboard_manuf_time[16];
+    char baseboard_manufacturer[16];
+    char baseboard_name[16];
     char baseboard_serial[16];
+    char baseboard_part_number[16];
     char sys_power_state[16];
     char dev_power_state[16];
     int total_metrics;

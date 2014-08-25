@@ -148,10 +148,11 @@ static int init(void)
             /* cannot be a cpu directory */
             continue;
         }
-        /* if it ends in other than a digit, then it isn't a cpu directory */
+        /* empty directory entry, probably not even possible? */
         if ( strlen(entry->d_name) < 1 ) {
             continue;
         }
+        /* if it ends in other than a digit, then it isn't a cpu directory */
         if (0 == strlen(entry->d_name) || !isdigit(entry->d_name[strlen(entry->d_name)-1])) {
             continue;
         }

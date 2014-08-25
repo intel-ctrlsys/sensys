@@ -91,7 +91,7 @@ void orcm_info_do_params(bool want_all_in, bool want_internal)
         count = opal_cmd_line_get_ninsts(orcm_info_cmd_line, "param");
         for (i = 0; i < count; ++i) {
             type = opal_cmd_line_get_param(orcm_info_cmd_line, "param", (int)i, 0);
-            if (0 == strcmp(orcm_info_type_all, type)) {
+            if (NULL != type && 0 == strcmp(orcm_info_type_all, type)) {
                 want_all = true;
                 break;
             }
@@ -115,7 +115,7 @@ void orcm_info_do_params(bool want_all_in, bool want_internal)
                 if (NULL == (str = (char *)opal_pointer_array_get_item(&mca_types, i))) {
                     continue;
                 }
-                if (0 == strcmp(str, type)) {
+                if (NULL != type && 0 == strcmp(str, type)) {
                     found = true;
                     break;
                 }
@@ -128,7 +128,9 @@ void orcm_info_do_params(bool want_all_in, bool want_internal)
                 exit(1);
             }
             
-            orcm_info_show_mca_params(type, component, want_internal);
+            if (NULL != type && NULL != component) {
+                orcm_info_show_mca_params(type, component, want_internal);
+            }
         }
     }
 }
@@ -197,7 +199,9 @@ void orcm_info_show_mca_params(const char *type, const char *component,
 
         (void) mca_base_var_group_get(ret, &group);
 
-        orcm_info_show_mca_group_params(group, want_internal);
+        if (NULL != group) {
+            orcm_info_show_mca_group_params(group, want_internal);
+        }
     } else {
         ret = mca_base_var_group_find("*", type, component);
         if (0 > ret) {
@@ -205,7 +209,9 @@ void orcm_info_show_mca_params(const char *type, const char *component,
         }
 
         (void) mca_base_var_group_get(ret, &group);
-        orcm_info_show_mca_group_params(group, want_internal);
+        if (NULL != group) {
+            orcm_info_show_mca_group_params(group, want_internal);
+        }
     }
 }
 
@@ -218,7 +224,7 @@ void orcm_info_do_path(bool want_all, opal_cmd_line_t *cmd_line)
     count = opal_cmd_line_get_ninsts(cmd_line, "path");
     for (i = 0; i < count; ++i) {
         scope = opal_cmd_line_get_param(cmd_line, "path", i, 0);
-        if (0 == strcmp("all", scope)) {
+        if (NULL != scope && 0 == strcmp("all", scope)) {
             want_all = true;
             break;
         }
@@ -248,45 +254,47 @@ void orcm_info_do_path(bool want_all, opal_cmd_line_t *cmd_line)
         for (i = 0; i < count; ++i) {
             scope = opal_cmd_line_get_param(cmd_line, "path", i, 0);
             
-            if (0 == strcmp(orcm_info_path_prefix, scope)) {
-                orcm_info_show_path(orcm_info_path_prefix, opal_install_dirs.prefix);
-            } else if (0 == strcmp(orcm_info_path_bindir, scope)) {
-                orcm_info_show_path(orcm_info_path_bindir, opal_install_dirs.bindir);
-            } else if (0 == strcmp(orcm_info_path_libdir, scope)) {
-                orcm_info_show_path(orcm_info_path_libdir, opal_install_dirs.libdir);
-            } else if (0 == strcmp(orcm_info_path_incdir, scope)) {
-                orcm_info_show_path(orcm_info_path_incdir, opal_install_dirs.includedir);
-            } else if (0 == strcmp(orcm_info_path_mandir, scope)) {
-                orcm_info_show_path(orcm_info_path_mandir, opal_install_dirs.mandir);
-            } else if (0 == strcmp(orcm_info_path_pkglibdir, scope)) {
-                orcm_info_show_path(orcm_info_path_pkglibdir, opal_install_dirs.opallibdir);
-            } else if (0 == strcmp(orcm_info_path_sysconfdir, scope)) {
-                orcm_info_show_path(orcm_info_path_sysconfdir, opal_install_dirs.sysconfdir);
-            } else if (0 == strcmp(orcm_info_path_exec_prefix, scope)) {
-                orcm_info_show_path(orcm_info_path_exec_prefix, opal_install_dirs.exec_prefix);
-            } else if (0 == strcmp(orcm_info_path_sbindir, scope)) {
-                orcm_info_show_path(orcm_info_path_sbindir, opal_install_dirs.sbindir);
-            } else if (0 == strcmp(orcm_info_path_libexecdir, scope)) {
-                orcm_info_show_path(orcm_info_path_libexecdir, opal_install_dirs.libexecdir);
-            } else if (0 == strcmp(orcm_info_path_datarootdir, scope)) {
-                orcm_info_show_path(orcm_info_path_datarootdir, opal_install_dirs.datarootdir);
-            } else if (0 == strcmp(orcm_info_path_datadir, scope)) {
-                orcm_info_show_path(orcm_info_path_datadir, opal_install_dirs.datadir);
-            } else if (0 == strcmp(orcm_info_path_sharedstatedir, scope)) {
-                orcm_info_show_path(orcm_info_path_sharedstatedir, opal_install_dirs.sharedstatedir);
-            } else if (0 == strcmp(orcm_info_path_localstatedir, scope)) {
-                orcm_info_show_path(orcm_info_path_localstatedir, opal_install_dirs.localstatedir);
-            } else if (0 == strcmp(orcm_info_path_infodir, scope)) {
-                orcm_info_show_path(orcm_info_path_infodir, opal_install_dirs.infodir);
-            } else if (0 == strcmp(orcm_info_path_pkgdatadir, scope)) {
-                orcm_info_show_path(orcm_info_path_pkgdatadir, opal_install_dirs.opaldatadir);
-            } else if (0 == strcmp(orcm_info_path_pkgincludedir, scope)) {
-                orcm_info_show_path(orcm_info_path_pkgincludedir, opal_install_dirs.opalincludedir);
-            } else {
-                char *usage = opal_cmd_line_get_usage_msg(cmd_line);
-                orte_show_help("help-orcm-info.txt", "usage", true, usage);
-                free(usage);
-                exit(1);
+            if (NULL != scope) {
+                if (0 == strcmp(orcm_info_path_prefix, scope)) {
+                    orcm_info_show_path(orcm_info_path_prefix, opal_install_dirs.prefix);
+                } else if (0 == strcmp(orcm_info_path_bindir, scope)) {
+                    orcm_info_show_path(orcm_info_path_bindir, opal_install_dirs.bindir);
+                } else if (0 == strcmp(orcm_info_path_libdir, scope)) {
+                    orcm_info_show_path(orcm_info_path_libdir, opal_install_dirs.libdir);
+                } else if (0 == strcmp(orcm_info_path_incdir, scope)) {
+                    orcm_info_show_path(orcm_info_path_incdir, opal_install_dirs.includedir);
+                } else if (0 == strcmp(orcm_info_path_mandir, scope)) {
+                    orcm_info_show_path(orcm_info_path_mandir, opal_install_dirs.mandir);
+                } else if (0 == strcmp(orcm_info_path_pkglibdir, scope)) {
+                    orcm_info_show_path(orcm_info_path_pkglibdir, opal_install_dirs.opallibdir);
+                } else if (0 == strcmp(orcm_info_path_sysconfdir, scope)) {
+                    orcm_info_show_path(orcm_info_path_sysconfdir, opal_install_dirs.sysconfdir);
+                } else if (0 == strcmp(orcm_info_path_exec_prefix, scope)) {
+                    orcm_info_show_path(orcm_info_path_exec_prefix, opal_install_dirs.exec_prefix);
+                } else if (0 == strcmp(orcm_info_path_sbindir, scope)) {
+                    orcm_info_show_path(orcm_info_path_sbindir, opal_install_dirs.sbindir);
+                } else if (0 == strcmp(orcm_info_path_libexecdir, scope)) {
+                    orcm_info_show_path(orcm_info_path_libexecdir, opal_install_dirs.libexecdir);
+                } else if (0 == strcmp(orcm_info_path_datarootdir, scope)) {
+                    orcm_info_show_path(orcm_info_path_datarootdir, opal_install_dirs.datarootdir);
+                } else if (0 == strcmp(orcm_info_path_datadir, scope)) {
+                    orcm_info_show_path(orcm_info_path_datadir, opal_install_dirs.datadir);
+                } else if (0 == strcmp(orcm_info_path_sharedstatedir, scope)) {
+                    orcm_info_show_path(orcm_info_path_sharedstatedir, opal_install_dirs.sharedstatedir);
+                } else if (0 == strcmp(orcm_info_path_localstatedir, scope)) {
+                    orcm_info_show_path(orcm_info_path_localstatedir, opal_install_dirs.localstatedir);
+                } else if (0 == strcmp(orcm_info_path_infodir, scope)) {
+                    orcm_info_show_path(orcm_info_path_infodir, opal_install_dirs.infodir);
+                } else if (0 == strcmp(orcm_info_path_pkgdatadir, scope)) {
+                    orcm_info_show_path(orcm_info_path_pkgdatadir, opal_install_dirs.opaldatadir);
+                } else if (0 == strcmp(orcm_info_path_pkgincludedir, scope)) {
+                    orcm_info_show_path(orcm_info_path_pkgincludedir, opal_install_dirs.opalincludedir);
+                } else {
+                    char *usage = opal_cmd_line_get_usage_msg(cmd_line);
+                    orte_show_help("help-orcm-info.txt", "usage", true, usage);
+                    free(usage);
+                    exit(1);
+                }
             }
         }
     }

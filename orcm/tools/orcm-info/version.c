@@ -99,13 +99,13 @@ void orcm_info_do_version(bool want_all, opal_cmd_line_t *cmd_line)
             
             /* Version of Open MPI */
             
-            if (0 == strcmp(orcm_info_type_orcm, arg1)) {
+            if (NULL != arg1 && NULL != scope && 0 == strcmp(orcm_info_type_orcm, arg1)) {
                 orcm_info_show_orcm_version(scope);
             } 
             
             /* Specific type and component */
             
-            else if (NULL != (pos = strchr(arg1, ':'))) {
+            else if (NULL != arg1 && NULL != scope && NULL != (pos = strchr(arg1, ':'))) {
                 *pos = '\0';
                 type = arg1;
                 pos++;
@@ -117,7 +117,7 @@ void orcm_info_do_version(bool want_all, opal_cmd_line_t *cmd_line)
             
             /* All components of a specific type */
             
-            else {
+            else if (NULL != arg1 && NULL != scope) {
                 orcm_info_show_component_version(arg1, orcm_info_component_all, scope, orcm_info_ver_all);
             }
         }
@@ -281,10 +281,10 @@ static void show_mca_version(const mca_base_component_t* component,
         
         if (NULL != tmp) {
             orcm_info_out(message, NULL, tmp);
-            free(message);
             free(tmp);
         }
-        
+        free(message);
+
     } else {
         asprintf(&message, "mca:%s:%s:version", component->mca_type_name, component->mca_component_name);
         if (want_mca) {

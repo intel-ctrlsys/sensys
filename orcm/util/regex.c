@@ -109,6 +109,9 @@ int orcm_regex_extract_names_list(char *regexp, char **namelist){
     
     if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(regexp, &names))) {
         ORTE_ERROR_LOG(rc);
+        if (names) {
+            free(names);
+        }
         return rc;
     }
     
@@ -125,15 +128,28 @@ int orcm_regex_add_node(char **regexp, char *name) {
     size_t nodeslen = 0;
     int rc;
     
+    if (NULL == name) {
+        return ORCM_SUCCESS;
+    } else if (NULL == regexp) {
+        return orcm_regex_create(name, regexp);
+    }
+    
     /* extract regex to an array */
     if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(*regexp, &nodes))) {
         ORTE_ERROR_LOG(rc);
+        if (nodes) {
+            free(nodes);
+        }
         return rc;
     }
  
     /* get size of array */
-    while (NULL != nodes[nodeslen]) {
-        nodeslen++;
+    if (NULL == nodes) {
+        nodeslen = 0;
+    } else {
+        while (NULL != nodes[nodeslen]) {
+            nodeslen++;
+        }
     }
 
     /* we need two more array items, our new name and a terminating string */
@@ -170,14 +186,24 @@ int orcm_regex_remove_node(char **regexp, char *name) {
     bool found = false;
     int rc;
 
+    if (NULL == regexp || NULL == name) {
+        return ORCM_SUCCESS;
+    }
     if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(*regexp, &nodes))) {
         ORTE_ERROR_LOG(rc);
+        if (nodes) {
+            free(nodes);
+        }
         return rc;
     }
     
     /* get size of array */
-    while (NULL != nodes[nodeslen]) {
-        nodeslen++;
+    if (NULL == nodes) {
+        nodeslen = 0;
+    } else {
+        while (NULL != nodes[nodeslen]) {
+            nodeslen++;
+        }
     }
 
     /* shift names down on top of element we want to remove */

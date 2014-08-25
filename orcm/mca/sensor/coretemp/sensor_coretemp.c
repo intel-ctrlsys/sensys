@@ -115,7 +115,8 @@ static int init(void)
 {
     DIR *cur_dirp = NULL, *tdir;
     struct dirent *dir_entry, *entry;
-    char *dirname, *filename, *ptr, *tmp;
+    char *dirname = NULL;
+    char *filename, *ptr, *tmp;
     size_t tlen = strlen("temp");
     size_t ilen = strlen("_input");
     FILE *fp;
@@ -150,6 +151,7 @@ static int init(void)
         /* open that directory */
         dirname = opal_os_path(false, "/sys/bus/platform/devices", dir_entry->d_name, NULL );
         if (NULL == (tdir = opendir(dirname))) {
+            free(dirname);
             continue;
         }
         while (NULL != (entry = readdir(tdir))) {

@@ -138,7 +138,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* the stats framework can't know nodename or rank */
-    strncpy(stats->node, orte_process_info.nodename, OPAL_PSTAT_MAX_STRING_LEN);
+    strncpy(stats->node, orte_process_info.nodename, (OPAL_PSTAT_MAX_STRING_LEN - 1));
     stats->rank = ORTE_PROC_MY_NAME->vpid;
 #if 0
     /* locally save the stats */
@@ -190,7 +190,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
                 continue;
             }
             /* the stats framework can't know nodename or rank */
-            strncpy(stats->node, orte_process_info.nodename, OPAL_PSTAT_MAX_STRING_LEN);
+            strncpy(stats->node, orte_process_info.nodename, (OPAL_PSTAT_MAX_STRING_LEN - 1));
             stats->rank = child->name.vpid;
 #if 0
             /* store it */
@@ -476,6 +476,9 @@ static void res_log(opal_buffer_t *sample)
             kv->key = strdup("state");
             kv->type = OPAL_STRING;
             kv->data.string = (char*)malloc(3 * sizeof(char));
+            if (NULL == kv->data.string) {
+                return;
+            }
             kv->data.string[0] = st->state[0];
             kv->data.string[1] = st->state[1];
             kv->data.string[2] = '\0';

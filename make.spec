@@ -21,14 +21,10 @@ orcm is a opensource resilency cluster management software implementation.
 %setup -q -c -T -a 0
 
 %build
-./autogen.pl
 mkdir -p obj
 cd obj
 pwd
-cp ../contrib/platform/intel/bend/linux-orcm-intel* .
-sed -e s/hostname/${HOSTNAME}/g ../contrib/platform/intel/bend/linux-orcm-intel.xml > linux-orcm-intel.xml
-../configure %{configure_flags} --prefix=/usr --libdir=/usr/lib --with-platform=linux-orcm-intel
-exit
+../configure %{configure_flags} --prefix=/usr --libdir=/usr/lib --with-platform=../contrib/platform/intel/hillsboro/orcm-linux
 $(make_prefix) $(MAKE) $(make_postfix)
 #$(MAKE) build_doc
 
@@ -41,13 +37,10 @@ $(extra_install)
 
 %files
 %defattr(-,root,root,-)
-/usr/etc/orcm-site.xml
-/usr/etc/openmpi-default-hostfile
-/usr/etc/openmpi-mca-params.conf
+/usr/etc/*
 /usr/bin/*
 /usr/lib/*
 /usr/include/openmpi/*
-%doc /usr/share/open-rcm/*
 %doc /usr/share/openmpi/*
 %doc /usr/share/man/man1/*
 %doc /usr/share/man/man7/*

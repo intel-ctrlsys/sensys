@@ -185,10 +185,12 @@ int orcm_sensor_base_select(void)
             tmp_module = tmp_module_sw;
             opal_pointer_array_set_item(&tmp_array, j, NULL);
         }
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                            "sensor:base:select Add module with priority [%s] %d", 
-                            tmp_module->component->base_version.mca_component_name, tmp_module->priority);
-        opal_pointer_array_add(&orcm_sensor_base.modules, tmp_module);
+        if ( tmp_module ) {
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "sensor:base:select Add module with priority [%s] %d",
+                                tmp_module->component->base_version.mca_component_name, tmp_module->priority);
+            opal_pointer_array_add(&orcm_sensor_base.modules, tmp_module);
+        }
     }
     OBJ_DESTRUCT(&tmp_array);
 

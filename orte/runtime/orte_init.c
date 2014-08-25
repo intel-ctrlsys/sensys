@@ -32,6 +32,8 @@
 #include <unistd.h>
 #endif
 
+#include "opal/mca/dstore/base/base.h"
+#include "opal/mca/pmix/base/base.h"
 #include "opal/util/error.h"
 #include "opal/util/output.h"
 #include "opal/util/proc.h"
@@ -45,6 +47,7 @@
 #include "orte/util/name_fns.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/error_strings.h"
+#include "orte/orted/pmix/pmix_server.h"
 
 #include "orte/runtime/runtime.h"
 #include "orte/runtime/orte_globals.h"
@@ -164,6 +167,42 @@ int orte_init(int* pargc, char*** pargv, orte_proc_type_t flags)
     if (ORTE_SUCCESS != (ret = orte_proc_info())) {
         error = "orte_proc_info";
         goto error;
+    }
+
+    /* setup the dstore framework */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&opal_dstore_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "opal_dstore_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = opal_dstore_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "opal_dstore_base_select";
+        goto error;
+    }
+    /* create the handle */
+    if (0 > (opal_dstore_internal = opal_dstore.open("INTERNAL"))) {
+        error = "opal dstore internal";
+        ret = ORTE_ERR_FATAL;
+        goto error;
+    }
+
+    if (ORTE_PROC_IS_APP) {
+        /* we must have the pmix framework setup prior to opening/selecting ESS
+         * as some of those components may depend on it */
+        if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_pmix_base_framework, 0))) {
+            ORTE_ERROR_LOG(ret);
+            error = "opal_pmix_base_open";
+            goto error;
+        }
+        if (OPAL_SUCCESS != (ret = opal_pmix_base_select())) {
+            ORTE_ERROR_LOG(ret);
+            error = "opal_pmix_base_select";
+            goto error;
+        }
+    } else if (!ORTE_PROC_IS_TOOL) {
+        /* let the pmix server register params */
+        pmix_server_register();
     }
 
     /* open the ESS and select the correct module for this environment */

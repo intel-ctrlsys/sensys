@@ -95,11 +95,9 @@ void
 opal_perror(int errnum, const char *msg)
 {
     int ret;
-    const char* errmsg=NULL;
+    const char* errmsg;
     ret = opal_strerror_int(errnum, &errmsg);
-    if (NULL == errmsg) {
-        return;
-    }
+
     if (NULL != msg && errnum != OPAL_ERR_IN_ERRNO) {
         fprintf(stderr, "%s: ", msg);
     }
@@ -152,13 +150,10 @@ opal_strerror(int errnum)
 int
 opal_strerror_r(int errnum, char *strerrbuf, size_t buflen)
 {
-    const char* errmsg=NULL;
+    const char* errmsg;
     int ret, len;
 
     ret = opal_strerror_int(errnum, &errmsg);
-    if (NULL == errmsg) {
-        return OPAL_ERR_OUT_OF_RESOURCE;
-    }
     if (OPAL_SUCCESS != ret) {
         if (errnum == OPAL_ERR_IN_ERRNO) {
             char *tmp = strerror(errno);

@@ -169,9 +169,6 @@ char *opal_path_findv(char *fname, int mode, char **envv, char *wrkdir)
     if (NULL != (path = list_env_get("PATH", envv))) {
         path_env_load(path, &dirc, &dirv);
     }
-    if (NULL == dirv) {
-        return NULL;
-    }
 
     /* Replace the "." path by the working directory. */
 
@@ -181,8 +178,7 @@ char *opal_path_findv(char *fname, int mode, char **envv, char *wrkdir)
                 found_dot = true;
                 free(dirv[i]);
                 dirv[i] = strdup(wrkdir);
-                if (NULL == dirv[i]) {
-                    opal_argv_free(dirv);
+                if (NULL == dirv[i]){
                     return NULL;
                 }
             }
@@ -389,9 +385,6 @@ char* opal_find_absolute_path( char* app_name )
     
     if( NULL != abs_app_name ) {
         char* resolved_path = (char*)malloc(OPAL_PATH_MAX);
-        if (NULL == resolved_path) {
-            return NULL;
-        }
         realpath( abs_app_name, resolved_path );
         if( abs_app_name != app_name ) free(abs_app_name);
         return resolved_path;

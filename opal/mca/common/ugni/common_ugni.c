@@ -14,9 +14,9 @@
 
 #include "common_ugni.h"
 
-#include "opal/mca/dstore/dstore.h"
 #include "opal/class/opal_list.h"
 #include "opal/dss/dss.h"
+#include "opal/mca/pmix/pmix.h"
 
 /* NTH: we need some options from the btl */
 #include "opal/mca/btl/ugni/btl_ugni.h"
@@ -156,7 +156,7 @@ static int opal_common_ugni_device_fini (opal_common_ugni_device_t *dev)
  * Send local device information and other information
  * required for setup
  */
-static int opal_common_ugni_send_modex (int my_rank)
+static int opal_common_ugni_send_modex (int my_cdm_id)
 {
     uint32_t modex_size, total_msg_size, msg_offset;
     struct opal_common_ugni_modex_t modex;
@@ -178,7 +178,7 @@ static int opal_common_ugni_send_modex (int my_rank)
         opal_common_ugni_device_t *dev = opal_common_ugni_module.devices + i;
 
         modex.addr = dev->dev_addr;
-        modex.id   = my_rank;
+        modex.id   = my_cdm_id;
 
         memcpy ((void *)((uintptr_t) modex_msg + msg_offset),
                 (void *)&modex, modex_size);
@@ -186,8 +186,9 @@ static int opal_common_ugni_send_modex (int my_rank)
         msg_offset += modex_size;
     }
 
-    rc = opal_modex_send(&opal_common_ugni_component,
-                         modex_msg, total_msg_size);
+    OPAL_MODEX_SEND(rc, PMIX_ASYNC_RDY, PMIX_REMOTE,
+                    &opal_common_ugni_component,
+                    modex_msg, total_msg_size);
 
     free(modex_msg);
 
@@ -228,9 +229,11 @@ int opal_common_ugni_fini (void)
 
 int opal_common_ugni_init (void)
 {
+#if 0
     opal_proc_t *my_proc;
+#endif
     int modes, rc, i;
-    uint32_t my_rank, *ptr;
+    uint32_t my_cdm_id, *ptr;
 
     opal_common_ugni_module_ref_count ++;
 
@@ -238,32 +241,25 @@ int opal_common_ugni_init (void)
         return OPAL_SUCCESS;
     }
 
-    my_proc = opal_proc_get_local ();
-
     /* get a unique id from the runtime */
+    /* the code below is unnecessary.  The cdm_id only needs to be unique
+       within a node for a given ptag/cookie tuple */
+#if 0
 #if defined(OMPI_DB_GLOBAL_RANK)
     {
-        opal_list_t myvals;
-        opal_value_t *kv;
-
         ptr = &my_rank;
-        OBJ_CONSTRUCT(&myvals, opal_list_t);
-        rc = opal_dstore.fetch (opal_dstore_internal,
-                                (opal_identifier_t *)&my_proc->proc_name,
-                                OMPI_DB_GLOBAL_RANK,
-                                &myvals);
-        if (OPAL_SUCCESS == rc) {
-            kv = (opal_value_t*)opal_list_get_first(&myvals);
-            if (OPAL_SUCCESS != opal_value_unload(kv, (void**)&ptr, OPAL_UINT32)) {
-                my_rank = my_proc->proc_name.vpid;
-            }
-        } else {
+        OPAL_MODEX_RECV_VALUE(rc, (opal_identifier_t *)&my_proc->proc_name,
+                              OMPI_DB_GLOBAL_RANK, (void**)&ptr, OPAL_UINT32);
+        if (OPAL_SUCCESS != rc) {
             my_rank = my_proc->proc_name.vpid;
-        }
+        } 
         OPAL_LIST_DESTRUCT(&myvals);
     }
 #else
     my_rank = my_proc->proc_name.vpid;
+#endif
+#else
+    my_cdm_id = getpid();   /*TODO: eventually need something else for thread-hot support */
 #endif
 
     /* pull settings from ugni btl */
@@ -286,7 +282,7 @@ int opal_common_ugni_init (void)
     }
 
     /* create a communication domain */
-    rc = GNI_CdmCreate (my_rank, opal_common_ugni_module.ptag,
+    rc = GNI_CdmCreate (my_cdm_id, opal_common_ugni_module.ptag,
                         opal_common_ugni_module.cookie, modes,
                         &opal_common_ugni_module.cd_handle);
     if (OPAL_UNLIKELY(GNI_RC_SUCCESS != rc)) {
@@ -308,7 +304,7 @@ int opal_common_ugni_init (void)
     }
 
     /* send ugni modex */
-    opal_common_ugni_send_modex (my_rank);
+    opal_common_ugni_send_modex (my_cdm_id);
 
     return OPAL_SUCCESS;
 }

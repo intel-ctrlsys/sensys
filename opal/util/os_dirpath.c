@@ -78,9 +78,6 @@ int opal_os_dirpath_create(const char *path, const mode_t mode)
        incoming path + 1 (for \0) */
 
     tmp = (char*)malloc(strlen(path) + 1);
-    if (NULL == tmp) {
-        return OPAL_ERR_OUT_OF_RESOURCE;
-    }
     tmp[0] = '\0';
 
     /* Iterate through all the subdirectory names in the path,
@@ -187,7 +184,6 @@ int opal_os_dirpath_destroy(const char *path,
          * allocating memory here, so we need to free it later on. 
          */
         filenm = opal_os_path(false, path, ep->d_name, NULL);
-        assert(filenm);
 #ifdef HAVE_STRUCT_DIRENT_D_TYPE
         if (DT_DIR == ep->d_type) {
             is_dir = true;

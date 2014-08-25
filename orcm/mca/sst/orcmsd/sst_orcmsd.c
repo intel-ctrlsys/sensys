@@ -634,10 +634,6 @@ static int orcmsd_setup_node_pool(void)
         goto error;
     }
 
-    /* init the nidmap - just so we register that verbosity */
-    orte_util_nidmap_init(NULL);
-
-
     /* Setup the job data object for the daemons */        
     /* create and store the job data object */
     jdata = OBJ_NEW(orte_job_t);

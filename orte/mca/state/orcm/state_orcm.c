@@ -204,7 +204,6 @@ static void track_procs(int fd, short argc, void *cbdata)
     opal_buffer_t *alert;
     int rc, i;
     orte_plm_cmd_flag_t cmd;
-    orte_vpid_t null=ORTE_VPID_INVALID;
     int8_t flag;
 
     OPAL_OUTPUT_VERBOSE((5, orte_state_base_framework.framework_output,
@@ -236,12 +235,12 @@ static void track_procs(int fd, short argc, void *cbdata)
              */
 
             OPAL_OUTPUT_VERBOSE((5, orte_state_base_framework.framework_output,
-                                 "%s state:orcm: sending contact info to HNP",
+                                 "%s state:orcm: notifying HNP all local registered",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
             alert = OBJ_NEW(opal_buffer_t);
-            /* pack init routes command */
-            cmd = ORTE_PLM_INIT_ROUTES_CMD;
+            /* pack registered command */
+            cmd = ORTE_PLM_REGISTERED_CMD;
             if (ORTE_SUCCESS != (rc = opal_dss.pack(alert, &cmd, 1, ORTE_PLM_CMD))) {
                 ORTE_ERROR_LOG(rc);
                 goto cleanup;
@@ -272,17 +271,6 @@ static void track_procs(int fd, short argc, void *cbdata)
                     }
                 }
             }
-            /* pack an invalid marker */
-            if (ORTE_SUCCESS != (rc = opal_dss.pack(alert, &null, 1, ORTE_VPID))) {
-                ORTE_ERROR_LOG(rc);
-                goto cleanup;
-            }
-            /* add in contact info for all procs in the job */
-            if (ORTE_SUCCESS != (rc = pack_child_contact_info(proc->jobid, alert))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_DESTRUCT(&alert);
-                goto cleanup;
-            }
             /* send it */
             if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, alert,
                                                               ORTE_RML_TAG_PLM,
@@ -298,41 +286,6 @@ static void track_procs(int fd, short argc, void *cbdata)
          * successful launch for short-lived procs
          */
         ORTE_FLAG_SET(pdata, ORTE_PROC_FLAG_IOF_COMPLETE);
-        if (ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_WAITPID)) {
-            /* the proc has terminated */
-            ORTE_FLAG_UNSET(pdata, ORTE_PROC_FLAG_ALIVE);
-            pdata->state = ORTE_PROC_STATE_TERMINATED;
-            /* Clean up the session directory as if we were the process
-             * itself.  This covers the case where the process died abnormally
-             * and didn't cleanup its own session directory.
-             */
-            orte_session_dir_finalize(proc);
-            /* track job status */
-            jdata->num_terminated++;
-            if (jdata->num_terminated == jdata->num_local_procs) {
-                /* pack update state command */
-                cmd = ORTE_PLM_UPDATE_PROC_STATE;
-                alert = OBJ_NEW(opal_buffer_t);
-                if (ORTE_SUCCESS != (rc = opal_dss.pack(alert, &cmd, 1, ORTE_PLM_CMD))) {
-                    ORTE_ERROR_LOG(rc);
-                    goto cleanup;
-                }
-                /* pack the job info */
-                if (ORTE_SUCCESS != (rc = pack_state_update(alert, jdata))) {
-                    ORTE_ERROR_LOG(rc);
-                }
-                /* send it */
-                OPAL_OUTPUT_VERBOSE((5, orte_state_base_framework.framework_output,
-                                     "%s SENDING PROC TERMINATION UPDATE FOR JOB %s",
-                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                     ORTE_JOBID_PRINT(jdata->jobid)));
-                if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, alert,
-                                                                  ORTE_RML_TAG_PLM,
-                                                                  orte_rml_send_callback, NULL))) {
-                    ORTE_ERROR_LOG(rc);
-                }
-            }
-        }
         /* Release the stdin IOF file descriptor for this child, if one
          * was defined. File descriptors for the other IOF channels - stdout,
          * stderr, and stddiag - were released when their associated pipes
@@ -343,46 +296,61 @@ static void track_procs(int fd, short argc, void *cbdata)
         if (NULL != orte_iof.close) {
             orte_iof.close(proc, ORTE_IOF_STDIN);
         }
+        if (ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_WAITPID) &&
+            !ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_RECORDED)) {
+            ORTE_ACTIVATE_PROC_STATE(proc, ORTE_PROC_STATE_TERMINATED);
+        }
     } else if (ORTE_PROC_STATE_WAITPID_FIRED == state) {
         /* do NOT update the proc state as this can hit
          * while we are still trying to notify the HNP of
          * successful launch for short-lived procs
          */
         ORTE_FLAG_SET(pdata, ORTE_PROC_FLAG_WAITPID);
-        if (ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_IOF_COMPLETE)) {
-            /* the proc has terminated */
-            ORTE_FLAG_UNSET(pdata, ORTE_PROC_FLAG_ALIVE);
-            pdata->state = ORTE_PROC_STATE_TERMINATED;
-            /* Clean up the session directory as if we were the process
-             * itself.  This covers the case where the process died abnormally
-             * and didn't cleanup its own session directory.
-             */
-            orte_session_dir_finalize(proc);
-            /* track job status */
+        if (ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_IOF_COMPLETE) &&
+            !ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_RECORDED)) {
+            ORTE_ACTIVATE_PROC_STATE(proc, ORTE_PROC_STATE_TERMINATED);
+        }
+    } else if (ORTE_PROC_STATE_TERMINATED == state) {
+        /* if this proc has not already recorded as terminated, then
+         * update the accounting here */
+        if (!ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_RECORDED)) {
             jdata->num_terminated++;
-            if (jdata->num_terminated == jdata->num_local_procs) {
-                /* pack update state command */
-                cmd = ORTE_PLM_UPDATE_PROC_STATE;
-                alert = OBJ_NEW(opal_buffer_t);
-                if (ORTE_SUCCESS != (rc = opal_dss.pack(alert, &cmd, 1, ORTE_PLM_CMD))) {
-                    ORTE_ERROR_LOG(rc);
-                    goto cleanup;
-                }
-                /* pack the job info */
-                if (ORTE_SUCCESS != (rc = pack_state_update(alert, jdata))) {
-                    ORTE_ERROR_LOG(rc);
-                }
-                /* send it */
-                OPAL_OUTPUT_VERBOSE((5, orte_state_base_framework.framework_output,
-                                     "%s SENDING PROC TERMINATION UPDATE FOR JOB %s",
-                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                     ORTE_JOBID_PRINT(jdata->jobid)));
-                if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, alert,
-                                                                  ORTE_RML_TAG_PLM,
-                                                                  orte_rml_send_callback, NULL))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+        }
+        /* update the proc state */
+        ORTE_FLAG_SET(pdata, ORTE_PROC_FLAG_RECORDED);
+        ORTE_FLAG_UNSET(pdata, ORTE_PROC_FLAG_ALIVE);
+        pdata->state = state;
+        /* Clean up the session directory as if we were the process
+         * itself.  This covers the case where the process died abnormally
+         * and didn't cleanup its own session directory.
+         */
+        orte_session_dir_finalize(proc);
+        /* track job status */
+        if (jdata->num_terminated == jdata->num_local_procs &&
+            !orte_get_attribute(&jdata->attributes, ORTE_JOB_TERM_NOTIFIED, NULL, OPAL_BOOL)) {
+            /* pack update state command */
+            cmd = ORTE_PLM_UPDATE_PROC_STATE;
+            alert = OBJ_NEW(opal_buffer_t);
+            if (ORTE_SUCCESS != (rc = opal_dss.pack(alert, &cmd, 1, ORTE_PLM_CMD))) {
+                ORTE_ERROR_LOG(rc);
+                goto cleanup;
             }
+            /* pack the job info */
+            if (ORTE_SUCCESS != (rc = pack_state_update(alert, jdata))) {
+                ORTE_ERROR_LOG(rc);
+            }
+            /* send it */
+            OPAL_OUTPUT_VERBOSE((5, orte_state_base_framework.framework_output,
+                                 "%s state:orcm: SENDING JOB LOCAL TERMINATION UPDATE FOR JOB %s",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                 ORTE_JOBID_PRINT(jdata->jobid)));
+            if (0 > (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, alert,
+                                                  ORTE_RML_TAG_PLM,
+                                                  orte_rml_send_callback, NULL))) {
+                ORTE_ERROR_LOG(rc);
+            }
+            /* mark that we sent it so we ensure we don't do it again */
+            orte_set_attribute(&jdata->attributes, ORTE_JOB_TERM_NOTIFIED, ORTE_ATTR_LOCAL, NULL, OPAL_BOOL);
         }
     }
 

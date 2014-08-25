@@ -56,8 +56,7 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat);
 static int route_lost(const orte_process_name_t *route);
 static bool route_is_defined(const orte_process_name_t *target);
 static void update_routing_plan(void);
-static void get_routing_list(orte_grpcomm_coll_t type,
-                             orte_grpcomm_collective_t *coll);
+static void get_routing_list(opal_list_t *coll);
 static int get_wireup_info(opal_buffer_t *buf);
 static int set_lifeline(orte_process_name_t *proc);
 static size_t num_routes(void);
@@ -622,8 +621,7 @@ static void update_routing_plan(void)
     return;
 }
 
-static void get_routing_list(orte_grpcomm_coll_t type,
-                             orte_grpcomm_collective_t *coll)
+static void get_routing_list(opal_list_t *coll)
 {
     /* irrelevant for us */
     return;

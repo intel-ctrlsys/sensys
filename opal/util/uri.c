@@ -33,7 +33,6 @@ char *opal_uri_get_scheme(const char *uri)
     if (NULL == (ptr = strchr(turi, ':'))) {
         opal_show_help("help-opal-util.txt", "malformed-uri",
                        true, uri);
-        free(turi);
         return NULL;
     }
     *ptr = '\0';
@@ -73,9 +72,6 @@ char *opal_filename_to_uri(const char *filename,
     /* escape them if necessary */
     if (0 < n) {
         fn = (char*)malloc(strlen(filename) + n + 1);
-        if (NULL == fn) {
-            return NULL;
-        }
         i=0;
         for (k=0; k < strlen(filename)-1; k++) {
             for (j=0; j < strlen(uri_reserved_path_chars)-1; j++) {
@@ -121,7 +117,6 @@ char *opal_filename_from_uri(const char *uri,
     if (NULL == (ptr = strchr(turi, ':'))) {
         opal_show_help("help-opal-util.txt", "malformed-uri",
                        true, uri);
-        free(turi);
         return NULL;
     }
     *ptr = '\0';

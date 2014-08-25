@@ -18,7 +18,7 @@
  * Copyright (c) 2009-2012 Oracle and/or its affiliates.  All rights reserved.
  * Copyright (c) 2011-2014 NVIDIA Corporation.  All rights reserved.
  * Copyright (c) 2012      Oak Ridge National Laboratory.  All rights reserved
- * Copyright (c) 2013      Intel, Inc. All rights reserved
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved
  * Copyright (c) 2014      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
@@ -83,8 +83,7 @@
 #include "opal/mca/common/verbs/common_verbs.h"
 #include "opal/runtime/opal_params.h"
 #include "opal/runtime/opal.h"
-
-// #include "ompi/mca/rte/rte.h"
+#include "opal/mca/pmix/pmix.h"
 
 #include "btl_openib.h"
 #include "btl_openib_frag.h"
@@ -224,6 +223,10 @@ static int btl_openib_component_open(void)
     OBJ_CONSTRUCT(&mca_btl_openib_component.ib_procs, opal_list_t);
     mca_btl_openib_component.memory_registration_verbose = -1;
 
+#if OPAL_CUDA_SUPPORT
+    mca_common_cuda_stage_one_init();
+#endif /* OPAL_CUDA_SUPPORT */
+
     return OPAL_SUCCESS;
 }
 
@@ -280,6 +283,10 @@ static int btl_openib_component_close(void)
 
     /* close memory registration debugging output */
     opal_output_close (mca_btl_openib_component.memory_registration_verbose);
+
+#if OPAL_CUDA_SUPPORT
+    mca_common_cuda_fini();
+#endif /* OPAL_CUDA_SUPPORT */
 
     return rc;
 }
@@ -438,8 +445,9 @@ static int btl_openib_modex_send(void)
     }
 
     /* All done -- send it! */
-    rc = opal_modex_send(&mca_btl_openib_component.super.btl_version,
-                         message, msg_size);
+    OPAL_MODEX_SEND(rc, PMIX_SYNC_REQD, PMIX_REMOTE,
+                    &mca_btl_openib_component.super.btl_version,
+                    message, msg_size);
     free(message);
     opal_output(-1, "Modex sent!  %d calculated, %d actual\n", (int) msg_size, (int) (offset - message));
 

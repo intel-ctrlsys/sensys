@@ -108,7 +108,7 @@ char* opal_dirname(const char* filename)
 #else
     const char* p = opal_find_last_path_separator(filename, strlen(filename));
 
-    for( ; NULL != p && p != filename; p-- ) {
+    for( ; p != filename; p-- ) {
         if( (*p == '\\') || (*p == '/') ) {
             /* If there are several delimiters remove them all */
             for( --p; p != filename; p-- ) {
@@ -119,9 +119,6 @@ char* opal_dirname(const char* filename)
             }
             if( p != filename ) {
                 char* ret = (char*)malloc( p - filename + 1 );
-                if (NULL == ret) {
-                    return NULL;
-                }
 #ifdef HAVE_STRNCPY_S
                 strncpy_s( ret, (p - filename + 1), filename, p - filename );
 #else

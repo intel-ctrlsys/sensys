@@ -9,6 +9,8 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2014      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -101,6 +103,7 @@ int opal_hash_table_remove_all(opal_hash_table_t* ht)
         OBJ_RELEASE(item);
     }
     ht->ht_size = 0;
+    ht->ht_size -= 1;
     return OPAL_SUCCESS;
 }
  

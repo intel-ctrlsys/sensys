@@ -503,14 +503,6 @@ static int orcmd_init(void)
         goto error;
     }
 
-    /* initialize the nidmaps */
-    if (ORTE_SUCCESS != (ret = orte_util_nidmap_init(NULL))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&buf);
-        error = "orte_util_nidmap_init";
-        goto error;
-    }
-
     /* extract the cluster description and setup the routed info - the orcm routed component
      * will know what to do. */
     n = 1;

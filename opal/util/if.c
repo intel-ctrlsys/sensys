@@ -223,8 +223,8 @@ int opal_ifaddrtoname(const char* if_addr, char* if_name, int length)
 
     for (r = res; r != NULL; r = r->ai_next) {
         for (intf =  (opal_if_t*)opal_list_get_first(&opal_if_list);
-             intf != (opal_if_t*)opal_list_get_end(&opal_if_list);
-             intf =  (opal_if_t*)opal_list_get_next(intf)) {
+            intf != (opal_if_t*)opal_list_get_end(&opal_if_list);
+            intf =  (opal_if_t*)opal_list_get_next(intf)) {
             
             if (AF_INET == r->ai_family) {
                 struct sockaddr_in ipv4;
@@ -235,16 +235,13 @@ int opal_ifaddrtoname(const char* if_addr, char* if_name, int length)
                 
                 if (inaddr->sin_addr.s_addr == ipv4.sin_addr.s_addr) {
                     strncpy(if_name, intf->if_name, length);
-                    if (NULL != res) {
-                        freeaddrinfo (res);
-                    }
                     return OPAL_SUCCESS;
                 }
             }
 #if OPAL_ENABLE_IPV6
             else {
                 if (IN6_ARE_ADDR_EQUAL(&((struct sockaddr_in6*) &intf->if_addr)->sin6_addr,
-                                       &((struct sockaddr_in6*) r->ai_addr)->sin6_addr)) {
+                    &((struct sockaddr_in6*) r->ai_addr)->sin6_addr)) {
                     strncpy(if_name, intf->if_name, length);
                     return OPAL_SUCCESS;
                 }

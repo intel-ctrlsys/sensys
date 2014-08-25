@@ -348,13 +348,6 @@ static int emulator_init(void)
         goto error;
     }
 
-    /* initialize the nidmaps */
-    if (ORTE_SUCCESS != (ret = orte_util_nidmap_init(NULL))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_util_nidmap_init";
-        goto error;
-    }
-
     /* extract the buffers */
     n = 1;
     if (OPAL_SUCCESS != (ret = opal_dss.unpack(&buf, &uribuf, &n, OPAL_BUFFER))) {

@@ -51,7 +51,7 @@
 #include "orte/mca/rml/rml.h"
 #include "orte/mca/rml/rml_types.h"
 #include "orte/mca/routed/routed.h"
-#include "orte/mca/grpcomm/grpcomm.h"
+#include "orte/mca/grpcomm/base/base.h"
 #include "orte/mca/odls/odls.h"
 #if OPAL_ENABLE_FT_CR == 1
 #include "orte/mca/snapc/base/base.h"
@@ -236,7 +236,6 @@ void orte_plm_base_setup_job(int fd, short args, void *cbdata)
     int i;
     orte_app_context_t *app;
     orte_state_caddy_t *caddy = (orte_state_caddy_t*)cbdata;
-    orte_grpcomm_coll_id_t id;
 
     OPAL_OUTPUT_VERBOSE((5, orte_plm_base_framework.framework_output,
                          "%s plm:base:setup_job",
@@ -270,22 +269,6 @@ void orte_plm_base_setup_job(int fd, short args, void *cbdata)
         orte_enable_recovery) {
         ORTE_FLAG_SET(caddy->jdata, ORTE_JOB_FLAG_RECOVERABLE);
     }
-
-    /* get collective ids for the std MPI operations */
-    id = orte_grpcomm_base_get_coll_id();
-    orte_set_attribute(&caddy->jdata->attributes, ORTE_JOB_PEER_MODX_ID, ORTE_ATTR_GLOBAL, &id, ORTE_GRPCOMM_COLL_ID_T);
-    id = orte_grpcomm_base_get_coll_id();
-    orte_set_attribute(&caddy->jdata->attributes, ORTE_JOB_INIT_BAR_ID, ORTE_ATTR_GLOBAL, &id, ORTE_GRPCOMM_COLL_ID_T);
-    id = orte_grpcomm_base_get_coll_id();
-    orte_set_attribute(&caddy->jdata->attributes, ORTE_JOB_FINI_BAR_ID, ORTE_ATTR_GLOBAL, &id, ORTE_GRPCOMM_COLL_ID_T);
-
-
-#if OPAL_ENABLE_FT_CR == 1
-    id = orte_grpcomm_base_get_coll_id();
-    orte_set_attribute(&caddy->jdata->attributes, ORTE_JOB_SNAPC_INIT_BAR, ORTE_ATTR_GLOBAL, &id, ORTE_GRPCOMM_COLL_ID_T);
-    id = orte_grpcomm_base_get_coll_id();
-    orte_set_attribute(&caddy->jdata->attributes, ORTE_JOB_SNAPC_FINI_BAR, ORTE_ATTR_GLOBAL, &id, ORTE_GRPCOMM_COLL_ID_T);
-#endif
 
     /* if app recovery is not defined, set apps to defaults */
     for (i=0; i < caddy->jdata->apps->size; i++) {
@@ -480,6 +463,7 @@ void orte_plm_base_launch_apps(int fd, short args, void *cbdata)
     int rc;
     orte_state_caddy_t *caddy = (orte_state_caddy_t*)cbdata;
     orte_timer_t *timer;
+    orte_grpcomm_signature_t *sig;
 
     /* convenience */
     jdata = caddy->jdata;
@@ -518,15 +502,21 @@ void orte_plm_base_launch_apps(int fd, short args, void *cbdata)
         return;
     }
     
-    /* send the command to the daemons */
-    if (ORTE_SUCCESS != (rc = orte_grpcomm.xcast(ORTE_PROC_MY_NAME->jobid,
-                                                 buffer, ORTE_RML_TAG_DAEMON))) {
+    /* goes to all daemons */
+    sig = OBJ_NEW(orte_grpcomm_signature_t);
+    sig->signature = (orte_process_name_t*)malloc(sizeof(orte_process_name_t));
+    sig->signature[0].jobid = ORTE_PROC_MY_NAME->jobid;
+    sig->signature[0].vpid = ORTE_VPID_WILDCARD;
+    if (ORTE_SUCCESS != (rc = orte_grpcomm.xcast(sig, ORTE_RML_TAG_DAEMON, buffer))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buffer);
+        OBJ_RELEASE(sig);
         ORTE_FORCED_TERMINATE(ORTE_ERROR_DEFAULT_EXIT_CODE);
         OBJ_RELEASE(caddy);
         return;
     }
+    /* maintain accounting */
+    OBJ_RELEASE(sig);
 
     /* track that we automatically are considered to have reported - used
      * only to report launch progress
@@ -1083,14 +1073,26 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
 
     /* check for debug flags */
     if (orte_debug_flag) {
-        opal_argv_append(argc, argv, "--debug");
+        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "orte_debug");
+        opal_argv_append(argc, argv, "1");
     }
     if (orte_debug_daemons_flag) {
-        opal_argv_append(argc, argv, "--debug-daemons");
+        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "orte_debug_daemons");
+        opal_argv_append(argc, argv, "1");
     }
     if (orte_debug_daemons_file_flag) {
-        opal_argv_append(argc, argv, "--debug-daemons-file");
+        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "orte_debug_daemons_file");
+        opal_argv_append(argc, argv, "1");
     }
+    if (orte_leave_session_attached) {
+        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "orte_leave_session_attached");
+        opal_argv_append(argc, argv, "1");
+    }
+
     if (orted_spin_flag) {
         opal_argv_append(argc, argv, "--spin");
     }
@@ -1171,19 +1173,18 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
     if (ORTE_PROC_IS_HNP) {
         rml_uri = orte_rml.get_contact_info();
     } else {
-        asprintf(&param, "\"%s\"", orte_rml.get_contact_info() );
+        rml_uri = orte_rml.get_contact_info();
         opal_argv_append(argc, argv, "-mca");
         opal_argv_append(argc, argv, "orte_parent_uri");
-        opal_argv_append(argc, argv, param);
-        free(param);
+        opal_argv_append(argc, argv, rml_uri);
+        free(rml_uri);
     
-        rml_uri = orte_process_info.my_hnp_uri;
+        rml_uri = strdup(orte_process_info.my_hnp_uri);
     }
-    asprintf(&param, "\"%s\"", rml_uri);
     opal_argv_append(argc, argv, "-mca");
     opal_argv_append(argc, argv, "orte_hnp_uri");
-    opal_argv_append(argc, argv, param);
-    free(param);
+    opal_argv_append(argc, argv, rml_uri);
+    free(rml_uri);
 
     /* if we have static ports, pass the node list */
     if (orte_static_ports && NULL != nodes) {
@@ -1302,15 +1303,10 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
                 }
             }
             if (!ignore) {
-                /* even if it is a single word, we have to try and quote it
-                 * because it could contain a special character like a colon
-                 * or semicolon */
-                (void)asprintf(&tmp_force, "\"%s\"", orted_cmd_line[i+2]);
                 /* pass it along */
                 opal_argv_append(argc, argv, orted_cmd_line[i]);
                 opal_argv_append(argc, argv, orted_cmd_line[i+1]);
-                opal_argv_append(argc, argv, tmp_force);
-                free(tmp_force);
+                opal_argv_append(argc, argv, orted_cmd_line[i+2]);
             }
         }
     }

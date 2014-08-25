@@ -1347,31 +1347,6 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
         ret = ORTE_ERR_NOT_IMPLEMENTED;
         break;
             
-        /****    SYNC FROM LOCAL PROC    ****/
-    case ORTE_DAEMON_SYNC_BY_PROC:
-        if (orcmsd_globals.debug_daemons) {
-            opal_output(0, "%s orted_recv: received sync from local proc %s",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        ORTE_NAME_PRINT(sender));
-        }
-        if (ORTE_SUCCESS != (ret = orte_odls.require_sync(sender, buffer, false))) {
-            ORTE_ERROR_LOG(ret);
-            goto CLEANUP;
-        }
-        break;
-            
-    case ORTE_DAEMON_SYNC_WANT_NIDMAP:
-        if (orcmsd_globals.debug_daemons) {
-            opal_output(0, "%s orted_recv: received sync+nidmap from local proc %s",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        ORTE_NAME_PRINT(sender));
-        }
-        if (ORTE_SUCCESS != (ret = orte_odls.require_sync(sender, buffer, true))) {
-            ORTE_ERROR_LOG(ret);
-            goto CLEANUP;
-        }
-        break;
-        
         /****     TOP COMMAND     ****/
     case ORTE_DAEMON_TOP_CMD:
         /* setup the answer */
@@ -1575,10 +1550,6 @@ static char *get_orcmsd_comm_cmd_str(int command)
         return strdup("ORCMSD_DAEMON_REPORT_PROC_INFO_CMD");
     case ORTE_DAEMON_HEARTBEAT_CMD:
         return strdup("ORCMSD_DAEMON_HEARTBEAT_CMD");
-    case ORTE_DAEMON_SYNC_BY_PROC:
-        return strdup("ORCMSD_DAEMON_SYNC_BY_PROC");
-    case ORTE_DAEMON_SYNC_WANT_NIDMAP:
-        return strdup("ORCMSD_DAEMON_SYNC_WANT_NIDMAP");
     case ORTE_DAEMON_TOP_CMD:
         return strdup("ORCMSD_DAEMON_TOP_CMD");
     case ORTE_DAEMON_ABORT_PROCS_CALLED:

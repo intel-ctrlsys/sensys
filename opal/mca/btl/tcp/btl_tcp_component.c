@@ -15,7 +15,8 @@
  * Copyright (c) 2009      Oak Ridge National Laboratory
  * Copyright (c) 2012-2014 Los Alamos National Security, LLC.  All rights
  *                         reserved. 
- * Copyright (c) 2013      NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -63,6 +64,7 @@
 #include "opal/mca/btl/base/base.h" 
 #include "opal/mca/mpool/base/base.h" 
 #include "opal/mca/btl/base/btl_base_error.h"
+#include "opal/mca/pmix/pmix.h"
 
 #include "btl_tcp.h"
 #include "btl_tcp_addr.h"
@@ -380,6 +382,10 @@ static int mca_btl_tcp_component_close(void)
     OBJ_DESTRUCT(&mca_btl_tcp_component.tcp_frag_max);
     OBJ_DESTRUCT(&mca_btl_tcp_component.tcp_frag_user);
     OBJ_DESTRUCT(&mca_btl_tcp_component.tcp_lock);
+
+#if OPAL_CUDA_SUPPORT
+    mca_common_cuda_fini();
+#endif /* OPAL_CUDA_SUPPORT */
 
     return OPAL_SUCCESS;
 }
@@ -935,8 +941,9 @@ static int mca_btl_tcp_component_exchange(void)
 #endif
              } /* end of for opal_ifbegin() */
          } /* end of for tcp_num_btls */
-         rc =  opal_modex_send(&mca_btl_tcp_component.super.btl_version, 
-                               addrs, xfer_size);
+         OPAL_MODEX_SEND(rc, PMIX_SYNC_REQD, PMIX_GLOBAL,
+                         &mca_btl_tcp_component.super.btl_version, 
+                         addrs, xfer_size);
          free(addrs);
      } /* end if */
      return rc;

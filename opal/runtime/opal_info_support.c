@@ -244,9 +244,6 @@ static int info_register_framework (mca_base_framework_t *framework, opal_pointe
 
     if (NULL != component_map) {
         map = OBJ_NEW(opal_info_component_map_t);
-        if (NULL == map) {
-            return OPAL_ERR_OUT_OF_RESOURCE;
-        }
         map->type = strdup(framework->framework_name);
         map->components = &framework->framework_components;
         opal_pointer_array_add(component_map, map);
@@ -352,7 +349,7 @@ void opal_info_do_path(bool want_all, opal_cmd_line_t *cmd_line)
     count = opal_cmd_line_get_ninsts(cmd_line, "path");
     for (i = 0; i < count; ++i) {
         scope = opal_cmd_line_get_param(cmd_line, "path", i, 0);
-        if (NULL != scope && 0 == strcmp("all", scope)) {
+        if (0 == strcmp("all", scope)) {
             want_all = true;
             break;
         }
@@ -471,7 +468,7 @@ void opal_info_do_params(bool want_all_in, bool want_internal,
         count = opal_cmd_line_get_ninsts(opal_info_cmd_line, p);
         for (i = 0; i < count; ++i) {
             type = opal_cmd_line_get_param(opal_info_cmd_line, p, (int)i, 0);
-            if (NULL != type && 0 == strcmp(opal_info_type_all, type)) {
+            if (0 == strcmp(opal_info_type_all, type)) {
                 want_all = true;
                 break;
             }
@@ -491,14 +488,7 @@ void opal_info_do_params(bool want_all_in, bool want_internal,
         for (i = 0; i < count; ++i) {
             type = opal_cmd_line_get_param(opal_info_cmd_line, p, (int)i, 0);
             component = opal_cmd_line_get_param(opal_info_cmd_line, p, (int)i, 1);
-            if (NULL == type || NULL == component) {
-                char *usage = opal_cmd_line_get_usage_msg(opal_info_cmd_line);
-                opal_show_help("help-opal_info.txt", "not-found", true,
-                               (NULL == type) ? "NULL" : type);
-                free(usage);
-                exit(1);
-            }
-
+            
             for (found = false, i = 0; i < mca_types->size; ++i) {
                 if (NULL == (str = (char *)opal_pointer_array_get_item(mca_types, i))) {
                     continue;
@@ -574,12 +564,6 @@ void opal_info_do_type(opal_cmd_line_t *opal_info_cmd_line)
 
     for (k = 0; k < count; ++k) {
         type = opal_cmd_line_get_param(opal_info_cmd_line, p, k, 0);
-        if (NULL == type) {
-            char *usage = opal_cmd_line_get_usage_msg(opal_info_cmd_line);
-            opal_show_help("help-opal_info.txt", "not-found", true, "NULL");
-            free(usage);
-            exit(1);
-        }
         for (i = 0; i < len; ++i) {
             ret = mca_base_var_get (i, &var);
             if (OPAL_SUCCESS != ret) {
@@ -631,16 +615,16 @@ static void opal_info_show_mca_group_params(const mca_base_var_group_t *group, m
         /* read the selection parameter */
         var_id = mca_base_var_find (group->group_project, group->group_framework, NULL, NULL);
         if (0 <= var_id) {
-            mca_base_var_storage_t *value=NULL;
+            const mca_base_var_storage_t *value;
             char **requested_components;
             bool include_mode;
 
             mca_base_var_get_value (var_id, &value, NULL, NULL);
-            if (NULL != value && NULL != value->stringval && '\0' != value->stringval[0]) {
+            if (NULL != value->stringval && '\0' != value->stringval[0]) {
                 mca_base_component_parse_requested (value->stringval, &include_mode, &requested_components);
 
                 for (i = 0, requested = !include_mode ; requested_components[i] ; ++i) {
-                    if (0 == strcmp (requested_components[i], group_component)) {
+                    if (0 == strcmp (requested_components[i], group->group_component)) {
                         requested = include_mode;
                         break;
                     }
@@ -995,7 +979,7 @@ void opal_info_show_mca_version(const mca_base_component_t* component,
     char *mca_version;
     char *api_version;
     char *component_version;
-    char *tmp=NULL;
+    char *tmp;
     
     if (0 == strcmp(ver_type, opal_info_ver_all) ||
         0 == strcmp(ver_type, opal_info_ver_mca)) {
@@ -1061,9 +1045,12 @@ void opal_info_show_mca_version(const mca_base_component_t* component,
         }
         if (NULL != content) {
             asprintf(&tmp, "%s)", content);
-            free(content);        
-            opal_info_out(message, NULL, tmp);
+            free(content);
+        } else {
+            tmp = NULL;
         }
+        
+        opal_info_out(message, NULL, tmp);
         free(message);
         if (NULL != tmp) {
             free(tmp);

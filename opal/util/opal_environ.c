@@ -111,7 +111,6 @@ int opal_setenv(const char *name, const char *value, bool overwrite,
     /* Check the bozo case */
 
     if( NULL == env ) {
-        free(newvalue);
         return OPAL_ERR_BAD_PARAM;
     } else if (NULL == *env) {
         i = 0;

@@ -335,7 +335,7 @@ static int setup_launch(int *argcptr, char ***argvptr,
     char *orted_cmd, *orted_prefix, *final_cmd;
     int orted_index;
     int rc;
-    int cnt, i, j;
+    int i, j;
     bool found;
     
     /* Figure out the basenames for the libdir and bindir.  This
@@ -566,25 +566,6 @@ static int setup_launch(int *argcptr, char ***argvptr,
     opal_argv_append_nosize(&argv, "plm");
     opal_argv_append_nosize(&argv, "rsh");
     
-    /* in the rsh environment, we can append multi-word arguments
-     * by enclosing them in quotes. Check for any multi-word
-     * mca params passed to mpirun and include them - they were
-     * excluded in append_basic_args
-     */
-    cnt = opal_argv_count(orted_cmd_line);    
-    for (i=0; i < cnt; i+=3) {
-        if (NULL != strchr(orted_cmd_line[i+2], ' ')) {
-            continue;
-        }
-        /* protect the value with quotes */
-        (void)asprintf(&param, "\"%s\"", orted_cmd_line[i+2]);
-        /* now pass it along */
-        opal_argv_append(&argc, &argv, orted_cmd_line[i]);
-        opal_argv_append(&argc, &argv, orted_cmd_line[i+1]);
-        opal_argv_append(&argc, &argv, param);
-        free(param);
-    }
-    
     /* unless told otherwise... */
     if (mca_plm_rsh_component.pass_environ_mca_params) {
         /* now check our local environment for MCA params - add them
@@ -611,22 +592,32 @@ static int setup_launch(int *argcptr, char ***argvptr,
                     }
                 }
                 if (!found) {
-                    char *p2;
                     /* add it */
                     opal_argv_append(&argc, &argv, "-mca");
                     opal_argv_append(&argc, &argv, param);
-                    /* there could be multi-word values here, or
-                     * values with special characters, so protect
-                     * the value with quotes */
-                    (void)asprintf(&p2, "\"%s\"", value);
-                    opal_argv_append(&argc, &argv, p2);
-                    free(p2);
+                    opal_argv_append(&argc, &argv, value);
                 }
                 free(param);
             }
         }
     }
-    
+
+    /* in the rsh environment, we need to protect args in quotes
+     * as they can contain spaces or special characters */
+    for (i=0; NULL != argv[i]; i++) {
+        if (0 != strcmp(argv[i], "-mca")) {
+            continue;
+        }
+        /* protect the value with quotes if not already
+         * quoted */
+        if ('\"' == argv[i+2][0]) {
+            continue;
+        }
+        (void)asprintf(&param, "\"%s\"", argv[i+2]);
+        free(argv[i+2]);
+        argv[i+2] = param;
+    }
+
     value = opal_argv_join(argv, ' ');
     if (sysconf(_SC_ARG_MAX) < (int)strlen(value)) {
         orte_show_help("help-plm-rsh.txt", "cmd-line-too-long",
@@ -735,7 +726,6 @@ static void ssh_child(int argc, char **argv)
  */
 static int remote_spawn(opal_buffer_t *launch)
 {
-    opal_list_item_t *item;
     int node_name_index1;
     int proc_vpid_index;
     char **argv = NULL;
@@ -748,7 +738,8 @@ static int remote_spawn(opal_buffer_t *launch)
     orte_process_name_t target;
     orte_plm_rsh_caddy_t *caddy;
     orte_job_t *daemons;
-    orte_grpcomm_collective_t coll;
+    opal_list_t coll;
+    orte_namelist_t *child;
 
     OPAL_OUTPUT_VERBOSE((1, orte_plm_base_framework.framework_output,
                          "%s plm:rsh: remote spawn called",
@@ -780,11 +771,11 @@ static int remote_spawn(opal_buffer_t *launch)
     orte_routed.update_routing_plan();
     
     /* get the updated routing list */
-    OBJ_CONSTRUCT(&coll, orte_grpcomm_collective_t);
-    orte_routed.get_routing_list(ORTE_GRPCOMM_XCAST, &coll);
+    OBJ_CONSTRUCT(&coll, opal_list_t);
+    orte_routed.get_routing_list(&coll);
     
     /* if I have no children, just return */
-    if (0 == opal_list_get_size(&coll.targets)) {
+    if (0 == opal_list_get_size(&coll)) {
         OPAL_OUTPUT_VERBOSE((1, orte_plm_base_framework.framework_output,
                              "%s plm:rsh: remote spawn - have no children!",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
@@ -814,10 +805,7 @@ static int remote_spawn(opal_buffer_t *launch)
     }
     
     target.jobid = ORTE_PROC_MY_NAME->jobid;
-    for (item = opal_list_get_first(&coll.targets);
-         item != opal_list_get_end(&coll.targets);
-         item = opal_list_get_next(item)) {
-        orte_namelist_t *child = (orte_namelist_t*)item;
+    OPAL_LIST_FOREACH(child, &coll, orte_namelist_t) {
         target.vpid = child->name.vpid;
         
         /* get the host where this daemon resides */
@@ -854,7 +842,7 @@ static int remote_spawn(opal_buffer_t *launch)
         caddy->daemon->name.vpid = target.vpid;
         opal_list_append(&launch_list, &caddy->super);
     }
-    OBJ_DESTRUCT(&coll);
+    OPAL_LIST_DESTRUCT(&coll);
     
     /* trigger the event to start processing the launch list */
     OPAL_OUTPUT_VERBOSE((1, orte_plm_base_framework.framework_output,
@@ -958,12 +946,12 @@ static void launch_daemons(int fd, short args, void *cbdata)
     orte_app_context_t *app;
     orte_node_t *node, *nd;
     orte_std_cntr_t nnode;
-    opal_list_item_t *item;
     orte_job_t *daemons;
     orte_state_caddy_t *state = (orte_state_caddy_t*)cbdata;
     orte_plm_rsh_caddy_t *caddy;
-    orte_grpcomm_collective_t coll;
+    opal_list_t coll;
     char *username;
+    orte_namelist_t *child;
 
     /* if we are launching debugger daemons, then just go
      * do it - no new daemons will be launched
@@ -1060,7 +1048,14 @@ static void launch_daemons(int fd, short args, void *cbdata)
      * doing this.
      */
     app = (orte_app_context_t*)opal_pointer_array_get_item(state->jdata->apps, 0);
-    orte_get_attribute(&app->attributes, ORTE_APP_PREFIX_DIR, (void**)&prefix_dir, OPAL_STRING);
+    if (!orte_get_attribute(&app->attributes, ORTE_APP_PREFIX_DIR, (void**)&prefix_dir, OPAL_STRING)) {
+        /* check to see if enable-orterun-prefix-by-default was given - if
+         * this is being done by a singleton, then orterun will not be there
+         * to put the prefix in the app. So make sure we check to find it */
+        if ((bool)ORTE_WANT_ORTERUN_PREFIX_BY_DEFAULT) {
+            prefix_dir = strdup(opal_install_dirs.prefix);
+        }
+    }
     /* we also need at least one node name so we can check what shell is
      * being used, if we have to
      */
@@ -1122,8 +1117,8 @@ static void launch_daemons(int fd, short args, void *cbdata)
         }
         
         /* get the updated routing list */
-        OBJ_CONSTRUCT(&coll, orte_grpcomm_collective_t);
-        orte_routed.get_routing_list(ORTE_GRPCOMM_XCAST, &coll);
+        OBJ_CONSTRUCT(&coll, opal_list_t);
+        orte_routed.get_routing_list(&coll);
     }
     
     /* setup the launch */
@@ -1143,10 +1138,7 @@ static void launch_daemons(int fd, short args, void *cbdata)
         
         /* if we are tree launching, only launch our own children */
         if (!mca_plm_rsh_component.no_tree_spawn) {
-            for (item = opal_list_get_first(&coll.targets);
-                 item != opal_list_get_end(&coll.targets);
-                 item = opal_list_get_next(item)) {
-                orte_namelist_t *child = (orte_namelist_t*)item;
+            OPAL_LIST_FOREACH(child, &coll, orte_namelist_t) {
                 if (child->name.vpid == node->daemon->name.vpid) {
                     goto launch;
                 }

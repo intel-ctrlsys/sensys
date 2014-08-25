@@ -143,7 +143,6 @@ static void opal_graph_edge_destruct(opal_graph_edge_t *edge)
 static void opal_graph_construct(opal_graph_t *graph)
 {
     graph->adjacency_list = OBJ_NEW(opal_list_t);
-    assert(graph->adjacency_list);
     graph->number_of_vertices = 0;
     graph->number_of_edges = 0;
 }
@@ -171,7 +170,6 @@ static void opal_adjacency_list_construct(opal_adjacency_list_t *aj_list)
 {
     aj_list->vertex = NULL;
     aj_list->edges = OBJ_NEW(opal_list_t);
-    assert(aj_list->edges);
 }
 
 static void opal_adjacency_list_destruct(opal_adjacency_list_t *aj_list)
@@ -255,7 +253,6 @@ void opal_graph_add_vertex(opal_graph_t *graph, opal_graph_vertex_t *vertex)
    }
    /* Construct a new adjacency list */
    aj_list = OBJ_NEW(opal_adjacency_list_t);
-   assert(aj_list);
    aj_list->vertex = vertex;
    /* point the vertex to the adjacency list of the vertex (for easy searching) */
    vertex->in_adj_list = aj_list;
@@ -305,7 +302,7 @@ int opal_graph_add_edge(opal_graph_t *graph, opal_graph_edge_t *edge)
      * if one of the vertices either the start or the end is not
      * found - return an error.
      */
-    if (false == start_found || false == end_found) {
+    if (false == start_found && false == end_found) {
         return OPAL_ERROR;
     }
     /* point the edge to the adjacency list of the start vertex (for easy search) */
@@ -612,7 +609,6 @@ uint32_t opal_graph_spf(opal_graph_t *graph, opal_graph_vertex_t *vertex1, opal_
      * Run Dijkstra algorithm on the graph from the start vertex.
      */
     distance_array = OBJ_NEW(opal_value_array_t);
-    assert(distance_array);
     opal_value_array_init(distance_array, sizeof(vertex_distance_from_t));
     opal_value_array_reserve(distance_array,50);
     items_in_distance_array = opal_graph_dijkstra(graph, vertex1, distance_array);
@@ -622,7 +618,7 @@ uint32_t opal_graph_spf(opal_graph_t *graph, opal_graph_vertex_t *vertex1, opal_
      */
     for (i = 0; i < items_in_distance_array; i++) {
         vertex_distance = opal_value_array_get_item(distance_array, i);
-        if (NULL != vertex_distance && vertex_distance->vertex == vertex2) {
+        if (vertex_distance->vertex == vertex2) {
             spf = vertex_distance->weight;
             break;
         }
@@ -699,9 +695,6 @@ uint32_t opal_graph_dijkstra(opal_graph_t *graph, opal_graph_vertex_t *vertex, o
     /* get the order of the graph and allocate a working queue accordingly */
     graph_order = opal_graph_get_order(graph);
     Q = (vertex_distance_from_t *)malloc(graph_order * sizeof(vertex_distance_from_t));
-    if (NULL == Q) {
-        return 0;
-    }
     /* assign a pointer to the start of the queue */
     q_start = Q;
     /* run on all the vertices of the graph */
@@ -778,7 +771,6 @@ void opal_graph_duplicate(opal_graph_t **dest, opal_graph_t *src)
 
     /* construct a new graph */
     *dest = OBJ_NEW(opal_graph_t);
-    assert(*dest);
     /* Run on all the vertices of the src graph */
     for (aj_list_item = opal_list_get_first(src->adjacency_list);
          aj_list_item != opal_list_get_end(src->adjacency_list);
@@ -786,7 +778,6 @@ void opal_graph_duplicate(opal_graph_t **dest, opal_graph_t *src)
         aj_list = (opal_adjacency_list_t *) aj_list_item;
         /* for each vertex in the src graph, construct a new vertex */
         vertex = OBJ_NEW(opal_graph_vertex_t);
-        assert(vertex);
         /* associate the new vertex to a vertex from the original graph */
         vertex->sibling = aj_list->vertex;
         /* associate the original vertex to the new constructed vertex */
@@ -824,7 +815,6 @@ void opal_graph_duplicate(opal_graph_t **dest, opal_graph_t *src)
             edge = (opal_graph_edge_t *)edg_item;
             /* construct new edge for the new graph */
             new_edge = OBJ_NEW(opal_graph_edge_t);
-            assert(new_edge);
             /* copy the edge weight from the original edge */
             new_edge->weight = edge->weight;
             /* connect the new edge according to start and end associations to the vertices of the src graph */

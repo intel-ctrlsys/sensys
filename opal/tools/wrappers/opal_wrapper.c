@@ -103,9 +103,6 @@ static void
 options_data_init(struct options_data_t *data)
 {
     data->compiler_args = (char **) malloc(sizeof(char*));
-    if (NULL == data->compiler_args) {
-        return;
-    }
     data->compiler_args[0] = NULL;
     data->language = NULL;
     data->compiler = NULL;
@@ -115,34 +112,16 @@ options_data_init(struct options_data_t *data)
     data->compiler_env = NULL;
     data->compiler_flags_env = NULL;
     data->preproc_flags = (char **) malloc(sizeof(char*));
-    if (NULL == data->preproc_flags) {
-        return;
-    }
     data->preproc_flags[0] = NULL;
     data->comp_flags = (char **) malloc(sizeof(char*));
-    if (NULL == data->comp_flags) {
-        return;
-    }
     data->comp_flags[0] = NULL;
     data->comp_flags_prefix = (char **) malloc(sizeof(char*));
-    if (NULL == data->comp_flags_prefix) {
-        return;
-    }
     data->comp_flags_prefix[0] = NULL;
     data->link_flags = (char **) malloc(sizeof(char*));
-    if (NULL == data->link_flags) {
-        return;
-    }
     data->link_flags[0] = NULL;
     data->libs = (char **) malloc(sizeof(char*));
-    if (NULL == data->libs) {
-        return;
-    }
     data->libs[0] = NULL;
     data->libs_static = (char **) malloc(sizeof(char*));
-    if (NULL == data->libs_static) {
-        return;
-    }
     data->libs_static[0] = NULL;
     data->dyn_lib_file = NULL;
     data->static_lib_file = NULL;
@@ -183,9 +162,6 @@ options_data_expand(const char *value)
     /* make space for the new set of args */
     parse_options_idx++;
     options_data = (struct options_data_t *) realloc(options_data, sizeof(struct options_data_t) * (parse_options_idx + 1));
-    if (NULL == options_data) {
-        return;
-    }
     options_data_init(&(options_data[parse_options_idx]));
 
     /* if there are values, this is not the default case.
@@ -483,9 +459,6 @@ main(int argc, char *argv[])
      ****************************************************/
 
     base_argv0 = opal_basename(argv[0]);
-    if (NULL == base_argv0) {
-        return OPAL_ERR_OUT_OF_RESOURCE;
-    }
 #if defined(EXEEXT)
     if( 0 != strlen(EXEEXT) ) {
         char extension[] = EXEEXT;
@@ -504,7 +477,6 @@ main(int argc, char *argv[])
 
     if (OPAL_SUCCESS != (ret = data_init(base_argv0))) {
         fprintf(stderr, "Error parsing data file %s: %s\n", base_argv0, opal_strerror(ret));
-        free(base_argv0);
         return ret;
     }
 
@@ -745,6 +717,15 @@ main(int argc, char *argv[])
     if (disable_flags && !((flags & COMP_DRY_RUN) && !real_flag)) {
         flags &= ~(COMP_WANT_PREPROC|COMP_WANT_COMPILE|COMP_WANT_LINK);
     }
+
+#if !OMPI_ENABLE_MPI_PROFILING
+    /* sanity check */
+    if (flags & COMP_WANT_PMPI) {
+	    opal_show_help("help-opal-wrapper.txt", "no-profiling-support", true,
+		               argv[0], NULL);
+    }
+#endif
+
 
     /****************************************************
      *

@@ -361,7 +361,7 @@ static void res_log(opal_buffer_t *sample)
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
-        kv->key = "hostname";
+        kv->key = strdup("hostname");
         kv->type = OPAL_STRING;
         kv->data.string = strdup(node);
         opal_list_append(vals, &kv->super);

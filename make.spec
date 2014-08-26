@@ -24,7 +24,7 @@ orcm is a opensource resilency cluster management software implementation.
 mkdir -p obj
 cd obj
 pwd
-../configure %{configure_flags} --prefix=/usr --libdir=/usr/lib --with-platform=../contrib/platform/intel/hillsboro/orcm-linux
+../configure %{configure_flags} --prefix=/usr --libdir=/usr/lib64 --with-platform=../contrib/platform/intel/hillsboro/orcm-linux
 $(make_prefix) $(MAKE) $(make_postfix)
 #$(MAKE) build_doc
 
@@ -39,7 +39,7 @@ $(extra_install)
 %defattr(-,root,root,-)
 /usr/etc/*
 /usr/bin/*
-/usr/lib/*
+/usr/lib64/*
 /usr/include/openmpi/*
 %doc /usr/share/openmpi/*
 %doc /usr/share/man/man1/*

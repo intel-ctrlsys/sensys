@@ -1,6 +1,6 @@
 name = orcm
 arch = $(shell uname -p)
-version = 0.0.0
+version = 0.9.0
 #$(shell git describe | sed 's|[^0-9]*\([0-9]*\.[0-9]*\.[0-9]*\).*|\1|')
 release = 1
 #$(shell git describe | sed 's|[^0-9]*[0-9]*\.[0-9]*\.[0-9]*-\([0-9]*\).*|\1|')
@@ -22,8 +22,11 @@ include make.spec
 
 all: $(rpm)
 
-$(rpm): $(specfile) $(source_tar)
+$(rpm): $(manifest) $(specfile) $(source_tar)
 	rpmbuild $(rpmbuild_flags) $(specfile) -ba
+
+$(manifest): MANIFEST 
+	find *.* > $@
 
 $(source_tar): $(topdir) $(specfile) 
 	if [ -n "$(revision)" ]; then \

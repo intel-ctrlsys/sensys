@@ -312,19 +312,9 @@ static int orcmctrld_init(void)
         error = "opal_dstore_base_select";
         goto error;
     }
-    /* create the handles */
-    if (0 > (opal_dstore_peer = opal_dstore.open("PEER"))) {
-        error = "opal dstore global";
-        ret = ORTE_ERR_FATAL;
-        goto error;
-    }
+    /* create the handle */
     if (0 > (opal_dstore_internal = opal_dstore.open("INTERNAL"))) {
         error = "opal dstore internal";
-        ret = ORTE_ERR_FATAL;
-        goto error;
-    }
-    if (0 > (opal_dstore_nonpeer = opal_dstore.open("NONPEER"))) {
-        error = "opal dstore nonpeer";
         ret = ORTE_ERR_FATAL;
         goto error;
     }

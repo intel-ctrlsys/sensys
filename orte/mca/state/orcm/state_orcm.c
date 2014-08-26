@@ -59,7 +59,6 @@ orte_state_base_module_t orte_state_orcm_module = {
 static void track_jobs(int fd, short argc, void *cbdata);
 static void track_procs(int fd, short argc, void *cbdata);
 static int pack_state_update(opal_buffer_t *buf, orte_job_t *jdata);
-static int pack_child_contact_info(orte_jobid_t jobid, opal_buffer_t *buf);
 static void my_quit(int fd, short argc, void *cbdata)
 {
     orte_event_base_active = false;
@@ -418,22 +417,3 @@ static int pack_state_update(opal_buffer_t *alert, orte_job_t *jdata)
     return ORTE_SUCCESS;
 }
 
-static int pack_child_contact_info(orte_jobid_t jobid, opal_buffer_t *buf)
-{
-    int i, rc;
-    orte_proc_t *pptr;
-
-    for (i=0; i < orte_local_children->size; i++) {
-        if (NULL == (pptr = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
-            continue;
-        }
-        if (jobid == pptr->name.jobid) {
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &pptr->rml_uri, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                return rc;
-            }
-        }
-    }
-
-    return ORTE_SUCCESS;
-}

@@ -158,7 +158,7 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
     return ORCM_ERROR;
 }
 
-void orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
+int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
 {
     int ret = 0;
     unsigned char idata[4], rdata[MAX_FRU_DEVICES][256];
@@ -169,6 +169,7 @@ void orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
     unsigned char hex_val;
     long int fru_area;
     long int max_fru_area = 0;
+    char *error_string;
 
     memset(idata,0x00,4);
     
@@ -178,6 +179,12 @@ void orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
         memset(rdata[id], 0x00, 256);
         *idata = hex_val;
         ret = ipmi_cmd(GET_FRU_INV_AREA, idata, 1, rdata[id], &rlen, &ccode, 0);
+        if(ret)
+        {
+            error_string = decode_rv(ret);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "ipmi_cmd_mc for get_fru_inv RETURN CODE : %s \n", error_string);
+        }
         ipmi_close();
         hex_val++;
     }
@@ -199,11 +206,10 @@ void orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
         }
     }
 
-    orcm_sensor_get_fru_data(max_id, max_fru_area, host);
-
+    return orcm_sensor_get_fru_data(max_id, max_fru_area, host);
 }
 
-void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *host)
+int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *host)
 {
     int ret;
     int i, ffail_count=0;
@@ -226,7 +232,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     rdata = (unsigned char*) malloc(fru_area);
 
     if (NULL == rdata) {
-        return;
+        return ORCM_ERROR;
     }
 
     memset(rdata,0x00,sizeof(rdata));
@@ -249,7 +255,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
             {
                 opal_output(0,"Max FRU Read retries over");
                 free(rdata);
-                return;
+                return ORCM_ERROR;
             } else {                
                 i--;
                 ffail_count++;
@@ -305,7 +311,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     
     if (NULL == board_manuf) {
         free(rdata);
-        return;
+        return ORCM_ERROR;
     }
 
     for(i = 0; i < board_manuf_length; i++){
@@ -320,7 +326,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     if (NULL == board_product_name) {
         free(rdata);
         free(board_manuf);
-        return;
+        return ORCM_ERROR;
     }
 
     for(i = 0; i < board_product_length; i++) {
@@ -336,7 +342,7 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
         free(rdata);
         free(board_manuf);
         free(board_product_name);
-        return;
+        return ORCM_ERROR;
     }
 
     for(i = 0; i < board_serial_length; i++) {
@@ -351,6 +357,8 @@ void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *ho
     free(board_manuf);
     free(board_product_name);
     free(board_serial_num);
+
+    return ORCM_SUCCESS;
 }
 
 /* int orcm_sensor_ipmi_found (char* nodename)

@@ -136,6 +136,6 @@ unsigned int orcm_sensor_ipmi_counthosts(void);
 int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip);
 void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap);
 int orcm_sensor_ipmi_label_found(char * tag);
-void orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host);
-void orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *host);
+int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host);
+int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *host);
 #endif

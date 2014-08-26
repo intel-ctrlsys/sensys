@@ -156,6 +156,7 @@ BEGIN_C_DECLS
  */
 static inline bool opal_set_using_threads(bool have)
 {
+    if(have) {}; //Bogus use of have to stop compiler error for an orcm test.
     return opal_using_threads();
 }
 

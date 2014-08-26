@@ -1,6 +1,6 @@
 name = orcm
 arch = $(shell uname -p)
-version = 0.9.0
+version = 0.0.0
 #$(shell git describe | sed 's|[^0-9]*\([0-9]*\.[0-9]*\.[0-9]*\).*|\1|')
 release = 1
 #$(shell git describe | sed 's|[^0-9]*[0-9]*\.[0-9]*\.[0-9]*-\([0-9]*\).*|\1|')

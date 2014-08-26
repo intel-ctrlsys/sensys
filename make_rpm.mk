@@ -22,8 +22,11 @@ include make.spec
 
 all: $(rpm)
 
-$(rpm): $(specfile) $(source_tar)
+$(rpm): $(manifest) $(specfile) $(source_tar)
 	rpmbuild $(rpmbuild_flags) $(specfile) -ba
+
+$(manifest): MANIFEST 
+	find *.* > $@
 
 $(source_tar): $(topdir) $(specfile) 
 	if [ -n "$(revision)" ]; then \

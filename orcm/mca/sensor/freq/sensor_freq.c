@@ -340,9 +340,9 @@ static void freq_sample(orcm_sensor_sampler_t *sampler)
                                 trk->core, ghz, trk->max_freq, trk->min_freq);
             if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ghz, 1, OPAL_FLOAT))) {
                 ORTE_ERROR_LOG(ret);
-                OBJ_DESTRUCT(&data);
                 free(freq);
                 fclose(fp);
+                OBJ_DESTRUCT(&data);
                 return;
             }
             packed = true;

@@ -392,9 +392,9 @@ static void coretemp_sample(orcm_sensor_sampler_t *sampler)
                                 trk->socket, trk->label, degc, trk->max_temp, trk->critical_temp);
             if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &degc, 1, OPAL_FLOAT))) {
                 ORTE_ERROR_LOG(ret);
-                OBJ_DESTRUCT(&data);
                 free(temp);
                 fclose(fp);
+                OBJ_DESTRUCT(&data);
                 return;
             }
             free(temp);

@@ -22,7 +22,7 @@
 #include "orcm/mca/db/base/base.h"
 
 
-static void process_open(int fd, short args, void *cbdata)
+void process_open(int fd, short args, void *cbdata)
 {
     orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
     orcm_db_handle_t *hdl;
@@ -109,7 +109,7 @@ void orcm_db_base_open(char *name,
     opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
 }
 
-static void process_close(int fd, short args, void *cbdata)
+void process_close(int fd, short args, void *cbdata)
 {
     orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
     orcm_db_handle_t *hdl;
@@ -160,7 +160,7 @@ void orcm_db_base_close(int dbhandle,
 }
 
 
-static void process_store(int fd, short args, void *cbdata)
+void process_store(int fd, short args, void *cbdata)
 {
     orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
     orcm_db_handle_t *hdl;
@@ -211,7 +211,7 @@ void orcm_db_base_store(int dbhandle,
     opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
 }
 
-static void process_commit(int fd, short args, void *cbdata)
+void process_commit(int fd, short args, void *cbdata)
 {
     orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
     orcm_db_handle_t *hdl;
@@ -258,7 +258,7 @@ void orcm_db_base_commit(int dbhandle,
     opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
 }
 
-static void process_fetch(int fd, short args, void *cbdata)
+void process_fetch(int fd, short args, void *cbdata)
 {
     orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
     orcm_db_handle_t *hdl;
@@ -308,7 +308,7 @@ void orcm_db_base_fetch(int dbhandle,
     opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
 }
 
-static void process_remove(int fd, short args, void *cbdata)
+void process_remove(int fd, short args, void *cbdata)
 {
     orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
     orcm_db_handle_t *hdl;

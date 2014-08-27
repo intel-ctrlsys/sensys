@@ -390,6 +390,7 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
         free(board_manuf);
         free(board_product_name);
         free(board_serial_num);
+        return ORCM_ERROR;
     }
 
     for (i = 0; i < board_part_length; i++) {
@@ -564,7 +565,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
         
@@ -573,7 +573,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -589,7 +588,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 
@@ -603,7 +601,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 
@@ -617,7 +614,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 
@@ -631,7 +627,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 
@@ -645,7 +640,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 
@@ -761,7 +755,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 
@@ -772,7 +765,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 
@@ -783,7 +775,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 
@@ -794,7 +785,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 
@@ -805,7 +795,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 
@@ -816,7 +805,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(sample_str);
             return;
         }
 

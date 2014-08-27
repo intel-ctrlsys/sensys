@@ -114,6 +114,7 @@ int orcm_pack_rack(opal_buffer_t *buffer, const void *src,
 {
     int ret = OPAL_SUCCESS;
     orcm_rack_t **racks, *rack;
+    orcm_node_t *controller;
     int i;
     int32_t j;
     orcm_node_t *node;
@@ -131,7 +132,8 @@ int orcm_pack_rack(opal_buffer_t *buffer, const void *src,
             return ret;
         }
         /* pack the controller */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&rack->controller, 1, ORCM_NODE))) {
+        controller = &rack->controller;
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&controller, 1, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -157,6 +159,7 @@ int orcm_pack_row(opal_buffer_t *buffer, const void *src,
 {
     int ret = OPAL_SUCCESS;
     orcm_row_t **rows, *row;
+    orcm_node_t *controller;
     int i;
     int32_t j;
     orcm_rack_t *rack;
@@ -174,7 +177,8 @@ int orcm_pack_row(opal_buffer_t *buffer, const void *src,
             return ret;
         }
         /* pack the controller */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&row->controller, 1, ORCM_NODE))) {
+        controller = &row->controller;
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&controller, 1, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -200,6 +204,7 @@ int orcm_pack_cluster(opal_buffer_t *buffer, const void *src,
 {
     int ret = OPAL_SUCCESS;
     orcm_cluster_t **clusters, *cluster;
+    orcm_node_t *controller;
     int i;
     int32_t j;
     orcm_row_t *row;
@@ -217,7 +222,8 @@ int orcm_pack_cluster(opal_buffer_t *buffer, const void *src,
             return ret;
         }
         /* pack the controller */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&cluster->controller, 1, ORCM_NODE))) {
+        controller = &cluster->controller;
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&controller, 1, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -243,6 +249,7 @@ int orcm_pack_scheduler(opal_buffer_t *buffer, const void *src,
 {
     int ret = OPAL_SUCCESS;
     orcm_scheduler_t **schedulers, *scheduler;
+    orcm_node_t *controller;
     int i;
     int32_t j, k;
 
@@ -254,7 +261,8 @@ int orcm_pack_scheduler(opal_buffer_t *buffer, const void *src,
     for (i=0; i < num_vals; i++) {
         scheduler = schedulers[i];
         /* pack the controller */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&scheduler->controller, 1, ORCM_NODE))) {
+        controller = &scheduler->controller;
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&controller, 1, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }

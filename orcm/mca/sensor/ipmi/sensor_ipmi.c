@@ -220,14 +220,22 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     unsigned char ccode;
     int rdata_offset = 0;
     unsigned char fru_offset;
-    char *error_string;
+
+    unsigned int manuf_time[3]; /*holds the manufactured time (in minutes) from 0:00 1/1/96*/
+    unsigned long int manuf_minutes; /*holds the manufactured time (in minutes) from 0:00 1/1/96*/
+    unsigned long int manuf_seconds; /*holds the above time (in seconds)*/
+    time_t raw_seconds;
+    struct tm *time_info;
+    char manuf_date[11]; /*A mm/dd/yyyy or dd/mm/yyyy formatted date 10 + 1 for null byte*/
 
     unsigned char board_manuf_length; /*holds the length (in bytes) of board manuf name*/
-    unsigned char *board_manuf; /*hold board manufacturer*/
+    char *board_manuf; /*hold board manufacturer*/
     unsigned char board_product_length; /*holds the length (in bytes) of board product name*/
-    unsigned char *board_product_name; /*holds board product name*/
+    char *board_product_name; /*holds board product name*/
     unsigned char board_serial_length; /*holds length (in bytes) of board serial number*/
-    unsigned char *board_serial_num; /*will hold board serial number*/
+    char *board_serial_num; /*will hold board serial number*/
+    unsigned char board_part_length; /*holds length (in bytes) of the board part number*/
+    char *board_part_num; /*will hold board part number*/
 
     rdata = (unsigned char*) malloc(fru_area);
 
@@ -300,14 +308,31 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
 
     /* Board Info */
     fru_offset = rdata[3] * 8; /*Board starting offset is stored in 3, multiples of 8 bytes*/
-   
+
+    /*IPMI time is stored in minutes from 0:00 1/1/1996*/
+    manuf_time[0] = rdata[fru_offset + 3]; /*LSByte of the time*/
+    manuf_time[1] = rdata[fru_offset + 4]; /*MiddleByte of the time*/
+    manuf_time[2] = rdata[fru_offset + 5]; /*MSByte of the time*/
+
+    /*Convert to 1 value*/
+    manuf_minutes = manuf_time[0] + (manuf_time[1] << 8) + (manuf_time[2] << 16);
+    manuf_seconds = manuf_minutes * 60;
+
+    /*Time from epoch = time from ipmi start + difference from epoch to ipmi start*/
+    raw_seconds = manuf_seconds + EPOCH_IPMI_DIFF_TIME;
+    time_info = localtime(&raw_seconds);
+    strftime(manuf_date,10,"%x",time_info);
+
+    strncpy(host->capsule.prop.baseboard_manuf_date, manuf_date, sizeof(host->capsule.prop.baseboard_manuf_date)-1);
+    host->capsule.prop.baseboard_manuf_date[sizeof(host->capsule.prop.baseboard_manuf_date)-1] = '\0';
+
     /*
         The 2 most significant bytes correspont to the length "type code".
         We assume, via the 0x3f mask, that the data is in English ASCII.
     */
 
     board_manuf_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
-    board_manuf = (unsigned char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
+    board_manuf = (char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
     
     if (NULL == board_manuf) {
         free(rdata);
@@ -319,9 +344,11 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     }
 
     board_manuf[i] = '\0';
+    strncpy(host->capsule.prop.baseboard_manufacturer, board_manuf, sizeof(host->capsule.prop.baseboard_manufacturer)-1);
+    host->capsule.prop.baseboard_manufacturer[sizeof(host->capsule.prop.baseboard_manufacturer)-1] = '\0';
 
     board_product_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length] & 0x3f;
-    board_product_name = (unsigned char*) malloc (board_product_length + 1); /* + 1 for the Null Character */
+    board_product_name = (char*) malloc (board_product_length + 1); /* + 1 for the Null Character */
 
     if (NULL == board_product_name) {
         free(rdata);
@@ -334,9 +361,11 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     }
 
     board_product_name[i] = '\0';
+    strncpy(host->capsule.prop.baseboard_name, board_product_name, sizeof(host->capsule.prop.baseboard_serial)-1);
+    host->capsule.prop.baseboard_name[sizeof(host->capsule.prop.baseboard_name)-1] = '\0';
 
     board_serial_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length] & 0x3f;
-    board_serial_num = (unsigned char*) malloc (board_serial_length + 1); /* + 1 for the Null Character */
+    board_serial_num = (char*) malloc (board_serial_length + 1); /* + 1 for the Null Character */
 
     if (NULL == board_serial_num) {
         free(rdata);
@@ -353,10 +382,29 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     strncpy(host->capsule.prop.baseboard_serial, board_serial_num, sizeof(host->capsule.prop.baseboard_serial)-1);
     host->capsule.prop.baseboard_serial[sizeof(host->capsule.prop.baseboard_serial)-1] = '\0';
 
+    board_part_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length + board_serial_length + 1] & 0x3f;
+    board_part_num = (char*) malloc (board_part_length + 1); /* + 1 for the Null Character */
+
+    if (NULL == board_part_num) {
+        free(rdata);
+        free(board_manuf);
+        free(board_product_name);
+        free(board_serial_num);
+    }
+
+    for (i = 0; i < board_part_length; i++) {
+        board_part_num[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length + 1 + board_serial_length + 1 + i];
+    }
+
+    board_part_num[i] = '\0';
+    strncpy(host->capsule.prop.baseboard_part, board_part_num, sizeof(host->capsule.prop.baseboard_part)-1);
+    host->capsule.prop.baseboard_part[sizeof(host->capsule.prop.baseboard_part)-1] = '\0';
+
     free(rdata);
     free(board_manuf);
     free(board_product_name);
     free(board_serial_num);
+    free(board_part_num);
 
     return ORCM_SUCCESS;
 }
@@ -512,17 +560,16 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /* Pack the host's IP Address - 3a*/
-        sample_str = strdup(cur_host.capsule.node.host_ip);
+        sample_str = (char *)&cur_host.capsule.node.host_ip;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             free(sample_str);
             return;
         }
-        free(sample_str);
-
+        
         /* Pack the BMC IP Address - 4a*/
-        sample_str = strdup(cur_host.capsule.node.bmc_ip);
+        sample_str = (char *)&cur_host.capsule.node.bmc_ip;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
@@ -531,14 +578,13 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "Packing BMC IP: %s",sample_str);
-        free(sample_str);
 
-        /* Pack the Baseboard Serial Number - 5a*/
-        if (NULL == cur_host.capsule.prop.baseboard_serial) {
-            sample_str = strdup("Board Serial n/a");
+        /* Pack the Baseboard Manufacture Date - 5a*/
+        if (NULL == cur_host.capsule.prop.baseboard_manuf_date) {
+            sample_str = "Board Manuf Date n/a";
         }
         else {
-            sample_str = strdup(cur_host.capsule.prop.baseboard_serial);
+            sample_str = (char *)&cur_host.capsule.prop.baseboard_manuf_date;
         }
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -546,7 +592,62 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             free(sample_str);
             return;
         }
-        free(sample_str);
+
+        /* Pack the Baseboard Manufacturer Name - 6a*/
+        if (NULL == cur_host.capsule.prop.baseboard_manufacturer) {
+            sample_str = "Board Manuf n/a";
+        }
+        else {
+            sample_str = (char *)&cur_host.capsule.prop.baseboard_manufacturer;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            free(sample_str);
+            return;
+        }
+
+        /* Pack the Baseboard Product Name - 7a*/
+        if (NULL == cur_host.capsule.prop.baseboard_name) {
+            sample_str = "Board Name n/a";
+        }
+        else {
+            sample_str = (char *)&cur_host.capsule.prop.baseboard_name;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            free(sample_str);
+            return;
+        }
+
+        /* Pack the Baseboard Serial Number - 8a*/
+        if (NULL == cur_host.capsule.prop.baseboard_serial) {
+            sample_str = "Board Serial n/a";
+        }
+        else {
+            sample_str = (char *)&cur_host.capsule.prop.baseboard_serial;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            free(sample_str);
+            return;
+        }
+
+        /* Pack the Baseboard Part Number - 9a*/
+        if (NULL == cur_host.capsule.prop.baseboard_part) {
+            sample_str = "Board Part n/a";
+        }
+        else {
+            sample_str = (char *)&cur_host.capsule.prop.baseboard_part;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            free(sample_str);
+            return;
+        }
 
         /* Pack the buffer, to pass to heartbeat - FINAL */
         bptr = &data;
@@ -783,7 +884,7 @@ static void mycleanup(int dbhandle, int status,
 static void ipmi_log(opal_buffer_t *sample)
 {
     char *hostname, *sampletime, *sample_item, *sample_name, *sample_unit;
-    char nodename[64], hostip[16], bmcip[16], baseboard_serial[16];
+    char nodename[64], hostip[16], bmcip[16], baseboard_manuf_date[11], baseboard_manufacturer[30], baseboard_name[16], baseboard_serial[16], baseboard_part[16];
     float float_item;
     unsigned uint_item;
     int rc;
@@ -850,8 +951,9 @@ static void ipmi_log(opal_buffer_t *sample)
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked BMC_IP(4a): %s",hostname);
             strncpy(bmcip,hostname,strlen(hostname)+1);
+            free(hostname);
 
-            /* Unpack the Baseboard Serial Number - 5a */
+            /* Unpack the Baseboard Manufacture Date - 5a */
             n=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
@@ -861,13 +963,86 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
                 return;
             }
-            opal_output(0, "Unpacked Baseboard Serial Number(5a): %s", sample_item);
+            opal_output(0, "Unpacked Baseboard Manufacture Date(5a): %s", sample_item);
 
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "Unpacked Baseboard Serial Number(5a): %s", sample_item);
+                "Unpacked Baseboard Manufacture Date(5a): %s", sample_item);
+            strncpy(baseboard_manuf_date,sample_item,(sizeof(baseboard_manuf_date)-1));
+            baseboard_manuf_date[sizeof(baseboard_manuf_date)-1] = '\0';
+            free(sample_item);
+
+            /* Unpack the Baseboard Manufacturer Name - 6a */
+            n=1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            if (NULL == sample_item) {
+                ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+                return;
+            }
+            opal_output(0, "Unpacked Baseboard Manufacturer Name(6a): %s", sample_item);
+
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Unpacked Baseboard Manufacturer Name(6a): %s", sample_item);
+            strncpy(baseboard_manufacturer,sample_item,(sizeof(baseboard_manufacturer)-1));
+            baseboard_manufacturer[sizeof(baseboard_manufacturer)-1] = '\0';
+            free(sample_item);
+
+            /* Unpack the Baseboard Product Name - 7a */
+            n=1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            if (NULL == sample_item) {
+                ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+                return;
+            }
+            opal_output(0, "Unpacked Baseboard Product Name(7a): %s", sample_item);
+
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Unpacked Baseboard Product Name(7a): %s", sample_item);
+            strncpy(baseboard_name,sample_item,(sizeof(baseboard_name)-1));
+            baseboard_name[sizeof(baseboard_name)-1] = '\0';
+            free(sample_item);
+
+            /* Unpack the Baseboard Serial Number - 8a */
+            n=1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            if (NULL == sample_item) {
+                ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+                return;
+            }
+            opal_output(0, "Unpacked Baseboard Serial Number(8a): %s", sample_item);
+
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Unpacked Baseboard Serial Number(8a): %s", sample_item);
             strncpy(baseboard_serial,sample_item,(sizeof(baseboard_serial)-1));
             baseboard_serial[sizeof(baseboard_serial)-1] = '\0';
-            
+            free(sample_item);
+
+            /* Unpack the Baseboard Part Number - 9a */
+            n=1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            if (NULL == sample_item) {
+                ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+                return;
+            }
+            opal_output(0, "Unpacked Baseboard Part Number(9a): %s", sample_item);
+
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Unpacked Baseboard Part Number(9a): %s", sample_item);
+            strncpy(baseboard_part,sample_item,(sizeof(baseboard_part)-1));
+            baseboard_part[sizeof(baseboard_part)-1] = '\0';
+            free(sample_item);
+
             /* Add the node only if it has not been added previously, for the 
              * off chance that the compute node daemon was started once before,
              * and after running for sometime was killed
@@ -900,11 +1075,47 @@ static void ipmi_log(opal_buffer_t *sample)
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "UnPacked NodeName: %s", nodename);
 
+             /* Add Baseboard manufacture date */
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("BBmanuf_date");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(baseboard_manuf_date);
+            opal_list_append(vals, &kv->super);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "UnPacked NodeName: %s", nodename);
+
+             /* Add Baseboard manufacturer name */
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("BBmanuf");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(baseboard_manufacturer);
+            opal_list_append(vals, &kv->super);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "UnPacked NodeName: %s", nodename);
+
+             /* Add Baseboard product name */
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("BBname");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(baseboard_name);
+            opal_list_append(vals, &kv->super);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "UnPacked NodeName: %s", nodename);
+
             /* Add Baseboard serial number */
             kv = OBJ_NEW(opal_value_t);
             kv->key = strdup("BBserial");
             kv->type = OPAL_STRING;
             kv->data.string = strdup(baseboard_serial);
+            opal_list_append(vals, &kv->super);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "UnPacked NodeName: %s", nodename);
+
+            /* Add Baseboard part number */
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("BBpart");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(baseboard_part);
             opal_list_append(vals, &kv->super);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "UnPacked NodeName: %s", nodename);
@@ -1086,6 +1297,7 @@ static void ipmi_log(opal_buffer_t *sample)
             opal_list_append(vals, &kv->super);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "PACKED DATA: %s:%f", kv->key, kv->data.fval);
+            free(sample_name);
             free(sample_unit);
         }
         /* Send the unpacked data for one Node */

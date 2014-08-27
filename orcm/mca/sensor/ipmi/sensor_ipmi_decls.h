@@ -29,6 +29,12 @@
 // The total number of IPMI Calls that need to be called for each node
 #define TOTAL_CALLS_PER_NODE        2
 #define MAX_FRU_DEVICES  254
+/*Seconds between the epoch (1/1/1970) and IPMI's start time (1/1/1996)*/
+#define EPOCH_IPMI_DIFF_TIME 819936000
+/*
+The element of the return array where the data starts
+ignoring date/time
+*/
 #define BOARD_INFO_DATA_START 6
 
 unsigned char disable_ipmi;
@@ -80,7 +86,11 @@ typedef struct {
     char bmc_rev[16];
     char ipmi_ver[16];
     char man_id[16];
+    char baseboard_manuf_date[11];
+    char baseboard_manufacturer[30];
+    char baseboard_name[16];
     char baseboard_serial[16];
+    char baseboard_part[16];
     char sys_power_state[16];
     char dev_power_state[16];
     int total_metrics;

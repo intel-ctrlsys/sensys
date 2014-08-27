@@ -953,6 +953,7 @@ static void ipmi_log(opal_buffer_t *sample)
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked BMC_IP(4a): %s",hostname);
             strncpy(bmcip,hostname,strlen(hostname)+1);
+            free(hostname);
 
             /* Unpack the Baseboard Manufacture Date - 5a */
             n=1;
@@ -970,6 +971,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 "Unpacked Baseboard Manufacture Date(5a): %s", sample_item);
             strncpy(baseboard_manuf_date,sample_item,(sizeof(baseboard_manuf_date)-1));
             baseboard_manuf_date[sizeof(baseboard_manuf_date)-1] = '\0';
+            free(sample_item);
 
             /* Unpack the Baseboard Manufacturer Name - 6a */
             n=1;
@@ -987,6 +989,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 "Unpacked Baseboard Manufacturer Name(6a): %s", sample_item);
             strncpy(baseboard_manufacturer,sample_item,(sizeof(baseboard_manufacturer)-1));
             baseboard_manufacturer[sizeof(baseboard_manufacturer)-1] = '\0';
+            free(sample_item);
 
             /* Unpack the Baseboard Product Name - 7a */
             n=1;
@@ -1004,6 +1007,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 "Unpacked Baseboard Product Name(7a): %s", sample_item);
             strncpy(baseboard_name,sample_item,(sizeof(baseboard_name)-1));
             baseboard_name[sizeof(baseboard_name)-1] = '\0';
+            free(sample_item);
 
             /* Unpack the Baseboard Serial Number - 8a */
             n=1;
@@ -1021,6 +1025,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 "Unpacked Baseboard Serial Number(8a): %s", sample_item);
             strncpy(baseboard_serial,sample_item,(sizeof(baseboard_serial)-1));
             baseboard_serial[sizeof(baseboard_serial)-1] = '\0';
+            free(sample_item);
 
             /* Unpack the Baseboard Part Number - 9a */
             n=1;
@@ -1038,7 +1043,8 @@ static void ipmi_log(opal_buffer_t *sample)
                 "Unpacked Baseboard Part Number(9a): %s", sample_item);
             strncpy(baseboard_part,sample_item,(sizeof(baseboard_part)-1));
             baseboard_part[sizeof(baseboard_part)-1] = '\0';
-            
+            free(sample_item);
+
             /* Add the node only if it has not been added previously, for the 
              * off chance that the compute node daemon was started once before,
              * and after running for sometime was killed
@@ -1293,6 +1299,7 @@ static void ipmi_log(opal_buffer_t *sample)
             opal_list_append(vals, &kv->super);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "PACKED DATA: %s:%f", kv->key, kv->data.fval);
+            free(sample_name);
             free(sample_unit);
         }
         /* Send the unpacked data for one Node */

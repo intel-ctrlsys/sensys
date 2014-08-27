@@ -226,16 +226,16 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     unsigned long int manuf_seconds; /*holds the above time (in seconds)*/
     time_t raw_seconds;
     struct tm *time_info;
-    unsigned char manuf_date[11]; /*A mm/dd/yyyy or dd/mm/yyyy formatted date 10 + 1 for null byte*/
+    char manuf_date[11]; /*A mm/dd/yyyy or dd/mm/yyyy formatted date 10 + 1 for null byte*/
 
     unsigned char board_manuf_length; /*holds the length (in bytes) of board manuf name*/
-    unsigned char *board_manuf; /*hold board manufacturer*/
+    char *board_manuf; /*hold board manufacturer*/
     unsigned char board_product_length; /*holds the length (in bytes) of board product name*/
-    unsigned char *board_product_name; /*holds board product name*/
+    char *board_product_name; /*holds board product name*/
     unsigned char board_serial_length; /*holds length (in bytes) of board serial number*/
-    unsigned char *board_serial_num; /*will hold board serial number*/
+    char *board_serial_num; /*will hold board serial number*/
     unsigned char board_part_length; /*holds length (in bytes) of the board part number*/
-    unsigned char *board_part_num; /*will hold board part number*/
+    char *board_part_num; /*will hold board part number*/
 
     rdata = (unsigned char*) malloc(fru_area);
 
@@ -332,7 +332,7 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     */
 
     board_manuf_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
-    board_manuf = (unsigned char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
+    board_manuf = (char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
     
     if (NULL == board_manuf) {
         free(rdata);
@@ -348,7 +348,7 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     host->capsule.prop.baseboard_manufacturer[sizeof(host->capsule.prop.baseboard_manufacturer)-1] = '\0';
 
     board_product_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length] & 0x3f;
-    board_product_name = (unsigned char*) malloc (board_product_length + 1); /* + 1 for the Null Character */
+    board_product_name = (char*) malloc (board_product_length + 1); /* + 1 for the Null Character */
 
     if (NULL == board_product_name) {
         free(rdata);
@@ -365,7 +365,7 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     host->capsule.prop.baseboard_name[sizeof(host->capsule.prop.baseboard_name)-1] = '\0';
 
     board_serial_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length] & 0x3f;
-    board_serial_num = (unsigned char*) malloc (board_serial_length + 1); /* + 1 for the Null Character */
+    board_serial_num = (char*) malloc (board_serial_length + 1); /* + 1 for the Null Character */
 
     if (NULL == board_serial_num) {
         free(rdata);
@@ -383,7 +383,7 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     host->capsule.prop.baseboard_serial[sizeof(host->capsule.prop.baseboard_serial)-1] = '\0';
 
     board_part_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length + board_serial_length + 1] & 0x3f;
-    board_part_num = (unsigned char*) malloc (board_part_length + 1); /* + 1 for the Null Character */
+    board_part_num = (char*) malloc (board_part_length + 1); /* + 1 for the Null Character */
 
     if (NULL == board_part_num) {
         free(rdata);
@@ -559,18 +559,19 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
 
+        // sample_str = (char *)&top->capsule.prop.dev_power_state;
+
         /* Pack the host's IP Address - 3a*/
-        sample_str = strdup(cur_host.capsule.node.host_ip);
+        sample_str = (char *)&cur_host.capsule.node.host_ip;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             free(sample_str);
             return;
         }
-        free(sample_str);
-
+        
         /* Pack the BMC IP Address - 4a*/
-        sample_str = strdup(cur_host.capsule.node.bmc_ip);
+        sample_str = (char *)&cur_host.capsule.node.bmc_ip;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
@@ -579,14 +580,13 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "Packing BMC IP: %s",sample_str);
-        free(sample_str);
 
         /* Pack the Baseboard Manufacture Date - 5a*/
         if (NULL == cur_host.capsule.prop.baseboard_manuf_date) {
-            sample_str = strdup("Board Manuf Date n/a");
+            sample_str = "Board Manuf Date n/a";
         }
         else {
-            sample_str = strdup(cur_host.capsule.prop.baseboard_manuf_date);
+            sample_str = (char *)&cur_host.capsule.prop.baseboard_manuf_date;
         }
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -594,14 +594,13 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             free(sample_str);
             return;
         }
-        free(sample_str);
 
         /* Pack the Baseboard Manufacturer Name - 6a*/
         if (NULL == cur_host.capsule.prop.baseboard_manufacturer) {
-            sample_str = strdup("Board Manuf n/a");
+            sample_str = "Board Manuf n/a";
         }
         else {
-            sample_str = strdup(cur_host.capsule.prop.baseboard_manufacturer);
+            sample_str = (char *)&cur_host.capsule.prop.baseboard_manufacturer;
         }
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -609,14 +608,13 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             free(sample_str);
             return;
         }
-        free(sample_str);
 
         /* Pack the Baseboard Product Name - 7a*/
         if (NULL == cur_host.capsule.prop.baseboard_name) {
-            sample_str = strdup("Board Name n/a");
+            sample_str = "Board Name n/a";
         }
         else {
-            sample_str = strdup(cur_host.capsule.prop.baseboard_name);
+            sample_str = (char *)&cur_host.capsule.prop.baseboard_name;
         }
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -624,14 +622,13 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             free(sample_str);
             return;
         }
-        free(sample_str);
 
         /* Pack the Baseboard Serial Number - 8a*/
         if (NULL == cur_host.capsule.prop.baseboard_serial) {
-            sample_str = strdup("Board Serial n/a");
+            sample_str = "Board Serial n/a";
         }
         else {
-            sample_str = strdup(cur_host.capsule.prop.baseboard_serial);
+            sample_str = (char *)&cur_host.capsule.prop.baseboard_serial;
         }
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -639,14 +636,13 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             free(sample_str);
             return;
         }
-        free(sample_str);
 
         /* Pack the Baseboard Part Number - 9a*/
         if (NULL == cur_host.capsule.prop.baseboard_part) {
-            sample_str = strdup("Board Part n/a");
+            sample_str = "Board Part n/a";
         }
         else {
-            sample_str = strdup(cur_host.capsule.prop.baseboard_part);
+            sample_str = (char *)&cur_host.capsule.prop.baseboard_part;
         }
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -654,7 +650,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             free(sample_str);
             return;
         }
-        free(sample_str);
 
         /* Pack the buffer, to pass to heartbeat - FINAL */
         bptr = &data;

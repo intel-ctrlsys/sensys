@@ -86,11 +86,11 @@ typedef struct {
     char bmc_rev[16];
     char ipmi_ver[16];
     char man_id[16];
-    unsigned char baseboard_manuf_date[11];
-    unsigned char baseboard_manufacturer[30];
-    unsigned char baseboard_name[16];
-    unsigned char baseboard_serial[16];
-    unsigned char baseboard_part[16];
+    char baseboard_manuf_date[11];
+    char baseboard_manufacturer[30];
+    char baseboard_name[16];
+    char baseboard_serial[16];
+    char baseboard_part[16];
     char sys_power_state[16];
     char dev_power_state[16];
     int total_metrics;

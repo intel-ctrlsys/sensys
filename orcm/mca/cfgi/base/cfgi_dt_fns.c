@@ -501,6 +501,7 @@ int orcm_unpack_cluster(opal_buffer_t *buffer, void *dest,
     int ret;
     int32_t i, n;
     orcm_cluster_t **clusters, *cluster;
+    orcm_node_t *controller;
     int32_t j, k;
     orcm_row_t *row;
 
@@ -524,10 +525,13 @@ int orcm_unpack_cluster(opal_buffer_t *buffer, void *dest,
         }
         /* unpack the controller */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &cluster->controller, &n, ORCM_NODE))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, controller, &n, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
+
+        &cluster->controller = *controller;
+
         /* unpack the rows */
         n=1;
         if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &j, &n, OPAL_INT32))) {
@@ -554,6 +558,7 @@ int orcm_unpack_scheduler(opal_buffer_t *buffer, void *dest,
     int32_t i, n;
     orcm_scheduler_t **schedulers;
     orcm_scheduler_t *scheduler = NULL;
+    orcm_node_t *controller;
     int32_t j, k;
     char *tmp;
 
@@ -573,10 +578,13 @@ int orcm_unpack_scheduler(opal_buffer_t *buffer, void *dest,
     if (scheduler) {
         /* unpack the controller */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &scheduler->controller, &n, ORCM_NODE))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &controller, &n, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
+
+        scheduler->controller = *controller;
+
         /* unpack the queues */
         n=1;
         if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &k, &n, OPAL_INT32))) {
@@ -607,13 +615,145 @@ int orcm_unpack_scheduler(opal_buffer_t *buffer, void *dest,
 int orcm_compare_node(orcm_node_t *value1, orcm_node_t *value2, opal_data_type_t type)
 {
     int rc;
+    int size1;
+    int size2;
+    char *string_comp1;
+    char *string_comp2;
 
-    rc = strcmp(value1->name, value2->name);
-    if (0 < rc) {
+    if (NULL == value1 || NULL == value2) {
+        if (NULL == value1 && NULL == value2) {
+            return OPAL_EQUAL;
+        } else if (NULL == value1 && NULL != value2) {
+            return OPAL_VALUE2_GREATER;
+        } else { /* NULL != value1 && NULL == VALUE2 */
+            return OPAL_VALUE1_GREATER;
+        }
+    }
+
+    if (NULL == value1->name || NULL == value2->name) {
+        if (NULL != value1->name && NULL == value2->name) {
+            return OPAL_VALUE1_GREATER;
+        } else if (NULL == value1->name && NULL != value2->name) {
+            return OPAL_VALUE2_GREATER;
+        }
+    } else {
+        rc = strcmp(value1->name, value2->name);
+        if (0 < rc) {
+            return OPAL_VALUE1_GREATER;
+        } else if (0 > rc) {
+            return OPAL_VALUE2_GREATER;
+        }
+    }
+
+    if (value1->daemon.jobid > value2->daemon.jobid) {
         return OPAL_VALUE1_GREATER;
-    } else if (rc < 0) {
+    } else if (value1->daemon.jobid < value2->daemon.jobid) {
         return OPAL_VALUE2_GREATER;
     }
+
+    if (value1->daemon.vpid > value2->daemon.vpid) {
+        return OPAL_VALUE1_GREATER;
+    } else if (value1->daemon.vpid < value2->daemon.vpid) {
+        return OPAL_VALUE2_GREATER;
+    }
+
+    if (NULL == value1->config.mca_params || NULL == value2->config.mca_params) {
+        if (NULL != value1->config.mca_params && NULL == value2->config.mca_params) {
+            return OPAL_VALUE1_GREATER;
+        } else if (NULL == value1->config.mca_params && NULL != value2->config.mca_params) {
+            return OPAL_VALUE2_GREATER;
+        }
+    } else {
+        size1 = opal_argv_count(value1->config.mca_params);
+        size2 = opal_argv_count(value2->config.mca_params);
+
+        if (size1 > size2) {
+            return OPAL_VALUE1_GREATER;
+        } else if (size1 < size2) {
+            return OPAL_VALUE2_GREATER;
+        }
+
+        /* Compare the full "argv" list of mca_params. Must be terminated with a NULL "sentinel" element */
+        string_comp1 = opal_argv_join(value1->config.mca_params, 0);
+        string_comp2 = opal_argv_join(value2->config.mca_params, 0);
+
+        rc = strcmp(string_comp1, string_comp2);
+
+        free(string_comp1);
+        free(string_comp2);
+        if (0 < rc) {
+            return OPAL_VALUE1_GREATER;
+        } else if (0 > rc) {
+            return OPAL_VALUE2_GREATER;
+        }
+    }
+
+    if (NULL == value1->config.env || NULL == value2->config.env) {
+        if (NULL != value1->config.env && NULL == value2->config.env) {
+            return OPAL_VALUE1_GREATER;
+        } else if (NULL == value1->config.env && NULL != value2->config.env) {
+            return OPAL_VALUE2_GREATER;
+        }
+    } else {
+        size1 = opal_argv_count(value1->config.env);
+        size2 = opal_argv_count(value2->config.env);
+
+        if (size1 > size2) {
+            return OPAL_VALUE1_GREATER;
+        } else if (size1 < size2) {
+            return OPAL_VALUE2_GREATER;
+        }
+
+        /* Compare the full "argv" list of env. This must be terminated with a NULL "sentinel" element */
+        string_comp1 = opal_argv_join(value1->config.env, 0);
+        string_comp2 = opal_argv_join(value2->config.env, 0);
+
+        rc = strcmp(string_comp1, string_comp2);
+
+        free(string_comp1);
+        free(string_comp2);
+
+        if (0 < rc) {
+            return OPAL_VALUE1_GREATER;
+        } else if (0 > rc) {
+            return OPAL_VALUE2_GREATER;
+        }
+    }
+
+    if (NULL == value1->config.port || NULL == value2->config.port) {
+        if (NULL != value1->config.port && NULL == value2->config.port) {
+            return OPAL_VALUE1_GREATER;
+        } else if (NULL == value1->config.port && NULL != value2->config.port) {
+            return OPAL_VALUE2_GREATER;
+        }
+    } else {
+        rc = strcmp(value1->config.port, value2->config.port);
+
+        if (0 < rc) {
+            return OPAL_VALUE1_GREATER;
+        } else if (0 > rc) {
+            return OPAL_VALUE2_GREATER;
+        }
+    }
+
+    if (value1->config.aggregator > value2->config.aggregator) {
+        return OPAL_VALUE1_GREATER;
+    } else if (value1->config.aggregator < value2->config.aggregator) {
+        return OPAL_VALUE2_GREATER;
+    }
+
+    if (value1->state > value2->state) {
+        return OPAL_VALUE1_GREATER;
+    } else if (value1->state < value2->state) {
+        return OPAL_VALUE2_GREATER;
+    }
+
+    if (value1->scd_state > value2->scd_state) {
+        return OPAL_VALUE1_GREATER;
+    } else if (value1->scd_state < value2->scd_state) {
+        return OPAL_VALUE2_GREATER;
+    }
+
     return OPAL_EQUAL;
 }
 
@@ -659,9 +799,49 @@ int orcm_compare_cluster(orcm_cluster_t *value1, orcm_cluster_t *value2, opal_da
 
 int orcm_compare_scheduler(orcm_scheduler_t *value1, orcm_scheduler_t *value2, opal_data_type_t type)
 {
+    int rc;
+    int size1, size2;
+    orcm_node_t *node1, *node2;
+    char *string_comp1, *string_comp2;
+
+    node1 = &value1->controller;
+    node2 = &value2->controller;
+
+    rc = opal_dss.compare(node1, node2, ORCM_NODE);
+
+    if (NULL == value1->queues || NULL == value2->queues) {
+        if (NULL != value1->queues && NULL == value2->queues) {
+            return OPAL_VALUE1_GREATER;
+        } else if (NULL == value1->queues && NULL != value2->queues) {
+            return OPAL_VALUE2_GREATER;
+        }
+    } else {
+        size1 = opal_argv_count(value1->queues);
+        size2 = opal_argv_count(value2->queues);
+
+        if (size1 > size2) {
+            return OPAL_VALUE1_GREATER;
+        } else if (size1 < size2) {
+            return OPAL_VALUE2_GREATER;
+        }
+
+        string_comp1 = opal_argv_join(value1->queues, 0);
+        string_comp2 = opal_argv_join(value2->queues, 0);
+
+        rc = strcmp(string_comp1, string_comp2);
+
+        free(string_comp1);
+        free(string_comp2);
+
+        if (0 < rc) {
+            return OPAL_VALUE1_GREATER;
+        } else if (0 > rc) {
+            return OPAL_VALUE2_GREATER;
+        }
+    }
+
     return OPAL_EQUAL;
 }
-
 
 /*****     COPY ROUTINES    *****/
 int orcm_copy_node(orcm_node_t **dest, orcm_node_t *src, opal_data_type_t type)

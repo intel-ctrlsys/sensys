@@ -559,8 +559,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
 
-        // sample_str = (char *)&top->capsule.prop.dev_power_state;
-
         /* Pack the host's IP Address - 3a*/
         sample_str = (char *)&cur_host.capsule.node.host_ip;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {

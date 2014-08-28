@@ -840,7 +840,7 @@ int orcm_compare_rack(orcm_rack_t *value1, orcm_rack_t *value2, opal_data_type_t
             return rc;
         }
     }
-    
+
     return OPAL_EQUAL;
 }
 

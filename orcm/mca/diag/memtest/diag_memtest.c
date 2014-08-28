@@ -24,6 +24,7 @@
 
 #include <sys/mman.h>
 #include <sys/sysinfo.h>
+#include <sys/resource.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -172,6 +173,7 @@ static int diag_read(opal_list_t *config)
 static int diag_check(opal_list_t *config)
 {
     struct sysinfo info;
+    struct rlimit org_limit, new_limit;
     void *addr;
     char *p;
     size_t size, rest;
@@ -184,6 +186,32 @@ static int diag_check(opal_list_t *config)
 
     /* use maximum free memory  */
     size = info.freeram - (128UL << 20);
+
+    /* Save ulimit for virtual address space */
+    if ( 0 != getrlimit(RLIMIT_AS, &org_limit) ) {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                        "%s memdiag: get resource limit failed",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        mem_diag_ret = ORCM_ERR_MEM_LIMIT_EXCEEDED;
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                        "%s Checking memory:                        [NOTRUN]",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+        return mem_diag_ret;
+    }
+
+    /* Increase ulimit for virtual address space and try mapping */
+    new_limit.rlim_cur = RLIM_INFINITY;
+    new_limit.rlim_max = RLIM_INFINITY;
+    if ( 0 != setrlimit(RLIMIT_AS, &new_limit) ) {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                        "%s memdiag: set resource limit failed",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        mem_diag_ret = ORCM_ERR_BAD_PARAM;
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                        "%s Checking memory:                        [NOTRUN]",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+        return mem_diag_ret;
+    }
 
     do {
         /* Mapping */
@@ -223,6 +251,14 @@ static int diag_check(opal_list_t *config)
     memcheck((unsigned int *)addr, size / sizeof(int));
   
     munmap(addr, size);
+    /* Restore original ulimit for virtual address space */
+    if ( 0 != setrlimit(RLIMIT_AS, &org_limit) ) {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                        "%s memdiag: set resource limit failed",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        mem_diag_ret = ORCM_ERR_BAD_PARAM;
+    }
+
     if ( ORCM_SUCCESS == mem_diag_ret ) {
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s Checking memory:                        [  OK  ]",

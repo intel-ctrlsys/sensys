@@ -811,6 +811,7 @@ int orcm_compare_rack(orcm_rack_t *value1, orcm_rack_t *value2, opal_data_type_t
         return rc;
     }
 
+    printf("about to check the opal_lists\n");
     /* Compare each node in the node list */
     nodes1 = &value1->nodes;
     nodes2 = &value2->nodes;

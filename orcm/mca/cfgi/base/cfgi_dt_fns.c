@@ -80,12 +80,12 @@ int orcm_pack_node(opal_buffer_t *buffer, const void *src,
     for (i=0; i < num_vals; i++) {
         node = nodes[i];
         /* pack the name */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, &node->name, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&node->name, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the daemon name */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&node->daemon, 1, ORTE_NAME))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&node->daemon, 1, ORTE_NAME))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -95,12 +95,12 @@ int orcm_pack_node(opal_buffer_t *buffer, const void *src,
             return ret;
         }
         /* pack the node rm state */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&node->state, 1, OPAL_INT8))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&node->state, 1, OPAL_INT8))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the node scd state */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&node->scd_state, 1, OPAL_INT8))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&node->scd_state, 1, OPAL_INT8))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -127,13 +127,13 @@ int orcm_pack_rack(opal_buffer_t *buffer, const void *src,
     for (i=0; i < num_vals; i++) {
         rack = racks[i];
         /* pack the name */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, &rack->name, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&rack->name, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the controller */
         controller = &rack->controller;
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&controller, 1, ORCM_NODE))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&controller, 1, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -144,7 +144,7 @@ int orcm_pack_rack(opal_buffer_t *buffer, const void *src,
             return ret;
         }
         OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&node, 1, ORCM_NODE))) {
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&node, 1, ORCM_NODE))) {
                 ORTE_ERROR_LOG(ret);
                 return ret;
             }
@@ -172,13 +172,13 @@ int orcm_pack_row(opal_buffer_t *buffer, const void *src,
     for (i=0; i < num_vals; i++) {
         row = rows[i];
         /* pack the name */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, &row->name, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&row->name, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the controller */
         controller = &row->controller;
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&controller, 1, ORCM_NODE))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&controller, 1, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -189,7 +189,7 @@ int orcm_pack_row(opal_buffer_t *buffer, const void *src,
             return ret;
         }
         OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&rack, 1, ORCM_RACK))) {
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&rack, 1, ORCM_RACK))) {
                 ORTE_ERROR_LOG(ret);
                 return ret;
             }
@@ -217,13 +217,13 @@ int orcm_pack_cluster(opal_buffer_t *buffer, const void *src,
     for (i=0; i < num_vals; i++) {
         cluster = clusters[i];
         /* pack the name */
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, &cluster->name, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&cluster->name, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
         /* pack the controller */
         controller = &cluster->controller;
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&controller, 1, ORCM_NODE))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&controller, 1, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -234,7 +234,7 @@ int orcm_pack_cluster(opal_buffer_t *buffer, const void *src,
             return ret;
         }
         OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&row, 1, ORCM_ROW))) {
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&row, 1, ORCM_ROW))) {
                 ORTE_ERROR_LOG(ret);
                 return ret;
             }
@@ -262,7 +262,7 @@ int orcm_pack_scheduler(opal_buffer_t *buffer, const void *src,
         scheduler = schedulers[i];
         /* pack the controller */
         controller = &scheduler->controller;
-        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&controller, 1, ORCM_NODE))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&controller, 1, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
@@ -273,7 +273,7 @@ int orcm_pack_scheduler(opal_buffer_t *buffer, const void *src,
             return ret;
         }
         for (k=0; k < j; k++) {
-            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void*)&scheduler->queues[k], 1, OPAL_STRING))) {
+            if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, (void**)&scheduler->queues[k], 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(ret);
                 return ret;
             }
@@ -453,6 +453,7 @@ int orcm_unpack_row(opal_buffer_t *buffer, void *dest,
     int ret;
     int32_t i, n;
     orcm_row_t **rows, *row;
+    orcm_node_t *controller;
     int32_t j, k;
     orcm_rack_t *rack;
 
@@ -476,10 +477,13 @@ int orcm_unpack_row(opal_buffer_t *buffer, void *dest,
         }
         /* unpack the controller */
         n=1;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &row->controller, &n, ORCM_NODE))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &controller, &n, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
+
+        row->controller = *controller;
+
         /* unpack the racks */
         n=1;
         if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &j, &n, OPAL_INT32))) {
@@ -529,15 +533,14 @@ int orcm_unpack_cluster(opal_buffer_t *buffer, void *dest,
         }
         /* unpack the controller */
         n=1;
-        controller = &cluster->controller;
-        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, controller, &n, ORCM_NODE))) {
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &controller, &n, ORCM_NODE))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }
 
         cluster->controller = *controller;
 
-        /* unpack the rows */
+        /*  unpack the rows */
         n=1;
         if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &j, &n, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
@@ -624,17 +627,6 @@ int orcm_compare_node(orcm_node_t *value1, orcm_node_t *value2, opal_data_type_t
     int size2;
     char *string_comp1;
     char *string_comp2;
-
-    /* Check if either of the nodes are null */
-    if (NULL == value1 || NULL == value2) {
-        if (NULL == value1 && NULL == value2) {
-            return OPAL_EQUAL;
-        } else if (NULL == value1 && NULL != value2) {
-            return OPAL_VALUE2_GREATER;
-        } else { /* NULL != value1 && NULL == VALUE2 */
-            return OPAL_VALUE1_GREATER;
-        }
-    }
 
     /* Compare the names */
     if (NULL == value1->name || NULL == value2->name) {
@@ -770,20 +762,7 @@ int orcm_compare_node(orcm_node_t *value1, orcm_node_t *value2, opal_data_type_t
 int orcm_compare_rack(orcm_rack_t *value1, orcm_rack_t *value2, opal_data_type_t type)
 {
     int rc;
-    size_t size1, size2;
     orcm_node_t *node1, *node2;
-    opal_list_t *nodes1, *nodes2;
-
-    /* Checks if the passed in value is NULL */
-    if (NULL == value1 || NULL == value2) {
-        if (NULL == value1 && NULL == value2) {
-            return OPAL_EQUAL;
-        } else if (NULL == value1 && NULL != value2) {
-            return OPAL_VALUE2_GREATER;
-        } else { /* NULL != value1 && NULL == VALUE2 */
-            return OPAL_VALUE1_GREATER;
-        }
-    }
 
     /* Compare the names */
     if (NULL == value1->name || NULL == value2->name) {
@@ -809,37 +788,6 @@ int orcm_compare_rack(orcm_rack_t *value1, orcm_rack_t *value2, opal_data_type_t
 
     if (OPAL_VALUE1_GREATER == rc || OPAL_VALUE2_GREATER == rc || OPAL_ERR_BAD_PARAM == rc) {
         return rc;
-    }
-
-    printf("about to check the opal_lists\n");
-    /* Compare each node in the node list */
-    nodes1 = &value1->nodes;
-    nodes2 = &value2->nodes;
-    size1 = opal_list_get_size(nodes1);
-    size2 = opal_list_get_size(nodes2);
-
-    if (size1 > size2) {
-        return OPAL_VALUE1_GREATER;
-    } else if (size1 < size2) {
-        return OPAL_VALUE2_GREATER;
-    }
-
-    /* The List size is the same for both lists, so it is safe to loop and compare the two lists */
-    node1 = (orcm_node_t*)opal_list_get_first(nodes1);
-    node2 = (orcm_node_t*)opal_list_get_first(nodes2);
-
-    rc = opal_dss.compare(node1, node2, ORCM_NODE);
-
-    if (OPAL_VALUE1_GREATER == rc || OPAL_VALUE2_GREATER == rc || OPAL_ERR_BAD_PARAM == rc) {
-        return rc;
-    }
-
-    while (((node1 = (orcm_node_t*)opal_list_get_next(node1)) != (orcm_node_t*)opal_list_get_end(nodes1))
-            && ((node2 = (orcm_node_t*)opal_list_get_next(node2)) != (orcm_node_t*)opal_list_get_end(nodes2))) {
-        rc = opal_dss.compare(node1, node2, ORCM_NODE);
-        if (OPAL_VALUE1_GREATER == rc || OPAL_VALUE2_GREATER == rc || OPAL_ERR_BAD_PARAM == rc) {
-            return rc;
-        }
     }
 
     return OPAL_EQUAL;
@@ -848,21 +796,7 @@ int orcm_compare_rack(orcm_rack_t *value1, orcm_rack_t *value2, opal_data_type_t
 int orcm_compare_row(orcm_row_t *value1, orcm_row_t *value2, opal_data_type_t type)
 {
     int rc;
-    size_t size1, size2;
     orcm_node_t *node1, *node2;
-    orcm_rack_t *rack1, *rack2;
-    opal_list_t *racks1, *racks2;
-
-    /* Check if either value is NULL */
-    if (NULL == value1 || NULL == value2) {
-        if (NULL == value1 && NULL == value2) {
-            return OPAL_EQUAL;
-        } else if (NULL == value1 && NULL != value2) {
-            return OPAL_VALUE2_GREATER;
-        } else { /* NULL != value1 && NULL == VALUE2 */
-            return OPAL_VALUE1_GREATER;
-        }
-    }
 
     /* Compare the names */
     if (NULL == value1->name || NULL == value2->name) {
@@ -888,36 +822,6 @@ int orcm_compare_row(orcm_row_t *value1, orcm_row_t *value2, opal_data_type_t ty
 
     if (OPAL_VALUE1_GREATER == rc || OPAL_VALUE2_GREATER == rc || OPAL_ERR_BAD_PARAM == rc) {
         return rc;
-    }
-
-    /* Compare each rack in the rack list */
-    racks1 = &value1->racks;
-    racks2 = &value2->racks;
-    size1 = opal_list_get_size(racks1);
-    size2 = opal_list_get_size(racks2);
-
-    if (size1 > size2) {
-        return OPAL_VALUE1_GREATER;
-    } else if (size1 < size2) {
-        return OPAL_VALUE2_GREATER;
-    }
-
-    /* The List size is the same for both lists, so it is safe to loop and compare the two lists */
-    rack1 = (orcm_rack_t*)opal_list_get_first(racks1);
-    rack2 = (orcm_rack_t*)opal_list_get_first(racks2);
-
-    rc = opal_dss.compare(rack1, rack2, ORCM_RACK);
-
-    if (OPAL_VALUE1_GREATER == rc || OPAL_VALUE2_GREATER == rc || OPAL_ERR_BAD_PARAM == rc) {
-        return rc;
-    }
-
-    while (((rack1 = (orcm_rack_t*)opal_list_get_next(rack1)) != (orcm_rack_t*)opal_list_get_end(racks1))
-            && ((rack2 = (orcm_rack_t*)opal_list_get_next(rack2)) != (orcm_rack_t*)opal_list_get_end(racks2))) {
-        rc = opal_dss.compare(rack1, rack2, ORCM_RACK);
-        if (OPAL_VALUE1_GREATER == rc || OPAL_VALUE2_GREATER == rc || OPAL_ERR_BAD_PARAM == rc) {
-            return rc;
-        }
     }
 
     return OPAL_EQUAL;
@@ -926,21 +830,7 @@ int orcm_compare_row(orcm_row_t *value1, orcm_row_t *value2, opal_data_type_t ty
 int orcm_compare_cluster(orcm_cluster_t *value1, orcm_cluster_t *value2, opal_data_type_t type)
 {
     int rc;
-    size_t size1, size2;
-    orcm_row_t *row1, *row2;
     orcm_node_t *node1, *node2;
-    opal_list_t *rows1, *rows2;
-
-    /* Check if the values are NULL */
-    if (NULL == value1 || NULL == value2) {
-        if (NULL == value1 && NULL == value2) {
-            return OPAL_EQUAL;
-        } else if (NULL == value1 && NULL != value2) {
-            return OPAL_VALUE2_GREATER;
-        } else { /* NULL != value1 && NULL == VALUE2 */
-            return OPAL_VALUE1_GREATER;
-        }
-    }
 
     /* Compare the names */
     if (NULL == value1->name || NULL == value2->name) {
@@ -966,36 +856,6 @@ int orcm_compare_cluster(orcm_cluster_t *value1, orcm_cluster_t *value2, opal_da
 
     if (OPAL_VALUE1_GREATER == rc || OPAL_VALUE2_GREATER == rc || OPAL_ERR_BAD_PARAM == rc) {
         return rc;
-    }
-
-    /* Compare each row in the row list */
-    rows1 = &value1->rows;
-    rows2 = &value2->rows;
-    size1 = opal_list_get_size(rows1);
-    size2 = opal_list_get_size(rows2);
-
-    if (size1 > size2) {
-        return OPAL_VALUE1_GREATER;
-    } else if (size1 < size2) {
-        return OPAL_VALUE2_GREATER;
-    }
-
-    /* The List size is the same for both lists, so it is safe to loop and compare the two lists */
-    row1 = (orcm_row_t*)opal_list_get_first(rows1);
-    row2 = (orcm_row_t*)opal_list_get_first(rows2);
-
-    rc = opal_dss.compare(row1, row2, ORCM_ROW);
-
-    if (OPAL_VALUE1_GREATER == rc || OPAL_VALUE2_GREATER == rc || OPAL_ERR_BAD_PARAM == rc) {
-        return rc;
-    }
-
-    while (((row1 = (orcm_row_t*)opal_list_get_next(row1)) != (orcm_row_t*)opal_list_get_end(rows1))
-            && ((row2 = (orcm_row_t*)opal_list_get_next(row2)) != (orcm_row_t*)opal_list_get_end(rows2))) {
-        rc = opal_dss.compare(row1, row2, ORCM_ROW);
-        if (OPAL_VALUE1_GREATER == rc || OPAL_VALUE2_GREATER == rc || OPAL_ERR_BAD_PARAM == rc) {
-            return rc;
-        }
     }
 
     return OPAL_EQUAL;
@@ -1008,16 +868,7 @@ int orcm_compare_scheduler(orcm_scheduler_t *value1, orcm_scheduler_t *value2, o
     orcm_node_t *node1, *node2;
     char *string_comp1, *string_comp2;
 
-    if (NULL == value1 || NULL == value2) {
-        if (NULL == value1 && NULL == value2) {
-            return OPAL_EQUAL;
-        } else if (NULL == value1 && NULL != value2) {
-            return OPAL_VALUE2_GREATER;
-        } else { /* NULL != value1 && NULL == VALUE2 */
-            return OPAL_VALUE1_GREATER;
-        }
-    }
-
+    /* Compare the nodes */
     node1 = &value1->controller;
     node2 = &value2->controller;
 
@@ -1027,6 +878,7 @@ int orcm_compare_scheduler(orcm_scheduler_t *value1, orcm_scheduler_t *value2, o
         return rc;
     }
 
+    /* Compare the queues */
     if (NULL == value1->queues || NULL == value2->queues) {
         if (NULL != value1->queues && NULL == value2->queues) {
             return OPAL_VALUE1_GREATER;

@@ -86,13 +86,13 @@ int orte_grpcomm_API_xcast(orte_grpcomm_signature_t *sig,
                          "%s grpcomm:base:xcast sending %u bytes to tag %ld",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          (NULL == msg) ? 0 : (unsigned int)msg->bytes_used, (long)tag));
-    
+
     /* this function does not access any framework-global data, and
      * so it does not require us to push it into the event library */
 
     /* prep the output buffer */
     buf = OBJ_NEW(opal_buffer_t);
-    
+
     /* create the array of participating daemons */
     if (ORTE_SUCCESS != (rc = create_dmns(sig, &dmns, &ndmns))) {
         ORTE_ERROR_LOG(rc);
@@ -197,15 +197,10 @@ orte_grpcomm_coll_t* orte_grpcomm_base_get_tracker(orte_grpcomm_signature_t *sig
             /* if only one is NULL, then we can't possibly match */
             break;
         }
-        /* if the size doesn't match, then they can't be the same */
-        if (sig->sz != coll->sig->sz) {
-            continue;
-        }
-        if (0 == memcmp(sig->signature, coll->sig->signature, coll->sig->sz)) {
+        if (OPAL_EQUAL == opal_dss.compare(sig, coll->sig, ORTE_SIGNATURE)) {
             OPAL_OUTPUT_VERBOSE((1, orte_grpcomm_base_framework.framework_output,
                                  "%s grpcomm:base:returning existing collective",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-
             return coll;
         }
     }
@@ -218,9 +213,13 @@ orte_grpcomm_coll_t* orte_grpcomm_base_get_tracker(orte_grpcomm_signature_t *sig
 
         return NULL;
     }
-    OPAL_OUTPUT_VERBOSE((1, orte_grpcomm_base_framework.framework_output,
-                         "%s grpcomm:base: creating new coll",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+    if (1 < opal_output_get_verbosity(orte_grpcomm_base_framework.framework_output)) {
+        char *tmp=NULL;
+        (void)opal_dss.print(&tmp, NULL, sig, ORTE_SIGNATURE);
+        opal_output(0, "%s grpcomm:base: creating new coll for procs %s",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), tmp);
+        free(tmp);
+    }
     coll = OBJ_NEW(orte_grpcomm_coll_t);
     OBJ_RETAIN(sig);
     coll->sig = sig;
@@ -250,6 +249,11 @@ static int create_dmns(orte_grpcomm_signature_t *sig,
     size_t nds;
     orte_vpid_t *dns;
 
+    OPAL_OUTPUT_VERBOSE((1, orte_grpcomm_base_framework.framework_output,
+                         "%s grpcomm:base:create_dmns called with %s signature",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                         (NULL == sig->signature) ? "NULL" : "NON-NULL"));
+
     /* if NULL == procs, then all daemons are participating */
     if (NULL == sig->signature) {
         *ndmns = orte_process_info.num_procs;
@@ -258,6 +262,10 @@ static int create_dmns(orte_grpcomm_signature_t *sig,
     }
 
     if (ORTE_VPID_WILDCARD == sig->signature[0].vpid) {
+        OPAL_OUTPUT_VERBOSE((1, orte_grpcomm_base_framework.framework_output,
+                             "%s grpcomm:base:create_dmns called for all procs in job %s",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             ORTE_JOBID_PRINT(sig->signature[0].jobid)));
         /* all daemons hosting this jobid are participating */
         if (NULL == (jdata = orte_get_job_data_object(sig->signature[0].jobid))) {
             ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
@@ -280,6 +288,10 @@ static int create_dmns(orte_grpcomm_signature_t *sig,
                 free(dns);
                 return ORTE_ERROR;
             }
+            OPAL_OUTPUT_VERBOSE((5, orte_grpcomm_base_framework.framework_output,
+                                 "%s grpcomm:base:create_dmns adding daemon %s to array",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                 ORTE_NAME_PRINT(&node->daemon->name)));
             dns[nds++] = node->daemon->name.vpid;
         }
     } else {
@@ -304,6 +316,7 @@ static int create_dmns(orte_grpcomm_signature_t *sig,
                 return ORTE_ERR_NOT_FOUND;
             }
             vpid = proc->node->daemon->name.vpid;
+            found = false;
             OPAL_LIST_FOREACH(nm, &ds, orte_namelist_t) {
                 if (nm->name.vpid == vpid) {
                     found = true;
@@ -324,6 +337,10 @@ static int create_dmns(orte_grpcomm_signature_t *sig,
         dns = (orte_vpid_t*)malloc(opal_list_get_size(&ds) * sizeof(orte_vpid_t));
         nds = 0;
         while (NULL != (nm = (orte_namelist_t*)opal_list_remove_first(&ds))) {
+            OPAL_OUTPUT_VERBOSE((5, orte_grpcomm_base_framework.framework_output,
+                                 "%s grpcomm:base:create_dmns adding daemon %s to array",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                 ORTE_NAME_PRINT(&nm->name)));
             dns[nds++] = nm->name.vpid;
             OBJ_RELEASE(nm);
         }
@@ -351,7 +368,7 @@ static int pack_xcast(orte_grpcomm_signature_t *sig,
         ORTE_ERROR_LOG(rc);
         goto CLEANUP;
     }
-    
+
     /* copy the payload into the new buffer - this is non-destructive, so our
      * caller is still responsible for releasing any memory in the buffer they
      * gave to us
@@ -360,7 +377,7 @@ static int pack_xcast(orte_grpcomm_signature_t *sig,
         ORTE_ERROR_LOG(rc);
         goto CLEANUP;
     }
-    
+
 CLEANUP:
     return ORTE_SUCCESS;
 }

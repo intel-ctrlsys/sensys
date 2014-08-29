@@ -336,6 +336,7 @@ static int stuff_proc_values(opal_buffer_t *reply, orte_job_t *jdata, orte_proc_
     app = (orte_app_context_t*)opal_pointer_array_get_item(jdata->apps, proc->app_idx);
     kp = &kv;
 
+#if OPAL_HAVE_HWLOC
     /* pass the local topology for the app so it doesn't
      * have to discover it for itself */
     if (NULL != opal_hwloc_topology) {
@@ -357,6 +358,7 @@ static int stuff_proc_values(opal_buffer_t *reply, orte_job_t *jdata, orte_proc_
         }
         OBJ_DESTRUCT(&kv);
     }
+#endif /* OPAL_HAVE_HWLOC */
     /* cpuset */
     tmp = NULL;
     if (orte_get_attribute(&proc->attributes, ORTE_PROC_CPU_BITMAP, (void**)&tmp, OPAL_STRING)) {
@@ -713,6 +715,14 @@ static void process_message(pmix_server_peer_t *peer)
                 goto reply_fence;
             }
         }
+        if (4 < opal_output_get_verbosity(pmix_server_output)) {
+            char *tmp=NULL;
+            (void)opal_dss.print(&tmp, NULL, sig, ORTE_SIGNATURE);
+            opal_output(0, "%s %s called with procs %s",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                        (PMIX_FENCENB_CMD == cmd) ? "FENCE_NB" : "FENCE", tmp);
+            free(tmp);
+        }
         /* get the URI for this process */
         cnt = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer, &local_uri, &cnt, OPAL_STRING))) {
@@ -1029,25 +1039,9 @@ static void process_message(pmix_server_peer_t *peer)
                 return;
             }
             /* xfer the data - the blobs are in the buffer,
-             * so don't repack them */
+             * so don't repack them. They will include the remote
+             * hostname, so don't add it again */
             opal_dss.copy_payload(reply, &buf);
-            OBJ_DESTRUCT(&buf);
-            /* pass the hostname */
-            OBJ_CONSTRUCT(&buf, opal_buffer_t);
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &proc->node->name, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(reply);
-                OBJ_DESTRUCT(&buf);
-                return;
-            }
-            /* pack the blob */
-            bptr = &buf;
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(reply, &bptr, 1, OPAL_BUFFER))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(reply);
-                OBJ_DESTRUCT(&buf);
-                return;
-            }
             OBJ_DESTRUCT(&buf);
             PMIX_SERVER_QUEUE_SEND(peer, tag, reply);
             return;
@@ -1310,22 +1304,22 @@ void pmix_server_recv_handler(int sd, short flags, void *cbdata)
                                     peer->recv_msg->hdr.tag);
                 /* process the message */
                 process_message(peer);
+            } else if (ORTE_ERR_RESOURCE_BUSY == rc ||
+                       ORTE_ERR_WOULD_BLOCK == rc) {
+                /* exit this event and let the event lib progress */
+                return;
+            } else {
+                // report the error
+                opal_output(0, "%s-%s pmix_server_peer_recv_handler: unable to recv message",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                            ORTE_NAME_PRINT(&(peer->name)));
+                /* turn off the recv event */
+                opal_event_del(&peer->recv_event);
+                peer->recv_ev_active = false;
+                peer->state = PMIX_SERVER_CLOSED;
+                CLOSE_THE_SOCKET(peer->sd);
+                return;
             }
-        } else if (ORTE_ERR_RESOURCE_BUSY == rc ||
-                   ORTE_ERR_WOULD_BLOCK == rc) {
-            /* exit this event and let the event lib progress */
-            return;
-        } else {
-            // report the error
-            opal_output(0, "%s-%s pmix_server_peer_recv_handler: unable to recv message",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        ORTE_NAME_PRINT(&(peer->name)));
-            /* turn off the recv event */
-            opal_event_del(&peer->recv_event);
-            peer->recv_ev_active = false;
-            peer->state = PMIX_SERVER_CLOSED;
-            CLOSE_THE_SOCKET(peer->sd);
-            return;
         }
         break;
     default: 

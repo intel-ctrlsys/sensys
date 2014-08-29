@@ -504,7 +504,8 @@ int orte_dt_print_proc(char **output, char *prefix, orte_proc_t *src, opal_data_
             char tmp1[1024], tmp2[1024];
             char *str=NULL, *cpu_bitmap=NULL;
 ;
-            if (orte_get_attribute(&src->attributes, ORTE_PROC_CPU_BITMAP, (void**)&cpu_bitmap, OPAL_STRING)) {
+            if (orte_get_attribute(&src->attributes, ORTE_PROC_CPU_BITMAP, (void**)&cpu_bitmap, OPAL_STRING) &&
+                NULL != src->node->topology) {
                 mycpus = hwloc_bitmap_alloc();
                 hwloc_bitmap_list_sscanf(mycpus, cpu_bitmap);
                 if (OPAL_ERR_NOT_BOUND == opal_hwloc_base_cset2str(tmp1, sizeof(tmp1), src->node->topology, mycpus)) {
@@ -894,6 +895,36 @@ int orte_dt_print_attr(char **output, char *prefix,
 
 int orte_dt_print_sig(char **output, char *prefix, orte_grpcomm_signature_t *src, opal_data_type_t type)
 {
+    char *prefx;
+    size_t i;
+    char *tmp, *tmp2;
+
+    /* deal with NULL prefix */
+    if (NULL == prefix) asprintf(&prefx, " ");
+    else prefx = strdup(prefix);
+    
+    /* if src is NULL, just print data type and return */
+    if (NULL == src) {
+        asprintf(output, "%sData type: ORTE_SIG\tValue: NULL pointer", prefx);
+        free(prefx);
+        return OPAL_SUCCESS;
+    }
+
+    if (NULL == src->signature) {
+        asprintf(output, "%sORTE_SIG\tValue: NULL", prefx);
+        free(prefx);
+        return ORTE_SUCCESS;
+    }
+
+    /* there must be at least one */
+    asprintf(&tmp, "%sORTE_SIG\tValue: ", prefx);
+
+    for (i=0; i < src->sz; i++) {
+        asprintf(&tmp2, "%s%s", tmp, ORTE_NAME_PRINT(&src->signature[i]));
+        free(tmp);
+        tmp = tmp2;
+    }
+    *output = tmp;
     return ORTE_SUCCESS;
 }
 

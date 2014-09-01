@@ -477,7 +477,7 @@ static int check_cpu_type(void)
 
     while (NULL != obj) {
         for (k=0; k < obj->infos_count; k++) {
-            if (0 == strcmp(obj->infos[k].name, "model") &&
+            if (0 == strcmp(obj->infos[k].name, "CPUModelNumber") &&
                 NULL != obj->infos[k].value) {
                 mca_sensor_pwr_component.model = strtoul(obj->infos[k].value, NULL, 10);
                 

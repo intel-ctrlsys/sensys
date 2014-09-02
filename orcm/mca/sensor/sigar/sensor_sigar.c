@@ -948,7 +948,7 @@ static uint64_t metric_diff_calc(sigar_uint64_t newval, uint64_t oldval,
 
 static void generate_test_vector(opal_buffer_t *v)
 {
-    char *ctmp;
+    char *ctmp, *date;
     uint64_t ui64;
     float ft;
     time_t now;
@@ -960,12 +960,13 @@ static void generate_test_vector(opal_buffer_t *v)
     /* get the time so it will be unique each time */
     now = time(NULL);
     /* pass the time along as a simple string */
-    ctmp = ctime(&now);
-    if(NULL != ctmp && 0 != strlen(ctmp)) {
+    date = ctime(&now);
+    if(NULL != date && 0 != strlen(date)) {
         /* strip the trailing newline */
-        ctmp[strlen(ctmp)-1] = '\0';
+        date[strlen(date)-1] = '\0';
     }
-    opal_dss.pack(v, &ctmp, 1, OPAL_STRING);
+    opal_dss.pack(v, &date, 1, OPAL_STRING);
+    free(date);
     /* mem_total */
     ui64 = 1;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);

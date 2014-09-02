@@ -63,7 +63,6 @@ typedef uint32_t orte_proc_type_t;
 #define ORTE_PROC_IOF_ENDPT     0x1000
 #define ORTE_PROC_SCHEDULER     0x2000
 #define ORTE_PROC_MASTER        0x4000
-#define ORTE_PROC_EMULATOR      0x8000
 
 #define ORTE_PROC_IS_SINGLETON      (ORTE_PROC_SINGLETON & orte_process_info.proc_type)
 #define ORTE_PROC_IS_DAEMON         (ORTE_PROC_DAEMON & orte_process_info.proc_type)
@@ -77,7 +76,7 @@ typedef uint32_t orte_proc_type_t;
 #define ORTE_PROC_IS_IOF_ENDPT      (ORTE_PROC_IOF_ENDPT & orte_process_info.proc_type)
 #define ORTE_PROC_IS_SCHEDULER      (ORTE_PROC_SCHEDULER & orte_process_info.proc_type)
 #define ORTE_PROC_IS_MASTER         (ORTE_PROC_MASTER & orte_process_info.proc_type)
-#define ORTE_PROC_IS_EMULATOR       (ORTE_PROC_EMULATOR & orte_process_info.proc_type)
+
 
 /**
  * Process information structure

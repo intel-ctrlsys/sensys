@@ -16,9 +16,10 @@
 #include "opal/class/opal_list.h"
 
 #define ORCM_MAX_CLI_LENGTH  1024
+#define ORCM_MAX_CLI_LIST_LENGTH  128
 
 typedef struct {
-    char *parent;  // name of the parent command - NULL indicates top-level cmd
+    char *parent[ORCM_MAX_CLI_LIST_LENGTH]; // list of the parent commands, NULL terminated - just NULL indicates top-level cmd
     char *cmd;     // name of this command, must include the dashes if an option that needs them
     bool option;   // is this an option or a sublevel command
     int nargs;     // number of arguments this option or command takes

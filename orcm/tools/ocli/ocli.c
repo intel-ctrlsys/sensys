@@ -92,25 +92,26 @@ orcm_ocli_globals_t orcm_ocli_globals;
 
 static orcm_cli_init_t cli_init[] = {
     /****** resource command ******/
-    {NULL, "resource", 0, 1, "Resource Information"},
+    { { NULL }, "resource", 0, 0, "Resource Information" },
     // status subcommand
-    {"resource", "status", 0, 0, "Resource Status"},
+    { { "resource", NULL }, "status", 0, 0, "Resource Status" },
     // availability subcommand
-    {"resource", "availability", 0, 0, "Resource Availability"},
+    { { "resource", NULL }, "availability", 0, 0, "Resource Availability" },
 
     /****** queue command ******/
-    {NULL, "queue", 0, 1, "Queue Information"},
+    { { NULL }, "queue", 0, 0, "Queue Information" },
     // status subcommand
-    {"queue", "status", 0, 0, "Queue Status"},
+    { { "queue", NULL }, "status", 0, 0, "Queue Status" },
     // status subcommand
-    {"queue", "policy", 0, 0, "Queue Policies"},
+    { { "queue", NULL }, "policy", 0, 0, "Queue Policies" },
     // status subcommand
-    {"queue", "session", 0, 0, "Session Status"},
+    { { "queue", NULL }, "session", 0, 0, "Session Status" },
     
     /****** next level test command ******/
-    {"status", "test", 0, 0, "test"},
+    { { "resource", "status", NULL }, "test", 0, 0, "test" },
     
-    {NULL, NULL, 0, 0, NULL}  // end of array tag
+    /* End of list */
+    { { NULL }, NULL, 0, 0, NULL }
 };
 
 opal_cmd_line_init_t cmd_line_opts[] = {
@@ -127,11 +128,7 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "Be Verbose" },
 
     /* End of list */
-    { NULL,
-      '\0', NULL, NULL,
-      0,
-      NULL, OPAL_CMD_LINE_TYPE_NULL,
-      NULL }
+    { NULL, '\0', NULL, NULL, 0, NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
 };
 
 int
@@ -183,6 +180,7 @@ static int parse_args(int argc, char *argv[])
     
     if (0 == tailc) {
         /* if the user hasn't specified any commands, run cli to help build it */
+        OBJ_CONSTRUCT(&cli, orcm_cli_t);
         orcm_cli_create(&cli, cli_init);
         OPAL_LIST_FOREACH(cmd, &cli.cmds, orcm_cli_cmd_t) {
             orcm_cli_print_cmd(cmd, NULL);

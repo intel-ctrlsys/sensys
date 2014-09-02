@@ -234,7 +234,7 @@ int orun(int argc, char *argv[])
 {
     int rc, n;
     opal_cmd_line_t cmd_line;
-    char *param;
+    char *param=NULL;
     orte_job_t *jdata=NULL;
     orcm_alloc_t alloc;
     orcm_rm_cmd_flag_t command;
@@ -329,14 +329,14 @@ int orun(int argc, char *argv[])
                 param = strdup(cli_param);
             }
             /* ensure we strip any trailing '/' */
-            if (0 == strcmp(OPAL_PATH_SEP, &(param[strlen(param)-1]))) {
+            if (NULL != param && 0 == strcmp(OPAL_PATH_SEP, &(param[strlen(param)-1]))) {
                 param[strlen(param)-1] = '\0';
             }
             tmp_basename = strdup(orun_globals.path_to_mpirun);
             if (0 == strcmp(OPAL_PATH_SEP, &(tmp_basename[strlen(tmp_basename)-1]))) {
                 tmp_basename[strlen(tmp_basename)-1] = '\0';
             }
-            if (0 != strcmp(param, tmp_basename)) {
+            if (NULL != param && 0 != strcmp(param, tmp_basename)) {
                 orte_show_help("help-orun.txt", "orun:double-prefix",
                                true, orte_basename, orte_basename,
                                param, tmp_basename, orte_basename);
@@ -882,7 +882,7 @@ static int create_app(int argc, char* argv[],
     opal_cmd_line_t cmd_line;
     char cwd[OPAL_PATH_MAX];
     int i, j, count, rc;
-    char *param, *value, *value2;
+    char *param = NULL, *value, *value2;
     orte_app_context_t *app = NULL;
     bool cmd_line_made = false;
     bool found = false;
@@ -1109,14 +1109,14 @@ static int create_app(int argc, char* argv[],
                     param = strdup(cli_prefix_param);
                 }
                 /* ensure we strip any trailing '/' */
-                if ( param != NULL && 0 == strcmp(OPAL_PATH_SEP, &(param[strlen(param)-1]))) {
+                if (NULL != param && 0 == strcmp(OPAL_PATH_SEP, &(param[strlen(param)-1]))) {
                     param[strlen(param)-1] = '\0';
                 }
                 value = strdup(orun_globals.prefix);
                 if (0 == strcmp(OPAL_PATH_SEP, &(value[strlen(value)-1]))) {
                     value[strlen(value)-1] = '\0';
                 }
-                if (0 != strcmp(param, value)) {
+                if (NULL != param && 0 != strcmp(param, value)) {
                     orte_show_help("help-orun.txt", "orun:app-prefix-conflict",
                                    true, orte_basename, value, param);
                     /* let the global-level prefix take precedence since we

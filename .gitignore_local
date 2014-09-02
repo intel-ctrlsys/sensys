@@ -60,6 +60,10 @@ opal/mca/event/libevent2021/libevent/m4/ltsugar.m4
 opal/mca/event/libevent2021/libevent/m4/ltversion.m4
 opal/mca/event/libevent2021/libevent/m4/lt~obsolete.m4
 opal/mca/event/libevent2021/libevent/missing
+opal/mca/hwloc/hwloc191/hwloc/include/hwloc/autogen/config.h
+opal/mca/hwloc/hwloc191/hwloc/include/hwloc/autogen/stamp-h3
+opal/mca/hwloc/hwloc191/hwloc/include/private/autogen/config.h
+opal/mca/hwloc/hwloc191/hwloc/include/private/autogen/stamp-h2
 orcm/include/stamp-*
 orcm/include/orcm/frameworks.h
 orte/include/orte/frameworks.h

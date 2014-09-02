@@ -591,11 +591,9 @@ static int orcmsd_setup_node_pool(void)
             error = "orte_regex_extract_node_names";
             goto error;
         }
-    } else {
-    if (OPAL_SUCCESS != opal_argv_append_nosize(&hosts, orte_process_info.nodename)) {
+    } else if (OPAL_SUCCESS != opal_argv_append_nosize(&hosts, orte_process_info.nodename)) {
             error = "opal_argv_append_nosize";
             goto error;
-        } 
     }
 
     /* setup the global job and node arrays */
@@ -637,7 +635,7 @@ static int orcmsd_setup_node_pool(void)
     opal_pointer_array_set_item(jdata->apps, 0, app);
     jdata->num_apps++;
     
-    for(i=0; hosts[i] != NULL; i++) {
+    for(i=0; opal_argv_count(hosts); i++) {
         /* create and store a node object where we are */
         node = OBJ_NEW(orte_node_t);
         node->name = strdup(hosts[i]);
@@ -698,24 +696,16 @@ static int orcmsd_setup_node_pool(void)
         opal_dss.pack(uribuf, &orte_process_info.my_hnp_uri, 1, OPAL_STRING);
         orte_rml_base_update_contact_info(uribuf);
     }
-
-    for(i=0; hosts[i] != NULL; i++) {
-        free(hosts[i]);
-        hosts[i]= NULL;
-    }
+    
     if(hosts) {
-        free(hosts);
+        opal_argv_free(hosts);
     }
     
     return ORTE_SUCCESS;
     
  error:
-    for(i=0; hosts[i] != NULL; i++) {
-        free(hosts[i]);
-        hosts[i]= NULL;
-    }
     if(hosts) {
-        free(hosts);
+        opal_argv_free(hosts);
     }
     orte_show_help("help-orcmsd.txt",
                    "orcmsd_init:startup:internal-failure",

@@ -871,7 +871,7 @@ static void mycleanup(int dbhandle, int status,
 
 static void ipmi_log(opal_buffer_t *sample)
 {
-    char *hostname, *sampletime, *sample_item, *sample_name, *sample_unit;
+    char *hostname, *sampletime, *sample_item, *sample_name, *sample_unit, *key_unit;
     char nodename[64], hostip[16], bmcip[16], baseboard_manuf_date[11], baseboard_manufacturer[30], baseboard_name[16], baseboard_serial[16], baseboard_part[16];
     float float_item;
     unsigned uint_item;
@@ -879,7 +879,6 @@ static void ipmi_log(opal_buffer_t *sample)
     int32_t n;
     opal_list_t *vals;
     opal_value_t *kv;
-    char key_unit[40];
     int sample_count;
     if (!log_enabled) {
         return;
@@ -951,8 +950,6 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
                 return;
             }
-            opal_output(0, "Unpacked Baseboard Manufacture Date(5a): %s", sample_item);
-
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked Baseboard Manufacture Date(5a): %s", sample_item);
             strncpy(baseboard_manuf_date,sample_item,(sizeof(baseboard_manuf_date)-1));
@@ -969,8 +966,6 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
                 return;
             }
-            opal_output(0, "Unpacked Baseboard Manufacturer Name(6a): %s", sample_item);
-
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked Baseboard Manufacturer Name(6a): %s", sample_item);
             strncpy(baseboard_manufacturer,sample_item,(sizeof(baseboard_manufacturer)-1));
@@ -987,8 +982,6 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
                 return;
             }
-            opal_output(0, "Unpacked Baseboard Product Name(7a): %s", sample_item);
-
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked Baseboard Product Name(7a): %s", sample_item);
             strncpy(baseboard_name,sample_item,(sizeof(baseboard_name)-1));
@@ -1005,8 +998,6 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
                 return;
             }
-            opal_output(0, "Unpacked Baseboard Serial Number(8a): %s", sample_item);
-
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked Baseboard Serial Number(8a): %s", sample_item);
             strncpy(baseboard_serial,sample_item,(sizeof(baseboard_serial)-1));
@@ -1023,8 +1014,6 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
                 return;
             }
-            opal_output(0, "Unpacked Baseboard Part Number(9a): %s", sample_item);
-
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked Baseboard Part Number(9a): %s", sample_item);
             strncpy(baseboard_part,sample_item,(sizeof(baseboard_part)-1));
@@ -1250,6 +1239,7 @@ static void ipmi_log(opal_buffer_t *sample)
         /* Log All non-string metrics here */
         for(unsigned int count_metrics=0;count_metrics<uint_item;count_metrics++)
         {
+            key_unit = NULL; /* reset pointers */
             /* Metric Name */
             n=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_name, &n, OPAL_STRING))) {
@@ -1270,11 +1260,22 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(rc);
                 return;
             }
-            memset(key_unit,'\0',sizeof(key_unit));
-            strncpy(key_unit,sample_name,sizeof(key_unit)-1);
-            key_unit[sizeof(key_unit)-1] = '\0';
-            strncat(key_unit,":",sizeof(key_unit)-strlen(key_unit)-1);
-            strncat(key_unit,sample_unit,sizeof(key_unit)-strlen(key_unit)-1);
+
+            /* allocate memory for "sample_name"+":"+"sample_unit"+"\0" */
+            key_unit = (char*) malloc(strlen(sample_name)+strlen(sample_unit)+2);
+            if (key_unit == NULL)
+            {
+                ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+                free(sample_name);
+                free(sample_unit);
+                continue;
+            }
+            strcpy(key_unit,sample_name);
+            if(strlen(sample_unit) > 0)
+            {
+                strcat(key_unit,":");
+                strcat(key_unit,sample_unit);
+            }
 
             kv = OBJ_NEW(opal_value_t);
             kv->key = strdup(key_unit);
@@ -1287,6 +1288,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 "PACKED DATA: %s:%f", kv->key, kv->data.fval);
             free(sample_name);
             free(sample_unit);
+            free(key_unit);
         }
         /* Send the unpacked data for one Node */
         /* store it */

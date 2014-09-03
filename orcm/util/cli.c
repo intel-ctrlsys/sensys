@@ -143,7 +143,7 @@ int orcm_cli_get_cmd(char *prompt,
     bool space;
     size_t j, k;
     char **completions, **inputlist;
-    int rc;
+    int rc = ORCM_SUCCESS;
 
     /* prep the stack */
     memset(input, 0, ORCM_MAX_CLI_LENGTH);
@@ -218,7 +218,7 @@ int orcm_cli_get_cmd(char *prompt,
                 printf("\n%s> %s", prompt, input);
                 break;
             } else {
-                return rc;
+                goto process;
             }
 
         case ' ':    // space
@@ -296,6 +296,7 @@ int orcm_cli_get_cmd(char *prompt,
             putchar(c);
             /* add it to our array */
             input[j++] = c;
+            break;
         }
     }
 
@@ -306,7 +307,7 @@ int orcm_cli_get_cmd(char *prompt,
     /* return the assembled command */
     *cmd = strdup(input);
 
-    return ORCM_SUCCESS;
+    return rc;
 }
 
 static int get_completions(orcm_cli_t *cli, char **input, char ***completions, opal_list_t *options)

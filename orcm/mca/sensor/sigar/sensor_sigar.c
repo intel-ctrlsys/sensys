@@ -966,7 +966,6 @@ static void generate_test_vector(opal_buffer_t *v)
         date[strlen(date)-1] = '\0';
     }
     opal_dss.pack(v, &date, 1, OPAL_STRING);
-    free(date);
     /* mem_total */
     ui64 = 1;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);

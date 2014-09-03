@@ -281,7 +281,7 @@ int orcm_cli_get_cmd(char *prompt,
             options = NULL;
             inputlist = opal_argv_split(input, ' ');
             printf("\nPossible commands:\n");
-            rc = print_completions(cli, inputlist);
+            print_completions(cli, inputlist);
             printf("\n%s> %s", prompt, input);
             break;
 

@@ -15,8 +15,6 @@ SUBDIRS += \
         tools/oflow \
         tools/ops \
         tools/opwrvirus \
-        tools/oqueue \
-        tools/oqueue \
         tools/orcm-emulator \
         tools/orcm-info \
         tools/orcmctrld \

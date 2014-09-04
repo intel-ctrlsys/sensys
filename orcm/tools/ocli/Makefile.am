@@ -28,7 +28,13 @@ $(nodist_man_MANS): $(top_builddir)/orcm/include/orcm_config.h
 
 endif # OPAL_INSTALL_BINARIES
 
-ocli_SOURCES = ocli.c
+ocli_SOURCES = \
+        ocli.h \
+        ocli.c \
+        queue.c \
+        resource.c \
+        session.c
+
 # the following empty ocli_LDFLAGS is used
 #  so that the ocli can be compiled statically
 #  by simply changing the value of this from 

@@ -1,19 +1,4 @@
 /*
- * Copyright (c) 2004-2010 The Trustees of Indiana University and Indiana
- *                         University Research and Technology
- *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2011 The University of Tennessee and The University
- *                         of Tennessee Research Foundation.  All rights
- *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
- *                         University of Stuttgart.  All rights reserved.
- * Copyright (c) 2004-2005 The Regents of the University of California.
- *                         All rights reserved.
- * Copyright (c) 2006-2013 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2007      Sun Microsystems, Inc.  All rights reserved.
- * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
- * Copyright (c) 2010      Oracle and/or its affiliates.  All rights reserved.
  * Copyright (c) 2014      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  * 
@@ -22,62 +7,14 @@
  * $HEADER$
  */
 
-#include "orcm_config.h"
-#include "orcm/constants.h"
-
-#include <stdio.h>
-#include <errno.h>
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif  /* HAVE_UNISTD_H */
-#ifdef HAVE_STDLIB_H
-#include <stdlib.h>
-#endif  /*  HAVE_STDLIB_H */
-#ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
-#endif  /* HAVE_SYS_STAT_H */
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif  /* HAVE_SYS_TYPES_H */
-#ifdef HAVE_SYS_WAIT_H
-#include <sys/wait.h>
-#endif  /* HAVE_SYS_WAIT_H */
-#ifdef HAVE_STRING_H
-#include <string.h>
-#endif  /* HAVE_STRING_H */
-#ifdef HAVE_DIRENT_H
-#include <dirent.h>
-#endif  /* HAVE_DIRENT_H */
-
-#include "opal/dss/dss.h"
-#include "opal/mca/mca.h"
-#include "opal/mca/base/base.h"
-#include "opal/mca/event/event.h"
-#include "opal/util/basename.h"
-#include "opal/util/cmd_line.h"
-#include "opal/util/output.h"
-#include "opal/util/opal_environ.h"
-#include "opal/util/show_help.h"
-#include "opal/mca/base/base.h"
-#include "opal/runtime/opal.h"
-#if OPAL_ENABLE_FT_CR == 1
-#include "opal/runtime/opal_cr.h"
-#endif
-
-#include "orte/runtime/orte_wait.h"
-#include "orte/util/error_strings.h"
-#include "orte/util/show_help.h"
-#include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/rml/rml.h"
-
-#include "orcm/runtime/runtime.h"
-#include "orcm/util/cli.h"
+#include "orcm/tools/ocli/ocli.h"
 
 /******************
  * Local Functions
  ******************/
 static int orcm_ocli_init(int argc, char *argv[]);
-static int parse_args(int argc, char *argv[]);
+static int parse_args(int argc, char *argv[], char **result_cmd);
+static void run_cmd(char *cmd);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -88,31 +25,9 @@ typedef struct {
     int output;
 } orcm_ocli_globals_t;
 
+const char *orcm_ocli_commands[] = { "resource", "queue", "session", "status", "availability", "policy", "\0" };
+
 orcm_ocli_globals_t orcm_ocli_globals;
-
-static orcm_cli_init_t cli_init[] = {
-    /****** resource command ******/
-    { { NULL }, "resource", 0, 0, "Resource Information" },
-    // status subcommand
-    { { "resource", NULL }, "status", 0, 0, "Resource Status" },
-    // availability subcommand
-    { { "resource", NULL }, "availability", 0, 0, "Resource Availability" },
-
-    /****** queue command ******/
-    { { NULL }, "queue", 0, 0, "Queue Information" },
-    // status subcommand
-    { { "queue", NULL }, "status", 0, 0, "Queue Status" },
-    // status subcommand
-    { { "queue", NULL }, "policy", 0, 0, "Queue Policies" },
-    // status subcommand
-    { { "queue", NULL }, "session", 0, 0, "Session Status" },
-    
-    /****** next level test command ******/
-    { { "resource", "status", NULL }, "test", 0, 0, "test" },
-    
-    /* End of list */
-    { { NULL }, NULL, 0, 0, NULL }
-};
 
 opal_cmd_line_init_t cmd_line_opts[] = {
     { NULL,
@@ -145,7 +60,7 @@ main(int argc, char *argv[])
     return ORCM_SUCCESS;
 }
 
-static int parse_args(int argc, char *argv[]) 
+static int parse_args(int argc, char *argv[], char** result_cmd)
 {
     int ret;
     opal_cmd_line_t cmd_line;
@@ -158,7 +73,6 @@ static int parse_args(int argc, char *argv[])
     char *str = NULL;
     orcm_cli_t cli;
     orcm_cli_cmd_t *cmd;
-    char *mycmd = NULL;
     int tailc;
     char **tailv;
 
@@ -185,17 +99,14 @@ static int parse_args(int argc, char *argv[])
         OPAL_LIST_FOREACH(cmd, &cli.cmds, orcm_cli_cmd_t) {
             orcm_cli_print_cmd(cmd, NULL);
         }
-        
-        orcm_cli_get_cmd("ocli", &cli, &mycmd);
-        if (mycmd) {
-            fprintf(stderr, "\nCMD: %s\n", mycmd);
-            free(mycmd);
-        } else {
+        *result_cmd = NULL;
+        orcm_cli_get_cmd("ocli", &cli, result_cmd);
+        if (!*result_cmd) {
             fprintf(stderr, "\nERR: NO COMMAND RETURNED\n");
         }
     } else {
         /* otherwise use the user specified command */
-        fprintf(stderr, "\nCMD: %s\n", opal_argv_join(tailv, ' '));
+        *result_cmd = (opal_argv_join(tailv, ' '));
     }
 
     /**
@@ -219,13 +130,14 @@ static int parse_args(int argc, char *argv[])
      * process them.
      */
     mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
-
+    
     return ORCM_SUCCESS;
 }
 
 static int orcm_ocli_init(int argc, char *argv[])
 {
     int ret;
+    char *mycmd;
 
     /*
      * Make sure to init util before parse_args
@@ -239,7 +151,7 @@ static int orcm_ocli_init(int argc, char *argv[])
     /*
      * Parse Command Line Arguments
      */
-    if (ORCM_SUCCESS != (ret = parse_args(argc, argv))) {
+    if (ORCM_SUCCESS != (ret = parse_args(argc, argv, &mycmd))) {
         return ret;
     }
 
@@ -254,6 +166,127 @@ static int orcm_ocli_init(int argc, char *argv[])
     }
 
     ret = orcm_init(ORCM_TOOL);
+    
+    run_cmd(mycmd);
+    free(mycmd);
 
     return ret;
+}
+
+static int ocli_command_to_int(char *command)
+{
+    int i;
+    
+    for (i = 0; i < opal_argv_count((char **)orcm_ocli_commands); i++) {
+        if (0 == strcmp(command, orcm_ocli_commands[i])) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void run_cmd(char *cmd) {
+    char **cmdlist;
+    char *fullcmd;
+    int i, rc;
+    
+    cmdlist = opal_argv_split(cmd, ' ');
+    if (0 == opal_argv_count(cmdlist)) {
+        printf("No command parsed\n");
+        return;
+    }
+    
+    i = ocli_command_to_int(cmdlist[0]);
+    if (-1 == i) {
+        fullcmd = opal_argv_join(cmdlist, ' ');
+        printf("Unknown command: %s\n", fullcmd);
+        free(fullcmd);
+        return;
+    }
+    
+    switch (i) {
+    case 0: //resource
+        i = ocli_command_to_int(cmdlist[1]);
+        if (-1 == i) {
+            fullcmd = opal_argv_join(cmdlist, ' ');
+            printf("Unknown command: %s\n", fullcmd);
+            free(fullcmd);
+            break;
+        }
+            
+        switch (i) {
+        case 3: //status
+            if (ORCM_SUCCESS != (rc = orcm_ocli_resource_status(cmdlist))) {
+                ORTE_ERROR_LOG(rc);
+            }
+            break;
+        case 4: //availability
+            if (ORCM_SUCCESS != (rc = orcm_ocli_resource_availability(cmdlist))) {
+                ORTE_ERROR_LOG(rc);
+            }
+            break;
+        default:
+            fullcmd = opal_argv_join(cmdlist, ' ');
+            printf("Illegal command: %s\n", fullcmd);
+            free(fullcmd);
+            break;
+        }
+        break;
+    case 1: // queue
+        i = ocli_command_to_int(cmdlist[1]);
+        if (-1 == i) {
+            fullcmd = opal_argv_join(cmdlist, ' ');
+            printf("Unknown command: %s\n", fullcmd);
+            free(fullcmd);
+            break;
+        }
+            
+        switch (i) {
+        case 3: //status
+            if (ORCM_SUCCESS != (rc = orcm_ocli_queue_status(cmdlist))) {
+                ORTE_ERROR_LOG(rc);
+            }
+            break;
+        case 5: //policy
+            if (ORCM_SUCCESS != (rc = orcm_ocli_queue_policy(cmdlist))) {
+                ORTE_ERROR_LOG(rc);
+            }
+            break;
+        default:
+            fullcmd = opal_argv_join(cmdlist, ' ');
+            printf("Illegal command: %s\n", fullcmd);
+            free(fullcmd);
+            break;
+        }
+        break;
+    case 2: // session
+        i = ocli_command_to_int(cmdlist[1]);
+        if (-1 == i) {
+            fullcmd = opal_argv_join(cmdlist, ' ');
+            printf("Unknown command: %s\n", fullcmd);
+            free(fullcmd);
+            break;
+        }
+            
+        switch (i) {
+        case 3: //status
+            if (ORCM_SUCCESS != (rc = orcm_ocli_session_status(cmdlist))) {
+                ORTE_ERROR_LOG(rc);
+            }
+            break;
+        default:
+            fullcmd = opal_argv_join(cmdlist, ' ');
+            printf("Illegal command: %s\n", fullcmd);
+            free(fullcmd);
+            break;
+        }
+        break;
+    default:
+        fullcmd = opal_argv_join(cmdlist, ' ');
+        printf("Illegal command: %s\n", fullcmd);
+        free(fullcmd);
+        break;
+    }
+    
+    opal_argv_free(cmdlist);
 }

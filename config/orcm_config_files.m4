@@ -19,7 +19,6 @@ AC_DEFUN([ORCM_CONFIG_FILES],[
     orcm/tools/oflow/Makefile
     orcm/tools/ops/Makefile
     orcm/tools/opwrvirus/Makefile
-    orcm/tools/oqueue/Makefile
     orcm/tools/orcm-emulator/Makefile
     orcm/tools/orcm-info/Makefile
     orcm/tools/orcmctrld/Makefile

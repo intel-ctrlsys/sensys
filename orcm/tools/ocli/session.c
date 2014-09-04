@@ -45,6 +45,7 @@ int orcm_ocli_session_cancel(char **argv)
         return ORCM_ERROR;
     }
     session = strtol(argv[2], NULL, 10);
+    // FIXME: validate session id better
     if (session > 0) {
         /* setup to receive the result */
         OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
@@ -101,8 +102,8 @@ int orcm_ocli_session_cancel(char **argv)
         }
     } else {
         opal_output(0, "Invalid SESSION ID\n");
-        return ORTE_ERROR;
+        return ORCM_ERROR;
     }
     
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }

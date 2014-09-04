@@ -119,7 +119,6 @@ static int init(void)
     char *filename, *ptr, *tmp;
     size_t tlen = strlen("temp");
     size_t ilen = strlen("_input");
-    FILE *fp;
     coretemp_tracker_t *trk;
     int socket;
 
@@ -166,12 +165,11 @@ static void stop(orte_jobid_t jobid)
 
 static void dmidata_sample(orcm_sensor_sampler_t *sampler)
 {
-    int ret;
-    coretemp_tracker_t *trk, *nxt;
-    FILE *fp;
-    char *temp;
-    float degc;
+    int ret, k;
+    coretemp_tracker_t *trk, *nxt;    
+    char *temp;    
     opal_buffer_t data, *bptr;
+    hwloc_obj_t obj;
     int32_t ncores;
     time_t now;
     char time_str[40];
@@ -184,7 +182,6 @@ static void dmidata_sample(orcm_sensor_sampler_t *sampler)
     OBJ_CONSTRUCT(&data, opal_buffer_t);
     packed = false;
 
-    opal_output(0,"Sampling dmidata");
     /* pack our name */
     temp = strdup("dmidata");
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &temp, 1, OPAL_STRING))) {
@@ -196,14 +193,6 @@ static void dmidata_sample(orcm_sensor_sampler_t *sampler)
 
     /* store our hostname */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-
-    /* store the number of cores */
-    ncores = (int32_t)opal_list_get_size(&tracking);
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ncores, 1, OPAL_INT32))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
         return;
@@ -227,6 +216,42 @@ static void dmidata_sample(orcm_sensor_sampler_t *sampler)
     }
     free(timestamp_str);
 
+    opal_hwloc_base_get_topology();
+    if (NULL == (obj = hwloc_get_obj_by_type(opal_hwloc_topology, HWLOC_OBJ_MACHINE, 0))) {
+        /* there are no sockets identified in this machine */
+        orte_show_help("help-orcm-sensor-dmidata.txt", "no-sockets", true);
+        return ORTE_ERROR;
+    }
+
+    while (NULL != obj) {
+        /* Pack the total properties present and to be copied */
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &obj->infos_count, 1, OPAL_INT32))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        for (k=0; k < obj->infos_count; k++) {            
+            opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                "%s : %s",obj->infos[k].name, obj->infos[k].value);
+            /* Metric Name */
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &obj->infos[k].name, 1, OPAL_STRING))) {
+                ORTE_ERROR_LOG(ret);
+                OBJ_DESTRUCT(&data);
+                free(timestamp_str);
+                return;
+            }            
+
+            /* Metric Value*/            
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &obj->infos[k].value, 1, OPAL_STRING))) {
+                ORTE_ERROR_LOG(ret);
+                OBJ_DESTRUCT(&data);
+                free(timestamp_str);
+                return;
+            }            
+        }
+        obj=obj->next_sibling;
+    }
     packed = true;
     /* xfer the data for transmission */
     if (packed) {
@@ -253,14 +278,15 @@ static void dmidata_log(opal_buffer_t *sample)
 {
     char *hostname=NULL;
     char *sampletime;
+    char *samplename, *samplevalue;
     int rc;
-    int32_t n, ncores;
+    int32_t n;
+    int32_t machine_info_count, socket_info_count;
     opal_list_t *vals;
     opal_value_t *kv;
     float fval;
     int i;
 
-    opal_output(0,"dmidata log");
     if (!log_enabled) {
         return;
     }
@@ -268,12 +294,6 @@ static void dmidata_log(opal_buffer_t *sample)
     /* unpack the host this came from */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    /* and the number of cores on that host */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &ncores, &n, OPAL_INT32))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
@@ -286,9 +306,9 @@ static void dmidata_log(opal_buffer_t *sample)
     }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                        "%s Received log from host %s with %d cores",
+                        "%s Received log from host %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        (NULL == hostname) ? "NULL" : hostname, ncores);
+                        (NULL == hostname) ? "NULL" : hostname);
 
     /* xfr to storage */
     vals = OBJ_NEW(opal_list_t);
@@ -316,6 +336,33 @@ static void dmidata_log(opal_buffer_t *sample)
     kv->data.string = strdup(hostname);
     opal_list_append(vals, &kv->super);
 
+    /* Unpack infos_count */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &machine_info_count, &n, OPAL_INT32))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    for (i=0; i < machine_info_count; i++) {
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &samplename, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &samplevalue, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        kv = OBJ_NEW(opal_value_t);        
+        kv->key = strdup(samplename);
+        kv->type = OPAL_STRING;
+        
+        kv->data.string = strdup(samplevalue);
+        opal_list_append(vals, &kv->super);
+        free(samplename);
+        free(samplevalue);
+    }
 
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {

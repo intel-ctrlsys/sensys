@@ -273,6 +273,11 @@ static void run_cmd(char *cmd) {
                 ORTE_ERROR_LOG(rc);
             }
             break;
+        case 6: //cancel
+            if (ORCM_SUCCESS != (rc = orcm_ocli_session_cancel(cmdlist))) {
+                ORTE_ERROR_LOG(rc);
+            }
+            break;
         default:
             fullcmd = opal_argv_join(cmdlist, ' ');
             printf("Illegal command: %s\n", fullcmd);

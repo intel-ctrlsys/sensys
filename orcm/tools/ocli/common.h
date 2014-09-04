@@ -45,6 +45,7 @@ int orcm_ocli_resource_availability(char **argv);
 int orcm_ocli_queue_status(char **argv);
 int orcm_ocli_queue_policy(char **argv);
 int orcm_ocli_session_status(char **argv);
+int orcm_ocli_session_cancel(char **argv);
 
 END_C_DECLS
 

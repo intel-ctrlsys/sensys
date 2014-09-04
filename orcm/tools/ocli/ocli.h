@@ -32,13 +32,16 @@ static orcm_cli_init_t cli_init[] = {
     /****** queue command ******/
     { { NULL }, "session", 0, 0, "Session Management" },
     // status subcommand
-    { { "session", NULL }, "status", 0, 1, "Session Status" },
+    { { "session", NULL }, "status", 0, 0, "Session Status" },
+    // cancel subcommand
+    { { "session", NULL }, "cancel", 0, 1, "Session Cancel [arg: session id]" },
 
     /* End of list */
     { { NULL }, NULL, 0, 0, NULL }
 };
 
-const char *orcm_ocli_commands[] = { "resource", "queue", "session", "status", "availability", "policy", "\0" };
+const char *orcm_ocli_commands[] = { "resource", "queue", "session", "status",
+                                     "availability", "policy", "cancel", "\0" };
 
 END_C_DECLS
 

@@ -30,3 +30,79 @@ int orcm_ocli_session_status(char **argv)
 {
     return ORCM_ERR_NOT_IMPLEMENTED;
 }
+
+int orcm_ocli_session_cancel(char **argv)
+{
+    orcm_scd_cmd_flag_t command;
+    orcm_alloc_id_t id;
+    opal_buffer_t *buf;
+    orte_rml_recv_cb_t xfer;
+    long session;
+    int rc, n, result;
+    
+    if (3 != opal_argv_count(argv)) {
+        opal_output(1, "incorrect arguments to \"session cancel\"\n");
+        return ORCM_ERROR;
+    }
+    session = strtol(argv[2], NULL, 10);
+    if (session > 0) {
+        /* setup to receive the result */
+        OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
+        xfer.active = true;
+        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                                ORCM_RML_TAG_SCD,
+                                ORTE_RML_NON_PERSISTENT,
+                                orte_rml_recv_callback, &xfer);
+        
+        /* send it to the scheduler */
+        buf = OBJ_NEW(opal_buffer_t);
+        
+        command = ORCM_SESSION_CANCEL_COMMAND;
+        /* pack the cancel command flag */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
+                                                1, ORCM_SCD_CMD_T))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(buf);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        
+        id = (orcm_alloc_id_t)session;
+        /* pack the session id */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &id, 1, ORCM_ALLOC_ID_T))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(buf);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER,
+                                                          buf,
+                                                          ORCM_RML_TAG_SCD,
+                                                          orte_rml_send_callback,
+                                                          NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(buf);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        /* get result */
+        n=1;
+        ORTE_WAIT_FOR_COMPLETION(xfer.active);
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
+                                                  &n, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        if (0 == result) {
+            opal_output(0, "Success\n");
+        } else {
+            opal_output(0, "Failure\n");
+        }
+    } else {
+        opal_output(1, "Invalid SESSION ID\n");
+        return ORTE_ERROR;
+    }
+    
+    return ORTE_SUCCESS;
+}

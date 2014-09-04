@@ -55,7 +55,7 @@ int orcm_ocli_queue_status(char **argv)
         return rc;
     }
 
-    fprintf(stdout, "********\nQUEUES\n********\n");
+    printf("********\nQUEUES\n********\n");
 
     /* for each queue */
     for (i = 0; i < num_queues; i++) {
@@ -74,7 +74,7 @@ int orcm_ocli_queue_status(char **argv)
             return rc;
         }
 
-        fprintf(stdout,"%s (%i sessions)\n----------\n", name, num_sessions);
+        printf("%s (%i sessions)\n----------\n", name, num_sessions);
         
         if (0 < num_sessions) {
             allocs = (orcm_alloc_t**)malloc(num_sessions * sizeof(orcm_alloc_t*));
@@ -88,13 +88,13 @@ int orcm_ocli_queue_status(char **argv)
                 return rc;
             }
             for (j = 0; j < num_sessions; j++) {
-                fprintf(stdout, "%d\t%u|%u\t%i\t%s\t%s\n", 
-                        (int)allocs[j]->id, 
-                        allocs[j]->caller_uid, 
-                        allocs[j]->caller_gid, 
-                        allocs[j]->min_nodes, 
-                        allocs[j]->exclusive ? "EX" : "SH",
-                        allocs[j]->interactive ? "I" : "B" );
+                printf("%d\t%u|%u\t%i\t%s\t%s\n",
+                       (int)allocs[j]->id,
+                       allocs[j]->caller_uid,
+                       allocs[j]->caller_gid,
+                       allocs[j]->min_nodes,
+                       allocs[j]->exclusive ? "EX" : "SH",
+                       allocs[j]->interactive ? "I" : "B" );
                 OBJ_DESTRUCT(allocs[j]);
             }
             free(allocs);

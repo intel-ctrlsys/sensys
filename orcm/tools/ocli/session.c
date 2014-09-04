@@ -41,7 +41,7 @@ int orcm_ocli_session_cancel(char **argv)
     int rc, n, result;
     
     if (3 != opal_argv_count(argv)) {
-        opal_output(0, "incorrect arguments to \"session cancel\"\n");
+        fprintf(stderr, "incorrect arguments to \"session cancel\"\n");
         return ORCM_ERROR;
     }
     session = strtol(argv[2], NULL, 10);
@@ -96,12 +96,12 @@ int orcm_ocli_session_cancel(char **argv)
             return rc;
         }
         if (0 == result) {
-            opal_output(0, "Success\n");
+            printf("Success\n");
         } else {
-            opal_output(0, "Failure\n");
+            printf("Failure\n");
         }
     } else {
-        opal_output(0, "Invalid SESSION ID\n");
+        fprintf(stderr, "Invalid SESSION ID\n");
         return ORCM_ERROR;
     }
     

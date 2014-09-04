@@ -69,7 +69,7 @@ int orcm_ocli_resource_status(char **argv)
         return rc;
     }
 
-    fprintf(stdout, "\n********\nNODES (%i)\n********\n", num_nodes);
+    printf("\n********\nNODES (%i)\n********\n", num_nodes);
     if (0 < num_nodes) {
         nodes = (orcm_node_t**)malloc(num_nodes * sizeof(orcm_node_t*));
         /* get the sessions on the queue */
@@ -79,10 +79,10 @@ int orcm_ocli_resource_status(char **argv)
             return rc;
         }
         for (i = 0; i < num_nodes; i++) {
-            fprintf(stdout, "node: %s \n\tSCD_STATE:\t\"%s\" \n\tRM_STATE:\t\"%s\"\n\n", 
-                    nodes[i]->name, 
-                    orcm_scd_node_state_to_str(nodes[i]->scd_state),
-                    orcm_node_state_to_str(nodes[i]->state));
+            printf("node: %s \n\tSCD_STATE:\t\"%s\" \n\tRM_STATE:\t\"%s\"\n\n",
+                   nodes[i]->name,
+                   orcm_scd_node_state_to_str(nodes[i]->scd_state),
+                   orcm_node_state_to_str(nodes[i]->state));
             OBJ_DESTRUCT(nodes[i]);
         }
         free(nodes);

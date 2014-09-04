@@ -7,7 +7,7 @@
  * $HEADER$
  */
 
-#include "orcm/tools/ocli/ocli.h"
+#include "orcm/tools/ocli/common.h"
 
 #include "orcm/mca/scd/base/base.h"
 

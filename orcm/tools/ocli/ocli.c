@@ -7,6 +7,7 @@
  * $HEADER$
  */
 
+#include "orcm/tools/ocli/common.h"
 #include "orcm/tools/ocli/ocli.h"
 
 /******************
@@ -24,8 +25,6 @@ typedef struct {
     bool verbose;
     int output;
 } orcm_ocli_globals_t;
-
-const char *orcm_ocli_commands[] = { "resource", "queue", "session", "status", "availability", "policy", "\0" };
 
 orcm_ocli_globals_t orcm_ocli_globals;
 

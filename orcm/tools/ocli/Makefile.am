@@ -29,6 +29,7 @@ $(nodist_man_MANS): $(top_builddir)/orcm/include/orcm_config.h
 endif # OPAL_INSTALL_BINARIES
 
 ocli_SOURCES = \
+        common.h \
         ocli.h \
         ocli.c \
         queue.c \

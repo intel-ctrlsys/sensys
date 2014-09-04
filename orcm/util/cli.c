@@ -24,8 +24,8 @@
 
 static int make_opt(orcm_cli_t *cli, orcm_cli_init_t *e);
 static int make_opt_subtree(orcm_cli_cmd_t *cmd, orcm_cli_init_t *e, int level);
-static void orcm_cli_print_tree(orcm_cli_t *cli);
-static void orcm_cli_print_subtree(orcm_cli_cmd_t *command, int level);
+static void print_tree(orcm_cli_t *cli);
+static void print_subtree(orcm_cli_cmd_t *command, int level);
 static int get_completions(orcm_cli_t *cli, char **input, char ***completions, opal_list_t *options);
 static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input, char ***completions, opal_list_t *options);
 static int print_completions(orcm_cli_t *cli, char **input);
@@ -65,7 +65,7 @@ int orcm_cli_create(orcm_cli_t *cli,
         }
     }
 
-    orcm_cli_print_tree(cli);
+    print_tree(cli);
     
     return ORCM_SUCCESS;
 
@@ -461,18 +461,18 @@ void orcm_cli_print_cmd(orcm_cli_cmd_t *cmd, char *prefix)
     }
 }
 
-static void orcm_cli_print_tree(orcm_cli_t *cli)
+static void print_tree(orcm_cli_t *cli)
 {
     orcm_cli_cmd_t *sub_command;
     
     OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
         printf("%s\n",
                (NULL == sub_command->cmd) ? "NULL" : sub_command->cmd);
-        orcm_cli_print_subtree(sub_command, 1);
+        print_subtree(sub_command, 1);
     }
 }
 
-static void orcm_cli_print_subtree(orcm_cli_cmd_t *command, int level)
+static void print_subtree(orcm_cli_cmd_t *command, int level)
 {
     orcm_cli_cmd_t *sub_command;
     int i;
@@ -483,7 +483,7 @@ static void orcm_cli_print_subtree(orcm_cli_cmd_t *command, int level)
         }
         printf("\u2514\u2500%s\n",
                (NULL == sub_command->cmd) ? "NULL" : sub_command->cmd);
-        orcm_cli_print_subtree(sub_command, level+1);
+        print_subtree(sub_command, level+1);
     }
 }
 

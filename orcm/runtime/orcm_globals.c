@@ -64,3 +64,26 @@ const char *orcm_node_state_to_str(orcm_node_state_t state)
     }
     return s;
 }
+
+const char *orcm_node_state_to_char(orcm_node_state_t state)
+{
+    char *s;
+    
+    switch (state) {
+        case ORCM_NODE_STATE_UNKNOWN:
+            s = "?";
+            break;
+        case ORCM_NODE_STATE_UP:
+            s = "\u2191";
+            break;
+        case ORCM_NODE_STATE_DOWN:
+            s = "\u2193";
+            break;
+        case ORCM_NODE_STATE_SESTERM:
+            s = "\u21BB";
+            break;
+        default:
+            s = "\u2297";
+    }
+    return s;
+}

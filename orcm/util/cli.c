@@ -452,12 +452,12 @@ static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input)
 void orcm_cli_print_cmd(orcm_cli_cmd_t *cmd, char *prefix)
 {
     opal_value_t *kv;
-    opal_output(0, "%-2s %-20s %-10s",
-                (NULL == prefix) ? "" : prefix,
-                (NULL == cmd->cmd) ? "NULL" : cmd->cmd,
-                (NULL == cmd->help) ? "NULL" : cmd->help);
+    printf("%-2s %-20s %-10s\n",
+           (NULL == prefix) ? "" : prefix,
+           (NULL == cmd->cmd) ? "NULL" : cmd->cmd,
+           (NULL == cmd->help) ? "NULL" : cmd->help);
     OPAL_LIST_FOREACH(kv, &cmd->options, opal_value_t) {
-        opal_output(0, "\tOPTION: %s nargs %d", kv->key, kv->data.integer);
+        printf("\tOPTION: %s nargs %d\n", kv->key, kv->data.integer);
     }
 }
 

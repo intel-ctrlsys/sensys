@@ -121,6 +121,7 @@ ORCM_DECLSPEC extern opal_list_t *orcm_schedulers;
 ORCM_DECLSPEC int orcm_dt_init(void);
 
 const char *orcm_node_state_to_str(orcm_node_state_t state);
+const char *orcm_node_state_to_char(orcm_node_state_t state);
 
 END_C_DECLS
 

@@ -95,6 +95,7 @@ static int parse_args(int argc, char *argv[], char** result_cmd)
         /* if the user hasn't specified any commands, run cli to help build it */
         OBJ_CONSTRUCT(&cli, orcm_cli_t);
         orcm_cli_create(&cli, cli_init);
+        printf("*** WELCOME TO OCLI ***\n Possible commands:\n");
         OPAL_LIST_FOREACH(cmd, &cli.cmds, orcm_cli_cmd_t) {
             orcm_cli_print_cmd(cmd, NULL);
         }

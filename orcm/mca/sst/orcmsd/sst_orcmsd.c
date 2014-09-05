@@ -635,7 +635,7 @@ static int orcmsd_setup_node_pool(void)
     opal_pointer_array_set_item(jdata->apps, 0, app);
     jdata->num_apps++;
     
-    for(i=0; opal_argv_count(hosts); i++) {
+    for(i=0; i < opal_argv_count(hosts); i++) {
         /* create and store a node object where we are */
         node = OBJ_NEW(orte_node_t);
         node->name = strdup(hosts[i]);

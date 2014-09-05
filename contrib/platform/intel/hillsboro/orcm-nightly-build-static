@@ -38,3 +38,5 @@ with_slurm=no
 with_ipmi=yes
 with_odbc=yes
 with_memtest=yes
+with_nodepower=yes
+with_componentpower=yes

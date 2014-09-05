@@ -10,16 +10,10 @@
 #
 # This is the US/English general help file
 #
-[req-dir-not-found]
-Core temperature monitoring was requested, but this node
-lacks the required directory:
+[no-cache]
+Request for reading topology to gather cache information 
+wasn't successful
 
-  Node:  %s
-  Directory:  %s
-
-This usually indicates that the "coretemp" kernel module
-has not been loaded. Operation will continue, but core
-temperatures will not be monitored.
 #
 [no-cores-found]
 Core temperature monitoring was requested, but this node

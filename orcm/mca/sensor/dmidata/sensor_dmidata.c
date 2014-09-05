@@ -165,7 +165,7 @@ static void stop(orte_jobid_t jobid)
 
 static void dmidata_sample(orcm_sensor_sampler_t *sampler)
 {
-    int ret, k;
+    int ret, k, depth;
     coretemp_tracker_t *trk, *nxt;    
     char *temp;    
     opal_buffer_t data, *bptr;
@@ -217,14 +217,64 @@ static void dmidata_sample(orcm_sensor_sampler_t *sampler)
     free(timestamp_str);
 
     opal_hwloc_base_get_topology();
+
+    /* MACHINE Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(opal_hwloc_topology, HWLOC_OBJ_MACHINE, 0))) {
+        /* there are no objects identified for this machine (Weird!) */
+        orte_show_help("help-orcm-sensor-dmidata.txt", "no-machine", true);
+        return ORTE_ERROR;
+    }
+    if (NULL != obj) {
+        /* Pack the total MACHINE Stats present and to be copied */
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &obj->infos_count, 1, OPAL_INT32))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        for (k=0; k < obj->infos_count; k++) {
+            opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                "%s : %s",obj->infos[k].name, obj->infos[k].value);
+            /* Metric Name */
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &obj->infos[k].name, 1, OPAL_STRING))) {
+                ORTE_ERROR_LOG(ret);
+                OBJ_DESTRUCT(&data);
+                free(timestamp_str);
+                return;
+            }
+
+            /* Metric Value*/
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &obj->infos[k].value, 1, OPAL_STRING))) {
+                ORTE_ERROR_LOG(ret);
+                OBJ_DESTRUCT(&data);
+                free(timestamp_str);
+                return;
+            }
+        }
+    } else {
+        k = 0;
+        /* Packed '0' MACHINE Stats */
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &k, 1, OPAL_INT32))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+    }
+
+    depth = hwloc_get_type_depth(opal_hwloc_topology, HWLOC_OBJ_SOCKET);
+
+
+    opal_output(0, "Total Sockets: %d", hwloc_get_nbobjs_by_depth(opal_hwloc_topology, depth));
+
+
+    /* Pack SOCKET Stats*/
+    if (NULL == (obj = hwloc_get_obj_by_type(opal_hwloc_topology, HWLOC_OBJ_SOCKET, 0))) {
         /* there are no sockets identified in this machine */
         orte_show_help("help-orcm-sensor-dmidata.txt", "no-sockets", true);
         return ORTE_ERROR;
     }
-
-    while (NULL != obj) {
-        /* Pack the total properties present and to be copied */
+    if (NULL != obj) {
+        /* Pack the total SOCKET Stats present and to be copied */
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &obj->infos_count, 1, OPAL_INT32))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
@@ -248,9 +298,16 @@ static void dmidata_sample(orcm_sensor_sampler_t *sampler)
                 OBJ_DESTRUCT(&data);
                 free(timestamp_str);
                 return;
-            }            
+            }
         }
-        obj=obj->next_sibling;
+    } else {
+        k = 0;
+        /* Packed '0' SOCKET Stats */
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &k, 1, OPAL_INT32))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
     }
     packed = true;
     /* xfer the data for transmission */
@@ -336,6 +393,7 @@ static void dmidata_log(opal_buffer_t *sample)
     kv->data.string = strdup(hostname);
     opal_list_append(vals, &kv->super);
 
+    /* Add MACHINE level DMI Stats - 1*/
     /* Unpack infos_count */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &machine_info_count, &n, OPAL_INT32))) {
@@ -353,6 +411,46 @@ static void dmidata_log(opal_buffer_t *sample)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &samplevalue, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             goto cleanup;
+        }
+        if (strstr(samplevalue,"....")) {
+            strcpy(samplevalue,"N/A");
+            opal_output(0,"%s: N/A",samplename, samplevalue);
+        } else {
+            opal_output(0,"%s: %s",samplename, samplevalue);
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup(samplename);
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(samplevalue);
+        opal_list_append(vals, &kv->super);
+
+        free(samplename);
+        free(samplevalue);
+    }
+    /* Add SOCKET level DMI Stats - 2*/
+    /* Unpack infos_count */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &socket_info_count, &n, OPAL_INT32))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    for (i=0; i < socket_info_count; i++) {
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &samplename, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &samplevalue, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        if (strstr(samplevalue,"....")) {
+            strcpy(samplevalue,"N/A");
+            opal_output(0,"%s: N/A",samplename, samplevalue);
+        } else {
+            opal_output(0,"%s: %s",samplename, samplevalue);
         }
         kv = OBJ_NEW(opal_value_t);        
         kv->key = strdup(samplename);

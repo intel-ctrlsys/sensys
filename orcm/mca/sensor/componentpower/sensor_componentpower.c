@@ -26,7 +26,6 @@
 #endif  /* HAVE_DIRENT_H */
 #include <ctype.h>
 
-#include <ipmicmd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -48,6 +47,8 @@
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_componentpower.h"
+
+#include <ipmicmd.h>
 
 /* declare the API functions */
 static int init(void);

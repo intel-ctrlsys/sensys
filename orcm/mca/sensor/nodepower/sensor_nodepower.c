@@ -25,8 +25,6 @@
 #endif  /* HAVE_DIRENT_H */
 #include <ctype.h>
 
-#include <ipmicmd.h>
-
 #include "opal_stdint.h"
 #include "opal/class/opal_list.h"
 #include "opal/dss/dss.h"
@@ -44,6 +42,8 @@
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_nodepower.h"
+
+#include <ipmicmd.h>
 
 /* declare the API functions */
 static int init(void);

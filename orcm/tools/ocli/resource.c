@@ -123,7 +123,8 @@ int orcm_ocli_resource_status(char **argv)
             OPAL_LIST_FOREACH(container, &containers, orcm_resource_container_t) {
                 if (container->template.scd_state == nodes[i]->scd_state &&
                     container->template.state == nodes[i]->state) {
-                    opal_argv_append_nosize(&container->resources, nodes[i]->name);
+                    opal_argv_append_nosize(&container->resources,
+                                            nodes[i]->name);
                     found = true;
                 }
             }
@@ -135,7 +136,8 @@ int orcm_ocli_resource_status(char **argv)
                 opal_list_append(&containers, &container->super);
             }
         }
-        printf("NODES                : STATE  SCHED_STATE\n-----------------------------------------\n");
+        printf("NODES                : STATE  SCHED_STATE\
+               \n-----------------------------------------\n");
         OPAL_LIST_FOREACH(container, &containers, orcm_resource_container_t) {
             nodelist = opal_argv_join(container->resources, ',');
             if (ORTE_SUCCESS != (rc = orte_regex_create(nodelist, &regexp))) {
@@ -144,13 +146,13 @@ int orcm_ocli_resource_status(char **argv)
                 OBJ_DESTRUCT(&xfer);
                 return rc;
             }
-            if (21 > strlen(regexp)) {
-                printf("%-20s : %s %s\n",
+            if (21 > strnlen(regexp, 21)) {
+                printf("%-20s : %s %16s\n",
                        regexp,
                        orcm_node_state_to_char(container->template.state),
                        orcm_scd_node_state_to_str(container->template.scd_state));
             } else {
-                printf("%s\n                     : %s %s\n",
+                printf("%s\n                     : %s %16s\n",
                        regexp,
                        orcm_node_state_to_char(container->template.state),
                        orcm_scd_node_state_to_str(container->template.scd_state));

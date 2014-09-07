@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -32,18 +32,22 @@ bool opal_pmix_base_allow_delayed_server = false;
 
 static int opal_pmix_base_frame_register(mca_base_register_flag_t flags)
 {
-    opal_pmix_use_collective = false;
+    opal_pmix_use_collective = true;
     (void)mca_base_var_register("opal", "pmix", "base", "direct_modex",
-                                "Default to direct modex (default: true)",
+                                "Default to direct modex (default: false)",
                                 MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                 OPAL_INFO_LVL_9,
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &opal_pmix_use_collective);
+    if (opal_pmix_use_collective) {
+        setenv("OMPI_MTL_MXM_CONNECT_ON_FIRST_COMM", "true", 0);
+    }
     return OPAL_SUCCESS;
 }
 
 static int opal_pmix_base_frame_close(void)
 {
+    unsetenv("OMPI_MTL_MXM_CONNECT_ON_FIRST_COMM");
     return mca_base_framework_components_close(&opal_pmix_base_framework, NULL);
 }
 

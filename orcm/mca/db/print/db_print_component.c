@@ -87,6 +87,8 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
         OPAL_LIST_FOREACH(kv, props, opal_value_t) {
             if (0 == strcmp(kv->key, "printfile")) {
                 file = kv->data.string;
+                found = true;
+                break;
             }
         }
     }

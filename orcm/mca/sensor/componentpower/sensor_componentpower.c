@@ -60,7 +60,6 @@ static void componentpower_log(opal_buffer_t *buf);
 static int detect_num_sockets(void);
 static int detect_num_cpus(void);
 static void detect_cpu_for_each_socket(void);
-static int orcm_component_power_get_capabilities(componentpower_capabilities *, componentpower_capabilities *, componentpower_capabilities *);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_componentpower_module = {
@@ -567,60 +566,3 @@ static void componentpower_log(opal_buffer_t *sample)
     }
 
 }
-
-/*
- *  get component power capabilities
- */
-static int orcm_component_power_get_capabilities(componentpower_capabilities *cpu_power_capabilities, componentpower_capabilities *memory_power_capabilities, componentpower_capabilities *freq_capabilities)
-{
-
-    int fd;
-    int use_default_value;
-    unsigned long long msr, time_units;
-
-    fd=open("/dev/cpu/0/msr", O_RDWR);
-    if (fd==-1)
-        use_default_value=1;
-    else
-        use_default_value=0;
-
-    lseek(fd, RAPL_UNIT, 0);
-    read(fd, &msr, sizeof(unsigned long long));
-    msr=(msr&RAPL_SHIFT1)>>16;
-    time_units=(unsigned long long)1<<msr;
-
-    if (cpu_power_capabilities){
-        cpu_power_capabilities->node_accuracy=1;        /* 1% */
-        if (use_default_value){
-            cpu_power_capabilities->node_resolution=0.000976;  /* 976us, default value */
-        } else {
-            cpu_power_capabilities->node_resolution=1.0/(double)(time_units);
-        }
-        cpu_power_capabilities->node_min_avg_time=0;  /* use default sample timer */
-        cpu_power_capabilities->node_max_avg_time=0; /* use default sample timer */
-    }
-
-    if (memory_power_capabilities){
-        memory_power_capabilities->node_accuracy=1;     /* 1% */
-        if (use_default_value)
-            memory_power_capabilities->node_resolution=0.000976;       /* 976us */
-        else
-            memory_power_capabilities->node_resolution=1.0/(double)(time_units);
-        memory_power_capabilities->node_min_avg_time=0;       /* use default sample timer */
-        memory_power_capabilities->node_max_avg_time=0;      /* use default sample timer */
-    }
-
-    if (freq_capabilities){
-        freq_capabilities->node_accuracy=1;     /* 1% */
-        freq_capabilities->node_resolution=-1.0;       /* 1ms */
-        freq_capabilities->node_min_avg_time=0;
-        freq_capabilities->node_max_avg_time=0;
-    }
-
-    if (!use_default_value){
-        close(fd);
-    }
-
-    return 0;
-}
-

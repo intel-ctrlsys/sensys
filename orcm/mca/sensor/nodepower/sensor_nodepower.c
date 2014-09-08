@@ -53,8 +53,6 @@ static void stop(orte_jobid_t job);
 static void nodepower_sample(orcm_sensor_sampler_t *sampler);
 static void nodepower_log(opal_buffer_t *buf);
 static void call_readein(node_power_data *, int);
-static int nodepower_detect_num_cpus(void);
-static int orcm_node_power_get_capabilities(nodepower_capabilities *);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_nodepower_module = {
@@ -179,32 +177,6 @@ static void start(orte_jobid_t jobid)
 static void stop(orte_jobid_t jobid)
 {
     return;
-}
-
-/*
- detect num of cpus
- */
-static int nodepower_detect_num_cpus(void)
-{
-    FILE *fp;
-    char line[1024];
-    int cpus=0;
-
-    fp=fopen("/proc/cpuinfo", "r");
-
-    if (!fp){
-        return 1;
-    }
-
-    while (!feof(fp)){
-        fgets(line, 1024, fp);
-        if (strncmp(line, "processor", strlen("processor"))==0){
-            cpus++;
-        }
-    }
-    fclose(fp);
-
-    return cpus;
 }
 
 /*
@@ -409,19 +381,4 @@ static void nodepower_log(opal_buffer_t *sample)
     if (NULL != hostname) {
         free(hostname);
     }
-}
-
-/*
- get PSU capabilities
-*/
-static int orcm_node_power_get_capabilities(nodepower_capabilities *node_power_capabilities)
-{
-    if (node_power_capabilities){
-        node_power_capabilities->node_accuracy=1;               /* 1% */
-        node_power_capabilities->node_resolution=0.017;         /* 16.7ms */
-        node_power_capabilities->node_min_avg_time=500;         /* 500ms */
-        node_power_capabilities->node_max_avg_time=2000;        /* 2s */
-    }
-
-    return 0;
 }

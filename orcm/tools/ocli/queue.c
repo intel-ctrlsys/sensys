@@ -31,7 +31,7 @@ int orcm_ocli_queue_status(char **argv)
     buf = OBJ_NEW(opal_buffer_t);
 
     command = ORCM_SESSION_INFO_COMMAND;
-    /* pack the alloc command flag */
+    /* pack the session info command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_SCD_CMD_T))) {
         ORTE_ERROR_LOG(rc);
         return rc;
@@ -87,6 +87,7 @@ int orcm_ocli_queue_status(char **argv)
                 OBJ_DESTRUCT(&xfer);
                 return rc;
             }
+            /* loop through sessions, and print them */
             for (j = 0; j < num_sessions; j++) {
                 printf("%d\t%u|%u\t%i\t%s\t%s\n",
                        (int)allocs[j]->id,

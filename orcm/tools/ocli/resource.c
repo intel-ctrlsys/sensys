@@ -104,7 +104,7 @@ int orcm_ocli_resource_status(char **argv)
         return rc;
     }
 
-    printf("\nTOTAL NODES : %i\n\n", num_nodes);
+    printf("\nTOTAL NODES : %i\n", num_nodes);
     if (0 < num_nodes) {
         if (!inited) {
             OBJ_CONSTRUCT(&containers, opal_list_t);
@@ -118,6 +118,13 @@ int orcm_ocli_resource_status(char **argv)
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
+        /* We want to combine all the nodes with the same attributes,
+         * so we containerize them based on their attributes
+         * the template of the container is a nameless node object with all
+         * the attributes of the nodes in that container
+         * if we match a template, put the node in that conatiner
+         * otherwise create a new container with a template that matches the
+         * node we are trying to insert */
         for (i = 0; i < num_nodes; i++) {
             found = false;
             OPAL_LIST_FOREACH(container, &containers, orcm_resource_container_t) {
@@ -136,8 +143,14 @@ int orcm_ocli_resource_status(char **argv)
                 opal_list_append(&containers, &container->super);
             }
         }
-        printf("NODES                : STATE  SCHED_STATE\
-               \n-----------------------------------------\n");
+        printf("NODES                : STATE  SCHED_STATE\n");
+        printf("-----------------------------------------\n");
+        /* print out nodes by containter
+         * since they all have the same attributes in the container,
+         * we can combine the node list by using regex and list this unique
+         * combination of attributes just once 
+         * may need to sort at some point, but for now scheduler gives us
+         * nodes in sorted order */
         OPAL_LIST_FOREACH(container, &containers, orcm_resource_container_t) {
             nodelist = opal_argv_join(container->resources, ',');
             if (ORTE_SUCCESS != (rc = orte_regex_create(nodelist, &regexp))) {

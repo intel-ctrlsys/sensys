@@ -89,17 +89,21 @@ static int parse_args(int argc, char *argv[], char** result_cmd)
         return ret;
     }
 
+    /* get the commandline without mca params */
     opal_cmd_line_get_tail(&cmd_line, &tailc, &tailv);
     
     if (0 == tailc) {
-        /* if the user hasn't specified any commands, run cli to help build it */
+        /* if the user hasn't specified any commands,
+         * run interactive cli to help build it */
         OBJ_CONSTRUCT(&cli, orcm_cli_t);
         orcm_cli_create(&cli, cli_init);
+        /* give help on top level commands */
         printf("*** WELCOME TO OCLI ***\n Possible commands:\n");
         OPAL_LIST_FOREACH(cmd, &cli.cmds, orcm_cli_cmd_t) {
             orcm_cli_print_cmd(cmd, NULL);
         }
         *result_cmd = NULL;
+        /* run interactive cli */
         orcm_cli_get_cmd("ocli", &cli, result_cmd);
         if (!*result_cmd) {
             fprintf(stderr, "\nERR: NO COMMAND RETURNED\n");
@@ -109,9 +113,7 @@ static int parse_args(int argc, char *argv[], char** result_cmd)
         *result_cmd = (opal_argv_join(tailv, ' '));
     }
 
-    /**
-     * Now start parsing our specific arguments
-     */
+    /* Now start parsing our specific arguments */
     if (orcm_ocli_globals.help) {
         args = opal_cmd_line_get_usage_msg(&cmd_line);
         str = opal_show_help_string("help-ocli.txt", "usage", true,
@@ -125,10 +127,8 @@ static int parse_args(int argc, char *argv[], char** result_cmd)
         exit(0);
     }
 
-    /*
-     * Since this process can now handle MCA/GMCA parameters, make sure to
-     * process them.
-     */
+    /* Since this process can now handle MCA/GMCA parameters, make sure to
+     * process them. */
     mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
     
     return ORCM_SUCCESS;
@@ -139,25 +139,19 @@ static int orcm_ocli_init(int argc, char *argv[])
     int ret;
     char *mycmd;
 
-    /*
-     * Make sure to init util before parse_args
+    /* Make sure to init util before parse_args
      * to ensure installdirs is setup properly
-     * before calling mca_base_open();
-     */
+     * before calling mca_base_open(); */
     if( OPAL_SUCCESS != (ret = opal_init_util(&argc, &argv)) ) {
         return ret;
     }
 
-    /*
-     * Parse Command Line Arguments
-     */
+    /* Parse Command Line Arguments */
     if (ORCM_SUCCESS != (ret = parse_args(argc, argv, &mycmd))) {
         return ret;
     }
 
-    /*
-     * Setup OPAL Output handle from the verbose argument
-     */
+    /* Setup OPAL Output handle from the verbose argument */
     if( orcm_ocli_globals.verbose ) {
         orcm_ocli_globals.output = opal_output_open(NULL);
         opal_output_set_verbosity(orcm_ocli_globals.output, 10);
@@ -165,6 +159,7 @@ static int orcm_ocli_init(int argc, char *argv[])
         orcm_ocli_globals.output = 0; /* Default=STDERR */
     }
 
+    /* initialize orcm for use as a tool */
     ret = orcm_init(ORCM_TOOL);
     
     run_cmd(mycmd);
@@ -175,6 +170,9 @@ static int orcm_ocli_init(int argc, char *argv[])
 
 static int ocli_command_to_int(char *command)
 {
+    /* this is used for nicer looking switch statements
+     * just convert a string to the location of the string
+     * in the pre-defined array found in ocli.h*/
     int i;
     
     for (i = 0; i < opal_argv_count((char **)orcm_ocli_commands); i++) {
@@ -204,6 +202,7 @@ static void run_cmd(char *cmd) {
         return;
     }
     
+    /* call corresponding function to passed command */
     switch (i) {
     case 0: //resource
         i = ocli_command_to_int(cmdlist[1]);

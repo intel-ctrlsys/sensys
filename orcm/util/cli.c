@@ -26,8 +26,10 @@ static int make_opt(orcm_cli_t *cli, orcm_cli_init_t *e);
 static int make_opt_subtree(orcm_cli_cmd_t *cmd, orcm_cli_init_t *e, int level);
 static void print_tree(orcm_cli_t *cli);
 static void print_subtree(orcm_cli_cmd_t *command, int level);
-static int get_completions(orcm_cli_t *cli, char **input, char ***completions, opal_list_t *options);
-static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input, char ***completions, opal_list_t *options);
+static int get_completions(orcm_cli_t *cli, char **input,
+                           char ***completions, opal_list_t *options);
+static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
+                                   char ***completions, opal_list_t *options);
 static int print_completions(orcm_cli_t *cli, char **input);
 static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input);
 
@@ -48,7 +50,6 @@ int orcm_cli_create(orcm_cli_t *cli,
     }
 
     /* Loop through the table */
-
     for (i = 0; ; ++i) {
 
         /* Is this the end? */
@@ -64,8 +65,9 @@ int orcm_cli_create(orcm_cli_t *cli,
             return rc;
         }
     }
-
+#if 0 //for debugging only, mca?
     print_tree(cli);
+#endif
     
     return ORCM_SUCCESS;
 
@@ -80,6 +82,7 @@ static int make_opt(orcm_cli_t *cli, orcm_cli_init_t *e)
     if (NULL != e->parent[0]) {
         OPAL_LIST_FOREACH(parent, &cli->cmds, orcm_cli_cmd_t) {
             if (0 == strcasecmp(parent->cmd, e->parent[0])) {
+                /* recursive search down the subtree */
                 return make_opt_subtree(parent, e, 1);
             }
         }
@@ -102,6 +105,8 @@ static int make_opt_subtree(orcm_cli_cmd_t *cmd, orcm_cli_init_t *e, int level) 
     orcm_cli_cmd_t *newcmd, *parent;
     opal_value_t *kv;
     
+    /* we will keep descending down the subtree until we have nothing
+     * more on the parent list to compare to */
     if (NULL == e->parent[level]) {
         /* if this is an option, put it there */
         if (e->option) {
@@ -111,6 +116,7 @@ static int make_opt_subtree(orcm_cli_cmd_t *cmd, orcm_cli_init_t *e, int level) 
             kv->data.integer = e->nargs;
             opal_list_append(&cmd->options, &kv->super);
         } else {
+            /* add the commnad in the correct place */
             newcmd = OBJ_NEW(orcm_cli_cmd_t);
             if (NULL != e->cmd) {
                 newcmd->cmd = strdup(e->cmd);
@@ -122,6 +128,7 @@ static int make_opt_subtree(orcm_cli_cmd_t *cmd, orcm_cli_init_t *e, int level) 
         }
         return ORCM_SUCCESS;
     } else {
+        /* have more work to do, descend down subtree */
         OPAL_LIST_FOREACH(parent, &cmd->subcmds, orcm_cli_cmd_t) {
             if (0 == strcasecmp(parent->cmd, e->parent[level])) {
                 return make_opt_subtree(parent, e, level+1);
@@ -170,23 +177,29 @@ int orcm_cli_get_cmd(char *prompt,
             space = false;
             options = NULL;
             completions = NULL;
+            /* break command line so far into array of strings */
             inputlist = opal_argv_split(input, ' ');
+            /* get possible completions for the commandline so far */
             rc = get_completions(cli, inputlist, &completions, options);
             if (ORCM_ERR_NOT_FOUND == rc) {
+                /* Bad command not in tree, Bonk */
                 BONK;
                 break;
             } else if (ORCM_SUCCESS == rc) {
                 if (NULL == completions) {
                     if (NULL == options || opal_list_is_empty(options)) {
+                        /* no completions and no options, Bonk */
                         BONK;
                         break;
                     } else {
+                        /* no completions, list options */
                         printf("\nOPTIONS: ");
                         OPAL_LIST_FOREACH(kv, options, opal_value_t) {
                             printf("%s  ", kv->key);
                         }
                     }
                 } else if (1 == opal_argv_count(completions)) {
+                    /* only 1 possible completion, go ahead and complete it */
                     inputlist = opal_argv_split(input, ' ');
                     if (' ' == input[j-1]) {
                         k = 0;
@@ -208,6 +221,7 @@ int orcm_cli_get_cmd(char *prompt,
                     input[j++] = ' ';
                     space = true;
                 } else {
+                    /* multiple completions, list possibilities */
                     if (j != 0 && ' ' != input[j-1]) {
                         putchar(' ');
                         input[j++] = ' ';
@@ -222,10 +236,8 @@ int orcm_cli_get_cmd(char *prompt,
             }
 
         case ' ':    // space
-            /* it is always possible somebody just typed an extra
-             * space here, so we should ignore it if they did */
             if (0 == j || space) {
-                /* if they do it more than once, bonk them */
+                /* if there is already a space on the input line, Bonk */
                 BONK;
                 break;
             }
@@ -256,6 +268,7 @@ int orcm_cli_get_cmd(char *prompt,
             break;
                 
         case 0x1b:   // arrows
+            /* this is to ignore the garbage that comes out when you type arrows */
             c = getchar();
             switch(c) {
             case '[':
@@ -278,6 +291,7 @@ int orcm_cli_get_cmd(char *prompt,
             break;
 
         case '?':   // help special char
+            /* list help message of possible completions */
             options = NULL;
             inputlist = opal_argv_split(input, ' ');
             printf("\nPossible commands:\n");
@@ -310,13 +324,16 @@ int orcm_cli_get_cmd(char *prompt,
     return rc;
 }
 
-static int get_completions(orcm_cli_t *cli, char **input, char ***completions, opal_list_t *options)
+static int get_completions(orcm_cli_t *cli, char **input,
+                           char ***completions, opal_list_t *options)
 {
     orcm_cli_cmd_t *sub_command;
     int i;
     bool found = false;
     
     i = opal_argv_count(input);
+    /* no input, must be at top level
+     * add all top level commands to compeltion list */
     if (0 == opal_argv_count(input)) {
         OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
             opal_argv_append_nosize(completions, sub_command->cmd);
@@ -324,13 +341,18 @@ static int get_completions(orcm_cli_t *cli, char **input, char ***completions, o
         return ORCM_SUCCESS;
     }
     
+    /* look for top level command to descend into subtree with */
     OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
         if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
+            /* if we match our input so far with a command... */
             if (strlen(input[0]) == strlen(sub_command->cmd)) {
+                /* if input fully matches command descend */
                 opal_argv_delete(&i, &input, 0, 1);
-                return get_completions_subtree(sub_command, input, completions, options);
+                /* recursive command to search subtree */
+                return get_completions_subtree(sub_command, input,
+                                               completions, options);
             } else {
-                /* add this to our list of possible completions */
+                /* otherwise add this to our list of possible completions */
                 opal_argv_append_nosize(completions, sub_command->cmd);
                 found = true;
             }
@@ -343,13 +365,16 @@ static int get_completions(orcm_cli_t *cli, char **input, char ***completions, o
     return ORCM_SUCCESS;
 }
 
-static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input, char ***completions, opal_list_t *options)
+static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
+                                   char ***completions, opal_list_t *options)
 {
     orcm_cli_cmd_t *sub_command;
     int i;
     bool found = false;
     
     i = opal_argv_count(input);
+    /* nothing on the input line passed to us
+     * append all commands at this level */
     if (0 == i) {
         if (opal_list_is_empty(&cmd->subcmds)) {
             options = &cmd->options;
@@ -364,13 +389,17 @@ static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input, char ***co
         return ORCM_SUCCESS;
     }
     
+    /* look for commands to match input with */
     OPAL_LIST_FOREACH(sub_command, &cmd->subcmds, orcm_cli_cmd_t) {
         if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
+            /* if we match our input so far with a command... */
             if (strlen(input[0]) == strlen(sub_command->cmd)) {
+                /* if input fully matches command descend recursively */
                 opal_argv_delete(&i, &input, 0, 1);
-                return get_completions_subtree(sub_command, input, completions, options);
+                return get_completions_subtree(sub_command, input,
+                                               completions, options);
             } else {
-                /* add this to our list of possible completions */
+                /* otherwise add this to our list of possible completions */
                 opal_argv_append_nosize(completions, sub_command->cmd);
                 found = true;
             }
@@ -390,6 +419,7 @@ static int print_completions(orcm_cli_t *cli, char **input)
     bool found = false;
     
     i = opal_argv_count(input);
+    /* if no input, print help for all commands at top level */
     if (0 == opal_argv_count(input)) {
         OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
             orcm_cli_print_cmd(sub_command, NULL);
@@ -397,12 +427,16 @@ static int print_completions(orcm_cli_t *cli, char **input)
         return ORCM_SUCCESS;
     }
     
+    /* search for matching commands */
     OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
         if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
+            /* if we match our input so far with a command... */
             if (strlen(input[0]) == strlen(sub_command->cmd)) {
+                /* if input fully matches command descend */
                 opal_argv_delete(&i, &input, 0, 1);
                 return print_completions_subtree(sub_command, input);
             } else {
+                /* otherwise print help for possible completions */
                 orcm_cli_print_cmd(sub_command, NULL);
                 found = true;
             }
@@ -423,6 +457,7 @@ static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input)
     bool found = false;
     
     i = opal_argv_count(input);
+    /* if no input, print help for all commands at this level */
     if (0 == i) {
         OPAL_LIST_FOREACH(sub_command, &cmd->subcmds, orcm_cli_cmd_t) {
             orcm_cli_print_cmd(sub_command, NULL);
@@ -432,11 +467,13 @@ static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input)
     
     OPAL_LIST_FOREACH(sub_command, &cmd->subcmds, orcm_cli_cmd_t) {
         if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
+            /* if we match our input so far with a command... */
             if (strlen(input[0]) == strlen(sub_command->cmd)) {
                 opal_argv_delete(&i, &input, 0, 1);
+                /* if input fully matches command descend recursively */
                 return print_completions_subtree(sub_command, input);
             } else {
-                /* add this to our list of possible completions */
+                /* print help for possible completions */
                 orcm_cli_print_cmd(sub_command, NULL);
                 found = true;
             }
@@ -465,6 +502,8 @@ static void print_tree(orcm_cli_t *cli)
 {
     orcm_cli_cmd_t *sub_command;
     
+    /* recursive set of functions to print the whole command tree */
+    
     OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
         printf("%s\n",
                (NULL == sub_command->cmd) ? "NULL" : sub_command->cmd);
@@ -481,6 +520,7 @@ static void print_subtree(orcm_cli_cmd_t *command, int level)
         for (i = 0; i < level; i++) {
             printf("  ");
         }
+        /* use special unicode box chars for help displaying tree */
         printf("\u2514\u2500%s\n",
                (NULL == sub_command->cmd) ? "NULL" : sub_command->cmd);
         print_subtree(sub_command, level+1);

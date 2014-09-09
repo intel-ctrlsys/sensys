@@ -65,4 +65,6 @@ ORCM_DECLSPEC int orcm_cli_get_cmd(char *prompt,
 ORCM_DECLSPEC void orcm_cli_print_cmd(orcm_cli_cmd_t *cmd,
                                       char *prefix);
 
+/* print the whole command tree, usually to verify its defined correctly */
+ORCM_DECLSPEC void orcm_cli_print_tree(orcm_cli_t *cli);
 #endif

@@ -24,7 +24,6 @@
 
 static int make_opt(orcm_cli_t *cli, orcm_cli_init_t *e);
 static int make_opt_subtree(orcm_cli_cmd_t *cmd, orcm_cli_init_t *e, int level);
-static void print_tree(orcm_cli_t *cli);
 static void print_subtree(orcm_cli_cmd_t *command, int level);
 static int get_completions(orcm_cli_t *cli, char **input,
                            char ***completions, opal_list_t *options);
@@ -65,9 +64,6 @@ int orcm_cli_create(orcm_cli_t *cli,
             return rc;
         }
     }
-#if 0 //for debugging only, mca?
-    print_tree(cli);
-#endif
     
     return ORCM_SUCCESS;
 
@@ -498,7 +494,7 @@ void orcm_cli_print_cmd(orcm_cli_cmd_t *cmd, char *prefix)
     }
 }
 
-static void print_tree(orcm_cli_t *cli)
+void orcm_cli_print_tree(orcm_cli_t *cli)
 {
     orcm_cli_cmd_t *sub_command;
     

@@ -98,7 +98,7 @@ int orcm_cfgi_base_select(void)
         /* no support available means we really cannot run */
         opal_output_verbose(5, orcm_cfgi_base_framework.framework_output,
                             "mca:cfgi:select: Init failed to return any available configuration modules");
-        orte_show_help("help-cfgi-base.txt", "no-modules", true);
+        orte_show_help("help-orcm-cfgi.txt", "no-modules", true);
         return ORCM_ERR_SILENT;
     }
 

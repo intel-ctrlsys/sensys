@@ -31,3 +31,9 @@ present in the system configuration:
   node:   %s
 
 Please correct the situation and try again.
+#
+[no-modules]
+The configuration reader failed to return a valid plugin. This
+usually is caused by a failure to find the configuration file
+or any valid source of configuration information. Please ensure
+that a valid source is available and try again.

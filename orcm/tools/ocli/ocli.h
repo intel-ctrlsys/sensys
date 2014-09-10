@@ -36,7 +36,7 @@ static orcm_cli_init_t cli_init[] = {
     // status subcommand
     { { "queue", NULL }, "policy", 0, 0, "Queue Policies" },
 
-    /****** queue command ******/
+    /****** session command ******/
     { { NULL }, "session", 0, 0, "Session Management" },
     // status subcommand
     { { "session", NULL }, "status", 0, 0, "Session Status" },
@@ -51,9 +51,15 @@ static orcm_cli_init_t cli_init[] = {
  * if you add a command above make sure to append any new strings to this list
  * this is used for ease of conversion of commands to array offset for
  * switch statement
- * NB: Order matters here, so add new ones to the end! */
-const char *orcm_ocli_commands[] = { "resource", "queue", "session", "status",
-                                     "availability", "policy", "cancel", "\0" };
+ * NB: Order matters here, so add new ones to the end before the NULL! */
+const char *orcm_ocli_commands[] = { "resource",     //0
+                                     "queue",        //1
+                                     "session",      //2
+                                     "status",       //3
+                                     "availability", //4
+                                     "policy",       //5
+                                     "cancel",       //6
+                                     "\0" };
 
 END_C_DECLS
 

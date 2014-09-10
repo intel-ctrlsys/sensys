@@ -72,7 +72,7 @@ static orcm_cli_init_t cli_init[] = {
  * if you add a command above make sure to append any new strings to this list
  * this is used for ease of conversion of commands to array offset for
  * switch statement
- * NB: Order matters here, so add new ones to the end! */
+ * NB: Order matters here, so add new ones to the end before the NULL! */
 const char *orcm_octl_commands[] = { "resource", //0
                                      "queue",    //1
                                      "session",  //2

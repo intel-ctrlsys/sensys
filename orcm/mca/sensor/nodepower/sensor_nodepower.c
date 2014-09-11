@@ -25,6 +25,7 @@
 #endif  /* HAVE_DIRENT_H */
 #include <ctype.h>
 
+#define HAVE_HWLOC_DIFF  // protect the hwloc diff.h file from ipmicmd.h conflict
 #include "opal_stdint.h"
 #include "opal/class/opal_list.h"
 #include "opal/dss/dss.h"

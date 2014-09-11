@@ -13,17 +13,17 @@
 #include "orcm/constants.h"
 #include "orcm/types.h"
 
+#include <string.h>
+#include <pthread.h>
+
+#define HAVE_HWLOC_DIFF  // protect the hwloc diff.h file from ipmicmd.h conflict
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
-#include "sensor_ipmi.h"
-
-#include <string.h>
-
-#include "orte/mca/errmgr/errmgr.h"
 #include "orcm/mca/db/db.h"
 
+#include "orte/mca/errmgr/errmgr.h"
+
 #include "sensor_ipmi.h"
-#include <pthread.h>
 
 /* declare the API functions */
 static int init(void);

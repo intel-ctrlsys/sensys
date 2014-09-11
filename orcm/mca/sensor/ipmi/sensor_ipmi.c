@@ -321,7 +321,13 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     /*Time from epoch = time from ipmi start + difference from epoch to ipmi start*/
     raw_seconds = manuf_seconds + EPOCH_IPMI_DIFF_TIME;
     time_info = localtime(&raw_seconds);
-    strftime(manuf_date,10,"%x",time_info);
+    if (NULL == time_info) {
+        free(rdata);
+        return ORCM_ERROR;
+    }
+    else {
+        strftime(manuf_date,10,"%x",time_info);
+    }
 
     strncpy(host->capsule.prop.baseboard_manuf_date, manuf_date, sizeof(host->capsule.prop.baseboard_manuf_date)-1);
     host->capsule.prop.baseboard_manuf_date[sizeof(host->capsule.prop.baseboard_manuf_date)-1] = '\0';

@@ -1464,53 +1464,59 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
         return;
     }
     ret = get_sdr_cache(&sdrlist);
-    while(find_sdr_next(sdrbuf,sdrlist,id) == 0)
-    {
-        id = sdrbuf[0] + (sdrbuf[1] << 8); /* this SDR id */
-        if (sdrbuf[3] != 0x01) continue; /* full SDR */
-        strncpy(tag,&sdrbuf[48],16);
-        tag[16] = 0;
-        snum = sdrbuf[7];
-        ret = GetSensorReading(snum, sdrbuf, reading);
-        if (ret == 0)
+    if (ret) {
+        error_string = decode_rv(ret);
+        opal_output(0,"Get SDR Cache Error : %s \n", error_string);
+        return;
+    } else {
+        while(find_sdr_next(sdrbuf,sdrlist,id) == 0)
         {
-            val = RawToFloat(reading[0], sdrbuf);
-            typestr = get_unit_type( sdrbuf[20], sdrbuf[21], sdrbuf[22],0);
-            if(orcm_sensor_ipmi_label_found(tag))
+            id = sdrbuf[0] + (sdrbuf[1] << 8); /* this SDR id */
+            if (sdrbuf[3] != 0x01) continue; /* full SDR */
+            strncpy(tag,&sdrbuf[48],16);
+            tag[16] = 0;
+            snum = sdrbuf[7];
+            ret = GetSensorReading(snum, sdrbuf, reading);
+            if (ret == 0)
             {
-                /*opal_output(0, "Found Sensor Label matching:%s",tag);*/
-                /*  Pack the Sensor Metric */
-                cap->prop.collection_metrics[sensor_count]=val;
-                strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
-                strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
-                sensor_count++;
-            } else if(NULL!=mca_sensor_ipmi_component.sensor_group)
-            {
-                if(NULL!=strcasestr(tag, mca_sensor_ipmi_component.sensor_group))
+                val = RawToFloat(reading[0], sdrbuf);
+                typestr = get_unit_type( sdrbuf[20], sdrbuf[21], sdrbuf[22],0);
+                if(orcm_sensor_ipmi_label_found(tag))
                 {
-                    /*opal_output(0, "Found Sensor Label '%s' matching group:%s", tag, mca_sensor_ipmi_component.sensor_group);*/
+                    /*opal_output(0, "Found Sensor Label matching:%s",tag);*/
                     /*  Pack the Sensor Metric */
                     cap->prop.collection_metrics[sensor_count]=val;
                     strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
                     strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
                     sensor_count++;
+                } else if(NULL!=mca_sensor_ipmi_component.sensor_group)
+                {
+                    if(NULL!=strcasestr(tag, mca_sensor_ipmi_component.sensor_group))
+                    {
+                        /*opal_output(0, "Found Sensor Label '%s' matching group:%s", tag, mca_sensor_ipmi_component.sensor_group);*/
+                        /*  Pack the Sensor Metric */
+                        cap->prop.collection_metrics[sensor_count]=val;
+                        strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
+                        strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
+                        sensor_count++;
+                    }
                 }
+                if (sensor_count == TOTAL_FLOAT_METRICS)
+                {
+                    opal_output(0, "Max 'sensor' sampling reached for IPMI Plugin: %d",
+                        sensor_count);
+                    break;
+                }
+            } else {
+                val = 0;
+                typestr = "na";
+                /*opal_output(0, "%04x: get sensor %x reading ret = %d\n",id,snum,ret);*/
             }
-            if (sensor_count == TOTAL_FLOAT_METRICS)
-            {
-                opal_output(0, "Max 'sensor' sampling reached for IPMI Plugin: %d",
-                    sensor_count);
-                break;
-            }
-        } else {
-            val = 0;
-            typestr = "na";
-            /*opal_output(0, "%04x: get sensor %x reading ret = %d\n",id,snum,ret);*/
+            memset(sdrbuf,0,SDR_SZ);
         }
-        memset(sdrbuf,0,SDR_SZ);
+        free_sdr_cache(sdrlist);
+        cap->prop.total_metrics = sensor_count;
     }
-    free_sdr_cache(sdrlist);
-    cap->prop.total_metrics = sensor_count;
     ipmi_close();
     /* End: gathering SDRs */
 }

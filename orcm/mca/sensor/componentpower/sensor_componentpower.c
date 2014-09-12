@@ -428,7 +428,7 @@ static void componentpower_sample(orcm_sensor_sampler_t *sampler)
         ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
         return;
     }
-    strftime(time_str, sizeof(time_str), "%F %T%z", localtime(&now));
+    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
     asprintf(&timestamp_str, "%s", time_str);
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);

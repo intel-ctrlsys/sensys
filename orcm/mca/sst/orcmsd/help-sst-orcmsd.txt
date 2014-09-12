@@ -1,6 +1,6 @@
 # -*- text -*-
 #
-# Copyright (c) 2011      Cisco Systems, Inc.
+# Copyright (c) 2014      Intel, Inc.
 #                         All rights reserved.
 # $COPYRIGHT$
 # 

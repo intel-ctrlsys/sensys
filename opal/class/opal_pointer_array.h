@@ -124,7 +124,7 @@ static inline void *opal_pointer_array_get_item(opal_pointer_array_t *table,
 {
     void *p;
 
-    if( table->size <= element_index ) {
+    if( table->size <= element_index || 0 > element_index ) {
         return NULL;
     }
     OPAL_THREAD_LOCK(&(table->lock));

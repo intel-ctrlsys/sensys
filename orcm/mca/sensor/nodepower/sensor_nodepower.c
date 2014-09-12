@@ -195,6 +195,7 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
 
     unsigned long val1, val2;
     float node_power_cur;
+    struct tm *sample_time;
 
     gettimeofday(&(_tv.tv_curr), NULL);
     if (_tv.tv_curr.tv_usec>=_tv.tv_prev.tv_usec){
@@ -259,7 +260,12 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
     /* get the sample time */
     now = time(NULL);
     /* pass the time along as a simple string */
-    strftime(time_str, sizeof(time_str), "%F %T%z", localtime(&now));
+    sample_time = localtime(&now);
+    if (NULL == sample_time) {
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        return;
+    }
+    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
     asprintf(&timestamp_str, "%s", time_str);
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);

@@ -176,6 +176,9 @@ static void detect_cpu_for_each_socket(void)
             }
         if (k<(int)(strlen(line)))
             cpu_id=atoi(line+k+1);
+            if (cpu_id>=MAX_CPUS){
+                cpu_id=MAX_CPUS-1;
+            }
         }
         if (strncmp(line, "physical id", strlen("physical id"))==0){
             for (k=(int)(strlen("physical id")); k<(int)(strlen(line)); k++)
@@ -184,6 +187,9 @@ static void detect_cpu_for_each_socket(void)
             }
             if (k<(int)(strlen(line))){
                 socket_id=atoi(line+k+1);
+                if (socket_id>=MAX_SOCKETS){
+                    socket_id=MAX_SOCKETS-1;
+                }
             }
         }
         if ((cpu_id!=-1) && (socket_id!=-1)){
@@ -220,6 +226,9 @@ static void start(orte_jobid_t jobid)
     n_cpus=detect_num_cpus();
 
     n_sockets=detect_num_sockets();
+    if (n_sockets > MAX_SOCKETS){
+        n_sockets=MAX_SOCKETS;
+    }
 
     _rapl.n_cpus=n_cpus;
     _rapl.n_sockets=n_sockets;
@@ -307,6 +316,7 @@ static void componentpower_sample(orcm_sensor_sampler_t *sampler)
     float power_cur;
     int i;
     unsigned long long interval, msr, rapl_delta;
+    struct tm *sample_time;
 
     gettimeofday(&(_tv.tv_curr), NULL);
     if (_tv.tv_curr.tv_usec>=_tv.tv_prev.tv_usec){
@@ -413,6 +423,11 @@ static void componentpower_sample(orcm_sensor_sampler_t *sampler)
     /* get the sample time */
     now = time(NULL);
     /* pass the time along as a simple string */
+    sample_time = localtime(&now);
+    if (NULL == sample_time) {
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        return;
+    }
     strftime(time_str, sizeof(time_str), "%F %T%z", localtime(&now));
     asprintf(&timestamp_str, "%s", time_str);
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {

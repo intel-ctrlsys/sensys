@@ -11,7 +11,7 @@
 # This is the US/English help file for Open Resilient Cluster Manager Tool
 #
 [usage]
-oqueue [OPTIONS]
-  Open Resilient Cluster Manager "oqueue" Tool
+ocli [OPTIONS]
+  Open Resilient Cluster Manager "ocli" Tool
 
 %s

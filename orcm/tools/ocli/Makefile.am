@@ -8,16 +8,16 @@
 # $HEADER$
 #
 
-dist_orcmdata_DATA = help-oqueue.txt
+dist_orcmdata_DATA = help-ocli.txt
 
 include $(top_srcdir)/Makefile.ompi-rules
 
-man_pages = oqueue.1
+man_pages = ocli.1
 EXTRA_DIST = $(man_pages:.1=.1in)
 
 if OPAL_INSTALL_BINARIES
 
-bin_PROGRAMS = oqueue
+bin_PROGRAMS = ocli
 
 nodist_man_MANS = $(man_pages)
 
@@ -28,15 +28,22 @@ $(nodist_man_MANS): $(top_builddir)/orcm/include/orcm_config.h
 
 endif # OPAL_INSTALL_BINARIES
 
-oqueue_SOURCES = oqueue.c
-# the following empty oqueue_LDFLAGS is used 
-#  so that the oqueue can be compiled statically 
+ocli_SOURCES = \
+        common.h \
+        ocli.h \
+        ocli.c \
+        queue.c \
+        resource.c \
+        session.c
+
+# the following empty ocli_LDFLAGS is used
+#  so that the ocli can be compiled statically
 #  by simply changing the value of this from 
 #  nothing to -all-static in the Makefile.in
 #  nice for systems that don't have all the shared 
 #  libraries on the computes 
-oqueue_LDFLAGS =
-oqueue_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/libopen-rte.la
+ocli_LDFLAGS =
+ocli_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/libopen-rte.la
 
 distclean-local:
 	rm -f $(man_pages)

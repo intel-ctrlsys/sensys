@@ -23,6 +23,14 @@
 #define BONK putchar('\a');
 
 static int make_opt(orcm_cli_t *cli, orcm_cli_init_t *e);
+static int make_opt_subtree(orcm_cli_cmd_t *cmd, orcm_cli_init_t *e, int level);
+static void print_subtree(orcm_cli_cmd_t *command, int level);
+static int get_completions(orcm_cli_t *cli, char **input,
+                           char ***completions, opal_list_t *options);
+static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
+                                   char ***completions, opal_list_t *options);
+static int print_completions(orcm_cli_t *cli, char **input);
+static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input);
 
 int orcm_cli_create(orcm_cli_t *cli,
                     orcm_cli_init_t *table)
@@ -34,8 +42,6 @@ int orcm_cli_create(orcm_cli_t *cli,
         return ORCM_ERR_BAD_PARAM;
     }
 
-    OBJ_CONSTRUCT(cli, orcm_cli_t);
-
     /* Ensure we got a table */
 
     if (NULL == table) {
@@ -43,12 +49,10 @@ int orcm_cli_create(orcm_cli_t *cli,
     }
 
     /* Loop through the table */
-
     for (i = 0; ; ++i) {
 
         /* Is this the end? */
-
-        if (NULL == table[i].parent &&
+        if (NULL == table[i].parent[0] &&
             NULL == table[i].cmd) {
             break;
         }
@@ -60,7 +64,7 @@ int orcm_cli_create(orcm_cli_t *cli,
             return rc;
         }
     }
-
+    
     return ORCM_SUCCESS;
 
 }
@@ -68,35 +72,16 @@ int orcm_cli_create(orcm_cli_t *cli,
 static int make_opt(orcm_cli_t *cli, orcm_cli_init_t *e)
 {
     orcm_cli_cmd_t *cmd, *parent;
-    opal_value_t *kv;
 
     /* if the parent is not NULL, then look for the matching
      * parent in the command tree and put this one under it */
-    if (NULL != e->parent) {
+    if (NULL != e->parent[0]) {
         OPAL_LIST_FOREACH(parent, &cli->cmds, orcm_cli_cmd_t) {
-            if (0 == strcasecmp(parent->cmd, e->parent)) {
-                /* if this is an option, put it there */
-                if (e->option) {
-                    kv = OBJ_NEW(opal_value_t);
-                    kv->key = strdup(e->cmd);
-                    kv->type = OPAL_INT;
-                    kv->data.integer = e->nargs;
-                    opal_list_append(&parent->options, &kv->super);
-                } else {
-                    cmd = OBJ_NEW(orcm_cli_cmd_t);
-                    if (NULL != e->cmd) {
-                        cmd->cmd = strdup(e->cmd);
-                    }
-                    if (NULL != e->help) {
-                        cmd->help = strdup(e->help);
-                    }
-                    opal_list_append(&parent->subcmds, &cmd->super);
-                }
-                return ORCM_SUCCESS;;
+            if (0 == strcasecmp(parent->cmd, e->parent[0])) {
+                /* recursive search down the subtree */
+                return make_opt_subtree(parent, e, 1);
             }
         }
-        /* if the parent wasn't found, then that's an error */
-        ORTE_ERROR_LOG(ORCM_ERR_NOT_FOUND);
         return ORCM_ERR_NOT_FOUND;
     } else {
         /* just add it to the top-level cmd tree */
@@ -112,22 +97,56 @@ static int make_opt(orcm_cli_t *cli, orcm_cli_init_t *e)
     return ORCM_SUCCESS;
 }
 
+static int make_opt_subtree(orcm_cli_cmd_t *cmd, orcm_cli_init_t *e, int level) {
+    orcm_cli_cmd_t *newcmd, *parent;
+    opal_value_t *kv;
+    
+    /* we will keep descending down the subtree until we have nothing
+     * more on the parent list to compare to */
+    if (NULL == e->parent[level]) {
+        /* if this is an option, put it there */
+        if (e->option) {
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup(e->cmd);
+            kv->type = OPAL_INT;
+            kv->data.integer = e->nargs;
+            opal_list_append(&cmd->options, &kv->super);
+        } else {
+            /* add the commnad in the correct place */
+            newcmd = OBJ_NEW(orcm_cli_cmd_t);
+            if (NULL != e->cmd) {
+                newcmd->cmd = strdup(e->cmd);
+            }
+            if (NULL != e->help) {
+                newcmd->help = strdup(e->help);
+            }
+            opal_list_append(&cmd->subcmds, &newcmd->super);
+        }
+        return ORCM_SUCCESS;
+    } else {
+        /* have more work to do, descend down subtree */
+        OPAL_LIST_FOREACH(parent, &cmd->subcmds, orcm_cli_cmd_t) {
+            if (0 == strcasecmp(parent->cmd, e->parent[level])) {
+                return make_opt_subtree(parent, e, level+1);
+            }
+        }
+        return ORCM_ERR_NOT_FOUND;
+    }
+}
 
 int orcm_cli_get_cmd(char *prompt,
                      orcm_cli_t *cli,
                      char **cmd)
 {
     char c;
-    orcm_cli_cmd_t *c2, *c3;
     opal_value_t *kv;
-    char **options;
+    opal_list_t *options;
     struct termios settings, initial_settings;
     char input[ORCM_MAX_CLI_LENGTH];
-    int argc;
     bool space;
-    size_t i, j, k;
-    bool found;
-    char **completions;
+    size_t j, k;
+    char **completions, **inputlist;
+    int rc = ORCM_SUCCESS;
 
     /* prep the stack */
     memset(input, 0, ORCM_MAX_CLI_LENGTH);
@@ -151,251 +170,70 @@ int orcm_cli_get_cmd(char *prompt,
     while ('\n' != (c = getchar())) {
         switch (c) {
         case '\t':   // auto-completion
-            found = false;
             space = false;
-            argc = 0;
-            /* init the search */
             options = NULL;
-            if (0 == j) {
-                /* if they are at the start of the command, then print
-                 * out all allowed possibilities */
-                putchar('\n');
-                OPAL_LIST_FOREACH(c2, &cli->cmds, orcm_cli_cmd_t) {
-                    opal_argv_append(&argc, &options, c2->cmd);
-                }
-                /* if there is nothing, then that's an error */
-                if (0 == argc) {
-                    BONK;
-                    goto process;
-                }
-                if (1 == argc) {
-                    /* only one possibility - output the rest of the characters
-                     * followed by a space */
-                    for (i=0; i < strlen(options[0]); i++) {
-                        putchar(options[0][i]);
-                        /* and add it to the cmd */
-                        input[j++] = options[0][i];
-                    }
-                    putchar(' ');
-                    input[j++] = ' ';
-                    opal_argv_free(options);
-                    break;
-                }
-                /* if there are multiple choices, then output them
-                 * on the line below */
-                putchar('\n');
-                for (i=0; NULL != options[i]; i++) {
-                    printf("%s  ", options[i]);
-                }
-                printf("\n%s", input);
-                opal_argv_free(options);
-                found = true;
-                break;
-            }
-
-            /* if we are partway thru the command, then we break the
-             * command into its component parts so we can cycle across known
-             * possibilities and see if any match the currently-input
-             * set of characters. */
-            options = opal_argv_split(input, ' ');
-            /* find the base command */
-            c3 = NULL;
-            OPAL_LIST_FOREACH(c2, &cli->cmds, orcm_cli_cmd_t) {
-                if (strlen(c2->cmd) < strlen(options[0])) {
-                    continue;
-                }
-                if (0 == strncmp(c2->cmd, options[0], strlen(options[0]))) {
-                    c3 = c2;
-                    found = true;
-                }
-            }
-            if (NULL == c3) {
-                /* the input doesn't match any defined command - bonk */
+            completions = NULL;
+            /* break command line so far into array of strings */
+            inputlist = opal_argv_split(input, ' ');
+            /* get possible completions for the commandline so far */
+            rc = get_completions(cli, inputlist, &completions, options);
+            if (ORCM_ERR_NOT_FOUND == rc) {
+                /* Bad command not in tree, Bonk */
                 BONK;
                 break;
-            }
-
-            /* if they only gave us the one command, then we can treat that now */
-            if (1 == (argc = opal_argv_count(options))) {
-                /* if they didn't give us the full command, then complete
-                 * it for them */
-                if (j < strlen(c3->cmd)) {
-                    for (i=j; i < strlen(c3->cmd); i++) {
-                        putchar(c3->cmd[i]);
-                        input[j++] = c3->cmd[i];
-                    }
-                    putchar(' ');
-                    input[j++] = ' ';
-                    opal_argv_free(options);
-                    found = true;
-                    break;
-                }
-                /* they have given us one complete command, and are now
-                 * asking for all its subcmds and options - so pass them
-                 * along */
-                if (0 == opal_list_get_size(&c3->options) &&
-                    0 == opal_list_get_size(&c3->subcmds)) {
-                    /* this command doesn't have any options or subcmds - bonk */
-                    BONK;
-                    break;
-                }
-                if (0 < opal_list_get_size(&c3->options)) {
-                    printf("\nOPTIONS: ");
-                    OPAL_LIST_FOREACH(kv, &c3->options, opal_value_t) {
-                        printf("%s  ", kv->key);
-                    }
-                }
-                if (0 < opal_list_get_size(&c3->subcmds)) {
-                    printf("\nCMDS: ");
-                    OPAL_LIST_FOREACH(c2, &c3->subcmds, orcm_cli_cmd_t) {
-                        printf("%s  ", c2->cmd);
-                    }
-                }
-                printf("\n%s", input);
-                found = true;
-                break;
-            }
-
-            /* we have the top-level command in c3, so now walk
-             * the remaining entries to find out where we are
-             * in the tree */
-            i = 1;
-            while (i < (size_t)opal_argv_count(options)) {
-                found = false;
-                completions = NULL;
-                /* check if this entry is the start of a subcommand */
-                OPAL_LIST_FOREACH(c2, &c3->subcmds, orcm_cli_cmd_t) {
-                    if (0 == strncmp(c2->cmd, options[i], strlen(options[i]))) {
-                        /* got a match - there are no args required
-                         * here, so just move to the next entry if
-                         * this word is complete */
-                        if (strlen(options[i]) == strlen(c2->cmd)) {
-                            i++;
-                            opal_argv_free(completions);
-                        } else {
-                            /* add this to our list of possible completions */
-                            opal_argv_append_nosize(&completions, c2->cmd);
-                        }
-                        found = true;
+            } else if (ORCM_SUCCESS == rc) {
+                if (NULL == completions) {
+                    if (NULL == options || opal_list_is_empty(options)) {
+                        /* no completions and no options, Bonk */
+                        BONK;
                         break;
-                    }
-                }
-                if (NULL != completions) {
-                    /* if we have a list of possible completions, then we
-                     * didn't find a completed subcommand - so see if we
-                     * can complete it */
-                    if (1 == opal_argv_count(completions)) {
-                        /* only one option, so complete it for them */
-                        for (k = strlen(options[i]); k < strlen(completions[0]); k++) {
-                            putchar(completions[0][k]);
-                            input[j++] = completions[0][k];
+                    } else {
+                        /* no completions, list options */
+                        printf("\nOPTIONS: ");
+                        OPAL_LIST_FOREACH(kv, options, opal_value_t) {
+                            printf("%s  ", kv->key);
                         }
+                    }
+                } else if (1 == opal_argv_count(completions)) {
+                    /* only 1 possible completion, go ahead and complete it */
+                    inputlist = opal_argv_split(input, ' ');
+                    if (' ' == input[j-1]) {
+                        k = 0;
+                    } else if (0 != strncmp(inputlist[(opal_argv_count(inputlist) - 1)],
+                                            completions[0],
+                                            strlen(inputlist[(opal_argv_count(inputlist) - 1)]))) {
+                        
                         putchar(' ');
                         input[j++] = ' ';
+                        k = 0;
                     } else {
-                        /* if there are multiple completions, then print them out */
-                        putchar('\n');
-                        for (k=0; NULL != completions[k]; k++) {
-                            printf("%s  ", completions[k]);
-                        }
-                        printf("\n%s", input);
+                        k = strlen(inputlist[(opal_argv_count(inputlist) - 1)]);
                     }
-                    /* break out of the options loop */
-                    i = opal_argv_count(options) + 1;
-                    opal_argv_free(completions);
-                    break;
-                }
-                /* if completions are NULL, then either we didn't find a matching
-                 * subcommand, or we found the subcommand but it was complete. In the
-                 * latter case, since i was incremented, we can just look at the next position */
-                if (i < (size_t)opal_argv_count(options)) {
-                    OPAL_LIST_FOREACH(kv, &c3->options, opal_value_t) {
-                        if (0 == strncmp(kv->key, options[i], strlen(options[i]))) {
-                            found = true;
-                            if (strlen(kv->key) == strlen(options[i])) {
-                                /* it is a complete option, so see if we have all
-                                 * the arguments */
-                                i += kv->data.integer;
-                                if (argc < (int)i) {
-                                    /* nope - we are missing some, but we cannot
-                                     * autocomplete arguments */
-                                    BONK;
-                                    i = opal_argv_count(options) + 1;  // break out of the completion loop
-                                } else {
-                                    /* have all we need - move to the next option */
-                                    i++;
-                                    break;
-                                }
-                            } else {
-                                /* add it to our possible completions */
-                                opal_argv_append_nosize(&completions, kv->key);
-                            }
-                            break;
-                        }
+                    for (; k < strlen(completions[0]); k++) {
+                        putchar(completions[0][k]);
+                        input[j++] = completions[0][k];
                     }
-                    if (NULL != completions) {
-                        /* if we have a list of possible completions, then we
-                         * didn't find a completed option - so see if we
-                         * can complete it */
-                        if (1 == opal_argv_count(completions)) {
-                            /* only one option, so complete it for them */
-                            for (k = strlen(options[i]); k < strlen(completions[0]); k++) {
-                                putchar(completions[0][k]);
-                                input[j++] = completions[0][k];
-                            }
-                            putchar(' ');
-                            input[j++] = ' ';
-                            opal_argv_free(completions);
-                            i = opal_argv_count(options) + 1;  // break out of the completion loop
-                            break;
-                        } else {
-                            /* if there are multiple completions, then print them out */
-                            putchar('\n');
-                            for (k=0; NULL != completions[k]; k++) {
-                                printf("%s  ", completions[k]);
-                            }
-                            printf("\n%s", input);
-                        }
-                        found = true;
-                        i = opal_argv_count(options) + 1;  // break out of the completion loop
-                        opal_argv_free(completions);
-                        break;
+                    putchar(' ');
+                    input[j++] = ' ';
+                    space = true;
+                } else {
+                    /* multiple completions, list possibilities */
+                    if (j != 0 && ' ' != input[j-1]) {
+                        putchar(' ');
+                        input[j++] = ' ';
+                        space = true;
                     }
+                    printf("\n\t%s", opal_argv_join(completions, ' '));
                 }
-                if (!found) {
-                    /* no match was found */
-                    break;
-                }
+                printf("\n%s> %s", prompt, input);
+                break;
+            } else {
+                goto process;
             }
-            /* if the last item in the list wasn't found, then that's an error */
-            if (!found) {
-                BONK;
-            }
-            if ((size_t)opal_argv_count(options) == i) {
-                /* we found everything on the list, so they must want
-                 * a suggestion of any remaining options */
-                if (0 < opal_list_get_size(&c3->options)) {
-                    printf("\nOPTIONS: ");
-                    OPAL_LIST_FOREACH(kv, &c3->options, opal_value_t) {
-                        printf("%s  ", kv->key);
-                    }
-                }
-                if (0 < opal_list_get_size(&c3->subcmds)) {
-                    printf("\nCMDS: ");
-                    OPAL_LIST_FOREACH(c2, &c3->subcmds, orcm_cli_cmd_t) {
-                        printf("%s  ", c2->cmd);
-                    }
-                }
-                printf("\n%s", input);
-            }
-            opal_argv_free(options);
-            break;
 
-        case ' ':
-            /* it is always possible somebody just typed an extra
-             * space here, so we should ignore it if they did */
+        case ' ':    // space
             if (0 == j || space) {
-                /* if they do it more than once, bonk them */
+                /* if there is already a space on the input line, Bonk */
                 BONK;
                 break;
             }
@@ -406,8 +244,8 @@ int orcm_cli_get_cmd(char *prompt,
              * entered via auto-completion */
             break;
 
-        case '\b':
-        case 0x7f:
+        case '\b':   // backspace
+        case 0x7f:   // backspace
             space = false;
             if (0 == j) {
                 /* error - bonk */
@@ -424,8 +262,40 @@ int orcm_cli_get_cmd(char *prompt,
                 space = true;
             }
             break;
+                
+        case 0x1b:   // arrows
+            /* this is to ignore the garbage that comes out when you type arrows */
+            c = getchar();
+            switch(c) {
+            case '[':
+                c = getchar();
+                switch(c) {
+                case 'A':
+                    /* up arrow */
+                case 'B':
+                    /* down arrow */
+                case 'C':
+                    /* right arrow */
+                case 'D':
+                    /* left arrow */
+                default:
+                    break;
+                }
+            default:
+                break;
+            }
+            break;
 
-        default:
+        case '?':   // help special char
+            /* list help message of possible completions */
+            options = NULL;
+            inputlist = opal_argv_split(input, ' ');
+            printf("\nPossible commands:\n");
+            print_completions(cli, inputlist);
+            printf("\n%s> %s", prompt, input);
+            break;
+
+        default:   // everything else
             space = false;
             if (ORCM_MAX_CLI_LENGTH == j) {
                 /* can't go that far - bonk */
@@ -436,6 +306,7 @@ int orcm_cli_get_cmd(char *prompt,
             putchar(c);
             /* add it to our array */
             input[j++] = c;
+            break;
         }
     }
 
@@ -446,27 +317,210 @@ int orcm_cli_get_cmd(char *prompt,
     /* return the assembled command */
     *cmd = strdup(input);
 
+    return rc;
+}
+
+static int get_completions(orcm_cli_t *cli, char **input,
+                           char ***completions, opal_list_t *options)
+{
+    orcm_cli_cmd_t *sub_command;
+    int i;
+    bool found = false;
+    
+    i = opal_argv_count(input);
+    /* no input, must be at top level
+     * add all top level commands to compeltion list */
+    if (0 == opal_argv_count(input)) {
+        OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
+            opal_argv_append_nosize(completions, sub_command->cmd);
+        }
+        return ORCM_SUCCESS;
+    }
+    
+    /* look for top level command to descend into subtree with */
+    OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
+        if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
+            /* if we match our input so far with a command... */
+            if (strlen(input[0]) == strlen(sub_command->cmd)) {
+                /* if input fully matches command descend */
+                opal_argv_delete(&i, &input, 0, 1);
+                /* recursive command to search subtree */
+                return get_completions_subtree(sub_command, input,
+                                               completions, options);
+            } else {
+                /* otherwise add this to our list of possible completions */
+                opal_argv_append_nosize(completions, sub_command->cmd);
+                found = true;
+            }
+        }
+    }
+    opal_argv_free(input);
+    if (!found) {
+        return ORCM_ERR_NOT_FOUND;
+    }
+    return ORCM_SUCCESS;
+}
+
+static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
+                                   char ***completions, opal_list_t *options)
+{
+    orcm_cli_cmd_t *sub_command;
+    int i;
+    bool found = false;
+    
+    i = opal_argv_count(input);
+    /* nothing on the input line passed to us
+     * append all commands at this level */
+    if (0 == i) {
+        if (opal_list_is_empty(&cmd->subcmds)) {
+            options = &cmd->options;
+            if (NULL != *completions) {
+                opal_argv_free(*completions);
+            }
+        } else {
+            OPAL_LIST_FOREACH(sub_command, &cmd->subcmds, orcm_cli_cmd_t) {
+                opal_argv_append_nosize(completions, sub_command->cmd);
+            }
+        }
+        return ORCM_SUCCESS;
+    }
+    
+    /* look for commands to match input with */
+    OPAL_LIST_FOREACH(sub_command, &cmd->subcmds, orcm_cli_cmd_t) {
+        if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
+            /* if we match our input so far with a command... */
+            if (strlen(input[0]) == strlen(sub_command->cmd)) {
+                /* if input fully matches command descend recursively */
+                opal_argv_delete(&i, &input, 0, 1);
+                return get_completions_subtree(sub_command, input,
+                                               completions, options);
+            } else {
+                /* otherwise add this to our list of possible completions */
+                opal_argv_append_nosize(completions, sub_command->cmd);
+                found = true;
+            }
+        }
+    }
+    opal_argv_free(input);
+    if (!found) {
+        return ORCM_ERR_NOT_FOUND;
+    }
+    return ORCM_SUCCESS;
+}
+
+static int print_completions(orcm_cli_t *cli, char **input)
+{
+    orcm_cli_cmd_t *sub_command;
+    int i;
+    bool found = false;
+    
+    i = opal_argv_count(input);
+    /* if no input, print help for all commands at top level */
+    if (0 == opal_argv_count(input)) {
+        OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
+            orcm_cli_print_cmd(sub_command, NULL);
+        }
+        return ORCM_SUCCESS;
+    }
+    
+    /* search for matching commands */
+    OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
+        if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
+            /* if we match our input so far with a command... */
+            if (strlen(input[0]) == strlen(sub_command->cmd)) {
+                /* if input fully matches command descend */
+                opal_argv_delete(&i, &input, 0, 1);
+                return print_completions_subtree(sub_command, input);
+            } else {
+                /* otherwise print help for possible completions */
+                orcm_cli_print_cmd(sub_command, NULL);
+                found = true;
+            }
+        }
+    }
+    opal_argv_free(input);
+    if (!found) {
+        return ORCM_ERR_NOT_FOUND;
+    }
+    return ORCM_SUCCESS;
+
+}
+
+static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input)
+{
+    orcm_cli_cmd_t *sub_command;
+    int i;
+    bool found = false;
+    
+    i = opal_argv_count(input);
+    /* if no input, print help for all commands at this level */
+    if (0 == i) {
+        OPAL_LIST_FOREACH(sub_command, &cmd->subcmds, orcm_cli_cmd_t) {
+            orcm_cli_print_cmd(sub_command, NULL);
+        }
+        return ORCM_SUCCESS;
+    }
+    
+    OPAL_LIST_FOREACH(sub_command, &cmd->subcmds, orcm_cli_cmd_t) {
+        if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
+            /* if we match our input so far with a command... */
+            if (strlen(input[0]) == strlen(sub_command->cmd)) {
+                opal_argv_delete(&i, &input, 0, 1);
+                /* if input fully matches command descend recursively */
+                return print_completions_subtree(sub_command, input);
+            } else {
+                /* print help for possible completions */
+                orcm_cli_print_cmd(sub_command, NULL);
+                found = true;
+            }
+        }
+    }
+    opal_argv_free(input);
+    if (!found) {
+        return ORCM_ERR_NOT_FOUND;
+    }
     return ORCM_SUCCESS;
 }
 
 void orcm_cli_print_cmd(orcm_cli_cmd_t *cmd, char *prefix)
 {
     opal_value_t *kv;
-    orcm_cli_cmd_t *sub;
-    char *pf2;
-
-    (void)asprintf(&pf2, "%s\t", (NULL == prefix) ? "" : prefix);
-    opal_output(0, "%sCMD: %s HELP %s",
-                (NULL == prefix) ? "" : prefix,
-                (NULL == cmd->cmd) ? "NULL" : cmd->cmd,
-                (NULL == cmd->help) ? "NULL" : cmd->help);
+    printf("%-2s %-20s %-10s\n",
+           (NULL == prefix) ? "" : prefix,
+           (NULL == cmd->cmd) ? "NULL" : cmd->cmd,
+           (NULL == cmd->help) ? "NULL" : cmd->help);
     OPAL_LIST_FOREACH(kv, &cmd->options, opal_value_t) {
-        opal_output(0, "\tOPTION: %s nargs %d", kv->key, kv->data.integer);
+        printf("\tOPTION: %s nargs %d\n", kv->key, kv->data.integer);
     }
-    OPAL_LIST_FOREACH(sub, &cmd->subcmds, orcm_cli_cmd_t) {
-        orcm_cli_print_cmd(sub, pf2);
+}
+
+void orcm_cli_print_tree(orcm_cli_t *cli)
+{
+    orcm_cli_cmd_t *sub_command;
+    
+    /* recursive set of functions to print the whole command tree */
+    
+    OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
+        printf("%s\n",
+               (NULL == sub_command->cmd) ? "NULL" : sub_command->cmd);
+        print_subtree(sub_command, 1);
     }
-    free(pf2);
+}
+
+static void print_subtree(orcm_cli_cmd_t *command, int level)
+{
+    orcm_cli_cmd_t *sub_command;
+    int i;
+    
+    OPAL_LIST_FOREACH(sub_command, &command->subcmds, orcm_cli_cmd_t) {
+        for (i = 0; i < level; i++) {
+            printf("  ");
+        }
+        /* use special unicode box chars for help displaying tree */
+        printf("\u2514\u2500%s\n",
+               (NULL == sub_command->cmd) ? "NULL" : sub_command->cmd);
+        print_subtree(sub_command, level+1);
+    }
 }
 
 /***   CLASS INSTANCES   ***/

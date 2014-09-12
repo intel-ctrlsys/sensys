@@ -16,13 +16,19 @@
 #include "opal/class/opal_list.h"
 
 #define ORCM_MAX_CLI_LENGTH  1024
+#define ORCM_MAX_CLI_LIST_LENGTH  128
 
 typedef struct {
-    char *parent;  // name of the parent command - NULL indicates top-level cmd
-    char *cmd;     // name of this command, must include the dashes if an option that needs them
-    bool option;   // is this an option or a sublevel command
-    int nargs;     // number of arguments this option or command takes
-    char *help;    // help message to display at a help request
+    /* array of the parent commands,
+     * NULL terminated
+     * just NULL indicates top-level cmd */
+    char *parent[ORCM_MAX_CLI_LIST_LENGTH];
+    /* name of this command,
+     * must include the dashes if an option that needs them */
+    char *cmd;
+    bool option;   /* is this an option or a sublevel command */
+    int nargs;     /* number of arguments this option or command takes */
+    char *help;    /* help message to display at a help request */
 } orcm_cli_init_t;
 OBJ_CLASS_DECLARATION(orcm_cli_init_t);
 
@@ -42,18 +48,23 @@ OBJ_CLASS_DECLARATION(orcm_cli_cmd_t);
 
 typedef struct {
     opal_object_t super;
-    opal_list_t cmds;  // list of orcm_cli_cmd_t objects
+    opal_list_t cmds;  /* list of orcm_cli_cmd_t objects */
 } orcm_cli_t;
 OBJ_CLASS_DECLARATION(orcm_cli_t);
 
+/* create a cli command tree */
 ORCM_DECLSPEC int orcm_cli_create(orcm_cli_t *cli,
                                   orcm_cli_init_t *input);
 
+/* interactive prompt to help complete commands */
 ORCM_DECLSPEC int orcm_cli_get_cmd(char *prompt,
                                    orcm_cli_t *cli,
                                    char **cmd);
 
+/* neatly print help for a command, usually used to print possible top level */
 ORCM_DECLSPEC void orcm_cli_print_cmd(orcm_cli_cmd_t *cmd,
                                       char *prefix);
 
+/* print the whole command tree, usually to verify its defined correctly */
+ORCM_DECLSPEC void orcm_cli_print_tree(orcm_cli_t *cli);
 #endif

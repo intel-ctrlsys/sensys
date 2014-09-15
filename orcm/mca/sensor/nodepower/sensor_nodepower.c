@@ -139,6 +139,7 @@ static void call_readein(node_power_data *data, int to_print)
     if (to_print){
         opal_output(0, "ret_val[0]=%lu, ret_val[1]=%lu\n", data->ret_val[0], data->ret_val[1]);
     }
+
     ipmi_close();
     return;
 }

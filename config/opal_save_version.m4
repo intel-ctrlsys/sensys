@@ -51,7 +51,7 @@ AC_DEFUN([OPAL_SAVE_VERSION], [
         [Release release number of ]$2)
     AC_DEFINE_UNQUOTED($1[_GREEK_VERSION], ["$]$1[_GREEK_VERSION"],
         [Greek - alpha, beta, etc - release number of ]$2)
-    AC_DEFINE_UNQUOTED($1[_VERSION], ["$]$1[_RELEASE_VERSION"],
+    AC_DEFINE_UNQUOTED($1[_VERSION], ["$]$1[_VERSION"],
         [Complete release number of ]$2)
     AC_DEFINE_UNQUOTED($1[_RELEASE_DATE], ["$]$1[_RELEASE_DATE"],
         [Release date of ]$2)

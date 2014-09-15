@@ -78,12 +78,13 @@ use read_ein command to get input power of PSU. refer to PSU spec for details.
 static void call_readein(node_power_data *data, int to_print)
 {
     unsigned char responseData[1024];
-    int responseLength;
+    int responseLength = 1024;
     unsigned char completionCode;
     int ret, i, len;
     unsigned char netfn, lun;
     unsigned char cmd[16];
     unsigned char temp_value[8];
+    char *error_string;
 
 /* parameters needed to read psu power */
 /* bus # */
@@ -103,9 +104,16 @@ static void call_readein(node_power_data *data, int to_print)
 
     netfn=cmd[2]>>2;
     lun=cmd[2]&0x03;
-    
 
     ret = ipmi_cmdraw(cmd[3], netfn, cmd[1], cmd[0], lun, &cmd[4], (unsigned char)(len-4), responseData, &responseLength, &completionCode, 0);
+
+    if(ret) {
+        error_string = decode_rv(ret);
+        opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
+        opal_output(0,"ipmi_cmdraw ERROR : %s \n", error_string);
+        ipmi_close();
+        return;
+    }
 
     if (to_print){
         opal_output(0, "ret=%d, respData[len=%d]: ",ret, responseLength);

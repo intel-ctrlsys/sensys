@@ -516,7 +516,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     struct tm *sample_time;
     orcm_sensor_hosts_t *top = active_hosts;
     int int_count=0;
-    int sample_count=0;
+    int sample_count=0, timeout = 0;
 
     if (mca_sensor_ipmi_component.test) {
         /* just send the test vector */
@@ -540,8 +540,9 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     }
     free(ipmi);
 
-    if(count_log == 0)  /* The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it. */
+    if(count_log == 0 && timeout < 3)  /* The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it. */
     {
+        timeout++;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "First Sample: Packing Credentials");
         /* pack the numerical identifier for number of nodes*/

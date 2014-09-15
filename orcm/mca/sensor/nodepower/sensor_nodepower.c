@@ -177,6 +177,9 @@ static void start(orte_jobid_t jobid)
     ret=call_readein(&_node_power, 0);
     if (ret==-1){
         opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
+        _readein.readein_accu_prev=0;
+        _readein.readein_cnt_prev=0;
+        return;
     }
 
     _readein.readein_accu_prev=_node_power.ret_val[0];
@@ -227,13 +230,15 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
     _tv.tv_prev=_tv.tv_curr;
 
     ret=call_readein(&_node_power, 0);
+    _readein.ipmi_calls++;
     if (ret==-1){
         opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
+        _readein.readein_accu_curr=_readein.readein_accu_prev;
+        _readein.readein_cnt_curr=_readein.readein_cnt_prev;
+    } else {
+        _readein.readein_accu_curr=_node_power.ret_val[0];
+        _readein.readein_cnt_curr=_node_power.ret_val[1];
     }
-
-    _readein.ipmi_calls++;
-    _readein.readein_accu_curr=_node_power.ret_val[0];
-    _readein.readein_cnt_curr=_node_power.ret_val[1];
 
     /* detect overflow and calculate psu power */
     if (_readein.readein_accu_curr >= _readein.readein_accu_prev){
@@ -246,6 +251,10 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
         val2=_readein.readein_cnt_curr - _readein.readein_cnt_prev;
     } else {
         val2=_readein.readein_cnt_curr + 65536 - _readein.readein_cnt_prev;
+    }
+
+    if (!val2){
+        val2=1;
     }
 
     node_power.node_power.cur=(double)val1/(double)val2;

@@ -46,6 +46,7 @@
 
 #include <ipmicmd.h>
 
+#define MAX_IPMI_RESPONSE 1024
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
@@ -53,7 +54,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void nodepower_sample(orcm_sensor_sampler_t *sampler);
 static void nodepower_log(opal_buffer_t *buf);
-static void call_readein(node_power_data *, int);
+static int call_readein(node_power_data *, int);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_nodepower_module = {
@@ -75,15 +76,16 @@ node_power_data _node_power, node_power;
 /*
 use read_ein command to get input power of PSU. refer to PSU spec for details.
  */
-static void call_readein(node_power_data *data, int to_print)
+static int call_readein(node_power_data *data, int to_print)
 {
-    unsigned char responseData[1024];
-    int responseLength;
+    unsigned char responseData[MAX_IPMI_RESPONSE];
+    int responseLength = MAX_IPMI_RESPONSE;
     unsigned char completionCode;
     int ret, i, len;
     unsigned char netfn, lun;
     unsigned char cmd[16];
     unsigned char temp_value[8];
+    char *error_string;
 
 /* parameters needed to read psu power */
 /* bus # */
@@ -103,9 +105,15 @@ static void call_readein(node_power_data *data, int to_print)
 
     netfn=cmd[2]>>2;
     lun=cmd[2]&0x03;
-    
 
     ret = ipmi_cmdraw(cmd[3], netfn, cmd[1], cmd[0], lun, &cmd[4], (unsigned char)(len-4), responseData, &responseLength, &completionCode, 0);
+
+    if(ret) {
+        error_string = decode_rv(ret);
+        opal_output(0,"ipmi_cmdraw ERROR : %s \n", error_string);
+        ipmi_close();
+        return ORCM_ERROR;
+    }
 
     if (to_print){
         opal_output(0, "ret=%d, respData[len=%d]: ",ret, responseLength);
@@ -139,8 +147,9 @@ static void call_readein(node_power_data *data, int to_print)
     if (to_print){
         opal_output(0, "ret_val[0]=%lu, ret_val[1]=%lu\n", data->ret_val[0], data->ret_val[1]);
     }
+    ipmi_close();
 
-    return;
+    return ORCM_SUCCESS;
 }
 
 static bool log_enabled = true;
@@ -159,11 +168,20 @@ static void finalize(void)
  */
 static void start(orte_jobid_t jobid)
 {
+    int ret;
+
     gettimeofday(&(_tv.tv_curr), NULL);
     _tv.tv_prev=_tv.tv_curr;
     _tv.interval=0;
 
-    call_readein(&_node_power, 0);
+    ret=call_readein(&_node_power, 0);
+    if (ret==ORCM_ERROR){
+        opal_output(0,"Unable to read Nodepower");
+        _readein.readein_accu_prev=0;
+        _readein.readein_cnt_prev=0;
+        return;
+    }
+
     _readein.readein_accu_prev=_node_power.ret_val[0];
     _readein.readein_cnt_prev=_node_power.ret_val[1];
     _readein.ipmi_calls=0;
@@ -211,10 +229,16 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
     }
     _tv.tv_prev=_tv.tv_curr;
 
-    call_readein(&_node_power, 0);
+    ret=call_readein(&_node_power, 0);
     _readein.ipmi_calls++;
-    _readein.readein_accu_curr=_node_power.ret_val[0];
-    _readein.readein_cnt_curr=_node_power.ret_val[1];
+    if (ret==ORCM_ERROR){
+        opal_output(0,"Unable to read Nodepower");
+        _readein.readein_accu_curr=_readein.readein_accu_prev;
+        _readein.readein_cnt_curr=_readein.readein_cnt_prev;
+    } else {
+        _readein.readein_accu_curr=_node_power.ret_val[0];
+        _readein.readein_cnt_curr=_node_power.ret_val[1];
+    }
 
     /* detect overflow and calculate psu power */
     if (_readein.readein_accu_curr >= _readein.readein_accu_prev){
@@ -227,6 +251,10 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
         val2=_readein.readein_cnt_curr - _readein.readein_cnt_prev;
     } else {
         val2=_readein.readein_cnt_curr + 65536 - _readein.readein_cnt_prev;
+    }
+
+    if (!val2){
+        val2=1;
     }
 
     node_power.node_power.cur=(double)val1/(double)val2;

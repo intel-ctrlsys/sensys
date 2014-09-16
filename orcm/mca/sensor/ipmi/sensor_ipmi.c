@@ -135,7 +135,12 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             error_string = decode_rv(ret);
             opal_output(0,"ipmi_cmd_mc RETURN CODE : %s \n", error_string);
             rlen=20;
-            continue;
+            if (ERR_NO_DRV == ret) {
+                opal_output(0,"get_bmc_cred error: Missing IPMI Driver, not superuser?");
+                return ORCM_ERROR;
+            } else {
+                continue;
+            }
         }
         ipmi_close();
         if(ccode == 0)
@@ -516,7 +521,8 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     struct tm *sample_time;
     orcm_sensor_hosts_t *top = active_hosts;
     int int_count=0;
-    int sample_count=0, timeout = 0;
+    int sample_count=0;
+    static int timeout = 0;
 
     if (mca_sensor_ipmi_component.test) {
         /* just send the test vector */
@@ -562,6 +568,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         rc = orcm_sensor_ipmi_get_bmc_cred(&cur_host);
         if(ORCM_SUCCESS != rc)
         {
+            opal_output(0, "Retry : %d", timeout);
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             return;
@@ -666,8 +673,16 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         return;
-    }
+    } /* End packing BMC credentials*/
+
+    /* Begin sampling known nodes from here */
     sample_count = orcm_sensor_ipmi_counthosts();
+    if (0 == sample_count) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "No IPMI Device available for sampling");
+        OBJ_DESTRUCT(&data);
+        return;
+    }
     /* pack the numerical identifier for number of nodes*/
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_count, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);

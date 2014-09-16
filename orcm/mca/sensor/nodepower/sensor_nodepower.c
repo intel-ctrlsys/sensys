@@ -46,6 +46,7 @@
 
 #include <ipmicmd.h>
 
+#define MAX_IPMI_RESPONSE 1024
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
@@ -77,8 +78,8 @@ use read_ein command to get input power of PSU. refer to PSU spec for details.
  */
 static int call_readein(node_power_data *data, int to_print)
 {
-    unsigned char responseData[1024];
-    int responseLength = 1024;
+    unsigned char responseData[MAX_IPMI_RESPONSE];
+    int responseLength = MAX_IPMI_RESPONSE;
     unsigned char completionCode;
     int ret, i, len;
     unsigned char netfn, lun;
@@ -109,7 +110,6 @@ static int call_readein(node_power_data *data, int to_print)
 
     if(ret) {
         error_string = decode_rv(ret);
-        opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
         opal_output(0,"ipmi_cmdraw ERROR : %s \n", error_string);
         ipmi_close();
         return ORCM_ERROR;
@@ -176,7 +176,7 @@ static void start(orte_jobid_t jobid)
 
     ret=call_readein(&_node_power, 0);
     if (ret==ORCM_ERROR){
-        opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
+        opal_output(0,"Unable to read Nodepower");
         _readein.readein_accu_prev=0;
         _readein.readein_cnt_prev=0;
         return;
@@ -232,7 +232,7 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
     ret=call_readein(&_node_power, 0);
     _readein.ipmi_calls++;
     if (ret==ORCM_ERROR){
-        opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
+        opal_output(0,"Unable to read Nodepower");
         _readein.readein_accu_curr=_readein.readein_accu_prev;
         _readein.readein_cnt_curr=_readein.readein_cnt_prev;
     } else {

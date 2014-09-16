@@ -149,7 +149,9 @@ static int init(void)
         }
 
         /* open that directory */
-        dirname = opal_os_path(false, "/sys/bus/platform/devices", dir_entry->d_name, NULL );
+        if(NULL == (dirname = opal_os_path(false, "/sys/bus/platform/devices", dir_entry->d_name, NULL )) {
+            continue;
+        }
         if (NULL == (tdir = opendir(dirname))) {
             free(dirname);
             continue;

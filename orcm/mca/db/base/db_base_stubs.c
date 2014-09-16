@@ -134,7 +134,9 @@ static void process_close(int fd, short args, void *cbdata)
     }
     /* release the handle */
     opal_pointer_array_set_item(&orcm_db_base.handles, req->dbhandle, NULL);
-    OBJ_RELEASE(hdl);
+    if (NULL != hdl) {
+        OBJ_RELEASE(hdl);
+    }
     OBJ_RELEASE(req);
 }
 

@@ -170,7 +170,7 @@ static int init(void)
         trk->file = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_cur_freq", NULL);
 
         /* read the static info */
-        if(NULL == (filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_max_freq", NULL)) {
+        if(NULL == (filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_max_freq", NULL))) {
             continue;
         }
         if(NULL != (fp = fopen(filename, "r")))

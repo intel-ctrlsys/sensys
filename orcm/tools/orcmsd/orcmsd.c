@@ -431,6 +431,9 @@ int main(int argc, char *argv[])
 
     /* get the daemon job, if necessary */
     jdata_obj=orte_get_job_data_object(0);
+    if (NULL == jdata_obj) {
+        goto DONE;
+    }
     /* must create a map for it (even though it has no
      * info in it) so that the job info will be picked
      * up in subsequent pidmaps or other daemons won't
@@ -528,6 +531,10 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
     /* get the daemon job, if necessary */
     if (NULL == jdatorted) {
         jdatorted = orte_get_job_data_object(0);
+        if (NULL == jdataorted) {
+            ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
+            return;
+        }
     }
 
     /* multiple daemons could be in this buffer, so unpack until we exhaust the data */

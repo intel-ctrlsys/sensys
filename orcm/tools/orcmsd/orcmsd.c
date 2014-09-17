@@ -531,7 +531,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
     /* get the daemon job, if necessary */
     if (NULL == jdatorted) {
         jdatorted = orte_get_job_data_object(0);
-        if (NULL == jdataorted) {
+        if (NULL == jdatorted) {
             ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
             return;
         }

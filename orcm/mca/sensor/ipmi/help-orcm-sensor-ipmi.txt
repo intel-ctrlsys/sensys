@@ -1,6 +1,6 @@
 # -*- text -*-
 #
-# Copyright (c) 2010-2011 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
 #
 # $COPYRIGHT$
 # 
@@ -10,11 +10,66 @@
 #
 # This is the US/English general help file for the memory usage sensor
 #
-[mem-limit-exceeded]
-A process has exceeded the specified limit on memory usage:
+[ipmi-set-lan-fail]
+Unable to set lan options for sending an ipmi-over-lan command.
 
-Node:         %s
-Process rank: %s
-Memory used:  %luGbytes
-Memory limit: %luGbytes
+Aggregator Node:          %s
+Compute Node:             %s
+Compute Node BMC IP:      %s
+BMC UserName:             %s
+BMC Password:             %s
+BMC Athentication:        %d
+BMC User Privilege:       %d
+BMC Cipher:               %d
+IPMIUTIL Failure Reason: "%s"
+#
+[ipmi-cmd-mc-fail]
+A  ipmi-over-lan command failed with the following reason:
+
+Aggregator Node:          %s
+Compute Node:             %s
+Compute Node BMC IP:      %s
+BMC UserName:             %s
+BMC Password:             %s
+BMC Athentication:        %d
+BMC User Privilege:       %d
+BMC Cipher:               %d
+IPMIUTIL Failure Reason: "%s"
+#
+[ipmi-get-sdr-fail]
+IPMI Get SDR command failed.
+
+Aggregator Node:          %s
+Compute Node:             %s
+Compute Node BMC IP:      %s
+BMC UserName:             %s
+BMC Password:             %s
+BMC Athentication:        %d
+BMC User Privilege:       %d
+BMC Cipher:               %d
+IPMIUTIL Failure Reason: "%s"
+#
+[ipmi-cmd-fail]
+An IPMI command failed with the following reason:
+
+Node:   %s
+Reason: %s
+#
+[ipmi-not-superuser]
+IPMI Util command through KCS driver require root privileges.
+
+Node: %s
+User: %s
+#
+[ipmi-fru-read-fail]
+Exhausted maximum FRU Read retries. Fru read failure
+
+Node: %s
+#
+[ipmi-addhost-fail]
+Unable to add the new host! Try restarting ORCM
+
+Aggregator Node: %s
+Compute Node:    %s
+#
 

@@ -982,27 +982,28 @@ static int create_app(int argc, char* argv[],
         j = opal_cmd_line_get_ninsts(&cmd_line, "x");
         for (i = 0; i < j; ++i) {
             param = opal_cmd_line_get_param(&cmd_line, "x", i, 0);
-
-            if (NULL != strchr(param, '=')) {
-                opal_argv_append_nosize(&app->env, param);
-                /* save it for any comm_spawn'd apps */
-                opal_argv_append_nosize(&orte_forwarded_envars, param);
-            } else {
-                value = getenv(param);
-                if (NULL != value) {
-                    if (NULL != strchr(value, '=')) {
-                        opal_argv_append_nosize(&app->env, value);
-                        /* save it for any comm_spawn'd apps */
-                        opal_argv_append_nosize(&orte_forwarded_envars, value);
-                    } else {
-                        asprintf(&value2, "%s=%s", param, value);
-                        opal_argv_append_nosize(&app->env, value2);
-                        /* save it for any comm_spawn'd apps */
-                        opal_argv_append_nosize(&orte_forwarded_envars, value2);
-                        free(value2);
-                    }
+            if (NULL != param) {
+                if (NULL != strchr(param, '=')) {
+                    opal_argv_append_nosize(&app->env, param);
+                    /* save it for any comm_spawn'd apps */
+                    opal_argv_append_nosize(&orte_forwarded_envars, param);
                 } else {
-                    opal_output(0, "Warning: could not find environment variable \"%s\"\n", param);
+                    value = getenv(param);
+                    if (NULL != value) {
+                        if (NULL != strchr(value, '=')) {
+                            opal_argv_append_nosize(&app->env, value);
+                            /* save it for any comm_spawn'd apps */
+                            opal_argv_append_nosize(&orte_forwarded_envars, value);
+                        } else {
+                            asprintf(&value2, "%s=%s", param, value);
+                            opal_argv_append_nosize(&app->env, value2);
+                            /* save it for any comm_spawn'd apps */
+                            opal_argv_append_nosize(&orte_forwarded_envars, value2);
+                            free(value2);
+                        }
+                    } else {
+                        opal_output(0, "Warning: could not find environment variable \"%s\"\n", param);
+                    }
                 }
             }
         }

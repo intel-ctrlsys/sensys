@@ -134,9 +134,9 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
         {
             error_string = decode_rv(ret);
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-fail",
-                           true, orte_process_info.nodename, 
+                           true, orte_process_info.nodename,
                            orte_process_info.nodename, error_string);
-            if (ERR_NO_DRV == ret) {                
+            if (ERR_NO_DRV == ret) {
                 return ORCM_ERROR;
             } else {
                 rlen=20;
@@ -261,17 +261,16 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
         memset(tempdata, 0x00, sizeof(tempdata));
 
         ret = ipmi_cmd(READ_FRU_DATA, idata, 4, tempdata, &rlen, &ccode, 0);
-        
         if (ret) {
             opal_output(0,"FRU Read Number %d retrying in block %d\n", id, i);
             ipmi_close();
             if (ffail_count > 15)
-            {                
+            {
                 orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-fru-read-fail",
                                true, orte_process_info.nodename);
                 free(rdata);
                 return ORCM_ERROR;
-            } else {                
+            } else {
                 i--;
                 ffail_count++;
                 continue;
@@ -553,7 +552,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         /* Verify if user has root privileges, if not do not try to read BMC Credentials*/
         getlogin_r(user, 16);
         if(geteuid() != 0) {
-            orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-not-superuser", 
+            orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-not-superuser",
                            true, orte_process_info.nodename, user);
             timeout = 3;
             return;
@@ -689,7 +688,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     sample_count = orcm_sensor_ipmi_counthosts();
     if (0 == sample_count) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "No IPMI Device available for sampling");        
+                "No IPMI Device available for sampling");
         OBJ_DESTRUCT(&data);
         return;
     }
@@ -1446,7 +1445,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
     }
 
     if  (cap->capability[SYS_POWER_STATE] & cap->capability[DEV_POWER_STATE])
-    { 
+    {
         memset(rdata,0xff,256);
         memset(idata,0xff,4);
         ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
@@ -1467,7 +1466,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
             else {
                 error_string = decode_rv(ret);
                 orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-mc-fail",
-                           true, orte_process_info.nodename, 
+                           true, orte_process_info.nodename,
                            orte_process_info.nodename, cap->node.bmc_ip,
                            cap->node.user, cap->node.pasw, cap->node.auth,
                            cap->node.priv, cap->node.ciph, error_string);
@@ -1507,7 +1506,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
         if (ret) {
             error_string = decode_rv(ret);
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-get-sdr-fail",
-                           true, orte_process_info.nodename, 
+                           true, orte_process_info.nodename,
                            orte_process_info.nodename, cap->node.bmc_ip,
                            cap->node.user, cap->node.pasw, cap->node.auth,
                            cap->node.priv, cap->node.ciph, error_string);

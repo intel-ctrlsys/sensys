@@ -446,6 +446,8 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
     if (ORTE_SUCCESS !=
         (rc = orte_util_convert_jobid_to_string(&param, jobid))) {
         ORTE_ERROR_LOG(rc);
+        opal_argv_free(argv);
+        free(cmd);
         return rc;
     }
     opal_argv_append(&argc, &argv, param);
@@ -470,6 +472,8 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         opal_argv_append(&argc, &argv, "oob_tcp_static_ipv4_ports");
         if (0 > asprintf(&param, "%d", port_num)) {
             ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            opal_argv_free(argv);
+            free(cmd);
             return ORTE_ERR_OUT_OF_RESOURCE;
         }
         opal_argv_append(&argc, &argv, param);
@@ -503,6 +507,9 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         opal_argv_append(&argc, &argv, "sst_orcmsd_vpid");
         if (0 > asprintf(&param, "%d", vpid)) {
             ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            opal_argv_free(argv);
+            opal_argv_free(hosts);
+            free(cmd);
             return ORTE_ERR_OUT_OF_RESOURCE;
         }
         opal_argv_append(&argc, &argv, param);
@@ -567,6 +574,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         close(death_pipe[1]);
         free(cmd);
         opal_argv_free(argv);
+        opal_argv_free(hosts);
         return ORTE_ERR_SYS_LIMITS_CHILDREN;
     }
     if (stepd_pid == 0) {
@@ -619,6 +627,8 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
          */
         close(death_pipe[0]);    /* parent closes the death_pipe's read */
         opal_argv_free(argv);
+        opal_argv_free(hosts);
+        free(cmd);
 
         /* all done - report success */
         return ORTE_SUCCESS;

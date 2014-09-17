@@ -214,7 +214,8 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
 
     item = opal_list_get_first(kvs);
     kv = (opal_value_t *)item;
-    if (item == opal_list_get_end(kvs) || kv->type != OPAL_STRING) {
+    if (kv == NULL || item == opal_list_get_end(kvs) ||
+            kv->type != OPAL_STRING) {
         STORE_ERR_MSG("No time stamp provided");
         return ORCM_ERROR;
     }
@@ -222,7 +223,8 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
 
     item = opal_list_get_next(item);
     kv = (opal_value_t *)item;
-    if (item == opal_list_get_end(kvs) || kv->type != OPAL_STRING) {
+    if (kv == NULL || item == opal_list_get_end(kvs) ||
+            kv->type != OPAL_STRING) {
         STORE_ERR_MSG("No hostname provided");
         return ORCM_ERROR;
     }

@@ -179,13 +179,15 @@ void orcm_info_show_component_version(const char *type_name,
     if (NULL != components) {
         if (opal_list_get_size(components) > 0){
             for (item = opal_list_get_first(components);
-                 opal_list_get_end(components) != item;
-                 item = opal_list_get_next(item)) {
+                opal_list_get_end(components) != item;
+                item = opal_list_get_next(item)) {
                 cli = (mca_base_component_list_item_t *) item;
-                component = cli->cli_component;
-                if (want_all_components || 
-                    0 == strcmp(component->mca_component_name, component_name)) {
-                    show_mca_version(component, scope, ver_type);
+                if (NULL != cli) {
+                    component = cli->cli_component;
+                    if (want_all_components || 
+                        0 == strcmp(component->mca_component_name, component_name)) {
+                        show_mca_version(component, scope, ver_type);
+                    }
                 }
             }
         }

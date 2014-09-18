@@ -152,6 +152,7 @@ static int init(void)
         if ( strlen(entry->d_name) < 1 ) {
             continue;
         }
+
         /* if it ends in other than a digit, then it isn't a cpu directory */
         if (0 == strlen(entry->d_name) || !isdigit(entry->d_name[strlen(entry->d_name)-1])) {
             continue;
@@ -169,7 +170,9 @@ static int init(void)
         trk->file = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_cur_freq", NULL);
 
         /* read the static info */
-        filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_max_freq", NULL);
+        if(NULL == (filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_max_freq", NULL))) {
+            continue;
+        }
         if(NULL != (fp = fopen(filename, "r")))
         {
             if(NULL!=(tmp = orte_getline(fp))) {

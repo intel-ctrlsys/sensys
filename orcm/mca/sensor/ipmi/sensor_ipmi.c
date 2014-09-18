@@ -20,7 +20,7 @@
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "orcm/mca/db/db.h"
-
+#include "orte/util/show_help.h"
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "sensor_ipmi.h"
@@ -133,9 +133,15 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
         if(ret)
         {
             error_string = decode_rv(ret);
-            opal_output(0,"ipmi_cmd_mc RETURN CODE : %s \n", error_string);
-            rlen=20;
-            continue;
+            orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-fail",
+                           true, orte_process_info.nodename,
+                           orte_process_info.nodename, error_string);
+            if (ERR_NO_DRV == ret) {
+                return ORCM_ERROR;
+            } else {
+                rlen=20;
+                continue;
+            }
         }
         ipmi_close();
         if(ccode == 0)
@@ -255,16 +261,16 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
         memset(tempdata, 0x00, sizeof(tempdata));
 
         ret = ipmi_cmd(READ_FRU_DATA, idata, 4, tempdata, &rlen, &ccode, 0);
-        
         if (ret) {
             opal_output(0,"FRU Read Number %d retrying in block %d\n", id, i);
             ipmi_close();
             if (ffail_count > 15)
             {
-                opal_output(0,"Max FRU Read retries over");
+                orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-fru-read-fail",
+                               true, orte_process_info.nodename);
                 free(rdata);
                 return ORCM_ERROR;
-            } else {                
+            } else {
                 i--;
                 ffail_count++;
                 continue;
@@ -512,11 +518,12 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     time_t now;
     double tdiff;
     char time_str[40];
-    char *timestamp_str, *sample_str;
+    char *timestamp_str, *sample_str, user[16];
     struct tm *sample_time;
     orcm_sensor_hosts_t *top = active_hosts;
     int int_count=0;
-    int sample_count=0, timeout = 0;
+    int sample_count=0;
+    static int timeout = 0;
 
     if (mca_sensor_ipmi_component.test) {
         /* just send the test vector */
@@ -542,6 +549,14 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
     if(count_log == 0 && timeout < 3)  /* The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it. */
     {
+        /* Verify if user has root privileges, if not do not try to read BMC Credentials*/
+        getlogin_r(user, 16);
+        if(geteuid() != 0) {
+            orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-not-superuser",
+                           true, orte_process_info.nodename, user);
+            timeout = 3;
+            return;
+        }
         timeout++;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "First Sample: Packing Credentials");
@@ -562,6 +577,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         rc = orcm_sensor_ipmi_get_bmc_cred(&cur_host);
         if(ORCM_SUCCESS != rc)
         {
+            opal_output(0, "Retry : %d", timeout);
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             return;
@@ -666,8 +682,16 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         return;
-    }
+    } /* End packing BMC credentials*/
+
+    /* Begin sampling known nodes from here */
     sample_count = orcm_sensor_ipmi_counthosts();
+    if (0 == sample_count) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "No IPMI Device available for sampling");
+        OBJ_DESTRUCT(&data);
+        return;
+    }
     /* pack the numerical identifier for number of nodes*/
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_count, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
@@ -726,12 +750,6 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         } else {
             return;
         }
-
-        /*opal_output(0," *^*^*^* %s - %s - %s - %s - %s - %s", top->capsule.node.bmc_ip
-        *             , top->capsule.prop.bmc_rev, top->capsule.prop.ipmi_ver
-        *             , top->capsule.prop.sys_power_state, top->capsule.prop.dev_power_state
-        *             , top->capsule.prop.ps1_usage);
-        */
 
         /* get the sample time */
         now = time(NULL);
@@ -1038,7 +1056,9 @@ static void ipmi_log(opal_buffer_t *sample)
             {
                 if(ORCM_SUCCESS != orcm_sensor_ipmi_addhost(nodename, hostip, bmcip)) /* Add the node to the slave list of the aggregator */
                 {
-                    opal_output(0,"Unable to add the new host! Try restarting orcm daemon");
+                    opal_output(0,"Unable to add the new host! Try restarting ORCM");
+                    orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-addhost-fail", 
+                           true, orte_process_info.nodename, nodename);
                     return;
                 }
             } else {
@@ -1240,8 +1260,6 @@ static void ipmi_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-    
-        /*opal_output(0, "Total metrics packed:%d", uint_item);*/
 
         /* Log All non-string metrics here */
         for(unsigned int count_metrics=0;count_metrics<uint_item;count_metrics++)
@@ -1383,11 +1401,6 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
             {
                 ipmi_close();
                 memcpy(&devid.raw, rdata, sizeof(devid));
-                /*opal_output(0, "%x.%xv : IPMI %x.%x : Manufacturer %02x%02x", (devid.bits.fw_rev_1&0x7F), (devid.bits.fw_rev_2&0xFF)
-                *                                        , (devid.bits.ipmi_ver&0xF), (devid.bits.ipmi_ver&0xF0)
-                *                                        , devid.bits.manufacturer_id[1], devid.bits.manufacturer_id[0]);
-                * Copy all retrieved information in a global buffer
-                */
 
                 /*  Pack the BMC FW Rev */
                 sprintf(test,"%x", devid.bits.fw_rev_1&0x7F);
@@ -1413,19 +1426,26 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
             else {
                 /*disable_ipmi = 1;*/
                 error_string = decode_rv(ret);
-                opal_output(0,"Unable to reach IPMI device for node: %s",cap->node.name );
-                opal_output(0,"ipmi_cmd_mc ERROR : %s \n", error_string);
+                orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-mc-fail",
+                           true, orte_process_info.nodename, 
+                           orte_process_info.nodename, cap->node.bmc_ip,
+                           cap->node.user, cap->node.pasw, cap->node.auth,
+                           cap->node.priv, cap->node.ciph, error_string);
             }
         }
 
         else {
             error_string = decode_rv(ret);
-            opal_output(0,"Set LAN OPTIONS ERROR : %s \n", error_string);
+            orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-set-lan-fail",
+                           true, orte_process_info.nodename,
+                           orte_process_info.nodename, cap->node.bmc_ip,
+                           cap->node.user, cap->node.pasw, cap->node.auth,
+                           cap->node.priv, cap->node.ciph, error_string);
         }
     }
 
     if  (cap->capability[SYS_POWER_STATE] & cap->capability[DEV_POWER_STATE])
-    { 
+    {
         memset(rdata,0xff,256);
         memset(idata,0xff,4);
         ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
@@ -1445,13 +1465,21 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
 
             else {
                 error_string = decode_rv(ret);
-                opal_output(0,"ipmi_cmd_mc ERROR : %s \n", error_string);
+                orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-mc-fail",
+                           true, orte_process_info.nodename,
+                           orte_process_info.nodename, cap->node.bmc_ip,
+                           cap->node.user, cap->node.pasw, cap->node.auth,
+                           cap->node.priv, cap->node.ciph, error_string);
             }
         }
 
         else {
             error_string = decode_rv(ret);
-            opal_output(0,"Set LAN OPTIONS ERROR : %s \n", error_string);
+            orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-set-lan-fail",
+                           true, orte_process_info.nodename,
+                           orte_process_info.nodename, cap->node.bmc_ip,
+                           cap->node.user, cap->node.pasw, cap->node.auth,
+                           cap->node.priv, cap->node.ciph, error_string);
         }
     }
 
@@ -1467,65 +1495,74 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
     if(ret)
     {
         error_string = decode_rv(ret);
-        opal_output(0,"Set LAN OPTIONS ERROR : %s \n", error_string);
-        return;
-    }
-    ret = get_sdr_cache(&sdrlist);
-    if (ret) {
-        error_string = decode_rv(ret);
-        opal_output(0,"Get SDR Cache Error : %s \n", error_string);
+        orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-set-lan-fail",
+                           true, orte_process_info.nodename,
+                           orte_process_info.nodename, cap->node.bmc_ip,
+                           cap->node.user, cap->node.pasw, cap->node.auth,
+                           cap->node.priv, cap->node.ciph, error_string);
         return;
     } else {
-        while(find_sdr_next(sdrbuf,sdrlist,id) == 0)
-        {
-            id = sdrbuf[0] + (sdrbuf[1] << 8); /* this SDR id */
-            if (sdrbuf[3] != 0x01) continue; /* full SDR */
-            strncpy(tag,&sdrbuf[48],16);
-            tag[16] = 0;
-            snum = sdrbuf[7];
-            ret = GetSensorReading(snum, sdrbuf, reading);
-            if (ret == 0)
+        ret = get_sdr_cache(&sdrlist);
+        if (ret) {
+            error_string = decode_rv(ret);
+            orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-get-sdr-fail",
+                           true, orte_process_info.nodename,
+                           orte_process_info.nodename, cap->node.bmc_ip,
+                           cap->node.user, cap->node.pasw, cap->node.auth,
+                           cap->node.priv, cap->node.ciph, error_string);
+            return;
+        } else {
+            while(find_sdr_next(sdrbuf,sdrlist,id) == 0)
             {
-                val = RawToFloat(reading[0], sdrbuf);
-                typestr = get_unit_type( sdrbuf[20], sdrbuf[21], sdrbuf[22],0);
-                if(orcm_sensor_ipmi_label_found(tag))
+                id = sdrbuf[0] + (sdrbuf[1] << 8); /* this SDR id */
+                if (sdrbuf[3] != 0x01) continue; /* full SDR */
+                strncpy(tag,&sdrbuf[48],16);
+                tag[16] = 0;
+                snum = sdrbuf[7];
+                ret = GetSensorReading(snum, sdrbuf, reading);
+                if (ret == 0)
                 {
-                    /*opal_output(0, "Found Sensor Label matching:%s",tag);*/
-                    /*  Pack the Sensor Metric */
-                    cap->prop.collection_metrics[sensor_count]=val;
-                    strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
-                    strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
-                    sensor_count++;
-                } else if(NULL!=mca_sensor_ipmi_component.sensor_group)
-                {
-                    if(NULL!=strcasestr(tag, mca_sensor_ipmi_component.sensor_group))
+                    val = RawToFloat(reading[0], sdrbuf);
+                    typestr = get_unit_type( sdrbuf[20], sdrbuf[21], sdrbuf[22],0);
+                    if(orcm_sensor_ipmi_label_found(tag))
                     {
-                        /*opal_output(0, "Found Sensor Label '%s' matching group:%s", tag, mca_sensor_ipmi_component.sensor_group);*/
+                        /*opal_output(0, "Found Sensor Label matching:%s",tag);*/
                         /*  Pack the Sensor Metric */
                         cap->prop.collection_metrics[sensor_count]=val;
                         strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
                         strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
                         sensor_count++;
+                    } else if(NULL!=mca_sensor_ipmi_component.sensor_group)
+                    {
+                        if(NULL!=strcasestr(tag, mca_sensor_ipmi_component.sensor_group))
+                        {
+                            /*opal_output(0, "Found Sensor Label '%s' matching group:%s", tag, mca_sensor_ipmi_component.sensor_group);*/
+                            /*  Pack the Sensor Metric */
+                            cap->prop.collection_metrics[sensor_count]=val;
+                            strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
+                            strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
+                            sensor_count++;
+                        }
                     }
+                    if (sensor_count == TOTAL_FLOAT_METRICS)
+                    {
+                        opal_output(0, "Max 'sensor' sampling reached for IPMI Plugin: %d",
+                            sensor_count);
+                        break;
+                    }
+                } else {
+                    val = 0;
+                    typestr = "na";
+                    /*opal_output(0, "%04x: get sensor %x reading ret = %d\n",id,snum,ret);*/
                 }
-                if (sensor_count == TOTAL_FLOAT_METRICS)
-                {
-                    opal_output(0, "Max 'sensor' sampling reached for IPMI Plugin: %d",
-                        sensor_count);
-                    break;
-                }
-            } else {
-                val = 0;
-                typestr = "na";
-                /*opal_output(0, "%04x: get sensor %x reading ret = %d\n",id,snum,ret);*/
+                memset(sdrbuf,0,SDR_SZ);
             }
-            memset(sdrbuf,0,SDR_SZ);
+            free_sdr_cache(sdrlist);
+            cap->prop.total_metrics = sensor_count;
         }
-        free_sdr_cache(sdrlist);
-        cap->prop.total_metrics = sensor_count;
+        ipmi_close();
+        /* End: gathering SDRs */
     }
-    ipmi_close();
-    /* End: gathering SDRs */
 }
 
 

@@ -109,13 +109,6 @@ void orcm_info_out_int(const char *pretty_message,
 /*
  * Component-related functions
  */
-typedef struct {
-    opal_list_item_t super;
-    char *type;
-    opal_list_t *components;
-} orcm_info_component_map_t;
-ORCM_DECLSPEC OBJ_CLASS_DECLARATION(orcm_info_component_map_t);
-
 extern opal_pointer_array_t component_map;
 
 void orcm_info_components_open(void);

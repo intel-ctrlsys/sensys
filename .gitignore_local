@@ -104,3 +104,5 @@ orcm/tools/oflow/oflow
 orcm/tools/oflow/oflow.1
 orcm/tools/odiag/odiag
 orcm/tools/odiag/odiag.1
+orcm/tools/ocli/ocli
+orcm/tools/ocli/ocli.1

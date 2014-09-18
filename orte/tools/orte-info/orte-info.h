@@ -108,13 +108,6 @@ void orte_info_out_int(const char *pretty_message,
 /*
  * Component-related functions
  */
-typedef struct {
-    opal_list_item_t super;
-    char *type;
-    opal_list_t *components;
-} orte_info_component_map_t;
-ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orte_info_component_map_t);
-
 extern opal_pointer_array_t component_map;
 
 void orte_info_components_open(void);

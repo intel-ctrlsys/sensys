@@ -28,6 +28,7 @@
 #include "orcm/version.h"
 #include "opal/mca/base/base.h"
 #include "opal/util/printf.h"
+#include "opal/runtime/opal_info_support.h"
 
 #include "orcm/runtime/orcm_info_support.h"
 #include "orcm/tools/orcm-info/orcm-info.h"
@@ -141,7 +142,7 @@ void orcm_info_show_component_version(const char *type_name,
     opal_list_t *components;
     int j;
     char *pos;
-    orcm_info_component_map_t *map;
+    opal_info_component_map_t *map;
     
     /* see if all components wanted */
     if (0 == strcmp(orcm_info_type_all, component_name)) {
@@ -166,7 +167,7 @@ void orcm_info_show_component_version(const char *type_name,
     /* Now that we have a valid type, find the right component list */
     components = NULL;
     for (j=0; j < component_map.size; j++) {
-        if (NULL == (map = (orcm_info_component_map_t*)opal_pointer_array_get_item(&component_map, j))) {
+        if (NULL == (map = (opal_info_component_map_t*)opal_pointer_array_get_item(&component_map, j))) {
             continue;
         }
         if (0 == strcmp(type_name, map->type)) {

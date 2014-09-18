@@ -11,6 +11,7 @@
  *                         All rights reserved.
  * Copyright (c) 2007      Sun Microsystems, Inc.  All rights reserved.
  * Copyright (c) 2010-2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -27,6 +28,7 @@
 #include "orte/version.h"
 #include "opal/mca/base/base.h"
 #include "opal/util/printf.h"
+#include "opal/runtime/opal_info_support.h"
 
 #include "orte/runtime/orte_info_support.h"
 #include "orte/tools/orte-info/orte-info.h"
@@ -140,7 +142,7 @@ void orte_info_show_component_version(const char *type_name,
     opal_list_t *components;
     int j;
     char *pos;
-    orte_info_component_map_t *map;
+    opal_info_component_map_t *map;
     
     /* see if all components wanted */
     if (0 == strcmp(orte_info_type_all, component_name)) {
@@ -165,7 +167,7 @@ void orte_info_show_component_version(const char *type_name,
     /* Now that we have a valid type, find the right component list */
     components = NULL;
     for (j=0; j < component_map.size; j++) {
-        if (NULL == (map = (orte_info_component_map_t*)opal_pointer_array_get_item(&component_map, j))) {
+        if (NULL == (map = (opal_info_component_map_t*)opal_pointer_array_get_item(&component_map, j))) {
             continue;
         }
         if (0 == strcmp(type_name, map->type)) {

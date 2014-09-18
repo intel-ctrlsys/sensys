@@ -37,27 +37,6 @@
 
 #include "orcm/runtime/orcm_info_support.h"
 #include "orcm/tools/orcm-info/orcm-info.h"
-/*
- * Public variables
- */
-
-static void component_map_construct(orcm_info_component_map_t *map)
-{
-    map->type = NULL;
-}
-static void component_map_destruct(orcm_info_component_map_t *map)
-{
-    if (NULL != map->type) {
-        free(map->type);
-    }
-    /* the type close functions will release the
-     * list of components
-     */
-}
-OBJ_CLASS_INSTANCE(orcm_info_component_map_t,
-                   opal_list_item_t,
-                   component_map_construct,
-                   component_map_destruct);
 
 opal_pointer_array_t component_map;
 
@@ -91,7 +70,7 @@ void orcm_info_components_open(void)
 void orcm_info_components_close(void)
 {
     int i;
-    orcm_info_component_map_t *map;
+    opal_info_component_map_t *map;
 
     if (!opened_components) {
         return;
@@ -102,7 +81,7 @@ void orcm_info_components_close(void)
     opal_info_close_components ();
     
     for (i=0; i < component_map.size; i++) {
-        if (NULL != (map = (orcm_info_component_map_t*)opal_pointer_array_get_item(&component_map, i))) {
+        if (NULL != (map = (opal_info_component_map_t*)opal_pointer_array_get_item(&component_map, i))) {
             OBJ_RELEASE(map);
         }
     }

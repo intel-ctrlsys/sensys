@@ -13,6 +13,7 @@
  * Copyright (c) 2006-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2010-2012 Los Alamos National Security, LLC.
  *                         All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -37,24 +38,6 @@
 /*
  * Public variables
  */
-
-static void component_map_construct(orte_info_component_map_t *map)
-{
-    map->type = NULL;
-}
-static void component_map_destruct(orte_info_component_map_t *map)
-{
-    if (NULL != map->type) {
-        free(map->type);
-    }
-    /* the type close functions will release the
-     * list of components
-     */
-}
-OBJ_CLASS_INSTANCE(orte_info_component_map_t,
-                   opal_list_item_t,
-                   component_map_construct,
-                   component_map_destruct);
 
 opal_pointer_array_t component_map;
 
@@ -87,7 +70,7 @@ void orte_info_components_open(void)
 void orte_info_components_close(void)
 {
     int i;
-    orte_info_component_map_t *map;
+    opal_info_component_map_t *map;
 
     if (!opened_components) {
         return;
@@ -97,7 +80,7 @@ void orte_info_components_close(void)
     opal_info_close_components ();
     
     for (i=0; i < component_map.size; i++) {
-        if (NULL != (map = (orte_info_component_map_t*)opal_pointer_array_get_item(&component_map, i))) {
+        if (NULL != (map = (opal_info_component_map_t*)opal_pointer_array_get_item(&component_map, i))) {
             OBJ_RELEASE(map);
         }
     }

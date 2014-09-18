@@ -194,7 +194,9 @@ static int init(void)
             continue;
         }
 
-        filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_min_freq", NULL);
+        if(NULL != (filename = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", "cpuinfo_min_freq", NULL))) {
+            continue;
+        }
         if(NULL != (fp = fopen(filename, "r")))
         {
             if(NULL!=(tmp = orte_getline(fp))) {

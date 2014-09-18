@@ -132,6 +132,7 @@ void mca_oob_tcp_send_handler(int sd, short flags, void *cbdata)
 
     switch (peer->state) {
     case MCA_OOB_TCP_CONNECTING:
+    case MCA_OOB_TCP_CONNECT_ACK:
     case MCA_OOB_TCP_CLOSED:
         opal_output_verbose(OOB_TCP_DEBUG_CONNECT, orte_oob_base_framework.framework_output,
                             "%s tcp:send_handler %s",

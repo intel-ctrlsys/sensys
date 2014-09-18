@@ -251,7 +251,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     sigar_disk_usage_t tdisk;
     sensor_sigar_disks_t *dit;
     sigar_file_system_usage_t fsusage;
-    sensor_sigar_interface_t *sit;
+    sensor_sigar_interface_t *sit, *next;
     sigar_net_interface_stat_t tnet, ifc;
     uint64_t reads, writes, read_bytes, write_bytes;
     uint64_t rxpkts, txpkts, rxbytes, txbytes;
@@ -505,13 +505,19 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
 
     /* get network usage data */
     memset(&tnet, 0, sizeof(tnet));
-    OPAL_LIST_FOREACH(sit, &netlist, sensor_sigar_interface_t) {
+    OPAL_LIST_FOREACH_SAFE(sit, next, &netlist, sensor_sigar_interface_t) {
         memset(&ifc, 0, sizeof(ifc));
         if (SIGAR_OK != (rc = sigar_net_interface_stat_get(sigar, sit->interface, &ifc))) {
             error_string = strerror(rc);
-            opal_output(0, "sigar_net_interface_stat_get failed: %s", error_string);
-            opal_output(0, "%s Failed to get usage data for interface %s",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), sit->interface);
+            opal_output_verbose(1 , orcm_sensor_base_framework.framework_output,
+                                "sigar_net_interface_stat_get failed: %s", error_string);
+            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                                "%s Failed to get usage data for interface %s",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), sit->interface);
+            /* if we failed to get stats on this interface, remove from the list
+             * so that we stop trying in the future as well */
+            opal_list_remove_item(&netlist, &sit->super);
+            OBJ_RELEASE(sit);
         } else {
             opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                                 "Interface: %s RecvdPackets: %" PRIu64 " RecvdBytes: %" PRIu64 " TransPackets: %" PRIu64 " TransBytes: %" PRIu64 "", 

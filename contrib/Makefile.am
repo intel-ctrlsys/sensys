@@ -39,14 +39,8 @@ EXTRA_DIST = \
 	dist/mofed/debian \
 	dist/macosx-pkg/buildpackage.sh \
 	dist/macosx-pkg/ReadMe.rtf \
-	platform/optimized \
-	platform/intel/bend/mac \
-	platform/intel/bend/mac.conf \
-	platform/intel/bend/linux \
-	platform/intel/bend/linux.conf \
-	platform/intel/bend/mac-optimized \
-	platform/intel/bend/mac-optimized.conf \
-	platform/intel/bend/linux-optimized \
-	platform/intel/bend/linux-optimized.conf
+	platform/intel/hillsboro/orcm-linux \
+	platform/intel/hillsboro/orcm-linux.conf \
+	platform/intel/hillsboro/orcm-linux.xml
 
 dist_opaldata_DATA = openmpi-valgrind.supp

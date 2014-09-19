@@ -17,6 +17,7 @@ sources = \
         ipmiutil-2.9.3/util/isensor.h \
         sensor_ipmi.c \
         sensor_ipmi.h \
+        sensor_ipmi_decls.h \
         sensor_ipmi_component.c
 
 # Make the output library in this directory, and name it either

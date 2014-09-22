@@ -14,6 +14,8 @@
 #include <hwloc/autogen/config.h>
 #include <private/autogen/config.h>
 
+#include <ctype.h>
+
 /* Compile-time assertion */
 #define HWLOC_BUILD_ASSERT(condition) ((void)sizeof(char[1 - 2*!(condition)]))
 

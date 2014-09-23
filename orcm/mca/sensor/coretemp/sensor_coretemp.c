@@ -66,6 +66,7 @@ typedef struct {
     opal_list_item_t super;
     char *file;
     int socket;
+    int core;
     char *label;
     float critical_temp;
     float max_temp;
@@ -74,6 +75,8 @@ static void ctr_con(coretemp_tracker_t *trk)
 {
     trk->file = NULL;
     trk->label = NULL;
+    trk->socket = -1;
+    trk->core = -1;
 }
 static void ctr_des(coretemp_tracker_t *trk)
 {
@@ -120,8 +123,11 @@ static int init(void)
     size_t tlen = strlen("temp");
     size_t ilen = strlen("_input");
     FILE *fp;
-    coretemp_tracker_t *trk;
-    int socket;
+    coretemp_tracker_t *trk, *t2;
+    bool inserted;
+    opal_list_t foobar;
+    int corecount = 0;
+    char *skt;
 
     /* always construct this so we don't segfault in finalize */
     OBJ_CONSTRUCT(&tracking, opal_list_t);
@@ -140,22 +146,26 @@ static int init(void)
     /*
      * For each directory
      */
-    socket = 0;
     while (NULL != (dir_entry = readdir(cur_dirp))) {
         
         /* look for coretemp directories */
         if (0 != strncmp(dir_entry->d_name, "coretemp", strlen("coretemp"))) {
             continue;
         }
+        skt = strchr(dir_entry->d_name, '.');
+        if (NULL != skt) {
+            skt++;
+        }
 
         /* open that directory */
-        if(NULL == (dirname = opal_os_path(false, "/sys/bus/platform/devices", dir_entry->d_name, NULL ))) {
+        if (NULL == (dirname = opal_os_path(false, "/sys/bus/platform/devices", dir_entry->d_name, NULL ))) {
             continue;
         }
         if (NULL == (tdir = opendir(dirname))) {
             free(dirname);
             continue;
         }
+        OBJ_CONSTRUCT(&foobar, opal_list_t);
         while (NULL != (entry = readdir(tdir))) {
             /*
              * Skip the obvious
@@ -183,7 +193,9 @@ static int init(void)
             }
             /* track the info for this core */
             trk = OBJ_NEW(coretemp_tracker_t);
-            trk->socket = socket;
+            if (NULL != skt) {
+                trk->socket = strtol(skt, NULL, 10);
+            }
             trk->file = opal_os_path(false, dirname, entry->d_name, NULL);
             /* take the part up to the first underscore as this will
              * be used as the start of all the related files
@@ -200,10 +212,11 @@ static int init(void)
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "label");
             if (NULL != (fp = fopen(filename, "r")))
             {
-                if(NULL != (trk->label = orte_getline(fp)))
+                if (NULL != (trk->label = orte_getline(fp)))
                 {
                     fclose(fp);
                     free(filename);
+                    trk->core = strtol(trk->label, NULL, 10);
                 } else {
                     ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
                     fclose(fp);
@@ -222,7 +235,7 @@ static int init(void)
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "crit");
             if (NULL != (fp = fopen(filename, "r")))
             {
-                if(NULL != (ptr = orte_getline(fp)))
+                if (NULL != (ptr = orte_getline(fp)))
                 {
                     trk->critical_temp = strtol(ptr, NULL, 10)/1000.0;
                     free(ptr);
@@ -245,9 +258,9 @@ static int init(void)
             }
 
             asprintf(&filename, "%s/%s_%s", dirname, tmp, "max");
-            if(NULL != (fp = fopen(filename, "r")))
+            if (NULL != (fp = fopen(filename, "r")))
             {
-                if(NULL != (ptr = orte_getline(fp)))
+                if (NULL != (ptr = orte_getline(fp)))
                 {
                     trk->max_temp = strtol(ptr, NULL, 10)/1000.0;
                     free(ptr);
@@ -269,14 +282,29 @@ static int init(void)
                 continue;
             }
 
-            /* add to our list */
-            opal_list_append(&tracking, &trk->super);
+            /* add to our list, in core order */
+            inserted = false;
+            OPAL_LIST_FOREACH(t2, &foobar, coretemp_tracker_t) {
+                if (t2->core > trk->core) {
+                    opal_list_insert_pos(&foobar, &t2->super, &trk->super);
+                    inserted = true;
+                    break;
+                }
+            }
+            if (!inserted) {
+                opal_list_append(&foobar, &trk->super);
+            }
             /* cleanup */
             free(tmp);
         }
         free(dirname);
         closedir(tdir);
-        socket++;
+        /* add the ordered list to our collection */
+        while (NULL != (t2 = (coretemp_tracker_t*)opal_list_remove_first(&foobar))) {
+            t2->core = corecount++;
+            opal_list_append(&tracking, &t2->super);
+        }
+        OPAL_LIST_DESTRUCT(&foobar);
     }
     closedir(cur_dirp);
 
@@ -386,12 +414,18 @@ static void coretemp_sample(orcm_sensor_sampler_t *sampler)
             OBJ_RELEASE(trk);
             continue;
         }
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &trk->core, 1, OPAL_INT))) {
+            ORTE_ERROR_LOG(ret);
+            fclose(fp);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
         while (NULL != (temp = orte_getline(fp))) {
             degc = strtoul(temp, NULL, 10) / 1000.0;
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                                "%s sensor:coretemp: Socket %d %s temp %f max %f critical %f",
+                                "%s sensor:coretemp: Core %d in Socket %d temp %f max %f critical %f",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                trk->socket, trk->label, degc, trk->max_temp, trk->critical_temp);
+                                trk->core, trk->socket, degc, trk->max_temp, trk->critical_temp);
             if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &degc, 1, OPAL_FLOAT))) {
                 ORTE_ERROR_LOG(ret);
                 free(temp);
@@ -405,15 +439,15 @@ static void coretemp_sample(orcm_sensor_sampler_t *sampler)
             if (trk->critical_temp < degc) {
                 /* alert the errmgr - this is a critical problem */
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                                    "%s sensor:coretemp: Socket %d %s CRITICAL",
+                                    "%s sensor:coretemp: Core %d (socket %d) CRITICAL",
                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                    trk->socket, trk->label);
+                                    trk->core, trk->socket);
              } else if (trk->max_temp < degc) {
                 /* alert the errmgr */
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                                    "%s sensor:coretemp: Socket %d %s MAX",
+                                    "%s sensor:coretemp: Core %d (socket %d) MAX",
                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                    trk->socket, trk->label);
+                                    trk->core, trk->socket);
              }
         }
         fclose(fp);
@@ -449,7 +483,7 @@ static void coretemp_log(opal_buffer_t *sample)
     opal_list_t *vals;
     opal_value_t *kv;
     float fval;
-    int i;
+    int i, core;
 
     if (!log_enabled) {
         return;
@@ -508,7 +542,12 @@ static void coretemp_log(opal_buffer_t *sample)
 
     for (i=0; i < ncores; i++) {
         kv = OBJ_NEW(opal_value_t);
-        asprintf(&kv->key, "core%d:degrees C", i);
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &core, &n, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        asprintf(&kv->key, "core%d:degrees C", core);
         kv->type = OPAL_FLOAT;
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {

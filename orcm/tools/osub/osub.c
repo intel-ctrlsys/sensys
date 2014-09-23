@@ -86,6 +86,7 @@ static int parse_args(int argc, char *argv[]);
 typedef struct {
     bool help;
     bool verbose;
+    bool batch;
     int output;
     char *account;
     char *name;
@@ -100,6 +101,7 @@ typedef struct {
     bool interactive;
     char *nodefile;
     char *resources;
+    char *batchfile;
 } orcm_osub_globals_t;
 
 orcm_osub_globals_t orcm_osub_globals;
@@ -184,6 +186,12 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "Do not share allocated nodes with other sessions" },
 
     { NULL,
+      'b', NULL, "batchrun",
+      1,
+      &orcm_osub_globals.batchfile, OPAL_CMD_LINE_TYPE_STRING,
+      "Path to batch script file listing applications to run" },
+
+    { NULL,
       'f', NULL, "nodefile",
       1,
       &orcm_osub_globals.nodefile, OPAL_CMD_LINE_TYPE_STRING,
@@ -256,6 +264,15 @@ main(int argc, char *argv[])
     } else {
         /* get this in seconds for now, but will be parsed for more complexity later */
         alloc.walltime = (time_t)strtol(orcm_osub_globals.walltime, NULL, 10);                               // max execution time
+    }
+
+    if( orcm_osub_globals.batch == true && orcm_osub_globals.batchfile != NULL )
+    {
+        alloc.batch=true;
+        alloc.batchfile=orcm_osub_globals.batchfile;
+    } else {
+        alloc.batch=false;
+        alloc.batchfile='\0';
     }
 
     /* setup to receive the result */

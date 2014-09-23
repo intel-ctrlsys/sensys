@@ -123,6 +123,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
 void orcms_daemon_recv(int status, orte_process_name_t* sender,
                       opal_buffer_t *buffer, orte_rml_tag_t tag,
                       void* cbdata);
+static void orcmsd_batch_launch(char *batchfile,  char **environ);
 
 
 static struct {
@@ -130,16 +131,18 @@ static struct {
     bool debug_daemons;
     bool help;
     bool hnp;
-    char* name;
-    char* num_procs;
-    char* parent_uri;
-    int singleton_died_pipe;
-    int fail;
-    int fail_delay;
     bool abort;
     bool mapreduce;
     bool tree_spawn;
     bool report_uri;
+    bool batch;
+    int singleton_died_pipe;
+    int fail;
+    int fail_delay;
+    char* name;
+    char* num_procs;
+    char* parent_uri;
+    char* batchfile;
 } orcmsd_globals;
 
 /*
@@ -166,10 +169,18 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
     { "orte_hnp_uri", '\0', NULL, "hnp-uri", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "URI for the HNP"},
+
+    { "orcm_batch_launch", '\0', NULL, "batch-launch", 1,
+      &orcmsd_globals.batch, OPAL_CMD_LINE_TYPE_BOOL,
+      "batch launch is enabled"},
+
+    { "orcm_batch_file", '\0', NULL, "batchfile", 1,
+      &orcmsd_globals.batchfile, OPAL_CMD_LINE_TYPE_STRING,
+      "batch script to launch"},
     
     { NULL, '\0', "parent-uri", "parent-uri", 1,
       &orcmsd_globals.parent_uri, OPAL_CMD_LINE_TYPE_STRING,
-      "URI for the parent if tree launch is enabled."},
+      "URI for the parent if tree launch is enabled"},
 
     { NULL, '\0', NULL, "singleton-died-pipe", 1,
       &orcmsd_globals.singleton_died_pipe, OPAL_CMD_LINE_TYPE_INT,
@@ -540,6 +551,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
     orcm_rm_cmd_flag_t command;
     opal_buffer_t *vmready_msg;
     char *contact_info;
+    pid_t pid;
 
     /* get the daemon job, if necessary */
     if (NULL == jdatorted) {
@@ -605,6 +617,23 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
                 }
             }
 
+	    /* Execute Batch scripts */
+	    if( NULL != orcmsd_globals.batchfile && orcmsd_globals.batch == true )
+            {
+                
+                opal_setenv("ORCM_HNP_URI", orte_process_info.my_hnp_uri, 
+                    true, &orte_launch_environ);
+                pid = fork();
+                if (pid < 0) {
+                    ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_CHILDREN);
+                    return;
+                }
+
+                if( pid < 0 ) {
+                    orcmsd_batch_launch(orcmsd_globals.batchfile, orte_launch_environ);
+		}
+
+            }
             /* send vm ready to the parent */
             if ( NULL != orcmsd_globals.parent_uri) {
                 /* set the contact info into the hash table */
@@ -1539,6 +1568,47 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
     
  CLEANUP:
     return;
+}
+
+static void set_handler_default(int sig)
+{
+    struct sigaction act;
+
+    act.sa_handler = SIG_DFL;
+    act.sa_flags = 0;
+    sigemptyset(&act.sa_mask);
+
+    sigaction(sig, &act, (struct sigaction *)0);
+}
+
+static void orcmsd_batch_launch(char *batchfile,  char **environ)
+{
+    sigset_t sigs;
+    /* Set signal handlers back to the default.  Do this close
+     to the execve() because the event library may (and likely
+     will) reset them.  If we don't do this, the event
+     library may have left some set that, at least on some
+     OS's, don't get reset via fork() or exec().  Hence, the
+     orted could be unkillable (for example). */
+
+    set_handler_default(SIGTERM);
+    set_handler_default(SIGINT);
+    set_handler_default(SIGHUP);
+    set_handler_default(SIGPIPE);
+    set_handler_default(SIGCHLD);
+
+    /* Unblock all signals, for many of the same reasons that
+     we set the default handlers, above.  This is noticable
+     on Linux where the event library blocks SIGTERM, but we
+     don't want that blocked by the orted (or, more
+     specifically, we don't want it to be blocked by the
+     orted and then inherited by the ORTE processes that it
+     forks, making them unkillable by SIGTERM). */
+    sigprocmask(0, 0, &sigs);
+    sigprocmask(SIG_UNBLOCK, &sigs, 0);
+    
+    execve(batchfile, NULL, environ);
+    exit(-1);
 }
 
 static char *get_orcmsd_comm_cmd_str(int command)

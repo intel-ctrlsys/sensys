@@ -85,9 +85,8 @@ static opal_cmd_line_init_t cmd_line_init[] = {
 static void orcmd_recv(int status, orte_process_name_t* sender,
                        opal_buffer_t* buffer, orte_rml_tag_t tag,
                        void* cbdata);
-static int slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
-                       char *nodes, int port_num, int hnp, char *hnp_uri, 
-                       char *parent_uri);
+static int slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, 
+                       char * hnp_uri, orcm_alloc_t *alloc);
 
 int main(int argc, char *argv[])
 {
@@ -279,8 +278,7 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
         } 
 
         if (hnp_uri) {
-            slm_fork_hnp_procs(jobid, alloc->caller_uid,
-                               alloc->caller_gid, alloc->nodes, port_num, hnp, hnp_uri, alloc->parent_uri);
+            slm_fork_hnp_procs(jobid, port_num, hnp, hnp_uri, alloc);
         }
 
         command = ORCM_VM_READY_COMMAND;
@@ -401,8 +399,7 @@ static void set_handler_default(int sig)
 
 /* Launch hnp procs */
 static int
-slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
-         char *nodes, int port_num, int hnp, char * hnp_uri, char *parent_uri)
+slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char * hnp_uri, orcm_alloc_t *alloc)
 {
     char *cmd;
     char **argv = NULL;
@@ -463,11 +460,23 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         opal_argv_append(&argc, &argv, "--hnp");
 
         /* add my parents uri to send the vm ready from the session HNP */
-        if ( NULL != parent_uri ) {
+        if ( NULL != alloc->parent_uri ) {
             opal_argv_append(&argc, &argv, "--parent-uri");
-            opal_argv_append(&argc, &argv, parent_uri);
+            opal_argv_append(&argc, &argv, alloc->parent_uri);
         }
 
+        if ( true == alloc->batch ) {
+            opal_argv_append(&argc, &argv, "--batch-launch");
+            if ( NULL != alloc->batchfile ) {
+                opal_argv_append(&argc, &argv, "--batchfile");
+                opal_argv_append(&argc, &argv, alloc->batchfile);
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+                opal_argv_free(argv);
+                free(cmd);
+                return ORTE_ERR_OUT_OF_RESOURCE;
+            }
+        }
         opal_argv_append(&argc, &argv, "-mca");
         opal_argv_append(&argc, &argv, "oob_tcp_static_ipv4_ports");
         if (0 > asprintf(&param, "%d", port_num)) {
@@ -491,12 +500,12 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
 
     } else {
         /* extract the hosts */
-        if (NULL != nodes) {
-            printf ("REGEX ### nodes = %s \n", nodes);
-            orte_regex_extract_node_names (nodes, &hosts); 
+        if (NULL != alloc->nodes) {
+            opal_output(0, "REGEX ### nodes = %s", alloc->nodes);
+            orte_regex_extract_node_names (alloc->nodes, &hosts); 
             for (i=0; hosts[i] != NULL; i++) {
                 if (0 == strcmp(orte_process_info.nodename, hosts[i])) {
-                    printf ("REGEX ### node name = %s vpid = %d \n", hosts[i], i);
+                    opal_output (0, "REGEX ### node name = %s vpid = %d \n", hosts[i], i);
                     vpid = i;
                 }
             }
@@ -525,10 +534,10 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
     }
 
     /* if we have static ports, pass the node list */
-    if (NULL != nodes) {
+    if (NULL != alloc->nodes) {
         opal_argv_append(&argc, &argv, "-mca");
         opal_argv_append(&argc, &argv, "sst_orcmsd_node_regex");
-        opal_argv_append(&argc, &argv, nodes);
+        opal_argv_append(&argc, &argv, alloc->nodes);
     }
 
     /* add any debug flags */
@@ -605,14 +614,23 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         sigprocmask(SIG_UNBLOCK, &sigs, 0);
 
 /*
-        rc = setuid(uid);
-        rc = setgid(gid);
-
-        if (rc == -1) {
-            fprintf(stderr, "%s : stepd uid gid error %s\n",
-                orte_process_info.nodename, strerror(errno));
-            exit(1);
+        if( alloc->caller_uid ) {
+            rc = setuid(alloc->called_uid);
+            if (rc == -1) {
+                fprintf(stderr, "%s : stepd uid  error %s\n",
+                    orte_process_info.nodename, strerror(errno));
+                exit(1);
+            }
         }
+        if( alloc->caller_gid ) {
+            rc = setgid(alloc->called_gid);
+            if (rc == -1) {
+                fprintf(stderr, "%s : stepd gid error %s\n",
+                    orte_process_info.nodename, strerror(errno));
+                exit(1);
+            }
+        }
+
 */
         execv(cmd, argv);
 

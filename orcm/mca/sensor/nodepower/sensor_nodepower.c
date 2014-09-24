@@ -173,7 +173,7 @@ static void start(orte_jobid_t jobid)
 
     /* we must be root to run */
     if (0 != geteuid()) {
-        return ORCM_ERROR;
+        return;
     }
 
     gettimeofday(&(_tv.tv_curr), NULL);
@@ -223,7 +223,7 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
 
     /* we must be root to run */
     if (0 != geteuid()) {
-        return ORCM_ERROR;
+        return;
     }
 
     gettimeofday(&(_tv.tv_curr), NULL);

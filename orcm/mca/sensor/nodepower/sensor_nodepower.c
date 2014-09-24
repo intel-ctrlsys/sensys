@@ -24,6 +24,7 @@
 #include <dirent.h>
 #endif  /* HAVE_DIRENT_H */
 #include <ctype.h>
+#include <sys/types.h>
 
 #define HAVE_HWLOC_DIFF  // protect the hwloc diff.h file from ipmicmd.h conflict
 #include "opal_stdint.h"
@@ -170,6 +171,11 @@ static void start(orte_jobid_t jobid)
 {
     int ret;
 
+    /* we must be root to run */
+    if (0 != geteuid()) {
+        return ORCM_ERROR;
+    }
+
     gettimeofday(&(_tv.tv_curr), NULL);
     _tv.tv_prev=_tv.tv_curr;
     _tv.interval=0;
@@ -214,6 +220,11 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
     unsigned long val1, val2;
     float node_power_cur;
     struct tm *sample_time;
+
+    /* we must be root to run */
+    if (0 != geteuid()) {
+        return ORCM_ERROR;
+    }
 
     gettimeofday(&(_tv.tv_curr), NULL);
     if (_tv.tv_curr.tv_usec>=_tv.tv_prev.tv_usec){

@@ -214,6 +214,11 @@ static void start(orte_jobid_t jobid)
     char path[STR_LEN];
     unsigned long long msr, msr1, msr2;
 
+    /* we must be root to run */
+    if (0 != geteuid()) {
+        return;
+    }
+
     gettimeofday(&(_tv.tv_curr), NULL);
     _tv.tv_prev=_tv.tv_curr;
     _tv.interval=0;
@@ -318,7 +323,12 @@ static void componentpower_sample(orcm_sensor_sampler_t *sampler)
     unsigned long long interval, msr, rapl_delta;
     struct tm *sample_time;
 
-    gettimeofday(&(_tv.tv_curr), NULL);
+     /* we must be root to run */
+    if (0 != geteuid()) {
+        return;
+    }
+
+   gettimeofday(&(_tv.tv_curr), NULL);
     if (_tv.tv_curr.tv_usec>=_tv.tv_prev.tv_usec){
         _tv.interval=(unsigned long long)(_tv.tv_curr.tv_sec-_tv.tv_prev.tv_sec)*1000000
         +(unsigned long long)(_tv.tv_curr.tv_usec-_tv.tv_prev.tv_usec);

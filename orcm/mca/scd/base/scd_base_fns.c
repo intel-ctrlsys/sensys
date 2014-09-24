@@ -27,7 +27,7 @@
 #include "orcm/mca/scd/base/base.h"
 
 void orcm_scd_base_activate_session_state(orcm_session_t *session,
-                                            orcm_scd_session_state_t state)
+                                          orcm_scd_session_state_t state)
 {
     orcm_scd_state_t *s, *any=NULL, *error=NULL;
     orcm_session_caddy_t *caddy;
@@ -96,8 +96,8 @@ void orcm_scd_base_activate_session_state(orcm_session_t *session,
 
 
 int orcm_scd_base_add_session_state(orcm_scd_session_state_t state,
-                                      orcm_scd_state_cbfunc_t cbfunc,
-                                      int priority)
+                                    orcm_scd_state_cbfunc_t cbfunc,
+                                    int priority)
 {
     orcm_scd_state_t *st;
 

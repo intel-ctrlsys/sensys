@@ -68,7 +68,6 @@ typedef struct {
      * actual scheduling computation
      */
     opal_event_base_t *ev_base;
-    bool ev_active;
     /* scd state machine */
     opal_list_t states;
     /* rm state machine */

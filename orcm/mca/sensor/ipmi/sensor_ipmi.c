@@ -427,8 +427,8 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
 }
 
 /* int orcm_sensor_ipmi_found (char* nodename)
- * Return 0 if nodename matches an existing node
- * Return 1 if nodename doesn't match
+ * Return ORCM_SUCCESS if nodename matches an existing node
+ * Return ORCM_ERR_NOT_FOUND if nodename doesn't match
  */
 int orcm_sensor_ipmi_found(char *nodename)
 {
@@ -440,10 +440,10 @@ int orcm_sensor_ipmi_found(char *nodename)
         {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "Found Node: %s", nodename);
-            return 1;
+            return ORCM_SUCCESS;
         }
     }
-    return 0;
+    return ORCM_ERR_NOT_FOUND;
 }
 
 int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
@@ -1002,7 +1002,7 @@ static void ipmi_log(opal_buffer_t *sample)
              * re-started has to be removed first, and then added again afresh,
              * just so that we update our list with the latest credentials
              */
-            if(!orcm_sensor_ipmi_found(nodename))
+            if(ORCM_ERR_NOT_FOUND == orcm_sensor_ipmi_found(nodename))
             {
                 if(ORCM_SUCCESS != orcm_sensor_ipmi_addhost(nodename, hostip, bmcip)) /* Add the node to the slave list of the aggregator */
                 {

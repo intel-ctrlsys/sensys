@@ -163,6 +163,15 @@ static opal_cmd_line_init_t cmd_line_init[] = {
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Enable debugging of any OpenRTE daemons used by this application, storing output in files" },
 
+    /* select XML output */
+    { "orte_xml_output", '\0', "xml", "xml", 0,
+      NULL, OPAL_CMD_LINE_TYPE_BOOL,
+      "Provide all output in XML format" },
+
+    { "orte_xml_file", '\0', "xml-file", "xml-file", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Provide all output in XML format to the specified file" },
+
     /* Use an appfile */
     { NULL, '\0', NULL, "app", 1,
       &orun_globals.appfile, OPAL_CMD_LINE_TYPE_STRING,
@@ -230,6 +239,26 @@ static int init_sched_args(void);
 static int parse_args_sched(int argc, char *argv[], opal_cmd_line_t *cmd_line);
 static int alloc_request( orcm_alloc_t *alloc );
 
+/* process incoming messages in order of receipt */
+static void orun_recv(int status, orte_process_name_t* sender,
+                       opal_buffer_t* buffer, orte_rml_tag_t tag,
+                       void* cbdata)
+{
+    if (orte_debug_flag) {
+        fprintf(stderr, "orun_recv - JOB_COMPLETE\n");
+    }
+    /* ensure all local procs are dead */
+    orte_odls.kill_local_procs(NULL);
+
+    /* cleanup and leave */
+    orte_finalize();
+
+    if (orte_debug_flag) {
+        fprintf(stderr, "exiting with status %d\n", orte_exit_status);
+    }
+    exit(orte_exit_status);
+}
+
 int orun(int argc, char *argv[])
 {
     int rc, n;
@@ -239,6 +268,8 @@ int orun(int argc, char *argv[])
     orcm_alloc_t alloc;
     orcm_rm_cmd_flag_t command;
     char *hnp_uri;
+    char *my_uri;
+    opal_buffer_t *buf;
     orte_rml_recv_cb_t xbuffer;
 
     /* find our basename (the name of the executable) so that we can
@@ -337,7 +368,7 @@ int orun(int argc, char *argv[])
                 tmp_basename[strlen(tmp_basename)-1] = '\0';
             }
             if (NULL != param && 0 != strcmp(param, tmp_basename)) {
-                orte_show_help("help-orun.txt", "orun:double-prefix",
+                orte_show_help("help-orterun.txt", "orun:double-prefix",
                                true, orte_basename, orte_basename,
                                param, tmp_basename, orte_basename);
                 /* use the prefix over the path-to-mpirun so that
@@ -371,7 +402,7 @@ int orun(int argc, char *argv[])
                 param[param_len-1] = '\0';
                 param_len--;
                 if (0 == param_len) {
-                    orte_show_help("help-orun.txt", "orun:empty-prefix",
+                    orte_show_help("help-orterun.txt", "orun:empty-prefix",
                                    true, orte_basename, orte_basename);
                     free(param);
                     return ORTE_ERR_FATAL;
@@ -421,7 +452,7 @@ int orun(int argc, char *argv[])
     if (0 == jdata->num_apps) {
         /* This should never happen -- this case should be caught in
            create_app(), but let's just double check... */
-        orte_show_help("help-orun.txt", "orun:nothing-to-do",
+        orte_show_help("help-orterun.txt", "orun:nothing-to-do",
                        true, orte_basename);
         exit(ORTE_ERROR_DEFAULT_EXIT_CODE);
     }
@@ -445,7 +476,7 @@ int orun(int argc, char *argv[])
     /* pre-condition any network transports that require it */
     if (ORTE_SUCCESS != (rc = orte_pre_condition_transports(jdata))) {
         ORTE_ERROR_LOG(rc);
-        orte_show_help("help-orun.txt", "orun:precondition", false,
+        orte_show_help("help-orterun.txt", "orun:precondition", false,
                        orte_basename, NULL, NULL, rc);
         ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
         goto DONE;
@@ -463,8 +494,13 @@ int orun(int argc, char *argv[])
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, &xbuffer);
     
+    /* Read the environment for hnp uri */
+    if ( !my_hnp_uri &&  NULL != getenv("ORCM_MCA_HNP_URI")) {
+            my_hnp_uri = getenv("ORCM_MCA_HNP_URI");
+    }
+
     if (!my_hnp_uri && (false == orun_globals.alloc_request)) {
-        orte_show_help("help-orun.txt", "orun:allocation-not-specified",
+        orte_show_help("help-orterun.txt", "orun:allocation-not-specified",
                        false, orte_basename, orte_basename);
         rc = ORCM_ERR_BAD_PARAM;
         ORTE_ERROR_LOG(rc);
@@ -487,7 +523,7 @@ int orun(int argc, char *argv[])
         OBJ_CONSTRUCT(&alloc, orcm_alloc_t);
         if (ORTE_SUCCESS != (rc = alloc_request(&alloc))) {
             ORTE_ERROR_LOG(rc);
-            orte_show_help("help-orun.txt", "orun:alloc_request", false,
+            orte_show_help("help-orterun.txt", "orun:alloc_request", false,
                        orte_basename, NULL, NULL, rc);
             ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
             goto DONE;
@@ -525,7 +561,24 @@ int orun(int argc, char *argv[])
          }
 
     }
-            
+        /* 
+         * existing allocation 
+         */
+        if (orte_debug_flag) {
+            fprintf (stderr, "set continous operation\n");
+        }
+        orte_set_attribute(&jdata->attributes, ORTE_JOB_CONTINUOUS_OP, 
+                           ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
+
+        /*
+         * setup to recieve job complete commands from the hnp
+         */
+        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                            ORCM_RML_TAG_JOB_COMPLETE,
+                            ORTE_RML_PERSISTENT,
+                            orun_recv,
+                            NULL);
+
     /* spawn the job and its daemons */
     rc = orte_plm.spawn(jdata);
 
@@ -590,7 +643,7 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
        that --version --help works as one might expect. */
     if (orun_globals.version) {
         char *str, *project_name = "orun";
-        str = opal_show_help_string("help-orun.txt", "orun:version", 
+        str = opal_show_help_string("help-orterun.txt", "orun:version", 
                                     false,
                                     orte_basename, project_name, OPAL_VERSION,
                                     PACKAGE_BUGREPORT);
@@ -606,7 +659,7 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
         char *str, *args = NULL;
         char *project_name = "orun";
         args = opal_cmd_line_get_usage_msg(cmd_line);
-        str = opal_show_help_string("help-orun.txt", "orun:usage", false,
+        str = opal_show_help_string("help-orterun.txt", "orun:usage", false,
                                     orte_basename, project_name, OPAL_VERSION,
                                     orte_basename, args,
                                     PACKAGE_BUGREPORT);
@@ -827,7 +880,7 @@ static int capture_cmd_line_params(int argc, int start, char **argv)
                                     /* print help message
                                      * and abort as we cannot know which one is correct
                                      */
-                                    orte_show_help("help-orun.txt", "orun:conflicting-params",
+                                    orte_show_help("help-orterun.txt", "orun:conflicting-params",
                                                    true, orte_basename, argv[i+1],
                                                    argv[i+2], orted_cmd_line[j+1]);
                                     return ORTE_ERR_BAD_PARAM;
@@ -933,7 +986,7 @@ static int create_app(int argc, char* argv[],
     /* See if we have anything left */
 
     if (0 == count) {
-        orte_show_help("help-orun.txt", "orun:executable-not-specified",
+        orte_show_help("help-orterun.txt", "orun:executable-not-specified",
                        true, orte_basename, orte_basename);
         rc = ORTE_ERR_NOT_FOUND;
         goto cleanup;
@@ -1061,7 +1114,7 @@ static int create_app(int argc, char* argv[],
         } else {
             /* get the cwd */
             if (OPAL_SUCCESS != (rc = opal_getcwd(cwd, sizeof(cwd)))) {
-                orte_show_help("help-orun.txt", "orun:init-failure",
+                orte_show_help("help-orterun.txt", "orun:init-failure",
                                true, "get the cwd", rc);
                 goto cleanup;
             }
@@ -1074,7 +1127,7 @@ static int create_app(int argc, char* argv[],
         orte_set_attribute(&app->attributes, ORTE_APP_USER_CWD, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
     } else {
         if (OPAL_SUCCESS != (rc = opal_getcwd(cwd, sizeof(cwd)))) {
-            orte_show_help("help-orun.txt", "orun:init-failure",
+            orte_show_help("help-orterun.txt", "orun:init-failure",
                            true, "get the cwd", rc);
             goto cleanup;
         }
@@ -1118,7 +1171,7 @@ static int create_app(int argc, char* argv[],
                     value[strlen(value)-1] = '\0';
                 }
                 if (NULL != param && 0 != strcmp(param, value)) {
-                    orte_show_help("help-orun.txt", "orun:app-prefix-conflict",
+                    orte_show_help("help-orterun.txt", "orun:app-prefix-conflict",
                                    true, orte_basename, value, param);
                     /* let the global-level prefix take precedence since we
                      * know that one is being used
@@ -1148,7 +1201,7 @@ static int create_app(int argc, char* argv[],
                     param[param_len-1] = '\0';
                     param_len--;
                     if (0 == param_len) {
-                        orte_show_help("help-orun.txt", "orun:empty-prefix",
+                        orte_show_help("help-orterun.txt", "orun:empty-prefix",
                                        true, orte_basename, orte_basename);
                         free(param);
                         return ORTE_ERR_FATAL;
@@ -1167,7 +1220,7 @@ static int create_app(int argc, char* argv[],
      */
     if (0 < (j = opal_cmd_line_get_ninsts(&cmd_line, "hostfile"))) {
         if(1 < j) {
-            orte_show_help("help-orun.txt", "orun:multiple-hostfiles",
+            orte_show_help("help-orterun.txt", "orun:multiple-hostfiles",
                            true, orte_basename, NULL);
             return ORTE_ERR_FATAL;
         } else {
@@ -1177,7 +1230,7 @@ static int create_app(int argc, char* argv[],
     }
     if (0 < (j = opal_cmd_line_get_ninsts(&cmd_line, "machinefile"))) {
         if(1 < j || orte_get_attribute(&app->attributes, ORTE_APP_HOSTFILE, NULL, OPAL_STRING)) {
-            orte_show_help("help-orun.txt", "orun:multiple-hostfiles",
+            orte_show_help("help-orterun.txt", "orun:multiple-hostfiles",
                            true, orte_basename, NULL);
             return ORTE_ERR_FATAL;
         } else {
@@ -1201,7 +1254,7 @@ static int create_app(int argc, char* argv[],
 
     /* check for bozo error */
     if (0 > orun_globals.num_procs) {
-        orte_show_help("help-orun.txt", "orun:negative-nprocs",
+        orte_show_help("help-orterun.txt", "orun:negative-nprocs",
                        true, orte_basename, app->argv[0],
                        orun_globals.num_procs, NULL);
         return ORTE_ERR_FATAL;
@@ -1245,7 +1298,7 @@ static int create_app(int argc, char* argv[],
 
     app->app = strdup(app->argv[0]);
     if (NULL == app->app) {
-        orte_show_help("help-orun.txt", "orun:call-failed",
+        orte_show_help("help-orterun.txt", "orun:call-failed",
                        true, orte_basename, "library", "strdup returned NULL", errno);
         rc = ORTE_ERR_NOT_FOUND;
         goto cleanup;
@@ -1418,7 +1471,7 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
 
     fp = fopen(filename, "r");
     if (NULL == fp) {
-        orte_show_help("help-orun.txt", "orun:appfile-not-found", true,
+        orte_show_help("help-orterun.txt", "orun:appfile-not-found", true,
                        filename);
         return ORTE_ERR_NOT_FOUND;
     }
@@ -1547,7 +1600,7 @@ static int init_sched_args(void)
     orun_globals.starttime = '\0';     /* starttime */
     orun_globals.walltime =  '\0';     /* walltime */
     orun_globals.exclusive = false;    /* exclusive */
-    orun_globals.interactive = true;    /* interactive */
+    orun_globals.interactive = false;    /* interactive */
     orun_globals.nodefile = '\0';     /* nodefile */
     orun_globals.resource = '\0';    /* resources */
 
@@ -1613,6 +1666,7 @@ static int alloc_request( orcm_alloc_t *alloc )
     alloc->caller_gid = getgid();   // caller gid, not from args
     alloc->hnpname = '\0';
     alloc->hnpuri = '\0';
+    alloc->batchfile = '\0';
     alloc->parent_name = ORTE_NAME_PRINT(ORTE_PROC_MY_NAME);
     alloc->parent_uri = orte_rml.get_contact_info();
 

@@ -218,6 +218,14 @@ static int orcmsd_init(void)
         goto error;
     }
 
+    /* register the ORTE-level params at this time now that the
+     * config has had a chance to push things into the environ
+     */
+    if (ORTE_SUCCESS != (ret = orte_register_params())) {
+         error = "orte_register_params";
+         goto error;
+    }
+
     /* setup callback for SIGPIPE */
     setup_sighandler(SIGPIPE, &epipe_handler, signal_callback);
     /* Set signal handlers to catch kill signals so we can properly clean up
@@ -293,7 +301,11 @@ static int orcmsd_init(void)
         error = "opal_pstat_base_select";
         goto error;
     }
-    
+
+    /* state machine system */
+    if (!ORTE_PROC_IS_HNP && NULL == getenv("OMPI_MCA_state")) {
+        putenv("OMPI_MCA_state=orted");
+    }
     /* open and setup the state machine */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_state_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);

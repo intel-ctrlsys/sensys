@@ -69,6 +69,8 @@
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/rml/rml.h"
+#include "orte/mca/rml/rml_types.h"
+#include "orte/mca/rml/base/rml_contact.h"
 
 #include "orcm/runtime/runtime.h"
 
@@ -79,6 +81,7 @@
  ******************/
 static int orcm_osub_init(int argc, char *argv[]);
 static int parse_args(int argc, char *argv[]);
+static int osub_exec_shell(char *shell,  char **environ, orcm_alloc_t *alloc);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -86,7 +89,6 @@ static int parse_args(int argc, char *argv[]);
 typedef struct {
     bool help;
     bool verbose;
-    bool batch;
     int output;
     char *account;
     char *name;
@@ -102,6 +104,7 @@ typedef struct {
     char *nodefile;
     char *resources;
     char *batchfile;
+    char *ishell;
 } orcm_osub_globals_t;
 
 orcm_osub_globals_t orcm_osub_globals;
@@ -180,7 +183,7 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "Do not share allocated nodes with other sessions" },
 
     { NULL,
-      'e', NULL, "interactive",
+      'i', NULL, "interactive",
       0,
       &orcm_osub_globals.interactive, OPAL_CMD_LINE_TYPE_BOOL,
       "Do not share allocated nodes with other sessions" },
@@ -216,11 +219,14 @@ main(int argc, char *argv[])
 {
     orcm_alloc_t alloc, *aptr;
     orte_rml_recv_cb_t xfer;
+    orte_rml_recv_cb_t xbuffer;
     opal_buffer_t *buf;
     int rc, n;
     orcm_scd_cmd_flag_t command=ORCM_SESSION_REQ_COMMAND;
     orcm_alloc_id_t id;
     struct timeval tv;
+    char *hnp_uri;
+
 
     /* initialize, parse command line, and setup frameworks */
     orcm_osub_init(argc, argv);
@@ -237,10 +243,13 @@ main(int argc, char *argv[])
     alloc.min_nodes = orcm_osub_globals.min_nodes;     // min number of nodes required
     alloc.min_pes = orcm_osub_globals.min_pes;         // min number of pe's required
     alloc.exclusive = orcm_osub_globals.exclusive;     // true if nodes to be exclusively allocated (i.e., not shared across sessions)
-    alloc.interactive = orcm_osub_globals.interactive; // true if in interactive mode
+    alloc.interactive = false; // true if in interactive mode
     alloc.nodes = '\0';                                // regex of nodes to be used
     alloc.parent_name = ORTE_NAME_PRINT(ORTE_PROC_MY_NAME); // my_daemon_name
     alloc.parent_uri = '\0';                           // my_daemon uri address
+    alloc.batchfile = '\0'; // batchfile 
+
+
     /* alloc.constraints = orcm_osub_globals.resources */ ; // list of resource constraints to be applied when selecting hosts
     alloc.hnpname = '\0'; //my hnp name
     alloc.hnpuri = '\0'; //my hnp uri
@@ -266,13 +275,39 @@ main(int argc, char *argv[])
         alloc.walltime = (time_t)strtol(orcm_osub_globals.walltime, NULL, 10);                               // max execution time
     }
 
-    if( orcm_osub_globals.batch == true && orcm_osub_globals.batchfile != NULL )
-    {
-        alloc.batch=true;
-        alloc.batchfile=orcm_osub_globals.batchfile;
+    if (true == orcm_osub_globals.interactive && 
+        NULL != orcm_osub_globals.batchfile) {
+            opal_output(0, "osub: parameter error '--interactive' and '--batchrun <batchscript>' are mutually exclusive\n");
+            rc = ORCM_ERR_BAD_PARAM;
+            ORTE_ERROR_LOG(rc);
+            return rc;
+    }
+
+    /* 
+     * interactive mode operations
+     */
+    if (true == orcm_osub_globals.interactive) {
+        alloc.interactive = true;
+        /* post a receive */
+        OBJ_CONSTRUCT(&xbuffer, orte_rml_recv_cb_t);
+        xbuffer.active = true;
+        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_TOOL,
+                                ORTE_RML_NON_PERSISTENT,
+                                orte_rml_recv_callback, &xbuffer);
+        /*setup parent_uri to receive contact info */
+        alloc.parent_uri = orte_rml.get_contact_info();
     } else {
-        alloc.batch=false;
-        alloc.batchfile='\0';
+        /* 
+         * default settings is batch run
+         */
+        if (NULL != orcm_osub_globals.batchfile) {
+            alloc.batchfile=orcm_osub_globals.batchfile;
+        } else {
+            opal_output(0, "osub: missing required parameter '--batchrun <batchscript>'\n");
+            rc = ORCM_ERR_BAD_PARAM;
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
     }
 
     /* setup to receive the result */
@@ -308,15 +343,74 @@ main(int argc, char *argv[])
     /* get our allocated jobid */
     n=1;
     ORTE_WAIT_FOR_COMPLETION(xfer.active);
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &id, &n, ORCM_ALLOC_ID_T))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &id, &n, 
+                                              ORCM_ALLOC_ID_T))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
     opal_output(0, "RECEIVED ALLOC ID %d", (int)id);
 
+    if (true == alloc.interactive) {
+        alloc.id = id;
+        ORTE_WAIT_FOR_COMPLETION(xbuffer.active);
+
+        /* unpack the command */
+        n = 1;
+        if (ORTE_SUCCESS != (rc = opal_dss.unpack(&xbuffer.data, &command, &n, 
+                                                  ORCM_RM_CMD_T))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+         }
+
+         /* now process the command locally */
+         switch(command) {
+
+         case ORCM_VM_READY_COMMAND:
+             n = 1;
+             if (ORTE_SUCCESS != (rc = opal_dss.unpack(&xbuffer.data, &hnp_uri, &n, OPAL_STRING))) {
+                 ORTE_ERROR_LOG(rc);
+                 return rc;
+             }
+
+             /* exec the session */
+             /* save the environment for launch purposes. This MUST be
+              * done so that we can pass it to any local procs we
+              * spawn - otherwise, those local procs won't see any
+              * non-MCA envars that were set in the enviro when the
+              * orted was executed - e.g., by .csh
+              */
+             orte_launch_environ = opal_argv_copy(environ);
+    
+             /* purge any ess flag set in the environ when we were launched */
+             opal_unsetenv("OMPI_MCA_ess", &orte_launch_environ);
+
+             /*
+              * set hnp uri 
+              */
+             opal_setenv("ORCM_MCA_HNP_URI", hnp_uri, 
+                 true, &orte_launch_environ);
+
+             /*
+              * set the prompt
+              */
+             opal_setenv("PS1", "orcmshell%", 
+                 true, &orte_launch_environ);
+             opal_argv_join(orte_launch_environ, ' ');
+
+             /*
+              * exec the shell
+              */
+             osub_exec_shell(orcm_osub_globals.ishell, orte_launch_environ, &alloc);
+             break;
+
+         default:
+            ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
+         }
+    }
+
     if (ORTE_SUCCESS != orcm_finalize()) {
-        fprintf(stderr, "Failed orcm_finalize\n");
+        opal_output(0, "Failed orcm_finalize\n");
         exit(1);
     }
 
@@ -342,7 +436,9 @@ static int parse_args(int argc, char *argv[])
                                 false,    /* exclusive */
                                 false,    /* interactive */
                                 '\0',     /* nodefile */
-                                '\0'};    /* resources */
+                                '\0',     /* resources */
+                                '\0',     /* batchfile*/
+                                "/bin/sh"};     /* ishell*/
 
     orcm_osub_globals = tmp;
 
@@ -354,7 +450,7 @@ static int parse_args(int argc, char *argv[])
     
     if (OPAL_SUCCESS != ret) {
         if (OPAL_ERR_SILENT != ret) {
-            fprintf(stderr, "%s: command line error (%s)\n", argv[0],
+            opal_output(0, "%s: command line error (%s)\n", argv[0],
                     opal_strerror(ret));
         }
         return ret;
@@ -433,4 +529,99 @@ static int orcm_osub_init(int argc, char *argv[])
     ret = orcm_init(ORCM_TOOL);
 
     return ret;
+}
+
+
+/* Launch stepd procs and hnp procs */
+static void set_handler_default(int sig)
+{
+    struct sigaction act;
+    act.sa_handler = SIG_DFL;
+    act.sa_flags = 0;
+    sigemptyset(&act.sa_mask);
+    sigaction(sig, &act, (struct sigaction *)0);
+}
+
+static int osub_exec_shell(char *shell,  char **environ, orcm_alloc_t *alloc)
+{
+    char **argv = NULL;
+    int argc = 0;
+    int rc = -1;
+    int w = 0;
+    int status = 0;
+    pid_t pid;
+    orcm_rm_cmd_flag_t command;
+    opal_buffer_t *buf;
+    pid = fork();
+    if (pid < 0) {
+        ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_CHILDREN);
+        return rc;
+    }
+
+    if (pid == 0) {
+        sigset_t sigs;
+        /* Set signal handlers back to the default.  Do this close
+         to the execve() because the event library may (and likely
+         will) reset them.  If we don't do this, the event
+         library may have left some set that, at least on some
+         OS's, don't get reset via fork() or exec().  Hence, the
+         orted could be unkillable (for example). */
+    
+        set_handler_default(SIGTERM);
+        set_handler_default(SIGINT);
+        set_handler_default(SIGHUP);
+        set_handler_default(SIGPIPE);
+        set_handler_default(SIGCHLD);
+    
+    
+        /* Unblock all signals, for many of the same reasons that
+         we set the default handlers, above.  This is noticable
+         on Linux where the event library blocks SIGTERM, but we
+         don't want that blocked by the orted (or, more
+         specifically, we don't want it to be blocked by the
+         orted and then inherited by the ORTE processes that it
+         forks, making them unkillable by SIGTERM). */
+        sigprocmask(0, 0, &sigs);
+        sigprocmask(SIG_UNBLOCK, &sigs, 0);
+        opal_output(0, "%s IShell Start: %s \n",
+               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), shell);
+        opal_argv_append(&argc, &argv, shell);
+        opal_argv_append(&argc, &argv, "-i");
+        opal_argv_join(argv, ' ');
+        rc = execve(argv[0], argv, environ);
+        opal_output(0, "%s IShell execve - %d errno - %d\n",
+               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), rc, errno);
+        exit(-1);
+    } else {
+        w = waitpid (pid, &status, 0);
+        if (w == pid) {
+            opal_output(0, "%s:  session: %d completed notify scheduler \n",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),(int) alloc->id);
+            command = ORCM_SESSION_CANCEL_COMMAND;
+            buf = OBJ_NEW(opal_buffer_t);
+            /* pack the complete command flag */
+            if (OPAL_SUCCESS !=
+                (rc = opal_dss.pack(buf, &command, 1, ORCM_SCD_CMD_T))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(buf);
+                return rc;
+            }
+            if (OPAL_SUCCESS !=
+                (rc = opal_dss.pack(buf, &alloc->id, 1, ORCM_ALLOC_ID_T))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(buf);
+                return rc;
+            }
+            if (ORTE_SUCCESS !=
+                (rc =
+                 orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
+                             ORCM_RML_TAG_SCD,
+                             orte_rml_send_callback, NULL))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(buf);
+                return rc;
+            }
+        }
+    }
+    return ORTE_SUCCESS;
 }

@@ -80,7 +80,8 @@ typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_LAUNCH_STEPD_COMMAND     5
 #define ORCM_CANCEL_STEPD_COMMAND     6
 #define ORCM_STEPD_COMPLETE_COMMAND   7
-#define ORCM_CALIBRATE                8
+#define ORCM_JOB_COMPLETE_COMMAND     8
+#define ORCM_CALIBRATE_COMMAND        9
 
 /** version string of ORCM */
 ORCM_DECLSPEC extern const char openrcm_version_string[];
@@ -105,6 +106,8 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 #define ORCM_RML_TAG_DAEMON    (ORTE_RML_TAG_MAX + 4)
 /* analytics */
 #define ORCM_RML_TAG_ANALYTICS (ORTE_RML_TAG_MAX + 5)
+/* tools */
+#define ORCM_RML_TAG_JOB_COMPLETE (ORTE_RML_TAG_MAX + 6)
 
 /* define event base priorities */
 #define ORCM_SCHED_PRI OPAL_EV_MSG_HI_PRI

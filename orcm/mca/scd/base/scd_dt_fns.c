@@ -265,15 +265,6 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
             ORTE_ERROR_LOG(ret);
             return ret;
         }
-        /* pack the batch flag */
-        if (OPAL_SUCCESS !=
-            (ret = opal_dss_pack_buffer(buffer,
-                                        (void*)&alloc->batch,
-                                        1,
-                                        OPAL_BOOL))) {
-            ORTE_ERROR_LOG(ret);
-            return ret;
-        }
         /* pack the resource constraints */
         j = (int32_t)opal_list_get_size(&alloc->constraints);
             if (OPAL_SUCCESS !=
@@ -579,16 +570,6 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
                                           &a->batchfile,
                                           &n,
                                           OPAL_STRING))) {
-            ORTE_ERROR_LOG(ret);
-            return ret;
-        }
-        /* unpack the batch flag */
-        n=1;
-        if (OPAL_SUCCESS !=
-            (ret = opal_dss_unpack_buffer(buffer,
-                                          &a->batch,
-                                          &n,
-                                          OPAL_BOOL))) {
             ORTE_ERROR_LOG(ret);
             return ret;
         }

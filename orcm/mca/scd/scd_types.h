@@ -84,7 +84,6 @@ typedef struct {
     char *nodes;              // regex of nodes to be used
     char *queues;             // comma-delimited list of queue names
     char *batchfile;        // batch script file 
-    bool batch;               // true if batch script submition request
     opal_list_t constraints;  // list of resource constraints to be applied when selecting hosts
 } orcm_alloc_t;
 OBJ_CLASS_DECLARATION(orcm_alloc_t);

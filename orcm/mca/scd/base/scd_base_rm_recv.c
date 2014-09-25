@@ -78,6 +78,7 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
 {
     orcm_rm_cmd_flag_t command;
     int rc, cnt, i;
+    static int nodecnt=0;
     opal_buffer_t *ans;
     orcm_node_state_t state;
     orte_process_name_t node;
@@ -160,10 +161,14 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
             return;
         }
 
-        session = OBJ_NEW(orcm_session_t);
-        session->alloc = alloc;
-        session->id = session->alloc->id;
-        ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_TERMINATED);
+        if( ++nodecnt == alloc->min_nodes ) {
+            nodecnt = 0;
+            session = OBJ_NEW(orcm_session_t);
+            session->alloc = alloc;
+            session->id = session->alloc->id;
+            ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_TERMINATED);
+            opal_output(0, "scheduler: cancel session : %d \n", session->id);
+        }
     }
 
     return;

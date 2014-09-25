@@ -404,7 +404,9 @@ static int hnp_close(const orte_process_name_t* peer,
              * do it for us.
              */
             opal_list_remove_item(&mca_iof_hnp_component.sinks, item);
-            OBJ_RELEASE(item);
+            if (NULL != item) {
+                OBJ_RELEASE(item);
+            }
             break;
         }
     }

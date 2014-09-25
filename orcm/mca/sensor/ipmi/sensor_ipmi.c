@@ -524,6 +524,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         timeout++;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "First Sample: Packing Credentials");
+
         /* pack the numerical identifier for number of nodes*/
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &host_count, 1, OPAL_INT))) {
             ORTE_ERROR_LOG(rc);
@@ -554,7 +555,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
             OBJ_DESTRUCT(&data);
             return;
         }
-        
+
         /* Pack the BMC IP Address - 4a*/
         sample_str = (char *)&cur_host.capsule.node.bmc_ip;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
@@ -700,7 +701,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         /* Running a sample for a Node */
         orcm_sensor_ipmi_exec_call(&host->capsule);
 
-                /* get the sample time */
+        /* get the sample time */
         now = time(NULL);
         tdiff = difftime(now, last_sample);
         /* pass the time along as a simple string */
@@ -1111,7 +1112,6 @@ static void ipmi_log(opal_buffer_t *sample)
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked cTime: %s", sampletime);
         free(sampletime);
-
 
         /* Unpack the node_name - 3 */
         n=1;

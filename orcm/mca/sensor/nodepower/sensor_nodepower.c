@@ -358,6 +358,7 @@ static void nodepower_log(opal_buffer_t *sample)
     int32_t n;
     opal_list_t *vals;
     opal_value_t *kv;
+    int sensor_not_avail=0;
 
     float node_power_cur;
 
@@ -415,11 +416,17 @@ static void nodepower_log(opal_buffer_t *sample)
         return;
     }
     kv->data.fval=node_power_cur;
-    opal_list_append(vals, &kv->super);
+    if ((node_power_cur==(float)(-1.0)) || (node_power_cur==(float)(0.0))){
+        sensor_not_avail=1;
+    } else {
+        opal_list_append(vals, &kv->super);
+    }
 
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
-        orcm_db.store(orcm_sensor_base.dbhandle, "nodepower", vals, mycleanup, NULL);
+        if (!sensor_not_avail){
+            orcm_db.store(orcm_sensor_base.dbhandle, "nodepower", vals, mycleanup, NULL);
+        }
     } else {
         OPAL_LIST_RELEASE(vals);
     }

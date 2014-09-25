@@ -243,7 +243,7 @@ static void start(orte_jobid_t jobid)
     for (i=0; i<_rapl.n_sockets; i++){
         _rapl.cpu_rapl[i]=_rapl.cpu_rapl_prev[i]=0;
         _rapl.ddr_rapl[i]=_rapl.ddr_rapl_prev[i]=0;
-        snprintf(path, 100, "/dev/cpu/%d/msr", _rapl.cpu_idx[i]);
+        snprintf(path, sizeof(path), "/dev/cpu/%d/msr", _rapl.cpu_idx[i]);
         _rapl.fd_cpu[i]=open(path, O_RDWR);
         if (_rapl.fd_cpu[i]<=0){
         opal_output(0, "error opening msr file\n");
@@ -503,6 +503,7 @@ static void componentpower_log(opal_buffer_t *sample)
     opal_list_t *vals;
     opal_value_t *kv;
     int i;
+    int sensor_not_avail=0;
 
     float power_cur;
 
@@ -558,30 +559,40 @@ static void componentpower_log(opal_buffer_t *sample)
     opal_list_append(vals, &kv->super);
 
     for (i=0; i<nsockets; i++){
-        snprintf(temp_str, 100, "cpu%d_power", i);
+        snprintf(temp_str, sizeof(temp_str), "cpu%d_power", i);
         kv = OBJ_NEW(opal_value_t);
         kv->key=strdup(temp_str);
         kv->type=OPAL_FLOAT;
         n=1;
         opal_dss.unpack(sample, &power_cur, &n, OPAL_FLOAT);
         kv->data.fval=power_cur;
-        opal_list_append(vals, &kv->super);
+        if (power_cur==(float)(-1.0)){
+            sensor_not_avail=1;
+	} else {
+            opal_list_append(vals, &kv->super);
+        }
     }
 
     for (i=0; i<nsockets; i++){
-        snprintf(temp_str, 100, "ddr%d_power", i);
+        snprintf(temp_str, sizeof(temp_str), "ddr%d_power", i);
         kv = OBJ_NEW(opal_value_t);
         kv->key=strdup(temp_str);
         kv->type=OPAL_FLOAT;
         n=1;
         opal_dss.unpack(sample, &power_cur, &n, OPAL_FLOAT);
         kv->data.fval=power_cur;
-        opal_list_append(vals, &kv->super);
+        if (power_cur==(float)(-1.0)){
+            sensor_not_avail=1;
+        } else {
+            opal_list_append(vals, &kv->super);
+        }
     }
 
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
-        orcm_db.store(orcm_sensor_base.dbhandle, "componentpower", vals, mycleanup, NULL);
+        if (!sensor_not_avail){
+            orcm_db.store(orcm_sensor_base.dbhandle, "componentpower", vals, mycleanup, NULL);
+        }
     } else {
         OPAL_LIST_RELEASE(vals);
     }

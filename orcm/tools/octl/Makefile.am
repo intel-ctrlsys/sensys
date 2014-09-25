@@ -28,9 +28,17 @@ $(nodist_man_MANS): $(top_builddir)/orcm/include/orcm_config.h
 
 endif # OPAL_INSTALL_BINARIES
 
-octl_SOURCES = octl.c
-# the following empty octl_LDFLAGS is used 
-#  so that the octl can be compiled statically 
+octl_SOURCES = \
+        common.h \
+        diag.c \
+        octl.h \
+        octl.c \
+        queue.c \
+        resource.c \
+        session.c
+
+# the following empty octl_LDFLAGS is used
+#  so that the octl can be compiled statically
 #  by simply changing the value of this from 
 #  nothing to -all-static in the Makefile.in
 #  nice for systems that don't have all the shared 

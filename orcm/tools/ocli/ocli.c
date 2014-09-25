@@ -175,6 +175,10 @@ static int ocli_command_to_int(char *command)
      * in the pre-defined array found in ocli.h*/
     int i;
     
+    if (!command) {
+        return -1;
+    }
+    
     for (i = 0; i < opal_argv_count((char **)orcm_ocli_commands); i++) {
         if (0 == strcmp(command, orcm_ocli_commands[i])) {
             return i;
@@ -186,7 +190,7 @@ static int ocli_command_to_int(char *command)
 static void run_cmd(char *cmd) {
     char **cmdlist;
     char *fullcmd;
-    int i, rc;
+    int rc;
     
     cmdlist = opal_argv_split(cmd, ' ');
     if (0 == opal_argv_count(cmdlist)) {
@@ -194,8 +198,8 @@ static void run_cmd(char *cmd) {
         return;
     }
     
-    i = ocli_command_to_int(cmdlist[0]);
-    if (-1 == i) {
+    rc = ocli_command_to_int(cmdlist[0]);
+    if (ORCM_ERROR == rc) {
         fullcmd = opal_argv_join(cmdlist, ' ');
         printf("Unknown command: %s\n", fullcmd);
         free(fullcmd);
@@ -203,17 +207,17 @@ static void run_cmd(char *cmd) {
     }
     
     /* call corresponding function to passed command */
-    switch (i) {
+    switch (rc) {
     case 0: //resource
-        i = ocli_command_to_int(cmdlist[1]);
-        if (-1 == i) {
+        rc = ocli_command_to_int(cmdlist[1]);
+        if (-1 == rc) {
             fullcmd = opal_argv_join(cmdlist, ' ');
             printf("Unknown command: %s\n", fullcmd);
             free(fullcmd);
             break;
         }
             
-        switch (i) {
+        switch (rc) {
         case 3: //status
             if (ORCM_SUCCESS != (rc = orcm_ocli_resource_status(cmdlist))) {
                 ORTE_ERROR_LOG(rc);
@@ -232,15 +236,15 @@ static void run_cmd(char *cmd) {
         }
         break;
     case 1: // queue
-        i = ocli_command_to_int(cmdlist[1]);
-        if (-1 == i) {
+        rc = ocli_command_to_int(cmdlist[1]);
+        if (-1 == rc) {
             fullcmd = opal_argv_join(cmdlist, ' ');
             printf("Unknown command: %s\n", fullcmd);
             free(fullcmd);
             break;
         }
             
-        switch (i) {
+        switch (rc) {
         case 3: //status
             if (ORCM_SUCCESS != (rc = orcm_ocli_queue_status(cmdlist))) {
                 ORTE_ERROR_LOG(rc);
@@ -259,15 +263,15 @@ static void run_cmd(char *cmd) {
         }
         break;
     case 2: // session
-        i = ocli_command_to_int(cmdlist[1]);
-        if (-1 == i) {
+        rc = ocli_command_to_int(cmdlist[1]);
+        if (-1 == rc) {
             fullcmd = opal_argv_join(cmdlist, ' ');
             printf("Unknown command: %s\n", fullcmd);
             free(fullcmd);
             break;
         }
             
-        switch (i) {
+        switch (rc) {
         case 3: //status
             if (ORCM_SUCCESS != (rc = orcm_ocli_session_status(cmdlist))) {
                 ORTE_ERROR_LOG(rc);

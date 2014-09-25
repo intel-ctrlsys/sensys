@@ -39,18 +39,9 @@ opal_list_t active_hosts_list;
 
 static void ipmi_con(orcm_sensor_hosts_t *host)
 {
-    //host->file = NULL;
-    //host->label = NULL;
 }
 static void ipmi_des(orcm_sensor_hosts_t *host)
 {
-/*    if (NULL != trk->file) {
-        free(trk->file);
-    }
-    if (NULL != trk->label) {
-        free(trk->label);
-    }
-*/
 }
 OBJ_CLASS_INSTANCE(orcm_sensor_hosts_t,
                    opal_list_item_t,
@@ -226,7 +217,6 @@ int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
             max_id = id;
         }
     }
-
     return orcm_sensor_get_fru_data(max_id, max_fru_area, host);
 }
 
@@ -274,7 +264,6 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     ret = 0;
     for (i = 0; i < (fru_area/16); i++) {
         memset(tempdata, 0x00, sizeof(tempdata));
-
         ret = ipmi_cmd(READ_FRU_DATA, idata, 4, tempdata, &rlen, &ccode, 0);
         if (ret) {
             opal_output(0,"FRU Read Number %d retrying in block %d\n", id, i);

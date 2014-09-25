@@ -18,16 +18,14 @@
 #define uchar unsigned char
 #define GET_ACPI_POWER          (0x07 | (NETFN_APP << 8))
 #define GET_BMC_IP_CMD          0x03
-// The total number of Compute Nodes/Child nodes present under each aggregator
-#define TOTAL_NODES 2
+
 // The total number of parameters that need to be gathered for each node
 // Eventually this number should equal the items under ipmi_property_t
 #define TOTAL_PROPERTIES_PER_NODE   14
 #define TOTAL_FLOAT_METRICS     50
 #define MAX_UNIT_LENGTH         20
 #define MAX_METRIC_NAME         20
-// The total number of IPMI Calls that need to be called for each node
-#define TOTAL_CALLS_PER_NODE        2
+
 #define MAX_FRU_DEVICES  254
 /*Seconds between the epoch (1/1/1970) and IPMI's start time (1/1/1996)*/
 #define EPOCH_IPMI_DIFF_TIME 819936000
@@ -111,8 +109,8 @@ typedef struct {
 } ipmi_capsule_t;
 
 typedef struct _orcm_sensor_hosts_t {
+    opal_list_item_t super;
     ipmi_capsule_t  capsule;
-    struct _orcm_sensor_hosts_t *next;
 }orcm_sensor_hosts_t;
 
 // List of all properties to be scanned by the IPMI Plugin

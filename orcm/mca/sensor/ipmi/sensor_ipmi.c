@@ -35,7 +35,7 @@ static void ipmi_log(opal_buffer_t *buf);
 int count_log = 0;
 
 char **sensor_list_token;
-opal_list_t active_hosts_list;
+opal_list_t active_hosts;
 
 static void ipmi_con(orcm_sensor_hosts_t *host)
 {
@@ -73,13 +73,14 @@ static int init(void)
         generate_test_vector(&test_vector);
         return OPAL_SUCCESS;
     }
-    OBJ_CONSTRUCT(&active_hosts_list, opal_list_t);
+    OBJ_CONSTRUCT(&active_hosts, opal_list_t);
     return OPAL_SUCCESS;
 }
 
 static void finalize(void)
 {
     opal_output(0,"IPMI_FINALIZE");
+    OPAL_LIST_DESTRUCT(&active_hosts);
 }
 
 /*Start monitoring of local processes */
@@ -434,7 +435,7 @@ int orcm_sensor_ipmi_found(char *nodename)
     orcm_sensor_hosts_t *host, *nxt;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Finding Node: %s", nodename);
-    OPAL_LIST_FOREACH_SAFE(host, nxt, &active_hosts_list, orcm_sensor_hosts_t) {
+    OPAL_LIST_FOREACH_SAFE(host, nxt, &active_hosts, orcm_sensor_hosts_t) {
         if(!strcmp(nodename,host->capsule.node.name))
         {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -456,7 +457,7 @@ int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip)
     strncpy(newhost->capsule.node.bmc_ip,bmc_ip,sizeof(newhost->capsule.node.bmc_ip)-1);
 
     /* Add to Host list */
-    opal_list_append(&active_hosts_list, &newhost->super);
+    opal_list_append(&active_hosts, &newhost->super);
 
     return ORCM_SUCCESS;
 }
@@ -650,7 +651,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     } /* End packing BMC credentials*/
 
     /* Begin sampling known nodes from here */
-    host_count = opal_list_get_size(&active_hosts_list);
+    host_count = opal_list_get_size(&active_hosts);
     if (0 == host_count) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "No IPMI Device available for sampling");
@@ -665,7 +666,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* Loop through each host from the host list*/
-    OPAL_LIST_FOREACH_SAFE(host, nxt, &active_hosts_list, orcm_sensor_hosts_t) {
+    OPAL_LIST_FOREACH_SAFE(host, nxt, &active_hosts, orcm_sensor_hosts_t) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "Scanning metrics from node: %s",host->capsule.node.name);
         /* Clear all memory for the ipmi_capsule */

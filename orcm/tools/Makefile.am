@@ -29,12 +29,20 @@ SUBDIRS += \
         tools/wrappers
 
 DIST_SUBDIRS += \
+        tools/ocli \
         tools/octl \
-        tools/oqueue \
+        tools/oflow \
+        tools/ops \
+        tools/opwrvirus \
+        tools/orcm-emulator \
         tools/orcm-info \
+        tools/orcmctrld \
         tools/orcmd \
         tools/orcmsched \
         tools/orun \
         tools/osub \
+        tools/odiag \
+        tools/otestcmd \
+        tools/otop \
         tools/orcmsd \
         tools/wrappers

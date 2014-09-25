@@ -214,9 +214,16 @@ static int init(void)
             {
                 if (NULL != (trk->label = orte_getline(fp)))
                 {
+                    if(NULL == (ptr = strcasestr(trk->label,"core"))) {
+                        fclose(fp);
+                        free(filename);
+                        free(tmp);
+                        OBJ_RELEASE(trk);
+                        continue; /* We only collect core temperatures for now*/
+                    }
                     fclose(fp);
                     free(filename);
-                    trk->core = strtol(trk->label, NULL, 10);
+                    trk->core = strtol(trk->label+strlen("core "), NULL, 10); /* This stores the core ID under each processor*/
                 } else {
                     ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
                     fclose(fp);

@@ -111,6 +111,10 @@ static void sample(orcm_sensor_sampler_t *sampler)
     orte_proc_t *child;
     opal_buffer_t buf, *bptr;
     char *comp;
+    time_t now;
+    char time_str[40];
+    char *timestamp_str;
+    struct tm *sample_time;
 
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "sample:resusage sampling resource usage"));
@@ -157,6 +161,25 @@ static void sample(orcm_sensor_sampler_t *sampler)
         OBJ_DESTRUCT(&buf);
         return;
     }
+
+    /* get the sample time */
+    now = time(NULL);
+    /* pass the time along as a simple string */
+    sample_time = localtime(&now);
+    if (NULL == sample_time) {
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        return;
+    }
+    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
+    asprintf(&timestamp_str, "%s", time_str);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &timestamp_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&buf);
+        free(timestamp_str);
+        return;
+    }
+    free(timestamp_str);
+
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &nstats, 1, OPAL_NODE_STAT))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&buf);
@@ -331,6 +354,7 @@ static void res_log(opal_buffer_t *sample)
     opal_list_t *vals;
     opal_value_t *kv;
     char *node;
+    char *sampletime;
 
     if (!log_enabled) {
         return;
@@ -343,10 +367,18 @@ static void res_log(opal_buffer_t *sample)
         return;
     }
 
+    /* sample time */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
     /* unpack the node stats */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &nst, &n, OPAL_NODE_STAT))) {
         ORTE_ERROR_LOG(rc);
+        free(sampletime);
         return;
     }
 
@@ -355,9 +387,8 @@ static void res_log(opal_buffer_t *sample)
 
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("ctime");
-        kv->type = OPAL_TIMEVAL;
-        kv->data.tv.tv_sec = nst->sample_time.tv_sec;
-        kv->data.tv.tv_usec = nst->sample_time.tv_usec;
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(sampletime);
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
@@ -440,8 +471,6 @@ static void res_log(opal_buffer_t *sample)
         }
     }
 
-    OBJ_RELEASE(nst);
-
     if (mca_sensor_resusage_component.log_process_stats) {
         /* unpack all process stats */
         n=1;
@@ -449,9 +478,15 @@ static void res_log(opal_buffer_t *sample)
             vals = OBJ_NEW(opal_list_t);
 
             kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("node");
+            kv->key = strdup("ctime");
             kv->type = OPAL_STRING;
-            kv->data.string = strdup(st->node);
+            kv->data.string = strdup(sampletime);
+            opal_list_append(vals, &kv->super);
+
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("hostname");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(node);
             opal_list_append(vals, &kv->super);
 
             kv = OBJ_NEW(opal_value_t);
@@ -482,13 +517,6 @@ static void res_log(opal_buffer_t *sample)
             kv->data.string[0] = st->state[0];
             kv->data.string[1] = st->state[1];
             kv->data.string[2] = '\0';
-            opal_list_append(vals, &kv->super);
-
-            kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("time");
-            kv->type = OPAL_TIMEVAL;
-            kv->data.tv.tv_sec = st->time.tv_sec;
-            kv->data.tv.tv_usec = st->time.tv_usec;
             opal_list_append(vals, &kv->super);
 
             kv = OBJ_NEW(opal_value_t);
@@ -533,13 +561,6 @@ static void res_log(opal_buffer_t *sample)
             kv->data.int16 = st->processor;
             opal_list_append(vals, &kv->super);
 
-            kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("sample_time");
-            kv->type = OPAL_TIMEVAL;
-            kv->data.tv.tv_sec = st->sample_time.tv_sec;
-            kv->data.tv.tv_usec = st->sample_time.tv_usec;
-            opal_list_append(vals, &kv->super);
-
             /* store it */
             if (0 <= orcm_sensor_base.dbhandle) {
                 orcm_db.store(orcm_sensor_base.dbhandle, "procstats", vals, mycleanup, NULL);
@@ -552,5 +573,9 @@ static void res_log(opal_buffer_t *sample)
         if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
             ORTE_ERROR_LOG(rc);
         }
+        if (mca_sensor_resusage_component.log_node_stats) {
+            OBJ_RELEASE(nst);
+        }
     }
+    free(sampletime);
 }

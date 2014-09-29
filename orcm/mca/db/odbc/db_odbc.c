@@ -332,6 +332,11 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
             change_value_binding = !numeric ? 1 : 0;
             numeric = 1;
             break;
+        case OPAL_INT64:
+            value_num = kv->data.int64;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
+            break;
         case OPAL_UINT:
             value_num = kv->data.uint;
             change_value_binding = !numeric ? 1 : 0;
@@ -349,6 +354,16 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
             break;
         case OPAL_UINT32:
             value_num = kv->data.uint32;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
+            break;
+        case OPAL_UINT64:
+            value_num = kv->data.uint64;
+            change_value_binding = !numeric ? 1 : 0;
+            numeric = 1;
+            break;
+        case OPAL_PID:
+            value_num = kv->data.pid;
             change_value_binding = !numeric ? 1 : 0;
             numeric = 1;
             break;

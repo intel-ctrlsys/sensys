@@ -88,86 +88,112 @@ static int store(struct orcm_db_base_module_t *imod,
     struct tm nowtm;
     char tbuf[1024];
     opal_value_t *kv;
+    char **key_argv;
+    int argv_count;
+    int len;
 
     /* cycle through the provided values and print them */
+    /* print the data in the following format: <key>=<value>:<units> */
     OPAL_LIST_FOREACH(kv, kvs, opal_value_t) {
+        /* the key could include the units (<key>:<units>) */
+        key_argv = opal_argv_split(kv->key, ':');
+        argv_count = opal_argv_count(key_argv);
+        if (0 != argv_count) {
+            snprintf(tbuf, sizeof(tbuf), "%s=", key_argv[0]);
+            len = strlen(tbuf);
+        } else {
+            /* no key :o */
+            len = 0;
+        }
+
         switch (kv->type) {
         case OPAL_STRING:
-            snprintf(tbuf, sizeof(tbuf), "%s", kv->data.string);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%s",
+                     kv->data.string);
             break;
         case OPAL_SIZE:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIsize_t "", kv->data.size);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%" PRIsize_t "",
+                     kv->data.size);
             break;
         case OPAL_INT:
-            snprintf(tbuf, sizeof(tbuf), "%d", kv->data.integer);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%d",
+                     kv->data.integer);
             break;
         case OPAL_INT8:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIi8 "", kv->data.int8);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%" PRIi8 "",
+                     kv->data.int8);
             break;
         case OPAL_INT16:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIi16 "", kv->data.int16);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%" PRIi16 "",
+                     kv->data.int16);
             break;
         case OPAL_INT32:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIi32 "", kv->data.int32);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%" PRIi32 "",
+                     kv->data.int32);
             break;
         case OPAL_INT64:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIi64 "", kv->data.int64);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%" PRIi64 "",
+                     kv->data.int64);
             break;
         case OPAL_UINT:
-            snprintf(tbuf, sizeof(tbuf), "%u", kv->data.uint);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%u",
+                     kv->data.uint);
             break;
         case OPAL_UINT8:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIu8 "", kv->data.uint8);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%" PRIu8 "",
+                     kv->data.uint8);
             break;
         case OPAL_UINT16:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIu16 "", kv->data.uint16);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%" PRIu16 "",
+                     kv->data.uint16);
             break;
         case OPAL_UINT32:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIu32 "", kv->data.uint32);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%" PRIu32 "",
+                     kv->data.uint32);
             break;
         case OPAL_UINT64:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIu64 "", kv->data.uint64);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%" PRIu64 "",
+                     kv->data.uint64);
             break;
         case OPAL_PID:
-            snprintf(tbuf, sizeof(tbuf), "%lu", (unsigned long)kv->data.pid);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%lu",
+                     (unsigned long)kv->data.pid);
             break;
         case OPAL_FLOAT:
-            snprintf(tbuf, sizeof(tbuf), "%f", kv->data.fval);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%f",
+                     kv->data.fval);
             break;
         case OPAL_TIMEVAL:
             /* we only care about seconds */
             nowtime = kv->data.tv.tv_sec;
             (void)localtime_r(&nowtime, &nowtm);
-            strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", &nowtm);
-            opal_argv_append_nosize(&cmdargs, tbuf);
+            strftime(tbuf + len, sizeof(tbuf) - len,
+                     "%Y-%m-%d %H:%M:%S", &nowtm);
             break;
         default:
-            snprintf(tbuf, sizeof(tbuf), "Unsupported type: %s",
+            snprintf(tbuf + len, sizeof(tbuf) - len,
+                     "Unsupported type: %s",
                      opal_dss.lookup_data_type(kv->type));
-            opal_argv_append_nosize(&cmdargs, tbuf);
             break;
         }
+
+        if (argv_count > 1) {
+            /* units were included, so add them to the buffer */
+            len = strlen(tbuf);
+            snprintf(tbuf + len, sizeof(tbuf) - len, ":%s", key_argv[1]);
+        }
+
+        opal_argv_append_nosize(&cmdargs, tbuf);
+
+        opal_argv_free(key_argv);
     }
 
     /* assemble the value string */
     vstr = opal_argv_join(cmdargs, ',');
 
     /* print it */
-    fprintf(mod->fp, "%s\n", vstr);
+    fprintf(mod->fp, "Store request: %s; values:\n%s\n",
+            primary_key, vstr);
     free(vstr);
     opal_argv_free(cmdargs);
 

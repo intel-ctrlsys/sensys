@@ -43,16 +43,22 @@ typedef struct _capabilities{
 
 typedef struct _node_power_data{
     orcm_sensor_nodepower_stats_value node_power;        //node power, in Watts
+    orcm_sensor_nodepower_stats_value power_a;        //power, in Watts
+    orcm_sensor_nodepower_stats_value power_b;        //power, in Watts
     unsigned char raw_string[256];
     int str_len;
     unsigned long ret_val[2];
 }node_power_data;
 
 typedef struct {
-    unsigned long long readein_accu_curr;
-    unsigned long long readein_accu_prev;
-    unsigned long long readein_cnt_curr;
-    unsigned long long readein_cnt_prev;
+    unsigned long long readein_a_accu_curr;
+    unsigned long long readein_a_accu_prev;
+    unsigned long long readein_a_cnt_curr;
+    unsigned long long readein_a_cnt_prev;
+    unsigned long long readein_b_accu_curr;
+    unsigned long long readein_b_accu_prev;
+    unsigned long long readein_b_cnt_curr;
+    unsigned long long readein_b_cnt_prev;
     unsigned long long ipmi_calls;
 } __readein;
 typedef struct {
@@ -60,6 +66,9 @@ typedef struct {
     struct timeval tv_prev;
     unsigned long long interval;
 } __time_val;
+
+#define NODEPOWER_PA_R (0xb0)
+#define NODEPOWER_PB_R (0xb2)
 
 END_C_DECLS
 

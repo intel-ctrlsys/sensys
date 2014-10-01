@@ -559,14 +559,14 @@ static void componentpower_log(opal_buffer_t *sample)
     opal_list_append(vals, &kv->super);
 
     for (i=0; i<nsockets; i++){
-        snprintf(temp_str, sizeof(temp_str), "cpu%d_power", i);
+        snprintf(temp_str, sizeof(temp_str), "cpu%d_power:W", i);
         kv = OBJ_NEW(opal_value_t);
         kv->key=strdup(temp_str);
         kv->type=OPAL_FLOAT;
         n=1;
         opal_dss.unpack(sample, &power_cur, &n, OPAL_FLOAT);
         kv->data.fval=power_cur;
-        if (power_cur==(float)(-1.0)){
+        if (power_cur<=(float)(0.0)){
             sensor_not_avail=1;
 	} else {
             opal_list_append(vals, &kv->super);
@@ -574,14 +574,14 @@ static void componentpower_log(opal_buffer_t *sample)
     }
 
     for (i=0; i<nsockets; i++){
-        snprintf(temp_str, sizeof(temp_str), "ddr%d_power", i);
+        snprintf(temp_str, sizeof(temp_str), "ddr%d_power:W", i);
         kv = OBJ_NEW(opal_value_t);
         kv->key=strdup(temp_str);
         kv->type=OPAL_FLOAT;
         n=1;
         opal_dss.unpack(sample, &power_cur, &n, OPAL_FLOAT);
         kv->data.fval=power_cur;
-        if (power_cur==(float)(-1.0)){
+        if (power_cur<=(float)(0.0)){
             sensor_not_avail=1;
         } else {
             opal_list_append(vals, &kv->super);

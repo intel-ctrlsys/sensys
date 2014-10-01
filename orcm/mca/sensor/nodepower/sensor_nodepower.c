@@ -55,7 +55,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void nodepower_sample(orcm_sensor_sampler_t *sampler);
 static void nodepower_log(opal_buffer_t *buf);
-static int call_readein(node_power_data *, int);
+static int call_readein(node_power_data *, int, unsigned char);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_nodepower_module = {
@@ -77,7 +77,7 @@ node_power_data _node_power, node_power;
 /*
 use read_ein command to get input power of PSU. refer to PSU spec for details.
  */
-static int call_readein(node_power_data *data, int to_print)
+static int call_readein(node_power_data *data, int to_print, unsigned char psu)
 {
     unsigned char responseData[MAX_IPMI_RESPONSE];
     int responseLength = MAX_IPMI_RESPONSE;
@@ -99,7 +99,7 @@ static int call_readein(node_power_data *data, int to_print)
     cmd[3]=(unsigned char)0x52;
 /* pointer to ipmi data (4 bytes) */
     cmd[4]=(unsigned char)0x0f;
-    cmd[5]=(unsigned char)0xb0;
+    cmd[5]=psu;
     cmd[6]=(unsigned char)0x07;
     cmd[7]=(unsigned char)0x86;
     len=8;
@@ -124,30 +124,37 @@ static int call_readein(node_power_data *data, int to_print)
         opal_output(0, "\n");
     }
 
-    data->str_len=responseLength;
-    for (i=0; i<responseLength; i++){
-        data->raw_string[i]=responseData[i];
-    }
+    if (completionCode==(unsigned char)0){
+        data->str_len=responseLength;
+        for (i=0; i<responseLength; i++){
+            data->raw_string[i]=responseData[i];
+        }
 
-    temp_value[0]=responseData[1];
-    temp_value[1]=responseData[2];
-    temp_value[1]&=0x7f;
-    temp_value[2]=responseData[3];
-    if (temp_value[2]&0x1){
-        temp_value[1]|=0x80;
-    }
-    temp_value[2]>>=1;
-    data->ret_val[0]=*((unsigned long *)temp_value);
+        temp_value[0]=responseData[1];
+        temp_value[1]=responseData[2];
+        temp_value[1]&=0x7f;
+        temp_value[2]=responseData[3];
+        if (temp_value[2]&0x1){
+            temp_value[1]|=0x80;
+        }
+        temp_value[2]>>=1;
+        data->ret_val[0]=*((unsigned long *)temp_value);
 
-    memset(temp_value, 0, 8);
-    temp_value[0]=responseData[4];
-    temp_value[1]=responseData[5];
-    temp_value[2]=responseData[6];
-    data->ret_val[1]=*((unsigned long *)temp_value);
+        memset(temp_value, 0, 8);
+        temp_value[0]=responseData[4];
+        temp_value[1]=responseData[5];
+        temp_value[2]=responseData[6];
+        data->ret_val[1]=*((unsigned long *)temp_value);
+    } else {
+        memset(data->raw_string, 0, 7);
+        data->ret_val[0]=0;
+        data->ret_val[1]=0;
+    }
 
     if (to_print){
         opal_output(0, "ret_val[0]=%lu, ret_val[1]=%lu\n", data->ret_val[0], data->ret_val[1]);
     }
+
     ipmi_close();
 
     return ORCM_SUCCESS;
@@ -180,17 +187,29 @@ static void start(orte_jobid_t jobid)
     _tv.tv_prev=_tv.tv_curr;
     _tv.interval=0;
 
-    ret=call_readein(&_node_power, 0);
+    ret=call_readein(&_node_power, 0, NODEPOWER_PA_R);
     if (ret==ORCM_ERROR){
         opal_output(0,"Unable to read Nodepower");
-        _readein.readein_accu_prev=0;
-        _readein.readein_cnt_prev=0;
+        _readein.readein_a_accu_prev=0;
+        _readein.readein_a_cnt_prev=0;
         return;
     }
 
-    _readein.readein_accu_prev=_node_power.ret_val[0];
-    _readein.readein_cnt_prev=_node_power.ret_val[1];
-    _readein.ipmi_calls=0;
+    _readein.readein_a_accu_prev=_node_power.ret_val[0];
+    _readein.readein_a_cnt_prev=_node_power.ret_val[1];
+
+    ret=call_readein(&_node_power, 0, NODEPOWER_PB_R);
+    if (ret==ORCM_ERROR){
+        opal_output(0,"Unable to read Nodepower");
+        _readein.readein_b_accu_prev=0;
+        _readein.readein_b_cnt_prev=0;
+        return;
+    }
+
+    _readein.readein_b_accu_prev=_node_power.ret_val[0];
+    _readein.readein_b_cnt_prev=_node_power.ret_val[1];
+
+    _readein.ipmi_calls=2;
 
     return;
 }
@@ -240,41 +259,79 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
     }
     _tv.tv_prev=_tv.tv_curr;
 
-    ret=call_readein(&_node_power, 0);
+    ret=call_readein(&_node_power, 0, NODEPOWER_PA_R);
     _readein.ipmi_calls++;
     if (ret==ORCM_ERROR){
         opal_output(0,"Unable to read Nodepower");
-        _readein.readein_accu_curr=_readein.readein_accu_prev;
-        _readein.readein_cnt_curr=_readein.readein_cnt_prev;
+        _readein.readein_a_accu_curr=_readein.readein_a_accu_prev;
+        _readein.readein_a_cnt_curr=_readein.readein_a_cnt_prev;
     } else {
-        _readein.readein_accu_curr=_node_power.ret_val[0];
-        _readein.readein_cnt_curr=_node_power.ret_val[1];
+        _readein.readein_a_accu_curr=_node_power.ret_val[0];
+        _readein.readein_a_cnt_curr=_node_power.ret_val[1];
     }
 
     /* detect overflow and calculate psu power */
-    if (_readein.readein_accu_curr >= _readein.readein_accu_prev){
-        val1=_readein.readein_accu_curr - _readein.readein_accu_prev;
+    if (_readein.readein_a_accu_curr >= _readein.readein_a_accu_prev){
+        val1=_readein.readein_a_accu_curr - _readein.readein_a_accu_prev;
     } else {
-        val1=_readein.readein_accu_curr + 32768 - _readein.readein_accu_prev;
+        val1=_readein.readein_a_accu_curr + 32768 - _readein.readein_a_accu_prev;
     }
 
-    if (_readein.readein_cnt_curr >= _readein.readein_cnt_prev){
-        val2=_readein.readein_cnt_curr - _readein.readein_cnt_prev;
+    if (_readein.readein_a_cnt_curr >= _readein.readein_a_cnt_prev){
+        val2=_readein.readein_a_cnt_curr - _readein.readein_a_cnt_prev;
     } else {
-        val2=_readein.readein_cnt_curr + 65536 - _readein.readein_cnt_prev;
+        val2=_readein.readein_a_cnt_curr + 65536 - _readein.readein_a_cnt_prev;
     }
 
     if (!val2){
         val2=1;
     }
 
-    node_power.node_power.cur=(double)val1/(double)val2;
-    if (node_power.node_power.cur>1000.0){
-        node_power.node_power.cur=-1.0;
+    node_power.power_a.cur=(double)val1/(double)val2;
+    if (node_power.power_a.cur>1000.0){
+        node_power.power_a.cur=-1.0;
     }
 
-    _readein.readein_accu_prev=_readein.readein_accu_curr;
-    _readein.readein_cnt_prev=_readein.readein_cnt_curr;
+    _readein.readein_a_accu_prev=_readein.readein_a_accu_curr;
+    _readein.readein_a_cnt_prev=_readein.readein_a_cnt_curr;
+
+    ret=call_readein(&_node_power, 0, NODEPOWER_PB_R);
+    _readein.ipmi_calls++;
+    if (ret==ORCM_ERROR){
+        opal_output(0,"Unable to read Nodepower");
+        _readein.readein_b_accu_curr=_readein.readein_b_accu_prev;
+        _readein.readein_b_cnt_curr=_readein.readein_b_cnt_prev;
+    } else {
+        _readein.readein_b_accu_curr=_node_power.ret_val[0];
+        _readein.readein_b_cnt_curr=_node_power.ret_val[1];
+    }
+
+    /* detect overflow and calculate psu power */
+    if (_readein.readein_b_accu_curr >= _readein.readein_b_accu_prev){
+        val1=_readein.readein_b_accu_curr - _readein.readein_b_accu_prev;
+    } else {
+        val1=_readein.readein_b_accu_curr + 32768 - _readein.readein_b_accu_prev;
+    }
+
+    if (_readein.readein_b_cnt_curr >= _readein.readein_b_cnt_prev){
+        val2=_readein.readein_b_cnt_curr - _readein.readein_b_cnt_prev;
+    } else {
+        val2=_readein.readein_b_cnt_curr + 65536 - _readein.readein_b_cnt_prev;
+    }
+
+    if (!val2){
+        val2=1;
+    }
+
+    node_power.power_b.cur=(double)val1/(double)val2;
+    if (node_power.power_b.cur>1000.0){
+        node_power.power_b.cur=-1.0;
+    }
+
+    node_power.node_power.cur=node_power.power_a.cur+node_power.power_b.cur;
+
+    _readein.readein_b_accu_prev=_readein.readein_b_accu_curr;
+    _readein.readein_b_cnt_prev=_readein.readein_b_cnt_curr;
 
     /* prep to store the results */
     OBJ_CONSTRUCT(&data, opal_buffer_t);
@@ -408,7 +465,7 @@ static void nodepower_log(opal_buffer_t *sample)
     opal_list_append(vals, &kv->super);
 
     kv = OBJ_NEW(opal_value_t);
-    kv->key=strdup("nodepower");
+    kv->key=strdup("nodepower:W");
     kv->type=OPAL_FLOAT;
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &node_power_cur, &n, OPAL_FLOAT))) {

@@ -11,5 +11,7 @@
 AC_DEFUN([SCON_CONFIG_FILES],[
     AC_CONFIG_FILES([
     scon/Makefile
+    scon/shims/Makefile
+    scon/shims/mrnet/Makefile
     ])
 ])

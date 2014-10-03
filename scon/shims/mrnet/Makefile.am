@@ -7,17 +7,15 @@
 # $HEADER$
 #
 
-# Build the main SCON library
+# Build the mrnet shim library
 
-SUBDIRS = shims
-
-lib_LTLIBRARIES = libscon.la
-libscon_la_SOURCES = scon.h scon.c
-libscon_la_LIBADD = \
+lib_LTLIBRARIES = libmrnetscon.la
+libmrnetscon_la_SOURCES = mrnetscon.h mrnetscon.c
+libmrnetscon_la_LIBADD = \
 	$(SCON_TOP_BUILDDIR)/orte/mca/rml/libmca_rml.la \
 	$(SCON_TOP_BUILDDIR)/orte/mca/oob/libmca_oob.la \
 	$(SCON_TOP_BUILDDIR)/orte/mca/routed/libmca_routed.la \
 	$(SCON_TOP_BUILDDIR)/opal/libopen-pal.la
-libscon_la_DEPENDENCIES = $(libopen_rte_la_LIBADD)
-libscon_la_LDFLAGS = -version-info $(libscon_so_version)
+libmrnetscon_la_DEPENDENCIES = $(libopen_rte_la_LIBADD)
+libmrnetscon_la_LDFLAGS = -version-info $(libscon_so_version)
 

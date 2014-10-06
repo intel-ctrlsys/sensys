@@ -23,8 +23,12 @@
 #include <ctype.h>
 
 #include <sys/mman.h>
+#ifdef HAVE_SYS_SYSINFO_H
 #include <sys/sysinfo.h>
+#endif
+#ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
+#endif
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>

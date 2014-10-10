@@ -139,6 +139,7 @@ static struct {
     bool abort;
     bool mapreduce;
     bool tree_spawn;
+    bool report_uri;
 } orcmsd_globals;
 
 /*
@@ -190,6 +191,10 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
       &orcmsd_globals.debug_daemons, OPAL_CMD_LINE_TYPE_BOOL,
       "Debug the OpenRTE" },
         
+    { NULL, '\0', NULL, "report-uri", 0,
+      &orcmsd_globals.report_uri, OPAL_CMD_LINE_TYPE_BOOL,
+      "Print out the URI of this process" },
+
     /* End of list */
     { NULL, '\0', NULL, NULL, 0,
       NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
@@ -301,6 +306,13 @@ int main(int argc, char *argv[])
         if (ORCM_SUCCESS != (ret = orcm_init(ORCM_STEPD))) {
             return ret;
         }
+    }
+
+    if (orcmsd_globals.report_uri) {
+        char *uri;
+        uri = orte_rml.get_contact_info();
+        fprintf(stderr, "URI=%s\n", uri);
+        free(uri);
     }
 
     /* finalize the OPAL utils. As they are opened again from orte_init->opal_init

@@ -54,12 +54,16 @@
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
+#ifdef HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
 
 
 #include "opal/mca/event/event.h"
 #include "opal/mca/base/base.h"
 #include "opal/util/output.h"
 #include "opal/util/cmd_line.h"
+#include "opal/util/basename.h"
 #include "opal/util/if.h"
 #include "opal/util/net.h"
 #include "opal/util/opal_environ.h"
@@ -123,6 +127,9 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
 void orcms_daemon_recv(int status, orte_process_name_t* sender,
                       opal_buffer_t *buffer, orte_rml_tag_t tag,
                       void* cbdata);
+static void orcmsd_batch_launch(char *batchfile,  char **environ);
+static void notify_job_completed(int fd, short args, void* cbdata);
+static void orcmsd_wpid_event_recv(int fd, short args, void* cbdata);
 
 
 static struct {
@@ -130,17 +137,31 @@ static struct {
     bool debug_daemons;
     bool help;
     bool hnp;
-    char* name;
-    char* num_procs;
-    char* parent_uri;
-    int singleton_died_pipe;
-    int fail;
-    int fail_delay;
     bool abort;
     bool mapreduce;
     bool tree_spawn;
     bool report_uri;
+    bool persistent;
+    int singleton_died_pipe;
+    int fail;
+    int fail_delay;
+    char* name;
+    char* num_procs;
+    char* parent_uri;
+    char* batchfile;
 } orcmsd_globals;
+
+/* timer event to check for batch pid */
+typedef struct {
+    opal_object_t object;
+    opal_event_t ev;
+    struct timeval rate;
+    pid_t pid;
+    void *cbdata;
+} orcmsd_wpid_event_cb_t;
+OBJ_CLASS_DECLARATION(orcmsd_wpid_event_cb_t);
+/* Instance of class */
+OBJ_CLASS_INSTANCE(orcmsd_wpid_event_cb_t, opal_object_t, NULL, NULL);
 
 /*
  * define the orted context table for obtaining parameters
@@ -166,10 +187,18 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
     { "orte_hnp_uri", '\0', NULL, "hnp-uri", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "URI for the HNP"},
+
+    { NULL, '\0', NULL, "persistent", 0,
+      &orcmsd_globals.persistent, OPAL_CMD_LINE_TYPE_BOOL,
+      "persistent launch is enabled"},
+
+    { "orcm_batch_file", '\0', NULL, "batchfile", 1,
+      &orcmsd_globals.batchfile, OPAL_CMD_LINE_TYPE_STRING,
+      "batch script to launch"},
     
     { NULL, '\0', "parent-uri", "parent-uri", 1,
       &orcmsd_globals.parent_uri, OPAL_CMD_LINE_TYPE_STRING,
-      "URI for the parent if tree launch is enabled."},
+      "URI for the parent"},
 
     { NULL, '\0', NULL, "singleton-died-pipe", 1,
       &orcmsd_globals.singleton_died_pipe, OPAL_CMD_LINE_TYPE_INT,
@@ -190,6 +219,15 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
     { "orte_debug_daemons", 'd', NULL, "debug-daemons", 0,
       &orcmsd_globals.debug_daemons, OPAL_CMD_LINE_TYPE_BOOL,
       "Debug the OpenRTE" },
+
+    /* select XML output */
+    { "orte_xml_output", '\0', "xml", "xml", 0,
+      NULL, OPAL_CMD_LINE_TYPE_BOOL,
+      "Provide all output in XML format" },
+
+    { "orte_xml_file", '\0', "xml-file", "xml-file", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Provide all output in XML format to the specified file" },
         
     { NULL, '\0', NULL, "report-uri", 0,
       &orcmsd_globals.report_uri, OPAL_CMD_LINE_TYPE_BOOL,
@@ -208,6 +246,10 @@ int main(int argc, char *argv[])
     opal_buffer_t *buffer;
     orte_job_t *jdata_obj;
     char *umask_str = getenv("ORTE_DAEMON_UMASK_VALUE");
+
+    /* find our basename (the name of the executable) so that we can
+     *        use it in pretty-print error messages */
+    orte_basename = opal_basename(argv[0]);
 
     if (NULL != umask_str) {
         char *endptr;
@@ -383,6 +425,12 @@ int main(int argc, char *argv[])
     /* if I am also the hnp, then update that contact info field too */
     if (ORTE_PROC_IS_HNP) {
 
+	if (true == orcmsd_globals.persistent) {
+        /* set the state machine to notify job completed */
+        orte_state.set_job_state_callback(ORTE_JOB_STATE_TERMINATED, notify_job_completed);
+        orte_state.set_job_state_callback(ORTE_JOB_STATE_NOTIFY_COMPLETED, notify_job_completed);
+        orte_state.set_job_state_callback(ORTE_JOB_STATE_ALL_JOBS_COMPLETE, notify_job_completed);
+        }
         /* setup the orcms ctrl or hnp daemon command receive function */
         orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_HNP,
                             ORTE_RML_PERSISTENT, orcms_hnp_recv, NULL);
@@ -605,6 +653,12 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
                 }
             }
 
+	    /* Execute Batch scripts */
+	    if (NULL != orcmsd_globals.batchfile && true == orcmsd_globals.persistent) {
+                
+                orcmsd_batch_launch(orcmsd_globals.batchfile, orte_launch_environ);
+
+            }
             /* send vm ready to the parent */
             if ( NULL != orcmsd_globals.parent_uri) {
                 /* set the contact info into the hash table */
@@ -1536,9 +1590,171 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
     default:
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
     }
-    
+
  CLEANUP:
     return;
+}
+
+static void set_handler_default(int sig)
+{
+    struct sigaction act;
+
+    act.sa_handler = SIG_DFL;
+    act.sa_flags = 0;
+    sigemptyset(&act.sa_mask);
+
+    sigaction(sig, &act, (struct sigaction *)0);
+}
+
+static void notify_job_completed(int fd, short args, void* cbdata)
+{
+    orte_state_caddy_t *caddy = (orte_state_caddy_t*)cbdata;
+    orte_job_t *jdata = caddy->jdata;
+    int command = ORCM_JOB_COMPLETE_COMMAND;
+    int rc;
+    opal_buffer_t *buf;
+
+    fprintf(stderr, "notify job complete \n");
+
+    if (jdata->state == ORTE_JOB_STATE_ANY) {
+        return;
+    }
+
+    buf = OBJ_NEW(opal_buffer_t);
+    /* pack the complete command flag */
+    if (OPAL_SUCCESS !=
+        (rc = opal_dss.pack(buf, &command, 1, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        return;
+    }
+    if (ORTE_SUCCESS !=
+        (rc = orte_rml.send_buffer_nb(&jdata->originator, buf,
+                     ORCM_RML_TAG_JOB_COMPLETE,
+                     orte_rml_send_callback, NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        return;
+    }
+
+    OPAL_OUTPUT_VERBOSE((0, orte_state_base_framework.framework_output,
+                        "%s state:orcmsd:notify job completed %s",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                        (NULL == jdata) ? "NULL" : ORTE_JOBID_PRINT(jdata->jobid)));
+
+    jdata->state = ORTE_JOB_STATE_ANY;
+    /* flag that we were notified and state to ANY */
+    /*
+    ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_ANY);
+    */
+
+
+    OBJ_RELEASE(caddy);
+}
+
+static void orcmsd_wpid_event_recv(int fd, short args, void* cbdata)
+{
+    orcm_rm_cmd_flag_t command;
+    int  rc;
+    opal_buffer_t *buf;
+    orcmsd_wpid_event_cb_t *req = (orcmsd_wpid_event_cb_t *) cbdata;
+    int w = 0;
+    int status = 0;
+    if ( NULL == req || 0 >= req->pid) {
+        opal_output(0, "batch timer event error req->pid is 0\n");
+        return;
+    }
+    w = waitpid (req->pid, &status, WNOHANG|WUNTRACED|WCONTINUED);
+    if (0 == w) {
+        opal_output(0, "timer continued\n");
+        req->rate.tv_sec++;
+        opal_event_evtimer_add(&req->ev, &req->rate);
+        /*
+        kill_local(req->pid, SIGKILL);
+        */
+    } else { /*if (req->pid  == w) */ 
+        opal_output(0, "batch job complete terminate stepd\n");
+        ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_DAEMONS_TERMINATED);
+    }
+}
+
+static void orcmsd_batch_launch(char *batchfile,  char **environ)
+{
+    char **argv = NULL;
+    int argc=0;
+    int status=0;
+    char *param;
+    int ret;
+    int w = 0;
+    orte_daemon_cmd_flag_t command = ORTE_DAEMON_EXIT_CMD;
+    opal_buffer_t *buffer;
+    pid_t batch_pid;
+
+
+    /*setup the HNP URI in the environment */
+    opal_setenv("ORCM_MCA_HNP_URI", orte_process_info.my_hnp_uri, 
+                true, &orte_launch_environ);
+                opal_argv_join(orte_launch_environ, ' ');
+    /*
+    orte_set_attribute(&jdatorted->attributes, ORTE_JOB_CONTINUOUS_OP, 
+                       ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
+     */
+    batch_pid = fork();
+    if (batch_pid < 0) {
+        ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_CHILDREN);
+        return;
+    }
+
+    if (batch_pid == 0) {
+        sigset_t sigs;
+        /* Set signal handlers back to the default.  Do this close
+         to the execve() because the event library may (and likely
+         will) reset them.  If we don't do this, the event
+         library may have left some set that, at least on some
+         OS's, don't get reset via fork() or exec().  Hence, the
+         orted could be unkillable (for example). */
+    
+        set_handler_default(SIGTERM);
+        set_handler_default(SIGINT);
+        set_handler_default(SIGHUP);
+        set_handler_default(SIGPIPE);
+        set_handler_default(SIGCHLD);
+    
+    
+        /* Unblock all signals, for many of the same reasons that
+         we set the default handlers, above.  This is noticable
+         on Linux where the event library blocks SIGTERM, but we
+         don't want that blocked by the orted (or, more
+         specifically, we don't want it to be blocked by the
+         orted and then inherited by the ORTE processes that it
+         forks, making them unkillable by SIGTERM). */
+        sigprocmask(0, 0, &sigs);
+        sigprocmask(SIG_UNBLOCK, &sigs, 0);
+        opal_output(0, "%s BATCH JOB execution : %s \n",
+               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), batchfile);
+        opal_argv_append(&argc, &argv, batchfile);
+        opal_argv_join(argv, ' ');
+        ret = execve(batchfile, argv, orte_launch_environ);
+        opal_output(0, "%s BATCH JOB execve - %d errno - %d  args  %s %s %s %s\n",
+               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ret, errno, batchfile, argv[1], orte_launch_environ[0], orte_launch_environ[1]);
+        exit(-1);
+    } else {
+        /* I am the parent - report the batch pid back
+         */
+        orcmsd_wpid_event_cb_t * req;
+        req = OBJ_NEW(orcmsd_wpid_event_cb_t);
+        req->cbdata = (void *)jdatorted;
+        req->rate.tv_sec=5;
+        req->rate.tv_usec=0;
+        req->pid = batch_pid;
+        opal_event_evtimer_set(orte_event_base, &req->ev,
+                              orcmsd_wpid_event_recv, req);
+        opal_event_evtimer_add(&req->ev, &req->rate);
+
+        opal_argv_free(argv);
+        /* all done - report success */
+        return ORTE_SUCCESS;
+    }
 }
 
 static char *get_orcmsd_comm_cmd_str(int command)

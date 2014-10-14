@@ -17,6 +17,13 @@
 #ifdef HAVE_SIGNAL_H
 #include <signal.h>
 #endif
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+
 #include <stdarg.h>
 #include <pwd.h>
 #include <unistd.h>
@@ -51,9 +58,23 @@ static struct {
     bool version;
     bool verbose;
     bool master;
+    int output;
 } orcm_globals;
 
+/* timer event to check for stepd proc id */
+typedef struct {
+    opal_object_t object;
+    opal_event_t ev;
+    struct timeval rate;
+    pid_t pid;
+    void *cbdata;
+} orcmd_wpid_event_cb_t;
+OBJ_CLASS_DECLARATION(orcmd_wpid_event_cb_t);
+/* Instance of class */
+OBJ_CLASS_INSTANCE(orcmd_wpid_event_cb_t, opal_object_t, NULL, NULL);
+
 #define HNP_PORT_NUM 12345
+static int stepd_pid = 0;
 
 static opal_cmd_line_init_t cmd_line_init[] = {
     /* Various "obvious" options */
@@ -85,9 +106,9 @@ static opal_cmd_line_init_t cmd_line_init[] = {
 static void orcmd_recv(int status, orte_process_name_t* sender,
                        opal_buffer_t* buffer, orte_rml_tag_t tag,
                        void* cbdata);
-static int slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
-                       char *nodes, int port_num, int hnp, char *hnp_uri, 
-                       char *parent_uri);
+static int slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, 
+                       char *hnp_uri, orcm_alloc_t *alloc, int *stepd_pid);
+static int kill_local(pid_t pid, int signum);
 
 int main(int argc, char *argv[])
 {
@@ -115,6 +136,15 @@ int main(int argc, char *argv[])
         fprintf(stderr, "orcm %s\n", ORCM_VERSION);
         exit(0);
     }
+
+    if( orcm_globals.verbose ) {
+        orcm_globals.output = opal_output_open(NULL);
+        opal_output_set_verbosity(orcm_globals.output, 10);
+    } else {
+        orcm_globals.output = 0; /* Default=STDERR */
+    }
+
+
 
     /*
      * Since this process can now handle MCA/GMCA parameters, make sure to
@@ -211,7 +241,57 @@ int main(int argc, char *argv[])
     return ret;
 }
 
-static int death_pipe[2];
+/* timer call back function to cancel session daemons*/
+static void orcmd_wpid_timer_recv(int fd, short args, void* cbdata)
+{
+    orcm_rm_cmd_flag_t command;
+    int  rc;
+    opal_buffer_t *buf;
+    orcmd_wpid_event_cb_t *req = (orcmd_wpid_event_cb_t *) cbdata;
+    int w = 0;
+    int status = 0;
+    pid_t stepd_pid;
+    orcm_alloc_t *alloc;
+
+    if (NULL == req  || 0 >= req->pid || NULL == req->cbdata) {
+        opal_output(0, "error processing wpid timer recv\n");
+        return;
+    }
+    stepd_pid = req->pid;
+    alloc = (orcm_alloc_t*) req->cbdata;
+    w = waitpid (stepd_pid, &status, WNOHANG|WUNTRACED|WCONTINUED);
+    if (0 == w) {
+        req->rate.tv_sec++;
+        opal_event_evtimer_add(&req->ev, &req->rate);
+    } else { /*if (stepd_pid  == w) */ 
+        opal_output(0, "%s:  session: %d completed notify scheduler \n",
+                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (int) alloc->id);
+        command = ORCM_STEPD_COMPLETE_COMMAND;
+        buf = OBJ_NEW(opal_buffer_t);
+        /* pack the complete command flag */
+        if (OPAL_SUCCESS !=
+            (rc = opal_dss.pack(buf, &command, 1, ORCM_RM_CMD_T))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(buf);
+            return;
+        }
+        if (OPAL_SUCCESS !=
+            (rc = opal_dss.pack(buf, &alloc, 1, ORCM_ALLOC))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(buf);
+            return;
+        }
+        if (ORTE_SUCCESS !=
+            (rc =
+             orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
+                         ORCM_RML_TAG_RM,
+                         orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(buf);
+            return;
+        }
+    }
+}
 /* process incoming messages in order of receipt */
 static void orcmd_recv(int status, orte_process_name_t* sender,
                        opal_buffer_t* buffer, orte_rml_tag_t tag,
@@ -237,25 +317,24 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
 
     switch(command) {
     case ORCM_LAUNCH_STEPD_COMMAND:
-        opal_output(0,
-                "%s: ORCM daemon got STEPD request, launching STEPD",
-                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
-        n = 1;
+        n = 1; 
+        stepd_pid = 0;
         if (OPAL_SUCCESS !=
             (rc = opal_dss.unpack(buffer, &alloc, &n, ORCM_ALLOC))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
 
-        fprintf(stderr, "IS HNP : %s, %s ...\n\n",
-            ORTE_NAME_PRINT(&alloc->hnp),
-            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         if (OPAL_EQUAL ==
             orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &alloc->hnp,
                           ORTE_PROC_MY_NAME)) {
             hnp = 1;
         }
+
+        opal_output(0,
+                "%s: allocate session : %d\n",
+                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (int) alloc->id);
 
         jobid = alloc->id << 16;
 
@@ -279,8 +358,7 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
         } 
 
         if (hnp_uri) {
-            slm_fork_hnp_procs(jobid, alloc->caller_uid,
-                               alloc->caller_gid, alloc->nodes, port_num, hnp, hnp_uri, alloc->parent_uri);
+            slm_fork_hnp_procs(jobid, port_num, hnp, hnp_uri, alloc, &stepd_pid);
         }
 
         command = ORCM_VM_READY_COMMAND;
@@ -340,8 +418,14 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
 
         orte_rml.recv_cancel(ORTE_NAME_WILDCARD,
                      ORTE_RML_TAG_ABORT);
-        close(death_pipe[1]);
 
+        if (stepd_pid > 0) {
+            kill_local(stepd_pid, SIGKILL);
+            stepd_pid = 0;
+        } else {
+            opal_output(0, "%s orcmd:STEPD PID %d FAILED",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), stepd_pid);
+        }
         command = ORCM_STEPD_COMPLETE_COMMAND;
         buf = OBJ_NEW(opal_buffer_t);
         /* pack the complete command flag */
@@ -368,7 +452,7 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
         }
         break;
 
-    case ORCM_CALIBRATE:
+    case ORCM_CALIBRATE_COMMAND:
         opal_output(0, "%s: RUNNING CALIBRATION",
                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         orcm_diag.calibrate();
@@ -401,8 +485,7 @@ static void set_handler_default(int sig)
 
 /* Launch hnp procs */
 static int
-slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
-         char *nodes, int port_num, int hnp, char * hnp_uri, char *parent_uri)
+slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orcm_alloc_t *alloc, int *stepd_pid)
 {
     char *cmd;
     char **argv = NULL;
@@ -411,20 +494,10 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
     sigset_t sigs;
     int rc;
     char *foo;
-    int stepd_pid;
+    int s_pid;
     char **hosts = NULL;
     int i, vpid = 1;
 
-
-    /* we also have to give the HNP a pipe it can watch to know when
-     * we terminated. Since the HNP is going to be a child of us, it
-     * can't just use waitpid to see when we leave - so it will watch
-     * the pipe instead
-     */
-    if (pipe(death_pipe) < 0) {
-        ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_PIPES);
-        return ORTE_ERR_SYS_LIMITS_PIPES;
-    }
 
     /* find the orcmsd binary using the install_dirs support - this also
      * checks to ensure that we can see this executable and it *is* executable by us
@@ -463,9 +536,19 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         opal_argv_append(&argc, &argv, "--hnp");
 
         /* add my parents uri to send the vm ready from the session HNP */
-        if ( NULL != parent_uri ) {
+        if ( NULL != alloc->parent_uri ) {
             opal_argv_append(&argc, &argv, "--parent-uri");
-            opal_argv_append(&argc, &argv, parent_uri);
+            opal_argv_append(&argc, &argv, alloc->parent_uri);
+        }
+
+        if (true == alloc->interactive) {
+            opal_argv_append(&argc, &argv, "--persistent");
+        }
+
+        if (NULL != alloc->batchfile) {
+            opal_argv_append(&argc, &argv, "--persistent");
+            opal_argv_append(&argc, &argv, "--batchfile");
+            opal_argv_append(&argc, &argv, alloc->batchfile);
         }
 
         opal_argv_append(&argc, &argv, "-mca");
@@ -479,24 +562,16 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         opal_argv_append(&argc, &argv, param);
         free(param);
 
-        /* RHC: I'm not sure we want the step daemons monitoring a pipe - raises
-         * questions about security. If the root-level daemon dies, we will
-         * likely want the job to continue running until/unless we reboot
-         * the node */
-        /* give the daemon a pipe it can watch to tell when we have died */
-        opal_argv_append(&argc, &argv, "--singleton-died-pipe");
-        asprintf(&param, "%d", death_pipe[0]);
-        opal_argv_append(&argc, &argv, param);
-        free(param);
-
     } else {
         /* extract the hosts */
-        if (NULL != nodes) {
-            printf ("REGEX ### nodes = %s \n", nodes);
-            orte_regex_extract_node_names (nodes, &hosts); 
+        if (NULL != alloc->nodes) {
+            opal_output_verbose(2, orcm_globals.output,
+                "REGEX ### nodes = %s", alloc->nodes);
+            orte_regex_extract_node_names (alloc->nodes, &hosts); 
             for (i=0; hosts[i] != NULL; i++) {
                 if (0 == strcmp(orte_process_info.nodename, hosts[i])) {
-                    printf ("REGEX ### node name = %s vpid = %d \n", hosts[i], i);
+                    opal_output_verbose(2, orcm_globals.output,
+                        "REGEX ### node name = %s vpid = %d \n", hosts[i], i);
                     vpid = i;
                 }
             }
@@ -525,10 +600,10 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
     }
 
     /* if we have static ports, pass the node list */
-    if (NULL != nodes) {
+    if (NULL != alloc->nodes) {
         opal_argv_append(&argc, &argv, "-mca");
         opal_argv_append(&argc, &argv, "sst_orcmsd_node_regex");
-        opal_argv_append(&argc, &argv, nodes);
+        opal_argv_append(&argc, &argv, alloc->nodes);
     }
 
     /* add any debug flags */
@@ -552,33 +627,35 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         opal_argv_append(&argc, &argv, "-mca");
         opal_argv_append(&argc, &argv, "plm_base_verbose");
         opal_argv_append(&argc, &argv, "100");
+        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "state_base_verbose");
+        opal_argv_append(&argc, &argv, "100");
     }
 
     foo = opal_argv_join(argv, ' ');
     if( hnp ) {
-        opal_output(0, "%s FORKING HNP: %s ...\n\n",
+        opal_output_verbose(2, orcm_globals.output,
+                "%s FORKING HNP : %s ...\n\n",
                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), foo);
     } else {
         sleep(2);
-        opal_output(0, "%s FORKING STEPD DAEMONS: %s ...\n\n",
+        opal_output_verbose(2, orcm_globals.output,
+                "%s FORKING STEPD DAEMONS: %s ...\n\n",
                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), foo);
     }
     free(foo);
 
     /* Fork off the child */
 
-    stepd_pid = fork();
-    if (stepd_pid < 0) {
+    s_pid = fork();
+    if (s_pid < 0) {
         ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_CHILDREN);
-        close(death_pipe[0]);
-        close(death_pipe[1]);
         free(cmd);
         opal_argv_free(argv);
         opal_argv_free(hosts);
         return ORTE_ERR_SYS_LIMITS_CHILDREN;
     }
-    if (stepd_pid == 0) {
-        close(death_pipe[1]);
+    if (s_pid == 0) {
 
         /* I am the child - exec me */
 
@@ -605,14 +682,23 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         sigprocmask(SIG_UNBLOCK, &sigs, 0);
 
 /*
-        rc = setuid(uid);
-        rc = setgid(gid);
-
-        if (rc == -1) {
-            fprintf(stderr, "%s : stepd uid gid error %s\n",
-                orte_process_info.nodename, strerror(errno));
-            exit(1);
+        if( alloc->caller_uid ) {
+            rc = setuid(alloc->called_uid);
+            if (rc == -1) {
+                fprintf(stderr, "%s : stepd uid  error %s\n",
+                    orte_process_info.nodename, strerror(errno));
+                exit(1);
+            }
         }
+        if( alloc->caller_gid ) {
+            rc = setgid(alloc->called_gid);
+            if (rc == -1) {
+                fprintf(stderr, "%s : stepd gid error %s\n",
+                    orte_process_info.nodename, strerror(errno));
+                exit(1);
+            }
+        }
+
 */
         execv(cmd, argv);
 
@@ -622,15 +708,58 @@ slm_fork_hnp_procs(orte_jobid_t jobid, uid_t uid, gid_t gid,
         exit(1);
     } else {
 
-        /* I am the parent - wait to hear something back and
-         * report results
+        /* I am the parent - report the stepd pid back
          */
-        close(death_pipe[0]);    /* parent closes the death_pipe's read */
+        if (NULL != stepd_pid) {
+            *stepd_pid = s_pid;
+        }
+        orcmd_wpid_event_cb_t * req;
+        req = OBJ_NEW(orcmd_wpid_event_cb_t);
+        req->cbdata = (void *)alloc;
+        req->rate.tv_sec=5;
+        req->rate.tv_usec=0;
+        req->pid = s_pid;
+        opal_event_evtimer_set(orte_event_base, &req->ev,
+                              orcmd_wpid_timer_recv, req);
+        opal_event_evtimer_add(&req->ev, &req->rate);
+
         opal_argv_free(argv);
         opal_argv_free(hosts);
         free(cmd);
-
         /* all done - report success */
         return ORTE_SUCCESS;
     }
+}
+
+static int kill_local(pid_t pid, int signum)
+{
+    pid_t pgrp;
+
+#if HAVE_SETPGID
+    pgrp = getpgid(pid);
+    if (-1 != pgrp) {
+        /* target the lead process of the process
+         * group so we ensure that the signal is
+         * seen by all members of that group. This
+         * ensures that the signal is seen by any
+         * child processes our child may have
+         * started
+         */
+        pid = pgrp;
+    }
+#endif
+    if (0 != kill(pid, signum)) {
+        if (ESRCH != errno) {
+            opal_output_verbose(2, orcm_globals.output,
+                                 "%s orcmd:SENT KILL %d TO STEPD PID %d GOT ERRNO %d",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), signum, (int)pid, errno);
+            return errno;
+        }
+    }
+    opal_output(0, "%s orcmd:SENT KILL %d TO STEPD PID %d SUCCESS",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), signum, (int)pid);
+    opal_output_verbose(2, orcm_globals.output,
+                         "%s orcmd:SENT KILL %d TO STEPD PID %d SUCCESS",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), signum, (int)pid);
+    return 0;
 }

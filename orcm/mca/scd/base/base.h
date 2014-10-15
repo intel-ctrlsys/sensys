@@ -123,6 +123,8 @@ ORCM_DECLSPEC int orcm_scd_base_rm_add_session_state(orcm_scd_session_state_t st
                                                      int priority);
 ORCM_DECLSPEC void orcm_scd_base_construct_queues(int fd, short args, void *cbdata);
 ORCM_DECLSPEC int orcm_scd_base_get_next_session_id(void);
+ORCM_DECLSPEC int orcm_scd_base_get_node_power_budget(void);
+ORCM_DECLSPEC int orcm_scd_base_set_node_power_budget(int budget);
 
 END_C_DECLS
 #endif

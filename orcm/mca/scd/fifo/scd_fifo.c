@@ -75,9 +75,10 @@ static int init(void)
     /* define our state machine */
     num_states = sizeof(states) / sizeof(orcm_scd_session_state_t);
     for (i=0; i < num_states; i++) {
-        if (ORCM_SUCCESS != (rc = orcm_scd_base_add_session_state(states[i],
-                                                                    callbacks[i],
-                                                                    ORTE_SYS_PRI))) {
+        if (ORCM_SUCCESS !=
+            (rc = orcm_scd_base_add_session_state(states[i],
+                                                  callbacks[i],
+                                                  ORTE_SYS_PRI))) {
             ORTE_ERROR_LOG(rc);
             return rc;
         }

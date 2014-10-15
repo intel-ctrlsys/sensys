@@ -45,11 +45,23 @@ orcm_scd_base_t orcm_scd_base;
 
 /* local vars */
 static void* progress_thread_engine(opal_object_t *obj);
+
+/* these will eventually be queried from persistent store */
 orcm_session_id_t last_session_id = 0;
+int node_power_budget = 0;
 
 int orcm_scd_base_get_next_session_id() {
     last_session_id++;
     return last_session_id;
+}
+
+int orcm_scd_base_get_node_power_budget() {
+    return node_power_budget;
+}
+
+int orcm_scd_base_set_node_power_budget(int budget) {
+    node_power_budget = budget;
+    return ORCM_SUCCESS;
 }
 
 static int orcm_scd_base_register(mca_base_register_flag_t flags)

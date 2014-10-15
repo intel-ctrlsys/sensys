@@ -268,8 +268,6 @@ int orun(int argc, char *argv[])
     orcm_alloc_t alloc;
     orcm_rm_cmd_flag_t command;
     char *hnp_uri;
-    char *my_uri;
-    opal_buffer_t *buf;
     orte_rml_recv_cb_t xbuffer;
 
     /* find our basename (the name of the executable) so that we can
@@ -1590,19 +1588,19 @@ static int init_sched_args(void)
 {
     /* Only CONSTRUCT things once */
     orun_globals.alloc_request = false;     /* new allocation */
-    orun_globals.account = '\0';     /* account */
-    orun_globals.name = '\0';     /* name */
+    orun_globals.account = NULL;     /* account */
+    orun_globals.name = NULL;     /* name */
     orun_globals.gid =   -1;       /* gid */
     orun_globals.max_nodes = 0;        /* max_nodes */
     orun_globals.max_pes = 0;        /* max_pes */
     orun_globals.min_nodes = 0;        /* min_nodes */
     orun_globals.min_pes = 0;        /* min_pes */
-    orun_globals.starttime = '\0';     /* starttime */
-    orun_globals.walltime =  '\0';     /* walltime */
+    orun_globals.starttime = NULL;     /* starttime */
+    orun_globals.walltime =  NULL;     /* walltime */
     orun_globals.exclusive = false;    /* exclusive */
     orun_globals.interactive = false;    /* interactive */
-    orun_globals.nodefile = '\0';     /* nodefile */
-    orun_globals.resource = '\0';    /* resources */
+    orun_globals.nodefile = NULL;     /* nodefile */
+    orun_globals.resource = NULL;    /* resources */
 
     return ORTE_SUCCESS;
 }
@@ -1659,14 +1657,14 @@ static int alloc_request( orcm_alloc_t *alloc )
     alloc->min_pes = orun_globals.min_pes;         // min number of pe's required
     alloc->exclusive = orun_globals.exclusive;     // true if nodes to be exclusively allocated (i.e., not shared across sessions)
     alloc->interactive = orun_globals.interactive; // true if in interactive mode
-    alloc->nodes = '\0';                                // regex of nodes to be used
+    alloc->nodes = NULL;                                // regex of nodes to be used
     /* alloc->constraints = orun_globals.resources */ ; // list of resource constraints to be applied when selecting hosts
 
     alloc->caller_uid = getuid();   // caller uid, not from args
     alloc->caller_gid = getgid();   // caller gid, not from args
-    alloc->hnpname = '\0';
-    alloc->hnpuri = '\0';
-    alloc->batchfile = '\0';
+    alloc->hnpname = NULL;
+    alloc->hnpuri = NULL;
+    alloc->batchfile = NULL;
     alloc->parent_name = ORTE_NAME_PRINT(ORTE_PROC_MY_NAME);
     alloc->parent_uri = orte_rml.get_contact_info();
 

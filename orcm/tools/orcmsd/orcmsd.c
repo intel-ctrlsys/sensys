@@ -1654,9 +1654,6 @@ static void notify_job_completed(int fd, short args, void* cbdata)
 
 static void orcmsd_wpid_event_recv(int fd, short args, void* cbdata)
 {
-    orcm_rm_cmd_flag_t command;
-    int  rc;
-    opal_buffer_t *buf;
     orcmsd_wpid_event_cb_t *req = (orcmsd_wpid_event_cb_t *) cbdata;
     int w = 0;
     int status = 0;
@@ -1682,23 +1679,14 @@ static void orcmsd_batch_launch(char *batchfile,  char **environ)
 {
     char **argv = NULL;
     int argc=0;
-    int status=0;
-    char *param;
     int ret;
-    int w = 0;
-    orte_daemon_cmd_flag_t command = ORTE_DAEMON_EXIT_CMD;
-    opal_buffer_t *buffer;
     pid_t batch_pid;
 
 
     /*setup the HNP URI in the environment */
     opal_setenv("ORCM_MCA_HNP_URI", orte_process_info.my_hnp_uri, 
                 true, &orte_launch_environ);
-                opal_argv_join(orte_launch_environ, ' ');
-    /*
-    orte_set_attribute(&jdatorted->attributes, ORTE_JOB_CONTINUOUS_OP, 
-                       ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
-     */
+
     batch_pid = fork();
     if (batch_pid < 0) {
         ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_CHILDREN);
@@ -1733,7 +1721,9 @@ static void orcmsd_batch_launch(char *batchfile,  char **environ)
         opal_output(0, "%s BATCH JOB execution : %s \n",
                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), batchfile);
         opal_argv_append(&argc, &argv, batchfile);
+        /*
         opal_argv_join(argv, ' ');
+        */
         ret = execve(batchfile, argv, orte_launch_environ);
         opal_output(0, "%s BATCH JOB execve - %d errno - %d  args  %s %s %s %s\n",
                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ret, errno, batchfile, argv[1], orte_launch_environ[0], orte_launch_environ[1]);
@@ -1753,7 +1743,7 @@ static void orcmsd_batch_launch(char *batchfile,  char **environ)
 
         opal_argv_free(argv);
         /* all done - report success */
-        return ORTE_SUCCESS;
+        return;
     }
 }
 

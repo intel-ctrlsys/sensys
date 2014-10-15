@@ -81,7 +81,7 @@
  ******************/
 static int orcm_osub_init(int argc, char *argv[]);
 static int parse_args(int argc, char *argv[]);
-static int osub_exec_shell(char *shell,  char **environ, orcm_alloc_t *alloc);
+static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -244,15 +244,15 @@ main(int argc, char *argv[])
     alloc.min_pes = orcm_osub_globals.min_pes;         // min number of pe's required
     alloc.exclusive = orcm_osub_globals.exclusive;     // true if nodes to be exclusively allocated (i.e., not shared across sessions)
     alloc.interactive = false; // true if in interactive mode
-    alloc.nodes = '\0';                                // regex of nodes to be used
+    alloc.nodes = NULL;                                // regex of nodes to be used
     alloc.parent_name = ORTE_NAME_PRINT(ORTE_PROC_MY_NAME); // my_daemon_name
-    alloc.parent_uri = '\0';                           // my_daemon uri address
-    alloc.batchfile = '\0'; // batchfile 
+    alloc.parent_uri = NULL;                           // my_daemon uri address
+    alloc.batchfile = NULL; // batchfile 
 
 
     /* alloc.constraints = orcm_osub_globals.resources */ ; // list of resource constraints to be applied when selecting hosts
-    alloc.hnpname = '\0'; //my hnp name
-    alloc.hnpuri = '\0'; //my hnp uri
+    alloc.hnpname = NULL; //my hnp name
+    alloc.hnpuri = NULL; //my hnp uri
 
     alloc.caller_uid = getuid();   // caller uid, not from args
     alloc.caller_gid = getgid();   // caller gid, not from args
@@ -388,15 +388,20 @@ main(int argc, char *argv[])
              /*
               * set hnp uri 
               */
-             opal_setenv("ORCM_MCA_HNP_URI", hnp_uri, 
-                 true, &orte_launch_environ);
+             if (ORTE_SUCCESS != (rc = opal_setenv("ORCM_MCA_HNP_URI", hnp_uri, 
+                 true, &orte_launch_environ))) {
+                 ORTE_ERROR_LOG(rc);
+                 return rc;
+             }
 
              /*
               * set the prompt
               */
-             opal_setenv("PS1", "orcmshell%", 
-                 true, &orte_launch_environ);
-             opal_argv_join(orte_launch_environ, ' ');
+             if (ORTE_SUCCESS != (rc = opal_setenv("PS1", "orcmshell%", 
+                 true, &orte_launch_environ))) {
+                 ORTE_ERROR_LOG(rc);
+                 return rc;
+             }
 
              /*
               * exec the shell
@@ -424,20 +429,20 @@ static int parse_args(int argc, char *argv[])
     orcm_osub_globals_t tmp = { false,    /* help */
                                 false,    /* verbose */
                                 -1,       /* output */
-                                '\0',     /* account */
-                                '\0',     /* name */
+                                NULL,     /* account */
+                                NULL,     /* name */
                                 -1,        /* gid */
                                 0,        /* max_nodes */
                                 0,        /* max_pes */
                                 1,        /* min_nodes */
                                 1,        /* min_pes */
-                                '\0',     /* starttime */
-                                '\0',     /* walltime */
+                                NULL,     /* starttime */
+                                NULL,     /* walltime */
                                 false,    /* exclusive */
                                 false,    /* interactive */
-                                '\0',     /* nodefile */
-                                '\0',     /* resources */
-                                '\0',     /* batchfile*/
+                                NULL,     /* nodefile */
+                                NULL,     /* resources */
+                                NULL,     /* batchfile*/
                                 "/bin/sh"};     /* ishell*/
 
     orcm_osub_globals = tmp;
@@ -542,7 +547,7 @@ static void set_handler_default(int sig)
     sigaction(sig, &act, (struct sigaction *)0);
 }
 
-static int osub_exec_shell(char *shell,  char **environ, orcm_alloc_t *alloc)
+static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc)
 {
     char **argv = NULL;
     int argc = 0;
@@ -585,10 +590,18 @@ static int osub_exec_shell(char *shell,  char **environ, orcm_alloc_t *alloc)
         sigprocmask(SIG_UNBLOCK, &sigs, 0);
         opal_output(0, "%s IShell Start: %s \n",
                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), shell);
-        opal_argv_append(&argc, &argv, shell);
-        opal_argv_append(&argc, &argv, "-i");
-        opal_argv_join(argv, ' ');
-        rc = execve(argv[0], argv, environ);
+
+        if (ORTE_SUCCESS != (rc = opal_argv_append(&argc, &argv, shell))) {
+                 ORTE_ERROR_LOG(rc);
+                 return rc;
+        }
+
+        if (ORTE_SUCCESS != (rc = opal_argv_append(&argc, &argv, "-i"))) {
+                 ORTE_ERROR_LOG(rc);
+                 return rc;
+        }
+
+        rc = execve(argv[0], argv, env);
         opal_output(0, "%s IShell execve - %d errno - %d\n",
                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), rc, errno);
         exit(-1);

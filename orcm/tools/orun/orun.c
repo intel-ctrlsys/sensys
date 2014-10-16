@@ -434,6 +434,8 @@ int orun(int argc, char *argv[])
     
     /* add a map object */
     jdata->map = OBJ_NEW(orte_job_map_t);
+    /* default mapping by node */
+    jdata->map->mapping = ORTE_MAPPING_BYNODE;
 
     /* check what user wants us to do with stdin */
     if (0 == strcmp(orun_globals.stdin_target, "all")) {

@@ -631,6 +631,9 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
         opal_argv_append(&argc, &argv, "state_base_verbose");
         opal_argv_append(&argc, &argv, "100");
     }
+    opal_argv_append(&argc, &argv, "-mca");
+    opal_argv_append(&argc, &argv, "rmaps_base_oversubscribe");
+    opal_argv_append(&argc, &argv, "1");
 
     foo = opal_argv_join(argv, ' ');
     if( hnp ) {

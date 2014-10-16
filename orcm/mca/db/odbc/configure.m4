@@ -36,8 +36,7 @@ AC_DEFUN([MCA_orcm_db_odbc_CONFIG], [
                                            [$orcm_db_odbc_check_prefix_dir],
                                            [],
                                            [$1],
-                                           [AC_MSG_RESULT([not found])
-                                            AC_MSG_WARN([ODBC database support requested])
+                                           [AC_MSG_WARN([ODBC database support requested])
                                             AC_MSG_WARN([but required library not found or link test failed])
                                             AC_MSG_ERROR([Cannot continue])
                                             $2])])],
@@ -50,8 +49,7 @@ AC_DEFUN([MCA_orcm_db_odbc_CONFIG], [
                                     [],
                                     [],
                                     [$1],
-                                    [AC_MSG_RESULT([not found])
-                                     AC_MSG_WARN([ODBC library not found or link test failed])
+                                    [AC_MSG_WARN([ODBC library not found or link test failed])
                                      AC_MSG_WARN([building without ODBC support])
                                      $2])])
 

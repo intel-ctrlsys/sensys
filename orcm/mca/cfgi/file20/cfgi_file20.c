@@ -211,13 +211,13 @@ static int define_system(opal_list_t *config,
     int rc;
     orcm_cfgi_xml_parser_t *x, *xx;
     orcm_cluster_t *cluster;
-    orcm_scheduler_t *scheduler;
     orcm_row_t *row;
     orcm_rack_t *rack;
     orcm_node_t *node;
     int32_t num;
-    opal_buffer_t uribuf, clusterbuf, rowbuf, rackbuf;
+    opal_buffer_t uribuf, schedbuf, clusterbuf, rowbuf, rackbuf;
     opal_buffer_t *bptr;
+    orcm_scheduler_t *scheduler;
 
     /* set default */
     *mynode = NULL;
@@ -280,13 +280,17 @@ static int define_system(opal_list_t *config,
     /* cycle thru the list of schedulers - they will take the leading positions
      * in the assignment of process names
      */
+    OBJ_CONSTRUCT(&schedbuf, opal_buffer_t);
+    OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
     OPAL_LIST_FOREACH(scheduler, orcm_schedulers, orcm_scheduler_t) {
         scheduler->controller.daemon.jobid = 0;
         scheduler->controller.daemon.vpid = vpid;
+        /* add to the scheduler definitions */
+        opal_dss.pack(&schedbuf, &scheduler->controller.daemon, 1, ORTE_NAME);
         /* scheduler's aren't aggregators, but load their
          * contact info in case needed
          */
-        orcm_util_construct_uri(buf, &scheduler->controller);
+        orcm_util_construct_uri(&uribuf, &scheduler->controller);
         if (!found_me) {
             found_me = check_me(&scheduler->controller.config,
                                 scheduler->controller.name, vpid, my_ip);
@@ -296,17 +300,28 @@ static int define_system(opal_list_t *config,
         }
         ++vpid;
     }
+    /* transfer the scheduler section to the cluster definition */
+    OBJ_CONSTRUCT(&clusterbuf, opal_buffer_t);
+    bptr = &schedbuf;
+    opal_dss.pack(&clusterbuf, &bptr, 1, OPAL_BUFFER);
+    OBJ_DESTRUCT(&schedbuf);
+
+    /* since no scheduler is in the system, let's assume
+     * for now that orun will act as the HNP and adjust
+     * all the vpid's for the daemons
+     */
+    if (0 == opal_list_get_size(orcm_schedulers)) {
+        vpid = 1;
+    }
 
     /* cycle thru the cluster setting up the remaining names */
-    OBJ_CONSTRUCT(&uribuf, opal_buffer_t);
-    OBJ_CONSTRUCT(&clusterbuf, opal_buffer_t);
     OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
         if (ORTE_NODE_STATE_UNDEF != cluster->controller.state) {
             /* the cluster includes a system controller node */
             cluster->controller.daemon.jobid = 0;
             cluster->controller.daemon.vpid = vpid;
             if (cluster->controller.config.aggregator) {
-                orcm_util_construct_uri(buf, &cluster->controller);
+                orcm_util_construct_uri(&uribuf, &cluster->controller);
             }
             if (!found_me) {
                 found_me = check_me(&cluster->controller.config,
@@ -332,7 +347,7 @@ static int define_system(opal_list_t *config,
                 row->controller.daemon.jobid = 0;
                 row->controller.daemon.vpid = vpid;
                 if (row->controller.config.aggregator) {
-                    orcm_util_construct_uri(buf, &row->controller);
+                    orcm_util_construct_uri(&uribuf, &row->controller);
                 }
                 if (!found_me) {
                     found_me = check_me(&row->controller.config,
@@ -353,7 +368,7 @@ static int define_system(opal_list_t *config,
                     rack->controller.daemon.jobid = 0;
                     rack->controller.daemon.vpid = vpid;
                     if (rack->controller.config.aggregator) {
-                        orcm_util_construct_uri(buf, &rack->controller);
+                        orcm_util_construct_uri(&uribuf, &rack->controller);
                     }
                     if (!found_me) {
                         found_me = check_me(&rack->controller.config,
@@ -400,11 +415,14 @@ static int define_system(opal_list_t *config,
 
     /* return the number of procs in the system */
     *num_procs = vpid;
-    bptr = &uribuf;
-    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
-    OBJ_DESTRUCT(&uribuf);
+    /* provide the cluster definition first */
     bptr = &clusterbuf;
     opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
+    /* now add the URIs */
+    bptr = &uribuf;
+    opal_dss.pack(buf, &bptr, 1, OPAL_BUFFER);
+    /* cleanup */
+    OBJ_DESTRUCT(&uribuf);
     OBJ_DESTRUCT(&clusterbuf);
 
     return ORTE_SUCCESS;

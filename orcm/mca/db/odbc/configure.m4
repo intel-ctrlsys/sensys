@@ -13,10 +13,6 @@ dnl
 AC_DEFUN([MCA_orcm_db_odbc_CONFIG], [
     AC_CONFIG_FILES([orcm/mca/db/odbc/Makefile])
 
-    orcm_db_odbc_check_save_CPPFLAGS=$CPPFLAGS
-    orcm_db_odbc_check_save_LDFLAGS=$LDFLAGS
-    orcm_db_odbc_check_save_LIBS=$LIBS
-
     orcm_db_odbc_check_prefix_dir=""
 
     AC_MSG_CHECKING([for ODBC support])
@@ -56,10 +52,6 @@ AC_DEFUN([MCA_orcm_db_odbc_CONFIG], [
                                     [AC_MSG_WARN([ODBC library not found or link test failed])
                                      AC_MSG_WARN([building without ODBC support])
                                      $2])])
-
-    CPPFLAGS=$orcm_db_odbc_check_save_CPPFLAGS
-    LDFLAGS=$orcm_db_odbc_check_save_LDFLAGS
-    LIBS=$orcm_db_odbc_check_save_LIBS
 
     AC_SUBST(db_odbc_CPPFLAGS)
     AC_SUBST(db_odbc_LDFLAGS)

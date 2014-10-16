@@ -396,6 +396,7 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
             opal_output_verbose(1, orte_routed_base_framework.framework_output,
                                 "%s init_routes: unpacking rack %d",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), j);
+            cnt=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(row, &rack, &cnt, OPAL_BUFFER))) {
                 ORTE_ERROR_LOG(rc);
                 return rc;

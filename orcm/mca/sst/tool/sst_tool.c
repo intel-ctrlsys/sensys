@@ -52,6 +52,8 @@
 #include "orte/mca/rml/base/rml_contact.h"
 #include "orte/mca/routed/base/base.h"
 #include "orte/mca/routed/routed.h"
+#include "orte/mca/rmaps/base/base.h"
+#include "orte/mca/rmaps/rmaps.h"
 #include "orte/mca/oob/base/base.h"
 #include "orte/mca/dfs/base/base.h"
 #include "orte/mca/grpcomm/grpcomm.h"
@@ -348,6 +350,18 @@ static int tool_init(void)
         goto error;
     }
     
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_rmaps_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "orte_rmaps_base_open";
+        goto error;
+    }    
+    if (ORTE_SUCCESS != (ret = orte_rmaps_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "orte_rmaps_base_find_available";
+        goto error;
+    }
     /* database */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_db_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -525,6 +539,7 @@ static void tool_finalize(void)
     
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
     (void) mca_base_framework_close(&orte_routed_base_framework);
+    (void) mca_base_framework_close(&orte_rmaps_base_framework);
 
     orte_wait_finalize();
     if (progress_thread_running) {

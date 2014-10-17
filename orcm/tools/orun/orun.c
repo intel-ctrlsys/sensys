@@ -93,6 +93,7 @@
 #include "orte/mca/plm/base/plm_private.h"
 #include "orte/mca/ras/ras.h"
 #include "orte/mca/rmaps/rmaps_types.h"
+#include "orte/mca/rmaps/base/base.h"
 #include "orte/mca/rml/rml.h"
 #include "orte/mca/rml/rml_types.h"
 #include "orte/mca/rml/base/rml_contact.h"
@@ -142,10 +143,12 @@ static opal_cmd_line_init_t cmd_line_init[] = {
     { NULL, '\0', "np", "np", 1,
       &orun_globals.num_procs, OPAL_CMD_LINE_TYPE_INT,
       "Number of processes to run" },
-    
-    { "rmaps_ppr_n_pernode", '\0', "N", NULL, 1,
-        NULL, OPAL_CMD_LINE_TYPE_INT,
-        "Launch n processes per node on all allocated nodes (synonym for npernode)" },
+
+    /* Mapping options */
+    { "rmaps_base_mapping_policy", '\0', NULL, "map-by", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Mapping Policy [slot | hwthread | core | socket (default) | numa | board | node]" },
+
     { NULL, '\0', "path", "path", 1,
       &orun_globals.path, OPAL_CMD_LINE_TYPE_STRING,
       "PATH to be used to look for executables to start processes" },
@@ -434,8 +437,6 @@ int orun(int argc, char *argv[])
     
     /* add a map object */
     jdata->map = OBJ_NEW(orte_job_map_t);
-    /* default mapping by node */
-    jdata->map->mapping = ORTE_MAPPING_BYNODE;
 
     /* check what user wants us to do with stdin */
     if (0 == strcmp(orun_globals.stdin_target, "all")) {
@@ -560,7 +561,7 @@ int orun(int argc, char *argv[])
              goto DONE;
          }
 
-    }
+    } else {
         /* 
          * existing allocation 
          */
@@ -578,6 +579,12 @@ int orun(int argc, char *argv[])
                             ORTE_RML_PERSISTENT,
                             orun_recv,
                             NULL);
+    }
+
+    /* if user requrest mapping policy */
+    if (0  < orte_rmaps_base.mapping) {
+        jdata->map->mapping = orte_rmaps_base.mapping;
+    }
 
     /* spawn the job and its daemons */
     rc = orte_plm.spawn(jdata);

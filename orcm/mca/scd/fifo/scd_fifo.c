@@ -167,19 +167,17 @@ static void fifo_schedule(int sd, short args, void *cbdata)
 
             /* find out how many nodes are available */
             free_nodes = 0;
-            if (orcm_scd_base.nodes.number_free > 0) {
-                for (i = 0; i < orcm_scd_base.nodes.size; i++) {
-                    if (NULL ==
-                        (nodeptr =
-                         (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, i))) {
-                        continue;
-                    }
-                    /* TODO need to add logic for partially allocated nodes */
-                    /* TODO check for other constraints, but how? */
-                    if (ORCM_SCD_NODE_STATE_UNALLOC == nodeptr->scd_state
-                        && ORCM_NODE_STATE_UP == nodeptr->state) {
-                        free_nodes++;
-                    }
+            for (i = 0; i < orcm_scd_base.nodes.size; i++) {
+                if (NULL ==
+                    (nodeptr =
+                     (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, i))) {
+                    continue;
+                }
+                /* TODO need to add logic for partially allocated nodes */
+                /* TODO check for other constraints, but how? */
+                if (ORCM_SCD_NODE_STATE_UNALLOC == nodeptr->scd_state
+                    && ORCM_NODE_STATE_UP == nodeptr->state) {
+                    free_nodes++;
                 }
             }
 

@@ -89,13 +89,14 @@ int orcm_ocli_queue_status(char **argv)
             }
             /* loop through sessions, and print them */
             for (j = 0; j < num_sessions; j++) {
-                printf("%d\t%u|%u\t%i\t%s\t%s\n",
+                printf("%d\t%u|%u\t%i\t%s\t%s\t%s\n",
                        (int)allocs[j]->id,
                        allocs[j]->caller_uid,
                        allocs[j]->caller_gid,
                        allocs[j]->min_nodes,
                        allocs[j]->exclusive ? "EX" : "SH",
-                       allocs[j]->interactive ? "I" : "B" );
+                       allocs[j]->interactive ? "I" : "B",
+                       allocs[j]->notes ? allocs[j]->notes : "");
                 OBJ_DESTRUCT(allocs[j]);
             }
             free(allocs);

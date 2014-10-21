@@ -109,6 +109,46 @@ static void fifo_find_queue(int sd, short args, void *cbdata)
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
     orcm_queue_t *q;
 
+    /* validate that it is possible to run this job */
+    /* do we have enough nodes defined */
+    if (caddy->session->alloc->min_nodes >
+        (orcm_scd_base.nodes.size - orcm_scd_base.nodes.number_free)) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                             "%s scd:fifo:find_queue - not enough nodes for session %i\n",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             caddy->session->id));
+
+        /* put session on hold */
+        OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
+            if (0 == strcmp(q->name, "hold")) {
+                caddy->session->alloc->queues = strdup(q->name);
+                opal_list_append(&q->sessions, &caddy->session->super);
+                ORCM_ACTIVATE_SCD_STATE(caddy->session, ORCM_SESSION_STATE_SCHEDULE);
+
+                OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                                     "%s scd:fifo:find_queue %s\n",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), q->name));
+                break;
+            }
+        }
+
+        /* update information within the session info to state what happened */
+        if (NULL != caddy->session->alloc->notes) {
+            asprintf(&caddy->session->alloc->notes,
+                     "%s, session request exceeds defined resources",
+                     caddy->session->alloc->notes);
+        } else {
+            caddy->session->alloc->notes = strdup("session exceeds resources");
+        }
+
+        OBJ_RELEASE(caddy);
+        /* no more states need activating because we get here
+         * with a new session request, and if we can't run it
+         * there is nothing more to do
+         */
+        return;
+    }
+
     /* cycle across the queues and select the one that best
      * fits this session request.  for FIFO, its just the 
      * default always.

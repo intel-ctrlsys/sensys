@@ -37,9 +37,6 @@
 /* Global vars */
 orcm_scd_base_t orcm_scd_base;
 
-/* local vars */
-static void* progress_thread_engine(opal_object_t *obj);
-
 /* these will eventually be queried from persistent store */
 int node_power_budget = 0;
 static orcm_session_id_t last_session_id = 0;
@@ -237,6 +234,9 @@ static void alloc_con(orcm_alloc_t *p)
     p->nodefile = NULL;
     p->nodes = NULL;
     p->queues = NULL;
+    p->batchfile = NULL;
+    p->node_power_budget = 0;
+    p->notes = NULL;
     OBJ_CONSTRUCT(&p->constraints, opal_list_t);
 }
 static void alloc_des(orcm_alloc_t *p)
@@ -267,6 +267,12 @@ static void alloc_des(orcm_alloc_t *p)
     }
     if (NULL != p->queues) {
         free(p->queues);
+    }
+    if (NULL != p->batchfile) {
+        free(p->batchfile);
+    }
+    if (NULL != p->notes) {
+        free(p->notes);
     }
     OPAL_LIST_DESTRUCT(&p->constraints);
 }

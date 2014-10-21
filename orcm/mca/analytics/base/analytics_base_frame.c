@@ -109,7 +109,7 @@ static void wk_con(orcm_workflow_t *p)
 static void wk_des(orcm_workflow_t *p)
 {
     if (NULL != p->ev_base) {
-        opal_stop_progress_thread(p->name, true);
+        orcm_stop_progress_thread(p->name, true);
     }
     if (NULL != p->name) {
         free(p->name);

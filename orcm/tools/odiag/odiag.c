@@ -135,7 +135,29 @@ main(int argc, char *argv[])
     orcm_odiag_init(argc, argv);
     
     if (orcm_odiag_globals.cpu_diag) {
-        fprintf(stdout, "ORCM Diagnostic Checking cpu:                           [NOTRUN]\n");
+        putenv("OMPI_MCA_diag=cputest");
+        /* open/select the diag framework */
+        if (ORTE_SUCCESS != (rc = mca_base_framework_open(&orcm_diag_base_framework, 0))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+
+        if (ORTE_SUCCESS != (rc = orcm_diag_base_select())) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+
+        OBJ_CONSTRUCT(&config, opal_list_t);
+        fprintf(stdout, "ORCM Diagnostic Checking cpu:                          ");
+        rc = orcm_diag.diag_check(&config);
+
+        if ( ORCM_SUCCESS == rc ) {
+            fprintf(stdout, "[  OK  ]\n");
+        } else if ( ORCM_ERR_COMPARE_FAILURE == rc ) {
+            fprintf(stdout, "[ FAIL ]\n");
+        } else {
+            fprintf(stdout, "[NOTRUN]\n");
+        }
     }
 
     if (orcm_odiag_globals.mem_diag) {
@@ -152,7 +174,7 @@ main(int argc, char *argv[])
         }
 
         OBJ_CONSTRUCT(&config, opal_list_t);
-        fprintf(stdout, "ORCM Diagnostic Checking memory:                        ");
+        fprintf(stdout, "ORCM Diagnostic Checking memory:                       ");
         rc = orcm_diag.diag_check(&config);
         
         if ( ORCM_SUCCESS == rc ) {

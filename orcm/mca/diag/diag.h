@@ -25,6 +25,16 @@
 #include "orte/util/name_fns.h"
 #include "orte/util/proc_info.h"
 
+#define DIAG_MEM_PATTERN_TST      (1 << 0)
+#define DIAG_MEM_STRESS_TST       (1 << 1)
+#define DIAG_MEM_ERR              (1 << 2)
+#define DIAG_MEM_NOTRUN           (1 << 31)
+
+#define DIAG_CPU_FP_TST           (1 << 0)
+#define DIAG_CPU_PRIME_TST        (1 << 1)
+#define DIAG_CPU_STRESS_TST       (1 << 2)
+#define DIAG_CPU_NOTRUN           (1 << 31)
+
 BEGIN_C_DECLS
 
 /*

@@ -586,6 +586,10 @@ int orun(int argc, char *argv[])
         jdata->map->mapping = orte_rmaps_base.mapping;
     }
 
+    /* set attribute to forward io to the tool */
+    orte_set_attribute(&jdata->attributes, ORTE_JOB_FWDIO_TO_TOOL, 
+                       ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
+
     /* spawn the job and its daemons */
     rc = orte_plm.spawn(jdata);
 

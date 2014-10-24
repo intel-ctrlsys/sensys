@@ -14,7 +14,7 @@
 # -----------------------------------------------------------
 
 AC_DEFUN([OPAL_CHECK_IPMIUTIL], [
-    AC_MSG_CHECKING([for IPMI support])
+    AC_MSG_CHECKING([for IPMIUTIL support])
     AC_ARG_WITH([ipmiutil],
                 [AC_HELP_STRING([--with-ipmiutil(=DIR)],
                                 [Build IPMI support, optionally adding DIR to the search path])],
@@ -22,13 +22,12 @@ AC_DEFUN([OPAL_CHECK_IPMIUTIL], [
                  AS_IF([test "$with_ipmiutil" = "no"],
                        [# Support explicitly not requested
                         AC_MSG_RESULT([IPMIUTIL support not present])
-                        [ipmiutil_check_happy=no]],
+                        ipmiutil_check_happy=no],
                        [# Support explicitly requested (with_ipmiutil=yes|path)
                         AC_MSG_RESULT([IPMI support explicitly requested])
                         AS_IF([test "$with_ipmiutil" != "yes"],
                               [ipmiutil_prefix_dir=$with_ipmiutil])
-                              AC_MSG_RESULT([Checkpoint 1 reached])
-                                AC_MSG_RESULT([with_ipmiutil Direcotory is $ipmiutil_prefix_dir])
+                              AC_MSG_RESULT([with_ipmiutil Directory is $ipmiutil_prefix_dir])
                                OPAL_CHECK_PACKAGE([ipmiutil],
                                      [ipmicmd.h],
                                      [ipmiutil],
@@ -36,10 +35,10 @@ AC_DEFUN([OPAL_CHECK_IPMIUTIL], [
                                      [-lcrypto],
                                      [$ipmiutil_prefix_dir],
                                      [],
-                                     AC_MSG_RESULT([--->found libs at $ipmiutil_prefix_dir])
-                                     [ipmiutil_check_happy=yes],
+                                     [AC_MSG_RESULT([found libs at $ipmiutil_prefix_dir])
+                                     ipmiutil_check_happy=yes],
                                      [AC_MSG_WARN([IPMI sensor support requested])
-                                      AC_MSG_WARN([But the required dependent Library or Header files weren't found at $ipmiutil_prefix_dir])
+                                      AC_MSG_ERROR([But the required dependent Library or Header files weren't found at $ipmiutil_prefix_dir])
                                       ipmiutil_check_happy=no])])],
                [# Support not explicitly requested, try to build if possible
                 OPAL_CHECK_PACKAGE([ipmiutil],
@@ -50,8 +49,8 @@ AC_DEFUN([OPAL_CHECK_IPMIUTIL], [
                              [$ipmiutil_prefix_dir],
                              [],
                              [ipmiutil_check_happy=yes],
-                             [AC_MSG_WARN([IPMI library not found or link test failed])
-                              AC_MSG_WARN([building without IPMI support])
+                             [AC_MSG_RESULT([IPMI library not found])
+                              AC_MSG_RESULT([building without IPMI support])
                               ipmiutil_check_happy=no])])
     AC_SUBST(ipmiutil_CPPFLAGS)
     AC_SUBST(ipmiutil_LDFLAGS)

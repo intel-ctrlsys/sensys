@@ -13,7 +13,7 @@ dnl
 AC_DEFUN([MCA_orcm_sensor_ipmi_CONFIG], [
     # Check if ipmiutil support is available or not.
     AC_CONFIG_FILES([orcm/mca/sensor/ipmi/Makefile])
-    AC_MSG_CHECKING([for IPMIUTIL support])
+    AC_MSG_CHECKING([for IPMI Sensor support])
     AC_REQUIRE([OPAL_CHECK_IPMIUTIL])
 
    AC_ARG_WITH([ipmi_sensor],

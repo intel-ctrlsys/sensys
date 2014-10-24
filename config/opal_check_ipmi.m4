@@ -21,7 +21,7 @@ AC_DEFUN([OPAL_CHECK_IPMIUTIL], [
                 [# with_ipmiutil=yes|no|path
                  AS_IF([test "$with_ipmiutil" = "no"],
                        [# Support explicitly not requested
-                        AC_MSG_RESULT([IPMIUTIL support not present])
+                        AC_MSG_RESULT([IPMIUTIL support not requested])
                         ipmiutil_check_happy=no],
                        [# Support explicitly requested (with_ipmiutil=yes|path)
                         AC_MSG_RESULT([IPMI support explicitly requested])
@@ -38,7 +38,7 @@ AC_DEFUN([OPAL_CHECK_IPMIUTIL], [
                                      [AC_MSG_RESULT([found libs at $ipmiutil_prefix_dir])
                                      ipmiutil_check_happy=yes],
                                      [AC_MSG_WARN([IPMI sensor support requested])
-                                      AC_MSG_ERROR([But the required dependent Library or Header files weren't found at $ipmiutil_prefix_dir])
+                                      AC_MSG_ERROR([But the required dependent Library or Header files weren't found])
                                       ipmiutil_check_happy=no])])],
                [# Support not explicitly requested, try to build if possible
                 OPAL_CHECK_PACKAGE([ipmiutil],

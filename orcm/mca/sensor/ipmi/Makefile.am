@@ -34,13 +34,13 @@ endif
 
 mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
-mca_sensor_ipmi_la_CPPFLAGS = $(sensor_ipmi_CPPFLAGS)
+mca_sensor_ipmi_la_CPPFLAGS = $(sensor_ipmi_CPPFLAGS) $(ipmiutil_CPPFLAGS)
 mca_sensor_ipmi_la_SOURCES = $(sources)
-mca_sensor_ipmi_la_LDFLAGS = -module -avoid-version $(sensor_ipmi_LDFLAGS)
-mca_sensor_ipmi_la_LIBADD = $(sensor_ipmi_LIBS) -lm
+mca_sensor_ipmi_la_LDFLAGS = -module -avoid-version $(sensor_ipmi_LDFLAGS) $(ipmiutil_LDFLAGS)
+mca_sensor_ipmi_la_LIBADD = $(sensor_ipmi_LIBS) $(ipmiutil_LIBS) -lm
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_sensor_ipmi_la_SOURCES =$(sources)
-libmca_sensor_ipmi_la_CPPFLAGS = $(sensor_ipmi_CPPFLAGS)
-libmca_sensor_ipmi_la_LDFLAGS = -module -avoid-version $(sensor_ipmi_LDFLAGS)
-libmca_sensor_ipmi_la_LIBADD = $(sensor_ipmi_LIBS) -lm
+libmca_sensor_ipmi_la_CPPFLAGS = $(sensor_ipmi_CPPFLAGS) $(ipmiutil_CPPFLAGS)
+libmca_sensor_ipmi_la_LDFLAGS = -module -avoid-version $(sensor_ipmi_LDFLAGS) $(ipmiutil_LDFLAGS)
+libmca_sensor_ipmi_la_LIBADD = $(sensor_ipmi_LIBS) $(ipmiutil_LIBS) -lm

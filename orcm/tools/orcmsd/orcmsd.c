@@ -128,7 +128,6 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
                       opal_buffer_t *buffer, orte_rml_tag_t tag,
                       void* cbdata);
 static void orcmsd_batch_launch(char *batchfile,  char **environ);
-static void notify_job_completed(int fd, short args, void* cbdata);
 static void orcmsd_wpid_event_recv(int fd, short args, void* cbdata);
 
 
@@ -425,12 +424,6 @@ int main(int argc, char *argv[])
     /* if I am also the hnp, then update that contact info field too */
     if (ORTE_PROC_IS_HNP) {
 
-	if (true == orcmsd_globals.persistent) {
-        /* set the state machine to notify job completed */
-        orte_state.set_job_state_callback(ORTE_JOB_STATE_TERMINATED, notify_job_completed);
-        orte_state.set_job_state_callback(ORTE_JOB_STATE_NOTIFY_COMPLETED, notify_job_completed);
-        orte_state.set_job_state_callback(ORTE_JOB_STATE_ALL_JOBS_COMPLETE, notify_job_completed);
-        }
         /* setup the orcms ctrl or hnp daemon command receive function */
         orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_HNP,
                             ORTE_RML_PERSISTENT, orcms_hnp_recv, NULL);
@@ -696,7 +689,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
                                         orcmsd_globals.parent_uri);
                 }
                 if ((rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_PARENT, 
-                    vmready_msg, ORTE_RML_TAG_TOOL,
+                    vmready_msg, ORCM_RML_TAG_VM_READY,
                     orte_rml_send_callback, NULL)) < 0) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(vmready_msg);
@@ -1604,52 +1597,6 @@ static void set_handler_default(int sig)
     sigemptyset(&act.sa_mask);
 
     sigaction(sig, &act, (struct sigaction *)0);
-}
-
-static void notify_job_completed(int fd, short args, void* cbdata)
-{
-    orte_state_caddy_t *caddy = (orte_state_caddy_t*)cbdata;
-    orte_job_t *jdata = caddy->jdata;
-    int command = ORCM_JOB_COMPLETE_COMMAND;
-    int rc;
-    opal_buffer_t *buf;
-
-    fprintf(stderr, "notify job complete \n");
-
-    if (jdata->state == ORTE_JOB_STATE_ANY) {
-        return;
-    }
-
-    buf = OBJ_NEW(opal_buffer_t);
-    /* pack the complete command flag */
-    if (OPAL_SUCCESS !=
-        (rc = opal_dss.pack(buf, &command, 1, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(buf);
-        return;
-    }
-    if (ORTE_SUCCESS !=
-        (rc = orte_rml.send_buffer_nb(&jdata->originator, buf,
-                     ORCM_RML_TAG_JOB_COMPLETE,
-                     orte_rml_send_callback, NULL))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(buf);
-        return;
-    }
-
-    OPAL_OUTPUT_VERBOSE((0, orte_state_base_framework.framework_output,
-                        "%s state:orcmsd:notify job completed %s",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        (NULL == jdata) ? "NULL" : ORTE_JOBID_PRINT(jdata->jobid)));
-
-    jdata->state = ORTE_JOB_STATE_ANY;
-    /* flag that we were notified and state to ANY */
-    /*
-    ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_ANY);
-    */
-
-
-    OBJ_RELEASE(caddy);
 }
 
 static void orcmsd_wpid_event_recv(int fd, short args, void* cbdata)

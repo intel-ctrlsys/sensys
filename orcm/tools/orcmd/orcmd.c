@@ -575,6 +575,9 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
             opal_argv_append(&argc, &argv, "--persistent");
             opal_argv_append(&argc, &argv, "--batchfile");
             opal_argv_append(&argc, &argv, alloc->batchfile);
+            opal_argv_append(&argc, &argv, "-mca");
+            opal_argv_append(&argc, &argv, "errmgr");
+            opal_argv_append(&argc, &argv, "orcm");
         }
 
         opal_argv_append(&argc, &argv, "-mca");

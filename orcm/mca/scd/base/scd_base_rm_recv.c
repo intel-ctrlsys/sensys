@@ -86,7 +86,13 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
     orcm_alloc_t *alloc;
     orcm_session_t *session;
     bool found;
-
+#if OPAL_HAVE_HWLOC
+    bool have_hwloc_topo;
+    hwloc_topology_t *topo;
+    hwloc_obj_t device_obj = NULL;
+    int socket, core, thread;
+#endif
+    
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:rm:receive processing msg",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
@@ -116,6 +122,31 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
             ORTE_ERROR_LOG(rc);
             return;
         }
+#if OPAL_HAVE_HWLOC
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &have_hwloc_topo,
+                                                  &cnt, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        if (have_hwloc_topo) {
+            cnt = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &topo,
+                                                      &cnt, OPAL_HWLOC_TOPO))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            if(10 < opal_output_get_verbosity(orcm_scd_base_framework.framework_output)) {
+                opal_output(0, "-------------------------------------------");
+                opal_output(0, "%s scd:base:rm:receive RECEIVED NODE %s:",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                            ORTE_NAME_PRINT(&node));
+                opal_dss.dump(0, topo, OPAL_HWLOC_TOPO);
+                opal_output(0, "-------------------------------------------");
+            }
+        }
+#endif
+
 
         /* set node to state */
         found = false;
@@ -130,6 +161,9 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                                                             &node)) {
                 found = true;
                 nodeptr->state = state;
+#if OPAL_HAVE_HWLOC
+                nodeptr->topology = *topo;
+#endif
                 /* set to available for now, eventually pass this off to scheduler */
                 nodeptr->scd_state = ORCM_SCD_NODE_STATE_UNALLOC;
                 OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,

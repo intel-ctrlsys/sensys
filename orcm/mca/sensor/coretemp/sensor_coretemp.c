@@ -214,16 +214,21 @@ static int init(void)
             {
                 if (NULL != (trk->label = orte_getline(fp)))
                 {
-                    if(NULL == (ptr = strcasestr(trk->label,"core"))) {
+                    if(NULL != (ptr = strcasestr(trk->label,"core"))) {
+                        fclose(fp);
+                        free(filename);
+                        trk->core = strtol(trk->label+strlen("core "), NULL, 10); /* This stores the core ID under each processor*/
+                    } else if (NULL != (ptr = strcasestr(trk->label,"Physical id "))) {
+                        fclose(fp);
+                        free(filename);
+                        trk->core = strtol(trk->label+strlen("Physical id "), NULL, 10); /* This stores the Package ID of each processor*/
+                    } else {
                         fclose(fp);
                         free(filename);
                         free(tmp);
                         OBJ_RELEASE(trk);
                         continue; /* We only collect core temperatures for now*/
                     }
-                    fclose(fp);
-                    free(filename);
-                    trk->core = strtol(trk->label+strlen("core "), NULL, 10); /* This stores the core ID under each processor*/
                 } else {
                     ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
                     fclose(fp);
@@ -292,10 +297,12 @@ static int init(void)
             /* add to our list, in core order */
             inserted = false;
             OPAL_LIST_FOREACH(t2, &foobar, coretemp_tracker_t) {
-                if (t2->core > trk->core) {
-                    opal_list_insert_pos(&foobar, &t2->super, &trk->super);
-                    inserted = true;
-                    break;
+                if (NULL != strcasestr(trk->label,"core")) {
+                    if (t2->core > trk->core) {
+                        opal_list_insert_pos(&foobar, &t2->super, &trk->super);
+                        inserted = true;
+                        break;
+                    }
                 }
             }
             if (!inserted) {
@@ -308,7 +315,10 @@ static int init(void)
         closedir(tdir);
         /* add the ordered list to our collection */
         while (NULL != (t2 = (coretemp_tracker_t*)opal_list_remove_first(&foobar))) {
-            t2->core = corecount++;
+            if(NULL != strcasestr(t2->label,"core")) {
+                t2->core = corecount++;
+                sprintf(t2->label, "Core %d", t2->core);
+            }
             opal_list_append(&tracking, &t2->super);
         }
         OPAL_LIST_DESTRUCT(&foobar);
@@ -421,7 +431,7 @@ static void coretemp_sample(orcm_sensor_sampler_t *sampler)
             OBJ_RELEASE(trk);
             continue;
         }
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &trk->core, 1, OPAL_INT))) {
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &trk->label, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             fclose(fp);
             OBJ_DESTRUCT(&data);
@@ -490,7 +500,8 @@ static void coretemp_log(opal_buffer_t *sample)
     opal_list_t *vals;
     opal_value_t *kv;
     float fval;
-    int i, core;
+    int i;
+    char *core_label;
 
     if (!log_enabled) {
         return;
@@ -550,11 +561,11 @@ static void coretemp_log(opal_buffer_t *sample)
     for (i=0; i < ncores; i++) {
         kv = OBJ_NEW(opal_value_t);
         n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &core, &n, OPAL_INT))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &core_label, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        asprintf(&kv->key, "core%d:degrees C", core);
+        asprintf(&kv->key, "%s:degrees C", core_label);
         kv->type = OPAL_FLOAT;
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {

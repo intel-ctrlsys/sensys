@@ -325,7 +325,7 @@ static int init(void)
         while (NULL != (t2 = (coretemp_tracker_t*)opal_list_remove_first(&foobar))) {
             if(NULL != strcasestr(t2->label,"core")) {
                 t2->core = corecount++;
-                sprintf(t2->label, "Core %d", t2->core);
+                sprintf(t2->label, "core %d", t2->core);
             }
             opal_list_append(&tracking, &t2->super);
         }

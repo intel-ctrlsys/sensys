@@ -80,6 +80,8 @@ typedef struct {
     opal_list_t queues;
     /* node tracking */
     opal_pointer_array_t nodes;
+    /* unique node topologies */
+    opal_pointer_array_t topologies;
 } orcm_scd_base_t;
 ORCM_DECLSPEC extern orcm_scd_base_t orcm_scd_base;
 

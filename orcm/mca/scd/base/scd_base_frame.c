@@ -111,6 +111,8 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
     OBJ_CONSTRUCT(&orcm_scd_base.queues, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.nodes, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_scd_base.nodes, 8, INT_MAX, 8);
+    OBJ_CONSTRUCT(&orcm_scd_base.topologies, opal_pointer_array_t);
+    opal_pointer_array_init(&orcm_scd_base.topologies, 1, INT_MAX, 1);
 
     if (OPAL_SUCCESS !=
         (rc = mca_base_framework_components_open(&orcm_scd_base_framework,

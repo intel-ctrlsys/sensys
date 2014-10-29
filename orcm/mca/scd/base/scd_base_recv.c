@@ -116,8 +116,9 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         session = OBJ_NEW(orcm_session_t);
         session->alloc = alloc;
         session->id = orcm_scd_base_get_next_session_id();
-        session->alloc->id = session->id;
-        session->alloc->node_power_budget = orcm_scd_base_get_node_power_budget();
+        alloc->id = session->id;
+        alloc->node_power_budget = orcm_scd_base_get_cluster_power_budget() / orcm_scd_base.nodes.size;
+        alloc->alloc_power_budget = alloc->node_power_budget * alloc->min_nodes;
 
         /* send session id back to sender */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &session->id,
@@ -288,7 +289,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         }
         
         /* send confirmation back to sender */
-        result = orcm_scd_base_set_node_power_budget(power_budget);
+        result = orcm_scd_base_set_cluster_power_budget(power_budget);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(ans);
@@ -304,7 +305,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         }
         return;
     } else if (ORCM_GET_POWER_BUDGET_COMMAND == command) {
-        power_budget = orcm_scd_base_get_node_power_budget();
+        power_budget = orcm_scd_base_get_cluster_power_budget();
         /* send power budget back to sender */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &power_budget, 1, OPAL_INT))) {
             ORTE_ERROR_LOG(rc);

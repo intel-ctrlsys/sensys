@@ -62,6 +62,8 @@ OBJ_CLASS_DECLARATION(orcm_scheduler_caddy_t);
 typedef struct {
     /* flag that we just want to test */
     bool test_mode;
+    /* cluster power budget in Watts */
+    int power_budget;
     /* define an event base strictly for scheduling - this
      * allows the scheduler to respond to requests for
      * information without interference with the
@@ -122,8 +124,8 @@ ORCM_DECLSPEC int orcm_scd_base_rm_add_session_state(orcm_scd_session_state_t st
                                                      int priority);
 ORCM_DECLSPEC void orcm_scd_base_construct_queues(int fd, short args, void *cbdata);
 ORCM_DECLSPEC int orcm_scd_base_get_next_session_id(void);
-ORCM_DECLSPEC int orcm_scd_base_get_node_power_budget(void);
-ORCM_DECLSPEC int orcm_scd_base_set_node_power_budget(int budget);
+ORCM_DECLSPEC int orcm_scd_base_get_cluster_power_budget(void);
+ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_budget(int budget);
 
 END_C_DECLS
 #endif

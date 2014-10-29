@@ -133,7 +133,7 @@ int orcm_octl_power_get(char **argv)
         return rc;
     }
     
-    printf("Current per node power budget: %i\n", power_budget);
+    printf("Current cluster power budget: %i\n", power_budget);
 
     return ORCM_SUCCESS;
 }

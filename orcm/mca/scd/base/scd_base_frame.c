@@ -38,7 +38,6 @@
 orcm_scd_base_t orcm_scd_base;
 
 /* these will eventually be queried from persistent store */
-int node_power_budget = 0;
 static orcm_session_id_t last_session_id = 0;
 
 int orcm_scd_base_get_next_session_id() {
@@ -46,17 +45,26 @@ int orcm_scd_base_get_next_session_id() {
     return last_session_id;
 }
 
-int orcm_scd_base_get_node_power_budget() {
-    return node_power_budget;
+int orcm_scd_base_get_cluster_power_budget() {
+    return orcm_scd_base.power_budget;
 }
 
-int orcm_scd_base_set_node_power_budget(int budget) {
-    node_power_budget = budget;
+int orcm_scd_base_set_cluster_power_budget(int budget) {
+    orcm_scd_base.power_budget = budget;
     return ORCM_SUCCESS;
 }
 
 static int orcm_scd_base_register(mca_base_register_flag_t flags)
 {
+    /* get default power budget for cluster */
+    orcm_scd_base.power_budget = -1;
+    (void) mca_base_var_register("orcm", "scd", "base", "power_budget",
+                                 "ORCM Cluster power budget",
+                                 MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                 OPAL_INFO_LVL_9,
+                                 MCA_BASE_VAR_SCOPE_READONLY,
+                                 &orcm_scd_base.power_budget);
+
     /* do we want to just test the scheduler? */
     orcm_scd_base.test_mode = false;
     (void) mca_base_var_register("orcm", "scd", "base", "test_mode",
@@ -236,6 +244,7 @@ static void alloc_con(orcm_alloc_t *p)
     p->queues = NULL;
     p->batchfile = NULL;
     p->node_power_budget = 0;
+    p->alloc_power_budget = 0;
     p->notes = NULL;
     OBJ_CONSTRUCT(&p->constraints, opal_list_t);
 }

@@ -67,9 +67,9 @@ static orcm_cli_init_t cli_init[] = {
     /****** power command ******/
     { { NULL }, "power", 0, 0, "Power Budget" },
     // cpu subcommand
-    { { "power", NULL }, "set", 0, 1, "Set Node Power Budget" },
+    { { "power", NULL }, "set", 0, 1, "Set Cluster Power Budget" },
     // mem subcommand
-    { { "power", NULL }, "get", 0, 0, "Get Node Power Budget" },
+    { { "power", NULL }, "get", 0, 0, "Get Cluster Power Budget" },
 
     /* End of list */
     { { NULL }, NULL, 0, 0, NULL }

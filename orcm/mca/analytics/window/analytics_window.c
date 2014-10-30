@@ -57,5 +57,5 @@ static void analyze(int sd, short args, void *cbdata)
     mca_analytics_window_module_t *mod;
     mod = (mca_analytics_window_module_t*)caddy->imod;
 
-    OBJ_RELEASE(cbdata);
+    OBJ_RELEASE(caddy);
 }

@@ -19,10 +19,10 @@
 #include "opal/threads/threads.h"
 #include "opal/util/fd.h"
 #include "opal/util/output.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 
-#include "orcm/runtime/orcm_progress.h"
 #include "orcm/mca/scd/base/base.h"
 
 
@@ -34,26 +34,37 @@
 
 #include "orcm/mca/scd/base/static-components.h"
 
-/*
- * Global variables
- */
-orcm_scd_API_module_t orcm_scd = {
-    orcm_scd_base_activate_session_state,
-    orcm_scd_base_rm_activate_session_state
-};
+/* Global vars */
 orcm_scd_base_t orcm_scd_base;
 
-/* local vars */
-static void* progress_thread_engine(opal_object_t *obj);
-orcm_session_id_t last_session_id = 0;
+/* these will eventually be queried from persistent store */
+static orcm_session_id_t last_session_id = 0;
 
 int orcm_scd_base_get_next_session_id() {
     last_session_id++;
     return last_session_id;
 }
 
+int orcm_scd_base_get_cluster_power_budget() {
+    return orcm_scd_base.power_budget;
+}
+
+int orcm_scd_base_set_cluster_power_budget(int budget) {
+    orcm_scd_base.power_budget = budget;
+    return ORCM_SUCCESS;
+}
+
 static int orcm_scd_base_register(mca_base_register_flag_t flags)
 {
+    /* get default power budget for cluster */
+    orcm_scd_base.power_budget = -1;
+    (void) mca_base_var_register("orcm", "scd", "base", "power_budget",
+                                 "ORCM Cluster power budget",
+                                 MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                 OPAL_INFO_LVL_9,
+                                 MCA_BASE_VAR_SCOPE_READONLY,
+                                 &orcm_scd_base.power_budget);
+
     /* do we want to just test the scheduler? */
     orcm_scd_base.test_mode = false;
     (void) mca_base_var_register("orcm", "scd", "base", "test_mode",
@@ -67,17 +78,37 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
 
 static int orcm_scd_base_close(void)
 {
-    if (orcm_scd_base.ev_active) {
-        orcm_scd_base.ev_active = false;
-        /* stop the thread */
-        orcm_stop_progress_thread("scd", true);
-    }
+    int i;
+    hwloc_topology_t t;
+    orcm_node_t *node;
+    
+    /* stop the thread */
+    opal_stop_progress_thread("scd", true);
 
     /* deconstruct the base objects */
     OPAL_LIST_DESTRUCT(&orcm_scd_base.states);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.rmstates);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.queues);
     
+    for (i = 0; i < orcm_scd_base.topologies.size; i++) {
+        if (NULL != (t = (hwloc_topology_t)opal_pointer_array_get_item(&orcm_scd_base.topologies, i))) {
+            hwloc_topology_destroy(t);
+        }
+    }
+    OBJ_DESTRUCT(&orcm_scd_base.topologies);
+    
+    for (i = 0; i < orcm_scd_base.nodes.size; i++) {
+        if (NULL != (node = (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, i))) {
+            OBJ_RELEASE(node);
+        }
+    }
+    OBJ_DESTRUCT(&orcm_scd_base.nodes);
+    
+    /* give the selected plugin a chance to finalize */
+    if (NULL != orcm_scd_base.module->finalize) {
+        orcm_scd_base.module->finalize();
+    }
+
     /* finalize the resource management service */
     scd_base_rm_finalize();
 
@@ -93,12 +124,13 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
     int rc;
 
     /* setup the base objects */
-    orcm_scd_base.ev_active = false;
     OBJ_CONSTRUCT(&orcm_scd_base.states, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.rmstates, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.queues, opal_list_t);
     OBJ_CONSTRUCT(&orcm_scd_base.nodes, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_scd_base.nodes, 8, INT_MAX, 8);
+    OBJ_CONSTRUCT(&orcm_scd_base.topologies, opal_pointer_array_t);
+    opal_pointer_array_init(&orcm_scd_base.topologies, 1, INT_MAX, 1);
 
     if (OPAL_SUCCESS !=
         (rc = mca_base_framework_components_open(&orcm_scd_base_framework,
@@ -107,12 +139,8 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
     }
 
     /* create the event base */
-    orcm_scd_base.ev_active = true;
     if (NULL ==
-        (orcm_scd_base.ev_base = orcm_start_progress_thread("scd",
-                                                            progress_thread_engine,
-                                                            NULL))) {
-        orcm_scd_base.ev_active = false;
+        (orcm_scd_base.ev_base = opal_start_progress_thread("scd", true))) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
     
@@ -122,14 +150,6 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
 MCA_BASE_FRAMEWORK_DECLARE(orcm, scd, NULL, orcm_scd_base_register,
                            orcm_scd_base_open, orcm_scd_base_close,
                            mca_scd_base_static_components, 0);
-
-static void* progress_thread_engine(opal_object_t *obj)
-{
-    while (orcm_scd_base.ev_active) {
-        opal_event_loop(orcm_scd_base.ev_base, OPAL_EVLOOP_ONCE);
-    }
-    return OPAL_THREAD_CANCELLED;
-}
 
 const char *orcm_scd_session_state_to_str(orcm_scd_session_state_t state)
 {
@@ -242,6 +262,10 @@ static void alloc_con(orcm_alloc_t *p)
     p->nodefile = NULL;
     p->nodes = NULL;
     p->queues = NULL;
+    p->batchfile = NULL;
+    p->node_power_budget = 0;
+    p->alloc_power_budget = 0;
+    p->notes = NULL;
     OBJ_CONSTRUCT(&p->constraints, opal_list_t);
 }
 static void alloc_des(orcm_alloc_t *p)
@@ -272,6 +296,12 @@ static void alloc_des(orcm_alloc_t *p)
     }
     if (NULL != p->queues) {
         free(p->queues);
+    }
+    if (NULL != p->batchfile) {
+        free(p->batchfile);
+    }
+    if (NULL != p->notes) {
+        free(p->notes);
     }
     OPAL_LIST_DESTRUCT(&p->constraints);
 }

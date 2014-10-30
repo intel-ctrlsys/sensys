@@ -222,6 +222,10 @@ static void nd_con(orcm_node_t *p)
     OBJ_CONSTRUCT(&p->config, orcm_config_t);
     p->state = ORCM_NODE_STATE_UNDEF;
     p->scd_state = ORCM_SCD_NODE_STATE_UNDEF;
+    p->npes = 0;
+#if OPAL_HAVE_HWLOC
+    p->topology = NULL;
+#endif
 }
 static void nd_des(orcm_node_t *p)
 {

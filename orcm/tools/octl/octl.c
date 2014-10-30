@@ -351,6 +351,33 @@ static void run_cmd(char *cmd) {
                 break;
         }
         break;
+    case 15: // power
+        rc = octl_command_to_int(cmdlist[1]);
+        if (-1 == rc) {
+            fullcmd = opal_argv_join(cmdlist, ' ');
+            printf("Unknown command: %s\n", fullcmd);
+            free(fullcmd);
+            break;
+        }
+        
+        switch (rc) {
+            case 16: //set
+                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(cmdlist))) {
+                    ORTE_ERROR_LOG(rc);
+                }
+                break;
+            case 17: //get
+                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(cmdlist))) {
+                    ORTE_ERROR_LOG(rc);
+                }
+                break;
+            default:
+                fullcmd = opal_argv_join(cmdlist, ' ');
+                printf("Illegal command: %s\n", fullcmd);
+                free(fullcmd);
+                break;
+        }
+        break;
     default:
         fullcmd = opal_argv_join(cmdlist, ' ');
         printf("Illegal command: %s\n", fullcmd);

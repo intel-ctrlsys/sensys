@@ -26,9 +26,7 @@ static int external_cancel(orcm_session_id_t sessionid);
 
 orcm_scd_base_module_t orcm_scd_external_module = {
     init,
-    finalize,
-    external_launch,
-    external_cancel
+    finalize
 };
 
 static void external_terminated(int sd, short args, void *cbdata);

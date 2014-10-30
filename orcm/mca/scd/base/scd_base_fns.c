@@ -27,7 +27,7 @@
 #include "orcm/mca/scd/base/base.h"
 
 void orcm_scd_base_activate_session_state(orcm_session_t *session,
-                                            orcm_scd_session_state_t state)
+                                          orcm_scd_session_state_t state)
 {
     orcm_scd_state_t *s, *any=NULL, *error=NULL;
     orcm_session_caddy_t *caddy;
@@ -96,8 +96,8 @@ void orcm_scd_base_activate_session_state(orcm_session_t *session,
 
 
 int orcm_scd_base_add_session_state(orcm_scd_session_state_t state,
-                                      orcm_scd_state_cbfunc_t cbfunc,
-                                      int priority)
+                                    orcm_scd_state_cbfunc_t cbfunc,
+                                    int priority)
 {
     orcm_scd_state_t *st;
 
@@ -135,6 +135,12 @@ void orcm_scd_base_construct_queues(int fd, short args, void *cbdata)
     /* push our running queue onto the stack */
     def = OBJ_NEW(orcm_queue_t);
     def->name = strdup("running");
+    def->priority = 0;
+    opal_list_append(&orcm_scd_base.queues, &def->super);
+    
+    /* push our hold queue onto the stack */
+    def = OBJ_NEW(orcm_queue_t);
+    def->name = strdup("hold");
     def->priority = 0;
     opal_list_append(&orcm_scd_base.queues, &def->super);
 

@@ -82,6 +82,8 @@ typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_STEPD_COMPLETE_COMMAND   7
 #define ORCM_JOB_COMPLETE_COMMAND     8
 #define ORCM_CALIBRATE_COMMAND        9
+#define ORCM_SET_POWER_BUDGET_COMMAND 10
+#define ORCM_GET_POWER_BUDGET_COMMAND 11
 
 /** version string of ORCM */
 ORCM_DECLSPEC extern const char openrcm_version_string[];

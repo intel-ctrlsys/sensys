@@ -83,7 +83,10 @@ typedef struct {
     char *nodefile;           // file listing names and/or regex of candidate nodes to be used
     char *nodes;              // regex of nodes to be used
     char *queues;             // comma-delimited list of queue names
-    char *batchfile;        // batch script file 
+    char *batchfile;          // batch script file
+    int node_power_budget;    // power budget per node (Watts)
+    int alloc_power_budget;   // power budget for allocation (Watts)
+    char *notes;              // information about the allocation
     opal_list_t constraints;  // list of resource constraints to be applied when selecting hosts
 } orcm_alloc_t;
 OBJ_CLASS_DECLARATION(orcm_alloc_t);

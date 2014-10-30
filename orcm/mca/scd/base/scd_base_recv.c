@@ -76,7 +76,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                void* cbdata)
 {
     orcm_scd_cmd_flag_t command;
-    int rc, i, j, cnt, result;
+    int rc, i, j, cnt, result, power_budget;
     orcm_alloc_t *alloc, **allocs;
     opal_buffer_t *ans;
     orcm_session_t *session;
@@ -116,7 +116,9 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         session = OBJ_NEW(orcm_session_t);
         session->alloc = alloc;
         session->id = orcm_scd_base_get_next_session_id();
-        session->alloc->id = session->id;
+        alloc->id = session->id;
+        alloc->node_power_budget = orcm_scd_base_get_cluster_power_budget() / orcm_scd_base.nodes.size;
+        alloc->alloc_power_budget = alloc->node_power_budget * alloc->min_nodes;
 
         /* send session id back to sender */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &session->id,
@@ -278,17 +280,46 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         }
 
         return;
-    } else if (ORCM_VM_READY_COMMAND == command) {
-        /* get session id to see which one is ready */
+    } else if (ORCM_SET_POWER_BUDGET_COMMAND == command) {
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sessionid,
-                                                  &cnt, ORCM_ALLOC_ID_T))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &power_budget,
+                                                  &cnt, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            goto answer;
+        }
+        
+        /* send confirmation back to sender */
+        result = orcm_scd_base_set_cluster_power_budget(power_budget);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(ans);
             return;
         }
-        /* TODO tell orun that VM is ready */
-    } else if (ORCM_RUN_COMMAND == command) {
+        if (ORTE_SUCCESS !=
+            (rc = orte_rml.send_buffer_nb(sender, ans,
+                                          ORCM_RML_TAG_SCD,
+                                          orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
+        return;
+    } else if (ORCM_GET_POWER_BUDGET_COMMAND == command) {
+        power_budget = orcm_scd_base_get_cluster_power_budget();
+        /* send power budget back to sender */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &power_budget, 1, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
+        if (ORTE_SUCCESS !=
+            (rc = orte_rml.send_buffer_nb(sender, ans,
+                                          ORCM_RML_TAG_SCD,
+                                          orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
         return;
     }
 

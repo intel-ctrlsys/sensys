@@ -16,7 +16,6 @@
 #include "opal/mca/base/base.h"
 #include "opal/mca/event/event.h"
 #include "opal/dss/dss.h"
-#include "opal/runtime/opal_progress_threads.h"
 #include "opal/util/output.h"
 
 #include "orte/mca/errmgr/errmgr.h"
@@ -24,6 +23,7 @@
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
 
+#include "orcm/runtime/orcm_progress.h"
 
 /*
  * The following file was created by configure.  It contains extern
@@ -109,7 +109,7 @@ static void wk_con(orcm_workflow_t *p)
 static void wk_des(orcm_workflow_t *p)
 {
     if (NULL != p->ev_base) {
-        opal_stop_progress_thread(p->name, true);
+        orcm_stop_progress_thread(p->name, true);
     }
     if (NULL != p->name) {
         free(p->name);

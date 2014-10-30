@@ -36,7 +36,7 @@ BEGIN_C_DECLS
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),          \
                             (a)->id, orcm_scd_session_state_to_str((b)), \
                             __FILE__, __LINE__);                         \
-        orcm_scd.activate_scd_session_state((a), (b));                   \
+        orcm_scd_base_activate_session_state((a), (b));                 \
     } while(0);
 
 #define ORCM_ACTIVATE_RM_STATE(a, b)                                     \
@@ -46,7 +46,7 @@ BEGIN_C_DECLS
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),          \
                             (a)->id, orcm_rm_session_state_to_str((b)),  \
                             __FILE__, __LINE__);                         \
-        orcm_scd.activate_rm_session_state((a), (b));                    \
+        orcm_scd_base_rm_activate_session_state((a), (b));              \
     } while(0);
 
 
@@ -60,19 +60,13 @@ typedef int (*orcm_scd_base_module_init_fn_t)(void);
 /* finalize the selected module */
 typedef void (*orcm_scd_base_module_finalize_fn_t)(void);
 
-/* API functions */
-typedef int (*orcm_scd_API_module_launch_fn_t)(orcm_session_t *session);
-typedef int (*orcm_scd_API_module_cancel_fn_t)(orcm_session_id_t sessionid);
-
 /*
  * Ver 1.0
  */
 typedef struct {
     orcm_scd_base_module_init_fn_t     init;
     orcm_scd_base_module_finalize_fn_t finalize;
-    orcm_scd_API_module_launch_fn_t    launch;
-    orcm_scd_API_module_cancel_fn_t    cancel;
-} orcm_scd_base_module_t;
+ } orcm_scd_base_module_t;
 
 /*
  * the standard component data structure
@@ -82,17 +76,6 @@ typedef struct {
     mca_base_component_data_t base_data;
 } orcm_scd_base_component_t;
 
-/* define an API module */
-typedef void (*orcm_scd_API_module_activate_scd_session_state_fn_t)(orcm_session_t *s,
-                                                                    orcm_scd_session_state_t state);
-typedef void (*orcm_scd_API_module_activate_rm_session_state_fn_t)(orcm_session_t *s,
-                                                                   orcm_scd_base_rm_session_state_t state);
-
-typedef struct {
-    orcm_scd_API_module_activate_scd_session_state_fn_t activate_scd_session_state;
-    orcm_scd_API_module_activate_rm_session_state_fn_t  activate_rm_session_state;
-} orcm_scd_API_module_t;
-
 /*
  * Macro for use in components that are of type scd v1.0.0
  */
@@ -101,11 +84,6 @@ typedef struct {
   MCA_BASE_VERSION_2_0_0, \
   /* scd v1.0 */ \
   "scd", 1, 0, 0
-
-/* Global structure for accessing name server functions
- */
-/* holds API function pointers */
-ORCM_DECLSPEC extern orcm_scd_API_module_t orcm_scd;
 
 END_C_DECLS
 

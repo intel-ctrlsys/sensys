@@ -77,12 +77,61 @@ static int sigar_component_register(void)
 {
     mca_base_component_t *c = &mca_sensor_sigar_component.super.base_version;
 
-     mca_sensor_sigar_component.test = false;
+    mca_sensor_sigar_component.test = false;
     (void) mca_base_component_var_register (c, "test",
                                             "Generate and pass test vector",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_sigar_component.test);
+    mca_sensor_sigar_component.mem = true;
+    (void) mca_base_component_var_register (c, "mem",
+                                            "Enable collecting memory usage",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_sigar_component.mem);
+    mca_sensor_sigar_component.swap = true;
+    (void) mca_base_component_var_register (c, "swap",
+                                            "Enabale collecting swap usage",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_sigar_component.swap);
+    mca_sensor_sigar_component.cpu = true;
+    (void) mca_base_component_var_register (c, "cpu",
+                                            "Enable collecting cpu usage",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_sigar_component.cpu);
+    mca_sensor_sigar_component.load = true;
+    (void) mca_base_component_var_register (c, "load",
+                                            "Enable collecting cpu load",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_sigar_component.load);
+    mca_sensor_sigar_component.disk = true;
+    (void) mca_base_component_var_register (c, "disk",
+                                            "Enable collecting disk usage",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_sigar_component.disk);
+    mca_sensor_sigar_component.network = true;
+    (void) mca_base_component_var_register (c, "network",
+                                            "Enable collecting network usage",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_sigar_component.network);
+    mca_sensor_sigar_component.proc = 0;
+    (void) mca_base_component_var_register (c, "proc",
+                                            "Enable collecting process information with the pid passed",
+                                            MCA_BASE_VAR_TYPE_UNSIGNED_LONG, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_sigar_component.proc);
     return ORCM_SUCCESS;
 }

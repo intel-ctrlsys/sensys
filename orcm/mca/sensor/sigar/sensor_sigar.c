@@ -266,6 +266,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     char *timestamp_str;
     struct tm *sample_time;
     char *error_string;
+    bool log_group=false;
 
     if (mca_sensor_sigar_component.test) {
         /* just send the test vector */
@@ -310,268 +311,378 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     }
     free(timestamp_str);
 
-    /* get the memory usage for this node */
-    memset(&mem, 0, sizeof(mem));
-    if (SIGAR_OK != (rc = sigar_mem_get(sigar, &mem))) {
-        error_string = strerror(rc);
-        opal_output(0, "sigar_mem_get failed: %s", error_string);
-    }
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                        "mem total: %" PRIu64 " used: %" PRIu64 " actual used: %" PRIu64 " actual free: %" PRIu64 "",
-                        (uint64_t)mem.total, (uint64_t)mem.used, (uint64_t)mem.actual_used, (uint64_t)mem.actual_free);
-    /* add it to the data */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.total, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.used, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.actual_used, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.actual_free, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
+    if(mca_sensor_sigar_component.mem) {
+        opal_output(0,"Sampling MEMORY");
+        log_group = true;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
 
-    /* get swap data */
-    memset(&swap, 0, sizeof(swap));
-    if (SIGAR_OK != (rc = sigar_swap_get(sigar, &swap))) {
-        error_string = strerror(rc);
-        opal_output(0, "sigar_swap_get failed: %s", error_string);
-    }
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                        "swap total: %" PRIu64 " used: %" PRIu64 "page_in: %" PRIu64 " page_out: %" PRIu64 "\n",
-                        (uint64_t)swap.total, (uint64_t)swap.used, (uint64_t)swap.page_in, (uint64_t)swap.page_out);
-    /* compute the values we actually want and add them to the data */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &swap.total, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &swap.used, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    ui64 = swap.page_in - pswap.page_in;
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &ui64, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    ui64 = swap.page_out - pswap.page_out;
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &ui64, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-
-    /* get the cpu usage */
-    memset(&cpu, 0, sizeof(cpu));
-    if (SIGAR_OK != (rc = sigar_cpu_get(sigar, &cpu))) {
-        error_string = strerror(rc);
-        opal_output(0, "sigar_cpu_get failed: %s", error_string);
-    }
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                        "cpu user: %" PRIu64 " sys: %" PRIu64 " idle: %" PRIu64 " wait: %" PRIu64 " nice: %" PRIu64 " total: %" PRIu64 "", 
-			(uint64_t)cpu.user, (uint64_t)cpu.sys, (uint64_t)cpu.idle, (uint64_t)cpu.wait, (uint64_t)cpu.nice, (uint64_t)cpu.total);
-    /* compute the values we actually want and add them to the data */
-    cpu_diff = (double)(cpu.total - pcpu.total);
-    tmp = (float)((cpu.user - pcpu.user) * 100.0 / cpu_diff) + (float)((cpu.nice - pcpu.nice) * 100.0 / cpu_diff);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    tmp = ((float) (cpu.sys - pcpu.sys) * 100.0 / cpu_diff) + ((float)((cpu.wait - pcpu.wait) * 100.0 / cpu_diff));
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    tmp = (float) (cpu.idle - pcpu.idle) * 100.0 / cpu_diff;
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    /* update the values */
-    pcpu.user = cpu.user;
-    pcpu.nice = cpu.nice;
-    pcpu.sys = cpu.sys;
-    pcpu.wait = cpu.wait;
-    pcpu.idle = cpu.idle;
-    pcpu.total = cpu.total;
-
-    /* get load average data */
-    memset(&loadavg, 0, sizeof(loadavg));
-    if (SIGAR_OK != (rc = sigar_loadavg_get(sigar, &loadavg))) {
-        error_string = strerror(rc);
-        opal_output(0, "sigar_loadavg_get failed: %s", error_string);
-    }
-    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                        "load_avg: %e %e %e",
-                        loadavg.loadavg[0], loadavg.loadavg[1], loadavg.loadavg[2]);
-    /* add them to the data */
-    tmp = (float)loadavg.loadavg[0];
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    tmp = (float)loadavg.loadavg[1];
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    tmp = (float)loadavg.loadavg[2];
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-
-    /* get disk usage data */
-    memset(&tdisk, 0, sizeof(tdisk));
-    OPAL_LIST_FOREACH(dit, &fslist, sensor_sigar_disks_t) {
-        if (SIGAR_OK != (rc = sigar_file_system_usage_get(sigar, dit->mount_pt, &fsusage))) {
+        /* get the memory usage for this node */
+        memset(&mem, 0, sizeof(mem));
+        if (SIGAR_OK != (rc = sigar_mem_get(sigar, &mem))) {
             error_string = strerror(rc);
-            opal_output(0, "sigar_file_system_usage_get failed: %s", error_string);
-            opal_output(0, "%s Failed to get usage data for filesystem %s",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), dit->mount_pt);
-        } else {
-            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                                "FileSystem: %s Reads: %" PRIu64 " Writes: %" PRIu64 " ReadBytes: %" PRIu64 " WriteBytes: %" PRIu64 "", 
-                                dit->mount_pt, (uint64_t)fsusage.disk.reads, (uint64_t)fsusage.disk.writes, (uint64_t)fsusage.disk.read_bytes, (uint64_t)fsusage.disk.write_bytes);
-            /* compute the number of reads since last reading */
-            reads = metric_diff_calc(fsusage.disk.reads, dit->reads, dit->mount_pt, "disk reads");
-            dit->reads = fsusage.disk.reads;  /* old = new */
-            /* compute the number of writes since last reading */
-            writes = metric_diff_calc(fsusage.disk.writes, dit->writes, dit->mount_pt, "disk writes");
-            dit->writes = fsusage.disk.writes;  /* old = new */
-            /* compute the number of read bytes since last reading */
-            read_bytes = metric_diff_calc(fsusage.disk.read_bytes, dit->read_bytes, dit->mount_pt, "disk read bytes");
-            dit->read_bytes = fsusage.disk.read_bytes;  /* old = new */
-            /* compute the number of bytes written since last reading */
-            write_bytes = metric_diff_calc(fsusage.disk.write_bytes, dit->write_bytes, dit->mount_pt, "disk write bytes");
-            dit->write_bytes = fsusage.disk.write_bytes;  /* old = new */
-            opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
-                                "FileSystem: %s ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "", 
-                                dit->mount_pt, (uint64_t)reads, (uint64_t)writes, (uint64_t)read_bytes, (uint64_t)write_bytes);
-            /* accumulate the values */
-            tdisk.reads += reads;
-            tdisk.writes += writes;
-            tdisk.read_bytes += read_bytes;
-            tdisk.write_bytes += write_bytes;
+            opal_output(0, "sigar_mem_get failed: %s", error_string);
+        }
+        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                            "mem total: %" PRIu64 " used: %" PRIu64 " actual used: %" PRIu64 " actual free: %" PRIu64 "",
+                            (uint64_t)mem.total, (uint64_t)mem.used, (uint64_t)mem.actual_used, (uint64_t)mem.actual_free);
+        /* add it to the data */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.total, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.used, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.actual_used, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.actual_free, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+    } else {
+        opal_output(0,"Disabled sampling MEMORY");
+        log_group = false;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
         }
     }
-    opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
-                        "Totals: ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "", 
-                        (uint64_t)tdisk.reads, (uint64_t)tdisk.writes, (uint64_t)tdisk.read_bytes, (uint64_t)tdisk.write_bytes);
-    /* compute the values we actually want and add them to the data */
-    reads = (uint64_t)ceil((double)tdisk.reads/tdiff);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &reads, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    writes = (uint64_t)ceil((double)tdisk.writes/tdiff);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &writes, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    read_bytes = (uint64_t)ceil((double)tdisk.read_bytes/tdiff);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &read_bytes, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    write_bytes = (uint64_t)ceil((double)tdisk.write_bytes/tdiff);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &write_bytes, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
 
-    /* get network usage data */
-    memset(&tnet, 0, sizeof(tnet));
-    OPAL_LIST_FOREACH_SAFE(sit, next, &netlist, sensor_sigar_interface_t) {
-        memset(&ifc, 0, sizeof(ifc));
-        if (SIGAR_OK != (rc = sigar_net_interface_stat_get(sigar, sit->interface, &ifc))) {
+    if(mca_sensor_sigar_component.swap) {
+        opal_output(0,"Sampling SWAP");
+        log_group = true;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        /* get swap data */
+        memset(&swap, 0, sizeof(swap));
+        if (SIGAR_OK != (rc = sigar_swap_get(sigar, &swap))) {
             error_string = strerror(rc);
-            opal_output_verbose(1 , orcm_sensor_base_framework.framework_output,
-                                "sigar_net_interface_stat_get failed: %s", error_string);
-            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                                "%s Failed to get usage data for interface %s",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), sit->interface);
-            /* if we failed to get stats on this interface, remove from the list
-             * so that we stop trying in the future as well */
-            opal_list_remove_item(&netlist, &sit->super);
-            OBJ_RELEASE(sit);
-        } else {
-            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                                "Interface: %s RecvdPackets: %" PRIu64 " RecvdBytes: %" PRIu64 " TransPackets: %" PRIu64 " TransBytes: %" PRIu64 "", 
-                                sit->interface, (uint64_t)ifc.rx_packets, (uint64_t)ifc.rx_bytes, (uint64_t)ifc.tx_packets, (uint64_t)ifc.tx_bytes);
-            /* compute the number of recvd packets since last reading */
-            rxpkts = metric_diff_calc(ifc.rx_packets, sit->rx_packets, sit->interface, "rx packets");
-            sit->rx_packets = ifc.rx_packets;  /* old = new */
-            /* compute the number of transmitted packets since last reading */
-            txpkts = metric_diff_calc(ifc.tx_packets, sit->tx_packets, sit->interface, "tx packets");
-            sit->tx_packets = ifc.tx_packets;  /* old = new */
-            /* compute the number of recvd bytes since last reading */
-            rxbytes = metric_diff_calc(ifc.rx_bytes, sit->rx_bytes, sit->interface, "rx bytes");
-            sit->rx_bytes = ifc.rx_bytes;  /* old = new */
-            /* compute the number of transmitted bytes since last reading */
-            txbytes = metric_diff_calc(ifc.tx_bytes, sit->tx_bytes, sit->interface, "tx bytes");
-            sit->tx_bytes = ifc.tx_bytes;  /* old = new */
-            opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
-                                "Interface: %s RxPkts: %" PRIu64 " TxPkts: %" PRIu64 " RxBytes: %" PRIu64 " TxBytes: %" PRIu64 "", 
-                                sit->interface, (uint64_t)rxpkts, (uint64_t)txpkts, (uint64_t)rxbytes, (uint64_t)txbytes);
-            /* accumulate the values */
-            tnet.rx_packets += rxpkts;
-            tnet.rx_bytes += rxbytes;
-            tnet.tx_packets += txpkts;
-            tnet.tx_bytes += txbytes;
+            opal_output(0, "sigar_swap_get failed: %s", error_string);
+        }
+        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                            "swap total: %" PRIu64 " used: %" PRIu64 "page_in: %" PRIu64 " page_out: %" PRIu64 "\n",
+                            (uint64_t)swap.total, (uint64_t)swap.used, (uint64_t)swap.page_in, (uint64_t)swap.page_out);
+        /* compute the values we actually want and add them to the data */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &swap.total, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &swap.used, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        ui64 = swap.page_in - pswap.page_in;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &ui64, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        ui64 = swap.page_out - pswap.page_out;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &ui64, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+    } else {
+        opal_output(0,"Disabled sampling SWAP");
+        log_group = false;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
         }
     }
-    opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
-                        "Totals: RxPkts: %" PRIu64 " TxPkts: %" PRIu64 " RxBytes: %" PRIu64 " TxBytes: %" PRIu64 "", 
-                        (uint64_t)tnet.rx_packets, (uint64_t)tnet.tx_packets, (uint64_t)tnet.rx_bytes, (uint64_t)tnet.tx_bytes);
-    /* compute the values we actually want and add them to the data */
-    rxpkts = (uint64_t)ceil((double)tnet.rx_packets/tdiff);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &rxpkts, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
+
+    if(mca_sensor_sigar_component.cpu) {
+        opal_output(0,"Sampling CPU Usage");
+        log_group = true;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        /* get the cpu usage */
+        memset(&cpu, 0, sizeof(cpu));
+        if (SIGAR_OK != (rc = sigar_cpu_get(sigar, &cpu))) {
+            error_string = strerror(rc);
+            opal_output(0, "sigar_cpu_get failed: %s", error_string);
+        }
+        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                            "cpu user: %" PRIu64 " sys: %" PRIu64 " idle: %" PRIu64 " wait: %" PRIu64 " nice: %" PRIu64 " total: %" PRIu64 "", 
+                (uint64_t)cpu.user, (uint64_t)cpu.sys, (uint64_t)cpu.idle, (uint64_t)cpu.wait, (uint64_t)cpu.nice, (uint64_t)cpu.total);
+        /* compute the values we actually want and add them to the data */
+        cpu_diff = (double)(cpu.total - pcpu.total);
+        tmp = (float)((cpu.user - pcpu.user) * 100.0 / cpu_diff) + (float)((cpu.nice - pcpu.nice) * 100.0 / cpu_diff);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        tmp = ((float) (cpu.sys - pcpu.sys) * 100.0 / cpu_diff) + ((float)((cpu.wait - pcpu.wait) * 100.0 / cpu_diff));
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        tmp = (float) (cpu.idle - pcpu.idle) * 100.0 / cpu_diff;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        /* update the values */
+        pcpu.user = cpu.user;
+        pcpu.nice = cpu.nice;
+        pcpu.sys = cpu.sys;
+        pcpu.wait = cpu.wait;
+        pcpu.idle = cpu.idle;
+        pcpu.total = cpu.total;
+    } else {
+        opal_output(0,"Disabled sampling CPU Usage");
+        log_group = false;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
     }
-    txpkts = (uint64_t)ceil((double)tnet.tx_packets/tdiff);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &txpkts, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
+
+    if(mca_sensor_sigar_component.load) {
+        opal_output(0,"Sampling average load");
+        log_group = true;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        /* get load average data */
+        memset(&loadavg, 0, sizeof(loadavg));
+        if (SIGAR_OK != (rc = sigar_loadavg_get(sigar, &loadavg))) {
+            error_string = strerror(rc);
+            opal_output(0, "sigar_loadavg_get failed: %s", error_string);
+        }
+        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                            "load_avg: %e %e %e",
+                            loadavg.loadavg[0], loadavg.loadavg[1], loadavg.loadavg[2]);
+        /* add them to the data */
+        tmp = (float)loadavg.loadavg[0];
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        tmp = (float)loadavg.loadavg[1];
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        tmp = (float)loadavg.loadavg[2];
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+    } else {
+        opal_output(0,"Disabled sampling average load");
+        log_group = false;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
     }
-    rxbytes = (uint64_t)ceil((double)tnet.rx_bytes/tdiff);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &rxbytes, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
+
+    if(mca_sensor_sigar_component.disk) {
+        opal_output(0,"Sampling DISK STATS");
+        log_group = true;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        /* get disk usage data */
+        memset(&tdisk, 0, sizeof(tdisk));
+        OPAL_LIST_FOREACH(dit, &fslist, sensor_sigar_disks_t) {
+            if (SIGAR_OK != (rc = sigar_file_system_usage_get(sigar, dit->mount_pt, &fsusage))) {
+                error_string = strerror(rc);
+                opal_output(0, "sigar_file_system_usage_get failed: %s", error_string);
+                opal_output(0, "%s Failed to get usage data for filesystem %s",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), dit->mount_pt);
+            } else {
+                opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                                    "FileSystem: %s Reads: %" PRIu64 " Writes: %" PRIu64 " ReadBytes: %" PRIu64 " WriteBytes: %" PRIu64 "", 
+                                    dit->mount_pt, (uint64_t)fsusage.disk.reads, (uint64_t)fsusage.disk.writes, (uint64_t)fsusage.disk.read_bytes, (uint64_t)fsusage.disk.write_bytes);
+                /* compute the number of reads since last reading */
+                reads = metric_diff_calc(fsusage.disk.reads, dit->reads, dit->mount_pt, "disk reads");
+                dit->reads = fsusage.disk.reads;  /* old = new */
+                /* compute the number of writes since last reading */
+                writes = metric_diff_calc(fsusage.disk.writes, dit->writes, dit->mount_pt, "disk writes");
+                dit->writes = fsusage.disk.writes;  /* old = new */
+                /* compute the number of read bytes since last reading */
+                read_bytes = metric_diff_calc(fsusage.disk.read_bytes, dit->read_bytes, dit->mount_pt, "disk read bytes");
+                dit->read_bytes = fsusage.disk.read_bytes;  /* old = new */
+                /* compute the number of bytes written since last reading */
+                write_bytes = metric_diff_calc(fsusage.disk.write_bytes, dit->write_bytes, dit->mount_pt, "disk write bytes");
+                dit->write_bytes = fsusage.disk.write_bytes;  /* old = new */
+                opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
+                                    "FileSystem: %s ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "", 
+                                    dit->mount_pt, (uint64_t)reads, (uint64_t)writes, (uint64_t)read_bytes, (uint64_t)write_bytes);
+                /* accumulate the values */
+                tdisk.reads += reads;
+                tdisk.writes += writes;
+                tdisk.read_bytes += read_bytes;
+                tdisk.write_bytes += write_bytes;
+            }
+        }
+        opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
+                            "Totals: ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "", 
+                            (uint64_t)tdisk.reads, (uint64_t)tdisk.writes, (uint64_t)tdisk.read_bytes, (uint64_t)tdisk.write_bytes);
+        /* compute the values we actually want and add them to the data */
+        reads = (uint64_t)ceil((double)tdisk.reads/tdiff);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &reads, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        writes = (uint64_t)ceil((double)tdisk.writes/tdiff);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &writes, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        read_bytes = (uint64_t)ceil((double)tdisk.read_bytes/tdiff);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &read_bytes, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        write_bytes = (uint64_t)ceil((double)tdisk.write_bytes/tdiff);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &write_bytes, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+    } else {
+        opal_output(0,"Disabled sampling DISK STATS");
+        log_group = false;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
     }
-    txbytes = (uint64_t)ceil((double)tnet.tx_bytes/tdiff);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &txbytes, 1, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(&data);
-        return;
+
+
+    if(mca_sensor_sigar_component.network) {
+        opal_output(0,"Sampling NETWORK STATS");
+        log_group = true;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        /* get network usage data */
+        memset(&tnet, 0, sizeof(tnet));
+        OPAL_LIST_FOREACH_SAFE(sit, next, &netlist, sensor_sigar_interface_t) {
+            memset(&ifc, 0, sizeof(ifc));
+            if (SIGAR_OK != (rc = sigar_net_interface_stat_get(sigar, sit->interface, &ifc))) {
+                error_string = strerror(rc);
+                opal_output_verbose(1 , orcm_sensor_base_framework.framework_output,
+                                    "sigar_net_interface_stat_get failed: %s", error_string);
+                opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                                    "%s Failed to get usage data for interface %s",
+                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), sit->interface);
+                /* if we failed to get stats on this interface, remove from the list
+                 * so that we stop trying in the future as well */
+                opal_list_remove_item(&netlist, &sit->super);
+                OBJ_RELEASE(sit);
+            } else {
+                opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                                    "Interface: %s RecvdPackets: %" PRIu64 " RecvdBytes: %" PRIu64 " TransPackets: %" PRIu64 " TransBytes: %" PRIu64 "", 
+                                    sit->interface, (uint64_t)ifc.rx_packets, (uint64_t)ifc.rx_bytes, (uint64_t)ifc.tx_packets, (uint64_t)ifc.tx_bytes);
+                /* compute the number of recvd packets since last reading */
+                rxpkts = metric_diff_calc(ifc.rx_packets, sit->rx_packets, sit->interface, "rx packets");
+                sit->rx_packets = ifc.rx_packets;  /* old = new */
+                /* compute the number of transmitted packets since last reading */
+                txpkts = metric_diff_calc(ifc.tx_packets, sit->tx_packets, sit->interface, "tx packets");
+                sit->tx_packets = ifc.tx_packets;  /* old = new */
+                /* compute the number of recvd bytes since last reading */
+                rxbytes = metric_diff_calc(ifc.rx_bytes, sit->rx_bytes, sit->interface, "rx bytes");
+                sit->rx_bytes = ifc.rx_bytes;  /* old = new */
+                /* compute the number of transmitted bytes since last reading */
+                txbytes = metric_diff_calc(ifc.tx_bytes, sit->tx_bytes, sit->interface, "tx bytes");
+                sit->tx_bytes = ifc.tx_bytes;  /* old = new */
+                opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
+                                    "Interface: %s RxPkts: %" PRIu64 " TxPkts: %" PRIu64 " RxBytes: %" PRIu64 " TxBytes: %" PRIu64 "", 
+                                    sit->interface, (uint64_t)rxpkts, (uint64_t)txpkts, (uint64_t)rxbytes, (uint64_t)txbytes);
+                /* accumulate the values */
+                tnet.rx_packets += rxpkts;
+                tnet.rx_bytes += rxbytes;
+                tnet.tx_packets += txpkts;
+                tnet.tx_bytes += txbytes;
+            }
+        }
+        opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
+                            "Totals: RxPkts: %" PRIu64 " TxPkts: %" PRIu64 " RxBytes: %" PRIu64 " TxBytes: %" PRIu64 "", 
+                            (uint64_t)tnet.rx_packets, (uint64_t)tnet.tx_packets, (uint64_t)tnet.rx_bytes, (uint64_t)tnet.tx_bytes);
+        /* compute the values we actually want and add them to the data */
+        rxpkts = (uint64_t)ceil((double)tnet.rx_packets/tdiff);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &rxpkts, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        txpkts = (uint64_t)ceil((double)tnet.tx_packets/tdiff);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &txpkts, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        rxbytes = (uint64_t)ceil((double)tnet.rx_bytes/tdiff);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &rxbytes, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        txbytes = (uint64_t)ceil((double)tnet.tx_bytes/tdiff);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &txbytes, 1, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+    } else {
+        opal_output(0,"Disabled sampling NETWORK STATS");
+        log_group = false;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
     }
+
 
     /* xfer the data for transmission - need at least one prior sample before doing so */
     if (0 < last_sample) {
@@ -606,6 +717,7 @@ static void sigar_log(opal_buffer_t *sample)
     opal_value_t *kv;
     uint64_t uint64;
     float fval;
+    bool log_group = false;
 
     if (!log_enabled) {
         return;
@@ -653,270 +765,323 @@ static void sigar_log(opal_buffer_t *sample)
     kv->data.string = strdup(hostname);
     opal_list_append(vals, &kv->super);
 
-    /* total memory */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("mem_total:kB");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
 
-    /* total used memory */
+    if(log_group) {
+        opal_output(0,"LOGGING MEMORY");
+        /* total memory */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("mem_total:kB");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* total used memory */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("mem_used:kB");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* actual used memory */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("mem_actual_used:kB");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* actual free memory */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("mem_actual_free:kB");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+    } else {
+        opal_output(0,"NOT LOGGING MEMORY");
+    }
+
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("mem_used:kB");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
 
-    /* actual used memory */
+    if(log_group) {
+        opal_output(0,"LOGGING SWAP");
+        /* total swap memory */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("swap_total:kB");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* swap used */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("swap_used:kB");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* swap pages in */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("swap_page_in:kB");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* swap pages out */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("swap_page_out:kB");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+    } else {
+        opal_output(0,"NOT LOGGING SWAP");
+    }
+
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("mem_actual_used:kB");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
 
-    /* actual free memory */
+    if(log_group) {
+        opal_output(0,"LOGGING CPU");
+        /* cpu user */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("cpu_user:%");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = fval;
+        opal_list_append(vals, &kv->super);
+
+        /* cpu sys */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("cpu_sys:%");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = fval;
+        opal_list_append(vals, &kv->super);
+
+        /* cpu idle */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("cpu_idle:%");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = fval;
+        opal_list_append(vals, &kv->super);
+    } else {
+        opal_output(0,"Not LOGGING SWAP");
+    }
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("mem_actual_free:kB");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
 
-    /* total swap memory */
+    if(log_group) {
+        /* la0 */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("load0");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = fval;
+        opal_list_append(vals, &kv->super);
+
+        /* la5 */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("load1");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = fval;
+        opal_list_append(vals, &kv->super);
+
+        /* la15 */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("load2");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = fval;
+        opal_list_append(vals, &kv->super);
+    }
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("swap_total:kB");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
 
-    /* swap used */
+    if(log_group) {    
+        /* disk read ops rate */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_ro_rate:ops/sec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* disk write ops rate */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_wo_rate:ops/sec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* disk read bytes/sec */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_rb_rate:bytes/sec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* disk write bytes/sec */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_wb_rate:bytes/sec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+    }
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("swap_used:kB");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
 
-    /* swap pages in */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        return;
+    if(log_group) {    
+        /* net recv packet rate */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("net_rp_rate:packets/sec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* net tx packet rate */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("net_wp_rate:packets/sec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* net recv bytes rate */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("net_rb_rate:bytes/sec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* net tx bytes rate */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("net_wb_rate:bytes/sec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
     }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("swap_page_in:kB");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
-
-    /* swap pages out */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("swap_page_out:kB");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
-
-    /* cpu user */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("cpu_user:%");
-    kv->type = OPAL_FLOAT;
-    kv->data.fval = fval;
-    opal_list_append(vals, &kv->super);
-
-    /* cpu sys */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("cpu_sys:%");
-    kv->type = OPAL_FLOAT;
-    kv->data.fval = fval;
-    opal_list_append(vals, &kv->super);
-
-    /* cpu idle */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("cpu_idle:%");
-    kv->type = OPAL_FLOAT;
-    kv->data.fval = fval;
-    opal_list_append(vals, &kv->super);
-
-    /* la0 */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("load0");
-    kv->type = OPAL_FLOAT;
-    kv->data.fval = fval;
-    opal_list_append(vals, &kv->super);
-
-    /* la5 */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("load1");
-    kv->type = OPAL_FLOAT;
-    kv->data.fval = fval;
-    opal_list_append(vals, &kv->super);
-
-    /* la15 */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("load2");
-    kv->type = OPAL_FLOAT;
-    kv->data.fval = fval;
-    opal_list_append(vals, &kv->super);
-
-    /* disk read ops rate */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("disk_ro_rate:ops/sec");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
-
-    /* disk write ops rate */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("disk_wo_rate:ops/sec");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
-
-    /* disk read bytes/sec */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("disk_rb_rate:bytes/sec");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
-
-    /* disk write bytes/sec */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("disk_wb_rate:bytes/sec");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
-
-    /* net recv packet rate */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("net_rp_rate:packets/sec");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
-
-    /* net tx packet rate */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("net_wp_rate:packets/sec");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
-
-    /* net recv bytes rate */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("net_rb_rate:bytes/sec");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
-
-    /* net tx bytes rate */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("net_wb_rate:bytes/sec");
-    kv->type = OPAL_UINT64;
-    kv->data.uint64 = uint64;
-    opal_list_append(vals, &kv->super);
-
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store(orcm_sensor_base.dbhandle, "sigar", vals, mycleanup, NULL);

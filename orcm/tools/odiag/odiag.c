@@ -135,7 +135,7 @@ main(int argc, char *argv[])
     orcm_odiag_init(argc, argv);
     
     if (orcm_odiag_globals.cpu_diag) {
-        putenv("OMPI_MCA_diag=cputest");
+        putenv("@MCA_PREFIX@diag=cputest");
         /* open/select the diag framework */
         if (ORTE_SUCCESS != (rc = mca_base_framework_open(&orcm_diag_base_framework, 0))) {
             ORTE_ERROR_LOG(rc);
@@ -161,7 +161,7 @@ main(int argc, char *argv[])
     }
 
     if (orcm_odiag_globals.mem_diag) {
-        putenv("OMPI_MCA_diag=memtest");        
+        putenv("@MCA_PREFIX@diag=memtest");        
         /* open/select the diag framework */
         if (ORTE_SUCCESS != (rc = mca_base_framework_open(&orcm_diag_base_framework, 0))) {
             ORTE_ERROR_LOG(rc);

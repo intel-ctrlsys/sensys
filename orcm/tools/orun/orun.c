@@ -1034,7 +1034,7 @@ static int create_app(int argc, char* argv[],
     
     /* add the ompi-server, if provided */
     if (NULL != ompi_server) {
-        opal_setenv("OMPI_MCA_pubsub_orte_server", ompi_server, true, &app->env);
+        opal_setenv("@MCA_PREFIX@pubsub_orte_server", ompi_server, true, &app->env);
     }
 
     /* Did the user request to export any environment variables on the cmd line? */

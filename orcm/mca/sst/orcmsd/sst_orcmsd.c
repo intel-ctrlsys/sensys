@@ -198,8 +198,8 @@ static int orcmsd_init(void)
     /* datastore - ensure we don't pickup the pmi component, but
      * don't override anything set by user
      */
-    if (NULL == getenv("OMPI_MCA_dstore")) {
-        putenv("OMPI_MCA_dstore=^pmi");
+    if (NULL == getenv("@MCA_PREFIX@dstore")) {
+        putenv("@MCA_PREFIX@dstore=^pmi");
     }
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&opal_dstore_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -303,8 +303,8 @@ static int orcmsd_init(void)
     }
 
     /* state machine system */
-    if (!ORTE_PROC_IS_HNP && NULL == getenv("OMPI_MCA_state")) {
-        putenv("OMPI_MCA_state=orted");
+    if (!ORTE_PROC_IS_HNP && NULL == getenv("@MCA_PREFIX@state")) {
+        putenv("@MCA_PREFIX@state=orted");
     }
     /* open and setup the state machine */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_state_base_framework, 0))) {
@@ -391,8 +391,8 @@ static int orcmsd_init(void)
     }
  
     /* Routed system */
-    if (NULL == getenv("OMPI_MCA_routed")) {
-        putenv("OMPI_MCA_routed=radix");
+    if (NULL == getenv("@MCA_PREFIX@routed")) {
+        putenv("@MCA_PREFIX@routed=radix");
     }
 
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_routed_base_framework, 0))) {

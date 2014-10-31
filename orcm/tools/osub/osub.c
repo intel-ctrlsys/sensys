@@ -383,7 +383,7 @@ main(int argc, char *argv[])
              orte_launch_environ = opal_argv_copy(environ);
     
              /* purge any ess flag set in the environ when we were launched */
-             opal_unsetenv("OMPI_MCA_ess", &orte_launch_environ);
+             opal_unsetenv("@MCA_PREFIX@ess", &orte_launch_environ);
 
              /*
               * set hnp uri 

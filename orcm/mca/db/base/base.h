@@ -57,6 +57,7 @@ typedef struct {
     char *primary_key;
     char *key;
     opal_list_t *kvs;
+    const char *hostname;
 } orcm_db_request_t;
 OBJ_CLASS_DECLARATION(orcm_db_request_t);
 
@@ -81,6 +82,12 @@ ORCM_DECLSPEC void orcm_db_base_store(int dbhandle,
                                       opal_list_t *kvs,
                                       orcm_db_callback_fn_t cbfunc,
                                       void *cbdata);
+ORCM_DECLSPEC void orcm_db_base_update_node_features(
+        int dbhandle,
+        const char *hostname,
+        opal_list_t *features,
+        orcm_db_callback_fn_t cbfunc,
+        void *cbdata);
 ORCM_DECLSPEC void orcm_db_base_commit(int dbhandle,
                                        orcm_db_callback_fn_t cbfunc,
                                        void *cbdata);

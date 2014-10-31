@@ -27,6 +27,7 @@
 
 #include "opal/mca/event/event.h"
 #include "opal/class/opal_list.h"
+#include "opal/dss/dss_types.h"
 
 #include "orte/util/proc_info.h"
 
@@ -126,6 +127,12 @@ ORCM_DECLSPEC int orcm_dt_init(void);
 
 const char *orcm_node_state_to_str(orcm_node_state_t state);
 const char *orcm_node_state_to_char(orcm_node_state_t state);
+
+typedef struct {
+    opal_value_t value;
+    char *units;
+} orcm_metric_value_t;
+ORCM_DECLSPEC OBJ_CLASS_DECLARATION(orcm_metric_value_t);
 
 END_C_DECLS
 

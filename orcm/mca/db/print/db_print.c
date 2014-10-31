@@ -47,6 +47,7 @@ mca_db_print_module_t mca_db_print_module = {
         store,
         NULL,
         NULL,
+        NULL,
         NULL
     },
 };

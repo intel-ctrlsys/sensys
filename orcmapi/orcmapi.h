@@ -15,7 +15,7 @@ BEGIN_C_DECLS
 typedef struct {
     char *name;
     orcm_node_state_t state;
-} liborcm_node_t;
+} lib@ORCM_LIB@_node_t;
 
 /******************
  * API Functions
@@ -27,7 +27,7 @@ ORCM_DECLSPEC int orcmapi_init(void);
 ORCM_DECLSPEC void orcmapi_finalize(void);
 
 /* get node info/states */
-ORCM_DECLSPEC int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count);
+ORCM_DECLSPEC int orcmapi_get_nodes(lib@ORCM_LIB@_node_t ***nodes, int *count);
 /* launch session */
 ORCM_DECLSPEC int orcmapi_launch_session(int id, int min_nodes, char *nodes, char *user);
 /* cancel session */

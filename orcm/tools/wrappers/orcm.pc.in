@@ -11,8 +11,8 @@ exec_prefix=@exec_prefix@
 includedir=@includedir@
 libdir=@libdir@
 #
-# Note that -lopen-rte -lopen-pal and all the EXTRA_LIBS are only necessary when
-# static linking (they're pulled in by libopen-rte.so's implicit
+# Note that -l@ORTE_LIB@ -l@OPAL_LIB@ and all the EXTRA_LIBS are only necessary when
+# static linking (they're pulled in by lib@ORTE_LIB@.so's implicit
 # dependencies), so only list these in Libs.private.
 #
 Libs: -L${libdir} @ORCM_WRAPPER_EXTRA_LDFLAGS@ -lorcm

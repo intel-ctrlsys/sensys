@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -317,9 +317,7 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
     /* for each row, unpack the row buffer */
     for (i=0; i < nrows; i++) {
         i_am_row_ctlr = false;
-        i_am_rack_ctlr = false;
         row_ctlr_present = false;
-        rack_ctlr_present = false;
         cnt = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(ndat, &row, &cnt, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(rc);
@@ -340,18 +338,6 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
         if (ORTE_JOBID_INVALID != row_name.jobid &&
             ORTE_VPID_INVALID != row_name.vpid) {
             row_ctlr_present = true;
-            if (row_name.jobid == ORTE_PROC_MY_NAME->jobid &&
-                row_name.vpid == ORTE_PROC_MY_NAME->vpid) {
-                /* it's me - so the rack controllers in this row will be my direct children */
-                i_am_row_ctlr = true;
-            }
-        }
-        opal_output_verbose(1, orte_routed_base_framework.framework_output,
-                            "%s init_routes: row %d(%s) has %d racks",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                            i, ORTE_NAME_PRINT(&row_name), nracks);
-
-        if (row_ctlr_present) {
             if (i_am_sched && cluster_ctlr_present) {
                 /* add this to the current child so it points to it
                  * via the cluster controller */
@@ -372,27 +358,38 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
                 opal_bitmap_init(&child->relatives, orte_process_info.num_procs);
                 opal_list_append(&my_children, &child->super);
             }
-        }
-        if (i_am_row_ctlr) {
-            /* point my parent at the cluster controller, if it is around */
-            if (cluster_ctlr_present) {
-                ORTE_PROC_MY_PARENT->jobid = cluster_name.jobid;
-                ORTE_PROC_MY_PARENT->vpid = cluster_name.vpid;
-            } else if (sched_present) {
-                /* otherwise, use the scheduler if it is available */
-                ORTE_PROC_MY_PARENT->jobid = sched_name.jobid;
-                ORTE_PROC_MY_PARENT->vpid = sched_name.vpid;
-            } else {
-                /* just use myself */
-                ORTE_PROC_MY_PARENT->jobid = ORTE_PROC_MY_NAME->jobid;
-                ORTE_PROC_MY_PARENT->vpid = ORTE_PROC_MY_NAME->vpid;
+            if (row_name.jobid == ORTE_PROC_MY_NAME->jobid &&
+                row_name.vpid == ORTE_PROC_MY_NAME->vpid) {
+                /* it's me - so the rack controllers in this row will be my direct children */
+                i_am_row_ctlr = true;
+                /* point my parent at the cluster controller, if it is around */
+                if (cluster_ctlr_present) {
+                    ORTE_PROC_MY_PARENT->jobid = cluster_name.jobid;
+                    ORTE_PROC_MY_PARENT->vpid = cluster_name.vpid;
+                } else if (sched_present) {
+                    /* otherwise, use the scheduler if it is available */
+                    ORTE_PROC_MY_PARENT->jobid = sched_name.jobid;
+                    ORTE_PROC_MY_PARENT->vpid = sched_name.vpid;
+                } else {
+                    /* just use myself */
+                    ORTE_PROC_MY_PARENT->jobid = ORTE_PROC_MY_NAME->jobid;
+                    ORTE_PROC_MY_PARENT->vpid = ORTE_PROC_MY_NAME->vpid;
+                }
+                /* set the lifeline */
+                lifeline = ORTE_PROC_MY_PARENT;
             }
-            /* set the lifeline */
-            lifeline = ORTE_PROC_MY_PARENT;
         }
+        
+        opal_output_verbose(1, orte_routed_base_framework.framework_output,
+                            "%s init_routes: row %d(%s) has %d racks",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                            i, ORTE_NAME_PRINT(&row_name), nracks);
+
         /* for each rack, unpack the rack buffer */
         cnt = 1;
         for (j=0; j < nracks; j++) {
+            rack_ctlr_present = false;
+            i_am_rack_ctlr = false;
             opal_output_verbose(1, orte_routed_base_framework.framework_output,
                                 "%s init_routes: unpacking rack %d",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), j);
@@ -410,17 +407,6 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
             if (ORTE_JOBID_INVALID != rack_name.jobid &&
                 ORTE_VPID_INVALID != rack_name.vpid) {
                 rack_ctlr_present = true;
-                if (rack_name.jobid == ORTE_PROC_MY_NAME->jobid &&
-                    rack_name.vpid == ORTE_PROC_MY_NAME->vpid) {
-                    /* it's me - so the daemons in this rack will be my direct children */
-                    i_am_rack_ctlr = true;
-                }
-            }
-            opal_output_verbose(1, orte_routed_base_framework.framework_output,
-                                "%s init_routes: rack %d controller %s",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), j,
-                                ORTE_NAME_PRINT(&rack_name));
-            if (rack_ctlr_present) {
                 if (i_am_row_ctlr ||
                     (i_am_cluster_ctlr && !row_ctlr_present) ||
                     (i_am_sched && !cluster_ctlr_present && !row_ctlr_present)) {
@@ -443,34 +429,40 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
                                         ORTE_NAME_PRINT(&rack_name));
                     opal_bitmap_set_bit(&child->relatives, rack_name.vpid);
                 }
-            }
-            if (rack_name.jobid == ORTE_PROC_MY_NAME->jobid &&
-                rack_name.vpid == ORTE_PROC_MY_NAME->vpid) {
-                i_am_rack_ctlr = true;
-                /* point my parent at the row controller, if present */
-                if (row_ctlr_present) {
-                    ORTE_PROC_MY_PARENT->jobid = row_name.jobid;
-                    ORTE_PROC_MY_PARENT->vpid = row_name.vpid;
-                } else if (cluster_ctlr_present) {
-                    /* point to the cluster ctlr if it is around and the row ctlr isn't */
-                    ORTE_PROC_MY_PARENT->jobid = cluster_name.jobid;
-                    ORTE_PROC_MY_PARENT->vpid = cluster_name.vpid;
-                } else if (sched_present) {
-                    /* flow up to the scheduler */
-                    ORTE_PROC_MY_PARENT->jobid = sched_name.jobid;
-                    ORTE_PROC_MY_PARENT->vpid = sched_name.vpid;
-                } else {
-                    /* just use myself */
-                    ORTE_PROC_MY_PARENT->jobid = ORTE_PROC_MY_NAME->jobid;
-                    ORTE_PROC_MY_PARENT->vpid = ORTE_PROC_MY_NAME->vpid;
+                if (rack_name.jobid == ORTE_PROC_MY_NAME->jobid &&
+                    rack_name.vpid == ORTE_PROC_MY_NAME->vpid) {
+                    /* it's me - so the daemons in this rack will be my direct children */
+                    i_am_rack_ctlr = true;
+                    /* point my parent at the row controller, if present */
+                    if (row_ctlr_present) {
+                        ORTE_PROC_MY_PARENT->jobid = row_name.jobid;
+                        ORTE_PROC_MY_PARENT->vpid = row_name.vpid;
+                    } else if (cluster_ctlr_present) {
+                        /* point to the cluster ctlr if it is around and the row ctlr isn't */
+                        ORTE_PROC_MY_PARENT->jobid = cluster_name.jobid;
+                        ORTE_PROC_MY_PARENT->vpid = cluster_name.vpid;
+                    } else if (sched_present) {
+                        /* flow up to the scheduler */
+                        ORTE_PROC_MY_PARENT->jobid = sched_name.jobid;
+                        ORTE_PROC_MY_PARENT->vpid = sched_name.vpid;
+                    } else {
+                        /* just use myself */
+                        ORTE_PROC_MY_PARENT->jobid = ORTE_PROC_MY_NAME->jobid;
+                        ORTE_PROC_MY_PARENT->vpid = ORTE_PROC_MY_NAME->vpid;
+                    }
+                    opal_output_verbose(1, orte_routed_base_framework.framework_output,
+                                        "%s init_routes: rack %d controller %s parent %s",
+                                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), j,
+                                        ORTE_NAME_PRINT(&rack_name), ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT));
+                    /* set the lifeline */
+                    lifeline = ORTE_PROC_MY_PARENT;
                 }
-                opal_output_verbose(1, orte_routed_base_framework.framework_output,
-                                    "%s init_routes: rack %d controller %s parent %s",
-                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), j,
-                                    ORTE_NAME_PRINT(&rack_name), ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT));
-                /* set the lifeline */
-                lifeline = ORTE_PROC_MY_PARENT;
             }
+            opal_output_verbose(1, orte_routed_base_framework.framework_output,
+                                "%s init_routes: rack %d controller %s",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), j,
+                                ORTE_NAME_PRINT(&rack_name));
+
             /* we don't need the number of nodes in the rack - the rack buffer
              * was just packed with names, so read them until the end */
             cnt = 1;
@@ -492,11 +484,11 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
                     opal_bitmap_init(&child->relatives, orte_process_info.num_procs);
                     opal_list_append(&my_children, &child->super);
                 } else if (i_am_row_ctlr || i_am_cluster_ctlr || i_am_sched) {
-                   opal_output_verbose(5, orte_routed_base_framework.framework_output,
+                    opal_output_verbose(5, orte_routed_base_framework.framework_output,
                                         "%s init_routes: I am %s - adding node %s as my indirect child",
                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                       (i_am_sched ? "scheduler" :
-                                        (i_am_cluster_ctlr ? "cluster ctlr" : "row ctlr")),
+                                        (i_am_sched ? "scheduler" :
+                                         (i_am_cluster_ctlr ? "cluster ctlr" : "row ctlr")),
                                         ORTE_NAME_PRINT(&name));
                     opal_bitmap_set_bit(&child->relatives, name.vpid);
                 }

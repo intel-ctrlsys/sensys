@@ -131,7 +131,7 @@ void orcmapi_finalize(void)
     return;
 }
 
-int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count)
+int orcmapi_get_nodes(lib@ORCM_LIB@_node_t ***nodes, int *count)
 {
     int i, j, num_nodes;
     orcm_node_t *orcmnode;
@@ -139,7 +139,7 @@ int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count)
     num_nodes = orcm_scd_base.nodes.lowest_free;
 
     if (0 < num_nodes) {
-        *nodes = (liborcm_node_t**)malloc(num_nodes * sizeof(liborcm_node_t*));
+        *nodes = (lib@ORCM_LIB@_node_t**)malloc(num_nodes * sizeof(lib@ORCM_LIB@_node_t*));
         if (NULL == nodes) {
             ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
             return ORTE_ERR_OUT_OF_RESOURCE;
@@ -152,7 +152,7 @@ int orcmapi_get_nodes(liborcm_node_t ***nodes, int *count)
                                                                    j))) {
                 continue;
             }
-            (*nodes)[i] = (liborcm_node_t*)malloc(sizeof(liborcm_node_t*));
+            (*nodes)[i] = (lib@ORCM_LIB@_node_t*)malloc(sizeof(lib@ORCM_LIB@_node_t*));
             (*nodes)[i]->name = strdup(orcmnode->name);
             (*nodes)[i]->state = orcmnode->state;
             i++;

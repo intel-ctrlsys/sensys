@@ -128,7 +128,7 @@ typedef struct opal_list_item_t opal_list_item_t;
  * @returns The next item in the list
  */
 #define opal_list_get_next(item) \
-    ((opal_list_item_t*) ((opal_list_item_t*)(item))->opal_list_next)
+    ((item) ? ((opal_list_item_t*) ((opal_list_item_t*)(item))->opal_list_next) : NULL)
 
 /**
  * Get the next item in a list.
@@ -138,7 +138,7 @@ typedef struct opal_list_item_t opal_list_item_t;
  * @returns The next item in the list
  */
 #define opal_list_get_prev(item) \
-    ((opal_list_item_t*) ((opal_list_item_t*)(item))->opal_list_prev)
+    ((item) ? ((opal_list_item_t*) ((opal_list_item_t*)(item))->opal_list_prev) : NULL)
 
 
 /**

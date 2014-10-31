@@ -88,6 +88,7 @@ static int rte_init(void)
     char *rmluri;
     opal_value_t *kv, kvn;
     opal_list_t vals;
+    orte_vpid_t starting_vpid = 1; // compensate for orterun
 
     /* run the prolog */
     if (ORTE_SUCCESS != (ret = orte_ess_base_std_prolog())) {
@@ -125,16 +126,23 @@ static int rte_init(void)
         }
         ORTE_PROC_MY_NAME->jobid = jobid;
 
-        /* if we weren't given it, get our global rank from PMI */
-        if (NULL == orte_ess_base_vpid) {
-            if (!opal_pmix.get_attr(PMIX_RANK, &kv)) {
-                error = "getting rank";
-                ret = ORTE_ERR_NOT_FOUND;
-                goto error;
+        if (NULL != orte_ess_base_vpid) {
+            if (ORTE_SUCCESS != (ret = orte_util_convert_string_to_vpid(&starting_vpid,
+                                                                       orte_ess_base_vpid))) {
+                ORTE_ERROR_LOG(ret);
+                return(ret);
             }
-            ORTE_PROC_MY_NAME->vpid = kv->data.uint32 + 1;  // compensate for orterun
-            OBJ_RELEASE(kv);
+        } 
+
+        if (!opal_pmix.get_attr(PMIX_RANK, &kv)) {
+            error = "getting rank";
+            ret = ORTE_ERR_NOT_FOUND;
+            goto error;
         }
+
+        ORTE_PROC_MY_NAME->vpid = kv->data.uint32 + starting_vpid;  
+        fprintf(stderr,"Setting my vpid to %d\n",ORTE_PROC_MY_NAME->vpid);
+        OBJ_RELEASE(kv);
 
         /* if we weren't given it, get universe size */
         if (orte_ess_base_num_procs < 0) {
@@ -204,7 +212,7 @@ static int rte_init(void)
     /* push into the environ for pickup in MPI layer for
      * MPI-3 required info key
      */
-    asprintf(&ev1, "OMPI_MCA_orte_ess_num_procs=%d", orte_process_info.num_procs);
+    asprintf(&ev1, OPAL_MCA_PREFIX"orte_ess_num_procs=%d", orte_process_info.num_procs);
     putenv(ev1);
     asprintf(&ev2, "OMPI_APP_CTX_NUM_PROCS=%d", orte_process_info.num_procs);
     putenv(ev2);
@@ -393,9 +401,9 @@ static int rte_finalize(void)
             /* remove the envars that we pushed into environ
              * so we leave that structure intact
              */
-            unsetenv("OMPI_MCA_routed");
-            unsetenv("OMPI_MCA_orte_precondition_transports");
-            unsetenv("OMPI_MCA_orte_ess_num_procs");
+            unsetenv(OPAL_MCA_PREFIX"routed");
+            unsetenv(OPAL_MCA_PREFIX"orte_precondition_transports");
+            unsetenv(OPAL_MCA_PREFIX"orte_ess_num_procs");
             unsetenv("OMPI_APP_CTX_NUM_PROCS");
             /* use the default app procedure to finish */
             if (ORTE_SUCCESS != (ret = orte_ess_base_app_finalize())) {
@@ -410,6 +418,8 @@ static int rte_finalize(void)
 
 static void rte_abort(int status, bool report)
 {
+    struct timespec tp = {0, 100000};
+
     OPAL_OUTPUT_VERBOSE((1, orte_ess_base_framework.framework_output,
                          "%s ess:pmi:abort: abort with status %d",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
@@ -420,10 +430,10 @@ static void rte_abort(int status, bool report)
      */
     opal_pmix.abort(status, "N/A");
 
-    /* - Clean out the global structures 
-     * (not really necessary, but good practice) */
-    orte_proc_info_finalize();
-    
+    /* provide a little delay for the PMIx thread to
+     * get the info out */
+    nanosleep(&tp, NULL);
+
     /* Now Exit */
-    exit(status);
+    _exit(status);
 }

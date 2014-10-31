@@ -10,7 +10,7 @@ dnl Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 dnl                         University of Stuttgart.  All rights reserved.
 dnl Copyright (c) 2004-2005 The Regents of the University of California.
 dnl                         All rights reserved.
-dnl Copyright (c) 2006-2010 Cisco Systems, Inc.  All rights reserved.
+dnl Copyright (c) 2006-2014 Cisco Systems, Inc.  All rights reserved.
 dnl Copyright (c) 2007      Sun Microsystems, Inc.  All rights reserved.
 dnl Copyright (c) 2009      IBM Corporation.  All rights reserved.
 dnl Copyright (c) 2009      Los Alamos National Security, LLC.  All rights
@@ -34,7 +34,7 @@ opal_show_subtitle "OPAL Configuration options"
 # Is this a developer copy?
 #
 
-if test -d .svn -o -d .hg -o -d .git; then
+if test -d .git; then
     OPAL_DEVEL=1
 else
     OPAL_DEVEL=0
@@ -168,6 +168,27 @@ else
     AC_MSG_RESULT([no])
     WANT_DEBUG=0
 fi
+
+
+AC_MSG_CHECKING([if want to developer-level timing framework])
+AC_ARG_ENABLE(timing, 
+    AC_HELP_STRING([--enable-timing],
+                   [enable developer-level timing code (not for general MPI users!) (default: disabled)]))
+if test "$enable_timing" = "yes"; then
+    AC_MSG_RESULT([yes])
+    WANT_TIMING=1
+else
+    AC_MSG_RESULT([no])
+    WANT_TIMING=0
+fi
+
+AC_DEFINE_UNQUOTED(OPAL_ENABLE_TIMING, $WANT_TIMING,
+    [Whether we want developer-level timing framework or not])
+
+AM_CONDITIONAL([OPAL_COMPILE_TIMING], [test "$WANT_TIMING" = "1"])
+AM_CONDITIONAL([OPAL_INSTALL_TIMING_BINARIES], [test "$WANT_TIMING" = "1" -a "$enable_binaries" != "no"])
+
+
 #################### Early development override ####################
 if test "$WANT_DEBUG" = "0" -a -z "$enable_debug" -a "$OPAL_DEVEL" = 1; then
     WANT_DEBUG=1

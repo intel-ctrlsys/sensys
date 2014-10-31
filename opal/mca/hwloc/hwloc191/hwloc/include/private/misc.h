@@ -13,7 +13,6 @@
 
 #include <hwloc/autogen/config.h>
 #include <private/autogen/config.h>
-
 #include <ctype.h>
 
 /* Compile-time assertion */

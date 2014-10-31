@@ -15,6 +15,7 @@
  * Copyright (c) 2009-2014 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2014      Los Alamos National Security, LLC. All rights
  *                         reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -36,6 +37,7 @@
 #include "opal/datatype/opal_convertor.h"
 #include "opal/include/opal_stdint.h"
 #include "opal/util/show_help.h"
+#include "opal/util/proc.h"
 
 #include "opal/mca/btl/btl.h"
 #include "opal/mca/btl/base/btl_base_error.h"
@@ -195,7 +197,7 @@ static void add_procs_warn_ah_fail(opal_btl_usnic_module_t *module,
                    local,
                    module->if_name,
                    ibv_get_device_name(module->device),
-                   endpoint->endpoint_proc->proc_opal->proc_hostname,
+                   opal_get_proc_hostname(endpoint->endpoint_proc->proc_opal),
                    remote);
 }
 
@@ -1560,7 +1562,7 @@ usnic_send(
             /* only briefly, we will set it back to 1 before release */
             sseg->ss_send_desc.num_sge = 2;
             sseg->ss_base.us_sg_entry[1].addr =
-                frag->sf_base.uf_local_seg[1].seg_addr.lval,
+                frag->sf_base.uf_local_seg[1].seg_addr.lval;
             sseg->ss_base.us_sg_entry[1].length =
                 frag->sf_base.uf_local_seg[1].seg_len;
         } else {

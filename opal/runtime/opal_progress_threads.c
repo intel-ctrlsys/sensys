@@ -93,20 +93,6 @@ opal_event_base_t *opal_start_progress_thread(char *name,
     opal_progress_tracker_t *trk;
     int rc;
 
-    if (!inited) {
-        OBJ_CONSTRUCT(&tracking, opal_list_t);
-        inited = true;
-    }
-
-    /* bozo check - see if we already have a thread of this name */
-    OPAL_LIST_FOREACH(trk, &tracking, opal_progress_tracker_t) {
-        if (0 == strcmp(name, trk->name)) {
-            /* not allowed */
-            OPAL_ERROR_LOG(OPAL_EXISTS);
-            return NULL;
-        }
-    }
-
     trk = OBJ_NEW(opal_progress_tracker_t);
     trk->name = strdup(name);
     if (NULL == (trk->ev_base = opal_event_base_create())) {
@@ -146,6 +132,10 @@ opal_event_base_t *opal_start_progress_thread(char *name,
         OBJ_RELEASE(trk);
         return NULL;
     }
+    if (!inited) {
+        OBJ_CONSTRUCT(&tracking, opal_list_t);
+        inited = true;
+    }
     opal_list_append(&tracking, &trk->super);
     return trk->ev_base;
 }
@@ -163,23 +153,20 @@ void opal_stop_progress_thread(char *name, bool cleanup)
     /* find the specified engine */
     OPAL_LIST_FOREACH(trk, &tracking, opal_progress_tracker_t) {
         if (0 == strcmp(name, trk->name)) {
-            if (trk->ev_active) {
-                /* mark it as inactive */
-                trk->ev_active = false;
-                /* break the event loop - this will cause the loop to exit
-                 * upon completion of any current event */
-                opal_event_base_loopbreak(trk->ev_base);
-                /* if present, use the block to break it loose just in
-                 * case the thread is blocked in a call to select for
-                 * a long time */
-                if (trk->block_active) {
-                    i=1;
-                    write(trk->pipe[1], &i, sizeof(int));
-                }
-                /* wait for thread to exit */
-                opal_thread_join(&trk->engine, NULL);
-                trk->ev_active = false;
+            /* mark it as inactive */
+            trk->ev_active = false;
+            /* break the event loop - this will cause the loop to exit
+             * upon completion of any current event */
+            opal_event_base_loopbreak(trk->ev_base);
+            /* if present, use the block to break it loose just in
+             * case the thread is blocked in a call to select for
+             * a long time */
+            if (trk->block_active) {
+                i=1;
+                write(trk->pipe[1], &i, sizeof(int));
             }
+            /* wait for thread to exit */
+            opal_thread_join(&trk->engine, NULL);
             /* cleanup, if they indicated they are done with this event base */
             if (cleanup) {
                 opal_list_remove_item(&tracking, &trk->super);
@@ -213,7 +200,6 @@ int opal_restart_progress_thread(char *name)
                 trk->block_active = true;
             }
             /* start the thread again */
-            trk->ev_active = true;
             if (OPAL_SUCCESS != (rc = opal_thread_start(&trk->engine))) {
                 OPAL_ERROR_LOG(rc);
                 return rc;

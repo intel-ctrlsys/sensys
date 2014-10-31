@@ -359,14 +359,20 @@ void orte_plm_base_complete_setup(int fd, short args, void *cbdata)
     /* ensure our routing plan is up-to-date */
     orte_routed.update_routing_plan();
     
-    /*** RHC: USER REQUEST TO TIE-OFF STDXXX TO /DEV/NULL
-     *** WILL BE SENT IN LAUNCH MESSAGE AS PART OF CONTROLS FIELD.
-     *** SO IF USER WANTS NO IO BEING SENT AROUND, THE ORTEDS
-     *** WILL TIE IT OFF AND THE IOF WILL NEVER RECEIVE ANYTHING.
-     *** THE IOF AUTOMATICALLY KNOWS TO OUTPUT ANY STDXXX
-     *** DATA IT -DOES- RECEIVE TO THE APPROPRIATE FD, SO THERE
-     *** IS NOTHING WE NEED DO HERE TO SETUP IOF
-     ***/
+    /* If this job is being started by me, then there is nothing
+     * further we need to do as any user directives (e.g., to tie
+     * off IO to /dev/null) will have been included in the launch
+     * message and the IOF knows how to handle any default situation.
+     * However, if this is a proxy spawn request, then the spawner
+     * might be a tool that wants IO forwarded to it. If that's the
+     * situation, then the job object will contain an attribute
+     * indicating that request */
+    if (orte_get_attribute(&jdata->attributes, ORTE_JOB_FWDIO_TO_TOOL, NULL, OPAL_BOOL)) {
+        /* send a message to our IOF containing the requested pull */
+        ORTE_IOF_PROXY_PULL(jdata, &jdata->originator);
+        /* the tool will PUSH its stdin, so nothing we need to do here
+         * about stdin */
+    }
     
 #if OPAL_ENABLE_FT_CR == 1
     /*
@@ -1073,22 +1079,22 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
 
     /* check for debug flags */
     if (orte_debug_flag) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_debug");
         opal_argv_append(argc, argv, "1");
     }
     if (orte_debug_daemons_flag) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_debug_daemons");
         opal_argv_append(argc, argv, "1");
     }
     if (orte_debug_daemons_file_flag) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_debug_daemons_file");
         opal_argv_append(argc, argv, "1");
     }
     if (orte_leave_session_attached) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_leave_session_attached");
         opal_argv_append(argc, argv, "1");
     }
@@ -1098,12 +1104,12 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
     }
 #if OPAL_HAVE_HWLOC
     if (opal_hwloc_report_bindings) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_report_bindings");
         opal_argv_append(argc, argv, "1");
     }
     if (orte_hetero_nodes) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_hetero_nodes");
         opal_argv_append(argc, argv, "1");
     }
@@ -1112,7 +1118,7 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
         opal_argv_append(argc, argv, "--mapreduce");
     }
     if (orte_map_stddiag_to_stderr) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_map_stddiag_to_stderr");
         opal_argv_append(argc, argv, "1");
     }
@@ -1133,13 +1139,13 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
     
     /* tell the orted what ESS component to use */
     if (NULL != ess) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "ess");
         opal_argv_append(argc, argv, ess);
     }
     
     /* pass the daemon jobid */
-    opal_argv_append(argc, argv, "-mca");
+    opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
     opal_argv_append(argc, argv, "orte_ess_jobid");
     if (ORTE_SUCCESS != (rc = orte_util_convert_jobid_to_string(&param, ORTE_PROC_MY_NAME->jobid))) {
         ORTE_ERROR_LOG(rc);
@@ -1150,7 +1156,7 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
     
     /* setup to pass the vpid */
     if (NULL != proc_vpid_index) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_ess_vpid");
         *proc_vpid_index = *argc;
         opal_argv_append(argc, argv, "<template>");
@@ -1163,7 +1169,7 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
     } else {
         num_procs = orte_process_info.num_procs;
     }
-    opal_argv_append(argc, argv, "-mca");
+    opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
     opal_argv_append(argc, argv, "orte_ess_num_procs");
     asprintf(&param, "%lu", num_procs);
     opal_argv_append(argc, argv, param);
@@ -1174,14 +1180,14 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
         rml_uri = orte_rml.get_contact_info();
     } else {
         rml_uri = orte_rml.get_contact_info();
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_parent_uri");
         opal_argv_append(argc, argv, rml_uri);
         free(rml_uri);
     
         rml_uri = strdup(orte_process_info.my_hnp_uri);
     }
-    opal_argv_append(argc, argv, "-mca");
+    opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
     opal_argv_append(argc, argv, "orte_hnp_uri");
     opal_argv_append(argc, argv, rml_uri);
     free(rml_uri);
@@ -1193,7 +1199,7 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
             ORTE_ERROR_LOG(rc);
             return rc;
         }
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_node_regex");
         opal_argv_append(argc, argv, param);
         free(param);
@@ -1208,14 +1214,14 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
 
     /* if output-filename was specified, pass that along */
     if (NULL != orte_output_filename) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_output_filename");
         opal_argv_append(argc, argv, orte_output_filename);
     }
     
     /* if --xterm was specified, pass that along */
     if (NULL != orte_xterm) {
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_xterm");
         opal_argv_append(argc, argv, orte_xterm);
     }
@@ -1231,7 +1237,7 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
         /* Could also use the short version '-am'
          * but being verbose has some value
          */
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "mca_base_param_file_prefix");
         opal_argv_append(argc, argv, tmp_value[0]);
     
@@ -1240,13 +1246,13 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
         loc_id = mca_base_var_find("opal", "mca", "base", "param_file_path");
         mca_base_var_get_value(loc_id, &tmp_value, NULL, NULL);
         if( NULL != tmp_value && NULL != tmp_value[0] ) {
-            opal_argv_append(argc, argv, "-mca");
+            opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
             opal_argv_append(argc, argv, "mca_base_param_file_path");
             opal_argv_append(argc, argv, tmp_value[0]);
         }
     
         /* Add the 'path' param */
-        opal_argv_append(argc, argv, "-mca");
+        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "mca_base_param_file_path_force");
 
         tmp_value = NULL;

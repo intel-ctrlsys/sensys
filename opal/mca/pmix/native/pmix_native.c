@@ -388,7 +388,7 @@ static int native_fence(opal_process_name_t *procs, size_t nprocs)
     opal_value_t *kp;
     opal_identifier_t id;
     size_t i;
-    uint32_t np;
+    uint64_t np;
 
     opal_output_verbose(2, opal_pmix_base_framework.framework_output,
                         "%s pmix:native executing fence on %u procs",
@@ -562,7 +562,7 @@ static void fencenb_cbfunc(opal_buffer_t *buf, void *cbdata)
     opal_value_t *kp;
     opal_identifier_t id;
     size_t i;
-    uint32_t np;
+    uint64_t np;
 
     /* get the number of contributors */
     cnt = 1;
@@ -841,9 +841,17 @@ static int native_get(const opal_identifier_t *id,
     if (found) {
         return OPAL_SUCCESS;
     }
+    /* we didn't find the requested data - pass back a
+     * status that indicates the source of the problem,
+     * either during the data fetch, message unpacking,
+     * or not found */
     *kv = NULL;
     if (OPAL_SUCCESS == rc) {
-        rc = ret;
+        if (OPAL_SUCCESS == ret) {
+            rc = OPAL_ERR_NOT_FOUND;
+        } else {
+            rc = ret;
+        }
     }
     return rc;
 }
@@ -907,7 +915,7 @@ static bool native_get_attr(const char *attr, opal_value_t **kv)
 
     if (NULL == mca_pmix_native_component.uri) {
         /* no server available, so just return */
-        return OPAL_ERR_NOT_FOUND;
+        return false;
     }
 
     /* if the value isn't yet available, then we should try to retrieve
@@ -1084,10 +1092,12 @@ static bool native_get_attr(const char *attr, opal_value_t **kv)
      * equates to "non local" */
     ranks = opal_argv_split(lclpeers->data.string, ',');
     for (i=0; NULL != ranks[i]; i++) {
-        if (myrank == i) {
+        uint32_t vid = strtoul(ranks[i], NULL, 10);
+        if (myrank == vid) {
             continue;
         }
-        native_pname.vid = strtoul(ranks[i], NULL, 10);
+        native_pname.vid = vid;
+        memcpy(&id, &native_pname, sizeof(opal_identifier_t));
 #if OPAL_HAVE_HWLOC
         OBJ_CONSTRUCT(&vals, opal_list_t);
         if (OPAL_SUCCESS != (rc = opal_dstore.fetch(opal_dstore_internal, (opal_identifier_t*)&native_pname,
@@ -1095,7 +1105,7 @@ static bool native_get_attr(const char *attr, opal_value_t **kv)
             opal_output_verbose(2, opal_pmix_base_framework.framework_output,
                                 "%s cpuset for local proc %s not found",
                                 OPAL_NAME_PRINT(OPAL_PROC_MY_NAME),
-                                OPAL_NAME_PRINT(*(opal_identifier_t*)&native_pname));
+                                OPAL_NAME_PRINT(id));
             OPAL_LIST_DESTRUCT(&vals);
             /* even though the cpuset wasn't found, we at least know it is
              * on the same node with us */
@@ -1122,7 +1132,7 @@ static bool native_get_attr(const char *attr, opal_value_t **kv)
         OPAL_OUTPUT_VERBOSE((1, opal_pmix_base_framework.framework_output,
                              "%s pmix:native proc %s locality %s",
                              OPAL_NAME_PRINT(OPAL_PROC_MY_NAME),
-                             OPAL_NAME_PRINT(*(opal_identifier_t*)&native_pname),
+                             OPAL_NAME_PRINT(id),
                              opal_hwloc_base_print_locality(locality)));
     
         OBJ_CONSTRUCT(&kvn, opal_value_t);

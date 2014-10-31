@@ -18,7 +18,9 @@
 #include "opal/types.h"
 
 #include "opal_stdint.h"
+#include "opal/mca/base/mca_base_var.h"
 #include "opal/mca/hwloc/base/base.h"
+#include "opal/util/opal_environ.h"
 #include "opal/util/output.h"
 #include "opal/util/proc.h"
 #include "opal/util/output.h"
@@ -230,10 +232,13 @@ static int cray_init(void)
     for (i=0; i < pmix_nlranks; i++) {
         if (pmix_rank == pmix_lranks[i]) {
             pmix_lrank = i;
-            pmix_nrank = my_node;
+            pmix_nrank = i;
             break;
         }
     }
+
+    /* setup any local envars we were asked to do */
+    mca_base_var_process_env_list(&environ);
 
     return OPAL_SUCCESS;
 err_exit:
@@ -258,6 +263,7 @@ static int cray_fini(void) {
 
     if (NULL != pmix_lranks) {
         free(pmix_lranks);
+        pmix_lranks = NULL;
     }
 
     return OPAL_SUCCESS;
@@ -509,9 +515,6 @@ static int cray_get(const opal_identifier_t *id, const char *key, opal_value_t *
 {
     int rc;
     rc = opal_pmix_base_cache_keys_locally(id, key, kv, pmix_kvs_name, pmix_vallen_max, kvs_get);
-    if (NULL == *kv) {
-        return OPAL_ERROR;
-    }
     return rc;
 }
 

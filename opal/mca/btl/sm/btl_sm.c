@@ -3,7 +3,7 @@
  * Copyright (c) 2004-2011 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2013 The University of Tennessee and The University
+ * Copyright (c) 2004-2014 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2004-2007 High Performance Computing Center Stuttgart,
@@ -395,15 +395,15 @@ sm_btl_first_time_init(mca_btl_sm_t *sm_btl,
         return i;
 
     i = ompi_free_list_init_new(&mca_btl_sm_component.sm_frags_user, 
-		    sizeof(mca_btl_sm_user_t),
-		    opal_cache_line_size, OBJ_CLASS(mca_btl_sm_user_t),
-		    sizeof(mca_btl_sm_hdr_t), opal_cache_line_size,
-		    mca_btl_sm_component.sm_free_list_num,
-		    mca_btl_sm_component.sm_free_list_max,
-		    mca_btl_sm_component.sm_free_list_inc,
-		    mca_btl_sm_component.sm_mpool);
+            sizeof(mca_btl_sm_user_t),
+            opal_cache_line_size, OBJ_CLASS(mca_btl_sm_user_t),
+            sizeof(mca_btl_sm_hdr_t), opal_cache_line_size,
+            mca_btl_sm_component.sm_free_list_num,
+            mca_btl_sm_component.sm_free_list_max,
+            mca_btl_sm_component.sm_free_list_inc,
+            mca_btl_sm_component.sm_mpool);
     if ( OPAL_SUCCESS != i )
-	    return i;   
+        return i;   
 
     mca_btl_sm_component.num_outstanding_frags = 0;
 
@@ -569,7 +569,7 @@ int mca_btl_sm_add_procs(
     /* Sync with other local procs. Force the FIFO initialization to always
      * happens before the readers access it.
      */
-    opal_atomic_add_32(&mca_btl_sm_component.sm_seg->module_seg->seg_inited, 1);
+    (void)opal_atomic_add_32(&mca_btl_sm_component.sm_seg->module_seg->seg_inited, 1);
     while( n_local_procs >
            mca_btl_sm_component.sm_seg->module_seg->seg_inited) {
         opal_progress();
@@ -1000,14 +1000,14 @@ int mca_btl_sm_send( struct mca_btl_base_module_t* btl,
 
 #if OPAL_BTL_SM_HAVE_KNEM || OPAL_BTL_SM_HAVE_CMA
 struct mca_btl_base_descriptor_t* mca_btl_sm_prepare_dst( 
-		struct mca_btl_base_module_t* btl,
-		struct mca_btl_base_endpoint_t* endpoint,
-		struct mca_mpool_base_registration_t* registration,
-		struct opal_convertor_t* convertor,
-		uint8_t order,
-		size_t reserve,
-		size_t* size,
-		uint32_t flags)
+        struct mca_btl_base_module_t* btl,
+        struct mca_btl_base_endpoint_t* endpoint,
+        struct mca_mpool_base_registration_t* registration,
+        struct opal_convertor_t* convertor,
+        uint8_t order,
+        size_t reserve,
+        size_t* size,
+        uint32_t flags)
 {
     void *ptr;
     mca_btl_sm_frag_t* frag;

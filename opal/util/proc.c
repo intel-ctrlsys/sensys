@@ -3,6 +3,9 @@
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2013      Inria.  All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -17,9 +20,9 @@
 #include "opal/mca/pmix/pmix.h"
 
 opal_process_info_t opal_process_info = {
-    .nodename = "not yet named",
-    .job_session_dir = "not yet defined",
-    .proc_session_dir = "not yet defined",
+    .nodename = NULL,
+    .job_session_dir = NULL,
+    .proc_session_dir = NULL,
     .num_local_peers = 0,  /* there is nobody else but me */
     .my_local_rank = 0,    /* I'm the only process around here */
 #if OPAL_HAVE_HWLOC
@@ -34,7 +37,7 @@ static opal_proc_t opal_local_proc = {
     0,
     0,
     NULL,
-    "localhost - unnamed"
+    NULL
 };
 static opal_proc_t* opal_proc_my_name = &opal_local_proc;
 
@@ -58,9 +61,13 @@ OBJ_CLASS_INSTANCE(opal_proc_t, opal_list_item_t,
                    opal_proc_construct, opal_proc_destruct);
 
 static int
-opal_compare_opal_procs(const opal_process_name_t proc1,
-                        const opal_process_name_t proc2)
+opal_compare_opal_procs(const opal_process_name_t p1,
+                        const opal_process_name_t p2)
 {
+    opal_process_name_t proc1, proc2;
+    /* to protect alignment, copy the name across */
+    memcpy(&proc1, &p1, sizeof(opal_process_name_t));
+    memcpy(&proc2, &p2, sizeof(opal_process_name_t));
     if( proc1 == proc2 ) return  0;
     if( proc1 <  proc2 ) return -1;
     return 1;
@@ -95,7 +102,8 @@ int opal_proc_local_set(opal_proc_t* proc)
  * understood */
 void opal_proc_set_name(opal_process_name_t *name)
 {
-    opal_local_proc.proc_name = *name;
+    /* to protect alignment, copy the name across */
+    memcpy(&opal_local_proc.proc_name, name, sizeof(opal_process_name_t));
 }
 
 /**
@@ -120,3 +128,34 @@ char* (*opal_process_name_print)(const opal_process_name_t) = opal_process_name_
 uint32_t (*opal_process_name_vpid)(const opal_process_name_t) = opal_process_name_vpid_should_never_be_called;
 uint32_t (*opal_process_name_jobid)(const opal_process_name_t) = opal_process_name_vpid_should_never_be_called;
 
+char* opal_get_proc_hostname(const opal_proc_t *proc)
+{
+    int ret;
+
+    /* if the proc is NULL, then we can't know */
+    if (NULL == proc) {
+        return "unknown";
+    }
+
+    /* if it is my own hostname we are after, then just hand back
+     * the value in opal_process_info */
+    if (proc == opal_proc_my_name) {
+        return opal_process_info.nodename;
+    }
+
+    /* see if we already have the data - if so, pass it back */
+    if (NULL != proc->proc_hostname) {
+        return proc->proc_hostname;
+    }
+
+    /* if we don't already have it, then try to get it */
+    OPAL_MODEX_RECV_VALUE(ret, OPAL_DSTORE_HOSTNAME, proc,
+                          (char**)&(proc->proc_hostname), OPAL_STRING);
+    if (OPAL_SUCCESS != ret) {
+        OPAL_ERROR_LOG(ret);
+        return "unknown";  // return something so the caller doesn't segfault
+    }
+
+    /* user is not allowed to release the data */
+    return proc->proc_hostname;
+}

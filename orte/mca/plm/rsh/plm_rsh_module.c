@@ -66,6 +66,7 @@
 
 #include "opal/mca/installdirs/installdirs.h"
 #include "opal/util/output.h"
+#include "opal/mca/base/base.h"
 #include "opal/mca/event/event.h"
 #include "opal/util/argv.h"
 #include "opal/util/opal_environ.h"
@@ -562,7 +563,7 @@ static int setup_launch(int *argcptr, char ***argvptr,
                                           NULL);
     
     /* ensure that only the ssh plm is selected on the remote daemon */
-    opal_argv_append_nosize(&argv, "-mca");
+    opal_argv_append_nosize(&argv, "-"OPAL_MCA_CMD_LINE_ID);
     opal_argv_append_nosize(&argv, "plm");
     opal_argv_append_nosize(&argv, "rsh");
     
@@ -572,8 +573,13 @@ static int setup_launch(int *argcptr, char ***argvptr,
          * only if they aren't already present
          */
         for (i = 0; NULL != environ[i]; ++i) {
-            if (0 == strncmp("OMPI_MCA", environ[i], 8)) {
-                /* check for duplicate in app->env - this
+            if (0 == strncmp(OPAL_MCA_PREFIX"mca_base_env_list", environ[i],
+                             strlen(OPAL_MCA_PREFIX"mca_base_env_list"))) {
+                /* ignore this one */
+                continue;
+            }
+            if (0 == strncmp(OPAL_MCA_PREFIX, environ[i], 9)) {
+               /* check for duplicate in app->env - this
                  * would have been placed there by the
                  * cmd line processor. By convention, we
                  * always let the cmd line override the
@@ -593,7 +599,7 @@ static int setup_launch(int *argcptr, char ***argvptr,
                 }
                 if (!found) {
                     /* add it */
-                    opal_argv_append(&argc, &argv, "-mca");
+                    opal_argv_append(&argc, &argv, "-"OPAL_MCA_CMD_LINE_ID);
                     opal_argv_append(&argc, &argv, param);
                     opal_argv_append(&argc, &argv, value);
                 }
@@ -602,21 +608,8 @@ static int setup_launch(int *argcptr, char ***argvptr,
         }
     }
 
-    /* in the rsh environment, we need to protect args in quotes
-     * as they can contain spaces or special characters */
-    for (i=0; NULL != argv[i]; i++) {
-        if (0 != strcmp(argv[i], "-mca")) {
-            continue;
-        }
-        /* protect the value with quotes if not already
-         * quoted */
-        if ('\"' == argv[i+2][0]) {
-            continue;
-        }
-        (void)asprintf(&param, "\"%s\"", argv[i+2]);
-        free(argv[i+2]);
-        argv[i+2] = param;
-    }
+    /* protect the params */
+    mca_base_cmd_line_wrap_args(argv);
 
     value = opal_argv_join(argv, ' ');
     if (sysconf(_SC_ARG_MAX) < (int)strlen(value)) {
@@ -634,10 +627,10 @@ static int setup_launch(int *argcptr, char ***argvptr,
     
     if (0 < opal_output_get_verbosity(orte_plm_base_framework.framework_output)) {
         param = opal_argv_join(argv, ' ');
-        OPAL_OUTPUT_VERBOSE((1, orte_plm_base_framework.framework_output,
-                             "%s plm:rsh: final template argv:\n\t%s",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                             (NULL == param) ? "NULL" : param));
+        opal_output(orte_plm_base_framework.framework_output,
+                    "%s plm:rsh: final template argv:\n\t%s",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                    (NULL == param) ? "NULL" : param);
         if (NULL != param) free(param);
     }
     

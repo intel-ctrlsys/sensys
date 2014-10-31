@@ -56,10 +56,24 @@ OPAL_DECLSPEC extern int opal_dstore_nonpeer;
  * a unique "handle" that must be provided with any subsequent
  * call to store or fetch data from this database.
  *
+ * The attributes parameter can be used to pass any desired
+ * optional directives to the active storage component. These
+ * are passed as a list of opal_value_t's.
+ *
  * NOTE: calls to these APIs must be thread-protected as there
  * is NO internal thread safety.
  */
-typedef int (*opal_dstore_base_API_open_fn_t)(const char *name);
+typedef int (*opal_dstore_base_API_open_fn_t)(const char *name,
+                                              opal_list_t *attributes);
+
+/*
+ * Update an existing handle
+ *
+ * Sometimes an existing handle requires an update to its attributes, so
+ * provide an API for doing so
+ */
+typedef int (*opal_dstore_base_API_update_fn_t)(int dstorehandle,
+                                                opal_list_t *attributes);
 
 /*
  * Close a database handle
@@ -105,6 +119,7 @@ typedef int (*opal_dstore_base_API_remove_fn_t)(int dstorehandle,
  */
 typedef struct {
     opal_dstore_base_API_open_fn_t           open;
+    opal_dstore_base_API_update_fn_t         update;
     opal_dstore_base_API_close_fn_t          close;
     opal_dstore_base_API_store_fn_t          store;
     opal_dstore_base_API_fetch_fn_t          fetch;
@@ -167,7 +182,10 @@ typedef struct {
  */
 
 /* create and return a datastore module */
-typedef opal_dstore_base_module_t* (*mca_dstore_base_component_create_hdl_fn_t)(void);
+typedef opal_dstore_base_module_t* (*mca_dstore_base_component_create_hdl_fn_t)(opal_list_t *attributes);
+
+/* update an existing handle */
+typedef int (*mca_dstore_base_component_update_hdl_fn_t)(int hdl, opal_list_t *attributes);
 
 /* provide a chance for the component to finalize */
 typedef void (*mca_dstore_base_component_finalize_fn_t)(void);
@@ -176,6 +194,7 @@ typedef struct {
     mca_base_component_t                      base_version;
     mca_base_component_data_t                 base_data;
     mca_dstore_base_component_create_hdl_fn_t create_handle;
+    mca_dstore_base_component_update_hdl_fn_t update_handle;
     mca_dstore_base_component_finalize_fn_t   finalize;
 } opal_dstore_base_component_t;
 

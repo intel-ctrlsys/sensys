@@ -59,9 +59,6 @@ opal_list_t orte_proc_states;
 int orte_clean_output = -1;
 
 /* globals used by RTE */
-bool orte_timing;
-FILE *orte_timing_output = NULL;
-bool orte_timing_details;
 bool orte_debug_daemons_file_flag = false;
 bool orte_leave_session_attached;
 bool orte_do_not_launch = false;
@@ -180,7 +177,6 @@ bool orte_abort_non_zero_exit;
 int orte_stat_history_size;
 
 /* envars to forward */
-char *orte_forward_envars = NULL;
 char **orte_forwarded_envars = NULL;
 
 /* map-reduce mode */
@@ -200,7 +196,7 @@ opal_thread_t orte_progress_thread;
 char *orte_base_user_debugger = NULL;
 
 /* modex cutoff */
-uint32_t orte_full_modex_cutoff = UINT32_MAX;
+uint32_t orte_direct_modex_cutoff = UINT32_MAX;
 
 int orte_debug_output = -1;
 bool orte_debug_daemons_flag = false;
@@ -510,14 +506,15 @@ char* orte_get_proc_hostname(orte_process_name_t *proc)
     opal_list_t myvals;
     opal_value_t *kv;
 
+    /* don't bother error logging any not-found situations
+     * as the layer above us will have something to say
+     * about it */
     if (ORTE_PROC_IS_DAEMON || ORTE_PROC_IS_HNP) {
         /* look it up on our arrays */
         if (NULL == (proct = orte_get_proc_object(proc))) {
-            ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
             return NULL;
         }
         if (NULL == proct->node || NULL == proct->node->name) {
-            ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
             return NULL;
         }
         return proct->node->name;
@@ -529,7 +526,6 @@ char* orte_get_proc_hostname(orte_process_name_t *proc)
                                                 (opal_identifier_t*)proc,
                                                 OPAL_DSTORE_HOSTNAME,
                                                 &myvals))) {
-        ORTE_ERROR_LOG(rc);
         OPAL_LIST_DESTRUCT(&myvals);
         return NULL;
     }

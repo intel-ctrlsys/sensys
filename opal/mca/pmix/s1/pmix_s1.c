@@ -1,6 +1,8 @@
 /* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -13,7 +15,9 @@
 #include "opal/types.h"
 
 #include "opal_stdint.h"
+#include "opal/mca/base/mca_base_var.h"
 #include "opal/mca/hwloc/base/base.h"
+#include "opal/util/opal_environ.h"
 #include "opal/util/output.h"
 #include "opal/util/proc.h"
 #include "opal/util/show_help.h"
@@ -290,6 +294,9 @@ static int s1_init(void)
         goto err_exit;
     }
 
+    /* setup any local envars we were asked to do */
+    mca_base_var_process_env_list(&environ);
+
     return OPAL_SUCCESS;
 
  err_exit:
@@ -451,7 +458,7 @@ static int s1_fence(opal_process_name_t *procs, size_t nprocs)
         /* we only need to set locality for each local rank as "not found"
          * equates to "non-local" */
         for (i=0; i < s1_nlranks; i++) {
-            s1_pname.vid = i;
+            s1_pname.vid = s1_lranks[i];
             rc = opal_pmix_base_cache_keys_locally((opal_identifier_t*)&s1_pname, OPAL_DSTORE_CPUSET,
                                                    &kp, pmix_kvs_name, pmix_vallen_max, kvs_get);
             if (OPAL_SUCCESS != rc) {
@@ -505,9 +512,6 @@ static int s1_get(const opal_identifier_t *id,
                         OPAL_NAME_PRINT(OPAL_PROC_MY_NAME), key);
 
     rc = opal_pmix_base_cache_keys_locally(id, key, kv, pmix_kvs_name, pmix_vallen_max, kvs_get);
-    if (NULL == *kv) {
-        return OPAL_ERROR;
-    }
      opal_output_verbose(2, opal_pmix_base_framework.framework_output,
                         "%s pmix:s1 got key %s",
                          OPAL_NAME_PRINT(OPAL_PROC_MY_NAME), key);

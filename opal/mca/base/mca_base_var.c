@@ -10,7 +10,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008-2013 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2008-2014 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012-2014 Los Alamos National Security, LLC. All rights
  *                         reserved.
  * Copyright (c) 2014      Intel, Inc. All rights reserved.
@@ -52,7 +52,7 @@
  * local variables
  */
 static opal_pointer_array_t mca_base_vars;
-static const char *mca_prefix = "OMPI_MCA_";
+static const char *mca_prefix = OPAL_MCA_PREFIX;
 static char *home = NULL;
 static char *cwd  = NULL;
 bool mca_base_var_initialized = false;
@@ -127,7 +127,6 @@ static int mca_base_var_cache_files (bool rel_path_search);
 static int var_set_initial (mca_base_var_t *var);
 static int var_get (int vari, mca_base_var_t **var_out, bool original);
 static int var_value_string (mca_base_var_t *var, char **value_string);
-static int mca_base_var_process_env_list(void);
 
 /*
  * classes
@@ -261,28 +260,28 @@ int mca_base_var_init(void)
 
         mca_base_var_cache_files(false);
 
-        /* set nesessary env variables for external usage */
-        mca_base_var_process_env_list();
+        /* register the envar-forwarding params */
+        (void)mca_base_var_register ("opal", "mca", "base", "env_list",
+                                     "Set SHELL env variables",
+                                     MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0, OPAL_INFO_LVL_3,
+                                     MCA_BASE_VAR_SCOPE_READONLY, &mca_base_env_list);
+        (void)mca_base_var_register ("opal", "mca", "base", "env_list_delimiter",
+                                     "Set SHELL env variables delimiter. Default: semicolon ';'",
+                                     MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0, OPAL_INFO_LVL_3,
+                                     MCA_BASE_VAR_SCOPE_READONLY, &mca_base_env_list_sep);
     }
 
     return OPAL_SUCCESS;
 }
 
-static int mca_base_var_process_env_list(void)
+int mca_base_var_process_env_list(char ***argv)
 {
     int i;
     char** tokens;
     char* ptr;
     char* param, *value;
     char sep;
-    (void)mca_base_var_register ("opal", "mca", "base", "env_list",
-                                 "Set SHELL env variables",
-                                 MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0, OPAL_INFO_LVL_3,
-                                 MCA_BASE_VAR_SCOPE_READONLY, &mca_base_env_list);
-    (void)mca_base_var_register ("opal", "mca", "base", "env_list_delimiter",
-                                 "Set SHELL env variables delimiter. Default: semicolon ';'",
-                                 MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0, OPAL_INFO_LVL_3,
-                                 MCA_BASE_VAR_SCOPE_READONLY, &mca_base_env_list_sep);
+
     if (NULL == mca_base_env_list) {
         return OPAL_SUCCESS;
     }
@@ -307,10 +306,10 @@ static int mca_base_var_process_env_list(void)
                         value = strchr(param, '=');
                         *value = '\0';
                         value++;
-                        opal_setenv(param, value, true, &environ);
+                        opal_setenv(param, value, true, argv);
                         free(param);
                     } else {
-                        opal_setenv(tokens[i], value, true, &environ);
+                        opal_setenv(tokens[i], value, true, argv);
                     }
                 } else {
                     opal_show_help("help-mca-var.txt", "incorrect-env-list-param",
@@ -321,7 +320,7 @@ static int mca_base_var_process_env_list(void)
                 value = strchr(param, '=');
                 *value = '\0';
                 value++;
-                opal_setenv(param, value, true, &environ);
+                opal_setenv(param, value, true, argv);
                 free(param);
             }
         }
@@ -661,15 +660,20 @@ static int var_set_from_string (mca_base_var_t *var, char *src)
 
         if (MCA_BASE_VAR_TYPE_INT == var->mbv_type ||
             MCA_BASE_VAR_TYPE_UNSIGNED_INT == var->mbv_type) {
-            dst->intval = (int) int_value;
+            int *castme = (int*) var->mbv_storage;
+            *castme = int_value;
         } else if (MCA_BASE_VAR_TYPE_UNSIGNED_LONG == var->mbv_type) {
-            dst->ulval = (unsigned long) int_value;
+            unsigned long *castme = (unsigned long*) var->mbv_storage;
+            *castme = (unsigned long) int_value;
         } else if (MCA_BASE_VAR_TYPE_UNSIGNED_LONG_LONG == var->mbv_type) {
-            dst->ullval = (unsigned long long) int_value;
+            unsigned long long *castme = (unsigned long long*) var->mbv_storage;
+            *castme = (unsigned long long) int_value;
         } else if (MCA_BASE_VAR_TYPE_SIZE_T == var->mbv_type) {
-            dst->sizetval = (size_t) int_value;
+            size_t *castme = (size_t*) var->mbv_storage;
+            *castme = (size_t) int_value;
         } else if (MCA_BASE_VAR_TYPE_BOOL == var->mbv_type) {
-            dst->boolval = !!int_value;
+            bool *castme = (bool*) var->mbv_storage;
+            *castme = !!int_value;
         }
 
         return ret;
@@ -1205,6 +1209,43 @@ static int register_variable (const char *project_name, const char *framework_na
     /* Developer error. Storage can not be NULL and type must exist */
     assert (((flags & MCA_BASE_VAR_FLAG_SYNONYM) || NULL != storage) && type >= 0 && type < MCA_BASE_VAR_TYPE_MAX);
 
+#if OPAL_ENABLE_DEBUG
+    /* Developer error: check for alignments */
+    uintptr_t align = 0;
+    switch (type) {
+    case MCA_BASE_VAR_TYPE_INT:
+        align = OPAL_ALIGNMENT_INT;
+        break;
+    case MCA_BASE_VAR_TYPE_UNSIGNED_INT:
+        align = OPAL_ALIGNMENT_INT;
+        break;
+    case MCA_BASE_VAR_TYPE_UNSIGNED_LONG:
+        align = OPAL_ALIGNMENT_LONG;
+        break;
+    case MCA_BASE_VAR_TYPE_UNSIGNED_LONG_LONG:
+        align = OPAL_ALIGNMENT_LONG_LONG;
+        break;
+    case MCA_BASE_VAR_TYPE_SIZE_T:
+        align = OPAL_ALIGNMENT_SIZE_T;
+        break;
+    case MCA_BASE_VAR_TYPE_BOOL:
+        align = OPAL_ALIGNMENT_BOOL;
+        break;
+    case MCA_BASE_VAR_TYPE_DOUBLE:
+        align = OPAL_ALIGNMENT_DOUBLE;
+        break;
+    case MCA_BASE_VAR_TYPE_VERSION_STRING:
+    case MCA_BASE_VAR_TYPE_STRING:
+    default:
+        align = 0;
+        break;
+    }
+
+    if (0 != align) {
+        assert(((uintptr_t) storage) % align == 0);
+    }
+#endif
+
     /* There are data holes in the var struct */
     OPAL_DEBUG_ZERO(var);
 
@@ -1561,10 +1602,11 @@ static int var_set_from_file (mca_base_var_t *var, opal_list_t *file_values)
     const char *var_full_name = var->mbv_full_name;
     const char *var_long_name = var->mbv_long_name;
     bool deprecated = VAR_IS_DEPRECATED(var[0]);
+    bool is_synonym = VAR_IS_SYNONYM(var[0]);
     mca_base_var_file_value_t *fv;
     int ret;
 
-    if (VAR_IS_SYNONYM(var[0])) {
+    if (is_synonym) {
         ret = var_get (var->mbv_synonym_for, &var, true);
         if (OPAL_SUCCESS != ret) {
             return OPAL_ERROR;
@@ -1611,8 +1653,15 @@ static int var_set_from_file (mca_base_var_t *var, opal_list_t *file_values)
         }
 
         if (deprecated) {
+            const char *new_variable = "None (going away)";
+
+            if (is_synonym) {
+                new_variable = var->mbv_full_name;
+            }
+
             opal_show_help("help-mca-var.txt", "deprecated-mca-file",
-                           true, var_full_name, fv->mbvfv_file);
+                           true, var_full_name, fv->mbvfv_file,
+                           new_variable);
         }
 
         if (NULL != fv->mbvfv_file) {

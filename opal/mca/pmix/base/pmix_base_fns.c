@@ -144,7 +144,7 @@ int opal_pmix_base_commit_packed( char* buffer_to_put, int data_to_put,
     for (left = strlen (encoded_data), tmp = encoded_data ; left ; ) {
         size_t value_size = vallen > left ? left : vallen - 1;
 
-        sprintf (tmp_key, "key%d", *pack_key);
+        sprintf (tmp_key, "key%d", pkey);
 
         if (NULL == (pmikey = setup_key(&OPAL_PROC_MY_NAME, tmp_key, vallen))) {
             OPAL_ERROR_LOG(OPAL_ERR_BAD_PARAM);
@@ -264,8 +264,10 @@ int opal_pmix_base_cache_keys_locally(const opal_identifier_t* id, const char* k
     size_t len, offset;
     int rc, size;
     opal_value_t *kv, *knew;
-    *out_kv = NULL;
     opal_list_t values;
+
+    /* set the default */
+    *out_kv = NULL;
 
     /* first try to fetch data from data storage */
     OBJ_CONSTRUCT(&values, opal_list_t);
@@ -356,6 +358,7 @@ int opal_pmix_base_cache_keys_locally(const opal_identifier_t* id, const char* k
                 if (size == 0xffff) {
                     kv->data.bo.bytes = NULL;
                     kv->data.bo.size = 0;
+                    size = 0;
                 } else {
                     kv->data.bo.bytes = malloc(size);
                     memcpy(kv->data.bo.bytes, tmp3, size);
@@ -383,6 +386,12 @@ int opal_pmix_base_cache_keys_locally(const opal_identifier_t* id, const char* k
         }
     }
     free (tmp_val);
+    /* if there was no issue with unpacking the message, but
+     * we didn't find the requested info, then indicate that
+     * the info wasn't found */
+    if (OPAL_SUCCESS == rc && NULL == *out_kv) {
+        return OPAL_ERR_NOT_FOUND;
+    }
     return rc;
 }
 

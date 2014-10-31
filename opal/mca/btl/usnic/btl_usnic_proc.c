@@ -29,6 +29,7 @@
 #include "opal/util/show_help.h"
 #include "opal/constants.h"
 #include "opal/mca/pmix/pmix.h"
+#include "opal/util/proc.h"
 
 #include "btl_usnic.h"
 #include "btl_usnic_proc.h"
@@ -198,7 +199,7 @@ static int create_proc(opal_proc_t *opal_proc,
     /* If this proc simply doesn't have this key, then they're not
        running the usnic BTL -- just ignore them.  Otherwise, show an
        error message. */
-    if (OPAL_ERR_DATA_VALUE_NOT_FOUND == rc) {
+    if (OPAL_ERR_NOT_FOUND == rc) {
         OBJ_RELEASE(proc);
         return OPAL_ERR_UNREACH;
     } else if (OPAL_SUCCESS != rc) {
@@ -248,7 +249,7 @@ static int create_proc(opal_proc_t *opal_proc,
                        "transport mismatch",
                        true,
                        opal_process_info.nodename,
-                       proc->proc_opal->proc_hostname);
+                       opal_get_proc_hostname(proc->proc_opal));
         OBJ_RELEASE(proc);
         return OPAL_ERR_BAD_PARAM;
     }
@@ -628,8 +629,7 @@ static int match_modex(opal_btl_usnic_module_t *module,
                     ibv_get_device_name(module->device),
                     module->if_name,
                     module->if_mtu,
-                    (NULL == proc->proc_opal->proc_hostname) ?
-                    "unknown" : proc->proc_opal->proc_hostname,
+                    opal_get_proc_hostname(proc->proc_opal),
                     proc->proc_modex[*index_out].mtu);
         *index_out = -1;
         return OPAL_ERR_UNREACH;

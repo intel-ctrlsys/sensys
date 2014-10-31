@@ -65,7 +65,9 @@ orcm_info_SOURCES = \
         components.c \
         version.c
 
-orcm_info_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/libopen-rte.la $(top_builddir)/opal/libopen-pal.la
+orcm_info_LDADD = $(top_builddir)/orcm/liborcm.la \
+                  $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
+                  $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 clean-local:
 	test -z "$(OPAL_CXX_TEMPLATE_REPOSITORY)" || rm -rf $(OPAL_CXX_TEMPLATE_REPOSITORY)

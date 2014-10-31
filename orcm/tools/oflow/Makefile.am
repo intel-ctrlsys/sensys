@@ -36,7 +36,7 @@ oflow_SOURCES = oflow.c
 #  nice for systems that don't have all the shared 
 #  libraries on the computes 
 oflow_LDFLAGS =
-oflow_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/libopen-rte.la
+oflow_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
 
 distclean-local:
 	rm -f $(man_pages)

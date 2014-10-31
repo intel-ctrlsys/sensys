@@ -25,18 +25,7 @@
 # orte/Makefile.am
 
 SUBDIRS += \
-	tools/orte-clean \
-	tools/orte-ps \
-	tools/orted \
-	tools/wrappers \
-        tools/orte-top \
-        tools/orte-info
+	tools/orted
 
 DIST_SUBDIRS += \
-	tools/orte-clean \
-	tools/orte-ps \
-	tools/orted \
-	tools/wrappers \
-        tools/orte-top \
-        tools/orte-info
-
+	tools/orted

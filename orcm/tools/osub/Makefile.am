@@ -36,7 +36,7 @@ osub_SOURCES = osub.c
 #  nice for systems that don't have all the shared 
 #  libraries on the computes 
 osub_LDFLAGS =
-osub_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/libopen-rte.la
+osub_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
 
 distclean-local:
 	rm -f $(man_pages)

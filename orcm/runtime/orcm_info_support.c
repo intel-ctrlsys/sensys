@@ -86,7 +86,7 @@ void orcm_info_show_orcm_version(const char *scope)
                                       ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION, 
                                       ORCM_RELEASE_VERSION, 
                                       ORCM_GREEK_VERSION,
-                                      ORCM_WANT_REPO_REV, ORCM_REPO_REV);
+                                      ORCM_REPO_REV);
     opal_info_out("Open RCM", tmp, tmp2);
     free(tmp);
     free(tmp2);

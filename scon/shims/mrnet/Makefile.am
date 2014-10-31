@@ -15,7 +15,7 @@ libmrnetscon_la_LIBADD = \
 	$(SCON_TOP_BUILDDIR)/orte/mca/rml/libmca_rml.la \
 	$(SCON_TOP_BUILDDIR)/orte/mca/oob/libmca_oob.la \
 	$(SCON_TOP_BUILDDIR)/orte/mca/routed/libmca_routed.la \
-	$(SCON_TOP_BUILDDIR)/opal/libopen-pal.la
-libmrnetscon_la_DEPENDENCIES = $(libopen_rte_la_LIBADD)
-libmrnetscon_la_LDFLAGS = -version-info $(libscon_so_version)
+	$(SCON_TOP_BUILDDIR)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
+libmrnetscon_la_DEPENDENCIES = $(lib@ORTE_LIB_PREFIX@open-rte_la_LIBADD)
+libmrnetscon_la_LDFLAGS = -version-info $(libmrnetscon_so_version)
 

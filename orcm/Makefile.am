@@ -34,8 +34,8 @@ lib_LTLIBRARIES = liborcm.la
 liborcm_la_SOURCES =
 liborcm_la_LIBADD = \
 	$(MCA_orcm_FRAMEWORK_LIBS) \
-	$(ORTE_TOP_BUILDDIR)/orte/libopen-rte.la
-liborcm_la_DEPENDENCIES = $(liborcm_la_LIBADD)
+	$(ORTE_TOP_BUILDDIR)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
+liborcm_la_DEPENDENCIES = $(lib@ORTE_LIB_PREFIX@open_rte_la_LIBADD)
 liborcm_la_LDFLAGS = \
         -version-info $(liborcm_so_version) \
         $(ORCM_LIBORCM_EXTRA_LDFLAGS)

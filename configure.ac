@@ -133,12 +133,11 @@ AC_SUBST(liborcm_so_version)
 AC_SUBST(liborcmapi_so_version)
 # SCON level
 AC_SUBST(libscon_so_version)
+AC_SUBST(libmrnetscon_so_version)
 # ORTE level
 AC_SUBST(libopen_rte_so_version)
 # OPAL level
 AC_SUBST(libopen_pal_so_version)
-AC_SUBST(libmca_opal_common_hwloc_so_version)
-AC_SUBST(libmca_opal_common_pmi_so_version)
 AC_SUBST(libmca_common_cuda_so_version)
 AC_SUBST(libmca_common_ofacm_so_version)
 AC_SUBST(libmca_common_sm_so_version)
@@ -262,6 +261,13 @@ if test "$enable_binaries" = "no" -a "$enable_dist" = "yes"; then
     AC_MSG_WARN([--disable-binaries is incompatible with --enable dist])
     AC_MSG_ERROR([Cannot continue])
 fi
+
+# The library prefixes must be set before we call OPAL MCA.  Here is
+# as good a place as any.
+OPAL_SET_LIB_PREFIX([orcm])
+ORTE_SET_LIB_PREFIX([orcm])
+OPAL_SET_MCA_PREFIX([ORCM_MCA_])
+OPAL_SET_MCA_CMD_LINE_ID([omca])
 
 ############################################################################
 # Libtool: part one

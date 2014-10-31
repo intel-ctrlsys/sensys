@@ -36,7 +36,7 @@ orcmctrld_SOURCES = orcmctrld.c
 #  nice for systems that don't have all the shared 
 #  libraries on the computes 
 orcmctrld_LDFLAGS =
-orcmctrld_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/libopen-rte.la
+orcmctrld_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
 
 distclean-local:
 	rm -f $(man_pages)

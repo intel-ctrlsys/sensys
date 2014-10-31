@@ -1070,9 +1070,9 @@ static int create_app(int argc, char* argv[],
     }
 
     /* Did the user request to export any environment variables via MCA param? */
-    if (NULL != orte_forward_envars) {
+    if (NULL != orte_forwarded_envars) {
         char **vars;
-        vars = opal_argv_split(orte_forward_envars, ',');
+        vars = opal_argv_split(*orte_forwarded_envars, ',');
         for (i=0; NULL != vars[i]; i++) {
             if (NULL != strchr(vars[i], '=')) {
                 /* user supplied a value */

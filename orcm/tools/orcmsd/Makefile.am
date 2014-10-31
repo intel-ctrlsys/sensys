@@ -47,7 +47,9 @@ orcmsd_SOURCES = orcmsd.c
 #  nice for systems that don't have all the shared 
 #  libraries on the computes 
 orcmsd_LDFLAGS =
-orcmsd_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/libopen-rte.la $(top_builddir)/opal/libopen-pal.la
+orcmsd_LDADD = $(top_builddir)/orcm/liborcm.la \
+               $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
+               $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 distclean-local:
 	rm -f $(man_pages)

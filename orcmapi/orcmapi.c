@@ -97,7 +97,7 @@ int orcmapi_init(void)
     opal_progress_set_event_flag(OPAL_EVLOOP_ONCE);
 
     /* select external scheduler */
-    putenv("@MCA_PREFIX@scd=external");
+    putenv(OPAL_MCA_PREFIX"scd=external");
 
     /* init the ORCM library */
     if (ORCM_SUCCESS != (ret = orcm_init(ORCM_SCHED))) {

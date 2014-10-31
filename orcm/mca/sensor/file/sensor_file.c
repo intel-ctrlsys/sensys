@@ -187,7 +187,7 @@ static void start(orte_jobid_t jobid)
     }
             
     /* search the environ to get the filename */
-    if (!find_value(app, "@MCA_PREFIX@sensor_file_filename", &filename)) {
+    if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_filename", &filename)) {
         /* was a default file given */
         if (NULL == mca_sensor_file_component.file) {
             /* can't do anything without a file */
@@ -207,7 +207,7 @@ static void start(orte_jobid_t jobid)
     free(filename);
 
     /* search the environ to see what we are checking */
-    if (!find_value(app, "@MCA_PREFIX@sensor_file_check_size", &ptr)) {
+    if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_check_size", &ptr)) {
         /* was a default value given */
         if (0 < mca_sensor_file_component.check_size) {
             ft->check_size = OPAL_INT_TO_BOOL(mca_sensor_file_component.check_size);
@@ -217,7 +217,7 @@ static void start(orte_jobid_t jobid)
         free(ptr);
     }
 
-    if (!find_value(app, "@MCA_PREFIX@sensor_file_check_access", &ptr)) {
+    if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_check_access", &ptr)) {
         /* was a default value given */
         if (0 < mca_sensor_file_component.check_access) {
             ft->check_access = OPAL_INT_TO_BOOL(mca_sensor_file_component.check_access);
@@ -227,7 +227,7 @@ static void start(orte_jobid_t jobid)
         free(ptr);
     }
 
-    if (!find_value(app, "@MCA_PREFIX@sensor_file_check_mod", &ptr)) {
+    if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_check_mod", &ptr)) {
         /* was a default value given */
         if (0 < mca_sensor_file_component.check_mod) {
             ft->check_mod = OPAL_INT_TO_BOOL(mca_sensor_file_component.check_mod);
@@ -237,7 +237,7 @@ static void start(orte_jobid_t jobid)
         free(ptr);
     }
 
-    if (!find_value(app, "@MCA_PREFIX@sensor_file_limit", &ptr)) {
+    if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_limit", &ptr)) {
         ft->limit = mca_sensor_file_component.limit;
     } else {
         ft->limit = strtol(ptr, NULL, 10);

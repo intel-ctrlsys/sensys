@@ -318,8 +318,8 @@ static int emulator_init(void)
     /* datastore - ensure we don't pickup the pmi component, but
      * don't override anything set by user
      */
-    if (NULL == getenv("@MCA_PREFIX@dstore")) {
-        putenv("@MCA_PREFIX@dstore=^pmi");
+    if (NULL == getenv(OPAL_MCA_PREFIX"dstore")) {
+        putenv(OPAL_MCA_PREFIX"dstore=^pmi");
     }
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&opal_dstore_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);

@@ -662,7 +662,7 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-CORES %s", xml->value[0]);
             /* all we need do is push this into the corresponding param */
-            asprintf(&val, "@MCA_PREFIX@orte_daemon_cores=%s", xml->value[0]);
+            asprintf(&val, OPAL_MCA_PREFIX"orte_daemon_cores=%s", xml->value[0]);
             opal_argv_append_nosize(&daemon_cfg.mca_params, val);
             free(val);
         }
@@ -674,8 +674,8 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
             vals = opal_argv_split(xml->value[0], ',');
             for (n=0; NULL != vals[n]; n++) {
                 /* add the MCA prefix, if required */
-                if (0 != strncmp(vals[n], "@MCA_PREFIX@", strlen("@MCA_PREFIX@"))) {
-                    asprintf(&val, "@MCA_PREFIX@%s", vals[n]);
+                if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
+                    asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
                 } else {
                     val = strdup(vals[n]);
                 }
@@ -744,7 +744,7 @@ static int parse_aggregators(orcm_cfgi_xml_parser_t *xml,
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-CORES %s", xml->value[0]);
             /* all we need do is push this into the corresponding param */
-            asprintf(&val, "@MCA_PREFIX@orte_daemon_cores=%s", xml->value[0]);
+            asprintf(&val, OPAL_MCA_PREFIX"orte_daemon_cores=%s", xml->value[0]);
             opal_argv_append_nosize(&agg_cfg.mca_params, val);
             free(val);
         }
@@ -755,8 +755,8 @@ static int parse_aggregators(orcm_cfgi_xml_parser_t *xml,
             vals = opal_argv_split(xml->value[0], ',');
             for (n=0; NULL != vals[n]; n++) {
                 /* add the MCA prefix, if required */
-                if (0 != strncmp(vals[n], "@MCA_PREFIX@", strlen("@MCA_PREFIX@"))) {
-                    asprintf(&val, "@MCA_PREFIX@%s", vals[n]);
+                if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
+                    asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
                 } else {
                     val = strdup(vals[n]);
                 }
@@ -817,7 +817,7 @@ static int parse_scheduler(orcm_cfgi_xml_parser_t *xml)
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-CORES %s", xml->value[0]);
             /* all we need do is push this into the corresponding param */
-            asprintf(&val, "@MCA_PREFIX@orte_daemon_cores=%s", xml->value[0]);
+            asprintf(&val, OPAL_MCA_PREFIX"orte_daemon_cores=%s", xml->value[0]);
             opal_argv_append_nosize(&scd_cfg.mca_params, val);
             free(val);
         }
@@ -828,8 +828,8 @@ static int parse_scheduler(orcm_cfgi_xml_parser_t *xml)
             vals = opal_argv_split(xml->value[0], ',');
             for (n=0; NULL != vals[n]; n++) {
                 /* add the MCA prefix, if required */
-                if (0 != strncmp(vals[n], "@MCA_PREFIX@", strlen("@MCA_PREFIX@"))) {
-                    asprintf(&val, "@MCA_PREFIX@%s", vals[n]);
+                if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
+                    asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
                 } else {
                     val = strdup(vals[n]);
                 }
@@ -978,7 +978,7 @@ static void setup_environ(char **env)
      * but no harm done
      */
     for (i=0; NULL != tmp[i]; i++) {
-        if (0 == strncmp(tmp[i], "@MCA_PREFIX@", strlen("@MCA_PREFIX@"))) {
+        if (0 == strncmp(tmp[i], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
             t = strdup(tmp[i]);
             opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
                                 "PUSHING %s TO ENVIRON", t);
@@ -1027,7 +1027,7 @@ static bool check_me(orcm_config_t *config, char *node,
                 orte_process_info.proc_type = ORCM_AGGREGATOR;
             }
             /* load our port */
-            asprintf(&uri, "@MCA_PREFIX@oob_tcp_static_ipv4_ports=%s", config->port);
+            asprintf(&uri, OPAL_MCA_PREFIX"oob_tcp_static_ipv4_ports=%s", config->port);
             putenv(uri);  // cannot free this value
             opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
                                 "file10:check_me: push our port %s", uri);
@@ -1045,7 +1045,7 @@ static bool check_me(orcm_config_t *config, char *node,
             }
             setup_environ(config->mca_params);
             /* load our port */
-            asprintf(&uri, "@MCA_PREFIX@oob_tcp_static_ipv4_ports=%s", config->port);
+            asprintf(&uri, OPAL_MCA_PREFIX"oob_tcp_static_ipv4_ports=%s", config->port);
             putenv(uri);  // cannot free this value
             opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
                                 "file10:check_me: push our port %s", uri);

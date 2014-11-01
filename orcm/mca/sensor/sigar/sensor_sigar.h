@@ -30,7 +30,7 @@ typedef struct {
     bool load;
     bool disk;
     bool network;
-    unsigned long int proc;
+    bool proc;
 } orcm_sensor_sigar_component_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_sigar_component_t mca_sensor_sigar_component;

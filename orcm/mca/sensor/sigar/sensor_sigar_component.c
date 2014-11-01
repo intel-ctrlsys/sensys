@@ -126,10 +126,10 @@ static int sigar_component_register(void)
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_sigar_component.network);
-    mca_sensor_sigar_component.proc = 0;
+    mca_sensor_sigar_component.proc = true;
     (void) mca_base_component_var_register (c, "proc",
-                                            "Enable collecting process information with the pid passed",
-                                            MCA_BASE_VAR_TYPE_UNSIGNED_LONG, NULL, 0, 0,
+                                            "Enable collecting process information of daemon and child processes",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_sigar_component.proc);

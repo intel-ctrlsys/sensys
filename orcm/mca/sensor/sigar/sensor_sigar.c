@@ -253,6 +253,13 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     sigar_file_system_usage_t fsusage;
     sensor_sigar_interface_t *sit, *next;
     sigar_net_interface_stat_t tnet, ifc;
+    sigar_proc_state_t proc_info;
+    //sigar_proc_cred_name_t  proc_cred_info;
+    sigar_proc_stat_t       procstat_info;
+    //sigar_proc_cumulative_disk_io_t proc_disk_io_info;
+    sigar_proc_mem_t        proc_mem_info;
+    sigar_proc_cpu_t        proc_cpu_info;
+
     uint64_t reads, writes, read_bytes, write_bytes;
     uint64_t rxpkts, txpkts, rxbytes, txbytes;
     uint64_t ui64;
@@ -267,6 +274,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     struct tm *sample_time;
     char *error_string;
     bool log_group=false;
+    opal_pstats_t *stats;
 
     if (mca_sensor_sigar_component.test) {
         /* just send the test vector */
@@ -312,7 +320,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     free(timestamp_str);
 
     if(mca_sensor_sigar_component.mem) {
-        opal_output(0,"Sampling MEMORY");
         log_group = true;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -351,7 +358,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     } else {
-        opal_output(0,"Disabled sampling MEMORY");
         log_group = false;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -361,7 +367,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     }
 
     if(mca_sensor_sigar_component.swap) {
-        opal_output(0,"Sampling SWAP");
         log_group = true;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -402,7 +407,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     } else {
-        opal_output(0,"Disabled sampling SWAP");
         log_group = false;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -412,7 +416,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     }
 
     if(mca_sensor_sigar_component.cpu) {
-        opal_output(0,"Sampling CPU Usage");
         log_group = true;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -457,7 +460,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         pcpu.idle = cpu.idle;
         pcpu.total = cpu.total;
     } else {
-        opal_output(0,"Disabled sampling CPU Usage");
         log_group = false;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -467,7 +469,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     }
 
     if(mca_sensor_sigar_component.load) {
-        opal_output(0,"Sampling average load");
         log_group = true;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -504,7 +505,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     } else {
-        opal_output(0,"Disabled sampling average load");
         log_group = false;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -514,7 +514,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     }
 
     if(mca_sensor_sigar_component.disk) {
-        opal_output(0,"Sampling DISK STATS");
         log_group = true;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -585,7 +584,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     } else {
-        opal_output(0,"Disabled sampling DISK STATS");
         log_group = false;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -596,7 +594,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
 
 
     if(mca_sensor_sigar_component.network) {
-        opal_output(0,"Sampling NETWORK STATS");
         log_group = true;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -674,13 +671,150 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     } else {
-        opal_output(0,"Disabled sampling NETWORK STATS");
         log_group = false;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             return;
         }
+    }
+    if(mca_sensor_sigar_component.network) {
+        log_group = true;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        sigar_proc_stat_get(sigar, &procstat_info);
+        stats = OBJ_NEW(opal_pstats_t);
+
+        /* include our node name */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        /* get the sample time */
+        now = time(NULL);
+        tdiff = difftime(now, last_sample);
+        /* pass the time along as a simple string */
+        sample_time = localtime(&now);
+        if (NULL == sample_time) {
+            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+            return;
+        }
+        strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
+        asprintf(&timestamp_str, "%s", time_str);
+
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        free(timestamp_str);
+
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &procstat_info.total, 1, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &procstat_info.sleeping, 1, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &procstat_info.running, 1, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &procstat_info.zombie, 1, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &procstat_info.stopped, 1, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &procstat_info.idle, 1, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &procstat_info.threads, 1, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        do {
+            sigar_proc_state_get(sigar, orte_process_info.pid, &proc_info);
+            sigar_proc_mem_get(sigar, orte_process_info.pid, &proc_mem_info);
+            sigar_proc_cpu_get(sigar,orte_process_info.pid, &proc_cpu_info);
+
+            stats->pid = orte_process_info.pid;
+            strncpy(stats->cmd, proc_info.name, sizeof(stats->cmd));
+            stats->state[0] = proc_info.state;
+            stats->state[1] = '\0';
+            stats->priority = proc_info.priority;
+            stats->num_threads = proc_info.threads;
+            stats->vsize = proc_mem_info.size;
+            stats->rss = proc_mem_info.resident;
+            stats->processor = proc_info.processor;
+            stats->rank = 0;
+
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &stats, 1, OPAL_PSTAT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
+            OBJ_DESTRUCT(stats);
+
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &proc_mem_info.share, 1, OPAL_INT64))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &proc_mem_info.minor_faults, 1, OPAL_INT64))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &proc_mem_info.major_faults, 1, OPAL_INT64))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &proc_mem_info.page_faults, 1, OPAL_INT64))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &proc_cpu_info.percent, 1, OPAL_DOUBLE))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
+
+            log_group = false;
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
+        } while(0);
+    } else {
+        opal_output(0,"Disabled sampling PROCESS STATS");
+        log_group = false;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
     }
 
 
@@ -716,8 +850,12 @@ static void sigar_log(opal_buffer_t *sample)
     opal_list_t *vals;
     opal_value_t *kv;
     uint64_t uint64;
+    int64_t int64;
     float fval;
     bool log_group = false;
+    double sample_double;
+    char processkey[25];
+    opal_pstats_t *st;
 
     if (!log_enabled) {
         return;
@@ -772,7 +910,6 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        opal_output(0,"LOGGING MEMORY");
         /* total memory */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
@@ -820,8 +957,6 @@ static void sigar_log(opal_buffer_t *sample)
         kv->type = OPAL_UINT64;
         kv->data.uint64 = uint64;
         opal_list_append(vals, &kv->super);
-    } else {
-        opal_output(0,"NOT LOGGING MEMORY");
     }
 
     n=1;
@@ -831,7 +966,6 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        opal_output(0,"LOGGING SWAP");
         /* total swap memory */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
@@ -879,8 +1013,6 @@ static void sigar_log(opal_buffer_t *sample)
         kv->type = OPAL_UINT64;
         kv->data.uint64 = uint64;
         opal_list_append(vals, &kv->super);
-    } else {
-        opal_output(0,"NOT LOGGING SWAP");
     }
 
     n=1;
@@ -890,7 +1022,6 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        opal_output(0,"LOGGING CPU");
         /* cpu user */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
@@ -926,9 +1057,8 @@ static void sigar_log(opal_buffer_t *sample)
         kv->type = OPAL_FLOAT;
         kv->data.fval = fval;
         opal_list_append(vals, &kv->super);
-    } else {
-        opal_output(0,"Not LOGGING SWAP");
     }
+
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
         ORTE_ERROR_LOG(rc);
@@ -1082,6 +1212,7 @@ static void sigar_log(opal_buffer_t *sample)
         kv->data.uint64 = uint64;
         opal_list_append(vals, &kv->super);
     }
+    
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store(orcm_sensor_base.dbhandle, "sigar", vals, mycleanup, NULL);
@@ -1089,9 +1220,325 @@ static void sigar_log(opal_buffer_t *sample)
         OPAL_LIST_RELEASE(vals);
     }
 
+    /* Unpack the collected process stats and store them in the database */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    if(log_group) {
+        vals = OBJ_NEW(opal_list_t);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+
+        /* sample time */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        if (NULL == sampletime) {
+            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("ctime");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(sampletime);
+        opal_list_append(vals, &kv->super);
+
+        /* load the hostname */
+        if (NULL == hostname) {
+            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("hostname");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(hostname);
+        opal_list_append(vals, &kv->super);
+
+        /* process threads */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("total_processes");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+
+        /* process threads */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("sleeping_processes");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+
+        /* process threads */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("running_processes");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+        /* process threads */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("zombie_processes");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+
+        /* process threads */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("stopped_processes");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+
+        /* process threads */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("idle_processes");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+
+        /* process threads */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("Total_threads");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+
+        /* store it */
+        if (0 <= orcm_sensor_base.dbhandle) {
+            orcm_db.store(orcm_sensor_base.dbhandle, "procstat", vals, mycleanup, NULL);
+        } else {
+            OPAL_LIST_RELEASE(vals);
+        }
+    }
+    while(true == log_group) {
+        vals = OBJ_NEW(opal_list_t);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("ctime");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(sampletime);        
+        opal_list_append(vals, &kv->super);
+
+        /* load the hostname */
+        if (NULL == hostname) {
+            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("hostname");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(hostname);
+        opal_list_append(vals, &kv->super);
+
+        /* process id */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &st, &n, OPAL_PSTAT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("pid");
+        kv->type = OPAL_PID;
+        kv->data.pid = st->pid;
+        opal_list_append(vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("cmd");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(st->cmd);
+        opal_list_append(vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("state");
+        kv->type = OPAL_STRING;
+        kv->data.string = (char*)malloc(3 * sizeof(char));
+        if (NULL == kv->data.string) {
+            return;
+        }
+        kv->data.string[0] = st->state[0];
+        kv->data.string[1] = st->state[1];
+        kv->data.string[2] = '\0';
+        opal_list_append(vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("percent_cpu");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = st->percent_cpu;
+        opal_list_append(vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("priority");
+        kv->type = OPAL_INT32;
+        kv->data.int32 = st->priority;
+        opal_list_append(vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("num_threads");
+        kv->type = OPAL_INT16;
+        kv->data.int16 = st->num_threads;
+        opal_list_append(vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("vsize:Bytes");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = st->vsize;
+        opal_list_append(vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("rss:Bytes");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = st->rss;
+        opal_list_append(vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("peak_vsize");
+        kv->type = OPAL_FLOAT;
+        kv->data.fval = st->peak_vsize;
+        opal_list_append(vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("processor");
+        kv->type = OPAL_INT16;
+        kv->data.int16 = st->processor;
+        opal_list_append(vals, &kv->super);
+
+        /* process Shared Memory */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("shared memory");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+
+        /* process minor_faults */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("minor_faults");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+
+        /* process major_faults */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("major_faults");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+
+        /* process total_page_faults */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("page_faults");
+        kv->type = OPAL_INT64;
+        kv->data.int64 = int64;
+        opal_list_append(vals, &kv->super);
+
+        /* process cpu percent */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_double, &n, OPAL_DOUBLE))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("percent");
+        kv->type = OPAL_DOUBLE;
+        kv->data.dval = sample_double;
+        opal_list_append(vals, &kv->super);
+
+        sprintf(processkey,"procstat_%s",st->cmd);
+       /* store it */
+        if (0 <= orcm_sensor_base.dbhandle) {
+            orcm_db.store(orcm_sensor_base.dbhandle, processkey, vals, mycleanup, NULL);
+        } else {
+            OPAL_LIST_RELEASE(vals);            
+        }
+
+        /* process cpu percent */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        if(true==log_group)
+            opal_output(0,"Got more proc stats to log");
+        else
+            opal_output(0,"Got NO more proc stats to log");
+
+        OBJ_DESTRUCT(st);
+        log_group=false;
+        /* Unpack the collected process stats and store them in the database */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+
+
+    } 
     if (NULL != hostname) {
         free(hostname);
     }
+    free(sampletime);
 
 }
 

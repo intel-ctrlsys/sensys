@@ -540,7 +540,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
     opal_argv_append(&argc, &argv, "orcmsd");
 
     /* pass it a jobid to match my job family */
-    opal_argv_append(&argc, &argv, "-mca");
+    opal_argv_append(&argc, &argv, "-omca");
     opal_argv_append(&argc, &argv, "sst_orcmsd_jobid");
     if (ORTE_SUCCESS !=
         (rc = orte_util_convert_jobid_to_string(&param, jobid))) {
@@ -554,7 +554,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
 
     if( hnp ) {
         /* setup to pass the vpid */
-        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "-omca");
         opal_argv_append(&argc, &argv, "sst_orcmsd_vpid");
         opal_argv_append(&argc, &argv, "0");
 
@@ -577,7 +577,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
             opal_argv_append(&argc, &argv, alloc->batchfile);
         }
 
-        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "-omca");
         opal_argv_append(&argc, &argv, "oob_tcp_static_ipv4_ports");
         if (0 > asprintf(&param, "%d", port_num)) {
             ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
@@ -604,7 +604,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
         }
 
         /* setup to pass the vpid */
-        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "-omca");
         opal_argv_append(&argc, &argv, "sst_orcmsd_vpid");
         if (0 > asprintf(&param, "%d", vpid)) {
             ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
@@ -616,10 +616,10 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
         opal_argv_append(&argc, &argv, param);
         free(param);
         /* pass the uri of the hnp */
-        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "-omca");
         opal_argv_append(&argc, &argv, "orte_hnp_uri");
         opal_argv_append(&argc, &argv, hnp_uri);
-        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "-omca");
         opal_argv_append(&argc, &argv, "oob_tcp_static_ipv4_ports");
         opal_argv_append(&argc, &argv, "0");
 
@@ -627,7 +627,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
 
     /* if we have static ports, pass the node list */
     if (NULL != alloc->nodes) {
-        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "-omca");
         opal_argv_append(&argc, &argv, "sst_orcmsd_node_regex");
         opal_argv_append(&argc, &argv, alloc->nodes);
     }
@@ -647,17 +647,17 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
     }
 
     if (orte_debug_flag) {
-        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "-omca");
         opal_argv_append(&argc, &argv, "oob_base_verbose");
         opal_argv_append(&argc, &argv, "100");
-        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "-omca");
         opal_argv_append(&argc, &argv, "plm_base_verbose");
         opal_argv_append(&argc, &argv, "100");
-        opal_argv_append(&argc, &argv, "-mca");
+        opal_argv_append(&argc, &argv, "-omca");
         opal_argv_append(&argc, &argv, "state_base_verbose");
         opal_argv_append(&argc, &argv, "100");
     }
-    opal_argv_append(&argc, &argv, "-mca");
+    opal_argv_append(&argc, &argv, "-omca");
     opal_argv_append(&argc, &argv, "rmaps_base_oversubscribe");
     opal_argv_append(&argc, &argv, "1");
 

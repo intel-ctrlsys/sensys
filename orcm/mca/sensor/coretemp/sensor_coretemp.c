@@ -223,9 +223,7 @@ static int init(void)
                         free(filename);
                         if (mca_sensor_coretemp_component.enable_packagetemp == true) {
                             trk->core = strtol(trk->label+strlen("Physical id "), NULL, 10); /* This stores the Package ID of each processor*/
-                            opal_output(0,"TRUE");
                         } else {
-                            opal_output(0,"FALSE");
                             free(tmp);
                             OBJ_RELEASE(trk);
                             continue;

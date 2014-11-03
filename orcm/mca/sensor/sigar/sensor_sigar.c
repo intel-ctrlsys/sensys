@@ -275,6 +275,9 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     char *error_string;
     bool log_group=false;
     opal_pstats_t *stats;
+    pid_t sample_pid;
+    int i,remaining_procs;
+    orte_proc_t *child;
 
     if (mca_sensor_sigar_component.test) {
         /* just send the test vector */
@@ -750,10 +753,35 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
 
-        do {
-            sigar_proc_state_get(sigar, orte_process_info.pid, &proc_info);
-            sigar_proc_mem_get(sigar, orte_process_info.pid, &proc_mem_info);
-            sigar_proc_cpu_get(sigar,orte_process_info.pid, &proc_cpu_info);
+
+        if (NULL != orte_local_children) {
+            remaining_procs = orte_local_children->size+1;
+        } else {
+            remaining_procs = 1;
+        }
+            
+            
+        for (i=0; i < remaining_procs; i++) {
+            if(0==i)
+            {
+                sample_pid = orte_process_info.pid;
+            } else {
+                if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
+                    continue;
+                }
+                if (!ORTE_FLAG_TEST(child, ORTE_PROC_FLAG_ALIVE)) {
+                    continue;
+                }
+                if (0 == child->pid) {
+                    /* race condition */
+                    continue;
+                }
+                sample_pid = child->pid;
+            }
+            /* Sample all the proc details here */
+            sigar_proc_state_get(sigar, sample_pid, &proc_info);
+            sigar_proc_mem_get(sigar, sample_pid, &proc_mem_info);
+            sigar_proc_cpu_get(sigar, sample_pid, &proc_cpu_info);
 
             stats->pid = orte_process_info.pid;
             strncpy(stats->cmd, proc_info.name, sizeof(stats->cmd));
@@ -765,6 +793,13 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             stats->rss = proc_mem_info.resident;
             stats->processor = proc_info.processor;
             stats->rank = 0;
+
+            log_group = true;
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
 
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &stats, 1, OPAL_PSTAT))) {
                 ORTE_ERROR_LOG(rc);
@@ -798,14 +833,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
                 OBJ_DESTRUCT(&data);
                 return;
             }
-
-            log_group = false;
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_DESTRUCT(&data);
-                return;
-            }
-        } while(0);
+        }
     } else {
         opal_output(0,"Disabled sampling PROCESS STATS");
         log_group = false;
@@ -814,8 +842,16 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             OBJ_DESTRUCT(&data);
             return;
         }
-
     }
+
+    /* No More process stats to pack - So pack the final marker*/
+    log_group = false;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
 
 
     /* xfer the data for transmission - need at least one prior sample before doing so */
@@ -1353,6 +1389,12 @@ static void sigar_log(opal_buffer_t *sample)
             OPAL_LIST_RELEASE(vals);
         }
     }
+    /* Check if any process level stats are being sent */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
     while(true == log_group) {
         vals = OBJ_NEW(opal_list_t);
 
@@ -1431,12 +1473,6 @@ static void sigar_log(opal_buffer_t *sample)
         kv->key = strdup("rss:Bytes");
         kv->type = OPAL_FLOAT;
         kv->data.fval = st->rss;
-        opal_list_append(vals, &kv->super);
-
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("peak_vsize");
-        kv->type = OPAL_FLOAT;
-        kv->data.fval = st->peak_vsize;
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
@@ -1519,21 +1555,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        if(true==log_group)
-            opal_output(0,"Got more proc stats to log");
-        else
-            opal_output(0,"Got NO more proc stats to log");
-
         OBJ_DESTRUCT(st);
-        log_group=false;
-        /* Unpack the collected process stats and store them in the database */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-
-
     } 
     if (NULL != hostname) {
         free(hostname);

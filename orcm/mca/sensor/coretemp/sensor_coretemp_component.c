@@ -86,5 +86,13 @@ static int coretemp_component_register(void)
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_coretemp_component.test);
+    mca_sensor_coretemp_component.enable_packagetemp = true;
+    (void) mca_base_component_var_register (c, "enable_packagetemp",
+                                            "Enable collection of package temperature of CPU when available",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_coretemp_component.enable_packagetemp);
+
     return ORCM_SUCCESS;
 }

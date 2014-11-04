@@ -214,13 +214,11 @@ static int init(void)
             {
                 if (NULL != (trk->label = orte_getline(fp)))
                 {
+                    fclose(fp);
+                    free(filename);
                     if(NULL != (ptr = strcasestr(trk->label,"core"))) {
-                        fclose(fp);
-                        free(filename);
                         trk->core = strtol(trk->label+strlen("core "), NULL, 10); /* This stores the core ID under each processor*/
                     } else if (NULL != (ptr = strcasestr(trk->label,"Physical id "))) {
-                        fclose(fp);
-                        free(filename);
                         if (mca_sensor_coretemp_component.enable_packagetemp == true) {
                             trk->core = strtol(trk->label+strlen("Physical id "), NULL, 10); /* This stores the Package ID of each processor*/
                         } else {
@@ -229,8 +227,6 @@ static int init(void)
                             continue;
                         }
                     } else {
-                        fclose(fp);
-                        free(filename);
                         free(tmp);
                         OBJ_RELEASE(trk);
                         continue; /* We only collect core temperatures for now*/

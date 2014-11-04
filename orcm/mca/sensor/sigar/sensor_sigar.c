@@ -46,6 +46,7 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_sigar.h"
 
+#define MAX_PROC_NAME 35
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
@@ -254,9 +255,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     sensor_sigar_interface_t *sit, *next;
     sigar_net_interface_stat_t tnet, ifc;
     sigar_proc_state_t proc_info;
-    //sigar_proc_cred_name_t  proc_cred_info;
     sigar_proc_stat_t       procstat_info;
-    //sigar_proc_cumulative_disk_io_t proc_disk_io_info;
     sigar_proc_mem_t        proc_mem_info;
     sigar_proc_cpu_t        proc_cpu_info;
 
@@ -890,7 +889,7 @@ static void sigar_log(opal_buffer_t *sample)
     float fval;
     bool log_group = false;
     double sample_double;
-    char processkey[25];
+    char processkey[MAX_PROC_NAME];
     opal_pstats_t *st;
 
     if (!log_enabled) {
@@ -1541,7 +1540,7 @@ static void sigar_log(opal_buffer_t *sample)
         kv->data.dval = sample_double;
         opal_list_append(vals, &kv->super);
 
-        sprintf(processkey,"procstat_%s",st->cmd);
+        snprintf(processkey,MAX_PROC_NAME, "procstat_%s",st->cmd);
        /* store it */
         if (0 <= orcm_sensor_base.dbhandle) {
             orcm_db.store(orcm_sensor_base.dbhandle, processkey, vals, mycleanup, NULL);

@@ -447,6 +447,18 @@ static int tool_init(void)
         goto error;
     }
 
+    /* setup I/O forwarding system - must come after we init routes */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_iof_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_iof_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_iof_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_iof_base_select";
+        goto error;
+    }
+
     /*
      * Group communications
      */
@@ -538,6 +550,7 @@ static void tool_finalize(void)
     }
     
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
+    (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_routed_base_framework);
     (void) mca_base_framework_close(&orte_rmaps_base_framework);
 

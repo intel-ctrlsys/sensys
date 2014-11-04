@@ -291,7 +291,7 @@ main(int argc, char *argv[])
         /* post a receive */
         OBJ_CONSTRUCT(&xbuffer, orte_rml_recv_cb_t);
         xbuffer.active = true;
-        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_TOOL,
+        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_VM_READY,
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, &xbuffer);
         /*setup parent_uri to receive contact info */

@@ -229,7 +229,10 @@ main(int argc, char *argv[])
 
 
     /* initialize, parse command line, and setup frameworks */
-    orcm_osub_init(argc, argv);
+    if (ORCM_SUCCESS != (rc=orcm_osub_init(argc, argv))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+    }
 
     /* create an allocation request */
     OBJ_CONSTRUCT(&alloc, orcm_alloc_t);

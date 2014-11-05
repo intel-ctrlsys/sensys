@@ -319,7 +319,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         OBJ_DESTRUCT(&data);
         return;
     }
-    free(timestamp_str);
 
     if(mca_sensor_sigar_component.mem) {
         log_group = true;
@@ -680,7 +679,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
-    if(mca_sensor_sigar_component.network) {
+    if(mca_sensor_sigar_component.proc) {
         log_group = true;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -689,32 +688,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         }
         sigar_proc_stat_get(sigar, &procstat_info);
         stats = OBJ_NEW(opal_pstats_t);
-
-        /* include our node name */
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* get the sample time */
-        now = time(NULL);
-        tdiff = difftime(now, last_sample);
-        /* pass the time along as a simple string */
-        sample_time = localtime(&now);
-        if (NULL == sample_time) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
-        }
-        strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-        asprintf(&timestamp_str, "%s", time_str);
-
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        free(timestamp_str);
 
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &procstat_info.total, 1, OPAL_INT64))) {
             ORTE_ERROR_LOG(rc);
@@ -834,7 +807,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             }
         }
     } else {
-        opal_output(0,"Disabled sampling PROCESS STATS");
+        opal_output(0,"PROC DISABLED");
         log_group = false;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
@@ -851,8 +824,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         return;
     }
 
-
-
     /* xfer the data for transmission - need at least one prior sample before doing so */
     if (0 < last_sample) {
         bptr = &data;
@@ -863,7 +834,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         }
     }
     OBJ_DESTRUCT(&data);
-
+    free(timestamp_str);
     last_sample = now;
 }
 
@@ -924,7 +895,6 @@ static void sigar_log(opal_buffer_t *sample)
     kv->key = strdup("ctime");
     kv->type = OPAL_STRING;
     kv->data.string = strdup(sampletime);
-    free(sampletime);
     opal_list_append(vals, &kv->super);
 
     /* load the hostname */
@@ -1265,22 +1235,6 @@ static void sigar_log(opal_buffer_t *sample)
     if(log_group) {
         vals = OBJ_NEW(opal_list_t);
 
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-
-        /* sample time */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        if (NULL == sampletime) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
-        }
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("ctime");
         kv->type = OPAL_STRING;
@@ -1400,7 +1354,7 @@ static void sigar_log(opal_buffer_t *sample)
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("ctime");
         kv->type = OPAL_STRING;
-        kv->data.string = strdup(sampletime);        
+        kv->data.string = strdup(sampletime);
         opal_list_append(vals, &kv->super);
 
         /* load the hostname */
@@ -1560,7 +1514,6 @@ static void sigar_log(opal_buffer_t *sample)
         free(hostname);
     }
     free(sampletime);
-
 }
 
 /* Helper function to calculate the metric differences */

@@ -169,6 +169,10 @@ static int store(struct orcm_db_base_module_t *imod,
             snprintf(tbuf + len, sizeof(tbuf) - len, "%f",
                      kv->data.fval);
             break;
+        case OPAL_DOUBLE:
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%f",
+                     kv->data.dval);
+            break;
         case OPAL_TIMEVAL:
             /* we only care about seconds */
             nowtime = kv->data.tv.tv_sec;
@@ -285,6 +289,10 @@ static int update_node_features(struct orcm_db_base_module_t *imod,
         case OPAL_FLOAT:
             snprintf(tbuf + len, sizeof(tbuf) - len, "%f",
                      mv->value.data.fval);
+            break;
+        case OPAL_DOUBLE:
+            snprintf(tbuf + len, sizeof(tbuf) - len, "%f",
+                     mv->value.data.dval);
             break;
         case OPAL_TIMEVAL:
             /* we only care about seconds */

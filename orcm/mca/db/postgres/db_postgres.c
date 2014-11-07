@@ -49,6 +49,7 @@ mca_db_postgres_module_t mca_db_postgres_module = {
         store,
         NULL,
         NULL,
+        NULL,
         NULL
     },
 };

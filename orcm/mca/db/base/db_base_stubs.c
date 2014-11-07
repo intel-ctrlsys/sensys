@@ -213,6 +213,62 @@ void orcm_db_base_store(int dbhandle,
     opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
 }
 
+static void process_update_node_features(int fd, short args, void *cbdata)
+{
+    orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
+    orcm_db_handle_t *hdl;
+    int rc = ORCM_SUCCESS;
+
+    /* get the handle object */
+    if (NULL == (hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(
+            &orcm_db_base.handles, req->dbhandle))) {
+        rc = ORCM_ERR_NOT_FOUND;
+        goto callback;
+    }
+
+    if (NULL ==  hdl->module) {
+        rc = ORCM_ERR_NOT_FOUND;
+        goto callback;
+    }
+
+    if (NULL != hdl->module->update_node_features) {
+        rc = hdl->module->update_node_features(
+                (struct orcm_db_base_module_t*)hdl->module,
+                req->hostname, req->kvs);
+    }
+
+ callback:
+    if (NULL != req->cbfunc) {
+        req->cbfunc(req->dbhandle, rc, req->kvs, req->cbdata);
+    }
+    OBJ_RELEASE(req);
+}
+
+void orcm_db_base_update_node_features(int dbhandle,
+                                       const char *hostname,
+                                       opal_list_t *features,
+                                       orcm_db_callback_fn_t cbfunc,
+                                       void *cbdata)
+{
+    orcm_db_request_t *req;
+
+    /* push this request into our event_base
+     * for processing to ensure nobody else is
+     * using that dbhandle
+     */
+    req = OBJ_NEW(orcm_db_request_t);
+    req->dbhandle = dbhandle;
+    req->hostname = hostname;
+    req->kvs = features;
+    req->cbfunc = cbfunc;
+    req->cbdata = cbdata;
+    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
+                   OPAL_EV_WRITE,
+                   process_update_node_features, req);
+    opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
+    opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
+}
+
 static void process_commit(int fd, short args, void *cbdata)
 {
     orcm_db_request_t *req = (orcm_db_request_t*)cbdata;

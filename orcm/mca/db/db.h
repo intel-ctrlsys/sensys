@@ -122,6 +122,23 @@ typedef int (*orcm_db_base_module_store_fn_t)(struct orcm_db_base_module_t *imod
                                               opal_list_t *kvs);
 
 /*
+ * Update one or more features for a node as part of the inventory data, for
+ * example: number of sockets, cores per socket, RAM, etc.  The features are
+ * passed as a list of key-value pairs plus units: orcm_metric_value_t.  The
+ * units may be left NULL if not applicable.
+ */
+typedef void (*orcm_db_base_API_update_node_features_fn_t)(
+        int dbhandle,
+        const char *hostname,
+        opal_list_t *features,
+        orcm_db_callback_fn_t cbfunc,
+        void *cbdata);
+typedef int (*orcm_db_base_module_update_node_features_fn_t)(
+        struct orcm_db_base_module_t *imod,
+        const char *hostname,
+        opal_list_t *features);
+
+/*
  * Commit data to the database - action depends on implementation within
  * each active component
  */
@@ -166,21 +183,23 @@ typedef int (*orcm_db_base_module_remove_fn_t)(struct orcm_db_base_module_t *imo
  * the standard module data structure
  */
 typedef struct  {
-    orcm_db_base_module_init_fn_t                      init;
-    orcm_db_base_module_finalize_fn_t                  finalize;
-    orcm_db_base_module_store_fn_t                     store;
-    orcm_db_base_module_commit_fn_t                    commit;
-    orcm_db_base_module_fetch_fn_t                     fetch;
-    orcm_db_base_module_remove_fn_t                    remove;
+    orcm_db_base_module_init_fn_t                 init;
+    orcm_db_base_module_finalize_fn_t             finalize;
+    orcm_db_base_module_store_fn_t                store;
+    orcm_db_base_module_update_node_features_fn_t update_node_features;
+    orcm_db_base_module_commit_fn_t               commit;
+    orcm_db_base_module_fetch_fn_t                fetch;
+    orcm_db_base_module_remove_fn_t               remove;
 } orcm_db_base_module_t;
 
 typedef struct {
-    orcm_db_base_API_open_fn_t                      open;
-    orcm_db_base_API_close_fn_t                     close;
-    orcm_db_base_API_store_fn_t                     store;
-    orcm_db_base_API_commit_fn_t                    commit;
-    orcm_db_base_API_fetch_fn_t                     fetch;
-    orcm_db_base_API_remove_fn_t                    remove;
+    orcm_db_base_API_open_fn_t                 open;
+    orcm_db_base_API_close_fn_t                close;
+    orcm_db_base_API_store_fn_t                store;
+    orcm_db_base_API_update_node_features_fn_t update_node_features;
+    orcm_db_base_API_commit_fn_t               commit;
+    orcm_db_base_API_fetch_fn_t                fetch;
+    orcm_db_base_API_remove_fn_t               remove;
 } orcm_db_API_module_t;
 
 

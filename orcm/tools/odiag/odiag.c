@@ -87,6 +87,7 @@ typedef struct {
     bool verbose;
     bool mem_diag;
     bool cpu_diag;
+    bool eth_diag;
     int  output;
 } orcm_odiag_globals_t;
 
@@ -116,6 +117,12 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       0,
       &orcm_odiag_globals.cpu_diag, OPAL_CMD_LINE_TYPE_BOOL,
       "Enable CPU diagnostic check" },
+
+    { NULL,
+      'e', NULL, "eth",
+      0,
+      &orcm_odiag_globals.eth_diag, OPAL_CMD_LINE_TYPE_BOOL,
+      "Enable ethernet diagnostic check" },
 
     /* End of list */
     { NULL,
@@ -149,7 +156,7 @@ main(int argc, char *argv[])
 
         OBJ_CONSTRUCT(&config, opal_list_t);
         fprintf(stdout, "ORCM Diagnostic Checking cpu:                          ");
-        rc = orcm_diag.diag_check(&config);
+        rc = orcm_diag.diag_check(NULL, &config);
 
         if ( ORCM_SUCCESS == rc ) {
             fprintf(stdout, "[  OK  ]\n");
@@ -175,7 +182,7 @@ main(int argc, char *argv[])
 
         OBJ_CONSTRUCT(&config, opal_list_t);
         fprintf(stdout, "ORCM Diagnostic Checking memory:                       ");
-        rc = orcm_diag.diag_check(&config);
+        rc = orcm_diag.diag_check(NULL, &config);
         
         if ( ORCM_SUCCESS == rc ) {
             fprintf(stdout, "[  OK  ]\n");
@@ -184,6 +191,32 @@ main(int argc, char *argv[])
         } else {
             fprintf(stdout, "[NOTRUN]\n");
         }          
+    }
+
+    if (orcm_odiag_globals.eth_diag) {
+        putenv("OMPI_MCA_diag=ethtest");
+        /* open/select the diag framework */
+        if (ORTE_SUCCESS != (rc = mca_base_framework_open(&orcm_diag_base_framework, 0))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+
+        if (ORTE_SUCCESS != (rc = orcm_diag_base_select())) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+
+        OBJ_CONSTRUCT(&config, opal_list_t);
+        fprintf(stdout, "ORCM Diagnostic Checking ethernet:     %s     ", "eth0");
+        rc = orcm_diag.diag_check("eth0", &config);
+
+        if ( ORCM_SUCCESS == rc ) {
+            fprintf(stdout, "[  OK  ]\n");
+        } else if ( rc & DIAG_ETH_NOTRUN ) {
+            fprintf(stdout, "[NOTRUN]\n");
+        } else {
+            fprintf(stdout, "[ FAIL ]\n");
+        }
     }
 
     if (ORTE_SUCCESS != orcm_finalize()) {
@@ -202,6 +235,7 @@ static int parse_args(int argc, char *argv[])
                                  false,    /* verbose */
                                  false,     /* enable memory diagnostics */
                                  false,    /* enable CPU diagnostics */
+                                 false,    /* enable ethernet diagnostics */
                                  -1 };     /* output */
 
     orcm_odiag_globals = tmp;
@@ -237,7 +271,7 @@ static int parse_args(int argc, char *argv[])
         exit(0);
     }
     
-    if ( !orcm_odiag_globals.mem_diag && !orcm_odiag_globals.cpu_diag ) {
+    if ( !orcm_odiag_globals.mem_diag && !orcm_odiag_globals.cpu_diag && !orcm_odiag_globals.eth_diag ) {
         char *str, *args = NULL;
         args = opal_cmd_line_get_usage_msg(&cmd_line);
         str = opal_show_help_string("help-odiag.txt", "file", true,

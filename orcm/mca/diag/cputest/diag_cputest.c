@@ -56,7 +56,7 @@
 static int init(void);
 static void finalize(void);
 static int diag_read(opal_list_t *config);
-static int diag_check(opal_list_t *config);
+static int diag_check(char *resource, opal_list_t *config);
 
 
 orcm_diag_base_module_t orcm_diag_cputest_module = {
@@ -102,7 +102,7 @@ static int diag_read(opal_list_t *config)
     return ORCM_SUCCESS;
 }
 
-static int diag_check(opal_list_t *config)
+static int diag_check(char *resource, opal_list_t *config)
 {
     int numprocs = 0;
     int retval   = 0;

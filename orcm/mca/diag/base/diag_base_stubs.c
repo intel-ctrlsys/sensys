@@ -57,7 +57,7 @@ int orcm_diag_base_diag_read(opal_list_t *config)
     return ORCM_SUCCESS;    
 }
 
-int orcm_diag_base_diag_check(opal_list_t *config)
+int orcm_diag_base_diag_check(char *resource, opal_list_t *config)
 {
     orcm_diag_active_module_t *mod;
 
@@ -67,7 +67,7 @@ int orcm_diag_base_diag_check(opal_list_t *config)
                                 "%s diag:base: diagnostics check component %s",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 mod->component->mca_component_name);
-            mod->module->diag_check(config);
+            mod->module->diag_check(resource, config);
         }
     }
     return ORCM_SUCCESS;

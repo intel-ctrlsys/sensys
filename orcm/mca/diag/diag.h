@@ -35,6 +35,13 @@
 #define DIAG_CPU_STRESS_TST       (1 << 2)
 #define DIAG_CPU_NOTRUN           (1 << 31)
 
+#define DIAG_ETH_REG_TST          (1 << 0)
+#define DIAG_ETH_EEPROM_TST       (1 << 1)
+#define DIAG_ETH_INT_TST          (1 << 2)
+#define DIAG_ETH_LOOPBACK_TST     (1 << 3)
+#define DIAG_ETH_LINK_TST         (1 << 4)
+#define DIAG_ETH_NOTRUN           (1 << 31)
+
 BEGIN_C_DECLS
 
 /*
@@ -54,7 +61,7 @@ typedef void (*orcm_diag_base_module_calibrate_fn_t)(void);
 typedef int (*orcm_diag_base_module_diag_read_fn_t)(opal_list_t *config);
 
 /* diagnostics check */
-typedef int (*orcm_diag_base_module_diag_check_fn_t)(opal_list_t *config);
+typedef int (*orcm_diag_base_module_diag_check_fn_t)(char *resource, opal_list_t *config);
 
 /*
  * Ver 1.0
@@ -78,7 +85,7 @@ typedef struct {
 /* define an API module */
 typedef void (*orcm_diag_API_module_calibrate_fn_t)(void);
 typedef int  (*orcm_diag_API_module_diag_read_fn_t)(opal_list_t *config);
-typedef int  (*orcm_diag_API_module_diag_check_fn_t)(opal_list_t *config);
+typedef int  (*orcm_diag_API_module_diag_check_fn_t)(char *resource, opal_list_t *config);
 
 typedef struct {
     orcm_diag_API_module_calibrate_fn_t  calibrate;

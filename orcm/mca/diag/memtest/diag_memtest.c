@@ -50,7 +50,7 @@
 static int init(void);
 static void finalize(void);
 static int diag_read(opal_list_t *config);
-static int diag_check(opal_list_t *config);
+static int diag_check(char *resource, opal_list_t *config);
 
 static int mem_diag_ret = ORCM_SUCCESS;
 
@@ -170,7 +170,7 @@ static int diag_read(opal_list_t *config)
     return ORCM_SUCCESS;
 }
 
-static int diag_check(opal_list_t *config)
+static int diag_check(char *resource, opal_list_t *config)
 {
     struct sysinfo info;
     struct rlimit org_limit, new_limit;

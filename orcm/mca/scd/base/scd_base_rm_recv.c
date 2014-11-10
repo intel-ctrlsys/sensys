@@ -151,7 +151,8 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                                          "%s TOPOLOGY MATCHES - DISCARDING",
                                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
                     found = true;
-                    hwloc_topology_destroy(*topo);
+                    /* FIXME, destroy is segfaulting */
+                    /* hwloc_topology_destroy(*topo); */
                     topo = &t;
                     break;
                 }

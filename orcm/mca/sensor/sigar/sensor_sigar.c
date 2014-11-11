@@ -319,6 +319,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         OBJ_DESTRUCT(&data);
         return;
     }
+    free(timestamp_str);
 
     if(mca_sensor_sigar_component.mem) {
         log_group = true;
@@ -593,7 +594,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         }
     }
 
-
     if(mca_sensor_sigar_component.network) {
         log_group = true;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
@@ -731,8 +731,7 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         } else {
             remaining_procs = 1;
         }
-            
-            
+
         for (i=0; i < remaining_procs; i++) {
             if(0==i)
             {
@@ -834,7 +833,6 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         }
     }
     OBJ_DESTRUCT(&data);
-    free(timestamp_str);
     last_sample = now;
 }
 
@@ -850,7 +848,7 @@ static void mycleanup(int dbhandle, int status,
 static void sigar_log(opal_buffer_t *sample)
 {
     char *hostname;
-    char *sampletime;
+    char *sampletime,global_ts[30];
     int rc;
     int32_t n;
     opal_list_t *vals;
@@ -890,11 +888,14 @@ static void sigar_log(opal_buffer_t *sample)
     if (NULL == sampletime) {
         ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
         return;
+    } else {
+        strncpy(global_ts,sampletime,30);
+        free(sampletime);
     }
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("ctime");
     kv->type = OPAL_STRING;
-    kv->data.string = strdup(sampletime);
+    kv->data.string = strdup(global_ts);
     opal_list_append(vals, &kv->super);
 
     /* load the hostname */
@@ -1238,7 +1239,7 @@ static void sigar_log(opal_buffer_t *sample)
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("ctime");
         kv->type = OPAL_STRING;
-        kv->data.string = strdup(sampletime);
+        kv->data.string = strdup(global_ts);
         opal_list_append(vals, &kv->super);
 
         /* load the hostname */
@@ -1354,7 +1355,7 @@ static void sigar_log(opal_buffer_t *sample)
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("ctime");
         kv->type = OPAL_STRING;
-        kv->data.string = strdup(sampletime);
+        kv->data.string = strdup(global_ts);
         opal_list_append(vals, &kv->super);
 
         /* load the hostname */
@@ -1513,7 +1514,6 @@ static void sigar_log(opal_buffer_t *sample)
     if (NULL != hostname) {
         free(hostname);
     }
-    free(sampletime);
 }
 
 /* Helper function to calculate the metric differences */

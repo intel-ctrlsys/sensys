@@ -1432,7 +1432,7 @@ static void sigar_log(opal_buffer_t *sample)
             return;
         }
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("Total_threads");
+        kv->key = strdup("total_threads");
         kv->type = OPAL_INT64;
         kv->data.int64 = int64;
         opal_list_append(vals, &kv->super);

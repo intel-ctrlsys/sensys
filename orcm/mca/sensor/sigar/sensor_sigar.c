@@ -243,11 +243,139 @@ static void stop(orte_jobid_t jobid)
     return;
 }
 
+static int sigar_collect_mem(opal_buffer_t *dataptr)
+{
+    int rc;
+    sigar_mem_t mem;
+    char *error_string;
+    bool log_group = true;
+    /* get the memory usage for this node */
+    memset(&mem, 0, sizeof(mem));
+    if (SIGAR_OK != (rc = sigar_mem_get(sigar, &mem))) {
+        error_string = strerror(rc);
+        opal_output(0, "sigar_mem_get failed: %s", error_string);
+        log_group = false;
+    }
+    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                        "mem total: %" PRIu64 " used: %" PRIu64 " actual used: %" PRIu64 " actual free: %" PRIu64 "",
+                        (uint64_t)mem.total, (uint64_t)mem.used, (uint64_t)mem.actual_used, (uint64_t)mem.actual_free);
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &log_group, 1, OPAL_BOOL))) {
+        return rc;
+    }
+    if (false == log_group)
+        return ORCM_ERR_SENSOR_READ_FAIL;
+
+    /* add it to the data */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &mem.total, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &mem.used, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &mem.actual_used, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &mem.actual_free, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    return ORCM_SUCCESS;
+}
+
+static int sigar_collect_swap(opal_buffer_t *dataptr)
+{
+    int rc;
+    sigar_swap_t swap;
+    char *error_string;
+    uint64_t ui64;
+    bool log_group = true;
+    /* get swap data */
+    memset(&swap, 0, sizeof(swap));
+    if (SIGAR_OK != (rc = sigar_swap_get(sigar, &swap))) {
+        error_string = strerror(rc);
+        opal_output(0, "sigar_swap_get failed: %s", error_string);
+        log_group = false;
+    }
+    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                        "swap total: %" PRIu64 " used: %" PRIu64 "page_in: %" PRIu64 " page_out: %" PRIu64 "\n",
+                        (uint64_t)swap.total, (uint64_t)swap.used, (uint64_t)swap.page_in, (uint64_t)swap.page_out);
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &log_group, 1, OPAL_BOOL))) {
+        return rc;
+    }
+    if (false == log_group)
+        return ORCM_ERR_SENSOR_READ_FAIL;
+    /* compute the values we actually want and add them to the dataptr */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &swap.total, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &swap.used, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    ui64 = swap.page_in - pswap.page_in;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &ui64, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    ui64 = swap.page_out - pswap.page_out;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &ui64, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    return ORCM_SUCCESS;
+
+}
+
+static int sigar_collect_cpu(opal_buffer_t *dataptr)
+{
+    int rc;
+    sigar_cpu_t cpu;
+    char *error_string;
+    double cpu_diff;
+    float tmp;
+    bool log_group = true;
+    /* get the cpu usage */
+    memset(&cpu, 0, sizeof(cpu));
+    if (SIGAR_OK != (rc = sigar_cpu_get(sigar, &cpu))) {
+        error_string = strerror(rc);
+        opal_output(0, "sigar_cpu_get failed: %s", error_string);
+        log_group = false;
+
+    }
+    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                        "cpu user: %" PRIu64 " sys: %" PRIu64 " idle: %" PRIu64 " wait: %" PRIu64 " nice: %" PRIu64 " total: %" PRIu64 "", 
+            (uint64_t)cpu.user, (uint64_t)cpu.sys, (uint64_t)cpu.idle, (uint64_t)cpu.wait, (uint64_t)cpu.nice, (uint64_t)cpu.total);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &log_group, 1, OPAL_BOOL))) {
+        return rc;
+    }
+    if (false == log_group)
+        return ORCM_ERR_SENSOR_READ_FAIL;
+
+    /* compute the values we actually want and add them to the data */
+    cpu_diff = (double)(cpu.total - pcpu.total);
+    tmp = (float)((cpu.user - pcpu.user) * 100.0 / cpu_diff) + (float)((cpu.nice - pcpu.nice) * 100.0 / cpu_diff);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tmp, 1, OPAL_FLOAT))) {
+        return rc;
+    }
+    tmp = ((float) (cpu.sys - pcpu.sys) * 100.0 / cpu_diff) + ((float)((cpu.wait - pcpu.wait) * 100.0 / cpu_diff));
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tmp, 1, OPAL_FLOAT))) {
+        return rc;
+    }
+    tmp = (float) (cpu.idle - pcpu.idle) * 100.0 / cpu_diff;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tmp, 1, OPAL_FLOAT))) {
+        return rc;
+    }
+    /* update the values */
+    pcpu.user = cpu.user;
+    pcpu.nice = cpu.nice;
+    pcpu.sys = cpu.sys;
+    pcpu.wait = cpu.wait;
+    pcpu.idle = cpu.idle;
+    pcpu.total = cpu.total;
+
+    return ORCM_SUCCESS;
+}
+
 static void sigar_sample(orcm_sensor_sampler_t *sampler)
 {
-    sigar_mem_t mem;
-    sigar_swap_t swap;
-    sigar_cpu_t cpu;
     sigar_loadavg_t loadavg;
     sigar_disk_usage_t tdisk;
     sensor_sigar_disks_t *dit;
@@ -261,11 +389,10 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
 
     uint64_t reads, writes, read_bytes, write_bytes;
     uint64_t rxpkts, txpkts, rxbytes, txbytes;
-    uint64_t ui64;
     opal_buffer_t data, *bptr;
     int rc;
     time_t now;
-    double cpu_diff, tdiff;
+    double tdiff;
     float tmp;
     char *ctmp;
     char time_str[40];
@@ -321,42 +448,13 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
     }
     free(timestamp_str);
 
+    /* 1. Memory stats*/
     if(mca_sensor_sigar_component.mem) {
-        log_group = true;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+        if(ORCM_ERR_SENSOR_READ_FAIL == (rc = sigar_collect_mem(&data))) {
             ORTE_ERROR_LOG(rc);
+        } else if (ORCM_SUCCESS != rc) {
             OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* get the memory usage for this node */
-        memset(&mem, 0, sizeof(mem));
-        if (SIGAR_OK != (rc = sigar_mem_get(sigar, &mem))) {
-            error_string = strerror(rc);
-            opal_output(0, "sigar_mem_get failed: %s", error_string);
-        }
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                            "mem total: %" PRIu64 " used: %" PRIu64 " actual used: %" PRIu64 " actual free: %" PRIu64 "",
-                            (uint64_t)mem.total, (uint64_t)mem.used, (uint64_t)mem.actual_used, (uint64_t)mem.actual_free);
-        /* add it to the data */
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.total, 1, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.used, 1, OPAL_UINT64))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.actual_used, 1, OPAL_UINT64))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &mem.actual_free, 1, OPAL_UINT64))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
             return;
         }
     } else {
@@ -367,45 +465,14 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
-
+    
+    /* 2. Swap Memory stats */
     if(mca_sensor_sigar_component.swap) {
-        log_group = true;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+        if(ORCM_ERR_SENSOR_READ_FAIL == (rc = sigar_collect_swap(&data))) {
             ORTE_ERROR_LOG(rc);
+        } else if (ORCM_SUCCESS != rc) {
             OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* get swap data */
-        memset(&swap, 0, sizeof(swap));
-        if (SIGAR_OK != (rc = sigar_swap_get(sigar, &swap))) {
-            error_string = strerror(rc);
-            opal_output(0, "sigar_swap_get failed: %s", error_string);
-        }
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                            "swap total: %" PRIu64 " used: %" PRIu64 "page_in: %" PRIu64 " page_out: %" PRIu64 "\n",
-                            (uint64_t)swap.total, (uint64_t)swap.used, (uint64_t)swap.page_in, (uint64_t)swap.page_out);
-        /* compute the values we actually want and add them to the data */
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &swap.total, 1, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &swap.used, 1, OPAL_UINT64))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        ui64 = swap.page_in - pswap.page_in;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &ui64, 1, OPAL_UINT64))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        ui64 = swap.page_out - pswap.page_out;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &ui64, 1, OPAL_UINT64))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
             return;
         }
     } else {
@@ -417,50 +484,15 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         }
     }
 
+    /* 3. CPU stats*/
     if(mca_sensor_sigar_component.cpu) {
-        log_group = true;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+        if(ORCM_ERR_SENSOR_READ_FAIL == (rc = sigar_collect_cpu(&data))) {
             ORTE_ERROR_LOG(rc);
+        } else if (ORCM_SUCCESS != rc) {
             OBJ_DESTRUCT(&data);
+            ORTE_ERROR_LOG(rc);
             return;
         }
-
-        /* get the cpu usage */
-        memset(&cpu, 0, sizeof(cpu));
-        if (SIGAR_OK != (rc = sigar_cpu_get(sigar, &cpu))) {
-            error_string = strerror(rc);
-            opal_output(0, "sigar_cpu_get failed: %s", error_string);
-        }
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                            "cpu user: %" PRIu64 " sys: %" PRIu64 " idle: %" PRIu64 " wait: %" PRIu64 " nice: %" PRIu64 " total: %" PRIu64 "", 
-                (uint64_t)cpu.user, (uint64_t)cpu.sys, (uint64_t)cpu.idle, (uint64_t)cpu.wait, (uint64_t)cpu.nice, (uint64_t)cpu.total);
-        /* compute the values we actually want and add them to the data */
-        cpu_diff = (double)(cpu.total - pcpu.total);
-        tmp = (float)((cpu.user - pcpu.user) * 100.0 / cpu_diff) + (float)((cpu.nice - pcpu.nice) * 100.0 / cpu_diff);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        tmp = ((float) (cpu.sys - pcpu.sys) * 100.0 / cpu_diff) + ((float)((cpu.wait - pcpu.wait) * 100.0 / cpu_diff));
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        tmp = (float) (cpu.idle - pcpu.idle) * 100.0 / cpu_diff;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &tmp, 1, OPAL_FLOAT))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        /* update the values */
-        pcpu.user = cpu.user;
-        pcpu.nice = cpu.nice;
-        pcpu.sys = cpu.sys;
-        pcpu.wait = cpu.wait;
-        pcpu.idle = cpu.idle;
-        pcpu.total = cpu.total;
     } else {
         log_group = false;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {

@@ -200,6 +200,9 @@ int orte_err2str(int errnum, const char **errmsg)
     case ORTE_ERR_NO_PATH_TO_TARGET:
         retval = "No OOB path to target";
         break;
+    case ORTE_ERR_SENSOR_READ_FAIL:
+        retval = "Unable to read sensor data";
+        break;
     default:
         if (orte_report_silent_errors) {
             retval = "Unknown error";

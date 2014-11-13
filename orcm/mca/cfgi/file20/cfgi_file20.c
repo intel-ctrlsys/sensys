@@ -291,7 +291,7 @@ static int define_system(opal_list_t *config,
          * contact info in case needed
          */
         orcm_util_construct_uri(&uribuf, &scheduler->controller);
-        if (!found_me) {
+        if (!found_me && ORTE_PROC_IS_SCHEDULER) {
             found_me = check_me(&scheduler->controller.config,
                                 scheduler->controller.name, vpid, my_ip);
             if (found_me) {
@@ -323,7 +323,7 @@ static int define_system(opal_list_t *config,
             if (cluster->controller.config.aggregator) {
                 orcm_util_construct_uri(&uribuf, &cluster->controller);
             }
-            if (!found_me) {
+            if (!found_me && ORTE_PROC_IS_DAEMON) {
                 found_me = check_me(&cluster->controller.config,
                                     cluster->controller.name, vpid, my_ip);
                 if (found_me) {
@@ -349,7 +349,7 @@ static int define_system(opal_list_t *config,
                 if (row->controller.config.aggregator) {
                     orcm_util_construct_uri(&uribuf, &row->controller);
                 }
-                if (!found_me) {
+                if (!found_me && ORTE_PROC_IS_DAEMON) {
                     found_me = check_me(&row->controller.config,
                                         row->controller.name, vpid, my_ip);
                     if (found_me) {
@@ -370,7 +370,7 @@ static int define_system(opal_list_t *config,
                     if (rack->controller.config.aggregator) {
                         orcm_util_construct_uri(&uribuf, &rack->controller);
                     }
-                    if (!found_me) {
+                    if (!found_me && ORTE_PROC_IS_DAEMON) {
                         found_me = check_me(&rack->controller.config,
                                             rack->controller.name, vpid, my_ip);
                         if (found_me) {
@@ -385,7 +385,7 @@ static int define_system(opal_list_t *config,
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     node->daemon.jobid = 0;
                     node->daemon.vpid = vpid;
-                    if (!found_me) {
+                    if (!found_me && ORTE_PROC_IS_DAEMON) {
                         found_me = check_me(&node->config, node->name, vpid, my_ip);
                         if (found_me) {
                             *mynode = node;

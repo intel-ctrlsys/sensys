@@ -185,6 +185,7 @@ static int init(void)
         if (sigar_fslist.data[i].type == SIGAR_FSTYPE_LOCAL_DISK || sigar_fslist.data[i].type == SIGAR_FSTYPE_NETWORK) {
             dit = OBJ_NEW(sensor_sigar_disks_t);
             dit->mount_pt = strdup(sigar_fslist.data[i].dir_name);
+            opal_output(0,"sigar filesystem: %s", dit->mount_pt);
             opal_list_append(&fslist, &dit->super);
         }
     }
@@ -420,7 +421,7 @@ static int sigar_collect_disk(opal_buffer_t *dataptr, double tdiff)
     sigar_disk_usage_t tdisk;
     sensor_sigar_disks_t *dit;
     sigar_file_system_usage_t fsusage;
-    uint64_t reads, writes, read_bytes, write_bytes;
+    uint64_t reads, writes, read_bytes, write_bytes, read_time, write_time, io_time;
     char *error_string;
     bool log_group = true;
 
@@ -457,16 +458,23 @@ static int sigar_collect_disk(opal_buffer_t *dataptr, double tdiff)
             tdisk.writes += writes;
             tdisk.read_bytes += read_bytes;
             tdisk.write_bytes += write_bytes;
+            tdisk.rtime += fsusage.disk.rtime;
+            tdisk.wtime += fsusage.disk.wtime;
+            tdisk.qtime += fsusage.disk.qtime;
         }
     }
-    opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
-                        "Totals: ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "", 
-                        (uint64_t)tdisk.reads, (uint64_t)tdisk.writes, (uint64_t)tdisk.read_bytes, (uint64_t)tdisk.write_bytes);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &log_group, 1, OPAL_BOOL))) {
         return rc;
     }
     if (false == log_group)
         return ORCM_ERR_SENSOR_READ_FAIL;
+    opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
+                        "Totals: ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "", 
+                        (uint64_t)tdisk.reads, (uint64_t)tdisk.writes, (uint64_t)tdisk.read_bytes, (uint64_t)tdisk.write_bytes);
+    opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
+                        "Totals: ReadTime: %" PRIu64 " WriteTime: %" PRIu64 " ioTime: %" PRIu64 "", 
+                        (uint64_t)tdisk.rtime, (uint64_t)tdisk.wtime, (uint64_t)tdisk.qtime);
+
 
     /* compute the values we actually want and add them to the dataptr */
     reads = (uint64_t)ceil((double)tdisk.reads/tdiff);
@@ -483,6 +491,30 @@ static int sigar_collect_disk(opal_buffer_t *dataptr, double tdiff)
     }
     write_bytes = (uint64_t)ceil((double)tdisk.write_bytes/tdiff);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &write_bytes, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tdisk.reads, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tdisk.writes, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tdisk.read_bytes, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tdisk.write_bytes, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    read_time = (uint64_t)ceil((double)tdisk.rtime);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &read_time, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    write_time = (uint64_t)ceil((double)tdisk.wtime);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &write_time, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    io_time = (uint64_t)ceil((double)tdisk.qtime);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &io_time, 1, OPAL_UINT64))) {
         return rc;
     }
     return ORCM_SUCCESS;
@@ -1259,6 +1291,90 @@ static void sigar_log(opal_buffer_t *sample)
         }
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("disk_wb_rate:bytes/sec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* disk Total Read Ops count */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_ro_total:ops");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* disk Total Write Ops count */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_wo_total:ops");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* disk Total Read Bytes count */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_rb_total:Kbytes");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* disk Total Write Bytes count */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_wb_total:Kbytes");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* disk Total Read Ops Time duration */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_rt_total:msec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* disk Total Write Ops Time count */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_wt_total:msec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+        
+        /* disk Total io Ops Time count */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("disk_iot_total:msec");
         kv->type = OPAL_UINT64;
         kv->data.uint64 = uint64;
         opal_list_append(vals, &kv->super);

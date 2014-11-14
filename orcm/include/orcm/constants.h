@@ -119,8 +119,7 @@ enum {
     ORCM_ERR_SENSOR_LIMIT_EXCEEDED           = ORTE_ERR_SENSOR_LIMIT_EXCEEDED,
     ORCM_ERR_ALLOCATION_PENDING              = ORTE_ERR_ALLOCATION_PENDING,
     ORCM_ERR_NO_PATH_TO_TARGET               = ORTE_ERR_NO_PATH_TO_TARGET,
-    ORCM_ERR_OP_IN_PROGRESS                  = ORTE_ERR_OP_IN_PROGRESS,
-    ORCM_ERR_SENSOR_READ_FAIL                = ORTE_ERR_SENSOR_READ_FAIL
+    ORCM_ERR_OP_IN_PROGRESS                  = ORTE_ERR_OP_IN_PROGRESS
 };
 
 enum {
@@ -129,7 +128,7 @@ enum {
      Otherwise, the error reporting system will potentially crash,
      or at the least not be able to report the new error correctly.
      */
-    ORCM_ERR_PLACEHOLDER                     = (ORCM_ERR_BASE - 1)
+    ORCM_ERR_SENSOR_READ_FAIL                = (ORCM_ERR_BASE - 1)
 };
 
 #define ORCM_ERR_MAX                      (ORCM_ERR_BASE - 100)

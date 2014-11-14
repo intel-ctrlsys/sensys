@@ -422,6 +422,7 @@ static int sigar_collect_disk(opal_buffer_t *dataptr, double tdiff)
     sensor_sigar_disks_t *dit;
     sigar_file_system_usage_t fsusage;
     uint64_t reads, writes, read_bytes, write_bytes, read_time, write_time, io_time;
+    uint64_t total_reads = 0, total_writes = 0, total_read_bytes = 0, total_write_bytes = 0;
     char *error_string;
     bool log_group = true;
 
@@ -461,6 +462,10 @@ static int sigar_collect_disk(opal_buffer_t *dataptr, double tdiff)
             tdisk.rtime += fsusage.disk.rtime;
             tdisk.wtime += fsusage.disk.wtime;
             tdisk.qtime += fsusage.disk.qtime;
+            total_reads += fsusage.disk.reads;
+            total_writes += fsusage.disk.writes;
+            total_read_bytes += fsusage.disk.read_bytes;
+            total_write_bytes += fsusage.disk.write_bytes;
         }
     }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &log_group, 1, OPAL_BOOL))) {
@@ -493,16 +498,16 @@ static int sigar_collect_disk(opal_buffer_t *dataptr, double tdiff)
     if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &write_bytes, 1, OPAL_UINT64))) {
         return rc;
     }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tdisk.reads, 1, OPAL_UINT64))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &total_reads, 1, OPAL_UINT64))) {
         return rc;
     }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tdisk.writes, 1, OPAL_UINT64))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &total_writes, 1, OPAL_UINT64))) {
         return rc;
     }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tdisk.read_bytes, 1, OPAL_UINT64))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &total_read_bytes, 1, OPAL_UINT64))) {
         return rc;
     }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &tdisk.write_bytes, 1, OPAL_UINT64))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &total_write_bytes, 1, OPAL_UINT64))) {
         return rc;
     }
     read_time = (uint64_t)ceil((double)tdisk.rtime);
@@ -526,6 +531,8 @@ static int sigar_collect_network(opal_buffer_t *dataptr, double tdiff)
     sensor_sigar_interface_t *sit, *next;
     sigar_net_interface_stat_t tnet, ifc;
     uint64_t rxpkts, txpkts, rxbytes, txbytes;
+    uint64_t total_mbytes_sent = 0, total_mbytes_recv = 0, total_packets_sent = 0, total_packets_recv = 0;
+    uint64_t total_errors_sent = 0, total_errors_recv = 0;
     char *error_string;
     bool log_group = true;
 
@@ -569,6 +576,12 @@ static int sigar_collect_network(opal_buffer_t *dataptr, double tdiff)
             tnet.rx_bytes += rxbytes;
             tnet.tx_packets += txpkts;
             tnet.tx_bytes += txbytes;
+            total_mbytes_sent += ifc.tx_bytes;
+            total_mbytes_recv += ifc.rx_bytes;
+            total_packets_sent += ifc.tx_packets;
+            total_packets_recv += ifc.rx_packets;
+            total_errors_sent += ifc.tx_errors;
+            total_errors_recv += ifc.rx_errors;
         }
     }
     opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
@@ -597,7 +610,27 @@ static int sigar_collect_network(opal_buffer_t *dataptr, double tdiff)
     txbytes = (uint64_t)ceil((double)tnet.tx_bytes/tdiff);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &txbytes, 1, OPAL_UINT64))) {
         return rc;
-    }    
+    }
+    total_mbytes_sent = (uint64_t)ceil((double)total_mbytes_sent/(1024*1024)); /* convert to Mbytes */
+    total_mbytes_recv = (uint64_t)ceil((double)total_mbytes_recv/(1024*1024)); /* convert to Mbytes */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &total_mbytes_sent, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &total_mbytes_recv, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &total_packets_sent, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &total_packets_recv, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &total_errors_sent, 1, OPAL_UINT64))) {
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &total_errors_recv, 1, OPAL_UINT64))) {
+        return rc;
+    }
     return ORCM_SUCCESS;
 }
 
@@ -1326,7 +1359,7 @@ static void sigar_log(opal_buffer_t *sample)
             return;
         }
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("disk_rb_total:Kbytes");
+        kv->key = strdup("disk_rb_total:bytes");
         kv->type = OPAL_UINT64;
         kv->data.uint64 = uint64;
         opal_list_append(vals, &kv->super);
@@ -1338,7 +1371,7 @@ static void sigar_log(opal_buffer_t *sample)
             return;
         }
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("disk_wb_total:Kbytes");
+        kv->key = strdup("disk_wb_total:bytes");
         kv->type = OPAL_UINT64;
         kv->data.uint64 = uint64;
         opal_list_append(vals, &kv->super);
@@ -1431,6 +1464,78 @@ static void sigar_log(opal_buffer_t *sample)
         }
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("net_wb_rate:bytes/sec");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* net tx bytes total */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("net_wb_total:Mbytes");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* net rx bytes total */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("net_rb_total:Mbytes");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* net tx packets total */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("net_wp_total:packets");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* net rx packets total */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("net_rp_total:packets");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* net tx errors total */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("net_tx_errors:errors");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = uint64;
+        opal_list_append(vals, &kv->super);
+
+        /* net rx errors total */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("net_rx_errors:errors");
         kv->type = OPAL_UINT64;
         kv->data.uint64 = uint64;
         opal_list_append(vals, &kv->super);

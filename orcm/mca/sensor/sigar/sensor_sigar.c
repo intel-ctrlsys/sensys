@@ -185,7 +185,6 @@ static int init(void)
         if (sigar_fslist.data[i].type == SIGAR_FSTYPE_LOCAL_DISK || sigar_fslist.data[i].type == SIGAR_FSTYPE_NETWORK) {
             dit = OBJ_NEW(sensor_sigar_disks_t);
             dit->mount_pt = strdup(sigar_fslist.data[i].dir_name);
-            opal_output(0,"sigar filesystem: %s", dit->mount_pt);
             opal_list_append(&fslist, &dit->super);
         }
     }
@@ -634,6 +633,35 @@ static int sigar_collect_network(opal_buffer_t *dataptr, double tdiff)
     return ORCM_SUCCESS;
 }
 
+static int sigar_collect_system(opal_buffer_t *dataptr)
+{
+    int rc;
+    sigar_uptime_t utime;
+    char *error_string;
+    bool log_group = true;
+
+    /* get load average data */
+    memset(&utime, 0, sizeof(utime));
+    if (SIGAR_OK != (rc = sigar_uptime_get(sigar, &utime))) {
+        error_string = strerror(rc);
+        opal_output(0, "sigar_uptime_get failed: %s", error_string);
+        log_group = false;
+    }
+    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                        "uptime: %f", utime.uptime);
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &log_group, 1, OPAL_BOOL))) {
+        return rc;
+    }
+    if (false == log_group)
+        return ORCM_ERR_SENSOR_READ_FAIL;
+    /* add them to the dataptr */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &utime.uptime, 1, OPAL_DOUBLE))) {
+        return rc;
+    }
+    return ORCM_SUCCESS;
+}
+
 static int sigar_collect_global_procstat(opal_buffer_t *dataptr)
 {
     int rc;
@@ -949,7 +977,25 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler)
         }
     }
 
-    /* 7. proc stats */
+    /* 7. System stats */
+    if(mca_sensor_sigar_component.sys) {
+        if(ORCM_ERR_SENSOR_READ_FAIL == (rc = sigar_collect_system(&data))) {
+            ORTE_ERROR_LOG(rc);
+        } else if (ORCM_SUCCESS != rc) {
+            OBJ_DESTRUCT(&data);
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+    } else {
+        log_group = false;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &log_group, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+    }
+
+    /* 8. proc stats */
     if(mca_sensor_sigar_component.proc) {
         if(ORCM_ERR_SENSOR_READ_FAIL == (rc = sigar_collect_global_procstat(&data))) {
             ORTE_ERROR_LOG(rc);
@@ -1419,7 +1465,7 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        data_avail = true; 
+        data_avail = true;
         /* net recv packet rate */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
@@ -1541,6 +1587,27 @@ static void sigar_log(opal_buffer_t *sample)
         opal_list_append(vals, &kv->super);
     }
     
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    if(log_group) {
+        data_avail = true;
+        /* process System Uptime */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_double, &n, OPAL_DOUBLE))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("uptime:seconds");
+        kv->type = OPAL_DOUBLE;
+        kv->data.dval = sample_double;
+        opal_list_append(vals, &kv->super);
+
+    }
     /* store it */
     if ((0 <= orcm_sensor_base.dbhandle) & (true == data_avail)) {
         orcm_db.store(orcm_sensor_base.dbhandle, "sigar", vals, mycleanup, NULL);

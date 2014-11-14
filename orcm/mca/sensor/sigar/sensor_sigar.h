@@ -30,6 +30,7 @@ typedef struct {
     bool load;
     bool disk;
     bool network;
+    bool sys;
     bool proc;
 } orcm_sensor_sigar_component_t;
 

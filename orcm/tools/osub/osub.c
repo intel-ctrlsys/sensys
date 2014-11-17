@@ -352,7 +352,7 @@ main(int argc, char *argv[])
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
-    opal_output(0, "RECEIVED ALLOC ID %d", (int)id);
+    printf("RECEIVED ALLOC ID %d", (int)id);
 
     if (true == alloc.interactive) {
         alloc.id = id;
@@ -591,7 +591,7 @@ static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc)
          forks, making them unkillable by SIGTERM). */
         sigprocmask(0, 0, &sigs);
         sigprocmask(SIG_UNBLOCK, &sigs, 0);
-        opal_output(0, "%s IShell Start: %s \n",
+        printf("%s IShell Start: %s \n",
                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), shell);
 
         if (ORTE_SUCCESS != (rc = opal_argv_append(&argc, &argv, shell))) {
@@ -605,13 +605,13 @@ static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc)
         }
 
         rc = execve(argv[0], argv, env);
-        opal_output(0, "%s IShell execve - %d errno - %d\n",
+        printf("%s IShell execve - %d errno - %d\n",
                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), rc, errno);
         exit(-1);
     } else {
         w = waitpid (pid, &status, 0);
         if (w == pid) {
-            opal_output(0, "%s:  session: %d completed notify scheduler \n",
+            printf("%s:  session: %d completed notify scheduler \n",
                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),(int) alloc->id);
             command = ORCM_SESSION_CANCEL_COMMAND;
             buf = OBJ_NEW(opal_buffer_t);

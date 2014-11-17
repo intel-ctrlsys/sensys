@@ -171,9 +171,11 @@ static opal_cmd_line_init_t cmd_line_init[] = {
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Provide all output in XML format" },
 
+    /*
     { "orte_xml_file", '\0', "xml-file", "xml-file", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Provide all output in XML format to the specified file" },
+     */
 
     /* Use an appfile */
     { NULL, '\0', NULL, "app", 1,
@@ -259,7 +261,7 @@ static void orun_recv(int status, orte_process_name_t *sender,
     int count = 1; 
     int32_t rc = ORTE_SUCCESS;
 
-    fprintf(stderr, "orun_recv - JOB_COMPLETE\n");
+    printf("orun_recv - JOB_COMPLETE\n");
 
     if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &command, &count, 
                                               OPAL_INT))) {
@@ -327,7 +329,7 @@ static void orun_recv(int status, orte_process_name_t *sender,
     orte_finalize();
 
     if (orte_debug_flag) {
-        fprintf(stderr, "exiting with status %d\n", orte_exit_status);
+        printf("exiting with status %d\n", orte_exit_status);
     }
     exit(orte_exit_status);
 }
@@ -600,7 +602,7 @@ int orun(int argc, char *argv[])
             goto DONE;
         }
 
-        opal_output(0, "%s:  session: %d allocated for the job \n",
+        printf("%s:  session: %d allocated for the job \n",
                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (int) alloc.id);
 
         ORTE_WAIT_FOR_COMPLETION(xbuffer.active);
@@ -639,7 +641,7 @@ int orun(int argc, char *argv[])
          * existing allocation 
          */
         if (orte_debug_flag) {
-            fprintf (stderr, "set continous operation\n");
+            printf ("set continous operation\n");
         }
         orte_set_attribute(&jdata->attributes, ORTE_JOB_CONTINUOUS_OP, 
                            ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
@@ -679,7 +681,7 @@ int orun(int argc, char *argv[])
     orte_finalize();
 
     if (orte_debug_flag) {
-        fprintf(stderr, "exiting with status %d\n", orte_exit_status);
+        printf("exiting with status %d\n", orte_exit_status);
     }
     exit(orte_exit_status);
 }

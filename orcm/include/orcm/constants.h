@@ -128,7 +128,8 @@ enum {
      Otherwise, the error reporting system will potentially crash,
      or at the least not be able to report the new error correctly.
      */
-    ORCM_ERR_SENSOR_READ_FAIL                = (ORCM_ERR_BASE - 1)
+    ORCM_ERR_PLACEHOLDER                     = (ORCM_ERR_BASE - 1),
+    ORCM_ERR_SENSOR_READ_FAIL                = (ORCM_ERR_BASE - 2)
 };
 
 #define ORCM_ERR_MAX                      (ORCM_ERR_BASE - 100)

@@ -16,6 +16,9 @@
 int orcm_err2str(int errnum, const char **errmsg)
 {
     switch (errnum) {
+        case ORCM_ERR_PLACEHOLDER:
+        *errmsg = "Placeholder";
+        break;
         case ORCM_ERR_SENSOR_READ_FAIL:
         *errmsg = "Unable to read sensor data";
         break;

@@ -557,6 +557,7 @@ static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc)
     int rc = -1;
     int w = 0;
     int status = 0;
+    orcm_alloc_id_t id = alloc->id;
     pid_t pid;
     orcm_rm_cmd_flag_t command;
     opal_buffer_t *buf;
@@ -612,7 +613,7 @@ static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc)
         w = waitpid (pid, &status, 0);
         if (w == pid) {
             printf("%s:  session: %d completed notify scheduler \n",
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),(int) alloc->id);
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),(int) id);
             command = ORCM_SESSION_CANCEL_COMMAND;
             buf = OBJ_NEW(opal_buffer_t);
             /* pack the complete command flag */
@@ -623,7 +624,7 @@ static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc)
                 return rc;
             }
             if (OPAL_SUCCESS !=
-                (rc = opal_dss.pack(buf, &alloc->id, 1, ORCM_ALLOC_ID_T))) {
+                (rc = opal_dss.pack(buf, &id, 1, ORCM_ALLOC_ID_T))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(buf);
                 return rc;

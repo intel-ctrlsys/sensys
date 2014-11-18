@@ -179,6 +179,8 @@ static int orcmsched_init(void)
     /* our name is the name of the scheduler daemon */
     ORTE_PROC_MY_NAME->jobid = mynode->daemon.jobid;
     ORTE_PROC_MY_NAME->vpid = mynode->daemon.vpid;
+    ORTE_PROC_MY_SCHEDULER->jobid = scheduler->controller.daemon.jobid;
+    ORTE_PROC_MY_SCHEDULER->vpid = scheduler->controller.daemon.vpid;
 
     opal_output_verbose(2, orcm_sst_base_framework.framework_output,
                         "%s scheduler is defined",

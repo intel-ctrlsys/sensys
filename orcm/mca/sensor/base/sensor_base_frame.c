@@ -70,6 +70,15 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &orcm_sensor_base.log_samples);
 
+    orcm_sensor_base.inventory = false;
+    (void)mca_base_var_register("orcm", "sensor", "base", "inventory",
+                               "Log inventory details to database",
+                                MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                OPAL_INFO_LVL_9,
+                                MCA_BASE_VAR_SCOPE_READONLY,
+                                &orcm_sensor_base.inventory);
+
+
     return ORCM_SUCCESS;
 }
 

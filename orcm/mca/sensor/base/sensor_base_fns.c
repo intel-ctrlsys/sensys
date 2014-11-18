@@ -88,7 +88,6 @@ void orcm_sensor_base_start(orte_jobid_t job)
             }
         }
 
-
         if (mods_active && 0 < orcm_sensor_base.sample_rate) {
             /* startup a timer to wake us up periodically
              * for a data sample, and pass in the sampler
@@ -107,6 +106,19 @@ void orcm_sensor_base_start(orte_jobid_t job)
     } else if (!orcm_sensor_base.ev_active) {
         orcm_sensor_base.ev_active = true;
         orcm_restart_progress_thread("sensor");
+    }
+
+    if(true == orcm_sensor_base.inventory) {
+        opal_output(0, "-------->ORCM_INVENTORY COLLECTION REQUESTED <---------");
+        if (false == orcm_sensor_base.inventory_monitor_hotswap) { /* Collect inventory details just once when orcmd starts */
+            //orcm_sensor_collect_inventory();
+
+        } else { /* Update inventory details when hotswap even occurs */
+            /* @VINFIX: Need a way to monitor the syslog with hotswap events. */
+        }
+    } else {
+         opal_output(0, "-------->ORCM_INVENTORY COLLECTION NOT-REQUESTED <---------");
+    
     }
 
     return;    

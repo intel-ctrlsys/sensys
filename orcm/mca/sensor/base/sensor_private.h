@@ -47,6 +47,7 @@ typedef struct {
     int sample_rate;
     int dbhandle;
     bool dbhandle_requested;
+    bool inventory;
 } orcm_sensor_base_t;
 
 typedef struct {

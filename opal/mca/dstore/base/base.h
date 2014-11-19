@@ -2,6 +2,8 @@
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc.  All rights reserved. 
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -24,6 +26,7 @@
 #include "opal/class/opal_list.h"
 #include "opal/class/opal_pointer_array.h"
 #include "opal/dss/dss.h"
+#include "opal/util/proc.h"
 
 #include "opal/mca/dstore/dstore.h"
 
@@ -53,6 +56,7 @@ typedef struct {
     opal_dstore_base_component_t *storage_component;
     opal_dstore_base_module_t *backfill_module;
     opal_pointer_array_t handles;   // array of open datastore handles
+    opal_list_t available_components;
 } opal_dstore_base_t;
 
 OPAL_DECLSPEC extern opal_dstore_base_t opal_dstore_base;
@@ -61,6 +65,7 @@ typedef struct {
     opal_object_t super;
     char *name;
     opal_dstore_base_module_t *module;
+    opal_dstore_base_component_t *storage_component;
 } opal_dstore_handle_t;
 OBJ_CLASS_DECLARATION(opal_dstore_handle_t);
 
@@ -79,24 +84,43 @@ typedef struct {
 } opal_dstore_proc_data_t;
 OBJ_CLASS_DECLARATION(opal_dstore_proc_data_t);
 
-OPAL_DECLSPEC int opal_dstore_base_open(const char *name, opal_list_t *attrs);
+/**
+ * Attribute structure to update tracker object
+ * (used in dstore sm component)
+ */
+typedef struct {
+    opal_list_item_t super;
+    uint32_t jobid;
+    char *connection_info;
+} opal_dstore_attr_t;
+OBJ_CLASS_DECLARATION(opal_dstore_attr_t);
+
+typedef struct {
+    int32_t seg_index;
+    uint32_t offset;
+    int32_t data_size;
+} meta_info;
+
+#define META_OFFSET 65536
+
+OPAL_DECLSPEC int opal_dstore_base_open(const char *name, char* desired_components, opal_list_t *attrs);
 OPAL_DECLSPEC int opal_dstore_base_update(int dstorehandle, opal_list_t *attrs);
 OPAL_DECLSPEC int opal_dstore_base_close(int dstorehandle);
 OPAL_DECLSPEC int opal_dstore_base_store(int dstorehandle,
-                                         const opal_identifier_t *id,
+                                         const opal_process_name_t *id,
                                          opal_value_t *kv);
 OPAL_DECLSPEC int opal_dstore_base_fetch(int dstorehandle,
-                                         const opal_identifier_t *id,
+                                         const opal_process_name_t *id,
                                          const char *key,
                                          opal_list_t *kvs);
 OPAL_DECLSPEC int opal_dstore_base_remove_data(int dstorehandle,
-                                               const opal_identifier_t *id,
+                                               const opal_process_name_t *id,
                                                const char *key);
+OPAL_DECLSPEC int opal_dstore_base_get_handle(int dstorehandle, void **dhdl);
 
 /* support */
-OPAL_DECLSPEC opal_dstore_proc_data_t* opal_dstore_base_lookup_proc(opal_hash_table_t *jtable,
-                                                                    opal_identifier_t id);
-
+OPAL_DECLSPEC opal_dstore_proc_data_t* opal_dstore_base_lookup_proc(opal_proc_table_t *jtable,
+                                                                    opal_process_name_t id);
 
 OPAL_DECLSPEC opal_value_t* opal_dstore_base_lookup_keyval(opal_dstore_proc_data_t *proc_data,
                                                            const char *key);

@@ -47,7 +47,7 @@ AC_DEFUN([OPAL_CHECK_PMI_LIB],
            AS_IF([test -f $1/include/slurm/$2.h],
                  [AC_MSG_RESULT([found])
                   opal_check_$2_mycppflags="-I$1/include/slurm"
-		  $4],
+                  $4],
                  [AC_MSG_RESULT([not found])
                   opal_check_$2_hdr_happy=no])])
 
@@ -73,7 +73,7 @@ AC_DEFUN([OPAL_CHECK_PMI_LIB],
                          $2_rpath=$1/lib64],
                         [opal_check_$2_lib_happy=no])],
            [AC_MSG_RESULT([not found])])
-           
+
 
     # if we didn't find lib64, or the library wasn't present or correct,
     # then try a lib directory if present
@@ -113,7 +113,7 @@ AC_DEFUN([OPAL_CHECK_PMI],[
     check_pmi_install_dir=
     default_pmi_loc=
     slurm_pmi_found=
-    
+
     AC_MSG_CHECKING([if user requested PMI support])
     AS_IF([test "$with_pmi" = "no"],
           [AC_MSG_RESULT([no])
@@ -132,7 +132,7 @@ AC_DEFUN([OPAL_CHECK_PMI],[
            slurm_pmi_found=no
            OPAL_CHECK_PMI_LIB([$check_pmi_install_dir],
                               [pmi], [PMI_Init],
-			      [slurm_pmi_found=yes],
+                              [slurm_pmi_found=yes],
                               [opal_enable_pmi1=yes
                                opal_pmi1_LIBS="-lpmi"
                                AC_SUBST(opal_pmi1_LIBS)],
@@ -146,12 +146,12 @@ AC_DEFUN([OPAL_CHECK_PMI],[
                          AC_SUBST(opal_pmi1_LDFLAGS)
                          opal_pmi1_rpath="$pmi_rpath"
                          AC_SUBST(opal_pmi1_rpath)])])
-		  
+
            # check for pmi2 lib */
            slurm_pmi_found=no
            OPAL_CHECK_PMI_LIB([$check_pmi_install_dir],
                               [pmi2], [PMI2_Init],
-			      [slurm_pmi_found=yes],
+                              [slurm_pmi_found=yes],
                               [opal_enable_pmi2=yes
                                opal_pmi2_LIBS="-lpmi2"
                                AC_SUBST(opal_pmi2_LIBS)],
@@ -165,7 +165,7 @@ AC_DEFUN([OPAL_CHECK_PMI],[
                          AC_SUBST(opal_pmi2_LDFLAGS)
                          opal_pmi2_rpath="$pmi2_rpath"
                          AC_SUBST(opal_pmi2_rpath)])])
-		  
+
            # since support was explicitly requested, then we should error out
            # if we didn't find the required support
            AS_IF([test "$opal_enable_pmi1" != "yes" && test "$opal_enable_pmi2" != "yes"],
@@ -180,57 +180,3 @@ AC_DEFUN([OPAL_CHECK_PMI],[
            ])
 ])
 
-#
-# special check for cray pmi, uses macro(s) from pkg.m4
-#
-# OPAL_CHECK_CRAY_PMI(prefix, [action-if-found], [action-if-not-found])
-# --------------------------------------------------------
-AC_DEFUN([OPAL_CHECK_CRAY_PMI],[
-    if test -z "$opal_check_cray_pmi_happy" ; then
-        if test -f "/usr/lib/alps/libalps.a" ; then
-            using_cle5_install="no"
-        else
-            using_cle5_install="yes"
-        fi
-
-        if test "$using_cle5_install" = "no" ; then
-            OPAL_CHECK_PMI([CRAY_PMI], [opal_check_cray_pmi_happy="yes"],
-                [opal_check_cray_pmi_happy="no"])
-
-            if test "$opal_check_cray_pmi_happy" = "yes" ; then
-                # Check for extra libraries required by Cray PMI
-                opal_check_alps_pmi_alps_happy=no
-                for opal_check_cray_pmi_extra_dir in "/usr/lib/alps" "/opt/cray/xe-sysroot/default/usr/lib/alps" ; do
-                    AC_MSG_CHECKING([for alps libraries required by PMI in "$opal_check_cray_pmi_extra_dir"])
-
-                    # libalpslli and libalpsutil are needed by libpmi to compile statically
-                    if test -f "$opal_check_cray_pmi_extra_dir/libalpslli.a" ; then
-                        if test -f "$opal_check_cray_pmi_extra_dir/libalpsutil.a" ; then
-                            opal_check_alps_pmi_alps_happy=yes
-                            CRAY_PMI_LDFLAGS="$CRAY_PMI_LDFLAGS -L$opal_check_cray_pmi_extra_dir"
-                            CRAY_PMI_LIBS="$CRAY_PMI_LIBS -lalpslli -lalpsutil"
-                            AC_MSG_RESULT([found])
-                            break
-                        fi
-                    fi
-                    AC_MSG_RESULT([not found])
-                done
-
-                if test "$opal_check_alps_pmi_alps_happy" = "no" ; then
-                    opal_check_cray_pmi_alps_happy="no"
-                fi
-            fi
-        else
-            # CLE5 uses package config
-            PKG_CHECK_MODULES([CRAY_PMI], [cray-pmi],
-                [opal_check_cray_pmi_happy="yes"],
-                [opal_check_cray_pmi_happy="no"])
-        fi
-    fi
-
-    AS_IF([test "$opal_check_cray_pmi_happy" = "yes"],
-        [$1_LDFLAGS="$CRAY_PMI_LDFLAGS"
-            $1_CPPFLAGS="$CRAY_PMI_CPPFLAGS"
-            $1_LIBS="$CRAY_PMI_LIBS"
-            $2], [$3])
-])

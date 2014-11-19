@@ -24,6 +24,7 @@
 #include "opal/mca/mca.h"
 #include "opal/mca/event/event.h"
 #include "opal/dss/dss_types.h"
+#include "opal/util/proc.h"
 
 #include "opal/mca/dstore/dstore_types.h"
 
@@ -41,6 +42,7 @@ BEGIN_C_DECLS
  * datastore channels
  */
 OPAL_DECLSPEC extern int opal_dstore_internal;
+OPAL_DECLSPEC extern int opal_dstore_modex;
 
 OPAL_DECLSPEC extern int opal_dstore_peer;
 OPAL_DECLSPEC extern int opal_dstore_internal;
@@ -63,7 +65,7 @@ OPAL_DECLSPEC extern int opal_dstore_nonpeer;
  * NOTE: calls to these APIs must be thread-protected as there
  * is NO internal thread safety.
  */
-typedef int (*opal_dstore_base_API_open_fn_t)(const char *name,
+typedef int (*opal_dstore_base_API_open_fn_t)(const char *name,  char* desired_components,
                                               opal_list_t *attributes);
 
 /*
@@ -89,7 +91,7 @@ typedef int (*opal_dstore_base_API_close_fn_t)(int dstorehandle);
  * and therefore does not need to be preserved by the caller.
  */
 typedef int (*opal_dstore_base_API_store_fn_t)(int dstorehandle,
-                                               const opal_identifier_t *id,
+                                               const opal_process_name_t *id,
                                                opal_value_t *kv);
 
 /*
@@ -100,7 +102,7 @@ typedef int (*opal_dstore_base_API_store_fn_t)(int dstorehandle,
  * of opal_value_t objects.
  */
 typedef int (*opal_dstore_base_API_fetch_fn_t)(int dstorehandle,
-                                               const opal_identifier_t *id,
+                                               const opal_process_name_t *id,
                                                const char *key,
                                                opal_list_t *kvs);
 
@@ -111,8 +113,16 @@ typedef int (*opal_dstore_base_API_fetch_fn_t)(int dstorehandle,
  * If a NULL key is provided, all data for the given primary key will be deleted.
  */
 typedef int (*opal_dstore_base_API_remove_fn_t)(int dstorehandle,
-                                                const opal_identifier_t *id,
+                                                const opal_process_name_t *id,
                                                 const char *key);
+
+
+/*
+ * Get active dstore handle
+ * Get dstore handle asocciated with the passed id.
+ */
+typedef int (*opal_dstore_base_API_get_handle_fn_t)(int dstorehandle, void **dhdl);
+
 
 /*
  * the standard public API data structure
@@ -124,6 +134,7 @@ typedef struct {
     opal_dstore_base_API_store_fn_t          store;
     opal_dstore_base_API_fetch_fn_t          fetch;
     opal_dstore_base_API_remove_fn_t         remove;
+    opal_dstore_base_API_get_handle_fn_t     get_handle;
 } opal_dstore_base_API_t;
 
 
@@ -152,18 +163,18 @@ typedef void (*opal_dstore_base_module_finalize_fn_t)(struct opal_dstore_base_mo
 
 /* store the data in this module */
 typedef int (*opal_dstore_base_module_store_fn_t)(struct opal_dstore_base_module_t *mod,
-                                                  const opal_identifier_t *id,
+                                                  const opal_process_name_t *id,
                                                   opal_value_t *kv);
 
 /* fetch data from the module */
 typedef int (*opal_dstore_base_module_fetch_fn_t)(struct opal_dstore_base_module_t *mod,
-                                                  const opal_identifier_t *id,
+                                                  const opal_process_name_t *id,
                                                   const char *key,
                                                   opal_list_t *kvs);
 
 /* remove data */
 typedef int (*opal_dstore_base_module_remove_fn_t)(struct opal_dstore_base_module_t *mod,
-                                                   const opal_identifier_t *id,
+                                                   const opal_process_name_t *id,
                                                    const char *key);
 
 /*

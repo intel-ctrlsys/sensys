@@ -129,16 +129,6 @@ int orte_dt_std_print(char **output, char *prefix, void *src, opal_data_type_t t
             orte_dt_quick_print(output, "ORTE_STD_CNTR", prefix, src, ORTE_STD_CNTR_T);
             break;
 
-        case ORTE_VPID:
-            orte_dt_quick_print(output, "ORTE_VPID", prefix, src, ORTE_VPID_T);
-            break;
-
-        case ORTE_JOBID:
-            asprintf(output, "%sData Type: ORTE_JOBID\tData size: %lu\tValue: %s",
-                     (NULL == prefix) ? "" : prefix, (unsigned long)sizeof(orte_jobid_t),
-                     ORTE_JOBID_PRINT(*(orte_jobid_t*)src));
-            break;
-
         case ORTE_PROC_STATE:
             orte_dt_quick_print(output, "ORTE_PROC_STATE", prefix, src, ORTE_PROC_STATE_T);
             break;
@@ -170,25 +160,6 @@ int orte_dt_std_print(char **output, char *prefix, void *src, opal_data_type_t t
         default:
             ORTE_ERROR_LOG(ORTE_ERR_UNKNOWN_DATA_TYPE);
             return ORTE_ERR_UNKNOWN_DATA_TYPE;
-    }
-
-    return ORTE_SUCCESS;
-}
-
-/*
- * NAME
- */
-int orte_dt_print_name(char **output, char *prefix, orte_process_name_t *name, opal_data_type_t type)
-{
-    /* set default result */
-    *output = NULL;
-
-    if (NULL == name) {
-        asprintf(output, "%sData type: ORTE_PROCESS_NAME\tData Value: NULL",
-                 (NULL == prefix ? " " : prefix));
-    } else {
-        asprintf(output, "%sData type: ORTE_PROCESS_NAME\tData Value: %s",
-                 (NULL == prefix ? " " : prefix), ORTE_NAME_PRINT(name));
     }
 
     return ORTE_SUCCESS;
@@ -905,19 +876,19 @@ int orte_dt_print_sig(char **output, char *prefix, orte_grpcomm_signature_t *src
 
     /* if src is NULL, just print data type and return */
     if (NULL == src) {
-        asprintf(output, "%sData type: ORTE_SIG\tValue: NULL pointer", prefx);
+        asprintf(output, "%sData type: ORTE_SIG", prefx);
         free(prefx);
         return OPAL_SUCCESS;
     }
 
     if (NULL == src->signature) {
-        asprintf(output, "%sORTE_SIG\tValue: NULL", prefx);
+        asprintf(output, "%sORTE_SIG  SeqNumber:%d  Procs: NULL", prefx, src->seq_num);
         free(prefx);
         return ORTE_SUCCESS;
     }
 
-    /* there must be at least one */
-    asprintf(&tmp, "%sORTE_SIG\tSeqNumber:%d\tValue: ", prefx, src->seq_num);
+    /* there must be at least one proc in the signature */
+    asprintf(&tmp, "%sORTE_SIG  SeqNumber:%d  Procs: ", prefx, src->seq_num);
 
     for (i=0; i < src->sz; i++) {
         asprintf(&tmp2, "%s%s", tmp, ORTE_NAME_PRINT(&src->signature[i]));

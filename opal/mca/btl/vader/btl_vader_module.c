@@ -289,7 +289,7 @@ static int vader_add_procs (struct mca_btl_base_module_t* btl,
     for (int32_t proc = 0, local_rank = 0 ; proc < (int32_t) nprocs ; ++proc) {
         /* check to see if this proc can be reached via shmem (i.e.,
            if they're on my local host and in my job) */
-        if (opal_process_name_jobid(procs[proc]->proc_name) != opal_process_name_jobid(my_proc->proc_name) ||
+        if (procs[proc]->proc_name.jobid != my_proc->proc_name.jobid ||
             !OPAL_PROC_ON_LOCAL_NODE(procs[proc]->proc_flags)) {
             peers[proc] = NULL;
             continue;
@@ -450,7 +450,11 @@ struct mca_btl_base_descriptor_t *vader_prepare_dst(struct mca_btl_base_module_t
     mca_btl_vader_frag_t *frag;
     void *data_ptr;
 
-    (void) MCA_BTL_VADER_FRAG_ALLOC_RDMA(frag, endpoint);
+    if (MCA_BTL_VADER_NONE != mca_btl_vader_component.single_copy_mechanism) {
+        (void) MCA_BTL_VADER_FRAG_ALLOC_RDMA(frag, endpoint);
+    } else {
+        (void) MCA_BTL_VADER_FRAG_ALLOC_USER(frag, endpoint);
+    }
     if (OPAL_UNLIKELY(NULL == frag)) {
         return NULL;
     }
@@ -479,6 +483,7 @@ struct mca_btl_base_descriptor_t *vader_prepare_dst(struct mca_btl_base_module_t
         }
 
         frag->segments[0].cookie = knem_cr.cookie;
+        frag->segments[0].registered_base = (intptr_t) data_ptr;
         frag->cookie = knem_cr.cookie;
     }
 #endif /* OPAL_BTL_SM_HAVE_KNEM */
@@ -591,7 +596,11 @@ static struct mca_btl_base_descriptor_t *vader_prepare_src (struct mca_btl_base_
         }
     } else {
         /* put/get fragment */
-        (void) MCA_BTL_VADER_FRAG_ALLOC_RDMA(frag, endpoint);
+        if (MCA_BTL_VADER_NONE != mca_btl_vader_component.single_copy_mechanism) {
+            (void) MCA_BTL_VADER_FRAG_ALLOC_RDMA(frag, endpoint);
+        } else {
+            (void) MCA_BTL_VADER_FRAG_ALLOC_USER(frag, endpoint);
+        }
         if (OPAL_UNLIKELY(NULL == frag)) {
             return NULL;
         }
@@ -617,6 +626,7 @@ static struct mca_btl_base_descriptor_t *vader_prepare_src (struct mca_btl_base_
             }
 
             frag->segments[0].cookie = knem_cr.cookie;
+            frag->segments[0].registered_base = (intptr_t) data_ptr;
             frag->cookie = knem_cr.cookie;
         }
 #endif /* OPAL_BTL_SM_HAVE_KNEM */

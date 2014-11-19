@@ -78,6 +78,13 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &orcm_sensor_base.inventory);
 
+    orcm_sensor_base.inventory_dynamic = false;
+    var_id = mca_base_var_register("orcm", "sensor", "base", "inventory_dynamic",
+                                   "Log inventory details to database",
+                                   MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                   OPAL_INFO_LVL_9,
+                                   MCA_BASE_VAR_SCOPE_READONLY,
+                                   &orcm_sensor_base.inventory_dynamic);
 
     return ORCM_SUCCESS;
 }
@@ -164,3 +171,14 @@ static void sdes(orcm_sensor_sampler_t *p)
 OBJ_CLASS_INSTANCE(orcm_sensor_sampler_t,
                    opal_object_t,
                    scon, sdes);
+
+static void invcon(orcm_sensor_inventory_record_t *p)
+{
+}
+
+static void invdes(orcm_sensor_inventory_record_t *p)
+{
+}
+OBJ_CLASS_INSTANCE(orcm_sensor_inventory_record_t,
+                    opal_object_t,
+                    invcon, invdes);

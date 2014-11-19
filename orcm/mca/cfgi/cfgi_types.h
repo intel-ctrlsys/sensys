@@ -63,10 +63,8 @@ typedef struct {
     orcm_node_state_t state;         //writable *only* by rm after init
     orcm_scd_node_state_t scd_state; //writable *only* by scd after init
     uint32_t npes;  // number of processing elements
-#if OPAL_HAVE_HWLOC
     /* system topology for this node */
     hwloc_topology_t topology;
-#endif
 } orcm_node_t;
 OBJ_CLASS_DECLARATION(orcm_node_t);
 

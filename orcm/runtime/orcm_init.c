@@ -26,6 +26,7 @@
 #include "orte/runtime/orte_globals.h"
 #include "orte/runtime/orte_locks.h"
 #include "orte/mca/ess/base/base.h"
+#include "orte/util/attr.h"
 #include "orte/util/show_help.h"
 
 #include "orcm/mca/cfgi/base/base.h"
@@ -33,6 +34,8 @@
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/runtime/runtime.h"
+
+#include "orcm/util/attr.h"
 
 int orcm_initialized = 0;
 bool orcm_finalizing = false;
@@ -117,6 +120,13 @@ int orcm_init(orcm_proc_type_t flags)
     /* register handler for errnum -> string conversion */
     opal_error_register("ORCM", ORCM_ERR_BASE, ORCM_ERR_MAX, orcm_err2str);
 
+    /* register handler for attr key -> string conversion */
+    if (ORTE_SUCCESS != (ret = orte_attr_register("orcm", ORCM_ATTR_KEY_BASE, ORCM_ATTR_KEY_MAX,
+                                                  orcm_attr_key_print))) {
+        error = "register attr print";
+        goto error;
+    }
+    
     /* we don't need a progress thread as all our tools loop inside themselves,
      * so define orte_event_base to be the base opal_event_base
      */

@@ -51,6 +51,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void dmidata_sample(orcm_sensor_sampler_t *sampler);
 static void dmidata_log(opal_buffer_t *buf);
+static void dmidata_inventory_collect(orcm_sensor_inventory_record_t *record);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
@@ -59,7 +60,8 @@ orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
     start,
     stop,
     dmidata_sample,
-    dmidata_log
+    dmidata_log,
+    dmidata_inventory_collect
 };
 
 typedef struct {
@@ -135,11 +137,16 @@ static void start(orte_jobid_t jobid)
     return;
 }
 
+static void ipmi_inventory_collect(orcm_sensor_inventory_record_t *record)
+{
+    opal_output(0,"Inside DMIDATA inventory collection");
+}
 
 static void stop(orte_jobid_t jobid)
 {
     return;
 }
+
 
 static void dmidata_sample(orcm_sensor_sampler_t *sampler)
 {

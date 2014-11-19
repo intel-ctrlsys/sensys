@@ -90,7 +90,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
             }
         }
 
-        if (mods_active && 0 < orcm_sensor_base.sample_rate) {
+        if (mods_active && 0 < orcm_sensor_base.sample_rate && orcm_sensor_base.metrics) {
             /* startup a timer to wake us up periodically
              * for a data sample, and pass in the sampler
              */

@@ -77,14 +77,22 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
                                 OPAL_INFO_LVL_9,
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &orcm_sensor_base.inventory);
+        
+    orcm_sensor_base.metrics = false;
+    (void)mca_base_var_register("orcm", "sensor", "base", "metrics",
+                                "Enable metric collection",
+                                MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                OPAL_INFO_LVL_9,
+                                MCA_BASE_VAR_SCOPE_READONLY,
+                                &orcm_sensor_base.metrics);
 
     orcm_sensor_base.inventory_dynamic = false;
-    var_id = mca_base_var_register("orcm", "sensor", "base", "inventory_dynamic",
-                                   "Log inventory details to database",
-                                   MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
-                                   OPAL_INFO_LVL_9,
-                                   MCA_BASE_VAR_SCOPE_READONLY,
-                                   &orcm_sensor_base.inventory_dynamic);
+    (void)mca_base_var_register("orcm", "sensor", "base", "inventory_dynamic",
+                                "Enable collecting inventory details dynamically",
+                                MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                OPAL_INFO_LVL_9,
+                                MCA_BASE_VAR_SCOPE_READONLY,
+                                &orcm_sensor_base.inventory_dynamic);
 
     return ORCM_SUCCESS;
 }

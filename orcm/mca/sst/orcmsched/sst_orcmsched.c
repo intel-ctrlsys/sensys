@@ -312,7 +312,7 @@ static int orcmsched_init(void)
         goto error;
     }
     /* create the handle */
-    if (0 > (opal_dstore_internal = opal_dstore.open("INTERNAL", NULL))) {
+    if (0 > (opal_dstore_internal = opal_dstore.open("INTERNAL", NULL, NULL))) {
         error = "opal dstore internal";
         ret = ORTE_ERR_FATAL;
         goto error;

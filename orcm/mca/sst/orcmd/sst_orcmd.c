@@ -338,7 +338,7 @@ static int orcmd_init(void)
                 res = hwloc_bitmap_alloc();
                 for (i=0; NULL != cores[i]; i++) {
                     core = strtoul(cores[i], NULL, 10);
-                    if (NULL == (pu = opal_hwloc_base_get_pu(opal_hwloc_topology, core))) {
+                    if (NULL == (pu = opal_hwloc_base_get_pu(opal_hwloc_topology, core, OPAL_HWLOC_LOGICAL))) {
                         orte_show_help("help-orted.txt", "orted:cannot-bind",
                                        true, orte_process_info.nodename,
                                        orte_daemon_cores);
@@ -487,7 +487,7 @@ static int orcmd_init(void)
         goto error;
     }
     /* create the handle */
-    if (0 > (opal_dstore_internal = opal_dstore.open("INTERNAL", NULL))) {
+    if (0 > (opal_dstore_internal = opal_dstore.open("INTERNAL", NULL, NULL))) {
         error = "opal dstore internal";
         ret = ORTE_ERR_FATAL;
         goto error;

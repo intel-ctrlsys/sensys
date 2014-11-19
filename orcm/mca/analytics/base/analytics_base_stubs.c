@@ -38,7 +38,7 @@ void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
     opal_value_t *attr;
     char *taphost = NULL;
     orte_rml_tag_t taptag = 0;
-    struct orte_process_name_t tapproc;
+    orte_process_name_t tapproc;
     int rc;
     opal_buffer_t *buf;
     

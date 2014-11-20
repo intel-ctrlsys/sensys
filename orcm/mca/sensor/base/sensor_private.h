@@ -44,12 +44,12 @@ typedef struct {
     bool ev_active;
     opal_pointer_array_t modules;
     bool log_samples;
-    int sample_rate;
-    int dbhandle;
+    int sample_rate;    /* Holds the rate at which the sensors need to be sampeled in seconds */
+    int dbhandle;       /* Stores the unique database handle assigned for sensor framework after calling db_open */
     bool dbhandle_requested;
-    bool metrics;
-    bool inventory;
-    bool inventory_dynamic;
+    bool collect_metrics;       /* Holds the user configured variable indicating whether sensor metric sampling is enabled or not */
+    bool collect_inventory;     /* Holds the user configured variable indicating whether inventory collection is enabled or not */
+    bool set_dynamic_inventory; /* Holds the user configured variable indicating whether dynamic inventory collection is enabled or not */
 } orcm_sensor_base_t;
 
 typedef struct {

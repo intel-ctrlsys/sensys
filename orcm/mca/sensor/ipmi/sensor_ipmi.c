@@ -480,6 +480,7 @@ int orcm_sensor_ipmi_label_found(char *sensor_label)
 static void ipmi_inventory_collect(orcm_sensor_inventory_record_t *record)
 {
     opal_output(0,"Inside IPMI inventory collection");
+    /* @VINFIX: Collect the FRU related information here */
 }
 
 static void ipmi_sample(orcm_sensor_sampler_t *sampler)

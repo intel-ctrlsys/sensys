@@ -26,7 +26,7 @@
 
 static bool mods_active = false;
 static void take_sample(int fd, short args, void *cbdata);
-static void collect_inventory(orcm_sensor_inventory_record_t *record);
+static void collect_inventory(int fd, short args, void* cbdata);
 
 static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
 {
@@ -90,7 +90,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
             }
         }
 
-        if (mods_active && 0 < orcm_sensor_base.sample_rate && orcm_sensor_base.metrics) {
+        if (mods_active && 0 < orcm_sensor_base.sample_rate && orcm_sensor_base.collect_metrics) {
             /* startup a timer to wake us up periodically
              * for a data sample, and pass in the sampler
              */
@@ -110,15 +110,17 @@ void orcm_sensor_base_start(orte_jobid_t job)
         orcm_restart_progress_thread("sensor");
     }
 
-    if(true == orcm_sensor_base.inventory) {
+    if(true == orcm_sensor_base.collect_inventory) {
         record = OBJ_NEW(orcm_sensor_inventory_record_t);
+        record->dynamic = orcm_sensor_base.set_dynamic_inventory;
         
-        if (false == orcm_sensor_base.inventory_dynamic) { /* Collect inventory details just once when orcmd starts */
-            collect_inventory(record);
+        if (false == orcm_sensor_base.set_dynamic_inventory) { /* Collect inventory details just once when orcmd starts */
+            collect_inventory(0,0,(void*)record);
             opal_output(0,"sensor:base - boot time invenotry collection requested");
 
-        } else { /* Update inventory details when hotswap even occurs */
-            /* @VINFIX: Need a way to monitor the syslog with hotswap events. */
+        } else {
+            /* Update inventory details when hotswap even occurs
+             * @VINFIX: Need a way to monitor the syslog with hotswap events. */
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "sensor:base - DYNAMIC inventory collection enabled");
         }
@@ -126,14 +128,14 @@ void orcm_sensor_base_start(orte_jobid_t job)
          opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "sensor:base inventory collection not requested");
     }
-
     return;    
 }
 
-void collect_inventory(orcm_sensor_inventory_record_t *record)
+void collect_inventory(int fd, short args, void *cbdata)
 {
     orcm_sensor_active_module_t *i_module;
     int i;
+    orcm_sensor_inventory_record_t *record = (orcm_sensor_inventory_record_t*)cbdata;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: Starting Inventory Collection",
@@ -143,7 +145,6 @@ void collect_inventory(orcm_sensor_inventory_record_t *record)
         if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
             continue;
         }
-        opal_output(0,"Found module: %s",i_module->component->base_version.mca_component_name);
 /* @VINFIX: We need to change the function call below by adding a new API to the sensor module
  * which will be used to collect the inventory related data and send it up to the aggregator.
  * 
@@ -154,13 +155,19 @@ void collect_inventory(orcm_sensor_inventory_record_t *record)
  *  Alternatively this could be part of the hwloc component which will be enabled only when inventory is enabled.
  *  but that might tie down the user to always enable hwloc component even when only ipmi inventory collection is enabled
  */
- #if 0
-        if (NULL != i_module->module->inv_collect) {
-            i_module->module->inv_collect(record);
+
+        if (NULL != i_module->module->inventory_collect) {
+            i_module->module->inventory_collect(record);
+            /* The lowest priority component in this list will also send the list up to the aggregator */
         }
-#endif
+    }
+    if(false == record->dynamic) {
+        /* Just one single inventory scan requested */
+        opal_output(0,"Dynamic collection not requested; 'record' will be deleted after use");
+        OBJ_RELEASE(record);
     }
 }
+
 void orcm_sensor_base_stop(orte_jobid_t job)
 {
     orcm_sensor_active_module_t *i_module;

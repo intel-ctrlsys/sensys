@@ -63,6 +63,7 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
   
     /* see if we want samples logged */
     orcm_sensor_base.log_samples = false;
+<<<<<<< HEAD
     (void)mca_base_var_register("orcm", "sensor", "base", "log_samples",
                                 "Log samples to database",
                                 MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
@@ -70,29 +71,29 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &orcm_sensor_base.log_samples);
 
-    orcm_sensor_base.inventory = false;
-    (void)mca_base_var_register("orcm", "sensor", "base", "inventory",
-                               "Log inventory details to database",
-                                MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
-                                OPAL_INFO_LVL_9,
-                                MCA_BASE_VAR_SCOPE_READONLY,
-                                &orcm_sensor_base.inventory);
-        
-    orcm_sensor_base.metrics = false;
-    (void)mca_base_var_register("orcm", "sensor", "base", "metrics",
+    orcm_sensor_base.collect_metrics = false;
+    (void)mca_base_var_register("orcm", "sensor", "base", "collect_metrics",
                                 "Enable metric collection",
                                 MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                 OPAL_INFO_LVL_9,
                                 MCA_BASE_VAR_SCOPE_READONLY,
-                                &orcm_sensor_base.metrics);
+                                &orcm_sensor_base.collect_metrics);
 
-    orcm_sensor_base.inventory_dynamic = false;
-    (void)mca_base_var_register("orcm", "sensor", "base", "inventory_dynamic",
+    orcm_sensor_base.collect_inventory = false;
+    (void)mca_base_var_register("orcm", "sensor", "base", "collect_inventory",
+                                "Enable inventory details collection",
+                                MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                OPAL_INFO_LVL_9,
+                                MCA_BASE_VAR_SCOPE_READONLY,
+                                &orcm_sensor_base.collect_inventory);
+
+    orcm_sensor_base.set_dynamic_inventory = false;
+    (void)mca_base_var_register("orcm", "sensor", "base", "set_dynamic_inventory",
                                 "Enable collecting inventory details dynamically",
                                 MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                 OPAL_INFO_LVL_9,
                                 MCA_BASE_VAR_SCOPE_READONLY,
-                                &orcm_sensor_base.inventory_dynamic);
+                                &orcm_sensor_base.set_dynamic_inventory);
 
     return ORCM_SUCCESS;
 }

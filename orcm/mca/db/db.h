@@ -17,6 +17,8 @@
 #ifndef ORCM_DB_H
 #define ORCM_DB_H
 
+#include <time.h>
+
 #include "orcm_config.h"
 #include "orcm/types.h"
 
@@ -122,6 +124,26 @@ typedef int (*orcm_db_base_module_store_fn_t)(struct orcm_db_base_module_t *imod
                                               opal_list_t *kvs);
 
 /*
+ * Specialized API function for storing data samples from components from the
+ * sensor framework.  The samples are provided as a list of type
+ * orcm_metric_value_t.
+ */
+typedef void (*orcm_db_base_API_record_data_sample_fn_t)(
+        int dbhandle,
+        const char *hostname,
+        const struct tm *time_stamp,
+        const char *data_group,
+        opal_list_t *samples,
+        orcm_db_callback_fn_t cbfunc,
+        void *cbdata);
+typedef int (*orcm_db_base_module_record_data_sample_fn_t)(
+        struct orcm_db_base_module_t *imod,
+        const char *hostname,
+        const struct tm *time_stamp,
+        const char *data_group,
+        opal_list_t *samples);
+
+/*
  * Update one or more features for a node as part of the inventory data, for
  * example: number of sockets, cores per socket, RAM, etc.  The features are
  * passed as a list of key-value pairs plus units: orcm_metric_value_t.  The
@@ -186,6 +208,7 @@ typedef struct  {
     orcm_db_base_module_init_fn_t                 init;
     orcm_db_base_module_finalize_fn_t             finalize;
     orcm_db_base_module_store_fn_t                store;
+    orcm_db_base_module_record_data_sample_fn_t   record_data_sample;
     orcm_db_base_module_update_node_features_fn_t update_node_features;
     orcm_db_base_module_commit_fn_t               commit;
     orcm_db_base_module_fetch_fn_t                fetch;
@@ -196,6 +219,7 @@ typedef struct {
     orcm_db_base_API_open_fn_t                 open;
     orcm_db_base_API_close_fn_t                close;
     orcm_db_base_API_store_fn_t                store;
+    orcm_db_base_API_record_data_sample_fn_t   record_data_sample;
     orcm_db_base_API_update_node_features_fn_t update_node_features;
     orcm_db_base_API_commit_fn_t               commit;
     orcm_db_base_API_fetch_fn_t                fetch;

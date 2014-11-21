@@ -42,11 +42,11 @@ static void finalize(struct orcm_db_base_module_t *imod);
 static int store(struct orcm_db_base_module_t *imod,
                  const char *primary_key,
                  opal_list_t *kvs);
-static int record_data_sample(struct orcm_db_base_module_t *imod,
-                              const char *hostname,
-                              const struct tm *time_stamp,
-                              const char *data_group,
-                              opal_list_t *samples);
+static int record_data_samples(struct orcm_db_base_module_t *imod,
+                               const char *hostname,
+                               const struct tm *time_stamp,
+                               const char *data_group,
+                               opal_list_t *samples);
 static int update_node_features(struct orcm_db_base_module_t *imod,
                                 const char *hostname,
                                 opal_list_t *features);
@@ -59,7 +59,7 @@ mca_db_print_module_t mca_db_print_module = {
         init,
         finalize,
         store,
-        record_data_sample,
+        record_data_samples,
         update_node_features,
         NULL,
         NULL,
@@ -100,8 +100,6 @@ static int store(struct orcm_db_base_module_t *imod,
 {
     mca_db_print_module_t *mod = (mca_db_print_module_t*)imod;
     char **cmdargs=NULL, *vstr;
-    time_t nowtime;
-    struct tm nowtm;
     char tbuf[1024];
     opal_value_t *kv;
     char **key_argv;
@@ -149,7 +147,7 @@ static int store(struct orcm_db_base_module_t *imod,
     return ORCM_SUCCESS;
 }
 
-static int record_data_sample(struct orcm_db_base_module_t *imod,
+static int record_data_samples(struct orcm_db_base_module_t *imod,
                               const char *hostname,
                               const struct tm *time_stamp,
                               const char *data_group,
@@ -159,8 +157,6 @@ static int record_data_sample(struct orcm_db_base_module_t *imod,
     orcm_metric_value_t *mv;
 
     char **cmdargs=NULL, *vstr;
-    time_t nowtime;
-    struct tm nowtm;
     char time_str[40];
     char tbuf[1024];
     int len;
@@ -201,7 +197,7 @@ static int record_data_sample(struct orcm_db_base_module_t *imod,
     vstr = opal_argv_join(cmdargs, ',');
 
     /* print it */
-    fprintf(mod->fp, "DB request: record_data_sample; data:\n%s\n", vstr);
+    fprintf(mod->fp, "DB request: record_data_samples; data:\n%s\n", vstr);
     free(vstr);
     opal_argv_free(cmdargs);
 
@@ -216,8 +212,6 @@ static int update_node_features(struct orcm_db_base_module_t *imod,
     orcm_metric_value_t *mv;
 
     char **cmdargs=NULL, *vstr;
-    time_t nowtime;
-    struct tm nowtm;
     char tbuf[1024];
     int len;
 

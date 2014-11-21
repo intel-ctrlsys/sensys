@@ -128,7 +128,7 @@ typedef int (*orcm_db_base_module_store_fn_t)(struct orcm_db_base_module_t *imod
  * sensor framework.  The samples are provided as a list of type
  * orcm_metric_value_t.
  */
-typedef void (*orcm_db_base_API_record_data_sample_fn_t)(
+typedef void (*orcm_db_base_API_record_data_samples_fn_t)(
         int dbhandle,
         const char *hostname,
         const struct tm *time_stamp,
@@ -136,7 +136,7 @@ typedef void (*orcm_db_base_API_record_data_sample_fn_t)(
         opal_list_t *samples,
         orcm_db_callback_fn_t cbfunc,
         void *cbdata);
-typedef int (*orcm_db_base_module_record_data_sample_fn_t)(
+typedef int (*orcm_db_base_module_record_data_samples_fn_t)(
         struct orcm_db_base_module_t *imod,
         const char *hostname,
         const struct tm *time_stamp,
@@ -208,7 +208,7 @@ typedef struct  {
     orcm_db_base_module_init_fn_t                 init;
     orcm_db_base_module_finalize_fn_t             finalize;
     orcm_db_base_module_store_fn_t                store;
-    orcm_db_base_module_record_data_sample_fn_t   record_data_sample;
+    orcm_db_base_module_record_data_samples_fn_t  record_data_samples;
     orcm_db_base_module_update_node_features_fn_t update_node_features;
     orcm_db_base_module_commit_fn_t               commit;
     orcm_db_base_module_fetch_fn_t                fetch;
@@ -219,7 +219,7 @@ typedef struct {
     orcm_db_base_API_open_fn_t                 open;
     orcm_db_base_API_close_fn_t                close;
     orcm_db_base_API_store_fn_t                store;
-    orcm_db_base_API_record_data_sample_fn_t   record_data_sample;
+    orcm_db_base_API_record_data_samples_fn_t  record_data_samples;
     orcm_db_base_API_update_node_features_fn_t update_node_features;
     orcm_db_base_API_commit_fn_t               commit;
     orcm_db_base_API_fetch_fn_t                fetch;

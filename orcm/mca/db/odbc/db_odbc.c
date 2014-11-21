@@ -45,11 +45,11 @@ static void odbc_finalize(struct orcm_db_base_module_t *imod);
 /*static int odbc_store_sample(struct orcm_db_base_module_t *imod,
                              const char *primary_key,
                              opal_list_t *kvs);*/
-static int odbc_record_data_sample(struct orcm_db_base_module_t *imod,
-                                   const char *hostname,
-                                   const struct tm *time_stamp,
-                                   const char *data_group,
-                                   opal_list_t *samples);
+static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
+                                    const char *hostname,
+                                    const struct tm *time_stamp,
+                                    const char *data_group,
+                                    opal_list_t *samples);
 static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
                                      const char *hostname,
                                      opal_list_t *features);
@@ -71,7 +71,7 @@ mca_db_odbc_module_t mca_db_odbc_module = {
         odbc_init,
         odbc_finalize,
         NULL/*odbc_store_sample*/,
-        odbc_record_data_sample,
+        odbc_record_data_samples,
         odbc_update_node_features,
         NULL,
         odbc_fetch,
@@ -515,7 +515,7 @@ static void odbc_finalize(struct orcm_db_base_module_t *imod)
     return ORCM_SUCCESS;
 }*/
 
-static int odbc_record_data_sample(struct orcm_db_base_module_t *imod,
+static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
                                    const char *hostname,
                                    const struct tm *time_stamp,
                                    const char *data_group,
@@ -624,6 +624,12 @@ static int odbc_record_data_sample(struct orcm_db_base_module_t *imod,
     }
 
     OPAL_LIST_FOREACH(mv, samples, orcm_metric_value_t) {
+        if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_STORE("Key or data item name not provided for value");
+            return ORCM_ERROR;
+        }
+
         ret = get_sample_value(mv, &value_num, &value_str, &curr_type_numeric);
         if (ORCM_SUCCESS != ret) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
@@ -805,6 +811,12 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
     }
 
     OPAL_LIST_FOREACH(mv, features, orcm_metric_value_t) {
+        if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_UNF("Key or node feature name not provided for value");
+            return ORCM_ERROR;
+        }
+
         ret = get_sample_value(mv, &value_num, &value_str, &curr_type_numeric);
         if (ORCM_SUCCESS != ret) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);

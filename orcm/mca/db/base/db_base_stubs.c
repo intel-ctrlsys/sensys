@@ -212,7 +212,7 @@ void orcm_db_base_store(int dbhandle,
     opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
 }
 
-static void process_record_data_sample(int fd, short args, void *cbdata)
+static void process_record_data_samples(int fd, short args, void *cbdata)
 {
     orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
     orcm_db_handle_t *hdl;
@@ -230,8 +230,8 @@ static void process_record_data_sample(int fd, short args, void *cbdata)
         goto callback;
     }
 
-    if (NULL != hdl->module->record_data_sample) {
-        rc = hdl->module->record_data_sample(
+    if (NULL != hdl->module->record_data_samples) {
+        rc = hdl->module->record_data_samples(
                 (struct orcm_db_base_module_t*)hdl->module,
                 req->hostname, req->time_stamp, req->data_group, req->kvs);
     }
@@ -243,13 +243,13 @@ static void process_record_data_sample(int fd, short args, void *cbdata)
     OBJ_RELEASE(req);
 }
 
-void orcm_db_base_record_data_sample(int dbhandle,
-                                     const char *hostname,
-                                     const struct tm *time_stamp,
-                                     const char *data_group,
-                                     opal_list_t *samples,
-                                     orcm_db_callback_fn_t cbfunc,
-                                     void *cbdata)
+void orcm_db_base_record_data_samples(int dbhandle,
+                                      const char *hostname,
+                                      const struct tm *time_stamp,
+                                      const char *data_group,
+                                      opal_list_t *samples,
+                                      orcm_db_callback_fn_t cbfunc,
+                                      void *cbdata)
 {
     orcm_db_request_t *req;
 
@@ -267,7 +267,7 @@ void orcm_db_base_record_data_sample(int dbhandle,
     req->cbdata = cbdata;
     opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
                    OPAL_EV_WRITE,
-                   process_record_data_sample, req);
+                   process_record_data_samples, req);
     opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
     opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
 }

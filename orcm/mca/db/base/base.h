@@ -90,7 +90,7 @@ ORCM_DECLSPEC void orcm_db_base_store(int dbhandle,
                                       opal_list_t *kvs,
                                       orcm_db_callback_fn_t cbfunc,
                                       void *cbdata);
-ORCM_DECLSPEC void orcm_db_base_record_data_sample(
+ORCM_DECLSPEC void orcm_db_base_record_data_samples(
         int dbhandle,
         const char *hostname,
         const struct tm *time_stamp,

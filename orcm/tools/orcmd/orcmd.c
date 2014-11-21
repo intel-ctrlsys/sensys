@@ -710,25 +710,27 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
         sigprocmask(0, 0, &sigs);
         sigprocmask(SIG_UNBLOCK, &sigs, 0);
 
-/*
-        if( alloc->caller_uid ) {
-            rc = setuid(alloc->called_uid);
+        if (alloc->caller_gid) {
+            rc = setgid(alloc->caller_gid);
             if (rc == -1) {
-                fprintf(stderr, "%s : stepd uid  error %s\n",
-                    orte_process_info.nodename, strerror(errno));
+                opal_output(0, "%s : stepd gid %d error %s\n",
+                    orte_process_info.nodename, alloc->caller_gid, strerror(errno));
+                orte_show_help("help-orcmd.txt", "orcmd:execv-error",
+                           true, cmd, strerror(errno));
                 exit(1);
             }
         }
-        if( alloc->caller_gid ) {
-            rc = setgid(alloc->called_gid);
+        if (alloc->caller_uid) {
+            rc = setuid(alloc->caller_uid);
             if (rc == -1) {
-                fprintf(stderr, "%s : stepd gid error %s\n",
-                    orte_process_info.nodename, strerror(errno));
+                opal_output(0, "%s : stepd uid %d  error  %s\n",
+                    orte_process_info.nodename, alloc->caller_uid, strerror(errno));
+                orte_show_help("help-orcmd.txt", "orcmd:execv-error",
+                           true, cmd, strerror(errno));
                 exit(1);
             }
         }
 
-*/
         execv(cmd, argv);
 
         /* if I get here, the execv failed! */

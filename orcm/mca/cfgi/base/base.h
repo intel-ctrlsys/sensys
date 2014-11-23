@@ -70,6 +70,9 @@ ORCM_DECLSPEC int orcm_cfgi_base_parse_cluster(orcm_cluster_t *cluster,
                                                orcm_cfgi_xml_parser_t *x);
 ORCM_DECLSPEC void orcm_cfgi_base_construct_uri(opal_buffer_t *buf, orcm_node_t *node);
 ORCM_DECLSPEC int orcm_cfgi_base_identify_emulator_targets(opal_list_t *targets);
+ORCM_DECLSPEC int orcm_cfgi_base_get_children(orte_process_name_t *proc, char **noderegex);
+ORCM_DECLSPEC int orcm_cfgi_base_get_proc_hostname(orte_process_name_t *proc, char **hostname);
+ORCM_DECLSPEC int orcm_cfgi_base_get_hostname_proc(char *hostname, orte_process_name_t *proc);
 
 /* datatype support */
 ORCM_DECLSPEC int orcm_pack_node(opal_buffer_t *buffer, const void *src,

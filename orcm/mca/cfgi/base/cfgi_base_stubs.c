@@ -21,8 +21,6 @@
 
 #include "orcm/mca/cfgi/base/base.h"
 
-static void find_children(orte_process_name_t *proc, char ***nodes);
-
 int orcm_cfgi_base_read_config(opal_list_t *config)
 {
     orcm_cfgi_base_active_t *a;
@@ -88,71 +86,6 @@ int orcm_cfgi_base_define_sys(opal_list_t *config,
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
-}
-
-static void find_children(orte_process_name_t *proc, char ***nodes)
-{
-    orcm_cluster_t *cluster;
-    orcm_row_t *row;
-    orcm_rack_t *rack;
-    orcm_node_t *node;
-    
-    OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
-        node = &cluster->controller;
-        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &node->daemon, proc)) {
-            OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
-                OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
-                    OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
-                        opal_argv_append_nosize(nodes, node->name);
-                    }
-                }
-            }
-            return;
-        }
-        
-        OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
-            node = &row->controller;
-            if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &node->daemon, proc)) {
-                OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
-                    OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
-                        opal_argv_append_nosize(nodes, node->name);
-                    }
-                }
-                return;
-            }
-            
-            OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
-                node = &rack->controller;
-                if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &node->daemon, proc)) {
-                    OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
-                        opal_argv_append_nosize(nodes, node->name);
-                    }
-                    return;
-                }
-            }
-        }
-    }
-}
-
-int orcm_cfgi_base_get_children(orte_process_name_t *proc, char **noderegex)
-{
-    char **nodes = NULL;
-    char *nodelist = NULL;
-    int ret;
-    
-    find_children(proc, &nodes);
-    
-    if (NULL != nodes) {
-        nodelist = opal_argv_join(nodes, ',');
-        opal_argv_free(nodes);
-        if (ORTE_SUCCESS != (ret = orte_regex_create(nodelist, noderegex))) {
-            ORTE_ERROR_LOG(ret);
-            return ret;
-        }
-        return ORCM_SUCCESS;
-    } else {
-        return ORCM_ERROR;
-    }
 }
 
 int orcm_cfgi_base_get_proc_hostname(orte_process_name_t *proc, char **hostname)

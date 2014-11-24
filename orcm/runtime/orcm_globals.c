@@ -74,16 +74,16 @@ const char *orcm_node_state_to_char(orcm_node_state_t state)
             s = "?";
             break;
         case ORCM_NODE_STATE_UP:
-            s = "\u2191";
+            s = "U";
             break;
         case ORCM_NODE_STATE_DOWN:
-            s = "\u2193";
+            s = "D";
             break;
         case ORCM_NODE_STATE_SESTERM:
-            s = "\u21BB";
+            s = "T";
             break;
         default:
-            s = "\u2297";
+            s = "?";
     }
     return s;
 }

@@ -183,10 +183,12 @@ OBJ_CLASS_INSTANCE(orcm_sensor_sampler_t,
 
 static void invcon(orcm_sensor_inventory_record_t *p)
 {
+    p->catalogue = OBJ_NEW(opal_list_t);
 }
 
 static void invdes(orcm_sensor_inventory_record_t *p)
 {
+    OPAL_LIST_RELEASE(p->catalogue);
 }
 OBJ_CLASS_INSTANCE(orcm_sensor_inventory_record_t,
                     opal_object_t,

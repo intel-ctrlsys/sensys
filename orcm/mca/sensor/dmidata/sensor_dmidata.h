@@ -18,7 +18,7 @@
 #include "orcm_config.h"
 
 #include "orcm/mca/sensor/sensor.h"
-
+#include "sensor_dmidata_decls.h"
 BEGIN_C_DECLS
 
 typedef struct {

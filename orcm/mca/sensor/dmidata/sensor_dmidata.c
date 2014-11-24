@@ -93,11 +93,6 @@ OBJ_CLASS_INSTANCE(coretemp_tracker_t,
 static bool log_enabled = true;
 static opal_list_t tracking;
 
-/* FOR FUTURE: extend to read cooling device speeds in
- *     current speed: /sys/class/thermal/cooling_deviceN/cur_state
- *     max speed: /sys/class/thermal/cooling_deviceN/max_state
- *     type: /sys/class/thermal/cooling_deviceN/type
- */
 static int init(void)
 {
     DIR *cur_dirp = NULL;
@@ -118,6 +113,7 @@ static int init(void)
 
     /* Initialize All available resource that are present in the current system
      * that need to be scanned by the plugin */
+    opal_output(0,"DMIDATA init");
 
     closedir(cur_dirp);
 
@@ -137,16 +133,101 @@ static void start(orte_jobid_t jobid)
     return;
 }
 
-static void ipmi_inventory_collect(orcm_sensor_inventory_record_t *record)
-{
-    opal_output(0,"Inside DMIDATA inventory collection");
-}
-
 static void stop(orte_jobid_t jobid)
 {
     return;
 }
 
+static char* check_inv_key(char *inv_key)
+{
+    int i = 0;
+
+    while (i<MAX_INVENTORY_KEYWORDS)
+    {
+        if ((NULL != strcasestr(inv_key,inv_keywords[i][0])) & (NULL != strcasestr(inv_key,inv_keywords[i][1])) & (NULL != strcasestr(inv_key,inv_keywords[i][2])))
+        {
+            if((NULL != strcasestr(inv_key,inv_keywords[i][3])) & (strlen(inv_keywords[i][3])> 0))
+            {
+                opal_output(0,"Discarding the inventory item %s with ignore string %s ",inv_keywords[i][3],inv_key);
+            } else {
+                //opal_output(0, "Found a matching inventory keyword - %s with %s %s %s without %s - Assigning %s ",
+                //                    inv_key, inv_keywords[i][0], inv_keywords[i][1], inv_keywords[i][2], inv_keywords[i][3], inv_keywords[i][4]);
+                return inv_keywords[i][4];
+            }
+        }
+        i++;
+    }
+    return NULL;
+}
+static void collect_baseboard_inventory(orcm_sensor_inventory_record_t *record)
+{
+    hwloc_obj_t obj;
+    uint32_t k;
+    opal_value_t *kv;
+    char *inv_key;
+
+    opal_output(0,"Inside DMIDATA inventory collection");
+    /* MACHINE Level Stats*/
+    if (NULL == (obj = hwloc_get_obj_by_type(opal_hwloc_topology, HWLOC_OBJ_MACHINE, 0))) {
+        /* there are no objects identified for this machine (Weird!) */
+        orte_show_help("help-orcm-sensor-dmidata.txt", "no-machine", true);
+        ORTE_ERROR_LOG(ORTE_ERROR);
+        return;
+    }
+    if (NULL != obj) {
+        /* Pack the total MACHINE Stats present and to be copied */
+        for (k=0; k < obj->infos_count; k++) {
+            if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
+            {
+                kv = OBJ_NEW(opal_value_t);
+                kv->type = OPAL_STRING;
+                kv->key = strdup(inv_key);
+                kv->data.string = strdup(obj->infos[k].value);
+                opal_list_append(record->catalogue, &kv->super);
+            }
+        }
+    } else {
+        opal_output(0,"Unable to initialize hwloc object");
+    }
+}
+
+static void collect_cpu_inventory(orcm_sensor_inventory_record_t *record)
+{
+    hwloc_obj_t obj;
+    uint32_t k;
+    opal_value_t *kv;
+    char *inv_key;
+
+    opal_output(0,"Inside DMIDATA  CPU - inventory collection");
+    /* MACHINE Level Stats*/
+    if (NULL == (obj = hwloc_get_obj_by_type(opal_hwloc_topology, HWLOC_OBJ_SOCKET, 0))) {
+        /* there are no objects identified for this machine (Weird!) */
+        orte_show_help("help-orcm-sensor-dmidata.txt", "no-machine", true);
+        ORTE_ERROR_LOG(ORTE_ERROR);
+        return;
+    }
+    if (NULL != obj) {
+        /* Pack the total MACHINE Stats present and to be copied */
+        for (k=0; k < obj->infos_count; k++) {
+            if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
+            {
+                kv = OBJ_NEW(opal_value_t);
+                kv->type = OPAL_STRING;
+                kv->key = strdup(inv_key);
+                kv->data.string = strdup(obj->infos[k].value);
+                opal_list_append(record->catalogue, &kv->super);
+            }
+        }
+    } else {
+        opal_output(0,"Unable to initialize hwloc object");
+    }
+
+}
+static void dmidata_inventory_collect(orcm_sensor_inventory_record_t *record)
+{
+    collect_baseboard_inventory(record);
+    collect_cpu_inventory(record);
+}
 
 static void dmidata_sample(orcm_sensor_sampler_t *sampler)
 {

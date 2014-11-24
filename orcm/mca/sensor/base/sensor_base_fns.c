@@ -26,7 +26,7 @@
 
 static bool mods_active = false;
 static void take_sample(int fd, short args, void *cbdata);
-static void collect_inventory(int fd, short args, void* cbdata);
+static void collect_inventory_info(int fd, short args, void* cbdata);
 
 static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
 {
@@ -50,7 +50,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
     int i;
     orcm_sensor_sampler_t *sampler;
     orcm_sensor_inventory_record_t *record;
-
+    opal_value_t *host, *nxt;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: sensor start called",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -115,14 +115,28 @@ void orcm_sensor_base_start(orte_jobid_t job)
         record->dynamic = orcm_sensor_base.set_dynamic_inventory;
         
         if (false == orcm_sensor_base.set_dynamic_inventory) { /* Collect inventory details just once when orcmd starts */
-            collect_inventory(0,0,(void*)record);
             opal_output(0,"sensor:base - boot time invenotry collection requested");
+            /* The collect inventory call could be added to a new thread to avoid getting blocked */
+            collect_inventory_info(0,0,(void*)record);
+            OPAL_LIST_FOREACH_SAFE(host, nxt, record->catalogue, orcm_sensor_inventory_record_t) {
+                opal_output(0,"INVENTORY RECORD: %s - %s",host->key, host->data.string);
+            }
 
         } else {
             /* Update inventory details when hotswap even occurs
              * @VINFIX: Need a way to monitor the syslog with hotswap events. */
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "sensor:base - DYNAMIC inventory collection enabled");
+        }
+
+        /* @VINFIX: Send inventory details to aggregator here */
+
+
+        /* Free the 'record' after sending the inventory details to aggregator */
+        if(false == record->dynamic) {
+            /* Just one single inventory scan requested */
+            opal_output(0,"Dynamic collection not requested; 'record' will be deleted after use");
+            OBJ_RELEASE(record);
         }
     } else {
          opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -131,7 +145,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
     return;    
 }
 
-void collect_inventory(int fd, short args, void *cbdata)
+void collect_inventory_info(int fd, short args, void *cbdata)
 {
     orcm_sensor_active_module_t *i_module;
     int i;
@@ -145,26 +159,11 @@ void collect_inventory(int fd, short args, void *cbdata)
         if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
             continue;
         }
-/* @VINFIX: We need to change the function call below by adding a new API to the sensor module
- * which will be used to collect the inventory related data and send it up to the aggregator.
- * 
- * ***** NOTE ****
- * We might have to add a new plugin analogous to heartbeat which will collect the sampled inventory records
- * and push it up to the aggregator. THIS HAS TO BE DIFFERENT FROM HEARTBEAT to avoid users to run a processor
- * intesive component for collecting static inventory data
- *  Alternatively this could be part of the hwloc component which will be enabled only when inventory is enabled.
- *  but that might tie down the user to always enable hwloc component even when only ipmi inventory collection is enabled
- */
 
         if (NULL != i_module->module->inventory_collect) {
             i_module->module->inventory_collect(record);
             /* The lowest priority component in this list will also send the list up to the aggregator */
         }
-    }
-    if(false == record->dynamic) {
-        /* Just one single inventory scan requested */
-        opal_output(0,"Dynamic collection not requested; 'record' will be deleted after use");
-        OBJ_RELEASE(record);
     }
 }
 

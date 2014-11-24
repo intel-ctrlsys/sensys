@@ -479,7 +479,21 @@ int orcm_sensor_ipmi_label_found(char *sensor_label)
 
 static void ipmi_inventory_collect(orcm_sensor_inventory_record_t *record)
 {
-    opal_output(0,"Inside IPMI inventory collection");
+    orcm_sensor_hosts_t cur_host;
+    int rc;
+    rc = orcm_sensor_ipmi_get_bmc_cred(&cur_host);
+    if (ORCM_SUCCESS != rc)
+    {
+        opal_output(0,"IPMI Inventory collection failed");
+    } else {
+        opal_output(0,"Inside IPMI inventory collection");
+        opal_output(0,"IPMI Inventory data");
+        opal_output(0,"--------------------------------------");
+        opal_output(0,"Vendor Name:      %s");
+        opal_output(0,"BMC FW Version:   %s");
+        opal_output(0,"BB Serial Number: %s");
+        opal_output(0,"--------------------------------------");
+    }
     /* @VINFIX: Collect the FRU related information here */
 }
 

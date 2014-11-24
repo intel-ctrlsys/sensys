@@ -13,6 +13,7 @@ dist_orcmdata_DATA = help-orcm-sensor-dmidata.txt
 sources = \
         sensor_dmidata.c \
         sensor_dmidata.h \
+        sensor_dmidata_decls.h \
         sensor_dmidata_component.c
 
 # Make the output library in this directory, and name it either

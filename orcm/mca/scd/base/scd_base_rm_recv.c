@@ -24,6 +24,7 @@
 #include "orte/util/regex.h"
 
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/util/utils.h"
 #include "orcm/mca/cfgi/cfgi_types.h"
 #include "orcm/mca/scd/base/base.h"
 
@@ -89,6 +90,8 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
     bool have_hwloc_topo;
     hwloc_topology_t *topo = NULL;
     hwloc_topology_t t;
+    opal_list_t *nodelist;
+    orte_namelist_t *nm, *n;
     
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:rm:receive processing msg",
@@ -196,37 +199,54 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                 }
             }
         } else if (state == ORCM_NODE_STATE_DOWN) {
-            /* set node to state */
+            /* get all nodes affected by comm failure */
+            /* an empty list means we have a leaf node */
+            /* this needs to be updated once "healing" is implemented
+               beccause this will not be an accurate picture of what
+               is really affected by comms failures */
+            nodelist = OBJ_NEW(opal_list_t);
+            orcm_util_get_dependents(nodelist, &node);
+
+            /* if list is empty, just add the single node */
+            if (opal_list_is_empty(nodelist)) {
+                nm = OBJ_NEW(orte_namelist_t);
+                nm->name.jobid = node.jobid;
+                nm->name.vpid = node.vpid;
+                opal_list_append(nodelist, &nm->super);
+            }
+
+            /* set each node to state */
             found = false;
-            for (i = 0; i < orcm_scd_base.nodes.size; i++) {
-                if (NULL == (nodeptr =
-                             (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
-                                                                       i))) {
-                                 continue;
-                             }
-                if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                                &nodeptr->daemon,
-                                                                &node)) {
-                    OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
-                                         "%s scd:base:rm:receive Setting node %s to state %i (%s)",
-                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                         ORTE_NAME_PRINT(&node),
-                                         (int)state,
-                                         orcm_node_state_to_str(state)));
-                    found = true;
-                    nodeptr->state = state;
-                    break;
+            OPAL_LIST_FOREACH(n, nodelist, orte_namelist_t) {
+                for (i = 0; i < orcm_scd_base.nodes.size; i++) {
+                    if (NULL == (nodeptr =
+                                 (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
+                                                                           i))) {
+                                     continue;
+                                 }
+                    if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
+                                                                    &nodeptr->daemon,
+                                                                    &n->name)) {
+                        OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
+                                             "%s scd:base:rm:receive Setting node %s to state %i (%s)",
+                                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                             ORTE_NAME_PRINT(&n->name),
+                                             (int)state,
+                                             orcm_node_state_to_str(state)));
+                        found = true;
+                        nodeptr->state = state;
+                        break;
+                    }
                 }
             }
+            OPAL_LIST_RELEASE(nodelist);
         }
 
-        if ((!found) && (state == ORCM_NODE_STATE_UP)) {
+        if (!found) {
             OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
                                  "%s scd:base:rm:receive Couldn't find node %s to update state",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                  ORTE_NAME_PRINT(&node)));
-        } else if ((!found) && (state == ORCM_NODE_STATE_DOWN)) {
-            //This was an aggregator going down, take down all children?
         }
 
         OBJ_RELEASE(ans);

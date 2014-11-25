@@ -199,7 +199,6 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                 nm->name.vpid = node.vpid;
                 opal_list_append(nodelist, &nm->super);
             }
-
         }
 
         /* set each node to state */
@@ -222,6 +221,8 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                                          orcm_node_state_to_str(state)));
                     found = true;
                     nodeptr->state = state;
+                    /* if the node is coming online, reset the scheduling state
+                       only if its either undefined or unknown */
                     if ((ORCM_NODE_STATE_UP == state) &&
                         ((ORCM_SCD_NODE_STATE_UNDEF == nodeptr->scd_state) ||
                          (ORCM_SCD_NODE_STATE_UNKNOWN == nodeptr->scd_state))) {

@@ -88,6 +88,7 @@ int orcm_cfgi_base_define_sys(opal_list_t *config,
     return ORCM_SUCCESS;
 }
 
+/* given orte_process_name_t *proc, set hostname from config */
 int orcm_cfgi_base_get_proc_hostname(orte_process_name_t *proc, char **hostname)
 {
     orcm_cluster_t *cluster;
@@ -126,9 +127,10 @@ int orcm_cfgi_base_get_proc_hostname(orte_process_name_t *proc, char **hostname)
         }
     }
     
-    return ORCM_ERROR;
+    return ORCM_ERR_NOT_FOUND;
 }
 
+/* given hostname, set orte_process_name_t proc from config */
 int orcm_cfgi_base_get_hostname_proc(char *hostname, orte_process_name_t *proc)
 {
     orcm_cluster_t *cluster;
@@ -171,5 +173,5 @@ int orcm_cfgi_base_get_hostname_proc(char *hostname, orte_process_name_t *proc)
         }
     }
     
-    return ORCM_ERROR;
+    return ORCM_ERR_NOT_FOUND;
 }

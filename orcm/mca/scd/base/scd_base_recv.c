@@ -117,12 +117,21 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         session->alloc = alloc;
         session->id = orcm_scd_base_get_next_session_id();
         alloc->id = session->id;
-        if ((orcm_scd_base.nodes.size - orcm_scd_base.nodes.number_free) == 0) {
+        if (-1 == orcm_scd_base_get_cluster_power_budget()) {
             alloc->node_power_budget = -1;
+            alloc->alloc_power_budget = -1;
         } else {
-            alloc->node_power_budget = orcm_scd_base_get_cluster_power_budget() / (orcm_scd_base.nodes.size - orcm_scd_base.nodes.number_free);
+            if ((orcm_scd_base.nodes.size - orcm_scd_base.nodes.number_free) == 0) {
+                alloc->node_power_budget = -1;
+            } else {
+                alloc->node_power_budget = orcm_scd_base_get_cluster_power_budget() / (orcm_scd_base.nodes.size - orcm_scd_base.nodes.number_free);
+            }
+            if (-1 == alloc->node_power_budget) {
+                alloc->alloc_power_budget = -1;
+            } else {
+                alloc->alloc_power_budget = alloc->node_power_budget * alloc->min_nodes;
+            }
         }
-        alloc->alloc_power_budget = alloc->node_power_budget * alloc->min_nodes;
 
         /* send session id back to sender */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &session->id,

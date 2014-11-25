@@ -15,6 +15,7 @@
 #include "orcm/constants.h"
 
 #include "orte/mca/errmgr/errmgr.h"
+#include "orte/mca/rml/rml.h"
 
 #include "opal/dss/dss.h"
 #include "opal/mca/event/event.h"
@@ -27,6 +28,7 @@
 static bool mods_active = false;
 static void take_sample(int fd, short args, void *cbdata);
 static void collect_inventory_info(int fd, short args, void* cbdata);
+static void log_inventory_info(orcm_sensor_inventory_record_t *record);
 
 static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
 {
@@ -48,9 +50,9 @@ void orcm_sensor_base_start(orte_jobid_t job)
 {
     orcm_sensor_active_module_t *i_module;
     int i;
+    
     orcm_sensor_sampler_t *sampler;
     orcm_sensor_inventory_record_t *record;
-    opal_value_t *host, *nxt;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: sensor start called",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -118,9 +120,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
             opal_output(0,"sensor:base - boot time invenotry collection requested");
             /* The collect inventory call could be added to a new thread to avoid getting blocked */
             collect_inventory_info(0,0,(void*)record);
-            OPAL_LIST_FOREACH_SAFE(host, nxt, record->catalogue, orcm_sensor_inventory_record_t) {
-                opal_output(0,"INVENTORY RECORD: %s - %s",host->key, host->data.string);
-            }
+            log_inventory_info(record);
 
         } else {
             /* Update inventory details when hotswap even occurs
@@ -130,8 +130,6 @@ void orcm_sensor_base_start(orte_jobid_t job)
         }
 
         /* @VINFIX: Send inventory details to aggregator here */
-
-
         /* Free the 'record' after sending the inventory details to aggregator */
         if(false == record->dynamic) {
             /* Just one single inventory scan requested */
@@ -165,6 +163,54 @@ void collect_inventory_info(int fd, short args, void *cbdata)
             /* The lowest priority component in this list will also send the list up to the aggregator */
         }
     }
+}
+
+void log_inventory_info(orcm_sensor_inventory_record_t *record)
+{
+    opal_buffer_t *buf;
+    int rc;
+    orte_process_name_t *tgt;
+    opal_value_t *host, *nxt;
+    char *temp;
+
+    int32_t n;
+    opal_output(0,"--------------Inventory info log------------");
+    OPAL_LIST_FOREACH_SAFE(host, nxt, record->catalogue, orcm_sensor_inventory_record_t) {
+        opal_output(0,"INVENTORY RECORD: %s - %s",host->key, host->data.string);
+    }
+    if (ORTE_PROC_IS_CM) {
+        /* we send to our daemon */
+        tgt = ORTE_PROC_MY_DAEMON;
+    } else {
+        tgt = ORTE_PROC_MY_HNP;
+    }
+
+    /* if we want sampled data included, point to the bucket */
+    buf = OBJ_NEW(opal_buffer_t);
+    /* pack our name */
+    temp = strdup("Test Inventory Data");
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &temp, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&buf);
+        return;
+    }
+    free(temp);
+
+//        opal_dss.copy_payload(buf, &record);
+    /* cycle this bucket to clear it */
+//        OBJ_DESTRUCT(&sampler->bucket);
+//        OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+
+    /* send heartbeat */
+    opal_output(0,"-------->>>sending inventory data to aggregator");
+    if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, buf,
+                                                      ORTE_RML_TAG_INVENTORY,
+                                                      orte_rml_send_callback, NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+    }
+
+
 }
 
 void orcm_sensor_base_stop(orte_jobid_t job)

@@ -151,6 +151,9 @@ BEGIN_C_DECLS
 /* notifier support */
 #define ORTE_RML_TAG_NOTIFIER_HNP           52
 
+/* Inventory collection */
+#define ORTE_RML_TAG_INVENTORY              53
+
 #define ORTE_RML_TAG_MAX                   100
 
 

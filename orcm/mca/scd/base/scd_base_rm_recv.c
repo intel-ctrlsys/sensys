@@ -174,7 +174,7 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                                          "%s NEW TOPOLOGY - ADDING",
                                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-                    
+
                     opal_pointer_array_add(&orcm_scd_base.topologies, topo);
                 }
             }

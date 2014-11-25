@@ -95,28 +95,28 @@ int orcm_cfgi_base_get_proc_hostname(orte_process_name_t *proc, char **hostname)
     orcm_row_t *row;
     orcm_rack_t *rack;
     orcm_node_t *node;
-    
+
     OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
         node = &cluster->controller;
         if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &node->daemon, proc)) {
             *hostname = strdup(node->name);
             return ORCM_SUCCESS;
         }
-        
+
         OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
             node = &row->controller;
             if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &node->daemon, proc)) {
                 *hostname = strdup(node->name);
                 return ORCM_SUCCESS;
             }
-            
+
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
                 node = &rack->controller;
                 if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &node->daemon, proc)) {
                     *hostname = strdup(node->name);
                     return ORCM_SUCCESS;
                 }
-                
+
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &node->daemon, proc)) {
                         *hostname = strdup(node->name);
@@ -126,7 +126,7 @@ int orcm_cfgi_base_get_proc_hostname(orte_process_name_t *proc, char **hostname)
             }
         }
     }
-    
+
     return ORCM_ERR_NOT_FOUND;
 }
 
@@ -137,7 +137,7 @@ int orcm_cfgi_base_get_hostname_proc(char *hostname, orte_process_name_t *proc)
     orcm_row_t *row;
     orcm_rack_t *rack;
     orcm_node_t *node;
-    
+
     OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
         node = &cluster->controller;
         if ((NULL != node->name) && (0 == strcmp(node->name, hostname))) {
@@ -145,7 +145,7 @@ int orcm_cfgi_base_get_hostname_proc(char *hostname, orte_process_name_t *proc)
             proc->jobid = node->daemon.jobid;
             return ORCM_SUCCESS;
         }
-        
+
         OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
             node = &row->controller;
             if ((NULL != node->name) && (0 == strcmp(node->name, hostname))) {
@@ -153,7 +153,7 @@ int orcm_cfgi_base_get_hostname_proc(char *hostname, orte_process_name_t *proc)
                 proc->jobid = node->daemon.jobid;
                 return ORCM_SUCCESS;
             }
-            
+
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
                 node = &rack->controller;
                 if ((NULL != node->name) && (0 == strcmp(node->name, hostname))) {
@@ -161,7 +161,7 @@ int orcm_cfgi_base_get_hostname_proc(char *hostname, orte_process_name_t *proc)
                     proc->jobid = node->daemon.jobid;
                     return ORCM_SUCCESS;
                 }
-                
+
                 OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                     if ((NULL != node->name) && (0 == strcmp(node->name, hostname))) {
                         proc->vpid = node->daemon.vpid;
@@ -172,6 +172,6 @@ int orcm_cfgi_base_get_hostname_proc(char *hostname, orte_process_name_t *proc)
             }
         }
     }
-    
+
     return ORCM_ERR_NOT_FOUND;
 }

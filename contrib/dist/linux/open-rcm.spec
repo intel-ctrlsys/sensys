@@ -31,7 +31,7 @@
 Prefix: /opt/open-rcm
 %define ompi_name rcm
 %define ompi_name_prefix open-
-%define ompi_version 0.5rc1git0336663
+%define ompi_version 1.0rc1
 %{!?ompi_package_version:%define ompi_package_version default}
 %define ompi_extra_version %{nil}
 %define ompi_release 1

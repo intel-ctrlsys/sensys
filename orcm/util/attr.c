@@ -17,6 +17,22 @@ char* orcm_attr_key_print(orte_attribute_key_t key)
         key < ORCM_ATTR_KEY_MAX) {
         /* belongs to ORCM, so we handle it */
         switch(key) {
+        case ORCM_PWRMGMT_POWER_MODE_KEY:
+        return "PWRMGMT_POWER_MODE";
+        case ORCM_PWRMGMT_POWER_BUDGET_KEY:
+        return "PWRMGMT_POWER_BUDGET";
+        case ORCM_PWRMGMT_POWER_WINDOW_KEY:
+        return "PWRMGMT_POWER_WINDOW";
+        case ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY:
+        return "PWRMGMT_CAP_OVERAGE_LIMIT";
+        case ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY:
+        return "PWRMGMT_CAP_UNDERAGE_LIMIT";
+        case ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY:
+        return "PWRMGMT_CAP_OVERAGE_TIME_LIMIT";
+        case ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY:
+        return "PWRMGMT_CAP_UNDERAGE_TIME_LIMIT";
+        case ORCM_PWRMGMT_SUPPORTED_MODES_KEY:
+        return "PWRMGMT_SUPPORTED_MODES";
 
         default:
             return "UNKNOWN-KEY";

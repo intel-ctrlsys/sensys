@@ -16,7 +16,6 @@
 #include "opal_stdint.h"
 #include "opal/util/argv.h"
 
-#include "orte/util/regex.h"
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/mca/cfgi/base/base.h"

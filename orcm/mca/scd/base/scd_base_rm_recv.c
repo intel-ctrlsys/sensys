@@ -87,9 +87,11 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
     orcm_alloc_t *alloc;
     orcm_session_t *session;
     bool found;
+#if OPAL_HAVE_HWLOC
     bool have_hwloc_topo;
     hwloc_topology_t *topo = NULL;
     hwloc_topology_t t;
+#endif
     opal_list_t *nodelist;
     orte_namelist_t *nm, *n;
     
@@ -106,6 +108,7 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
     }
     
     if (ORCM_NODESTATE_UPDATE_COMMAND == command) {
+        nodelist = OBJ_NEW(opal_list_t);
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                              "%s scd:base:rm:receive got ORCM_NODESTATE_UPDATE_COMMAND",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
@@ -114,19 +117,23 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &state,
                                                   &cnt, OPAL_INT8))) {
             ORTE_ERROR_LOG(rc);
+            OPAL_LIST_RELEASE(nodelist);
             return;
         }
         cnt = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &node,
                                                   &cnt, ORTE_NAME))) {
             ORTE_ERROR_LOG(rc);
+            OPAL_LIST_RELEASE(nodelist);
             return;
         }
-        if (state == ORCM_NODE_STATE_UP) {
+        if (ORCM_NODE_STATE_UP == state) {
+#if OPAL_HAVE_HWLOC
             cnt = 1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &have_hwloc_topo,
                                                       &cnt, OPAL_BOOL))) {
                 ORTE_ERROR_LOG(rc);
+                OPAL_LIST_RELEASE(nodelist);
                 return;
             }
             if (have_hwloc_topo) {
@@ -134,6 +141,7 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &topo,
                                                           &cnt, OPAL_HWLOC_TOPO))) {
                     ORTE_ERROR_LOG(rc);
+                    OPAL_LIST_RELEASE(nodelist);
                     return;
                 }
                 if(10 < opal_output_get_verbosity(orcm_scd_base_framework.framework_output)) {
@@ -170,41 +178,18 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                     opal_pointer_array_add(&orcm_scd_base.topologies, topo);
                 }
             }
-        }
-
-        if (state == ORCM_NODE_STATE_UP) {
-            /* set node to state */
-            found = false;
-            for (i = 0; i < orcm_scd_base.nodes.size; i++) {
-                if (NULL == (nodeptr =
-                             (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
-                                                                       i))) {
-                                 continue;
-                             }
-                if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                                &nodeptr->daemon,
-                                                                &node)) {
-                    found = true;
-                    nodeptr->state = state;
-                    nodeptr->topology = *topo;
-                    /* set to available for now, eventually pass this off to scheduler */
-                    nodeptr->scd_state = ORCM_SCD_NODE_STATE_UNALLOC;
-                    OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
-                                         "%s scd:base:rm:receive Setting node %s to state %i (%s)",
-                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                         ORTE_NAME_PRINT(&node),
-                                         (int)state,
-                                         orcm_node_state_to_str(state)));
-                    break;
-                }
-            }
-        } else if (state == ORCM_NODE_STATE_DOWN) {
+#endif
+            /* add ourself to the nodelist for state change */
+            nm = OBJ_NEW(orte_namelist_t);
+            nm->name.jobid = node.jobid;
+            nm->name.vpid = node.vpid;
+            opal_list_append(nodelist, &nm->super);
+        } else if (ORCM_NODE_STATE_DOWN == state) {
             /* get all nodes affected by comm failure */
             /* an empty list means we have a leaf node */
             /* this needs to be updated once "healing" is implemented
                beccause this will not be an accurate picture of what
                is really affected by comms failures */
-            nodelist = OBJ_NEW(opal_list_t);
             orcm_util_get_dependents(nodelist, &node);
 
             /* if list is empty, just add the single node */
@@ -215,32 +200,38 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                 opal_list_append(nodelist, &nm->super);
             }
 
-            /* set each node to state */
-            found = false;
-            OPAL_LIST_FOREACH(n, nodelist, orte_namelist_t) {
-                for (i = 0; i < orcm_scd_base.nodes.size; i++) {
-                    if (NULL == (nodeptr =
-                                 (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
-                                                                           i))) {
-                                     continue;
-                                 }
-                    if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                                    &nodeptr->daemon,
-                                                                    &n->name)) {
-                        OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
-                                             "%s scd:base:rm:receive Setting node %s to state %i (%s)",
-                                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                             ORTE_NAME_PRINT(&n->name),
-                                             (int)state,
-                                             orcm_node_state_to_str(state)));
-                        found = true;
-                        nodeptr->state = state;
-                        break;
-                    }
+        }
+
+        /* set each node to state */
+        found = false;
+        OPAL_LIST_FOREACH(n, nodelist, orte_namelist_t) {
+            for (i = 0; i < orcm_scd_base.nodes.size; i++) {
+                if (NULL == (nodeptr =
+                             (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
+                                                                       i))) {
+                                 continue;
+                             }
+                if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
+                                                                &nodeptr->daemon,
+                                                                &n->name)) {
+                    OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
+                                         "%s scd:base:rm:receive Setting node %s to state %i (%s)",
+                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                         ORTE_NAME_PRINT(&n->name),
+                                         (int)state,
+                                         orcm_node_state_to_str(state)));
+                    found = true;
+                    nodeptr->state = state;
+                    if ((ORCM_NODE_STATE_UP == state) &&
+                        ((ORCM_SCD_NODE_STATE_UNDEF == nodeptr->scd_state) ||
+                         (ORCM_SCD_NODE_STATE_UNKNOWN == nodeptr->scd_state))) {
+                            nodeptr->scd_state = ORCM_SCD_NODE_STATE_UNALLOC;
+                        }
+                    break;
                 }
             }
-            OPAL_LIST_RELEASE(nodelist);
         }
+        OPAL_LIST_RELEASE(nodelist);
 
         if (!found) {
             OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,

@@ -89,7 +89,7 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
     bool found;
 #if OPAL_HAVE_HWLOC
     bool have_hwloc_topo;
-    hwloc_topology_t *topo = NULL;
+    hwloc_topology_t topo;
     hwloc_topology_t t;
 #endif
     opal_list_t *nodelist;
@@ -163,9 +163,7 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                                              "%s TOPOLOGY MATCHES - DISCARDING",
                                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
                         found = true;
-                        /* FIXME, destroy is segfaulting */
-                        /* hwloc_topology_destroy(*topo); */
-                        topo = &t;
+                        hwloc_topology_destroy(topo);
                         break;
                     }
                 }
@@ -176,6 +174,7 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
                     opal_pointer_array_add(&orcm_scd_base.topologies, topo);
+                    t = topo;
                 }
             }
 #endif
@@ -221,6 +220,12 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
                                          orcm_node_state_to_str(state)));
                     found = true;
                     nodeptr->state = state;
+#if OPAL_HAVE_HWLOC
+                    /* associate node topology with node */
+                    if (ORCM_NODE_STATE_UP == state) {
+                        nodeptr->topology = t;
+                    }
+#endif
                     /* if the node is coming online, reset the scheduling state
                        only if its either undefined or unknown */
                     if ((ORCM_NODE_STATE_UP == state) &&

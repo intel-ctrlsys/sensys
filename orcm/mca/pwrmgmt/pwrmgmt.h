@@ -35,14 +35,14 @@ BEGIN_C_DECLS
 /* 
  * Power Management Attributes
  * these are defined in orcm/util/attr.h add new attributes there 
- * ORCM_PWRMGMT_POWER_MODE_KEY               (ORCM_PWRMGMT_START_KEY + 1) // orcm_pwrmgmt_mode - enum power mode
- * ORCM_PWRMGMT_POWER_BUDGET_KEY             (ORCM_PWRMGMT_START_KEY + 2) // double - power cap in watts 
- * ORCM_PWRMGMT_POWER_WINDOW_KEY             (ORCM_PWRMGMT_START_KEY + 3) // uint64_t - time window in msec to calculate energy over
- * ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY        (ORCM_PWRMGMT_START_KEY + 4) // double - power in watts that we can exceed the power cap
- * ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY       (ORCM_PWRMGMT_START_KEY + 5) // double - power in watts that we can go under the power cap
- * ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY   (ORCM_PWRMGMT_START_KEY + 6) // uint64_t - time in ms that we can exceed the power cap
- * ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY  (ORCM_PWRMGMT_START_KEY + 6) // uint64_t - time in ms that we can go under the power cap
- * ORCM_PWRMGMT_SUPPORTED_MODES_KEY          (ORCM_PWRMGMT_START_KEY + 7) // opal_ptr (int) - pointer to an array of supported power modes by current component
+ * ORCM_PWRMGMT_POWER_MODE_KEY               // orcm_pwrmgmt_mode - enum power mode
+ * ORCM_PWRMGMT_POWER_BUDGET_KEY             // double - power cap in watts 
+ * ORCM_PWRMGMT_POWER_WINDOW_KEY             // uint64_t - time window in msec to calculate energy over
+ * ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY        // double - power in watts that we can exceed the power cap
+ * ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY       // double - power in watts that we can go under the power cap
+ * ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY   // uint64_t - time in ms that we can exceed the power cap
+ * ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY  // uint64_t - time in ms that we can go under the power cap
+ * ORCM_PWRMGMT_SUPPORTED_MODES_KEY          // opal_ptr (int) - pointer to an array of supported power modes by current component
  */
 
 /*

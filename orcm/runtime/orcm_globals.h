@@ -110,19 +110,23 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 
 /* extend the ORTE RML tags to add ORCM DAEMONS tags */
 /* scheduler */
-#define ORCM_RML_TAG_SCD       (ORTE_RML_TAG_MAX + 1)
-#define ORCM_RML_TAG_RM        (ORTE_RML_TAG_MAX + 2)
+#define ORCM_RML_TAG_SCD           (ORTE_RML_TAG_MAX + 1)
+#define ORCM_RML_TAG_RM            (ORTE_RML_TAG_MAX + 2)
 /* session daemons */
-#define ORCM_RML_TAG_HNP       (ORTE_RML_TAG_MAX + 3)
-#define ORCM_RML_TAG_DAEMON    (ORTE_RML_TAG_MAX + 4)
+#define ORCM_RML_TAG_HNP           (ORTE_RML_TAG_MAX + 3)
+#define ORCM_RML_TAG_DAEMON        (ORTE_RML_TAG_MAX + 4)
 /* analytics */
-#define ORCM_RML_TAG_ANALYTICS (ORTE_RML_TAG_MAX + 5)
+#define ORCM_RML_TAG_ANALYTICS     (ORTE_RML_TAG_MAX + 5)
 /* tools */
-#define ORCM_RML_TAG_VM_READY  (ORTE_RML_TAG_MAX + 6)
+#define ORCM_RML_TAG_VM_READY      (ORTE_RML_TAG_MAX + 6)
 /* diagnostics */
-#define ORCM_RML_TAG_DIAG      (ORTE_RML_TAG_MAX + 7)
+#define ORCM_RML_TAG_DIAG          (ORTE_RML_TAG_MAX + 7)
 /* Inventory */
-#define ORCM_RML_TAG_INVENTORY (ORTE_RML_TAG_MAX + 8)
+#define ORCM_RML_TAG_INVENTORY     (ORTE_RML_TAG_MAX + 8)
+/* pwrmgmt base */
+#define ORCM_RML_TAG_PWRMGMT_BASE  (ORTE_RML_TAG_MAX + 9)
+/* autotuner */
+#define ORCM_RML_TAG_AT            (ORTE_RML_TAG_MAX + 10)
 
 /* define event base priorities */
 #define ORCM_SCHED_PRI OPAL_EV_MSG_HI_PRI

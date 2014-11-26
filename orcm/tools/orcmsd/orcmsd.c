@@ -1618,7 +1618,14 @@ static void orcmsd_wpid_event_recv(int fd, short args, void* cbdata)
         */
     } else { /*if (req->pid  == w) */ 
         opal_output(0, "batch job complete terminate stepd\n");
-        ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_DAEMONS_TERMINATED);
+        /*ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_DAEMONS_TERMINATED);
+         */
+        /* ensure all local procs are dead */
+         orte_odls.kill_local_procs(NULL);
+        /* cleanup and leave */
+         orcm_finalize();
+         opal_output(0, "%s orcmsd: exiting with status %d\n", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), orte_exit_status);
+         exit(orte_exit_status);
     }
 }
 

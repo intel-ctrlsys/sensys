@@ -495,6 +495,18 @@ int orun(int argc, char *argv[])
 
     OBJ_DESTRUCT(&cmd_line);
 
+    /* Read the environment for hnp uri */
+    if ( !my_hnp_uri &&  NULL != getenv("ORCM_MCA_HNP_URI")) {
+            my_hnp_uri = getenv("ORCM_MCA_HNP_URI");
+    }
+
+    if (!my_hnp_uri && (false == orun_globals.alloc_request)) {
+        orte_show_help("help-orterun.txt", "orterun:allocation-not-specified",
+                       false, orte_basename, orte_basename);
+        rc = ORCM_ERR_BAD_PARAM;
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
     /* create a new job object to hold the info for this one - the
      * jobid field will be filled in by the PLM when the job is
      * launched
@@ -567,18 +579,6 @@ int orun(int argc, char *argv[])
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, &xbuffer);
     
-    /* Read the environment for hnp uri */
-    if ( !my_hnp_uri &&  NULL != getenv("ORCM_MCA_HNP_URI")) {
-            my_hnp_uri = getenv("ORCM_MCA_HNP_URI");
-    }
-
-    if (!my_hnp_uri && (false == orun_globals.alloc_request)) {
-        orte_show_help("help-orterun.txt", "orterun:allocation-not-specified",
-                       false, orte_basename, orte_basename);
-        rc = ORCM_ERR_BAD_PARAM;
-        ORTE_ERROR_LOG(rc);
-        goto DONE;
-    }
 
     if(my_hnp_uri) {
         /* set the contact info to the hash table */

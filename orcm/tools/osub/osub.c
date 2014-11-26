@@ -608,7 +608,7 @@ static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc)
         rc = execve(argv[0], argv, env);
         printf("%s IShell execve - %d errno - %d\n",
                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), rc, errno);
-        exit(-1);
+        exit(rc);
     } else {
         w = waitpid (pid, &status, 0);
         if (w == pid) {

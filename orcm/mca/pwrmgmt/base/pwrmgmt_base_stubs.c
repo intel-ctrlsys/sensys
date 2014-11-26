@@ -18,6 +18,7 @@
 /*
  * Global variables
  */
+static orcm_pwrmgmt_active_module_t* selected_module = NULL;
 
 int orcm_pwrmgmt_base_init()
 {
@@ -48,16 +49,6 @@ void orcm_pwrmgmt_base_finalize()
         }
     }
 
-    return;
-}
-
-void orcm_pwrmgmt_base_start(orcm_session_id_t session)
-{
-    return;
-}
-
-void orcm_pwrmgmt_base_stop(orcm_session_id_t session)
-{
     return;
 }
 
@@ -96,6 +87,9 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
                 if (active->priority > max_priority) {
                     max_priority = active->priority;
                     orcm_pwrmgmt = *active->module;
+                    /* The dealloc call still needs to be handled here */
+                    orcm_pwrmgmt.dealloc_notify = orcm_pwrmgmt_base_dealloc_notify;
+                    selected_module = active;
                 }    
             }
         }
@@ -104,6 +98,16 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
         /* give this module a chance to operate on it */
         orcm_pwrmgmt.alloc_notify(alloc);
     }
+}
+
+void orcm_pwrmgmt_base_dealloc_notify(orcm_alloc_t* alloc)
+{
+    if(NULL != selected_module) {
+        selected_module->module->dealloc_notify(alloc);
+    }
+    /* set all pointers back to us */
+    orcm_pwrmgmt = orcm_pwrmgmt_stubs;
+    selected_module = NULL;
 }
 
 int orcm_pwrmgmt_base_set_attributes(orcm_session_id_t session, opal_list_t* attr)

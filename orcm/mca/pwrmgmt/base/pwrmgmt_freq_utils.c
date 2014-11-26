@@ -341,7 +341,7 @@ int orcm_pwrmgmt_freq_set_governor(int cpu, char* governor)
 
     /* loop thru all the cpus on this node */
     OPAL_LIST_FOREACH(trk, &tracking, rtefreq_tracker_t) {
-        if (cpu == trk->core) {
+        if (cpu != trk->core && -1 != cpu) {
             continue;
         }
 
@@ -380,7 +380,9 @@ int orcm_pwrmgmt_freq_set_governor(int cpu, char* governor)
         fprintf(fp, "%s\n", governor);
         fclose(fp);
         free(filename);
-        break;
+        if(-1 != cpu) {
+            break;
+        }
     }
     return ORCM_SUCCESS;
 }
@@ -402,7 +404,7 @@ int orcm_pwrmgmt_freq_set_min_freq(int cpu, float freq)
 
     /* loop thru all the cpus on this node */
     OPAL_LIST_FOREACH(trk, &tracking, rtefreq_tracker_t) {
-        if (cpu == trk->core) {
+        if (cpu != trk->core && -1 != cpu) {
             continue;
         }
         /* does the requested value match the current setting? */
@@ -447,7 +449,9 @@ int orcm_pwrmgmt_freq_set_min_freq(int cpu, float freq)
         fprintf(fp, "%ld\n", (unsigned long)(freq * 1000000.0));
         fclose(fp);
         free(filename);
-        break;
+        if (-1 != cpu) {
+            break;
+        }
     }
     return ORCM_SUCCESS;
 }
@@ -470,7 +474,7 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq)
 
     /* loop thru all the cpus on this node */
     OPAL_LIST_FOREACH(trk, &tracking, rtefreq_tracker_t) {
-        if (cpu == trk->core) {
+        if (cpu != trk->core && -1 != cpu) {
             continue;
         }
         /* does the requested value match the current setting? */
@@ -515,75 +519,11 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq)
         fprintf(fp, "%ld\n", (unsigned long)(freq * 1000000.0));
         fclose(fp);
         free(filename);
-        break;
+        if(-1 != cpu) {
+            break;
+        }
     }
     return ORCM_SUCCESS;
-}
-
-int orcm_pwrmgmt_freq_set_governor_all(char* governor)
-{
-    rtefreq_tracker_t *trk;
-    int err;
-    int rc = ORCM_SUCCESS;
-    
-    if(!orcm_pwrmgmt_freq_initialized) {
-        if(ORCM_SUCCESS != orcm_pwrmgmt_freq_init()) {
-            return ORCM_ERR_NOT_INITIALIZED;
-        }
-    }
-
-    /* loop thru all the cpus on this node */
-    OPAL_LIST_FOREACH(trk, &tracking, rtefreq_tracker_t) {
-        if(OPAL_SUCCESS != (err = orcm_pwrmgmt_freq_set_governor(trk->core, governor))) {
-            rc = err;
-        }
-    }
-
-    return rc;
-}
-
-int orcm_pwrmgmt_freq_set_min_freq_all(float freq)
-{
-    rtefreq_tracker_t *trk;
-    int err;
-    int rc = ORCM_SUCCESS;
-    
-    if(!orcm_pwrmgmt_freq_initialized) {
-        if(ORCM_SUCCESS != orcm_pwrmgmt_freq_init()) {
-            return ORCM_ERR_NOT_INITIALIZED;
-        }
-    }
-
-    /* loop thru all the cpus on this node */
-    OPAL_LIST_FOREACH(trk, &tracking, rtefreq_tracker_t) {
-        if(OPAL_SUCCESS != (err = orcm_pwrmgmt_freq_set_min_freq(trk->core, freq))) {
-            rc = err;
-        }
-    }
-
-    return rc;
-}
-
-int orcm_pwrmgmt_freq_set_max_freq_all(float freq)
-{
-    rtefreq_tracker_t *trk;
-    int err;
-    int rc = ORCM_SUCCESS;
-    
-    if(!orcm_pwrmgmt_freq_initialized) {
-        if(ORCM_SUCCESS != orcm_pwrmgmt_freq_init()) {
-            return ORCM_ERR_NOT_INITIALIZED;
-        }
-    }
-
-    /* loop thru all the cpus on this node */
-    OPAL_LIST_FOREACH(trk, &tracking, rtefreq_tracker_t) {
-        if(OPAL_SUCCESS != (err = orcm_pwrmgmt_freq_set_max_freq(trk->core, freq))) {
-            rc = err;
-        }
-    }
-
-    return rc;
 }
 
 int orcm_pwrmgmt_freq_get_supported_governors(int cpu, opal_list_t* governors)

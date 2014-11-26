@@ -50,7 +50,7 @@ int orcm_pwrmgm_freq_get_num_cpus(void);
  *
  * Set the scaling governor for a specified cpu
  *
- * @param[in] cpu - the target cpu
+ * @param[in] cpu - the target cpu (set to -1 to affect all cpus)
  * @param[in] governor - a string containing the governor name
  *
  * @retval ORTE_SUCCESS Success
@@ -62,7 +62,7 @@ int orcm_pwrmgmt_freq_set_governor(int cpu, char* governor);
 /**
  * Set the maximum frequency for a cpu
  *
- * Set the maximum frequency for a specified cpu
+ * Set the maximum frequency for a specified cpu (set to -1 to affect all cpus)
  *
  * @param[in] cpu - the target cpu
  * @param[in] freq - the requested frequency
@@ -76,7 +76,7 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq);
 /**
  * Set the minimum frequency for a cpu
  *
- * Set the minimum frequency for a specified cpu
+ * Set the minimum frequency for a specified cpu (set to -1 to affect all cpus)
  *
  * @param[in] cpu - the target cpu
  * @param[in] freq - the requested frequency
@@ -86,45 +86,6 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq);
  * @retval ORTE_ERROR   An unspecified error occurred
  */
 int orcm_pwrmgmt_freq_set_min_freq(int cpu, float freq);
-
-/**
- * Set the scaling governor
- *
- * Set the scaling governor for all cpus
- *
- * @param[in] governor - a string containing the governor name
- *
- * @retval ORTE_SUCCESS Success
- * @retval ORCM_ERR_NOT_INITIALIZED init could not be completed
- * @retval ORTE_ERROR   An unspecified error occurred
- */
-int orcm_pwrmgmt_freq_set_governor_all(char* governor);
-
-/**
- * Set the maximum frequency
- *
- * Set the maximum frequency for all cpus
- *
- * @param[in] freq - the requested frequency
- *
- * @retval ORTE_SUCCESS Success
- * @retval ORCM_ERR_NOT_INITIALIZED init could not be completed
- * @retval ORTE_ERROR   An unspecified error occurred
- */
-int orcm_pwrmgmt_freq_set_max_freq_all(float freq);
-
-/**
- * Set the minimum frequency
- *
- * Set the minimum frequency for a specified cpu
- *
- * @param[in] freq - the requested frequency
- *
- * @retval ORTE_SUCCESS Success
- * @retval ORCM_ERR_NOT_INITIALIZED init could not be completed
- * @retval ORTE_ERROR   An unspecified error occurred
- */
-int orcm_pwrmgmt_freq_set_min_freq_all(float freq);
 
 /**
  * Get the list of supported governors for a cpu

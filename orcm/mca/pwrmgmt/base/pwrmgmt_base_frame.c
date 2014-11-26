@@ -57,9 +57,8 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
 orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt_stubs = {
     orcm_pwrmgmt_base_init,
     orcm_pwrmgmt_base_finalize,
-    orcm_pwrmgmt_base_start,
-    orcm_pwrmgmt_base_stop,
     orcm_pwrmgmt_base_alloc_notify,
+    orcm_pwrmgmt_base_dealloc_notify,
     orcm_pwrmgmt_base_set_attributes,
     orcm_pwrmgmt_base_get_attributes,
     orcm_pwrmgmt_base_get_current_power
@@ -215,12 +214,12 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
                 }
             }
             if(use_perf_gov) {
-                orcm_pwrmgmt_freq_set_governor_all("performance");
+                orcm_pwrmgmt_freq_set_governor(-1, "performance");
                 break;
             }
             OPAL_LIST_FOREACH(kv, data, opal_value_t) {
                 if(0 == strcmp(kv->data.string, "userspace")) {
-                    orcm_pwrmgmt_freq_set_governor_all("userspace");
+                    orcm_pwrmgmt_freq_set_governor(-1, "userspace");
                     break;
                 }
             }
@@ -239,8 +238,8 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
             }
         }
         if(0.0 != freq) {
-            orcm_pwrmgmt_freq_set_max_freq_all(freq);
-            orcm_pwrmgmt_freq_set_min_freq_all(freq);
+            orcm_pwrmgmt_freq_set_max_freq(-1, freq);
+            orcm_pwrmgmt_freq_set_min_freq(-1, freq);
         }
     break;
     case ORCM_PWRMGMT_BASE_SET_IDLE_CMD:
@@ -249,7 +248,7 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
         if(NULL != data) {
             OPAL_LIST_FOREACH(kv, data, opal_value_t) {
                 if(0 == strcmp(kv->data.string, "userspace")) {
-                    orcm_pwrmgmt_freq_set_governor_all("userspace");
+                    orcm_pwrmgmt_freq_set_governor(-1, "userspace");
                     break;
                 }
             }
@@ -268,8 +267,8 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
             }
         }
         if(0.0 != freq) {
-            orcm_pwrmgmt_freq_set_max_freq_all(freq);
-            orcm_pwrmgmt_freq_set_min_freq_all(freq);
+            orcm_pwrmgmt_freq_set_max_freq(-1, freq);
+            orcm_pwrmgmt_freq_set_min_freq(-1, freq);
         }
     break;
     case ORCM_PWRMGMT_BASE_RESET_DEFAULTS_CMD:

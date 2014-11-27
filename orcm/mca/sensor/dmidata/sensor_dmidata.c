@@ -63,11 +63,6 @@ orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
     dmidata_inventory_collect
 };
 
-static void recv_inventory(int status, orte_process_name_t* sender,
-                       opal_buffer_t *buffer,
-                       orte_rml_tag_t tag, void *cbdata);
-//(orcm_sensor_inventory_record_t *record);
-
 typedef struct {
     opal_list_item_t super;
     char *file;
@@ -101,14 +96,14 @@ static int init(void)
     opal_output(0,"DMIDATA init");
 
     /* setup to receive nventory data from compute & io Nodes */
-    if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
+/*    if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
         orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
                                 ORTE_RML_TAG_INVENTORY,
                                 ORTE_RML_PERSISTENT,
                                 recv_inventory, NULL);
     
     }
-
+*/
     return ORCM_SUCCESS;
 }
 
@@ -221,48 +216,15 @@ static void collect_cpu_inventory(hwloc_topology_t topo, orcm_sensor_inventory_r
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
     int32_t rc;
-
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
+    char *comp = strdup("hwloc");
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
+    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &opal_hwloc_topology, 1, OPAL_HWLOC_TOPO))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-}
-
-static void recv_inventory(int status, orte_process_name_t* sender,
-                       opal_buffer_t *buffer,
-                       orte_rml_tag_t tag, void *cbdata)
-{
-    char *temp;
-    int32_t n, rc;
-    hwloc_topology_t topo;
-    opal_output(0,"Received Inventory data at aggregator");
-    /* unpack the host this came from */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    opal_output(0,"Received Inventory Data from host : %s",temp);
-    free(temp);
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &topo, &n, OPAL_HWLOC_TOPO))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    //opal_output(0,"Received string : %s",temp);
-    collect_baseboard_inventory(topo,NULL);
-    collect_cpu_inventory(topo, NULL);
-
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    opal_output(0,"Received string : %s",temp);
-    //free(temp);
 }
 

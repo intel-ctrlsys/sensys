@@ -67,6 +67,7 @@ orcm_sensor_base_module_t orcm_sensor_pwr_module = {
     stop,
     pwr_sample,
     pwr_log,
+    NULL,
     NULL
 };
 

@@ -55,6 +55,7 @@ orcm_sensor_base_module_t orcm_sensor_test_module = {
     stop,
     test_sample,
     test_log,
+    NULL,
     NULL
 };
 

@@ -51,7 +51,7 @@ static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot);
-
+static void dmidata_inventory_log(opal_buffer_t *inventory_snapshot);
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
     init,
@@ -60,7 +60,8 @@ orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
     stop,
     NULL,
     NULL,
-    dmidata_inventory_collect
+    dmidata_inventory_collect,
+    dmidata_inventory_log
 };
 
 typedef struct {
@@ -213,10 +214,28 @@ static void collect_cpu_inventory(hwloc_topology_t topo, orcm_sensor_inventory_r
     }
 
 }
+
+static void dmidata_inventory_log(opal_buffer_t *inventory_snapshot)
+{
+    hwloc_topology_t topo;
+    int32_t n, rc;
+    opal_output(0,"dmidata inventory log");
+
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &topo, &n, OPAL_HWLOC_TOPO))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    //opal_output(0,"Received string : %s",temp);
+        collect_baseboard_inventory(topo,NULL);
+        collect_cpu_inventory(topo, NULL);
+}
+
+
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
     int32_t rc;
-    char *comp = strdup("hwloc");
+    char *comp = strdup("dmidata");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;

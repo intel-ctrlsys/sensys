@@ -63,6 +63,7 @@ orcm_sensor_base_module_t orcm_sensor_sigar_module = {
     stop,
     sigar_sample,
     sigar_log,
+    NULL,
     NULL
 };
 

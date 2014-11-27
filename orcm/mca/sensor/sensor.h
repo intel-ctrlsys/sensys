@@ -78,8 +78,9 @@ typedef void (*orcm_sensor_base_module_sample_fn_t)(orcm_sensor_sampler_t *sampl
 
 /* Collect the inventory record details and append to the the 'record'
  */
-typedef void (*orcm_sensor_base_module_inventory_collect_fn_t)(orcm_sensor_inventory_record_t *record);
+typedef void (*orcm_sensor_base_module_inventory_collect_fn_t)(opal_buffer_t *inventory_snapshot);
 
+typedef void (*orcm_sensor_base_module_inventory_log_fn_t) (opal_buffer_t *inventory_snapshot);
 /* pass a buffer to the module for logging */
 typedef void (*orcm_sensor_base_module_log_fn_t)(opal_buffer_t *sample);
 
@@ -94,6 +95,7 @@ struct orcm_sensor_base_module_1_0_0_t {
     orcm_sensor_base_module_sample_fn_t     sample;
     orcm_sensor_base_module_log_fn_t        log;
     orcm_sensor_base_module_inventory_collect_fn_t  inventory_collect;
+    orcm_sensor_base_module_inventory_log_fn_t      inventory_log;
 };
 
 typedef struct orcm_sensor_base_module_1_0_0_t orcm_sensor_base_module_1_0_0_t;

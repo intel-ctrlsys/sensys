@@ -177,7 +177,7 @@ void collect_inventory_info(int fd, short args, void *cbdata)
 void log_inventory_info(opal_buffer_t *inventory_snapshot)
 {
     opal_buffer_t *buf;
-    int rc;
+    int32_t rc;
     orte_process_name_t *tgt;
     opal_value_t *host, *nxt;
     char *temp;
@@ -190,15 +190,6 @@ void log_inventory_info(opal_buffer_t *inventory_snapshot)
     } else {
         tgt = ORTE_PROC_MY_HNP;
     }
-
-    /* if we want sampled data included, point to the bucket */
-    /* pack our name */
-    temp = strdup("Test Inventory Data");
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &temp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    free(temp);
 
     /* send heartbeat */
     opal_output(0,"-------->>>sending inventory data to aggregator");
@@ -217,8 +208,10 @@ static void recv_inventory(int status, orte_process_name_t* sender,
                        orte_rml_tag_t tag, void *cbdata)
 {
     char *temp;
-    int32_t n, rc;
+    int32_t i, n, rc;
     hwloc_topology_t topo;
+    orcm_sensor_active_module_t *i_module;
+
     opal_output(0,"Received Inventory data at aggregator");
     /* unpack the host this came from */
     n=1;
@@ -228,31 +221,31 @@ static void recv_inventory(int status, orte_process_name_t* sender,
     }
     opal_output(0,"Received Inventory Data from host : %s",temp);
     free(temp);
-    
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
+  
+    n=1; 
+    while (OPAL_SUCCESS == (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
+        if (NULL != temp) {
+            opal_output(0,"Received data for component : %s",temp);
+            /* Iterate through all available components and pass the buffer to appropriate one*/
+            /* find the specified module  */
+            for (i=0; i < orcm_sensor_base.modules.size; i++) {
+                if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
+                    continue;
+                }
+                if (0 == strcmp(temp, i_module->component->base_version.mca_component_name)) {
+                    if (NULL != i_module->module->inventory_log) {
+                        i_module->module->inventory_log(buffer);
+                    }
+                    return;
+                }
+            }
+            free(temp);
+            n=1;            
+        }
     }
-    opal_output(0,"Received Inventory Data of: %s",temp);
-    free(temp);
- 
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &topo, &n, OPAL_HWLOC_TOPO))) {
+    if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
         ORTE_ERROR_LOG(rc);
-        return;
     }
-    //opal_output(0,"Received string : %s",temp);
-//    collect_baseboard_inventory(topo,NULL);
-//    collect_cpu_inventory(topo, NULL);
-
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    opal_output(0,"Received string : %s",temp);
-    //free(temp);
 }
 
 void orcm_sensor_base_stop(orte_jobid_t job)

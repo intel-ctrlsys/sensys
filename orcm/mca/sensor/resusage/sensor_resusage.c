@@ -61,6 +61,7 @@ orcm_sensor_base_module_t orcm_sensor_resusage_module = {
     NULL,
     sample,
     res_log,
+    NULL,
     NULL
 };
 

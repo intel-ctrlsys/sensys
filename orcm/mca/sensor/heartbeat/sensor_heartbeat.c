@@ -58,6 +58,7 @@ orcm_sensor_base_module_t orcm_sensor_heartbeat_module = {
     NULL,
     sample,
     NULL,
+    NULL,
     NULL
 };
 

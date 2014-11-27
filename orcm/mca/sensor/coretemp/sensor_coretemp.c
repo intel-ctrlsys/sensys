@@ -61,6 +61,7 @@ orcm_sensor_base_module_t orcm_sensor_coretemp_module = {
     stop,
     coretemp_sample,
     coretemp_log,
+    NULL,
     NULL
 };
 

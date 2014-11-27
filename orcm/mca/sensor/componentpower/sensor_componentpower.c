@@ -69,6 +69,7 @@ orcm_sensor_base_module_t orcm_sensor_componentpower_module = {
     stop,
     componentpower_sample,
     componentpower_log,
+    NULL,
     NULL
 };
 

@@ -50,7 +50,7 @@ static int init(void);
 static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
-static void dmidata_inventory_collect(orcm_sensor_inventory_record_t *record);
+static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
@@ -106,6 +106,7 @@ static int init(void)
                                 ORTE_RML_TAG_INVENTORY,
                                 ORTE_RML_PERSISTENT,
                                 recv_inventory, NULL);
+    
     }
 
     return ORCM_SUCCESS;
@@ -151,7 +152,7 @@ static char* check_inv_key(char *inv_key)
     }
     return NULL;
 }
-static void collect_baseboard_inventory(orcm_sensor_inventory_record_t *record)
+static void collect_baseboard_inventory(hwloc_topology_t topo, orcm_sensor_inventory_record_t *record)
 {
     hwloc_obj_t obj;
     uint32_t k;
@@ -160,7 +161,7 @@ static void collect_baseboard_inventory(orcm_sensor_inventory_record_t *record)
 
     opal_output(0,"Inside DMIDATA inventory collection");
     /* MACHINE Level Stats*/
-    if (NULL == (obj = hwloc_get_obj_by_type(opal_hwloc_topology, HWLOC_OBJ_MACHINE, 0))) {
+    if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_MACHINE, 0))) {
         /* there are no objects identified for this machine (Weird!) */
         orte_show_help("help-orcm-sensor-dmidata.txt", "no-machine", true);
         ORTE_ERROR_LOG(ORTE_ERROR);
@@ -171,11 +172,12 @@ static void collect_baseboard_inventory(orcm_sensor_inventory_record_t *record)
         for (k=0; k < obj->infos_count; k++) {
             if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
             {
-                kv = OBJ_NEW(opal_value_t);
-                kv->type = OPAL_STRING;
-                kv->key = strdup(inv_key);
-                kv->data.string = strdup(obj->infos[k].value);
-                opal_list_append(record->catalogue, &kv->super);
+                //kv = OBJ_NEW(opal_value_t);
+                //kv->type = OPAL_STRING;
+                //kv->key = strdup(inv_key);
+                //kv->data.string = strdup(obj->infos[k].value);
+                //opal_list_append(record->catalogue, &kv->super);
+                opal_output(0,"Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
             }
         }
     } else {
@@ -183,7 +185,7 @@ static void collect_baseboard_inventory(orcm_sensor_inventory_record_t *record)
     }
 }
 
-static void collect_cpu_inventory(orcm_sensor_inventory_record_t *record)
+static void collect_cpu_inventory(hwloc_topology_t topo, orcm_sensor_inventory_record_t *record)
 {
     hwloc_obj_t obj;
     uint32_t k;
@@ -192,7 +194,7 @@ static void collect_cpu_inventory(orcm_sensor_inventory_record_t *record)
 
     opal_output(0,"Inside DMIDATA  CPU - inventory collection");
     /* MACHINE Level Stats*/
-    if (NULL == (obj = hwloc_get_obj_by_type(opal_hwloc_topology, HWLOC_OBJ_SOCKET, 0))) {
+    if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_SOCKET, 0))) {
         /* there are no objects identified for this machine (Weird!) */
         orte_show_help("help-orcm-sensor-dmidata.txt", "no-machine", true);
         ORTE_ERROR_LOG(ORTE_ERROR);
@@ -203,11 +205,12 @@ static void collect_cpu_inventory(orcm_sensor_inventory_record_t *record)
         for (k=0; k < obj->infos_count; k++) {
             if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
             {
-                kv = OBJ_NEW(opal_value_t);
-                kv->type = OPAL_STRING;
-                kv->key = strdup(inv_key);
-                kv->data.string = strdup(obj->infos[k].value);
-                opal_list_append(record->catalogue, &kv->super);
+                //kv = OBJ_NEW(opal_value_t);
+                //kv->type = OPAL_STRING;
+                //kv->key = strdup(inv_key);
+                //kv->data.string = strdup(obj->infos[k].value);
+                //opal_list_append(record->catalogue, &kv->super);
+                opal_output(0,"Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
             }
         }
     } else {
@@ -215,19 +218,27 @@ static void collect_cpu_inventory(orcm_sensor_inventory_record_t *record)
     }
 
 }
-static void dmidata_inventory_collect(orcm_sensor_inventory_record_t *record)
+static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
-    collect_baseboard_inventory(record);
-    collect_cpu_inventory(record);
+    int32_t rc;
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &opal_hwloc_topology, 1, OPAL_HWLOC_TOPO))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
 }
 
 static void recv_inventory(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
                        orte_rml_tag_t tag, void *cbdata)
-//(orcm_sensor_inventory_record_t *record)
 {
     char *temp;
     int32_t n, rc;
+    hwloc_topology_t topo;
     opal_output(0,"Received Inventory data at aggregator");
     /* unpack the host this came from */
     n=1;
@@ -235,8 +246,23 @@ static void recv_inventory(int status, orte_process_name_t* sender,
         ORTE_ERROR_LOG(rc);
         return;
     }
-    opal_output(0,"Received string : %s",temp);
+    opal_output(0,"Received Inventory Data from host : %s",temp);
     free(temp);
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &topo, &n, OPAL_HWLOC_TOPO))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    //opal_output(0,"Received string : %s",temp);
+    collect_baseboard_inventory(topo,NULL);
+    collect_cpu_inventory(topo, NULL);
 
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    opal_output(0,"Received string : %s",temp);
+    //free(temp);
 }
 

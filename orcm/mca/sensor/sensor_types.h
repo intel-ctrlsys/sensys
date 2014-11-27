@@ -74,6 +74,7 @@ ORCM_DECLSPEC OBJ_CLASS_DECLARATION(orcm_sensor_sampler_t);
 typedef struct {
     opal_object_t super;
     bool dynamic;
+    char *hostname;
     opal_list_t *catalogue;
     orcm_sensor_inventory_record_cb_fn_t cbfunc;
     void *cbdata;

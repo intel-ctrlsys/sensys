@@ -32,7 +32,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void ipmi_sample(orcm_sensor_sampler_t *sampler);
 static void ipmi_log(opal_buffer_t *buf);
-static void ipmi_inventory_collect(orcm_sensor_inventory_record_t *record);
+static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot);
 int count_log = 0;
 
 char **sensor_list_token;
@@ -477,7 +477,7 @@ int orcm_sensor_ipmi_label_found(char *sensor_label)
     return 0;
 }
 
-static void ipmi_inventory_collect(orcm_sensor_inventory_record_t *record)
+static void ipmi_inventory_collect(opal_buffer_t *inventory_record)
 {
     orcm_sensor_hosts_t cur_host;
     int rc;

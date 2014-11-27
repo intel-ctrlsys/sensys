@@ -61,7 +61,7 @@ orcm_sensor_base_module_t orcm_sensor_coretemp_module = {
     stop,
     coretemp_sample,
     coretemp_log,
-    coretemp_inventory_collect
+    NULL
 };
 
 typedef struct {
@@ -356,11 +356,6 @@ static void start(orte_jobid_t jobid)
 static void stop(orte_jobid_t jobid)
 {
     return;
-}
-
-static void coretemp_inventory_collect(orcm_sensor_inventory_record_t *record)
-{
-    opal_output(0,"Inside CORETEMP inventory collection");
 }
 
 static void coretemp_sample(orcm_sensor_sampler_t *sampler)

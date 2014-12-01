@@ -98,14 +98,39 @@ int orcm_util_get_dependents(opal_list_t *targets,
      * everything below it
      */
     OPAL_LIST_FOREACH(cluster, orcm_clusters, orcm_cluster_t) {
-        OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
-            if (row->controller.daemon.jobid == root->jobid &&
-                row->controller.daemon.vpid == root->vpid) {
-                /* collect the daemons from all the racks in this row */
+        node = &cluster->controller;
+        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &node->daemon, root)) {
+            OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
+                node = &row->controller;
+                nm = OBJ_NEW(orte_namelist_t);
+                nm->name.jobid = node->daemon.jobid;
+                nm->name.vpid = node->daemon.vpid;
+                opal_list_append(targets, &nm->super);
                 OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
+                    node = &rack->controller;
                     nm = OBJ_NEW(orte_namelist_t);
-                    nm->name.jobid = rack->controller.daemon.jobid;
-                    nm->name.vpid = rack->controller.daemon.vpid;
+                    nm->name.jobid = node->daemon.jobid;
+                    nm->name.vpid = node->daemon.vpid;
+                    opal_list_append(targets, &nm->super);
+                    OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
+                        nm = OBJ_NEW(orte_namelist_t);
+                        nm->name.jobid = node->daemon.jobid;
+                        nm->name.vpid = node->daemon.vpid;
+                        opal_list_append(targets, &nm->super);
+                    }
+                }
+            }
+            return ORCM_SUCCESS;
+        }
+
+        OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
+            node = &row->controller;
+            if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &node->daemon, root)) {
+                OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
+                    node = &rack->controller;
+                    nm = OBJ_NEW(orte_namelist_t);
+                    nm->name.jobid = node->daemon.jobid;
+                    nm->name.vpid = node->daemon.vpid;
                     opal_list_append(targets, &nm->super);
                     OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                         nm = OBJ_NEW(orte_namelist_t);
@@ -116,15 +141,10 @@ int orcm_util_get_dependents(opal_list_t *targets,
                 }
                 return ORCM_SUCCESS;
             }
-        }
-        /* if we get here, we did not find it as a row
-         * controller, so see if it is a rack
-         */
-        OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
+
             OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
-                if (rack->controller.daemon.jobid == root->jobid &&
-                    rack->controller.daemon.vpid == root->vpid) {
-                    /* collect the daemons from all the nodes in this rack */
+                node = &rack->controller;
+                if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL, &node->daemon, root)) {
                     OPAL_LIST_FOREACH(node, &rack->nodes, orcm_node_t) {
                         nm = OBJ_NEW(orte_namelist_t);
                         nm->name.jobid = node->daemon.jobid;
@@ -135,9 +155,6 @@ int orcm_util_get_dependents(opal_list_t *targets,
                 }
             }
         }
-        /* if we get here, then it is not a row or a rack - see
-         * if it is in another cluster
-         */
     }
     return ORCM_ERR_NOT_FOUND;
 }

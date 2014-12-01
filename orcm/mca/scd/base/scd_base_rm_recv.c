@@ -24,6 +24,7 @@
 #include "orte/util/regex.h"
 
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/util/utils.h"
 #include "orcm/mca/cfgi/cfgi_types.h"
 #include "orcm/mca/scd/base/base.h"
 
@@ -86,9 +87,13 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
     orcm_alloc_t *alloc;
     orcm_session_t *session;
     bool found;
+#if OPAL_HAVE_HWLOC
     bool have_hwloc_topo;
-    hwloc_topology_t *topo = NULL;
+    hwloc_topology_t topo;
     hwloc_topology_t t;
+#endif
+    opal_list_t *nodelist;
+    orte_namelist_t *nm, *n;
     
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:rm:receive processing msg",
@@ -103,6 +108,7 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
     }
     
     if (ORCM_NODESTATE_UPDATE_COMMAND == command) {
+        nodelist = OBJ_NEW(opal_list_t);
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                              "%s scd:base:rm:receive got ORCM_NODESTATE_UPDATE_COMMAND",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
@@ -111,87 +117,127 @@ static void orcm_scd_base_rm_base_recv(int status, orte_process_name_t* sender,
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &state,
                                                   &cnt, OPAL_INT8))) {
             ORTE_ERROR_LOG(rc);
+            OPAL_LIST_RELEASE(nodelist);
             return;
         }
         cnt = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &node,
                                                   &cnt, ORTE_NAME))) {
             ORTE_ERROR_LOG(rc);
+            OPAL_LIST_RELEASE(nodelist);
             return;
         }
-        cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &have_hwloc_topo,
-                                                  &cnt, OPAL_BOOL))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        if (have_hwloc_topo) {
+        if (ORCM_NODE_STATE_UP == state) {
+#if OPAL_HAVE_HWLOC
             cnt = 1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &topo,
-                                                      &cnt, OPAL_HWLOC_TOPO))) {
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &have_hwloc_topo,
+                                                      &cnt, OPAL_BOOL))) {
                 ORTE_ERROR_LOG(rc);
+                OPAL_LIST_RELEASE(nodelist);
                 return;
             }
-            if(10 < opal_output_get_verbosity(orcm_scd_base_framework.framework_output)) {
-                opal_output(0, "-------------------------------------------");
-                opal_output(0, "%s scd:base:rm:receive RECEIVED NODE %s:",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                            ORTE_NAME_PRINT(&node));
-                opal_dss.dump(0, topo, OPAL_HWLOC_TOPO);
-                opal_output(0, "-------------------------------------------");
-            }
-            found = false;
-            for (i = 0; i < orcm_scd_base.topologies.size; i++) {
-                if (NULL == (t = (hwloc_topology_t)opal_pointer_array_get_item(&orcm_scd_base.topologies, i))) {
-                    continue;
+            if (have_hwloc_topo) {
+                cnt = 1;
+                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &topo,
+                                                          &cnt, OPAL_HWLOC_TOPO))) {
+                    ORTE_ERROR_LOG(rc);
+                    OPAL_LIST_RELEASE(nodelist);
+                    return;
                 }
-                if (OPAL_EQUAL == opal_dss.compare(topo, t, OPAL_HWLOC_TOPO)) {
-                    /* yes - just point to it */
+                if(10 < opal_output_get_verbosity(orcm_scd_base_framework.framework_output)) {
+                    opal_output(0, "-------------------------------------------");
+                    opal_output(0, "%s scd:base:rm:receive RECEIVED NODE %s:",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                ORTE_NAME_PRINT(&node));
+                    opal_dss.dump(0, topo, OPAL_HWLOC_TOPO);
+                    opal_output(0, "-------------------------------------------");
+                }
+                found = false;
+                for (i = 0; i < orcm_scd_base.topologies.size; i++) {
+                    if (NULL == (t = (hwloc_topology_t)opal_pointer_array_get_item(&orcm_scd_base.topologies, i))) {
+                        continue;
+                    }
+                    if (OPAL_EQUAL == opal_dss.compare(topo, t, OPAL_HWLOC_TOPO)) {
+                        /* yes - just point to it */
+                        OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                                             "%s TOPOLOGY MATCHES - DISCARDING",
+                                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+                        found = true;
+                        hwloc_topology_destroy(topo);
+                        break;
+                    }
+                }
+                if (!found) {
+                    /* nope - add it */
                     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
-                                         "%s TOPOLOGY MATCHES - DISCARDING",
+                                         "%s NEW TOPOLOGY - ADDING",
                                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-                    found = true;
-                    /* FIXME, destroy is segfaulting */
-                    /* hwloc_topology_destroy(*topo); */
-                    topo = &t;
-                    break;
+
+                    opal_pointer_array_add(&orcm_scd_base.topologies, topo);
+                    t = topo;
                 }
             }
-            if (!found) {
-                /* nope - add it */
-                OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
-                                     "%s NEW TOPOLOGY - ADDING",
-                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-                
-                opal_pointer_array_add(&orcm_scd_base.topologies, topo);
+#endif
+            /* add ourself to the nodelist for state change */
+            nm = OBJ_NEW(orte_namelist_t);
+            nm->name.jobid = node.jobid;
+            nm->name.vpid = node.vpid;
+            opal_list_append(nodelist, &nm->super);
+        } else if (ORCM_NODE_STATE_DOWN == state) {
+            /* get all nodes affected by comm failure */
+            /* an empty list means we have a leaf node */
+            /* this needs to be updated once "healing" is implemented
+               beccause this will not be an accurate picture of what
+               is really affected by comms failures */
+            orcm_util_get_dependents(nodelist, &node);
+
+            /* if list is empty, just add the single node */
+            if (opal_list_is_empty(nodelist)) {
+                nm = OBJ_NEW(orte_namelist_t);
+                nm->name.jobid = node.jobid;
+                nm->name.vpid = node.vpid;
+                opal_list_append(nodelist, &nm->super);
             }
         }
 
-        /* set node to state */
+        /* set each node to state */
         found = false;
-        for (i = 0; i < orcm_scd_base.nodes.size; i++) {
-            if (NULL == (nodeptr = 
-                         (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
-                                                                   i))) {
-                continue;
-            }
-            if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                            &nodeptr->daemon,
-                                                            &node)) {
-                found = true;
-                nodeptr->state = state;
-                nodeptr->topology = *topo;
-                /* set to available for now, eventually pass this off to scheduler */
-                nodeptr->scd_state = ORCM_SCD_NODE_STATE_UNALLOC;
-                OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
-                                     "%s scd:base:rm:receive Setting node %s to state %i (%s)",
-                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                     ORTE_NAME_PRINT(&node),
-                                     (int)state,
-                                     orcm_node_state_to_str(state)));
-                break;
+        OPAL_LIST_FOREACH(n, nodelist, orte_namelist_t) {
+            for (i = 0; i < orcm_scd_base.nodes.size; i++) {
+                if (NULL == (nodeptr =
+                             (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes,
+                                                                       i))) {
+                                 continue;
+                             }
+                if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
+                                                                &nodeptr->daemon,
+                                                                &n->name)) {
+                    OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
+                                         "%s scd:base:rm:receive Setting node %s to state %i (%s)",
+                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                         ORTE_NAME_PRINT(&n->name),
+                                         (int)state,
+                                         orcm_node_state_to_str(state)));
+                    found = true;
+                    nodeptr->state = state;
+#if OPAL_HAVE_HWLOC
+                    /* associate node topology with node */
+                    if (ORCM_NODE_STATE_UP == state) {
+                        nodeptr->topology = t;
+                    }
+#endif
+                    /* if the node is coming online, reset the scheduling state
+                       only if its either undefined or unknown */
+                    if ((ORCM_NODE_STATE_UP == state) &&
+                        ((ORCM_SCD_NODE_STATE_UNDEF == nodeptr->scd_state) ||
+                         (ORCM_SCD_NODE_STATE_UNKNOWN == nodeptr->scd_state))) {
+                            nodeptr->scd_state = ORCM_SCD_NODE_STATE_UNALLOC;
+                        }
+                    break;
+                }
             }
         }
+        OPAL_LIST_RELEASE(nodelist);
 
         if (!found) {
             OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,

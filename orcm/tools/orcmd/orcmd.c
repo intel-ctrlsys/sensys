@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
             return ret;
         }
 #if OPAL_HAVE_HWLOC
-        /* try to set hwloc topo to scheduler */
+        /* send hwloc topo to scheduler */
         if (NULL != opal_hwloc_topology) {
             have_hwloc_topology = true;
             if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &have_hwloc_topology, 1, OPAL_BOOL))) {

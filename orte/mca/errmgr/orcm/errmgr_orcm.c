@@ -30,6 +30,11 @@
 
 #include "orte/mca/errmgr/base/base.h"
 #include "orte/mca/errmgr/base/errmgr_private.h"
+
+#include "orcm/runtime/orcm_globals.h"
+#include "orcm/mca/scd/base/base.h"
+#include "orcm/mca/scd/scd_types.h"
+
 #include "errmgr_orcm.h"
 
 /*
@@ -80,6 +85,10 @@ static void proc_errors(int fd, short args, void *cbdata)
 {
     orte_state_caddy_t *caddy = (orte_state_caddy_t*)cbdata;
     orte_ns_cmp_bitmask_t mask;
+    opal_buffer_t *buf;
+    orcm_rm_cmd_flag_t command = ORCM_NODESTATE_UPDATE_COMMAND;
+    orcm_node_state_t state = ORCM_NODE_STATE_DOWN;
+    int ret;
 
     OPAL_OUTPUT_VERBOSE((1, orte_errmgr_base_framework.framework_output,
                          "%s errmgr:orcm: proc %s state %s",
@@ -108,6 +117,32 @@ static void proc_errors(int fd, short args, void *cbdata)
             ORTE_ERROR_LOG(ORTE_ERR_UNRECOVERABLE);
             OBJ_RELEASE(caddy);
             exit(1);
+        } else {
+            /* inform the scheduler of the lost connection */
+            buf = OBJ_NEW(opal_buffer_t);
+            /* pack the alloc command flag */
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &command,1, ORCM_RM_CMD_T))) {
+                ORTE_ERROR_LOG(ret);
+                OBJ_RELEASE(buf);
+                return;
+            }
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &state, 1, OPAL_INT8))) {
+                ORTE_ERROR_LOG(ret);
+                OBJ_RELEASE(buf);
+                return;
+            }
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &caddy->name, 1, ORTE_NAME))) {
+                ORTE_ERROR_LOG(ret);
+                OBJ_RELEASE(buf);
+                return;
+            }
+            if (ORTE_SUCCESS != (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
+                                                               ORCM_RML_TAG_RM,
+                                                               orte_rml_send_callback, NULL))) {
+                ORTE_ERROR_LOG(ret);
+                OBJ_RELEASE(buf);
+                return;
+            }
         }
     }
 

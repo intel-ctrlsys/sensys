@@ -118,30 +118,33 @@ static void proc_errors(int fd, short args, void *cbdata)
             OBJ_RELEASE(caddy);
             exit(1);
         } else {
-            /* inform the scheduler of the lost connection */
-            buf = OBJ_NEW(opal_buffer_t);
-            /* pack the alloc command flag */
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &command,1, ORCM_RM_CMD_T))) {
-                ORTE_ERROR_LOG(ret);
-                OBJ_RELEASE(buf);
-                return;
-            }
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &state, 1, OPAL_INT8))) {
-                ORTE_ERROR_LOG(ret);
-                OBJ_RELEASE(buf);
-                return;
-            }
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &caddy->name, 1, ORTE_NAME))) {
-                ORTE_ERROR_LOG(ret);
-                OBJ_RELEASE(buf);
-                return;
-            }
-            if (ORTE_SUCCESS != (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
-                                                               ORCM_RML_TAG_RM,
-                                                               orte_rml_send_callback, NULL))) {
-                ORTE_ERROR_LOG(ret);
-                OBJ_RELEASE(buf);
-                return;
+            /* only notify for orcm daemon failures */
+            if (0 == caddy->name.jobid) {
+                /* inform the scheduler of the lost connection */
+                buf = OBJ_NEW(opal_buffer_t);
+                /* pack the alloc command flag */
+                if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &command,1, ORCM_RM_CMD_T))) {
+                    ORTE_ERROR_LOG(ret);
+                    OBJ_RELEASE(buf);
+                    return;
+                }
+                if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &state, 1, OPAL_INT8))) {
+                    ORTE_ERROR_LOG(ret);
+                    OBJ_RELEASE(buf);
+                    return;
+                }
+                if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &caddy->name, 1, ORTE_NAME))) {
+                    ORTE_ERROR_LOG(ret);
+                    OBJ_RELEASE(buf);
+                    return;
+                }
+                if (ORTE_SUCCESS != (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
+                                                                   ORCM_RML_TAG_RM,
+                                                                   orte_rml_send_callback, NULL))) {
+                    ORTE_ERROR_LOG(ret);
+                    OBJ_RELEASE(buf);
+                    return;
+                }
             }
         }
     }

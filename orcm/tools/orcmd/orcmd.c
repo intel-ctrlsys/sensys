@@ -119,9 +119,8 @@ int main(int argc, char *argv[])
     opal_buffer_t *buf;
     orcm_rm_cmd_flag_t command = ORCM_NODESTATE_UPDATE_COMMAND;
     orcm_node_state_t state = ORCM_NODE_STATE_UP;
-#if OPAL_HAVE_HWLOC
     bool have_hwloc_topology;
-#endif
+
 
     /* process the cmd line arguments to get any MCA params on them */
     opal_cmd_line_create(&cmd_line, cmd_line_init);
@@ -204,7 +203,7 @@ int main(int argc, char *argv[])
             OBJ_RELEASE(buf);
             return ret;
         }
-#if OPAL_HAVE_HWLOC
+
         /* send hwloc topo to scheduler */
         if (NULL != opal_hwloc_topology) {
             have_hwloc_topology = true;
@@ -226,7 +225,7 @@ int main(int argc, char *argv[])
                 return ret;
             }
         }
-#endif
+
         if (ORTE_SUCCESS != (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
                                                           ORCM_RML_TAG_RM,
                                                           orte_rml_send_callback, NULL))) {

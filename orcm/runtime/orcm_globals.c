@@ -59,6 +59,12 @@ const char *orcm_node_state_to_str(orcm_node_state_t state)
         case ORCM_NODE_STATE_SESTERM:
             s = "SESSION TERMINATING";
             break;
+        case ORCM_NODE_STATE_DRAIN:
+            s = "DRAIN";
+            break;
+        case ORCM_NODE_STATE_RESUME:
+            s = "RESUME";
+            break;
         default:
             s = "STATEUNDEF";
     }
@@ -81,6 +87,12 @@ const char *orcm_node_state_to_char(orcm_node_state_t state)
             break;
         case ORCM_NODE_STATE_SESTERM:
             s = "T";
+            break;
+        case ORCM_NODE_STATE_DRAIN:
+            s = "X";
+            break;
+        case ORCM_NODE_STATE_RESUME:
+            s = "R";
             break;
         default:
             s = "?";

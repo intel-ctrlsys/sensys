@@ -70,6 +70,7 @@ typedef int8_t orcm_node_state_t;
 #define ORCM_NODE_STATE_DOWN          3  // Node is down
 #define ORCM_NODE_STATE_SESTERM       4  // Node is terminating session
 #define ORCM_NODE_STATE_DRAIN         5  // Node is draining/drained
+#define ORCM_NODE_STATE_RESUME        6  // Node is resuming operation
 
 /* define a few commands for sending between orcmd's and orcmsched */
 typedef uint8_t orcm_rm_cmd_flag_t;

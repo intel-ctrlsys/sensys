@@ -194,5 +194,158 @@ int orcm_octl_resource_remove(char **argv)
 
 int orcm_octl_resource_drain(char **argv)
 {
-    return ORCM_ERR_NOT_IMPLEMENTED;
+    orcm_rm_cmd_flag_t command = ORCM_NODESTATE_UPDATE_COMMAND;
+    orcm_node_state_t state = ORCM_NODE_STATE_DRAIN;
+    opal_buffer_t *buf;
+    orte_rml_recv_cb_t xfer;
+    int rc, n, result;
+
+    if (3 != opal_argv_count(argv)) {
+        fprintf(stderr, "incorrect arguments to \"resource drain\"\n");
+        return ORCM_ERROR;
+    }
+    /* setup to receive the result */
+    OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
+    xfer.active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                            ORCM_RML_TAG_RM,
+                            ORTE_RML_NON_PERSISTENT,
+                            orte_rml_recv_callback, &xfer);
+    
+    /* send it to the scheduler */
+    buf = OBJ_NEW(opal_buffer_t);
+    
+    /* pack the cancel command flag */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
+                                            1, ORCM_RM_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+    
+    /* pack the cancel command flag */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &state,
+                                            1, OPAL_INT8))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
+    /* pack the nodelist */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[2],
+                                            1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
+    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER,
+                                                      buf,
+                                                      ORCM_RML_TAG_RM,
+                                                      orte_rml_send_callback,
+                                                      NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+    /* get result */
+    n=1;
+    ORTE_WAIT_FOR_COMPLETION(xfer.active);
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
+                                              &n, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+    if (ORCM_SUCCESS == result) {
+        printf("Success\n");
+    } else {
+        printf("Failure\n");
+    }
+    
+    return ORCM_SUCCESS;
+
+}
+
+int orcm_octl_resource_resume(char **argv)
+{
+    orcm_rm_cmd_flag_t command = ORCM_NODESTATE_UPDATE_COMMAND;
+    orcm_node_state_t state = ORCM_NODE_STATE_RESUME;
+    opal_buffer_t *buf;
+    orte_rml_recv_cb_t xfer;
+    int rc, n, result;
+    
+    if (3 != opal_argv_count(argv)) {
+        fprintf(stderr, "incorrect arguments to \"resource resume\"\n");
+        return ORCM_ERROR;
+    }
+    /* setup to receive the result */
+    OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
+    xfer.active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                            ORCM_RML_TAG_RM,
+                            ORTE_RML_NON_PERSISTENT,
+                            orte_rml_recv_callback, &xfer);
+    
+    /* send it to the scheduler */
+    buf = OBJ_NEW(opal_buffer_t);
+    
+    /* pack the cancel command flag */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
+                                            1, ORCM_RM_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+    
+    /* pack the cancel command flag */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &state,
+                                            1, OPAL_INT8))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+    
+    /* pack the nodelist */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[2],
+                                            1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+    
+    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER,
+                                                      buf,
+                                                      ORCM_RML_TAG_RM,
+                                                      orte_rml_send_callback,
+                                                      NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+    /* get result */
+    n=1;
+    ORTE_WAIT_FOR_COMPLETION(xfer.active);
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
+                                              &n, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+    if (ORCM_SUCCESS == result) {
+        printf("Success\n");
+    } else {
+        printf("Failure\n");
+    }
+    
+    return ORCM_SUCCESS;
+    
 }

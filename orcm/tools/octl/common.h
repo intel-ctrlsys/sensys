@@ -44,6 +44,7 @@ int orcm_octl_resource_status(char **argv);
 int orcm_octl_resource_add(char **argv);
 int orcm_octl_resource_remove(char **argv);
 int orcm_octl_resource_drain(char **argv);
+int orcm_octl_resource_resume(char **argv);
 int orcm_octl_queue_status(char **argv);
 int orcm_octl_queue_policy(char **argv);
 int orcm_octl_queue_define(char **argv);

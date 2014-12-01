@@ -32,6 +32,8 @@ static orcm_cli_init_t cli_init[] = {
     { { "resource", NULL }, "remove", 0, 1, "Resource Removal" },
     // drain subcommand
     { { "resource", NULL }, "drain", 0, 1, "Resource Drain" },
+    // drain subcommand
+    { { "resource", NULL }, "resume", 0, 1, "Resource Resume" },
 
     /****** queue command ******/
     { { NULL }, "queue", 0, 0, "Queue Information" },
@@ -98,6 +100,7 @@ const char *orcm_octl_commands[] = { "resource", //0
                                      "power",    //15
                                      "set",      //16
                                      "get",      //17
+                                     "resume"    //18
                                      "\0" };
 
 END_C_DECLS

@@ -80,7 +80,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
                                        void* cbdata)
 {
     orcm_rm_cmd_flag_t command;
-    int rc, cnt, i;
+    int rc, cnt, i, result;
     static int nodecnt=0;
     opal_buffer_t *ans;
     orcm_node_state_t state;
@@ -112,7 +112,6 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                              "%s scd:base:rm:receive got ORCM_NODESTATE_UPDATE_COMMAND",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        ans = OBJ_NEW(opal_buffer_t);
         cnt = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &state,
                                                   &cnt, OPAL_INT8))) {
@@ -213,6 +212,8 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
                 ORTE_ERROR_LOG(rc);
             }
         } else if (ORCM_NODE_STATE_DRAIN == state) {
+            /* someone will expect status results from drain request */
+            ans = OBJ_NEW(opal_buffer_t);
             cnt = 1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &regexp,
                                                       &cnt, OPAL_STRING))) {
@@ -220,13 +221,73 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
                 OPAL_LIST_RELEASE(nodelist);
                 return;
             }
+
+            OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                                 "%s scd:base:rm:receive got DRAIN request for %s",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), regexp));
+
+
             if (ORCM_SUCCESS != (rc = update_nodestate_byname(state, regexp, NULL))) {
                 ORTE_ERROR_LOG(rc);
+            }
+
+            /* send status back to caller */
+            result = rc;
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result,
+                                                    1, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+
+            if (ORTE_SUCCESS !=
+                (rc = orte_rml.send_buffer_nb(sender, ans,
+                                              ORCM_RML_TAG_RM,
+                                              orte_rml_send_callback, NULL))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+        } else if (ORCM_NODE_STATE_RESUME == state) {
+            /* someone will expect status results from resume request */
+            ans = OBJ_NEW(opal_buffer_t);
+            cnt = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &regexp,
+                                                      &cnt, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                OPAL_LIST_RELEASE(nodelist);
+                return;
+            }
+            
+            OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
+                                 "%s scd:base:rm:receive got RESUME request for %s",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), regexp));
+            
+            
+            if (ORCM_SUCCESS != (rc = update_nodestate_byname(state, regexp, NULL))) {
+                ORTE_ERROR_LOG(rc);
+            }
+            
+            /* send status back to caller */
+            result = rc;
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result,
+                                                    1, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+            
+            if (ORTE_SUCCESS !=
+                (rc = orte_rml.send_buffer_nb(sender, ans,
+                                              ORCM_RML_TAG_RM,
+                                              orte_rml_send_callback, NULL))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
             }
         }
 
         OPAL_LIST_RELEASE(nodelist);
-        OBJ_RELEASE(ans);
     } else if (ORCM_STEPD_COMPLETE_COMMAND == command) {
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                              "%s scd:base:rm:receive got ORCM_STEPD_COMPLETE_COMMAND",
@@ -312,8 +373,15 @@ static int update_nodestate_byname(orcm_node_state_t state, char *regexp, hwloc_
 {
     int cnt, i, j, rc;
     orcm_node_t *nodeptr;
-    char **nodenames;
+    char **nodenames = NULL;
     bool found;
+    orcm_node_state_t newstate;
+    
+    if (ORCM_NODE_STATE_RESUME == state) {
+        newstate = ORCM_NODE_STATE_UP;
+    } else {
+        newstate = state;
+    }
     
     if (ORTE_SUCCESS !=
         (rc = orte_regex_extract_node_names(regexp, &nodenames))) {
@@ -336,7 +404,7 @@ static int update_nodestate_byname(orcm_node_state_t state, char *regexp, hwloc_
                                      (int)state,
                                      orcm_node_state_to_str(state)));
                 found = true;
-                nodeptr->state = state;
+                nodeptr->state = newstate;
                 
                 /* associate node topology with node */
                 if (ORCM_NODE_STATE_UP == state) {

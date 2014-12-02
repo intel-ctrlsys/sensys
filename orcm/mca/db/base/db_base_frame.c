@@ -35,6 +35,7 @@ orcm_db_API_module_t orcm_db = {
     orcm_db_base_open,
     orcm_db_base_close,
     orcm_db_base_store,
+    orcm_db_base_record_data_samples,
     orcm_db_base_update_node_features,
     orcm_db_base_commit,
     orcm_db_base_fetch,

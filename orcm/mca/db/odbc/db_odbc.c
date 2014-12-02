@@ -45,6 +45,11 @@ static void odbc_finalize(struct orcm_db_base_module_t *imod);
 static int odbc_store_sample(struct orcm_db_base_module_t *imod,
                              const char *primary_key,
                              opal_list_t *kvs);
+static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
+                                    const char *hostname,
+                                    const struct tm *time_stamp,
+                                    const char *data_group,
+                                    opal_list_t *samples);
 static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
                                      const char *hostname,
                                      opal_list_t *features);
@@ -58,12 +63,15 @@ static int odbc_remove(struct orcm_db_base_module_t *imod,
 
 /* Internal helper functions */
 static void odbc_error_info(SQLSMALLINT handle_type, SQLHANDLE handle);
+static int get_sample_value(const opal_value_t *mv, double *value_num,
+                            char **value_str, int *numeric);
 
 mca_db_odbc_module_t mca_db_odbc_module = {
     {
         odbc_init,
         odbc_finalize,
         odbc_store_sample,
+        odbc_record_data_samples,
         odbc_update_node_features,
         NULL,
         odbc_fetch,
@@ -76,7 +84,6 @@ mca_db_odbc_module_t mca_db_odbc_module = {
     opal_output(0, "db:odbc: Connection failed: "); \
     opal_output(0, msg, ##__VA_ARGS__); \
     opal_output(0, "\tDSN: %s", mod->odbcdsn); \
-    opal_output(0, "\tUser: %s", mod->user); \
     opal_output(0, "***********************************************");
 
 static int odbc_init(struct orcm_db_base_module_t *imod)
@@ -178,16 +185,23 @@ static void odbc_finalize(struct orcm_db_base_module_t *imod)
 
 #define ERR_MSG_STORE(msg) \
     opal_output(0, "***********************************************"); \
-    opal_output(0, "ODBC component store command failed: "); \
+    opal_output(0, "db:odbc: Unable to record data sample: "); \
     opal_output(0, msg); \
-    opal_output(0, "Unable to log data"); \
     opal_output(0, "***********************************************");
 
 #define ERR_MSG_FMT_STORE(msg, ...) \
     opal_output(0, "***********************************************"); \
-    opal_output(0, "ODBC component store command failed: "); \
+    opal_output(0, "db:odbc: Unable to record data sample: "); \
     opal_output(0, msg, ##__VA_ARGS__); \
     opal_output(0, "Unable to log data"); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_SQL_STORE(handle_type, handle, msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:odbc: Unable to record data sample: "); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "ODBC error details:"); \
+    odbc_error_info(handle_type, handle); \
     opal_output(0, "***********************************************");
 
 static int odbc_store_sample(struct orcm_db_base_module_t *imod,
@@ -204,7 +218,8 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
     char *hostname;
     char **data_item_argv;
     int argv_count;
-    int numeric = 1;
+    int curr_type_numeric = 1;
+    int prev_type_numeric = 1;
     int change_value_binding = 1;
     double value_num;
     char *value_str;
@@ -313,82 +328,15 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
     for (item = opal_list_get_next(item); item != opal_list_get_end(kvs);
          item = opal_list_get_next(item)) {
         kv = (opal_value_t *)item;
-        switch (kv->type) {
-        case OPAL_FLOAT:
-            value_num = kv->data.fval;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_DOUBLE:
-            value_num = kv->data.dval;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_INT:
-            value_num = kv->data.integer;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_INT8:
-            value_num = kv->data.int8;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_INT16:
-            value_num = kv->data.int16;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_INT32:
-            value_num = kv->data.int32;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_INT64:
-            value_num = kv->data.int64;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_UINT:
-            value_num = kv->data.uint;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_UINT8:
-            value_num = kv->data.uint8;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_UINT16:
-            value_num = kv->data.uint16;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_UINT32:
-            value_num = kv->data.uint32;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_UINT64:
-            value_num = kv->data.uint64;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_PID:
-            value_num = kv->data.pid;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_STRING:
-            value_str = kv->data.string;
-            change_value_binding = 1;
-            numeric = 0;
-            break;
-        default:
+
+        ret = get_sample_value(kv, &value_num, &value_str, &curr_type_numeric);
+        if (ORCM_SUCCESS != ret) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-            ERR_MSG_STORE("Incorrect sample value type");
+            ERR_MSG_STORE("Unsupported value type");
             return ORCM_ERROR;
         }
+        change_value_binding = prev_type_numeric != curr_type_numeric;
+        prev_type_numeric = curr_type_numeric;
 
         /* kv->key will contain: <data item>:<units> */
         data_item_argv = opal_argv_split(kv->key, ':');
@@ -435,7 +383,7 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
         }
 
         if (change_value_binding) {
-            if (numeric) {
+            if (curr_type_numeric) {
                 /* Value is numeric, bind to the appropriate value. */
                 ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
                                        SQL_DOUBLE, 0, 0, (SQLPOINTER)&value_num,
@@ -501,6 +449,223 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
     return ORCM_SUCCESS;
 }
 
+static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
+                                   const char *hostname,
+                                   const struct tm *time_stamp,
+                                   const char *data_group,
+                                   opal_list_t *samples)
+{
+    mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
+    orcm_metric_value_t *mv;
+
+    SQL_TIMESTAMP_STRUCT sampletime;
+    int curr_type_numeric = 1;
+    int prev_type_numeric = 1;
+    int change_value_binding = 1;
+    double value_num;
+    char *value_str;
+    SQLLEN null_len = SQL_NULL_DATA;
+
+    SQLRETURN ret;
+    SQLHSTMT stmt;
+
+    if (NULL == data_group) {
+        ERR_MSG_STORE("No data group provided");
+        return ORCM_ERROR;
+    }
+
+    if (NULL == hostname) {
+        ERR_MSG_STORE("No hostname provided");
+        return ORCM_ERROR;
+    }
+
+    if (NULL == time_stamp) {
+        ERR_MSG_STORE("No time stamp provided");
+        return ORCM_ERROR;
+    }
+
+    if (NULL == samples) {
+        ERR_MSG_STORE("No value list provided");
+        return ORCM_ERROR;
+    }
+
+    sampletime.year = time_stamp->tm_year + 1900;
+    sampletime.month = time_stamp->tm_mon + 1;
+    sampletime.day = time_stamp->tm_mday;
+    sampletime.hour = time_stamp->tm_hour;
+    sampletime.minute = time_stamp->tm_min;
+    sampletime.second = time_stamp->tm_sec;
+    sampletime.fraction = 0;
+
+    ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
+    if (!(SQL_SUCCEEDED(ret))) {
+        ERR_MSG_FMT_STORE("SQLAllocHandle returned: %d", ret);
+        return ORCM_ERROR;
+    }
+
+    ret = SQLPrepare(stmt,
+                     (SQLCHAR *)
+                     "{call record_data_sample(?, ?, ?, ?, ?, ?, ?)}",
+                     SQL_NTS);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_STORE("SQLPrepare returned: %d", ret);
+        return ORCM_ERROR;
+    }
+
+    /* Bind hostname parameter. */
+    ret = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)hostname, strlen(hostname), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_STORE("SQLBindParameter 1 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind data group parameter. */
+    ret = SQLBindParameter(stmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)data_group, strlen(data_group),
+                           NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_STORE("SQLBindParameter 2 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind time stamp parameter. */
+    ret = SQLBindParameter(stmt, 4, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
+                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&sampletime,
+                           sizeof(sampletime), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_STORE("SQLBindParameter 4 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind numeric value parameter (assuming the value is numeric for now). */
+    ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE, SQL_DOUBLE,
+                           0, 0, (SQLPOINTER)&value_num,
+                           sizeof(value_num), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_STORE("SQLBindParameter 5 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind string value parameter (assuming NULL for now). */
+    ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, NULL, 0, &null_len);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_STORE("SQLBindParameter 6 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+
+    OPAL_LIST_FOREACH(mv, samples, orcm_metric_value_t) {
+        if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_STORE("Key or data item name not provided for value");
+            return ORCM_ERROR;
+        }
+
+        ret = get_sample_value(&mv->value, &value_num, &value_str,
+                               &curr_type_numeric);
+        if (ORCM_SUCCESS != ret) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_STORE("Unsupported value type");
+            return ORCM_ERROR;
+        }
+        change_value_binding = prev_type_numeric != curr_type_numeric;
+        prev_type_numeric = curr_type_numeric;
+
+        /* Bind the data item parameter. */
+        ret = SQLBindParameter(stmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR,
+                               SQL_VARCHAR, 0, 0, (SQLPOINTER)mv->value.key,
+                               strlen(mv->value.key), NULL);
+        if (!(SQL_SUCCEEDED(ret))) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_FMT_STORE("SQLBindParameter 3 returned: %d", ret);
+            return ORCM_ERROR;
+        }
+
+        if (NULL != mv->units) {
+            /* Bind the units parameter. */
+            ret = SQLBindParameter(stmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0,
+                                   (SQLPOINTER)mv->units,
+                                   strlen(mv->units), NULL);
+            if (!(SQL_SUCCEEDED(ret))) {
+                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                ERR_MSG_FMT_STORE("SQLBindParameter 7 returned: %d", ret);
+                return ORCM_ERROR;
+            }
+        } else {
+            /* No units provided, bind NULL. */
+            ret = SQLBindParameter(stmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0, NULL, 0, &null_len);
+            if (!(SQL_SUCCEEDED(ret))) {
+                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                ERR_MSG_FMT_STORE("SQLBindParameter 7 returned: %d", ret);
+                return ORCM_ERROR;
+            }
+        }
+
+        if (change_value_binding) {
+            if (curr_type_numeric) {
+                /* Value is numeric, bind to the appropriate value. */
+                ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                       SQL_DOUBLE, 0, 0, (SQLPOINTER)&value_num,
+                                       sizeof(value_num), NULL);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_STORE("SQLBindParameter 5 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                /* Pass NULL as the string value. */
+                ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                       SQL_VARCHAR, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_STORE("SQLBindParameter 6 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+            } else {
+                /* Pass NULL as the numeric value. */
+                ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                       SQL_DOUBLE, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_STORE("SQLBindParameter 5 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                /* Value is string, bind to the appropriate value. */
+                ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                       SQL_VARCHAR, 0, 0, (SQLPOINTER)value_str,
+                                       strlen(value_str), NULL);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_STORE("SQLBindParameter 6 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+            }
+        }
+
+        ret = SQLExecute(stmt);
+        if (!(SQL_SUCCEEDED(ret))) {
+            ERR_MSG_FMT_SQL_STORE(SQL_HANDLE_STMT, stmt,
+                                  "SQLExecute returned: %d", ret);
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            return ORCM_ERROR;
+        }
+
+        SQLCloseCursor(stmt);
+    }
+
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                        "odbc_store succeeded");
+
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    return ORCM_SUCCESS;
+}
 
 #define ERR_MSG_UNF(msg) \
     opal_output(0, "***********************************************"); \
@@ -529,7 +694,8 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
     orcm_metric_value_t *mv;
 
-    int numeric = 1;
+    int curr_type_numeric = 1;
+    int prev_type_numeric = 1;
     int change_value_binding = 1;
     double value_num;
     char *value_str;
@@ -580,82 +746,21 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
     }
 
     OPAL_LIST_FOREACH(mv, features, orcm_metric_value_t) {
-        switch (mv->value.type) {
-        case OPAL_FLOAT:
-            value_num = mv->value.data.fval;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_DOUBLE:
-            value_num = mv->value.data.dval;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_INT:
-            value_num = mv->value.data.integer;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_INT8:
-            value_num = mv->value.data.int8;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_INT16:
-            value_num = mv->value.data.int16;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_INT32:
-            value_num = mv->value.data.int32;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_INT64:
-            value_num = mv->value.data.int64;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_UINT:
-            value_num = mv->value.data.uint;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_UINT8:
-            value_num = mv->value.data.uint8;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_UINT16:
-            value_num = mv->value.data.uint16;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_UINT32:
-            value_num = mv->value.data.uint32;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_UINT64:
-            value_num = mv->value.data.uint64;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_PID:
-            value_num = mv->value.data.pid;
-            change_value_binding = !numeric ? 1 : 0;
-            numeric = 1;
-            break;
-        case OPAL_STRING:
-            value_str = mv->value.data.string;
-            change_value_binding = 1;
-            numeric = 0;
-            break;
-        default:
+        if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-            ERR_MSG_UNF("Incorrect sample value type");
+            ERR_MSG_UNF("Key or node feature name not provided for value");
             return ORCM_ERROR;
         }
+
+        ret = get_sample_value(&mv->value, &value_num, &value_str,
+                               &curr_type_numeric);
+        if (ORCM_SUCCESS != ret) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_UNF("Unsupported value type");
+            return ORCM_ERROR;
+        }
+        change_value_binding = prev_type_numeric != curr_type_numeric;
+        prev_type_numeric = curr_type_numeric;
 
         /* Bind the feature parameter. */
         ret = SQLBindParameter(stmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR,
@@ -668,7 +773,7 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
         }
 
         if (change_value_binding) {
-            if (numeric) {
+            if (curr_type_numeric) {
                 /* Value is numeric, bind to the appropriate value. */
                 ret = SQLBindParameter(stmt, 3, SQL_PARAM_INPUT, SQL_C_DOUBLE,
                                        SQL_DOUBLE, 0, 0, (SQLPOINTER)&value_num,
@@ -752,9 +857,8 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
 
 #define ERR_MSG_FMT_FETCH(msg, ...) \
     opal_output(0, "***********************************************"); \
-    opal_output(0, "ODBC component fetch command failed: "); \
+    opal_output(0, "db:odbc: Unable to fetch data: "); \
     opal_output(0, msg, ##__VA_ARGS__); \
-    opal_output(0, "Unable to fetch data"); \
     opal_output(0, "***********************************************");
 
 static int odbc_fetch(struct orcm_db_base_module_t *imod,
@@ -892,9 +996,8 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
 
 #define ERR_MSG_FMT_REMOVE(msg, ...) \
     opal_output(0, "***********************************************"); \
-    opal_output(0, "ODBC component remove command failed: "); \
+    opal_output(0, "db:odbc: Unable to remove data: "); \
     opal_output(0, msg, ##__VA_ARGS__); \
-    opal_output(0, "Unable to remove data"); \
     opal_output(0, "***********************************************");
 
 static int odbc_remove(struct orcm_db_base_module_t *imod,
@@ -954,4 +1057,71 @@ static void odbc_error_info(SQLSMALLINT handle_type, SQLHANDLE handle)
         ret = SQLGetDiagRec(handle_type, handle, i, sql_state, &native_error,
                             msg, sizeof(msg), &msg_len);
     } while (SQL_SUCCEEDED(ret));
+}
+
+static int get_sample_value(const opal_value_t *kv, double *value_num,
+                            char **value_str, int *numeric)
+{
+    switch (kv->type) {
+    case OPAL_FLOAT:
+        *value_num = kv->data.fval;
+        *numeric = 1;
+        break;
+    case OPAL_DOUBLE:
+        *value_num = kv->data.dval;
+        *numeric = 1;
+        break;
+    case OPAL_INT:
+        *value_num = kv->data.integer;
+        *numeric = 1;
+        break;
+    case OPAL_INT8:
+        *value_num = kv->data.int8;
+        *numeric = 1;
+        break;
+    case OPAL_INT16:
+        *value_num = kv->data.int16;
+        *numeric = 1;
+        break;
+    case OPAL_INT32:
+        *value_num = kv->data.int32;
+        *numeric = 1;
+        break;
+    case OPAL_INT64:
+        *value_num = kv->data.int64;
+        *numeric = 1;
+        break;
+    case OPAL_UINT:
+        *value_num = kv->data.uint;
+        *numeric = 1;
+        break;
+    case OPAL_UINT8:
+        *value_num = kv->data.uint8;
+        *numeric = 1;
+        break;
+    case OPAL_UINT16:
+        *value_num = kv->data.uint16;
+        *numeric = 1;
+        break;
+    case OPAL_UINT32:
+        *value_num = kv->data.uint32;
+        *numeric = 1;
+        break;
+    case OPAL_UINT64:
+        *value_num = kv->data.uint64;
+        *numeric = 1;
+        break;
+    case OPAL_PID:
+        *value_num = kv->data.pid;
+        *numeric = 1;
+        break;
+    case OPAL_STRING:
+        *value_str = kv->data.string;
+        *numeric = 0;
+        break;
+    default:
+        return ORCM_ERROR;
+    }
+
+    return ORCM_SUCCESS;
 }

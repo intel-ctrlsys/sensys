@@ -14,6 +14,8 @@
 #ifndef MCA_DB_BASE_H
 #define MCA_DB_BASE_H
 
+#include <time.h>
+
 #include "orcm_config.h"
 #include "orcm/types.h"
 
@@ -51,13 +53,19 @@ typedef struct {
     opal_object_t super;
     opal_event_t ev;
     int dbhandle;
+
     orcm_db_callback_fn_t cbfunc;
     void *cbdata;
+
     opal_list_t *properties;
+
+    const char *hostname;
+    const struct tm *time_stamp;
+    const char *data_group;
     char *primary_key;
     char *key;
+
     opal_list_t *kvs;
-    const char *hostname;
 } orcm_db_request_t;
 OBJ_CLASS_DECLARATION(orcm_db_request_t);
 
@@ -82,6 +90,14 @@ ORCM_DECLSPEC void orcm_db_base_store(int dbhandle,
                                       opal_list_t *kvs,
                                       orcm_db_callback_fn_t cbfunc,
                                       void *cbdata);
+ORCM_DECLSPEC void orcm_db_base_record_data_samples(
+        int dbhandle,
+        const char *hostname,
+        const struct tm *time_stamp,
+        const char *data_group,
+        opal_list_t *samples,
+        orcm_db_callback_fn_t cbfunc,
+        void *cbdata);
 ORCM_DECLSPEC void orcm_db_base_update_node_features(
         int dbhandle,
         const char *hostname,

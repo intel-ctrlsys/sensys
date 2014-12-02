@@ -31,15 +31,15 @@
 static bool rm_recv_issued=false;
 
 static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
-                               opal_buffer_t* buffer, orte_rml_tag_t tag,
-                               void* cbdata);
+                                  opal_buffer_t* buffer, orte_rml_tag_t tag,
+                                  void* cbdata);
 static int update_nodestate_byproc(orcm_node_state_t state, opal_list_t *nodelist, hwloc_topology_t topo);
 static int update_nodestate_byname(orcm_node_state_t state, char *regexp, hwloc_topology_t topo);
 
 int orcm_scd_base_rm_comm_start(void)
 {
     if (rm_recv_issued) {
-        return ORTE_SUCCESS;
+        return ORCM_SUCCESS;
     }
     
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
@@ -53,14 +53,14 @@ int orcm_scd_base_rm_comm_start(void)
                             NULL);
     rm_recv_issued = true;
     
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 
 int orcm_scd_base_rm_comm_stop(void)
 {
     if (!rm_recv_issued) {
-        return ORTE_SUCCESS;
+        return ORCM_SUCCESS;
     }
     
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
@@ -70,14 +70,14 @@ int orcm_scd_base_rm_comm_stop(void)
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
     rm_recv_issued = false;
     
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 
 /* process incoming messages in order of receipt */
 static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
-                                       opal_buffer_t* buffer, orte_rml_tag_t tag,
-                                       void* cbdata)
+                                  opal_buffer_t* buffer, orte_rml_tag_t tag,
+                                  void* cbdata)
 {
     orcm_rm_cmd_flag_t command;
     int rc, cnt, i, result;

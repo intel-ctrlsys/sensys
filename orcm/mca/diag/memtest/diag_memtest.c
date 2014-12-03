@@ -49,8 +49,8 @@
 
 static int init(void);
 static void finalize(void);
-static int log(opal_buffer_t *buf);
-static void run(int sd, short args, void *cbdata);
+static int memtest_log(opal_buffer_t *buf);
+static void memtest_run(int sd, short args, void *cbdata);
 
 static int mem_diag_ret = ORCM_SUCCESS;
 
@@ -58,8 +58,8 @@ orcm_diag_base_module_t orcm_diag_memtest_module = {
     init,
     finalize,
     NULL,
-    diag_read,
-    diag_check
+    memtest_log,
+    memtest_run
 };
 
 static struct { unsigned int *addr; size_t size; long num; unsigned long length; } memcheck_t;
@@ -165,12 +165,12 @@ static void memcheck(unsigned int *addr, size_t size) {
 
 }
 
-static int log(opal_buffer_t *buf)
+static int memtest_log(opal_buffer_t *buf)
 {
     return ORCM_SUCCESS;
 }
 
-static void run(int sd, short args, void *cbdata)
+static void memtest_run(int sd, short args, void *cbdata)
 {
     orcm_diag_caddy_t *caddy = (orcm_diag_caddy_t*)cbdata;
     struct sysinfo info;
@@ -271,9 +271,11 @@ static void run(int sd, short args, void *cbdata)
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
+    OBJ_RELEASE(caddy);
     /* send results to aggregator/sender */
     return;
  error:
+    OBJ_RELEASE(caddy);
     /* pack error, send/log results */
     return;
 }

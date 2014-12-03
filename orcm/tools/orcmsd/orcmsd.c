@@ -114,7 +114,6 @@
 /*
  * Globals
  */
-static opal_event_t *pipe_handler;
 static bool orted_failed_launch;
 static orte_job_t *jdatorted=NULL;
 
@@ -140,7 +139,6 @@ static struct {
     bool tree_spawn;
     bool report_uri;
     bool persistent;
-    int singleton_died_pipe;
     int fail;
     int fail_delay;
     char* name;
@@ -198,10 +196,6 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
       &orcmsd_globals.parent_uri, OPAL_CMD_LINE_TYPE_STRING,
       "URI for the parent"},
 
-    { NULL, '\0', NULL, "singleton-died-pipe", 1,
-      &orcmsd_globals.singleton_died_pipe, OPAL_CMD_LINE_TYPE_INT,
-      "Watch on indicated pipe for singleton termination"},
-    
     { "orte_output_filename", '\0', "output-filename", "output-filename", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Redirect output from application processes into filename.rank" },
@@ -259,8 +253,6 @@ int main(int argc, char *argv[])
     }
 
     memset(&orcmsd_globals, 0, sizeof(orcmsd_globals));
-    /* initialize the singleton died pipe to an illegal value so we can detect it was set */
-    orcmsd_globals.singleton_died_pipe = -1;
     
     /* setup to check common command line options that just report and die */
     cmd_line = OBJ_NEW(opal_cmd_line_t);
@@ -545,6 +537,7 @@ int main(int argc, char *argv[])
     exit(orte_exit_status);
 }
 
+
 void orcms_hnp_recv(int status, orte_process_name_t* sender,
                       opal_buffer_t *buffer, orte_rml_tag_t tag,
                       void* cbdata)
@@ -821,7 +814,102 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
             ORTE_ERROR_LOG(ret);
         }
         break;
+
+        /****    ADD_LOCAL_PROCS   ****/
+    case ORTE_DAEMON_ADD_LOCAL_PROCS:
+        if (orcmsd_globals.debug_daemons) {
+            opal_output(0, "%s orted_cmd: received add_local_procs",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        }
+        /* launch the processes */
+        if (ORTE_SUCCESS != (ret = orte_odls.launch_local_procs(buffer))) {
+            OPAL_OUTPUT_VERBOSE((1, orcm_debug_output,
+                                 "%s orted:comm:add_procs failed to launch on error %s",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ORTE_ERROR_NAME(ret)));
+        }
+        break;
            
+        /****    DELIVER A MESSAGE TO THE LOCAL PROCS    ****/
+    case ORTE_DAEMON_MESSAGE_LOCAL_PROCS:
+        if (orcmsd_globals.debug_daemons) {
+            opal_output(0, "%s orted_cmd: received message_local_procs",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        }
+                        
+        /* unpack the jobid of the procs that are to receive the message */
+        n = 1;
+        if (ORTE_SUCCESS != (ret = opal_dss.unpack(buffer, &job, &n, ORTE_JOBID))) {
+            ORTE_ERROR_LOG(ret);
+            goto CLEANUP;
+        }
+                
+        /* unpack the tag where we are to deliver the message */
+        n = 1;
+        if (ORTE_SUCCESS != (ret = opal_dss.unpack(buffer, &target_tag, &n, ORTE_RML_TAG))) {
+            ORTE_ERROR_LOG(ret);
+            goto CLEANUP;
+        }
+                
+        OPAL_OUTPUT_VERBOSE((1, orcm_debug_output,
+                             "%s orted:comm:message_local_procs delivering message to job %s tag %d",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             ORTE_JOBID_PRINT(job), (int)target_tag));
+
+        relay_msg = OBJ_NEW(opal_buffer_t);
+        opal_dss.copy_payload(relay_msg, buffer);
+            
+        /* if job=my_jobid, then this message is for us and not for our children */
+        if (ORTE_PROC_MY_NAME->jobid == job) {
+            /* if the target tag is our xcast_barrier or rml_update, then we have
+             * to handle the message as a special case. The RML has logic in it
+             * intended to make it easier to use. This special logic mandates that
+             * any message we "send" actually only goes into the queue for later
+             * transmission. Thus, since we are already in a recv when we enter
+             * the "process_commands" function, any attempt to "send" the relay
+             * buffer to ourselves will only be added to the queue - it won't
+             * actually be delivered until *after* we conclude the processing
+             * of the current recv.
+             *
+             * The problem here is that, for messages where we need to relay
+             * them along the orted chain, the rml_update
+             * message contains contact info we may well need in order to do
+             * the relay! So we need to process those messages immediately.
+             * The only way to accomplish that is to (a) detect that the
+             * buffer is intended for those tags, and then (b) process
+             * those buffers here.
+             *
+             */
+            if (ORTE_RML_TAG_RML_INFO_UPDATE == target_tag) {
+                n = 1;
+                if (ORTE_SUCCESS != (ret = opal_dss.unpack(relay_msg, &rml_cmd, &n, ORTE_RML_CMD))) {
+                    ORTE_ERROR_LOG(ret);
+                    goto CLEANUP;
+                }
+                /* initialize the routes to my peers - this will update the number
+                 * of daemons in the system (i.e., orte_process_info.num_procs) as
+                 * this might have changed
+                 */
+                if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, relay_msg))) {
+                    ORTE_ERROR_LOG(ret);
+                    goto CLEANUP;
+                }
+            } else {
+                /* just deliver it to ourselves */
+                if ((ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_NAME, relay_msg, target_tag,
+                                                   orte_rml_send_callback, NULL)) < 0) {
+                    ORTE_ERROR_LOG(ret);
+                    OBJ_RELEASE(relay_msg);
+                }
+            }
+        } else {
+            /* must be for our children - deliver the message */
+            if (ORTE_SUCCESS != (ret = orte_odls.deliver_message(job, relay_msg, target_tag))) {
+                ORTE_ERROR_LOG(ret);
+            }
+            OBJ_RELEASE(relay_msg);
+        }
+        break;
+    
         /****    EXIT COMMAND    ****/
     case ORTE_DAEMON_EXIT_CMD:
         if (orcmsd_globals.debug_daemons) {
@@ -1052,10 +1140,16 @@ static char *get_orcmsd_comm_cmd_str(int command)
         return strdup("ORCMSD_DAEMON_KILL_LOCAL_PROCS");
     case ORTE_DAEMON_SIGNAL_LOCAL_PROCS:
         return strdup("ORCMSD_DAEMON_SIGNAL_LOCAL_PROCS");
+    case ORTE_DAEMON_ADD_LOCAL_PROCS:
+        return strdup("ORCMSD_DAEMON_ADD_LOCAL_PROCS");
     case ORTE_DAEMON_MESSAGE_LOCAL_PROCS:
         return strdup("ORCMSD_DAEMON_MESSAGE_LOCAL_PROCS");
      case ORTE_DAEMON_EXIT_CMD:
         return strdup("ORCMSD_DAEMON_EXIT_CMD");
+    case ORTE_DAEMON_SPAWN_JOB_CMD:
+        return strdup("ORCMSD_DAEMON_SPAWN_JOB_CMD");
+    case ORTE_DAEMON_ABORT_PROCS_CALLED:
+        return strdup("ORCMSD_DAEMON_ABORT_PROCS_CALLED");
     default:
         return strdup("Unknown Command!");
     }

@@ -57,21 +57,21 @@ typedef void (*orcm_diag_base_module_finalize_fn_t)(void);
 /* calibrate */
 typedef void (*orcm_diag_base_module_calibrate_fn_t)(void);
 
-/* diagnostics read known to be good values */
-typedef int (*orcm_diag_base_module_diag_read_fn_t)(opal_list_t *config);
+/* diagnostics log */
+typedef int (*orcm_diag_base_module_log_fn_t)(opal_buffer_t *buf);
 
-/* diagnostics check */
-typedef int (*orcm_diag_base_module_diag_check_fn_t)(char *resource, opal_list_t *config);
+/* diagnostics run */
+typedef void (*orcm_diag_base_module_run_fn_t)(int sd, short args, void *cbdata);
 
 /*
  * Ver 1.0
  */
 typedef struct {
-    orcm_diag_base_module_init_fn_t        init;
-    orcm_diag_base_module_finalize_fn_t    finalize;
-    orcm_diag_base_module_calibrate_fn_t   calibrate;
-    orcm_diag_base_module_diag_read_fn_t   diag_read;
-    orcm_diag_base_module_diag_check_fn_t  diag_check;
+    orcm_diag_base_module_init_fn_t      init;
+    orcm_diag_base_module_finalize_fn_t  finalize;
+    orcm_diag_base_module_calibrate_fn_t calibrate;
+    orcm_diag_base_module_log_fn_t       log;
+    orcm_diag_base_module_run_fn_t       run;
 } orcm_diag_base_module_t;
 
 /*
@@ -84,13 +84,9 @@ typedef struct {
 
 /* define an API module */
 typedef void (*orcm_diag_API_module_calibrate_fn_t)(void);
-typedef int  (*orcm_diag_API_module_diag_read_fn_t)(opal_list_t *config);
-typedef int  (*orcm_diag_API_module_diag_check_fn_t)(char *resource, opal_list_t *config);
 
 typedef struct {
-    orcm_diag_API_module_calibrate_fn_t  calibrate;
-    orcm_diag_API_module_diag_read_fn_t  diag_read;
-    orcm_diag_API_module_diag_check_fn_t diag_check;
+    orcm_diag_API_module_calibrate_fn_t calibrate;
 } orcm_diag_API_module_t;
 
 /*

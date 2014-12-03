@@ -46,8 +46,8 @@ typedef struct {
     volatile bool ev_active;
     /* list of active diagnostic plugins */
     opal_list_t modules;
-    /* buffer to hold diagnostic results */
-    opal_buffer_t bucket;
+    int dbhandle;
+    bool dbhandle_requested;
 } orcm_diag_base_t;
 ORCM_DECLSPEC extern orcm_diag_base_t orcm_diag_base;
 
@@ -62,10 +62,21 @@ typedef struct {
 } orcm_diag_active_module_t;
 OBJ_CLASS_DECLARATION(orcm_diag_active_module_t);
 
+typedef struct {
+    opal_object_t super;
+    opal_event_t ev;
+    bool want_result;
+    orte_process_name_t *requester;
+    opal_list_t options;
+} orcm_diag_caddy_t;
+OBJ_CLASS_DECLARATION(orcm_diag_caddy_t);
+
 /* base code stubs */
 ORCM_DECLSPEC void orcm_diag_base_calibrate(void);
-ORCM_DECLSPEC int  orcm_diag_base_diag_read(opal_list_t *config);
-ORCM_DECLSPEC int  orcm_diag_base_diag_check(char *resource, opal_list_t *config);
+ORCM_DECLSPEC void orcm_diag_base_activate(char *dname, bool want_result, orte_process_name_t *sender, opal_buffer_t *buf);
+ORCM_DECLSPEC void orcm_diag_base_log(char *dname, opal_buffer_t *buf);
+ORCM_DECLSPEC int orcm_diag_base_comm_start(void);
+ORCM_DECLSPEC int orcm_diag_base_comm_stop(void);
 
 END_C_DECLS
 #endif

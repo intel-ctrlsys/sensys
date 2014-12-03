@@ -49,8 +49,8 @@
 
 static int init(void);
 static void finalize(void);
-static int diag_read(opal_list_t *config);
-static int diag_check(char *resource, opal_list_t *config);
+static int log(opal_buffer_t *buf);
+static void run(int sd, short args, void *cbdata);
 
 static int mem_diag_ret = ORCM_SUCCESS;
 
@@ -165,13 +165,14 @@ static void memcheck(unsigned int *addr, size_t size) {
 
 }
 
-static int diag_read(opal_list_t *config)
+static int log(opal_buffer_t *buf)
 {
     return ORCM_SUCCESS;
 }
 
-static int diag_check(char *resource, opal_list_t *config)
+static void run(int sd, short args, void *cbdata)
 {
+    orcm_diag_caddy_t *caddy = (orcm_diag_caddy_t*)cbdata;
     struct sysinfo info;
     struct rlimit org_limit, new_limit;
     void *addr;
@@ -181,7 +182,7 @@ static int diag_check(char *resource, opal_list_t *config)
     sysinfo(&info);
 
     OPAL_OUTPUT_VERBOSE((5, orcm_diag_base_framework.framework_output,
-                         "%s diag:memtest:check",
+                         "%s diag:memtest:run",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
     /* use maximum free memory  */
@@ -193,10 +194,11 @@ static int diag_check(char *resource, opal_list_t *config)
                         "%s memdiag: get resource limit failed",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         mem_diag_ret = ORCM_ERR_MEM_LIMIT_EXCEEDED;
+        ORTE_ERROR_LOG(mem_diag_ret);
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                         "%s Checking memory:                        [NOTRUN]",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
-        return mem_diag_ret;
+        goto error;
     }
 
     /* Increase ulimit for virtual address space and try mapping */
@@ -207,10 +209,11 @@ static int diag_check(char *resource, opal_list_t *config)
                         "%s memdiag: set resource limit failed",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         mem_diag_ret = ORCM_ERR_BAD_PARAM;
+        ORTE_ERROR_LOG(mem_diag_ret);
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                         "%s Checking memory:                        [NOTRUN]",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
-        return mem_diag_ret;
+        goto error;
     }
 
     do {
@@ -226,10 +229,11 @@ static int diag_check(char *resource, opal_list_t *config)
                             "%s memdiag: out of memory",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
             mem_diag_ret = ORCM_ERR_FAILED_TO_MAP;
+            ORTE_ERROR_LOG(mem_diag_ret);
             opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                                 "%s Checking memory:                        [NOTRUN]",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
-            return mem_diag_ret;
+            goto error;
         }
 
     } while (addr == (void *)-1);
@@ -257,19 +261,21 @@ static int diag_check(char *resource, opal_list_t *config)
                         "%s memdiag: set resource limit failed",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         mem_diag_ret = ORCM_ERR_BAD_PARAM;
-    }
-
-    if ( ORCM_SUCCESS == mem_diag_ret ) {
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                            "%s Checking memory:                        [  OK  ]",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
-    } else {
+        ORTE_ERROR_LOG(mem_diag_ret);
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s Checking memory:                        [ FAIL ]",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+    } else {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                            "%s Checking memory:                        [  OK  ]",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
-    return mem_diag_ret;
+    /* send results to aggregator/sender */
+    return;
+ error:
+    /* pack error, send/log results */
+    return;
 }
 
 

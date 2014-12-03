@@ -87,6 +87,13 @@ typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_SET_POWER_BUDGET_COMMAND 9
 #define ORCM_GET_POWER_BUDGET_COMMAND 10
 
+/* define diagnostic commands */
+typedef uint8_t orcm_diag_cmd_flag_t;
+#define ORCM_DIAG_CMD_T OPAL_UINT8
+
+#define ORCM_DIAG_START_COMMAND       1
+#define ORCM_DIAG_AGG_COMMAND         2
+
 /** version string of ORCM */
 ORCM_DECLSPEC extern const char openrcm_version_string[];
 
@@ -112,6 +119,8 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 #define ORCM_RML_TAG_ANALYTICS (ORTE_RML_TAG_MAX + 5)
 /* tools */
 #define ORCM_RML_TAG_VM_READY  (ORTE_RML_TAG_MAX + 6)
+/* diagnostics */
+#define ORCM_RML_TAG_DIAG      (ORTE_RML_TAG_MAX + 7)
 
 /* define event base priorities */
 #define ORCM_SCHED_PRI OPAL_EV_MSG_HI_PRI

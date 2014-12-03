@@ -708,8 +708,9 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
     }
 
     cmd_str = get_orcmsd_comm_cmd_str(command);
-    opal_output(0, "%s orted:comm:process_commands() Processing Command: %s",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), cmd_str);
+    OPAL_OUTPUT_VERBOSE((1, orcm_debug_output,
+                         "%s orted:comm:process_commands() Processing Command: %s",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), cmd_str));
     free(cmd_str);
     cmd_str = NULL;
 
@@ -1147,7 +1148,6 @@ static char *get_orcmsd_comm_cmd_str(int command)
     case ORTE_DAEMON_ABORT_PROCS_CALLED:
         return strdup("ORCMSD_DAEMON_ABORT_PROCS_CALLED");
     default:
-        printf("Command = %d\n", command);
         return strdup("Unknown Command!");
     }
 }

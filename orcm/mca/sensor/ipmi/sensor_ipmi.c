@@ -33,10 +33,10 @@ static void stop(orte_jobid_t job);
 static void ipmi_sample(orcm_sensor_sampler_t *sampler);
 static void ipmi_log(opal_buffer_t *buf);
 static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot);
-static void ipmi_inventory_log(opal_buffer_t *inventory_snapshot);
+static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 int count_log = 0;
 
-char **sensor_list_token;
+char **sensor_list_token; /* 2D array storing multiple sensor keywords for collecting metrics */
 opal_list_t active_hosts;
 
 static void ipmi_con(orcm_sensor_hosts_t *host)
@@ -479,7 +479,7 @@ int orcm_sensor_ipmi_label_found(char *sensor_label)
     return 0;
 }
 
-static void ipmi_inventory_log(opal_buffer_t *inventory_record)
+static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_record)
 {
     opal_output(0,"Inside IPMI inventory log function");
 }
@@ -495,9 +495,9 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_record)
         opal_output(0,"Inside IPMI inventory collection");
         opal_output(0,"IPMI Inventory data");
         opal_output(0,"--------------------------------------");
-        opal_output(0,"Vendor Name:      %s");
-        opal_output(0,"BMC FW Version:   %s");
-        opal_output(0,"BB Serial Number: %s");
+        opal_output(0,"Vendor Name:      ");
+        opal_output(0,"BMC FW Version:   ");
+        opal_output(0,"BB Serial Number: ");
         opal_output(0,"--------------------------------------");
     }
     /* @VINFIX: Collect the FRU related information here */

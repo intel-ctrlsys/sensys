@@ -51,7 +51,7 @@ static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot);
-static void dmidata_inventory_log(opal_buffer_t *inventory_snapshot);
+static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
     init,
@@ -66,52 +66,44 @@ orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
 
 typedef struct {
     opal_list_item_t super;
-    char *file;
-    int socket;
-    char *label;
-    float critical_temp;    /* Remove these unnecessary buckets*/
-    float max_temp;
-} coretemp_tracker_t;
-static void ctr_con(coretemp_tracker_t *trk)
+    char *nodename;
+    unsigned long hashId; /* A hash value summing up the inventory record for each node, for quick comparision */
+    opal_list_t *records; /* An hwloc topology container followed by a list of inventory items */
+} hwloc_inventory_t;
+
+static void inv_con(hwloc_inventory_t *trk)
 {
-    trk->file = NULL;
-    trk->label = NULL;
+    trk->records = OBJ_NEW(opal_list_t);
 }
-static void ctr_des(coretemp_tracker_t *trk)
+static void inv_des(hwloc_inventory_t *trk)
 {
-    if (NULL != trk->file) {
-        free(trk->file);
-    }
-    if (NULL != trk->label) {
-        free(trk->label);
+    if(trk != NULL) {
+        if(trk != NULL) {
+            OPAL_LIST_RELEASE(trk->records);
+        }
     }
 }
-OBJ_CLASS_INSTANCE(coretemp_tracker_t,
+OBJ_CLASS_INSTANCE(hwloc_inventory_t,
                    opal_list_item_t,
-                   ctr_con, ctr_des);
+                   inv_con, inv_des);
+
+/* Contains list of hosts that have collected and upstreamed their inventory data
+ * Each link is of the type 'hwloc_inventory_t' */
+opal_list_t hwloc_host_list;
 
 static int init(void)
 {
     /* Initialize All available resource that are present in the current system
      * that need to be scanned by the plugin */
     opal_output(0,"DMIDATA init");
-
-    /* setup to receive nventory data from compute & io Nodes */
-/*    if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
-        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
-                                ORTE_RML_TAG_INVENTORY,
-                                ORTE_RML_PERSISTENT,
-                                recv_inventory, NULL);
-    
-    }
-*/
+    OBJ_CONSTRUCT(&hwloc_host_list, opal_list_t);
     return ORCM_SUCCESS;
 }
 
 static void finalize(void)
 {
-    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORTE_RML_TAG_INVENTORY);
-
+    //orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORTE_RML_TAG_INVENTORY);
+    OPAL_LIST_DESTRUCT(&hwloc_host_list);
 }
 
 /*
@@ -148,14 +140,13 @@ static char* check_inv_key(char *inv_key)
     }
     return NULL;
 }
-static void collect_baseboard_inventory(hwloc_topology_t topo, orcm_sensor_inventory_record_t *record)
+static void collect_baseboard_inventory(hwloc_topology_t topo, hwloc_inventory_t *newhost)
 {
     hwloc_obj_t obj;
     uint32_t k;
     opal_value_t *kv;
     char *inv_key;
 
-    opal_output(0,"Inside DMIDATA inventory collection");
     /* MACHINE Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_MACHINE, 0))) {
         /* there are no objects identified for this machine (Weird!) */
@@ -168,12 +159,13 @@ static void collect_baseboard_inventory(hwloc_topology_t topo, orcm_sensor_inven
         for (k=0; k < obj->infos_count; k++) {
             if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
             {
-                //kv = OBJ_NEW(opal_value_t);
-                //kv->type = OPAL_STRING;
-                //kv->key = strdup(inv_key);
-                //kv->data.string = strdup(obj->infos[k].value);
-                //opal_list_append(record->catalogue, &kv->super);
-                opal_output(0,"Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
+                kv = OBJ_NEW(opal_value_t);
+                kv->type = OPAL_STRING;
+                kv->key = strdup(inv_key);
+                kv->data.string = strdup(obj->infos[k].value);
+                opal_list_append(newhost->records, &kv->super);
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                    "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
             }
         }
     } else {
@@ -181,14 +173,13 @@ static void collect_baseboard_inventory(hwloc_topology_t topo, orcm_sensor_inven
     }
 }
 
-static void collect_cpu_inventory(hwloc_topology_t topo, orcm_sensor_inventory_record_t *record)
+static void collect_cpu_inventory(hwloc_topology_t topo, hwloc_inventory_t *newhost)
 {
     hwloc_obj_t obj;
     uint32_t k;
     opal_value_t *kv;
     char *inv_key;
 
-    opal_output(0,"Inside DMIDATA  CPU - inventory collection");
     /* MACHINE Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_SOCKET, 0))) {
         /* there are no objects identified for this machine (Weird!) */
@@ -201,12 +192,13 @@ static void collect_cpu_inventory(hwloc_topology_t topo, orcm_sensor_inventory_r
         for (k=0; k < obj->infos_count; k++) {
             if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
             {
-                //kv = OBJ_NEW(opal_value_t);
-                //kv->type = OPAL_STRING;
-                //kv->key = strdup(inv_key);
-                //kv->data.string = strdup(obj->infos[k].value);
-                //opal_list_append(record->catalogue, &kv->super);
-                opal_output(0,"Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
+                kv = OBJ_NEW(opal_value_t);
+                kv->type = OPAL_STRING;
+                kv->key = strdup(inv_key);
+                kv->data.string = strdup(obj->infos[k].value);
+                opal_list_append(newhost->records, &kv->super);
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                    "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
             }
         }
     } else {
@@ -214,23 +206,6 @@ static void collect_cpu_inventory(hwloc_topology_t topo, orcm_sensor_inventory_r
     }
 
 }
-
-static void dmidata_inventory_log(opal_buffer_t *inventory_snapshot)
-{
-    hwloc_topology_t topo;
-    int32_t n, rc;
-    opal_output(0,"dmidata inventory log");
-
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &topo, &n, OPAL_HWLOC_TOPO))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    //opal_output(0,"Received string : %s",temp);
-        collect_baseboard_inventory(topo,NULL);
-        collect_cpu_inventory(topo, NULL);
-}
-
 
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
@@ -246,4 +221,62 @@ static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
         return;
     }
 }
+
+static hwloc_inventory_t* found_inventory_host(char * nodename)
+{
+    hwloc_inventory_t *host, *nxt;
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+        "Finding Node in hwloc inventory: %s", nodename);
+    OPAL_LIST_FOREACH_SAFE(host, nxt, &hwloc_host_list, hwloc_inventory_t) {
+        if(!strcmp(nodename,host->nodename))
+        {
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "Found Node: %s", nodename);
+            return host;
+        }
+    }
+    return NULL;
+
+}
+static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
+{
+    hwloc_topology_t topo;
+    int32_t n, rc;
+    hwloc_inventory_t *newhost;
+    /*TEMP DELETE THIS LINE */
+    opal_value_t *item, *nxt;
+    /************************/
+    
+    if (found_inventory_host(hostname) != NULL)
+    {
+        /* Check and Verify Node Inventory record and update db/notify user accordingly */
+        opal_output(0, "HWLOC HOST found!! Update node with inventory details");
+    } else { /* Node not found, Create new node and attach inventory details */
+        opal_output(0,"Received hwloc inventory log from a new host:%s", hostname);
+        newhost = OBJ_NEW(hwloc_inventory_t);
+    }
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &topo, &n, OPAL_HWLOC_TOPO))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    //opal_output(0,"Received string : %s",temp);
+    collect_baseboard_inventory(topo, newhost);
+    collect_cpu_inventory(topo, newhost);
+
+    /* Append the new node to the existing host list */
+
+    
+    /* Send the collected inventory details to the database for storage */
+    opal_output(0,"Inventory Details for node: %s",hostname);
+    OPAL_LIST_FOREACH_SAFE(item, nxt, newhost->records, opal_value_t) {
+        if(item->type == OPAL_STRING)
+        {
+            opal_output(0,"%s\t:%s",item->key,item->data.string);
+        }
+    }
+
+}
+
+
 

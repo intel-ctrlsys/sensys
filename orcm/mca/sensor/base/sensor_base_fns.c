@@ -207,7 +207,7 @@ static void recv_inventory(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
                        orte_rml_tag_t tag, void *cbdata)
 {
-    char *temp;
+    char *temp, *hostname;
     int32_t i, n, rc;
     hwloc_topology_t topo;
     orcm_sensor_active_module_t *i_module;
@@ -215,13 +215,12 @@ static void recv_inventory(int status, orte_process_name_t* sender,
     opal_output(0,"Received Inventory data at aggregator");
     /* unpack the host this came from */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &hostname, &n, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    opal_output(0,"Received Inventory Data from host : %s",temp);
-    free(temp);
-  
+    opal_output(0,"Received Inventory Data from host : %s",hostname);
+        
     n=1; 
     while (OPAL_SUCCESS == (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
         if (NULL != temp) {
@@ -234,9 +233,8 @@ static void recv_inventory(int status, orte_process_name_t* sender,
                 }
                 if (0 == strcmp(temp, i_module->component->base_version.mca_component_name)) {
                     if (NULL != i_module->module->inventory_log) {
-                        i_module->module->inventory_log(buffer);
+                        i_module->module->inventory_log(hostname,buffer);
                     }
-                    return;
                 }
             }
             free(temp);
@@ -246,6 +244,7 @@ static void recv_inventory(int status, orte_process_name_t* sender,
     if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
         ORTE_ERROR_LOG(rc);
     }
+    free(hostname);
 }
 
 void orcm_sensor_base_stop(orte_jobid_t job)

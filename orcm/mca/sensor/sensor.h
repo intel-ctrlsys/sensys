@@ -80,7 +80,7 @@ typedef void (*orcm_sensor_base_module_sample_fn_t)(orcm_sensor_sampler_t *sampl
  */
 typedef void (*orcm_sensor_base_module_inventory_collect_fn_t)(opal_buffer_t *inventory_snapshot);
 
-typedef void (*orcm_sensor_base_module_inventory_log_fn_t) (opal_buffer_t *inventory_snapshot);
+typedef void (*orcm_sensor_base_module_inventory_log_fn_t) (char *hostname, opal_buffer_t *inventory_snapshot);
 /* pass a buffer to the module for logging */
 typedef void (*orcm_sensor_base_module_log_fn_t)(opal_buffer_t *sample);
 

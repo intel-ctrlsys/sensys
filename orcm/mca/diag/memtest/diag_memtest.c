@@ -218,6 +218,7 @@ static int memtest_log(opal_buffer_t *buf)
 
     /* send to db */
     if (0 <= orcm_diag_base.dbhandle) {
+        /* TODO: change this to whatever db function will be used for diags */
         orcm_db.store(orcm_diag_base.dbhandle, "memtest", vals, mycleanup, NULL);
     } else {
         OPAL_LIST_RELEASE(vals);

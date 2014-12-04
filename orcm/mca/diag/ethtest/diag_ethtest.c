@@ -52,6 +52,8 @@
 #include "opal/mca/installdirs/installdirs.h"
 #include "opal/mca/hwloc/hwloc.h"
 
+#include "orte/types.h"
+#include "orte/mca/rml/rml.h"
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/mca/db/db.h"
@@ -62,16 +64,15 @@
 
 static int init(void);
 static void finalize(void);
-static int diag_read(opal_list_t *config);
-static int diag_check(char *resource, opal_list_t *config);
-
+static int ethtest_log(opal_buffer_t *buf);
+static void ethtest_run(int sd, short args, void *cbdata);
 
 orcm_diag_base_module_t orcm_diag_ethtest_module = {
     init,
     finalize,
     NULL,
-    diag_read,
-    diag_check
+    ethtest_log,
+    ethtest_run
 };
 
 static int dump_eth_test(char *resource,
@@ -97,13 +98,69 @@ static void finalize(void)
 }
 
 
-static int diag_read(opal_list_t *config)
+static void mycleanup(int dbhandle, int status,
+                      opal_list_t *kvs, void *cbdata)
 {
+    OPAL_LIST_RELEASE(kvs);
+}
+
+static int ethtest_log(opal_buffer_t *buf)
+{
+    time_t diag_time;
+    int cnt, rc;
+    char *nodename;
+    opal_list_t *vals;
+    opal_value_t *kv;
+
+    /* Unpack the Time */
+    cnt = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_time,
+                                              &cnt, OPAL_TIME))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    /* Unpack the node name */
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &nodename,
+                                              &cnt, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    /* Unpack our results */
+
+    /* create opal value array to send to db */
+    vals = OBJ_NEW(opal_list_t);
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("time");
+    kv->type = OPAL_TIMEVAL;
+    kv->data.tv.tv_sec = diag_time;
+    opal_list_append(vals, &kv->super);
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("nodename");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup(nodename);
+    opal_list_append(vals, &kv->super);
+    free(nodename);
+
+    /* add results */
+
+    /* send to db */
+    if (0 <= orcm_diag_base.dbhandle) {
+        /* TODO: change this to whatever db function will be used for diags */
+        orcm_db.store(orcm_diag_base.dbhandle, "ethtest", vals, mycleanup, NULL);
+    } else {
+        OPAL_LIST_RELEASE(vals);
+    }
+
     return ORCM_SUCCESS;
 }
 
-static int diag_check(char *resource, opal_list_t *config)
+static void ethtest_run((int sd, short args, void *cbdata)
 {
+    orcm_diag_caddy_t *caddy = (orcm_diag_caddy_t*)cbdata;
     int eth_diag_ret = 0;
     int sock;
     struct ifreq ifr;
@@ -113,6 +170,28 @@ static int diag_check(char *resource, opal_list_t *config)
     int testinfo_offset;
     int i, ret;
     int strset_len;
+    char *resource = strdup("eth0");
+    orcm_diag_cmd_flag_t command = ORCM_DIAG_AGG_COMMAND;
+    opal_buffer_t *data = NULL;
+    time_t now;
+    char *compname;
+    orte_process_name_t *tgt;
+
+    if (ORTE_PROC_IS_CM) {
+        /* we send to our daemon */
+        tgt = ORTE_PROC_MY_DAEMON;
+    } else {
+        tgt = ORTE_PROC_MY_HNP;
+    }
+    /* if my target hasn't been defined yet, ignore - nobody listening yet */
+    if (ORTE_JOBID_INVALID ==tgt->jobid ||
+        ORTE_VPID_INVALID == tgt->vpid) {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                            "%s diag:ethtest: HNP is not defined",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        /* still run diags? */
+        /* return; */
+    }
 
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
@@ -120,13 +199,14 @@ static int diag_check(char *resource, opal_list_t *config)
                             "%s diag:cannot open socket",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         eth_diag_ret |= DIAG_ETH_NOTRUN;
-        return eth_diag_ret;
+        goto sendresults;
     }
 
+    /* TODO: pass interface(s) via options list */
     strncpy(ifr.ifr_name, resource, sizeof(ifr.ifr_name));
 
      /* Get string set length */
-    testinfo_offset          = (int)offsetof(struct ethtool_drvinfo, testinfo_len);
+    testinfo_offset = (int)offsetof(struct ethtool_drvinfo, testinfo_len);
 
     /* Get driver info for old kernel version */
     /* New kernel uses ETHTOOL_GSSET_INFO */
@@ -139,7 +219,7 @@ static int diag_check(char *resource, opal_list_t *config)
                             "%s diag:ethtool ioctl GDRVINFO failed",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         eth_diag_ret |= DIAG_ETH_NOTRUN;
-        return eth_diag_ret;
+        goto sendresults;
     }
     strset_len = *(int *)((char *)&drvinfo + testinfo_offset);
 
@@ -149,7 +229,7 @@ static int diag_check(char *resource, opal_list_t *config)
                             "%s diag:calloc failed",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         eth_diag_ret |= DIAG_ETH_NOTRUN;
-        return eth_diag_ret;
+        goto sendresults;
     }
 
     /* Get specified string set for test info */
@@ -165,7 +245,7 @@ static int diag_check(char *resource, opal_list_t *config)
                             "%s diag:ethtool ioctl GSTRINGS failed - %s",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), strerror(errno));
         eth_diag_ret |= DIAG_ETH_NOTRUN;
-        return eth_diag_ret;
+        goto sendresults;
     }
 
     /* Terminate with NULL */
@@ -180,7 +260,7 @@ static int diag_check(char *resource, opal_list_t *config)
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         free(gstring);
         eth_diag_ret |= DIAG_ETH_NOTRUN;
-        return eth_diag_ret;
+        goto sendresults;
     }
 
     /* Initiate device self test */
@@ -200,7 +280,7 @@ static int diag_check(char *resource, opal_list_t *config)
         eth_diag_ret |= DIAG_ETH_NOTRUN;
         free(eth_test);
         free(gstring);
-        return eth_diag_ret;
+        goto sendresults;
     } else {
         opal_output_verbose(5, orcm_diag_base_framework.framework_output,
                             "%s diag: %s - ethtool ioctl TEST completed",
@@ -210,13 +290,59 @@ static int diag_check(char *resource, opal_list_t *config)
     ret = dump_eth_test(resource, eth_test, gstring);
     free(eth_test);
     free(gstring);
+    free(resource);
 
-    return eth_diag_ret;
+sendresults:
+    now = time(NULL);
+    data = OBJ_NEW(opal_buffer_t);
+
+    /* pack aggregator command */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &command, 1, ORCM_DIAG_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* pack our component name */
+    compname = strdup("ethtest");
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &compname, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+    free(compname);
+
+    /* Pack the Time */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIME))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack our node name */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack our results */
+
+    /* send results to aggregator/sender */
+    if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, data,
+                                                      ORCM_RML_TAG_DIAG,
+                                                      orte_rml_send_callback, NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(data);
+    }
+
+    OBJ_RELEASE(caddy);
+    return;
 }
 
 static int dump_eth_test(char *resource,
                          struct ethtool_test *eth_test,
-		         struct ethtool_gstrings *strings)
+                         struct ethtool_gstrings *strings)
 {
     unsigned int i   = 0;
     int ret = 0;

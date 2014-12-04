@@ -64,16 +64,23 @@ OBJ_CLASS_DECLARATION(orcm_diag_active_module_t);
 
 typedef struct {
     opal_object_t super;
-    opal_event_t ev;
+    char *component;
     bool want_result;
     orte_process_name_t *requester;
     opal_list_t options;
+} orcm_diag_info_t;
+OBJ_CLASS_DECLARATION(orcm_diag_info_t);
+
+typedef struct {
+    opal_object_t super;
+    opal_event_t ev;
+    orcm_diag_info_t *info;
 } orcm_diag_caddy_t;
 OBJ_CLASS_DECLARATION(orcm_diag_caddy_t);
 
 /* base code stubs */
 ORCM_DECLSPEC void orcm_diag_base_calibrate(void);
-ORCM_DECLSPEC void orcm_diag_base_activate(char *dname, bool want_result, orte_process_name_t *sender, opal_buffer_t *buf);
+ORCM_DECLSPEC void orcm_diag_base_activate(orcm_diag_info_t *info);
 ORCM_DECLSPEC void orcm_diag_base_log(char *dname, opal_buffer_t *buf);
 ORCM_DECLSPEC int orcm_diag_base_comm_start(void);
 ORCM_DECLSPEC int orcm_diag_base_comm_stop(void);

@@ -73,11 +73,12 @@ static void orcm_diag_base_recv(int status, orte_process_name_t *sender,
                                 void *cbdata)
 {
     orcm_diag_cmd_flag_t command;
-    char *dname = NULL;
-    bool want_result;
-    int rc, response, cnt;
+    orcm_diag_info_t *info;
+    int rc, response, cnt, numopts, i;
     opal_buffer_t *ans = NULL;
     opal_buffer_t *buf = NULL;
+    opal_value_t *options;
+    char *dname;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_diag_base_framework.framework_output,
                          "%s diag:base:receive processing msg",
@@ -93,32 +94,42 @@ static void orcm_diag_base_recv(int status, orte_process_name_t *sender,
 
     if (ORCM_DIAG_START_COMMAND == command) {
         /* start selected diagnostics */
+        info = OBJ_NEW(orcm_diag_info_t);
+
         /* unpack the module name */
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &dname,
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &info->component,
                                                   &cnt, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
         /* unpack if sender wants diag results */
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &want_result,
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &info->want_result,
                                                   &cnt, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
-        /* unpack the (optional) options buffer */
+        /* unpack the number of options */
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &buf,
-                                                  &cnt, OPAL_STRING))) {
-            if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &numopts,
+                                                  &cnt, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        /* unpack options */
+        if (0 < numopts) {
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &options,
+                                                      &numopts, OPAL_VALUE))) {
                 ORTE_ERROR_LOG(rc);
                 return;
-
+            }
+            for (i = 0; i < numopts; i++) {
+                opal_list_append(&info->options, &options[i].super);
             }
         }
 
-        if (!want_result) {
+        if (!info->want_result) {
             /* send back the immediate success, 
              * sender doesn't want to wait for diag results */
             ans = OBJ_NEW(opal_buffer_t);
@@ -137,7 +148,9 @@ static void orcm_diag_base_recv(int status, orte_process_name_t *sender,
                 return;
             }
         }
-        orcm_diag_base_activate(dname, want_result, sender, buf);
+
+        info->requester = sender;
+        orcm_diag_base_activate(info);
     } else if (ORCM_DIAG_AGG_COMMAND == command) {
         /* incoming results from children */
         /* unpack the module name */
@@ -147,17 +160,9 @@ static void orcm_diag_base_recv(int status, orte_process_name_t *sender,
             ORTE_ERROR_LOG(rc);
             return;
         }
-        /* unpack the buffer */
-        cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &buf,
-                                                  &cnt, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        orcm_diag_base_log(dname, buf);
+        orcm_diag_base_log(dname, buffer);
         OBJ_RELEASE(buf);
     }
     
-    free(dname);
     return;
 }

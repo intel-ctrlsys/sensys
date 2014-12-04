@@ -95,14 +95,30 @@ OBJ_CLASS_INSTANCE(orcm_diag_active_module_t,
 
 static void caddy_con(orcm_diag_caddy_t *p)
 {
-    p->requester = NULL;
-    p->want_result = false;
-    OBJ_CONSTRUCT(&p->options, opal_list_t);
+    p->info = NULL;
 }
 static void caddy_des(orcm_diag_caddy_t *p)
 {
-    OPAL_LIST_DESTRUCT(&p->options);
+    if(p->info) {
+        OBJ_RELEASE(p->info);
+    }
 }
 OBJ_CLASS_INSTANCE(orcm_diag_caddy_t,
                    opal_object_t,
                    caddy_con, caddy_des);
+
+static void info_con(orcm_diag_info_t *p)
+{
+    p->component = NULL;
+    p->want_result = false;
+    p->requester = NULL;
+    OBJ_CONSTRUCT(&p->options, opal_list_t);
+}
+static void info_des(orcm_diag_info_t *p)
+{
+    free(p->component);
+    OPAL_LIST_DESTRUCT(&p->options);
+}
+OBJ_CLASS_INSTANCE(orcm_diag_info_t,
+                   opal_object_t,
+                   info_con, info_des);

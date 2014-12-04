@@ -40,27 +40,27 @@ void orcm_diag_base_calibrate(void)
     }
 }
 
-void orcm_diag_base_activate(char *dname, bool want_result, orte_process_name_t *sender, opal_buffer_t *buf)
+void orcm_diag_base_activate(orcm_diag_info_t *info)
 {
     orcm_diag_active_module_t *mod;
     orcm_diag_caddy_t *caddy;
     
     /* if no modules are available, then there is nothing to do */
     if (opal_list_is_empty(&orcm_diag_base.modules)) {
+        OBJ_RELEASE(info);
         return;
     }
     
     opal_output_verbose(5, orcm_diag_base_framework.framework_output,
                         "%s diag:base: activating diag %s",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), dname);
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), info->component);
     
     /* find the specified module  */
     OPAL_LIST_FOREACH(mod, &orcm_diag_base.modules, orcm_diag_active_module_t) {
-        if (0 == strcmp(dname, mod->component->mca_component_name)) {
+        if (0 == strcmp(info->component, mod->component->mca_component_name)) {
             if (NULL != mod->module->run) {
                 caddy = OBJ_NEW(orcm_diag_caddy_t);
-                caddy->want_result = want_result;
-                caddy->requester = sender;
+                caddy->info = info;
                 /* unpack options from buffer */
                 opal_event_set(orcm_diag_base.ev_base, &caddy->ev, -1,
                                OPAL_EV_WRITE, mod->module->run, caddy);

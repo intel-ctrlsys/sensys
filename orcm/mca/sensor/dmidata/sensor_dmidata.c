@@ -44,7 +44,7 @@
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_dmidata.h"
-
+#include "hwloc.h"
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
@@ -68,6 +68,7 @@ typedef struct {
     opal_list_item_t super;
     char *nodename;
     unsigned long hashId; /* A hash value summing up the inventory record for each node, for quick comparision */
+    hwloc_topology_t hwloc_topo;
     opal_list_t *records; /* An hwloc topology container followed by a list of inventory items */
 } hwloc_inventory_t;
 
@@ -82,6 +83,7 @@ static void inv_des(hwloc_inventory_t *trk)
             OPAL_LIST_RELEASE(trk->records);
         }
     }
+    free(trk->nodename);
 }
 OBJ_CLASS_INSTANCE(hwloc_inventory_t,
                    opal_list_item_t,
@@ -102,6 +104,7 @@ static int init(void)
 
 static void finalize(void)
 {
+    opal_output(0,"dmidata Finalize <<<<<<<<<");
     //orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORTE_RML_TAG_INVENTORY);
     OPAL_LIST_DESTRUCT(&hwloc_host_list);
 }
@@ -230,6 +233,7 @@ static hwloc_inventory_t* found_inventory_host(char * nodename)
     OPAL_LIST_FOREACH_SAFE(host, nxt, &hwloc_host_list, hwloc_inventory_t) {
         if(!strcmp(nodename,host->nodename))
         {
+            opal_output(0,"Found node: %s",nodename);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "Found Node: %s", nodename);
             return host;
@@ -246,28 +250,58 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     /*TEMP DELETE THIS LINE */
     opal_value_t *item, *nxt;
     /************************/
-    
-    if (found_inventory_host(hostname) != NULL)
-    {
-        /* Check and Verify Node Inventory record and update db/notify user accordingly */
-        opal_output(0, "HWLOC HOST found!! Update node with inventory details");
-    } else { /* Node not found, Create new node and attach inventory details */
-        opal_output(0,"Received hwloc inventory log from a new host:%s", hostname);
-        newhost = OBJ_NEW(hwloc_inventory_t);
-    }
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &topo, &n, OPAL_HWLOC_TOPO))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    //opal_output(0,"Received string : %s",temp);
-    collect_baseboard_inventory(topo, newhost);
-    collect_cpu_inventory(topo, newhost);
 
-    /* Append the new node to the existing host list */
+    if (NULL != (newhost = found_inventory_host(hostname)))
+    {
+        /* Check and Verify Node Inventory record and update db/notify user accordingly */
+        opal_output(0, "HWLOC HOST found!! Update node with inventory details");
+        if(opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) {
+            opal_output(0,"Compared values match for : hwloc");
+        }
+        else {
+            /*@VINFIX: Due to a bug in the opal_dss.copy for OPAL_HWLOC_TOPO data type, this else block will always get
+             * and the data will always get copied for now
+             */
+            opal_output(0,"Compared values don't match for: hwloc; Notify User; Update List; Update Database");
+            opal_dss.copy((void**)&newhost->hwloc_topo,topo,OPAL_HWLOC_TOPO);
 
-    
-    /* Send the collected inventory details to the database for storage */
+            /*Delete existing host and update the host list with the freshly received inventory details*/
+            OPAL_LIST_RELEASE(newhost->records);
+            newhost->records=OBJ_NEW(opal_list_t);
+
+            /*Extract all required inventory items here */
+            collect_baseboard_inventory(topo, newhost);
+            collect_cpu_inventory(topo, newhost);
+
+            /* Send the collected inventory details to the database for storage */
+            /*XYXYXYXYXYXY*/            
+        }
+    } else { /* Node not found, Create new node and attach inventory details */
+        opal_output(0,"Received hwloc inventory log from a new host:%s", hostname);
+        newhost = OBJ_NEW(hwloc_inventory_t);
+        newhost->nodename = hostname;
+        /* @VINFIX: Need to fix the bug in dss copy for OPAL_HWLOC_TOPO */
+        opal_dss.copy((void**)&newhost->hwloc_topo,topo,OPAL_HWLOC_TOPO);
+
+        /*Extract all required inventory items here */
+        collect_baseboard_inventory(topo, newhost);
+        collect_cpu_inventory(topo, newhost);
+
+        /* Append the new node to the existing host list */
+        opal_list_append(&hwloc_host_list, &newhost->super);
+
+        /* Send the collected inventory details to the database for storage */
+        /*XXYYXYXYXYXYXY */
+        
+    }
+
+/* TEMP Delete or increase verbosity for these trace messages 
+ */
     opal_output(0,"Inventory Details for node: %s",hostname);
     OPAL_LIST_FOREACH_SAFE(item, nxt, newhost->records, opal_value_t) {
         if(item->type == OPAL_STRING)
@@ -275,7 +309,6 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             opal_output(0,"%s\t:%s",item->key,item->data.string);
         }
     }
-
 }
 
 

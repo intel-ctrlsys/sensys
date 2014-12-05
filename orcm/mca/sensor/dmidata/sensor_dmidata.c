@@ -40,6 +40,7 @@
 #include "orte/mca/rml/rml.h"
 
 #include "orcm/mca/db/db.h"
+#include "orcm/runtime/orcm_globals.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -161,11 +162,11 @@ static void collect_baseboard_inventory(hwloc_topology_t topo, hwloc_inventory_t
         for (k=0; k < obj->infos_count; k++) {
             if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
             {
-                mkv = OBJ_NEW(opal_metric_value_t);
+                mkv = OBJ_NEW(orcm_metric_value_t);
                 mkv->value.type = OPAL_STRING;
                 mkv->value.key = strdup(inv_key);
                 mkv->value.data.string = strdup(obj->infos[k].value);
-                opal_list_append(newhost->records, &mkv->super);
+                opal_list_append(newhost->records, (opal_list_item_t *)mkv);
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                     "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
             }
@@ -179,7 +180,7 @@ static void collect_cpu_inventory(hwloc_topology_t topo, hwloc_inventory_t *newh
 {
     hwloc_obj_t obj;
     uint32_t k;
-    opal_value_t *kv;
+    orcm_metric_value_t *mkv;
     char *inv_key;
 
     /* MACHINE Level Stats*/
@@ -194,11 +195,11 @@ static void collect_cpu_inventory(hwloc_topology_t topo, hwloc_inventory_t *newh
         for (k=0; k < obj->infos_count; k++) {
             if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
             {
-                kv = OBJ_NEW(opal_value_t);
-                kv->type = OPAL_STRING;
-                kv->key = strdup(inv_key);
-                kv->data.string = strdup(obj->infos[k].value);
-                opal_list_append(newhost->records, &kv->super);
+                mkv = OBJ_NEW(orcm_metric_value_t);
+                mkv->value.type = OPAL_STRING;
+                mkv->value.key = strdup(inv_key);
+                mkv->value.data.string = strdup(obj->infos[k].value);
+                opal_list_append(newhost->records, (opal_list_item_t *)mkv);
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                     "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
             }
@@ -246,9 +247,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     hwloc_topology_t topo;
     int32_t n, rc;
     hwloc_inventory_t *newhost;
-    /*TEMP DELETE THIS LINE */
-    opal_value_t *item, *nxt;
-    /************************/
+
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &topo, &n, OPAL_HWLOC_TOPO))) {
         ORTE_ERROR_LOG(rc);
@@ -278,7 +277,9 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             collect_cpu_inventory(topo, newhost);
 
             /* Send the collected inventory details to the database for storage */
-            /*XYXYXYXYXYXY*/            
+            if (0 <= orcm_sensor_base.dbhandle) {
+                orcm_db.update_node_features(orcm_sensor_base.dbhandle, newhost->nodename , newhost->records, NULL, NULL);
+            }
         }
     } else { /* Node not found, Create new node and attach inventory details */
         opal_output(0,"Received hwloc inventory log from a new host:%s", hostname);
@@ -295,17 +296,8 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         opal_list_append(&hwloc_host_list, &newhost->super);
 
         /* Send the collected inventory details to the database for storage */
-        /*XXYYXYXYXYXYXY */
-        
-    }
-
-/* TEMP Delete or increase verbosity for these trace messages 
- */
-    opal_output(0,"Inventory Details for node: %s",hostname);
-    OPAL_LIST_FOREACH_SAFE(item, nxt, newhost->records, opal_value_t) {
-        if(item->type == OPAL_STRING)
-        {
-            opal_output(0,"%s\t:%s",item->key,item->data.string);
+        if (0 <= orcm_sensor_base.dbhandle) {
+            orcm_db.update_node_features(orcm_sensor_base.dbhandle, newhost->nodename , newhost->records, NULL, NULL);
         }
     }
 }

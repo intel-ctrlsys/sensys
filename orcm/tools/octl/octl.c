@@ -344,6 +344,11 @@ static void run_cmd(char *cmd) {
                     ORTE_ERROR_LOG(rc);
                 }
                 break;
+            case 19: //eth
+                if (ORCM_SUCCESS != (rc = orcm_octl_diag_eth(cmdlist))) {
+                    ORTE_ERROR_LOG(rc);
+                }
+                break;
             case 14: //mem
                 if (ORCM_SUCCESS != (rc = orcm_octl_diag_mem(cmdlist))) {
                     ORTE_ERROR_LOG(rc);

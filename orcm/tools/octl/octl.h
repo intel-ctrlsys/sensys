@@ -63,6 +63,8 @@ static orcm_cli_init_t cli_init[] = {
     { { NULL }, "diag", 0, 0, "Diagnostics" },
     // cpu subcommand
     { { "diag", NULL }, "cpu", 0, 1, "CPU diagnostics" },
+    // eth subcommand
+    { { "diag", NULL }, "eth", 0, 1, "Ethernet diagnostics" },
     // mem subcommand
     { { "diag", NULL }, "mem", 0, 1, "Memory diagnostics" },
     
@@ -100,7 +102,8 @@ const char *orcm_octl_commands[] = { "resource", //0
                                      "power",    //15
                                      "set",      //16
                                      "get",      //17
-                                     "resume"    //18
+                                     "resume",   //18
+                                     "eth",      //19
                                      "\0" };
 
 END_C_DECLS

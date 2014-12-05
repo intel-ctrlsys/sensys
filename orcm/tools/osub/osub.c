@@ -99,7 +99,7 @@ typedef struct {
     int min_pes;
     char *starttime;
     char *walltime;
-    bool exclusive;
+    bool nonexclusive;
     bool interactive;
     char *nodefile;
     char *resources;
@@ -141,25 +141,37 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "Group id to run session under" },
 
     { NULL,
-      'N', NULL, "max-node",
+      NULL, NULL, "max-node",
       1,
       &orcm_osub_globals.max_nodes, OPAL_CMD_LINE_TYPE_INT,
       "Max nodes allowed in allocation" },
 
     { NULL,
-      'P', NULL, "max-pe",
+      NULL, NULL, "max-pe",
       1,
       &orcm_osub_globals.max_pes, OPAL_CMD_LINE_TYPE_INT,
       "Max PEs allowed in allocation" },
 
     { NULL,
-      'n', NULL, "node",
+      NULL, NULL, "min-node",
+      1,
+      &orcm_osub_globals.min_nodes, OPAL_CMD_LINE_TYPE_INT,
+      "Max nodes allowed in allocation" },
+
+    { NULL,
+      NULL, NULL, "min-pe",
+      1,
+      &orcm_osub_globals.min_pes, OPAL_CMD_LINE_TYPE_INT,
+      "Max PEs allowed in allocation" },
+
+    { NULL,
+      NULL, NULL, "node",
       1,
       &orcm_osub_globals.min_nodes, OPAL_CMD_LINE_TYPE_INT,
       "Minimum number of nodes required for allocation" },
 
     { NULL,
-      'p', NULL, "pe",
+      NULL, NULL, "pe",
       1,
       &orcm_osub_globals.min_pes, OPAL_CMD_LINE_TYPE_INT,
       "Minimum number of PEs required for allocation" },
@@ -171,31 +183,31 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "Earliest Date/Time required to start job" },
 
     { NULL,
-      'w', NULL, "walltime",
+      'w', NULL, "wall-time",
       1,
       &orcm_osub_globals.walltime, OPAL_CMD_LINE_TYPE_STRING,
       "Maximum duration before job is terminated" },
 
     { NULL,
-      'e', NULL, "exclusive",
+      'e', NULL, "non-exclusive",
       0,
-      &orcm_osub_globals.exclusive, OPAL_CMD_LINE_TYPE_BOOL,
+      &orcm_osub_globals.nonexclusive, OPAL_CMD_LINE_TYPE_BOOL,
       "Do not share allocated nodes with other sessions" },
 
     { NULL,
       'i', NULL, "interactive",
       0,
       &orcm_osub_globals.interactive, OPAL_CMD_LINE_TYPE_BOOL,
-      "Do not share allocated nodes with other sessions" },
+      "Open an interactive shell for the allocated session" },
 
     { NULL,
-      'b', NULL, "batchrun",
+      'b', NULL, "batch-run",
       1,
       &orcm_osub_globals.batchfile, OPAL_CMD_LINE_TYPE_STRING,
       "Path to batch script file listing applications to run" },
 
     { NULL,
-      'f', NULL, "nodefile",
+      'f', NULL, "node-file",
       1,
       &orcm_osub_globals.nodefile, OPAL_CMD_LINE_TYPE_STRING,
       "Path to file listing names of candidate nodes" },
@@ -245,7 +257,10 @@ main(int argc, char *argv[])
     alloc.max_pes = orcm_osub_globals.max_pes;         // max number of processing elements
     alloc.min_nodes = orcm_osub_globals.min_nodes;     // min number of nodes required
     alloc.min_pes = orcm_osub_globals.min_pes;         // min number of pe's required
-    alloc.exclusive = orcm_osub_globals.exclusive;     // true if nodes to be exclusively allocated (i.e., not shared across sessions)
+    alloc.exclusive = true;     // true if nodes to be exclusively allocated (i.e., not shared across sessions)
+    if (true == orcm_osub_globals.nonexclusive) {
+        alloc.exclusive = false;     // false if nodes to be non exclusively allocated (i.e., shared across sessions)
+    }
     alloc.interactive = false; // true if in interactive mode
     alloc.nodes = NULL;                                // regex of nodes to be used
     alloc.parent_name = ORTE_NAME_PRINT(ORTE_PROC_MY_NAME); // my_daemon_name
@@ -280,7 +295,7 @@ main(int argc, char *argv[])
 
     if (true == orcm_osub_globals.interactive && 
         NULL != orcm_osub_globals.batchfile) {
-            opal_output(0, "osub: parameter error '--interactive' and '--batchrun <batchscript>' are mutually exclusive\n");
+            opal_output(0, "osub: parameter error '--interactive' and '--batch-run <batchscript>' are mutually exclusive\n");
             rc = ORCM_ERR_BAD_PARAM;
             ORTE_ERROR_LOG(rc);
             return rc;
@@ -306,7 +321,7 @@ main(int argc, char *argv[])
         if (NULL != orcm_osub_globals.batchfile) {
             alloc.batchfile=orcm_osub_globals.batchfile;
         } else {
-            opal_output(0, "osub: missing required parameter '--batchrun <batchscript>'\n");
+            opal_output(0, "osub: missing required parameter '--batch-run <batchscript>'\n");
             rc = ORCM_ERR_BAD_PARAM;
             ORTE_ERROR_LOG(rc);
             return rc;
@@ -441,7 +456,7 @@ static int parse_args(int argc, char *argv[])
                                 1,        /* min_pes */
                                 NULL,     /* starttime */
                                 NULL,     /* walltime */
-                                false,    /* exclusive */
+                                false,    /* nonexclusive */
                                 false,    /* interactive */
                                 NULL,     /* nodefile */
                                 NULL,     /* resources */

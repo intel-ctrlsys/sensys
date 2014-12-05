@@ -54,7 +54,6 @@ void orcm_sensor_base_start(orte_jobid_t job)
     //opal_value_t *host, *nxt;
         
     orcm_sensor_sampler_t *sampler;
-    orcm_sensor_inventory_record_t *record;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: sensor start called",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -152,8 +151,6 @@ void collect_inventory_info(int fd, short args, void *cbdata)
     orcm_sensor_active_module_t *i_module;
     int32_t i,rc;
     opal_buffer_t *inventory_snapshot = (opal_buffer_t*)cbdata;
-    opal_output(0,"--------------Collect_Inventory_info------------");
-
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: Starting Inventory Collection",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -179,11 +176,7 @@ void log_inventory_info(opal_buffer_t *inventory_snapshot)
     opal_buffer_t *buf;
     int32_t rc;
     orte_process_name_t *tgt;
-    opal_value_t *host, *nxt;
-    char *temp;
 
-    int32_t n;
-    opal_output(0,"--------------Inventory info log------------");
     if (ORTE_PROC_IS_CM) {
         /* we send to our daemon */
         tgt = ORTE_PROC_MY_DAEMON;
@@ -192,7 +185,6 @@ void log_inventory_info(opal_buffer_t *inventory_snapshot)
     }
 
     /* send heartbeat */
-    opal_output(0,"-------->>>sending inventory data to aggregator");
     buf = OBJ_NEW(opal_buffer_t);
     opal_dss.copy_payload(buf, inventory_snapshot);
     if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, buf,
@@ -209,22 +201,18 @@ static void recv_inventory(int status, orte_process_name_t* sender,
 {
     char *temp, *hostname;
     int32_t i, n, rc;
-    hwloc_topology_t topo;
     orcm_sensor_active_module_t *i_module;
 
-    opal_output(0,"Received Inventory data at aggregator");
     /* unpack the host this came from */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &hostname, &n, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    opal_output(0,"Received Inventory Data from host : %s",hostname);
         
     n=1; 
     while (OPAL_SUCCESS == (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
         if (NULL != temp) {
-            opal_output(0,"Received data for component : %s",temp);
             /* Iterate through all available components and pass the buffer to appropriate one*/
             /* find the specified module  */
             for (i=0; i < orcm_sensor_base.modules.size; i++) {

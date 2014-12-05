@@ -132,10 +132,9 @@ static char* check_inv_key(char *inv_key)
         {
             if((NULL != strcasestr(inv_key,inv_keywords[i][3])) & (strlen(inv_keywords[i][3])> 0))
             {
-                opal_output(0,"Discarding the inventory item %s with ignore string %s ",inv_keywords[i][3],inv_key);
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                    "Discarding the inventory item %s with ignore string %s ",inv_keywords[i][3],inv_key);
             } else {
-                //opal_output(0, "Found a matching inventory keyword - %s with %s %s %s without %s - Assigning %s ",
-                //                    inv_key, inv_keywords[i][0], inv_keywords[i][1], inv_keywords[i][2], inv_keywords[i][3], inv_keywords[i][4]);
                 return inv_keywords[i][4];
             }
         }
@@ -147,7 +146,7 @@ static void collect_baseboard_inventory(hwloc_topology_t topo, hwloc_inventory_t
 {
     hwloc_obj_t obj;
     uint32_t k;
-    opal_value_t *kv;
+    orcm_metric_value_t *mkv;
     char *inv_key;
 
     /* MACHINE Level Stats*/
@@ -162,11 +161,11 @@ static void collect_baseboard_inventory(hwloc_topology_t topo, hwloc_inventory_t
         for (k=0; k < obj->infos_count; k++) {
             if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
             {
-                kv = OBJ_NEW(opal_value_t);
-                kv->type = OPAL_STRING;
-                kv->key = strdup(inv_key);
-                kv->data.string = strdup(obj->infos[k].value);
-                opal_list_append(newhost->records, &kv->super);
+                mkv = OBJ_NEW(opal_metric_value_t);
+                mkv->value.type = OPAL_STRING;
+                mkv->value.key = strdup(inv_key);
+                mkv->value.data.string = strdup(obj->infos[k].value);
+                opal_list_append(newhost->records, &mkv->super);
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                     "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
             }
@@ -265,7 +264,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         }
         else {
             /*@VINFIX: Due to a bug in the opal_dss.copy for OPAL_HWLOC_TOPO data type, this else block will always get
-             * and the data will always get copied for now
+             * hit and the data will always get copied for now
              */
             opal_output(0,"Compared values don't match for: hwloc; Notify User; Update List; Update Database");
             opal_dss.copy((void**)&newhost->hwloc_topo,topo,OPAL_HWLOC_TOPO);
@@ -284,7 +283,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     } else { /* Node not found, Create new node and attach inventory details */
         opal_output(0,"Received hwloc inventory log from a new host:%s", hostname);
         newhost = OBJ_NEW(hwloc_inventory_t);
-        newhost->nodename = hostname;
+        newhost->nodename = strdup(hostname);
         /* @VINFIX: Need to fix the bug in dss copy for OPAL_HWLOC_TOPO */
         opal_dss.copy((void**)&newhost->hwloc_topo,topo,OPAL_HWLOC_TOPO);
 

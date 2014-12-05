@@ -15,8 +15,8 @@
 #ifndef ORCM_SENSOR_HWLOC_DECLS_H
 #define ORCM_SENSOR_HWLOC_DECLS_H
 
-#define MAX_INVENTORY_KEYWORDS      7
-#define MAX_INVENTORY_SUB_KEYWORDS  5
+#define MAX_INVENTORY_KEYWORDS      12
+#define MAX_INVENTORY_SUB_KEYWORDS  5  /* 3 for search, 1 for ignore and 1 for naming the inventory item */
 #define MAX_INVENTORY_KEYWORD_SIZE  30
 
 /* Increment the MAX_INVENTORY_KEYWORDS size with every new addition here */
@@ -35,5 +35,10 @@ static char inv_keywords[MAX_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWORDS][MAX
      {"cpu","family","","","cpu_family"},
      {"cpu","model","","number","cpu_model"},
      {"cpu","model","number","","cpu_model_number"},
+     {"board","name","","","bb_model"},
+     {"board","vendor","","","bb_vendor"},
+     {"board","serial","","","bb_serial"},
+     {"board","version","","","bb_version"},
+     {"product","uuid","","","product_uuid"},
      };
 #endif

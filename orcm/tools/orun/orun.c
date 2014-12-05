@@ -158,14 +158,6 @@ static opal_cmd_line_init_t cmd_line_init[] = {
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Enable debugging of OpenRTE" },
     
-    { "orte_debug_daemons", '\0', "debug-daemons", "debug-daemons", 0,
-      NULL, OPAL_CMD_LINE_TYPE_INT,
-      "Enable debugging of any OpenRTE daemons used by this application" },
-    
-    { "orte_debug_daemons_file", '\0', "debug-daemons-file", "debug-daemons-file", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Enable debugging of any OpenRTE daemons used by this application, storing output in files" },
-
     /* select XML output */
     { "orte_xml_output", '\0', "xml", "xml", 0,
       NULL, OPAL_CMD_LINE_TYPE_BOOL,

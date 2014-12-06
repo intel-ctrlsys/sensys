@@ -58,7 +58,7 @@ static orcm_cli_init_t cli_init[] = {
     { { "session", NULL }, "status", 0, 0, "Session Status" },
     // cancel subcommand
     { { "session", NULL }, "cancel", 0, 1, "Session Cancel [arg: session id]" },
-    
+
     /****** diag command ******/
     { { NULL }, "diag", 0, 0, "Diagnostics" },
     // cpu subcommand
@@ -67,7 +67,7 @@ static orcm_cli_init_t cli_init[] = {
     { { "diag", NULL }, "eth", 0, 1, "Ethernet diagnostics" },
     // mem subcommand
     { { "diag", NULL }, "mem", 0, 1, "Memory diagnostics" },
-    
+
     /****** power command ******/
     { { NULL }, "power", 0, 0, "Power Budget" },
     // cpu subcommand

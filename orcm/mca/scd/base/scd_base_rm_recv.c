@@ -94,7 +94,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
     opal_list_t *nodelist;
     orte_namelist_t *nm;
     char *regexp;
-    
+
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:rm:receive processing msg",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
@@ -106,7 +106,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
         ORTE_ERROR_LOG(rc);
         return;
     }
-    
+
     if (ORCM_NODESTATE_UPDATE_COMMAND == command) {
         nodelist = OBJ_NEW(opal_list_t);
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
@@ -193,7 +193,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
                 OPAL_LIST_RELEASE(nodelist);
                 return;
             }
-            
+
             /* get all nodes affected by comm failure */
             /* an empty list means we have a leaf node */
             /* this needs to be updated once "healing" is implemented
@@ -226,7 +226,6 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
                                  "%s scd:base:rm:receive got DRAIN request for %s",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), regexp));
 
-
             if (ORCM_SUCCESS != (rc = update_nodestate_byname(state, regexp, NULL))) {
                 ORTE_ERROR_LOG(rc);
             }
@@ -258,16 +257,15 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
                 OPAL_LIST_RELEASE(nodelist);
                 return;
             }
-            
+
             OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                                  "%s scd:base:rm:receive got RESUME request for %s",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), regexp));
-            
-            
+
             if (ORCM_SUCCESS != (rc = update_nodestate_byname(state, regexp, NULL))) {
                 ORTE_ERROR_LOG(rc);
             }
-            
+
             /* send status back to caller */
             result = rc;
             if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result,
@@ -276,7 +274,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
                 OBJ_RELEASE(ans);
                 return;
             }
-            
+
             if (ORTE_SUCCESS !=
                 (rc = orte_rml.send_buffer_nb(sender, ans,
                                               ORCM_RML_TAG_RM,

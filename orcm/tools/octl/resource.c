@@ -211,10 +211,10 @@ int orcm_octl_resource_drain(char **argv)
                             ORCM_RML_TAG_RM,
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, &xfer);
-    
+
     /* send it to the scheduler */
     buf = OBJ_NEW(opal_buffer_t);
-    
+
     /* pack the cancel command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_RM_CMD_T))) {
@@ -223,7 +223,7 @@ int orcm_octl_resource_drain(char **argv)
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
-    
+
     /* pack the cancel command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &state,
                                             1, OPAL_INT8))) {
@@ -266,9 +266,8 @@ int orcm_octl_resource_drain(char **argv)
     } else {
         printf("Failure\n");
     }
-    
-    return ORCM_SUCCESS;
 
+    return ORCM_SUCCESS;
 }
 
 int orcm_octl_resource_resume(char **argv)
@@ -278,7 +277,7 @@ int orcm_octl_resource_resume(char **argv)
     opal_buffer_t *buf;
     orte_rml_recv_cb_t xfer;
     int rc, n, result;
-    
+
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"resource resume\"\n");
         return ORCM_ERROR;
@@ -290,10 +289,10 @@ int orcm_octl_resource_resume(char **argv)
                             ORCM_RML_TAG_RM,
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, &xfer);
-    
+
     /* send it to the scheduler */
     buf = OBJ_NEW(opal_buffer_t);
-    
+
     /* pack the cancel command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_RM_CMD_T))) {
@@ -302,7 +301,7 @@ int orcm_octl_resource_resume(char **argv)
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
-    
+
     /* pack the cancel command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &state,
                                             1, OPAL_INT8))) {
@@ -311,7 +310,7 @@ int orcm_octl_resource_resume(char **argv)
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
-    
+
     /* pack the nodelist */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[2],
                                             1, OPAL_STRING))) {
@@ -320,7 +319,7 @@ int orcm_octl_resource_resume(char **argv)
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
-    
+
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER,
                                                       buf,
                                                       ORCM_RML_TAG_RM,
@@ -345,7 +344,6 @@ int orcm_octl_resource_resume(char **argv)
     } else {
         printf("Failure\n");
     }
-    
+
     return ORCM_SUCCESS;
-    
 }

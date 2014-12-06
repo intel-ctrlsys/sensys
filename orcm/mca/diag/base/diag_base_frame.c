@@ -43,7 +43,7 @@ orcm_diag_base_t orcm_diag_base;
 static int orcm_diag_base_close(void)
 {
     int rc;
-    
+
     if (ORCM_SUCCESS != (rc = orcm_diag_base_comm_stop())) {
         ORTE_ERROR_LOG(rc);
     }
@@ -77,7 +77,7 @@ static int orcm_diag_base_open(mca_base_open_flag_t flags)
     if (NULL == (orcm_diag_base.ev_base = opal_start_progress_thread("diag", true))) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
-    
+
     if (ORCM_SUCCESS != (rc = orcm_diag_base_comm_start())) {
         ORTE_ERROR_LOG(rc);
     }

@@ -130,7 +130,7 @@ static void orcm_diag_base_recv(int status, orte_process_name_t *sender,
         }
 
         if (!info->want_result) {
-            /* send back the immediate success, 
+            /* send back the immediate success,
              * sender doesn't want to wait for diag results */
             ans = OBJ_NEW(opal_buffer_t);
             response = ORCM_SUCCESS;
@@ -163,6 +163,6 @@ static void orcm_diag_base_recv(int status, orte_process_name_t *sender,
         orcm_diag_base_log(dname, buffer);
         OBJ_RELEASE(buf);
     }
-    
+
     return;
 }

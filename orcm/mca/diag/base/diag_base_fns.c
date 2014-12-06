@@ -45,15 +45,17 @@ void orcm_diag_base_activate(orcm_diag_info_t *info)
     orcm_diag_active_module_t *mod;
     orcm_diag_caddy_t *caddy;
 
-    /* if no modules are available, then there is nothing to do */
-    if (opal_list_is_empty(&orcm_diag_base.modules)) {
-        OBJ_RELEASE(info);
-        return;
-    }
-
     opal_output_verbose(5, orcm_diag_base_framework.framework_output,
                         "%s diag:base: activating diag %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), info->component);
+
+    /* if no modules are available, then there is nothing to do */
+    if (opal_list_is_empty(&orcm_diag_base.modules)) {
+        opal_output_verbose(5, orcm_diag_base_framework.framework_output,
+                            "%s diag:base: no diags available!",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        goto end;
+    }
 
     /* find the specified module  */
     OPAL_LIST_FOREACH(mod, &orcm_diag_base.modules, orcm_diag_active_module_t) {
@@ -70,6 +72,9 @@ void orcm_diag_base_activate(orcm_diag_info_t *info)
             return;
         }
     }
+end:
+    /* TODO: send error results to requester if requested */
+    OBJ_RELEASE(info);
 }
 
 void orcm_diag_base_log(char *dname, opal_buffer_t *buf)

@@ -115,6 +115,11 @@ int orcm_pwrmgmt_base_set_attributes(orcm_session_id_t session, opal_list_t* att
     return ORTE_ERR_NOT_SUPPORTED;
 }
 
+int orcm_pwrmgmt_base_reset_attributes(orcm_session_id_t session, opal_list_t* attr)
+{
+    return ORTE_ERR_NOT_SUPPORTED;
+}
+
 int orcm_pwrmgmt_base_get_attributes(orcm_session_id_t session, opal_list_t* attr)
 {
     return ORTE_ERR_NOT_SUPPORTED;

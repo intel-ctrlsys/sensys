@@ -119,6 +119,7 @@ ORCM_DECLSPEC void orcm_pwrmgmt_base_finalize(void);
 ORCM_DECLSPEC void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc);
 ORCM_DECLSPEC void orcm_pwrmgmt_base_dealloc_notify(orcm_alloc_t* alloc);
 ORCM_DECLSPEC int orcm_pwrmgmt_base_set_attributes(orcm_session_id_t session, opal_list_t* attr);
+ORCM_DECLSPEC int orcm_pwrmgmt_base_reset_attributes(orcm_session_id_t session, opal_list_t* attr);
 ORCM_DECLSPEC int orcm_pwrmgmt_base_get_attributes(orcm_session_id_t session, opal_list_t* attr);
 ORCM_DECLSPEC int orcm_pwrmgmt_base_get_current_power(orcm_session_id_t session, double* power);
 ORCM_DECLSPEC int orcm_pwrmgmt_base_select(void);

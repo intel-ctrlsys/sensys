@@ -8,6 +8,7 @@
 #
 
 headers += \
+    base/analytics_private.h \
     base/base.h
 
 libmca_analytics_la_SOURCES += \

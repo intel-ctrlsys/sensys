@@ -34,27 +34,33 @@
  *
  * The power management flow is as follows:
  *
- * The ORCM Scheduler (or the top level ORCMD if integrated with a third-party system) opens the base
- * pwrmgmt framework. When it gets an allocation command, it calls alloc_notify in the base framework and
+ * When the ORCM Scheduler gets an allocation command, it calls alloc_notify in the base framework and
  * passes in the job allocation structure. The base framework then polls all the existing components to see
  * which will handle the requested power management mode. If more than one component can handle the requested 
- * mode, it will chose one based on the components priority. The orcm_pwrmgmt function pointers are then pointed 
- * at the selected component and its alloc_notify is called.
+ * mode, it will chose one based on the component's priority. The selected component's alloc_notify function
+ * is called, allowing that component to set any attributes it wishes to be send to the back end nodes.
  *
- * The component is then responsible for all initialization and startup it has to do to start running across
- * the whole session allocation. This can include calling alloc_notify on the backend daemons, setting up 
- * communications hierarchies, database handles, etc...
+ * When the allocated orcmds receive the allocation command from the scheduler, they call the base pwrmgmt 
+ * framework alloc_notify. The selection of the correct component matches what happened at the scheduler with 
+ * the exception of any extra attributes set by the selected component at the scheduler level. If a node cannot 
+ * fufill the request for some reason an error is sent back to the scheduler and the session is terminated with 
+ * an error. Once the correct component is selected, the orcm_pwrmgmt function pointers are redirected to the 
+ * selected component.
  *
- * During the session lifetime, the power management mode is constant and should not be changed. However, 
- * other attributes such as the power cap for the session can be changed by calling the set_attributes 
- * function with the requested attributes and values. To query current power management settings, get_attributes
- * can be called with a list of the attributes to query for. The component will then fill in the requested
- * values. All defined attributes are listed below.
+ * A "head" power managment node is specified by the alloc_t structure. This is either the "head" aggregator node,
+ * or if no aggregators exist in the allocation, the "head daemon is chosen. All successive power management messages
+ * will be sent to this node. It is up to the current component on that node to dissemenate any new or updated settings
+ * to the rest of the allocation. 
  *
- * At the end of the session, the component's dealloc_notify function is called. The component is responsible
- * for all deinitializaion and cleanup it needs to do to put the system back into the state it was before
- * the component was selected. When this is complete the orcm_pwrmgmt function pointers ar pointed back
- * to the base framework stubs. 
+ * During the session lifetime, attributes such as the power cap or power mode for the session can be changed by 
+ * calling the set_attributes function with the requested attributes and values. To query current power management 
+ * settings, get_attributes can be called with a list of the attributes to query for. The component will then fill 
+ * in the requested values. All defined attributes are listed below.
+ *
+ * At the end of the session, or when the power mode causes the selected component to change, the currently selected 
+ * component's dealloc_notify function is called. The component is responsible for all deinitializaion and cleanup it 
+ * needs to do to put the system back into the state it was before the component was selected. When this is complete 
+ * the orcm_pwrmgmt function pointers ar pointed back to the base framework stubs. 
  */
 
 BEGIN_C_DECLS
@@ -134,6 +140,24 @@ typedef void (*orcm_pwrmgmt_base_module_dealloc_notify_fn_t)(orcm_alloc_t* alloc
  * @retval ORTE_ERROR   An unspecified error occurred
  */
 typedef int (*orcm_pwrmgmt_base_module_set_attributes_fn_t)(orcm_session_id_t session, opal_list_t* attr);
+
+/**
+ * Reet power management attributes values (reset the current power management state)
+ *
+ * Give a list of attributes and values to the current component so that it can
+ * remove any attributes it may have added during alloc_notify. The goal is to
+ * reset the attribute list to its initial state
+ *
+ * @param[in] session - session id for the allocation
+ * @param[in] attr - opal list of attributes and their respective values
+ *
+ * @retval ORTE_SUCCESS Success
+ * @retval ORTE_ERR_NOT_SUPPORTED The requested attribute(s) is not supported
+ *                      this is likely due to using a component that 
+ *                      does not support certain attributes
+ * @retval ORTE_ERROR   An unspecified error occurred
+ */
+typedef int (*orcm_pwrmgmt_base_module_reset_attributes_fn_t)(orcm_session_id_t session, opal_list_t* attr);
   
 /**
  * Get power management attribute values (get the current power management state)
@@ -178,6 +202,7 @@ typedef struct orcm_pwrmgmt_base_API_module_1_0_0_t {
     orcm_pwrmgmt_base_module_alloc_notify_fn_t       alloc_notify;
     orcm_pwrmgmt_base_module_dealloc_notify_fn_t     dealloc_notify;
     orcm_pwrmgmt_base_module_set_attributes_fn_t     set_attributes;
+    orcm_pwrmgmt_base_module_reset_attributes_fn_t   reset_attributes;
     orcm_pwrmgmt_base_module_get_attributes_fn_t     get_attributes;
     orcm_pwrmgmt_base_module_get_current_power_fn_t  get_current_power;
 } orcm_pwrmgmt_base_API_module_1_0_0_t;

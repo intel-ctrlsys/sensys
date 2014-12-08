@@ -60,6 +60,7 @@ orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt_stubs = {
     orcm_pwrmgmt_base_alloc_notify,
     orcm_pwrmgmt_base_dealloc_notify,
     orcm_pwrmgmt_base_set_attributes,
+    orcm_pwrmgmt_base_reset_attributes,
     orcm_pwrmgmt_base_get_attributes,
     orcm_pwrmgmt_base_get_current_power
 };

@@ -240,8 +240,8 @@ static dmidata_inventory_t* found_inventory_host(char * nodename)
         }
     }
     return NULL;
-
 }
+
 static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
 {
     hwloc_topology_t topo;
@@ -257,9 +257,9 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     if (NULL != (newhost = found_inventory_host(hostname)))
     {
         /* Check and Verify Node Inventory record and update db/notify user accordingly */
-        opal_output(0, "HWLOC HOST found!! Update node with inventory details");
+        opal_output(0, "dmidata HOST found!! Update node with inventory details");
         if(opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) {
-            opal_output(0,"Compared values match for : hwloc");
+            opal_output(0,"Compared values match for : hwloc; Do nothing");
         }
         else {
             /*@VINFIX: Due to a bug in the opal_dss.copy for OPAL_HWLOC_TOPO data type, this else block will always get
@@ -282,7 +282,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             }
         }
     } else { /* Node not found, Create new node and attach inventory details */
-        opal_output(0,"Received hwloc inventory log from a new host:%s", hostname);
+        opal_output(0,"Received dmidata inventory log from a new host:%s", hostname);
         newhost = OBJ_NEW(dmidata_inventory_t);
         newhost->nodename = strdup(hostname);
         /* @VINFIX: Need to fix the bug in dss copy for OPAL_HWLOC_TOPO */

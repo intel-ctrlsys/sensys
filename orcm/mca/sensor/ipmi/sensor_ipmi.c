@@ -575,12 +575,8 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     unsigned int tot_items;
     int rc, n;
     ipmi_inventory_t *newhost, *oldhost;
-    orcm_metric_value_t *mkv;
+    orcm_metric_value_t *mkv, *nxt;
 
-    
-    opal_output(0,"Inside IPMI inventory log function");
-
-    opal_output(0,"Received ipmi inventory log from host:%s", hostname);
     newhost = OBJ_NEW(ipmi_inventory_t);
     newhost->nodename = strdup(hostname);
 
@@ -589,7 +585,6 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         ORTE_ERROR_LOG(rc);
         return;
     }
-    opal_output(0,"Total IPMI Inventory items: %d",tot_items);
 
     while(tot_items > 0)
     {
@@ -603,7 +598,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             ORTE_ERROR_LOG(rc);
             return;
         }
-        opal_output(0,"%s: %s",inv, inv_val);
+        /* opal_output(0,"%s: %s",inv, inv_val);*/
         
         mkv = OBJ_NEW(orcm_metric_value_t);
         mkv->value.type = OPAL_STRING;
@@ -619,7 +614,12 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         opal_output(0,"Host '%s' Found, comparing values",hostname);
         if(false == compare_ipmi_record(newhost, oldhost))
         {
-            opal_output(0,"IPMI Compare failed");
+            opal_output(0,"IPMI Compare failed; Notify User; Update List; Update Database");
+            OPAL_LIST_RELEASE(oldhost->records);
+            oldhost->records=OBJ_NEW(opal_list_t);
+            OPAL_LIST_FOREACH_SAFE(mkv, nxt, newhost->records, orcm_metric_value_t) {
+                opal_list_append(oldhost->records,(opal_list_item_t *)mkv);   
+            }
 
         } else {
             opal_output(0,"ipmi compare passed");

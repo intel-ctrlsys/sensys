@@ -575,7 +575,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     unsigned int tot_items;
     int rc, n;
     ipmi_inventory_t *newhost, *oldhost;
-    orcm_metric_value_t *mkv, *nxt;
+    orcm_metric_value_t *mkv, *mkv_copy, *nxt;
 
     newhost = OBJ_NEW(ipmi_inventory_t);
     newhost->nodename = strdup(hostname);
@@ -618,12 +618,21 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             OPAL_LIST_RELEASE(oldhost->records);
             oldhost->records=OBJ_NEW(opal_list_t);
             OPAL_LIST_FOREACH_SAFE(mkv, nxt, newhost->records, orcm_metric_value_t) {
-                opal_list_append(oldhost->records,(opal_list_item_t *)mkv);   
+                mkv_copy = OBJ_NEW(orcm_metric_value_t);
+                mkv_copy->value.type = mkv->value.type;
+                mkv_copy->value.key = strdup(mkv->value.key);
+                mkv_copy->value.data.string = strdup(mkv->value.data.string);
+                opal_list_append(oldhost->records,(opal_list_item_t *)mkv_copy);   
             }
-
+            /* Send the collected inventory details to the database for storage */
+            if (0 <= orcm_sensor_base.dbhandle) {
+                orcm_db.update_node_features(orcm_sensor_base.dbhandle, oldhost->nodename , oldhost->records, NULL, NULL);
+            }
         } else {
             opal_output(0,"ipmi compare passed");
         }
+        /* newhost structure can be destroyed after comparision with original list and update */
+        OBJ_DESTRUCT(newhost);
 
     } else {
         /* Append the new node to the existing host list */
@@ -634,8 +643,8 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             orcm_db.update_node_features(orcm_sensor_base.dbhandle, newhost->nodename , newhost->records, NULL, NULL);
         }
     }
-
 }
+
 static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
     orcm_sensor_hosts_t cur_host;

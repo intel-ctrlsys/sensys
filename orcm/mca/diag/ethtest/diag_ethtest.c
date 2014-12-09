@@ -158,7 +158,7 @@ static int ethtest_log(opal_buffer_t *buf)
     return ORCM_SUCCESS;
 }
 
-static void ethtest_run((int sd, short args, void *cbdata)
+static void ethtest_run(int sd, short args, void *cbdata)
 {
     orcm_diag_caddy_t *caddy = (orcm_diag_caddy_t*)cbdata;
     int eth_diag_ret = 0;
@@ -168,7 +168,7 @@ static void ethtest_run((int sd, short args, void *cbdata)
     struct ethtool_gstrings *gstring;
     struct ethtool_drvinfo drvinfo;
     int testinfo_offset;
-    int i, ret;
+    int i, ret, rc;
     int strset_len;
     char *resource = strdup("eth0");
     orcm_diag_cmd_flag_t command = ORCM_DIAG_AGG_COMMAND;

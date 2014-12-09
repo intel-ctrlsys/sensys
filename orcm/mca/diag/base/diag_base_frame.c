@@ -21,6 +21,7 @@
 
 #include "orte/mca/errmgr/errmgr.h"
 
+#include "orcm/mca/db/db.h"
 #include "orcm/mca/diag/base/base.h"
 
 
@@ -39,6 +40,13 @@ orcm_diag_API_module_t orcm_diag = {
     orcm_diag_base_calibrate
 };
 orcm_diag_base_t orcm_diag_base;
+
+static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
+{
+    if (0 == status) {
+        orcm_diag_base.dbhandle = handle;
+    }
+}
 
 static int orcm_diag_base_close(void)
 {
@@ -66,6 +74,8 @@ static int orcm_diag_base_open(mca_base_open_flag_t flags)
     int rc;
 
     /* setup the base objects */
+    orcm_diag_base.dbhandle = -1;
+    orcm_diag_base.dbhandle_requested = false;
     orcm_diag_base.ev_active = false;
     OBJ_CONSTRUCT(&orcm_diag_base.modules, opal_list_t);
 
@@ -80,6 +90,11 @@ static int orcm_diag_base_open(mca_base_open_flag_t flags)
 
     if (ORCM_SUCCESS != (rc = orcm_diag_base_comm_start())) {
         ORTE_ERROR_LOG(rc);
+    }
+
+    if (!orcm_diag_base.dbhandle_requested) {
+        orcm_db.open("diag", NULL, db_open_cb, NULL);
+        orcm_diag_base.dbhandle_requested = true;
     }
 
     return rc;

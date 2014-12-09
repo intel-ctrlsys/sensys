@@ -253,7 +253,7 @@ if($rev == 1) {
         chdir($orcm_dir) or die "$!";
         open FILE, "+>$hashfile"
             or die "could not open $hashfile: $!";
-        print FILE "$ompi_hash";
+        print FILE "$ompi_hash\n";
         close FILE;
         $cmd = "git add $hashfile";
         system($cmd);

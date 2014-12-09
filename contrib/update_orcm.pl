@@ -55,7 +55,7 @@ my @ompi_leading_ignores = ("ompi", "test", "examples", "config/ompi", "orte/too
                             "orte/tools/orte-restart", "orte/tools/orte-restart",
                             "orte/tools/orte-server", "orte/tools/orte-top",
                             ".gitignore", "Makefile.am", "README", "VERSION",
-                            "autogen.pl", "configure.ac", "config/opal_mca.m4",
+                            "autogen.pl", "configure.ac", "config/opal_mca.m4", "config/opal_setup_wrappers.m4",
                             "config/orte_config_files.m4", "contrib/platform",
                             "opal/threads", "opal/tools/wrappers",
                             "orte/mca/errmgr/default_app", "orte/mca/ess/env",

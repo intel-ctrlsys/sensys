@@ -343,6 +343,7 @@ AC_CHECK_TYPES(uint32_t)
 AC_CHECK_TYPES(int64_t)
 AC_CHECK_TYPES(uint64_t)
 AC_CHECK_TYPES(int128_t)
+AC_CHECK_TYPES(__int128)
 AC_CHECK_TYPES(uint128_t)
 AC_CHECK_TYPES(long long)
 
@@ -503,6 +504,7 @@ if test "x$opal_cv_c_compiler_vendor" != "xmicrosoft"; then
     AC_C_RESTRICT
 fi
 OPAL_C_WEAK_SYMBOLS
+OPAL_C_MACRO_WEAK_SYMBOLS
 if test "$GCC" = "yes"; then
     CFLAGS=$CFLAGS_save
 fi
@@ -777,7 +779,10 @@ OPAL_SEARCH_LIBS_CORE([dirname], [gen])
 # Darwin doesn't need -lm, as it's a symlink to libSystem.dylib
 OPAL_SEARCH_LIBS_CORE([ceil], [m])
 
-AC_CHECK_FUNCS([asprintf snprintf vasprintf vsnprintf openpty isatty getpwuid fork waitpid execve pipe ptsname setsid mmap tcgetpgrp posix_memalign strsignal sysconf syslog vsyslog regcmp regexec regfree _NSGetEnviron socketpair strncpy_s usleep mkfifo dbopen dbm_open statfs statvfs setpgid])
+# -lrt might be needed for clock_gettime
+OPAL_SEARCH_LIBS_CORE([clock_gettime], [rt])
+
+AC_CHECK_FUNCS([asprintf snprintf vasprintf vsnprintf openpty isatty getpwuid fork waitpid execve pipe ptsname setsid mmap tcgetpgrp posix_memalign strsignal sysconf syslog vsyslog regcmp regexec regfree _NSGetEnviron socketpair strncpy_s usleep mkfifo dbopen dbm_open statfs statvfs setpgid setenv])
 
 # Sanity check: ensure that we got at least one of statfs or statvfs.
 if test $ac_cv_func_statfs = no -a $ac_cv_func_statvfs = no; then
@@ -1254,8 +1259,7 @@ fi
 # :-\
 
 m4_ifdef([opal_CONFIG_LOCAL], [opal_CONFIG_LOCAL])
-m4_ifdef([project_orte],
-         [m4_ifdef([orte_CONFIG_LOCAL], [orte_CONFIG_LOCAL])])
+m4_ifdef([orte_CONFIG_LOCAL], [orte_CONFIG_LOCAL])
 
 ############################################################################
 # Party on

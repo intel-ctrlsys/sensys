@@ -691,14 +691,11 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
     int32_t signal;
     orte_jobid_t job;
     orte_rml_tag_t target_tag;
-    char *contact_info;
     opal_buffer_t *answer;
     orte_rml_cmd_flag_t rml_cmd;
     orte_job_t *jdata;
-    orte_process_name_t proc, proc2;
-    orte_process_name_t *return_addr;
+    orte_process_name_t proc;
     int32_t i, num_replies;
-    bool hnp_accounted_for;
     opal_pointer_array_t procarray;
     orte_proc_t *proct;
     char *cmd_str = NULL;

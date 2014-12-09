@@ -183,11 +183,6 @@ static void mfile_find_queue(int sd, short args, void *cbdata)
 static void mfile_schedule(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
-    orcm_session_t *sessionptr;
-    orcm_node_t* nodeptr;
-    int i, free_nodes;
-
-    orcm_queue_t *q;
 
     OBJ_RELEASE(caddy);
 }
@@ -195,9 +190,6 @@ static void mfile_schedule(int sd, short args, void *cbdata)
 static void mfile_allocated(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
-    char **nodenames = NULL;
-    int rc, num_nodes, i, j;
-    orcm_node_t *nodeptr;
     orcm_queue_t *q;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
@@ -217,45 +209,15 @@ static void mfile_allocated(int sd, short args, void *cbdata)
 
     OBJ_RELEASE(caddy);
     return;
-
-ERROR:
-    if (NULL != nodenames) {
-        opal_argv_free(nodenames);
-    }
-    /* remove session from running queue
-     */
-    OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
-        if (0 == strcmp(q->name, "running")) {
-            opal_list_remove_first(&q->sessions);
-            break;
-        }
-    }
-    /* try to find the default queue and requeue session */
-    OPAL_LIST_FOREACH(q, &orcm_scd_base.queues, orcm_queue_t) {
-        /* found it */
-        if (0 == strcmp(q->name, "default")) {
-            opal_list_prepend(&q->sessions, &caddy->session->super);
-            ORCM_ACTIVATE_SCD_STATE(caddy->session, ORCM_SESSION_STATE_SCHEDULE);
-            break;
-        }
-    }
 }
 
 static void mfile_terminated(int sd, short args, void *cbdata)
 {
     orcm_session_caddy_t *caddy = (orcm_session_caddy_t*)cbdata;
-    int rc, i, j, num_nodes;
-    orcm_node_t* nodeptr;
-    char **nodenames = NULL;
-    orcm_queue_t *q;
-    orcm_session_t *session;
 
     /* set nodes to UNALLOC
     */
     OBJ_RELEASE(caddy);
-    if (NULL != nodenames) {
-        opal_argv_free(nodenames);
-    }
 }
 
 static void mfile_cancel(int sd, short args, void *cbdata)

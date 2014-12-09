@@ -21,8 +21,10 @@
 
 static int init(void);
 static void finalize(void);
+#if 0
 static int external_launch(orcm_session_t *session);
 static int external_cancel(orcm_session_id_t sessionid);
+#endif
 
 orcm_scd_base_module_t orcm_scd_external_module = {
     init,
@@ -78,6 +80,7 @@ static void finalize(void)
     orcm_scd_base_comm_stop();
 }
 
+#if 0
 static int external_launch(orcm_session_t *session)
 {
     char **nodenames = NULL;
@@ -183,6 +186,7 @@ static int external_cancel(orcm_session_id_t sessionid)
     }
     return ORCM_SUCCESS;
 }
+#endif
 
 static void external_terminated(int sd, short args, void *cbdata)
 {

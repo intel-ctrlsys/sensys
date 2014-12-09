@@ -47,34 +47,34 @@ orcm_sst_orcmsd_component_t mca_sst_orcmsd_component = {
 
 static int component_register(void)
 {
-    int var_id;
     mca_base_component_t *component = & mca_sst_orcmsd_component.super.base_version;
+    
     mca_sst_orcmsd_component.node_regex = NULL;
-    var_id =  mca_base_component_var_register (component, "node_regex",
-                               "node_regex of allocated nodes.",
-                               MCA_BASE_VAR_TYPE_STRING, NULL, 0,
-                               MCA_BASE_VAR_FLAG_INTERNAL,
-                               OPAL_INFO_LVL_9,
-                               MCA_BASE_VAR_SCOPE_READONLY,
-                               &mca_sst_orcmsd_component.node_regex);
+    (void)mca_base_component_var_register (component, "node_regex",
+                                           "node_regex of allocated nodes.",
+                                           MCA_BASE_VAR_TYPE_STRING, NULL, 0,
+                                           MCA_BASE_VAR_FLAG_INTERNAL,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sst_orcmsd_component.node_regex);
 
     mca_sst_orcmsd_component.base_jobid = NULL;
-    var_id =  mca_base_component_var_register (component, "jobid",
-                               "orcmsd base jobid.",
-                               MCA_BASE_VAR_TYPE_STRING, NULL, 0,
-                               MCA_BASE_VAR_FLAG_INTERNAL,
-                               OPAL_INFO_LVL_9,
-                               MCA_BASE_VAR_SCOPE_READONLY,
-                               &mca_sst_orcmsd_component.base_jobid);
+    (void)mca_base_component_var_register (component, "jobid",
+                                           "orcmsd base jobid.",
+                                           MCA_BASE_VAR_TYPE_STRING, NULL, 0,
+                                           MCA_BASE_VAR_FLAG_INTERNAL,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sst_orcmsd_component.base_jobid);
 
     mca_sst_orcmsd_component.base_vpid = NULL;
-    var_id =  mca_base_component_var_register (component, "vpid",
-                               "orcmsd base vpid",
-                               MCA_BASE_VAR_TYPE_STRING, NULL, 0,
-                               MCA_BASE_VAR_FLAG_INTERNAL,
-                               OPAL_INFO_LVL_9,
-                               MCA_BASE_VAR_SCOPE_CONSTANT,
-                               &mca_sst_orcmsd_component.base_vpid);
+    (void)mca_base_component_var_register (component, "vpid",
+                                           "orcmsd base vpid",
+                                           MCA_BASE_VAR_TYPE_STRING, NULL, 0,
+                                           MCA_BASE_VAR_FLAG_INTERNAL,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_CONSTANT,
+                                           &mca_sst_orcmsd_component.base_vpid);
 
     return ORCM_SUCCESS;
 }

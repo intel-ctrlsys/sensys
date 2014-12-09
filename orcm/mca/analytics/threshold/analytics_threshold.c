@@ -35,17 +35,19 @@ mca_analytics_threshold_module_t orcm_analytics_threshold_module = {
 
 static int init(struct orcm_analytics_base_module_t *imod)
 {
+#if 0
     mca_analytics_threshold_module_t *mod;
     mod = (mca_analytics_threshold_module_t *)imod;
-
+#endif
     return ORCM_SUCCESS;
 }
 
 static void finalize(struct orcm_analytics_base_module_t *imod)
 {
+#if 0
     mca_analytics_threshold_module_t *mod;
     mod = (mca_analytics_threshold_module_t *)imod;
-
+#endif
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                          "%s analytics:threshold:finalize",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
@@ -54,8 +56,9 @@ static void finalize(struct orcm_analytics_base_module_t *imod)
 static void analyze(int sd, short args, void *cbdata)
 {
     orcm_workflow_caddy_t *caddy = (orcm_workflow_caddy_t *)cbdata;
+#if 0
     mca_analytics_threshold_module_t *mod;
     mod = (mca_analytics_threshold_module_t *)caddy->imod;
-
+#endif
     OBJ_RELEASE(caddy);
 }

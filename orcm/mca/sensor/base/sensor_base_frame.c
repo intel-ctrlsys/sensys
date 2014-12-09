@@ -53,24 +53,22 @@ orcm_sensor_base_t orcm_sensor_base;
 
 static int orcm_sensor_base_register(mca_base_register_flag_t flags)
 {
-    int var_id;
-
     orcm_sensor_base.sample_rate = 0;
-    var_id = mca_base_var_register("orcm", "sensor", "base", "sample_rate",
-                                   "Sample rate in seconds",
-                                   MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
-                                   OPAL_INFO_LVL_9,
-                                   MCA_BASE_VAR_SCOPE_READONLY,
-                                   &orcm_sensor_base.sample_rate);
+    (void)mca_base_var_register("orcm", "sensor", "base", "sample_rate",
+                                "Sample rate in seconds",
+                                MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                OPAL_INFO_LVL_9,
+                                MCA_BASE_VAR_SCOPE_READONLY,
+                                &orcm_sensor_base.sample_rate);
   
     /* see if we want samples logged */
     orcm_sensor_base.log_samples = false;
-    var_id = mca_base_var_register("orcm", "sensor", "base", "log_samples",
-                                   "Log samples to database",
-                                   MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
-                                   OPAL_INFO_LVL_9,
-                                   MCA_BASE_VAR_SCOPE_READONLY,
-                                   &orcm_sensor_base.log_samples);
+    (void)mca_base_var_register("orcm", "sensor", "base", "log_samples",
+                                "Log samples to database",
+                                MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                OPAL_INFO_LVL_9,
+                                MCA_BASE_VAR_SCOPE_READONLY,
+                                &orcm_sensor_base.log_samples);
 
     return ORCM_SUCCESS;
 }

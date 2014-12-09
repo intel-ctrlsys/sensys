@@ -450,11 +450,7 @@ struct mca_btl_base_descriptor_t *vader_prepare_dst(struct mca_btl_base_module_t
     mca_btl_vader_frag_t *frag;
     void *data_ptr;
 
-    if (MCA_BTL_VADER_NONE != mca_btl_vader_component.single_copy_mechanism) {
-        (void) MCA_BTL_VADER_FRAG_ALLOC_RDMA(frag, endpoint);
-    } else {
-        (void) MCA_BTL_VADER_FRAG_ALLOC_USER(frag, endpoint);
-    }
+    (void) MCA_BTL_VADER_FRAG_ALLOC_RDMA(frag, endpoint);
     if (OPAL_UNLIKELY(NULL == frag)) {
         return NULL;
     }
@@ -596,11 +592,7 @@ static struct mca_btl_base_descriptor_t *vader_prepare_src (struct mca_btl_base_
         }
     } else {
         /* put/get fragment */
-        if (MCA_BTL_VADER_NONE != mca_btl_vader_component.single_copy_mechanism) {
-            (void) MCA_BTL_VADER_FRAG_ALLOC_RDMA(frag, endpoint);
-        } else {
-            (void) MCA_BTL_VADER_FRAG_ALLOC_USER(frag, endpoint);
-        }
+        (void) MCA_BTL_VADER_FRAG_ALLOC_RDMA(frag, endpoint);
         if (OPAL_UNLIKELY(NULL == frag)) {
             return NULL;
         }
@@ -617,7 +609,7 @@ static struct mca_btl_base_descriptor_t *vader_prepare_src (struct mca_btl_base_
 
             knem_cr.iovec_array = (uintptr_t) &knem_iov;
             knem_cr.iovec_nr = 1;
-            knem_cr.protection = PROT_READ;
+            knem_cr.protection = PROT_READ | PROT_WRITE;
             /* Vader will explicitly destroy this cookie */
             knem_cr.flags = 0;
             if (OPAL_UNLIKELY(ioctl(mca_btl_vader.knem_fd, KNEM_CMD_CREATE_REGION, &knem_cr) < 0)) {

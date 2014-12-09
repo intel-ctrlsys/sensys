@@ -349,7 +349,7 @@ static opal_value_t *oflow_parse_next_line(FILE *fp)
                 break;
             }
         }
-        tokens = opal_argv_split(input, ':');
+        tokens = opal_argv_split(ptr, ':');
         array_length = opal_argv_count(tokens);
         if (2 == array_length) {
             tokenized = (opal_value_t *)malloc(sizeof(opal_value_t));

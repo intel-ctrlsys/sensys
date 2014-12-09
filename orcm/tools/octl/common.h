@@ -32,11 +32,13 @@
 
 #include "orte/runtime/orte_wait.h"
 #include "orte/util/error_strings.h"
+#include "orte/util/regex.h"
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/rml/rml.h"
 
 #include "orcm/runtime/runtime.h"
+#include "orcm/mca/cfgi/base/base.h"
 
 BEGIN_C_DECLS
 
@@ -44,6 +46,7 @@ int orcm_octl_resource_status(char **argv);
 int orcm_octl_resource_add(char **argv);
 int orcm_octl_resource_remove(char **argv);
 int orcm_octl_resource_drain(char **argv);
+int orcm_octl_resource_resume(char **argv);
 int orcm_octl_queue_status(char **argv);
 int orcm_octl_queue_policy(char **argv);
 int orcm_octl_queue_define(char **argv);
@@ -54,6 +57,7 @@ int orcm_octl_queue_priority(char **argv);
 int orcm_octl_session_status(char **argv);
 int orcm_octl_session_cancel(char **argv);
 int orcm_octl_diag_cpu(char **argv);
+int orcm_octl_diag_eth(char **argv);
 int orcm_octl_diag_mem(char **argv);
 int orcm_octl_power_set(char **argv);
 int orcm_octl_power_get(char **argv);

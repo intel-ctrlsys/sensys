@@ -156,7 +156,7 @@ main(int argc, char *argv[])
 
         OBJ_CONSTRUCT(&config, opal_list_t);
         fprintf(stdout, "ORCM Diagnostic Checking cpu:                          ");
-        rc = orcm_diag.diag_check(NULL, &config);
+        //rc = orcm_diag.diag_check(NULL, &config);
 
         if ( ORCM_SUCCESS == rc ) {
             fprintf(stdout, "[  OK  ]\n");
@@ -182,7 +182,7 @@ main(int argc, char *argv[])
 
         OBJ_CONSTRUCT(&config, opal_list_t);
         fprintf(stdout, "ORCM Diagnostic Checking memory:                       ");
-        rc = orcm_diag.diag_check(NULL, &config);
+        //rc = orcm_diag.diag_check(NULL, &config);
         
         if ( ORCM_SUCCESS == rc ) {
             fprintf(stdout, "[  OK  ]\n");
@@ -208,7 +208,7 @@ main(int argc, char *argv[])
 
         OBJ_CONSTRUCT(&config, opal_list_t);
         fprintf(stdout, "ORCM Diagnostic Checking ethernet:     %s     ", "eth0");
-        rc = orcm_diag.diag_check("eth0", &config);
+        //rc = orcm_diag.diag_check("eth0", &config);
 
         if ( ORCM_SUCCESS == rc ) {
             fprintf(stdout, "[  OK  ]\n");

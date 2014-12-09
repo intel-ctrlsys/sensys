@@ -37,6 +37,8 @@
 #include "opal/mca/installdirs/installdirs.h"
 #include "opal/mca/hwloc/hwloc.h"
 
+#include "orte/types.h"
+#include "orte/mca/rml/rml.h"
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/mca/db/db.h"
@@ -49,8 +51,8 @@
 
 static int init(void);
 static void finalize(void);
-static int diag_read(opal_list_t *config);
-static int diag_check(char *resource, opal_list_t *config);
+static int memtest_log(opal_buffer_t *buf);
+static void memtest_run(int sd, short args, void *cbdata);
 
 static int mem_diag_ret = ORCM_SUCCESS;
 
@@ -58,8 +60,8 @@ orcm_diag_base_module_t orcm_diag_memtest_module = {
     init,
     finalize,
     NULL,
-    diag_read,
-    diag_check
+    memtest_log,
+    memtest_run
 };
 
 static struct { unsigned int *addr; size_t size; long num; unsigned long length; } memcheck_t;
@@ -165,23 +167,101 @@ static void memcheck(unsigned int *addr, size_t size) {
 
 }
 
-static int diag_read(opal_list_t *config)
+static void mycleanup(int dbhandle, int status,
+                      opal_list_t *kvs, void *cbdata)
 {
+    OPAL_LIST_RELEASE(kvs);
+}
+
+static int memtest_log(opal_buffer_t *buf)
+{
+    time_t diag_time;
+    int cnt, rc;
+    char *nodename;
+    opal_list_t *vals;
+    opal_value_t *kv;
+
+    /* Unpack the Time */
+    cnt = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_time,
+                                              &cnt, OPAL_TIME))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    /* Unpack the node name */
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &nodename,
+                                              &cnt, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    /* Unpack our results */
+
+    /* create opal value array to send to db */
+    vals = OBJ_NEW(opal_list_t);
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("time");
+    kv->type = OPAL_TIMEVAL;
+    kv->data.tv.tv_sec = diag_time;
+    opal_list_append(vals, &kv->super);
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("nodename");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup(nodename);
+    opal_list_append(vals, &kv->super);
+    free(nodename);
+
+    /* add results */
+
+    /* send to db */
+    if (0 <= orcm_diag_base.dbhandle) {
+        /* TODO: change this to whatever db function will be used for diags */
+        orcm_db.store(orcm_diag_base.dbhandle, "memtest", vals, mycleanup, NULL);
+    } else {
+        OPAL_LIST_RELEASE(vals);
+    }
+
     return ORCM_SUCCESS;
 }
 
-static int diag_check(char *resource, opal_list_t *config)
+static void memtest_run(int sd, short args, void *cbdata)
 {
+    orcm_diag_caddy_t *caddy = (orcm_diag_caddy_t*)cbdata;
     struct sysinfo info;
     struct rlimit org_limit, new_limit;
     void *addr;
     char *p;
     size_t size, rest;
-  
+    orcm_diag_cmd_flag_t command = ORCM_DIAG_AGG_COMMAND;
+    opal_buffer_t *data = NULL;
+    time_t now;
+    char *compname;
+    orte_process_name_t *tgt;
+    int rc;
+
+    if (ORTE_PROC_IS_CM) {
+        /* we send to our daemon */
+        tgt = ORTE_PROC_MY_DAEMON;
+    } else {
+        tgt = ORTE_PROC_MY_HNP;
+    }
+    /* if my target hasn't been defined yet, ignore - nobody listening yet */
+    if (ORTE_JOBID_INVALID ==tgt->jobid ||
+        ORTE_VPID_INVALID == tgt->vpid) {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                            "%s diag:memtest: HNP is not defined",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        /* still run diags? */
+        /* return; */
+    }
+
     sysinfo(&info);
 
     OPAL_OUTPUT_VERBOSE((5, orcm_diag_base_framework.framework_output,
-                         "%s diag:memtest:check",
+                         "%s diag:memtest:run",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
     /* use maximum free memory  */
@@ -193,10 +273,11 @@ static int diag_check(char *resource, opal_list_t *config)
                         "%s memdiag: get resource limit failed",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         mem_diag_ret = ORCM_ERR_MEM_LIMIT_EXCEEDED;
+        ORTE_ERROR_LOG(mem_diag_ret);
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                         "%s Checking memory:                        [NOTRUN]",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
-        return mem_diag_ret;
+        goto sendresults;
     }
 
     /* Increase ulimit for virtual address space and try mapping */
@@ -207,10 +288,11 @@ static int diag_check(char *resource, opal_list_t *config)
                         "%s memdiag: set resource limit failed",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         mem_diag_ret = ORCM_ERR_BAD_PARAM;
+        ORTE_ERROR_LOG(mem_diag_ret);
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                         "%s Checking memory:                        [NOTRUN]",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
-        return mem_diag_ret;
+        goto sendresults;
     }
 
     do {
@@ -226,20 +308,21 @@ static int diag_check(char *resource, opal_list_t *config)
                             "%s memdiag: out of memory",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
             mem_diag_ret = ORCM_ERR_FAILED_TO_MAP;
+            ORTE_ERROR_LOG(mem_diag_ret);
             opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                                 "%s Checking memory:                        [NOTRUN]",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
-            return mem_diag_ret;
+            goto sendresults;
         }
 
     } while (addr == (void *)-1);
-    
+
     opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                         "%s memdiag: %ld MB is used for test",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), info.freeram >> 20);
     p    = (char *)addr;
     rest = size;
-  
+
     while ((long)rest > 0) {
         /* do page fault */
         *(double *)p = 0.;
@@ -249,7 +332,7 @@ static int diag_check(char *resource, opal_list_t *config)
 
     mem_diag_ret = ORCM_SUCCESS;
     memcheck((unsigned int *)addr, size / sizeof(int));
-  
+
     munmap(addr, size);
     /* Restore original ulimit for virtual address space */
     if ( 0 != setrlimit(RLIMIT_AS, &org_limit) ) {
@@ -257,19 +340,60 @@ static int diag_check(char *resource, opal_list_t *config)
                         "%s memdiag: set resource limit failed",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         mem_diag_ret = ORCM_ERR_BAD_PARAM;
-    }
-
-    if ( ORCM_SUCCESS == mem_diag_ret ) {
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                            "%s Checking memory:                        [  OK  ]",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
-    } else {
+        ORTE_ERROR_LOG(mem_diag_ret);
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s Checking memory:                        [ FAIL ]",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+    } else {
+        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
+                            "%s Checking memory:                        [  OK  ]",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
-    return mem_diag_ret;
+sendresults:
+    now = time(NULL);
+    data = OBJ_NEW(opal_buffer_t);
+
+    /* pack aggregator command */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &command, 1, ORCM_DIAG_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* pack our component name */
+    compname = strdup("memtest");
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &compname, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+    free(compname);
+
+    /* Pack the Time */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIME))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack our node name */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack our results */
+
+    /* send results to aggregator/sender */
+    if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, data,
+                                                      ORCM_RML_TAG_DIAG,
+                                                      orte_rml_send_callback, NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(data);
+    }
+
+    OBJ_RELEASE(caddy);
+    return;
 }
-
-

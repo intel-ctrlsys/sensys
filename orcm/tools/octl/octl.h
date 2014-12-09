@@ -32,6 +32,8 @@ static orcm_cli_init_t cli_init[] = {
     { { "resource", NULL }, "remove", 0, 1, "Resource Removal" },
     // drain subcommand
     { { "resource", NULL }, "drain", 0, 1, "Resource Drain" },
+    // drain subcommand
+    { { "resource", NULL }, "resume", 0, 1, "Resource Resume" },
 
     /****** queue command ******/
     { { NULL }, "queue", 0, 0, "Queue Information" },
@@ -56,14 +58,16 @@ static orcm_cli_init_t cli_init[] = {
     { { "session", NULL }, "status", 0, 0, "Session Status" },
     // cancel subcommand
     { { "session", NULL }, "cancel", 0, 1, "Session Cancel [arg: session id]" },
-    
+
     /****** diag command ******/
     { { NULL }, "diag", 0, 0, "Diagnostics" },
     // cpu subcommand
     { { "diag", NULL }, "cpu", 0, 1, "CPU diagnostics" },
+    // eth subcommand
+    { { "diag", NULL }, "eth", 0, 1, "Ethernet diagnostics" },
     // mem subcommand
     { { "diag", NULL }, "mem", 0, 1, "Memory diagnostics" },
-    
+
     /****** power command ******/
     { { NULL }, "power", 0, 0, "Power Budget" },
     // cpu subcommand
@@ -98,6 +102,8 @@ const char *orcm_octl_commands[] = { "resource", //0
                                      "power",    //15
                                      "set",      //16
                                      "get",      //17
+                                     "resume",   //18
+                                     "eth",      //19
                                      "\0" };
 
 END_C_DECLS

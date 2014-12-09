@@ -161,6 +161,7 @@ static int cputest_log(opal_buffer_t *buf)
 
 static void cputest_run(int sd, short args, void *cbdata)
 {
+    orcm_diag_caddy_t *caddy = (orcm_diag_caddy_t*)cbdata;
     int numprocs = 0;
     int retval   = 0;
     int cpu_diag_ret = 0;

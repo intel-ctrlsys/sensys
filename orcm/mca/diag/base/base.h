@@ -43,7 +43,6 @@ typedef struct {
      * any other daemon functions
      */
     opal_event_base_t *ev_base;
-    volatile bool ev_active;
     /* list of active diagnostic plugins */
     opal_list_t modules;
     int dbhandle;

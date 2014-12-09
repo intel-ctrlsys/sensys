@@ -76,7 +76,6 @@ static int orcm_diag_base_open(mca_base_open_flag_t flags)
     /* setup the base objects */
     orcm_diag_base.dbhandle = -1;
     orcm_diag_base.dbhandle_requested = false;
-    orcm_diag_base.ev_active = false;
     OBJ_CONSTRUCT(&orcm_diag_base.modules, opal_list_t);
 
     if (OPAL_SUCCESS != (rc = mca_base_framework_components_open(&orcm_diag_base_framework, flags))) {
@@ -92,7 +91,7 @@ static int orcm_diag_base_open(mca_base_open_flag_t flags)
         ORTE_ERROR_LOG(rc);
     }
 
-    if (!orcm_diag_base.dbhandle_requested) {
+    if (!orcm_diag_base.dbhandle_requested && ORCM_PROC_IS_AGGREGATOR) {
         orcm_db.open("diag", NULL, db_open_cb, NULL);
         orcm_diag_base.dbhandle_requested = true;
     }

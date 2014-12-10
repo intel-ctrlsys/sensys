@@ -51,7 +51,6 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void coretemp_sample(orcm_sensor_sampler_t *sampler);
 static void coretemp_log(opal_buffer_t *buf);
-static void coretemp_inventory_collect(orcm_sensor_inventory_record_t *record);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_coretemp_module = {

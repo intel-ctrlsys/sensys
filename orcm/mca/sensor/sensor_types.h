@@ -52,11 +52,6 @@ ORCM_DECLSPEC OBJ_CLASS_DECLARATION(orcm_sensor_data_t);
  * released or destructed in the callback function */
 typedef void (*orcm_sensor_sample_cb_fn_t)(opal_buffer_t *buf, void *cbdata);
 
-/* Define a callback function for calling when an inventory collection
- * is completed.
- */
-typedef void (*orcm_sensor_inventory_record_cb_fn_t)(opal_buffer_t *buf, void *cbdata);
-
 /* define a tracking "caddy" for passing sampling
  * requests via the event library */
 typedef struct {
@@ -70,16 +65,6 @@ typedef struct {
     void *cbdata;            // user-supplied data to be returned in cbfunc
 } orcm_sensor_sampler_t;
 ORCM_DECLSPEC OBJ_CLASS_DECLARATION(orcm_sensor_sampler_t);
-
-typedef struct {
-    opal_object_t super;
-    bool dynamic;
-    char *hostname;
-    opal_list_t *catalogue;
-    orcm_sensor_inventory_record_cb_fn_t cbfunc;
-    void *cbdata;
-}orcm_sensor_inventory_record_t;
-ORCM_DECLSPEC OBJ_CLASS_DECLARATION(orcm_sensor_inventory_record_t);
 
 END_C_DECLS
 

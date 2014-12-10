@@ -518,9 +518,10 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
 
         ret = SQLExecute(stmt);
         if (!(SQL_SUCCEEDED(ret))) {
+            ERR_MSG_FMT_SQL_STORE(SQL_HANDLE_STMT, stmt,
+                                  "SQLExecute returned: %d", ret);
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             opal_argv_free(data_item_argv);
-            ERR_MSG_FMT_STORE("SQLExecute returned: %d", ret);
             return ORCM_ERROR;
         }
         

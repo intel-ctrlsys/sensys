@@ -116,7 +116,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
     /* setup to receive nventory data from compute & io Nodes */
     if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
         orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
-                                ORTE_RML_TAG_INVENTORY,
+                                ORCM_RML_TAG_INVENTORY,
                                 ORTE_RML_PERSISTENT,
                                 recv_inventory, NULL);
     
@@ -188,7 +188,7 @@ void log_inventory_info(opal_buffer_t *inventory_snapshot)
     buf = OBJ_NEW(opal_buffer_t);
     opal_dss.copy_payload(buf, inventory_snapshot);
     if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, buf,
-                                                      ORTE_RML_TAG_INVENTORY,
+                                                      ORCM_RML_TAG_INVENTORY,
                                                       orte_rml_send_callback, NULL))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);

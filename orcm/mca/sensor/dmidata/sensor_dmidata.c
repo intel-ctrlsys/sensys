@@ -98,7 +98,7 @@ static int init(void)
 {
     /* Initialize All available resource that are present in the current system
      * that need to be scanned by the plugin */
-    opal_output(0,"DMIDATA init");
+    opal_output(0,">>>>>>>>> dmidata init");
     OBJ_CONSTRUCT(&dmidata_host_list, opal_list_t);
     return ORCM_SUCCESS;
 }
@@ -106,7 +106,6 @@ static int init(void)
 static void finalize(void)
 {
     opal_output(0,"dmidata Finalize <<<<<<<<<");
-    //orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORTE_RML_TAG_INVENTORY);
     OPAL_LIST_DESTRUCT(&dmidata_host_list);
 }
 

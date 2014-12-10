@@ -563,11 +563,42 @@ static ipmi_inventory_t* found_inventory_host(char * nodename)
 
 static bool compare_ipmi_record (ipmi_inventory_t* newhost , ipmi_inventory_t* oldhost)
 {
+    orcm_metric_value_t *newitem, *olditem;
+    int count = 0, record_size = 0;
     /* @VINFIX: Need to come up with a clever way to implement comparision of different 
      * ipmi inventory records
      */
-    opal_output(0,"IPMI Inventory Compare currently not implemented");
-    return false;
+    if((record_size = opal_list_get_size(newhost->records)) != opal_list_get_size(oldhost->records))
+    {
+        opal_output(0,"IPMI Inventory compare failed: Unequal item count;");
+        return false;
+    }
+    newitem = opal_list_get_first(newhost->records);
+    olditem = opal_list_get_first(oldhost->records);
+
+    for(count = 0; count < record_size ; count++) {
+        if(newitem->value.type != olditem->value.type) {
+            opal_output(0,"IPMI inventory records mismatch: value.type mismatch");
+            return false;
+        } else {
+            if(OPAL_STRING == newitem->value.type) {
+                if(strcmp(newitem->value.key, olditem->value.key)) {
+                    opal_output(0,"IPMI inventory records mismatch: value.key mismatch");
+                    return false;
+                } else if (strcmp(newitem->value.data.string, olditem->value.data.string)) {
+                    opal_output(0,"IPMI inventory records mismatch: value.data.string mismatch");
+                    return false;
+                }
+            } else {
+                opal_output(0,"Invalid data stored as inventory with invalid data type %d", newitem->value.type);
+                return false;
+            }
+        }
+        newitem = opal_list_get_next(newitem);
+        olditem = opal_list_get_next(olditem);
+    }
+
+    return true;
 }
 static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
 {

@@ -22,6 +22,7 @@
 
 #include "orcm/mca/db/db.h"
 #include "orcm/runtime/orcm_progress.h"
+#include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 

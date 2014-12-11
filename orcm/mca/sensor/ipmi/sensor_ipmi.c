@@ -226,7 +226,7 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
 
             else {
                 error_string = decode_rv(ret);
-                opal_output(0,"Unable to collect IPMI inventory inforamtion: %s",error_string);
+                opal_output(0,"Unable to collect IPMI Device ID information: %s",error_string);
             }
 
             return ORCM_SUCCESS;

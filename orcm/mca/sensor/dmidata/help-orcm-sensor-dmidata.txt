@@ -10,18 +10,11 @@
 #
 # This is the US/English general help file
 #
-[no-cache]
-Request for reading topology to gather cache information 
-wasn't successful
-
+[no-machine]
+Unable to extract machine level details from the received topology object
+from the node: %s
 #
-[no-cores-found]
-Core temperature monitoring was requested, but this node
-does not appear to have the required core-level files, or
-you lack authority to access them:
-
-  Node:  %s
-
-This usually indicates that the "coretemp" kernel module
-has not been loaded. Operation will continue, but core
-temperatures will not be monitored.
+[no-socket]
+Unable to extract socket/CPU level details from the received topology object
+from the node: %s
+#

@@ -70,8 +70,5 @@ ORCM_DECLSPEC void orcm_sensor_base_manually_sample(char *sensors,
                                                     orcm_sensor_sample_cb_fn_t cbfunc,
                                                     void *cbdata);
 
-void static recv_inventory(int status, orte_process_name_t* sender,
-                       opal_buffer_t *buffer,
-                       orte_rml_tag_t tag, void *cbdata);
 END_C_DECLS
 #endif

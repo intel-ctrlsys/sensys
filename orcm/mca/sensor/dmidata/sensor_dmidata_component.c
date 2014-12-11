@@ -61,7 +61,7 @@ static int orcm_sensor_dmidata_query(mca_base_module_t **module, int *priority)
      * one socket in the configure test, so we don't have to
      * check again here
      */
-    *priority = 50;  /* ahead of heartbeat */
+    *priority = 50; 
     *module = (mca_base_module_t *)&orcm_sensor_dmidata_module;
     return ORCM_SUCCESS;
 }

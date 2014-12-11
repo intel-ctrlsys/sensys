@@ -70,7 +70,7 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &orcm_sensor_base.log_samples);
 
-    orcm_sensor_base.collect_metrics = false;
+    orcm_sensor_base.collect_metrics = true;
     (void)mca_base_var_register("orcm", "sensor", "base", "collect_metrics",
                                 "Enable metric collection",
                                 MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,

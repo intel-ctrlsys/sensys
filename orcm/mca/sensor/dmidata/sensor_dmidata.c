@@ -142,7 +142,7 @@ static char* check_inv_key(char *inv_key)
     }
     return NULL;
 }
-static void collect_baseboard_inventory(hwloc_topology_t topo, dmidata_inventory_t *newhost)
+static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, dmidata_inventory_t *newhost)
 {
     hwloc_obj_t obj;
     uint32_t k;
@@ -152,7 +152,7 @@ static void collect_baseboard_inventory(hwloc_topology_t topo, dmidata_inventory
     /* MACHINE Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_MACHINE, 0))) {
         /* there are no objects identified for this machine (Weird!) */
-        orte_show_help("help-orcm-sensor-dmidata.txt", "no-machine", true);
+        orte_show_help("help-orcm-sensor-dmidata.txt", "no-machine", true, hostname);
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
@@ -175,7 +175,7 @@ static void collect_baseboard_inventory(hwloc_topology_t topo, dmidata_inventory
     }
 }
 
-static void collect_cpu_inventory(hwloc_topology_t topo, dmidata_inventory_t *newhost)
+static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata_inventory_t *newhost)
 {
     hwloc_obj_t obj;
     uint32_t k;
@@ -185,7 +185,7 @@ static void collect_cpu_inventory(hwloc_topology_t topo, dmidata_inventory_t *ne
     /* MACHINE Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_SOCKET, 0))) {
         /* there are no objects identified for this machine (Weird!) */
-        orte_show_help("help-orcm-sensor-dmidata.txt", "no-machine", true);
+        orte_show_help("help-orcm-sensor-dmidata.txt", "no-socket", true, hostname);
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
@@ -272,8 +272,8 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             newhost->records=OBJ_NEW(opal_list_t);
 
             /*Extract all required inventory items here */
-            collect_baseboard_inventory(topo, newhost);
-            collect_cpu_inventory(topo, newhost);
+            extract_baseboard_inventory(topo, hostname, newhost);
+            extract_cpu_inventory(topo, hostname, newhost);
 
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {
@@ -288,8 +288,8 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         opal_dss.copy((void**)&newhost->hwloc_topo,topo,OPAL_HWLOC_TOPO);
 
         /*Extract all required inventory items here */
-        collect_baseboard_inventory(topo, newhost);
-        collect_cpu_inventory(topo, newhost);
+        extract_baseboard_inventory(topo, hostname, newhost);
+        extract_cpu_inventory(topo, hostname, newhost);
 
         /* Append the new node to the existing host list */
         opal_list_append(&dmidata_host_list, &newhost->super);

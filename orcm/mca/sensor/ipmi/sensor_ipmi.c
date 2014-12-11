@@ -549,7 +549,7 @@ static ipmi_inventory_t* found_inventory_host(char * nodename)
     ipmi_inventory_t *host, *nxt;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Finding Node in inventory inventory: %s", nodename);
-    OPAL_LIST_FOREACH_SAFE(host, nxt, &ipmi_inventory_hosts, ipmi_inventory_t) {
+    OPAL_LIST_FOREACH(host, &ipmi_inventory_hosts, ipmi_inventory_t) {
         if(!strcmp(nodename,host->nodename))
         {
             opal_output(0,"Found node: %s",nodename);
@@ -648,7 +648,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             opal_output(0,"IPMI Compare failed; Notify User; Update List; Update Database");
             OPAL_LIST_RELEASE(oldhost->records);
             oldhost->records=OBJ_NEW(opal_list_t);
-            OPAL_LIST_FOREACH_SAFE(mkv, nxt, newhost->records, orcm_metric_value_t) {
+            OPAL_LIST_FOREACH(mkv, newhost->records, orcm_metric_value_t) {
                 mkv_copy = OBJ_NEW(orcm_metric_value_t);
                 mkv_copy->value.type = mkv->value.type;
                 mkv_copy->value.key = strdup(mkv->value.key);

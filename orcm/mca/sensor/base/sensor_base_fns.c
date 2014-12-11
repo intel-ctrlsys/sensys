@@ -28,7 +28,11 @@
 
 static bool mods_active = false;
 static void take_sample(int fd, short args, void *cbdata);
-static void collect_inventory_info(int fd, short args, void* cbdata);
+
+/* This function will eventually be called as part of an even loop when
+ * dynamic inventory collection is requested */
+static void collect_inventory_info(opal_buffer_t* inventory_snapshot);
+
 static void log_inventory_info(opal_buffer_t *inventory_snapshot);
 void static recv_inventory(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
@@ -54,7 +58,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
 {
     orcm_sensor_active_module_t *i_module;
     int i;
-    opal_buffer_t inventory_snapshot;
+    opal_buffer_t *inventory_snapshot;
 
     orcm_sensor_sampler_t *sampler;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -125,13 +129,13 @@ void orcm_sensor_base_start(orte_jobid_t job)
     
     }
     if(true == orcm_sensor_base.collect_inventory) {
-        OBJ_CONSTRUCT(&inventory_snapshot, opal_buffer_t);
+        inventory_snapshot = OBJ_NEW(opal_buffer_t);
 
         if (false == orcm_sensor_base.set_dynamic_inventory) { /* Collect inventory details just once when orcmd starts */
             opal_output(0,"sensor:base - boot time invenotry collection requested");
             /* The collect inventory call could be added to a new thread to avoid getting blocked */
-            collect_inventory_info(0,0,(void*)&inventory_snapshot);
-            log_inventory_info(&inventory_snapshot);
+            collect_inventory_info(inventory_snapshot);
+            log_inventory_info(inventory_snapshot);
 
         } else {
             /* Update inventory details when hotswap even occurs
@@ -139,7 +143,6 @@ void orcm_sensor_base_start(orte_jobid_t job)
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "sensor:base - DYNAMIC inventory collection enabled");
         }
-        OBJ_DESTRUCT(&inventory_snapshot);
 
     } else {
          opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -148,11 +151,10 @@ void orcm_sensor_base_start(orte_jobid_t job)
     return;    
 }
 
-void collect_inventory_info(int fd, short args, void *cbdata)
+void collect_inventory_info(opal_buffer_t *inventory_snapshot)
 {
     orcm_sensor_active_module_t *i_module;
     int32_t i,rc;
-    opal_buffer_t *inventory_snapshot = (opal_buffer_t*)cbdata;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: Starting Inventory Collection",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -187,9 +189,8 @@ void log_inventory_info(opal_buffer_t *inventory_snapshot)
     }
 
     /* send Inventory data */
-    buf = OBJ_NEW(opal_buffer_t);
     opal_dss.copy_payload(buf, inventory_snapshot);
-    if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, buf,
+    if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, inventory_snapshot,
                                                       ORCM_RML_TAG_INVENTORY,
                                                       orte_rml_send_callback, NULL))) {
         ORTE_ERROR_LOG(rc);

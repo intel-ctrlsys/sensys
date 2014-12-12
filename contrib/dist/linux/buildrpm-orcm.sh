@@ -122,7 +122,7 @@ if test "$rpmtopdir" != ""; then
 	mkdir -p "$rpmtopdir/RPMS/i586"
 	mkdir -p "$rpmtopdir/RPMS/i686"
 	mkdir -p "$rpmtopdir/RPMS/noarch"
-	mkdir -p "$rpmtopdir/RPMS/athlon"
+    mkdir -p "$rpmtopdir/RPMS/x86_64"
 	mkdir -p "$rpmtopdir/SOURCES"
 	mkdir -p "$rpmtopdir/SPECS"
 	mkdir -p "$rpmtopdir/SRPMS"
@@ -221,7 +221,7 @@ fi
 #
 
 if test "$build_srpm" = "yes"; then
-    echo "--> Building the Open ORCM SRPM"
+    echo "--> Building the Open RCM SRPM"
     rpmbuild_options="$rpmbuild_options --define 'dist %{nil}' --define 'configure_options %{nil}'"
     cmd="$rpm_cmd $rpmbuild_options -bs $specdest"
     echo "--> $cmd"
@@ -240,7 +240,7 @@ fi
 #
 
 if test "$build_single" = "yes"; then
-    echo "--> Building the single Open ORCM RPM"
+    echo "--> Building the single Open RCM RPM"
     cmd="$rpm_cmd -bb $rpmbuild_options --define 'build_all_in_one_rpm 1'"
     if test "$configure_options" != ""; then
         cmd="$cmd --define 'configure_options $configure_options'"
@@ -286,10 +286,10 @@ fi
 cat <<EOF
 
 ------------------------------------------------------------------------------
-====                FINISHED BUILDING Open MPI RPM                        ====
+====                FINISHED BUILDING Open RCM RPM                        ====
 ------------------------------------------------------------------------------
 A copy of the tarball is located in: $rpmtopdir/SOURCES/
-The completed rpms are located in:   $rpmtopdir/RPMS/i<something>86/
+The completed rpms are located in:   $rpmtopdir/RPMS/*/
 The sources rpms are located in:     $rpmtopdir/SRPMS/
 The spec files are located in:       $rpmtopdir/SPECS/
 ------------------------------------------------------------------------------

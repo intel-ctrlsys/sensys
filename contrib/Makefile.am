@@ -33,18 +33,27 @@ endif # WANT_FT_CR
 EXTRA_DIST = \
     completion/mpirun.sh \
     completion/mpirun.zsh \
-	dist/make_dist_tarball \
-	dist/linux/openmpi.spec \
-	dist/mofed/compile_debian_mlnx_example.in \
-	dist/mofed/debian \
-	dist/macosx-pkg/buildpackage.sh \
-	dist/macosx-pkg/ReadMe.rtf \
-	platform/optimized \
-	platform/redstorm \
-	platform/cray_xt3 \
-	platform/cray_xt3_romio \
-	platform/ornl/cray_xt_cnl_romio \
-	platform/ornl/cray_xt_cnl_romio_debug \
+    database/orcmdb_psql.ini \
+    database/orcmdb_psql.sql \
+    database/psql_odbc_driver.ini \
+    dist/make_dist_tarball \
+    dist/linux/buildrpm-orcm.sh \
+    dist/linux/openmpi.spec \
+    dist/linux/open-rcm.spec.in \
+    dist/linux/orcm.sysconfig \
+    dist/linux/orcmd.service \
+    dist/linux/orcmsched.service \
+    dist/linux/orcmsched.sysconfig \
+    dist/mofed/compile_debian_mlnx_example.in \
+    dist/mofed/debian \
+    dist/macosx-pkg/buildpackage.sh \
+    dist/macosx-pkg/ReadMe.rtf \
+    platform/optimized \
+    platform/redstorm \
+    platform/cray_xt3 \
+    platform/cray_xt3_romio \
+    platform/ornl/cray_xt_cnl_romio \
+    platform/ornl/cray_xt_cnl_romio_debug \
     platform/ornl/ornl_configure.gnu \
     platform/ornl/ornl_configure.pgi \
     platform/ornl/ornl_configure_self_contained \
@@ -82,24 +91,24 @@ EXTRA_DIST = \
     platform/lanl/darwin/optimized.conf \
     platform/lanl/darwin/optimized-mic \
     platform/lanl/darwin/optimized-mic.conf \
-	platform/snl/portals4-m5 \
-	platform/snl/portals4-orte \
-	platform/ibm/debug-ppc32-gcc \
-	platform/ibm/debug-ppc64-gcc \
-	platform/ibm/optimized-ppc32-gcc \
-	platform/ibm/optimized-ppc64-gcc \
-	platform/intel/bend/mac \
-	platform/intel/bend/mac.conf \
-	platform/intel/bend/linux \
-	platform/intel/bend/linux.conf \
-	platform/intel/bend/mac-optimized \
-	platform/intel/bend/mac-optimized.conf \
-	platform/intel/bend/linux-optimized \
-	platform/intel/bend/linux-optimized.conf \
-	platform/intel/hillsboro/orcm-linux \
-	platform/intel/hillsboro/orcm-linux.conf \
-	platform/intel/hillsboro/orcm-linux.xml \
-	platform/mellanox/optimized \
-	platform/mellanox/optimized.conf
+    platform/snl/portals4-m5 \
+    platform/snl/portals4-orte \
+    platform/ibm/debug-ppc32-gcc \
+    platform/ibm/debug-ppc64-gcc \
+    platform/ibm/optimized-ppc32-gcc \
+    platform/ibm/optimized-ppc64-gcc \
+    platform/intel/bend/mac \
+    platform/intel/bend/mac.conf \
+    platform/intel/bend/linux \
+    platform/intel/bend/linux.conf \
+    platform/intel/bend/mac-optimized \
+    platform/intel/bend/mac-optimized.conf \
+    platform/intel/bend/linux-optimized \
+    platform/intel/bend/linux-optimized.conf \
+    platform/intel/hillsboro/orcm-linux \
+    platform/intel/hillsboro/orcm-linux.conf \
+    platform/intel/hillsboro/orcm-linux.xml \
+    platform/mellanox/optimized \
+    platform/mellanox/optimized.conf
 
 dist_opaldata_DATA = openmpi-valgrind.supp

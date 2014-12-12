@@ -4,6 +4,12 @@
 #                         University Research and Technology
 #                         Corporation.  All rights reserved.
 # Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2014      Intel, Inc. All rights reserved.
+# $COPYRIGHT$
+# 
+# Additional copyrights may follow
+# 
+# $HEADER$
 # 
 
 #
@@ -13,7 +19,6 @@
 #
 
 
-specfile="open-rcm.spec"
 prefix=${prefix:-"/opt/open-rcm"}
 rpmbuild_options=${rpmbuild_options:-"--define 'mflags -j4' --define '_source_filedigest_algorithm md5'  --define '_binary_filedigest_algorithm md5'"}
 configure_options=${configure_options:-""}
@@ -27,8 +32,6 @@ configure_options=${configure_options:-""}
 # "normal" names.
 #export CC=gcc
 #export CXX=g++
-#export F77=f77
-#export FC=
 
 # Note that this script can build one or all of the following RPMs:
 # SRPM, all-in-one, multiple.
@@ -50,7 +53,7 @@ build_multiple=${build_multiple:-"no"}
 
 tarball="$1"
 if test "$tarball" = ""; then
-    echo "Usage: buildrpm.sh <tarball>"
+    echo "Usage: buildrpm.sh <tarball> <specfile>"
     exit 1
 fi
 if test ! -f $tarball; then
@@ -58,6 +61,21 @@ if test ! -f $tarball; then
     exit 1
 fi
 echo "--> Found tarball: $tarball"
+
+#
+# get the specfile name
+#
+
+specfile="$2"
+if test "$specfile" = ""; then
+echo "Usage: buildrpm.sh <tarball> <specfile>"
+exit 1
+fi
+if test ! -f $specfile; then
+echo "Can't find $specfile"
+exit 1
+fi
+echo "--> Found specfile: $specfile"
 
 #
 # get the extension from the tarball (gz or bz2)
@@ -77,7 +95,7 @@ fi
 first="`basename $tarball | cut -d- -f3`"
 version="`echo $first | sed -e 's/\.tar\.'$extension'//'`"
 unset first
-echo "--> Found Open MPI version: $version"
+echo "--> Found Open RCM version: $version"
 
 #
 # do we have the spec files?
@@ -161,8 +179,6 @@ cat <<EOF
 --> Hard-wired for compilers:
     CC = $CC
     CXX = $CXX
-    F77 = $F77
-    FC = $FC
 EOF
 
 #
@@ -199,19 +215,13 @@ fi
 if test "$CXX" != ""; then
     configure_options="$configure_options CXX=$CXX"
 fi
-if test "$F77" != ""; then
-    configure_options="$configure_options F77=$F77"
-fi
-if test "$FC" != ""; then
-    configure_options="$configure_options FC=$FC"
-fi
 
 #
 # Make the SRPM
 #
 
 if test "$build_srpm" = "yes"; then
-    echo "--> Building the Open MPI SRPM"
+    echo "--> Building the Open ORCM SRPM"
     rpmbuild_options="$rpmbuild_options --define 'dist %{nil}' --define 'configure_options %{nil}'"
     cmd="$rpm_cmd $rpmbuild_options -bs $specdest"
     echo "--> $cmd"
@@ -230,7 +240,7 @@ fi
 #
 
 if test "$build_single" = "yes"; then
-    echo "--> Building the single Open MPI RPM"
+    echo "--> Building the single Open ORCM RPM"
     cmd="$rpm_cmd -bb $rpmbuild_options --define 'build_all_in_one_rpm 1'"
     if test "$configure_options" != ""; then
         cmd="$cmd --define 'configure_options $configure_options'"
@@ -252,7 +262,7 @@ fi
 #
 
 if test "$build_multiple" = "yes"; then
-    echo "--> Building the multiple Open MPI RPM"
+    echo "--> Building the multiple Open RCM RPM"
     cmd="$rpm_cmd -bb $rpmbuild_options --define 'build_all_in_one_rpm 0'"
     if test "$configure_options" != ""; then
         cmd="$cmd --define 'configure_options $configure_options'"

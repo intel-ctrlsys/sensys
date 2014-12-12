@@ -1,0 +1,19 @@
+# Copyright (c) 2014      Intel, Inc. All rights reserved.
+# $COPYRIGHT$
+# 
+# Additional copyrights may follow
+# 
+# $HEADER$
+#
+[Unit]
+Description=ORCM Server Daemon
+After=network.target
+
+[Service]
+EnvironmentFile=-/opt/open-rcm/etc/sysconfig/orcmsched
+ExecStart=/opt/open-rcm/bin/orcmsched $ORCMSCHED_OPTS
+KillMode=process
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -9,7 +9,7 @@
 #
 # Red Hat compatible ORCMSCHED init script
 
-# chkconfig: 345 95 05
+# chkconfig: 345 94 06
 # description: orcmsched
 # processname: orcmsched
 # pidfile: /var/run/orcmsched.pid

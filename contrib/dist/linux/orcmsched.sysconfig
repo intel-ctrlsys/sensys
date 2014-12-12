@@ -1,0 +1,16 @@
+# Copyright (c) 2014      Intel, Inc. All rights reserved.
+# $COPYRIGHT$
+# 
+# Additional copyrights may follow
+# 
+# $HEADER$
+#
+## Path:	Network/Cluster/ORCM
+## Description:	ORCM Server settings
+## Type:	string
+## Default:	""
+## ServiceRestart: orcmsched
+#
+# Options for orcmsched
+#
+ORCMSCHED_OPTS="--omca mca_verbose syslog --omca mca_base_verbose syslog"

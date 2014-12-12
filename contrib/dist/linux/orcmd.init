@@ -1,0 +1,99 @@
+#!/bin/bash
+#
+# Copyright (c) 2014      Intel, Inc. All rights reserved.
+# $COPYRIGHT$
+# 
+# Additional copyrights may follow
+# 
+# $HEADER$
+#
+# Red Hat compatible ORCM init script
+
+# chkconfig: 345 95 05
+# description: orcmd
+# processname: orcmd
+# pidfile: /var/run/orcmd.pid
+
+prefix=/opt/open-rcm
+sysconfdir=/etc/sysconfig
+bindir=${prefix}/bin
+prog=orcmd
+
+# source function library
+. /etc/init.d/functions
+
+ORCMD_OPTS=
+# source orcm config if it exists
+if [ -f "$sysconfdir/orcm" ]; then
+   . $sysconfdir/$prog
+fi
+
+EXITVAL=0
+
+start() {
+   local RETVAL=0
+   if [ -x ${bindir}/$prog ]; then
+      echo -n "Starting ORCM:"
+      daemon ${bindir}/$prog $ORCMD_OPTS
+      if [ $? -eq 0 ]; then
+         touch /var/lock/subsys/$prog
+      else
+         RETVAL=1
+      fi
+      echo
+   fi
+   return $RETVAL
+}
+
+stop() {
+   local RETVAL=0
+   echo -n "Stopping ORCM:"
+   killproc $prog
+   if [ $? -eq 0 ]; then
+      rm -f /var/lock/subsys/$prog
+   else
+      RETVAL=1
+   fi
+   echo
+   return $RETVAL
+}
+
+getstatus() {
+   if [ -x ${bindir}/$prog ]; then
+      status $prog
+      RETVAL=$?
+   fi
+   return $RETVAL
+}
+
+case "$1" in
+  start)
+   start
+   EXITVAL=$?
+   ;;
+  stop)
+   stop
+   EXITVAL=$?
+   ;;
+  restart)
+   stop
+   start
+   EXITVAL=$?
+   ;;
+  condrestart)
+   if [ -f "/var/lock/subsys/$prog" ]; then
+      stop
+      start
+      EXITVAL=$?
+   fi
+   ;;
+  status)
+   getstatus
+   EXITVAL=$?
+   ;;
+  *)
+   echo $"Usage: $0 {start|stop|restart|condrestart|status}"
+   exit 1
+esac
+
+exit $EXITVAL

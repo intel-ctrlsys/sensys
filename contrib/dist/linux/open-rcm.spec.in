@@ -10,6 +10,8 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2014      Intel, Inc. All rights reserved.
+#
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -26,6 +28,23 @@
 %{!?build_default: %define build_default 1}
 
 #
+# System versions
+#
+%if 0%{?suse_version} > 1220
+%define uses_systemd 1
+
+%else
+%if 0%{?el7}
+%define uses_systemd 1
+
+%else
+%define uses_systemd 0
+
+%endif
+%endif
+
+
+#
 # global Open RCM stuff
 #
 Prefix: /opt/open-rcm
@@ -35,7 +54,7 @@ Prefix: /opt/open-rcm
 %{!?orcm_package_version:%define orcm_package_version default}
 %define orcm_extra_version %{nil}
 %define orcm_release 1
-%define orcm_prefix  /opt/open-rcm/%{orcm_version}
+%define orcm_prefix  /opt/open-rcm
 %define orcm_build_root %{_tmppath}/%{orcm_name}-%{orcm_version}-%{orcm_release}-root
 %define orcm_source %{orcm_name_prefix}%{orcm_name}-%{orcm_version}.tar.gz
 %define orcm_url https://www.open-mpi.org/projects/orcm/
@@ -63,8 +82,6 @@ Prefix: /opt/open-rcm
 %define orcm_compiler default
 %define orcm_cc  " "
 %define orcm_cxx " "
-%define orcm_f77 " "
-%define orcm_fc  " "
 
 
 ######################################################################
@@ -82,6 +99,10 @@ Group: Others
 URL: %{orcm_url}
 Source0: %{orcm_source}
 BuildRoot: %{orcm_build_root}
+%if %{uses_systemd}
+BuildRequires:  pkgconfig(systemd)
+%{?systemd_requires}
+%endif
 
 %description
 This part build and install the Open RCM source tree.
@@ -144,6 +165,18 @@ cd %{orcm_compile_root}
 rm -rf $RPM_BUILD_ROOT
 make DESTDIR=$RPM_BUILD_ROOT install
 
+%if %{uses_systemd}
+install -D -m 0644 contrib/dist/linux/orcmd.service %{buildroot}%{_unitdir}/orcmd.service
+install -D -m 0644 contrib/dist/linux/orcmsched.service %{buildroot}%{_unitdir}/orcmsched.service
+%else
+install -D -m 0755 contrib/dist/linux/orcmd.init %{buildroot}%{_initddir}/orcmd
+install -D -m 0755 contrib/dist/linux/orcmsched.init %{buildroot}%{_initddir}/orcmsched
+%endif
+install -D -m 0644 contrib/dist/linux/orcm.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/orcm
+install -D -m 0644 contrib/dist/linux/orcmsched.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/orcmsched
+install -D -m 0644 contrib/database/orcmdb_psql.ini %{buildroot}%{_sysconfdir}/orcmdb_psql.ini
+install -D -m 0644 contrib/database/orcmdb_psql.sql %{buildroot}%{_sysconfdir}/orcmdb_psql.sql
+install -D -m 0644 contrib/database/psql_odbc_driver.ini %{buildroot}%{_sysconfdir}/psql_odbc_driver.ini
 
 #
 # create a module file on request
@@ -231,8 +264,13 @@ fi
 %doc %{_pkgdatadir}/*
 %doc %{_mandir}/man1/*
 %doc %{_mandir}/man7/*
+%if %{uses_systemd}
+%{_unitdir}/*
+%else
+%{_initddir}/*
+%endif
 
-%endif 
+%endif
 
 
 ######################################################################
@@ -290,19 +328,37 @@ cd %{orcm_compile_root}
 #rm -rf $RPM_BUILD_ROOT
 make DESTDIR=$RPM_BUILD_ROOT install
 
+%if %{uses_systemd}
+install -D -m 0644 contrib/dist/linux/orcmd.service %{buildroot}%{_unitdir}/orcmd.service
+install -D -m 0644 contrib/dist/linux/orcmsched.service %{buildroot}%{_unitdir}/orcmsched.service
+%else
+install -D -m 0755 contrib/dist/linux/orcmd.init %{buildroot}%{_initddir}/orcmd
+install -D -m 0755 contrib/dist/linux/orcmsched.init %{buildroot}%{_initddir}/orcmsched
+%endif
+install -D -m 0644 contrib/dist/linux/orcm.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/orcm
+install -D -m 0644 contrib/dist/linux/orcmsched.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/orcmsched
+install -D -m 0644 contrib/database/orcmdb_psql.ini %{buildroot}%{_sysconfdir}/orcmdb_psql.ini
+install -D -m 0644 contrib/database/orcmdb_psql.sql %{buildroot}%{_sysconfdir}/orcmdb_psql.sql
+install -D -m 0644 contrib/database/psql_odbc_driver.ini %{buildroot}%{_sysconfdir}/psql_odbc_driver.ini
+
+
 %clean
 #rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-%{_sysconfdir}/*
+%config %{_sysconfdir}/*
 %{_prefix}/bin/*
 %{_libdir}/*
 %{_includedir}/*
 %doc %{_pkgdatadir}/*
 %doc %{_mandir}/man1/*
 %doc %{_mandir}/man7/*
-#%{orcm_prefix}
+%if %{uses_systemd}
+%{_unitdir}/*
+%else
+%{_initddir}/*
+%endif
 
 %endif
 

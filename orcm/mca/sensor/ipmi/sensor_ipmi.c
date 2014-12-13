@@ -153,7 +153,7 @@ static void stop(orte_jobid_t jobid)
 
 int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
 {
-    unsigned char idata[4], rdata[20];
+    unsigned char idata[4], idata1[4], rdata[20];
 	unsigned char ccode;
     char bmc_ip[16];
     int rlen = 20;
@@ -202,8 +202,7 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             orcm_sensor_get_fru_inv(host);
 
             /* Get the DEVICE ID information as well */
-            memset(idata,0x00,4);
-            ret = ipmi_cmd_mc(GET_DEVICE_ID, idata, 0, rdata, &rlen, &ccode, 0);
+            ret = ipmi_cmd(GET_DEVICE_ID, idata1, 0, rdata, &rlen, &ccode, 0);
             if(0 == ret)
             {
                 ipmi_close();

@@ -54,7 +54,9 @@ orcm_sensor_base_module_t orcm_sensor_test_module = {
     start,
     stop,
     test_sample,
-    test_log
+    test_log,
+    NULL,
+    NULL
 };
 
 static opal_list_t tracking;

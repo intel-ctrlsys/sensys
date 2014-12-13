@@ -15,17 +15,28 @@
 #include "orcm/constants.h"
 
 #include "orte/mca/errmgr/errmgr.h"
+#include "orte/mca/rml/rml.h"
 
 #include "opal/dss/dss.h"
 #include "opal/mca/event/event.h"
 
 #include "orcm/mca/db/db.h"
 #include "orcm/runtime/orcm_progress.h"
+#include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 
 static bool mods_active = false;
 static void take_sample(int fd, short args, void *cbdata);
+
+/* This function will eventually be called as part of an even loop when
+ * dynamic inventory collection is requested */
+static void collect_inventory_info(opal_buffer_t* inventory_snapshot);
+
+static void log_inventory_info(opal_buffer_t *inventory_snapshot);
+void static recv_inventory(int status, orte_process_name_t* sender,
+                       opal_buffer_t *buffer,
+                       orte_rml_tag_t tag, void *cbdata);
 
 static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
 {
@@ -47,8 +58,9 @@ void orcm_sensor_base_start(orte_jobid_t job)
 {
     orcm_sensor_active_module_t *i_module;
     int i;
-    orcm_sensor_sampler_t *sampler;
+    opal_buffer_t *inventory_snapshot;
 
+    orcm_sensor_sampler_t *sampler;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: sensor start called",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -88,8 +100,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
             }
         }
 
-
-        if (mods_active && 0 < orcm_sensor_base.sample_rate) {
+        if (mods_active && 0 < orcm_sensor_base.sample_rate && orcm_sensor_base.collect_metrics) {
             /* startup a timer to wake us up periodically
              * for a data sample, and pass in the sampler
              */
@@ -109,7 +120,122 @@ void orcm_sensor_base_start(orte_jobid_t job)
         orcm_restart_progress_thread("sensor");
     }
 
+    /* setup to receive nventory data from compute & io Nodes */
+    if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
+        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                                ORCM_RML_TAG_INVENTORY,
+                                ORTE_RML_PERSISTENT,
+                                recv_inventory, NULL);
+    
+    }
+    if(true == orcm_sensor_base.collect_inventory) {
+        inventory_snapshot = OBJ_NEW(opal_buffer_t);
+
+        if (false == orcm_sensor_base.set_dynamic_inventory) { /* Collect inventory details just once when orcmd starts */
+            opal_output(0,"sensor:base - boot time invenotry collection requested");
+            /* The collect inventory call could be added to a new thread to avoid getting blocked */
+            collect_inventory_info(inventory_snapshot);
+            log_inventory_info(inventory_snapshot);
+
+        } else {
+            /* Update inventory details when hotswap even occurs
+             * @VINFIX: Need a way to monitor the syslog with hotswap events. */
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "sensor:base - DYNAMIC inventory collection enabled");
+        }
+
+    } else {
+         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "sensor:base inventory collection not requested");
+    }
     return;    
+}
+
+void collect_inventory_info(opal_buffer_t *inventory_snapshot)
+{
+    orcm_sensor_active_module_t *i_module;
+    int32_t i,rc;
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                        "%s sensor:base: Starting Inventory Collection",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    /* call the inventory collection function of all enabled modules in priority order */
+    for (i=0; i < orcm_sensor_base.modules.size; i++) {
+        if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
+            continue;
+        }
+
+        if (NULL != i_module->module->inventory_collect) {
+            i_module->module->inventory_collect(inventory_snapshot);
+        }
+    }
+}
+
+void log_inventory_info(opal_buffer_t *inventory_snapshot)
+{
+    opal_buffer_t *buf;
+    int32_t rc;
+    orte_process_name_t *tgt;
+
+    if (ORTE_PROC_IS_CM) {
+        /* we send to our daemon */
+        tgt = ORTE_PROC_MY_DAEMON;
+    } else {
+        tgt = ORTE_PROC_MY_HNP;
+    }
+
+    /* send Inventory data */
+    opal_dss.copy_payload(buf, inventory_snapshot);
+    if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, inventory_snapshot,
+                                                      ORCM_RML_TAG_INVENTORY,
+                                                      orte_rml_send_callback, NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+    }
+}
+
+static void recv_inventory(int status, orte_process_name_t* sender,
+                       opal_buffer_t *buffer,
+                       orte_rml_tag_t tag, void *cbdata)
+{
+    char *temp, *hostname;
+    int32_t i, n, rc;
+    orcm_sensor_active_module_t *i_module;
+
+    /* unpack the host this came from */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &hostname, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+        
+    n=1; 
+    while (OPAL_SUCCESS == (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
+        if (NULL != temp) {
+            /* Iterate through all available components and pass the buffer to appropriate one*/
+            /* find the specified module  */
+            for (i=0; i < orcm_sensor_base.modules.size; i++) {
+                if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
+                    continue;
+                }
+                if (0 == strcmp(temp, i_module->component->base_version.mca_component_name)) {
+                    if (NULL != i_module->module->inventory_log) {
+                        i_module->module->inventory_log(hostname,buffer);
+                    }
+                }
+            }
+            free(temp);
+            n=1;            
+        }
+    }
+    if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
+        ORTE_ERROR_LOG(rc);
+    }
+    free(hostname);
 }
 
 void orcm_sensor_base_stop(orte_jobid_t job)

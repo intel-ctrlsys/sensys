@@ -51,6 +51,8 @@ orcm_sensor_base_module_t orcm_sensor_ft_tester_module = {
     NULL,
     NULL,
     sample,
+    NULL,
+    NULL,
     NULL
 };
 

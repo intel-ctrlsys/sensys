@@ -64,7 +64,9 @@ orcm_sensor_base_module_t orcm_sensor_nodepower_module = {
     start,
     stop,
     nodepower_sample,
-    nodepower_log
+    nodepower_log,
+    NULL,
+    NULL
 };
 
 __readein _readein;

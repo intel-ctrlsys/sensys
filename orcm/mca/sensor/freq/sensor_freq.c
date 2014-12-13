@@ -60,7 +60,9 @@ orcm_sensor_base_module_t orcm_sensor_freq_module = {
     start,
     stop,
     freq_sample,
-    freq_log
+    freq_log,
+    NULL,
+    NULL
 };
 
 typedef struct {

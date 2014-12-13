@@ -72,6 +72,11 @@ if (! -d "./.svn") {
                   .deps
                   .libs
                   .svn
+                  *.vpj
+                  *.vpw
+                  *.vpwhistu
+                  *.vtg
+                  *.swp
                   *.la
                   *.lo
                   *.o

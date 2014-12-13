@@ -121,6 +121,8 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 #define ORCM_RML_TAG_VM_READY  (ORTE_RML_TAG_MAX + 6)
 /* diagnostics */
 #define ORCM_RML_TAG_DIAG      (ORTE_RML_TAG_MAX + 7)
+/* Inventory */
+#define ORCM_RML_TAG_INVENTORY (ORTE_RML_TAG_MAX + 8)
 
 /* define event base priorities */
 #define ORCM_SCHED_PRI OPAL_EV_MSG_HI_PRI

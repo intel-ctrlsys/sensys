@@ -68,7 +68,9 @@ orcm_sensor_base_module_t orcm_sensor_componentpower_module = {
     start,
     stop,
     componentpower_sample,
-    componentpower_log
+    componentpower_log,
+    NULL,
+    NULL
 };
 
 __time_val _tv;

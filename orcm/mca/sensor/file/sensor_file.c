@@ -67,7 +67,9 @@ orcm_sensor_base_module_t orcm_sensor_file_module = {
     start,
     stop,
     file_sample,
-    file_log
+    file_log,
+    NULL,
+    NULL
 };
 
 /* define a tracking object */

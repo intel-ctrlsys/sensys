@@ -139,9 +139,9 @@ typedef enum {
 void orcm_sensor_ipmi_get_system_power_state(uchar in, char* str);
 void orcm_sensor_ipmi_get_device_power_state(uchar in, char* str);
 int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host);
-int orcm_sensor_ipmi_found(char *nodename);
+int orcm_sensor_ipmi_found(char *nodename, opal_list_t *host_list);
 unsigned int orcm_sensor_ipmi_counthosts(void);
-int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip);
+int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip, opal_list_t * host_list);
 void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap);
 int orcm_sensor_ipmi_label_found(char * tag);
 int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host);

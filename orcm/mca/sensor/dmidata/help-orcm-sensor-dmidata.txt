@@ -1,0 +1,20 @@
+# -*- text -*-
+#
+# Copyright (c) 2014     Intel, Inc.  All rights reserved.
+#
+# $COPYRIGHT$
+# 
+# Additional copyrights may follow
+# 
+# $HEADER$
+#
+# This is the US/English general help file
+#
+[no-machine]
+Unable to extract machine level details from the received topology object
+from the node: %s
+#
+[no-socket]
+Unable to extract socket/CPU level details from the received topology object
+from the node: %s
+#

@@ -66,7 +66,9 @@ orcm_sensor_base_module_t orcm_sensor_pwr_module = {
     start,
     stop,
     pwr_sample,
-    pwr_log
+    pwr_log,
+    NULL,
+    NULL
 };
 
 #define MSR_RAPL_POWER_UNIT		0x606

@@ -46,7 +46,6 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_sigar.h"
 
-#define MAX_PROC_NAME 35
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
@@ -1052,6 +1051,17 @@ static void mycleanup(int dbhandle, int status,
     }
 }
 
+static void mycleanup_procstat(int dbhandle, int status,
+                      opal_list_t *kvs, void *cbdata)
+{
+    OPAL_LIST_RELEASE(kvs);
+    if (ORTE_SUCCESS != status) {
+        log_enabled = false;
+    }
+    if(NULL != cbdata)
+        free(cbdata);
+}
+
 static void sigar_log(opal_buffer_t *sample)
 {
     char *hostname;
@@ -1065,7 +1075,7 @@ static void sigar_log(opal_buffer_t *sample)
     float fval;
     bool log_group = false, data_avail = false;
     double sample_double;
-    char processkey[MAX_PROC_NAME];
+    char *primary_key;
     opal_pstats_t *st;
 
     if (!log_enabled) {
@@ -1886,10 +1896,11 @@ static void sigar_log(opal_buffer_t *sample)
         kv->data.dval = sample_double;
         opal_list_append(vals, &kv->super);
 
-        snprintf(processkey,MAX_PROC_NAME, "procstat_%s",st->cmd);
+        asprintf(&primary_key, "procstat_%s",st->cmd); /* Do not free primary_key! It will be freed in mycleanup_procstat */
+
        /* store it */
         if (0 <= orcm_sensor_base.dbhandle) {
-            orcm_db.store(orcm_sensor_base.dbhandle, processkey, vals, mycleanup, NULL);
+            orcm_db.store(orcm_sensor_base.dbhandle, primary_key, vals, mycleanup_procstat, primary_key);
         } else {
             OPAL_LIST_RELEASE(vals);            
         }

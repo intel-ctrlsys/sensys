@@ -19,11 +19,15 @@
 #
 # This is the US/English general help file for Open RTE's orcmsd.
 #
-[orcmsd:usage]
+[usage]
 Usage: %s [OPTION]...
-Start an Open RTE Daemon
+Open Resilient Cluster Manager Session Daemon
 
 %s
+[version]
+orcmsd %s
+
+Report bugs to %s
 [orcmsd:environ]
 Open RTE Daemon was unable to set 
  %s = %s

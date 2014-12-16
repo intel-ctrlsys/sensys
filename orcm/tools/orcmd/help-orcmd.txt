@@ -1,5 +1,7 @@
 # -*- text -*-
 #
+# Copyright (c) 2014      Intel, Inc.  All rights reserved.
+#
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
@@ -8,12 +10,11 @@
 #
 #
 [usage]
-nmon [OPTIONS]
-  Greenplum Node Monitoring Tool
+orcmd [OPTIONS]
+  Open Resilient Cluster Manager Daemon
 
 %s
-#
 [version]
-nmon %s
+orcmd %s
 
 Report bugs to %s

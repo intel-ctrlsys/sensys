@@ -112,6 +112,7 @@
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/scd/scd_types.h"
 #include "orcm/runtime/runtime.h"
+#include "orcm/version.h"
 
 /* ensure I can behave like a daemon */
 #include "orte/orted/orted.h"
@@ -134,9 +135,10 @@ static opal_cmd_line_init_t cmd_line_init[] = {
     { NULL, 'h', NULL, "help", 0,
       &orun_globals.help, OPAL_CMD_LINE_TYPE_BOOL,
       "This help message" },
+    
     { NULL, 'V', NULL, "version", 0,
       &orun_globals.version, OPAL_CMD_LINE_TYPE_BOOL,
-      "Print version and exit" },
+      "Show version information" },
 
     /* Number of processes; -np, and --np are all
        synonyms */
@@ -720,10 +722,9 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
     /* print version if requested.  Do this before check for help so
        that --version --help works as one might expect. */
     if (orun_globals.version) {
-        char *str, *project_name = "orun";
-        str = opal_show_help_string("help-orterun.txt", "orterun:version", 
-                                    false,
-                                    orte_basename, project_name, OPAL_VERSION,
+        char *str;
+        str = opal_show_help_string("help-orun.txt", "version", false,
+                                    ORCM_VERSION,
                                     PACKAGE_BUGREPORT);
         if (NULL != str) {
             printf("%s", str);
@@ -735,10 +736,8 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
     /* Check for help request */
     if (orun_globals.help) {
         char *str, *args = NULL;
-        char *project_name = "orun";
         args = opal_cmd_line_get_usage_msg(cmd_line);
-        str = opal_show_help_string("help-orterun.txt", "orterun:usage", false,
-                                    orte_basename, project_name, OPAL_VERSION,
+        str = opal_show_help_string("help-orun.txt", "usage", false,
                                     orte_basename, args,
                                     PACKAGE_BUGREPORT);
         if (NULL != str) {

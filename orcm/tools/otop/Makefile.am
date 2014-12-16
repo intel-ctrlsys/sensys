@@ -40,7 +40,9 @@ dist_orcmdata_DATA = help-otop.txt
 endif # OPAL_INSTALL_BINARIES
 
 otop_SOURCES = otop.c
-otop_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
+otop_LDADD = $(top_builddir)/orcm/liborcm.la \
+             $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
+             $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 distclean-local:
 	rm -f $(man_pages)

@@ -103,9 +103,9 @@ int main(int argc, char *argv[])
     opal_cmd_line_make_opt3(orcm_info_cmd_line, '\0', NULL, "internal", 0, 
                             "Show internal MCA parameters (not meant to be modified by users)");
     opal_cmd_line_make_opt3(orcm_info_cmd_line, '\0', NULL, "path", 1, 
-                            "Show paths that Open MPI was configured with.  Accepts the following parameters: prefix, bindir, libdir, incdir, mandir, pkglibdir, sysconfdir");
+                            "Show paths that Open RCM was configured with.  Accepts the following parameters: prefix, bindir, libdir, incdir, mandir, pkglibdir, sysconfdir");
     opal_cmd_line_make_opt3(orcm_info_cmd_line, '\0', NULL, "arch", 0, 
-                            "Show architecture Open MPI was compiled on");
+                            "Show architecture Open RCM was compiled on");
     opal_cmd_line_make_opt3(orcm_info_cmd_line, 'c', NULL, "config", 0, 
                             "Show configuration options");
     opal_cmd_line_make_opt3(orcm_info_cmd_line, 'h', NULL, "help", 0, 
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
     opal_cmd_line_make_opt3(orcm_info_cmd_line, '\0', NULL, "parseable", 0, 
                             "Synonym for --parsable");
     opal_cmd_line_make_opt3(orcm_info_cmd_line, '\0', NULL, "hostname", 0, 
-                            "Show the hostname that Open MPI was configured "
+                            "Show the hostname that Open RCM was configured "
                             "and built on");
     opal_cmd_line_make_opt3(orcm_info_cmd_line, 'a', NULL, "all", 0, 
                             "Show all configuration options and MCA parameters");

@@ -75,6 +75,7 @@
 #include "orcm/runtime/runtime.h"
 
 #include "orcm/mca/scd/base/base.h"
+#include "orcm/version.h"
 
 /******************
  * Local Functions
@@ -88,6 +89,7 @@ static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc);
  *****************************************/
 typedef struct {
     bool help;
+    bool version;
     bool verbose;
     int output;
     char *account;
@@ -117,6 +119,12 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "This help message" },
 
     { NULL,
+      'V', NULL, "version",
+      0,
+      &orcm_osub_globals.version, OPAL_CMD_LINE_TYPE_BOOL,
+      "Print version and exit" },
+
+    { NULL,
       'v', NULL, "verbose",
       0,
       &orcm_osub_globals.verbose, OPAL_CMD_LINE_TYPE_BOOL,
@@ -141,37 +149,37 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "Group id to run session under" },
 
     { NULL,
-      NULL, NULL, "max-node",
+      '\0', NULL, "max-node",
       1,
       &orcm_osub_globals.max_nodes, OPAL_CMD_LINE_TYPE_INT,
       "Max nodes allowed in allocation" },
 
     { NULL,
-      NULL, NULL, "max-pe",
+      '\0', NULL, "max-pe",
       1,
       &orcm_osub_globals.max_pes, OPAL_CMD_LINE_TYPE_INT,
       "Max PEs allowed in allocation" },
 
     { NULL,
-      NULL, NULL, "min-node",
+      '\0', NULL, "min-node",
       1,
       &orcm_osub_globals.min_nodes, OPAL_CMD_LINE_TYPE_INT,
       "Max nodes allowed in allocation" },
 
     { NULL,
-      NULL, NULL, "min-pe",
+      '\0', NULL, "min-pe",
       1,
       &orcm_osub_globals.min_pes, OPAL_CMD_LINE_TYPE_INT,
       "Max PEs allowed in allocation" },
 
     { NULL,
-      NULL, NULL, "node",
+      '\0', NULL, "node",
       1,
       &orcm_osub_globals.min_nodes, OPAL_CMD_LINE_TYPE_INT,
       "Minimum number of nodes required for allocation" },
 
     { NULL,
-      NULL, NULL, "pe",
+      '\0', NULL, "pe",
       1,
       &orcm_osub_globals.min_pes, OPAL_CMD_LINE_TYPE_INT,
       "Minimum number of PEs required for allocation" },
@@ -444,7 +452,10 @@ static int parse_args(int argc, char *argv[])
 {
     int ret;
     opal_cmd_line_t cmd_line;
+    char *args = NULL;
+    char *str = NULL;
     orcm_osub_globals_t tmp = { false,    /* help */
+                                false,    /* version */
                                 false,    /* verbose */
                                 -1,       /* output */
                                 NULL,     /* account */
@@ -469,30 +480,25 @@ static int parse_args(int argc, char *argv[])
     opal_cmd_line_create(&cmd_line, cmd_line_opts);
     
     mca_base_cmd_line_setup(&cmd_line);
-    ret = opal_cmd_line_parse(&cmd_line, false, argc, argv);
-    
-    if (OPAL_SUCCESS != ret) {
-        if (OPAL_ERR_SILENT != ret) {
-            opal_output(0, "%s: command line error (%s)\n", argv[0],
-                    opal_strerror(ret));
-        }
-        return ret;
-    }
-
-    /**
-     * Now start parsing our specific arguments
-     */
-    if (orcm_osub_globals.help) {
-        char *str, *args = NULL;
+    if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv)) ||
+        orcm_osub_globals.help) {
         args = opal_cmd_line_get_usage_msg(&cmd_line);
-        str = opal_show_help_string("help-osub.txt", "usage", true,
-                                    args);
+        str = opal_show_help_string("help-osub.txt", "usage", false, args);
         if (NULL != str) {
             printf("%s", str);
             free(str);
         }
-        free(args);
-        /* If we show the help message, that should be all we do */
+        exit(0);
+    }
+    
+    if (orcm_osub_globals.version) {
+        str = opal_show_help_string("help-osub.txt", "version", false,
+                                    ORCM_VERSION,
+                                    PACKAGE_BUGREPORT);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
         exit(0);
     }
 

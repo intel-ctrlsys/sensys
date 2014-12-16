@@ -15,3 +15,7 @@ octl [OPTIONS]
   Open Resilient Cluster Manager "octl" Tool
 
 %s
+[version]
+octl %s
+
+Report bugs to %s

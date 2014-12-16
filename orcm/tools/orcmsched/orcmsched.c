@@ -43,6 +43,7 @@
 #include "opal/util/output.h"
 #include "opal/util/cmd_line.h"
 #include "opal/util/opal_environ.h"
+#include "opal/util/show_help.h"
 #include "opal/util/os_path.h"
 #include "opal/util/printf.h"
 #include "opal/util/argv.h"
@@ -70,6 +71,8 @@
 #include "orte/mca/routed/routed.h"
 
 #include "orcm/runtime/runtime.h"
+#include "orcm/version.h"
+
 /*
  * Globals
  */
@@ -77,9 +80,10 @@ static bool orcmsched_spin_flag=false;
 
 static struct {
     bool help;
+    bool version;
     bool daemonize;
     char *hnp_uri;
-} my_globals;
+} orcmsched_globals;
 
 /*
  * define the orcmsched context table for obtaining parameters
@@ -87,8 +91,12 @@ static struct {
 static opal_cmd_line_init_t cmd_line_opts[] = {
     /* Various "obvious" options */
     { NULL, 'h', NULL, "help", 0,
-      &my_globals.help, OPAL_CMD_LINE_TYPE_BOOL,
+      &orcmsched_globals.help, OPAL_CMD_LINE_TYPE_BOOL,
       "This help message" },
+
+    { NULL, 'V', NULL, "version", 0,
+      &orcmsched_globals.version, OPAL_CMD_LINE_TYPE_BOOL,
+      "Print version and exit" },
 
     { NULL, 's', NULL, "spin", 0,
       &orcmsched_spin_flag, OPAL_CMD_LINE_TYPE_BOOL,
@@ -99,7 +107,7 @@ static opal_cmd_line_init_t cmd_line_opts[] = {
       "Debug the OpenRTE" },
         
     { NULL, '\0', NULL, "daemonize", 0,
-      &my_globals.daemonize, OPAL_CMD_LINE_TYPE_BOOL,
+      &orcmsched_globals.daemonize, OPAL_CMD_LINE_TYPE_BOOL,
       "Daemonize the scheduler into the background" },
 
     { "orcm_sched_kill_dvm", '\0', NULL, "kill-dvm", 0,
@@ -114,38 +122,28 @@ static opal_cmd_line_init_t cmd_line_opts[] = {
 int main(int argc, char *argv[])
 {
     int ret = 0;
-    opal_cmd_line_t *cmd_line = NULL;
+    opal_cmd_line_t cmd_line;
     int i;
+    char *args = NULL;
+    char *str = NULL;
     char *ctmp;
     time_t now;
 
     /* initialize the globals */
-    memset(&my_globals, 0, sizeof(my_globals));
+    memset(&orcmsched_globals, 0, sizeof(orcmsched_globals));
     
     /* setup to check common command line options that just report and die */
-    cmd_line = OBJ_NEW(opal_cmd_line_t);
-    opal_cmd_line_create(cmd_line, cmd_line_opts);
-    mca_base_cmd_line_setup(cmd_line);
-    if (ORTE_SUCCESS != (ret = opal_cmd_line_parse(cmd_line, false,
-                                                   argc, argv))) {
-        fprintf(stderr, "Cannot process cmd line - use --help for assistance\n");
-        return ret;
+    opal_cmd_line_create(&cmd_line, cmd_line_opts);
+    mca_base_cmd_line_setup(&cmd_line);
+    if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
+        fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
+        exit(1);
     }
-
     /*
      * Since this process can now handle MCA/GMCA parameters, make sure to
      * process them.
      */
-    mca_base_cmd_line_process_args(cmd_line, &environ, &environ);
-    
-    /* check for help request */
-    if (my_globals.help) {
-        char *args = NULL;
-        args = opal_cmd_line_get_usage_msg(cmd_line);
-        orte_show_help("help-orcmsched.txt", "usage", true, args);
-        free(args);
-        return 1;
-    }
+    mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
 
     /* see if they want us to spin until they can connect a debugger to us */
     i=0;
@@ -161,11 +159,34 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Failed to init: error %d\n", ret);
         exit(1);
     }
+
+    if(orcmsched_globals.help) {
+        args = opal_cmd_line_get_usage_msg(&cmd_line);
+        str = opal_show_help_string("help-orcmsched.txt", "usage", false, args);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
+        orcm_finalize();
+        exit(0);
+    }
     
+    if (orcmsched_globals.version) {
+        str = opal_show_help_string("help-orcmsched.txt", "version", false,
+                                    ORCM_VERSION,
+                                    PACKAGE_BUGREPORT);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
+        orcm_finalize();
+        exit(0);
+    }
+
     /* detach from controlling terminal
      * otherwise, remain attached so output can get to us
      */
-    if (my_globals.daemonize) {
+    if (orcmsched_globals.daemonize) {
         opal_daemon_init(NULL);
     } else {
         /* set the local debug verbosity */
@@ -179,8 +200,10 @@ int main(int argc, char *argv[])
     /* strip the trailing newline */
     ctmp[strlen(ctmp)-1] = '\0';
 
-    opal_output(0, "%s: ORCM SCHEDULER %s started",
-                ctmp, ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    opal_output(0, "\n******************************\n%s: ORCM version: %s SCHEDULER: %s started\n******************************\n",
+                ctmp,
+                ORCM_VERSION,
+                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
     while (orte_event_base_active) {
         opal_event_loop(orte_event_base, OPAL_EVLOOP_ONCE);

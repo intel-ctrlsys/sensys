@@ -52,6 +52,7 @@
 #include "orcm/mca/diag/diag.h"
 
 #include "orcm/runtime/runtime.h"
+#include "orcm/version.h"
 
 static struct {
     bool help;
@@ -115,30 +116,21 @@ int main(int argc, char *argv[])
     int ret;
     opal_cmd_line_t cmd_line;
     char *ctmp;
+    char *args = NULL;
+    char *str = NULL;
     time_t now;
     opal_buffer_t *buf;
     orcm_rm_cmd_flag_t command = ORCM_NODESTATE_UPDATE_COMMAND;
     orcm_node_state_t state = ORCM_NODE_STATE_UP;
     bool have_hwloc_topology;
 
-
     /* process the cmd line arguments to get any MCA params on them */
     opal_cmd_line_create(&cmd_line, cmd_line_init);
-    mca_base_cmd_line_setup(&cmd_line);
-    if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv)) ||
-        orcm_globals.help) {
-        char *args = NULL;
-        args = opal_cmd_line_get_usage_msg(&cmd_line);
-        fprintf(stderr, "Usage: %s [OPTION]...\n%s\n", argv[0], args);
-        free(args);
-        return ret;
+    if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
+        fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
+        exit(1);
     }
     
-    if (orcm_globals.version) {
-        fprintf(stderr, "orcm %s\n", ORCM_VERSION);
-        exit(0);
-    }
-
     if( orcm_globals.verbose ) {
         orcm_globals.output = opal_output_open(NULL);
         opal_output_set_verbosity(orcm_globals.output, 10);
@@ -161,6 +153,29 @@ int main(int argc, char *argv[])
         return ret;
     }
 
+    if(orcm_globals.help) {
+        args = opal_cmd_line_get_usage_msg(&cmd_line);
+        str = opal_show_help_string("help-orcmd.txt", "usage", false, args);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
+        orcm_finalize();
+        exit(0);
+    }
+    
+    if (orcm_globals.version) {
+        str = opal_show_help_string("help-orcmd.txt", "version", false,
+                                    ORCM_VERSION,
+                                    PACKAGE_BUGREPORT);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
+        orcm_finalize();
+        exit(0);
+    }
+
     /* print out a message alerting that we are alive */
     now = time(NULL);
     /* convert the time to a simple string */
@@ -176,14 +191,17 @@ int main(int argc, char *argv[])
                             NULL);
 
     if (ORCM_PROC_IS_AGGREGATOR) {
-        opal_output(0, "%s: ORCM aggregator %s started",
-                    ctmp, ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    } else {
-        opal_output(0, "\n******************************\n%s: ORCM daemon %s started and connected to aggregator %s\nMy scheduler: %s\nMy parent: %s\n******************************\n",
-                    ctmp, ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_DAEMON),
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_SCHEDULER),
+        opal_output(0, "\n******************************\n%s: ORCM version: %s AGGREGATOR: %s started and connected to AGGREGATOR: %s\n******************************\n",
+                    ctmp,
+                    ORCM_VERSION,
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                     ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT));
+    } else {
+        opal_output(0, "\n******************************\n%s: ORCM version: %s DAEMON: %s started and connected to AGGREGATOR: %s\n******************************\n",
+                    ctmp,
+                    ORCM_VERSION,
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_DAEMON));
 
         /* inform the scheduler */
         buf = OBJ_NEW(opal_buffer_t);

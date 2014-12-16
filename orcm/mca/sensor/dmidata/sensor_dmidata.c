@@ -116,13 +116,40 @@ static char inv_keywords[MAX_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWORDS][MAX
 /* Contains list of hosts that have collected and upstreamed their inventory data
  * Each link is of the type 'dmidata_inventory_t' */
 opal_list_t dmidata_host_list;
+hwloc_topology_t dmidata_hwloc_topology;
+bool sensor_set_hwloc;
 
 static int init(void)
 {
     /* Initialize All available resource that are present in the current system
      * that need to be scanned by the plugin */
-    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,">>>>>>>>> dmidata init");
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                        ">>>>>>>>> dmidata init");
     OBJ_CONSTRUCT(&dmidata_host_list, opal_list_t);
+    sensor_set_hwloc = false;
+    if(NULL == opal_hwloc_topology)
+    {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                        "opal_hwloc_topology object uninitialized;Running Init");
+        if(0 == hwloc_topology_init(&dmidata_hwloc_topology)) {
+            if(0 == hwloc_topology_load(dmidata_hwloc_topology)) {
+                sensor_set_hwloc = true;
+            } else {
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                        "Unable to load hwloc data");
+                return ORCM_ERROR;
+            }
+        } else {
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                        "Unable to initialize hwloc data");
+            return ORCM_ERROR;
+        }
+    } else {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                    "hwloc data already initialized");
+        dmidata_hwloc_topology = opal_hwloc_topology;
+        sensor_set_hwloc = false;
+    }
     return ORCM_SUCCESS;
 }
 
@@ -130,6 +157,11 @@ static void finalize(void)
 {
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"dmidata Finalize <<<<<<<<<");
     OPAL_LIST_DESTRUCT(&dmidata_host_list);
+    if(true == sensor_set_hwloc) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "Destroying sensor initialized hwloc object");
+        hwloc_topology_destroy(dmidata_hwloc_topology);
+    }
 }
 
 /*
@@ -232,7 +264,7 @@ static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
         return;
     }
     free(comp);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &opal_hwloc_topology, 1, OPAL_HWLOC_TOPO))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &dmidata_hwloc_topology, 1, OPAL_HWLOC_TOPO))) {
         ORTE_ERROR_LOG(rc);
         return;
     }

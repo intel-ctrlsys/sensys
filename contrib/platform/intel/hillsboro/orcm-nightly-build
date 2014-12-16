@@ -36,6 +36,7 @@ with_pwr=yes
 with_postgres=no
 with_slurm=no
 with_ipmi=yes
+with_dmidata=yes
 with_odbc=yes
 with_memtest=yes
 with_cputest=yes

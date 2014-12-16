@@ -95,10 +95,7 @@ static int orcm_octl_init(int argc, char *argv[])
     
     mca_base_cmd_line_setup(&cmd_line);
     
-    if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
-        fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
-        exit(1);
-    }
+    opal_cmd_line_parse(&cmd_line, true, argc, argv);
     
     /* Setup OPAL Output handle from the verbose argument */
     if( orcm_octl_globals.verbose ) {

@@ -31,10 +31,9 @@ Usage: %s [OPTION]...  [PROGRAM]...
 Start the given program using Open RTE
 
 %s
-
 Report bugs to %s
-[orterun:version]
-%s (%s) %s
+[version]
+orun %s
 
 Report bugs to %s
 [orterun:allocation-not-specified]

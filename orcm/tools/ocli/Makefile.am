@@ -43,7 +43,9 @@ ocli_SOURCES = \
 #  nice for systems that don't have all the shared 
 #  libraries on the computes 
 ocli_LDFLAGS =
-ocli_LDADD = $(top_builddir)/orcm/liborcm.la $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
+ocli_LDADD = $(top_builddir)/orcm/liborcm.la \
+             $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
+             $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 distclean-local:
 	rm -f $(man_pages)

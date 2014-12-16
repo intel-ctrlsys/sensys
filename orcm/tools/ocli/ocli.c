@@ -14,7 +14,6 @@
  * Local Functions
  ******************/
 static int orcm_ocli_init(int argc, char *argv[]);
-static int parse_args(int argc, char *argv[], char **result_cmd);
 static void run_cmd(char *cmd);
 
 /*****************************************
@@ -22,6 +21,7 @@ static void run_cmd(char *cmd);
  *****************************************/
 typedef struct {
     bool help;
+    bool version;
     bool verbose;
     int output;
 } orcm_ocli_globals_t;
@@ -41,6 +41,12 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       &orcm_ocli_globals.verbose, OPAL_CMD_LINE_TYPE_BOOL,
       "Be Verbose" },
 
+    { NULL,
+        'V', NULL, "version",
+        0,
+        &orcm_ocli_globals.version, OPAL_CMD_LINE_TYPE_BOOL,
+        "Show version information" },
+
     /* End of list */
     { NULL, '\0', NULL, NULL, 0, NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
 };
@@ -59,14 +65,14 @@ main(int argc, char *argv[])
     return ORCM_SUCCESS;
 }
 
-static int parse_args(int argc, char *argv[], char** result_cmd)
+static int orcm_ocli_init(int argc, char *argv[])
 {
-    int ret;
     opal_cmd_line_t cmd_line;
     orcm_ocli_globals_t tmp = { false,    /* help */
-                                false,    /* verbose */
-                                -1};      /* output */
-
+        false,    /* version */
+        false,    /* verbose */
+        -1};      /* output */
+    
     orcm_ocli_globals = tmp;
     char *args = NULL;
     char *str = NULL;
@@ -74,68 +80,6 @@ static int parse_args(int argc, char *argv[], char** result_cmd)
     orcm_cli_cmd_t *cmd;
     int tailc;
     char **tailv;
-
-    /* Parse the command line options */
-    opal_cmd_line_create(&cmd_line, cmd_line_opts);
-    
-    mca_base_cmd_line_setup(&cmd_line);
-    ret = opal_cmd_line_parse(&cmd_line, true, argc, argv);
-    
-    if (OPAL_SUCCESS != ret) {
-        if (OPAL_ERR_SILENT != ret) {
-            fprintf(stderr, "%s: command line error (%s)\n", argv[0],
-                    opal_strerror(ret));
-        }
-        return ret;
-    }
-
-    /* get the commandline without mca params */
-    opal_cmd_line_get_tail(&cmd_line, &tailc, &tailv);
-    
-    if (0 == tailc) {
-        /* if the user hasn't specified any commands,
-         * run interactive cli to help build it */
-        OBJ_CONSTRUCT(&cli, orcm_cli_t);
-        orcm_cli_create(&cli, cli_init);
-        /* give help on top level commands */
-        printf("*** WELCOME TO OCLI ***\n Possible commands:\n");
-        OPAL_LIST_FOREACH(cmd, &cli.cmds, orcm_cli_cmd_t) {
-            orcm_cli_print_cmd(cmd, NULL);
-        }
-        *result_cmd = NULL;
-        /* run interactive cli */
-        orcm_cli_get_cmd("ocli", &cli, result_cmd);
-        if (!*result_cmd) {
-            fprintf(stderr, "\nERR: NO COMMAND RETURNED\n");
-        }
-    } else {
-        /* otherwise use the user specified command */
-        *result_cmd = (opal_argv_join(tailv, ' '));
-    }
-
-    /* Now start parsing our specific arguments */
-    if (orcm_ocli_globals.help) {
-        args = opal_cmd_line_get_usage_msg(&cmd_line);
-        str = opal_show_help_string("help-ocli.txt", "usage", true,
-                                    args);
-        if (NULL != str) {
-            printf("%s", str);
-            free(str);
-        }
-        free(args);
-        /* If we show the help message, that should be all we do */
-        exit(0);
-    }
-
-    /* Since this process can now handle MCA/GMCA parameters, make sure to
-     * process them. */
-    mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
-    
-    return ORCM_SUCCESS;
-}
-
-static int orcm_ocli_init(int argc, char *argv[])
-{
     int ret;
     char *mycmd;
 
@@ -146,9 +90,14 @@ static int orcm_ocli_init(int argc, char *argv[])
         return ret;
     }
 
-    /* Parse Command Line Arguments */
-    if (ORCM_SUCCESS != (ret = parse_args(argc, argv, &mycmd))) {
-        return ret;
+    /* Parse the command line options */
+    opal_cmd_line_create(&cmd_line, cmd_line_opts);
+    
+    mca_base_cmd_line_setup(&cmd_line);
+    
+    if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
+        fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
+        exit(1);
     }
 
     /* Setup OPAL Output handle from the verbose argument */
@@ -162,6 +111,59 @@ static int orcm_ocli_init(int argc, char *argv[])
     /* initialize orcm for use as a tool */
     ret = orcm_init(ORCM_TOOL);
     
+    if (orcm_ocli_globals.help) {
+        args = opal_cmd_line_get_usage_msg(&cmd_line);
+        str = opal_show_help_string("help-ocli.txt", "usage", false, args);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
+        free(args);
+        /* If we show the help message, that should be all we do */
+        orcm_finalize();
+        exit(0);
+    }
+    
+    if (orcm_ocli_globals.version) {
+        str = opal_show_help_string("help-ocli.txt", "version", false,
+                                    ORCM_VERSION,
+                                    PACKAGE_BUGREPORT);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
+        orcm_finalize();
+        exit(0);
+    }
+    
+    /* Since this process can now handle MCA/GMCA parameters, make sure to
+     * process them. */
+    mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
+    
+    /* get the commandline without mca params */
+    opal_cmd_line_get_tail(&cmd_line, &tailc, &tailv);
+
+    if (0 == tailc) {
+        /* if the user hasn't specified any commands,
+         * run interactive cli to help build it */
+        OBJ_CONSTRUCT(&cli, orcm_cli_t);
+        orcm_cli_create(&cli, cli_init);
+        /* give help on top level commands */
+        printf("*** WELCOME TO OCLI ***\n Possible commands:\n");
+        OPAL_LIST_FOREACH(cmd, &cli.cmds, orcm_cli_cmd_t) {
+            orcm_cli_print_cmd(cmd, NULL);
+        }
+        mycmd = NULL;
+        /* run interactive cli */
+        orcm_cli_get_cmd("ocli", &cli, &mycmd);
+        if (!mycmd) {
+            fprintf(stderr, "\nERR: NO COMMAND RETURNED\n");
+        }
+    } else {
+        /* otherwise use the user specified command */
+        mycmd = (opal_argv_join(tailv, ' '));
+    }
+
     run_cmd(mycmd);
     free(mycmd);
 

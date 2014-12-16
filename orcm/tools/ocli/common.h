@@ -37,6 +37,7 @@
 #include "orte/mca/rml/rml.h"
 
 #include "orcm/runtime/runtime.h"
+#include "orcm/version.h"
 
 BEGIN_C_DECLS
 

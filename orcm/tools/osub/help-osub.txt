@@ -15,3 +15,7 @@ osub [OPTIONS]
   Open Resilient Cluster Manager "osub" Tool
 
 %s
+[version]
+osub %s
+
+Report bugs to %s

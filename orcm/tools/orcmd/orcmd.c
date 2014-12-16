@@ -126,6 +126,7 @@ int main(int argc, char *argv[])
 
     /* process the cmd line arguments to get any MCA params on them */
     opal_cmd_line_create(&cmd_line, cmd_line_init);
+    mca_base_cmd_line_setup(&cmd_line);
     if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
         fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
         exit(1);

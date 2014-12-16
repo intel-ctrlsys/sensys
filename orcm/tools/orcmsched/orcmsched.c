@@ -110,10 +110,6 @@ static opal_cmd_line_init_t cmd_line_opts[] = {
       &orcmsched_globals.daemonize, OPAL_CMD_LINE_TYPE_BOOL,
       "Daemonize the scheduler into the background" },
 
-    { "orcm_sched_kill_dvm", '\0', NULL, "kill-dvm", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Kill daemons in DVM upon termination [default: no]" },
-    
     /* End of list */
     { NULL, '\0', NULL, NULL, 0,
       NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }

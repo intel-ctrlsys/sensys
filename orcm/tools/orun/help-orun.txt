@@ -24,13 +24,11 @@
 [orterun:init-failure]
 Open RTE was unable to initialize properly.  The error occured while
 attempting to %s.  Returned value %d instead of ORTE_SUCCESS.
-[orterun:usage]
-%s (%s) %s
+[usage]
 
 Usage: %s [OPTION]...  [PROGRAM]...
 Start the given program using Open RTE
 
-%s
 Report bugs to %s
 [version]
 orun %s

@@ -200,8 +200,10 @@ int main(int argc, char *argv[])
     /* strip the trailing newline */
     ctmp[strlen(ctmp)-1] = '\0';
 
-    opal_output(0, "%s: ORCM SCHEDULER %s started",
-                ctmp, ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    opal_output(0, "\n******************************\n%s: ORCM version: %s SCHEDULER: %s started\n******************************\n",
+                ctmp,
+                ORCM_VERSION,
+                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
     while (orte_event_base_active) {
         opal_event_loop(orte_event_base, OPAL_EVLOOP_ONCE);

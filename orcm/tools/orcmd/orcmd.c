@@ -191,14 +191,17 @@ int main(int argc, char *argv[])
                             NULL);
 
     if (ORCM_PROC_IS_AGGREGATOR) {
-        opal_output(0, "%s: ORCM aggregator %s started",
-                    ctmp, ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    } else {
-        opal_output(0, "\n******************************\n%s: ORCM daemon %s started and connected to aggregator %s\nMy scheduler: %s\nMy parent: %s\n******************************\n",
-                    ctmp, ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_DAEMON),
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_SCHEDULER),
+        opal_output(0, "\n******************************\n%s: ORCM version: %s AGGREGATOR: %s started and connected to AGGREGATOR: %s\n******************************\n",
+                    ctmp,
+                    ORCM_VERSION,
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                     ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT));
+    } else {
+        opal_output(0, "\n******************************\n%s: ORCM version: %s DAEMON: %s started and connected to AGGREGATOR: %s\n******************************\n",
+                    ctmp,
+                    ORCM_VERSION,
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_DAEMON));
 
         /* inform the scheduler */
         buf = OBJ_NEW(opal_buffer_t);

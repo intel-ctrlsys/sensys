@@ -15,3 +15,7 @@ ocli [OPTIONS]
   Open Resilient Cluster Manager "ocli" Tool
 
 %s
+[version]
+ocli %s
+
+Report bugs to %s

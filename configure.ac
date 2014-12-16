@@ -48,7 +48,7 @@ AC_LANG([C])
 
 AC_INIT([project_name_long],
         [m4_normalize(esyscmd([config/opal_get_version.sh VERSION --base]))],
-        [http://www.open-mpi.org/community/help/], [project_name_short])
+        [https://github.com/open-mpi/orcm/issues], [project_name_short])
 AC_PREREQ(2.60)
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR(config)

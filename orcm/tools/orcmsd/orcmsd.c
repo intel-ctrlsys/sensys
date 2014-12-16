@@ -66,7 +66,7 @@
 #include "opal/util/basename.h"
 #include "opal/util/if.h"
 #include "opal/util/net.h"
-#include "opal/util/opal_environ.h"
+#include "opal/util/show_help.h"
 #include "opal/util/os_path.h"
 #include "opal/util/printf.h"
 #include "opal/util/argv.h"
@@ -106,10 +106,12 @@
 #include "orte/runtime/orte_globals.h"
 #include "orte/runtime/orte_locks.h"
 #include "orte/runtime/orte_quit.h"
+#include "orte/runtime/orte_globals.h"
 
 #include "orcm/mca/sst/sst.h"
 #include "orcm/mca/sst/base/base.h"
 #include "orcm/runtime/runtime.h"
+#include "orcm/version.h"
 
 /*
  * Globals
@@ -125,7 +127,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
 void orcms_daemon_recv(int status, orte_process_name_t* sender,
                       opal_buffer_t *buffer, orte_rml_tag_t tag,
                       void* cbdata);
-static void orcmsd_batch_launch(char *batchfile,  char **environ);
+static void orcmsd_batch_launch(char *batchfile);
 static void orcmsd_wpid_event_recv(int fd, short args, void* cbdata);
 
 
@@ -133,6 +135,7 @@ static struct {
     bool debug;
     bool debug_daemons;
     bool help;
+    bool version;
     bool hnp;
     bool abort;
     bool mapreduce;
@@ -163,6 +166,9 @@ OBJ_CLASS_INSTANCE(orcmsd_wpid_event_cb_t, opal_object_t, NULL, NULL);
  * define the orted context table for obtaining parameters
  */
 opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
+    { NULL, 'V', NULL, "version", 0,
+        &orcmsd_globals.version, OPAL_CMD_LINE_TYPE_BOOL,
+        "Print version and exit" },
     /* Various "obvious" options */
     { "sst_orcmsd_jobid", '\0', "jobid", "jobid", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
@@ -233,8 +239,10 @@ opal_cmd_line_init_t orcmsd_cmd_line_opts[] = {
 int main(int argc, char *argv[])
 {
     int ret = 0;
-    opal_cmd_line_t *cmd_line = NULL;
+    opal_cmd_line_t cmd_line;
     int i;
+    char *args = NULL;
+    char *str = NULL;
     opal_buffer_t *buffer;
     orte_job_t *jdata_obj;
     char *umask_str = getenv("ORTE_DAEMON_UMASK_VALUE");
@@ -255,27 +263,22 @@ int main(int argc, char *argv[])
     memset(&orcmsd_globals, 0, sizeof(orcmsd_globals));
     
     /* setup to check common command line options that just report and die */
-    cmd_line = OBJ_NEW(opal_cmd_line_t);
-    if (OPAL_SUCCESS != opal_cmd_line_create(cmd_line, orcmsd_cmd_line_opts)) {
-        OBJ_RELEASE(cmd_line);
+    if (OPAL_SUCCESS != opal_cmd_line_create(&cmd_line, orcmsd_cmd_line_opts)) {
+        fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
         exit(1);
     }
-    mca_base_cmd_line_setup(cmd_line);
-    if (ORTE_SUCCESS != (ret = opal_cmd_line_parse(cmd_line, false,
-                                                   argc, argv))) {
-        char *args = NULL;
-        args = opal_cmd_line_get_usage_msg(cmd_line);
-        fprintf(stderr, "Usage: %s [OPTION]...\n%s\n", argv[0], args);
-        free(args);
-        OBJ_RELEASE(cmd_line);
-        return ret;
-    }
     
+    mca_base_cmd_line_setup(&cmd_line);
+    if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
+        fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
+        exit(1);
+    }
+
     /*
      * Since this process can now handle MCA/GMCA parameters, make sure to
      * process them.
      */
-    mca_base_cmd_line_process_args(cmd_line, &environ, &environ);
+    mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
 
 
     /* Ensure that enough of OPAL is setup for us to be able to run */
@@ -293,6 +296,27 @@ int main(int argc, char *argv[])
     if (OPAL_SUCCESS != opal_init_util(&argc, &argv)) {
         fprintf(stderr, "OPAL failed to initialize -- orted aborting\n");
         exit(1);
+    }
+
+    if(orcmsd_globals.help) {
+        args = opal_cmd_line_get_usage_msg(&cmd_line);
+        str = opal_show_help_string("help-orcmsd.txt", "usage", false, args);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
+        exit(0);
+    }
+    
+    if (orcmsd_globals.version) {
+        str = opal_show_help_string("help-orcmsd.txt", "version", false,
+                                    ORCM_VERSION,
+                                    PACKAGE_BUGREPORT);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
+        exit(0);
     }
 
     /* save the environment for launch purposes. This MUST be
@@ -313,7 +337,7 @@ int main(int argc, char *argv[])
     /* check for help request */
     if (orcmsd_globals.help) {
         char *args = NULL;
-        args = opal_cmd_line_get_usage_msg(cmd_line);
+        args = opal_cmd_line_get_usage_msg(&cmd_line);
         orte_show_help("help-orcmsd.txt", "orcmsd:usage", false,
                        argv[0], args);
         free(args);
@@ -619,7 +643,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
 	    /* Execute Batch scripts */
 	    if (NULL != orcmsd_globals.batchfile && true == orcmsd_globals.persistent) {
                 
-                orcmsd_batch_launch(orcmsd_globals.batchfile, orte_launch_environ);
+                orcmsd_batch_launch(orcmsd_globals.batchfile);
 
             }
             /* send vm ready to the parent */
@@ -1056,7 +1080,7 @@ static void orcmsd_wpid_event_recv(int fd, short args, void* cbdata)
     }
 }
 
-static void orcmsd_batch_launch(char *batchfile,  char **environ)
+static void orcmsd_batch_launch(char *batchfile)
 {
     char **argv = NULL;
     int argc=0;

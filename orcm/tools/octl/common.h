@@ -39,6 +39,7 @@
 
 #include "orcm/runtime/runtime.h"
 #include "orcm/mca/cfgi/base/base.h"
+#include "orcm/version.h"
 
 BEGIN_C_DECLS
 

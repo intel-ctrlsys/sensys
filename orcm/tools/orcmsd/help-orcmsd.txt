@@ -20,7 +20,7 @@
 # This is the US/English general help file for Open RTE's orcmsd.
 #
 [usage]
-Usage: %s [OPTION]...
+Usage: orcmsd [OPTION]...
 Open Resilient Cluster Manager Session Daemon
 
 %s

@@ -132,7 +132,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
         inventory_snapshot = OBJ_NEW(opal_buffer_t);
 
         if (false == orcm_sensor_base.set_dynamic_inventory) { /* Collect inventory details just once when orcmd starts */
-            opal_output(0,"sensor:base - boot time inventory collection requested");
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"sensor:base - boot time inventory collection requested");
             /* The collect inventory call could be added to a new thread to avoid getting blocked */
             collect_inventory_info(inventory_snapshot);
             log_inventory_info(inventory_snapshot);
@@ -145,7 +145,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
         }
 
     } else {
-         opal_output(0,"sensor:base inventory collection not requested");
+         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"sensor:base inventory collection not requested");
     }
     return;    
 }
@@ -242,7 +242,7 @@ void orcm_sensor_base_stop(orte_jobid_t job)
     orcm_sensor_active_module_t *i_module;
     int i;
     if (!mods_active) {
-        opal_output(0, "sensor stop: no active mods");
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "sensor stop: no active mods");
         return;
     }
 
@@ -277,7 +277,7 @@ static void take_sample(int fd, short args, void *cbdata)
     int i;
     
     if (!mods_active) {
-        opal_output(0, "sensor sample: no active mods");
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "sensor sample: no active mods");
         return;
     }
 

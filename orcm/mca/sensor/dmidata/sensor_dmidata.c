@@ -90,6 +90,29 @@ OBJ_CLASS_INSTANCE(dmidata_inventory_t,
                    opal_list_item_t,
                    inv_con, inv_des);
 
+/* Increment the MAX_INVENTORY_KEYWORDS size with every new addition here */
+/* NOTE: key for populating the lookup array
+ * Each search item for a value contains 5 columns
+ * The columns 1,2 and 3 are the key words for finding an inventory item
+ * The column 4 contains the key word for enabling an ignore case
+ * The column 5 contains a key word under which the corresponding inventory data is logged.
+ */ 
+static char inv_keywords[MAX_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWORDS][MAX_INVENTORY_KEYWORD_SIZE] =
+    {
+     {"bios","version","","","bios_version"},
+     {"bios","date","","","bios_release_date"},
+     {"bios","vendor","","","bios_vendor"},
+     {"cpu","vendor","","","cpu_vendor"},
+     {"cpu","family","","","cpu_family"},
+     {"cpu","model","","number","cpu_model"},
+     {"cpu","model","number","","cpu_model_number"},
+     {"board","name","","","bb_model"},
+     {"board","vendor","","","bb_vendor"},
+     {"board","serial","","","bb_serial"},
+     {"board","version","","","bb_version"},
+     {"product","uuid","","","product_uuid"},
+     };
+
 /* Contains list of hosts that have collected and upstreamed their inventory data
  * Each link is of the type 'dmidata_inventory_t' */
 opal_list_t dmidata_host_list;
@@ -98,14 +121,14 @@ static int init(void)
 {
     /* Initialize All available resource that are present in the current system
      * that need to be scanned by the plugin */
-    opal_output(0,">>>>>>>>> dmidata init");
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,">>>>>>>>> dmidata init");
     OBJ_CONSTRUCT(&dmidata_host_list, opal_list_t);
     return ORCM_SUCCESS;
 }
 
 static void finalize(void)
 {
-    opal_output(0,"dmidata Finalize <<<<<<<<<");
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"dmidata Finalize <<<<<<<<<");
     OPAL_LIST_DESTRUCT(&dmidata_host_list);
 }
 
@@ -156,22 +179,18 @@ static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, d
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
-    if (NULL != obj) {
-        /* Pack the total MACHINE Stats present and to be copied */
-        for (k=0; k < obj->infos_count; k++) {
-            if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
-            {
-                mkv = OBJ_NEW(orcm_metric_value_t);
-                mkv->value.type = OPAL_STRING;
-                mkv->value.key = strdup(inv_key);
-                mkv->value.data.string = strdup(obj->infos[k].value);
-                opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                    "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
-            }
+    /* Pack the total MACHINE Stats present and to be copied */
+    for (k=0; k < obj->infos_count; k++) {
+        if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
+        {
+            mkv = OBJ_NEW(orcm_metric_value_t);
+            mkv->value.type = OPAL_STRING;
+            mkv->value.key = strdup(inv_key);
+            mkv->value.data.string = strdup(obj->infos[k].value);
+            opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
         }
-    } else {
-        opal_output(0,"Unable to initialize hwloc object");
     }
 }
 
@@ -189,24 +208,19 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
-    if (NULL != obj) {
-        /* Pack the total MACHINE Stats present and to be copied */
-        for (k=0; k < obj->infos_count; k++) {
-            if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
-            {
-                mkv = OBJ_NEW(orcm_metric_value_t);
-                mkv->value.type = OPAL_STRING;
-                mkv->value.key = strdup(inv_key);
-                mkv->value.data.string = strdup(obj->infos[k].value);
-                opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                    "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
-            }
+    /* Pack the total MACHINE Stats present and to be copied */
+    for (k=0; k < obj->infos_count; k++) {
+        if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
+        {
+            mkv = OBJ_NEW(orcm_metric_value_t);
+            mkv->value.type = OPAL_STRING;
+            mkv->value.key = strdup(inv_key);
+            mkv->value.data.string = strdup(obj->infos[k].value);
+            opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
         }
-    } else {
-        opal_output(0,"Unable to initialize hwloc object");
     }
-
 }
 
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
@@ -232,7 +246,6 @@ static dmidata_inventory_t* found_inventory_host(char * nodename)
     OPAL_LIST_FOREACH_SAFE(host, nxt, &dmidata_host_list, dmidata_inventory_t) {
         if(!strcmp(nodename,host->nodename))
         {
-            opal_output(0,"Found node: %s",nodename);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "Found Node: %s", nodename);
             return host;
@@ -256,15 +269,15 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     if (NULL != (newhost = found_inventory_host(hostname)))
     {
         /* Check and Verify Node Inventory record and update db/notify user accordingly */
-        opal_output(0, "dmidata HOST found!! Update node with inventory details");
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "dmidata HOST found!! Update node with inventory details");
         if(opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) {
-            opal_output(0,"Compared values match for : hwloc; Do nothing");
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"Compared values match for : hwloc; Do nothing");
         }
         else {
             /*@VINFIX: Due to a bug in the opal_dss.copy for OPAL_HWLOC_TOPO data type, this else block will always get
              * hit and the data will always get copied for now
              */
-            opal_output(0,"Compared values don't match for: hwloc; Notify User; Update List; Update Database");
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"Compared values don't match for: hwloc; Notify User; Update List; Update Database");
             opal_dss.copy((void**)&newhost->hwloc_topo,topo,OPAL_HWLOC_TOPO);
 
             /*Delete existing host and update the host list with the freshly received inventory details*/
@@ -281,7 +294,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             }
         }
     } else { /* Node not found, Create new node and attach inventory details */
-        opal_output(0,"Received dmidata inventory log from a new host:%s", hostname);
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"Received dmidata inventory log from a new host:%s", hostname);
         newhost = OBJ_NEW(dmidata_inventory_t);
         newhost->nodename = strdup(hostname);
         /* @VINFIX: Need to fix the bug in dss copy for OPAL_HWLOC_TOPO */

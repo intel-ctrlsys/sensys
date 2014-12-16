@@ -111,6 +111,11 @@ int orcm_ocli_resource_status(char **argv)
             inited = true;
         }
         nodes = (orcm_node_t**)malloc(num_nodes * sizeof(orcm_node_t*));
+        if (!nodes) {
+            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            OBJ_DESTRUCT(&xfer);
+            return ORTE_ERR_OUT_OF_RESOURCE;
+        }
         /* get the sessions on the queue */
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, nodes,
                                                   &num_nodes, ORCM_NODE))) {
@@ -159,7 +164,7 @@ int orcm_ocli_resource_status(char **argv)
                 OBJ_DESTRUCT(&xfer);
                 return rc;
             }
-            if (21 > strnlen(regexp, 21)) {
+            if (21 > strnlen(regexp, sizeof(regexp))) {
                 printf("%-20s : %s %16s\n",
                        regexp,
                        orcm_node_state_to_char(container->template.state),

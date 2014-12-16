@@ -76,7 +76,6 @@ static void orcm_diag_base_recv(int status, orte_process_name_t *sender,
     orcm_diag_info_t *info;
     int rc, response, cnt, numopts, i;
     opal_buffer_t *ans = NULL;
-    opal_buffer_t *buf = NULL;
     opal_value_t *options;
     char *dname;
 
@@ -161,7 +160,6 @@ static void orcm_diag_base_recv(int status, orte_process_name_t *sender,
             return;
         }
         orcm_diag_base_log(dname, buffer);
-        OBJ_RELEASE(buf);
     }
 
     return;

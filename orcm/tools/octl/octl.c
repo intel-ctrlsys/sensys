@@ -79,7 +79,7 @@ static int orcm_octl_init(int argc, char *argv[])
     orcm_cli_t cli;
     orcm_cli_cmd_t *cmd;
     int tailc;
-    char **tailv;
+    char **tailv = NULL;
     int ret;
     char *mycmd;
     
@@ -163,6 +163,7 @@ static int orcm_octl_init(int argc, char *argv[])
     
     run_cmd(mycmd);
     free(mycmd);
+    opal_argv_free(tailv);
     
     return ret;
 }
@@ -187,13 +188,14 @@ static int octl_command_to_int(char *command)
 }
 
 static void run_cmd(char *cmd) {
-    char **cmdlist;
-    char *fullcmd;
+    char **cmdlist = NULL;
+    char *fullcmd = NULL;
     int rc;
     
     cmdlist = opal_argv_split(cmd, ' ');
     if (0 == opal_argv_count(cmdlist)) {
         printf("No command parsed\n");
+        opal_argv_free(cmdlist);
         return;
     }
     
@@ -202,6 +204,7 @@ static void run_cmd(char *cmd) {
         fullcmd = opal_argv_join(cmdlist, ' ');
         printf("Unknown command: %s\n", fullcmd);
         free(fullcmd);
+        opal_argv_free(cmdlist);
         return;
     }
     

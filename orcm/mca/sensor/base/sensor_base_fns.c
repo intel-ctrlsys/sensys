@@ -176,7 +176,6 @@ void collect_inventory_info(opal_buffer_t *inventory_snapshot)
 
 void log_inventory_info(opal_buffer_t *inventory_snapshot)
 {
-    opal_buffer_t *buf;
     int32_t rc;
     orte_process_name_t *tgt;
 
@@ -188,12 +187,11 @@ void log_inventory_info(opal_buffer_t *inventory_snapshot)
     }
 
     /* send Inventory data */
-    opal_dss.copy_payload(buf, inventory_snapshot);
     if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, inventory_snapshot,
                                                       ORCM_RML_TAG_INVENTORY,
                                                       orte_rml_send_callback, NULL))) {
         ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(buf);
+        OBJ_RELEASE(inventory_snapshot);
     }
 }
 

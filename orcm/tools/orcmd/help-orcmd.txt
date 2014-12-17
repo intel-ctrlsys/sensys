@@ -10,7 +10,7 @@
 #
 #
 [usage]
-orcmd [OPTIONS]
+Usage: orcmd [OPTIONS]
   Open Resilient Cluster Manager Daemon
 
 %s

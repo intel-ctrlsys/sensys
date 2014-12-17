@@ -11,8 +11,8 @@
 # This is the US/English help file for Open Resilient Cluster Manager Tool
 #
 [usage]
-osub [OPTIONS]
-  Open Resilient Cluster Manager "osub" Tool
+Usage: osub [OPTIONS]
+  Open Resilient Cluster Manager session submission tool
 
 %s
 [version]

@@ -27,9 +27,9 @@ attempting to %s.  Returned value %d instead of ORTE_SUCCESS.
 [usage]
 
 Usage: %s [OPTION]...  [PROGRAM]...
-Start the given program using Open RTE
+Run Open RCM Job
 
-Report bugs to %s
+%s
 [version]
 orun %s
 

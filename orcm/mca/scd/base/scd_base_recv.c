@@ -135,6 +135,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             } else {
                 alloc_power_budget = node_power_budget * alloc->min_nodes;
             }
+        }
 
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY,
                                                    false, &alloc_power_budget, OPAL_DOUBLE))) {

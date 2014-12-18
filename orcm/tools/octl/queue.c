@@ -34,6 +34,7 @@ int orcm_octl_queue_status(char **argv)
     /* pack the session info command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_SCD_CMD_T))) {
         ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
         return rc;
     }
     /* send it to the scheduler */

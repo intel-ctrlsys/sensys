@@ -10,7 +10,7 @@
 # This is the US/English help file for Open Resilient Cluster Manager
 #
 [usage]
-orcmsched [OPTIONS]
+Usage: orcmsched [OPTIONS]
   Open Resilient Cluster Manager Scheduler
 
 %s

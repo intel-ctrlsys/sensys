@@ -147,6 +147,7 @@ int orcm_cli_get_cmd(char *prompt,
     size_t j, k;
     char **completions, **inputlist;
     int rc = ORCM_SUCCESS;
+    char *tmp = NULL;
 
     /* prep the stack */
     memset(input, 0, ORCM_MAX_CLI_LENGTH);
@@ -172,6 +173,7 @@ int orcm_cli_get_cmd(char *prompt,
         case '\t':   // auto-completion
             space = false;
             options = NULL;
+            opal_argv_free(completions);
             completions = NULL;
             /* break command line so far into array of strings */
             inputlist = opal_argv_split(input, ' ');
@@ -223,7 +225,9 @@ int orcm_cli_get_cmd(char *prompt,
                         input[j++] = ' ';
                         space = true;
                     }
-                    printf("\n\t%s", opal_argv_join(completions, ' '));
+                    tmp = opal_argv_join(completions, ' ');
+                    printf("\n\t%s", tmp);
+                    free(tmp);
                 }
                 printf("\n%s> %s", prompt, input);
                 break;
@@ -289,6 +293,7 @@ int orcm_cli_get_cmd(char *prompt,
         case '?':   // help special char
             /* list help message of possible completions */
             options = NULL;
+            opal_argv_free(inputlist);
             inputlist = opal_argv_split(input, ' ');
             printf("\nPossible commands:\n");
             print_completions(cli, inputlist);

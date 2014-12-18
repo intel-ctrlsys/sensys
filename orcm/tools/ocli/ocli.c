@@ -77,11 +77,11 @@ static int orcm_ocli_init(int argc, char *argv[])
     char *args = NULL;
     char *str = NULL;
     orcm_cli_t cli;
-    orcm_cli_cmd_t *cmd;
+    orcm_cli_cmd_t *cmd = NULL;
     int tailc;
-    char **tailv;
+    char **tailv = NULL;
     int ret;
-    char *mycmd;
+    char *mycmd = NULL;
 
     /* Make sure to init util before parse_args
      * to ensure installdirs is setup properly
@@ -94,12 +94,9 @@ static int orcm_ocli_init(int argc, char *argv[])
     opal_cmd_line_create(&cmd_line, cmd_line_opts);
     
     mca_base_cmd_line_setup(&cmd_line);
-    
-    if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
-        fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
-        exit(1);
-    }
 
+    opal_cmd_line_parse(&cmd_line, true, argc, argv);
+    
     /* Setup OPAL Output handle from the verbose argument */
     if( orcm_ocli_globals.verbose ) {
         orcm_ocli_globals.output = opal_output_open(NULL);
@@ -166,6 +163,7 @@ static int orcm_ocli_init(int argc, char *argv[])
 
     run_cmd(mycmd);
     free(mycmd);
+    opal_argv_free(tailv);
 
     return ret;
 }
@@ -190,13 +188,14 @@ static int ocli_command_to_int(char *command)
 }
 
 static void run_cmd(char *cmd) {
-    char **cmdlist;
-    char *fullcmd;
+    char **cmdlist = NULL;
+    char *fullcmd = NULL;
     int rc;
     
     cmdlist = opal_argv_split(cmd, ' ');
     if (0 == opal_argv_count(cmdlist)) {
         printf("No command parsed\n");
+        opal_argv_free(cmdlist);
         return;
     }
     
@@ -205,6 +204,7 @@ static void run_cmd(char *cmd) {
         fullcmd = opal_argv_join(cmdlist, ' ');
         printf("Unknown command: %s\n", fullcmd);
         free(fullcmd);
+        opal_argv_free(cmdlist);
         return;
     }
     

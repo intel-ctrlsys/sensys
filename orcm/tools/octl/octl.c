@@ -79,7 +79,7 @@ static int orcm_octl_init(int argc, char *argv[])
     orcm_cli_t cli;
     orcm_cli_cmd_t *cmd;
     int tailc;
-    char **tailv;
+    char **tailv = NULL;
     int ret;
     char *mycmd;
     
@@ -95,10 +95,7 @@ static int orcm_octl_init(int argc, char *argv[])
     
     mca_base_cmd_line_setup(&cmd_line);
     
-    if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
-        fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
-        exit(1);
-    }
+    opal_cmd_line_parse(&cmd_line, true, argc, argv);
     
     /* Setup OPAL Output handle from the verbose argument */
     if( orcm_octl_globals.verbose ) {
@@ -166,6 +163,7 @@ static int orcm_octl_init(int argc, char *argv[])
     
     run_cmd(mycmd);
     free(mycmd);
+    opal_argv_free(tailv);
     
     return ret;
 }
@@ -190,13 +188,14 @@ static int octl_command_to_int(char *command)
 }
 
 static void run_cmd(char *cmd) {
-    char **cmdlist;
-    char *fullcmd;
+    char **cmdlist = NULL;
+    char *fullcmd = NULL;
     int rc;
     
     cmdlist = opal_argv_split(cmd, ' ');
     if (0 == opal_argv_count(cmdlist)) {
         printf("No command parsed\n");
+        opal_argv_free(cmdlist);
         return;
     }
     
@@ -205,6 +204,7 @@ static void run_cmd(char *cmd) {
         fullcmd = opal_argv_join(cmdlist, ' ');
         printf("Unknown command: %s\n", fullcmd);
         free(fullcmd);
+        opal_argv_free(cmdlist);
         return;
     }
     

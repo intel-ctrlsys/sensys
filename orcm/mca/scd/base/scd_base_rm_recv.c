@@ -372,7 +372,7 @@ static int update_nodestate_byname(orcm_node_state_t state, char *regexp, hwloc_
     int cnt, i, j, rc;
     orcm_node_t *nodeptr;
     char **nodenames = NULL;
-    bool found;
+    bool found = false;
     orcm_node_state_t newstate;
     
     if (ORCM_NODE_STATE_RESUME == state) {
@@ -384,6 +384,7 @@ static int update_nodestate_byname(orcm_node_state_t state, char *regexp, hwloc_
     if (ORTE_SUCCESS !=
         (rc = orte_regex_extract_node_names(regexp, &nodenames))) {
         ORTE_ERROR_LOG(rc);
+        opal_argv_free(nodenames);
         return rc;
     }
     cnt = opal_argv_count(nodenames);

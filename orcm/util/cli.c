@@ -145,7 +145,8 @@ int orcm_cli_get_cmd(char *prompt,
     char input[ORCM_MAX_CLI_LENGTH];
     bool space;
     size_t j, k;
-    char **completions, **inputlist;
+    char **completions = NULL;
+    char **inputlist = NULL;
     int rc = ORCM_SUCCESS;
     char *tmp = NULL;
 
@@ -195,6 +196,7 @@ int orcm_cli_get_cmd(char *prompt,
                         OPAL_LIST_FOREACH(kv, options, opal_value_t) {
                             printf("%s  ", kv->key);
                         }
+                        printf("\n%s> %s", prompt, input);
                     }
                 } else if (1 == opal_argv_count(completions)) {
                     /* only 1 possible completion, go ahead and complete it */
@@ -228,8 +230,8 @@ int orcm_cli_get_cmd(char *prompt,
                     tmp = opal_argv_join(completions, ' ');
                     printf("\n\t%s", tmp);
                     free(tmp);
+                    printf("\n%s> %s", prompt, input);
                 }
-                printf("\n%s> %s", prompt, input);
                 break;
             } else {
                 goto process;

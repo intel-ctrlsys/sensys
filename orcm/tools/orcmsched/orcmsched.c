@@ -102,10 +102,6 @@ static opal_cmd_line_init_t cmd_line_opts[] = {
       &orcmsched_spin_flag, OPAL_CMD_LINE_TYPE_BOOL,
       "Have the scheduler spin until we can connect a debugger to it" },
 
-    { "orte_debug", 'd', NULL, "debug", 0,
-      NULL, OPAL_CMD_LINE_TYPE_BOOL,
-      "Debug the OpenRTE" },
-        
     { NULL, '\0', NULL, "daemonize", 0,
       &orcmsched_globals.daemonize, OPAL_CMD_LINE_TYPE_BOOL,
       "Daemonize the scheduler into the background" },

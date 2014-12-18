@@ -8,13 +8,13 @@
 .\" Man page for ORCM's ocli command
 .\" 
 .\" .TH name     section center-footer   left-footer  center-header
-.TH ORCM-OCLI 1 "#OPAL_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
+.TH ocli 1 "#ORCM_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
 .\" **************************
 .\"    Name Section
 .\" **************************
 .SH NAME
 .
-ocli \- Modify queues, jobs, etc in ORCM
+ocli \- User command line utility for ORCM
 .
 .PP
 .
@@ -31,28 +31,84 @@ ocli \- Modify queues, jobs, etc in ORCM
 .\" **************************
 .SH Options
 .
-\fIocli\fR will modify queues, jobs, etc in ORCM
+\fIocli\fR user command line utility for ORCM.  This utility can work in both
+an interactive mode to help the user build up the subcommand or in a one-shot
+mode where the user specifies the complete subcommand on the command line.
 .
 .TP 10
 .B -h | --help
-Display help for this command
+Display help for this command.
 .
 .
 .TP
-.B -v | --verbose
-Enable verbose output for debugging
-.
-.
-.TP
-.B -gmca | --gmca \fR<key> <value>\fP
-Pass global MCA parameters that are applicable to all contexts. \fI<key>\fP is
-the parameter name; \fI<value>\fP is the parameter value.
+.B -V | --version
+Display version for this command.
 .
 .
 .TP
 .B -mca | --mca <key> <value>
 Send arguments to various MCA modules.
 .
+.PP
+.SH Interactive
+.PP
+The interactive mode of the utility is invoked by running the command without
+any subcommands. Optional arguments such as MCA parameters can be specified as
+well.
+.PP
+Once in the interactive shell, the \fItab\fR key can be used to either
+autocomplete unambiguous partial commands or list possible completions for
+ambiguous partial commands. The \fI?\fR key will display more information about
+all of the commands at the current hierarchy.
+.PP
+To exit the interactive mode without running a command, either type \fIctrl-c\fR
+or enter an empty subcommand.
+.PP
+.
+.SH Subcommands
+The subcommands of the command line interface are organized in a hierarchy.  All
+commands within the heirarchy specify the final full command.
+.SS resource
+.
+.
+The \fIresource\fR command set is used to display information about the resources
+configured in the system.
+.TP
+.SS status
+\fIstatus\fR lists connection state (either up or down) and the job state
+(allocated or unallocated). The node specification is an ORCM node regex.
+.PP
+For example:
+.
+.TP 4
+ocli resource status
+.PP
+.SS queue
+.
+The \fIqueue\fR command set displays information about the currently configured
+queues as well as the sessions within each queue.
+.TP
+.SS status
+\fIstatus\fR lists current queues and sessions within the queues.
+.PP
+For example:
+.
+.TP 4
+ocli queue status
+.PP
+.SS session
+.
+The \fIsession\fR command set allows user to modify previously submitted
+sessions.
+.TP
+.SS cancel <session-id>
+\fIcancel\fR specified running or pending session.
+.PP
+For example:
+.
+.TP 4
+ocli session cancel 199
+.PP
 .
 .\" **************************
 .\"    Description Section
@@ -60,7 +116,99 @@ Send arguments to various MCA modules.
 .SH DESCRIPTION
 .
 .PP
-\fIocli\fR modifies queues, jobs, etc in ORCM
+\fIocli\fR is a user level tool for interacting with ORCM. This tool has the
+ability to run as an interactive shell or as a single one-shot command.
+Currently the tools provides information about configured resources, sessions,
+and queues. This tool is also for managing sessions at the user level.
+.
+.
+.SS Setting MCA Parameters
+.
+The \fI--omca\fP switch allows the passing of parameters to various MCA
+(Modular Component Architecture) modules.
+MCA modules allow tunable parameters to be set at run time.
+.PP
+The \fI--omca\fP switch takes two arguments: \fI<key>\fP and \fI<value>\fP.
+The \fI<key>\fP argument generally specifies which MCA module will receive the
+value.
+The \fI<value>\fP argument is the value that is passed.
+For example:
+.
+.TP 4
+octl --omca oob_tcp_if_include eth0 resource status
+Tells Open RCM to use eth0 as the interface to query the node state.
+.
+.PP
+The \fI--omca\fP switch can be used multiple times to specify different
+\fI<key>\fP and/or \fI<value>\fP arguments.  If the same \fI<key>\fP is
+specified more than once, the \fI<value>\fPs are concatenated with a comma
+(",") separating them.
+.PP
+Note that the \fI--omca\fP switch is simply a shortcut for setting environment
+variables. The same effect may be accomplished by setting corresponding
+environment variables before running \fIoctl\fP.
+The form of the environment variables that Open RCM sets is:
+
+ORCM_MCA_<key>=<value>
+.PP
+Thus, the \fI--omca\fP switch overrides any previously set environment
+variables.  The \fI--omca\fP settings similarly override MCA parameters set
+in the
+$OPAL_PREFIX/etc/openmpi-mca-params.conf or $HOME/.openmpi/mca-params.conf
+file.
+.
+.PP
+Unknown \fI<key>\fP arguments are still set as
+environment variable -- they are not checked (by \fIoctl\fP) for correctness.
+Illegal or incorrect \fI<value>\fP arguments may or may not be reported -- it
+depends on the specific MCA module.
+.PP
+To find the available component types under the MCA architecture, or to find the
+available parameters for a specific component, use the \fIorcm-info\fP command.
+See the \fIorcm-info(1)\fP man page for detailed information on the command.
+.
+.
+.SS ORCM Node Regex
+The Open RCM node regex is specified when a set of nodes have a similar name
+prefix.  The prefix is stripped and the numbering that follows is turned into a
+padding specification and hyphenated range, comma separated list, or combination
+of both.  The padding specification is the total number of digits including 0
+padded digits.  The regex for a single node is the full nodename.  For nodenames
+that have different padding, the full regex is a comma separated list of regex
+for each similarly padded node range.
+.PP
+For example:
+.
+.TP 4
+node001,node002 : node[3:1-2]
+.TP 4
+node1,node2 : node[1:1-2]
+.TP 4
+node1,node2,node3,node4 : node[1:1-4]
+.TP 4
+node009,node010 : node[3:9-10]
+.TP 4
+node9,node10 : node[1:9],node[2:10]
+.TP 4
+node001,node002,node003,abc001,abc002 : node[3:1-3],abc[3:1-2]
+.
+.
+.\" **************************
+.\"    Examples Section
+.\" **************************
+.SH EXAMPLES
+Interactive mode takes the same commands and options as the one-shot.  The
+excpetion is that you need to pass MCA options to the ocli command as the
+interactive shell will not parse the MCA options.
+.
+.TP 4
+ocli resource status
+Get the state of all resources
+.
+.
+.TP 4
+ocli queue status
+Get the state of all queues
 .
 .
 .\" **************************
@@ -68,5 +216,5 @@ Send arguments to various MCA modules.
 .\" **************************
 .
 .SH SEE ALSO
-orun(1) osub(1)
+octl(1) orun(1) osub(1) orcm-info(1)
 .

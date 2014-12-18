@@ -1,46 +1,46 @@
 .\" Man page contributed by Dirk Eddelbuettel <edd@debian.org>
 .\" and released under the BSD license
 .\" Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
-.TH orte-info 1 "#OPAL_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
+.TH orcm-info 1 "#OPAL_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
 .SH NAME
-orte-info - Display information about the ORTE installation
+orcm-info - Display information about the ORCM installation
 .
 .\" **************************
 .\"    Synopsis Section
 .\" **************************
 .SH SYNOPSIS
-.B orte-info [options]
+.B orcm-info [options]
 .
 .\" **************************
 .\"    Description Section
 .\" **************************
 .SH DESCRIPTION
 .PP
-.B orte-info
-provides detailed information about the ORTE installation.  It can
+.B orcm-info
+provides detailed information about the ORCM installation.  It can
 be useful for at least three common scenarios:
 .PP
-1. Checking local configuration and seeing how ORTE was installed.
+1. Checking local configuration and seeing how ORCM was installed.
 .PP
-2. Submitting bug reports / help requests to the ORTE community
+2. Submitting bug reports / help requests to the ORCM community
 (see 
-.IR http://www.open-mpi.org/community/help/ )
+.IR https://github.com/open-mpi/orcm/issues )
 .PP
-3. Seeing a list of installed ORTE plugins and querying what 
+3. Seeing a list of installed ORCM plugins and querying what
 MCA parameters they support.
 .
 .\" **************************
 .\"    Options Section
 .\" **************************
 .SH OPTIONS
-.B orte-info
+.B orcm-info
 accepts the following options:
 .TP 8
 .I \-a|\-\-all 
 Show all configuration options and MCA parameters
 .TP 8
 .I \-\-arch   
-Show architecture ORTE was compiled on
+Show architecture ORCM was compiled on
 .TP 8
 .I \-c|\-\-config
 Show configuration options
@@ -52,7 +52,7 @@ Pass global MCA parameters that are applicable to all contexts.
 Shows help / usage message
 .TP 8
 .I \-\-hostname
-Show the hostname that ORTE was configured and built on
+Show the hostname that ORCM was configured and built on
 .TP 8
 .I \-\-internal
 Show internal MCA parameters (not meant to be modified by users)
@@ -73,7 +73,7 @@ displayed in a machine-parsable format
 Synonym for --parsable
 .TP 8
 .I \-\-path <type>
-Show paths that ORTE was configured with.  Accepts the following
+Show paths that ORCM was configured with.  Accepts the following
 parameters: prefix, bindir, libdir, incdir, pkglibdir, sysconfdir.
 .TP 8
 .I \-\-pretty
@@ -81,7 +81,7 @@ When used in conjunction with other parameters, the output is
 displayed in 'prettyprint' format (default)
 .TP 8
 .I \-v|\-\-version <component> <scope>
-Show version of ORTE or a component.  <component> can be the
+Show version of ORCM or a component.  <component> can be the
 keywords "orcm" or "all", the name of a framework (e.g., "coll" shows
 all components in the coll framework), or the name of a specific
 component (e.g., "pls:rsh" shows the information from the rsh PLS
@@ -93,69 +93,67 @@ greek, svn.
 .\" **************************
 .SH EXAMPLES
 .TP 4
-orte-info
+orcm-info
 Show the default output of options and listing of installed
 components in a human-readable / prettyprint format.
 .
 .
 .TP
-orte-info --parsable
+orcm-info --parsable
 Show the default output of options and listing of installed
 components in a machine-parsable format.
 .
 .
 .TP
-orte-info --param rmcast udp
+orcm-info --param rmcast udp
 Show the MCA parameters of the "udp" RMCAST component in a
 human-readable / prettyprint format.
 .
 .
 .TP
-orte-info --param rmcast udp --parsable
+orcm-info --param rmcast udp --parsable
 Show the MCA parameters of the "udp" RMCAST component in a
 machine-parsable format.
 .
 .
 .TP
-orte-info --path bindir
-Show the "bindir" that ORTE was configured with.
+orcm-info --path bindir
+Show the "bindir" that ORCM was configured with.
 .
 .
 .TP
-orte-info --version orte full --parsable
-Show the full version numbers of ORTE (including the OPAL
+orcm-info --version orcm full --parsable
+Show the full version numbers of ORCM (including the OPAL
 version number) in a machine-readable format.
 .
 .
 .TP
-orte-info --version rmcast major
+orcm-info --version rmcast major
 Show the major version number of all RMCAST components in a prettyprint
 format.
 .
 .
 .TP
-orte-info --version rmcast:tcp minor
+orcm-info --version rmcast:tcp minor
 Show the minor version number of the TCP RMCAST component in a
 prettyprint format.
 .
 .
 .TP
-orte-info --all
+orcm-info --all
 Show 
 .I all 
-information about the ORTE installation, including all components
+information about the ORCM installation, including all components
 that can be found, the MCA parameters that they support, versions of
-ORTE and the components, etc.
+ORCM and the components, etc.
 .
 .
 .\" **************************
 .\"    Authors Section
 .\" **************************
 .SH AUTHORS
-The ORTE maintainers -- see 
-.I http://www.openmpi.org/
-or the file
-.IR AUTHORS .
+The ORCM maintainers -- see
+.I http://www.open-mpi.org/projects/orcm/
 .PP
 This manual page was originally contributed by Dirk Eddelbuettel
 <edd@debian.org>, one of the Debian GNU/Linux maintainers for Open

@@ -65,7 +65,7 @@ my @ompi_leading_ignores = ("ompi", "test", "examples", "config/ompi", "orte/too
                             "orte/mca/plm/lsf", "orte/mca/plm/slurm", "orte/mca/plm/tm",
                             "orte/mca/state/app", "orte/mca/state/hnp", "orte/mca/state/novm",
                             "orte/mca/state/staged", "orte/tools/Makefile.am", "orte/util/proc_info.h",
-                            ".mailmap", ".hgignore_global", "AUTHORS", "NEWS");
+                            ".mailmap", ".hgignore_global", "AUTHORS", "NEWS", "Makefile.ompi-rules");
 
 
 my @orcm_ignores = (".gitignore", ".hgignore_global", ".mailmap", "Makefile.am", "README", "VERSION",

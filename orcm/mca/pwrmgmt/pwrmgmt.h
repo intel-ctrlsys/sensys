@@ -76,6 +76,8 @@ BEGIN_C_DECLS
  * ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY   // uint64_t - time in ms that we can exceed the power cap
  * ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY  // uint64_t - time in ms that we can go under the power cap
  * ORCM_PWRMGMT_SUPPORTED_MODES_KEY          // opal_ptr (int) - pointer to an array of supported power modes by current component
+ * ORCM_PWRMGMT_SELECTED_COMPONENT_KEY       // string - string name of the selected component
+ * ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY         // double - requested target for setting a manual frequency
  */
 
 /*
@@ -215,8 +217,7 @@ typedef orcm_pwrmgmt_base_API_module_1_0_0_t orcm_pwrmgmt_base_API_module_t;
 struct orcm_pwrmgmt_base_component_1_0_0_t {
     mca_base_component_t       base_version;
     mca_base_component_data_t  base_data;
-    int                        num_modes;
-    int                        modes;
+    char*                      name;
 };
 
 typedef struct orcm_pwrmgmt_base_component_1_0_0_t orcm_pwrmgmt_base_component_1_0_0_t;

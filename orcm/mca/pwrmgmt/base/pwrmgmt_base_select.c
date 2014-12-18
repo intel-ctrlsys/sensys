@@ -47,7 +47,6 @@ int orcm_pwrmgmt_base_select(void)
     opal_pointer_array_t tmp_array;
     bool none_found;
     orcm_pwrmgmt_active_module_t *tmp_module = NULL, *tmp_module_sw = NULL;
-//    bool duplicate;
 
     if (selected) {
         return ORCM_SUCCESS;
@@ -95,63 +94,7 @@ int orcm_pwrmgmt_base_select(void)
                                 component->base_version.mca_component_name );
             continue;
         }
-#if 0
-        /* check to see if we already have someone who supports the
-         * same modes - if so, take the higher priority one
-         */
-        duplicate = true;
-        replace = true;
-        for (i=0; i < tmp_array.size; i++) {
-            tmp_module = (orcm_pwrmgmt_active_module_t*)opal_pointer_array_get_item(&tmp_array, i);
-            if (NULL == tmp_module) {
-                continue;
-            }
-            for(int j = 0; j < component->num_modes; j++) {
-                bool matched = false;
-                for(int k = 0; k < tmp_module->num_modes; k++) {
-                    if(tmp_module->modes[i] == component->modes[i]) {
-                        matched = true;
-                    }
-                }
-                if(false = matched) {
-                    duplicate = false;
-                }
-            }
-            for(int j = 0; j < tmp_module->num_modes; j++) {
-                bool matched = false;
-                for(int k = 0; k < component->num_modes; k++) {
-                    if(tmp_module->modes[i] == component->modes[i]) {
-                        matched = true;
-                    }
-                }
-                if(false = matched) {
-                    replace = false;
-                }
-            }
-            if (0 == strcmp(component->data_measured, tmp_module->component->data_measured)) {
-                if (tmp_module->priority < priority) {
-                    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
-                                        "pwrmgmt:base:select Replacing component %s with %s - both measure %s",
-                                        tmp_module->component->base_version.mca_component_name,
-                                        component->base_version.mca_component_name,
-                                        component->data_measured);
-                    OBJ_RELEASE(tmp_module);
-                    opal_pointer_array_set_item(&tmp_array, i, NULL);
-                    break;
-                } else {
-                    duplicate = true;
-                }
-            }
-        }
-        if (duplicate) {
-            /* ignore this component */
-            opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
-                                "pwrmgmt:base:select Ignoring component %s - duplicate with higher priority measures %s",
-                                component->base_version.mca_component_name,
-                                component->data_measured);
-            continue;
-        }
-#endif
+
         /*
          * Append them to the temporary list, we will sort later
          */

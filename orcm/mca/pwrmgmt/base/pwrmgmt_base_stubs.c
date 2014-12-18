@@ -56,10 +56,9 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
 {
     bool rc;
     orcm_pwrmgmt_active_module_t* active;
+    orcm_pwrmgmt_active_module_t* current;
     int32_t *requested_power_mode;
     int32_t max_priority = 0;
-    opal_list_t attrib;
-    OBJ_CONSTRUCT(&attrib, opal_list_t);
 
     rc = orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, (void**)&requested_power_mode, OPAL_INT32); 
 
@@ -76,27 +75,34 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
         return;
     }
 
-    rc = orte_set_attribute(&attrib, ORCM_PWRMGMT_POWER_MODE_KEY, true, (void*)requested_power_mode, OPAL_INT32);
-
     for(int i = 0; i < orcm_pwrmgmt_base.modules.size; i++) {
         if (NULL == (active = (orcm_pwrmgmt_active_module_t*)opal_pointer_array_get_item(&orcm_pwrmgmt_base.modules, i))) {
             continue;
         }
         if (NULL != active->module->set_attributes) {
-            if(OPAL_SUCCESS == active->module->set_attributes(alloc->id, &attrib)) {
+            if(OPAL_SUCCESS == active->module->set_attributes(alloc->id, &alloc->constraints)) {
                 if (active->priority > max_priority) {
                     max_priority = active->priority;
-                    orcm_pwrmgmt = *active->module;
-                    /* The dealloc call still needs to be handled here */
-                    orcm_pwrmgmt.dealloc_notify = orcm_pwrmgmt_base_dealloc_notify;
-                    selected_module = active;
+                    current = active;
                 }    
             }
         }
     }
-    if (NULL != orcm_pwrmgmt.alloc_notify) {
+    if(!ORTE_PROC_IS_SCHEDULER) {
+        /* If we are changing components, tell the old one to shutdown */
+        if(current != selected_module && NULL != selected_module) {
+            if(NULL != selected_module->module->dealloc_notify) {
+                selected_module->module->dealloc_notify(alloc);
+            }
+        }
+        selected_module = current;
+        orcm_pwrmgmt = *current->module;
+        /* The dealloc call still needs to be handled bt the base framework */
+        orcm_pwrmgmt.dealloc_notify = orcm_pwrmgmt_base_dealloc_notify;
+    }
+    if (NULL != selected_module->module->alloc_notify) {
         /* give this module a chance to operate on it */
-        orcm_pwrmgmt.alloc_notify(alloc);
+        selected_module->module->alloc_notify(alloc);
     }
 }
 

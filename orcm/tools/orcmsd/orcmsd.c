@@ -405,6 +405,10 @@ int main(int argc, char *argv[])
                                    true, orte_process_info.nodename,
                                    orte_daemon_cores);
                     ret = ORTE_ERR_NOT_SUPPORTED;
+                    hwloc_bitmap_free(ours);
+                    hwloc_bitmap_free(pucpus);
+                    hwloc_bitmap_free(res);
+                    opal_argv_free(cores);
                     goto DONE;
                 }
                 hwloc_bitmap_and(pucpus, pu->online_cpuset, pu->allowed_cpuset);
@@ -773,6 +777,7 @@ void orcms_daemon_recv(int status, orte_process_name_t* sender,
             if (ORTE_SUCCESS != (ret = orte_odls.kill_local_procs(NULL))) {
                 ORTE_ERROR_LOG(ret);
             }
+            OBJ_DESTRUCT(&procarray);
             break;
         } else {
             /* kill the procs */

@@ -133,8 +133,6 @@ static void finalize(void)
 /*Start monitoring of local processes */
 static void start(orte_jobid_t jobid)
 {
-    opal_output(0,"IPMI Start");
-
     /* Select sensor list if no sensors are specified by the user */
     if((NULL==mca_sensor_ipmi_component.sensor_list) & (NULL==mca_sensor_ipmi_component.sensor_group))
     {
@@ -155,7 +153,6 @@ static void start(orte_jobid_t jobid)
 
 static void stop(orte_jobid_t jobid)
 {
-    opal_output(0,"IPMI Stop");
     count_log = 0;
     return;
 }

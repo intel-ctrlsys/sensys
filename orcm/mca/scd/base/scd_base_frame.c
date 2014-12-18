@@ -263,8 +263,6 @@ static void alloc_con(orcm_alloc_t *p)
     p->nodes = NULL;
     p->queues = NULL;
     p->batchfile = NULL;
-    p->node_power_budget = 0;
-    p->alloc_power_budget = 0;
     p->notes = NULL;
     OBJ_CONSTRUCT(&p->constraints, opal_list_t);
 }

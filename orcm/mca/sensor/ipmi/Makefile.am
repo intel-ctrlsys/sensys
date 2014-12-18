@@ -11,10 +11,6 @@
 dist_orcmdata_DATA = help-orcm-sensor-ipmi.txt
 
 sources = \
-        ipmiutil-2.9.3/util/ievents.c \
-        ipmiutil-2.9.3/util/ievents.h \
-        ipmiutil-2.9.3/util/isensor.c \
-        ipmiutil-2.9.3/util/isensor.h \
         sensor_ipmi.c \
         sensor_ipmi.h \
         sensor_ipmi_decls.h \

@@ -19,7 +19,6 @@
 
 #include "orcm/mca/sensor/sensor.h"
 #include <ipmicmd.h>
-#include "ipmiutil-2.9.3/util/isensor.h"
 #include "sensor_ipmi_decls.h"
 
 BEGIN_C_DECLS

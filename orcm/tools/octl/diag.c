@@ -51,7 +51,7 @@ int orcm_octl_diag_cpu(char **argv)
         goto fail;
     }
     /* pack component */
-    comp = strdup("cpu");
+    comp = strdup("cputest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
@@ -170,7 +170,7 @@ int orcm_octl_diag_eth(char **argv)
         goto fail;
     }
     /* pack component */
-    comp = strdup("eth");
+    comp = strdup("ethtest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
@@ -287,7 +287,7 @@ int orcm_octl_diag_mem(char **argv)
         goto fail;
     }
     /* pack component */
-    comp = strdup("mem");
+    comp = strdup("memtest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);

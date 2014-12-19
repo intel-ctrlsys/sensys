@@ -45,6 +45,8 @@
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_dmidata.h"
+#include "sensor_dmidata_decls.h"
+
 #include "hwloc.h"
 /* declare the API functions */
 static int init(void);
@@ -65,30 +67,10 @@ orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
     dmidata_inventory_log
 };
 
-typedef struct {
-    opal_list_item_t super;
-    char *nodename;
-    unsigned long hashId; /* A hash value summing up the inventory record for each node, for quick comparision */
-    hwloc_topology_t hwloc_topo;
-    opal_list_t *records; /* An hwloc topology container followed by a list of inventory items */
-} dmidata_inventory_t;
-
-static void inv_con(dmidata_inventory_t *trk)
-{
-    trk->records = OBJ_NEW(opal_list_t);
-}
-static void inv_des(dmidata_inventory_t *trk)
-{
-    if(trk != NULL) {
-        if(trk != NULL) {
-            OPAL_LIST_RELEASE(trk->records);
-        }
-    }
-    free(trk->nodename);
-}
 OBJ_CLASS_INSTANCE(dmidata_inventory_t,
                    opal_list_item_t,
-                   inv_con, inv_des);
+                   dmidata_inv_con, dmidata_inv_des);
+
 
 /* Increment the MAX_INVENTORY_KEYWORDS size with every new addition here */
 /* NOTE: key for populating the lookup array

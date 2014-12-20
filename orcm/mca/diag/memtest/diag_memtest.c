@@ -129,7 +129,7 @@ static void *memcheck_thread(void *arg) {
             opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s memdiag: memory error on %p : it should be 0x%08x, but 0x%08x; diffs : 0x%08x",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (void *)(myaddr + i), w, myaddr[i], w ^ myaddr[i]);
-            mem_diag_ret = ORCM_ERR_COMPARE_FAILURE;
+            mem_diag_ret |= DIAG_MEM_STRESS_TST;
         }
     }
 
@@ -272,10 +272,10 @@ static void memtest_run(int sd, short args, void *cbdata)
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                         "%s memdiag: get resource limit failed",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        mem_diag_ret = ORCM_ERR_MEM_LIMIT_EXCEEDED;
-        ORTE_ERROR_LOG(mem_diag_ret);
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                        "%s Checking memory:                        [NOTRUN]",
+        rc = ORCM_ERR_MEM_LIMIT_EXCEEDED;
+        ORTE_ERROR_LOG(rc);
+        mem_diag_ret |= DIAG_MEM_NOTRUN; 
+        opal_output(0, "%s Diagnostic checking memory:\t\t\t[NOTRUN]\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
         goto sendresults;
     }
@@ -287,10 +287,10 @@ static void memtest_run(int sd, short args, void *cbdata)
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                         "%s memdiag: set resource limit failed",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        mem_diag_ret = ORCM_ERR_BAD_PARAM;
-        ORTE_ERROR_LOG(mem_diag_ret);
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                        "%s Checking memory:                        [NOTRUN]",
+        rc = ORCM_ERR_BAD_PARAM;
+        ORTE_ERROR_LOG(rc);
+        mem_diag_ret |= DIAG_MEM_NOTRUN; 
+        opal_output(0, "%s Diagnostic checking memory:\t\t\t[NOTRUN]\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
         goto sendresults;
     }
@@ -307,18 +307,17 @@ static void memtest_run(int sd, short args, void *cbdata)
             opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s memdiag: out of memory",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-            mem_diag_ret = ORCM_ERR_FAILED_TO_MAP;
-            ORTE_ERROR_LOG(mem_diag_ret);
-            opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                                "%s Checking memory:                        [NOTRUN]",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+            rc = ORCM_ERR_FAILED_TO_MAP;
+            ORTE_ERROR_LOG(rc);
+            mem_diag_ret |= DIAG_MEM_NOTRUN; 
+            opal_output(0, "%s Diagnostic checking memory:\t\t\t[NOTRUN]\n",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
             goto sendresults;
         }
 
     } while (addr == (void *)-1);
 
-    opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                        "%s memdiag: %ld MB is used for test",
+    opal_output(0, "%s Diagnostic checking memory: %ld MB is used for test\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), info.freeram >> 20);
     p    = (char *)addr;
     rest = size;
@@ -339,15 +338,16 @@ static void memtest_run(int sd, short args, void *cbdata)
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                         "%s memdiag: set resource limit failed",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        mem_diag_ret = ORCM_ERR_BAD_PARAM;
-        ORTE_ERROR_LOG(mem_diag_ret);
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                            "%s Checking memory:                        [ FAIL ]",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+        rc = ORCM_ERR_BAD_PARAM;
+        ORTE_ERROR_LOG(rc);
+    }
+
+    if ( ORCM_SUCCESS != mem_diag_ret ) {
+        opal_output(0, "%s Diagnostic checking memory:\t\t\t[ FAIL ]\n",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     } else {
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                            "%s Checking memory:                        [  OK  ]",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+        opal_output(0, "%s Diagnostic checking memory:\t\t\t[  OK  ]\n",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
 sendresults:

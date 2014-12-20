@@ -348,20 +348,17 @@ static int dump_eth_test(char *resource,
     int ret = 0;
 
     ret = eth_test->flags & ETH_TEST_FL_FAILED;
-    opal_output_verbose(5, orcm_diag_base_framework.framework_output,
-                        "%s diag:Ethernet test result : %s",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ret ? "FAIL" : "PASS");
+    opal_output(0, "%s Diagnostic checking ethernet:          \t\t%s\n",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ret ? "[ FAIL ]" : "[  OK  ]");
 
     if ( strings->len ) {
-        opal_output_verbose(5, orcm_diag_base_framework.framework_output,
-                        "%s diag:Ethernet test details",
+        opal_output(0, "%s Diagnostic ethernet test details:\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
 
     }
 
     for (i = 0; i < strings->len; i++) {
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                        "%s diag: %8s   %15s     %s",
+        opal_output(0, "%s Diagnostic checking: %8s %15s   %s\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         resource,
                         (char *)(strings->data + i * ETH_GSTRING_LEN),

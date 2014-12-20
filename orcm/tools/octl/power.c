@@ -8,6 +8,7 @@
  */
 
 #include "orcm/tools/octl/common.h"
+#include "orcm/util/attr.h"
 #include "orcm/mca/scd/base/base.h"
 
 int orcm_octl_power_set(int cmd, char **argv)
@@ -228,12 +229,75 @@ int orcm_octl_power_get(int cmd, char **argv)
     switch(cmd) {
     case ORCM_GET_POWER_BUDGET_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &double_param,
+                                                  &n, OPAL_DOUBLE))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        printf("Current cluster power budget: %f watts\n", double_param);
+    break;
+    case ORCM_GET_POWER_MODE_COMMAND:
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        printf("Current cluster power budget: %f\n", double_param);
+        printf("Current default power mode: %s\n", orcm_attr_key_print(int_param));
+    break;
+    case ORCM_GET_POWER_WINDOW_COMMAND:
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
+                                                  &n, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        printf("Current default power window: %d ms\n", int_param);
+    break;
+    case ORCM_GET_POWER_OVERAGE_COMMAND:
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &double_param,
+                                                  &n, OPAL_DOUBLE))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        printf("Current default power budget overage limit: %f watts\n", double_param);
+    break;
+    case ORCM_GET_POWER_UNDERAGE_COMMAND:
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &double_param,
+                                                  &n, OPAL_DOUBLE))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        printf("Current default power budget underage limit: %f watts\n", double_param);
+    break;
+    case ORCM_GET_POWER_OVERAGE_TIME_COMMAND:
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
+                                                  &n, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        printf("Current default power overage time limit: %d ms\n", int_param);
+    break;
+    case ORCM_GET_POWER_UNDERAGE_TIME_COMMAND:
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
+                                                  &n, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        printf("Current default power underage time limit: %d ms\n", int_param);
+    break;
+    case ORCM_GET_POWER_FREQUENCY_COMMAND:
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &double_param,
+                                                  &n, OPAL_DOUBLE))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        printf("Current default power frequency: %f MHz\n", double_param);
     break;
     default:
         printf("Illegal power command: %d\n", cmd);

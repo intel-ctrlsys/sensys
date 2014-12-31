@@ -347,6 +347,16 @@ static void mycleanup(int dbhandle, int status,
         log_enabled = false;
     }
 }
+static void mycleanup_procstat(int dbhandle, int status,
+                      opal_list_t *kvs, void *cbdata)
+{
+    OPAL_LIST_RELEASE(kvs);
+    if (ORTE_SUCCESS != status) {
+        log_enabled = false;
+    }
+    if(NULL != cbdata)
+        free(cbdata);
+}
 
 static void res_log(opal_buffer_t *sample)
 {
@@ -357,6 +367,7 @@ static void res_log(opal_buffer_t *sample)
     opal_value_t *kv;
     char *node;
     char *sampletime;
+    char *primary_key;
 
     if (!log_enabled) {
         return;
@@ -563,9 +574,10 @@ static void res_log(opal_buffer_t *sample)
             kv->data.int16 = st->processor;
             opal_list_append(vals, &kv->super);
 
+            asprintf(&primary_key, "procstat_%s",st->cmd);
             /* store it */
             if (0 <= orcm_sensor_base.dbhandle) {
-                orcm_db.store(orcm_sensor_base.dbhandle, "procstats", vals, mycleanup, NULL);
+                orcm_db.store(orcm_sensor_base.dbhandle, primary_key, vals, mycleanup_procstat, primary_key);
             } else {
                 OPAL_LIST_RELEASE(vals);
             }

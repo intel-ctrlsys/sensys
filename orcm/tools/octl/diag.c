@@ -359,7 +359,7 @@ int orcm_octl_diag_mem(char **argv)
 
     /* get the refcount correct */
     OBJ_RELEASE(buf);
-    
+
     opal_argv_free(nodelist);
     return ORCM_SUCCESS;
 

@@ -149,6 +149,7 @@ int orcm_octl_diag_eth(char **argv)
     orte_regex_extract_node_names (argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "Error: unable to extract nodelist\n");
+        opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -239,10 +240,12 @@ int orcm_octl_diag_eth(char **argv)
     /* get the refcount correct */
     OBJ_RELEASE(buf);
 
+    opal_argv_free(nodelist);
     return ORCM_SUCCESS;
 
 fail:
     fprintf(stdout, "Error\n");
+    opal_argv_free(nodelist);
     return rc;
 }
 
@@ -266,6 +269,7 @@ int orcm_octl_diag_mem(char **argv)
     orte_regex_extract_node_names (argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "Error: unable to extract nodelist\n");
+        opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -355,10 +359,12 @@ int orcm_octl_diag_mem(char **argv)
 
     /* get the refcount correct */
     OBJ_RELEASE(buf);
-
+    
+    opal_argv_free(nodelist);
     return ORCM_SUCCESS;
 
 fail:
     fprintf(stdout, "Error\n");
+    opal_argv_free(nodelist);
     return rc;
 }

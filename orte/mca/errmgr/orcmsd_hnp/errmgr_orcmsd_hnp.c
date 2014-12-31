@@ -321,7 +321,9 @@ static void proc_errors(int fd, short args, void *cbdata)
             goto cleanup;
         }
         /* mark the daemon as gone */
-        ORTE_FLAG_UNSET(pptr, ORTE_PROC_FLAG_ALIVE);
+        if (NULL != pptr) {
+            ORTE_FLAG_UNSET(pptr, ORTE_PROC_FLAG_ALIVE);
+        }
         /* if we have ordered orteds to terminate or abort
          * is in progress, record it */
         if (orte_orteds_term_ordered || orte_abnormal_term_ordered) {
@@ -334,7 +336,7 @@ static void proc_errors(int fd, short args, void *cbdata)
 	    if (0 == orte_routed.num_routes()) {
                 for (i=0; i < orte_local_children->size; i++) {
                     if (NULL != (proct = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i)) &&
-                        ORTE_FLAG_TEST(pptr, ORTE_PROC_FLAG_ALIVE) && proct->state < ORTE_PROC_STATE_UNTERMINATED) {
+                        (NULL != pptr) && ORTE_FLAG_TEST(pptr, ORTE_PROC_FLAG_ALIVE) && proct->state < ORTE_PROC_STATE_UNTERMINATED) {
                         /* at least one is still alive */
                         OPAL_OUTPUT_VERBOSE((5, orte_errmgr_base_framework.framework_output,
                                              "%s Comm failure: at least one proc (%s) still alive",
@@ -658,6 +660,10 @@ static void notify_job_errors(orte_job_t *jdata, orte_proc_t *proc)
     int rc;
     opal_buffer_t *buf;
 
+    if (NULL == jdata || NULL == proc) {
+        goto CLEANUP;
+    }
+
     if (ORTE_JOB_STATE_ANY == jdata->state) {
         goto CLEANUP;
     }
@@ -725,13 +731,12 @@ static void notify_job_errors(orte_job_t *jdata, orte_proc_t *proc)
     OPAL_OUTPUT_VERBOSE((0, orte_state_base_framework.framework_output,
                         "%s state:orcmsd:notify job error %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        (NULL == jdata) ? "NULL" : ORTE_JOBID_PRINT(jdata->jobid)));
+                        ORTE_JOBID_PRINT(jdata->jobid)));
 
     /* if this job is a continuously operating one, then don't do
      * anything further - just return here
      */
-    if (NULL != jdata &&
-        (orte_get_attribute(&jdata->attributes, ORTE_JOB_CONTINUOUS_OP, NULL, OPAL_BOOL) ||
+    if ((orte_get_attribute(&jdata->attributes, ORTE_JOB_CONTINUOUS_OP, NULL, OPAL_BOOL) ||
          ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_RECOVERABLE))) {
         /* set state to ANY */
         jdata->state = ORTE_JOB_STATE_ANY;

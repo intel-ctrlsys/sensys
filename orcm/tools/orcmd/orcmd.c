@@ -567,8 +567,11 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
         free(cmd);
         return rc;
     }
-    opal_argv_append(&argc, &argv, param);
-    free(param);
+    if (NULL != param) {
+        opal_argv_append(&argc, &argv, param);
+        free(param);
+        param = NULL;
+    }
 
     if( hnp ) {
         /* setup to pass the vpid */
@@ -603,8 +606,11 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
             free(cmd);
             return ORTE_ERR_OUT_OF_RESOURCE;
         }
-        opal_argv_append(&argc, &argv, param);
-        free(param);
+        if (NULL != param) {
+            opal_argv_append(&argc, &argv, param);
+            free(param);
+            param = NULL;
+        }
 
     } else {
         /* extract the hosts */
@@ -631,8 +637,11 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
             free(cmd);
             return ORTE_ERR_OUT_OF_RESOURCE;
         }
-        opal_argv_append(&argc, &argv, param);
-        free(param);
+        if (NULL != param) {
+            opal_argv_append(&argc, &argv, param);
+            free(param);
+            param = NULL;
+        }
         /* pass the uri of the hnp */
         opal_argv_append(&argc, &argv, "-omca");
         opal_argv_append(&argc, &argv, "orte_hnp_uri");

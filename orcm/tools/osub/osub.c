@@ -618,6 +618,7 @@ static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc)
 
         if (ORTE_SUCCESS != (rc = opal_argv_append(&argc, &argv, shell))) {
                  ORTE_ERROR_LOG(rc);
+                 opal_argv_free(argv);
                  return rc;
         }
 

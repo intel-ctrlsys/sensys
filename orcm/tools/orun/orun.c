@@ -799,7 +799,7 @@ static int parse_locals(orte_job_t *jdata, int argc, char* argv[])
                 }
 
                 /* Reset the temps */
-
+                opal_argv_free(temp_argv);
                 temp_argc = 0;
                 temp_argv = NULL;
                 opal_argv_append(&temp_argc, &temp_argv, argv[0]);
@@ -1416,7 +1416,7 @@ static int create_app(int argc, char* argv[],
         
         /* see if we were given a class path */
         found = false;
-        for (i=1; NULL != app->argv[i]; i++) {
+        for (i=1; i < count && NULL != app->argv[i]; i++) {
             if (NULL != strstr(app->argv[i], "cp") ||
                 NULL != strstr(app->argv[i], "classpath")) {
                 /* yep - but does it include the path to the mpi libs? */
@@ -1643,6 +1643,9 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
                 fclose(fp);
                 exit(1);
             }
+            if (NULL != argv) {
+                opal_argv_free(argv);
+            }
             if (NULL != tmp_env) {
                 opal_argv_free(tmp_env);
             }
@@ -1819,6 +1822,8 @@ static void report_aborted_procs(orte_job_t *job, orte_proc_t *proc,
                                  char *nodename)
 {
     orte_app_context_t *approc = NULL;
+    char *appl = NULL;
+    char *cwd = NULL;
     
     if (ORTE_JOB_STATE_UNDEF != job->state &&
         ORTE_JOB_STATE_INIT != job->state &&
@@ -1838,6 +1843,8 @@ static void report_aborted_procs(orte_job_t *job, orte_proc_t *proc,
 
             approc = (orte_app_context_t*)opal_pointer_array_get_item(
                       job->apps, proc->app_idx);
+            appl = ((approc == NULL) ? NULL : approc->app); 
+            cwd = ((approc == NULL) ? NULL : approc->cwd); 
 
             switch (*exit_code) {
             case ORTE_ERR_SILENT:
@@ -1865,7 +1872,7 @@ static void report_aborted_procs(orte_job_t *job, orte_proc_t *proc,
                 break;
             case ORTE_ERR_WDIR_NOT_FOUND:
                 orte_show_help("help-orun.txt", "orterun:wdir-not-found", true,
-                               orte_basename, approc->cwd,
+                               orte_basename, cwd,
                                nodename, (unsigned long)proc->name.vpid);
                 break;
             case ORTE_ERR_EXE_NOT_FOUND:
@@ -1875,11 +1882,11 @@ static void report_aborted_procs(orte_job_t *job, orte_proc_t *proc,
                                orte_basename, 
                                orte_basename, 
                                nodename, 
-                               approc->app);
+                               appl);
                 break;
             case ORTE_ERR_EXE_NOT_ACCESSIBLE:
                 orte_show_help("help-orun.txt", "orterun:exe-not-accessible", true,
-                               orte_basename, approc->app, nodename,
+                               orte_basename, appl, nodename,
                                (unsigned long)proc->name.vpid);
                 break;
             case ORTE_ERR_MULTIPLE_AFFINITIES:
@@ -1890,7 +1897,7 @@ static void report_aborted_procs(orte_job_t *job, orte_proc_t *proc,
                 orte_show_help("help-orun.txt",
                                "orterun:topo-not-supported", 
                                true, orte_process_info.nodename, "rankfile containing a slot_list of ", 
-                               NULL, approc->app);
+                               NULL, appl);
                 break;
             case ORTE_ERR_INVALID_NODE_RANK:
                 orte_show_help("help-orun.txt",
@@ -1904,13 +1911,13 @@ static void report_aborted_procs(orte_job_t *job, orte_proc_t *proc,
                 orte_show_help("help-orun.txt",
                                "orterun:not-enough-resources", true,
                                "sockets", nodename,
-                               "bind-to-core", approc->app);
+                               "bind-to-core", appl);
                 break;
             case ORTE_ERR_TOPO_CORE_NOT_SUPPORTED:
                 orte_show_help("help-orun.txt",
                                "orterun:topo-not-supported", 
                                true, nodename, "bind-to-core", "",
-                               approc->app);
+                               appl);
                 break;
             case ORTE_ERR_INVALID_PHYS_CPU:
                 orte_show_help("help-orun.txt",
@@ -1920,13 +1927,13 @@ static void report_aborted_procs(orte_job_t *job, orte_proc_t *proc,
                 orte_show_help("help-orun.txt",
                                "orterun:not-enough-resources", true,
                                "sockets", nodename,
-                               "bind-to-socket", approc->app);
+                               "bind-to-socket", appl);
                 break;
             case ORTE_ERR_TOPO_SOCKET_NOT_SUPPORTED:
                 orte_show_help("help-orun.txt",
                                "orterun:topo-not-supported", 
                                true, nodename, "bind-to-socket", "",
-                               approc->app);
+                               appl);
                 break;
             case ORTE_ERR_MODULE_NOT_FOUND:
                 orte_show_help("help-orun.txt",

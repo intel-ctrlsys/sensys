@@ -421,7 +421,7 @@ static int update_nodestate_byname(orcm_node_state_t state, char *regexp, hwloc_
             }
         }
     }
-    
+    opal_argv_free(nodenames);
     if (!found) {
         OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
                              "%s scd:base:rm:update_nodestate_byname Couldn't find node(s) to update state %i (%s)",

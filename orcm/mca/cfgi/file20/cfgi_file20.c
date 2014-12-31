@@ -463,6 +463,7 @@ static char* extract_tag(char *filename, char *line)
     if (NULL == start) {
         fprintf(stderr, "Error parsing tag in configuration file %s: xml format error in %s\n",
                 filename, line);
+        free(tmp);
         return NULL;
     }
     start++;
@@ -475,6 +476,7 @@ static char* extract_tag(char *filename, char *line)
     if (NULL == end) {
         fprintf(stderr, "Error parsing tag in configuration file %s: xml format error in %s\n",
                 filename, line);
+        free(tmp);
         return NULL;
     }
     *end = '\0';
@@ -755,6 +757,7 @@ static int parse_node(orcm_node_t *node, int idx, orcm_cfgi_xml_parser_t *x)
             asprintf(&node->name, "%0*d", digits, idx);
         } else {
             asprintf(&node->name, "%s.%0*d", rack->name, digits, idx);
+            free(name);
         }
     } else {
         if (ORCM_SUCCESS != (rc = parse_orcm_config(&node->config, x))) {
@@ -800,6 +803,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
             asprintf(&rack->name, "%0*d", digits, idx);
         } else {
             asprintf(&rack->name, "%s%0*d", rack->row->name, digits, idx);
+            free(name);
         }
         rack->controller.name = strdup(rack->name);
         rack->controller.state = ORTE_NODE_STATE_UNKNOWN;
@@ -1007,11 +1011,13 @@ static int parse_cluster(orcm_cluster_t *cluster,
             for (n=0; NULL != vals[n]; n++) {
                 if (ORTE_SUCCESS != (rc = orte_regex_extract_name_range(vals[n], &names))) {
                     opal_argv_free(vals);
+                    opal_argv_free(names);
                     return rc;
                 }
             }
             if (NULL == names) {
                 /* that's an error */
+                opal_argv_free(vals);
                 return ORCM_ERR_BAD_PARAM;
             }
             /* see if we have each row object - it not, create it */
@@ -1036,10 +1042,14 @@ static int parse_cluster(orcm_cluster_t *cluster,
                 OPAL_LIST_FOREACH(y, &x->subvals, orcm_cfgi_xml_parser_t) {
                     if (ORCM_SUCCESS != (rc = parse_row(row, y))) {
                         ORTE_ERROR_LOG(rc);
+                        opal_argv_free(vals);
+                        opal_argv_free(names);
                         return rc;
                     }
                 }
             }
+            opal_argv_free(vals);
+            opal_argv_free(names);
         } else {
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tUNKNOWN TAG");
@@ -1099,9 +1109,6 @@ static void setup_environ(char **env)
     if (NULL == env) {
         return;
     }
-
-    /* get a copy of our environment */
-    tmp = opal_argv_copy(environ);
 
     /* go thru the provided environment and *only* set
      * envars that were not previously set. This allows

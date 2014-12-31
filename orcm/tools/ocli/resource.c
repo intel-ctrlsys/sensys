@@ -165,7 +165,7 @@ int orcm_ocli_resource_status(char **argv)
                 OBJ_DESTRUCT(&xfer);
                 return rc;
             }
-            if (21 > strnlen(regexp, sizeof(regexp))) {
+            if (21 > strlen(regexp)) {
                 printf("%-20s : %s %16s\n",
                        regexp,
                        orcm_node_state_to_char(container->template.state),

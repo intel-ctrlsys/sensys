@@ -102,6 +102,7 @@ static int orte_ras_orcm_allocate(orte_job_t *jdata, opal_list_t *nodes)
     if (NULL == node_slots) {
         orte_show_help("help-ras-orcm.txt", "orcm-env-var-not-found", 1,
                        "ORCM_SLOTS_PER_NODE");
+        free(regexp);
         return ORTE_ERR_NOT_FOUND;
     }
 

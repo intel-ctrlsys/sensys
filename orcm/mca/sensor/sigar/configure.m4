@@ -16,10 +16,10 @@ AC_DEFUN([MCA_orcm_sensor_sigar_CONFIG], [
     AC_MSG_CHECKING([for sigar Sensor support])
     AC_REQUIRE([OPAL_CHECK_SIGARLIB])
 
-   AC_ARG_WITH([sigar_sensor],
-                [AC_HELP_STRING([--with-sigar_sensor(=yes/no)],
+   AC_ARG_WITH([sigar-sensor],
+                [AC_HELP_STRING([--with-sigar-sensor(=yes/no)],
                                 [Build Sigar sensor support])],
-                [AC_MSG_RESULT([with_sigar_sensor selected with paramater "$with_sigar_sensor"!])]
+                [AC_MSG_RESULT([with_sigar-sensor selected with paramater "$with_sigar_sensor"!])]
                 [AS_IF([test "$sigarlib_check_happy" = "no" -a "$with_sigar_sensor" = "yes"],
                         AC_MSG_RESULT([SIGAR LIB Check failed and we need to skip building Sigar Sensor Component here])
                         AC_MSG_WARN([SIGAR  Libs not present])

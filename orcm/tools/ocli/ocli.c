@@ -105,9 +105,6 @@ static int orcm_ocli_init(int argc, char *argv[])
         orcm_ocli_globals.output = 0; /* Default=STDERR */
     }
 
-    /* initialize orcm for use as a tool */
-    ret = orcm_init(ORCM_TOOL);
-    
     if (orcm_ocli_globals.help) {
         args = opal_cmd_line_get_usage_msg(&cmd_line);
         str = opal_show_help_string("help-ocli.txt", "usage", false, args);
@@ -117,7 +114,6 @@ static int orcm_ocli_init(int argc, char *argv[])
         }
         free(args);
         /* If we show the help message, that should be all we do */
-        orcm_finalize();
         exit(0);
     }
     
@@ -129,10 +125,12 @@ static int orcm_ocli_init(int argc, char *argv[])
             printf("%s", str);
             free(str);
         }
-        orcm_finalize();
         exit(0);
     }
-    
+
+    /* initialize orcm for use as a tool */
+    ret = orcm_init(ORCM_TOOL);
+
     /* Since this process can now handle MCA/GMCA parameters, make sure to
      * process them. */
     mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);

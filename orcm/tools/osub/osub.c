@@ -197,7 +197,7 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "Maximum duration before job is terminated" },
 
     { NULL,
-      'e', NULL, "non-exclusive",
+      '\0', NULL, "non-exclusive",
       0,
       &orcm_osub_globals.nonexclusive, OPAL_CMD_LINE_TYPE_BOOL,
       "Allow allocated nodes to be shared with other sessions" },

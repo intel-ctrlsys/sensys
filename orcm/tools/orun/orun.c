@@ -140,9 +140,9 @@ static opal_cmd_line_init_t cmd_line_init[] = {
       &orun_globals.version, OPAL_CMD_LINE_TYPE_BOOL,
       "Show version information" },
 
-    /* Number of processes; -np, and --np are all
+    /* Number of processes; -n, and --np are all
        synonyms */
-    { NULL, '\0', "np", "np", 1,
+    { NULL, 'n', NULL, "np", 1,
       &orun_globals.num_procs, OPAL_CMD_LINE_TYPE_INT,
       "Number of processes to run" },
 
@@ -151,17 +151,17 @@ static opal_cmd_line_init_t cmd_line_init[] = {
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Mapping Policy [slot | hwthread | core | socket (default) | numa | board | node]" },
 
-    { NULL, '\0', "path", "path", 1,
+    { NULL, '\0', NULL, "path", 1,
       &orun_globals.path, OPAL_CMD_LINE_TYPE_STRING,
       "PATH to be used to look for executables to start processes" },
 
     /* OpenRTE arguments */
-    { "orte_debug", 'd', "debug", "debug", 0,
+    { "orte_debug", 'd', NULL, "debug", 0,
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Enable debugging of OpenRTE" },
     
     /* select XML output */
-    { "orte_xml_output", '\0', "xml", "xml", 0,
+    { "orte_xml_output", '\0', NULL, "xml", 0,
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Provide all output in XML format" },
 
@@ -213,7 +213,7 @@ static opal_cmd_line_init_t cmd_line_init[] = {
       &orun_globals.min_nodes, OPAL_CMD_LINE_TYPE_INT,
       "Minimum number of nodes required for allocation" },
 
-    {"orte_hnp_uri", '\0', "hnp-uri", "hnp-uri", 1,
+    {"orte_hnp_uri", '\0', NULL, "hnp-uri", 1,
       &my_hnp_uri, OPAL_CMD_LINE_TYPE_STRING,
       "URI for the HNP"},
 
@@ -306,6 +306,7 @@ static void orun_recv(int status, orte_process_name_t *sender,
                 OBJ_RELEASE(buffer);
             }
             report_aborted_procs(jdata, proc, state, &proc_exit_code, nodename);
+            rc = proc_exit_code;
             break;
 
 
@@ -323,9 +324,9 @@ static void orun_recv(int status, orte_process_name_t *sender,
     orte_finalize();
 
     if (orte_debug_flag) {
-        printf("exiting with status %d\n", orte_exit_status);
+        printf("exiting with status %d\n", rc);
     }
-    exit(orte_exit_status);
+    exit(rc);
 }
 
 int orun(int argc, char *argv[])
@@ -435,7 +436,7 @@ int orun(int argc, char *argv[])
                 tmp_basename[strlen(tmp_basename)-1] = '\0';
             }
             if (NULL != param && 0 != strcmp(param, tmp_basename)) {
-                orte_show_help("help-orun.txt", "orterun:double-prefix",
+                orte_show_help("help-orterun.txt", "orterun:double-prefix",
                                true, orte_basename, orte_basename,
                                param, tmp_basename, orte_basename);
                 /* use the prefix over the path-to-mpirun so that
@@ -469,7 +470,7 @@ int orun(int argc, char *argv[])
                 param[param_len-1] = '\0';
                 param_len--;
                 if (0 == param_len) {
-                    orte_show_help("help-orun.txt", "orterun:empty-prefix",
+                    orte_show_help("help-orterun.txt", "orterun:empty-prefix",
                                    true, orte_basename, orte_basename);
                     free(param);
                     return ORTE_ERR_FATAL;
@@ -495,12 +496,11 @@ int orun(int argc, char *argv[])
     }
 
     if (!my_hnp_uri && (false == orun_globals.alloc_request)) {
-        orte_show_help("help-orun.txt", "orterun:allocation-not-specified",
-                       false, orte_basename, orte_basename);
-        rc = ORCM_ERR_BAD_PARAM;
-        ORTE_ERROR_LOG(rc);
-        return rc;
+        orun_globals.min_nodes = 1;
+        orun_globals.max_nodes = 1;
+        orun_globals.alloc_request = true;
     }
+
     /* create a new job object to hold the info for this one - the
      * jobid field will be filled in by the PLM when the job is
      * launched
@@ -531,7 +531,7 @@ int orun(int argc, char *argv[])
     if (0 == jdata->num_apps) {
         /* This should never happen -- this case should be caught in
            create_app(), but let's just double check... */
-        orte_show_help("help-orun.txt", "orterun:nothing-to-do",
+        orte_show_help("help-orterun.txt", "orterun:nothing-to-do",
                        true, orte_basename);
         exit(ORTE_ERROR_DEFAULT_EXIT_CODE);
     }
@@ -555,7 +555,7 @@ int orun(int argc, char *argv[])
     /* pre-condition any network transports that require it */
     if (ORTE_SUCCESS != (rc = orte_pre_condition_transports(jdata))) {
         ORTE_ERROR_LOG(rc);
-        orte_show_help("help-orun.txt", "orterun:precondition", false,
+        orte_show_help("help-orterun.txt", "orterun:precondition", false,
                        orte_basename, NULL, NULL, rc);
         ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
         goto DONE;
@@ -590,7 +590,7 @@ int orun(int argc, char *argv[])
         OBJ_CONSTRUCT(&alloc, orcm_alloc_t);
         if (ORTE_SUCCESS != (rc = alloc_request(&alloc))) {
             ORTE_ERROR_LOG(rc);
-            orte_show_help("help-orun.txt", "orterun:alloc_request", false,
+            orte_show_help("help-orterun.txt", "orterun:alloc_request", false,
                        orte_basename, NULL, NULL, rc);
             ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
             goto DONE;
@@ -723,7 +723,7 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
        that --version --help works as one might expect. */
     if (orun_globals.version) {
         char *str;
-        str = opal_show_help_string("help-orun.txt", "version", false,
+        str = opal_show_help_string("help-orterun.txt", "version", false,
                                     ORCM_VERSION,
                                     PACKAGE_BUGREPORT);
         if (NULL != str) {
@@ -737,7 +737,7 @@ static int parse_globals(int argc, char* argv[], opal_cmd_line_t *cmd_line)
     if (orun_globals.help) {
         char *str, *args = NULL;
         args = opal_cmd_line_get_usage_msg(cmd_line);
-        str = opal_show_help_string("help-orun.txt", "usage", false,
+        str = opal_show_help_string("help-orterun.txt", "usage", false,
                                     orte_basename, args,
                                     PACKAGE_BUGREPORT);
         if (NULL != str) {
@@ -799,7 +799,7 @@ static int parse_locals(orte_job_t *jdata, int argc, char* argv[])
                 }
 
                 /* Reset the temps */
-                opal_argv_free(temp_argv);
+
                 temp_argc = 0;
                 temp_argv = NULL;
                 opal_argv_append(&temp_argc, &temp_argv, argv[0]);
@@ -957,7 +957,7 @@ static int capture_cmd_line_params(int argc, int start, char **argv)
                                     /* print help message
                                      * and abort as we cannot know which one is correct
                                      */
-                                    orte_show_help("help-orun.txt", "orterun:conflicting-params",
+                                    orte_show_help("help-orterun.txt", "orterun:conflicting-params",
                                                    true, orte_basename, argv[i+1],
                                                    argv[i+2], orted_cmd_line[j+1]);
                                     return ORTE_ERR_BAD_PARAM;
@@ -1063,7 +1063,7 @@ static int create_app(int argc, char* argv[],
     /* See if we have anything left */
 
     if (0 == count) {
-        orte_show_help("help-orun.txt", "orterun:executable-not-specified",
+        orte_show_help("help-orterun.txt", "orterun:executable-not-specified",
                        true, orte_basename, orte_basename);
         rc = ORTE_ERR_NOT_FOUND;
         goto cleanup;
@@ -1191,7 +1191,7 @@ static int create_app(int argc, char* argv[],
         } else {
             /* get the cwd */
             if (OPAL_SUCCESS != (rc = opal_getcwd(cwd, sizeof(cwd)))) {
-                orte_show_help("help-orun.txt", "orterun:init-failure",
+                orte_show_help("help-orterun.txt", "orterun:init-failure",
                                true, "get the cwd", rc);
                 goto cleanup;
             }
@@ -1204,7 +1204,7 @@ static int create_app(int argc, char* argv[],
         orte_set_attribute(&app->attributes, ORTE_APP_USER_CWD, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
     } else {
         if (OPAL_SUCCESS != (rc = opal_getcwd(cwd, sizeof(cwd)))) {
-            orte_show_help("help-orun.txt", "orterun:init-failure",
+            orte_show_help("help-orterun.txt", "orterun:init-failure",
                            true, "get the cwd", rc);
             goto cleanup;
         }
@@ -1248,7 +1248,7 @@ static int create_app(int argc, char* argv[],
                     value[strlen(value)-1] = '\0';
                 }
                 if (NULL != param && 0 != strcmp(param, value)) {
-                    orte_show_help("help-orun.txt", "orterun:app-prefix-conflict",
+                    orte_show_help("help-orterun.txt", "orterun:app-prefix-conflict",
                                    true, orte_basename, value, param);
                     /* let the global-level prefix take precedence since we
                      * know that one is being used
@@ -1278,7 +1278,7 @@ static int create_app(int argc, char* argv[],
                     param[param_len-1] = '\0';
                     param_len--;
                     if (0 == param_len) {
-                        orte_show_help("help-orun.txt", "orterun:empty-prefix",
+                        orte_show_help("help-orterun.txt", "orterun:empty-prefix",
                                        true, orte_basename, orte_basename);
                         free(param);
                         return ORTE_ERR_FATAL;
@@ -1297,7 +1297,7 @@ static int create_app(int argc, char* argv[],
      */
     if (0 < (j = opal_cmd_line_get_ninsts(&cmd_line, "hostfile"))) {
         if(1 < j) {
-            orte_show_help("help-orun.txt", "orterun:multiple-hostfiles",
+            orte_show_help("help-orterun.txt", "orterun:multiple-hostfiles",
                            true, orte_basename, NULL);
             return ORTE_ERR_FATAL;
         } else {
@@ -1307,7 +1307,7 @@ static int create_app(int argc, char* argv[],
     }
     if (0 < (j = opal_cmd_line_get_ninsts(&cmd_line, "machinefile"))) {
         if(1 < j || orte_get_attribute(&app->attributes, ORTE_APP_HOSTFILE, NULL, OPAL_STRING)) {
-            orte_show_help("help-orun.txt", "orterun:multiple-hostfiles",
+            orte_show_help("help-orterun.txt", "orterun:multiple-hostfiles",
                            true, orte_basename, NULL);
             return ORTE_ERR_FATAL;
         } else {
@@ -1331,7 +1331,7 @@ static int create_app(int argc, char* argv[],
 
     /* check for bozo error */
     if (0 > orun_globals.num_procs) {
-        orte_show_help("help-orun.txt", "orterun:negative-nprocs",
+        orte_show_help("help-orterun.txt", "orterun:negative-nprocs",
                        true, orte_basename, app->argv[0],
                        orun_globals.num_procs, NULL);
         return ORTE_ERR_FATAL;
@@ -1375,7 +1375,7 @@ static int create_app(int argc, char* argv[],
 
     app->app = strdup(app->argv[0]);
     if (NULL == app->app) {
-        orte_show_help("help-orun.txt", "orterun:call-failed",
+        orte_show_help("help-orterun.txt", "orterun:call-failed",
                        true, orte_basename, "library", "strdup returned NULL", errno);
         rc = ORTE_ERR_NOT_FOUND;
         goto cleanup;
@@ -1416,7 +1416,7 @@ static int create_app(int argc, char* argv[],
         
         /* see if we were given a class path */
         found = false;
-        for (i=1; i < count && NULL != app->argv[i]; i++) {
+        for (i=1; NULL != app->argv[i]; i++) {
             if (NULL != strstr(app->argv[i], "cp") ||
                 NULL != strstr(app->argv[i], "classpath")) {
                 /* yep - but does it include the path to the mpi libs? */
@@ -1548,7 +1548,7 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
 
     fp = fopen(filename, "r");
     if (NULL == fp) {
-        orte_show_help("help-orun.txt", "orterun:appfile-not-found", true,
+        orte_show_help("help-orterun.txt", "orterun:appfile-not-found", true,
                        filename);
         return ORTE_ERR_NOT_FOUND;
     }
@@ -1642,9 +1642,6 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
                    printed; no need to cleanup -- we can just exit */
                 fclose(fp);
                 exit(1);
-            }
-            if (NULL != argv) {
-                opal_argv_free(argv);
             }
             if (NULL != tmp_env) {
                 opal_argv_free(tmp_env);
@@ -1822,8 +1819,6 @@ static void report_aborted_procs(orte_job_t *job, orte_proc_t *proc,
                                  char *nodename)
 {
     orte_app_context_t *approc = NULL;
-    char *appl = NULL;
-    char *cwd = NULL;
     
     if (ORTE_JOB_STATE_UNDEF != job->state &&
         ORTE_JOB_STATE_INIT != job->state &&
@@ -1832,7 +1827,7 @@ static void report_aborted_procs(orte_job_t *job, orte_proc_t *proc,
         ORTE_JOB_STATE_ABORT_ORDERED != job->state) {
 
         if (NULL  == nodename) {
-            orte_show_help("help-orun.txt", 
+            orte_show_help("help-orterun.txt", 
                            "orterun:proc-failed-to-start-no-status-no-node",
                            true, orte_basename);
             return;
@@ -1843,176 +1838,174 @@ static void report_aborted_procs(orte_job_t *job, orte_proc_t *proc,
 
             approc = (orte_app_context_t*)opal_pointer_array_get_item(
                       job->apps, proc->app_idx);
-            appl = ((approc == NULL) ? NULL : approc->app); 
-            cwd = ((approc == NULL) ? NULL : approc->cwd); 
 
             switch (*exit_code) {
             case ORTE_ERR_SILENT:
             /* say nothing - it was already reported */
                 break;
             case ORTE_ERR_SYS_LIMITS_PIPES:
-                orte_show_help("help-orun.txt", "orterun:sys-limit-pipe", true,
+                orte_show_help("help-orterun.txt", "orterun:sys-limit-pipe", true,
                                orte_basename, nodename,
                                (unsigned long)proc->name.vpid);
                 break;
             case ORTE_ERR_PIPE_SETUP_FAILURE:
-                orte_show_help("help-orun.txt", "orterun:pipe-setup-failure", true,
+                orte_show_help("help-orterun.txt", "orterun:pipe-setup-failure", true,
                                orte_basename, nodename,
                                (unsigned long)proc->name.vpid);
                 break;
             case ORTE_ERR_SYS_LIMITS_CHILDREN:
-                orte_show_help("help-orun.txt", "orterun:sys-limit-children", true,
+                orte_show_help("help-orterun.txt", "orterun:sys-limit-children", true,
                                orte_basename, nodename,
                                (unsigned long)proc->name.vpid);
                 break;
             case ORTE_ERR_FAILED_GET_TERM_ATTRS:
-                orte_show_help("help-orun.txt", "orterun:failed-term-attrs", true,
+                orte_show_help("help-orterun.txt", "orterun:failed-term-attrs", true,
                                orte_basename, nodename,
                                (unsigned long)proc->name.vpid);
                 break;
             case ORTE_ERR_WDIR_NOT_FOUND:
-                orte_show_help("help-orun.txt", "orterun:wdir-not-found", true,
-                               orte_basename, cwd,
+                orte_show_help("help-orterun.txt", "orterun:wdir-not-found", true,
+                               orte_basename, approc->cwd,
                                nodename, (unsigned long)proc->name.vpid);
                 break;
             case ORTE_ERR_EXE_NOT_FOUND:
-                orte_show_help("help-orun.txt", "orterun:exe-not-found", true,
+                orte_show_help("help-orterun.txt", "orterun:exe-not-found", true,
                                orte_basename, 
                                (unsigned long)proc->name.vpid,
                                orte_basename, 
                                orte_basename, 
                                nodename, 
-                               appl);
+                               approc->app);
                 break;
             case ORTE_ERR_EXE_NOT_ACCESSIBLE:
-                orte_show_help("help-orun.txt", "orterun:exe-not-accessible", true,
-                               orte_basename, appl, nodename,
+                orte_show_help("help-orterun.txt", "orterun:exe-not-accessible", true,
+                               orte_basename, approc->app, nodename,
                                (unsigned long)proc->name.vpid);
                 break;
             case ORTE_ERR_MULTIPLE_AFFINITIES:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:multiple-paffinity-schemes", true, NULL);
                 break;
             case ORTE_ERR_TOPO_SLOT_LIST_NOT_SUPPORTED:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:topo-not-supported", 
                                true, orte_process_info.nodename, "rankfile containing a slot_list of ", 
-                               NULL, appl);
+                               NULL, approc->app);
                 break;
             case ORTE_ERR_INVALID_NODE_RANK:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:invalid-node-rank", true);
                 break;
             case ORTE_ERR_INVALID_LOCAL_RANK:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:invalid-local-rank", true);
                 break;
             case ORTE_ERR_NOT_ENOUGH_CORES:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:not-enough-resources", true,
                                "sockets", nodename,
-                               "bind-to-core", appl);
+                               "bind-to-core", approc->app);
                 break;
             case ORTE_ERR_TOPO_CORE_NOT_SUPPORTED:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:topo-not-supported", 
                                true, nodename, "bind-to-core", "",
-                               appl);
+                               approc->app);
                 break;
             case ORTE_ERR_INVALID_PHYS_CPU:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:invalid-phys-cpu", true);
                 break;
             case ORTE_ERR_NOT_ENOUGH_SOCKETS:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:not-enough-resources", true,
                                "sockets", nodename,
-                               "bind-to-socket", appl);
+                               "bind-to-socket", approc->app);
                 break;
             case ORTE_ERR_TOPO_SOCKET_NOT_SUPPORTED:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:topo-not-supported", 
                                true, nodename, "bind-to-socket", "",
-                               appl);
+                               approc->app);
                 break;
             case ORTE_ERR_MODULE_NOT_FOUND:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:paffinity-missing-module", 
                                true, nodename);
                 break;
             case ORTE_ERR_SLOT_LIST_RANGE:
-                orte_show_help("help-orun.txt",
+                orte_show_help("help-orterun.txt",
                                "orterun:invalid-slot-list-range", 
                                true, nodename, NULL);
                 break;
             case ORTE_ERR_PIPE_READ_FAILURE:
-                orte_show_help("help-orun.txt", "orterun:pipe-read-failure", true,
+                orte_show_help("help-orterun.txt", "orterun:pipe-read-failure", true,
                                orte_basename, nodename, (unsigned long)proc->name.vpid);
                 break;
             case ORTE_ERR_SOCKET_NOT_AVAILABLE:
-                orte_show_help("help-orun.txt", "orterun:proc-socket-not-avail", true,
+                orte_show_help("help-orterun.txt", "orterun:proc-socket-not-avail", true,
                                orte_basename, ORTE_ERROR_NAME(*exit_code), nodename,
                                (unsigned long)proc->name.vpid);
                 break;
 
             default:
                 if (0 != *exit_code) {
-                    orte_show_help("help-orun.txt", "orterun:proc-failed-to-start", true,
+                    orte_show_help("help-orterun.txt", "orterun:proc-failed-to-start", true,
                                    orte_basename, ORTE_ERROR_NAME(*exit_code), nodename,
                                    (unsigned long)proc->name.vpid);
                 } else {
-                    orte_show_help("help-orun.txt", "orterun:proc-failed-to-start-no-status", true,
+                    orte_show_help("help-orterun.txt", "orterun:proc-failed-to-start-no-status", true,
                                    orte_basename, nodename);
                 }
                 break;
             }
         } else if (ORTE_JOB_STATE_ABORTED == job->state) {
-            orte_show_help("help-orun.txt", "orterun:proc-ordered-abort", true,
+            orte_show_help("help-orterun.txt", "orterun:proc-ordered-abort", true,
                            orte_basename, (unsigned long)proc->name.vpid, (unsigned long)proc->pid,
                            nodename, orte_basename);
         } else if (ORTE_JOB_STATE_ABORTED_BY_SIG == job->state) {  /* aborted by signal */
 #ifdef HAVE_STRSIGNAL
             if (NULL != strsignal(WTERMSIG(*exit_code))) {
-                orte_show_help("help-orun.txt", "orterun:proc-aborted-strsignal", true,
+                orte_show_help("help-orterun.txt", "orterun:proc-aborted-strsignal", true,
                                orte_basename, (unsigned long)proc->name.vpid, (unsigned long)proc->pid,
                                nodename, WTERMSIG(*exit_code), 
                                strsignal(WTERMSIG(*exit_code)));
             } else {
 #endif
-                orte_show_help("help-orun.txt", "orterun:proc-aborted", true,
+                orte_show_help("help-orterun.txt", "orterun:proc-aborted", true,
                                orte_basename, (unsigned long)proc->name.vpid, (unsigned long)proc->pid,
                                nodename, WTERMSIG(*exit_code));
 #ifdef HAVE_STRSIGNAL
             }
 #endif
         } else if (ORTE_JOB_STATE_ABORTED_WO_SYNC == job->state) { /* proc exited w/o finalize */
-            orte_show_help("help-orun.txt", "orterun:proc-exit-no-sync", true,
+            orte_show_help("help-orterun.txt", "orterun:proc-exit-no-sync", true,
                            orte_basename, (unsigned long)proc->name.vpid, (unsigned long)proc->pid,
                            nodename, orte_basename, orte_basename);
         } else if (ORTE_JOB_STATE_COMM_FAILED == job->state) {
-            orte_show_help("help-orun.txt", "orterun:proc-comm-failed", true,
+            orte_show_help("help-orterun.txt", "orterun:proc-comm-failed", true,
                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                            ORTE_NAME_PRINT(&proc->name), nodename);
         } else if (ORTE_JOB_STATE_SENSOR_BOUND_EXCEEDED == job->state) {
             switch (*exit_code) {
             case ORTE_ERR_MEM_LIMIT_EXCEEDED:
-                orte_show_help("help-orun.txt", "orterun:proc-mem-exceeded", true,
+                orte_show_help("help-orterun.txt", "orterun:proc-mem-exceeded", true,
                                ORTE_NAME_PRINT(&proc->name), nodename);
                 break;
             case ORTE_ERR_PROC_STALLED:
-                orte_show_help("help-orun.txt", "orterun:proc-stalled", true);
+                orte_show_help("help-orterun.txt", "orterun:proc-stalled", true);
                 break;
 
             default:
-                orte_show_help("help-orun.txt", "orterun:proc-sensor-exceeded", true);
+                orte_show_help("help-orterun.txt", "orterun:proc-sensor-exceeded", true);
                 break;
             }
         } else if (ORTE_JOB_STATE_HEARTBEAT_FAILED == job->state) {
-            orte_show_help("help-orun.txt", "orterun:proc-heartbeat-failed", true,
+            orte_show_help("help-orterun.txt", "orterun:proc-heartbeat-failed", true,
                            orte_basename, ORTE_NAME_PRINT(&proc->name), nodename);
         } else if (orte_abort_non_zero_exit &&
                    ORTE_JOB_STATE_NON_ZERO_TERM == job->state) {
-            orte_show_help("help-orun.txt", "orterun:non-zero-exit", true,
+            orte_show_help("help-orterun.txt", "orterun:non-zero-exit", true,
                            orte_basename, ORTE_NAME_PRINT(&proc->name), *exit_code);
         }
         return;

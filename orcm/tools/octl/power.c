@@ -203,7 +203,7 @@ int orcm_octl_power_get(int cmd, char **argv)
     orcm_scd_cmd_flag_t command;
     opal_buffer_t *buf;
     orte_rml_recv_cb_t xfer;
-    int rc, n, int_param;
+    int rc, n, int_param, success;
     double double_param;
     bool per_session = false;
     
@@ -266,6 +266,19 @@ int orcm_octl_power_get(int cmd, char **argv)
     n=1;
     ORTE_WAIT_FOR_COMPLETION(xfer.active);
 
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &success,
+                                              &n, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
+    if(OPAL_SUCCESS != success) {
+        ORTE_ERROR_LOG(success);
+        OBJ_DESTRUCT(&xfer);
+        return success;
+    }
+ 
     switch(cmd) {
     case ORCM_GET_POWER_BUDGET_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &double_param,

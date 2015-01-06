@@ -63,7 +63,21 @@ typedef struct {
     /* flag that we just want to test */
     bool test_mode;
     /* cluster power budget in Watts */
-    int power_budget;
+    double power_budget;
+    /* default cluster power mode */
+    int power_mode;
+    /* default cluster power window in ms */
+    int power_window;
+    /* default cluster power overage budget in Watts */
+    double power_overage;
+    /* default cluster power underage budget in Watts */
+    double power_underage;
+    /* default cluster power overage time limit in ms */
+    double power_overage_time;
+    /* default cluster power underage time limit in ms */
+    double power_underage_time;
+    /* default cluster power frequency in MHz */
+    double power_frequency;
     /* define an event base strictly for scheduling - this
      * allows the scheduler to respond to requests for
      * information without interference with the
@@ -126,8 +140,22 @@ ORCM_DECLSPEC int orcm_scd_base_rm_add_session_state(orcm_scd_session_state_t st
                                                      int priority);
 ORCM_DECLSPEC void orcm_scd_base_construct_queues(int fd, short args, void *cbdata);
 ORCM_DECLSPEC int orcm_scd_base_get_next_session_id(void);
-ORCM_DECLSPEC int orcm_scd_base_get_cluster_power_budget(void);
-ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_budget(int budget);
+ORCM_DECLSPEC double orcm_scd_base_get_cluster_power_budget(void);
+ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_budget(double budget);
+ORCM_DECLSPEC int orcm_scd_base_get_cluster_power_mode(void);
+ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_mode(int mode);
+ORCM_DECLSPEC int orcm_scd_base_get_cluster_power_window(void);
+ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_window(int window);
+ORCM_DECLSPEC double orcm_scd_base_get_cluster_power_overage(void);
+ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_overage(double overage);
+ORCM_DECLSPEC double orcm_scd_base_get_cluster_power_underage(void);
+ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_underage(double underage);
+ORCM_DECLSPEC int orcm_scd_base_get_cluster_power_overage_time(void);
+ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_overage_time(int overage_time);
+ORCM_DECLSPEC int orcm_scd_base_get_cluster_power_underage_time(void);
+ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_underage_time(int underage_time);
+ORCM_DECLSPEC double orcm_scd_base_get_cluster_power_frequency(void);
+ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_frequency(double frequency);
 
 END_C_DECLS
 #endif

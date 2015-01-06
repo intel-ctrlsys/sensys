@@ -149,7 +149,7 @@ static opal_cmd_line_init_t cmd_line_init[] = {
     /* Mapping options */
     { "rmaps_base_mapping_policy", '\0', NULL, "map-by", 1,
       NULL, OPAL_CMD_LINE_TYPE_STRING,
-      "Mapping Policy [slot | hwthread | core | socket (default) | numa | board | node]" },
+      "Mapping Policy [slot | hwthread | core | socket (default) | numa | node]" },
 
     { NULL, '\0', NULL, "path", 1,
       &orun_globals.path, OPAL_CMD_LINE_TYPE_STRING,

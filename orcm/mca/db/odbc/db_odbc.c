@@ -418,6 +418,7 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
                                        sizeof(value_int), NULL);
                 if (!(SQL_SUCCEEDED(ret))) {
                     SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    opal_argv_free(data_item_argv);
                     ERR_MSG_FMT_STORE("SQLBindParameter 6 returned: %d", ret);
                     return ORCM_ERROR;
                 }

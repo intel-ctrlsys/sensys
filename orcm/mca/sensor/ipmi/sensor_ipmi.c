@@ -1778,7 +1778,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
             {
                 id = sdrbuf[0] + (sdrbuf[1] << 8); /* this SDR id */
                 if (sdrbuf[3] != 0x01) continue; /* full SDR */
-                strncpy(tag,&sdrbuf[48],16);
+                strncpy(tag,(char *)&sdrbuf[48],16);
                 tag[16] = 0;
                 snum = sdrbuf[7];
                 ret = GetSensorReading(snum, sdrbuf, reading);

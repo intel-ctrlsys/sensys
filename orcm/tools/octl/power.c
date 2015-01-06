@@ -18,6 +18,7 @@ int orcm_octl_power_set(int cmd, char **argv)
     orte_rml_recv_cb_t xfer;
     int rc, n, result, int_param;
     double double_param;
+    bool per_session = false;
     
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"power set\"\n");
@@ -35,8 +36,8 @@ int orcm_octl_power_set(int cmd, char **argv)
     /* send it to the scheduler */
     buf = OBJ_NEW(opal_buffer_t);
     
-    command = cmd;
-    /* pack the cancel command flag */
+    command = ORCM_SET_POWER_COMMAND;
+    /* pack the command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SCD_CMD_T))) {
         ORTE_ERROR_LOG(rc);
@@ -45,6 +46,25 @@ int orcm_octl_power_set(int cmd, char **argv)
         return rc;
     }
     
+    command = cmd;
+    /* pack the sub-command flag */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
+                                            1, ORCM_SCD_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
+    /* This is a global power setting, not per session */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &per_session,
+                                            1, OPAL_BOOL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
     switch(cmd) {
     case ORCM_SET_POWER_BUDGET_COMMAND:
          double_param = (double)strtod(argv[2], NULL);
@@ -185,6 +205,7 @@ int orcm_octl_power_get(int cmd, char **argv)
     orte_rml_recv_cb_t xfer;
     int rc, n, int_param;
     double double_param;
+    bool per_session = false;
     
     if (2 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"power get\"\n");
@@ -202,8 +223,8 @@ int orcm_octl_power_get(int cmd, char **argv)
     /* send it to the scheduler */
     buf = OBJ_NEW(opal_buffer_t);
     
-    command = cmd;
-    /* pack the cancel command flag */
+    command = ORCM_GET_POWER_COMMAND;
+    /* pack the command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SCD_CMD_T))) {
         ORTE_ERROR_LOG(rc);
@@ -212,6 +233,25 @@ int orcm_octl_power_get(int cmd, char **argv)
         return rc;
     }
     
+    command = cmd;
+    /* pack the sub-command flag */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
+                                            1, ORCM_SCD_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
+    /* This is a global power setting, not per session */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &per_session,
+                                            1, OPAL_BOOL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER,
                                                       buf,
                                                       ORCM_RML_TAG_SCD,

@@ -534,7 +534,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
     char *cmd;
     char **argv = NULL;
     int argc;
-    char *param;
+    char *param = NULL;
     sigset_t sigs;
     int rc;
     char *foo;

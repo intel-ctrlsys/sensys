@@ -580,6 +580,9 @@ static void res_log(opal_buffer_t *sample)
                 orcm_db.store(orcm_sensor_base.dbhandle, primary_key, vals, mycleanup_procstat, primary_key);
             } else {
                 OPAL_LIST_RELEASE(vals);
+                if(primary_key != NULL) {
+                    free(primary_key);
+                }
             }
             OBJ_RELEASE(st);
             n=1;

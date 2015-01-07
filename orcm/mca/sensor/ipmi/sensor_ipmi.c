@@ -70,11 +70,13 @@ static void inv_con(ipmi_inventory_t *trk)
 static void inv_des(ipmi_inventory_t *trk)
 {
     if(trk != NULL) {
-        if(trk != NULL) {
+        if(trk->records != NULL) {
             OPAL_LIST_RELEASE(trk->records);
         }
+        if(trk->nodename != NULL) {
+            free(trk->nodename);
+        }
     }
-    free(trk->nodename);
 }
 OBJ_CLASS_INSTANCE(ipmi_inventory_t,
                    opal_list_item_t,

@@ -1527,14 +1527,16 @@ static int create_app(int argc, char* argv[],
 static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
 {
     size_t i, len;
-    FILE *fp;
+    FILE *fp = NULL;
     char line[BUFSIZ];
-    int rc, argc, app_num;
-    char **argv;
+    int argc, app_num;
+    char **argv = NULL;
     orte_app_context_t *app;
     bool blank, made_app;
     char bogus[] = "bogus ";
     char **tmp_env;
+    int rc = ORTE_SUCCESS;
+    bool exit_status = false;
 
     /*
      * Make sure to clear out this variable so we don't do anything odd in
@@ -1542,7 +1544,7 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
      */
     if( NULL != orun_globals.appfile ) {
         free( orun_globals.appfile );
-        orun_globals.appfile =     NULL;
+        orun_globals.appfile = NULL;
     }
 
     /* Try to open the file */
@@ -1551,7 +1553,8 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
     if (NULL == fp) {
         orte_show_help("help-orterun.txt", "orterun:appfile-not-found", true,
                        filename);
-        return ORTE_ERR_NOT_FOUND;
+        rc = ORTE_ERR_NOT_FOUND;
+        goto DONE;
     }
 
     /* Read in line by line */
@@ -1609,8 +1612,11 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
             continue;
         }
 
+        if (NULL != argv) {
+            opal_argv_free(argv);
+            argv = NULL;
+        }
         /* We got a line with *something* on it.  So process it */
-
         argv = opal_argv_split(line, ' ');
         argc = opal_argv_count(argv);
         if (argc > 0) {
@@ -1630,8 +1636,8 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
             if (NULL != *env) {
                 tmp_env = opal_argv_copy(*env);
                 if (NULL == tmp_env) {
-                    fclose(fp);
-                    return ORTE_ERR_OUT_OF_RESOURCE;
+                    rc = ORTE_ERR_OUT_OF_RESOURCE;
+                    goto DONE;
                 }
             } else {
                 tmp_env = NULL;
@@ -1641,11 +1647,8 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
             if (ORTE_SUCCESS != rc) {
                 /* Assume that the error message has already been
                    printed; no need to cleanup -- we can just exit */
-                fclose(fp);
-                exit(1);
-            }
-            if (NULL != argv) {
-                opal_argv_free(argv);
+                exit_status = true;
+                goto DONE;
             }
             if (NULL != tmp_env) {
                 opal_argv_free(tmp_env);
@@ -1658,12 +1661,23 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
             }
         }
     } while (!feof(fp));
-    fclose(fp);
 
+ DONE:
     /* All done */
-
-    free(filename);
-    return ORTE_SUCCESS;
+    if (NULL != fp) {
+        fclose(fp);
+    }
+    if (NULL != argv) {
+        opal_argv_free(argv);
+        argv = NULL;
+    }
+    if (NULL != filename) {
+        free(filename);
+    }
+    if (false != exit_status) {
+        exit (1);
+    }
+    return rc;
 }
 
 /* scheduler specific arguments */

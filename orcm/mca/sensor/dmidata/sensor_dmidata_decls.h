@@ -33,12 +33,14 @@ static void dmidata_inv_con(dmidata_inventory_t *trk)
 }
 static void dmidata_inv_des(dmidata_inventory_t *trk)
 {
-    if(trk != NULL) {
-        if(trk != NULL) {
+    if(NULL != trk) {
+        if(NULL != trk->records) {
             OPAL_LIST_RELEASE(trk->records);
         }
+        if (NULL != trk->nodename) {
+            free(trk->nodename);
+        }
     }
-    free(trk->nodename);
 }
 
 #endif

@@ -1065,7 +1065,7 @@ static void mycleanup_procstat(int dbhandle, int status,
 static void sigar_log(opal_buffer_t *sample)
 {
     char *hostname;
-    char *sampletime,global_ts[30];
+    char *sampletime,global_ts[31];
     int rc;
     int32_t n;
     opal_list_t *vals;
@@ -1902,7 +1902,10 @@ static void sigar_log(opal_buffer_t *sample)
         if (0 <= orcm_sensor_base.dbhandle) {
             orcm_db.store(orcm_sensor_base.dbhandle, primary_key, vals, mycleanup_procstat, primary_key);
         } else {
-            OPAL_LIST_RELEASE(vals);            
+            OPAL_LIST_RELEASE(vals);
+            if(primary_key!=NULL) {
+                free(primary_key);
+            }
         }
 
         /* process cpu percent */

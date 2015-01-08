@@ -1671,9 +1671,7 @@ static int parse_appfile(orte_job_t *jdata, char *filename, char ***env)
         opal_argv_free(argv);
         argv = NULL;
     }
-    if (NULL != filename) {
-        free(filename);
-    }
+    free(filename);
     if (false != exit_status) {
         exit (1);
     }

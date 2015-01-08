@@ -69,11 +69,11 @@ static void inv_con(ipmi_inventory_t *trk)
 }
 static void inv_des(ipmi_inventory_t *trk)
 {
-    if(trk != NULL) {
-        if(trk->records != NULL) {
+    if(NULL != trk) {
+        if(NULL != trk->records) {
             OPAL_LIST_RELEASE(trk->records);
         }
-        if(trk->nodename != NULL) {
+        if(NULL != trk->nodename) {
             free(trk->nodename);
         }
     }

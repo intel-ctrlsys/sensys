@@ -103,15 +103,17 @@ BuildRoot: %{orcm_build_root}
 BuildRequires:  pkgconfig(systemd)
 %{?systemd_requires}
 %endif
-BuildRequires: ipmiutil-devel
+BuildRequires: ipmiutil-devel >= 2.9.5
 BuildRequires: libtool
+%if 0%{?el6}
 BuildRequires: libtool-ltdl
-BuildRequires: sigar
-BuildRequires: sigar-devel
+%endif 
+BuildRequires: sigar >= 1.6.4
+BuildRequires: sigar-devel >= 1.6.4
 BuildRequires: unixODBC
 BuildRequires: unixODBC-devel
-Requires: ipmiutil-devel
-Requires: sigar
+Requires: ipmiutil-devel >= 2.9.5
+Requires: sigar >= 1.6.4
 
 %description
 This part build and install the Open RCM source tree.
@@ -181,7 +183,7 @@ install -D -m 0644 contrib/dist/linux/orcmsched.service %{buildroot}%{_unitdir}/
 install -D -m 0755 contrib/dist/linux/orcmd.init %{buildroot}%{_initddir}/orcmd
 install -D -m 0755 contrib/dist/linux/orcmsched.init %{buildroot}%{_initddir}/orcmsched
 %endif
-install -D -m 0644 contrib/dist/linux/orcm.sysconfig %{buildroot}/etc/sysconfig/orcm
+install -D -m 0644 contrib/dist/linux/orcmd.sysconfig %{buildroot}/etc/sysconfig/orcmd
 install -D -m 0644 contrib/dist/linux/orcmsched.sysconfig %{buildroot}/etc/sysconfig/orcmsched
 install -D -m 0644 contrib/database/orcmdb_psql.ini %{buildroot}%{_sysconfdir}/orcmdb_psql.ini
 install -D -m 0644 contrib/database/orcmdb_psql.sql %{buildroot}%{_sysconfdir}/orcmdb_psql.sql
@@ -302,15 +304,19 @@ BuildRoot: %{orcm_build_root}
 BuildRequires:  pkgconfig(systemd)
 %{?systemd_requires}
 %endif
-BuildRequires: ipmiutil-devel
+
+
+BuildRequires: ipmiutil-devel >= 2.9.5
 BuildRequires: libtool
+%if 0%{?el6}
 BuildRequires: libtool-ltdl
-BuildRequires: sigar
-BuildRequires: sigar-devel
+%endif
+BuildRequires: sigar >= 1.6.4 
+BuildRequires: sigar-devel >= 1.6.4
 BuildRequires: unixODBC
 BuildRequires: unixODBC-devel
-Requires: ipmiutil-devel
-Requires: sigar
+Requires: ipmiutil-devel >= 2.9.5
+Requires: sigar >= 1.6.4
 
 %description
 The Open Resilient Cluster Manager (ORCM)
@@ -358,7 +364,7 @@ install -D -m 0644 contrib/dist/linux/orcmsched.service %{buildroot}%{_unitdir}/
 install -D -m 0755 contrib/dist/linux/orcmd.init %{buildroot}%{_initddir}/orcmd
 install -D -m 0755 contrib/dist/linux/orcmsched.init %{buildroot}%{_initddir}/orcmsched
 %endif
-install -D -m 0644 contrib/dist/linux/orcm.sysconfig %{buildroot}/etc/sysconfig/orcm
+install -D -m 0644 contrib/dist/linux/orcmd.sysconfig %{buildroot}/etc/sysconfig/orcmd
 install -D -m 0644 contrib/dist/linux/orcmsched.sysconfig %{buildroot}/etc/sysconfig/orcmsched
 install -D -m 0644 contrib/database/orcmdb_psql.ini %{buildroot}%{_sysconfdir}/orcmdb_psql.ini
 install -D -m 0644 contrib/database/orcmdb_psql.sql %{buildroot}%{_sysconfdir}/orcmdb_psql.sql

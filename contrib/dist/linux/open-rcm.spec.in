@@ -416,14 +416,14 @@ install -D -m 0644 contrib/database/psql_odbc_driver.ini %{buildroot}%{_sysconfd
 - Ensure to list sysconfdir in the files list if it's outside of the
   prefix.
 
-* Wed Mar 30 2006 Jeff Squyres <jsquyres@cisco.com>
+* Thu Mar 30 2006 Jeff Squyres <jsquyres@cisco.com>
 - Lots of bit rot updates
 - Reorganize and rename the subpackages
 - Add / formalize a variety of rpmbuild --define options
 - Comment out the docs subpackage for the moment (until we have some
   documentation -- coming in v1.1!)
 
-* Wed May 03 2005 Jeff Squyres <jsquyres@open-mpi.org>
+* Tue May 03 2005 Jeff Squyres <jsquyres@open-mpi.org>
 - Added some defines for LANL defaults
 - Added more defines for granulatirty of installation location for
   modulefile

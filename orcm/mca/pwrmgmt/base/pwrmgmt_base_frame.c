@@ -29,9 +29,11 @@
 
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/rml/rml.h"
+#include "orte/util/regex.h"
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/runtime/orcm_progress.h"
+#include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/pwrmgmt/base/base.h"
 #include "orcm/mca/pwrmgmt/base/pwrmgmt_freq_utils.h"
 
@@ -181,9 +183,13 @@ int reset_freq_defaults(opal_pointer_array_t *daemons) {
 static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
                                    opal_buffer_t *buffer,
                                    orte_rml_tag_t tag, void *cbdata) {
-    int rc;
+    int rc, i, cnt;
     int n = 1;
     orcm_rm_cmd_flag_t command;
+    orcm_alloc_t* alloc;
+    opal_buffer_t *ans;
+    char **nodelist = NULL;
+    orte_process_name_t tgt;
 
     opal_output_verbose(3, orcm_pwrmgmt_base_framework.framework_output,
                         "%s orcm_pwrmgmt_base: Received message from %s",
@@ -274,6 +280,66 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
     break;
     case ORCM_PWRMGMT_BASE_RESET_DEFAULTS_CMD:
         orcm_pwrmgmt_freq_reset_system_settings();
+    break;
+    case ORCM_SET_POWER_COMMAND:
+        OPAL_OUTPUT_VERBOSE((5, orcm_pwrmgmt_base_framework.framework_output,
+                             "%s pwrmgmt:base:receive got ORCM_SET_POWER_COMMAND",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+        
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &alloc,
+                                                  &n, ORCM_ALLOC))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+ 
+        // If I am the head daemon, send the message out to everyone else
+        if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
+                                                            &alloc->hnp,
+                                                            ORTE_PROC_MY_NAME)) {
+            ans = OBJ_NEW(opal_buffer_t);
+
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &alloc,
+                                                    n, ORCM_ALLOC))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+
+            orte_regex_extract_node_names(alloc->nodes, &nodelist);
+            cnt = opal_argv_count(nodelist);
+            if (0 == opal_argv_count(nodelist)) {
+                fprintf(stdout, "Error: unable to extract nodelist\n");
+                opal_argv_free(nodelist);
+                ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+                OBJ_RELEASE(ans);
+                return;
+            }
+            for (i = 0; i < cnt; i++) {
+                OBJ_RETAIN(ans);
+
+                if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
+                                                                           &tgt))) {
+                    ORTE_ERROR_LOG(rc);
+                    OBJ_RELEASE(ans);
+                    return;
+                }
+
+                if(!OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
+                                                                &tgt,
+                                                                ORTE_PROC_MY_NAME)) {
+                    if (ORTE_SUCCESS !=
+                        (rc = orte_rml.send_buffer_nb(&tgt, ans,
+                                                      ORCM_RML_TAG_PWRMGMT_BASE,
+                                                      orte_rml_send_callback, NULL))) {
+                        ORTE_ERROR_LOG(rc);
+                        OBJ_RELEASE(ans);
+                        return;
+                    }
+                }
+            }
+        }
+        
+        orcm_pwrmgmt_base_alloc_notify(alloc);
     break;
     default:
         opal_output(0,

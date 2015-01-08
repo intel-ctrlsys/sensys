@@ -456,88 +456,84 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                     alloc = session->alloc;
                     if(alloc->id == sessionid) { //found the session
                         found = true;
-                        if(strncmp(q->name, "running", 8)) {
-                            /* the session is not currently running so just
-                             * set the constraints directly
-                             */
-                            switch(sub_command) {
-                            case ORCM_SET_POWER_BUDGET_COMMAND:
-                                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                                          &cnt, OPAL_DOUBLE))) {
-                                    ORTE_ERROR_LOG(rc);
-                                    goto answer;
-                                }
-                                result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY, 
-                                                            ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
-                            break;
-                            case ORCM_SET_POWER_MODE_COMMAND:
-                                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                                          &cnt, OPAL_DOUBLE))) {
-                                    ORTE_ERROR_LOG(rc);
-                                    goto answer;
-                                }
-                                result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, 
-                                                            ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
-                            break;
-                            case ORCM_SET_POWER_WINDOW_COMMAND:
-                                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                                          &cnt, OPAL_DOUBLE))) {
-                                    ORTE_ERROR_LOG(rc);
-                                    goto answer;
-                                }
-                                result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_WINDOW_KEY, 
-                                                            ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
-                            break;
-                            case ORCM_SET_POWER_OVERAGE_COMMAND:
-                                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                                          &cnt, OPAL_DOUBLE))) {
-                                    ORTE_ERROR_LOG(rc);
-                                    goto answer;
-                                }
-                                result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY, 
-                                                            ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
-                            break;
-                            case ORCM_SET_POWER_UNDERAGE_COMMAND:
-                                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                                          &cnt, OPAL_DOUBLE))) {
-                                    ORTE_ERROR_LOG(rc);
-                                    goto answer;
-                                }
-                                result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY, 
-                                                            ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
-                            break;
-                            case ORCM_SET_POWER_OVERAGE_TIME_COMMAND:
-                                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                                          &cnt, OPAL_DOUBLE))) {
-                                    ORTE_ERROR_LOG(rc);
-                                    goto answer;
-                                }
-                                result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY, 
-                                                            ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
-                            break;
-                            case ORCM_SET_POWER_UNDERAGE_TIME_COMMAND:
-                                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                                          &cnt, OPAL_DOUBLE))) {
-                                    ORTE_ERROR_LOG(rc);
-                                    goto answer;
-                                }
-                                result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY, 
-                                                            ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
-                            break;
-                            case ORCM_SET_POWER_FREQUENCY_COMMAND:
-                                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                                          &cnt, OPAL_DOUBLE))) {
-                                    ORTE_ERROR_LOG(rc);
-                                    goto answer;
-                                }
-                                result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, 
-                                                            ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
-                            break;
-                            default:
-                                result = ORTE_ERR_BAD_PARAM;
+                        switch(sub_command) {
+                        case ORCM_SET_POWER_BUDGET_COMMAND:
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
+                                                                      &cnt, OPAL_DOUBLE))) {
+                                ORTE_ERROR_LOG(rc);
+                                goto answer;
                             }
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY, 
+                                                        ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
+                        break;
+                        case ORCM_SET_POWER_MODE_COMMAND:
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
+                                                                      &cnt, OPAL_DOUBLE))) {
+                                ORTE_ERROR_LOG(rc);
+                                goto answer;
+                            }
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, 
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
+                        break;
+                        case ORCM_SET_POWER_WINDOW_COMMAND:
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
+                                                                      &cnt, OPAL_DOUBLE))) {
+                                ORTE_ERROR_LOG(rc);
+                                goto answer;
+                            }
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_WINDOW_KEY, 
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
+                        break;
+                        case ORCM_SET_POWER_OVERAGE_COMMAND:
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
+                                                                      &cnt, OPAL_DOUBLE))) {
+                                ORTE_ERROR_LOG(rc);
+                                goto answer;
+                            }
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY, 
+                                                        ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
+                        break;
+                        case ORCM_SET_POWER_UNDERAGE_COMMAND:
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
+                                                                      &cnt, OPAL_DOUBLE))) {
+                                ORTE_ERROR_LOG(rc);
+                                goto answer;
+                            }
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY, 
+                                                        ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
+                        break;
+                        case ORCM_SET_POWER_OVERAGE_TIME_COMMAND:
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
+                                                                      &cnt, OPAL_DOUBLE))) {
+                                ORTE_ERROR_LOG(rc);
+                                goto answer;
+                            }
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY, 
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
+                        break;
+                        case ORCM_SET_POWER_UNDERAGE_TIME_COMMAND:
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
+                                                                      &cnt, OPAL_DOUBLE))) {
+                                ORTE_ERROR_LOG(rc);
+                                goto answer;
+                            }
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY, 
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
+                        break;
+                        case ORCM_SET_POWER_FREQUENCY_COMMAND:
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
+                                                                      &cnt, OPAL_DOUBLE))) {
+                                ORTE_ERROR_LOG(rc);
+                                goto answer;
+                            }
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, 
+                                                        ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
+                        break;
+                        default:
+                            result = ORTE_ERR_BAD_PARAM;
                         }
-                        else { //session is currently running send request to the RM
+                        if(!strncmp(q->name, "running", 8)) {
+                            //session is currently running, send request to the RM
                             rmbuf = OBJ_NEW(opal_buffer_t);
                             if (OPAL_SUCCESS != (rc = opal_dss.pack(rmbuf, &command,
                                             1, ORCM_RM_CMD_T))) {
@@ -938,6 +934,12 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                            }
                        }
                     }
+                    if (true == found) {
+                        break;
+                    }
+                }
+                if (true == found) {
+                    break;
                 }
             }
         }

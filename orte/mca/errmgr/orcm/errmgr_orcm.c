@@ -124,11 +124,11 @@ static void proc_errors(int fd, short args, void *cbdata)
             OBJ_RELEASE(caddy);
             exit(1);
         } else {
-            OPAL_OUTPUT_VERBOSE((1, orte_errmgr_base_framework.framework_output,
-                                 "%s errmgr:orcm: reporting child aggregator failure",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
             /* only notify for orcm daemon failures */
             if (0 == caddy->name.jobid) {
+                OPAL_OUTPUT_VERBOSE((1, orte_errmgr_base_framework.framework_output,
+                                     "%s errmgr:orcm: reporting child aggregator failure",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
                 /* inform the scheduler of the lost connection */
                 buf = OBJ_NEW(opal_buffer_t);
                 /* pack the alloc command flag */

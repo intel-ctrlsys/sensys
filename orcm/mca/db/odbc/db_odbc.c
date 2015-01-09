@@ -59,6 +59,15 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
 static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
                                      const char *hostname,
                                      opal_list_t *features);
+static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
+                                 const char *hostname,
+                                 const char *diag_type,
+                                 const char *diag_subtype,
+                                 const struct tm *start_time,
+                                 const struct tm *end_time,
+                                 int component_index,
+                                 const char *test_result,
+                                 opal_list_t *test_params);
 static int odbc_fetch(struct orcm_db_base_module_t *imod,
                       const char *primary_key,
                       const char *key,
@@ -69,9 +78,11 @@ static int odbc_remove(struct orcm_db_base_module_t *imod,
 
 /* Internal helper functions */
 static void odbc_error_info(SQLSMALLINT handle_type, SQLHANDLE handle);
-static int get_sample_value(const opal_value_t *kv, long long *value_int,
-                            double *value_real, char **value_str,
-                            int *opal_type, value_type_t *type);
+static int get_opal_value(const opal_value_t *kv, long long *value_int,
+                          double *value_real, char **value_str,
+                          int *opal_type, value_type_t *type);
+static void to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
+                             const struct tm *time_info);
 
 mca_db_odbc_module_t mca_db_odbc_module = {
     {
@@ -80,6 +91,7 @@ mca_db_odbc_module_t mca_db_odbc_module = {
         odbc_store_sample,
         odbc_record_data_samples,
         odbc_update_node_features,
+        odbc_record_diag_test,
         NULL,
         odbc_fetch,
         odbc_remove
@@ -266,13 +278,7 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
     hostname = kv->data.string;
 
     strptime(sampletime_str, "%F %T%z", &time_info);
-    sampletime.year = time_info.tm_year + 1900;
-    sampletime.month = time_info.tm_mon + 1;
-    sampletime.day = time_info.tm_mday;
-    sampletime.hour = time_info.tm_hour;
-    sampletime.minute = time_info.tm_min;
-    sampletime.second = time_info.tm_sec;
-    sampletime.fraction = 0;
+    to_sql_timestamp(&sampletime, &time_info);
 
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
@@ -280,6 +286,17 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
 
+    /*
+     * 1.- hostname
+     * 2.- data group
+     * 3.- data item
+     * 4.- time stamp
+     * 5.- data type ID
+     * 6.- integer value
+     * 7.- real value
+     * 8.- string value
+     * 9.- units
+     */
     ret = SQLPrepare(stmt,
                      (SQLCHAR *)
                      "{call record_data_sample(?, ?, ?, ?, ?, ?, ?, ?, ?)}",
@@ -355,8 +372,8 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
          item = opal_list_get_next(item)) {
         kv = (opal_value_t *)item;
 
-        ret = get_sample_value(kv, &value_int, &value_real, &value_str,
-                               &data_type, &curr_type);
+        ret = get_opal_value(kv, &value_int, &value_real, &value_str,
+                             &data_type, &curr_type);
         if (ORCM_SUCCESS != ret) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             ERR_MSG_STORE("Unsupported value type");
@@ -543,7 +560,7 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
     }
 
     opal_output_verbose(2, orcm_db_base_framework.framework_output,
-                        "odbc_store succeeded");
+                        "odbc_store_sample succeeded");
 
     SQLFreeHandle(SQL_HANDLE_STMT, stmt);
 
@@ -592,13 +609,7 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
 
-    sampletime.year = time_stamp->tm_year + 1900;
-    sampletime.month = time_stamp->tm_mon + 1;
-    sampletime.day = time_stamp->tm_mday;
-    sampletime.hour = time_stamp->tm_hour;
-    sampletime.minute = time_stamp->tm_min;
-    sampletime.second = time_stamp->tm_sec;
-    sampletime.fraction = 0;
+    to_sql_timestamp(&sampletime, time_stamp);
 
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
@@ -606,6 +617,17 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
 
+    /*
+     * 1.- hostname
+     * 2.- data group
+     * 3.- data item
+     * 4.- time stamp
+     * 5.- data type ID
+     * 6.- integer value
+     * 7.- real value
+     * 8.- string value
+     * 9.- units
+     */
     ret = SQLPrepare(stmt,
                      (SQLCHAR *)
                      "{call record_data_sample(?, ?, ?, ?, ?, ?, ?, ?, ?)}",
@@ -684,8 +706,8 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
             return ORCM_ERROR;
         }
 
-        ret = get_sample_value(&mv->value, &value_int, &value_real, &value_str,
-                               &data_type, &curr_type);
+        ret = get_opal_value(&mv->value, &value_int, &value_real, &value_str,
+                             &data_type, &curr_type);
         if (ORCM_SUCCESS != ret) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             ERR_MSG_STORE("Unsupported value type");
@@ -847,7 +869,7 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
     }
 
     opal_output_verbose(2, orcm_db_base_framework.framework_output,
-                        "odbc_store succeeded");
+                        "odbc_record_data_samples succeeded");
 
     SQLFreeHandle(SQL_HANDLE_STMT, stmt);
 
@@ -970,8 +992,8 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
             return ORCM_ERROR;
         }
 
-        ret = get_sample_value(&mv->value, &value_int, &value_real, &value_str,
-                               &data_type, &curr_type);
+        ret = get_opal_value(&mv->value, &value_int, &value_real, &value_str,
+                             &data_type, &curr_type);
         if (ORCM_SUCCESS != ret) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             ERR_MSG_UNF("Unsupported value type");
@@ -1133,7 +1155,452 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
     }
 
     opal_output_verbose(2, orcm_db_base_framework.framework_output,
-                        "odbc_store succeeded");
+                        "odbc_update_node_features succeeded");
+
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    return ORCM_SUCCESS;
+}
+
+#define ERR_MSG_RDT(msg) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:odbc: Unable to record diagnostic test: "); \
+    opal_output(0, msg); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_RDT(msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:odbc: Unable to record diagnostic test: "); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "Unable to log data"); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_SQL_RDT(handle_type, handle, msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:odbc: Unable to record diagnostic test: "); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "ODBC error details:"); \
+    odbc_error_info(handle_type, handle); \
+    opal_output(0, "***********************************************");
+
+static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
+                                 const char *hostname,
+                                 const char *diag_type,
+                                 const char *diag_subtype,
+                                 const struct tm *start_time,
+                                 const struct tm *end_time,
+                                 int component_index,
+                                 const char *test_result,
+                                 opal_list_t *test_params)
+{
+    mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
+    orcm_metric_value_t *mv;
+
+    SQL_TIMESTAMP_STRUCT start_time_sql;
+    SQL_TIMESTAMP_STRUCT end_time_sql;
+    value_type_t curr_type = VALUE_INTEGER;
+    value_type_t prev_type = VALUE_INTEGER;
+    int change_value_binding = 1;
+    int data_type;
+    long long value_int;
+    double value_real;
+    char *value_str;
+    SQLLEN null_len = SQL_NULL_DATA;
+
+    SQLRETURN ret;
+    SQLHSTMT stmt;
+
+    if (NULL == hostname) {
+        ERR_MSG_RDT("No hostname provided");
+        return ORCM_ERROR;
+    }
+
+    if (NULL == diag_type) {
+        ERR_MSG_RDT("No diagnostic type provided");
+        return ORCM_ERROR;
+    }
+
+    if (NULL == diag_subtype) {
+        ERR_MSG_RDT("No diagnostic subtype provided");
+        return ORCM_ERROR;
+    }
+
+    if (NULL == start_time) {
+        ERR_MSG_RDT("No start time provided");
+        return ORCM_ERROR;
+    }
+
+    if (NULL == end_time) {
+        ERR_MSG_RDT("No end time provided");
+        return ORCM_ERROR;
+    }
+
+    if (NULL == test_result) {
+        ERR_MSG_RDT("No test result provided");
+        return ORCM_ERROR;
+    }
+
+    to_sql_timestamp(&start_time_sql, start_time);
+    to_sql_timestamp(&end_time_sql, end_time);
+
+    ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
+    if (!(SQL_SUCCEEDED(ret))) {
+        ERR_MSG_FMT_RDT("SQLAllocHandle returned: %d", ret);
+        return ORCM_ERROR;
+    }
+
+    /*
+     * 1.- hostname
+     * 2.- diagnostic type
+     * 3.- diagnostic subtype
+     * 4.- start time
+     * 5.- end time
+     * 6.- component index
+     * 7.- test result
+     */
+    ret = SQLPrepare(stmt,
+                     (SQLCHAR *)
+                     "{call record_diag_test_result(?, ?, ?, ?, ?, ?, ?)}",
+                     SQL_NTS);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLPrepare returned: %d", ret);
+        return ORCM_ERROR;
+    }
+
+    /* Bind hostname parameter. */
+    ret = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)hostname, strlen(hostname), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 1 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind diagnostic type parameter. */
+    ret = SQLBindParameter(stmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)diag_type, strlen(diag_type),
+                           NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 2 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind diagnostic subtype parameter. */
+    ret = SQLBindParameter(stmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)diag_subtype, strlen(diag_subtype),
+                           NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 3 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind start time parameter. */
+    ret = SQLBindParameter(stmt, 4, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
+                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&start_time,
+                           sizeof(start_time), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 4 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind end time parameter. */
+    ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
+                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&end_time,
+                           sizeof(end_time), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 5 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind component index parameter. */
+    ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER,
+                           0, 0, (SQLPOINTER)&component_index,
+                           sizeof(component_index), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 6 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind test result parameter. */
+    ret = SQLBindParameter(stmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)test_result, strlen(test_result),
+                           NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 7 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+
+    ret = SQLExecute(stmt);
+    if (!(SQL_SUCCEEDED(ret))) {
+        ERR_MSG_FMT_SQL_RDT(SQL_HANDLE_STMT, stmt, "SQLExecute returned: %d",
+                            ret);
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        return ORCM_ERROR;
+    }
+
+    SQLCloseCursor(stmt);
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    if (NULL == test_params) {
+        /* No test parameters provided, we're done! */
+        opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                            "odbc_record_diag_test succeeded");
+        return ORCM_SUCCESS;
+    }
+
+    /*
+     * 1.- hostname
+     * 2.- diagnostic type
+     * 3.- diagnostic subtype
+     * 4.- start time
+     * 5.- test parameter
+     * 6.- data type
+     * 7.- integer value
+     * 8.- real value
+     * 9.- string value
+     * 10.- units
+     */
+    ret = SQLPrepare(stmt,
+                     (SQLCHAR *)
+                     "{call record_diag_test_config(?, ?, ?, ?, ?, ?, ?)}",
+                     SQL_NTS);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLPrepare returned: %d", ret);
+        return ORCM_ERROR;
+    }
+
+    /* Bind hostname parameter. */
+    ret = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)hostname, strlen(hostname), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 1 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind diagnostic type parameter. */
+    ret = SQLBindParameter(stmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)diag_type, strlen(diag_type),
+                           NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 2 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind diagnostic subtype parameter. */
+    ret = SQLBindParameter(stmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)diag_subtype, strlen(diag_subtype),
+                           NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 3 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind start time parameter. */
+    ret = SQLBindParameter(stmt, 4, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
+                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&start_time,
+                           sizeof(start_time), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_RDT("SQLBindParameter 4 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind data type parameter. */
+    ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER,
+                           0, 0, (SQLPOINTER)&data_type,
+                           sizeof(data_type), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_UNF("SQLBindParameter 6 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind integer value parameter (assuming the value is integer for now). */
+    ret = SQLBindParameter(stmt, 7, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                           SQL_BIGINT, 0, 0, (SQLPOINTER)&value_int,
+                           sizeof(value_int), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_UNF("SQLBindParameter 7 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind real value parameter (assuming NULL for now). */
+    ret = SQLBindParameter(stmt, 8, SQL_PARAM_INPUT, SQL_C_DOUBLE, SQL_DOUBLE,
+                           0, 0, NULL, 0, &null_len);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_UNF("SQLBindParameter 8 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+    /* Bind string value parameter (assuming NULL for now). */
+    ret = SQLBindParameter(stmt, 9, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, NULL, 0, &null_len);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        ERR_MSG_FMT_UNF("SQLBindParameter 9 returned: %d", ret);
+        return ORCM_ERROR;
+    }
+
+    OPAL_LIST_FOREACH(mv, test_params, orcm_metric_value_t) {
+        if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_RDT("Key or test parameter name not provided for value");
+            return ORCM_ERROR;
+        }
+
+        ret = get_opal_value(&mv->value, &value_int, &value_real, &value_str,
+                             &data_type, &curr_type);
+        if (ORCM_SUCCESS != ret) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_RDT("Unsupported value type");
+            return ORCM_ERROR;
+        }
+        change_value_binding = prev_type != curr_type;
+        prev_type = curr_type;
+
+        /* Bind the test parameter. */
+        ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_CHAR,
+                               SQL_VARCHAR, 0, 0, (SQLPOINTER)mv->value.key,
+                               strlen(mv->value.key), NULL);
+        if (!(SQL_SUCCEEDED(ret))) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_FMT_RDT("SQLBindParameter 5 returned: %d", ret);
+            return ORCM_ERROR;
+        }
+
+        if (NULL != mv->units) {
+            /* Bind the units parameter. */
+            ret = SQLBindParameter(stmt, 10, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0,
+                                   (SQLPOINTER)mv->units,
+                                   strlen(mv->units), NULL);
+            if (!(SQL_SUCCEEDED(ret))) {
+                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                ERR_MSG_FMT_RDT("SQLBindParameter 10 returned: %d", ret);
+                return ORCM_ERROR;
+            }
+        } else {
+            /* No units provided, bind NULL. */
+            ret = SQLBindParameter(stmt, 10, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0, NULL, 0, &null_len);
+            if (!(SQL_SUCCEEDED(ret))) {
+                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                ERR_MSG_FMT_RDT("SQLBindParameter 10 returned: %d", ret);
+                return ORCM_ERROR;
+            }
+        }
+
+        if (change_value_binding) {
+            switch (curr_type) {
+            case VALUE_INTEGER:
+                /* Value is integer, bind to the appropriate value. */
+                ret = SQLBindParameter(stmt, 7, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                       SQL_BIGINT, 0, 0, (SQLPOINTER)&value_int,
+                                       sizeof(value_int), NULL);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_RDT("SQLBindParameter 7 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                /* Pass NULL for the real value. */
+                ret = SQLBindParameter(stmt, 8, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                       SQL_DOUBLE, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_RDT("SQLBindParameter 8 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                /* Pass NULL for the string value. */
+                ret = SQLBindParameter(stmt, 9, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                       SQL_VARCHAR, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_RDT("SQLBindParameter 9 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                break;
+            case VALUE_REAL:
+                /* Pass NULL for the integer value. */
+                ret = SQLBindParameter(stmt, 7, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                       SQL_BIGINT, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_RDT("SQLBindParameter 7 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                /* Value is real, bind to the appropriate value. */
+                ret = SQLBindParameter(stmt, 8, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                       SQL_DOUBLE, 0, 0,
+                                       (SQLPOINTER)&value_real,
+                                       sizeof(value_real), NULL);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_RDT("SQLBindParameter 8 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                /* Pass NULL for the string value. */
+                ret = SQLBindParameter(stmt, 9, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                       SQL_VARCHAR, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_RDT("SQLBindParameter 9 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                break;
+            case VALUE_STRING:
+                /* Pass NULL for the integer value. */
+                ret = SQLBindParameter(stmt, 7, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                       SQL_BIGINT, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_RDT("SQLBindParameter 7 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                /* Pass NULL for the real value. */
+                ret = SQLBindParameter(stmt, 8, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                       SQL_DOUBLE, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_RDT("SQLBindParameter 8 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                /* Value is string, bind to the appropriate value. */
+                ret = SQLBindParameter(stmt, 9, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                       SQL_VARCHAR, 0, 0, (SQLPOINTER)value_str,
+                                       strlen(value_str), NULL);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                    ERR_MSG_FMT_RDT("SQLBindParameter 9 returned: %d", ret);
+                    return ORCM_ERROR;
+                }
+                break;
+            default:
+                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                ERR_MSG_RDT("An unexpected error has occurred while "
+                            "processing the values");
+                return ORCM_ERROR;
+            }
+        }
+
+        ret = SQLExecute(stmt);
+        if (!(SQL_SUCCEEDED(ret))) {
+            ERR_MSG_FMT_SQL_RDT(SQL_HANDLE_STMT, stmt,
+                                  "SQLExecute returned: %d", ret);
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            return ORCM_ERROR;
+        }
+
+        SQLCloseCursor(stmt);
+    }
+
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                        "odbc_record_diag_test succeeded");
 
     SQLFreeHandle(SQL_HANDLE_STMT, stmt);
 
@@ -1344,9 +1811,9 @@ static void odbc_error_info(SQLSMALLINT handle_type, SQLHANDLE handle)
     } while (SQL_SUCCEEDED(ret));
 }
 
-static int get_sample_value(const opal_value_t *kv, long long *value_int,
-                            double *value_real, char **value_str,
-                            int *opal_type, value_type_t *type)
+static int get_opal_value(const opal_value_t *kv, long long *value_int,
+                          double *value_real, char **value_str,
+                          int *opal_type, value_type_t *type)
 {
     switch (kv->type) {
     case OPAL_FLOAT:
@@ -1411,4 +1878,16 @@ static int get_sample_value(const opal_value_t *kv, long long *value_int,
     *opal_type = kv->type;
 
     return ORCM_SUCCESS;
+}
+
+static void to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
+                             const struct tm *time_info)
+{
+    sql_timestamp->year = time_info->tm_year + 1900;
+    sql_timestamp->month = time_info->tm_mon + 1;
+    sql_timestamp->day = time_info->tm_mday;
+    sql_timestamp->hour = time_info->tm_hour;
+    sql_timestamp->minute = time_info->tm_min;
+    sql_timestamp->second = time_info->tm_sec;
+    sql_timestamp->fraction = 0;
 }

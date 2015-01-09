@@ -135,16 +135,19 @@ static void proc_errors(int fd, short args, void *cbdata)
                 if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &command,1, ORCM_RM_CMD_T))) {
                     ORTE_ERROR_LOG(ret);
                     OBJ_RELEASE(buf);
+                    OBJ_RELEASE(caddy);
                     return;
                 }
                 if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &state, 1, OPAL_INT8))) {
                     ORTE_ERROR_LOG(ret);
                     OBJ_RELEASE(buf);
+                    OBJ_RELEASE(caddy);
                     return;
                 }
                 if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &caddy->name, 1, ORTE_NAME))) {
                     ORTE_ERROR_LOG(ret);
                     OBJ_RELEASE(buf);
+                    OBJ_RELEASE(caddy);
                     return;
                 }
                 if (ORTE_SUCCESS != (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
@@ -152,6 +155,7 @@ static void proc_errors(int fd, short args, void *cbdata)
                                                                    orte_rml_send_callback, NULL))) {
                     ORTE_ERROR_LOG(ret);
                     OBJ_RELEASE(buf);
+                    OBJ_RELEASE(caddy);
                     return;
                 }
             }
@@ -168,16 +172,19 @@ static void proc_errors(int fd, short args, void *cbdata)
             if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &command,1, ORCM_RM_CMD_T))) {
                 ORTE_ERROR_LOG(ret);
                 OBJ_RELEASE(buf);
+                OBJ_RELEASE(caddy);
                 return;
             }
             if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &state, 1, OPAL_INT8))) {
                 ORTE_ERROR_LOG(ret);
                 OBJ_RELEASE(buf);
+                OBJ_RELEASE(caddy);
                 return;
             }
             if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &caddy->name, 1, ORTE_NAME))) {
                 ORTE_ERROR_LOG(ret);
                 OBJ_RELEASE(buf);
+                OBJ_RELEASE(caddy);
                 return;
             }
             if (ORTE_SUCCESS != (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
@@ -185,6 +192,7 @@ static void proc_errors(int fd, short args, void *cbdata)
                                                                orte_rml_send_callback, NULL))) {
                 ORTE_ERROR_LOG(ret);
                 OBJ_RELEASE(buf);
+                OBJ_RELEASE(caddy);
                 return;
             }
         }

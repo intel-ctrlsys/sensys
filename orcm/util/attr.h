@@ -35,7 +35,8 @@
 #define ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY   (ORCM_PWRMGMT_START_KEY + 6) // uint64_t - time in ms that we can exceed the power cap
 #define ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY  (ORCM_PWRMGMT_START_KEY + 7) // uint64_t - time in ms that we can go under the power cap
 #define ORCM_PWRMGMT_SUPPORTED_MODES_KEY          (ORCM_PWRMGMT_START_KEY + 8) // opal_ptr (int) - pointer to an array of supported power modes by current component
-#define ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY        (ORCM_PWRMGMT_START_KEY + 9) // double - requested target for setting a manual frequency
+#define ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY        (ORCM_PWRMGMT_START_KEY + 9)  // double - requested target for setting a manual frequency
+#define ORCM_PWRMGMT_SELECTED_COMPONENT_KEY      (ORCM_PWRMGMT_START_KEY + 10) // string - The current selected component
 
 /* define a max value for pwrmgmt keys */
 #define ORCM_PWRMGMT_KEY_MAX                      (ORCM_PWRMGMT_START_KEY + 50)

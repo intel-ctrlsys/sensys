@@ -99,11 +99,22 @@ typedef int (*orcm_pwrmgmt_base_module_init_fn_t)(void);
 typedef void (*orcm_pwrmgmt_base_module_finalize_fn_t)(void);
 
 /**
- * notify the current module of a session allocation
+ * select the correct module for a session allocation
  *
  * This is called at the beginning of a session and it chooses the correct
  * module based on the session allocation information for power management.
- * It then calls the same function for the selected component. the component
+ * Every module is called and must decide if it can support the requested
+ * power management mode. 
+ *
+ * @param[in] alloc - The allocation structure sent by the scheduler
+ *
+ */
+typedef int (*orcm_pwrmgmt_base_module_component_select_fn_t)(orcm_session_id_t session, opal_list_t* attr);
+
+/**
+ * notify the current module of a session allocation
+ *
+ * This is called after the correct component has been selected. the component
  * can then do any work it needs to do to start running globally across the
  * session allocation. The alloc structure holds the job information. All
  * power management attributes are in the constraints section of the alloc 
@@ -201,6 +212,7 @@ typedef int (*orcm_pwrmgmt_base_module_get_current_power_fn_t)(orcm_session_id_t
 typedef struct orcm_pwrmgmt_base_API_module_1_0_0_t {
     orcm_pwrmgmt_base_module_init_fn_t               init;
     orcm_pwrmgmt_base_module_finalize_fn_t           finalize;
+    orcm_pwrmgmt_base_module_component_select_fn_t   component_select;
     orcm_pwrmgmt_base_module_alloc_notify_fn_t       alloc_notify;
     orcm_pwrmgmt_base_module_dealloc_notify_fn_t     dealloc_notify;
     orcm_pwrmgmt_base_module_set_attributes_fn_t     set_attributes;

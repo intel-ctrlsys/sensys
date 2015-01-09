@@ -116,6 +116,7 @@ ORCM_DECLSPEC extern orcm_pwrmgmt_base_t orcm_pwrmgmt_base;
 ORCM_DECLSPEC extern orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt_stubs;
 ORCM_DECLSPEC int orcm_pwrmgmt_base_init(void);
 ORCM_DECLSPEC void orcm_pwrmgmt_base_finalize(void);
+ORCM_DECLSPEC int orcm_pwrmgmt_base_component_select(orcm_session_id_t session, opal_list_t* attr);
 ORCM_DECLSPEC void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc);
 ORCM_DECLSPEC void orcm_pwrmgmt_base_dealloc_notify(orcm_alloc_t* alloc);
 ORCM_DECLSPEC int orcm_pwrmgmt_base_set_attributes(orcm_session_id_t session, opal_list_t* attr);

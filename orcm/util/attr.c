@@ -33,6 +33,8 @@ char* orcm_attr_key_print(orte_attribute_key_t key)
         return "PWRMGMT_CAP_UNDERAGE_TIME_LIMIT";
         case ORCM_PWRMGMT_SUPPORTED_MODES_KEY:
         return "PWRMGMT_SUPPORTED_MODES";
+        case ORCM_PWRMGMT_SELECTED_COMPONENT_KEY:
+        return "PWRMGMT_SELECTED_COMPONENT";
 
         default:
             return "UNKNOWN-KEY";

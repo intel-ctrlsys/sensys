@@ -80,7 +80,7 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
             continue;
         }
         if (NULL != active->module->set_attributes) {
-            if(OPAL_SUCCESS == active->module->set_attributes(alloc->id, &alloc->constraints)) {
+            if(OPAL_SUCCESS == active->module->component_select(alloc->id, &alloc->constraints)) {
                 if (active->priority > max_priority) {
                     max_priority = active->priority;
                     current = active;
@@ -114,6 +114,11 @@ void orcm_pwrmgmt_base_dealloc_notify(orcm_alloc_t* alloc)
     /* set all pointers back to us */
     orcm_pwrmgmt = orcm_pwrmgmt_stubs;
     selected_module = NULL;
+}
+
+int orcm_pwrmgmt_base_component_select(orcm_session_id_t session, opal_list_t* attr)
+{
+    return ORTE_ERR_NOT_SUPPORTED;
 }
 
 int orcm_pwrmgmt_base_set_attributes(orcm_session_id_t session, opal_list_t* attr)

@@ -59,6 +59,7 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
 orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt_stubs = {
     orcm_pwrmgmt_base_init,
     orcm_pwrmgmt_base_finalize,
+    orcm_pwrmgmt_base_component_select,
     orcm_pwrmgmt_base_alloc_notify,
     orcm_pwrmgmt_base_dealloc_notify,
     orcm_pwrmgmt_base_set_attributes,

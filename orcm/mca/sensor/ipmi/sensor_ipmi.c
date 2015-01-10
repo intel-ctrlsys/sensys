@@ -687,7 +687,7 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
     orcm_sensor_hosts_t *cur_host;
     int rc;
-    unsigned int tot_items = 4;
+    unsigned int tot_items = 5;
     char *comp = strdup("ipmi");
     cur_host = current_host_configuration;
 
@@ -740,6 +740,17 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
         return;
     }
     comp = cur_host->capsule.prop.baseboard_manufacturer;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    comp = "bb_manufactured_date";
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    comp = cur_host->capsule.prop.baseboard_manuf_date;
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;

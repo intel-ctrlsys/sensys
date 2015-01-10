@@ -264,7 +264,7 @@ static int record_diag_test(struct orcm_db_base_module_t *imod,
     vstr = opal_argv_join(cmdargs, ',');
 
     /* print it */
-    fprintf(mod->fp, "DB request: recorde_diag_test; data:\n%s\n", vstr);
+    fprintf(mod->fp, "DB request: record_diag_test; data:\n%s\n", vstr);
     free(vstr);
     opal_argv_free(cmdargs);
 

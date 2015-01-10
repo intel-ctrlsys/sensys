@@ -212,7 +212,6 @@ static void odbc_finalize(struct orcm_db_base_module_t *imod)
     opal_output(0, "***********************************************"); \
     opal_output(0, "db:odbc: Unable to record data sample: "); \
     opal_output(0, msg, ##__VA_ARGS__); \
-    opal_output(0, "Unable to log data"); \
     opal_output(0, "***********************************************");
 
 #define ERR_MSG_FMT_SQL_STORE(handle_type, handle, msg, ...) \
@@ -1172,7 +1171,6 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
     opal_output(0, "***********************************************"); \
     opal_output(0, "db:odbc: Unable to record diagnostic test: "); \
     opal_output(0, msg, ##__VA_ARGS__); \
-    opal_output(0, "Unable to log data"); \
     opal_output(0, "***********************************************");
 
 #define ERR_MSG_FMT_SQL_RDT(handle_type, handle, msg, ...) \
@@ -1296,8 +1294,9 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
     }
     /* Bind start time parameter. */
     ret = SQLBindParameter(stmt, 4, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
-                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&start_time,
-                           sizeof(start_time), NULL);
+                           SQL_TYPE_TIMESTAMP, 0, 0,
+                           (SQLPOINTER)&start_time_sql, sizeof(start_time_sql),
+                           NULL);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         ERR_MSG_FMT_RDT("SQLBindParameter 4 returned: %d", ret);
@@ -1305,8 +1304,8 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
     }
     /* Bind end time parameter. */
     ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
-                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&end_time,
-                           sizeof(end_time), NULL);
+                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&end_time_sql,
+                           sizeof(end_time_sql), NULL);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         ERR_MSG_FMT_RDT("SQLBindParameter 5 returned: %d", ret);
@@ -1349,6 +1348,12 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
         return ORCM_SUCCESS;
     }
 
+    ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
+    if (!(SQL_SUCCEEDED(ret))) {
+        ERR_MSG_FMT_RDT("SQLAllocHandle returned: %d", ret);
+        return ORCM_ERROR;
+    }
+
     /*
      * 1.- hostname
      * 2.- diagnostic type
@@ -1362,8 +1367,8 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
      * 10.- units
      */
     ret = SQLPrepare(stmt,
-                     (SQLCHAR *)
-                     "{call record_diag_test_config(?, ?, ?, ?, ?, ?, ?)}",
+                     (SQLCHAR *)"{call record_diag_test_config"
+                                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}",
                      SQL_NTS);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
@@ -1399,8 +1404,9 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
     }
     /* Bind start time parameter. */
     ret = SQLBindParameter(stmt, 4, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
-                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&start_time,
-                           sizeof(start_time), NULL);
+                           SQL_TYPE_TIMESTAMP, 0, 0,
+                           (SQLPOINTER)&start_time_sql, sizeof(start_time_sql),
+                           NULL);
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         ERR_MSG_FMT_RDT("SQLBindParameter 4 returned: %d", ret);

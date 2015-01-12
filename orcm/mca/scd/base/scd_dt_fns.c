@@ -29,7 +29,8 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
     orcm_alloc_t **allocs, *alloc;
     int32_t i;
     int32_t j;
-    orcm_resource_t *r;
+    orte_attribute_t *attr;
+     
     int8_t k;
 
     /* array of pointers to orcm_alloc_t objects - need
@@ -276,7 +277,7 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
         }
         /* pack the resource constraints */
         j = (int32_t)opal_list_get_size(&alloc->constraints);
-            if (OPAL_SUCCESS !=
+        if (OPAL_SUCCESS !=
                 (ret = opal_dss_pack_buffer(buffer,
                                             (void*)&j,
                                             1,
@@ -285,21 +286,9 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
             return ret;
         }
         if (0 < j) {
-            OPAL_LIST_FOREACH(r, &alloc->constraints, orcm_resource_t) {
-                k = r->type;
-                if (OPAL_SUCCESS !=
-                    (ret = opal_dss_pack_buffer(buffer,
-                                                (void*)&k,
-                                                1,
-                                                OPAL_INT8))) {
-                    ORTE_ERROR_LOG(ret);
-                    return ret;
-                }
-                    if (OPAL_SUCCESS !=
-                        (ret = opal_dss_pack_buffer(buffer,
-                                                    (void*)&r->constraint,
-                                                    1,
-                                                    OPAL_STRING))) {
+            OPAL_LIST_FOREACH(attr, &alloc->constraints, orte_attribute_t) {
+                k = attr->type;
+                if (OPAL_SUCCESS != (ret = orte_attr_pack(buffer, attr, k))) {
                     ORTE_ERROR_LOG(ret);
                     return ret;
                 }
@@ -317,8 +306,6 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
     int32_t i, n;
     orcm_alloc_t **allocs, *a;
     int32_t j, m;
-    orcm_resource_t *r;
-    int8_t k;
 
     /* unpack into array of orcm_alloc_t objects */
     allocs = (orcm_alloc_t**)dest;
@@ -603,27 +590,10 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
             return ret;
         }
         for (m=0; m < j; m++) {
-            r = OBJ_NEW(orcm_resource_t);
-            n=1;
-            if (OPAL_SUCCESS !=
-                (ret = opal_dss_unpack_buffer(buffer,
-                                              &k,
-                                              &n,
-                                              OPAL_INT8))) {
+            if (OPAL_SUCCESS != (ret = orte_attr_unpack(buffer, &a->constraints))) {
                 ORTE_ERROR_LOG(ret);
                 return ret;
             }
-            r->type = (orcm_resource_type_t)k;
-            n=1;
-            if (OPAL_SUCCESS !=
-                (ret = opal_dss_unpack_buffer(buffer,
-                                              &r->constraint,
-                                              &n,
-                                              OPAL_STRING))) {
-                ORTE_ERROR_LOG(ret);
-                return ret;
-            }
-            opal_list_append(&a->constraints, &r->super);
         }
     }
 

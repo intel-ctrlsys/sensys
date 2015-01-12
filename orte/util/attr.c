@@ -14,6 +14,7 @@
 #include "orte/constants.h"
 
 #include "opal/dss/dss.h"
+#include "opal/dss/dss_internal.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 
@@ -387,6 +388,10 @@ static int orte_attr_load(orte_attribute_t *kv,
         kv->data.fval = *(float*)(data);
         break;
 
+    case OPAL_DOUBLE:
+        kv->data.dval = *(float*)(data);
+        break;
+
     case OPAL_TIMEVAL:
         tv = (struct timeval*)data;
         kv->data.tv.tv_sec = tv->tv_sec;
@@ -500,6 +505,10 @@ static int orte_attr_unload(orte_attribute_t *kv,
         memcpy(*data, &kv->data.fval, sizeof(float));
         break;
 
+    case OPAL_DOUBLE:
+        memcpy(*data, &kv->data.dval, sizeof(double));
+        break;
+
     case OPAL_TIMEVAL:
         memcpy(*data, &kv->data.tv, sizeof(struct timeval));
         break;
@@ -520,5 +529,669 @@ static int orte_attr_unload(orte_attribute_t *kv,
         OPAL_ERROR_LOG(OPAL_ERR_NOT_SUPPORTED);
         return OPAL_ERR_NOT_SUPPORTED;
     }
+    return OPAL_SUCCESS;
+}
+
+int orte_attr_pack(opal_buffer_t* buffer, orte_attribute_t *kv,
+                                    opal_data_type_t type)
+{
+    int ret;
+
+    if (type != kv->type) {
+        return OPAL_ERR_TYPE_MISMATCH;
+    }
+
+    if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                        (void*)&kv->key,
+                        1,
+                        OPAL_INT16))) {
+        ORTE_ERROR_LOG(ret);
+        return ret;
+    }
+    if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                        (void*)&kv->type,
+                        1,
+                        OPAL_INT8))) {
+        ORTE_ERROR_LOG(ret);
+        return ret;
+    }
+
+    switch (type) {
+    case OPAL_BOOL:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.flag,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_BYTE:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.byte,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_STRING:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)kv->data.string,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_SIZE:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.size,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_PID:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.pid,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    case OPAL_INT:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.integer,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_INT8:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.int8,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_INT16:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.int16,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_INT32:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.int32,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_INT64:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.int64,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    case OPAL_UINT:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.uint,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_UINT8:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.uint8,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_UINT16:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.uint16,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_UINT32:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.uint32,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+    case OPAL_UINT64:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.uint64,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    case OPAL_BYTE_OBJECT:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.bo.size,
+                            1,
+                            OPAL_UINT32))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)kv->data.bo.bytes,
+                            kv->data.bo.size,
+                            OPAL_UINT8))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    case OPAL_BUFFER:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.buf,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    case OPAL_FLOAT:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.fval,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    case OPAL_DOUBLE:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.dval,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    case OPAL_TIMEVAL:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.tv.tv_sec,
+                            1,
+                            OPAL_INT))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.tv.tv_usec,
+                            1,
+                            OPAL_INT))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    case OPAL_PTR:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.ptr,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    case OPAL_VPID:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.vpid,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    case OPAL_JOBID:
+        if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
+                            (void*)&kv->data.jobid,
+                            1,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        break;
+
+    default:
+        OPAL_ERROR_LOG(OPAL_ERR_NOT_SUPPORTED);
+        return OPAL_ERR_NOT_SUPPORTED;
+    }
+    return OPAL_SUCCESS;
+}
+
+int orte_attr_unpack(opal_buffer_t* buffer, opal_list_t *attr)
+{
+    int ret, num = 1;
+    orte_attribute_key_t key;
+    opal_data_type_t type;
+    
+
+    if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                        (void*)&key,
+                        &num,
+                        OPAL_INT16))) {
+        ORTE_ERROR_LOG(ret);
+        return ret;
+    }
+    if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                        (void*)&type,
+                        &num,
+                        OPAL_INT8))) {
+        ORTE_ERROR_LOG(ret);
+        return ret;
+    }
+
+    if (OPAL_BOOL == type) {
+        bool flag;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            &flag,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &flag, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_BYTE == type) {
+        uint8_t byte;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&byte,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &byte, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_STRING == type) {
+        char *str;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)str,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, str, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_SIZE == type) {
+        size_t sz;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&sz,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &sz, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_PID == type) {
+        pid_t pid;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&pid,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &pid, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else if (OPAL_INT == type) {
+        int n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_INT8 == type) {
+        int8_t n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_INT16 == type) {
+        int16_t n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_INT32 == type) {
+        int32_t n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_INT64 == type) {
+        int64_t n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else if (OPAL_UINT == type) {
+        unsigned int n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_UINT8 == type) {
+        uint8_t n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_UINT16 == type) {
+        uint16_t n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_UINT32 == type) {
+        uint32_t n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+    else if (OPAL_UINT64 == type) {
+        uint64_t n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else if (OPAL_BYTE_OBJECT == type) {
+        opal_byte_object_t boptr;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&boptr.size,
+                            &num,
+                            OPAL_INT))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)boptr.bytes,
+                            &boptr.size,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &boptr, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else if (OPAL_BUFFER == type) {
+        opal_buffer_t data;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&data,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &data, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else if (OPAL_FLOAT == type) {
+        float n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else if (OPAL_DOUBLE == type) {
+        double n;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&n,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &n, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else if (OPAL_TIMEVAL == type) {
+        struct timeval tv;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&tv.tv_sec,
+                            &num,
+                            OPAL_INT))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&tv.tv_usec,
+                            &num,
+                            OPAL_INT))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &tv, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else if (OPAL_PTR == type) {
+        void* ptr;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)ptr,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, ptr, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else if (OPAL_VPID == type) {
+        orte_vpid_t vpid;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&vpid,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &vpid, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else if (OPAL_JOBID == type) {
+        orte_jobid_t jobid;
+        if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
+                            (void*)&jobid,
+                            &num,
+                            type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+        if (OPAL_SUCCESS != (ret = orte_set_attribute(attr, key, 
+                             ORTE_ATTR_GLOBAL, &jobid, type))) {
+            ORTE_ERROR_LOG(ret);
+            return ret;
+        }
+    }
+
+    else {
+        OPAL_ERROR_LOG(OPAL_ERR_NOT_SUPPORTED);
+        return OPAL_ERR_NOT_SUPPORTED;
+    }
+
     return OPAL_SUCCESS;
 }

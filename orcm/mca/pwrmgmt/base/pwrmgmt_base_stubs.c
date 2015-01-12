@@ -57,21 +57,25 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
     bool rc;
     orcm_pwrmgmt_active_module_t* active;
     orcm_pwrmgmt_active_module_t* current;
-    int32_t *requested_power_mode;
+    int32_t requested_power_mode, *pwr_mode_ptr;
     int32_t max_priority = 0;
+printf("In base alloc_notify\n");
+    
+    pwr_mode_ptr = &requested_power_mode;
+    rc = orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, (void**)&pwr_mode_ptr, OPAL_INT32); 
 
-    rc = orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, (void**)&requested_power_mode, OPAL_INT32); 
-
-    /* Either the ORCM_PWRMGMT_MODE key was not found or the returned
-     * pointer was NULL. In either case we keep the orcm_pwrmgmt pointed
+    /* The ORCM_PWRMGMT_MODE key was not found
+     * In this case we keep the orcm_pwrmgmt pointed
      * to the stubs and just return */    
-    if(false == rc || NULL == requested_power_mode) {
+    if(false == rc) {
+printf("crappy\n");
         return;
     }
 
+printf("requested mode: %d\n",requested_power_mode);
     /* No power management was explicitly requested so we just keep pointing
      * to the stub functions */ 
-    if(*requested_power_mode == ORCM_PWRMGMT_MODE_NONE) {
+    if(requested_power_mode == ORCM_PWRMGMT_MODE_NONE) {
         return;
     }
 
@@ -79,6 +83,7 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
         if (NULL == (active = (orcm_pwrmgmt_active_module_t*)opal_pointer_array_get_item(&orcm_pwrmgmt_base.modules, i))) {
             continue;
         }
+printf("&alloc->constraints = %p\n",&alloc->constraints);
         if (NULL != active->module->set_attributes) {
             if(OPAL_SUCCESS == active->module->component_select(alloc->id, &alloc->constraints)) {
                 if (active->priority > max_priority) {
@@ -100,6 +105,14 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
         /* The dealloc call still needs to be handled bt the base framework */
         orcm_pwrmgmt.dealloc_notify = orcm_pwrmgmt_base_dealloc_notify;
     }
+    else {
+        selected_module = current;
+    }
+    
+    if(NULL == selected_module) {
+        return;
+    }
+
     if (NULL != selected_module->module->alloc_notify) {
         /* give this module a chance to operate on it */
         selected_module->module->alloc_notify(alloc);

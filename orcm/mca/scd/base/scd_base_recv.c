@@ -25,6 +25,7 @@
 
 #include "orcm/util/attr.h"
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/mca/pwrmgmt/base/base.h"
 #include "orcm/mca/scd/base/base.h"
 
 static bool recv_issued=false;
@@ -112,15 +113,15 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         /* session request - this comes in the form of a
          * requested allocation to support the session
          */
-        double alloc_power_budget = 0.0;
+        float alloc_power_budget = 0.0;
         //get power defaults
-        int alloc_power_mode = orcm_scd_base_get_cluster_power_mode();
-        int alloc_power_window = orcm_scd_base_get_cluster_power_window();
-        double alloc_power_overage = orcm_scd_base_get_cluster_power_overage();
-        double alloc_power_underage = orcm_scd_base_get_cluster_power_underage();
-        int alloc_power_overage_time = orcm_scd_base_get_cluster_power_overage_time();
-        int alloc_power_underage_time = orcm_scd_base_get_cluster_power_underage_time();
-        double alloc_power_frequency = orcm_scd_base_get_cluster_power_frequency();
+        int32_t alloc_power_mode = orcm_scd_base_get_cluster_power_mode();
+        int32_t alloc_power_window = orcm_scd_base_get_cluster_power_window();
+        float alloc_power_overage = orcm_scd_base_get_cluster_power_overage();
+        float alloc_power_underage = orcm_scd_base_get_cluster_power_underage();
+        int32_t alloc_power_overage_time = orcm_scd_base_get_cluster_power_overage_time();
+        int32_t alloc_power_underage_time = orcm_scd_base_get_cluster_power_underage_time();
+        float alloc_power_frequency = orcm_scd_base_get_cluster_power_frequency();
         
         double node_power_budget = 0.0;
         cnt = 1;
@@ -152,45 +153,51 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         }
 
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY,
-                                                   false, &alloc_power_budget, OPAL_DOUBLE))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_budget, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
+printf("cluster power mode: %d\n",alloc_power_mode);
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY,
-                                                   false, &alloc_power_mode, OPAL_INT))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_mode, OPAL_INT32))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_WINDOW_KEY,
-                                                   false, &alloc_power_window, OPAL_INT))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_window, OPAL_INT32))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY,
-                                                   false, &alloc_power_overage, OPAL_DOUBLE))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_overage, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY,
-                                                   false, &alloc_power_underage, OPAL_DOUBLE))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_underage, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY,
-                                                   false, &alloc_power_overage_time, OPAL_INT))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_overage_time, OPAL_INT32))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY,
-                                                   false, &alloc_power_underage_time, OPAL_INT))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_underage_time, OPAL_INT32))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY,
-                                                   false, &alloc_power_frequency, OPAL_DOUBLE))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_frequency, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
+
+        /* select the power management component */
+        OBJ_RETAIN(alloc);
+        orcm_pwrmgmt.alloc_notify(alloc);
+        OBJ_RELEASE(alloc);
 
         /* send session id back to sender */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &session->id,

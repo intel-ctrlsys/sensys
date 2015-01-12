@@ -186,6 +186,13 @@ ORTE_DECLSPEC int orte_set_attribute(opal_list_t *attributes, orte_attribute_key
 /* Remove the named attribute from a list */
 ORTE_DECLSPEC void orte_remove_attribute(opal_list_t *attributes, orte_attribute_key_t key);
 
+/* Pack an attribute into an opal buffer */
+ORTE_DECLSPEC int orte_attr_pack(opal_buffer_t* buffer, orte_attribute_t *kv,
+                                 opal_data_type_t type);
+
+/* Unpack an attribute from an opal buffer */
+ORTE_DECLSPEC int orte_attr_unpack(opal_buffer_t* buffer, opal_list_t *attr);
+
 /*
  * Register a handler for converting attr keys to strings
  *

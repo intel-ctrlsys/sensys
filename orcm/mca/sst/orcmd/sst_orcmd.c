@@ -84,6 +84,8 @@
 #include "orcm/mca/diag/base/base.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/sensor.h"
+#include "orcm/mca/pwrmgmt/base/base.h"
+#include "orcm/mca/pwrmgmt/pwrmgmt.h"
 #include "orcm/util/utils.h"
 
 #include "orcm/mca/sst/base/base.h"
@@ -606,6 +608,18 @@ static int orcmd_init(void)
     }
     /* start the local sensors */
     orcm_sensor.start(ORTE_PROC_MY_NAME->jobid);
+
+    /* setup the PWRMGMT framework */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_pwrmgmt_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_pwrmgmt_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orcm_pwrmgmt_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_pwrmgmt_select";
+        goto error;
+    }
     
     /* setup the DFS framework */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_dfs_base_framework, 0))) {

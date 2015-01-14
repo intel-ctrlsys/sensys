@@ -515,6 +515,17 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
                               "processing the values");
                 return ORCM_ERROR;
             }
+        } else if (VALUE_STRING == curr_type) {
+            /* No need to change the binding for all the values, just update
+             * the string binding. */
+            ret = SQLBindParameter(stmt, 8, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0, (SQLPOINTER)value_str,
+                                   strlen(value_str), NULL);
+            if (!(SQL_SUCCEEDED(ret))) {
+                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                ERR_MSG_FMT_STORE("SQLBindParameter 8 returned: %d", ret);
+                return ORCM_ERROR;
+            }
         }
 
         ret = SQLExecute(stmt);
@@ -811,6 +822,17 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
                               "processing the values");
                 return ORCM_ERROR;
             }
+        } else if (VALUE_STRING == curr_type) {
+            /* No need to change the binding for all the values, just update
+             * the string binding. */
+            ret = SQLBindParameter(stmt, 8, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0, (SQLPOINTER)value_str,
+                                   strlen(value_str), NULL);
+            if (!(SQL_SUCCEEDED(ret))) {
+                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                ERR_MSG_FMT_STORE("SQLBindParameter 8 returned: %d", ret);
+                return ORCM_ERROR;
+            }
         }
 
         ret = SQLExecute(stmt);
@@ -1062,6 +1084,17 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
                 SQLFreeHandle(SQL_HANDLE_STMT, stmt);
                 ERR_MSG_STORE("An unexpected error has occurred while "
                               "processing the values");
+                return ORCM_ERROR;
+            }
+        } else if (VALUE_STRING == curr_type) {
+            /* No need to change the binding for all the values, just update
+             * the string binding. */
+            ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0, (SQLPOINTER)value_str,
+                                   strlen(value_str), NULL);
+            if (!(SQL_SUCCEEDED(ret))) {
+                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+                ERR_MSG_FMT_UNF("SQLBindParameter 6 returned: %d", ret);
                 return ORCM_ERROR;
             }
         }

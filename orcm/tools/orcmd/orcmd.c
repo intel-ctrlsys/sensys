@@ -38,6 +38,7 @@
 #include "opal/mca/base/mca_base_var.h"
 #include "opal/mca/installdirs/installdirs.h"
 #include "opal/mca/event/event.h"
+#include "opal/runtime/opal.h"
 
 #include "orte/util/show_help.h"
 #include "orte/util/regex.h"
@@ -132,7 +133,14 @@ int main(int argc, char *argv[])
         exit(1);
     }
     
-    if( orcm_globals.verbose ) {
+    /* Initialize the argv parsing handle */
+    if (orcm_globals.help || orcm_globals.version) {
+        if (ORCM_SUCCESS != (ret=opal_init_util(&argc, &argv))) {
+            return ret;
+        }
+    }
+
+    if (orcm_globals.verbose) {
         orcm_globals.output = opal_output_open(NULL);
         opal_output_set_verbosity(orcm_globals.output, 10);
     } else {
@@ -147,21 +155,15 @@ int main(int argc, char *argv[])
      */
     mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
 
-    /***************
-     * Initialize
-     ***************/
-    if (ORCM_SUCCESS != (ret = orcm_init(ORCM_DAEMON))) {
-        return ret;
-    }
 
-    if(orcm_globals.help) {
+    if (orcm_globals.help) {
         args = opal_cmd_line_get_usage_msg(&cmd_line);
         str = opal_show_help_string("help-orcmd.txt", "usage", false, args);
         if (NULL != str) {
             printf("%s", str);
             free(str);
         }
-        orcm_finalize();
+        opal_finalize_util();
         exit(0);
     }
     
@@ -173,8 +175,15 @@ int main(int argc, char *argv[])
             printf("%s", str);
             free(str);
         }
-        orcm_finalize();
+        opal_finalize_util();
         exit(0);
+    }
+
+    /***************
+     * Initialize
+     ***************/
+    if (ORCM_SUCCESS != (ret = orcm_init(ORCM_DAEMON))) {
+        return ret;
     }
 
     /* print out a message alerting that we are alive */

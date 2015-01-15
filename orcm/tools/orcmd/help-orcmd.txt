@@ -14,6 +14,14 @@ Usage: orcmd [OPTIONS]
   Open Resilient Cluster Manager Daemon
 
 %s
+
+Note: To get the list of MCA parameters
+  'orcm-info --param <arg0> <arg1>'  
+                         The first parameter is the
+                         framework (or the keyword "all"); the second
+                         parameter is the specific component name (or the
+                         keyword "all").
+
 [version]
 orcmd %s
 

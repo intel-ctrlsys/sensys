@@ -1326,7 +1326,7 @@ CREATE VIEW node_features_view AS
     node_feature.units
    FROM ((node_feature
      JOIN node ON ((node.node_id = node_feature.node_id)))
-     JOIN feature ON ((feature.feature_id = node_feature.node_id)));
+     JOIN feature ON ((feature.feature_id = node_feature.feature_id)));
 
 
 --

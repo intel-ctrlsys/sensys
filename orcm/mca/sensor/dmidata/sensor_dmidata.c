@@ -205,8 +205,6 @@ static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, d
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
-    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-        "TOTAL SOCKETS: %d", obj->infos_count);
     mkv = OBJ_NEW(orcm_metric_value_t);
     mkv->value.type = OPAL_UINT;
     mkv->value.key = strdup("num_sockets");;

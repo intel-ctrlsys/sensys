@@ -12,6 +12,9 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 
+#include "orte/mca/rml/rml.h"
+#include "orcm/runtime/orcm_globals.h"
+#include "orte/mca/errmgr/errmgr.h"
 #include "orcm/mca/pwrmgmt/base/base.h"
 
 /*
@@ -67,7 +70,7 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
 
     bool rc;
     orcm_pwrmgmt_active_module_t* active;
-    orcm_pwrmgmt_active_module_t* current;
+    orcm_pwrmgmt_active_module_t* current = NULL;
     int32_t requested_power_mode, *pwr_mode_ptr;
     int32_t max_priority = 0;
     
@@ -120,7 +123,9 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
             }
         }
         selected_module = current;
-        orcm_pwrmgmt = *current->module;
+        if (current != NULL) {
+            orcm_pwrmgmt = *current->module;
+        }
         /* The dealloc call still needs to be handled bt the base framework */
         orcm_pwrmgmt.dealloc_notify = orcm_pwrmgmt_base_dealloc_notify;
     }
@@ -129,6 +134,7 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
     }
     
     if(NULL == selected_module) {
+        /* We could not find a suitable component to complete the request. */
         return;
     }
 

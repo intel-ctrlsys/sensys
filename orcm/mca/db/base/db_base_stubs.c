@@ -328,6 +328,81 @@ void orcm_db_base_update_node_features(int dbhandle,
     opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
 }
 
+static void process_record_diag_test(int fd, short args, void *cbdata)
+{
+    orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
+    orcm_db_handle_t *hdl;
+    int rc = ORCM_SUCCESS;
+
+    /* get the handle object */
+    if (NULL == (hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(
+            &orcm_db_base.handles, req->dbhandle))) {
+        rc = ORCM_ERR_NOT_FOUND;
+        goto callback;
+    }
+
+    if (NULL ==  hdl->module) {
+        rc = ORCM_ERR_NOT_FOUND;
+        goto callback;
+    }
+
+    if (NULL != hdl->module->record_diag_test) {
+        rc = hdl->module->record_diag_test(
+                (struct orcm_db_base_module_t*)hdl->module,
+                req->hostname,
+                req->diag_type,
+                req->diag_subtype,
+                req->start_time,
+                req->end_time,
+                req->component_index,
+                req->test_result,
+                req->kvs);
+    }
+
+ callback:
+    if (NULL != req->cbfunc) {
+        req->cbfunc(req->dbhandle, rc, req->kvs, req->cbdata);
+    }
+    OBJ_RELEASE(req);
+}
+
+void orcm_db_base_record_diag_test(int dbhandle,
+                                   const char *hostname,
+                                   const char *diag_type,
+                                   const char *diag_subtype,
+                                   const struct tm *start_time,
+                                   const struct tm *end_time,
+                                   const int *component_index,
+                                   const char *test_result,
+                                   opal_list_t *test_params,
+                                   orcm_db_callback_fn_t cbfunc,
+                                   void *cbdata)
+{
+    orcm_db_request_t *req;
+
+    /* push this request into our event_base
+     * for processing to ensure nobody else is
+     * using that dbhandle
+     */
+    req = OBJ_NEW(orcm_db_request_t);
+    req->dbhandle = dbhandle;
+    req->hostname = hostname;
+    req->diag_type = diag_type;
+    req->diag_subtype = diag_subtype;
+    req->start_time = start_time;
+    req->end_time = end_time;
+    req->component_index = component_index;
+    req->test_result = test_result;
+    req->kvs = test_params;
+    req->cbfunc = cbfunc;
+    req->cbdata = cbdata;
+    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
+                   OPAL_EV_WRITE,
+                   process_record_diag_test, req);
+    opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
+    opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
+}
+
 static void process_commit(int fd, short args, void *cbdata)
 {
     orcm_db_request_t *req = (orcm_db_request_t*)cbdata;

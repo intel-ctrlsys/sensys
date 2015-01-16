@@ -1047,7 +1047,9 @@ static int create_app(int argc, char* argv[],
     if (ORTE_SUCCESS != rc) {
         goto cleanup;
     }
-    mca_base_cmd_line_process_args(&cmd_line, app_env, &global_mca_env);
+    if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
+        exit(1);
+    }
 
     /* Is there an appfile in here? */
 

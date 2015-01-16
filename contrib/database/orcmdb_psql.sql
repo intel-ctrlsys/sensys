@@ -429,6 +429,28 @@ $$;
 
 
 --
+-- Name: diag_exists(integer, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION diag_exists(p_diag_type_id integer, p_diag_subtype_id integer) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    v_exists boolean := false;
+
+BEGIN
+    v_exists := exists(
+        select 1
+        from diag
+        where diag_type_id = p_diag_type_id and
+            diag_subtype_id = p_diag_subtype_id);
+
+    return v_exists;
+END
+$$;
+
+
+--
 -- Name: get_data_item_id(character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -592,7 +614,7 @@ $$;
 -- Name: get_test_result_id(character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION get_test_result_id(test_result character varying) RETURNS integer
+CREATE FUNCTION get_test_result_id(p_test_result character varying) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -602,7 +624,7 @@ BEGIN
     -- Get the test result ID
     select test_result_id into v_test_result_id
     from test_result
-    where name = test_result;
+    where name = p_test_result;
 
     -- Does it exist?
     if (v_test_result_id is null) then
@@ -713,7 +735,7 @@ BEGIN
     -- Get the diagnostic subtype ID
     v_diag_subtype_id := get_diag_subtype_id(p_diag_subtype);
     if (v_diag_subtype_id = 0) then
-        v_diag_subtype_id := add_diag_subtype_id(p_diag_subtype);
+        v_diag_subtype_id := add_diag_subtype(p_diag_subtype);
     end if;
 
     if (not data_type_exists(p_data_type_id)) then
@@ -772,7 +794,12 @@ BEGIN
     -- Get the diagnostic subtype ID
     v_diag_subtype_id := get_diag_subtype_id(p_diag_subtype);
     if (v_diag_subtype_id = 0) then
-        v_diag_subtype_id := add_diag_subtype_id(p_diag_subtype);
+        v_diag_subtype_id := add_diag_subtype(p_diag_subtype);
+    end if;
+
+    -- If this particular diagnostic does not exist, add it
+    if (not diag_exists(v_diag_type_id, v_diag_subtype_id)) then
+        perform add_diag(v_diag_type_id, v_diag_subtype_id);
     end if;
 
     -- Get the test result ID
@@ -919,10 +946,10 @@ CREATE TABLE data_sample (
     node_id integer NOT NULL,
     data_item_id integer NOT NULL,
     time_stamp timestamp without time zone NOT NULL,
-    value_int bigint,
     value_real double precision,
     value_str character varying(50),
     units character varying(50),
+    value_int bigint,
     CONSTRAINT data_sample_check CHECK ((((value_int IS NOT NULL) OR (value_real IS NOT NULL)) OR (value_str IS NOT NULL)))
 );
 
@@ -1038,10 +1065,10 @@ CREATE TABLE diag_test_config (
     diag_subtype_id integer NOT NULL,
     start_time timestamp without time zone NOT NULL,
     test_param_id integer NOT NULL,
-    value_int bigint,
     value_real double precision,
     value_str character varying(100),
     units character varying(50),
+    value_int bigint,
     CONSTRAINT diag_test_config_check CHECK ((((value_int IS NOT NULL) OR (value_real IS NOT NULL)) OR (value_str IS NOT NULL)))
 );
 
@@ -1303,10 +1330,10 @@ CREATE TABLE maintenance_record (
 CREATE TABLE node_feature (
     node_id integer NOT NULL,
     feature_id integer NOT NULL,
-    value_int bigint,
     value_real double precision,
     value_str character varying(100),
     units character varying(50),
+    value_int bigint,
     CONSTRAINT node_feature_check CHECK ((((value_int IS NOT NULL) OR (value_real IS NOT NULL)) OR (value_str IS NOT NULL)))
 );
 
@@ -1851,3 +1878,4 @@ ALTER TABLE ONLY test_param
 --
 -- PostgreSQL database dump complete
 --
+

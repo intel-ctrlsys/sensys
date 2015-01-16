@@ -174,7 +174,7 @@ typedef void (*orcm_db_base_API_record_diag_test_fn_t)(
         const char *diag_subtype,
         const struct tm *start_time,
         const struct tm *end_time,
-        int component_index,
+        const int *component_index,
         const char *test_result,
         opal_list_t *test_params,
         orcm_db_callback_fn_t cbfunc,
@@ -186,7 +186,7 @@ typedef int (*orcm_db_base_module_record_diag_test_fn_t)(
         const char *diag_subtype,
         const struct tm *start_time,
         const struct tm *end_time,
-        int component_index,
+        const int *component_index,
         const char *test_result,
         opal_list_t *test_params);
 

@@ -65,7 +65,7 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
                                  const char *diag_subtype,
                                  const struct tm *start_time,
                                  const struct tm *end_time,
-                                 int component_index,
+                                 const int *component_index,
                                  const char *test_result,
                                  opal_list_t *test_params);
 static int odbc_fetch(struct orcm_db_base_module_t *imod,
@@ -407,22 +407,16 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
                                    SQL_VARCHAR, 0, 0,
                                    (SQLPOINTER)data_item_argv[1],
                                    strlen(data_item_argv[1]), NULL);
-            if (!(SQL_SUCCEEDED(ret))) {
-                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-                opal_argv_free(data_item_argv);
-                ERR_MSG_FMT_STORE("SQLBindParameter 9 returned: %d", ret);
-                return ORCM_ERROR;
-            }
         } else {
             /* No units provided, bind NULL. */
             ret = SQLBindParameter(stmt, 9, SQL_PARAM_INPUT, SQL_C_CHAR,
                                    SQL_VARCHAR, 0, 0, NULL, 0, &null_len);
-            if (!(SQL_SUCCEEDED(ret))) {
-                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-                opal_argv_free(data_item_argv);
-                ERR_MSG_FMT_STORE("SQLBindParameter 9 returned: %d", ret);
-                return ORCM_ERROR;
-            }
+        }
+        if (!(SQL_SUCCEEDED(ret))) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            opal_argv_free(data_item_argv);
+            ERR_MSG_FMT_STORE("SQLBindParameter 9 returned: %d", ret);
+            return ORCM_ERROR;
         }
 
         if (change_value_binding) {
@@ -731,20 +725,15 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
                                    SQL_VARCHAR, 0, 0,
                                    (SQLPOINTER)mv->units,
                                    strlen(mv->units), NULL);
-            if (!(SQL_SUCCEEDED(ret))) {
-                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-                ERR_MSG_FMT_STORE("SQLBindParameter 9 returned: %d", ret);
-                return ORCM_ERROR;
-            }
         } else {
             /* No units provided, bind NULL. */
             ret = SQLBindParameter(stmt, 9, SQL_PARAM_INPUT, SQL_C_CHAR,
                                    SQL_VARCHAR, 0, 0, NULL, 0, &null_len);
-            if (!(SQL_SUCCEEDED(ret))) {
-                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-                ERR_MSG_FMT_STORE("SQLBindParameter 9 returned: %d", ret);
-                return ORCM_ERROR;
-            }
+        }
+        if (!(SQL_SUCCEEDED(ret))) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_FMT_STORE("SQLBindParameter 9 returned: %d", ret);
+            return ORCM_ERROR;
         }
 
         if (change_value_binding) {
@@ -1126,20 +1115,15 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
                                    SQL_VARCHAR, 0, 0,
                                    (SQLPOINTER)mv->units,
                                    strlen(mv->units), NULL);
-            if (!(SQL_SUCCEEDED(ret))) {
-                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-                ERR_MSG_FMT_UNF("SQLBindParameter 7 returned: %d", ret);
-                return ORCM_ERROR;
-            }
         } else {
             /* No units provided, bind NULL. */
             ret = SQLBindParameter(stmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR,
                                    SQL_VARCHAR, 0, 0, NULL, 0, &null_len);
-            if (!(SQL_SUCCEEDED(ret))) {
-                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-                ERR_MSG_FMT_UNF("SQLBindParameter 7 returned: %d", ret);
-                return ORCM_ERROR;
-            }
+        }
+        if (!(SQL_SUCCEEDED(ret))) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_FMT_UNF("SQLBindParameter 7 returned: %d", ret);
+            return ORCM_ERROR;
         }
 
         ret = SQLExecute(stmt);
@@ -1187,7 +1171,7 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
                                  const char *diag_subtype,
                                  const struct tm *start_time,
                                  const struct tm *end_time,
-                                 int component_index,
+                                 const int *component_index,
                                  const char *test_result,
                                  opal_list_t *test_params)
 {
@@ -1228,18 +1212,16 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
 
-    if (NULL == end_time) {
-        ERR_MSG_RDT("No end time provided");
-        return ORCM_ERROR;
-    }
-
     if (NULL == test_result) {
         ERR_MSG_RDT("No test result provided");
         return ORCM_ERROR;
     }
 
     to_sql_timestamp(&start_time_sql, start_time);
-    to_sql_timestamp(&end_time_sql, end_time);
+
+    if (NULL != end_time) {
+        to_sql_timestamp(&end_time_sql, end_time);
+    }
 
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
@@ -1303,18 +1285,29 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
     /* Bind end time parameter. */
-    ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
-                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&end_time_sql,
-                           sizeof(end_time_sql), NULL);
+    if (NULL != end_time) {
+        ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
+                               SQL_TYPE_TIMESTAMP, 0, 0,
+                               (SQLPOINTER)&end_time_sql, sizeof(end_time_sql),
+                               NULL);
+    } else {
+        ret = SQLBindParameter(stmt, 5, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
+                               SQL_TYPE_TIMESTAMP, 0, 0, NULL, 0, &null_len);
+    }
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         ERR_MSG_FMT_RDT("SQLBindParameter 5 returned: %d", ret);
         return ORCM_ERROR;
     }
     /* Bind component index parameter. */
-    ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER,
-                           0, 0, (SQLPOINTER)&component_index,
-                           sizeof(component_index), NULL);
+    if (NULL != component_index) {
+        ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_LONG,
+                               SQL_INTEGER, 0, 0, (SQLPOINTER)component_index,
+                               sizeof(component_index), NULL);
+    } else {
+        ret = SQLBindParameter(stmt, 6, SQL_PARAM_INPUT, SQL_C_LONG,
+                               SQL_INTEGER, 0, 0, NULL, 0, &null_len);
+    }
     if (!(SQL_SUCCEEDED(ret))) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         ERR_MSG_FMT_RDT("SQLBindParameter 6 returned: %d", ret);
@@ -1480,20 +1473,15 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
                                    SQL_VARCHAR, 0, 0,
                                    (SQLPOINTER)mv->units,
                                    strlen(mv->units), NULL);
-            if (!(SQL_SUCCEEDED(ret))) {
-                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-                ERR_MSG_FMT_RDT("SQLBindParameter 10 returned: %d", ret);
-                return ORCM_ERROR;
-            }
         } else {
             /* No units provided, bind NULL. */
             ret = SQLBindParameter(stmt, 10, SQL_PARAM_INPUT, SQL_C_CHAR,
                                    SQL_VARCHAR, 0, 0, NULL, 0, &null_len);
-            if (!(SQL_SUCCEEDED(ret))) {
-                SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-                ERR_MSG_FMT_RDT("SQLBindParameter 10 returned: %d", ret);
-                return ORCM_ERROR;
-            }
+        }
+        if (!(SQL_SUCCEEDED(ret))) {
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+            ERR_MSG_FMT_RDT("SQLBindParameter 10 returned: %d", ret);
+            return ORCM_ERROR;
         }
 
         if (change_value_binding) {

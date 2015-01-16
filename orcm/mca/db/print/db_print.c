@@ -56,7 +56,7 @@ static int record_diag_test(struct orcm_db_base_module_t *imod,
                             const char *diag_subtype,
                             const struct tm *start_time,
                             const struct tm *end_time,
-                            int component_index,
+                            const int *component_index,
                             const char *test_result,
                             opal_list_t *test_params);
 
@@ -118,8 +118,10 @@ static int store(struct orcm_db_base_module_t *imod,
     int argv_count;
     int len;
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "primary_key", primary_key);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != primary_key) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "primary_key", primary_key);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
     /* cycle through the provided values and print them */
     /* print the data in the following format: <key>=<value>:<units> */
@@ -171,17 +173,25 @@ static int record_data_samples(struct orcm_db_base_module_t *imod,
     char time_str[40];
     char tbuf[1024];
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != hostname) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    strftime(time_str, sizeof(time_str), "%F %T%z", time_stamp);
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "time_stamp", time_str);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != time_stamp) {
+        strftime(time_str, sizeof(time_str), "%F %T%z", time_stamp);
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "time_stamp", time_str);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "data_group", data_group);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != data_group) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "data_group", data_group);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    print_values(samples, &cmdargs);
+    if (NULL != samples) {
+        print_values(samples, &cmdargs);
+    }
 
     /* assemble the value string */
     vstr = opal_argv_join(cmdargs, ',');
@@ -203,10 +213,14 @@ static int update_node_features(struct orcm_db_base_module_t *imod,
     char **cmdargs=NULL, *vstr;
     char tbuf[1024];
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != hostname) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    print_values(features, &cmdargs);
+    if (NULL != features) {
+        print_values(features, &cmdargs);
+    }
 
     /* assemble the value string */
     vstr = opal_argv_join(cmdargs, ',');
@@ -225,7 +239,7 @@ static int record_diag_test(struct orcm_db_base_module_t *imod,
                             const char *diag_subtype,
                             const struct tm *start_time,
                             const struct tm *end_time,
-                            int component_index,
+                            const int *component_index,
                             const char *test_result,
                             opal_list_t *test_params)
 {
@@ -235,30 +249,46 @@ static int record_diag_test(struct orcm_db_base_module_t *imod,
     char time_str[40];
     char tbuf[1024];
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != hostname) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "diag_type", diag_type);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != diag_type) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "diag_type", diag_type);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "diag_subtype", diag_subtype);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != diag_subtype) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "diag_subtype", diag_subtype);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    strftime(time_str, sizeof(time_str), "%F %T%z", start_time);
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "start_time", time_str);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != start_time) {
+        strftime(time_str, sizeof(time_str), "%F %T%z", start_time);
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "start_time", time_str);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    strftime(time_str, sizeof(time_str), "%F %T%z", end_time);
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "end_time", time_str);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != end_time) {
+        strftime(time_str, sizeof(time_str), "%F %T%z", end_time);
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "end_time", time_str);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%d", "component_index", component_index);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != component_index) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%d", "component_index", *component_index);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "test_result", test_result);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != test_result) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "test_result", test_result);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
-    print_values(test_params, &cmdargs);
+    if (NULL != test_params) {
+        print_values(test_params, &cmdargs);
+    }
 
     /* assemble the value string */
     vstr = opal_argv_join(cmdargs, ',');

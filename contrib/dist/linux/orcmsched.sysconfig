@@ -13,4 +13,4 @@
 #
 # Options for orcmsched
 #
-ORCMSCHED_OPTS="--omca mca_verbose syslog --omca mca_base_verbose syslog"
+ORCMSCHED_OPTS="--omca mca_base_verbose syslog"

@@ -274,11 +274,13 @@ static void proc_errors(int fd, short args, void *cbdata)
 {
     orte_state_caddy_t *caddy = (orte_state_caddy_t*)cbdata;
     orte_job_t *jdata;
-    orte_proc_t *pptr, *proct;
+    orte_proc_t *pptr = NULL;
+    orte_proc_t *proct = NULL;
     orte_process_name_t *proc = &caddy->name;
     orte_proc_state_t state = caddy->proc_state;
     int i;
     int32_t i32, *i32ptr;
+    int32_t exit_code = 0;
 
     OPAL_OUTPUT_VERBOSE((1, orte_errmgr_base_framework.framework_output,
                          "%s errmgr:orcmsd_hnp: for proc %s state %s",
@@ -299,6 +301,10 @@ static void proc_errors(int fd, short args, void *cbdata)
         goto cleanup;
     }
     pptr = (orte_proc_t*)opal_pointer_array_get_item(jdata->procs, proc->vpid);
+
+    if (NULL != pptr) {
+        exit_code = pptr->exit_code;
+    }
 
     /* we MUST handle a communication failure before doing anything else
      * as it requires some special care to avoid normal termination issues
@@ -321,7 +327,9 @@ static void proc_errors(int fd, short args, void *cbdata)
             goto cleanup;
         }
         /* mark the daemon as gone */
-        ORTE_FLAG_UNSET(pptr, ORTE_PROC_FLAG_ALIVE);
+        if (NULL != pptr) {
+            ORTE_FLAG_UNSET(pptr, ORTE_PROC_FLAG_ALIVE);
+        }
         /* if we have ordered orteds to terminate or abort
          * is in progress, record it */
         if (orte_orteds_term_ordered || orte_abnormal_term_ordered) {
@@ -334,7 +342,7 @@ static void proc_errors(int fd, short args, void *cbdata)
 	    if (0 == orte_routed.num_routes()) {
                 for (i=0; i < orte_local_children->size; i++) {
                     if (NULL != (proct = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i)) &&
-                        ORTE_FLAG_TEST(pptr, ORTE_PROC_FLAG_ALIVE) && proct->state < ORTE_PROC_STATE_UNTERMINATED) {
+                        (NULL != pptr) && ORTE_FLAG_TEST(pptr, ORTE_PROC_FLAG_ALIVE) && proct->state < ORTE_PROC_STATE_UNTERMINATED) {
                         /* at least one is still alive */
                         OPAL_OUTPUT_VERBOSE((5, orte_errmgr_base_framework.framework_output,
                                              "%s Comm failure: at least one proc (%s) still alive",
@@ -363,21 +371,25 @@ static void proc_errors(int fd, short args, void *cbdata)
         if (!ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_ABORTED)) {
             jdata->state = ORTE_JOB_STATE_COMM_FAILED;
             /* point to the lowest rank to cause the problem */
-            orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
-            /* retain the object so it doesn't get free'd */
-            OBJ_RETAIN(pptr);
-            ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
-            ORTE_UPDATE_EXIT_STATUS(pptr->exit_code);
+            if (NULL != pptr) {
+                orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
+                /* retain the object so it doesn't get free'd */
+                OBJ_RETAIN(pptr);
+                ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
+                ORTE_UPDATE_EXIT_STATUS(exit_code);
+            }
         }
         /* abort the system */
-        notify_job_errors(jdata, pptr);
+        if (NULL != pptr) {
+            notify_job_errors(jdata, pptr);
+        }
         goto cleanup;
     }
 
     /* update the proc state - can get multiple reports on a proc
      * depending on circumstances, so ensure we only do this once
      */
-    if (pptr->state < ORTE_PROC_STATE_TERMINATED) {
+    if (NULL != pptr && pptr->state < ORTE_PROC_STATE_TERMINATED) {
         pptr->state = state;
     }
 
@@ -430,14 +442,16 @@ static void proc_errors(int fd, short args, void *cbdata)
         if (!ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_ABORTED)) {
             jdata->state = ORTE_JOB_STATE_ABORTED;
             /* point to the first rank to cause the problem */
-            orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
-            /* retain the object so it doesn't get free'd */
-            OBJ_RETAIN(pptr);
-            ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
-            ORTE_UPDATE_EXIT_STATUS(pptr->exit_code);
-            /* abnormal termination - abort, but only do it once
-             * to avoid creating a lot of confusion */
-            notify_job_errors(jdata, pptr);
+            if (NULL != pptr) {
+                orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
+                /* retain the object so it doesn't get free'd */
+                OBJ_RETAIN(pptr);
+                ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
+                ORTE_UPDATE_EXIT_STATUS(exit_code);
+                /* abnormal termination - abort, but only do it once
+                 * to avoid creating a lot of confusion */
+                notify_job_errors(jdata, pptr);
+            }
         }
         break;
 
@@ -449,14 +463,16 @@ static void proc_errors(int fd, short args, void *cbdata)
         if (!ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_ABORTED)) {
             jdata->state = ORTE_JOB_STATE_ABORTED_BY_SIG;
             /* point to the first rank to cause the problem */
-            orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
-            /* retain the object so it doesn't get free'd */
-            OBJ_RETAIN(pptr);
-            ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
-            ORTE_UPDATE_EXIT_STATUS(pptr->exit_code);
-            /* abnormal termination - abort, but only do it once
-             * to avoid creating a lot of confusion */
-            notify_job_errors(jdata, pptr);
+            if (NULL != pptr) {
+                orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
+                /* retain the object so it doesn't get free'd */
+                OBJ_RETAIN(pptr);
+                ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
+                ORTE_UPDATE_EXIT_STATUS(exit_code);
+                /* abnormal termination - abort, but only do it once
+                 * to avoid creating a lot of confusion */
+                notify_job_errors(jdata, pptr);
+            }
         }
         break;
 
@@ -468,20 +484,22 @@ static void proc_errors(int fd, short args, void *cbdata)
         if (!ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_ABORTED)) {
             jdata->state = ORTE_JOB_STATE_ABORTED_WO_SYNC;
             /* point to the first rank to cause the problem */
-            orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
-            /* retain the object so it doesn't get free'd */
-            OBJ_RETAIN(pptr);
-            ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
-            ORTE_UPDATE_EXIT_STATUS(pptr->exit_code);
-            /* now treat a special case - if the proc exit'd without a required
-             * sync, it may have done so with a zero exit code. We want to ensure
-             * that the user realizes there was an error, so in this -one- case,
-             * we overwrite the process' exit code with the default error code
-             */
-            ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
-            /* abnormal termination - abort, but only do it once
-             * to avoid creating a lot of confusion */
-            notify_job_errors(jdata, pptr);
+            if (NULL != pptr) {
+                orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
+                /* retain the object so it doesn't get free'd */
+                OBJ_RETAIN(pptr);
+                ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
+                ORTE_UPDATE_EXIT_STATUS(exit_code);
+                /* now treat a special case - if the proc exit'd without a required
+                 * sync, it may have done so with a zero exit code. We want to ensure
+                 * that the user realizes there was an error, so in this -one- case,
+                 * we overwrite the process' exit code with the default error code
+                 */
+                ORTE_UPDATE_EXIT_STATUS(ORTE_ERROR_DEFAULT_EXIT_CODE);
+                /* abnormal termination - abort, but only do it once
+                 * to avoid creating a lot of confusion */
+                notify_job_errors(jdata, pptr);
+            }
         }
         break;
 
@@ -499,15 +517,17 @@ static void proc_errors(int fd, short args, void *cbdata)
                 jdata->state = ORTE_JOB_STATE_FAILED_TO_LAUNCH;
             }
             /* point to the first rank to cause the problem */
-            orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
-            /* retain the object so it doesn't get free'd */
-            OBJ_RETAIN(pptr);
-            ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
-            ORTE_UPDATE_EXIT_STATUS(pptr->exit_code);
+            if (NULL != pptr) {
+                orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
+                /* retain the object so it doesn't get free'd */
+                OBJ_RETAIN(pptr);
+                ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
+                ORTE_UPDATE_EXIT_STATUS(exit_code);
             
-            /* abnormal termination - abort, but only do it once
-             * to avoid creating a lot of confusion */
-            notify_job_errors(jdata, pptr);
+                /* abnormal termination - abort, but only do it once
+                 * to avoid creating a lot of confusion */
+                notify_job_errors(jdata, pptr);
+            }
         }
         /* if this was a daemon, report it */
         if (jdata->jobid == ORTE_PROC_MY_NAME->jobid) {
@@ -520,18 +540,20 @@ static void proc_errors(int fd, short args, void *cbdata)
         OPAL_OUTPUT_VERBOSE((5, orte_errmgr_base_framework.framework_output,
                              "%s errmgr:hnp: proc %s called abort with exit code %d",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                             ORTE_NAME_PRINT(proc), pptr->exit_code));
+                             ORTE_NAME_PRINT(proc), exit_code));
         if (!ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_ABORTED)) {
             jdata->state = ORTE_JOB_STATE_CALLED_ABORT;
             /* point to the first proc to cause the problem */
-            orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
-            /* retain the object so it doesn't get free'd */
-            OBJ_RETAIN(pptr);
-            ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
-            ORTE_UPDATE_EXIT_STATUS(pptr->exit_code);
-            /* abnormal termination - abort, but only do it once
-             * to avoid creating a lot of confusion */
-            notify_job_errors(jdata, pptr);
+            if (NULL != pptr) {
+                orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
+                /* retain the object so it doesn't get free'd */
+                OBJ_RETAIN(pptr);
+                ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
+                ORTE_UPDATE_EXIT_STATUS(exit_code);
+                /* abnormal termination - abort, but only do it once
+                 * to avoid creating a lot of confusion */
+                notify_job_errors(jdata, pptr);
+            }
         }
         break;
 
@@ -540,8 +562,8 @@ static void proc_errors(int fd, short args, void *cbdata)
                              "%s errmgr:hnp: proc %s exited with non-zero status %d",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              ORTE_NAME_PRINT(proc),
-                             pptr->exit_code));
-        ORTE_UPDATE_EXIT_STATUS(pptr->exit_code);
+                             exit_code));
+        ORTE_UPDATE_EXIT_STATUS(exit_code);
         /* track the number of non-zero exits */
         i32 = 0;
         i32ptr = &i32;
@@ -552,13 +574,15 @@ static void proc_errors(int fd, short args, void *cbdata)
             if (!ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_ABORTED)) {
                 jdata->state = ORTE_JOB_STATE_NON_ZERO_TERM;
                 /* point to the first rank to cause the problem */
-                orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
-                /* retain the object so it doesn't get free'd */
-                OBJ_RETAIN(pptr);
-                ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
-                /* abnormal termination - abort, but only do it once
-                 * to avoid creating a lot of confusion */
-                notify_job_errors(jdata, pptr);
+                if (NULL != pptr) {
+                    orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
+                    /* retain the object so it doesn't get free'd */
+                    OBJ_RETAIN(pptr);
+                    ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
+                    /* abnormal termination - abort, but only do it once
+                     * to avoid creating a lot of confusion */
+                    notify_job_errors(jdata, pptr);
+                }
             }
         } else {
             /* user requested we consider this normal termination */
@@ -577,14 +601,16 @@ static void proc_errors(int fd, short args, void *cbdata)
         if (!ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_ABORTED)) {
             jdata->state = ORTE_JOB_STATE_HEARTBEAT_FAILED;
             /* point to the first rank to cause the problem */
-            orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
-            /* retain the object so it doesn't get free'd */
-            OBJ_RETAIN(pptr);
-            ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
-            ORTE_UPDATE_EXIT_STATUS(pptr->exit_code);
-            /* abnormal termination - abort, but only do it once
-             * to avoid creating a lot of confusion */
-            notify_job_errors(jdata, pptr);
+            if (NULL != pptr) {
+                orte_set_attribute(&jdata->attributes, ORTE_JOB_ABORTED_PROC, ORTE_ATTR_LOCAL, pptr, OPAL_PTR);
+                /* retain the object so it doesn't get free'd */
+                OBJ_RETAIN(pptr);
+                ORTE_FLAG_SET(jdata, ORTE_JOB_FLAG_ABORTED);
+                ORTE_UPDATE_EXIT_STATUS(exit_code);
+                /* abnormal termination - abort, but only do it once
+                 * to avoid creating a lot of confusion */
+                notify_job_errors(jdata, pptr);
+            }
         }
         /* remove from dependent routes, if it is one */
         orte_routed.route_lost(proc);
@@ -605,7 +631,9 @@ static void proc_errors(int fd, short args, void *cbdata)
         if (!ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_ABORTED)) {
             /* abnormal termination - abort, but only do it once
              * to avoid creating a lot of confusion */
-            notify_job_errors(jdata, pptr);
+            if (NULL != pptr) {
+                notify_job_errors(jdata, pptr);
+            }
         }
         break;
 
@@ -622,7 +650,7 @@ static void proc_errors(int fd, short args, void *cbdata)
         break;
     }
     /* if the waitpid fired, be sure to let the state machine know */
-    if (ORTE_FLAG_TEST(pptr, ORTE_PROC_FLAG_WAITPID)) {
+    if (NULL != pptr && ORTE_FLAG_TEST(pptr, ORTE_PROC_FLAG_WAITPID)) {
         ORTE_ACTIVATE_PROC_STATE(&pptr->name, ORTE_PROC_STATE_WAITPID_FIRED);
     }
 
@@ -657,6 +685,10 @@ static void notify_job_errors(orte_job_t *jdata, orte_proc_t *proc)
     int command = ORTE_DAEMON_ABORT_PROCS_CALLED;
     int rc;
     opal_buffer_t *buf;
+
+    if (NULL == jdata || NULL == proc) {
+        goto CLEANUP;
+    }
 
     if (ORTE_JOB_STATE_ANY == jdata->state) {
         goto CLEANUP;
@@ -725,13 +757,12 @@ static void notify_job_errors(orte_job_t *jdata, orte_proc_t *proc)
     OPAL_OUTPUT_VERBOSE((0, orte_state_base_framework.framework_output,
                         "%s state:orcmsd:notify job error %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        (NULL == jdata) ? "NULL" : ORTE_JOBID_PRINT(jdata->jobid)));
+                        ORTE_JOBID_PRINT(jdata->jobid)));
 
     /* if this job is a continuously operating one, then don't do
      * anything further - just return here
      */
-    if (NULL != jdata &&
-        (orte_get_attribute(&jdata->attributes, ORTE_JOB_CONTINUOUS_OP, NULL, OPAL_BOOL) ||
+    if ((orte_get_attribute(&jdata->attributes, ORTE_JOB_CONTINUOUS_OP, NULL, OPAL_BOOL) ||
          ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_RECOVERABLE))) {
         /* set state to ANY */
         jdata->state = ORTE_JOB_STATE_ANY;

@@ -153,6 +153,7 @@ static void scd_base_rm_active(int sd, short args, void *cbdata)
     orcm_node_t *nodeptr;
     opal_buffer_t *buf;
     orcm_rm_cmd_flag_t command = ORCM_LAUNCH_STEPD_COMMAND;
+    orcm_alloc_tracker_t *trk;
 
     if (ORTE_SUCCESS !=
         (rc = orte_regex_extract_node_names(caddy->session->alloc->nodes,
@@ -178,6 +179,10 @@ static void scd_base_rm_active(int sd, short args, void *cbdata)
                              caddy->session->id));
         return;
     }
+    
+    trk = OBJ_NEW(orcm_alloc_tracker_t);
+    trk->alloc_id = caddy->session->id;
+    opal_list_append(&orcm_scd_base.tracking, &trk->super);
 
     /* node array should be indexed by node num,
      * if we change to lookup by index that would be faster */

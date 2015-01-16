@@ -217,6 +217,10 @@ static void track_procs(int fd, short argc, void *cbdata)
         goto cleanup;
     }
     pdata = (orte_proc_t*)opal_pointer_array_get_item(jdata->procs, proc->vpid);
+    if (NULL == pdata) {
+        ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
+        goto cleanup;
+    }
 
     if (ORTE_PROC_STATE_RUNNING == state) {
         /* update the proc state */

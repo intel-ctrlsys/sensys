@@ -216,6 +216,7 @@ static int orcm_scd_base_close(void)
     OPAL_LIST_DESTRUCT(&orcm_scd_base.states);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.rmstates);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.queues);
+    OPAL_LIST_DESTRUCT(&orcm_scd_base.tracking);
     
     for (i = 0; i < orcm_scd_base.topologies.size; i++) {
         if (NULL != (t = (hwloc_topology_t)opal_pointer_array_get_item(&orcm_scd_base.topologies, i))) {
@@ -258,6 +259,7 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
     opal_pointer_array_init(&orcm_scd_base.nodes, 8, INT_MAX, 8);
     OBJ_CONSTRUCT(&orcm_scd_base.topologies, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_scd_base.topologies, 1, INT_MAX, 1);
+    OBJ_CONSTRUCT(&orcm_scd_base.tracking, opal_list_t);
 
     if (OPAL_SUCCESS !=
         (rc = mca_base_framework_components_open(&orcm_scd_base_framework,
@@ -510,6 +512,15 @@ static void cd_des(orcm_session_caddy_t *p)
 OBJ_CLASS_INSTANCE(orcm_session_caddy_t,
                    opal_object_t,
                    cd_con, cd_des);
+
+static void trkcon(orcm_alloc_tracker_t *p)
+{
+    p->alloc_id = 0;
+    p->count_checked_in = 0;
+}
+OBJ_CLASS_INSTANCE(orcm_alloc_tracker_t,
+                   opal_list_item_t,
+                   trkcon, NULL);
 
 OBJ_CLASS_INSTANCE(orcm_scd_state_t,
                    opal_list_item_t,

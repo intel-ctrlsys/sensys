@@ -183,12 +183,10 @@ void orcm_info_show_component_version(const char *type_name,
                 opal_list_get_end(components) != item;
                 item = opal_list_get_next(item)) {
                 cli = (mca_base_component_list_item_t *) item;
-                if (NULL != cli) {
-                    component = cli->cli_component;
-                    if (want_all_components || 
-                        0 == strcmp(component->mca_component_name, component_name)) {
-                        show_mca_version(component, scope, ver_type);
-                    }
+                component = cli->cli_component;
+                if (want_all_components ||
+                    0 == strcmp(component->mca_component_name, component_name)) {
+                    show_mca_version(component, scope, ver_type);
                 }
             }
         }

@@ -50,9 +50,20 @@ static int record_data_samples(struct orcm_db_base_module_t *imod,
 static int update_node_features(struct orcm_db_base_module_t *imod,
                                 const char *hostname,
                                 opal_list_t *features);
+static int record_diag_test(struct orcm_db_base_module_t *imod,
+                            const char *hostname,
+                            const char *diag_type,
+                            const char *diag_subtype,
+                            const struct tm *start_time,
+                            const struct tm *end_time,
+                            const int *component_index,
+                            const char *test_result,
+                            opal_list_t *test_params);
 
 /* Internal helper functions */
+static void print_values(opal_list_t *values, char ***cmdargs);
 static void print_value(const opal_value_t *kv, char *tbuf, size_t size);
+
 
 mca_db_print_module_t mca_db_print_module = {
     {
@@ -61,6 +72,7 @@ mca_db_print_module_t mca_db_print_module = {
         store,
         record_data_samples,
         update_node_features,
+        record_diag_test,
         NULL,
         NULL,
         NULL
@@ -106,8 +118,10 @@ static int store(struct orcm_db_base_module_t *imod,
     int argv_count;
     int len;
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "primary_key", primary_key);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != primary_key) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "primary_key", primary_key);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
 
     /* cycle through the provided values and print them */
     /* print the data in the following format: <key>=<value>:<units> */
@@ -154,43 +168,29 @@ static int record_data_samples(struct orcm_db_base_module_t *imod,
                               opal_list_t *samples)
 {
     mca_db_print_module_t *mod = (mca_db_print_module_t*)imod;
-    orcm_metric_value_t *mv;
 
     char **cmdargs=NULL, *vstr;
     char time_str[40];
     char tbuf[1024];
-    int len;
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
-    opal_argv_append_nosize(&cmdargs, tbuf);
-
-    strftime(time_str, sizeof(time_str), "%F %T%z", time_stamp);
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "time_stamp", time_str);
-    opal_argv_append_nosize(&cmdargs, tbuf);
-
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "data_group", data_group);
-    opal_argv_append_nosize(&cmdargs, tbuf);
-
-    /* cycle through the provided values and print them */
-    /* print the data in the following format: <key>=<value>:<units> */
-    OPAL_LIST_FOREACH(mv, samples, orcm_metric_value_t) {
-        if (NULL != mv->value.key) {
-            snprintf(tbuf, sizeof(tbuf), "%s=", mv->value.key);
-            len = strlen(tbuf);
-        } else {
-            /* no key :o */
-            len = 0;
-        }
-
-        print_value(&mv->value, tbuf + len, sizeof(tbuf) - len);
-
-        if (NULL != mv->units) {
-            /* units were included, so add them to the buffer */
-            len = strlen(tbuf);
-            snprintf(tbuf + len, sizeof(tbuf) - len, ":%s", mv->units);
-        }
-
+    if (NULL != hostname) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
         opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != time_stamp) {
+        strftime(time_str, sizeof(time_str), "%F %T%z", time_stamp);
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "time_stamp", time_str);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != data_group) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "data_group", data_group);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != samples) {
+        print_values(samples, &cmdargs);
     }
 
     /* assemble the value string */
@@ -209,18 +209,107 @@ static int update_node_features(struct orcm_db_base_module_t *imod,
                                 opal_list_t *features)
 {
     mca_db_print_module_t *mod = (mca_db_print_module_t*)imod;
-    orcm_metric_value_t *mv;
 
     char **cmdargs=NULL, *vstr;
     char tbuf[1024];
-    int len;
 
-    snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
-    opal_argv_append_nosize(&cmdargs, tbuf);
+    if (NULL != hostname) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != features) {
+        print_values(features, &cmdargs);
+    }
+
+    /* assemble the value string */
+    vstr = opal_argv_join(cmdargs, ',');
+
+    /* print it */
+    fprintf(mod->fp, "DB request: update_node_features; data:\n%s\n", vstr);
+    free(vstr);
+    opal_argv_free(cmdargs);
+
+    return ORCM_SUCCESS;
+}
+
+static int record_diag_test(struct orcm_db_base_module_t *imod,
+                            const char *hostname,
+                            const char *diag_type,
+                            const char *diag_subtype,
+                            const struct tm *start_time,
+                            const struct tm *end_time,
+                            const int *component_index,
+                            const char *test_result,
+                            opal_list_t *test_params)
+{
+    mca_db_print_module_t *mod = (mca_db_print_module_t*)imod;
+
+    char **cmdargs=NULL, *vstr;
+    char time_str[40];
+    char tbuf[1024];
+
+    if (NULL != hostname) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != diag_type) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "diag_type", diag_type);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != diag_subtype) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "diag_subtype", diag_subtype);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != start_time) {
+        strftime(time_str, sizeof(time_str), "%F %T%z", start_time);
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "start_time", time_str);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != end_time) {
+        strftime(time_str, sizeof(time_str), "%F %T%z", end_time);
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "end_time", time_str);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != component_index) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%d", "component_index", *component_index);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != test_result) {
+        snprintf(tbuf, sizeof(tbuf), "%s=%s", "test_result", test_result);
+        opal_argv_append_nosize(&cmdargs, tbuf);
+    }
+
+    if (NULL != test_params) {
+        print_values(test_params, &cmdargs);
+    }
+
+    /* assemble the value string */
+    vstr = opal_argv_join(cmdargs, ',');
+
+    /* print it */
+    fprintf(mod->fp, "DB request: record_diag_test; data:\n%s\n", vstr);
+    free(vstr);
+    opal_argv_free(cmdargs);
+
+    return ORCM_SUCCESS;
+}
+
+static void print_values(opal_list_t *values, char ***cmdargs)
+{
+    orcm_metric_value_t *mv;
+    char tbuf[1024];
+    int len;
 
     /* cycle through the provided values and print them */
     /* print the data in the following format: <key>=<value>:<units> */
-    OPAL_LIST_FOREACH(mv, features, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, values, orcm_metric_value_t) {
         if (NULL != mv->value.key) {
             snprintf(tbuf, sizeof(tbuf), "%s=", mv->value.key);
             len = strlen(tbuf);
@@ -237,18 +326,8 @@ static int update_node_features(struct orcm_db_base_module_t *imod,
             snprintf(tbuf + len, sizeof(tbuf) - len, ":%s", mv->units);
         }
 
-        opal_argv_append_nosize(&cmdargs, tbuf);
+        opal_argv_append_nosize(cmdargs, tbuf);
     }
-
-    /* assemble the value string */
-    vstr = opal_argv_join(cmdargs, ',');
-
-    /* print it */
-    fprintf(mod->fp, "DB request: update_node_features; data:\n%s\n", vstr);
-    free(vstr);
-    opal_argv_free(cmdargs);
-
-    return ORCM_SUCCESS;
 }
 
 static void print_value(const opal_value_t *kv, char *tbuf, size_t size)

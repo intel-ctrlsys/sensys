@@ -65,6 +65,13 @@ typedef struct {
     char *primary_key;
     char *key;
 
+   const char *diag_type;
+   const char *diag_subtype;
+   const struct tm *start_time;
+   const struct tm *end_time;
+   const int *component_index;
+   const char *test_result;
+
     opal_list_t *kvs;
 } orcm_db_request_t;
 OBJ_CLASS_DECLARATION(orcm_db_request_t);
@@ -104,6 +111,17 @@ ORCM_DECLSPEC void orcm_db_base_update_node_features(
         opal_list_t *features,
         orcm_db_callback_fn_t cbfunc,
         void *cbdata);
+ORCM_DECLSPEC void orcm_db_base_record_diag_test(int dbhandle,
+                                                 const char *hostname,
+                                                 const char *diag_type,
+                                                 const char *diag_subtype,
+                                                 const struct tm *start_time,
+                                                 const struct tm *end_time,
+                                                 const int *component_index,
+                                                 const char *test_result,
+                                                 opal_list_t *test_params,
+                                                 orcm_db_callback_fn_t cbfunc,
+                                                 void *cbdata);
 ORCM_DECLSPEC void orcm_db_base_commit(int dbhandle,
                                        orcm_db_callback_fn_t cbfunc,
                                        void *cbdata);

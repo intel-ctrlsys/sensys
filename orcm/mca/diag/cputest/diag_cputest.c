@@ -193,16 +193,31 @@ static void cputest_run(int sd, short args, void *cbdata)
     retval = cpu_fp_test();
     if ( retval ) {
         cpu_diag_ret |= DIAG_CPU_FP_TST;
+        opal_output(0, "%s Diagnostic checking CPU floating point:  \t\t[ FAIL ]\n",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+    } else {
+        opal_output(0, "%s Diagnostic checking CPU floating point:  \t\t[  OK  ]\n",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
     retval = cpu_prime_gen_test();
     if ( retval ) {
         cpu_diag_ret |= DIAG_CPU_PRIME_TST;
+        opal_output(0, "%s Diagnostic checking CPU prime generation:\t\t[ FAIL ]\n",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+    } else {
+        opal_output(0, "%s Diagnostic checking CPU prime generation:\t\t[  OK  ]\n",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
     retval = cpu_stress_test(numprocs, CPU_STRESS_TIMEOUT);
     if ( retval ) {
         cpu_diag_ret |= DIAG_CPU_STRESS_TST;
+        opal_output(0, "%s Diagnostic checking CPU stress:          \t\t[ FAIL ]\n",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+    } else {
+        opal_output(0, "%s Diagnostic checking CPU stress:          \t\t[  OK  ]\n",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
     now = time(NULL);

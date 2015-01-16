@@ -11,43 +11,45 @@ dnl
 # MCA_sensor_sigar_CONFIG([action-if-found], [action-if-not-found])
 # -----------------------------------------------------------
 AC_DEFUN([MCA_orcm_sensor_sigar_CONFIG], [
+    # Check if sigar lib support is available or not.
     AC_CONFIG_FILES([orcm/mca/sensor/sigar/Makefile])
+    AC_MSG_CHECKING([for sigar Sensor support])
+    AC_REQUIRE([OPAL_CHECK_SIGAR])
 
-    AC_ARG_WITH([sigar],
-                [AC_HELP_STRING([--with-sigar],
-                                [Build sigar support (default: no)])],
-	                        [], with_sigar=no)
-
-    # do not build if support not requested
-    AS_IF([test "$with_sigar" != "no"],
-          [AS_IF([test "$opal_found_linux" = "yes" || test "$opal_found_apple" = "yes"],
-                 [AS_IF([test "$opal_found_apple" = "yes"], 
-                        [libname="sigar-universal-macosx"], [libname="sigar"])
-
-                  AS_IF([test ! -z "$with_sigar" -a "$with_sigar" != "yes"],
-                        [orcm_check_sigar_dir="$with_sigar"])
-
-                  OPAL_CHECK_PACKAGE([sensor_sigar],
-                                     [sigar.h],
-                                     [$libname],
-                                     [sigar_proc_cpu_get],
-                                     [],
-                                     [$orcm_check_sigar_dir],
-                                     [],
-                                     [$1],
-                                     [AC_MSG_WARN([SIGAR SENSOR SUPPORT REQUESTED])
-                                      AC_MSG_WARN([BUT REQUIRED LIBRARY OR HEADER NOT FOUND])
-                                      AC_MSG_ERROR([CANNOT CONTINUE])
-                                      $2])],
-                 [AC_MSG_WARN([SIGAR SENSOR SUPPORT REQUESTED])
-                  AC_MSG_WARN([BUT ONLY SUPPORTED ON LINUX AND MAC])
-                  AC_MSG_ERROR([CANNOT CONTINUE])
-                  $2])],
-          [$2])
-
-    AC_DEFINE_UNQUOTED(ORCM_SIGAR_LINUX, [test "$opal_found_linux" = "yes"],
-                       [Which name to use for the sigar library on this OS])
+   AC_ARG_WITH([sigar-sensor],
+                [AC_HELP_STRING([--with-sigar-sensor(=yes/no)],
+                                [Build Sigar sensor support])],
+                [AC_MSG_RESULT([with_sigar-sensor selected with paramater "$with_sigar_sensor"!])]
+                [AS_IF([test "$sigar_check_happy" = "no" -a "$with_sigar_sensor" = "yes"],
+                        AC_MSG_RESULT([SIGAR LIB Check failed and we need to skip building Sigar Sensor Component here])
+                        AC_MSG_WARN([SIGAR  Libs not present])
+                        AC_MSG_ERROR([Sigar Sensor requested but dependency not met])
+                        $2)]
+                [AS_IF([test "$sigar_check_happy" = "yes" -a "$with_sigar_sensor" = "yes"],
+                        AC_MSG_RESULT([SIGAR LIB Check passed and Sigar sensor explicitly requested])                        
+                        AC_MSG_RESULT([SIGAR Sensor requested and dependency met and sigar sensor will be built])
+                        $1)]
+                [AS_IF([test "$sigar_check_happy" = "yes" -a "$with_sigar_sensor" = "no"],
+                        AC_MSG_RESULT([SIGAR LIB Check passed and but SIGAR sensor explicitly not requested])                        
+                        AC_MSG_RESULT([SIGAR Sensor not requested and sigar sensor will not be built])
+                        $2)]
+                [AS_IF([test "$sigar_check_happy" = "no" -a "$with_sigar_sensor" = "no"],
+                        AC_MSG_RESULT([SIGAR LIB Check failed and SIGAR sensor explicitly not requested])                        
+                        AC_MSG_RESULT([SIGAR Sensor not requested and dependency not met and sigar sensor will not be built])
+                        $2)],
+                [AC_MSG_RESULT([with_sigar_sensor not specified!])]
+                [AS_IF([test "$sigar_check_happy" = "no"],
+                        AC_MSG_RESULT([SIGAR LIB Check failed and SIGAR sensor not requested])                        
+                        AC_MSG_RESULT([SIGAR Sensor not requested and dependency not met and sigar sensor will not be built])
+                        $2)]
+                [AS_IF([test "$sigar_check_happy" = "yes"],
+                        AC_MSG_RESULT([SIGAR LIB Check passed and sigar sensor not requested])                        
+                        AC_MSG_RESULT([SIGAR Sensor not explicitly requested but dependency was met and sigar sensor will be built])
+                        $1)])
+    
     AC_SUBST(sensor_sigar_CPPFLAGS)
     AC_SUBST(sensor_sigar_LDFLAGS)
     AC_SUBST(sensor_sigar_LIBS)
+
 ])dnl
+

@@ -197,10 +197,10 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "Maximum duration before job is terminated" },
 
     { NULL,
-      'e', NULL, "exclusive",
+      '\0', NULL, "non-exclusive",
       0,
       &orcm_osub_globals.nonexclusive, OPAL_CMD_LINE_TYPE_BOOL,
-      "Do not share allocated nodes with other sessions" },
+      "Allow allocated nodes to be shared with other sessions" },
 
     { NULL,
       'i', NULL, "interactive",
@@ -618,6 +618,7 @@ static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc)
 
         if (ORTE_SUCCESS != (rc = opal_argv_append(&argc, &argv, shell))) {
                  ORTE_ERROR_LOG(rc);
+                 opal_argv_free(argv);
                  return rc;
         }
 

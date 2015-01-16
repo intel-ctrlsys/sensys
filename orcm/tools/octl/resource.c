@@ -80,6 +80,7 @@ int orcm_octl_resource_status(char **argv)
     if (OPAL_SUCCESS !=
         (rc = opal_dss.pack(buf, &command, 1, ORCM_SCD_CMD_T))) {
         ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(buf);
         return rc;
     }
     /* send it to the scheduler */
@@ -164,7 +165,7 @@ int orcm_octl_resource_status(char **argv)
                 OBJ_DESTRUCT(&xfer);
                 return rc;
             }
-            if (21 > strnlen(regexp, sizeof(regexp))) {
+            if (21 > strlen(regexp)) {
                 printf("%-20s : %s %16s\n",
                        regexp,
                        orcm_node_state_to_char(container->template.state),

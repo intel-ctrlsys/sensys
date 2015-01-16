@@ -40,7 +40,7 @@ EXTRA_DIST = \
     dist/linux/buildrpm-orcm.sh \
     dist/linux/openmpi.spec \
     dist/linux/open-rcm.spec.in \
-    dist/linux/orcm.sysconfig \
+    dist/linux/orcmd.sysconfig \
     dist/linux/orcmd.service \
     dist/linux/orcmsched.service \
     dist/linux/orcmsched.sysconfig \

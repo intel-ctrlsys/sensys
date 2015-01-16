@@ -347,6 +347,16 @@ static void mycleanup(int dbhandle, int status,
         log_enabled = false;
     }
 }
+static void mycleanup_procstat(int dbhandle, int status,
+                      opal_list_t *kvs, void *cbdata)
+{
+    OPAL_LIST_RELEASE(kvs);
+    if (ORTE_SUCCESS != status) {
+        log_enabled = false;
+    }
+    if(NULL != cbdata)
+        free(cbdata);
+}
 
 static void res_log(opal_buffer_t *sample)
 {
@@ -357,6 +367,7 @@ static void res_log(opal_buffer_t *sample)
     opal_value_t *kv;
     char *node;
     char *sampletime;
+    char *primary_key;
 
     if (!log_enabled) {
         return;
@@ -400,49 +411,49 @@ static void res_log(opal_buffer_t *sample)
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("total_mem");
+        kv->key = strdup("total_mem:MB");
         kv->type = OPAL_FLOAT;
         kv->data.fval = nst->total_mem;
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("free_mem");
+        kv->key = strdup("free_mem:MB");
         kv->type = OPAL_FLOAT;
         kv->data.fval = nst->free_mem;
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("buffers");
+        kv->key = strdup("buffers:MB");
         kv->type = OPAL_FLOAT;
         kv->data.fval = nst->buffers;
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("cached");
+        kv->key = strdup("cached:MB");
         kv->type = OPAL_FLOAT;
         kv->data.fval = nst->cached;
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("swap_total");
+        kv->key = strdup("swap_total:MB");
         kv->type = OPAL_FLOAT;
         kv->data.fval = nst->swap_total;
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("swap_free");
+        kv->key = strdup("swap_free:MB");
         kv->type = OPAL_FLOAT;
         kv->data.fval = nst->swap_free;
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("mapped");
+        kv->key = strdup("mapped:MB");
         kv->type = OPAL_FLOAT;
         kv->data.fval = nst->mapped;
         opal_list_append(vals, &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("swap_cached");
+        kv->key = strdup("swap_cached:MB");
         kv->type = OPAL_FLOAT;
         kv->data.fval = nst->swap_cached;
         opal_list_append(vals, &kv->super);
@@ -522,7 +533,7 @@ static void res_log(opal_buffer_t *sample)
             opal_list_append(vals, &kv->super);
 
             kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("percent_cpu");
+            kv->key = strdup("percent_cpu:%");
             kv->type = OPAL_FLOAT;
             kv->data.fval = st->percent_cpu;
             opal_list_append(vals, &kv->super);
@@ -540,19 +551,19 @@ static void res_log(opal_buffer_t *sample)
             opal_list_append(vals, &kv->super);
 
             kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("vsize");
+            kv->key = strdup("vsize:MB");
             kv->type = OPAL_FLOAT;
             kv->data.fval = st->vsize;
             opal_list_append(vals, &kv->super);
 
             kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("rss");
+            kv->key = strdup("rss:MB");
             kv->type = OPAL_FLOAT;
             kv->data.fval = st->rss;
             opal_list_append(vals, &kv->super);
 
             kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("peak_vsize");
+            kv->key = strdup("peak_vsize:MB");
             kv->type = OPAL_FLOAT;
             kv->data.fval = st->peak_vsize;
             opal_list_append(vals, &kv->super);
@@ -563,11 +574,15 @@ static void res_log(opal_buffer_t *sample)
             kv->data.int16 = st->processor;
             opal_list_append(vals, &kv->super);
 
+            asprintf(&primary_key, "procstat_%s",st->cmd);
             /* store it */
             if (0 <= orcm_sensor_base.dbhandle) {
-                orcm_db.store(orcm_sensor_base.dbhandle, "procstats", vals, mycleanup, NULL);
+                orcm_db.store(orcm_sensor_base.dbhandle, primary_key, vals, mycleanup_procstat, primary_key);
             } else {
                 OPAL_LIST_RELEASE(vals);
+                if(primary_key != NULL) {
+                    free(primary_key);
+                }
             }
             OBJ_RELEASE(st);
             n=1;

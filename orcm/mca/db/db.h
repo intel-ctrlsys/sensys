@@ -161,6 +161,36 @@ typedef int (*orcm_db_base_module_update_node_features_fn_t)(
         opal_list_t *features);
 
 /*
+ * Store diagnostic test data for a particular diagnostic test that was run.
+ * The data that can be stored includes: the test result and an optional list
+ * of test parameters. The test parameters are passed as a list of key-value
+ * pairs plus units: orcm_metric_value_t. The units may be left NULL if not
+ * applicable.
+ */
+typedef void (*orcm_db_base_API_record_diag_test_fn_t)(
+        int dbhandle,
+        const char *hostname,
+        const char *diag_type,
+        const char *diag_subtype,
+        const struct tm *start_time,
+        const struct tm *end_time,
+        const int *component_index,
+        const char *test_result,
+        opal_list_t *test_params,
+        orcm_db_callback_fn_t cbfunc,
+        void *cbdata);
+typedef int (*orcm_db_base_module_record_diag_test_fn_t)(
+        struct orcm_db_base_module_t *imod,
+        const char *hostname,
+        const char *diag_type,
+        const char *diag_subtype,
+        const struct tm *start_time,
+        const struct tm *end_time,
+        const int *component_index,
+        const char *test_result,
+        opal_list_t *test_params);
+
+/*
  * Commit data to the database - action depends on implementation within
  * each active component
  */
@@ -210,6 +240,7 @@ typedef struct  {
     orcm_db_base_module_store_fn_t                store;
     orcm_db_base_module_record_data_samples_fn_t  record_data_samples;
     orcm_db_base_module_update_node_features_fn_t update_node_features;
+    orcm_db_base_module_record_diag_test_fn_t     record_diag_test;
     orcm_db_base_module_commit_fn_t               commit;
     orcm_db_base_module_fetch_fn_t                fetch;
     orcm_db_base_module_remove_fn_t               remove;
@@ -221,6 +252,7 @@ typedef struct {
     orcm_db_base_API_store_fn_t                store;
     orcm_db_base_API_record_data_samples_fn_t  record_data_samples;
     orcm_db_base_API_update_node_features_fn_t update_node_features;
+    orcm_db_base_API_record_diag_test_fn_t     record_diag_test;
     orcm_db_base_API_commit_fn_t               commit;
     orcm_db_base_API_fetch_fn_t                fetch;
     orcm_db_base_API_remove_fn_t               remove;

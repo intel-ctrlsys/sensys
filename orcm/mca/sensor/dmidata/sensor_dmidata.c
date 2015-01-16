@@ -45,6 +45,8 @@
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_dmidata.h"
+#include "sensor_dmidata_decls.h"
+
 #include "hwloc.h"
 /* declare the API functions */
 static int init(void);
@@ -65,30 +67,10 @@ orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
     dmidata_inventory_log
 };
 
-typedef struct {
-    opal_list_item_t super;
-    char *nodename;
-    unsigned long hashId; /* A hash value summing up the inventory record for each node, for quick comparision */
-    hwloc_topology_t hwloc_topo;
-    opal_list_t *records; /* An hwloc topology container followed by a list of inventory items */
-} dmidata_inventory_t;
-
-static void inv_con(dmidata_inventory_t *trk)
-{
-    trk->records = OBJ_NEW(opal_list_t);
-}
-static void inv_des(dmidata_inventory_t *trk)
-{
-    if(trk != NULL) {
-        if(trk != NULL) {
-            OPAL_LIST_RELEASE(trk->records);
-        }
-    }
-    free(trk->nodename);
-}
 OBJ_CLASS_INSTANCE(dmidata_inventory_t,
                    opal_list_item_t,
-                   inv_con, inv_des);
+                   dmidata_inv_con, dmidata_inv_des);
+
 
 /* Increment the MAX_INVENTORY_KEYWORDS size with every new addition here */
 /* NOTE: key for populating the lookup array
@@ -203,7 +185,6 @@ static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, d
     uint32_t k;
     orcm_metric_value_t *mkv;
     char *inv_key;
-
     /* MACHINE Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_MACHINE, 0))) {
         /* there are no objects identified for this machine (Weird!) */
@@ -211,6 +192,14 @@ static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, d
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+        "TOTAL SOCKETS: %d", obj->infos_count);
+    mkv = OBJ_NEW(orcm_metric_value_t);
+    mkv->value.type = OPAL_UINT;
+    mkv->value.key = strdup("num_sockets");;
+    mkv->value.data.uint = obj->arity;
+    opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+
     /* Pack the total MACHINE Stats present and to be copied */
     for (k=0; k < obj->infos_count; k++) {
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
@@ -233,14 +222,14 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
     orcm_metric_value_t *mkv;
     char *inv_key;
 
-    /* MACHINE Level Stats*/
+    /* SOCKET Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_SOCKET, 0))) {
         /* there are no objects identified for this machine (Weird!) */
         orte_show_help("help-orcm-sensor-dmidata.txt", "no-socket", true, hostname);
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
-    /* Pack the total MACHINE Stats present and to be copied */
+    /* Pack the total SOCKET Stats present and to be copied */
     for (k=0; k < obj->infos_count; k++) {
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name)))
         {

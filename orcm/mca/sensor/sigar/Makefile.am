@@ -29,13 +29,13 @@ endif
 
 mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
-mca_sensor_sigar_la_CPPFLAGS = $(sensor_sigar_CPPFLAGS)
+mca_sensor_sigar_la_CPPFLAGS = $(sensor_sigar_CPPFLAGS) $(sigar_CPPFLAGS)
 mca_sensor_sigar_la_SOURCES = $(sources)
-mca_sensor_sigar_la_LDFLAGS = -module -avoid-version $(sensor_sigar_LDFLAGS)
-mca_sensor_sigar_la_LIBADD = $(sensor_sigar_LIBS) -lm
+mca_sensor_sigar_la_LDFLAGS = -module -avoid-version $(sensor_sigar_LDFLAGS) $(sigar_LDFLAGS)
+mca_sensor_sigar_la_LIBADD = $(sensor_sigar_LIBS) $(sigar_LIBS) -lm
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_sensor_sigar_la_SOURCES =$(sources)
-libmca_sensor_sigar_la_CPPFLAGS = $(sensor_sigar_CPPFLAGS)
-libmca_sensor_sigar_la_LDFLAGS = -module -avoid-version $(sensor_sigar_LDFLAGS)
-libmca_sensor_sigar_la_LIBADD = $(sensor_sigar_LIBS) -lm
+libmca_sensor_sigar_la_CPPFLAGS = $(sensor_sigar_CPPFLAGS) $(sigar_CPPFLAGS)
+libmca_sensor_sigar_la_LDFLAGS = -module -avoid-version $(sensor_sigar_LDFLAGS) $(sigar_LDFLAGS)
+libmca_sensor_sigar_la_LIBADD = $(sensor_sigar_LIBS) $(sigar_LIBS) -lm

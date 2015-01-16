@@ -51,7 +51,7 @@ int orcm_octl_diag_cpu(char **argv)
         goto fail;
     }
     /* pack component */
-    comp = strdup("cpu");
+    comp = strdup("cputest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
@@ -149,6 +149,7 @@ int orcm_octl_diag_eth(char **argv)
     orte_regex_extract_node_names (argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "Error: unable to extract nodelist\n");
+        opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -170,7 +171,7 @@ int orcm_octl_diag_eth(char **argv)
         goto fail;
     }
     /* pack component */
-    comp = strdup("eth");
+    comp = strdup("ethtest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
@@ -239,10 +240,12 @@ int orcm_octl_diag_eth(char **argv)
     /* get the refcount correct */
     OBJ_RELEASE(buf);
 
+    opal_argv_free(nodelist);
     return ORCM_SUCCESS;
 
 fail:
     fprintf(stdout, "Error\n");
+    opal_argv_free(nodelist);
     return rc;
 }
 
@@ -266,6 +269,7 @@ int orcm_octl_diag_mem(char **argv)
     orte_regex_extract_node_names (argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "Error: unable to extract nodelist\n");
+        opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -287,7 +291,7 @@ int orcm_octl_diag_mem(char **argv)
         goto fail;
     }
     /* pack component */
-    comp = strdup("mem");
+    comp = strdup("memtest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
@@ -356,9 +360,11 @@ int orcm_octl_diag_mem(char **argv)
     /* get the refcount correct */
     OBJ_RELEASE(buf);
 
+    opal_argv_free(nodelist);
     return ORCM_SUCCESS;
 
 fail:
     fprintf(stdout, "Error\n");
+    opal_argv_free(nodelist);
     return rc;
 }

@@ -81,12 +81,11 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
 {
     orcm_rm_cmd_flag_t command;
     int rc, cnt, i, result;
-    static int nodecnt=0;
     opal_buffer_t *ans;
     orcm_node_state_t state;
     orte_process_name_t node;
     orcm_alloc_t *alloc;
-    orcm_session_t *session;
+    orcm_session_t *session = NULL;
     bool found;
     bool have_hwloc_topo;
     hwloc_topology_t topo = NULL;
@@ -94,6 +93,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
     opal_list_t *nodelist;
     orte_namelist_t *nm;
     char *regexp;
+    orcm_alloc_tracker_t *trk;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:rm:receive processing msg",
@@ -296,15 +296,24 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
             ORTE_ERROR_LOG(rc);
             return;
         }
-
-        if( ++nodecnt == alloc->min_nodes ) {
-            nodecnt = 0;
-            session = OBJ_NEW(orcm_session_t);
-            session->alloc = alloc;
-            session->id = session->alloc->id;
-            ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_TERMINATED);
-            opal_output(0, "scheduler: cancel session : %d \n", session->id);
+        
+        /* search through the list of running allocations */
+        OPAL_LIST_FOREACH(trk, &orcm_scd_base.tracking, orcm_alloc_tracker_t) {
+            if (trk->alloc_id == alloc->id) {
+                trk->count_checked_in++;
+                if (trk->count_checked_in == alloc->min_nodes) {
+                    session = OBJ_NEW(orcm_session_t);
+                    session->alloc = alloc;
+                    session->id = session->alloc->id;
+                    ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_TERMINATED);
+                    opal_output(0, "scheduler: all nodes checked in, cancelling session : %lld \n", alloc->id);
+                    opal_list_remove_item(&orcm_scd_base.tracking, &trk->super);
+                    OBJ_RELEASE(trk);
+                }
+                return;
+            }
         }
+        opal_output(0, "scheduler: couldn't find running allocation to cancel : %lld!\n", alloc->id);
     } else if (ORCM_SET_POWER_COMMAND == command) {
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                              "%s scd:base:rm:receive got ORCM_SET_POWER_COMMAND",
@@ -455,7 +464,7 @@ static int update_nodestate_byname(orcm_node_state_t state, char *regexp, hwloc_
             }
         }
     }
-    
+    opal_argv_free(nodenames);
     if (!found) {
         OPAL_OUTPUT_VERBOSE((1, orcm_scd_base_framework.framework_output,
                              "%s scd:base:rm:update_nodestate_byname Couldn't find node(s) to update state %i (%s)",

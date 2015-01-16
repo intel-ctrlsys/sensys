@@ -324,6 +324,8 @@ int orcm_cli_get_cmd(char *prompt,
     /* return the assembled command */
     *cmd = strdup(input);
 
+    opal_argv_free(completions);
+    opal_argv_free(inputlist);
     return rc;
 }
 

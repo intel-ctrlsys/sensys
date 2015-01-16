@@ -103,6 +103,17 @@ BuildRoot: %{orcm_build_root}
 BuildRequires:  pkgconfig(systemd)
 %{?systemd_requires}
 %endif
+BuildRequires: ipmiutil-devel >= 2.9.5
+BuildRequires: libtool
+%if 0%{?el6}
+BuildRequires: libtool-ltdl
+%endif 
+BuildRequires: sigar >= 1.6.4
+BuildRequires: sigar-devel >= 1.6.4
+BuildRequires: unixODBC
+BuildRequires: unixODBC-devel
+Requires: ipmiutil-devel >= 2.9.5
+Requires: sigar >= 1.6.4
 
 %description
 This part build and install the Open RCM source tree.
@@ -126,7 +137,7 @@ make -j4
 
 %files 
 %defattr(-,root,root,-)
-%{_sysconfdir}/*
+%config %{_sysconfdir}/*
 %{_prefix}/bin/*
 %{_libdir}/*
 %{_includedir}/*
@@ -172,8 +183,8 @@ install -D -m 0644 contrib/dist/linux/orcmsched.service %{buildroot}%{_unitdir}/
 install -D -m 0755 contrib/dist/linux/orcmd.init %{buildroot}%{_initddir}/orcmd
 install -D -m 0755 contrib/dist/linux/orcmsched.init %{buildroot}%{_initddir}/orcmsched
 %endif
-install -D -m 0644 contrib/dist/linux/orcm.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/orcm
-install -D -m 0644 contrib/dist/linux/orcmsched.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/orcmsched
+install -D -m 0644 contrib/dist/linux/orcmd.sysconfig %{buildroot}/etc/sysconfig/orcmd
+install -D -m 0644 contrib/dist/linux/orcmsched.sysconfig %{buildroot}/etc/sysconfig/orcmsched
 install -D -m 0644 contrib/database/orcmdb_psql.ini %{buildroot}%{_sysconfdir}/orcmdb_psql.ini
 install -D -m 0644 contrib/database/orcmdb_psql.sql %{buildroot}%{_sysconfdir}/orcmdb_psql.sql
 install -D -m 0644 contrib/database/psql_odbc_driver.ini %{buildroot}%{_sysconfdir}/psql_odbc_driver.ini
@@ -257,7 +268,8 @@ fi
 
 %files 
 %defattr(-,root,root,-)
-%{_sysconfdir}/*
+%config %{_sysconfdir}/*
+%config /etc/sysconfig/*
 %{_prefix}/bin/*
 %{_libdir}/*
 %{_includedir}/*
@@ -288,6 +300,23 @@ Group: System Environment/Base
 URL: %{orcm_url}
 Source0: %{orcm_source}
 BuildRoot: %{orcm_build_root}
+%if %{uses_systemd}
+BuildRequires:  pkgconfig(systemd)
+%{?systemd_requires}
+%endif
+
+
+BuildRequires: ipmiutil-devel >= 2.9.5
+BuildRequires: libtool
+%if 0%{?el6}
+BuildRequires: libtool-ltdl
+%endif
+BuildRequires: sigar >= 1.6.4 
+BuildRequires: sigar-devel >= 1.6.4
+BuildRequires: unixODBC
+BuildRequires: unixODBC-devel
+Requires: ipmiutil-devel >= 2.9.5
+Requires: sigar >= 1.6.4
 
 %description
 The Open Resilient Cluster Manager (ORCM)
@@ -335,8 +364,8 @@ install -D -m 0644 contrib/dist/linux/orcmsched.service %{buildroot}%{_unitdir}/
 install -D -m 0755 contrib/dist/linux/orcmd.init %{buildroot}%{_initddir}/orcmd
 install -D -m 0755 contrib/dist/linux/orcmsched.init %{buildroot}%{_initddir}/orcmsched
 %endif
-install -D -m 0644 contrib/dist/linux/orcm.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/orcm
-install -D -m 0644 contrib/dist/linux/orcmsched.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/orcmsched
+install -D -m 0644 contrib/dist/linux/orcmd.sysconfig %{buildroot}/etc/sysconfig/orcmd
+install -D -m 0644 contrib/dist/linux/orcmsched.sysconfig %{buildroot}/etc/sysconfig/orcmsched
 install -D -m 0644 contrib/database/orcmdb_psql.ini %{buildroot}%{_sysconfdir}/orcmdb_psql.ini
 install -D -m 0644 contrib/database/orcmdb_psql.sql %{buildroot}%{_sysconfdir}/orcmdb_psql.sql
 install -D -m 0644 contrib/database/psql_odbc_driver.ini %{buildroot}%{_sysconfdir}/psql_odbc_driver.ini
@@ -348,6 +377,7 @@ install -D -m 0644 contrib/database/psql_odbc_driver.ini %{buildroot}%{_sysconfd
 %files
 %defattr(-,root,root,-)
 %config %{_sysconfdir}/*
+%config /etc/sysconfig/*
 %{_prefix}/bin/*
 %{_libdir}/*
 %{_includedir}/*
@@ -386,14 +416,14 @@ install -D -m 0644 contrib/database/psql_odbc_driver.ini %{buildroot}%{_sysconfd
 - Ensure to list sysconfdir in the files list if it's outside of the
   prefix.
 
-* Wed Mar 30 2006 Jeff Squyres <jsquyres@cisco.com>
+* Thu Mar 30 2006 Jeff Squyres <jsquyres@cisco.com>
 - Lots of bit rot updates
 - Reorganize and rename the subpackages
 - Add / formalize a variety of rpmbuild --define options
 - Comment out the docs subpackage for the moment (until we have some
   documentation -- coming in v1.1!)
 
-* Wed May 03 2005 Jeff Squyres <jsquyres@open-mpi.org>
+* Tue May 03 2005 Jeff Squyres <jsquyres@open-mpi.org>
 - Added some defines for LANL defaults
 - Added more defines for granulatirty of installation location for
   modulefile

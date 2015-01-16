@@ -24,7 +24,7 @@ prog=orcmd
 
 ORCMD_OPTS=
 # source orcm config if it exists
-if [ -f "$sysconfdir/orcm" ]; then
+if [ -f "$sysconfdir/$prog" ]; then
    . $sysconfdir/$prog
 fi
 

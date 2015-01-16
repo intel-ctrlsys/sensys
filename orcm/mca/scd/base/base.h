@@ -44,6 +44,14 @@ typedef struct {
 } orcm_scheduler_caddy_t;
 OBJ_CLASS_DECLARATION(orcm_scheduler_caddy_t);
 
+/* create a tracking object for running allocs */
+typedef struct {
+    opal_list_item_t super;
+    int alloc_id;
+    int count_checked_in;
+} orcm_alloc_tracker_t;
+OBJ_CLASS_DECLARATION(orcm_alloc_tracker_t);
+
 #define ORCM_CONSTRUCT_QUEUES(a)                                         \
     do {                                                                 \
         orcm_scheduler_caddy_t *s;                                       \
@@ -96,6 +104,8 @@ typedef struct {
     opal_pointer_array_t nodes;
     /* unique node topologies */
     opal_pointer_array_t topologies;
+    /* track running allocations and number of nodes completed */
+    opal_list_t tracking;
 } orcm_scd_base_t;
 ORCM_DECLSPEC extern orcm_scd_base_t orcm_scd_base;
 

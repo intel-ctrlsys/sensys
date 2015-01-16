@@ -78,7 +78,7 @@ OBJ_CLASS_INSTANCE(dmidata_inventory_t,
 
 /* Increment the MAX_INVENTORY_KEYWORDS size with every new addition here */
 /* NOTE: key for populating the lookup array
- * Each search item for a value contains 5 columns
+ * Each search item for a value contains 6 columns
  * The columns 1,2 and 3 are the key words for finding an inventory item
  * The column 4 contains the key word for enabling an ignore case
  * The column 5 contains a key word under which the corresponding inventory data is logged.
@@ -365,7 +365,6 @@ static void generate_test_vector(opal_buffer_t *v)
     ctmp = strdup("dmidata");
     opal_dss.pack(v, &ctmp, 1, OPAL_STRING);
     free(ctmp);
-    opal_output(0,"Inside generate_test_vecor"); 
 
     /* MACHINE Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(dmidata_hwloc_topology, HWLOC_OBJ_MACHINE, 0))) {

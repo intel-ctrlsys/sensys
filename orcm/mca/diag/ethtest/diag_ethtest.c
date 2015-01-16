@@ -290,9 +290,10 @@ static void ethtest_run(int sd, short args, void *cbdata)
     ret = dump_eth_test(resource, eth_test, gstring);
     free(eth_test);
     free(gstring);
-    free(resource);
 
 sendresults:
+    free(resource);
+    close(sock);
     now = time(NULL);
     data = OBJ_NEW(opal_buffer_t);
 

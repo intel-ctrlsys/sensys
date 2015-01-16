@@ -50,6 +50,7 @@
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/scd/scd_types.h"
 #include "orcm/mca/diag/diag.h"
+#include "orcm/mca/pwrmgmt/pwrmgmt.h"
 
 #include "orcm/runtime/runtime.h"
 #include "orcm/version.h"
@@ -384,6 +385,9 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
 
         port_num++;
 
+        /* notify the power management framework */
+        orcm_pwrmgmt.alloc_notify(alloc);
+
         /* construct the hnp uri */
         if (alloc->hnpname != NULL) {
 
@@ -459,6 +463,10 @@ static void orcmd_recv(int status, orte_process_name_t* sender,
             ORTE_ERROR_LOG(rc);
             return;
         }
+
+         printf("Calling power management dealloc notify\n");
+        /* notify the power management framework */
+        orcm_pwrmgmt.dealloc_notify(alloc);
 
         orte_rml.recv_cancel(ORTE_NAME_WILDCARD,
                      ORTE_RML_TAG_ABORT);

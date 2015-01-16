@@ -98,25 +98,29 @@ static void finalize(void)
 
 static int component_select(orcm_session_id_t session, opal_list_t* attr) 
 {
+    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
+                        "%s pwrmgmt:manualfreq: component select called",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
     int32_t mode, *mode_ptr;
     char* name;
     opal_list_t* data = NULL;
     opal_value_t *kv;
     bool governor_supported = false;
-printf("attr = %p\n", (void*)attr);
+
     mode_ptr = &mode;
     if (true != orte_get_attribute(attr, ORCM_PWRMGMT_POWER_MODE_KEY, (void**)&mode_ptr, OPAL_INT32)) {
-        printf("no mode found\n");//No mode specified
+        opal_output(0, "pwrmgmt:manualfreq: no mode was specified in constraints");
         return ORCM_ERROR;
     }
     if(ORCM_PWRMGMT_MODE_MANUAL_FREQ != mode) {
         //we cannot handle this request
-        printf("wrong mode %d\n",mode);
         return ORCM_ERROR;
     }
 
     if(!ORTE_PROC_IS_SCHEDULER) {
         if (true != orte_get_attribute(attr, ORCM_PWRMGMT_SELECTED_COMPONENT_KEY, (void**)&name, OPAL_STRING)) {
+            opal_output(0, "pwrmgmt:manualfreq: No global component has been chosen");
             //The scheduler should have selected a component
             return ORCM_ERROR;
         }
@@ -129,7 +133,7 @@ printf("attr = %p\n", (void*)attr);
     if(ORTE_PROC_IS_DAEMON) {
         //We require the userspace governor in order to operate
         orcm_pwrmgmt_freq_init();
-        orcm_pwrmgmt_freq_get_supported_governors(0, data);
+        orcm_pwrmgmt_freq_get_supported_governors(0, &data);
         if(NULL != data) {
             OPAL_LIST_FOREACH(kv, data, opal_value_t) {
                 if(0 == strcmp(kv->data.string, "userspace")) {
@@ -138,16 +142,21 @@ printf("attr = %p\n", (void*)attr);
                 }
             }
         }
+        
         if (false == governor_supported) {
+            opal_output(0, "pwrmgmt:manualfreq: userspace governor is not supported");
             return ORCM_ERROR;
         }
     }
-printf("served ourselves up for selection\n");
     return ORCM_SUCCESS;
 }
 
 static int set_attributes(orcm_session_id_t session, opal_list_t* attr) 
 {
+    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
+                        "%s pwrmgmt:manualfreq: set attributes called",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
     int32_t mode, *mode_ptr;
     double freq, *freq_ptr;
     double epsilon;
@@ -159,11 +168,11 @@ static int set_attributes(orcm_session_id_t session, opal_list_t* attr)
     freq_ptr = &freq;
 
     if (true != orte_get_attribute(attr, ORCM_PWRMGMT_POWER_MODE_KEY, (void**)&mode_ptr, OPAL_INT32)) {
-        //No mode specified
+        opal_output(0, "pwrmgmt:manualfreq: no mode was specified in constraints");
         return ORCM_ERROR;
     }
     if (ORCM_PWRMGMT_MODE_MANUAL_FREQ != mode) {
-        //we cannot handle this request
+        opal_output(0, "pwrmgmt:manualfreq: Got an incorrect mode for this component");
         return ORCM_ERROR;
     }
     if (true != orte_get_attribute(attr, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, (void**)&freq_ptr, OPAL_DOUBLE)) {
@@ -172,8 +181,8 @@ static int set_attributes(orcm_session_id_t session, opal_list_t* attr)
     }
 
     if (ORTE_PROC_IS_DAEMON) {
-        if (!-1.0 == freq && frequency != freq) { 
-            orcm_pwrmgmt_freq_get_supported_frequencies(0, data);
+        if (0.0 < freq && frequency != freq) { 
+            orcm_pwrmgmt_freq_get_supported_frequencies(0, &data);
             if (opal_list_is_empty(data)) {
                return ORCM_ERROR;
             }
@@ -187,6 +196,11 @@ static int set_attributes(orcm_session_id_t session, opal_list_t* attr)
                 }
             }
             if (0.0 < frequency) {
+                opal_output_verbose(1, orcm_pwrmgmt_base_framework.framework_output,
+                                    "%s pwrmgmt:manualfreq: setting frequency to %lf GHz",
+                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                    frequency);
+
                 if (ORCM_SUCCESS != (rc = orcm_pwrmgmt_freq_set_max_freq(-1, frequency))) {
                     return rc;
                 }
@@ -202,18 +216,22 @@ static int set_attributes(orcm_session_id_t session, opal_list_t* attr)
 
 static int reset_attributes(orcm_session_id_t session, opal_list_t* attr) 
 {
+    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
+                        "%s pwrmgmt:manualfreq: reset attributes called",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
     int32_t mode, *mode_ptr;
     char* name;
 
     mode_ptr = &mode;
 
     if (true != orte_get_attribute(attr, ORCM_PWRMGMT_POWER_MODE_KEY, (void**)&mode_ptr, OPAL_INT32)) {
-        //No mode specified
+        opal_output(0, "pwrmgmt:manualfreq: no mode was specified in constraints");
         return ORCM_ERROR;
     }
 
     if(ORCM_PWRMGMT_MODE_MANUAL_FREQ != mode) {
-        //we cannot handle this request
+        opal_output(0, "pwrmgmt:manualfreq: Got an incorrect mode for this component");
         return ORCM_ERROR;
     }
 
@@ -233,6 +251,10 @@ static int reset_attributes(orcm_session_id_t session, opal_list_t* attr)
 
 static int get_attributes(orcm_session_id_t session, opal_list_t* attr) 
 {
+    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
+                        "%s pwrmgmt:manualfreq: get attributes called",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
     int32_t mode = ORCM_PWRMGMT_MODE_MANUAL_FREQ;
     int rc;
  
@@ -253,6 +275,10 @@ static int get_attributes(orcm_session_id_t session, opal_list_t* attr)
 
 static int get_current_power(orcm_session_id_t session, double* power) 
 {
+    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
+                        "%s pwrmgmt:manualfreq: get current power called",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
     if (power != NULL) {
         *power = -1.0;
     }
@@ -262,36 +288,51 @@ static int get_current_power(orcm_session_id_t session, double* power)
 
 void alloc_notify(orcm_alloc_t* alloc)
 {
+    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
+                        "%s pwrmgmt:manualfreq: alloc_notify called",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
     int32_t mode, *mode_ptr;
     int rc;
 
     mode_ptr = &mode;
-printf("manualfreq was selected\n");
     if (true != orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, (void**)&mode_ptr, OPAL_INT32)) {
-        //No mode specified
+        opal_output(0, "pwrmgmt:manualfreq: no mode was specified in constraints"); 
         return;
     }
 
     if (ORCM_PWRMGMT_MODE_MANUAL_FREQ != mode) {
-        //we cannot handle this request
+        opal_output(0, "pwrmgmt:manualfreq: Got an incorrect mode for this component");
         return;
     }
 
     if (ORTE_PROC_IS_SCHEDULER) {
-printf("putting our name in the constraints: %s\n",component_name);
         //We have been selected. Let's add our component string to the attributes.
-        if (ORCM_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_SELECTED_COMPONENT_KEY, ORTE_ATTR_GLOBAL, &component_name, OPAL_STRING))) {
+        if (ORCM_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_SELECTED_COMPONENT_KEY, ORTE_ATTR_GLOBAL, (void*)component_name, OPAL_STRING))) {
             return;
         }
     }
 
     if (ORTE_PROC_IS_DAEMON) {
+        opal_output_verbose(1, orcm_pwrmgmt_base_framework.framework_output,
+                            "%s pwrmgmt:manualfreq: setting governor to userspace",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
+        orcm_pwrmgmt_freq_set_governor(-1, "userspace");
         set_attributes(alloc->id, &alloc->constraints);
     }
 }
 
 void dealloc_notify(orcm_alloc_t* alloc)
 {
+    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
+                        "%s pwrmgmt:manualfreq: dealloc_notify called",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
+    opal_output_verbose(1, orcm_pwrmgmt_base_framework.framework_output,
+                        "%s pwrmgmt:manualfreq: resetting governor and frequency to defaults",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
     orcm_pwrmgmt_freq_reset_system_settings();
 }
 

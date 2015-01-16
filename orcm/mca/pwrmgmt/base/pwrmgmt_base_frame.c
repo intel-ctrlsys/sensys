@@ -214,7 +214,7 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
 
     case ORCM_PWRMGMT_BASE_MAX_FREQ_CMD:
         orcm_pwrmgmt_freq_init();
-        orcm_pwrmgmt_freq_get_supported_governors(0, data);
+        orcm_pwrmgmt_freq_get_supported_governors(0, &data);
         if(NULL != data) {
             OPAL_LIST_FOREACH(kv, data, opal_value_t) {
                 if(0 == strcmp(kv->data.string, "performance")) {
@@ -232,7 +232,7 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
                 }
             }
         }
-        orcm_pwrmgmt_freq_get_supported_frequencies(0, data);
+        orcm_pwrmgmt_freq_get_supported_frequencies(0, &data);
         if(NULL == data) {
             break;
         }
@@ -252,7 +252,7 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
     break;
     case ORCM_PWRMGMT_BASE_SET_IDLE_CMD:
         orcm_pwrmgmt_freq_init();
-        orcm_pwrmgmt_freq_get_supported_governors(0, data);
+        orcm_pwrmgmt_freq_get_supported_governors(0, &data);
         if(NULL != data) {
             OPAL_LIST_FOREACH(kv, data, opal_value_t) {
                 if(0 == strcmp(kv->data.string, "userspace")) {
@@ -260,7 +260,7 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
                     break;
                 }
             }
-            orcm_pwrmgmt_freq_get_supported_frequencies(0, data);
+            orcm_pwrmgmt_freq_get_supported_frequencies(0, &data);
             if(opal_list_is_empty(data)) {
                break;
             }
@@ -298,6 +298,13 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
                                                             &alloc->hnp,
                                                             ORTE_PROC_MY_NAME)) {
             ans = OBJ_NEW(opal_buffer_t);
+
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &command,
+                                                    1, ORCM_RM_CMD_T))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
 
             if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &alloc,
                                                     n, ORCM_ALLOC))) {
@@ -349,3 +356,24 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
     break;
     }
 }
+
+const char* orcm_pwrmgmt_get_mode_string(int mode)
+{
+    switch(mode) {
+    case ORCM_PWRMGMT_MODE_NONE:
+        return "NONE";
+    case ORCM_PWRMGMT_MODE_MANUAL_FREQ:
+        return "MANUAL_FREQ";
+    case ORCM_PWRMGMT_MODE_AUTO_UNIFORM_FREQ:
+        return "AUTO_UNIFORM_FREQ";
+    case ORCM_PWRMGMT_MODE_AUTO_DUAL_UNIFORM_FREQ:
+        return "AUTO_DUAL_UNIFORM_FREQ";
+    case ORCM_PWRMGMT_MODE_AUTO_GEO_GOAL_MAX_PERF:
+        return "AUTO_GEO_GOAL_MAX_PERF";
+    case ORCM_PWRMGMT_MODE_AUTO_GEO_GOAL_MAX_EFFICIENCY:
+        return "AUTO_GEO_GOAL_MAX_EFFICIENCY";
+    default:
+        return "UNKNOWN POWER MODE";
+    }
+}	
+

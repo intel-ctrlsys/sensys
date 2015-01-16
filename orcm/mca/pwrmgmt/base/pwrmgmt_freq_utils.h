@@ -98,7 +98,7 @@ int orcm_pwrmgmt_freq_set_min_freq(int cpu, float freq);
  * @retval ORTE_SUCCESS Success
  * @retval ORCM_ERR_NOT_INITIALIZED init could not be completed
  */
-int  orcm_pwrmgmt_freq_get_supported_governors(int cpu, opal_list_t* governors);
+int  orcm_pwrmgmt_freq_get_supported_governors(int cpu, opal_list_t** governors);
 
 /**
  * Get the list of supported frequencies for a cpu
@@ -111,7 +111,7 @@ int  orcm_pwrmgmt_freq_get_supported_governors(int cpu, opal_list_t* governors);
  * @retval ORTE_SUCCESS Success
  * @retval ORCM_ERR_NOT_INITIALIZED init could not be completed
  */
-int  orcm_pwrmgmt_freq_get_supported_frequencies(int cpu, opal_list_t* frequencies);
+int  orcm_pwrmgmt_freq_get_supported_frequencies(int cpu, opal_list_t** frequencies);
 
 /**
  * Set the system back to its initial state

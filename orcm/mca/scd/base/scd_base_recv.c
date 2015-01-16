@@ -78,8 +78,9 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                void* cbdata)
 {
     orcm_scd_cmd_flag_t command, sub_command;
-    int rc, i, j, cnt, result, int_param;
-    int *int_param_ptr = &int_param;
+    int rc, i, j, cnt, result;
+    int32_t int_param;
+    int32_t *int_param_ptr = &int_param;
     double double_param;
     double *double_param_ptr = &double_param;
     orcm_alloc_t *alloc, **allocs;
@@ -121,7 +122,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         float alloc_power_underage = orcm_scd_base_get_cluster_power_underage();
         int32_t alloc_power_overage_time = orcm_scd_base_get_cluster_power_overage_time();
         int32_t alloc_power_underage_time = orcm_scd_base_get_cluster_power_underage_time();
-        float alloc_power_frequency = orcm_scd_base_get_cluster_power_frequency();
+        double alloc_power_frequency = orcm_scd_base_get_cluster_power_frequency();
         
         double node_power_budget = 0.0;
         cnt = 1;
@@ -157,7 +158,6 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             ORTE_ERROR_LOG(rc);
             return;
         }
-printf("cluster power mode: %d\n",alloc_power_mode);
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY,
                                                    ORTE_ATTR_GLOBAL, &alloc_power_mode, OPAL_INT32))) {
             ORTE_ERROR_LOG(rc);
@@ -189,7 +189,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
             return;
         }
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY,
-                                                   ORTE_ATTR_GLOBAL, &alloc_power_frequency, OPAL_FLOAT))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_frequency, OPAL_DOUBLE))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
@@ -389,7 +389,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
             break;
             case ORCM_SET_POWER_MODE_COMMAND:
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                          &cnt, OPAL_INT))) {
+                                                          &cnt, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     goto answer;
                 }
@@ -397,7 +397,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
             break;
             case ORCM_SET_POWER_WINDOW_COMMAND:
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                          &cnt, OPAL_INT))) {
+                                                          &cnt, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     goto answer;
                 }
@@ -421,7 +421,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
             break;
             case ORCM_SET_POWER_OVERAGE_TIME_COMMAND:
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                          &cnt, OPAL_INT))) {
+                                                          &cnt, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     goto answer;
                 }
@@ -429,7 +429,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
             break;
             case ORCM_SET_POWER_UNDERAGE_TIME_COMMAND:
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                          &cnt, OPAL_INT))) {
+                                                          &cnt, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     goto answer;
                 }
@@ -475,21 +475,21 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                         break;
                         case ORCM_SET_POWER_MODE_COMMAND:
                             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                                      &cnt, OPAL_DOUBLE))) {
+                                                                      &cnt, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
                             result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, 
-                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_WINDOW_COMMAND:
                             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                                      &cnt, OPAL_DOUBLE))) {
+                                                                      &cnt, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
                             result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_WINDOW_KEY, 
-                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_OVERAGE_COMMAND:
                             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
@@ -511,21 +511,21 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                         break;
                         case ORCM_SET_POWER_OVERAGE_TIME_COMMAND:
                             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                                      &cnt, OPAL_DOUBLE))) {
+                                                                      &cnt, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
                             result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY, 
-                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_UNDERAGE_TIME_COMMAND:
                             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
-                                                                      &cnt, OPAL_DOUBLE))) {
+                                                                      &cnt, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
                             result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY, 
-                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT);
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_FREQUENCY_COMMAND:
                             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
@@ -554,7 +554,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                                 }
                                 goto answer;
                             }
-                            if (OPAL_SUCCESS != (rc = opal_dss.pack(rmbuf, alloc,
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(rmbuf, &alloc,
                                                         1, ORCM_ALLOC))) {
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(rmbuf);
@@ -646,7 +646,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                     OBJ_RELEASE(ans);
                     return;
                 }
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
@@ -659,7 +659,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                     OBJ_RELEASE(ans);
                     return;
                 }
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
@@ -698,7 +698,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                     OBJ_RELEASE(ans);
                     return;
                 }
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
@@ -711,7 +711,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                     OBJ_RELEASE(ans);
                     return;
                 }
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
@@ -780,7 +780,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                         break;
                         case ORCM_GET_POWER_MODE_COMMAND:
                             if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, 
-                                                            (void**)&int_param_ptr, OPAL_INT)) {
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
                                     ORTE_ERROR_LOG(rc);
@@ -794,7 +794,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                                 OBJ_RELEASE(ans);
                                 return;
                             }
-                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
@@ -802,7 +802,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                         break;
                         case ORCM_GET_POWER_WINDOW_COMMAND:
                             if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_WINDOW_KEY, 
-                                                            (void**)&int_param_ptr, OPAL_INT)) {
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (result = opal_dss.pack(ans, &rc, 1, OPAL_INT))) {
                                     ORTE_ERROR_LOG(rc);
@@ -816,7 +816,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                                 OBJ_RELEASE(ans);
                                 return;
                             }
-                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
@@ -868,7 +868,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                         break;
                         case ORCM_GET_POWER_OVERAGE_TIME_COMMAND:
                             if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY, 
-                                                            (void**)&int_param_ptr, OPAL_INT)) {
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
                                     ORTE_ERROR_LOG(rc);
@@ -882,7 +882,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                                 OBJ_RELEASE(ans);
                                 return;
                             }
-                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
@@ -890,7 +890,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                         break;
                         case ORCM_GET_POWER_UNDERAGE_TIME_COMMAND:
                             if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY, 
-                                                            (void**)&int_param_ptr, OPAL_INT)) {
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
                                     ORTE_ERROR_LOG(rc);
@@ -904,7 +904,7 @@ printf("cluster power mode: %d\n",alloc_power_mode);
                                 OBJ_RELEASE(ans);
                                 return;
                             }
-                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;

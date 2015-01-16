@@ -76,7 +76,7 @@ typedef struct {
     double power_overage_time;
     /* default cluster power underage time limit in ms */
     double power_underage_time;
-    /* default cluster power frequency in MHz */
+    /* default cluster power frequency in GHz */
     double power_frequency;
     /* define an event base strictly for scheduling - this
      * allows the scheduler to respond to requests for

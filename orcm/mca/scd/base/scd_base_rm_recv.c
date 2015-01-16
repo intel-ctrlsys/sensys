@@ -318,6 +318,12 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
 
         ans = OBJ_NEW(opal_buffer_t);
 
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &command,
+                                            1, ORCM_RM_CMD_T))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &alloc,
                                                 1, ORCM_ALLOC))) {
             ORTE_ERROR_LOG(rc);

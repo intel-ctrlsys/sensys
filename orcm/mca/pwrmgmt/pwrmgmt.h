@@ -37,7 +37,7 @@
  * When the ORCM Scheduler gets an allocation command, it calls alloc_notify in the base framework and
  * passes in the job allocation structure. The base framework then polls all the existing components to see
  * which will handle the requested power management mode. If more than one component can handle the requested 
- * mode, it will chose one based on the component's priority. The selected component's alloc_notify function
+ * mode, it will choose one based on the component's priority. The selected component's alloc_notify function
  * is called, allowing that component to set any attributes it wishes to be send to the back end nodes.
  *
  * When the allocated orcmds receive the allocation command from the scheduler, they call the base pwrmgmt 
@@ -48,7 +48,7 @@
  * selected component.
  *
  * A "head" power managment node is specified by the alloc_t structure. This is either the "head" aggregator node,
- * or if no aggregators exist in the allocation, the "head daemon is chosen. All successive power management messages
+ * or if no aggregators exist in the allocation, the "head" daemon is chosen. All successive power management messages
  * will be sent to this node. It is up to the current component on that node to dissemenate any new or updated settings
  * to the rest of the allocation. 
  *
@@ -247,6 +247,8 @@ typedef orcm_pwrmgmt_base_component_1_0_0_t orcm_pwrmgmt_base_component_t;
 /* Global structure for accessing pwrmgmt functions
  */
 ORCM_DECLSPEC extern orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt;  /* holds API function pointers */
+
+ORCM_DECLSPEC const char *orcm_pwrmgmt_get_mode_string(int mode);
 
 END_C_DECLS
 

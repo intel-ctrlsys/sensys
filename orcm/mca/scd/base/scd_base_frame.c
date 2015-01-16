@@ -132,7 +132,7 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
     /* get default power mode for cluster */
     orcm_scd_base.power_mode = ORCM_PWRMGMT_MODE_NONE;
     (void) mca_base_var_register("orcm", "scd", "base", "power_mode",
-                                 "ORCM Cluster power budget",
+                                 "ORCM Cluster power mode",
                                  MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,
@@ -141,7 +141,7 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
     /* get default power window for cluster */
     orcm_scd_base.power_window = 10;
     (void) mca_base_var_register("orcm", "scd", "base", "power_window",
-                                 "ORCM Cluster power budget",
+                                 "ORCM Cluster power window",
                                  MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,
@@ -150,7 +150,7 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
     /* get default power overage for cluster */
     orcm_scd_base.power_overage = 0.0;
     (void) mca_base_var_register("orcm", "scd", "base", "power_overage",
-                                 "ORCM Cluster power budget",
+                                 "ORCM Cluster power overage limit",
                                  MCA_BASE_VAR_TYPE_DOUBLE, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,
@@ -159,7 +159,7 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
     /* get default power underage for cluster */
     orcm_scd_base.power_underage = 0.0;
     (void) mca_base_var_register("orcm", "scd", "base", "power_underage",
-                                 "ORCM Cluster power budget",
+                                 "ORCM Cluster power underage limit",
                                  MCA_BASE_VAR_TYPE_DOUBLE, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,
@@ -168,16 +168,16 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
     /* get default power overage time limit for cluster */
     orcm_scd_base.power_overage_time = 0;
     (void) mca_base_var_register("orcm", "scd", "base", "power_overage_time",
-                                 "ORCM Cluster power budget",
+                                 "ORCM Cluster power overage time",
                                  MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,
                                  &orcm_scd_base.power_overage_time);
 
     /* get default power underage time limit for cluster */
-    orcm_scd_base.power_underage_time = -1;
+    orcm_scd_base.power_underage_time = 0;
     (void) mca_base_var_register("orcm", "scd", "base", "power_underage_time",
-                                 "ORCM Cluster power budget",
+                                 "ORCM Cluster power underage time",
                                  MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,
@@ -186,7 +186,7 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
     /* get default power frequency for cluster */
     orcm_scd_base.power_frequency = -1.0;
     (void) mca_base_var_register("orcm", "scd", "base", "power_frequency",
-                                 "ORCM Cluster power budget",
+                                 "ORCM Cluster power frequency",
                                  MCA_BASE_VAR_TYPE_DOUBLE, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,

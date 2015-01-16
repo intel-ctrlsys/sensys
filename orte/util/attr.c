@@ -389,7 +389,7 @@ static int orte_attr_load(orte_attribute_t *kv,
         break;
 
     case OPAL_DOUBLE:
-        kv->data.dval = *(float*)(data);
+        kv->data.dval = *(double*)(data);
         break;
 
     case OPAL_TIMEVAL:
@@ -577,7 +577,7 @@ int orte_attr_pack(opal_buffer_t* buffer, orte_attribute_t *kv,
         break;
     case OPAL_STRING:
         if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer,
-                            (void*)kv->data.string,
+                            (void*)&kv->data.string,
                             1,
                             type))) {
             ORTE_ERROR_LOG(ret);
@@ -851,7 +851,7 @@ int orte_attr_unpack(opal_buffer_t* buffer, opal_list_t *attr)
     else if (OPAL_STRING == type) {
         char *str;
         if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer,
-                            (void*)str,
+                            (void*)&str,
                             &num,
                             type))) {
             ORTE_ERROR_LOG(ret);

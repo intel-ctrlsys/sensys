@@ -171,6 +171,7 @@ int orcm_pwrmgmt_freq_init(void)
         /* trailing digits are the core id */
         for (k=strlen(entry->d_name)-1; 0 <= k; k--) {
             if (!isdigit(entry->d_name[k])) {
+                k++;
                 break;
             }
         }
@@ -380,6 +381,8 @@ int orcm_pwrmgmt_freq_set_governor(int cpu, char* governor)
         fprintf(fp, "%s\n", governor);
         fclose(fp);
         free(filename);
+        free(trk->current_governor);
+        trk->current_governor = strdup(governor);
         if(-1 != cpu) {
             break;
         }
@@ -449,6 +452,7 @@ int orcm_pwrmgmt_freq_set_min_freq(int cpu, float freq)
         fprintf(fp, "%ld\n", (unsigned long)(freq * 1000000.0));
         fclose(fp);
         free(filename);
+        trk->current_min_freq = freq;
         if (-1 != cpu) {
             break;
         }
@@ -519,6 +523,7 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq)
         fprintf(fp, "%ld\n", (unsigned long)(freq * 1000000.0));
         fclose(fp);
         free(filename);
+        trk->current_max_freq = freq;
         if(-1 != cpu) {
             break;
         }
@@ -526,14 +531,10 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq)
     return ORCM_SUCCESS;
 }
 
-int orcm_pwrmgmt_freq_get_supported_governors(int cpu, opal_list_t* governors)
+int orcm_pwrmgmt_freq_get_supported_governors(int cpu, opal_list_t** governors)
 {
     rtefreq_tracker_t *trk;
 
-    if(NULL == governors) {
-        return ORCM_ERR_NOT_INITIALIZED;
-    }
-    
     if(!orcm_pwrmgmt_freq_initialized) {
         if(ORCM_SUCCESS != orcm_pwrmgmt_freq_init()) {
             return ORCM_ERR_NOT_INITIALIZED;
@@ -542,18 +543,18 @@ int orcm_pwrmgmt_freq_get_supported_governors(int cpu, opal_list_t* governors)
 
     /* loop thru all the cpus on this node */
     OPAL_LIST_FOREACH(trk, &tracking, rtefreq_tracker_t) {
-        if (cpu == trk->core) {
+        if (cpu != trk->core) {
             continue;
         }
        
-        governors = &trk->governors; 
+        *governors = &trk->governors; 
         return ORCM_SUCCESS;
     }
     
     return ORCM_ERR_NOT_FOUND;
 }
 
-int orcm_pwrmgmt_freq_get_supported_frequencies(int cpu, opal_list_t* frequencies)
+int orcm_pwrmgmt_freq_get_supported_frequencies(int cpu, opal_list_t** frequencies)
 {
     rtefreq_tracker_t *trk;
     
@@ -569,7 +570,7 @@ int orcm_pwrmgmt_freq_get_supported_frequencies(int cpu, opal_list_t* frequencie
             continue;
         }
        
-        frequencies = &trk->frequencies; 
+        *frequencies = &trk->frequencies; 
         return ORCM_SUCCESS;
     }
     

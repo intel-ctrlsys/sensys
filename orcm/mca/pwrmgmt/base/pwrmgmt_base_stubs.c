@@ -14,7 +14,6 @@
 
 #include "orcm/mca/pwrmgmt/base/base.h"
 
-
 /*
  * Global variables
  */
@@ -85,6 +84,13 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
     /* No power management was explicitly requested so we just keep pointing
      * to the stub functions */ 
     if(requested_power_mode == ORCM_PWRMGMT_MODE_NONE) {
+        if (NULL != selected_module) {
+            if(NULL != selected_module->module->dealloc_notify) {
+                selected_module->module->dealloc_notify(alloc);
+            }
+            orcm_pwrmgmt = orcm_pwrmgmt_stubs;
+            selected_module = NULL;
+        }
         return;
     }
 

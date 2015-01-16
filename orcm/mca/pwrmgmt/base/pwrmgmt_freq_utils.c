@@ -333,6 +333,7 @@ int orcm_pwrmgmt_freq_set_governor(int cpu, char* governor)
     bool allowed;
     char *filename;
     FILE *fp;
+    int count = 0;
 
     if(!orcm_pwrmgmt_freq_initialized) {
         if(ORCM_SUCCESS != orcm_pwrmgmt_freq_init()) {
@@ -344,6 +345,10 @@ int orcm_pwrmgmt_freq_set_governor(int cpu, char* governor)
     OPAL_LIST_FOREACH(trk, &tracking, rtefreq_tracker_t) {
         if (cpu != trk->core && -1 != cpu) {
             continue;
+        }
+    
+        if (-1 != cpu) {
+            count = cpu;
         }
 
         /* does the requested value match the current setting? */
@@ -376,8 +381,8 @@ int orcm_pwrmgmt_freq_set_governor(int cpu, char* governor)
             return ORCM_ERR_FILE_WRITE_FAILURE;
         }
         opal_output_verbose(2, orcm_pwrmgmt_base_framework.framework_output,
-                            "%s Setting governor %s",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), governor);
+                            "%s Setting governor %s for cpu %d",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), governor, count);
         fprintf(fp, "%s\n", governor);
         fclose(fp);
         free(filename);
@@ -386,6 +391,7 @@ int orcm_pwrmgmt_freq_set_governor(int cpu, char* governor)
         if(-1 != cpu) {
             break;
         }
+        count++;
     }
     return ORCM_SUCCESS;
 }
@@ -398,6 +404,7 @@ int orcm_pwrmgmt_freq_set_min_freq(int cpu, float freq)
     bool allowed;
     char *filename;
     FILE *fp;
+    int count = 0;
 
     if(!orcm_pwrmgmt_freq_initialized) {
         if(ORCM_SUCCESS != orcm_pwrmgmt_freq_init()) {
@@ -410,6 +417,11 @@ int orcm_pwrmgmt_freq_set_min_freq(int cpu, float freq)
         if (cpu != trk->core && -1 != cpu) {
             continue;
         }
+
+        if (-1 != cpu) {
+            count = cpu;
+        }
+
         /* does the requested value match the current setting? */
         if (trk->current_min_freq == freq) {
             break;
@@ -448,7 +460,7 @@ int orcm_pwrmgmt_freq_set_min_freq(int cpu, float freq)
                             "%s Setting min freq controls to %ld for cpu %d",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                             (unsigned long)(freq * 1000000.0),
-                            cpu);
+                            count);
         fprintf(fp, "%ld\n", (unsigned long)(freq * 1000000.0));
         fclose(fp);
         free(filename);
@@ -456,6 +468,7 @@ int orcm_pwrmgmt_freq_set_min_freq(int cpu, float freq)
         if (-1 != cpu) {
             break;
         }
+        count++;
     }
     return ORCM_SUCCESS;
 }
@@ -469,6 +482,7 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq)
     bool allowed;
     char *filename;
     FILE *fp;
+    int count = 0;
 
     if(!orcm_pwrmgmt_freq_initialized) {
         if(ORCM_SUCCESS != orcm_pwrmgmt_freq_init()) {
@@ -481,6 +495,11 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq)
         if (cpu != trk->core && -1 != cpu) {
             continue;
         }
+
+        if (-1 != cpu) {
+            count = cpu;
+        }
+
         /* does the requested value match the current setting? */
         if (trk->current_max_freq == freq) {
             break;
@@ -519,7 +538,7 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq)
                             "%s Setting max freq controls to %ld for cpu %d",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                             (unsigned long)(freq * 1000000.0),
-                            cpu);
+                            count);
         fprintf(fp, "%ld\n", (unsigned long)(freq * 1000000.0));
         fclose(fp);
         free(filename);
@@ -527,6 +546,7 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq)
         if(-1 != cpu) {
             break;
         }
+        count++;
     }
     return ORCM_SUCCESS;
 }

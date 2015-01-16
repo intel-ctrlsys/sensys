@@ -377,3 +377,28 @@ const char* orcm_pwrmgmt_get_mode_string(int mode)
     }
 }	
 
+int orcm_pwrmgmt_get_mode_val(const char* mode)
+{
+    if(!strncmp(mode, "NONE", 4)) {
+        return ORCM_PWRMGMT_MODE_NONE;
+    }
+    else if(!strncmp(mode, "MANUAL_FREQ", 11)) {
+        return ORCM_PWRMGMT_MODE_MANUAL_FREQ;
+    }
+    else if(!strncmp(mode, "AUTO_UNIFORM_FREQ", 17)) {
+        return ORCM_PWRMGMT_MODE_AUTO_UNIFORM_FREQ;
+    }
+    else if(!strncmp(mode, "AUTO_DUAL_UNIFORM_FREQ", 22)) {
+        return ORCM_PWRMGMT_MODE_AUTO_DUAL_UNIFORM_FREQ;
+    }
+    else if(!strncmp(mode, "AUTO_GEO_GOAL_MAX_PERF", 22)) {
+        return ORCM_PWRMGMT_MODE_AUTO_GEO_GOAL_MAX_PERF;
+    }
+    else if(!strncmp(mode, "AUTO_GEO_GOAL_MAX_EFFICIENCY", 28)) {
+        return ORCM_PWRMGMT_MODE_AUTO_GEO_GOAL_MAX_EFFICIENCY;
+    }
+    else {
+        return -1;
+    }
+}	
+

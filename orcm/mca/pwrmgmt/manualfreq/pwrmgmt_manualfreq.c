@@ -187,7 +187,8 @@ static int set_attributes(orcm_session_id_t session, opal_list_t* attr)
                return ORCM_ERROR;
             }
             //Find the closest supported frequency to the requested frequency
-            minval = fabs(freq - ((opal_value_t*)opal_list_get_first(data))->data.fval);
+            frequency = ((opal_value_t*)opal_list_get_first(data))->data.fval;
+            minval = fabs(freq - frequency);
             OPAL_LIST_FOREACH(kv, data, opal_value_t) {
                 epsilon = fabs(freq - kv->data.fval);
                 if (epsilon < minval) {

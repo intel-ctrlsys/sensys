@@ -102,6 +102,7 @@ typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_GET_POWER_OVERAGE_TIME_COMMAND  24
 #define ORCM_GET_POWER_UNDERAGE_TIME_COMMAND 25
 #define ORCM_GET_POWER_FREQUENCY_COMMAND     26
+#define ORCM_GET_POWER_MODES_COMMAND         27
 
 
 /* define diagnostic commands */

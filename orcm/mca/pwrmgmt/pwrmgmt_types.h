@@ -53,6 +53,10 @@ BEGIN_C_DECLS
 #define ORCM_PWRMGMT_MODE_AUTO_DUAL_UNIFORM_FREQ        3
 #define ORCM_PWRMGMT_MODE_AUTO_GEO_GOAL_MAX_PERF        4
 #define ORCM_PWRMGMT_MODE_AUTO_GEO_GOAL_MAX_EFFICIENCY  5
+/* Add any new modes above here and then fix the ORCM_PWRMGMT_NUM_MODES to be
+ * the maximum+1 of all the modes. The modes numbering cannot have gaps.
+ */
+#define ORCM_PWRMGMT_NUM_MODES                          6
 
 END_C_DECLS
 

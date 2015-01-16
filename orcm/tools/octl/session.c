@@ -192,7 +192,17 @@ int orcm_octl_session_set(int cmd, char **argv)
         }
         break;
     case ORCM_SET_POWER_MODE_COMMAND:
-        int_param = (int)strtol(argv[4], NULL, 10);
+        if (isdigit(argv[4][strlen(argv[4]) - 1])) {
+            int_param = (int)strtol(argv[4], NULL, 10);
+        }
+        else {
+            int_param = orcm_pwrmgmt_get_mode_val(argv[4]); 
+        }
+        
+        if (0 > int_param || ORCM_PWRMGMT_NUM_MODES <= int_param ) {
+            printf("Illegal Power Management Mode\n");
+            return ORCM_ERR_BAD_PARAM;
+        }
         // FIXME: validate that power mode is valid
             
         /* pack the power mode */

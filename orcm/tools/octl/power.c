@@ -81,7 +81,17 @@ int orcm_octl_power_set(int cmd, char **argv)
         }
         break;
     case ORCM_SET_POWER_MODE_COMMAND:
-        int_param = (int)strtol(argv[3], NULL, 10);
+        if (isdigit(argv[3][strlen(argv[3]) - 1])) {
+            int_param = (int)strtol(argv[3], NULL, 10);
+        }
+        else {
+            int_param = orcm_pwrmgmt_get_mode_val(argv[3]); 
+        }
+        
+        if (0 > int_param || ORCM_PWRMGMT_NUM_MODES <= int_param ) {
+            printf("Illegal Power Management Mode\n");
+            return ORCM_ERR_BAD_PARAM;
+        }
         // FIXME: validate that power mode is valid
             
         /* pack the power mode */
@@ -205,7 +215,7 @@ int orcm_octl_power_get(int cmd, char **argv)
     orcm_scd_cmd_flag_t command;
     opal_buffer_t *buf;
     orte_rml_recv_cb_t xfer;
-    int rc, n, success;
+    int rc, n, i, success;
     int32_t int_param;
     double double_param;
     bool per_session = false;
@@ -214,6 +224,16 @@ int orcm_octl_power_get(int cmd, char **argv)
         fprintf(stderr, "incorrect arguments to \"power get\"\n");
         return ORCM_ERROR;
     }
+  
+    if (ORCM_GET_POWER_MODES_COMMAND == cmd) {
+        printf("Possible Modes: {%s", orcm_pwrmgmt_get_mode_string(0));
+        for(i = 1; i < ORCM_PWRMGMT_NUM_MODES; i++) {
+            printf(", %s",orcm_pwrmgmt_get_mode_string(i));
+        }
+        printf("}\n");
+        return ORCM_SUCCESS;
+    }
+          
 
     /* setup to receive the result */
     OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);

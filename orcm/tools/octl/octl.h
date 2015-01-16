@@ -82,6 +82,8 @@ static orcm_cli_init_t cli_init[] = {
     { { "session", "get", NULL }, "budget", 0, 1, "Get Session Power Budget" },
     // mode subcommand
     { { "session", "get", NULL }, "mode", 0, 1, "Get Session Power Mode" },
+    // modes subcommand
+    { { "session", "get", NULL }, "modes", 0, 0, "Get List of Power Modes" },
     // window subcommand
     { { "session", "get", NULL }, "window", 0, 1, "Get Session Power Window" },
     // overage subcommand
@@ -130,6 +132,8 @@ static orcm_cli_init_t cli_init[] = {
     { { "power", "get", NULL }, "budget", 0, 0, "Get Global Power Budget" },
     // mode subcommand
     { { "power", "get", NULL }, "mode", 0, 0, "Get Default Power Mode" },
+    // modes subcommand
+    { { "power", "get", NULL }, "modes", 0, 0, "Get List of Power Modes" },
     // window subcommand
     { { "power", "get", NULL }, "window", 0, 0, "Get Default Power Window" },
     // overage subcommand
@@ -180,6 +184,7 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "overage_time",      //25
                                      "underage_time",     //26
                                      "frequency",         //27
+                                     "modes",             //28
                                      "\0" };
 
 END_C_DECLS

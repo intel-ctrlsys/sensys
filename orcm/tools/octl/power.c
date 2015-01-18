@@ -19,7 +19,7 @@ int orcm_octl_power_set(char **argv)
     
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"power set\"\n");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
     power_budget = (int)strtol(argv[2], NULL, 10);
     // FIXME: validate that power budget is reasonable
@@ -89,7 +89,7 @@ int orcm_octl_power_get(char **argv)
     
     if (2 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"power get\"\n");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     /* setup to receive the result */

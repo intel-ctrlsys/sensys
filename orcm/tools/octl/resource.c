@@ -208,7 +208,7 @@ int orcm_octl_resource_drain(char **argv)
 
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"resource drain\"\n");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
     /* setup to receive the result */
     OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);

@@ -155,6 +155,7 @@ int main(int argc, char *argv[])
      * process them.
      */
     if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
+        opal_finalize_util();
         exit(1);
     }
 

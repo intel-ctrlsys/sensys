@@ -55,7 +55,7 @@ int
 main(int argc, char *argv[])
 {
     int ret;
-    
+
     /* initialize, parse command line, and setup frameworks */
     ret = orcm_octl_init(argc, argv);
 

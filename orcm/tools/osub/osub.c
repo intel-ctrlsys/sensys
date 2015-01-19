@@ -516,6 +516,15 @@ static int parse_args(int argc, char *argv[])
        orcm_osub_globals.max_pes = orcm_osub_globals.min_pes;
     } 
 
+    if ( 1 > orcm_osub_globals.min_nodes || 1 > orcm_osub_globals.max_nodes) {
+        fprintf (stderr, "min-node and max-node cannot be less than 1.\n");
+        return ORTE_ERR_BAD_PARAM;
+    }
+
+    if ( 1 > orcm_osub_globals.min_pes || 1 > orcm_osub_globals.max_pes) {
+        fprintf (stderr, "min-pe and max-pe cannot be less than 1.\n");
+        return ORTE_ERR_BAD_PARAM;
+    }
     /*
      * Since this process can now handle MCA/GMCA parameters, make sure to
      * process them.

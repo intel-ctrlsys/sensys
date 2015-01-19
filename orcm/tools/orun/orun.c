@@ -376,7 +376,9 @@ int orun(int argc, char *argv[])
      *  opal_init_util() since mca_base_cmd_line_process_args() does *not*
      *  depend upon opal_init_util() functionality.
      */
-    mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
+    if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
+        exit(1);
+    }
     
     /* Need to initialize OPAL so that install_dirs are filled in */
     if (OPAL_SUCCESS != opal_init_util(&argc, &argv)) {
@@ -1048,7 +1050,7 @@ static int create_app(int argc, char* argv[],
         goto cleanup;
     }
     if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
-        exit(1);
+        goto cleanup;
     }
 
     /* Is there an appfile in here? */

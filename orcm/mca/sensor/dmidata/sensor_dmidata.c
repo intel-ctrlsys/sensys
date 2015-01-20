@@ -198,17 +198,23 @@ static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, d
     uint32_t k;
     orcm_metric_value_t *mkv;
     char *inv_key;
+    unsigned int socket_count=1;
     /* MACHINE Level Stats*/
-    if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_MACHINE, 0))) {
-        /* there are no objects identified for this machine (Weird!) */
+    if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_SOCKET, 0))) {
+        /* there are no Sockets identified for this machine (Weird!) */
         orte_show_help("help-orcm-sensor-dmidata.txt", "no-machine", true, hostname);
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
+    while(obj->next_sibling!=NULL)
+    {
+        socket_count++;
+        obj=obj->next_sibling;
+    }
     mkv = OBJ_NEW(orcm_metric_value_t);
     mkv->value.type = OPAL_UINT;
     mkv->value.key = strdup("num_sockets");;
-    mkv->value.data.uint = obj->arity;
+    mkv->value.data.uint = socket_count;
     opal_list_append(newhost->records, (opal_list_item_t *)mkv);
 
     /* Pack the total MACHINE Stats present and to be copied */

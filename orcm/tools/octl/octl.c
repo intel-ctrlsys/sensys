@@ -140,9 +140,9 @@ static int orcm_octl_init(int argc, char *argv[])
     opal_cmd_line_get_tail(&cmd_line, &tailc, &tailv);
 
     /* initialize orcm for use as a tool */
-    if (ORCM_SUCCESS != orcm_init(ORCM_TOOL)) {
+    if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL))) {
         fprintf(stderr, "Failed to initialize\n");
-        exit(1);
+        exit(ret);
     }
 
     if (0 == tailc) {

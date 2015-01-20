@@ -51,8 +51,6 @@
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void start(orte_jobid_t job);
-static void stop(orte_jobid_t job);
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 
@@ -63,8 +61,8 @@ static void generate_test_vector(opal_buffer_t *v);
 orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
     init,
     finalize,
-    start,
-    stop,
+    NULL,
+    NULL,
     NULL,
     NULL,
     dmidata_inventory_collect,
@@ -154,19 +152,6 @@ static void finalize(void)
                             "Destroying sensor initialized hwloc object");
         hwloc_topology_destroy(dmidata_hwloc_topology);
     }
-}
-
-/*
- * Start monitoring of local temps
- */
-static void start(orte_jobid_t jobid)
-{
-    return;
-}
-
-static void stop(orte_jobid_t jobid)
-{
-    return;
 }
 
 static char* check_inv_key(char *inv_key, enum inv_item_req req)

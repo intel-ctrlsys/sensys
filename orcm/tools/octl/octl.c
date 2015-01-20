@@ -54,14 +54,14 @@ opal_cmd_line_init_t cmd_line_opts[] = {
 int
 main(int argc, char *argv[])
 {
-    int ret;
+    int ret, rc;
 
     /* initialize, parse command line, and setup frameworks */
     ret = orcm_octl_init(argc, argv);
 
-    if (ORTE_SUCCESS != orcm_finalize()) {
+    if (ORTE_SUCCESS != (rc = orcm_finalize())) {
         fprintf(stderr, "Failed orcm_finalize\n");
-        exit(1);
+        exit(rc);
     }
 
     return ret;

@@ -306,14 +306,14 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
                     session->alloc = alloc;
                     session->id = session->alloc->id;
                     ORCM_ACTIVATE_SCD_STATE(session, ORCM_SESSION_STATE_TERMINATED);
-                    opal_output(0, "scheduler: all nodes checked in, cancelling session : %lld \n", alloc->id);
+                    opal_output(0, "scheduler: all nodes checked in, cancelling session : %ld \n", (long)alloc->id);
                     opal_list_remove_item(&orcm_scd_base.tracking, &trk->super);
                     OBJ_RELEASE(trk);
                 }
                 return;
             }
         }
-        opal_output(0, "scheduler: couldn't find running allocation to cancel : %lld!\n", alloc->id);
+        opal_output(0, "scheduler: couldn't find running allocation to cancel : %ld!\n", (long)alloc->id);
     }
 
     return;

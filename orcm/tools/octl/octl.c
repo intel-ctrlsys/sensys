@@ -14,7 +14,7 @@
  * Local Functions
  ******************/
 static int orcm_octl_init(int argc, char *argv[]);
-static void run_cmd(char *cmd);
+static int run_cmd(char *cmd);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -54,15 +54,17 @@ opal_cmd_line_init_t cmd_line_opts[] = {
 int
 main(int argc, char *argv[])
 {
-    /* initialize, parse command line, and setup frameworks */
-    orcm_octl_init(argc, argv);
+    int ret, rc;
 
-    if (ORTE_SUCCESS != orcm_finalize()) {
+    /* initialize, parse command line, and setup frameworks */
+    ret = orcm_octl_init(argc, argv);
+
+    if (ORTE_SUCCESS != (rc = orcm_finalize())) {
         fprintf(stderr, "Failed orcm_finalize\n");
-        exit(1);
+        exit(rc);
     }
 
-    return ORCM_SUCCESS;
+    return ret;
 }
 
 static int orcm_octl_init(int argc, char *argv[])
@@ -130,15 +132,18 @@ static int orcm_octl_init(int argc, char *argv[])
     
     /* Since this process can now handle MCA/GMCA parameters, make sure to
      * process them. */
-    if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
-        exit(1);
+    if (OPAL_SUCCESS != (ret = mca_base_cmd_line_process_args(&cmd_line, &environ, &environ))) {
+        exit(ret);
     }
 
     /* get the commandline without mca params */
     opal_cmd_line_get_tail(&cmd_line, &tailc, &tailv);
 
     /* initialize orcm for use as a tool */
-    ret = orcm_init(ORCM_TOOL);
+    if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL))) {
+        fprintf(stderr, "Failed to initialize\n");
+        exit(ret);
+    }
 
     if (0 == tailc) {
         /* if the user hasn't specified any commands,
@@ -154,14 +159,14 @@ static int orcm_octl_init(int argc, char *argv[])
         /* run interactive cli */
         orcm_cli_get_cmd("octl", &cli, &mycmd);
         if (!mycmd) {
-            fprintf(stderr, "\nERR: NO COMMAND RETURNED\n");
+            fprintf(stderr, "\nNo command specified\n");
         }
     } else {
         /* otherwise use the user specified command */
         mycmd = (opal_argv_join(tailv, ' '));
     }
     
-    run_cmd(mycmd);
+    ret = run_cmd(mycmd);
     free(mycmd);
     opal_argv_free(tailv);
     
@@ -187,25 +192,25 @@ static int octl_command_to_int(char *command)
     return -1;
 }
 
-static void run_cmd(char *cmd) {
+static int run_cmd(char *cmd) {
     char **cmdlist = NULL;
     char *fullcmd = NULL;
     int rc;
     
     cmdlist = opal_argv_split(cmd, ' ');
     if (0 == opal_argv_count(cmdlist)) {
-        printf("No command parsed\n");
+        fprintf(stderr, "No command parsed\n");
         opal_argv_free(cmdlist);
-        return;
+        return ORCM_ERROR;
     }
     
     rc = octl_command_to_int(cmdlist[0]);
     if (-1 == rc) {
         fullcmd = opal_argv_join(cmdlist, ' ');
-        printf("Unknown command: %s\n", fullcmd);
+        fprintf(stderr, "Unknown command: %s\n", fullcmd);
         free(fullcmd);
         opal_argv_free(cmdlist);
-        return;
+        return ORCM_ERROR;
     }
     
     /* call corresponding function to passed command */
@@ -214,8 +219,9 @@ static void run_cmd(char *cmd) {
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
             fullcmd = opal_argv_join(cmdlist, ' ');
-            printf("Unknown command: %s\n", fullcmd);
+            fprintf(stderr, "Unknown command: %s\n", fullcmd);
             free(fullcmd);
+            rc = ORCM_ERROR;
             break;
         }
             
@@ -247,7 +253,7 @@ static void run_cmd(char *cmd) {
             break;
         default:
             fullcmd = opal_argv_join(cmdlist, ' ');
-            printf("Illegal command: %s\n", fullcmd);
+            fprintf(stderr, "Illegal command: %s\n", fullcmd);
             free(fullcmd);
             break;
         }
@@ -256,8 +262,9 @@ static void run_cmd(char *cmd) {
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
             fullcmd = opal_argv_join(cmdlist, ' ');
-            printf("Unknown command: %s\n", fullcmd);
+            fprintf(stderr, "Unknown command: %s\n", fullcmd);
             free(fullcmd);
+            rc = ORCM_ERROR;
             break;
         }
             
@@ -299,7 +306,7 @@ static void run_cmd(char *cmd) {
             break;
         default:
             fullcmd = opal_argv_join(cmdlist, ' ');
-            printf("Illegal command: %s\n", fullcmd);
+            fprintf(stderr, "Illegal command: %s\n", fullcmd);
             free(fullcmd);
             break;
         }
@@ -308,8 +315,9 @@ static void run_cmd(char *cmd) {
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
             fullcmd = opal_argv_join(cmdlist, ' ');
-            printf("Unknown command: %s\n", fullcmd);
+            fprintf(stderr, "Unknown command: %s\n", fullcmd);
             free(fullcmd);
+            rc = ORCM_ERROR;
             break;
         }
             
@@ -326,7 +334,7 @@ static void run_cmd(char *cmd) {
             break;
         default:
             fullcmd = opal_argv_join(cmdlist, ' ');
-            printf("Illegal command: %s\n", fullcmd);
+            fprintf(stderr, "Illegal command: %s\n", fullcmd);
             free(fullcmd);
             break;
         }
@@ -335,8 +343,9 @@ static void run_cmd(char *cmd) {
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
             fullcmd = opal_argv_join(cmdlist, ' ');
-            printf("Unknown command: %s\n", fullcmd);
+            fprintf(stderr, "Unknown command: %s\n", fullcmd);
             free(fullcmd);
+            rc = ORCM_ERROR;
             break;
         }
         
@@ -358,7 +367,7 @@ static void run_cmd(char *cmd) {
                 break;
             default:
                 fullcmd = opal_argv_join(cmdlist, ' ');
-                printf("Illegal command: %s\n", fullcmd);
+                fprintf(stderr, "Illegal command: %s\n", fullcmd);
                 free(fullcmd);
                 break;
         }
@@ -367,8 +376,9 @@ static void run_cmd(char *cmd) {
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
             fullcmd = opal_argv_join(cmdlist, ' ');
-            printf("Unknown command: %s\n", fullcmd);
+            fprintf(stderr, "Unknown command: %s\n", fullcmd);
             free(fullcmd);
+            rc = ORCM_ERROR;
             break;
         }
         
@@ -385,17 +395,19 @@ static void run_cmd(char *cmd) {
                 break;
             default:
                 fullcmd = opal_argv_join(cmdlist, ' ');
-                printf("Illegal command: %s\n", fullcmd);
+                fprintf(stderr, "Illegal command: %s\n", fullcmd);
                 free(fullcmd);
                 break;
         }
         break;
     default:
         fullcmd = opal_argv_join(cmdlist, ' ');
-        printf("Illegal command: %s\n", fullcmd);
+        fprintf(stderr, "Illegal command: %s\n", fullcmd);
         free(fullcmd);
+        rc = ORCM_ERROR;
         break;
     }
     
     opal_argv_free(cmdlist);
+    return rc;
 }

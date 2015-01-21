@@ -191,7 +191,7 @@ static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, d
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
-    while(obj->next_sibling!=NULL)
+    while(NULL != obj->next_sibling)
     {
         socket_count++;
         obj=obj->next_sibling;

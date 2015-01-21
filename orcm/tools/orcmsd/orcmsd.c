@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
     }
     
     mca_base_cmd_line_setup(&cmd_line);
-    if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
+    if (OPAL_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
         fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
         exit(1);
     }
@@ -278,8 +278,9 @@ int main(int argc, char *argv[])
      * Since this process can now handle MCA/GMCA parameters, make sure to
      * process them.
      */
-    mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
-
+    if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
+        exit(1);
+    }
 
     /* Ensure that enough of OPAL is setup for us to be able to run */
     /*

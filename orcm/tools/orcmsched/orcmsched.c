@@ -135,7 +135,10 @@ int main(int argc, char *argv[])
      * Since this process can now handle MCA/GMCA parameters, make sure to
      * process them.
      */
-    mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
+    if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
+        opal_finalize_util();
+        exit(1);
+    }
 
     /* see if they want us to spin until they can connect a debugger to us */
     i=0;

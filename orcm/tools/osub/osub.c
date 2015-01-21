@@ -529,7 +529,9 @@ static int parse_args(int argc, char *argv[])
      * Since this process can now handle MCA/GMCA parameters, make sure to
      * process them.
      */
-    mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
+    if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
+        exit(1);
+    }
 
     return ORTE_SUCCESS;
 }

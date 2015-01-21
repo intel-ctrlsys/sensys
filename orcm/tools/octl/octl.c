@@ -128,16 +128,18 @@ static int orcm_octl_init(int argc, char *argv[])
         exit(0);
     }
     
+    /* Since this process can now handle MCA/GMCA parameters, make sure to
+     * process them. */
+    if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
+        exit(1);
+    }
+
+    /* get the commandline without mca params */
+    opal_cmd_line_get_tail(&cmd_line, &tailc, &tailv);
+
     /* initialize orcm for use as a tool */
     ret = orcm_init(ORCM_TOOL);
 
-    /* Since this process can now handle MCA/GMCA parameters, make sure to
-     * process them. */
-    mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
-    
-    /* get the commandline without mca params */
-    opal_cmd_line_get_tail(&cmd_line, &tailc, &tailv);
-    
     if (0 == tailc) {
         /* if the user hasn't specified any commands,
          * run interactive cli to help build it */

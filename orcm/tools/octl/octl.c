@@ -132,8 +132,8 @@ static int orcm_octl_init(int argc, char *argv[])
     
     /* Since this process can now handle MCA/GMCA parameters, make sure to
      * process them. */
-    if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
-        exit(1);
+    if (OPAL_SUCCESS != (ret = mca_base_cmd_line_process_args(&cmd_line, &environ, &environ))) {
+        exit(ret);
     }
 
     /* get the commandline without mca params */

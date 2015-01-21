@@ -649,11 +649,17 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         /* opal_output(0,"%s: %s",inv, inv_val);*/
         
         mkv = OBJ_NEW(orcm_metric_value_t);
-        mkv->value.type = OPAL_STRING;
         mkv->value.key = inv;
-        mkv->value.data.string = inv_val;
+
+        if(!strncmp(inv,"bmc_ver",sizeof("bmc_ver")) | !strncmp(inv,"ipmi_ver",sizeof("ipmi_ver")))
+        {
+            mkv->value.type = OPAL_FLOAT;
+            mkv->value.data.fval = strtof(inv_val,NULL);
+        } else {
+            mkv->value.type = OPAL_STRING;
+            mkv->value.data.string = inv_val;
+        }
         opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-        
         tot_items--;
     }
 

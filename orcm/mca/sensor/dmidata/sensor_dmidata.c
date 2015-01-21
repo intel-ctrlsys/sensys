@@ -191,10 +191,10 @@ static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, d
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
-    while(NULL != obj->next_sibling)
+    while(NULL != obj->next_cousin)
     {
         socket_count++;
-        obj=obj->next_sibling;
+        obj=obj->next_cousin;
     }
     mkv = OBJ_NEW(orcm_metric_value_t);
     mkv->value.type = OPAL_UINT;

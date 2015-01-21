@@ -890,10 +890,15 @@ static int parse_configuration(orcm_cfgi_xml_parser_t *xml,
 
     if (0 == strcmp(xml->name, "configuration")) {
         /* this is the highest level, so just drop down */
-        while (NULL != (xm = (orcm_cfgi_xml_parser_t*)opal_list_remove_first(&xml->subvals))) {
-            if (ORTE_SUCCESS != (rc = parse_configuration(xm, row))) {
-                return rc;
+        if (!opal_list_is_empty(&xml->subvals)) {
+            while (NULL != (xm = (orcm_cfgi_xml_parser_t*)opal_list_remove_first(&xml->subvals))) {
+                if (ORTE_SUCCESS != (rc = parse_configuration(xm, row))) {
+                    return rc;
+                }
             }
+        } else {
+            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                                "Skipping empty configuration");
         }
         return ORTE_SUCCESS;
     }
@@ -921,38 +926,58 @@ static int parse_configuration(orcm_cfgi_xml_parser_t *xml,
         OBJ_RETAIN(row);
         rack->row = row;
         opal_list_append(&row->racks, &rack->super);
-        while (NULL != (xm = (orcm_cfgi_xml_parser_t*)opal_list_remove_first(&xml->subvals))) {
-            if (ORTE_SUCCESS != (rc = parse_daemons(xm, rack))) {
-                return rc;
+        if (!opal_list_is_empty(&xml->subvals)) {
+            while (NULL != (xm = (orcm_cfgi_xml_parser_t*)opal_list_remove_first(&xml->subvals))) {
+                if (ORTE_SUCCESS != (rc = parse_daemons(xm, rack))) {
+                    return rc;
+                }
             }
+        } else {
+            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                                "Skipping empty orcm-daemons");
         }
         return ORTE_SUCCESS;
     } else if (0 == strcmp(xml->name, "orcm-aggregators")) {
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                             "\tORCM-AGGREGATORS");
-        while (NULL != (xm = (orcm_cfgi_xml_parser_t*)opal_list_remove_first(&xml->subvals))) {
-            if (ORTE_SUCCESS != (rc = parse_aggregators(xm, row))) {
-                return rc;
+        if (!opal_list_is_empty(&xml->subvals)) {
+            while (NULL != (xm = (orcm_cfgi_xml_parser_t*)opal_list_remove_first(&xml->subvals))) {
+                if (ORTE_SUCCESS != (rc = parse_aggregators(xm, row))) {
+                    return rc;
+                }
             }
+        } else {
+            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                                "Skipping empty orcm-aggregators");
         }
         return ORTE_SUCCESS;
     } else if (0 == strcmp(xml->name, "orcm-schedulers")) {
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                             "\tORCM-SCHEDULERS");
-        while (NULL != (xm = (orcm_cfgi_xml_parser_t*)opal_list_remove_first(&xml->subvals))) {
-            if (ORTE_SUCCESS != (rc = parse_scheduler(xm))) {
-                return rc;
+        if (!opal_list_is_empty(&xml->subvals)) {
+            while (NULL != (xm = (orcm_cfgi_xml_parser_t*)opal_list_remove_first(&xml->subvals))) {
+                if (ORTE_SUCCESS != (rc = parse_scheduler(xm))) {
+                    return rc;
+                }
             }
+        } else {
+            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                                "Skipping empty orcm-schedulers");
         }
         return ORTE_SUCCESS;
     } else {
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                             "\tUNKNOWN TAG");
     }
-    if (NULL != (xm = (orcm_cfgi_xml_parser_t*)opal_list_remove_first(&xml->subvals))) {
-        if (ORTE_SUCCESS != (rc = parse_configuration(xm, row))) {
-            return rc;
+    if (!opal_list_is_empty(&xml->subvals)) {
+        if (NULL != (xm = (orcm_cfgi_xml_parser_t*)opal_list_remove_first(&xml->subvals))) {
+            if (ORTE_SUCCESS != (rc = parse_configuration(xm, row))) {
+                return rc;
+            }
         }
+    } else {
+        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                            "Skipping empty UNKNOWN TAG");
     }
     return ORTE_SUCCESS;
 }

@@ -104,8 +104,8 @@ static bool log_enabled = true;
 
 
 char ipmi_inv_tv[5][2][30] = {
-{"bmc_ver","TV_bmc_ver"},
-{"ipmi_ver","TV_ipmi_ver"},
+{"bmc_ver","9.9"},
+{"ipmi_ver","8.8"},
 {"bb_serial","TV_BbSer"},
 {"bb_vendor","TV_BbVen"},
 {"bb_manufactured_date","TV_MaufDat"}};

@@ -78,7 +78,7 @@ BEGIN_C_DECLS
  * ORCM_PWRMGMT_SUPPORTED_MODES_KEY          // opal_list (int) - an array of the possible supported power modes
  * ORCM_PWRMGMT_SELECTED_COMPONENT_KEY       // string - string name of the selected component
  * ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY         // float - requested target for setting a manual frequency
- * ORCM_PWRMGMT_FREQ_BEST_EFFORT_KEY         // bool - Can we set the frequency as close as we can to the requested frequency if we do not support it?
+ * ORCM_PWRMGMT_FREQ_STRICT_KEY              // bool - Do we have to set the frequency to the exact requested frequency and fail otherwise?
  */
 
 /*

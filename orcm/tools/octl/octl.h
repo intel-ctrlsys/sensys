@@ -78,6 +78,8 @@ static orcm_cli_init_t cli_init[] = {
     { { "session", "set", NULL }, "underage_time", 0, 2, "Set Session Power Underage Time Limit" },
     // freq subcommand
     { { "session", "set", NULL }, "frequency", 0, 2, "Set Session Manual Frequency" },
+    // strict subcommand
+    { { "session", "set", NULL }, "strict", 0, 2, "Set Session Strictness Policy For Frequency Settings" },
     // budget subcommand
     { { "session", "get", NULL }, "budget", 0, 1, "Get Session Power Budget" },
     // mode subcommand
@@ -96,6 +98,8 @@ static orcm_cli_init_t cli_init[] = {
     { { "session", "get", NULL }, "underage_time", 0, 1, "Get Session Power Underage Time Limit" },
     // freq subcommand
     { { "session", "get", NULL }, "frequency", 0, 1, "Get Session Manual Frequency" },
+    // strict subcommand
+    { { "session", "get", NULL }, "strict", 0, 1, "Get Session Strictness Policy For Frequency Settings" },
 
 
     /****** diag command ******/
@@ -126,6 +130,8 @@ static orcm_cli_init_t cli_init[] = {
     { { "power", "set", NULL }, "underage_time", 0, 1, "Set Default Power Underage Time Limit" },
     // freq subcommand
     { { "power", "set", NULL }, "frequency", 0, 1, "Set Default Manual Frequency" },
+    // strict subcommand
+    { { "power", "set", NULL }, "strict", 0, 1, "Set Strictness Policy For Frequency Settings" },
     //get subcommand
     { { "power", NULL }, "get", 0, 0, "Get Power Policy" },
     // budget subcommand
@@ -146,6 +152,8 @@ static orcm_cli_init_t cli_init[] = {
     { { "power", "get", NULL }, "underage_time", 0, 0, "Get Default Power Underage Time Limit" },
     // freq subcommand
     { { "power", "get", NULL }, "frequency", 0, 0, "Get Default Manual Frequency" },
+    // strict subcommand
+    { { "power", "get", NULL }, "strict", 0, 0, "Get Strictness Policy For Frequency Settings" },
 
     /* End of list */
     { { NULL }, NULL, 0, 0, NULL }
@@ -185,6 +193,7 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "underage_time",     //26
                                      "frequency",         //27
                                      "modes",             //28
+                                     "strict",            //29
                                      "\0" };
 
 END_C_DECLS

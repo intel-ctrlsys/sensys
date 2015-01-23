@@ -7,6 +7,8 @@
  * $HEADER$
  */
 
+#include <math.h>
+
 #include "orcm/tools/octl/common.h"
 #include "orcm/util/attr.h"
 #include "orcm/mca/scd/base/base.h"
@@ -19,7 +21,8 @@ int orcm_octl_power_set(int cmd, char **argv)
     orte_rml_recv_cb_t xfer;
     int rc, n, result;
     int32_t int_param;
-    double float_param;
+    float float_param;
+    bool bool_param;
     bool per_session = false;
     
     if (4 != opal_argv_count(argv)) {
@@ -163,11 +166,55 @@ int orcm_octl_power_set(int cmd, char **argv)
         }
         break;
     case ORCM_SET_POWER_FREQUENCY_COMMAND:
-        float_param = (float)strtof(argv[3], NULL);
+        if (isdigit(argv[3][strlen(argv[3]) - 1])) {
+            float_param = (float)strtof(argv[3], NULL);
+        }
+        else {
+            if(!strncmp(argv[3], "MAX_FREQ", 8)) {
+                float_param = ORCM_PWRMGMT_MAX_FREQ;
+            }
+            else if(!strncmp(argv[3], "MIN_FREQ", 8)) {
+                float_param = ORCM_PWRMGMT_MIN_FREQ;
+            }
+            else {
+                ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+                OBJ_RELEASE(buf);
+                OBJ_DESTRUCT(&xfer);
+                return ORCM_ERR_BAD_PARAM; 
+            }
+        }
         // FIXME: validate that power freq is reasonable
             
         /* pack the power freq */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &float_param, 1, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(buf);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        break;
+    case ORCM_SET_POWER_STRICT_COMMAND:
+        if (isdigit(argv[3][strlen(argv[3]) - 1])) {
+            bool_param = (bool)strtol(argv[3], NULL, 10);
+        }
+        else {
+            if(!strncmp(argv[3], "true", 4)) {
+                bool_param = true;
+            }
+            else if(!strncmp(argv[3], "false", 5)) {
+                bool_param = false;
+            }
+            else {
+                ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+                OBJ_RELEASE(buf);
+                OBJ_DESTRUCT(&xfer);
+                return ORCM_ERR_BAD_PARAM; 
+            }
+        }
+        // FIXME: validate that power freq is reasonable
+            
+        /* pack the power freq */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &bool_param, 1, OPAL_BOOL))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
@@ -218,6 +265,7 @@ int orcm_octl_power_get(int cmd, char **argv)
     int rc, n, i, success;
     int32_t int_param;
     float float_param;
+    bool bool_param;
     bool per_session = false;
     
     if (3 != opal_argv_count(argv)) {
@@ -373,7 +421,24 @@ int orcm_octl_power_get(int cmd, char **argv)
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        printf("Current default power frequency: %f GHz\n", float_param);
+        if(fabsf((float)(float_param - (float)ORCM_PWRMGMT_MIN_FREQ)) < 0.0001) {
+            printf("Current default power frequency: MAX_FREQ");
+        }
+        else if(fabsf((float)(float_param - (float)ORCM_PWRMGMT_MIN_FREQ)) < 0.0001) {
+            printf("Current default power frequency: MIN_FREQ");
+        }
+        else {
+            printf("Current default power frequency: %f GHz\n", float_param);
+        }
+    break;
+    case ORCM_GET_POWER_STRICT_COMMAND:
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &bool_param,
+                                                  &n, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
+        printf("Current default frequency strict setting: %s\n", bool_param ? "true" : "false");
     break;
     default:
         printf("Illegal power command: %d\n", cmd);

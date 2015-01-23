@@ -118,6 +118,15 @@ int orcm_scd_base_set_cluster_power_frequency(float frequency) {
     return ORCM_SUCCESS;
 }
 
+bool orcm_scd_base_get_cluster_power_strict() {
+    return orcm_scd_base.power_strict;
+}
+
+int orcm_scd_base_set_cluster_power_strict(bool strict) {
+    orcm_scd_base.power_strict = strict;
+    return ORCM_SUCCESS;
+}
+
 static int orcm_scd_base_register(mca_base_register_flag_t flags)
 {
     /* get default power budget for cluster */
@@ -188,6 +197,15 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
     (void) mca_base_var_register("orcm", "scd", "base", "power_frequency",
                                  "ORCM Cluster power frequency",
                                  MCA_BASE_VAR_TYPE_DOUBLE, NULL, 0, 0,
+                                 OPAL_INFO_LVL_9,
+                                 MCA_BASE_VAR_SCOPE_READONLY,
+                                 &orcm_scd_base.power_frequency);
+
+    /* get default power strictness setting for cluster */
+    orcm_scd_base.power_strict = true;
+    (void) mca_base_var_register("orcm", "scd", "base", "power_strict",
+                                 "ORCM Cluster power strictness policy",
+                                 MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,
                                  &orcm_scd_base.power_frequency);

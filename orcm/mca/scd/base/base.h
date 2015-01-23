@@ -78,6 +78,8 @@ typedef struct {
     int32_t power_underage_time;
     /* default cluster power frequency in GHz */
     float power_frequency;
+    /* default cluster power strictness policy */
+    bool power_strict;
     /* define an event base strictly for scheduling - this
      * allows the scheduler to respond to requests for
      * information without interference with the
@@ -156,6 +158,8 @@ ORCM_DECLSPEC int orcm_scd_base_get_cluster_power_underage_time(void);
 ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_underage_time(int underage_time);
 ORCM_DECLSPEC float orcm_scd_base_get_cluster_power_frequency(void);
 ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_frequency(float frequency);
+ORCM_DECLSPEC bool orcm_scd_base_get_cluster_power_strict(void);
+ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_strict(bool strict);
 
 END_C_DECLS
 #endif

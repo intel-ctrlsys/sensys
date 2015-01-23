@@ -374,6 +374,11 @@ static void run_cmd(char *cmd) {
                     ORTE_ERROR_LOG(rc);
                 }
                 break;
+            case 29: //strict
+                if (ORCM_SUCCESS != (rc = orcm_octl_session_set(ORCM_SET_POWER_STRICT_COMMAND, cmdlist))) {
+                    ORTE_ERROR_LOG(rc);
+                }
+                break;
             default:
                 fullcmd = opal_argv_join(cmdlist, ' ');
                 printf("Illegal command: %s\n", fullcmd);
@@ -433,6 +438,11 @@ static void run_cmd(char *cmd) {
                 break;
             case 28: //modes
                 if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_MODES_COMMAND, cmdlist))) {
+                    ORTE_ERROR_LOG(rc);
+                }
+                break;
+            case 29: //strict
+                if (ORCM_SUCCESS != (rc = orcm_octl_session_get(ORCM_GET_POWER_STRICT_COMMAND, cmdlist))) {
                     ORTE_ERROR_LOG(rc);
                 }
                 break;
@@ -542,6 +552,11 @@ static void run_cmd(char *cmd) {
                     ORTE_ERROR_LOG(rc);
                 }
                 break;
+            case 29: //strict
+                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(ORCM_SET_POWER_STRICT_COMMAND, cmdlist))) {
+                    ORTE_ERROR_LOG(rc);
+                }
+                break;
             default:
                 fullcmd = opal_argv_join(cmdlist, ' ');
                 printf("Illegal command: %s\n", fullcmd);
@@ -601,6 +616,11 @@ static void run_cmd(char *cmd) {
                 break;
             case 28: //modes
                 if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_MODES_COMMAND, cmdlist))) {
+                    ORTE_ERROR_LOG(rc);
+                }
+                break;
+            case 29: //strict
+                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_STRICT_COMMAND, cmdlist))) {
                     ORTE_ERROR_LOG(rc);
                 }
                 break;

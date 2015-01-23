@@ -61,6 +61,10 @@ BEGIN_C_DECLS
  */
 #define ORCM_PWRMGMT_NUM_MODES                          6
 
+
+#define ORCM_PWRMGMT_MAX_FREQ                           255.0
+#define ORCM_PWRMGMT_MIN_FREQ                           256.0
+
 END_C_DECLS
 
 #endif

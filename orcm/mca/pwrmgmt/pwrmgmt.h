@@ -190,19 +190,6 @@ typedef int (*orcm_pwrmgmt_base_module_reset_attributes_fn_t)(orcm_session_id_t 
  */
 typedef int (*orcm_pwrmgmt_base_module_get_attributes_fn_t)(orcm_session_id_t session, opal_list_t* attr);
   
-/**
- * Get the current power usage in watts
- *
- * Returns the current power usage in watts measured over the current power window
- *
- * @param[in] session - session id for the allocation
- * @param[out] power - double containing the current power usage by the allocation
- *
- * @retval ORTE_SUCCESS Success
- * @retval ORTE_ERROR   An unspecified error occurred
- */
-typedef int (*orcm_pwrmgmt_base_module_get_current_power_fn_t)(orcm_session_id_t session, double* power);
-
 /* API module */
 /*
  * Ver 1.0
@@ -218,7 +205,6 @@ typedef struct orcm_pwrmgmt_base_API_module_1_0_0_t {
     orcm_pwrmgmt_base_module_set_attributes_fn_t     set_attributes;
     orcm_pwrmgmt_base_module_reset_attributes_fn_t   reset_attributes;
     orcm_pwrmgmt_base_module_get_attributes_fn_t     get_attributes;
-    orcm_pwrmgmt_base_module_get_current_power_fn_t  get_current_power;
 } orcm_pwrmgmt_base_API_module_1_0_0_t;
 
 typedef orcm_pwrmgmt_base_API_module_1_0_0_t orcm_pwrmgmt_base_API_module_t;

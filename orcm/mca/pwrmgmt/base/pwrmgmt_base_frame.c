@@ -45,10 +45,6 @@
 
 #include "orcm/mca/pwrmgmt/base/static-components.h"
 
-int set_max_freq(opal_pointer_array_t *daemons);
-int set_to_idle(opal_pointer_array_t *daemons);
-int reset_freq_defaults(opal_pointer_array_t *daemons);
-static int send_to_daemons(int command, opal_pointer_array_t *daemons);
 static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
                        orte_rml_tag_t tag, void *cbdata);
@@ -64,8 +60,7 @@ orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt_stubs = {
     orcm_pwrmgmt_base_dealloc_notify,
     orcm_pwrmgmt_base_set_attributes,
     orcm_pwrmgmt_base_reset_attributes,
-    orcm_pwrmgmt_base_get_attributes,
-    orcm_pwrmgmt_base_get_current_power
+    orcm_pwrmgmt_base_get_attributes
 };
 
 orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt = {0};
@@ -139,48 +134,6 @@ MCA_BASE_FRAMEWORK_DECLARE(orcm, pwrmgmt, "ORCM Power Management", NULL,
                            mca_pwrmgmt_base_static_components, 0);
 
 
-static int send_to_daemons(int command, opal_pointer_array_t *daemons) {
-    int rc;
-    orte_process_name_t* proc;
-    int sz = opal_pointer_array_get_size(daemons);
-    opal_buffer_t* buffer;
-    orcm_rm_cmd_flag_t cmd = command;
-
-    buffer = OBJ_NEW(opal_buffer_t);
-
-    if (ORTE_SUCCESS != (rc = opal_dss.pack(buffer, &cmd, 1, ORCM_RM_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
-    }
-
-    for(int n = 0; n < sz; n++) {
-        proc = opal_pointer_array_get_item(daemons, n);
-        
-        if (ORTE_SUCCESS !=
-            (rc = orte_rml.send_buffer_nb(proc, buffer,
-                                      ORCM_RML_TAG_PWRMGMT_BASE,
-                                      orte_rml_send_callback, NULL))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_RELEASE(buffer);
-           return rc;
-        } 
-    }
-
-    return OPAL_SUCCESS;
-}
- 
-int set_max_freq(opal_pointer_array_t *daemons) {
-    return send_to_daemons(ORCM_PWRMGMT_BASE_MAX_FREQ_CMD, daemons);
-} 
-
-int set_to_idle(opal_pointer_array_t *daemons) {
-    return send_to_daemons(ORCM_PWRMGMT_BASE_SET_IDLE_CMD, daemons);
-} 
-
-int reset_freq_defaults(opal_pointer_array_t *daemons) {
-    return send_to_daemons(ORCM_PWRMGMT_BASE_RESET_DEFAULTS_CMD, daemons);
-}
-
 static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
                                    opal_buffer_t *buffer,
                                    orte_rml_tag_t tag, void *cbdata) {
@@ -212,76 +165,6 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
     bool use_perf_gov = false;
     float freq = 0.0;
 
-    case ORCM_PWRMGMT_BASE_MAX_FREQ_CMD:
-        orcm_pwrmgmt_freq_init();
-        orcm_pwrmgmt_freq_get_supported_governors(0, &data);
-        if(NULL != data) {
-            OPAL_LIST_FOREACH(kv, data, opal_value_t) {
-                if(0 == strcmp(kv->data.string, "performance")) {
-                    use_perf_gov = true;
-                }
-            }
-            if(use_perf_gov) {
-                orcm_pwrmgmt_freq_set_governor(-1, "performance");
-                break;
-            }
-            OPAL_LIST_FOREACH(kv, data, opal_value_t) {
-                if(0 == strcmp(kv->data.string, "userspace")) {
-                    orcm_pwrmgmt_freq_set_governor(-1, "userspace");
-                    break;
-                }
-            }
-        }
-        orcm_pwrmgmt_freq_get_supported_frequencies(0, &data);
-        if(NULL == data) {
-            break;
-        }
-        if(opal_list_is_empty(data)) {
-           break;
-        }
-        freq = ((opal_value_t*)opal_list_get_first(data))->data.fval;
-        OPAL_LIST_FOREACH(kv, data, opal_value_t) {
-            if(kv->data.fval > freq) {
-                freq = kv->data.fval;
-            }
-        }
-        if(0.0 != freq) {
-            orcm_pwrmgmt_freq_set_max_freq(-1, freq);
-            orcm_pwrmgmt_freq_set_min_freq(-1, freq);
-        }
-    break;
-    case ORCM_PWRMGMT_BASE_SET_IDLE_CMD:
-        orcm_pwrmgmt_freq_init();
-        orcm_pwrmgmt_freq_get_supported_governors(0, &data);
-        if(NULL != data) {
-            OPAL_LIST_FOREACH(kv, data, opal_value_t) {
-                if(0 == strcmp(kv->data.string, "userspace")) {
-                    orcm_pwrmgmt_freq_set_governor(-1, "userspace");
-                    break;
-                }
-            }
-            orcm_pwrmgmt_freq_get_supported_frequencies(0, &data);
-            if(opal_list_is_empty(data)) {
-               break;
-            }
-        }
-        freq = ((opal_value_t*)opal_list_get_first(data))->data.fval;
-        if(NULL == data) {
-            break;
-        }
-        OPAL_LIST_FOREACH(kv, data, opal_value_t) {
-            if(kv->data.fval < freq) {
-                freq = kv->data.fval;
-            }
-        }
-        if(0.0 != freq) {
-            orcm_pwrmgmt_freq_set_max_freq(-1, freq);
-            orcm_pwrmgmt_freq_set_min_freq(-1, freq);
-        }
-    break;
-    case ORCM_PWRMGMT_BASE_RESET_DEFAULTS_CMD:
-        orcm_pwrmgmt_freq_reset_system_settings();
-    break;
     case ORCM_SET_POWER_COMMAND:
         OPAL_OUTPUT_VERBOSE((5, orcm_pwrmgmt_base_framework.framework_output,
                              "%s pwrmgmt:base:receive got ORCM_SET_POWER_COMMAND",

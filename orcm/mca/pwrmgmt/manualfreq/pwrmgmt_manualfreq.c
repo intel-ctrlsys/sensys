@@ -69,7 +69,6 @@ static int component_select(orcm_session_id_t session, opal_list_t* attr);
 static int set_attributes(orcm_session_id_t session, opal_list_t* attr);
 static int reset_attributes(orcm_session_id_t session, opal_list_t* attr);
 static int get_attributes(orcm_session_id_t session, opal_list_t* attr);
-static int get_current_power(orcm_session_id_t session, double* power);
 
 /* instantiate the module */
 orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt_manualfreq_module = {
@@ -80,8 +79,7 @@ orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt_manualfreq_module = {
     dealloc_notify,
     set_attributes,
     reset_attributes,
-    get_attributes,
-    get_current_power
+    get_attributes
 };
 
 const char* component_name = "manual_frequency";
@@ -272,19 +270,6 @@ static int get_attributes(orcm_session_id_t session, opal_list_t* attr)
     }
 
     return ORCM_SUCCESS;
-}
-
-static int get_current_power(orcm_session_id_t session, double* power) 
-{
-    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
-                        "%s pwrmgmt:manualfreq: get current power called",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-
-    if (power != NULL) {
-        *power = -1.0;
-    }
-
-    return ORCM_ERR_NOT_SUPPORTED;
 }
 
 void alloc_notify(orcm_alloc_t* alloc)

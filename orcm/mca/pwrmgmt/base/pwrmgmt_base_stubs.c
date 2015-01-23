@@ -203,13 +203,3 @@ int orcm_pwrmgmt_base_get_attributes(orcm_session_id_t session, opal_list_t* att
     return ORTE_ERR_NOT_SUPPORTED;
 }
 
-int orcm_pwrmgmt_base_get_current_power(orcm_session_id_t session, double *power)
-{
-    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
-                        "%s pwrmgmt:base: pwrmgmt get current power called",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-
-    *power = -1.0;
-    return ORTE_ERR_NOT_SUPPORTED;
-}
-

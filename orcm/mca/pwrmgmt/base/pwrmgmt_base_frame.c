@@ -97,11 +97,6 @@ static int orcm_pwrmgmt_base_open(mca_base_open_flag_t flags)
     /* initialize the active module to the stub functions */
     orcm_pwrmgmt = orcm_pwrmgmt_stubs;
 
-    /* initialize framework base functions */
-    orcm_pwrmgmt_base.set_max_freq = set_max_freq;
-    orcm_pwrmgmt_base.set_to_idle = set_to_idle;
-    orcm_pwrmgmt_base.reset_freq_defaults = reset_freq_defaults;
-
     /* construct the array of modules */
     OBJ_CONSTRUCT(&orcm_pwrmgmt_base.modules, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_pwrmgmt_base.modules, 3, INT_MAX, 1);
@@ -160,11 +155,6 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
     }
 
     switch(command) {
-    opal_list_t* data = NULL;
-    opal_value_t *kv;
-    bool use_perf_gov = false;
-    float freq = 0.0;
-
     case ORCM_SET_POWER_COMMAND:
         OPAL_OUTPUT_VERBOSE((5, orcm_pwrmgmt_base_framework.framework_output,
                              "%s pwrmgmt:base:receive got ORCM_SET_POWER_COMMAND",

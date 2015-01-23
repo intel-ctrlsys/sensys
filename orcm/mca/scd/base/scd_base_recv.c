@@ -81,8 +81,8 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
     int rc, i, j, cnt, result;
     int32_t int_param;
     int32_t *int_param_ptr = &int_param;
-    double double_param;
-    double *double_param_ptr = &double_param;
+    float float_param;
+    float *float_param_ptr = &float_param;
     orcm_alloc_t *alloc, **allocs;
     opal_buffer_t *ans, *rmbuf;
     orcm_session_t *session;
@@ -114,17 +114,17 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         /* session request - this comes in the form of a
          * requested allocation to support the session
          */
-        float alloc_power_budget = 0.0;
+        int32_t alloc_power_budget = 0;
         //get power defaults
         int32_t alloc_power_mode = orcm_scd_base_get_cluster_power_mode();
         int32_t alloc_power_window = orcm_scd_base_get_cluster_power_window();
-        float alloc_power_overage = orcm_scd_base_get_cluster_power_overage();
-        float alloc_power_underage = orcm_scd_base_get_cluster_power_underage();
+        int32_t alloc_power_overage = orcm_scd_base_get_cluster_power_overage();
+        int32_t alloc_power_underage = orcm_scd_base_get_cluster_power_underage();
         int32_t alloc_power_overage_time = orcm_scd_base_get_cluster_power_overage_time();
         int32_t alloc_power_underage_time = orcm_scd_base_get_cluster_power_underage_time();
-        double alloc_power_frequency = orcm_scd_base_get_cluster_power_frequency();
+        float alloc_power_frequency = orcm_scd_base_get_cluster_power_frequency();
         
-        double node_power_budget = 0.0;
+        int32_t node_power_budget = 0;
         cnt = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &alloc,
                                                   &cnt, ORCM_ALLOC))) {
@@ -154,7 +154,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         }
 
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY,
-                                                   ORTE_ATTR_GLOBAL, &alloc_power_budget, OPAL_FLOAT))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_budget, OPAL_INT32))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
@@ -169,12 +169,12 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             return;
         }
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY,
-                                                   ORTE_ATTR_GLOBAL, &alloc_power_overage, OPAL_FLOAT))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_overage, OPAL_INT32))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY,
-                                                   ORTE_ATTR_GLOBAL, &alloc_power_underage, OPAL_FLOAT))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_underage, OPAL_INT32))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
@@ -189,7 +189,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             return;
         }
         if(OPAL_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY,
-                                                   ORTE_ATTR_GLOBAL, &alloc_power_frequency, OPAL_DOUBLE))) {
+                                                   ORTE_ATTR_GLOBAL, &alloc_power_frequency, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
@@ -380,12 +380,12 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             //global
             switch(sub_command) {
             case ORCM_SET_POWER_BUDGET_COMMAND:
-                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                          &cnt, OPAL_DOUBLE))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
+                                                          &cnt, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     goto answer;
                 }
-                result = orcm_scd_base_set_cluster_power_budget(double_param);
+                result = orcm_scd_base_set_cluster_power_budget(int_param);
             break;
             case ORCM_SET_POWER_MODE_COMMAND:
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
@@ -404,20 +404,20 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                 result = orcm_scd_base_set_cluster_power_window(int_param);
             break;
             case ORCM_SET_POWER_OVERAGE_COMMAND:
-                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                          &cnt, OPAL_DOUBLE))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
+                                                          &cnt, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     goto answer;
                 }
-                result = orcm_scd_base_set_cluster_power_overage(double_param);
+                result = orcm_scd_base_set_cluster_power_overage(int_param);
             break;
             case ORCM_SET_POWER_UNDERAGE_COMMAND:
-                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                          &cnt, OPAL_DOUBLE))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
+                                                          &cnt, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     goto answer;
                 }
-                result = orcm_scd_base_set_cluster_power_underage(double_param);
+                result = orcm_scd_base_set_cluster_power_underage(int_param);
             break;
             case ORCM_SET_POWER_OVERAGE_TIME_COMMAND:
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
@@ -436,12 +436,12 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                 result = orcm_scd_base_set_cluster_power_underage_time(int_param);
             break;
             case ORCM_SET_POWER_FREQUENCY_COMMAND:
-                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                          &cnt, OPAL_DOUBLE))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &float_param,
+                                                          &cnt, OPAL_FLOAT))) {
                     ORTE_ERROR_LOG(rc);
                     goto answer;
                 }
-                result = orcm_scd_base_set_cluster_power_frequency(double_param);
+                result = orcm_scd_base_set_cluster_power_frequency(float_param);
             break;
             default:
                 result = ORTE_ERR_BAD_PARAM;
@@ -465,13 +465,13 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                         found = true;
                         switch(sub_command) {
                         case ORCM_SET_POWER_BUDGET_COMMAND:
-                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                                      &cnt, OPAL_DOUBLE))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
+                                                                      &cnt, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
                             result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY, 
-                                                        ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_MODE_COMMAND:
                             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
@@ -492,22 +492,22 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                                         ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_OVERAGE_COMMAND:
-                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                                      &cnt, OPAL_DOUBLE))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
+                                                                      &cnt, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
                             result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY, 
-                                                        ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_UNDERAGE_COMMAND:
-                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                                      &cnt, OPAL_DOUBLE))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
+                                                                      &cnt, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
                             result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY, 
-                                                        ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
+                                                        ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_OVERAGE_TIME_COMMAND:
                             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &int_param,
@@ -528,13 +528,13 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                                         ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_FREQUENCY_COMMAND:
-                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &double_param,
-                                                                      &cnt, OPAL_DOUBLE))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &float_param,
+                                                                      &cnt, OPAL_FLOAT))) {
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
                             result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, 
-                                                        ORTE_ATTR_GLOBAL, &double_param, OPAL_DOUBLE);
+                                                        ORTE_ATTR_GLOBAL, &float_param, OPAL_FLOAT);
                         break;
                         default:
                             result = ORTE_ERR_BAD_PARAM;
@@ -627,13 +627,13 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             //global
             switch(sub_command) {
             case ORCM_GET_POWER_BUDGET_COMMAND:
-                double_param = orcm_scd_base_get_cluster_power_budget();
+                int_param = orcm_scd_base_get_cluster_power_budget();
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
                 }
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &double_param, 1, OPAL_DOUBLE))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
@@ -666,26 +666,26 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                 }
             break;
             case ORCM_GET_POWER_OVERAGE_COMMAND:
-                double_param = orcm_scd_base_get_cluster_power_overage();
+                int_param = orcm_scd_base_get_cluster_power_overage();
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
                 }
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &double_param, 1, OPAL_DOUBLE))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
                 }
             break;
             case ORCM_GET_POWER_UNDERAGE_COMMAND:
-                double_param = orcm_scd_base_get_cluster_power_underage();
+                int_param = orcm_scd_base_get_cluster_power_underage();
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
                 }
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &double_param, 1, OPAL_DOUBLE))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
@@ -718,13 +718,13 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                 }
             break;
             case ORCM_GET_POWER_FREQUENCY_COMMAND:
-                double_param = orcm_scd_base_get_cluster_power_frequency();
+                float_param = orcm_scd_base_get_cluster_power_frequency();
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
                 }
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &double_param, 1, OPAL_DOUBLE))) {
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &float_param, 1, OPAL_FLOAT))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
                     return;
@@ -758,7 +758,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                         switch(sub_command) {
                         case ORCM_GET_POWER_BUDGET_COMMAND:
                             if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY, 
-                                                            (void**)&double_param_ptr, OPAL_DOUBLE)) {
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
                                     ORTE_ERROR_LOG(rc);
@@ -772,7 +772,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 OBJ_RELEASE(ans);
                                 return;
                             }
-                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &double_param, 1, OPAL_DOUBLE))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
@@ -824,7 +824,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                         break;
                         case ORCM_GET_POWER_OVERAGE_COMMAND:
                             if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY, 
-                                                            (void**)&double_param_ptr, OPAL_DOUBLE)) {
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
                                     ORTE_ERROR_LOG(rc);
@@ -838,7 +838,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 OBJ_RELEASE(ans);
                                 return;
                             }
-                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &double_param, 1, OPAL_DOUBLE))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
@@ -846,7 +846,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                         break;
                         case ORCM_GET_POWER_UNDERAGE_COMMAND:
                             if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY, 
-                                                            (void**)&double_param_ptr, OPAL_DOUBLE)) {
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
                                     ORTE_ERROR_LOG(rc);
@@ -860,7 +860,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 OBJ_RELEASE(ans);
                                 return;
                             }
-                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &double_param, 1, OPAL_DOUBLE))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
@@ -912,7 +912,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                         break;
                         case ORCM_GET_POWER_FREQUENCY_COMMAND:
                             if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, 
-                                                            (void**)&double_param_ptr, OPAL_DOUBLE)) {
+                                                            (void**)&float_param_ptr, OPAL_FLOAT)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
                                     ORTE_ERROR_LOG(rc);
@@ -926,7 +926,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 OBJ_RELEASE(ans);
                                 return;
                             }
-                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &double_param, 1, OPAL_DOUBLE))) {
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &float_param, 1, OPAL_FLOAT))) {
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;

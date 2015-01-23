@@ -46,11 +46,11 @@ int orcm_scd_base_get_next_session_id() {
     return last_session_id;
 }
 
-double orcm_scd_base_get_cluster_power_budget() {
+int orcm_scd_base_get_cluster_power_budget() {
     return orcm_scd_base.power_budget;
 }
 
-int orcm_scd_base_set_cluster_power_budget(double budget) {
+int orcm_scd_base_set_cluster_power_budget(int budget) {
     orcm_scd_base.power_budget = budget;
     return ORCM_SUCCESS;
 }
@@ -73,20 +73,20 @@ int orcm_scd_base_set_cluster_power_window(int window) {
     return ORCM_SUCCESS;
 }
 
-double orcm_scd_base_get_cluster_power_overage() {
+int orcm_scd_base_get_cluster_power_overage() {
     return orcm_scd_base.power_overage;
 }
 
-int orcm_scd_base_set_cluster_power_overage(double overage) {
+int orcm_scd_base_set_cluster_power_overage(int overage) {
     orcm_scd_base.power_overage = overage;
     return ORCM_SUCCESS;
 }
 
-double orcm_scd_base_get_cluster_power_underage() {
+int orcm_scd_base_get_cluster_power_underage() {
     return orcm_scd_base.power_underage;
 }
 
-int orcm_scd_base_set_cluster_power_underage(double underage) {
+int orcm_scd_base_set_cluster_power_underage(int underage) {
     orcm_scd_base.power_underage = underage;
     return ORCM_SUCCESS;
 }
@@ -109,11 +109,11 @@ int orcm_scd_base_set_cluster_power_underage_time(int underage_time) {
     return ORCM_SUCCESS;
 }
 
-double orcm_scd_base_get_cluster_power_frequency() {
+float orcm_scd_base_get_cluster_power_frequency() {
     return orcm_scd_base.power_frequency;
 }
 
-int orcm_scd_base_set_cluster_power_frequency(double frequency) {
+int orcm_scd_base_set_cluster_power_frequency(float frequency) {
     orcm_scd_base.power_frequency = frequency;
     return ORCM_SUCCESS;
 }
@@ -121,10 +121,10 @@ int orcm_scd_base_set_cluster_power_frequency(double frequency) {
 static int orcm_scd_base_register(mca_base_register_flag_t flags)
 {
     /* get default power budget for cluster */
-    orcm_scd_base.power_budget = -1.0;
+    orcm_scd_base.power_budget = -1;
     (void) mca_base_var_register("orcm", "scd", "base", "power_budget",
                                  "ORCM Cluster power budget",
-                                 MCA_BASE_VAR_TYPE_DOUBLE, NULL, 0, 0,
+                                 MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,
                                  &orcm_scd_base.power_budget);
@@ -148,19 +148,19 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
                                  &orcm_scd_base.power_window);
 
     /* get default power overage for cluster */
-    orcm_scd_base.power_overage = 0.0;
+    orcm_scd_base.power_overage = 0;
     (void) mca_base_var_register("orcm", "scd", "base", "power_overage",
                                  "ORCM Cluster power overage limit",
-                                 MCA_BASE_VAR_TYPE_DOUBLE, NULL, 0, 0,
+                                 MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,
                                  &orcm_scd_base.power_overage);
 
     /* get default power underage for cluster */
-    orcm_scd_base.power_underage = 0.0;
+    orcm_scd_base.power_underage = 0;
     (void) mca_base_var_register("orcm", "scd", "base", "power_underage",
                                  "ORCM Cluster power underage limit",
-                                 MCA_BASE_VAR_TYPE_DOUBLE, NULL, 0, 0,
+                                 MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                  OPAL_INFO_LVL_9,
                                  MCA_BASE_VAR_SCOPE_READONLY,
                                  &orcm_scd_base.power_underage);

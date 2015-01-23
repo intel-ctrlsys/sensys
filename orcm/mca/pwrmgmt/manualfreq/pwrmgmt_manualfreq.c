@@ -156,9 +156,9 @@ static int set_attributes(orcm_session_id_t session, opal_list_t* attr)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
     int32_t mode, *mode_ptr;
-    double freq, *freq_ptr;
-    double epsilon;
-    double minval;
+    float freq, *freq_ptr;
+    float epsilon;
+    float minval;
     int rc;
     opal_list_t* data = NULL;
     opal_value_t *kv;
@@ -173,7 +173,7 @@ static int set_attributes(orcm_session_id_t session, opal_list_t* attr)
         opal_output(0, "pwrmgmt:manualfreq: Got an incorrect mode for this component");
         return ORCM_ERROR;
     }
-    if (true != orte_get_attribute(attr, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, (void**)&freq_ptr, OPAL_DOUBLE)) {
+    if (true != orte_get_attribute(attr, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, (void**)&freq_ptr, OPAL_FLOAT)) {
         //Nothing to do
         return ORCM_SUCCESS;
     }
@@ -265,7 +265,7 @@ static int get_attributes(orcm_session_id_t session, opal_list_t* attr)
         return ORCM_ERROR;
     }
 
-    if (ORCM_SUCCESS != (rc = orte_set_attribute(attr, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, ORTE_ATTR_GLOBAL, &frequency, OPAL_DOUBLE))) {
+    if (ORCM_SUCCESS != (rc = orte_set_attribute(attr, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, ORTE_ATTR_GLOBAL, &frequency, OPAL_FLOAT))) {
         return ORCM_ERROR;
     }
 

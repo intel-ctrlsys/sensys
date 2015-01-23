@@ -28,15 +28,16 @@
 #define ORCM_PWRMGMT_START_KEY   ORCM_ATTR_KEY_MAX
 
 #define ORCM_PWRMGMT_POWER_MODE_KEY               (ORCM_PWRMGMT_START_KEY + 1) // orcm_pwrmgmt_mode - enum power mode
-#define ORCM_PWRMGMT_POWER_BUDGET_KEY             (ORCM_PWRMGMT_START_KEY + 2) // double - power cap in watts 
-#define ORCM_PWRMGMT_POWER_WINDOW_KEY             (ORCM_PWRMGMT_START_KEY + 3) // uint64_t - time window in msec to calculate energy over
-#define ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY        (ORCM_PWRMGMT_START_KEY + 4) // double - power in watts that we can exceed the power cap
-#define ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY       (ORCM_PWRMGMT_START_KEY + 5) // double - power in watts that we can go under the power cap
-#define ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY   (ORCM_PWRMGMT_START_KEY + 6) // uint64_t - time in ms that we can exceed the power cap
-#define ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY  (ORCM_PWRMGMT_START_KEY + 7) // uint64_t - time in ms that we can go under the power cap
+#define ORCM_PWRMGMT_POWER_BUDGET_KEY             (ORCM_PWRMGMT_START_KEY + 2) // int32_t - power cap in watts 
+#define ORCM_PWRMGMT_POWER_WINDOW_KEY             (ORCM_PWRMGMT_START_KEY + 3) // int32_t - time window in msec to calculate energy over
+#define ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY        (ORCM_PWRMGMT_START_KEY + 4) // int32_t - power in watts that we can exceed the power cap
+#define ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY       (ORCM_PWRMGMT_START_KEY + 5) // int32_t - power in watts that we can go under the power cap
+#define ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY   (ORCM_PWRMGMT_START_KEY + 6) // int32_t - time in ms that we can exceed the power cap
+#define ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY  (ORCM_PWRMGMT_START_KEY + 7) // int32_t - time in ms that we can go under the power cap
 #define ORCM_PWRMGMT_SUPPORTED_MODES_KEY          (ORCM_PWRMGMT_START_KEY + 8) // opal_list (int) - an array of possible supported power modes
-#define ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY        (ORCM_PWRMGMT_START_KEY + 9)  // double - requested target for setting a manual frequency
+#define ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY        (ORCM_PWRMGMT_START_KEY + 9)  // float - requested target for setting a manual frequency
 #define ORCM_PWRMGMT_SELECTED_COMPONENT_KEY      (ORCM_PWRMGMT_START_KEY + 10) // string - The current selected component
+#define ORCM_PWRMGMT_FREQ_BEST_EFFORT_KEY        (ORCM_PWRMGMT_START_KEY + 11) // bool - Can we set the frequency as close as we can to the requested frequency if we do not support it?
 
 /* define a max value for pwrmgmt keys */
 #define ORCM_PWRMGMT_KEY_MAX                      (ORCM_PWRMGMT_START_KEY + 50)

@@ -232,6 +232,7 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
     opal_list_append(newhost->records, (opal_list_item_t *)mkv);
 
     /* Pack the total SOCKET Stats present and to be copied */
+    /* @VINFIX: Collect the CPU information of each CPU in each SOCKET */
     for (k=0; k < obj->infos_count; k++) {
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
         {
@@ -376,17 +377,23 @@ static void generate_test_vector(opal_buffer_t *v)
             opal_output(0,"Found Inventory Item %s : %s",inv_key, obj->infos[k].value);
         }
     }
+
     /* SOCKET Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(dmidata_hwloc_topology, HWLOC_OBJ_SOCKET, 0))) {
         return;
     }
-    /* Pack the total CPU Stats present and to be copied */
-    for (k=0; k < obj->infos_count; k++) {
-        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
-        {
-            inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR);
-            obj->infos[k].value = inv_tv;
-            opal_output(0,"Found Inventory Item %s : %s",inv_key, obj->infos[k].value);
+    /* Set Text Vector for all cousins at the OBJ_SOCKET level */
+    while(NULL != obj->next_cousin)
+    {
+        obj=obj->next_cousin;
+        /* Pack the total CPU Stats present and to be copied */
+        for (k=0; k < obj->infos_count; k++) {
+            if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
+            {
+                inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR);
+                obj->infos[k].value = inv_tv;
+                opal_output(0,"Found Inventory Item %s : %s",inv_key, obj->infos[k].value);
+            }
         }
     }
 

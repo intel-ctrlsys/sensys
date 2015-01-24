@@ -46,6 +46,9 @@ orcm_db_base_t orcm_db_base;
 
 static bool orcm_db_base_create_evbase;
 
+static bool progress_thread_running = false;
+static void *orcm_db_base_progress_thread_engine(opal_object_t *obj);
+
 static int orcm_db_base_register(mca_base_register_flag_t flags)
 {
     orcm_db_base_create_evbase = false;
@@ -82,21 +85,51 @@ static int orcm_db_base_frame_close(void)
     }
     OBJ_DESTRUCT(&orcm_db_base.actives);
 
+    if (orcm_db_base_create_evbase && progress_thread_running) {
+        orcm_db_base.ev_base_active = false;
+        /* break the event loop */
+        opal_event_base_loopbreak(orcm_db_base.ev_base);
+        /* wait for thread to exit */
+        opal_thread_join(&orcm_db_base.progress_thread, NULL);
+        OBJ_DESTRUCT(&orcm_db_base.progress_thread);
+        progress_thread_running = false;
+    }
+
     return mca_base_framework_components_close(&orcm_db_base_framework, NULL);
 }
 
 static int orcm_db_base_frame_open(mca_base_open_flag_t flags)
 {
+    int ret;
+
     OBJ_CONSTRUCT(&orcm_db_base.actives, opal_list_t);
     OBJ_CONSTRUCT(&orcm_db_base.handles, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_db_base.handles, 3, INT_MAX, 1);
 
     if (orcm_db_base_create_evbase) {
         /* create our own event base */
+        orcm_db_base.ev_base = opal_event_base_create();
+        orcm_db_base.ev_base_active = true;
+
         /* spin off a progress thread for it */
+        /* construct the thread object */
+        OBJ_CONSTRUCT(&orcm_db_base.progress_thread, opal_thread_t);
+        /* fork off a thread to progress it */
+        orcm_db_base.progress_thread.t_run =
+                orcm_db_base_progress_thread_engine;
+        progress_thread_running = true;
+        if (OPAL_SUCCESS !=
+                (ret = opal_thread_start(&orcm_db_base.progress_thread))) {
+            progress_thread_running = false;
+            return ret;
+        }
+
+        opal_output(0, "***DEBUG*** created DB framework event base");
     } else {
         /* tie us to the orte_event_base */
         orcm_db_base.ev_base = orte_event_base;
+
+        opal_output(0, "***DEBUG*** DB framework using ORTE event base");
     }
 
     /* Open up all available components */
@@ -127,3 +160,11 @@ OBJ_CLASS_INSTANCE(orcm_db_handle_t,
 OBJ_CLASS_INSTANCE(orcm_db_base_active_component_t,
                    opal_list_item_t,
                    NULL, NULL);
+
+static void *orcm_db_base_progress_thread_engine(opal_object_t *obj)
+{
+    while (orcm_db_base.ev_base_active) {
+        opal_event_loop(orcm_db_base.ev_base, OPAL_EVLOOP_ONCE);
+    }
+    return OPAL_THREAD_CANCELLED;
+}

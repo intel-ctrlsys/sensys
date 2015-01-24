@@ -27,7 +27,7 @@ int orcm_octl_power_set(int cmd, char **argv)
     
     if (4 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"power set\"\n");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     /* setup to receive the result */
@@ -270,7 +270,7 @@ int orcm_octl_power_get(int cmd, char **argv)
     
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"power get\"\n");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
   
     if (ORCM_GET_POWER_MODES_COMMAND == cmd) {

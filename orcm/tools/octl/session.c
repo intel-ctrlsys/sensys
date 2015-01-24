@@ -45,7 +45,7 @@ int orcm_octl_session_cancel(char **argv)
     
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"session cancel\"\n");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
     session = strtol(argv[2], NULL, 10);
     // FIXME: validate session id better

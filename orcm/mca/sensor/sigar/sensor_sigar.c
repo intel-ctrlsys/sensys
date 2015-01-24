@@ -1108,6 +1108,7 @@ static void sigar_log(opal_buffer_t *sample)
         return;
     } else {
         strncpy(global_ts,sampletime,30);
+        global_ts[30]='\0';
         free(sampletime);
     }
     kv = OBJ_NEW(opal_value_t);

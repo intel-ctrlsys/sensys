@@ -23,7 +23,7 @@ int orcm_octl_diag_cpu(char **argv)
 
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"diag cpu\", expecting node regex\n");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     orte_regex_extract_node_names (argv[2], &nodelist);
@@ -143,7 +143,7 @@ int orcm_octl_diag_eth(char **argv)
 
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"diag eth\", expecting node regex\n");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     orte_regex_extract_node_names (argv[2], &nodelist);
@@ -263,7 +263,7 @@ int orcm_octl_diag_mem(char **argv)
 
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "incorrect arguments to \"diag mem\", expecting node regex\n");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     orte_regex_extract_node_names (argv[2], &nodelist);

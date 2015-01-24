@@ -11,6 +11,9 @@
 #include "orcm/constants.h"
 
 #include <stdio.h>
+#ifdef HAVE_PWD_H
+#include <pwd.h>
+#endif
 #ifdef HAVE_TIME_H
 #include <time.h>
 #endif
@@ -148,13 +151,14 @@ int main(int argc, char *argv[])
         orcm_globals.output = 0; /* Default=STDERR */
     }
 
-
-
     /*
      * Since this process can now handle MCA/GMCA parameters, make sure to
      * process them.
      */
-    mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
+    if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
+        opal_finalize_util();
+        exit(1);
+    }
 
 
     if (orcm_globals.help) {
@@ -754,6 +758,23 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
         sigprocmask(0, 0, &sigs);
         sigprocmask(SIG_UNBLOCK, &sigs, 0);
 
+#if OPAL_ENABLE_GETPWUID
+        if (alloc->caller_uid) {
+                struct passwd *pwdent;
+
+#ifdef HAVE_GETPWUID
+                pwdent = getpwuid(alloc->caller_uid);
+                if (NULL == pwdent) {
+                    /* this indicates a problem with the passwd system,
+                     * so pretty-print a message and exit
+                     */
+                    orte_show_help("help-orcmsd.txt",
+                                   "orcmsd:session:dir:nopwname", true);
+                    exit(1);
+                }
+#endif
+        }
+#endif
         if (alloc->caller_gid) {
             rc = setgid(alloc->caller_gid);
             if (rc == -1) {

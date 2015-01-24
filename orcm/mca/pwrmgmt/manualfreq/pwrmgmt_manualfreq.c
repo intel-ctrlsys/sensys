@@ -69,7 +69,6 @@ static int component_select(orcm_session_id_t session, opal_list_t* attr);
 static int set_attributes(orcm_session_id_t session, opal_list_t* attr);
 static int reset_attributes(orcm_session_id_t session, opal_list_t* attr);
 static int get_attributes(orcm_session_id_t session, opal_list_t* attr);
-static int get_current_power(orcm_session_id_t session, double* power);
 
 /* instantiate the module */
 orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt_manualfreq_module = {
@@ -80,8 +79,7 @@ orcm_pwrmgmt_base_API_module_t orcm_pwrmgmt_manualfreq_module = {
     dealloc_notify,
     set_attributes,
     reset_attributes,
-    get_attributes,
-    get_current_power
+    get_attributes
 };
 
 const char* component_name = "manual_frequency";
@@ -158,14 +156,17 @@ static int set_attributes(orcm_session_id_t session, opal_list_t* attr)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
     int32_t mode, *mode_ptr;
-    double freq, *freq_ptr;
-    double epsilon;
-    double minval;
+    float freq, *freq_ptr;
+    bool strict = true;
+    bool *strict_ptr;
+    float epsilon;
+    float minval;
     int rc;
     opal_list_t* data = NULL;
     opal_value_t *kv;
     mode_ptr = &mode;
     freq_ptr = &freq;
+    strict_ptr = &strict;
 
     if (true != orte_get_attribute(attr, ORCM_PWRMGMT_POWER_MODE_KEY, (void**)&mode_ptr, OPAL_INT32)) {
         opal_output(0, "pwrmgmt:manualfreq: no mode was specified in constraints");
@@ -175,10 +176,34 @@ static int set_attributes(orcm_session_id_t session, opal_list_t* attr)
         opal_output(0, "pwrmgmt:manualfreq: Got an incorrect mode for this component");
         return ORCM_ERROR;
     }
-    if (true != orte_get_attribute(attr, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, (void**)&freq_ptr, OPAL_DOUBLE)) {
+    if (true != orte_get_attribute(attr, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, (void**)&freq_ptr, OPAL_FLOAT)) {
         //Nothing to do
         return ORCM_SUCCESS;
     }
+    if(fabsf(freq - ORCM_PWRMGMT_MAX_FREQ) < 0.0001) {
+        orcm_pwrmgmt_freq_get_supported_frequencies(0, &data);
+        frequency = ((opal_value_t*)opal_list_get_first(data))->data.fval;
+        if (ORCM_SUCCESS != (rc = orcm_pwrmgmt_freq_set_max_freq(-1, frequency))) {
+            return rc;
+        }
+        if (ORCM_SUCCESS != (rc = orcm_pwrmgmt_freq_set_min_freq(-1, frequency))) {
+            return rc;
+        }
+        return ORCM_SUCCESS;
+    }
+    if(fabsf(freq - ORCM_PWRMGMT_MIN_FREQ) < 0.0001) {
+        orcm_pwrmgmt_freq_get_supported_frequencies(0, &data);
+        frequency = ((opal_value_t*)opal_list_get_last(data))->data.fval;
+        if (ORCM_SUCCESS != (rc = orcm_pwrmgmt_freq_set_max_freq(-1, frequency))) {
+            return rc;
+        }
+        if (ORCM_SUCCESS != (rc = orcm_pwrmgmt_freq_set_min_freq(-1, frequency))) {
+            return rc;
+        }
+        return ORCM_SUCCESS;
+    }
+
+    orte_get_attribute(attr, ORCM_PWRMGMT_FREQ_STRICT_KEY, (void**)&strict_ptr, OPAL_BOOL);
 
     if (ORTE_PROC_IS_DAEMON) {
         if (0.0 < freq && frequency != freq) { 
@@ -195,6 +220,9 @@ static int set_attributes(orcm_session_id_t session, opal_list_t* attr)
                     minval = epsilon;
                     frequency = kv->data.fval;
                 }
+            }
+            if(strict && minval > 0.0001) {
+                return ORCM_ERR_BAD_PARAM;
             }
             if (0.0 < frequency) {
                 opal_output_verbose(1, orcm_pwrmgmt_base_framework.framework_output,
@@ -267,24 +295,11 @@ static int get_attributes(orcm_session_id_t session, opal_list_t* attr)
         return ORCM_ERROR;
     }
 
-    if (ORCM_SUCCESS != (rc = orte_set_attribute(attr, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, ORTE_ATTR_GLOBAL, &frequency, OPAL_DOUBLE))) {
+    if (ORCM_SUCCESS != (rc = orte_set_attribute(attr, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, ORTE_ATTR_GLOBAL, &frequency, OPAL_FLOAT))) {
         return ORCM_ERROR;
     }
 
     return ORCM_SUCCESS;
-}
-
-static int get_current_power(orcm_session_id_t session, double* power) 
-{
-    opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
-                        "%s pwrmgmt:manualfreq: get current power called",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-
-    if (power != NULL) {
-        *power = -1.0;
-    }
-
-    return ORCM_ERR_NOT_SUPPORTED;
 }
 
 void alloc_notify(orcm_alloc_t* alloc)

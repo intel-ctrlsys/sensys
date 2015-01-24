@@ -69,15 +69,16 @@ BEGIN_C_DECLS
  * Power Management Attributes
  * these are defined in orcm/util/attr.h add new attributes there 
  * ORCM_PWRMGMT_POWER_MODE_KEY               // orcm_pwrmgmt_mode - enum power mode (defined in pwrmgmt_types.h)
- * ORCM_PWRMGMT_POWER_BUDGET_KEY             // double - power cap in watts for the session 
- * ORCM_PWRMGMT_POWER_WINDOW_KEY             // uint64_t - time window in msec to calculate energy over
- * ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY        // double - power in watts that we can exceed the power cap
- * ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY       // double - power in watts that we can go under the power cap
- * ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY   // uint64_t - time in ms that we can exceed the power cap
- * ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY  // uint64_t - time in ms that we can go under the power cap
+ * ORCM_PWRMGMT_POWER_BUDGET_KEY             // uint32_t - power cap in watts for the session 
+ * ORCM_PWRMGMT_POWER_WINDOW_KEY             // uint32_t - time window in msec to calculate energy over
+ * ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY        // uint32_t - power in watts that we can exceed the power cap
+ * ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY       // uint32_t - power in watts that we can go under the power cap
+ * ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY   // uint32_t - time in ms that we can exceed the power cap
+ * ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY  // uint32_t - time in ms that we can go under the power cap
  * ORCM_PWRMGMT_SUPPORTED_MODES_KEY          // opal_list (int) - an array of the possible supported power modes
  * ORCM_PWRMGMT_SELECTED_COMPONENT_KEY       // string - string name of the selected component
- * ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY         // double - requested target for setting a manual frequency
+ * ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY         // float - requested target for setting a manual frequency
+ * ORCM_PWRMGMT_FREQ_STRICT_KEY              // bool - Do we have to set the frequency to the exact requested frequency and fail otherwise?
  */
 
 /*
@@ -190,19 +191,6 @@ typedef int (*orcm_pwrmgmt_base_module_reset_attributes_fn_t)(orcm_session_id_t 
  */
 typedef int (*orcm_pwrmgmt_base_module_get_attributes_fn_t)(orcm_session_id_t session, opal_list_t* attr);
   
-/**
- * Get the current power usage in watts
- *
- * Returns the current power usage in watts measured over the current power window
- *
- * @param[in] session - session id for the allocation
- * @param[out] power - double containing the current power usage by the allocation
- *
- * @retval ORTE_SUCCESS Success
- * @retval ORTE_ERROR   An unspecified error occurred
- */
-typedef int (*orcm_pwrmgmt_base_module_get_current_power_fn_t)(orcm_session_id_t session, double* power);
-
 /* API module */
 /*
  * Ver 1.0
@@ -218,7 +206,6 @@ typedef struct orcm_pwrmgmt_base_API_module_1_0_0_t {
     orcm_pwrmgmt_base_module_set_attributes_fn_t     set_attributes;
     orcm_pwrmgmt_base_module_reset_attributes_fn_t   reset_attributes;
     orcm_pwrmgmt_base_module_get_attributes_fn_t     get_attributes;
-    orcm_pwrmgmt_base_module_get_current_power_fn_t  get_current_power;
 } orcm_pwrmgmt_base_API_module_1_0_0_t;
 
 typedef orcm_pwrmgmt_base_API_module_1_0_0_t orcm_pwrmgmt_base_API_module_t;

@@ -30,9 +30,9 @@ BEGIN_C_DECLS
  * The following nodes all operate under a per allocation power cap:
  *
  * ORCM_PWRMGMT_MODE_AUTO_UNIFORM_FREQ
- * - Ensures that all cpus in the alocation run at the same frequency. The frequency can change
+ * - Ensures that all cpus in the allocation run at the same frequency. The frequency can change
  *   depending on the workload characteristics as long as all cpus stay in synch creating a 
- *   global frequency. This can be done on a time quantum basis or in a continous manner.
+ *   global frequency. This can be done on a time quantum basis or in a continuous manner.
  *
  * ORCM_PWRMGMT_MODE_AUTO_DUAL_UNIFORM_FREQ
  * - This mode is still being defined. However, the general idea is to set some group of cores
@@ -41,10 +41,13 @@ BEGIN_C_DECLS
  *   frequency. It may be that the serial cores are a subset of the parallel cores and they
  *   switch modes as they go into serial regions.
  *
- * ORCM_PWRMGMT_MODE_AUTO_GEO
+ * ORCM_PWRMGMT_MODE_AUTO_GEO_GOAL_MAX_PERF
  * - This is the global energy optimization mode. In this mode cpus in the allocation can all
- *   run at different frequencies in order to optimze to some goal. Examples of goals could be
- *   to maximize performance under a power cap, or to maximize efficiency under a power cap.
+ *   run at different frequencies in order to optimize global performance under a power cap.
+ *
+ * ORCM_PWRMGMT_MODE_AUTO_GEO_GOAL_MAX_EFFIENCY
+ * - This is the global energy optimization mode. In this mode cpus in the allocation can all
+ *   run at different frequencies in order to optimize global efficiency under a power cap.
  */
 
 #define ORCM_PWRMGMT_MODE_NONE                          0
@@ -57,6 +60,10 @@ BEGIN_C_DECLS
  * the maximum+1 of all the modes. The modes numbering cannot have gaps.
  */
 #define ORCM_PWRMGMT_NUM_MODES                          6
+
+
+#define ORCM_PWRMGMT_MAX_FREQ                           255.0
+#define ORCM_PWRMGMT_MIN_FREQ                           256.0
 
 END_C_DECLS
 

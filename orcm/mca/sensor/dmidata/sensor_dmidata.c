@@ -383,7 +383,7 @@ static void generate_test_vector(opal_buffer_t *v)
         return;
     }
     /* Set Text Vector for all cousins at the OBJ_SOCKET level */
-    while(NULL != obj->next_cousin)
+    while(NULL != (obj->next_cousin))
     {
         obj=obj->next_cousin;
         /* Pack the total CPU Stats present and to be copied */

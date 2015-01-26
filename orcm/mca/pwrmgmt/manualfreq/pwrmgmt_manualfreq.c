@@ -122,7 +122,7 @@ static int component_select(orcm_session_id_t session, opal_list_t* attr)
             //The scheduler should have selected a component
             return ORCM_ERROR;
         }
-        if(strncmp(name, component_name,16) ) { 
+        if(strncmp(name, component_name, strlen(component_name)) ) { 
             //We can handle this mode, but we are not the selected component
             return ORCM_ERROR;
         }
@@ -268,7 +268,7 @@ static int reset_attributes(orcm_session_id_t session, opal_list_t* attr)
         //Nothing to do
         return ORCM_SUCCESS;
     }
-    if(strncmp(name, component_name,16) ) {
+    if(strncmp(name, component_name, strlen(component_name)) ) {
         //we are not the selected component
         return ORCM_ERROR;
     }

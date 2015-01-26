@@ -75,7 +75,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
                             "%s sensor:base: starting sensors",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
-        if (!orcm_sensor_base.dbhandle_requested) {
+        if (!orcm_sensor_base.dbhandle_requested && ORCM_PROC_IS_AGGREGATOR) {
             orcm_db.open("sensor", NULL, db_open_cb, NULL);
             orcm_sensor_base.dbhandle_requested = true;
         }
@@ -264,7 +264,9 @@ void orcm_sensor_base_stop(orte_jobid_t job)
         }
     }
     /* Close the DB handle */
-    orcm_db.close(orcm_sensor_base.dbhandle, NULL, NULL);
+    if(true == orcm_sensor_base.dbhandle_requested && ORCM_PROC_IS_AGGREGATOR) {
+        orcm_db.close(orcm_sensor_base.dbhandle, NULL, NULL);
+    }
     return;
 }
 

@@ -606,6 +606,11 @@ static bool compare_ipmi_record (ipmi_inventory_t* newhost , ipmi_inventory_t* o
                     opal_output(0,"IPMI inventory records mismatch: value.data.string mismatch");
                     return false;
                 }
+            } else if ((OPAL_FLOAT == newitem->value.type)){
+                if(newitem->value.data.fval != olditem->value.data.fval) {
+                    opal_output(0,"IPMI inventory records mismatch: value.data.fval mismatch");
+                    return false;
+                }
             } else {
                 opal_output(0,"Invalid data stored as inventory with invalid data type %d", newitem->value.type);
                 return false;

@@ -62,7 +62,7 @@ void orcm_pwrmgmt_base_finalize()
     return;
 }
 
-void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
+int orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
 {
     opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
                         "%s pwrmgmt:base: pwrmgmt alloc_notify called",
@@ -81,7 +81,7 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
      * In this case we keep the orcm_pwrmgmt pointed
      * to the stubs and just return */    
     if(false == rc) {
-        return;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     /* No power management was explicitly requested so we just keep pointing
@@ -94,7 +94,7 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
             orcm_pwrmgmt = orcm_pwrmgmt_stubs;
             selected_module = NULL;
         }
-        return;
+        return ORCM_SUCCESS;
     }
 
     for(int i = 0; i < orcm_pwrmgmt_base.modules.size; i++) {
@@ -135,7 +135,7 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
     
     if(NULL == selected_module) {
         /* We could not find a suitable component to complete the request. */
-        return;
+        return ORCM_ERROR;
     }
 
     opal_output_verbose(1, orcm_pwrmgmt_base_framework.framework_output,
@@ -147,6 +147,7 @@ void orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
         /* give this module a chance to operate on it */
         selected_module->module->alloc_notify(alloc);
     }
+    return ORCM_SUCCESS;
 }
 
 void orcm_pwrmgmt_base_dealloc_notify(orcm_alloc_t* alloc)

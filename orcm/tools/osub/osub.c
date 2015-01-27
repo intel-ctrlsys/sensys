@@ -375,7 +375,14 @@ main(int argc, char *argv[])
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
-    printf("RECEIVED ALLOC ID %d", (int)id);
+    if (0 < (int)id) {
+        printf("RECEIVED ALLOC ID %d", (int)id);
+    }
+    else {
+        printf("Allocation Request Failed\n");
+        OBJ_DESTRUCT(&xfer);
+        return ORCM_ERROR;
+    }
 
     if (true == alloc.interactive) {
         alloc.id = id;

@@ -63,7 +63,7 @@
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void alloc_notify(orcm_alloc_t* alloc);
+static int  alloc_notify(orcm_alloc_t* alloc);
 static void dealloc_notify(orcm_alloc_t* alloc);
 static int component_select(orcm_session_id_t session, opal_list_t* attr);
 static int set_attributes(orcm_session_id_t session, opal_list_t* attr);
@@ -302,7 +302,7 @@ static int get_attributes(orcm_session_id_t session, opal_list_t* attr)
     return ORCM_SUCCESS;
 }
 
-void alloc_notify(orcm_alloc_t* alloc)
+int alloc_notify(orcm_alloc_t* alloc)
 {
     opal_output_verbose(5, orcm_pwrmgmt_base_framework.framework_output,
                         "%s pwrmgmt:manualfreq: alloc_notify called",
@@ -314,18 +314,18 @@ void alloc_notify(orcm_alloc_t* alloc)
     mode_ptr = &mode;
     if (true != orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, (void**)&mode_ptr, OPAL_INT32)) {
         opal_output(0, "pwrmgmt:manualfreq: no mode was specified in constraints"); 
-        return;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     if (ORCM_PWRMGMT_MODE_MANUAL_FREQ != mode) {
         opal_output(0, "pwrmgmt:manualfreq: Got an incorrect mode for this component");
-        return;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     if (ORTE_PROC_IS_SCHEDULER) {
         //We have been selected. Let's add our component string to the attributes.
         if (ORCM_SUCCESS != (rc = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_SELECTED_COMPONENT_KEY, ORTE_ATTR_GLOBAL, (void*)component_name, OPAL_STRING))) {
-            return;
+            return rc;
         }
     }
 
@@ -337,6 +337,7 @@ void alloc_notify(orcm_alloc_t* alloc)
         orcm_pwrmgmt_freq_set_governor(-1, "userspace");
         set_attributes(alloc->id, &alloc->constraints);
     }
+    return ORCM_SUCCESS;
 }
 
 void dealloc_notify(orcm_alloc_t* alloc)

@@ -124,7 +124,7 @@ typedef int (*orcm_pwrmgmt_base_module_component_select_fn_t)(orcm_session_id_t 
  * @param[in] alloc - The allocation structure sent by the scheduler
  *
  */
-typedef void (*orcm_pwrmgmt_base_module_alloc_notify_fn_t)(orcm_alloc_t* alloc);
+typedef int (*orcm_pwrmgmt_base_module_alloc_notify_fn_t)(orcm_alloc_t* alloc);
 
 /**
  * notify the current module at the end of a session

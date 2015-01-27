@@ -203,9 +203,16 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         }
 
         /* select the power management component */
-        OBJ_RETAIN(alloc);
-        orcm_pwrmgmt.alloc_notify(alloc);
-        OBJ_RELEASE(alloc);
+        if (ORCM_SUCCESS != (rc = orcm_pwrmgmt.alloc_notify(alloc))) {
+            /* We couldn't fufill the request, so fail the request */
+            int err = -1;
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &err, 1, ORCM_ALLOC_ID_T))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+            goto answer;
+        }
 
         /* send session id back to sender */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &session->id,

@@ -662,17 +662,19 @@ static int parse_orcm_config(orcm_config_t *cfg,
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-MCA-PARAMS %s", xml->value[0]);
             vals = opal_argv_split(xml->value[0], ',');
-            for (n=0; NULL != vals[n]; n++) {
-                /* add the MCA prefix, if required */
-                if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
-                    asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
-                } else {
-                    val = strdup(vals[n]);
+            if (NULL != vals) {
+                for (n=0; NULL != vals[n]; n++) {
+                    /* add the MCA prefix, if required */
+                    if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
+                        asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
+                    } else {
+                        val = strdup(vals[n]);
+                    }
+                    opal_argv_append_nosize(&cfg->mca_params, val);
+                    free(val);
                 }
-                opal_argv_append_nosize(&cfg->mca_params, val);
-                free(val);
+                opal_argv_free(vals);
             }
-            opal_argv_free(vals);
         }
     } else if (0 == strcmp(xml->name, "log")) {
         if (NULL != xml->value && NULL != xml->value[0]) {
@@ -686,11 +688,13 @@ static int parse_orcm_config(orcm_config_t *cfg,
         if (NULL != xml->value && NULL != xml->value[0]) {
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tENVARS %s", xml->value[0]);
-            vals = opal_argv_split(xml->value[0], ',');
-            for (n=0; NULL != vals[n]; n++) {
-                opal_argv_append_nosize(&cfg->env, vals[n]);
+            if (NULL != vals) {
+                vals = opal_argv_split(xml->value[0], ',');
+                for (n=0; NULL != vals[n]; n++) {
+                    opal_argv_append_nosize(&cfg->env, vals[n]);
+                }
+                opal_argv_free(vals);
             }
-            opal_argv_free(vals);
         }
     } else if  (0 == strcmp(xml->name, "aggregator")) {
         if (NULL != xml->value && NULL != xml->value[0]) {
@@ -1007,49 +1011,51 @@ static int parse_cluster(orcm_cluster_t *cluster,
                                 "\tROW NAME %s", x->value[0]);
             /* define the rows */
             vals = opal_argv_split(x->value[0], ',');
-            names = NULL;
-            for (n=0; NULL != vals[n]; n++) {
-                if (ORTE_SUCCESS != (rc = orte_regex_extract_name_range(vals[n], &names))) {
-                    opal_argv_free(vals);
-                    opal_argv_free(names);
-                    return rc;
-                }
-            }
-            if (NULL == names) {
-                /* that's an error */
-                opal_argv_free(vals);
-                return ORCM_ERR_BAD_PARAM;
-            }
-            /* see if we have each row object - it not, create it */
-            for (n=0; NULL != names[n]; n++) {
-                row = NULL;
-                OPAL_LIST_FOREACH(r, &cluster->rows, orcm_row_t) {
-                    if (0 == strcmp(r->name, names[n])) {
-                        row = r;
-                        break;
-                    }
-                }
-                if (NULL == row) {
-                    opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                                        "\tNEW ROW NAME %s", names[n]);
-                    row = OBJ_NEW(orcm_row_t);
-                    row->name = strdup(names[n]);
-                    opal_list_append(&cluster->rows, &row->super);
-                }
-                /* now cycle thru the rest of this config element and apply
-                 * those values to this row
-                 */
-                OPAL_LIST_FOREACH(y, &x->subvals, orcm_cfgi_xml_parser_t) {
-                    if (ORCM_SUCCESS != (rc = parse_row(row, y))) {
-                        ORTE_ERROR_LOG(rc);
+            if (NULL != vals) {
+                names = NULL;
+                for (n=0; NULL != vals[n]; n++) {
+                    if (ORTE_SUCCESS != (rc = orte_regex_extract_name_range(vals[n], &names))) {
                         opal_argv_free(vals);
                         opal_argv_free(names);
                         return rc;
                     }
                 }
+                if (NULL == names) {
+                    /* that's an error */
+                    opal_argv_free(vals);
+                    return ORCM_ERR_BAD_PARAM;
+                }
+                /* see if we have each row object - it not, create it */
+                for (n=0; NULL != names[n]; n++) {
+                    row = NULL;
+                    OPAL_LIST_FOREACH(r, &cluster->rows, orcm_row_t) {
+                        if (0 == strcmp(r->name, names[n])) {
+                            row = r;
+                            break;
+                        }
+                    }
+                    if (NULL == row) {
+                        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                                            "\tNEW ROW NAME %s", names[n]);
+                        row = OBJ_NEW(orcm_row_t);
+                        row->name = strdup(names[n]);
+                        opal_list_append(&cluster->rows, &row->super);
+                    }
+                    /* now cycle thru the rest of this config element and apply
+                     * those values to this row
+                     */
+                    OPAL_LIST_FOREACH(y, &x->subvals, orcm_cfgi_xml_parser_t) {
+                        if (ORCM_SUCCESS != (rc = parse_row(row, y))) {
+                            ORTE_ERROR_LOG(rc);
+                            opal_argv_free(vals);
+                            opal_argv_free(names);
+                            return rc;
+                        }
+                    }
+                }
+                opal_argv_free(vals);
+                opal_argv_free(names);
             }
-            opal_argv_free(vals);
-            opal_argv_free(names);
         } else {
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tUNKNOWN TAG");

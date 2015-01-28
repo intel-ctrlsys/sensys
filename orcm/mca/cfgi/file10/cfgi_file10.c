@@ -672,17 +672,19 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-MCA-PARAMS %s", xml->value[0]);
             vals = opal_argv_split(xml->value[0], ',');
-            for (n=0; NULL != vals[n]; n++) {
-                /* add the MCA prefix, if required */
-                if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
-                    asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
-                } else {
-                    val = strdup(vals[n]);
+            if (NULL != vals) {
+                for (n=0; NULL != vals[n]; n++) {
+                    /* add the MCA prefix, if required */
+                    if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
+                        asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
+                    } else {
+                        val = strdup(vals[n]);
+                    }
+                    opal_argv_append_nosize(&daemon_cfg.mca_params, val);
+                    free(val);
                 }
-                opal_argv_append_nosize(&daemon_cfg.mca_params, val);
-                free(val);
+                opal_argv_free(vals);
             }
-            opal_argv_free(vals);
         }
     } else if (0 == strcmp(xml->name, "nodes")) {
         /* this is the node entry - it contains an argv-style list of
@@ -753,17 +755,19 @@ static int parse_aggregators(orcm_cfgi_xml_parser_t *xml,
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-MCA-PARAMS %s", xml->value[0]);
             vals = opal_argv_split(xml->value[0], ',');
-            for (n=0; NULL != vals[n]; n++) {
-                /* add the MCA prefix, if required */
-                if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
-                    asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
-                } else {
-                    val = strdup(vals[n]);
+            if (NULL != vals) {
+                for (n=0; NULL != vals[n]; n++) {
+                    /* add the MCA prefix, if required */
+                    if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
+                        asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
+                    } else {
+                        val = strdup(vals[n]);
+                    }
+                    opal_argv_append_nosize(&agg_cfg.mca_params, val);
+                    free(val);
                 }
-                opal_argv_append_nosize(&agg_cfg.mca_params, val);
-                free(val);
+                opal_argv_free(vals);
             }
-            opal_argv_free(vals);
         }
     } else if (0 == strcmp(xml->name, "nodes")) {
         /* save this for later */
@@ -826,17 +830,19 @@ static int parse_scheduler(orcm_cfgi_xml_parser_t *xml)
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-MCA-PARAMS %s", xml->value[0]);
             vals = opal_argv_split(xml->value[0], ',');
-            for (n=0; NULL != vals[n]; n++) {
-                /* add the MCA prefix, if required */
-                if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
-                    asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
-                } else {
-                    val = strdup(vals[n]);
+            if (NULL != vals) {
+                for (n=0; NULL != vals[n]; n++) {
+                    /* add the MCA prefix, if required */
+                    if (0 != strncmp(vals[n], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
+                        asprintf(&val, OPAL_MCA_PREFIX"%s", vals[n]);
+                    } else {
+                        val = strdup(vals[n]);
+                    }
+                    opal_argv_append_nosize(&scd_cfg.mca_params, val);
+                    free(val);
                 }
-                opal_argv_append_nosize(&scd_cfg.mca_params, val);
-                free(val);
+                opal_argv_free(vals);
             }
-            opal_argv_free(vals);
         }
     } else if (0 == strcmp(xml->name, "nodes")) {
         /* this is the node entry - it contains an argv-style list of

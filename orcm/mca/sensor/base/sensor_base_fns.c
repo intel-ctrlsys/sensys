@@ -19,6 +19,7 @@
 
 #include "opal/dss/dss.h"
 #include "opal/mca/event/event.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orcm/mca/db/db.h"
 #include "orcm/runtime/orcm_progress.h"
@@ -43,14 +44,6 @@ static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
     if (0 == status) {
         orcm_sensor_base.dbhandle = handle;
     }
-}
-
-static void* progress_thread_engine(opal_object_t *obj)
-{
-    while (orcm_sensor_base.ev_active) {
-        opal_event_loop(orcm_sensor_base.ev_base, OPAL_EVLOOP_ONCE);
-    }
-    return OPAL_THREAD_CANCELLED;
 }
 
 
@@ -94,7 +87,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
         /* create the event base and start the progress engine, if necessary */
         if (!orcm_sensor_base.ev_active) {
             orcm_sensor_base.ev_active = true;
-            if (NULL == (orcm_sensor_base.ev_base = orcm_start_progress_thread("sensor", progress_thread_engine, NULL))) {
+            if (NULL == (orcm_sensor_base.ev_base = opal_start_progress_thread("sensor", true))) {
                 orcm_sensor_base.ev_active = false;
                 return;
             }
@@ -117,7 +110,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
         }
     } else if (!orcm_sensor_base.ev_active) {
         orcm_sensor_base.ev_active = true;
-        orcm_restart_progress_thread("sensor");
+        opal_restart_progress_thread("sensor");
     }
 
     /* setup to receive nventory data from compute & io Nodes */
@@ -251,7 +244,7 @@ void orcm_sensor_base_stop(orte_jobid_t job)
     if (orcm_sensor_base.ev_active) {
         orcm_sensor_base.ev_active = false;
         /* stop the thread without releasing the event base */
-        orcm_stop_progress_thread("sensor", false);
+        opal_stop_progress_thread("sensor", false);
     }
 
     /* call the stop function of all modules in priority order */

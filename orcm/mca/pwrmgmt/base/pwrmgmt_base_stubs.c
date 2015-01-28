@@ -135,6 +135,9 @@ int orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
     
     if(NULL == selected_module) {
         /* We could not find a suitable component to complete the request. */
+        opal_output(orcm_pwrmgmt_base_framework.framework_output,
+                    "%s pwrmgmt:base: no component found to handle requested power policy",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         return ORCM_ERROR;
     }
 

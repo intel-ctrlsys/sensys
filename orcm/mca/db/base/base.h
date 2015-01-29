@@ -41,6 +41,7 @@ typedef struct {
     opal_list_t actives;
     opal_pointer_array_t handles;
     opal_event_base_t *ev_base;
+    bool ev_base_active;
 } orcm_db_base_t;
 
 typedef struct {

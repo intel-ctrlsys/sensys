@@ -17,6 +17,7 @@
 #include "opal/util/output.h"
 #include "opal/mca/base/base.h"
 #include "opal/dss/dss_types.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orte/runtime/orte_globals.h"
 
@@ -48,7 +49,7 @@ static bool orcm_db_base_create_evbase;
 
 static int orcm_db_base_register(mca_base_register_flag_t flags)
 {
-    orcm_db_base_create_evbase = false;
+    orcm_db_base_create_evbase = true;
     mca_base_var_register("orcm", "db", "base", "create_evbase",
                           "Create a separate event base for processing db operations",
                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
@@ -82,6 +83,11 @@ static int orcm_db_base_frame_close(void)
     }
     OBJ_DESTRUCT(&orcm_db_base.actives);
 
+    if (orcm_db_base_create_evbase && orcm_db_base.ev_base_active) {
+        orcm_db_base.ev_base_active = false;
+        opal_stop_progress_thread("db", true);
+    }
+
     return mca_base_framework_components_close(&orcm_db_base_framework, NULL);
 }
 
@@ -93,7 +99,12 @@ static int orcm_db_base_frame_open(mca_base_open_flag_t flags)
 
     if (orcm_db_base_create_evbase) {
         /* create our own event base */
-        /* spin off a progress thread for it */
+        orcm_db_base.ev_base_active = true;
+        if (NULL == (orcm_db_base.ev_base =
+                opal_start_progress_thread("db", true))) {
+            orcm_db_base.ev_base_active = false;
+            return ORCM_ERROR;
+        }
     } else {
         /* tie us to the orte_event_base */
         orcm_db_base.ev_base = orte_event_base;

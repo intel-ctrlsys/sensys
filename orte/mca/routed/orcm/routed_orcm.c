@@ -591,11 +591,20 @@ static int route_lost(const orte_process_name_t *route)
     }
 
     /* if this is my parent, then reconnect to someone above it */
-
+    if ((NULL != lifeline) &&
+        (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
+                                                     route,
+                                                     lifeline))) {
+        OPAL_OUTPUT_VERBOSE((2, orte_routed_base_framework.framework_output,
+                             "%s routed:orcm: Connection to lifeline %s lost",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             ORTE_NAME_PRINT(lifeline)));
+        return ORTE_ERR_FATAL;
+    } else {
     /* if this is someone under me, then just record it */
-
+        return ORTE_SUCCESS;
+    }
     /* if we can't find a replacement, then error */
-    return ORTE_ERR_FATAL;
 }
 
 static bool route_is_defined(const orte_process_name_t *target)

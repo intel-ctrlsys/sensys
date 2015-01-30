@@ -3,6 +3,7 @@
  * Copyright (c) 2004-2011 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
+ * Copyright (c) 2015      Intel, Inc.  All rights reserved.
  *
  * $COPYRIGHT$
  * 

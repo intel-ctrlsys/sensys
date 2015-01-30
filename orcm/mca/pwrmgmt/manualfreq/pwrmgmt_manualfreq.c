@@ -30,7 +30,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <libudev.h>
 #include <math.h>
 
 #include "opal_stdint.h"

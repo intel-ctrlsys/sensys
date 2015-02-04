@@ -34,7 +34,6 @@ static void take_sample(int fd, short args, void *cbdata);
  * dynamic inventory collection is requested */
 static void collect_inventory_info(opal_buffer_t* inventory_snapshot);
 
-static void log_inventory_info(opal_buffer_t *inventory_snapshot);
 void static recv_inventory(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
                        orte_rml_tag_t tag, void *cbdata);
@@ -143,7 +142,6 @@ void orcm_sensor_base_start(orte_jobid_t job)
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"sensor:base - boot time inventory collection requested");
             /* The collect inventory call could be added to a new thread to avoid getting blocked */
             collect_inventory_info(inventory_snapshot);
-            log_inventory_info(inventory_snapshot);
 
         } else {
             /* Update inventory details when hotswap even occurs
@@ -162,6 +160,8 @@ void collect_inventory_info(opal_buffer_t *inventory_snapshot)
 {
     orcm_sensor_active_module_t *i_module;
     int32_t i,rc;
+    orte_process_name_t *tgt;
+
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: Starting Inventory Collection",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -180,12 +180,6 @@ void collect_inventory_info(opal_buffer_t *inventory_snapshot)
             i_module->module->inventory_collect(inventory_snapshot);
         }
     }
-}
-
-void log_inventory_info(opal_buffer_t *inventory_snapshot)
-{
-    int32_t rc;
-    orte_process_name_t *tgt;
 
     if (ORTE_PROC_IS_CM) {
         /* we send to our daemon */
@@ -201,6 +195,7 @@ void log_inventory_info(opal_buffer_t *inventory_snapshot)
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(inventory_snapshot);
     }
+
 }
 
 static void recv_inventory(int status, orte_process_name_t* sender,

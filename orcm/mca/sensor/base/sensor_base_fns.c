@@ -43,9 +43,16 @@ static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
     if (0 == status) {
         orcm_sensor_base.dbhandle = handle;
         orcm_sensor_base.dbhandle_requested = true;
+        /* Since we got hold of db we can setup to receive inventory
+         * data from compute & io Nodes */
+        if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
+            orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                                    ORCM_RML_TAG_INVENTORY,
+                                    ORTE_RML_PERSISTENT,
+                                    recv_inventory, NULL);
+        }
     }
 }
-
 
 void orcm_sensor_base_start(orte_jobid_t job)
 {
@@ -112,14 +119,6 @@ void orcm_sensor_base_start(orte_jobid_t job)
         opal_restart_progress_thread("sensor");
     }
 
-    /* setup to receive nventory data from compute & io Nodes */
-    if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
-        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
-                                ORCM_RML_TAG_INVENTORY,
-                                ORTE_RML_PERSISTENT,
-                                recv_inventory, NULL);
-    
-    }
     if(true == orcm_sensor_base.collect_inventory) {
         inventory_snapshot = OBJ_NEW(opal_buffer_t);
 
@@ -198,22 +197,11 @@ static void recv_inventory(int status, orte_process_name_t* sender,
         return;
     }
 
-    while((true != orcm_sensor_base.dbhandle_requested) & (timeout < 10))
-    {
-        if(timeout == 0)
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "DB not yet initialized; Stalling..");
-        else
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "%d..",10-timeout);
-        timeout++;
-        sleep(1);
-    }
     if(true != orcm_sensor_base.dbhandle_requested) {
         opal_output(0,"Wait for DB Handle timedout");
         ORTE_ERROR_LOG(ORCM_ERR_TIMEOUT);
         return;
-    }    
+    }
         
     n=1; 
     while (OPAL_SUCCESS == (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
@@ -326,7 +314,6 @@ static void take_sample(int fd, short args, void *cbdata)
     } else {
         OBJ_RELEASE(sampler);
     }
-
     return;
 }
 

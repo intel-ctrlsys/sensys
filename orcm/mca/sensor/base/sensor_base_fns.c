@@ -43,6 +43,7 @@ static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
 {
     if (0 == status) {
         orcm_sensor_base.dbhandle = handle;
+        orcm_sensor_base.dbhandle_requested = true;
     }
 }
 
@@ -50,7 +51,7 @@ static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
 void orcm_sensor_base_start(orte_jobid_t job)
 {
     orcm_sensor_active_module_t *i_module;
-    int i;
+    int i, timeout = 0;
     opal_buffer_t *inventory_snapshot;
 
     orcm_sensor_sampler_t *sampler;
@@ -70,7 +71,21 @@ void orcm_sensor_base_start(orte_jobid_t job)
 
         if (!orcm_sensor_base.dbhandle_requested && ORCM_PROC_IS_AGGREGATOR) {
             orcm_db.open("sensor", NULL, db_open_cb, NULL);
-            orcm_sensor_base.dbhandle_requested = true;
+        }
+
+        while((true != orcm_sensor_base.dbhandle_requested) & (timeout < 10))
+        {
+            if(timeout == 0)
+                opal_output(0,"DB not yet initialized; Stalling..");
+            else
+                opal_output(0,"tick.. tick.. %d",10-timeout);
+            timeout++;
+            sleep(1);
+        }
+        if(true != orcm_sensor_base.dbhandle_requested) {
+            opal_output(0,"Wait for DB Handle timedout");
+            ORTE_ERROR_LOG(ORCM_ERR_TIMEOUT);
+            return;
         }
 
         /* call the start function of all modules in priority order */
@@ -259,6 +274,7 @@ void orcm_sensor_base_stop(orte_jobid_t job)
     /* Close the DB handle */
     if(true == orcm_sensor_base.dbhandle_requested && ORCM_PROC_IS_AGGREGATOR) {
         orcm_db.close(orcm_sensor_base.dbhandle, NULL, NULL);
+        orcm_sensor_base.dbhandle_requested = false;
     }
     return;
 }

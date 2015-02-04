@@ -50,7 +50,7 @@ static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
 void orcm_sensor_base_start(orte_jobid_t job)
 {
     orcm_sensor_active_module_t *i_module;
-    int i, timeout = 0;
+    int i;
     opal_buffer_t *inventory_snapshot;
 
     orcm_sensor_sampler_t *sampler;
@@ -70,23 +70,6 @@ void orcm_sensor_base_start(orte_jobid_t job)
 
         if (!orcm_sensor_base.dbhandle_requested && ORCM_PROC_IS_AGGREGATOR) {
             orcm_db.open("sensor", NULL, db_open_cb, NULL);
-        }
-
-        while((true != orcm_sensor_base.dbhandle_requested) & (timeout < 10))
-        {
-            if(timeout == 0)
-                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                    "DB not yet initialized; Stalling..");
-            else
-                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                    "%d..",10-timeout);
-            timeout++;
-            sleep(1);
-        }
-        if(true != orcm_sensor_base.dbhandle_requested) {
-            opal_output(0,"Wait for DB Handle timedout");
-            ORTE_ERROR_LOG(ORCM_ERR_TIMEOUT);
-            return;
         }
 
         /* call the start function of all modules in priority order */
@@ -205,7 +188,7 @@ static void recv_inventory(int status, orte_process_name_t* sender,
                        orte_rml_tag_t tag, void *cbdata)
 {
     char *temp, *hostname;
-    int32_t i, n, rc;
+    int32_t i, n, rc, timeout =0;
     orcm_sensor_active_module_t *i_module;
 
     /* unpack the host this came from */
@@ -214,6 +197,23 @@ static void recv_inventory(int status, orte_process_name_t* sender,
         ORTE_ERROR_LOG(rc);
         return;
     }
+
+    while((true != orcm_sensor_base.dbhandle_requested) & (timeout < 10))
+    {
+        if(timeout == 0)
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "DB not yet initialized; Stalling..");
+        else
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "%d..",10-timeout);
+        timeout++;
+        sleep(1);
+    }
+    if(true != orcm_sensor_base.dbhandle_requested) {
+        opal_output(0,"Wait for DB Handle timedout");
+        ORTE_ERROR_LOG(ORCM_ERR_TIMEOUT);
+        return;
+    }    
         
     n=1; 
     while (OPAL_SUCCESS == (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {

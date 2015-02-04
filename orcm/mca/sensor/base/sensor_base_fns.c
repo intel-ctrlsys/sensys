@@ -75,9 +75,11 @@ void orcm_sensor_base_start(orte_jobid_t job)
         while((true != orcm_sensor_base.dbhandle_requested) & (timeout < 10))
         {
             if(timeout == 0)
-                opal_output(0,"DB not yet initialized; Stalling..");
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                    "DB not yet initialized; Stalling..");
             else
-                opal_output(0,"tick.. tick.. %d",10-timeout);
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                    "%d..",10-timeout);
             timeout++;
             sleep(1);
         }

@@ -202,8 +202,7 @@ static void recv_inventory(int status, orte_process_name_t* sender,
         ORTE_ERROR_LOG(ORCM_ERR_TIMEOUT);
         return;
     }
-        
-    n=1; 
+    n=1;
     while (OPAL_SUCCESS == (rc = opal_dss.unpack(buffer, &temp, &n, OPAL_STRING))) {
         if (NULL != temp) {
             /* Iterate through all available components and pass the buffer to appropriate one*/

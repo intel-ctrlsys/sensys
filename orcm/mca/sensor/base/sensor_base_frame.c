@@ -132,7 +132,7 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
 
     /* initialize globals */
     orcm_sensor_base.dbhandle = -1;
-    orcm_sensor_base.dbhandle_requested = false;
+    orcm_sensor_base.dbhandle_acquired = false;
     orcm_sensor_base.ev_active = false;
 
     /* construct the array of modules */

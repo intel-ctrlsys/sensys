@@ -42,7 +42,7 @@ static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
 {
     if (0 == status) {
         orcm_sensor_base.dbhandle = handle;
-        orcm_sensor_base.dbhandle_requested = true;
+        orcm_sensor_base.dbhandle_acquired = true;
         /* Since we got hold of db we can setup to receive inventory
          * data from compute & io Nodes */
         if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
@@ -75,7 +75,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
                             "%s sensor:base: starting sensors",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
-        if (!orcm_sensor_base.dbhandle_requested && ORCM_PROC_IS_AGGREGATOR) {
+        if (!orcm_sensor_base.dbhandle_acquired && ORCM_PROC_IS_AGGREGATOR) {
             orcm_db.open("sensor", NULL, db_open_cb, NULL);
         }
 
@@ -187,7 +187,7 @@ static void recv_inventory(int status, orte_process_name_t* sender,
                        orte_rml_tag_t tag, void *cbdata)
 {
     char *temp, *hostname;
-    int32_t i, n, rc, timeout =0;
+    int32_t i, n, rc;
     orcm_sensor_active_module_t *i_module;
 
     /* unpack the host this came from */
@@ -197,8 +197,8 @@ static void recv_inventory(int status, orte_process_name_t* sender,
         return;
     }
 
-    if(true != orcm_sensor_base.dbhandle_requested) {
-        opal_output(0,"Wait for DB Handle timedout");
+    if(true != orcm_sensor_base.dbhandle_acquired) {
+        opal_output(0,"Unable to acquire DB Handle");
         ORTE_ERROR_LOG(ORCM_ERR_TIMEOUT);
         return;
     }
@@ -257,9 +257,9 @@ void orcm_sensor_base_stop(orte_jobid_t job)
         }
     }
     /* Close the DB handle */
-    if(true == orcm_sensor_base.dbhandle_requested && ORCM_PROC_IS_AGGREGATOR) {
+    if(true == orcm_sensor_base.dbhandle_acquired && ORCM_PROC_IS_AGGREGATOR) {
         orcm_db.close(orcm_sensor_base.dbhandle, NULL, NULL);
-        orcm_sensor_base.dbhandle_requested = false;
+        orcm_sensor_base.dbhandle_acquired = false;
     }
     return;
 }

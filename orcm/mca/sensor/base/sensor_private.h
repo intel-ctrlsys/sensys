@@ -46,7 +46,7 @@ typedef struct {
     bool log_samples;
     int sample_rate;    /* Holds the rate at which the sensors need to be sampeled in seconds */
     int dbhandle;       /* Stores the unique database handle assigned for sensor framework after calling db_open */
-    bool dbhandle_requested;
+    bool dbhandle_acquired;
     bool collect_metrics;       /* Holds the user configured variable indicating whether sensor metric sampling is enabled or not */
     bool collect_inventory;     /* Holds the user configured variable indicating whether inventory collection is enabled or not */
     bool set_dynamic_inventory; /* Holds the user configured variable indicating whether dynamic inventory collection is enabled or not */

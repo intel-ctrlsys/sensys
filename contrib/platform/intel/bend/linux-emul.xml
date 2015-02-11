@@ -1,0 +1,98 @@
+<?xml version="2.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<configuration>
+
+<cluster>
+    <value>CLUSTER</value>
+  <row>
+      <value>A</value>
+    <controller>
+        <value>bend001</value>
+        <aggregator>
+          <value>y</value>
+        </aggregator>
+        <port>
+          <value>55815</value>
+        </port>
+        <mca-params>
+          <value>sensor_base_sample_rate=5,sensor_heartbeat_rate=10</value>
+        </mca-params>
+    </controller>
+    <rack>
+      <value>A1</value>
+      <controller>
+        <value>A1control</value>
+        <aggregator>
+          <value>y</value>
+        </aggregator>
+        <port>
+          <value>55815</value>
+        </port>
+        <mca-params>
+          <value>sensor_base_sample_rate=5,sensor_heartbeat_rate=10</value>
+        </mca-params>
+      </controller>
+      <node>
+        <value>#5</value>
+        <name>
+          <value>@.###</value>
+        </name>
+        <port>
+          <value>55815</value>
+        </port>
+        <mca-params>
+          <value>sensor_base_sample_rate=5,sensor_heartbeat_rate=10</value>
+        </mca-params>
+      </node>
+    </rack>
+     <rack>
+      <value>A2</value>
+      <controller>
+        <value>A2control</value>
+        <aggregator>
+          <value>y</value>
+        </aggregator>
+        <port>
+          <value>55815</value>
+        </port>
+        <mca-params>
+          <value>sensor_base_sample_rate=5,sensor_heartbeat_rate=10</value>
+        </mca-params>
+      </controller>
+      <node>
+        <value>#3</value>
+        <name>
+          <value>@.###</value>
+        </name>
+        <port>
+          <value>55815</value>
+        </port>
+        <mca-params>
+          <value>sensor_base_sample_rate=5,sensor_heartbeat_rate=10</value>
+        </mca-params>
+      </node>
+    </rack>
+  </row>
+</cluster>
+
+<scheduler>
+  <description>Identify the node that houses the ORCM scheduler. Only
+  one allowed at this time</description>
+  <node>
+    <value>bend001</value>
+  </node>
+  <port>
+    <value>55820</value>
+    <description>Port used by orcm scheduler</description>
+  </port>
+  <mca-params>
+    <description>List of MCA params to be used by scheduler</description>
+  </mca-params>
+  <queues>
+    <value>quick:100:a[4:1-200]</value>
+    <value>slow:20:b[4:500-512]</value>
+  </queues>
+</scheduler>
+
+</configuration>

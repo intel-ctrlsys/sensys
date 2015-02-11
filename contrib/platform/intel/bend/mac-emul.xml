@@ -1,0 +1,67 @@
+<?xml version="2.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<configuration>
+
+<cluster>
+    <value>CLUSTER</value>
+  <row>
+      <value>a-d</value>
+    <controller>
+        <value>@000</value>
+        <aggregator>y</aggregator>
+        <port>
+          <value>55815</value>
+        </port>
+        <mca-params>
+          <value>sensor_base_sample_rate=5,sensor_heartbeat_rate=10</value>
+        </mca-params>
+    </controller>
+    <rack>
+      <value>#128</value>
+      <controller>
+        <value>@###</value>
+        <aggregator>y</aggregator>
+        <port>
+          <value>55815</value>
+        </port>
+        <mca-params>
+          <value>sensor_base_sample_rate=5,sensor_heartbeat_rate=10</value>
+        </mca-params>
+      </controller>
+      <node>
+        <value>#80</value>
+        <name>
+          <value>@.###</value>
+        </name>
+        <port>
+          <value>55815</value>
+        </port>
+        <mca-params>
+          <value>sensor_base_sample_rate=5,sensor_heartbeat_rate=10</value>
+        </mca-params>
+      </node>
+    </rack>
+  </row>
+</cluster>
+
+<scheduler>
+  <description>Identify the node that houses the ORCM scheduler. Only
+  one allowed at this time</description>
+  <node>
+    <value>localhost</value>
+  </node>
+  <port>
+    <value>55820</value>
+    <description>Port used by orcm scheduler</description>
+  </port>
+  <mca-params>
+    <description>List of MCA params to be used by scheduler</description>
+  </mca-params>
+  <queues>
+    <value>quick:100:a[4:1-200]</value>
+    <value>slow:20:b[4:500-512]</value>
+  </queues>
+</scheduler>
+
+</configuration>

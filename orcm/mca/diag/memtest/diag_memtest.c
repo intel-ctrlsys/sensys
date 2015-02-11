@@ -167,23 +167,29 @@ static void memcheck(unsigned int *addr, size_t size) {
 
 }
 
-static void mycleanup(int dbhandle, int status,
-                      opal_list_t *kvs, void *cbdata)
-{
-    OPAL_LIST_RELEASE(kvs);
-}
 
 static int memtest_log(opal_buffer_t *buf)
 {
-    time_t diag_time;
     int cnt, rc;
+    time_t start_time;
+    time_t end_time;
+    struct tm *starttime;
+    struct tm *endtime;
     char *nodename;
-    opal_list_t *vals;
-    opal_value_t *kv;
+    char *diag_type;
+    char *diag_subtype;
+    char *diag_result;
 
-    /* Unpack the Time */
+    /* Unpack start Time */
     cnt = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_time,
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &start_time,
+                                              &cnt, OPAL_TIME))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    /* Unpack end time */  
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &end_time,
                                               &cnt, OPAL_TIME))) {
         ORTE_ERROR_LOG(rc);
         return rc;
@@ -196,32 +202,34 @@ static int memtest_log(opal_buffer_t *buf)
         return rc;
     }
 
+    /* Unpack the diag type */
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_type,
+                                              &cnt, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    /* Unpack the diag subtype */
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_subtype,
+                                              &cnt, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
     /* Unpack our results */
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_result,
+                                              &cnt, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
 
-    /* create opal value array to send to db */
-    vals = OBJ_NEW(opal_list_t);
+    starttime = localtime(&start_time);
+    endtime   = localtime(&end_time); 
 
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("time");
-    kv->type = OPAL_TIMEVAL;
-    kv->data.tv.tv_sec = diag_time;
-    opal_list_append(vals, &kv->super);
-
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("nodename");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup(nodename);
-    opal_list_append(vals, &kv->super);
-    free(nodename);
-
-    /* add results */
-
-    /* send to db */
+    /* send diag test result to db */
     if (0 <= orcm_diag_base.dbhandle) {
-        /* TODO: change this to whatever db function will be used for diags */
-        orcm_db.store(orcm_diag_base.dbhandle, "memtest", vals, mycleanup, NULL);
-    } else {
-        OPAL_LIST_RELEASE(vals);
+        orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, diag_type, diag_subtype, starttime, endtime, 
+                                 NULL, diag_result, NULL, NULL, NULL);
     }
 
     return ORCM_SUCCESS;
@@ -238,7 +246,11 @@ static void memtest_run(int sd, short args, void *cbdata)
     orcm_diag_cmd_flag_t command = ORCM_DIAG_AGG_COMMAND;
     opal_buffer_t *data = NULL;
     time_t now;
+    time_t start_time;
     char *compname;
+    char *diag_type;
+    char *diag_subtype;
+    char *diag_result; 
     orte_process_name_t *tgt;
     int rc;
 
@@ -257,6 +269,8 @@ static void memtest_run(int sd, short args, void *cbdata)
         /* still run diags? */
         /* return; */
     }
+
+    start_time = time(NULL);
 
     sysinfo(&info);
 
@@ -346,7 +360,7 @@ static void memtest_run(int sd, short args, void *cbdata)
         opal_output(0, "%s Diagnostic checking memory:\t\t\t[ FAIL ]\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     } else {
-        opal_output(0, "%s Diagnostic checking memory:\t\t\t[  OK  ]\n",
+        opal_output(0, "%s Diagnostic checking memory:\t\t\t[ PASS ]\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
@@ -370,6 +384,13 @@ sendresults:
     }
     free(compname);
 
+    /* Pack start Time */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &start_time, 1, OPAL_TIME))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
     /* Pack the Time */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIME))) {
         ORTE_ERROR_LOG(rc);
@@ -384,7 +405,40 @@ sendresults:
         return;
     }
 
+    /* Pack diag type */
+    diag_type = strdup("memory");
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &diag_type, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+    free(diag_type);
+
+    /* Pack diag subtype */
+    diag_subtype = strdup("stress test");
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &diag_subtype, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+    free(diag_subtype);
+
     /* Pack our results */
+    if ( mem_diag_ret & DIAG_MEM_NOTRUN ) {
+        diag_result = strdup("NOTRUN");
+    } else if ( ORCM_SUCCESS != mem_diag_ret ) {
+        diag_result = strdup("FAIL");
+    } else {
+        diag_result = strdup("PASS");
+    }
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &diag_result, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+    free(diag_result);
+
 
     /* send results to aggregator/sender */
     if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, data,

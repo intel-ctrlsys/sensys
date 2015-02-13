@@ -99,23 +99,26 @@ static void finalize(void)
 }
 
 
-static void mycleanup(int dbhandle, int status,
-                      opal_list_t *kvs, void *cbdata)
-{
-    OPAL_LIST_RELEASE(kvs);
-}
-
 static int cputest_log(opal_buffer_t *buf)
 {
-    time_t diag_time;
     int cnt, rc;
+    time_t start_time;
+    time_t end_time;
+    struct tm *starttime;
+    struct tm *endtime;
     char *nodename;
-    opal_list_t *vals;
-    opal_value_t *kv;
+    int diag_result;
 
-    /* Unpack the Time */
+    /* Unpack start Time */
     cnt = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_time,
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &start_time,
+                                              &cnt, OPAL_TIME))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    /* Unpack end time */
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &end_time,
                                               &cnt, OPAL_TIME))) {
         ORTE_ERROR_LOG(rc);
         return rc;
@@ -129,31 +132,40 @@ static int cputest_log(opal_buffer_t *buf)
     }
 
     /* Unpack our results */
-
-    /* create opal value array to send to db */
-    vals = OBJ_NEW(opal_list_t);
-
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("time");
-    kv->type = OPAL_TIMEVAL;
-    kv->data.tv.tv_sec = diag_time;
-    opal_list_append(vals, &kv->super);
-
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("nodename");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup(nodename);
-    opal_list_append(vals, &kv->super);
-    free(nodename);
-
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_result,
+                                              &cnt, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
     /* add results */
 
-    /* send to db */
+    starttime = localtime(&start_time);
+    endtime   = localtime(&end_time);
+    /* send diag test result to db */
     if (0 <= orcm_diag_base.dbhandle) {
-        /* TODO: change this to whatever db function will be used for diags */
-        orcm_db.store(orcm_diag_base.dbhandle, "cputest", vals, mycleanup, NULL);
-    } else {
-        OPAL_LIST_RELEASE(vals);
+        if ( DIAG_CPU_FP_TST & diag_result ) {
+            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "floating point", starttime, endtime,
+                                 NULL, "FAIL", NULL, NULL, NULL);
+        } else {
+            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "floating point", starttime, endtime,
+                                 NULL, "PASS", NULL, NULL, NULL);
+        }
+
+        if ( DIAG_CPU_PRIME_TST & diag_result ) {
+            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "prime number", starttime, endtime,
+                                 NULL, "FAIL", NULL, NULL, NULL);
+        } else {
+            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "prime number", starttime, endtime,
+                                 NULL, "PASS", NULL, NULL, NULL);
+        }
+
+        if ( DIAG_CPU_STRESS_TST & diag_result ) {
+            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "stress test", starttime, endtime,
+                                 NULL, "FAIL", NULL, NULL, NULL);
+        } else {
+            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "stress test", starttime, endtime,
+                                 NULL, "PASS", NULL, NULL, NULL);
+        }
     }
 
     return ORCM_SUCCESS;
@@ -168,6 +180,7 @@ static void cputest_run(int sd, short args, void *cbdata)
     orcm_diag_cmd_flag_t command = ORCM_DIAG_AGG_COMMAND;
     opal_buffer_t *data = NULL;
     time_t now;
+    time_t start_time;
     char *compname;
     orte_process_name_t *tgt;
     int rc;
@@ -188,6 +201,8 @@ static void cputest_run(int sd, short args, void *cbdata)
         /* return; */
     }
 
+    start_time = time(NULL);
+
     numprocs = get_nprocs();
 
     retval = cpu_fp_test();
@@ -196,7 +211,7 @@ static void cputest_run(int sd, short args, void *cbdata)
         opal_output(0, "%s Diagnostic checking CPU floating point:  \t\t[ FAIL ]\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     } else {
-        opal_output(0, "%s Diagnostic checking CPU floating point:  \t\t[  OK  ]\n",
+        opal_output(0, "%s Diagnostic checking CPU floating point:  \t\t[ PASS ]\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
@@ -206,7 +221,7 @@ static void cputest_run(int sd, short args, void *cbdata)
         opal_output(0, "%s Diagnostic checking CPU prime generation:\t\t[ FAIL ]\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     } else {
-        opal_output(0, "%s Diagnostic checking CPU prime generation:\t\t[  OK  ]\n",
+        opal_output(0, "%s Diagnostic checking CPU prime generation:\t\t[ PASS ]\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
@@ -216,7 +231,7 @@ static void cputest_run(int sd, short args, void *cbdata)
         opal_output(0, "%s Diagnostic checking CPU stress:          \t\t[ FAIL ]\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     } else {
-        opal_output(0, "%s Diagnostic checking CPU stress:          \t\t[  OK  ]\n",
+        opal_output(0, "%s Diagnostic checking CPU stress:          \t\t[ PASS ]\n",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
@@ -239,6 +254,13 @@ static void cputest_run(int sd, short args, void *cbdata)
     }
     free(compname);
 
+    /* Pack start Time */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &start_time, 1, OPAL_TIME))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
     /* Pack the Time */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIME))) {
         ORTE_ERROR_LOG(rc);
@@ -254,6 +276,11 @@ static void cputest_run(int sd, short args, void *cbdata)
     }
 
     /* Pack our results */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &cpu_diag_ret, 1, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
 
     /* send results to aggregator/sender */
     if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, data,

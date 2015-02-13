@@ -98,23 +98,29 @@ static void finalize(void)
 }
 
 
-static void mycleanup(int dbhandle, int status,
-                      opal_list_t *kvs, void *cbdata)
-{
-    OPAL_LIST_RELEASE(kvs);
-}
-
 static int ethtest_log(opal_buffer_t *buf)
 {
-    time_t diag_time;
     int cnt, rc;
+    time_t start_time;
+    time_t end_time;
+    struct tm *starttime;
+    struct tm *endtime;
     char *nodename;
-    opal_list_t *vals;
-    opal_value_t *kv;
+    char *diag_subtype;
+    char *diag_result;
+    int result_num = 0;
+    int subtest_result = 0;
 
-    /* Unpack the Time */
+    /* Unpack start Time */
     cnt = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_time,
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &start_time,
+                                              &cnt, OPAL_TIME))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    /* Unpack end time */
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &end_time,
                                               &cnt, OPAL_TIME))) {
         ORTE_ERROR_LOG(rc);
         return rc;
@@ -127,33 +133,51 @@ static int ethtest_log(opal_buffer_t *buf)
         return rc;
     }
 
-    /* Unpack our results */
-
-    /* create opal value array to send to db */
-    vals = OBJ_NEW(opal_list_t);
-
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("time");
-    kv->type = OPAL_TIMEVAL;
-    kv->data.tv.tv_sec = diag_time;
-    opal_list_append(vals, &kv->super);
-
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("nodename");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup(nodename);
-    opal_list_append(vals, &kv->super);
-    free(nodename);
-
-    /* add results */
-
-    /* send to db */
-    if (0 <= orcm_diag_base.dbhandle) {
-        /* TODO: change this to whatever db function will be used for diags */
-        orcm_db.store(orcm_diag_base.dbhandle, "ethtest", vals, mycleanup, NULL);
-    } else {
-        OPAL_LIST_RELEASE(vals);
+    /* Unpack overall results */
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_result,
+                                              &cnt, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
     }
+
+    /* Unpack number of result details */
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &result_num,
+                                              &cnt, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    starttime = localtime(&start_time);
+    endtime   = localtime(&end_time);
+
+    /* send overall diag test result to db */
+    if (0 <= orcm_diag_base.dbhandle) {
+        orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "ethernet", "all", starttime, endtime,
+                                 NULL, diag_result, NULL, NULL, NULL);
+    }
+
+    /* add results in details */
+    while ( result_num ) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_subtype,
+                                              &cnt, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &subtest_result,
+                                              &cnt, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+
+        /* send detail diag test result to db */
+        if (0 <= orcm_diag_base.dbhandle) {
+            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "ethernet", diag_subtype, starttime, endtime, 
+                                 NULL, subtest_result ? "FAIL" : "PASS", NULL, NULL, NULL);
+        }
+        result_num--;
+    }
+
 
     return ORCM_SUCCESS;
 }
@@ -174,7 +198,11 @@ static void ethtest_run(int sd, short args, void *cbdata)
     orcm_diag_cmd_flag_t command = ORCM_DIAG_AGG_COMMAND;
     opal_buffer_t *data = NULL;
     time_t now;
+    time_t start_time;
     char *compname;
+    char *diag_result;
+    char *diag_subtype;
+    int  result_num = 0;
     orte_process_name_t *tgt;
 
     if (ORTE_PROC_IS_CM) {
@@ -192,6 +220,8 @@ static void ethtest_run(int sd, short args, void *cbdata)
         /* still run diags? */
         /* return; */
     }
+
+    start_time = time(NULL);
 
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
@@ -240,7 +270,6 @@ static void ethtest_run(int sd, short args, void *cbdata)
 
     ret = ioctl(sock, SIOCETHTOOL, &ifr);
     if ( ret ) {
-        free(gstring);
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s diag:ethtool ioctl GSTRINGS failed - %s",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), strerror(errno));
@@ -258,7 +287,6 @@ static void ethtest_run(int sd, short args, void *cbdata)
         opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                             "%s diag:calloc failed",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        free(gstring);
         eth_diag_ret |= DIAG_ETH_NOTRUN;
         goto sendresults;
     }
@@ -278,8 +306,7 @@ static void ethtest_run(int sd, short args, void *cbdata)
                             "%s diag:ethtool ioctl TEST failed - %s",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), strerror(errno));
         eth_diag_ret |= DIAG_ETH_NOTRUN;
-        free(eth_test);
-        free(gstring);
+        result_num = 0;
         goto sendresults;
     } else {
         opal_output_verbose(5, orcm_diag_base_framework.framework_output,
@@ -287,13 +314,21 @@ static void ethtest_run(int sd, short args, void *cbdata)
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), resource );
     }
 
+    result_num = gstring->len;
     ret = dump_eth_test(resource, eth_test, gstring);
-    free(eth_test);
-    free(gstring);
 
 sendresults:
     free(resource);
     close(sock);
+    if ( eth_diag_ret & DIAG_ETH_NOTRUN ) {
+        diag_result = strdup("NOTRUN");
+    } else if ( eth_test->flags & ETH_TEST_FL_FAILED ) {
+        diag_result = strdup("FAIL");
+        result_num = 0;
+    } else {
+        diag_result = strdup("PASS");
+    }
+
     now = time(NULL);
     data = OBJ_NEW(opal_buffer_t);
 
@@ -301,6 +336,8 @@ sendresults:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &command, 1, ORCM_DIAG_CMD_T))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
+        free(eth_test);
+        free(gstring);
         return;
     }
 
@@ -309,14 +346,27 @@ sendresults:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &compname, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
+        free(eth_test);
+        free(gstring);
         return;
     }
     free(compname);
+
+    /* Pack start Time */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &start_time, 1, OPAL_TIME))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        free(eth_test);
+        free(gstring);
+        return;
+    }
 
     /* Pack the Time */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIME))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
+        free(eth_test);
+        free(gstring);
         return;
     }
 
@@ -324,11 +374,54 @@ sendresults:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
+        free(eth_test);
+        free(gstring);
         return;
     }
 
-    /* Pack our results */
+    /* Pack overall result */
 
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &diag_result, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        free(eth_test);
+        free(gstring);
+        return;
+    }
+    free(diag_result);
+
+    /* Pack the number of result details */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &result_num, 1, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        free(eth_test);
+        free(gstring);
+        return;
+    }
+
+    /* Pack result details */
+    for (i = 0; i < result_num; i++) {
+        diag_subtype = strdup((char *)(gstring->data + i * ETH_GSTRING_LEN));
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &diag_subtype, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            free(eth_test);
+            free(gstring);
+            return;
+        }
+        free(diag_subtype);
+
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &(eth_test->data[i]), 1, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            free(eth_test);
+            free(gstring);
+            return;
+        }
+    }
+
+    free(eth_test);
+    free(gstring);
     /* send results to aggregator/sender */
     if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, data,
                                                       ORCM_RML_TAG_DIAG,
@@ -350,7 +443,7 @@ static int dump_eth_test(char *resource,
 
     ret = eth_test->flags & ETH_TEST_FL_FAILED;
     opal_output(0, "%s Diagnostic checking ethernet:          \t\t%s\n",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ret ? "[ FAIL ]" : "[  OK  ]");
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ret ? "[ FAIL ]" : "[ PASS ]");
 
     if ( strings->len ) {
         opal_output(0, "%s Diagnostic ethernet test details:\n",
@@ -363,7 +456,7 @@ static int dump_eth_test(char *resource,
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         resource,
                         (char *)(strings->data + i * ETH_GSTRING_LEN),
-                        (long)eth_test->data[i] ? "[ FAIL ]" : "[  OK  ]" );
+                        (long)eth_test->data[i] ? "[ FAIL ]" : "[ PASS ]" );
     }
 
     return ret;

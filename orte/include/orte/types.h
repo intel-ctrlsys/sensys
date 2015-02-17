@@ -139,7 +139,6 @@ typedef struct {
         opal_byte_object_t bo;
         opal_buffer_t buf;
         float fval;
-        double dval;
         struct timeval tv;
         void *ptr;  // never packed or passed anywhere
         orte_vpid_t vpid;

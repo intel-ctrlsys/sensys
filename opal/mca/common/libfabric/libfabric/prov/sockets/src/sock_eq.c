@@ -41,6 +41,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <netdb.h>
 #include <fi_list.h>
 
 #include "sock.h"
@@ -56,18 +57,17 @@ ssize_t sock_eq_sread(struct fid_eq *eq, uint32_t *event, void *buf, size_t len,
 
 	sock_eq = container_of(eq, struct sock_eq, eq);
 
-	fastlock_acquire(&sock_eq->lock);
 	if(!dlistfd_empty(&sock_eq->err_list)) {
-		ret = -FI_EAVAIL;
-		goto out;
+		return -FI_EAVAIL;
 	}
-		
+	
 	if(dlistfd_empty(&sock_eq->list)) {
 		ret = dlistfd_wait_avail(&sock_eq->list, timeout);
 		if(ret <= 0)
-			goto out;
+			return ret;
 	}
 
+	fastlock_acquire(&sock_eq->lock);
 	list = sock_eq->list.list.next;
 	entry = container_of(list, struct sock_eq_entry, entry);
 
@@ -143,8 +143,11 @@ ssize_t sock_eq_report_event(struct sock_eq *sock_eq, uint32_t event,
 	entry->len = len;
 	entry->flags = flags;
 	memcpy(entry->event, buf, len);
-
 	dlistfd_insert_tail(&entry->entry, &sock_eq->list);
+
+	if (sock_eq->signal) 
+		sock_wait_signal(sock_eq->waitset);
+
 	fastlock_release(&sock_eq->lock);
 	return 0;
 }
@@ -167,8 +170,11 @@ ssize_t sock_eq_report_error(struct sock_eq *sock_eq, fid_t fid, void *context,
 	err_entry->prov_errno = prov_errno;
 	err_entry->err_data = err_data;	
 	entry->len = sizeof(struct fi_eq_err_entry);
-
 	dlistfd_insert_tail(&entry->entry, &sock_eq->err_list);
+
+	if (sock_eq->signal) 
+		sock_wait_signal(sock_eq->waitset);
+
 	fastlock_release(&sock_eq->lock);
 	return 0;
 }
@@ -212,26 +218,43 @@ int sock_eq_fi_close(struct fid *fid)
 	fastlock_destroy(&sock_eq->lock);
 	atomic_dec(&sock_eq->sock_fab->ref);
 
+	if (sock_eq->signal && sock_eq->attr.wait_obj == FI_WAIT_MUTEX_COND)
+		sock_wait_close(&sock_eq->waitset->fid);
+	
 	free(sock_eq);
 	return 0;
 }
 
-int sock_eq_fi_control(struct fid *fid, int command, void *arg)
+int sock_eq_control(struct fid *fid, int command, void *arg)
 {
-	struct sock_eq *eq;
 	int ret = 0;
+	struct sock_eq *eq;
 
-	eq = container_of(fid, struct sock_eq, eq.fid);
-	
+	eq = container_of(fid, struct sock_eq, eq.fid);	
 	switch (command) {
 	case FI_GETWAIT:
-		*(void **) arg = &eq->list.fd[LIST_READ_FD];
+		switch (eq->attr.wait_obj) {
+		case FI_WAIT_NONE:
+		case FI_WAIT_UNSPEC:
+		case FI_WAIT_FD:
+			memcpy(arg, &eq->list.fd[LIST_READ_FD], sizeof(int));
+			break;
+
+		case FI_WAIT_SET:
+		case FI_WAIT_MUTEX_COND:
+			sock_wait_get_obj(eq->waitset, arg);
+			break;
+		
+		default:
+			ret = -FI_EINVAL;
+			break;
+		}
 		break;
+
 	default:
-		ret = -FI_ENOSYS;
+		ret = -FI_EINVAL;
 		break;
 	}
-
 	return ret;
 }
 
@@ -239,7 +262,7 @@ static struct fi_ops sock_eq_fi_ops = {
 	.size = sizeof(struct fi_ops),
 	.close = sock_eq_fi_close,
 	.bind = fi_no_bind,
-	.control = sock_eq_fi_control,
+	.control = sock_eq_control,
 	.ops_open = fi_no_ops_open,
 };
 
@@ -251,6 +274,8 @@ static int _sock_eq_verify_attr(struct fi_eq_attr *attr)
 	switch (attr->wait_obj) {
 	case FI_WAIT_NONE:
 	case FI_WAIT_FD:
+	case FI_WAIT_SET:
+	case FI_WAIT_MUTEX_COND:
 		break;
 	case FI_WAIT_UNSPEC:
 		attr->wait_obj = FI_WAIT_FD;
@@ -270,11 +295,68 @@ static struct fi_eq_attr _sock_eq_def_attr ={
 	.wait_set = NULL,
 };
 
+int sock_eq_openwait(struct sock_eq *eq, const char *service)
+{
+	SOCK_LOG_INFO("enter\n");
+	struct addrinfo *s_res = NULL, *p;
+	struct addrinfo hints;
+	int optval, ret;
+
+	if (eq->wait_fd > 0 && !strncmp((char *)&eq->service, service, NI_MAXSERV))
+	{
+		SOCK_LOG_INFO("eq already opened for the service %s\n", service);
+		return 0;
+	}
+
+	if (eq->wait_fd > 0)
+		close(eq->wait_fd);
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = AI_PASSIVE;
+	hints.ai_protocol = IPPROTO_UDP;
+
+	ret = getaddrinfo(NULL, service, &hints, &s_res);
+	if (ret) {
+		SOCK_LOG_ERROR("no available AF_INET address service:%s, %s\n",
+				service, gai_strerror(ret));
+		return -FI_EINVAL;
+	}
+
+	for (p=s_res; p; p=p->ai_next) {
+		eq->wait_fd = socket(p->ai_family, p->ai_socktype,
+				p->ai_protocol);
+		if (eq->wait_fd >= 0) {
+			optval = 1;
+			setsockopt(eq->wait_fd, SOL_SOCKET, SO_REUSEADDR, &optval, 
+					sizeof optval);
+			if (!bind(eq->wait_fd, s_res->ai_addr, s_res->ai_addrlen))
+				break;
+			close(eq->wait_fd);
+			eq->wait_fd = -1;
+		}
+	}
+
+	freeaddrinfo(s_res);
+	if (eq->wait_fd < 0) {
+		SOCK_LOG_ERROR("failed to open udp sock on port: %s\n", service);
+		return -FI_EINVAL;
+	}
+
+	fcntl(eq->wait_fd, F_SETFL, O_NONBLOCK);
+	memcpy(&eq->service, service, NI_MAXSERV);
+	SOCK_LOG_INFO("open udp successfully\n");
+
+	return 0;
+}
+
 int sock_eq_open(struct fid_fabric *fabric, struct fi_eq_attr *attr,
 		 struct fid_eq **eq, void *context)
 {
 	int ret;
 	struct sock_eq *sock_eq;
+	struct fi_wait_attr wait_attr;
 
 	ret = _sock_eq_verify_attr(attr);
 	if (ret)
@@ -293,9 +375,9 @@ int sock_eq_open(struct fid_fabric *fabric, struct fi_eq_attr *attr,
 
 	if(attr == NULL)
 		memcpy(&sock_eq->attr, &_sock_eq_def_attr,
-		       sizeof(struct fi_cq_attr));
-	else
-		memcpy(&sock_eq->attr, attr, sizeof(struct fi_cq_attr));
+		       sizeof(struct fi_eq_attr));
+	else 
+		memcpy(&sock_eq->attr, attr, sizeof(struct fi_eq_attr));
 
 	ret = dlistfd_head_init(&sock_eq->list);
 	if(ret)
@@ -307,6 +389,37 @@ int sock_eq_open(struct fid_fabric *fabric, struct fi_eq_attr *attr,
 	
 	fastlock_init(&sock_eq->lock);
 	atomic_inc(&sock_eq->sock_fab->ref);
+
+	switch (sock_eq->attr.wait_obj) {
+
+	case FI_WAIT_NONE:
+	case FI_WAIT_UNSPEC:
+		sock_eq->signal = 0;
+		break;
+	case FI_WAIT_FD:
+		sock_eq->signal = 0;
+		break;
+
+	case FI_WAIT_MUTEX_COND:
+		wait_attr.flags = 0;
+		wait_attr.wait_obj = FI_WAIT_MUTEX_COND;
+		ret = sock_wait_open(fabric, &wait_attr, &sock_eq->waitset);
+		if (ret)
+			goto err2;
+		sock_eq->signal = 1;
+		break;
+
+	case FI_WAIT_SET:
+		sock_eq->waitset = attr->wait_set;
+		sock_eq->signal = 1;
+		break;
+
+	default:
+		break;
+	}
+
+	sock_eq->wait_fd = -1;
+	*eq = &sock_eq->eq;
 	return 0;
 
 err2:

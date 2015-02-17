@@ -31,8 +31,6 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
     int32_t j;
     orte_attribute_t *attr;
      
-    int8_t k;
-
     /* array of pointers to orcm_alloc_t objects - need
      * to pack the objects a set of fields at a time
      */
@@ -287,8 +285,7 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
         }
         if (0 < j) {
             OPAL_LIST_FOREACH(attr, &alloc->constraints, orte_attribute_t) {
-                k = attr->type;
-                if (OPAL_SUCCESS != (ret = orte_attr_pack(buffer, attr, k))) {
+                if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, attr, 1, ORTE_ATTRIBUTE))) {
                     ORTE_ERROR_LOG(ret);
                     return ret;
                 }
@@ -306,6 +303,7 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
     int32_t i, n;
     orcm_alloc_t **allocs, *a;
     int32_t j, m;
+    orte_attribute_t *kv;
 
     /* unpack into array of orcm_alloc_t objects */
     allocs = (orcm_alloc_t**)dest;
@@ -590,10 +588,12 @@ int orcm_unpack_alloc(opal_buffer_t *buffer, void *dest,
             return ret;
         }
         for (m=0; m < j; m++) {
-            if (OPAL_SUCCESS != (ret = orte_attr_unpack(buffer, &a->constraints))) {
+            n=1;
+            if (OPAL_SUCCESS != (ret = opal_dss_unpack_buffer(buffer, &kv, &n, ORTE_ATTRIBUTE))) {
                 ORTE_ERROR_LOG(ret);
                 return ret;
             }
+            opal_list_append(&a->constraints, &kv->super);
         }
     }
 

@@ -37,11 +37,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "prov.h"
+
 #include "sock.h"
 #include "sock_util.h"
 
-const char const sock_fab_name[] = "IP";
-const char const sock_dom_name[] = "sockets";
+const char sock_fab_name[] = "IP";
+const char sock_dom_name[] = "sockets";
+const char sock_prov_name[] = "sockets";
+
+useconds_t sock_progress_thread_wait = 0;
 
 const struct fi_fabric_attr sock_fabric_attr = {
 	.fabric = NULL,
@@ -77,13 +82,26 @@ int sock_verify_info(struct fi_info *hints)
 	switch (hints->ep_type) {
 	case FI_EP_UNSPEC:
 	case FI_EP_MSG:
+		ret = sock_msg_verify_ep_attr(hints->ep_attr,
+					      hints->tx_attr,
+					      hints->rx_attr);
+		break;
 	case FI_EP_DGRAM:
+		ret = sock_dgram_verify_ep_attr(hints->ep_attr,
+						hints->tx_attr,
+						hints->rx_attr);
+		break;
 	case FI_EP_RDM:
+		ret = sock_rdm_verify_ep_attr(hints->ep_attr,
+					      hints->tx_attr,
+					      hints->rx_attr);
 		break;
 	default:
-		return -FI_ENODATA;
+		ret = -FI_ENODATA;
 	}
-	
+	if (ret)
+		return ret;
+
 	switch (hints->addr_format) {
 	case FI_FORMAT_UNSPEC:
 	case FI_SOCKADDR:
@@ -92,10 +110,6 @@ int sock_verify_info(struct fi_info *hints)
 	default:
 		return -FI_ENODATA;
 	}
-
-	if (!sock_rdm_verify_ep_attr(hints->ep_attr, 
-				    hints->tx_attr, hints->rx_attr))
-		return 0;
 
 	ret = sock_verify_domain_attr(hints->domain_attr);
 	if (ret) 
@@ -111,8 +125,9 @@ int sock_verify_info(struct fi_info *hints)
 static struct fi_ops_fabric sock_fab_ops = {
 	.size = sizeof(struct fi_ops_fabric),
 	.domain = sock_domain,
-	.passive_ep = sock_passive_ep,
+	.passive_ep = sock_msg_passive_ep,
 	.eq_open = sock_eq_open,
+	.wait_open = sock_wait_open,
 };
 
 static int sock_fabric_close(fid_t fid)
@@ -128,28 +143,12 @@ static int sock_fabric_close(fid_t fid)
 	return 0;
 }
 
-int sock_fabric_bind(struct fid *fid, struct fid *bfid, uint64_t flags)
-{
-	return -FI_ENOSYS;
-}
-
-int sock_fabric_control(struct fid *fid, int command, void *arg)
-{
-	return -FI_ENOSYS;
-}
-
-int sock_fabric_ops_open(struct fid *fid, const char *name,
-		    uint64_t flags, void **ops, void *context)
-{
-	return -FI_ENOSYS;
-}
-
 static struct fi_ops sock_fab_fi_ops = {
 	.size = sizeof(struct fi_ops),
 	.close = sock_fabric_close,
-	.bind = sock_fabric_bind,
-	.control = sock_fabric_control,
-	.ops_open = sock_fabric_ops_open,
+	.bind = fi_no_bind,
+	.control = fi_no_control,
+	.ops_open = fi_no_ops_open,
 };
 
 static int sock_fabric(struct fi_fabric_attr *attr,
@@ -179,8 +178,6 @@ static int sock_getinfo(uint32_t version, const char *node, const char *service,
 	int ret;
 	struct fi_info *_info, *tmp;
 
-	return -FI_ENODATA;
-
 	ret = sock_verify_info(hints);
 	if (ret) 
 		return ret;
@@ -192,6 +189,10 @@ static int sock_getinfo(uint32_t version, const char *node, const char *service,
 						hints, info);
 		case FI_EP_DGRAM:
 			return sock_dgram_getinfo(version, node, service, flags,
+						hints, info);
+		
+		case FI_EP_MSG:
+			return sock_msg_getinfo(version, node, service, flags,
 						hints, info);
 		default:
 			break;
@@ -213,6 +214,18 @@ static int sock_getinfo(uint32_t version, const char *node, const char *service,
 	ret = sock_dgram_getinfo(version, node, service, flags,
 			       hints, &_info);
 
+	if (ret == 0) {
+		*info = tmp = _info;
+		while(tmp->next != NULL)
+			tmp=tmp->next;
+	} else if (ret == -FI_ENODATA) {
+		tmp = NULL;
+	} else
+		return ret;
+
+	ret = sock_msg_getinfo(version, node, service, flags,
+			       hints, &_info);
+
 	if (NULL != tmp) {
 		tmp->next = _info;
 		return ret;
@@ -222,25 +235,28 @@ static int sock_getinfo(uint32_t version, const char *node, const char *service,
 	return ret;
 }
 
-struct fi_provider sock_prov = {
-	.name = "IP",
-	.version = FI_VERSION(SOCK_MAJOR_VERSION, SOCK_MINOR_VERSION), 
-	.getinfo = sock_getinfo,
-	.fabric = sock_fabric,
-};
-
-static void __attribute__((constructor)) sock_ini(void)
+static void fi_sockets_fini(void)
 {
-	char *tmp = getenv("SFI_SOCK_DEBUG_LEVEL");
-	if (tmp) {
-		sock_log_level = atoi(tmp);
-	} else {
-		sock_log_level = SOCK_ERROR;
-	}
-
-	(void) fi_register(&sock_prov);
 }
 
-static void __attribute__((destructor)) sock_fini(void)
+struct fi_provider sock_prov = {
+	.name = sock_prov_name,
+	.version = FI_VERSION(SOCK_MAJOR_VERSION, SOCK_MINOR_VERSION), 
+	.fi_version = FI_VERSION(FI_MAJOR_VERSION, FI_MINOR_VERSION),
+	.getinfo = sock_getinfo,
+	.fabric = sock_fabric,
+	.cleanup = fi_sockets_fini
+};
+
+SOCKETS_INI
 {
+	char *tmp;
+
+	fi_log_init();
+
+	tmp = getenv("OFI_SOCK_PROGRESS_YIELD_TIME");
+	if (tmp)
+		sock_progress_thread_wait = atoi(tmp);
+
+	return (&sock_prov);
 }

@@ -38,7 +38,9 @@ ugni_SOURCES = \
         btl_ugni.h \
         btl_ugni_smsg.h \
         btl_ugni_smsg.c \
-        btl_ugni_prepare.h
+        btl_ugni_progress_thread.c \
+        btl_ugni_prepare.h \
+        btl_ugni_atomic.c
 
 mcacomponentdir = $(opallibdir)
 mcacomponent_LTLIBRARIES = $(component_install)

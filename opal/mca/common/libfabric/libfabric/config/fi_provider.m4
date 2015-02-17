@@ -9,6 +9,8 @@ AC_DEFUN([FI_PROVIDER_INIT],[
 	PROVIDERS_DL=
 	PROVIDERS_STATIC=
 	PROVIDERS_COUNT=
+
+	m4_include(config/fi_check_package.m4)
 ])
 
 dnl
@@ -88,7 +90,11 @@ AC_DEFUN([FI_PROVIDER_SETUP],[
 		],
 		[AC_MSG_NOTICE([$1 provider disabled])])
 
-	# Set conditionals for HAVE_<provider> and HAVE_<provider>_DL
+	AC_DEFINE_UNQUOTED([HAVE_]m4_translit([$1], [a-z], [A-Z]), $$1_happy, [$1 provider is built])
+	AC_DEFINE_UNQUOTED([HAVE_]m4_translit([$1], [a-z], [A-Z])[_DL], $$1_dl, [$1 provider is built as DSO])
+
+	# Set AM conditionals for HAVE_<provider> and HAVE_<provider>_DL
+	# as well as AC defines
 	AM_CONDITIONAL([HAVE_]m4_translit([$1], [a-z], [A-Z]),
 		[test $$1_happy -eq 1])
 	AM_CONDITIONAL([HAVE_]m4_translit([$1], [a-z], [A-Z])[_DL],

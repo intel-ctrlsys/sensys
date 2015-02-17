@@ -11,6 +11,8 @@
  *                         All rights reserved.
  * Copyright (c) 2007-2013 Los Alamos National Security, LLC.  All rights
  *                         reserved. 
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -26,11 +28,12 @@
  * Wait and see if some upper layer wants to use threads, if support
  * exists.
  */
+#if OMPI_ENABLE_THREAD_MULTIPLE
+bool opal_uses_threads = false;
+#endif
 
 static void opal_mutex_construct(opal_mutex_t *m)
 {
-#if OPAL_HAVE_POSIX_THREADS
-
 #if OPAL_ENABLE_DEBUG
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
@@ -45,20 +48,15 @@ static void opal_mutex_construct(opal_mutex_t *m)
     pthread_mutex_init(&m->m_lock_pthread, &attr);
     pthread_mutexattr_destroy(&attr);
 
+    m->m_lock_debug = 0;
+    m->m_lock_file = NULL;
+    m->m_lock_line = 0;
 #else
 
     /* Without debugging, choose the fastest available mutexes */
     pthread_mutex_init(&m->m_lock_pthread, NULL);
 
 #endif /* OPAL_ENABLE_DEBUG */
-
-#endif
-
-#if OPAL_ENABLE_DEBUG
-    m->m_lock_debug = 0;
-    m->m_lock_file = NULL;
-    m->m_lock_line = 0;
-#endif
 
 #if OPAL_HAVE_ATOMIC_SPINLOCKS
     opal_atomic_init( &m->m_lock_atomic, OPAL_ATOMIC_UNLOCKED );
@@ -67,9 +65,7 @@ static void opal_mutex_construct(opal_mutex_t *m)
 
 static void opal_mutex_destruct(opal_mutex_t *m)
 {
-#if OPAL_HAVE_POSIX_THREADS
     pthread_mutex_destroy(&m->m_lock_pthread);
-#endif
 }
 
 OBJ_CLASS_INSTANCE(opal_mutex_t,

@@ -9,7 +9,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007-2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2009      Institut National de Recherche en Informatique
  *                         et Automatique. All rights reserved.
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.
@@ -243,20 +243,22 @@ void orte_plm_base_setup_job(int fd, short args, void *cbdata)
     caddy->jdata->state = caddy->job_state;
 
     /* start by getting a jobid */
-    if (ORTE_SUCCESS != (rc = orte_plm_base_create_jobid(caddy->jdata))) {
-        ORTE_ERROR_LOG(rc);
-        ORTE_FORCED_TERMINATE(ORTE_ERROR_DEFAULT_EXIT_CODE);
-        OBJ_RELEASE(caddy);
-        return;
+    if (ORTE_JOBID_INVALID == caddy->jdata->jobid) {
+        if (ORTE_SUCCESS != (rc = orte_plm_base_create_jobid(caddy->jdata))) {
+            ORTE_ERROR_LOG(rc);
+            ORTE_FORCED_TERMINATE(ORTE_ERROR_DEFAULT_EXIT_CODE);
+            OBJ_RELEASE(caddy);
+            return;
+        }
+
+        /* store it on the global job data pool - this is the key
+         * step required before we launch the daemons. It allows
+         * the orte_rmaps_base_setup_virtual_machine routine to
+         * search all apps for any hosts to be used by the vm
+         */
+        opal_pointer_array_set_item(orte_job_data, ORTE_LOCAL_JOBID(caddy->jdata->jobid), caddy->jdata);
     }
-
-    /* store it on the global job data pool - this is the key
-     * step required before we launch the daemons. It allows
-     * the orte_rmaps_base_setup_virtual_machine routine to
-     * search all apps for any hosts to be used by the vm
-     */
-    opal_pointer_array_set_item(orte_job_data, ORTE_LOCAL_JOBID(caddy->jdata->jobid), caddy->jdata);
-
+    
     /* if job recovery is not enabled, set it to default */
     if (!ORTE_FLAG_TEST(caddy->jdata, ORTE_JOB_FLAG_RECOVERABLE) &&
         orte_enable_recovery) {
@@ -687,7 +689,6 @@ void orte_plm_base_daemon_callback(int status, orte_process_name_t* sender,
     orte_job_t *jdata;
     orte_process_name_t dname;
     opal_buffer_t *relay;
-    uint8_t tflag;
     
     /* get the daemon job, if necessary */
     if (NULL == jdatorted) {
@@ -845,6 +846,7 @@ void orte_plm_base_daemon_callback(int status, orte_process_name_t* sender,
             orte_topology_t *t;
             int i;
             bool found;
+            uint8_t tflag;
 
             /* store the local resources for that node */
             idx=1;

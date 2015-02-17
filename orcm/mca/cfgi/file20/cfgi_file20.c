@@ -688,13 +688,11 @@ static int parse_orcm_config(orcm_config_t *cfg,
         if (NULL != xml->value && NULL != xml->value[0]) {
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tENVARS %s", xml->value[0]);
-            if (NULL != vals) {
-                vals = opal_argv_split(xml->value[0], ',');
-                for (n=0; NULL != vals[n]; n++) {
-                    opal_argv_append_nosize(&cfg->env, vals[n]);
-                }
-                opal_argv_free(vals);
+            vals = opal_argv_split(xml->value[0], ',');
+            for (n=0; NULL != vals[n]; n++) {
+                opal_argv_append_nosize(&cfg->env, vals[n]);
             }
+            opal_argv_free(vals);
         }
     } else if  (0 == strcmp(xml->name, "aggregator")) {
         if (NULL != xml->value && NULL != xml->value[0]) {

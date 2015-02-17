@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2014-2015 Cisco Systems, Inc.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -20,6 +20,11 @@ noinst_LTLIBRARIES =
 # --pedantic (see configure.m4 for details).
 CFLAGS = $(opal_common_libfabric_embedded_CFLAGS)
 
+# Due to what might be a bug in Automake, we need to remove stamp-h?
+# files manually.  See
+# http://debbugs.gnu.org/cgi/bugreport.cgi?bug=19418.
+DISTCLEANFILES = libfabric/stamp-h?
+
 # Only build this embedded copy if we're not using an external
 # libfabric.
 if OPAL_COMMON_LIBFABRIC_BUILD_EMBEDDED
@@ -38,11 +43,10 @@ cppflags = \
 	-D_GNU_SOURCE \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
 	-DRDMADIR=\"/tmp\" \
-	-DEXTDIR=\"$(pkglibdir)\"
-if OPAL_COMMON_LIBFABRIC_HAVE_PROVIDER_USNIC
-cppflags += \
-	-D__LIBUSNIC__
-endif OPAL_COMMON_LIBFABRIC_HAVE_PROVIDER_USNIC
+	-DEXTDIR=\"$(pkglibdir)\" \
+	-DENABLE_DEBUG=0 \
+	'-DVERSION="embedded libfabric de8444c9771ab9022d952a27134e44e5d8a5d722"' \
+	'-DPACKAGE="embedded libfabric de8444c9771ab9022d952a27134e44e5d8a5d722"'
 libadd = $(opal_common_libfabric_embedded_LIBADD)
 
 libfabric_core_headers = \
@@ -50,7 +54,11 @@ libfabric_core_headers = \
 	libfabric/include/fi_enosys.h \
 	libfabric/include/fi_indexer.h \
 	libfabric/include/fi_list.h \
+	libfabric/include/fi_log.h \
 	libfabric/include/fi_rbuf.h \
+	libfabric/include/prov.h \
+	libfabric/include/linux/osd.h \
+	libfabric/include/osx/osd.h \
 	libfabric/include/rdma/fabric.h \
 	libfabric/include/rdma/fi_atomic.h \
 	libfabric/include/rdma/fi_cm.h \
@@ -67,17 +75,21 @@ libfabric_core_sources = \
 	libfabric/src/fabric.c \
 	libfabric/src/fi_tostr.c \
 	libfabric/src/common.c \
-	libfabric/src/enosys.c
+	libfabric/src/enosys.c \
+	libfabric/src/log.c
 
 libfabric_usnic_headers = \
-	libfabric/prov/usnic/src/fi_usnic.h \
+	libfabric/prov/usnic/src/fi_ext_usnic.h \
 	libfabric/prov/usnic/src/usdf.h \
 	libfabric/prov/usnic/src/usdf_av.h \
 	libfabric/prov/usnic/src/usdf_cm.h \
+	libfabric/prov/usnic/src/usdf_cq.h \
 	libfabric/prov/usnic/src/usdf_dgram.h \
 	libfabric/prov/usnic/src/usdf_endpoint.h \
 	libfabric/prov/usnic/src/usdf_msg.h \
 	libfabric/prov/usnic/src/usdf_progress.h \
+	libfabric/prov/usnic/src/usdf_rdm.h \
+	libfabric/prov/usnic/src/usdf_rudp.h \
 	libfabric/prov/usnic/src/usdf_timer.h \
 	libfabric/prov/usnic/src/usnic_direct/cq_desc.h \
 	libfabric/prov/usnic/src/usnic_direct/cq_enet_desc.h \
@@ -126,12 +138,14 @@ libfabric_usnic_sources = \
 	libfabric/prov/usnic/src/usdf_endpoint.c \
 	libfabric/prov/usnic/src/usdf_ep_dgram.c \
 	libfabric/prov/usnic/src/usdf_ep_msg.c \
+	libfabric/prov/usnic/src/usdf_ep_rdm.c \
 	libfabric/prov/usnic/src/usdf_eq.c \
 	libfabric/prov/usnic/src/usdf_fabric.c \
 	libfabric/prov/usnic/src/usdf_mem.c \
 	libfabric/prov/usnic/src/usdf_msg.c \
 	libfabric/prov/usnic/src/usdf_pep.c \
 	libfabric/prov/usnic/src/usdf_progress.c \
+	libfabric/prov/usnic/src/usdf_rdm.c \
 	libfabric/prov/usnic/src/usdf_timer.c \
 	libfabric/prov/usnic/src/usnic_direct/libnl_utils_common.c \
 	libfabric/prov/usnic/src/usnic_direct/usd_caps.c \
@@ -196,19 +210,13 @@ endif OPAL_COMMON_LIBFABRIC_HAVE_PROVIDER_PSM
 
 lib@OPAL_LIB_PREFIX@mca_common_libfabric_la_SOURCES = $(headers) $(sources)
 lib@OPAL_LIB_PREFIX@mca_common_libfabric_la_CPPFLAGS = $(cppflags)
-lib@OPAL_LIB_PREFIX@mca_common_libfabric_la_LDFLAGS = -version-info 0:0:0
+lib@OPAL_LIB_PREFIX@mca_common_libfabric_la_LDFLAGS = \
+        -version-info $(libmca_opal_common_libfabric_so_version)
 lib@OPAL_LIB_PREFIX@mca_common_libfabric_la_LIBADD = $(libadd)
 
 lib@OPAL_LIB_PREFIX@mca_common_libfabric_noinst_la_SOURCES = $(headers) $(sources)
 lib@OPAL_LIB_PREFIX@mca_common_libfabric_noinst_la_CPPFLAGS = $(cppflags)
 lib@OPAL_LIB_PREFIX@mca_common_libfabric_noinst_la_LIBADD = $(libadd)
-
-# Conditionally install the header files
-
-if WANT_INSTALL_HEADERS
-opaldir = $(opalincludedir)/$(subdir)
-opal_HEADERS = $(headers)
-endif
 
 # These two rules will sym link the "noinst" libtool library filename
 # to the installable libtool library filename in the case where we are

@@ -60,7 +60,7 @@
 #define USD_SF_ISSET(flags, flagname) \
     ((flags >> USD_SFS_##flagname) & 1)
 
-#define USD_SEND_MAX_COPY 1024
+#define USD_SEND_MAX_COPY 992
 #define USD_MAX_CQ_GROUP 1024
 #define USD_MAX_PRESEND 4
 
@@ -201,6 +201,9 @@ struct usd_rq {
 
     char *urq_rxbuf;
     char **urq_post_addr;
+    uint32_t urq_recv_credits;  /* number of available descriptors */
+    struct rq_enet_desc *urq_desc_ring;
+    struct rq_enet_desc *urq_next_desc;
     uint32_t urq_post_index;    /* next rxbuf to post */
     uint32_t urq_post_index_mask;
     uint32_t urq_last_comp;

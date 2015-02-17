@@ -138,8 +138,9 @@ static inline opal_list_item_t *opal_lifo_pop_atomic (opal_lifo_t* lifo)
     do {
         opal_counted_pointer_t old_head;
 
-        old_head.value = lifo->opal_lifo_head.value;
-        item = (opal_list_item_t *) lifo->opal_lifo_head.data.item;
+        old_head.data.counter = lifo->opal_lifo_head.data.counter;
+        opal_atomic_rmb ();
+        item = old_head.data.item = lifo->opal_lifo_head.data.item;
 
         if (item == &lifo->opal_lifo_ghost) {
             return NULL;
@@ -147,6 +148,7 @@ static inline opal_list_item_t *opal_lifo_pop_atomic (opal_lifo_t* lifo)
 
         if (opal_update_counted_pointer (&lifo->opal_lifo_head, old_head,
                                          (opal_list_item_t *) item->opal_list_next)) {
+            opal_atomic_wmb ();
             item->opal_list_next = NULL;
             return item;
         }
@@ -205,6 +207,8 @@ static inline opal_list_item_t *opal_lifo_pop_atomic (opal_lifo_t* lifo)
     if (item == &lifo->opal_lifo_ghost) {
         return NULL;
     }
+
+    opal_atomic_wmb ();
 
     item->opal_list_next = NULL;
     return item;

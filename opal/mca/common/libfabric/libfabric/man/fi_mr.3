@@ -1,4 +1,4 @@
-.TH fi_mr 3 "2014-11-14" "Libfabric Programmer\[aq]s Manual" "\@VERSION\@"
+.TH fi_mr 3 "2015\-01\-29" "Libfabric Programmer\[aq]s Manual" "Libfabric v1.0.0rc1"
 .SH NAME
 .PP
 fi_mr - Memory region operations
@@ -14,8 +14,8 @@ memory region
 fi_mr_key : Return the remote key needed to access a registered memory
 region
 .PP
-fi_mr_bind : Associate a registered memory region with an event
-collector.
+fi_mr_bind : Associate a registered memory region with a completion
+queue or counter.
 .SH SYNOPSIS
 .IP
 .nf
@@ -39,7 +39,7 @@ void\ *\ fi_mr_desc(struct\ fid_mr\ *mr);
 
 uint64_t\ fi_mr_key(struct\ fid_mr\ *mr);
 
-int\ fi_mr_bind(struct\ fid_mr\ *mr,\ struct\ fid\ *ec,\ uint64_t\ flags);
+int\ fi_mr_bind(struct\ fid_mr\ *mr,\ struct\ fid\ *bfid,\ uint64_t\ flags);
 \f[]
 .fi
 .SH ARGUMENTS
@@ -48,7 +48,7 @@ int\ fi_mr_bind(struct\ fid_mr\ *mr,\ struct\ fid\ *ec,\ uint64_t\ flags);
 .PP
 \f[I]mr\f[] : Memory region
 .PP
-\f[I]ec\f[] : Event queue or counter
+\f[I]bfid\f[] : Fabric identifier of an associated resource.
 .PP
 \f[I]context\f[] : User specified context associated with the memory
 region.
@@ -90,7 +90,15 @@ In order to support as broad range of applications as possible, without
 unduly affecting their performance, applications that wish to manage
 their own local memory registrations may do so by using the memory
 registration calls.
-Applications may use the FI_LOCAL_MR domain capability bit as a guide.
+Applications may use the FI_LOCAL_MR domain mode bit as a guide.
+.PP
+When the FI_LOCAL_MR mode bit is set, applications must register all
+data buffers that will be accessed by the local hardware and provide a
+valid mem_desc parameter into applicable data transfer operations.
+When FI_LOCAL_MR is zero, applications are not required to register data
+buffers before using them for local operations (e.g.
+send and receive data buffers), and the mem_desc parameter into data
+transfer operations is ignored.
 .PP
 Providers may support applications registering any range of addresses in
 their virtual address space, whether or not those addresses are back by
@@ -177,6 +185,9 @@ Support for user requested keys is provider specific and is determined
 by the FI_PROV_MR_ATTR mode bit.
 Access domains must be opened with the FI_PROV_MR_ATTR mode cleared in
 order to enable support for application selectable MR keys.
+The requested_key parameter is ignored for memory registration calls
+unless the access flags include either FI_REMOTE_READ or
+FI_REMOTE_WRITE.
 .PP
 Remote RMA and atomic operations indicate the location within a
 registered memory region by specifying an address.
@@ -221,18 +232,15 @@ struct\ fi_mr_attr\ {
 .fi
 .SS fi_close
 .PP
-Fi_close may be used to release all resources associated with a
-registering a memory region.
+Fi_close is used to release all resources associated with a registering
+a memory region.
 Once unregistered, further access to the registered memory is not
 guaranteed.
-For performance reasons, unregistration processing may be done
-asynchronously or lazily.
-To force all queued unregistration requests to complete, applications
-may call fi_sync on the domain.
-Upon completion of a domain fi_sync call, all memory regions
-unregistered before fi_sync was invoked will have completed, and no
-further access to the registered region, either locally or remotely, via
-fabric resources will be possible.
+.PP
+When closing the MR, there must be no opened endpoints or counters
+associated with the MR.
+If resources are still associated with the MR when attempting to close,
+the call will return -FI_EBUSY.
 .SS fi_mr_desc / fi_mr_key
 .PP
 The local memory descriptor and remote protection key associated with a
@@ -241,14 +249,14 @@ The memory registration must have completed successfully before invoking
 these calls.
 .SS fi_mr_bind
 .PP
-The fi_mr_bind function associates a memory region with an event counter
-or queue, for providers that support the generation of events based on
-fabric operations.
+The fi_mr_bind function associates a memory region with a counter, for
+providers that support the generation of completions based on fabric
+operations.
 The type of events tracked against the memory region is based on the
 bitwise OR of the following flags.
 .PP
-\f[I]FI_WRITE\f[] : Generates an event whenever a remote RMA write or
-atomic operation modify the memory region.
+\f[I]FI_REMOTE_WRITE\f[] : Generates an event whenever a remote RMA
+write or atomic operation modify the memory region.
 .SH FLAGS
 .PP
 The following flags are usable with fi_mr_reg, fi_mr_regv,

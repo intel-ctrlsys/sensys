@@ -350,7 +350,6 @@ void orcm_info_do_config(bool want_all)
     char *orterun_prefix_by_default;
     char *wtime_support;
     char *symbol_visibility;
-    char *ft_support;
     
     /* setup the strings that don't require allocations*/
     heterogeneous = OPAL_ENABLE_HETEROGENEOUS_SUPPORT ? "yes" : "no";
@@ -363,16 +362,8 @@ void orcm_info_do_config(bool want_all)
     symbol_visibility = OPAL_C_HAVE_VISIBILITY ? "yes" : "no";
     
     /* setup strings that require allocation */    
-    if (OPAL_HAVE_POSIX_THREADS) {        /* should just test OPAL_HAVE_THREADS */
-        asprintf(&threads, "%s (OPAL: %s, ORTE progress: yes, Event lib: yes)", 
-                 (OPAL_HAVE_POSIX_THREADS ? "posix" : "type unknown"), /* "type unknown" can presumably never happen */
-                 OPAL_ENABLE_MULTI_THREADS ? "yes" : "no");
-    } else {
-        threads = strdup("no");
-    }
-    
-    asprintf(&ft_support, "%s (checkpoint thread: %s)", 
-             OPAL_ENABLE_FT ? "yes" : "no", OPAL_ENABLE_FT_THREAD ? "yes" : "no");;
+    asprintf(&threads, "posix (OPAL: %s, ORTE progress: yes, Event lib: yes)", 
+             OPAL_ENABLE_MULTI_THREADS ? "yes" : "no");
     
     /* output values */
     orcm_info_out("Configured by", "config:user", OPAL_CONFIGURE_USER);
@@ -438,9 +429,5 @@ void orcm_info_do_config(bool want_all)
     orcm_info_out("orterun default --prefix", "orterun:prefix_by_default", 
                   orterun_prefix_by_default);
     orcm_info_out("MPI_WTIME support", "options:mpi-wtime", wtime_support);
-    orcm_info_out("Symbol vis. support", "options:visibility", symbol_visibility);
-    
-    orcm_info_out("FT Checkpoint support", "options:ft_support", ft_support);
-    free(ft_support);
-    
+    orcm_info_out("Symbol vis. support", "options:visibility", symbol_visibility);    
 }

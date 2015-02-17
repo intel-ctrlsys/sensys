@@ -15,9 +15,8 @@ AC_DEFUN([MCA_orcm_sensor_dmidata_CONFIG], [
     # Check if hwloc support is available or not.
     AC_CONFIG_FILES([orcm/mca/sensor/dmidata/Makefile])
     AC_MSG_CHECKING([for dmidata support])
-    AC_REQUIRE([OPAL_HAVE_HWLOC])
 
-   AC_ARG_WITH([dmidata],
+    AC_ARG_WITH([dmidata],
                 [AC_HELP_STRING([--with-dmidata(=yes/no)],
                                 [Build dmidata inventory support])],
                 [AC_MSG_RESULT([with_dmidata selected with paramater "$with_dmidata"!])]

@@ -11,7 +11,7 @@
  *                         All rights reserved.
  * Copyright (c) 2006      Sandia National Laboratories. All rights
  *                         reserved.
- * Copyright (c) 2011-2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2011-2015 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -35,8 +35,11 @@
 #include "btl_usnic_stats.h"
 #include "btl_usnic_util.h"
 
-/* In libfabric prov/usnic/src */
-#include "fi_usnic.h"
+/* When using the embedded libfabric, this file will be in
+   opal/mca/common/libfabric/libfabric/prov/usnic/src/fi_ext_usnic.h.
+   When using the external libfabric, this file will be in
+   rdma/fi_ext_usnic.h. */
+#include OPAL_BTL_USNIC_FI_EXT_USNIC_H
 
 /*
  * Default limits.

@@ -1,9 +1,11 @@
+# Makefile.am for libfabric
+
 AM_CPPFLAGS = \
 	-I$(srcdir)/include \
 	-D_GNU_SOURCE \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
 	-DRDMADIR=\"@rdmadir@\" \
-	-DEXTDIR=\"$(pkglibdir)\"
+	-DPROVDLDIR=\"$(pkglibdir)\"
 
 lib_LTLIBRARIES = src/libfabric.la
 
@@ -18,48 +20,76 @@ else !HAVE_LD_VERSION_SCRIPT
     libfabric_version_script =
 endif !HAVE_LD_VERSION_SCRIPT
 
+rdmaincludedir = $(includedir)/rdma
+
+rdmainclude_HEADERS =
+
 # internal utility functions shared by in-tree providers:
 common_srcs = \
 	src/common.c \
 	src/enosys.c
 
 # ensure dl-built providers link back to libfabric
-linkback = -lfabric -Lsrc/.libs/
+linkback = $(top_builddir)/src/libfabric.la
 
 src_libfabric_la_SOURCES = \
 	include/fi.h \
 	include/fi_enosys.h \
 	include/fi_indexer.h \
 	include/fi_list.h \
+	include/fi_log.h \
 	include/fi_rbuf.h \
+	include/prov.h \
 	src/fabric.c \
 	src/fi_tostr.c \
+	src/log.c \
 	$(common_srcs)
+
+if MACOS
+src_libfabric_la_SOURCES += src/osx/osd.c
+src_libfabric_la_SOURCES += include/osx/osd.h
+endif
+
+if LINUX
+src_libfabric_la_SOURCES += include/linux/osd.h
+endif
+
+src_libfabric_la_CPPFLAGS = $(AM_CPPFLAGS)
+src_libfabric_la_LDFLAGS =
+src_libfabric_la_LIBADD =
 
 if HAVE_SOCKETS
 _sockets_files = \
 	prov/sockets/src/sock.h \
 	prov/sockets/src/sock_av.c \
-	prov/sockets/src/sock_dgram.c \
 	prov/sockets/src/sock_dom.c \
 	prov/sockets/src/sock_eq.c \
 	prov/sockets/src/sock_cq.c \
 	prov/sockets/src/sock_cntr.c \
 	prov/sockets/src/sock_poll.c \
-	prov/sockets/src/sock_rdm.c \
+	prov/sockets/src/sock_wait.c \
+	prov/sockets/src/sock_ep_rdm.c \
+	prov/sockets/src/sock_ep_dgram.c \
+	prov/sockets/src/sock_ep_msg.c \
 	prov/sockets/src/sock_fabric.c \
 	prov/sockets/src/sock_ep.c \
 	prov/sockets/src/sock_ctx.c \
-	prov/sockets/src/sock_util.c \
+	prov/sockets/src/sock_rx_entry.c \
+	prov/sockets/src/sock_progress.c \
+	prov/sockets/src/sock_comm.c \
+	prov/sockets/src/sock_conn.c \
+	prov/sockets/src/sock_msg.c \
+	prov/sockets/src/sock_rma.c \
+	prov/sockets/src/sock_atomic.c \
 	prov/sockets/src/sock_util.h \
-	prov/sockets/src/indexer.c \
-	prov/sockets/src/list.c \
-	prov/sockets/src/list.h
+	prov/sockets/src/indexer.c
 
 if HAVE_SOCKETS_DL
 pkglib_LTLIBRARIES += libsockets-fi.la
 libsockets_fi_la_SOURCES = $(_sockets_files) $(common_srcs)
-libsockets_fi_la_LDFLAGS = -module -avoid-version -shared -export-dynamic $(linkback)
+libsockets_fi_la_LIBADD = $(linkback)
+libsockets_fi_la_LDFLAGS = -module -avoid-version -shared -export-dynamic
+libsockets_fi_la_DEPENDENCIES = $(linkback)
 else !HAVE_SOCKETS_DL
 src_libfabric_la_SOURCES += $(_sockets_files)
 endif !HAVE_SOCKETS_DL
@@ -72,9 +102,20 @@ _verbs_files = prov/verbs/src/fi_verbs.c
 if HAVE_VERBS_DL
 pkglib_LTLIBRARIES += libverbs-fi.la
 libverbs_fi_la_SOURCES = $(_verbs_files) $(common_srcs)
-libverbs_fi_la_LDFLAGS = -module -avoid-version -shared -export-dynamic -libverbs -lrdmacm $(linkback)
+# Technically, verbs_ibverbs_CPPFLAGS and verbs_rdmacm_CPPFLAGS could
+# be different, but it is highly unlikely that they ever will be.  So
+# only list verbs_ibverbs_CPPFLAGS here.  Same with verbs_*_LDFLAGS,
+# below.
+libverbs_fi_la_CPPFLAGS = $(AM_CPPFLAGS) $(verbs_ibverbs_CPPFLAGS)
+libverbs_fi_la_LDFLAGS = \
+    -module -avoid-version -shared -export-dynamic $(verbs_ibverbs_LDFLAGS)
+libverbs_fi_la_LIBADD = $(linkback) $(verbs_rdmacm_LIBS) $(verbs_ibverbs_LIBS)
+libverbs_fi_la_DEPENDENCIES = $(linkback)
 else !HAVE_VERBS_DL
 src_libfabric_la_SOURCES += $(_verbs_files)
+src_libfabric_la_CPPFLAGS += $(verbs_ibverbs_CPPFLAGS)
+src_libfabric_la_LDFLAGS += $(verbs_ibverbs_LDFLAGS)
+src_libfabric_la_LIBADD += $(verbs_rdmacm_LIBS) $(verbs_ibverbs_LIBS)
 endif !HAVE_VERBS_DL
 
 endif HAVE_VERBS
@@ -142,13 +183,14 @@ libusnic_direct_sources = \
 
 _usnic_files = \
 	$(libusnic_direct_sources) \
-	prov/usnic/src/fi_usnic.h \
+	prov/usnic/src/fi_ext_usnic.h \
 	prov/usnic/src/usdf.h \
 	prov/usnic/src/usdf_av.c \
 	prov/usnic/src/usdf_av.h \
 	prov/usnic/src/usdf_cm.c \
 	prov/usnic/src/usdf_cm.h \
 	prov/usnic/src/usdf_cq.c \
+	prov/usnic/src/usdf_cq.h \
 	prov/usnic/src/usdf_dgram.c \
 	prov/usnic/src/usdf_dgram.h \
 	prov/usnic/src/usdf_domain.c \
@@ -156,6 +198,7 @@ _usnic_files = \
 	prov/usnic/src/usdf_endpoint.h \
 	prov/usnic/src/usdf_ep_dgram.c \
 	prov/usnic/src/usdf_ep_msg.c \
+	prov/usnic/src/usdf_ep_rdm.c \
 	prov/usnic/src/usdf_eq.c \
 	prov/usnic/src/usdf_fabric.c \
 	prov/usnic/src/usdf_mem.c \
@@ -164,22 +207,31 @@ _usnic_files = \
 	prov/usnic/src/usdf_pep.c \
 	prov/usnic/src/usdf_progress.c \
 	prov/usnic/src/usdf_progress.h \
+	prov/usnic/src/usdf_rdm.c \
+	prov/usnic/src/usdf_rdm.h \
+	prov/usnic/src/usdf_rudp.h \
 	prov/usnic/src/usdf_timer.c \
 	prov/usnic/src/usdf_timer.h
 
 _usnic_cppflags = \
         -D__LIBUSNIC__ \
+        -DHAVE_LIBNL3=$(HAVE_LIBNL3) $(usnic_libnl_CPPFLAGS) \
         -I$(top_srcdir)/prov/usnic/src/usnic_direct
+
+rdmainclude_HEADERS += \
+	prov/usnic/src/fi_ext_usnic.h
 
 if HAVE_USNIC_DL
 pkglib_LTLIBRARIES += libusnic-fi.la
 libusnic_fi_la_CPPFLAGS = $(AM_CPPFLAGS) $(_usnic_cppflags)
 libusnic_fi_la_SOURCES = $(_usnic_files) $(common_srcs)
 libusnic_fi_la_LDFLAGS = -module -avoid-version -shared -export-dynamic
-libusnic_fi_la_LIBS = $(linkback)
+libusnic_fi_la_LIBADD = $(linkback) $(usnic_libnl_LIBS)
+libusnic_fi_la_DEPENDENCIES = $(linkback)
 else !HAVE_USNIC_DL
-AM_CPPFLAGS += $(_usnic_cppflags)
 src_libfabric_la_SOURCES += $(_usnic_files)
+src_libfabric_la_CPPFLAGS += $(_usnic_cppflags)
+src_libfabric_la_LIBADD += $(usnic_libnl_LIBS)
 endif !HAVE_USNIC_DL
 
 endif HAVE_USNIC
@@ -188,6 +240,7 @@ if HAVE_PSM
 _psm_files = \
 	prov/psm/src/psm_am.h \
 	prov/psm/src/psmx.h \
+	prov/psm/src/psm_am.h \
 	prov/psm/src/psmx_init.c \
 	prov/psm/src/psmx_domain.c \
 	prov/psm/src/psmx_cq.c \
@@ -209,20 +262,25 @@ _psm_files = \
 if HAVE_PSM_DL
 pkglib_LTLIBRARIES += libpsmx-fi.la
 libpsmx_fi_la_SOURCES = $(_psm_files) $(common_srcs)
-libpsmx_fi_la_LDFLAGS = -module -avoid-version -shared -export-dynamic $(linkback)
+libpsmx_fi_la_CPPFLAGS = $(AM_CPPFLAGS) $(psm_CPPFLAGS)
+libpsmx_fi_la_LDFLAGS = \
+    -module -avoid-version -shared -export-dynamic $(psm_LDFLAGS)
+libpsmx_fi_la_LIBADD = $(linkback) $(psm_LIBS)
+libpsmx_fi_la_DEPENDENCIES = $(linkback)
 else !HAVE_PSM_DL
 src_libfabric_la_SOURCES += $(_psm_files)
+src_libfabric_la_CPPFLAGS += $(psm_CPPFLAGS)
+src_libfabric_la_LDFLAGS += $(psm_LDFLAGS)
+src_libfabric_la_LIBADD += $(psm_LIBS)
 endif !HAVE_PSM_DL
 
 endif HAVE_PSM
 
-src_libfabric_la_LDFLAGS = -version-info 1 -export-dynamic \
+src_libfabric_la_LDFLAGS += -version-info 1 -export-dynamic \
 			   $(libfabric_version_script)
 src_libfabric_la_DEPENDENCIES = $(srcdir)/libfabric.map
 
-rdmaincludedir = $(includedir)/rdma
-
-rdmainclude_HEADERS = \
+rdmainclude_HEADERS += \
 	$(top_srcdir)/include/rdma/fabric.h \
 	$(top_srcdir)/include/rdma/fi_atomic.h \
 	$(top_srcdir)/include/rdma/fi_cm.h \
@@ -258,6 +316,7 @@ real_man_pages = \
         man/fi_direct.7 \
         man/fi_domain.3 \
         man/fi_endpoint.3 \
+        man/fi_errno.3 \
         man/fi_eq.3 \
         man/fi_fabric.3 \
         man/fi_getinfo.3 \
@@ -348,6 +407,7 @@ dummy_man_pages = \
         man/fi_recvv.3 \
         man/fi_reject.3 \
         man/fi_rx_addr.3 \
+        man/fi_rx_size_left.3 \
         man/fi_send.3 \
         man/fi_senddata.3 \
         man/fi_sendmsg.3 \
@@ -366,6 +426,7 @@ dummy_man_pages = \
         man/fi_tsenddata.3 \
         man/fi_tsendmsg.3 \
         man/fi_tsendv.3 \
+        man/fi_tx_size_left.3 \
         man/fi_wait.3 \
         man/fi_wait_open.3 \
         man/fi_write.3 \

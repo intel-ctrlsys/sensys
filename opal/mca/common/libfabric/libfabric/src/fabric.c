@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2004, 2005 Topspin Communications.  All rights reserved.
- * Copyright (c) 2006 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2006-2015 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2013 Intel Corp., Inc.  All rights reserved.
  *
  * This software is available to you under a choice of one of two
@@ -36,7 +36,6 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-#include <complex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,52 +43,93 @@
 
 #include <rdma/fi_errno.h>
 #include "fi.h"
+#include "prov.h"
+#include "fi_log.h"
 
 #ifdef HAVE_LIBDL
 #include <dlfcn.h>
 #endif
 
-#define FI_WARN(fmt, ...) \
-	do { fprintf(stderr, "%s: " fmt, PACKAGE, ##__VA_ARGS__); } while (0)
-
 struct fi_prov {
 	struct fi_prov		*next;
 	struct fi_provider	*provider;
+	void			*dlhandle;
 };
-
-static struct fi_prov *prov_head, *prov_tail;
 
 static struct fi_prov *fi_getprov(const char *prov_name);
 
+static struct fi_prov *prov_head, *prov_tail;
+static volatile int init = 0;
+static pthread_mutex_t ini_lock = PTHREAD_MUTEX_INITIALIZER;
 
-__attribute__((visibility ("default")))
-int fi_register_provider_(uint32_t fi_version, struct fi_provider *provider)
+
+static void cleanup_provider(struct fi_provider *provider, void *dlhandle)
+{
+	if (provider && provider->cleanup)
+		provider->cleanup();
+
+#ifdef HAVE_LIBDL
+	if (dlhandle)
+		dlclose(dlhandle);
+#endif
+}
+
+static int fi_register_provider(struct fi_provider *provider, void *dlhandle)
 {
 	struct fi_prov *prov;
+	int ret;
 
-	if (FI_MAJOR(fi_version) != FI_MAJOR_VERSION ||
-	    FI_MINOR(fi_version) > FI_MINOR_VERSION)
-		return -FI_ENOSYS;
+	if (!provider) {
+		ret = -FI_EINVAL;
+		goto cleanup;
+	}
 
-	/* If a provider with this name is already registered:
-	 * - if the new provider has a lower version number, just fail
-	 *   to register it
-	 * - otherwise, just overwrite the old prov entry
-	 * If the provider is a new/unique name, calloc() a new prov entry.
-	 */
+	FI_LOG(2, NULL, "registering provider: %s (%d.%d)\n", provider->name,
+		FI_MAJOR(provider->version), FI_MINOR(provider->version));
+
+	if (FI_MAJOR(provider->fi_version) != FI_MAJOR_VERSION ||
+	    FI_MINOR(provider->fi_version) > FI_MINOR_VERSION) {
+		FI_LOG(2, NULL, "provider has unsupported FI version (provider %d.%d != libfabric %d.%d); ignoring\n",
+			FI_MAJOR(provider->fi_version),
+			FI_MINOR(provider->fi_version),
+			FI_MAJOR_VERSION, FI_MINOR_VERSION);
+
+		ret = -FI_ENOSYS;
+		goto cleanup;
+	}
+
 	prov = fi_getprov(provider->name);
 	if (prov) {
-		if (FI_VERSION_GE(prov->provider->version, provider->version))
-			return -FI_EALREADY;
+		/* If this provider is older than an already-loaded
+		 * provider of the same name, then discard this one.
+		 */
+		if (FI_VERSION_GE(prov->provider->version, provider->version)) {
+			FI_LOG(2, NULL, "a newer %s provider was already loaded; ignoring this one\n",
+				provider->name);
+			ret = -FI_EALREADY;
+			goto cleanup;
+		}
 
+		/* This provider is newer than an already-loaded
+		 * provider of the same name, so discard the
+		 * already-loaded one.
+		 */
+		FI_LOG(2, NULL, "an older %s provider was already loaded; keeping this one and ignoring the older one\n",
+			provider->name);
+		cleanup_provider(prov->provider, prov->dlhandle);
+
+		prov->dlhandle = dlhandle;
 		prov->provider = provider;
 		return 0;
 	}
 
 	prov = calloc(sizeof *prov, 1);
-	if (!prov)
-		return -FI_ENOMEM;
+	if (!prov) {
+		ret = -FI_ENOMEM;
+		goto cleanup;
+	}
 
+	prov->dlhandle = dlhandle;
 	prov->provider = provider;
 	if (prov_tail)
 		prov_tail->next = prov;
@@ -97,8 +137,12 @@ int fi_register_provider_(uint32_t fi_version, struct fi_provider *provider)
 		prov_head = prov;
 	prov_tail = prov;
 	return 0;
+
+cleanup:
+	cleanup_provider(provider, dlhandle);
+
+	return ret;
 }
-default_symver(fi_register_provider_, fi_register_provider);
 
 #ifdef HAVE_LIBDL
 static int lib_filter(const struct dirent *entry)
@@ -111,57 +155,80 @@ static int lib_filter(const struct dirent *entry)
 	else
 		return 0;
 }
+#endif
 
-static void __attribute__((constructor)) fi_ini(void)
+/*
+ * Initialize the sockets provider last.  This will result in it being
+ * the least preferred provider.
+ */
+static void fi_ini(void)
 {
-	struct dirent **liblist;
-	int n, want_warn = 0;
-	char *lib, *extdir = getenv("FI_EXTDIR");
-	void *dlhandle;
+	pthread_mutex_lock(&ini_lock);
 
-	if (extdir) {
-		/* Warn if user specified $FI_EXTDIR, but there's a
-		 * problem with the value */
-		want_warn = 1;
-	} else {
-		extdir = EXTDIR;
-	}
+	if (init)
+		goto unlock;
+
+	fi_log_init();
+
+#ifdef HAVE_LIBDL
+	struct dirent **liblist;
+	int n;
+	char *lib, *provdir;
+	void *dlhandle;
+	struct fi_provider* (*inif)(void);
 
 	/* If dlopen fails, assume static linking and just return
 	   without error */
 	if (dlopen(NULL, RTLD_NOW) == NULL) {
-		return;
+		goto done;
 	}
 
-	n = scandir(extdir, &liblist, lib_filter, NULL);
-	if (n < 0) {
-		if (want_warn) {
-			FI_WARN("scandir error reading %s: %s\n",
-				extdir, strerror(errno));
-		}
-		return;
-	}
+	provdir = PROVDLDIR;
+	n = scandir(provdir, &liblist, lib_filter, NULL);
+	if (n < 0)
+		goto done;
 
 	while (n--) {
-		if (asprintf(&lib, "%s/%s", extdir, liblist[n]->d_name) < 0) {
-			FI_WARN("asprintf failed to allocate memory\n");
-			return;
+		if (asprintf(&lib, "%s/%s", provdir, liblist[n]->d_name) < 0) {
+			FI_WARN(NULL, "asprintf failed to allocate memory\n");
+			free(liblist[n]);
+			goto done;
 		}
+		FI_DEBUG(NULL, "opening provider lib %s\n", lib);
 
 		dlhandle = dlopen(lib, RTLD_NOW);
 		if (dlhandle == NULL)
-			FI_WARN("dlopen(%s): %s\n", lib, dlerror());
+			FI_WARN(NULL, "dlopen(%s): %s\n", lib, dlerror());
 
 		free(liblist[n]);
 		free(lib);
+
+		inif = dlsym(dlhandle, "fi_prov_ini");
+		if (inif == NULL)
+			FI_WARN(NULL, "dlsym: %s\n", dlerror());
+		else
+			fi_register_provider((inif)(), dlhandle);
 	}
 
 	free(liblist);
-}
+done:
 #endif
+
+	fi_register_provider(PSM_INIT, NULL);
+	fi_register_provider(USNIC_INIT, NULL);
+
+	fi_register_provider(VERBS_INIT, NULL);
+	fi_register_provider(SOCKETS_INIT, NULL);
+	init = 1;
+
+unlock:
+	pthread_mutex_unlock(&ini_lock);
+}
 
 static void __attribute__((destructor)) fi_fini(void)
 {
+	for (struct fi_prov *prov = prov_head; prov; prov = prov->next)
+		cleanup_provider(prov->provider, prov->dlhandle);
 }
 
 static struct fi_prov *fi_getprov(const char *prov_name)
@@ -177,44 +244,7 @@ static struct fi_prov *fi_getprov(const char *prov_name)
 }
 
 __attribute__((visibility ("default")))
-int fi_getinfo_(uint32_t version, const char *node, const char *service,
-	       uint64_t flags, struct fi_info *hints, struct fi_info **info)
-{
-	struct fi_prov *prov;
-	struct fi_info *tail, *cur;
-	int ret = -ENOSYS;
-
-	*info = tail = NULL;
-	for (prov = prov_head; prov; prov = prov->next) {
-		if (!prov->provider->getinfo)
-			continue;
-
-		ret = prov->provider->getinfo(version, node, service, flags,
-					      hints, &cur);
-		if (ret) {
-			if (ret == -FI_ENODATA)
-				continue;
-			break;
-		}
-
-		if (!*info)
-			*info = cur;
-		else
-			tail->next = cur;
-		for (tail = cur; tail->next; tail = tail->next) {
-			tail->fabric_attr->prov_name = strdup(prov->provider->name);
-			tail->fabric_attr->prov_version = prov->provider->version;
-		}
-		tail->fabric_attr->prov_name = strdup(prov->provider->name);
-		tail->fabric_attr->prov_version = prov->provider->version;
-	}
-
-	return *info ? 0 : ret;
-}
-default_symver(fi_getinfo_, fi_getinfo);
-
-__attribute__((visibility ("default")))
-void fi_freeinfo_(struct fi_info *info)
+void DEFAULT_SYMVER_PRE(fi_freeinfo)(struct fi_info *info)
 {
 	struct fi_info *next;
 
@@ -238,10 +268,61 @@ void fi_freeinfo_(struct fi_info *info)
 		free(info);
 	}
 }
-default_symver(fi_freeinfo_, fi_freeinfo);
+DEFAULT_SYMVER(fi_freeinfo_, fi_freeinfo);
 
 __attribute__((visibility ("default")))
-struct fi_info *fi_dupinfo_(const struct fi_info *info)
+int DEFAULT_SYMVER_PRE(fi_getinfo)(uint32_t version, const char *node, const char *service,
+	       uint64_t flags, struct fi_info *hints, struct fi_info **info)
+{
+	struct fi_prov *prov;
+	struct fi_info *tail, *cur;
+	int ret = -FI_ENOSYS;
+
+	if (!init)
+		fi_ini();
+
+	*info = tail = NULL;
+	for (prov = prov_head; prov; prov = prov->next) {
+		if (!prov->provider->getinfo)
+			continue;
+
+		if (hints->fabric_attr && hints->fabric_attr->prov_name &&
+		    strcmp(prov->provider->name, hints->fabric_attr->prov_name))
+			continue;
+
+		ret = prov->provider->getinfo(version, node, service, flags,
+					      hints, &cur);
+		if (ret) {
+			FI_LOG(1, NULL, "fi_getinfo: provider %s returned -%d (%s)\n",
+				prov->provider->name, -ret, fi_strerror(-ret));
+			if (ret == -FI_ENODATA) {
+				continue;
+			} else {
+				/* a provider has an error, clean up and bail */
+				fi_freeinfo(*info);
+				*info = NULL;
+				return ret;
+			}
+		}
+
+		if (!*info)
+			*info = cur;
+		else
+			tail->next = cur;
+		for (tail = cur; tail->next; tail = tail->next) {
+			tail->fabric_attr->prov_name = strdup(prov->provider->name);
+			tail->fabric_attr->prov_version = prov->provider->version;
+		}
+		tail->fabric_attr->prov_name = strdup(prov->provider->name);
+		tail->fabric_attr->prov_version = prov->provider->version;
+	}
+
+	return *info ? 0 : ret;
+}
+DEFAULT_SYMVER(fi_getinfo_, fi_getinfo);
+
+__attribute__((visibility ("default")))
+struct fi_info *DEFAULT_SYMVER_PRE(fi_dupinfo)(const struct fi_info *info)
 {
 	struct fi_info *dup;
 
@@ -335,15 +416,18 @@ fail:
 	fi_freeinfo(dup);
 	return NULL;
 }
-default_symver(fi_dupinfo_, fi_dupinfo);
+DEFAULT_SYMVER(fi_dupinfo_, fi_dupinfo);
 
 __attribute__((visibility ("default")))
-int fi_fabric_(struct fi_fabric_attr *attr, struct fid_fabric **fabric, void *context)
+int DEFAULT_SYMVER_PRE(fi_fabric)(struct fi_fabric_attr *attr, struct fid_fabric **fabric, void *context)
 {
 	struct fi_prov *prov;
 
 	if (!attr || !attr->prov_name || !attr->name)
 		return -FI_EINVAL;
+
+	if (!init)
+		fi_ini();
 
 	prov = fi_getprov(attr->prov_name);
 	if (!prov || !prov->provider->fabric)
@@ -351,14 +435,14 @@ int fi_fabric_(struct fi_fabric_attr *attr, struct fid_fabric **fabric, void *co
 
 	return prov->provider->fabric(attr, fabric, context);
 }
-default_symver(fi_fabric_, fi_fabric);
+DEFAULT_SYMVER(fi_fabric_, fi_fabric);
 
 __attribute__((visibility ("default")))
-uint32_t fi_version_(void)
+uint32_t DEFAULT_SYMVER_PRE(fi_version)(void)
 {
 	return FI_VERSION(FI_MAJOR_VERSION, FI_MINOR_VERSION);
 }
-default_symver(fi_version_, fi_version);
+DEFAULT_SYMVER(fi_version_, fi_version);
 
 #define FI_ERRNO_OFFSET	256
 #define FI_ERRNO_MAX	FI_ENOCQ
@@ -372,10 +456,13 @@ static const char *const errstr[] = {
 	[FI_ENOEQ - FI_ERRNO_OFFSET] = "Missing or unavailable event queue",
 	[FI_EDOMAIN - FI_ERRNO_OFFSET] = "Invalid resource domain",
 	[FI_ENOCQ - FI_ERRNO_OFFSET] = "Missing or unavailable completion queue",
+	[FI_ECRC - FI_ERRNO_OFFSET] = "CRC error",
+	[FI_ETRUNC - FI_ERRNO_OFFSET] = "Truncation error",
+	[FI_ENOKEY - FI_ERRNO_OFFSET] = "Required key not available",
 };
 
 __attribute__((visibility ("default")))
-const char *fi_strerror_(int errnum)
+const char *DEFAULT_SYMVER_PRE(fi_strerror)(int errnum)
 {
 	if (errnum < FI_ERRNO_OFFSET)
 		return strerror(errnum);
@@ -384,30 +471,6 @@ const char *fi_strerror_(int errnum)
 	else
 		return errstr[FI_EOTHER - FI_ERRNO_OFFSET];
 }
-default_symver(fi_strerror_, fi_strerror);
+DEFAULT_SYMVER(fi_strerror_, fi_strerror);
 
-static const size_t fi_datatype_size_table[] = {
-	[FI_INT8]   = sizeof(int8_t),
-	[FI_UINT8]  = sizeof(uint8_t),
-	[FI_INT16]  = sizeof(int16_t),
-	[FI_UINT16] = sizeof(uint16_t),
-	[FI_INT32]  = sizeof(int32_t),
-	[FI_UINT32] = sizeof(uint32_t),
-	[FI_INT64]  = sizeof(int64_t),
-	[FI_UINT64] = sizeof(uint64_t),
-	[FI_FLOAT]  = sizeof(float),
-	[FI_DOUBLE] = sizeof(double),
-	[FI_FLOAT_COMPLEX]  = sizeof(float complex),
-	[FI_DOUBLE_COMPLEX] = sizeof(double complex),
-	[FI_LONG_DOUBLE]    = sizeof(long double),
-	[FI_LONG_DOUBLE_COMPLEX] = sizeof(long double complex),
-};
 
-size_t fi_datatype_size(enum fi_datatype datatype)
-{
-	if (datatype >= FI_DATATYPE_LAST) {
-		errno = FI_EINVAL;
-		return 0;
-	}
-	return fi_datatype_size_table[datatype];
-}

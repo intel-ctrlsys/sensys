@@ -36,10 +36,8 @@
 #ifndef _USDF_DGRAM_H_
 #define _USDF_DGRAM_H_
 
-/* fi_ops_cm for DGRAM */
-int usdf_cm_dgram_connect(struct fid_ep *ep, const void *addr,
-	const void *param, size_t paramlen);
-int usdf_cm_dgram_shutdown(struct fid_ep *ep, uint64_t flags);
+#define USDF_DGRAM_MAX_SGE 8
+#define USDF_DGRAM_DFLT_SGE 4
 
 /* fi_ops_msg for DGRAM */
 ssize_t usdf_dgram_recv(struct fid_ep *ep, void *buf, size_t len, void *desc,
@@ -50,8 +48,6 @@ ssize_t usdf_dgram_recvmsg(struct fid_ep *ep, const struct fi_msg *msg,
 	uint64_t flags);
 ssize_t usdf_dgram_send(struct fid_ep *ep, const void *buf, size_t len,
 	void *desc, fi_addr_t dest_addr, void *context);
-ssize_t usdf_dgram_conn_send(struct fid_ep *ep, const void *buf, size_t len,
-	void *desc, fi_addr_t dest_addr, void *context);
 ssize_t usdf_dgram_sendv(struct fid_ep *ep, const struct iovec *iov,
 	void **desc, size_t count, fi_addr_t dest_addr, void *context);
 ssize_t usdf_dgram_sendmsg(struct fid_ep *ep, const struct fi_msg *msg,
@@ -60,12 +56,22 @@ ssize_t usdf_dgram_inject(struct fid_ep *ep, const void *buf, size_t len,
 	fi_addr_t dest_addr);
 ssize_t usdf_dgram_senddata(struct fid_ep *ep, const void *buf, size_t len,
 	void *desc, uint64_t data, fi_addr_t dest_addr, void *context);
+ssize_t usdf_dgram_rx_size_left(struct fid_ep *ep);
+ssize_t usdf_dgram_tx_size_left(struct fid_ep *ep);
 
 ssize_t usdf_dgram_prefix_recv(struct fid_ep *ep, void *buf, size_t len,
 	void *desc, fi_addr_t src_addr, void *context);
 ssize_t usdf_dgram_prefix_recvv(struct fid_ep *ep, const struct iovec *iov,
 	void **desc, size_t count, fi_addr_t src_addr, void *context);
+ssize_t usdf_dgram_prefix_recvmsg(struct fid_ep *fep, const struct fi_msg *msg,
+	uint64_t flags);
 ssize_t usdf_dgram_prefix_send(struct fid_ep *ep, const void *buf, size_t len,
 	void *desc, fi_addr_t dest_addr, void *context);
+ssize_t usdf_dgram_prefix_sendv(struct fid_ep *fep, const struct iovec *iov,
+	void **desc, size_t count, fi_addr_t dest_addr, void *context);
+ssize_t usdf_dgram_prefix_sendmsg(struct fid_ep *ep, const struct fi_msg *msg,
+	uint64_t flags);
+ssize_t usdf_dgram_prefix_rx_size_left(struct fid_ep *ep);
+ssize_t usdf_dgram_prefix_tx_size_left(struct fid_ep *ep);
 
 #endif /* _USDF_DGRAM_H_ */

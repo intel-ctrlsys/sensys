@@ -5,7 +5,7 @@
  * licenses.  You may choose to be licensed under the terms of the GNU
  * General Public License (GPL) Version 2, available from the file
  * COPYING in the main directory of this source tree, or the
- * OpenIB.org BSD license below:
+ * BSD license below:
  *
  *     Redistribution and use in source and binary forms, with or
  *     without modification, are permitted provided that the following
@@ -64,9 +64,9 @@
 #define TAB "    "
 
 #define CASEENUMSTR(SYM) \
-	case SYM: { strcat(buf, #SYM); break; }
+	case SYM: { strcatf(buf, #SYM); break; }
 #define IFFLAGSTR(flags, SYM) \
-	do { if (flags & SYM) strcat(buf, #SYM ", "); } while(0)
+	do { if (flags & SYM) strcatf(buf, #SYM ", "); } while(0)
 
 static void fi_remove_comma(char *buffer)
 {
@@ -81,7 +81,7 @@ static void strcatf(char *dest, const char *fmt, ...)
 	va_list arglist;
 
 	va_start (arglist, fmt);
-	vsprintf(&dest[len], fmt, arglist);
+	vsnprintf(&dest[len], BUFSIZ - 1 - len, fmt, arglist);
 	va_end (arglist);
 }
 
@@ -122,9 +122,9 @@ static void fi_tostr_addr_format(char *buf, uint32_t addr_format)
 	CASEENUMSTR(FI_ADDR_PSMX);
 	default:
 		if (addr_format & FI_PROV_SPECIFIC)
-			strcat(buf, "Provider specific");
+			strcatf(buf, "Provider specific");
 		else
-			strcat(buf, "Unknown");
+			strcatf(buf, "Unknown");
 		break;
 	}
 }
@@ -136,7 +136,7 @@ static void fi_tostr_progress(char *buf, enum fi_progress progress)
 	CASEENUMSTR(FI_PROGRESS_AUTO);
 	CASEENUMSTR(FI_PROGRESS_MANUAL);
 	default:
-		strcat(buf, "Unknown");
+		strcatf(buf, "Unknown");
 		break;
 	}
 }
@@ -146,9 +146,12 @@ static void fi_tostr_threading(char *buf, enum fi_threading threading)
 	switch (threading) {
 	CASEENUMSTR(FI_THREAD_UNSPEC);
 	CASEENUMSTR(FI_THREAD_SAFE);
-	CASEENUMSTR(FI_THREAD_PROGRESS);
+	CASEENUMSTR(FI_THREAD_FID);
+	CASEENUMSTR(FI_THREAD_DOMAIN);
+	CASEENUMSTR(FI_THREAD_COMPLETION);
+	CASEENUMSTR(FI_THREAD_ENDPOINT);
 	default:
-		strcat(buf, "Unknown");
+		strcatf(buf, "Unknown");
 		break;
 	}
 }
@@ -175,7 +178,6 @@ static void fi_tostr_caps(char *buf, uint64_t caps)
 	IFFLAGSTR(caps, FI_RMA);
 	IFFLAGSTR(caps, FI_TAGGED);
 	IFFLAGSTR(caps, FI_ATOMICS);
-	IFFLAGSTR(caps, FI_MULTICAST);
 	IFFLAGSTR(caps, FI_DYNAMIC_MR);
 	IFFLAGSTR(caps, FI_BUFFERED_RECV);
 	fi_tostr_flags(buf, caps);
@@ -191,7 +193,7 @@ static void fi_tostr_ep_type(char *buf, enum fi_ep_type ep_type)
 	CASEENUMSTR(FI_EP_DGRAM);
 	CASEENUMSTR(FI_EP_RDM);
 	default:
-		strcat(buf, "Unknown");
+		strcatf(buf, "Unknown");
 		break;
 	}
 }
@@ -207,9 +209,9 @@ static void fi_tostr_protocol(char *buf, uint32_t protocol)
 	CASEENUMSTR(FI_PROTO_UDP);
 	default:
 		if (protocol & FI_PROV_SPECIFIC)
-			strcat(buf, "Provider specific");
+			strcatf(buf, "Provider specific");
 		else
-			strcat(buf, "Unknown");
+			strcatf(buf, "Unknown");
 		break;
 	}
 }
@@ -231,7 +233,7 @@ static void fi_tostr_addr(char *buf, uint32_t addr_format,
 	p = buf + strlen(buf);
 
 	if (addr == NULL) {
-		strcat(p, "(null)");
+		strcatf(p, "(null)");
 		return;
 	}
 
@@ -275,15 +277,15 @@ static void fi_tostr_tx_attr(char *buf, const struct fi_tx_attr *attr,
 	strcatf(buf, "%sfi_tx_attr:\n", prefix);
 	strcatf(buf, "%s%scaps: [ ", prefix, TAB);
 	fi_tostr_caps(buf, attr->caps);
-	strcat(buf, " ]\n");
+	strcatf(buf, " ]\n");
 
 	strcatf(buf, "%s%sop_flags: [ ", prefix, TAB);
 	fi_tostr_flags(buf, attr->op_flags);
-	strcat(buf, " ]\n");
+	strcatf(buf, " ]\n");
 
 	strcatf(buf, "%s%smsg_order: [ ", prefix, TAB);
 	fi_tostr_order(buf, attr->msg_order);
-	strcat(buf, " ]\n");
+	strcatf(buf, " ]\n");
 
 	strcatf(buf, "%s%sinject_size: %zd\n", prefix, TAB, attr->inject_size);
 	strcatf(buf, "%s%ssize: %zd\n", prefix, TAB, attr->size);
@@ -301,15 +303,15 @@ static void fi_tostr_rx_attr(char *buf, const struct fi_rx_attr *attr,
 	strcatf(buf, "%sfi_rx_attr:\n", prefix);
 	strcatf(buf, "%s%scaps: [ ", prefix, TAB);
 	fi_tostr_caps(buf, attr->caps);
-	strcat(buf, " ]\n");
+	strcatf(buf, " ]\n");
 
 	strcatf(buf, "%s%sop_flags: [ ", prefix, TAB);
 	fi_tostr_flags(buf, attr->op_flags);
-	strcat(buf, " ]\n");
+	strcatf(buf, " ]\n");
 
 	strcatf(buf, "%s%smsg_order: [ ", prefix, TAB);
 	fi_tostr_order(buf, attr->msg_order);
-	strcat(buf, " ]\n");
+	strcatf(buf, " ]\n");
 
 	strcatf(buf, "%s%stotal_buffered_recv: %zd\n", prefix, TAB, attr->total_buffered_recv);
 	strcatf(buf, "%s%ssize: %zd\n", prefix, TAB, attr->size);
@@ -337,7 +339,7 @@ static void fi_tostr_ep_attr(char *buf, const struct fi_ep_attr *attr, const cha
 
 	strcatf(buf, "%s%smsg_order: [ ", prefix, TAB);
 	fi_tostr_order(buf, attr->msg_order);
-	strcat(buf, " ]\n");
+	strcatf(buf, " ]\n");
 
 	strcatf(buf, "%s%stx_ctx_cnt: %zd\n", prefix, TAB, attr->tx_ctx_cnt);
 	strcatf(buf, "%s%srx_ctx_cnt: %zd\n", prefix, TAB, attr->rx_ctx_cnt);
@@ -390,30 +392,30 @@ static void fi_tostr_fabric_attr(char *buf, const struct fi_fabric_attr *attr,
 
 static void fi_tostr_info(char *buf, const struct fi_info *info)
 {
-	strcat(buf, "fi_info:\n");
+	strcatf(buf, "fi_info:\n");
 	strcatf(buf, "%scaps: [ ", TAB);
 	fi_tostr_caps(buf, info->caps);
-	strcat(buf, " ]\n");
+	strcatf(buf, " ]\n");
 
 	strcatf(buf, "%smode: [ ", TAB);
 	fi_tostr_mode(buf, info->mode);
-	strcat(buf, " ]\n");
+	strcatf(buf, " ]\n");
 
 	strcatf(buf, "%sep_type: ", TAB);
 	fi_tostr_ep_type(buf, info->ep_type);
-	strcat(buf, "\n");
+	strcatf(buf, "\n");
 	strcatf(buf, "%sfi_addr_format: ", TAB);
 	fi_tostr_addr_format(buf, info->addr_format);
-	strcat(buf, "\n");
+	strcatf(buf, "\n");
 
 	strcatf(buf, "%ssrc_addrlen: %zd\n", TAB, info->src_addrlen);
 	strcatf(buf, "%sdest_addrlen: %zd\n", TAB, info->dest_addrlen);
 	strcatf(buf, "%ssrc_addr: ", TAB);
 	fi_tostr_addr(buf, info->addr_format, info->src_addr);
-	strcat(buf, "\n");
+	strcatf(buf, "\n");
 	strcatf(buf, "%sdest_addr: ", TAB);
 	fi_tostr_addr(buf, info->addr_format, info->dest_addr);
-	strcat(buf, "\n");
+	strcatf(buf, "\n");
 	strcatf(buf, "%sconnreq: %s\n", TAB, info->connreq);
 
 	fi_tostr_tx_attr(buf, info->tx_attr, TAB);
@@ -429,15 +431,71 @@ static void fi_tostr_av_type(char *buf, enum fi_av_type type)
 	CASEENUMSTR(FI_AV_MAP);
 	CASEENUMSTR(FI_AV_TABLE);
 	default:
-		strcat(buf, "Unknown");
+		strcatf(buf, "Unknown");
 		break;
 	}
 }
 
-__attribute__((visibility ("default")))
-char *fi_tostr_(const void *data, enum fi_type datatype)
+static void fi_tostr_atomic_type(char *buf, enum fi_datatype type)
 {
-	static __thread char *buf;
+	switch (type) {
+	CASEENUMSTR(FI_INT8);
+	CASEENUMSTR(FI_UINT8);
+	CASEENUMSTR(FI_INT16);
+	CASEENUMSTR(FI_UINT16);
+	CASEENUMSTR(FI_INT32);
+	CASEENUMSTR(FI_UINT32);
+	CASEENUMSTR(FI_INT64);
+	CASEENUMSTR(FI_UINT64);
+	CASEENUMSTR(FI_FLOAT);
+	CASEENUMSTR(FI_DOUBLE);
+	CASEENUMSTR(FI_FLOAT_COMPLEX);
+	CASEENUMSTR(FI_DOUBLE_COMPLEX);
+	CASEENUMSTR(FI_LONG_DOUBLE);
+	CASEENUMSTR(FI_LONG_DOUBLE_COMPLEX);
+	default:
+		strcatf(buf, "Unknown");
+		break;
+	}
+}
+
+static void fi_tostr_atomic_op(char *buf, enum fi_op op)
+{
+	switch (op) {
+	CASEENUMSTR(FI_MIN);
+	CASEENUMSTR(FI_MAX);
+	CASEENUMSTR(FI_SUM);
+	CASEENUMSTR(FI_PROD);
+	CASEENUMSTR(FI_LOR);
+	CASEENUMSTR(FI_LAND);
+	CASEENUMSTR(FI_BOR);
+	CASEENUMSTR(FI_BAND);
+	CASEENUMSTR(FI_LXOR);
+	CASEENUMSTR(FI_BXOR);
+	CASEENUMSTR(FI_ATOMIC_READ);
+	CASEENUMSTR(FI_ATOMIC_WRITE);
+	CASEENUMSTR(FI_CSWAP);
+	CASEENUMSTR(FI_CSWAP_NE);
+	CASEENUMSTR(FI_CSWAP_LE);
+	CASEENUMSTR(FI_CSWAP_LT);
+	CASEENUMSTR(FI_CSWAP_GE);
+	CASEENUMSTR(FI_CSWAP_GT);
+	CASEENUMSTR(FI_MSWAP);
+	default:
+		strcatf(buf, "Unknown");
+		break;
+	}
+}
+
+static void fi_tostr_version(char *buf)
+{
+	strcatf(buf, VERSION);
+}
+
+__attribute__((visibility ("default")))
+char *DEFAULT_SYMVER_PRE(fi_tostr)(const void *data, enum fi_type datatype)
+{
+	static char *buf = NULL;
 	uint64_t val64 = *(const uint64_t *) data;
 	uint32_t val32 = *(const uint32_t *) data;
 	int enumval = *(const int *) data;
@@ -446,12 +504,11 @@ char *fi_tostr_(const void *data, enum fi_type datatype)
 		return NULL;
 
 	if (!buf) {
-		buf = calloc(4096, sizeof (*buf));
+		buf = calloc(BUFSIZ, 1);
 		if (!buf)
 			return NULL;
-	} else {
-		buf[0] = 0;
 	}
+	buf[0] = '\0';
 
 	switch (datatype) {
 	case FI_TYPE_INFO:
@@ -502,13 +559,22 @@ char *fi_tostr_(const void *data, enum fi_type datatype)
 	case FI_TYPE_AV_TYPE:
 		fi_tostr_av_type(buf, enumval);
 		break;
+	case FI_TYPE_ATOMIC_TYPE:
+		fi_tostr_atomic_type(buf, enumval);
+		break;
+	case FI_TYPE_ATOMIC_OP:
+		fi_tostr_atomic_op(buf, enumval);
+		break;
+	case FI_TYPE_VERSION:
+		fi_tostr_version(buf);
+		break;
 	default:
-		strcat(buf, "Unknown type");
+		strcatf(buf, "Unknown type");
 		break;
 	}
 	return buf;
 }
-default_symver(fi_tostr_, fi_tostr);
+DEFAULT_SYMVER(fi_tostr_, fi_tostr);
 
 #undef CASEENUMSTR
 #undef IFFLAGSTR

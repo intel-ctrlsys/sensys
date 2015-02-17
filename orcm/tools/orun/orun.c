@@ -338,6 +338,7 @@ int orun(int argc, char *argv[])
     orcm_alloc_t alloc;
     orcm_rm_cmd_flag_t command;
     char *hnp_uri;
+    char *node_regex;
     orte_rml_recv_cb_t xbuffer;
 
     /* find our basename (the name of the executable) so that we can
@@ -493,8 +494,8 @@ int orun(int argc, char *argv[])
     OBJ_DESTRUCT(&cmd_line);
 
     /* Read the environment for hnp uri */
-    if ( !my_hnp_uri &&  NULL != getenv("ORCM_MCA_HNP_URI")) {
-            my_hnp_uri = getenv("ORCM_MCA_HNP_URI");
+    if ( !my_hnp_uri &&  NULL != getenv("ORCM_MCA_ALLOC_HNP_URI")) {
+            my_hnp_uri = getenv("ORCM_MCA_ALLOC_HNP_URI");
     }
 
     if (!my_hnp_uri && (false == orun_globals.alloc_request)) {
@@ -621,6 +622,10 @@ int orun(int argc, char *argv[])
              orte_rml.set_contact_info(hnp_uri);
              rc = orte_rml_base_parse_uris(hnp_uri, ORTE_PROC_MY_HNP, NULL);
              if (ORTE_SUCCESS != rc) {
+                 ORTE_ERROR_LOG(rc);
+                 goto DONE;
+             }
+             if (ORTE_SUCCESS != (rc = opal_dss.unpack(&xbuffer.data, &node_regex, &n, OPAL_STRING))) {
                  ORTE_ERROR_LOG(rc);
                  goto DONE;
              }

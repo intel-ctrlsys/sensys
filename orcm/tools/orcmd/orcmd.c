@@ -548,6 +548,40 @@ static void set_handler_default(int sig)
     sigaction(sig, &act, (struct sigaction *)0);
 }
 
+/*setup launch environment*/
+static void
+setup_launch_env(char *hnp_uri, orcm_alloc_t *alloc)
+{
+    char *value_str = NULL;
+    orte_launch_environ = opal_argv_copy(environ);
+
+    /*hnp_uri*/
+    opal_setenv("ORCM_MCA_ALLOC_HNP_URI", hnp_uri, 
+                true, &orte_launch_environ);
+
+    /*sessionid*/
+    asprintf(&value_str, "%d", (int) alloc->id);
+    opal_setenv("ORCM_MCA_ALLOC_SESSION_ID", value_str, 
+                true, &orte_launch_environ);
+    free(value_str);
+
+    /*min_nodes*/
+    asprintf(&value_str, "%d", (int) alloc->min_nodes);
+    opal_setenv("ORCM_MCA_ALLOC_MIN_NODE", value_str, 
+                true, &orte_launch_environ);
+    free(value_str);
+
+    /*max_nodes*/
+    asprintf(&value_str, "%d", (int) alloc->max_nodes);
+    opal_setenv("ORCM_MCA_ALLOC_MAX_NODE", value_str, 
+                true, &orte_launch_environ);
+    free(value_str);
+
+    /*nodes_regex*/
+    opal_setenv("ORCM_MCA_ALLOC_NODE_REGEX", alloc->nodes, 
+                true, &orte_launch_environ);
+}
+
 /* Launch hnp procs */
 static int
 slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orcm_alloc_t *alloc, int *stepd_pid)
@@ -722,8 +756,10 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
     }
     free(foo);
 
-    /* Fork off the child */
+    /* setup the launch environment */
+    setup_launch_env(hnp_uri, alloc);
 
+    /* Fork off the child */
     s_pid = fork();
     if (s_pid < 0) {
         ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_CHILDREN);
@@ -796,7 +832,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
             }
         }
 
-        execv(cmd, argv);
+        execve(cmd, argv, orte_launch_environ);
 
         /* if I get here, the execv failed! */
         orte_show_help("help-orcmd.txt", "orcmd:execv-error",

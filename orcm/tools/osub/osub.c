@@ -83,6 +83,7 @@
 static int orcm_osub_init(int argc, char *argv[]);
 static int parse_args(int argc, char *argv[]);
 static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc);
+static void setup_launch_env(char *hnp_uri, orcm_alloc_t *alloc);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -401,7 +402,14 @@ main(int argc, char *argv[])
 
          case ORCM_VM_READY_COMMAND:
              n = 1;
-             if (ORTE_SUCCESS != (rc = opal_dss.unpack(&xbuffer.data, &hnp_uri, &n, OPAL_STRING))) {
+             if (ORTE_SUCCESS != (rc = opal_dss.unpack(&xbuffer.data, &hnp_uri,
+                                                       &n, OPAL_STRING))) {
+                 ORTE_ERROR_LOG(rc);
+                 return rc;
+             }
+
+             if (ORTE_SUCCESS != (rc = opal_dss.unpack(&xbuffer.data, &alloc.nodes, 
+                                                       &n, OPAL_STRING))) {
                  ORTE_ERROR_LOG(rc);
                  return rc;
              }
@@ -418,14 +426,8 @@ main(int argc, char *argv[])
              /* purge any ess flag set in the environ when we were launched */
              opal_unsetenv(OPAL_MCA_PREFIX"ess", &orte_launch_environ);
 
-             /*
-              * set hnp uri 
-              */
-             if (ORTE_SUCCESS != (rc = opal_setenv("ORCM_MCA_HNP_URI", hnp_uri, 
-                 true, &orte_launch_environ))) {
-                 ORTE_ERROR_LOG(rc);
-                 return rc;
-             }
+             /* setup the launch env */
+             setup_launch_env(hnp_uri, &alloc);
 
              /*
               * set the prompt
@@ -682,4 +684,38 @@ static int osub_exec_shell(char *shell,  char **env, orcm_alloc_t *alloc)
         }
     }
     return ORTE_SUCCESS;
+}
+
+/*setup launch environment*/
+static void
+setup_launch_env(char *hnp_uri, orcm_alloc_t *alloc)
+{
+    char *value_str = NULL;
+    orte_launch_environ = opal_argv_copy(environ);
+
+    /*hnp_uri*/
+    opal_setenv("ORCM_MCA_ALLOC_HNP_URI", hnp_uri, 
+                true, &orte_launch_environ);
+
+    /*sessionid*/
+    asprintf(&value_str, "%d", (int) alloc->id);
+    opal_setenv("ORCM_MCA_ALLOC_SESSION_ID", value_str, 
+                true, &orte_launch_environ);
+    free(value_str);
+
+    /*min_nodes*/
+    asprintf(&value_str, "%d", (int) alloc->min_nodes);
+    opal_setenv("ORCM_MCA_ALLOC_MIN_NODE", value_str, 
+                true, &orte_launch_environ);
+    free(value_str);
+
+    /*max_nodes*/
+    asprintf(&value_str, "%d", (int) alloc->max_nodes);
+    opal_setenv("ORCM_MCA_ALLOC_MAX_NODE", value_str, 
+                true, &orte_launch_environ);
+    free(value_str);
+
+    /*nodes_regex*/
+    opal_setenv("ORCM_MCA_ALLOC_NODE_REGEX", alloc->nodes, 
+                true, &orte_launch_environ);
 }

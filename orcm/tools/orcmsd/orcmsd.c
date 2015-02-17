@@ -580,6 +580,7 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
     orcm_rm_cmd_flag_t command;
     opal_buffer_t *vmready_msg;
     char *contact_info;
+    char *node_regex = getenv("ORCM_MCA_ALLOC_NODE_REGEX");
 
     /* get the daemon job, if necessary */
     if (NULL == jdatorted) {
@@ -677,6 +678,13 @@ void orcms_hnp_recv(int status, orte_process_name_t* sender,
 
                 if (OPAL_SUCCESS !=
                     (rc = opal_dss.pack(vmready_msg, &contact_info, 1, OPAL_STRING))) {
+                    ORTE_ERROR_LOG(rc);
+                    OBJ_RELEASE(vmready_msg);
+                    return;
+                }
+
+                if (OPAL_SUCCESS !=
+                    (rc = opal_dss.pack(vmready_msg, &node_regex, 1, OPAL_STRING))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(vmready_msg);
                     return;
@@ -1092,11 +1100,6 @@ static void orcmsd_batch_launch(char *batchfile)
     int argc=0;
     int ret;
     pid_t batch_pid;
-
-
-    /*setup the HNP URI in the environment */
-    opal_setenv("ORCM_MCA_HNP_URI", orte_process_info.my_hnp_uri, 
-                true, &orte_launch_environ);
 
     batch_pid = fork();
     if (batch_pid < 0) {

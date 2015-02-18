@@ -87,7 +87,6 @@ for branch in $branches; do
     chmod +x $script
 
     module load "autotools/orcm-$branch"
-    module load "libevent/orcm-$branch"
 
     echo "=== Running script..."
     ./$script \

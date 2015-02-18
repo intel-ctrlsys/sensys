@@ -26,25 +26,22 @@ release=0
 
 greek=a1
 
-# If repo_rev=-1, then the repository version number will be obtained
-# dynamically at run time, either:
-#
-# 1) via the "svnversion" command (if this is a Subversion checkout)
-#    in the form "r<svn_r>", or
-# 2) via the "hg -v -R tip" command (if this is a Mercurial clone)
-#    in the form of "hg<hash>", using the hash tag at the tip
-# 3) via the "git log -1" command (if this is a Git clone) in the form
-#    of "git<hash>", using the hash tag at the HEAD
-# 4) with the date (if none of the above work) in the form of
-#    "date<date>".
-#
-# Alternatively, if repo_rev is not -1, the value of repo_rev_r will
-# be directly appended to the version string.  This happens during
-# "make dist", for example: if the distribution tarball is being made
-# from an SVN checkout, if repo_rev=-1, then its value is replaced
-# with the output of "svnversion".
+# If repo_rev is empty, then the repository version number will be
+# obtained during "make dist" via the "git describe --tags --always"
+# command, or with the date (if "git describe" fails) in the form of
+# "date<date>".
 
 repo_rev=
+
+# If tarball_version is not empty, it is used as the version string in
+# the tarball filename, regardless of all other versions listed in
+# this file.  For example, if tarball_version is empty, the tarball
+# filename will be of the form
+# openmpi-<major>.<minor>.<release><greek>.tar.*.  However, if
+# tarball_version is not empty, the tarball filename will be of the
+# form openmpi-<tarball_version>.tar.*.
+
+tarball_version=gitclone
 
 # The date when this release was created
 

@@ -28,8 +28,11 @@
 #include "orte/mca/odls/odls_types.h"
 #include "orte/mca/state/state.h"
 
+#include "orte/mca/notifier/notifier.h"
 #include "orte/mca/errmgr/base/base.h"
 #include "orte/mca/errmgr/base/errmgr_private.h"
+#include "orte/mca/notifier/notifier.h"
+#include "orte/mca/notifier/base/base.h"
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/scd/base/base.h"
@@ -63,6 +66,7 @@ orte_errmgr_base_module_t orte_errmgr_orcm_module = {
     NULL
 };
 
+static void job_errors(int fd, short args, void *cbdata);
 static void proc_errors(int fd, short args, void *cbdata);
 
 /************************
@@ -70,6 +74,8 @@ static void proc_errors(int fd, short args, void *cbdata);
  ************************/
 static int init(void)
 {
+    /* setup state machine to trap proc errors */
+    orte_state.add_job_state(ORTE_JOB_STATE_ERROR, job_errors, ORTE_ERROR_PRI);
     /* setup state machine to trap proc errors */
     orte_state.add_proc_state(ORTE_PROC_STATE_ERROR, proc_errors, ORTE_ERROR_PRI);
 
@@ -79,6 +85,58 @@ static int init(void)
 static int finalize(void)
 {
     return ORTE_SUCCESS;
+}
+
+static void job_errors(int fd, short args, void *cbdata)
+{
+    orte_state_caddy_t *caddy = (orte_state_caddy_t*)cbdata;
+    orte_job_state_t jobstate = caddy->job_state;
+    char *msg;
+
+    /*
+     * if orte is trying to shutdown, just let it
+     */
+    if (orte_finalizing) {
+        return;
+    }
+
+    /* if the jdata is NULL, then we abort as this
+     * is reporting an unrecoverable error
+     */
+    if (NULL == caddy->jdata) {
+        OPAL_OUTPUT_VERBOSE((1, orte_errmgr_base_framework.framework_output,
+                         "%s errmgr:orcm: jobid %s reported error state %s",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                         orte_job_state_to_str(jobstate)));
+        asprintf(&msg, "%s errmgr:orcm: jobid %s reported error state %s",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                         orte_job_state_to_str(jobstate));
+        /* notify this */
+        ORTE_NOTIFIER_LOG_ERROR(ORTE_PROC_MY_NAME, jobstate, ORTE_NOTIFIER_CRIT, 1, msg);
+    /* cleanup */
+    /* ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_FORCED_EXIT);*/
+        OBJ_RELEASE(caddy);
+        return;
+    }
+
+    /* update the state */
+    OPAL_OUTPUT_VERBOSE((1, orte_errmgr_base_framework.framework_output,
+                         "%s errmgr:orcm: job %s reported error state %s",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                         ORTE_JOBID_PRINT(caddy->jdata->jobid),
+                         orte_job_state_to_str(jobstate)));
+
+    asprintf(&msg, "%s errmgr:orcm: jobid %s reported error state %s",
+                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                     ORTE_JOBID_PRINT(caddy->jdata->jobid),
+                     orte_job_state_to_str(jobstate));
+    /* notify this */
+    ORTE_NOTIFIER_LOG_ERROR(caddy->jdata, jobstate, ORTE_NOTIFIER_WARN, 1, msg);
+
+    /* cleanup */
+    OBJ_RELEASE(caddy);
 }
 
 static void proc_errors(int fd, short args, void *cbdata)

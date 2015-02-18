@@ -60,6 +60,7 @@
 #include "orte/mca/iof/base/base.h"
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/odls/base/base.h"
+#include "orte/mca/notifier/notifier.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/filem/base/base.h"
 #include "orte/util/parse_options.h"
@@ -69,6 +70,7 @@
 #include "orte/util/nidmap.h"
 #include "orte/util/regex.h"
 #include "orte/util/show_help.h"
+#include "orte/mca/notifier/base/base.h"
 #include "orte/mca/errmgr/base/base.h"
 #include "orte/mca/state/base/base.h"
 #include "orte/mca/state/state.h"
@@ -400,6 +402,14 @@ static int orcmd_init(void)
         goto error;
     }
     
+    /* open the notifier */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_notifier_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "orte_notifier_base_open";
+        goto error;
+    }
+
     /* open the errmgr */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_errmgr_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -435,6 +445,14 @@ static int orcmd_init(void)
         goto error;
     }
     
+    /* select the notifier*/
+    if (ORTE_SUCCESS != (ret = orte_notifier_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&buf);
+        error = "orte_notifier_base_select";
+        goto error;
+    }
+
     /* select the errmgr */
     if (ORTE_SUCCESS != (ret = orte_errmgr_base_select())) {
         ORTE_ERROR_LOG(ret);
@@ -682,6 +700,7 @@ static void orcmd_finalize(void)
     (void) mca_base_framework_close(&orte_filem_base_framework);
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);
     (void) mca_base_framework_close(&orte_iof_base_framework);
+    (void) mca_base_framework_close(&orte_notifier_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
     (void) mca_base_framework_close(&orte_plm_base_framework);
 

@@ -8,7 +8,7 @@
 
 # e-mail address to send results to
 results_addr=testing@open-mpi.org
-results_addr=rhc@cs.indiana.edu
+results_addr=rhc
 
 # svn repository uri
 master_code_uri=https://github.com/open-mpi/orcm.git

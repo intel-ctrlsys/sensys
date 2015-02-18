@@ -3,7 +3,7 @@
 # Copyright (c) 2011      NVIDIA Corporation.  All rights reserved.
 # Copyright (c) 2013      Mellanox Technologies, Inc.
 #                         All rights reserved.
-# Copyright (c) 2014      Intel, Inc. All rights reserved.
+# Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
 
 # This is the VERSION file for Open MPI, describing the precise
 # version of Open MPI in this distribution.  The various components of
@@ -103,3 +103,4 @@ libmca_common_ofacm_so_version=0:0:0
 libmca_common_sm_so_version=0:0:0
 libmca_common_ugni_so_version=0:0:0
 libmca_common_verbs_so_version=0:0:0
+libmca_opal_common_libfabric_so_version=0:0:0

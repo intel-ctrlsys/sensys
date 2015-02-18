@@ -833,7 +833,7 @@ if (!$ok || $help_arg) {
 
 # Check for project existence
 my $project_name_long = "Open Resilient Cluster Manager";
-my $project_name_short = "open-rcm";
+my $project_name_short = "orcm";
 
 #---------------------------------------------------------------------------
 
@@ -865,7 +865,7 @@ $sentinel = Cwd::cwd() . "/configure";
 #---------------------------------------------------------------------------
 
 my $step = 1;
-verbose "Open MPI autogen (buckle up!)
+verbose "Open RCM autogen (buckle up!)
 
 $step. Checking tool versions\n\n";
 
@@ -1045,7 +1045,7 @@ patch_autotools_output(".");
 
 verbose "
 ================================================
-Open MPI autogen: completed successfully.  w00t!
+Open RCM autogen: completed successfully.  w00t!
 ================================================\n\n";
 
 # Done!

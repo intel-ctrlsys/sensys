@@ -10,7 +10,7 @@
 results_addr=testing@open-mpi.org
 results_addr=rhc
 
-# svn repository uri
+# github repository uri
 master_code_uri=https://github.com/open-mpi/orcm.git
 master_raw_uri=https://raw.github.com/open-mpi/orcm
 release_code_uri=https://github.com/open-mpi/orcm-release.git

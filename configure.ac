@@ -19,7 +19,7 @@
 # Copyright (c) 2012      Oracle and/or its affiliates.  All rights reserved.
 # Copyright (c) 2013      Mellanox Technologies, Inc.
 #                         All rights reserved.
-# Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
+# Copyright (c) 2013-2015 Intel, Inc.  All rights reserved.
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
@@ -143,6 +143,7 @@ AC_SUBST(libmca_common_ofacm_so_version)
 AC_SUBST(libmca_common_sm_so_version)
 AC_SUBST(libmca_common_ugni_so_version)
 AC_SUBST(libmca_common_verbs_so_version)
+AC_SUBST(libmca_opal_common_libfabric_so_version)
 
 #
 # Get the versions of the autotools that were used to bootstrap us

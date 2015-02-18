@@ -24,7 +24,7 @@ release=0
 # only requirement is that it must be entirely printable ASCII
 # characters and have no white space.
 
-greek=a1
+greek=
 
 # If want_repo_rev=1, then the repo revision number will be included
 # in the overall Open MPI version number in some form.
@@ -49,11 +49,11 @@ want_repo_rev=1
 # from an SVN checkout, if repo_rev=-1, then its value is replaced
 # with the output of "svnversion".
 
-repo_rev=-1
+repo_rev=e74103a
 
 # The date when this release was created
 
-date="Unreleased developer copy"
+date="Feb 17, 2015"
 
 # The shared library version of each of Open MPI's public libraries.
 # These versions are maintained in accordance with the "Library

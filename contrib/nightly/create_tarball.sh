@@ -226,7 +226,7 @@ USER="orcmbuilder"
 export USER
 
 # autogen is our friend
-do_command "./autogen.sh"
+do_command "./autogen.pl"
 
 # do config
 do_command "./configure"

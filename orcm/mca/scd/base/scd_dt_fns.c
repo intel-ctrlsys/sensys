@@ -285,7 +285,7 @@ int orcm_pack_alloc(opal_buffer_t *buffer, const void *src,
         }
         if (0 < j) {
             OPAL_LIST_FOREACH(attr, &alloc->constraints, orte_attribute_t) {
-                if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, attr, 1, ORTE_ATTRIBUTE))) {
+                if (OPAL_SUCCESS != (ret = opal_dss_pack_buffer(buffer, &attr, 1, ORTE_ATTRIBUTE))) {
                     ORTE_ERROR_LOG(ret);
                     return ret;
                 }

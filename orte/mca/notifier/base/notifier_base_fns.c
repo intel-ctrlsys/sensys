@@ -9,7 +9,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008-2009 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2008-2015 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
@@ -90,10 +90,7 @@ void orte_notifier_base_log(int sd, short args, void *cbdata)
 void orte_notifier_base_report(int sd, short args, void *cbdata)
 {
     orte_notifier_request_t *req = (orte_notifier_request_t*)cbdata;
-    char **modules = NULL;
     char *notifies = NULL;
-    orte_notifier_active_module_t *imod;
-    int i;
     
     /* if no modules are active, then there is nothing to do */
     if (0 == opal_list_get_size(&orte_notifier_base.modules)) {
@@ -107,13 +104,13 @@ void orte_notifier_base_report(int sd, short args, void *cbdata)
 
     /* need to process the notification string to get the names of the modules */
     return;
-    
+#if 0
     OPAL_LIST_FOREACH(imod, &orte_notifier_base.modules, orte_notifier_active_module_t) {
         if (NULL != imod->module->report &&
             0 == strcmp(imod->component->base_version.mca_component_name, modules[i]))
             imod->module->report(req);
     }
-
+#endif
 }
 
 const char* orte_notifier_base_sev2str(orte_notifier_severity_t severity)

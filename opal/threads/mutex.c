@@ -24,14 +24,6 @@
 
 #include "opal/threads/mutex.h"
 
-/*
- * Wait and see if some upper layer wants to use threads, if support
- * exists.
- */
-#if OMPI_ENABLE_THREAD_MULTIPLE
-bool opal_uses_threads = false;
-#endif
-
 static void opal_mutex_construct(opal_mutex_t *m)
 {
 #if OPAL_ENABLE_DEBUG

@@ -50,6 +50,7 @@ AC_DEFUN([MCA_opal_common_libfabric_CONFIG],[
 
     # This is for components that build with libfabric support
     AC_SUBST(opal_common_libfabric_CPPFLAGS)
+    AC_SUBST(opal_common_libfabric_LDFLAGS)
     AC_SUBST(opal_common_libfabric_LIBADD)
 
     # This is for building the libfabric component itself
@@ -205,7 +206,7 @@ AC_DEFUN([_OPAL_COMMON_LIBFABRIC_SETUP_LIBFABRIC_EMBEDDED],[
             # support.
 
             # Check for gcc atomic intrinsics
-            AC_MSG_CHECKING(compiler support for c11 atomics)
+            AC_MSG_CHECKING([if compiler support for c11 atomics])
             AC_TRY_LINK([#include <stdatomic.h>],
                         [atomic_int a;
    atomic_init(&a, 0);
@@ -220,6 +221,21 @@ AC_DEFUN([_OPAL_COMMON_LIBFABRIC_SETUP_LIBFABRIC_EMBEDDED],[
                          AC_DEFINE(HAVE_ATOMICS, 1, [Set to use c11 atomic functions])
                         ],
                         [AC_MSG_RESULT(no)])
+
+            AC_MSG_CHECKING([if linker supports the alias attribute])
+            AC_LINK_IFELSE(
+                [AC_LANG_SOURCE[
+                        int foo(int arg);
+                        int foo(int arg) { return arg + 3; };
+                        int foo2(int arg) __attribute__ (( __alias__("foo")));
+                        ]],
+                [AC_MSG_RESULT([yes])
+                 opal_common_libfabric_alias_symbols=1],
+                [AC_MSG_RESULT([no])
+                 opal_common_libfabric_alias_symbols=0])
+            AC_DEFINE_UNQUOTED([HAVE_ALIAS_ATTRIBUTE],
+                [$opal_common_libfabric_alias_symbols],
+                [Define to 1 if the linker supports alias attribute.])
 
             # Do stuff for specific providers
             _OPAL_COMMON_LIBFABRIC_EMBEDDED_PROVIDER_USNIC
@@ -279,6 +295,7 @@ AC_DEFUN([_OPAL_COMMON_LIBFABRIC_SETUP_LIBFABRIC_EXTERNAL],[
                        [opal_common_libfabric_happy=1],
                        [opal_common_libfabric_happy=0])
 
+     opal_common_libfabric_LDFLAGS="-L$opal_libfabric_libdir"
      opal_common_libfabric_LIBADD="-lfabric"
 ])
 

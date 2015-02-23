@@ -10,13 +10,14 @@
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
+# Copyright (c) 2015      Intel, Inc. All rights reserved
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
 # 
 # $HEADER$
 #
-# Look for public symbols in Open MPI libraries and components that
+# Look for public symbols in OpenRCM libraries and components that
 # are "bad"
 #
 
@@ -25,7 +26,7 @@ use Getopt::Long;
 
 # Filenames of libraries to look through
 
-my @lib_prefixes = ("libmpi", "libmca" );
+my @lib_prefixes = ("liborcm", "libscon", "liborcmapi", "libopen-rte", "libmca" );
 my @lib_suffixes = ('\.so', '\.a');
 
 # Filenames of components to look through
@@ -35,18 +36,16 @@ my @comp_suffixes = (".so");
 
 # Acceptable public symbol prefixes
 
-my @lib_acceptable = ("ompi_" , "mpi_", "MPI_", "OMPI_", "MPI::", "PMPI_", "PMPI::", "mca_", "lt_", "orte_", "epoll", "opal_", "MPIR_",
+my @lib_acceptable = ("orcm_" , "ORCM_", "scon_", "SCON_", "mca_", "lt_", "orte_", "epoll", "opal_",
 # Portland Group compiler adds a bunch of these
                       "pghpf_",
 );
-my @comp_acceptable = ("mca_", "ompi_", "orte_", "opal_",
-# The latest incarnation of ROMIO adds these
-                      "MPIO_", "MPIOI_", "ADIO_", "ADIOI_", "MPIU_",
+my @comp_acceptable = ("mca_", "orcm_", "orte_", "opal_", "scon_",
 );
 
 # Subject line for e-mail
 
-my $subject = "Open MPI Illegal symbol report";
+my $subject = "OpenRCM Illegal symbol report";
 
 #--------------------------------------------------------------------------
 

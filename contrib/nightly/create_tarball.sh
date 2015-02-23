@@ -10,7 +10,8 @@
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2006-2014 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2006-2015 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2015      Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -40,7 +41,7 @@ debug=1
 want_success_mail=1
 
 # max length of logfile to send in an e-mail
-max_log_len=50
+max_log_len=500
 
 # how many snapshots to keep in the destdir?
 max_snapshots=5
@@ -78,7 +79,7 @@ send_error_mail() {
             cat "$file" >> "$outfile"
         fi
     done
-    Mail -s "=== CREATE FAILURE ($version) ===" "$email" < "$outfile"
+    Mail -s "=== ORCM CREATE FAILURE ($version) ===" "$email" < "$outfile"
     rm -f "$outfile"
 }
 
@@ -160,7 +161,7 @@ cd "$scratch_root"
 scratch_root="`pwd`"
 
 # setup target directory where clone+logs will go
-clone_root="$scratch_root/ompi-`date +%Y-%m-%d-%H%M%S`"
+clone_root="$scratch_root/orcm-`date +%Y-%m-%d-%H%M%S`"
 rm -rf $clone_root
 mkdir -p $clone_root
 
@@ -170,13 +171,13 @@ mkdir "$logdir"
 
 # Get a fresh git clone
 cd $clone_root
-do_command "git clone $giturl ompi"
-cd ompi
+do_command "git clone $giturl orcm"
+cd orcm
 do_command "git checkout $gitbranch"
 
-# Find the "git describe" string for this branch (remove a leading "ompi-"
+# Find the "git describe" string for this branch (remove a leading "orcm-"
 # prefix, if there is one).
-describe=`git describe --tags --always | sed -e s/^ompi-//`
+describe=`git describe --tags --always | sed -e s/^orcm-//`
 if test -n "$debug"; then
     echo "** found $gitbranch describe: $describe"
 fi
@@ -210,18 +211,18 @@ if test -n "$debug"; then
 fi
 
 # Ensure that VERSION is set to indicate that it wants a snapshot, and
-# insert the actual value that we want (so that ompi_get_version.sh
+# insert the actual value that we want (so that orcm_get_version.sh
 # will report exactly that version).
 sed -e 's/^repo_rev=.*/repo_rev='$describe/ \
-    -e 's/^tarball_version=.*/tarball_version='$describe/ \
+    -e 's/^want_repo_rev=.*/want_repo_rev=1/' \
     VERSION > VERSION.new
 cp -f VERSION.new VERSION
 rm -f VERSION.new
 
 # lie about our username in $USER so that autogen will skip all
-# .ompi_ignore'ed directories (i.e., so that we won't get
-# .ompi_unignore'ed)
-USER="ompibuilder"
+# .orcm_ignore'ed directories (i.e., so that we won't get
+# .orcm_unignore'ed)
+USER="orcmbuilder"
 export USER
 
 # autogen is our friend
@@ -239,7 +240,10 @@ do_command "./configure"
 # future...
 save=$LD_LIBRARY_PATH
 LD_LIBRARY_PATH=
-do_command "make -j 8 distcheck"
+DISTCHECK_CONFIGURE_FLAGS=$CONFIG_FLAGS
+DISTCHECK_MAKE_FLAGS="-j8"
+export DISTCHECK_CONFIGURE_FLAGS DISTCHECK_MAKE_FLAGS
+do_command "make distcheck"
 LD_LIBRARY_PATH=$save
 save=
 
@@ -247,8 +251,8 @@ save=
 chmod a+rX -R .
 
 # move the resulting tarballs to the destdir
-gz="`/bin/ls openmpi*tar.gz`"
-bz2="`/bin/ls openmpi*tar.bz2`"
+gz="`/bin/ls orcm*tar.gz`"
+bz2="`/bin/ls orcm*tar.bz2`"
 mv $gz $bz2 $destdir
 if test "$?" != "0"; then
     cat <<EOF
@@ -265,16 +269,16 @@ fi
 cd $destdir
 
 # make the latest_snapshot.txt file containing the last version
-version="`echo $gz | sed -e 's/openmpi-\(.*\)\.tar\.gz/\1/g'`"
+version="`echo $gz | sed -e 's/orcm-\(.*\)\.tar\.gz/\1/g'`"
 rm -f latest_snapshot.txt
 echo $version > latest_snapshot.txt
 
 # trim the destdir to $max_snapshots
 for ext in gz bz2; do
-    count="`ls openmpi*.tar.$ext | wc -l | awk '{ print $1 }'`"
+    count="`ls orcm*.tar.$ext | wc -l | awk '{ print $1 }'`"
     if test "`expr $count \> $max_snapshots`" = "1"; then
         num_old="`expr $count - $max_snapshots`"
-        old="`ls -rt openmpi*.tar.$ext | head -n $num_old`"
+        old="`ls -rt orcm*.tar.$ext | head -n $num_old`"
         rm -f $old
     fi
 done
@@ -293,7 +297,7 @@ rm -rf "$root"
 
 # send success mail
 if test "$want_success_mail" = "1"; then
-    Mail -s "Create success ($version)" "$email" <<EOF
+    Mail -s "ORCM Create success ($version)" "$email" <<EOF
 Creating nightly snapshot tarball was a success.
 
 Snapshot:   $version

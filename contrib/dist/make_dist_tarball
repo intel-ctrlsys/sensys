@@ -11,6 +11,7 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2008-2015 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2015      Intel, Inc. All rights reserved
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -45,7 +46,6 @@ DISTCHECK_MAKE_FLAGS=-j4
 # Default to requiring *exact* versions if we're making distribution
 # tarballs; but higher-than-expected versions are ok for
 # non-distribution tarballs.
-want_ompi=1
 autogen_args=
 distdir=".."
 greekonly=0
@@ -69,7 +69,6 @@ while test "$1" != ""; do
     case $1 in
         --greekonly) greekonly=1 ;;
         --highok) highok=1 ;;
-        --no-ompi) want_ompi=0 ;;
         --autogen-args) autogen_args=$2; shift ;;
         --distdir) distdir=$2; shift ;;
         --dirtyok) dirty_ok=1 ;;
@@ -82,7 +81,6 @@ Unrecognized argument: $1
 Valid arguments:
   --greekonly     Only build the greek tarball (vs. both tarballs)
   --highok        Ok if Autotools versions are too high
-  --no-ompi       Don't build the OMPI or OSHMEM layers
   --autogen-args  Arguments to pass to autogen
   --distdir       Move the tarball(s) to this directory when done
   --dirtyok       Ok if the source tree is dirty
@@ -254,11 +252,7 @@ make_tarball() {
     #
     echo "*** Running autogen $autogen_args..."
     rm -f success
-    if test "$want_ompi" = "1" ; then
-        (./autogen.pl $autogen_args 2>&1 && touch success) | tee auto.out
-    else
-        (./autogen.pl --no-ompi $autogen_args 2>&1 && touch success) | tee auto.out
-    fi
+    (./autogen.pl $autogen_args 2>&1 && touch success) | tee auto.out
     if test ! -f success; then
         echo "Autogen failed.  Aborting"
         exit 1
@@ -303,7 +297,7 @@ make_tarball() {
     # move
     #
     echo "*** Moving tarballs..."
-    mv openmpi-* $distdir
+    mv orcm-* $distdir
 
     echo "*** All done"
 }
@@ -325,13 +319,13 @@ check_gnu_version libtool $LT_TARGET_VERSION
 check_gnu_version flex $FLEX_TARGET_VERSION
 
 #
-# Verify that we're in a top Open MPI dir
+# Verify that we're in a top Open RCM dir
 #
-echo "*** Checking to ensure in top-level Open MPI directory..."
+echo "*** Checking to ensure in top-level Open RCM directory..."
 if test -f VERSION -a -f configure.ac -a -f config/opal_get_version.m4 ; then
     happy=1
 else
-    echo "Do not appear to be in an Open MPI top directory.  Abort!"
+    echo "Do not appear to be in an Open RCM top directory.  Abort!"
     exit 1
 fi
 

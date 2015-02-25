@@ -58,9 +58,26 @@ static inline int opal_condition_wait(opal_condition_t *c, opal_mutex_t *m)
     int rc = 0;
     c->c_waiting++;
 
-    while (c->c_signaled == 0) {
-        opal_progress();
-        OPAL_CR_TEST_CHECKPOINT_READY_STALL();
+    if (opal_using_threads()) {
+        if (c->c_signaled) {
+            c->c_waiting--;
+            opal_mutex_unlock(m);
+            opal_progress();
+            OPAL_CR_TEST_CHECKPOINT_READY_STALL();
+            opal_mutex_lock(m);
+            return 0;
+        }
+        while (c->c_signaled == 0) {
+            opal_mutex_unlock(m);
+            opal_progress();
+            OPAL_CR_TEST_CHECKPOINT_READY_STALL();
+            opal_mutex_lock(m);
+        }
+    } else {
+        while (c->c_signaled == 0) {
+            opal_progress();
+            OPAL_CR_TEST_CHECKPOINT_READY_STALL();
+        }
     }
 
     c->c_signaled--;
@@ -77,16 +94,32 @@ static inline int opal_condition_timedwait(opal_condition_t *c,
     int rc = 0;
 
     c->c_waiting++;
-    absolute.tv_sec = abstime->tv_sec;
-    absolute.tv_usec = abstime->tv_nsec * 1000;
-    gettimeofday(&tv,NULL);
-    if (c->c_signaled == 0) {
-        do {
-            opal_progress();
-            gettimeofday(&tv,NULL);
-        } while (c->c_signaled == 0 &&  
-                 (tv.tv_sec <= absolute.tv_sec ||
-                  (tv.tv_sec == absolute.tv_sec && tv.tv_usec < absolute.tv_usec)));
+    if (opal_using_threads()) {
+        absolute.tv_sec = abstime->tv_sec;
+        absolute.tv_usec = abstime->tv_nsec * 1000;
+        gettimeofday(&tv,NULL);
+        if (c->c_signaled == 0) {
+            do {
+                opal_mutex_unlock(m);
+                opal_progress();
+                gettimeofday(&tv,NULL);
+                opal_mutex_lock(m);
+                } while (c->c_signaled == 0 &&  
+                         (tv.tv_sec <= absolute.tv_sec ||
+                          (tv.tv_sec == absolute.tv_sec && tv.tv_usec < absolute.tv_usec)));
+        }
+    } else {
+        absolute.tv_sec = abstime->tv_sec;
+        absolute.tv_usec = abstime->tv_nsec * 1000;
+        gettimeofday(&tv,NULL);
+        if (c->c_signaled == 0) {
+            do {
+                opal_progress();
+                gettimeofday(&tv,NULL);
+                } while (c->c_signaled == 0 &&  
+                         (tv.tv_sec <= absolute.tv_sec ||
+                          (tv.tv_sec == absolute.tv_sec && tv.tv_usec < absolute.tv_usec)));
+        }
     }
 
     if (c->c_signaled != 0) c->c_signaled--;

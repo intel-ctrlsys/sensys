@@ -123,7 +123,8 @@ static inline bool opal_using_threads(void)
  */
 static inline bool opal_set_using_threads(bool have)
 {
-    return 0;
+    if(have) {}; //Bogus use of have to stop compiler error for an orcm test.
+    return opal_using_threads();
 }
 
 

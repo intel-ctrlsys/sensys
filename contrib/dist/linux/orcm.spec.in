@@ -47,22 +47,21 @@
 #
 # global Open RCM stuff
 #
-Prefix: /opt/open-rcm
-%define orcm_name rcm
-%define orcm_name_prefix open-
+Prefix: /opt/orcm
+%define orcm_name orcm
 %define orcm_version @ORCM_VERSION@
 %{!?orcm_package_version:%define orcm_package_version default}
 %define orcm_extra_version %{nil}
 %define orcm_release 1
-%define orcm_prefix  /opt/open-rcm
+%define orcm_prefix  /opt/%{orcm_name}
 %define orcm_build_root %{_tmppath}/%{orcm_name}-%{orcm_version}-%{orcm_release}-root
-%define orcm_source %{orcm_name_prefix}%{orcm_name}-%{orcm_version}.tar.gz
+%define orcm_source %{orcm_name}-%{orcm_version}.tar.gz
 %define orcm_url https://www.open-mpi.org/projects/orcm/
-%define orcm_specfile %{_topdir}/SPECS/open-rcm-%{orcm_version}.spec
+%define orcm_specfile %{_topdir}/SPECS/%{orcm_name}-%{orcm_version}.spec
 %{!?configure_options: %define configure_options  %{nil}}
 %define configure_options "--with-platform=contrib/platform/intel/hillsboro/orcm-linux"
 %define orcm_configure_params  %{nil}
-%define orcm_compile_root %{orcm_name_prefix}%{orcm_name}-%{orcm_version}
+%define orcm_compile_root %{orcm_name}-%{orcm_version}
 
 
 #
@@ -91,7 +90,7 @@ Prefix: /opt/open-rcm
 ######################################################################
 %if %{build_build}
 Summary: Configure and build the Open RCM tree
-Name: %{orcm_name_prefix}%{orcm_name}
+Name: %{orcm_name}
 Version: %{orcm_version}
 Release: %{orcm_release}
 License: BSD
@@ -154,7 +153,7 @@ make -j4
 ######################################################################
 %if %{build_install}
 Summary: Install a already compiled tree 
-Name: %{orcm_name_prefix}%{orcm_name}
+Name: %{orcm_name}
 Version: %{orcm_version}
 Release: %{orcm_release}
 License: BSD
@@ -292,7 +291,7 @@ fi
 ######################################################################
 %if %{build_default}
 Summary: Open RCM 
-Name: %{orcm_name_prefix}%{orcm_name}
+Name: %{orcm_name}
 Version: %{orcm_version}%{orcm_extra_version}
 Release: %{orcm_release}
 License: %{orcm_license}

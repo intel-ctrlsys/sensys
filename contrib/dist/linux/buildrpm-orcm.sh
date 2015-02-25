@@ -19,7 +19,7 @@
 #
 
 
-prefix=${prefix:-"/opt/open-rcm"}
+prefix=${prefix:-"/opt/orcm"}
 rpmbuild_options=${rpmbuild_options:-"--define 'mflags -j4' --define '_source_filedigest_algorithm md5'  --define '_binary_filedigest_algorithm md5'"}
 configure_options=${configure_options:-""}
 
@@ -92,10 +92,10 @@ fi
 # Get the version number
 #
 
-first="`basename $tarball | cut -d- -f3`"
+first="`basename $tarball | cut -d- -f2`"
 version="`echo $first | sed -e 's/\.tar\.'$extension'//'`"
 unset first
-echo "--> Found Open RCM version: $version"
+echo "--> Found ORCM version: $version"
 
 #
 # do we have the spec files?
@@ -198,7 +198,7 @@ fi
 # from the specfile
 #
 
-specdest="$rpmtopdir/SPECS/open-rcm-$version.spec"
+specdest="$rpmtopdir/SPECS/orcm-$version.spec"
 sed -e 's/\$VERSION/'$version'/g' \
     -e 's/\$EXTENSION/'$extension'/g' \
     $specfile > "$specdest"
@@ -221,7 +221,7 @@ fi
 #
 
 if test "$build_srpm" = "yes"; then
-    echo "--> Building the Open RCM SRPM"
+    echo "--> Building the ORCM SRPM"
     rpmbuild_options="$rpmbuild_options --define 'dist %{nil}' --define 'configure_options %{nil}'"
     cmd="$rpm_cmd $rpmbuild_options -bs $specdest"
     echo "--> $cmd"
@@ -240,7 +240,7 @@ fi
 #
 
 if test "$build_single" = "yes"; then
-    echo "--> Building the single Open RCM RPM"
+    echo "--> Building the single ORCM RPM"
     cmd="$rpm_cmd -bb $rpmbuild_options --define 'build_all_in_one_rpm 1'"
     if test "$configure_options" != ""; then
         cmd="$cmd --define 'configure_options $configure_options'"
@@ -262,7 +262,7 @@ fi
 #
 
 if test "$build_multiple" = "yes"; then
-    echo "--> Building the multiple Open RCM RPM"
+    echo "--> Building the multiple ORCM RPM"
     cmd="$rpm_cmd -bb $rpmbuild_options --define 'build_all_in_one_rpm 0'"
     if test "$configure_options" != ""; then
         cmd="$cmd --define 'configure_options $configure_options'"

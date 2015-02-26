@@ -114,7 +114,7 @@ static void job_errors(int fd, short args, void *cbdata)
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          orte_job_state_to_str(jobstate));
         /* notify this */
-        ORTE_NOTIFIER_LOG_ERROR(ORTE_PROC_MY_NAME, jobstate, ORTE_NOTIFIER_CRIT, 1, msg);
+        ORTE_NOTIFIER_LOG_ERROR(caddy->jdata, jobstate, ORTE_NOTIFIER_CRIT, 1, msg);
     /* cleanup */
     /* ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_FORCED_EXIT);*/
         OBJ_RELEASE(caddy);

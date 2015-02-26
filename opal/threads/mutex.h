@@ -14,6 +14,7 @@
  *                         reserved. 
  * Copyright (c) 2007      Voltaire. All rights reserved.
  * Copyright (c) 2010      Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  * 
@@ -100,32 +101,8 @@ END_C_DECLS
 
 BEGIN_C_DECLS
 
-static inline bool opal_using_threads(void)
-{
-    return 0;
-}
-
-/**
- * Set whether the process is using multiple threads or not.
- *
- * @param have Boolean indicating whether the process is using
- * multiple threads or not.
- *
- * @retval opal_using_threads The new return value from
- * opal_using_threads().
- *
- * This function is used to influence the return value of
- * opal_using_threads().  If configure detected that we have thread
- * support, the return value of future invocations of
- * opal_using_threads() will be the parameter's value.  If configure
- * detected that we have no thread support, then the retuen from
- * opal_using_threads() will always be false.
- */
-static inline bool opal_set_using_threads(bool have)
-{
-    if(have) {}; //Bogus use of have to stop compiler error for an orcm test.
-    return opal_using_threads();
-}
+#define opal_using_threads()  0
+#define opal_set_using_threads(x)
 
 
 /**

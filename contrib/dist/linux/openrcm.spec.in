@@ -47,8 +47,8 @@
 #
 # global Open RCM stuff
 #
-Prefix: /opt/orcm
-%define orcm_name orcm
+Prefix: /opt/openrcm
+%define orcm_name openrcm
 %define orcm_version @ORCM_VERSION@
 %{!?orcm_package_version:%define orcm_package_version default}
 %define orcm_extra_version %{nil}

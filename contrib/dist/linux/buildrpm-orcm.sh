@@ -19,7 +19,7 @@
 #
 
 
-prefix=${prefix:-"/opt/orcm"}
+prefix=${prefix:-"/opt/openrcm"}
 rpmbuild_options=${rpmbuild_options:-"--define 'mflags -j4' --define '_source_filedigest_algorithm md5'  --define '_binary_filedigest_algorithm md5'"}
 configure_options=${configure_options:-""}
 
@@ -198,7 +198,7 @@ fi
 # from the specfile
 #
 
-specdest="$rpmtopdir/SPECS/orcm-$version.spec"
+specdest="$rpmtopdir/SPECS/openrcm-$version.spec"
 sed -e 's/\$VERSION/'$version'/g' \
     -e 's/\$EXTENSION/'$extension'/g' \
     $specfile > "$specdest"

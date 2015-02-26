@@ -1290,7 +1290,7 @@ AC_CONFIG_FILES([
 
 ])
 
-AC_CONFIG_FILES([contrib/dist/linux/orcm.spec])
+AC_CONFIG_FILES([contrib/dist/linux/openrcm.spec])
 
 OPAL_CONFIG_FILES
 ORTE_CONFIG_FILES

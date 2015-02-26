@@ -91,7 +91,7 @@ contrib/dist/mofed/debian/changelog
 contrib/dist/mofed/debian/control
 contrib/dist/mofed/debian/copyright
 contrib/dist/mofed/debian/rules
-contrib/dist/linux/open-rcm.spec
+contrib/dist/linux/openrcm.spec
 contrib/platform/intel/bend/*orcm*
 contrib/scaling/orte_no_op
 contrib/scaling/mpi_no_op

@@ -58,6 +58,7 @@
 #include "orte/mca/iof/base/base.h"
 #include "orte/mca/ras/base/base.h"
 #include "orte/mca/grpcomm/base/base.h"
+#include "orte/mca/schizo/base/base.h"
 #include "orte/mca/odls/base/base.h"
 #include "orte/mca/rtc/base/base.h"
 #include "orte/mca/dfs/base/base.h"
@@ -463,6 +464,18 @@ static int orcmsd_init(void)
         }
     }
 
+    /* Open/select the schizo */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_schizo_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_schizo_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orte_schizo_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orte_schizo_base_select";
+        goto error;
+    }
+    
     /* Open/select the odls */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_odls_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -740,6 +753,7 @@ static void orcmsd_finalize(void)
     (void) mca_base_framework_close(&orte_dfs_base_framework);
     (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_rtc_base_framework);
+    (void) mca_base_framework_close(&orte_schizo_base_framework);
     (void) mca_base_framework_close(&orte_odls_base_framework);
     if (ORCM_PROC_IS_HNP) {
         (void) mca_base_framework_close(&orte_rmaps_base_framework);

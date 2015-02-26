@@ -515,6 +515,8 @@ int orun(int argc, char *argv[])
          */
         return ORTE_ERR_OUT_OF_RESOURCE;
     }
+
+    jdata->personality = strdup("ompi");
     
     /* add a map object */
     jdata->map = OBJ_NEW(orte_job_map_t);

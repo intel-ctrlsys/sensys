@@ -54,6 +54,7 @@ OPAL_DECLSPEC OBJ_CLASS_DECLARATION(opal_condition_t);
 
 static inline int opal_condition_wait(opal_condition_t *c, opal_mutex_t *m)
 {
+    if (m) {}; /* Bogus use of have to stop compiler error for an orcm test */
     c->c_waiting++;
 
     while (c->c_signaled == 0) {
@@ -72,6 +73,7 @@ static inline int opal_condition_timedwait(opal_condition_t *c,
     struct timeval tv;
     struct timeval absolute;
 
+    if (m) {}; /* Bogus use of have to stop compiler error for an orcm test */
     c->c_waiting++;
     absolute.tv_sec = abstime->tv_sec;
     absolute.tv_usec = abstime->tv_nsec * 1000;

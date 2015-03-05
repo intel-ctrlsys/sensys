@@ -111,6 +111,11 @@ static orcm_cli_init_t cli_init[] = {
     // mem subcommand
     { { "diag", NULL }, "mem", 0, 1, "Memory diagnostics" },
 
+    /****** sensor command ******/
+    { { NULL }, "sensor", 0, 0, "sensor" },
+    // sample-rate
+    { { "sensor", NULL }, "sample-rate", 0, 1, "sensor sample-rate" },
+
     /****** power command ******/
     { { NULL }, "power", 0, 0, "Global Power Policy" },
     { { "power", NULL }, "set", 0, 0, "Set Power Policy" },
@@ -194,6 +199,8 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "frequency",         //27
                                      "modes",             //28
                                      "strict",            //29
+                                     "sensor",            //30
+                                     "sample-rate",       //31
                                      "\0" };
 
 END_C_DECLS

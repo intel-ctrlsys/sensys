@@ -27,6 +27,7 @@
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 
+static bool recv_issued=false;
 static bool mods_active = false;
 static void take_sample(int fd, short args, void *cbdata);
 
@@ -37,6 +38,10 @@ static void collect_inventory_info(opal_buffer_t* inventory_snapshot);
 void static recv_inventory(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
                        orte_rml_tag_t tag, void *cbdata);
+
+static void orcm_sensor_base_recv(int status, orte_process_name_t* sender,
+                                opal_buffer_t* buffer, orte_rml_tag_t tag,
+                                void* cbdata);
 
 static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
 {
@@ -68,6 +73,16 @@ void orcm_sensor_base_start(orte_jobid_t job)
     /* if no modules are active, then there is nothing to do */
     if (0 == orcm_sensor_base.modules.size) {
         return;
+    }
+
+    if (false == recv_issued) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_sensor_base_framework.framework_output,
+                             "%s sensor:base:receive start comm",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+
+        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR,
+                                ORTE_RML_PERSISTENT, orcm_sensor_base_recv, NULL);
+        recv_issued = true;
     }
 
     if (!mods_active) {
@@ -231,6 +246,16 @@ void orcm_sensor_base_stop(orte_jobid_t job)
 {
     orcm_sensor_active_module_t *i_module;
     int i;
+
+    if (true == recv_issued) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_sensor_base_framework.framework_output,
+                             "%s sensor:base:receive stop comm",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+
+       orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
+       recv_issued = false;
+    }
+
     if (!mods_active) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "sensor stop: no active mods");
         return;
@@ -309,6 +334,10 @@ static void take_sample(int fd, short args, void *cbdata)
 
     /* restart the timer, if given */
     if (0 < sampler->rate.tv_sec) {
+        if ( orcm_sensor_base.sample_rate && 
+             sampler->rate.tv_sec != orcm_sensor_base.sample_rate) {
+            sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        }
         opal_event_evtimer_add(&sampler->ev, &sampler->rate);
     } else {
         OBJ_RELEASE(sampler);
@@ -376,3 +405,61 @@ void orcm_sensor_base_manually_sample(char *sensors,
     return;
 }
 
+/* process incoming messages in order of receipt */
+static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
+                                opal_buffer_t *buffer, orte_rml_tag_t tag,
+                                void *cbdata)
+{
+    orcm_sensor_cmd_flag_t command;
+    opal_buffer_t *ans;
+    int sample_rate = 0;
+    int rc, response, cnt;
+
+    OPAL_OUTPUT_VERBOSE((5, orcm_sensor_base_framework.framework_output,
+                         "%s sensor:base:receive processing msg",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+
+    /* unpack the command */
+    cnt = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command,
+                                              &cnt, ORCM_SENSOR_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    if (ORCM_SENSOR_SAMPLE_RATE_COMMAND == command) {
+        /* unpack the sample rate */
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sample_rate,
+                                                  &cnt, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+
+        if (sample_rate && sample_rate != orcm_sensor_base.sample_rate) {
+            /* Reset the sample rate */
+            orcm_sensor_base.sample_rate = sample_rate;
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "%s sensor:base: reset sampler with rate %d",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                orcm_sensor_base.sample_rate);
+        }
+        /* send back the immediate success*/
+        ans = OBJ_NEW(opal_buffer_t);
+        response = ORCM_SUCCESS;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
+        if (ORTE_SUCCESS !=
+            (rc = orte_rml.send_buffer_nb(sender, ans,
+                                          ORCM_RML_TAG_SENSOR,
+                                          orte_rml_send_callback, NULL))) {
+             ORTE_ERROR_LOG(rc);
+             OBJ_RELEASE(ans);
+             return;
+        }
+    }
+    return;
+}

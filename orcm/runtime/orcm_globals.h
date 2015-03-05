@@ -114,6 +114,12 @@ typedef uint8_t orcm_diag_cmd_flag_t;
 #define ORCM_DIAG_START_COMMAND       1
 #define ORCM_DIAG_AGG_COMMAND         2
 
+/* define sensor commands */
+typedef uint8_t orcm_sensor_cmd_flag_t;
+#define ORCM_SENSOR_CMD_T OPAL_UINT8
+
+#define ORCM_SENSOR_SAMPLE_RATE_COMMAND       1
+
 /** version string of ORCM */
 ORCM_DECLSPEC extern const char openrcm_version_string[];
 
@@ -147,6 +153,8 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 #define ORCM_RML_TAG_PWRMGMT_BASE  (ORTE_RML_TAG_MAX + 9)
 /* autotuner */
 #define ORCM_RML_TAG_AT            (ORTE_RML_TAG_MAX + 10)
+/* sensor */
+#define ORCM_RML_TAG_SENSOR        (ORTE_RML_TAG_MAX + 11)
 
 /* define event base priorities */
 #define ORCM_SCHED_PRI OPAL_EV_MSG_HI_PRI

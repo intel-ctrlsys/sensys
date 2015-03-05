@@ -643,6 +643,29 @@ static int run_cmd(char *cmd) {
             break;
         }
         break;
+    case 30: // sensor
+        rc = octl_command_to_int(cmdlist[1]);
+        if (-1 == rc) {
+            fullcmd = opal_argv_join(cmdlist, ' ');
+            fprintf(stderr, "Unknown command: %s\n", fullcmd);
+            free(fullcmd);
+            rc = ORCM_ERROR;
+            break;
+        }
+        
+        switch (rc) {
+            case 31: //sample rate
+                if (ORCM_SUCCESS != (rc = orcm_octl_sensor_sample_rate(cmdlist))) {
+                    ORTE_ERROR_LOG(rc);
+                }
+                break;
+            default:
+                fullcmd = opal_argv_join(cmdlist, ' ');
+                fprintf(stderr, "Illegal command: %s\n", fullcmd);
+                free(fullcmd);
+                break;
+        }
+        break;
     default:
         fullcmd = opal_argv_join(cmdlist, ' ');
         fprintf(stderr, "Illegal command: %s\n", fullcmd);

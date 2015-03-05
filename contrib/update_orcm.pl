@@ -64,7 +64,8 @@ my @ompi_leading_ignores = ("ompi", "test", "examples", "config/ompi", "orte/too
                             "orte/mca/ess/singleton", "orte/mca/ess/slurm",
                             "orte/mca/ess/tm", "orte/mca/iof/mr", "orte/mca/plm/alps",
                             "orte/mca/plm/lsf", "orte/mca/plm/slurm", "orte/mca/plm/tm",
-                            "orte/mca/state/app", "orte/mca/state/hnp", "orte/mca/state/novm",
+                            "orte/mca/state/state.h", "orte/mca/state/app", 
+                            "orte/mca/state/hnp", "orte/mca/state/novm",
                             "orte/mca/state/staged", "orte/tools/Makefile.am", "orte/util/proc_info.h",
                             ".mailmap", ".hgignore_global", "AUTHORS", "NEWS", "Makefile.ompi-rules");
 

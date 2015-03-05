@@ -19,7 +19,7 @@
  * Copyright (c) 2009      IBM Corporation.  All rights reserved.
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved
  * Copyright (c) 2013      NVIDIA Corporation.  All rights reserved.
- * Copyright (c) 2014      Research Organization for Information Science
+ * Copyright (c) 2014-2015 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
@@ -31,8 +31,8 @@
 #include "btl_openib.h"
 #include "btl_openib_frag.h"
 #include "btl_openib_endpoint.h"
+#include "btl_openib_proc.h"
 #include "btl_openib_xrc.h"
-
 /*
  * RDMA WRITE local buffer to remote buffer address.
  */
@@ -45,17 +45,18 @@ int mca_btl_openib_put (mca_btl_base_module_t *btl, struct mca_btl_base_endpoint
     mca_btl_openib_put_frag_t *frag = NULL;
     int rc, qp = order;
 
-    if (OPAL_UNLIKELY(size > btl->btl_put_limit)) {
+    if (MCA_BTL_NO_ORDER == qp) {
+        qp = mca_btl_openib_component.rdma_qp;
+    }
+
+    if (OPAL_UNLIKELY((ep->qps[qp].ib_inline_max < size && !local_handle) || !remote_handle ||
+                      size > btl->btl_put_limit)) {
         return OPAL_ERR_BAD_PARAM;
     }
 
     frag = to_put_frag(alloc_send_user_frag ());
     if (OPAL_UNLIKELY(NULL == frag)) {
         return OPAL_ERR_OUT_OF_RESOURCE;
-    }
-
-    if (MCA_BTL_NO_ORDER == qp) {
-        qp = mca_btl_openib_component.rdma_qp;
     }
 
     /* set base descriptor flags */
@@ -65,7 +66,14 @@ int mca_btl_openib_put (mca_btl_base_module_t *btl, struct mca_btl_base_endpoint
 
     /* set up scatter-gather entry */
     to_com_frag(frag)->sg_entry.length = size;
-    to_com_frag(frag)->sg_entry.lkey   = local_handle->lkey;
+
+    if (local_handle) {
+        to_com_frag(frag)->sg_entry.lkey   = local_handle->lkey;
+    } else {
+        /* lkey is not required for inline RDMA write */
+        to_com_frag(frag)->sg_entry.lkey   = 0;
+    }
+
     to_com_frag(frag)->sg_entry.addr   = (uint64_t)(intptr_t) local_address;
     to_com_frag(frag)->endpoint = ep;
 

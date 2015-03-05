@@ -40,6 +40,7 @@
 /* Open MPI includes */
 #include "opal/class/opal_pointer_array.h"
 #include "opal/class/opal_hash_table.h"
+#include "opal/util/arch.h"
 #include "opal/util/output.h"
 #include "opal/mca/event/event.h"
 #include "opal/threads/threads.h"
@@ -278,8 +279,6 @@ struct mca_btl_openib_component_t {
     unsigned int cq_poll_progress;
     unsigned int cq_poll_batch;
     unsigned int eager_rdma_poll_ratio;
-    /** Whether we want fork support or not */
-    int want_fork_support;
     int rdma_qp;
     int credits_qp; /* qp used for software flow control */
     bool cpc_explicitly_defined;

@@ -16,7 +16,7 @@
  *                         reserved.
  * Copyright (c) 2006-2007 Voltaire All rights reserved.
  * Copyright (c) 2009-2010 Oracle and/or its affiliates.  All rights reserved.
- * Copyright (c) 2013-2014 NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2013-2015 NVIDIA Corporation.  All rights reserved.
  * Copyright (c) 2014-2015 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * Copyright (c) 2014      Intel, Inc. All rights reserved.
@@ -30,8 +30,8 @@
 #include "opal_config.h"
 
 #include <string.h>
-
 #include "opal/util/bit_ops.h"
+#include "opal/mca/common/verbs/common_verbs.h"
 #include "opal/mca/installdirs/installdirs.h"
 #include "opal/util/os_dirpath.h"
 #include "opal/util/output.h"
@@ -269,11 +269,6 @@ int btl_openib_register_mca_params(void)
                    "Retrieve up to poll_cq_batch completions from CQ",
                    MCA_BTL_OPENIB_CQ_POLL_BATCH_DEFAULT, &mca_btl_openib_component.cq_poll_batch,
                    REGINT_GE_ONE));
-
-    CHECK(reg_int("want_fork_support", NULL,
-                  "Whether fork support is desired or not "
-                  "(negative = try to enable fork support, but continue even if it is not available, 0 = do not enable fork support, positive = try to enable fork support and fail if it is not available)",
-                  0, &mca_btl_openib_component.want_fork_support, 0));
 
     asprintf(&str, "%s/mca-btl-openib-device-params.ini",
              opal_install_dirs.opaldatadir);
@@ -804,20 +799,19 @@ int btl_openib_verify_mca_params (void)
     } else {
         mca_btl_openib_module.super.btl_flags &= ~MCA_BTL_FLAGS_CUDA_COPY_ASYNC_RECV;
     }
+#if 0 /* Disable this check for now while fork support code is worked out. */
     /* Cannot have fork support and GDR on at the same time.  If the user asks for both,
      * then print a message and return error.  If the user does not explicitly ask for
      * fork support, then turn it off in the presence of GDR.  */
     if (mca_btl_openib_component.cuda_want_gdr && mca_btl_openib_component.cuda_have_gdr &&
         mca_btl_openib_component.driver_have_gdr) {
-        if (1 == mca_btl_openib_component.want_fork_support) {
+        if (1 == opal_common_verbs_want_fork_support) {
               opal_show_help("help-mpi-btl-openib.txt", "no_fork_with_gdr",
                              true, opal_process_info.nodename);
               return OPAL_ERR_BAD_PARAM;
         }
-        if (-1 == mca_btl_openib_component.want_fork_support) {
-            mca_btl_openib_component.want_fork_support = 0;
-        }
     }
+#endif /* Workaround */
 #endif
 
 #if BTL_OPENIB_MALLOC_HOOKS_ENABLED

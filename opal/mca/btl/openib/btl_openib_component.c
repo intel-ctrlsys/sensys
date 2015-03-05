@@ -816,6 +816,9 @@ static int init_one_port(opal_list_t *btl_list, mca_btl_openib_device_t *device,
                 openib_btl->super.btl_put_limit = openib_btl->ib_port_attr.max_msg_sz;
             }
 
+            openib_btl->super.btl_put_local_registration_threshold = openib_btl->device->max_inline_data;
+            openib_btl->super.btl_get_local_registration_threshold = 0;
+
 #if HAVE_DECL_IBV_ATOMIC_HCA
             if (openib_btl->device->ib_dev_attr.atomic_cap == IBV_ATOMIC_NONE) {
                 openib_btl->super.btl_flags &= ~MCA_BTL_FLAGS_ATOMIC_FOPS;
@@ -1630,7 +1633,6 @@ static int init_one_device(opal_list_t *btl_list, struct ibv_device* ib_dev)
 
     port_cnt = get_port_list(device, allowed_ports);
     if (0 == port_cnt) {
-        free(allowed_ports);
         ret = OPAL_SUCCESS;
         ++num_devices_intentionally_ignored;
         goto error;
@@ -2204,6 +2206,9 @@ error:
     if (device->ib_dev_context) {
         ibv_close_device(device->ib_dev_context);
     }
+    if (NULL != allowed_ports) {
+        free(allowed_ports);
+    }
     OBJ_RELEASE(device);
     return ret;
 }
@@ -2462,7 +2467,7 @@ btl_openib_component_init(int *num_btl_modules,
                           bool enable_mpi_threads)
 {
     struct ibv_device **ib_devs;
-    mca_btl_base_module_t** btls;
+    mca_btl_base_module_t** btls = NULL;
     int i, ret, num_devs, length;
     opal_list_t btl_list;
     mca_btl_openib_module_t * openib_btl;
@@ -2634,23 +2639,10 @@ btl_openib_component_init(int *num_btl_modules,
         goto no_btls;
     }
 
-    /* If we want fork support, try to enable it */
-#ifdef HAVE_IBV_FORK_INIT
-    if (0 != mca_btl_openib_component.want_fork_support) {
-        if (0 != ibv_fork_init()) {
-            /* If the want_fork_support MCA parameter is >0, then the
-               user was specifically asking for fork support and we
-               couldn't provide it.  So print an error and deactivate
-               this BTL. */
-            if (mca_btl_openib_component.want_fork_support > 0) {
-                opal_show_help("help-mpi-btl-openib.txt",
-                               "ibv_fork_init fail", true,
-                               opal_process_info.nodename);
-                goto no_btls;
-            }
-        }
+    /* If fork support is requested, try to enable it */
+    if (OPAL_SUCCESS != (ret = opal_common_verbs_fork_test())) {
+        goto no_btls;
     }
-#endif
 
     /* Parse the include and exclude lists, checking for errors */
     mca_btl_openib_component.if_include_list =
@@ -2915,6 +2907,9 @@ btl_openib_component_init(int *num_btl_modules,
         __malloc_hook = mca_btl_openib_component.previous_malloc_hook;
     }
 #endif
+    if (NULL != btls) {
+        free(btls);
+    }
     return NULL;
 }
 

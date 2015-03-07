@@ -131,7 +131,7 @@ typedef int (*orcm_db_base_module_store_fn_t)(struct orcm_db_base_module_t *imod
 typedef void (*orcm_db_base_API_record_data_samples_fn_t)(
         int dbhandle,
         const char *hostname,
-        const struct tm *time_stamp,
+        const struct timeval *time_stamp,
         const char *data_group,
         opal_list_t *samples,
         orcm_db_callback_fn_t cbfunc,
@@ -139,7 +139,7 @@ typedef void (*orcm_db_base_API_record_data_samples_fn_t)(
 typedef int (*orcm_db_base_module_record_data_samples_fn_t)(
         struct orcm_db_base_module_t *imod,
         const char *hostname,
-        const struct tm *time_stamp,
+        const struct timeval *time_stamp,
         const char *data_group,
         opal_list_t *samples);
 

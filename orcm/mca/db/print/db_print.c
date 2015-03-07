@@ -44,7 +44,7 @@ static int store(struct orcm_db_base_module_t *imod,
                  opal_list_t *kvs);
 static int record_data_samples(struct orcm_db_base_module_t *imod,
                                const char *hostname,
-                               const struct tm *time_stamp,
+                               const struct timeval *time_stamp,
                                const char *data_group,
                                opal_list_t *samples);
 static int update_node_features(struct orcm_db_base_module_t *imod,
@@ -163,7 +163,7 @@ static int store(struct orcm_db_base_module_t *imod,
 
 static int record_data_samples(struct orcm_db_base_module_t *imod,
                               const char *hostname,
-                              const struct tm *time_stamp,
+                              const struct timeval *time_stamp,
                               const char *data_group,
                               opal_list_t *samples)
 {
@@ -172,6 +172,7 @@ static int record_data_samples(struct orcm_db_base_module_t *imod,
     char **cmdargs=NULL, *vstr;
     char time_str[40];
     char tbuf[1024];
+    struct tm *time_stamp_tm = localtime(&time_stamp->tv_sec);
 
     if (NULL != hostname) {
         snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
@@ -179,7 +180,7 @@ static int record_data_samples(struct orcm_db_base_module_t *imod,
     }
 
     if (NULL != time_stamp) {
-        strftime(time_str, sizeof(time_str), "%F %T%z", time_stamp);
+        strftime(time_str, sizeof(time_str), "%F %T%z", time_stamp_tm);
         snprintf(tbuf, sizeof(tbuf), "%s=%s", "time_stamp", time_str);
         opal_argv_append_nosize(&cmdargs, tbuf);
     }

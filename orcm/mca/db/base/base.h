@@ -61,7 +61,7 @@ typedef struct {
     opal_list_t *properties;
 
     const char *hostname;
-    const struct tm *time_stamp;
+    const struct timeval *time_stamp;
     const char *data_group;
     char *primary_key;
     char *key;
@@ -101,7 +101,7 @@ ORCM_DECLSPEC void orcm_db_base_store(int dbhandle,
 ORCM_DECLSPEC void orcm_db_base_record_data_samples(
         int dbhandle,
         const char *hostname,
-        const struct tm *time_stamp,
+        const struct timeval *time_stamp,
         const char *data_group,
         opal_list_t *samples,
         orcm_db_callback_fn_t cbfunc,

@@ -233,12 +233,13 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
 {
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
     opal_value_t *kv;
-    opal_list_item_t *item;
+    opal_value_t *timestamp_item = NULL;
+    opal_value_t *hostname_item = NULL;
     char *sampletime_str;
     struct tm time_info;
 
     SQL_TIMESTAMP_STRUCT sampletime;
-    char *hostname;
+    char hostname[256];
     char **data_item_argv;
     int argv_count;
     value_type_t curr_type = VALUE_INTEGER;
@@ -263,26 +264,56 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
 
-    item = opal_list_get_first(kvs);
-    kv = (opal_value_t *)item;
-    if (kv == NULL || item == opal_list_get_end(kvs) ||
-            kv->type != OPAL_STRING) {
+    /* First, retrieve the time stamp and the hostname from the list */
+    OPAL_LIST_FOREACH(kv, kvs, opal_value_t) {
+        if (!strcmp(kv->key, "ctime")) {
+            switch (kv->type) {
+            case OPAL_TIMEVAL:
+            case OPAL_TIME:
+                to_sql_timestamp_tv(&sampletime, &kv->data.tv);
+                break;
+            case OPAL_STRING:
+                sampletime_str = kv->data.string;
+                /* Note: assuming "%F %T%z" format and ignoring sub second
+                resolution when passed as a string */
+                strptime(sampletime_str, "%F %T%z", &time_info);
+                to_sql_timestamp_tm(&sampletime, &time_info);
+                break;
+            default:
+                ERR_MSG_STORE("Invalid value type specified for time stamp");
+                return ORCM_ERROR;
+            }
+            timestamp_item = kv;
+        } else if (!strcmp(kv->key, "hostname")) {
+            if (OPAL_STRING == kv->type) {
+                strncpy(hostname, kv->data.string, sizeof(hostname) - 1);
+                hostname[sizeof(hostname) - 1] = '\0';
+            } else {
+                ERR_MSG_STORE("Invalid value type specified for hostname");
+                return ORCM_ERROR;
+            }
+            hostname_item = kv;
+        }
+
+        if (NULL != timestamp_item && NULL != hostname_item) {
+            break;
+        }
+    }
+
+    if (NULL == timestamp_item) {
         ERR_MSG_STORE("No time stamp provided");
         return ORCM_ERROR;
     }
-    sampletime_str = kv->data.string;
-
-    item = opal_list_get_next(item);
-    kv = (opal_value_t *)item;
-    if (kv == NULL || item == opal_list_get_end(kvs) ||
-            kv->type != OPAL_STRING) {
+    if (NULL == hostname_item) {
         ERR_MSG_STORE("No hostname provided");
         return ORCM_ERROR;
     }
-    hostname = kv->data.string;
 
-    strptime(sampletime_str, "%F %T%z", &time_info);
-    to_sql_timestamp_tm(&sampletime, &time_info);
+    /* Remove these from the list to avoid processing them again */
+    opal_list_remove_item(kvs, (opal_list_item_t *)timestamp_item);
+    opal_list_remove_item(kvs, (opal_list_item_t *)hostname_item);
+    OBJ_RELEASE(timestamp_item);
+    OBJ_RELEASE(hostname_item);
 
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
@@ -372,10 +403,7 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
 
-    for (item = opal_list_get_next(item); item != opal_list_get_end(kvs);
-         item = opal_list_get_next(item)) {
-        kv = (opal_value_t *)item;
-
+    OPAL_LIST_FOREACH(kv, kvs, opal_value_t) {
         ret = get_opal_value(kv, &value_int, &value_real, &value_str,
                              &data_type, &curr_type);
         if (ORCM_SUCCESS != ret) {

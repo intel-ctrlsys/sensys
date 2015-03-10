@@ -63,6 +63,7 @@ static int record_diag_test(struct orcm_db_base_module_t *imod,
 /* Internal helper functions */
 static void print_values(opal_list_t *values, char ***cmdargs);
 static void print_value(const opal_value_t *kv, char *tbuf, size_t size);
+static void print_time(const struct timeval *time, char *tbuf, size_t size);
 
 
 mca_db_print_module_t mca_db_print_module = {
@@ -172,7 +173,6 @@ static int record_data_samples(struct orcm_db_base_module_t *imod,
     char **cmdargs=NULL, *vstr;
     char time_str[40];
     char tbuf[1024];
-    struct tm *time_stamp_tm = localtime(&time_stamp->tv_sec);
 
     if (NULL != hostname) {
         snprintf(tbuf, sizeof(tbuf), "%s=%s", "hostname", hostname);
@@ -180,7 +180,7 @@ static int record_data_samples(struct orcm_db_base_module_t *imod,
     }
 
     if (NULL != time_stamp) {
-        strftime(time_str, sizeof(time_str), "%F %T%z", time_stamp_tm);
+        print_time(time_stamp, time_str, sizeof(time_str));
         snprintf(tbuf, sizeof(tbuf), "%s=%s", "time_stamp", time_str);
         opal_argv_append_nosize(&cmdargs, tbuf);
     }
@@ -333,9 +333,6 @@ static void print_values(opal_list_t *values, char ***cmdargs)
 
 static void print_value(const opal_value_t *kv, char *tbuf, size_t size)
 {
-    time_t nowtime;
-    struct tm nowtm;
-
     switch (kv->type) {
     case OPAL_STRING:
         snprintf(tbuf, size, "%s", kv->data.string);
@@ -383,14 +380,26 @@ static void print_value(const opal_value_t *kv, char *tbuf, size_t size)
         snprintf(tbuf, size, "%f", kv->data.dval);
         break;
     case OPAL_TIMEVAL:
-        /* we only care about seconds */
-        nowtime = kv->data.tv.tv_sec;
-        (void)localtime_r(&nowtime, &nowtm);
-        strftime(tbuf, size, "%Y-%m-%d %H:%M:%S", &nowtm);
+    case OPAL_TIME:
+        print_time(&kv->data.tv, tbuf, size);
         break;
     default:
         snprintf(tbuf, size, "Unsupported type: %s",
                  opal_dss.lookup_data_type(kv->type));
         break;
     }
+}
+
+static void print_time(const struct timeval *time, char *tbuf, size_t size)
+{
+    struct tm *tm_info = localtime(&time->tv_sec);
+    char date_time[30];
+    char fraction[10];
+    char time_zone[10];
+
+    strftime(date_time, sizeof(date_time), "%F %T", tm_info);
+    strftime(time_zone, sizeof(time_zone), "%z", tm_info);
+    snprintf(fraction, sizeof(fraction), "%.3f",
+             (float)(time->tv_usec / 1000000.0));
+    snprintf(tbuf, size, "%s%s%s", date_time, fraction, time_zone);
 }

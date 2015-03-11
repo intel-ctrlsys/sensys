@@ -116,7 +116,7 @@ static int init(void)
     /* Initialize All available resource that are present in the current system
      * that need to be scanned by the plugin */
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                        ">>>>>>>>> dmidata init");
+                        "dmidata init");
     OBJ_CONSTRUCT(&dmidata_host_list, opal_list_t);
     sensor_set_hwloc = false;
     if(NULL == opal_hwloc_topology)
@@ -155,7 +155,7 @@ static int init(void)
 
 static void finalize(void)
 {
-    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"dmidata Finalize <<<<<<<<<");
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"dmidata finalize");
     OPAL_LIST_DESTRUCT(&dmidata_host_list);
     if(true == sensor_set_hwloc) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -275,7 +275,6 @@ static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata
     } else {
         freq_list_token = opal_argv_split(freq_step_list, ' ');
         size = opal_argv_count(freq_list_token)-1;
-        opal_output(0,"extracting cpu steps");
         mkv = OBJ_NEW(orcm_metric_value_t);
         asprintf(&mkv->value.key,"total_freq_steps");
         mkv->value.type = OPAL_UINT;
@@ -371,7 +370,6 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         ORTE_ERROR_LOG(rc);
         return;
     }
-    opal_output(0,"dmidata_log");
 
     if (NULL != (newhost = found_inventory_host(hostname)))
     {
@@ -404,7 +402,8 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             }
         }
     } else { /* Node not found, Create new node and attach inventory details */
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"Received dmidata inventory log from a new host:%s", hostname);
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+            "Received dmidata inventory log from a new host:%s", hostname);
         newhost = OBJ_NEW(dmidata_inventory_t);
         newhost->nodename = strdup(hostname);
         /* @VINFIX: Need to fix the bug in dss copy for OPAL_HWLOC_TOPO */
@@ -447,7 +446,8 @@ static void generate_test_vector(opal_buffer_t *v)
         {
             inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR);
             obj->infos[k].value = inv_tv;
-            opal_output(0,"Found Inventory Item %s : %s",inv_key, obj->infos[k].value);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Found Inventory Item %s : %s",inv_key, obj->infos[k].value);
         }
     }
 
@@ -465,7 +465,8 @@ static void generate_test_vector(opal_buffer_t *v)
             {
                 inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR);
                 obj->infos[k].value = inv_tv;
-                opal_output(0,"Found Inventory Item %s : %s",inv_key, obj->infos[k].value);
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                    "Found Inventory Item %s : %s",inv_key, obj->infos[k].value);
             }
         }
     }

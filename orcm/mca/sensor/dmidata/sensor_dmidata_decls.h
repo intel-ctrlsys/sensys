@@ -41,6 +41,9 @@ static void dmidata_inv_des(dmidata_inventory_t *trk)
         if (NULL != trk->nodename) {
             free(trk->nodename);
         }
+        if (NULL != trk->freq_step_list) {
+            free(trk->freq_step_list);
+        }
     }
 }
 

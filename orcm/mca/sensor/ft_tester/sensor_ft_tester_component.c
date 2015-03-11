@@ -48,11 +48,12 @@ orcm_sensor_ft_tester_component_t mca_sensor_ft_tester_component = {
             /* The component is checkpoint ready */
             MCA_BASE_METADATA_PARAM_CHECKPOINT
         },
-        NULL
+        "nothing"    // data being sensed
     }
 };
 
 static char *daemon_fail_prob = NULL;
+static char *aggregator_fail_prob = NULL;
 static char *fail_prob = NULL;
 opal_rng_buff_t orcm_sensor_ft_rng_buff;
 
@@ -83,6 +84,12 @@ static int orcm_sensor_ft_tester_register (void)
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             &daemon_fail_prob);
+    aggregator_fail_prob = NULL;
+    (void) mca_base_component_var_register (c, "aggregator_fail_prob", "Probability of killing a aggregator",
+                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            &aggregator_fail_prob);
 
     return ORCM_SUCCESS;
 }
@@ -109,6 +116,16 @@ static int orcm_sensor_ft_tester_open(void)
     } else {
         mca_sensor_ft_tester_component.daemon_fail_prob = 0.0;
     }
+
+    if (NULL != aggregator_fail_prob) {
+        mca_sensor_ft_tester_component.aggregator_fail_prob = strtof(aggregator_fail_prob, NULL);
+        if (1.0 < mca_sensor_ft_tester_component.aggregator_fail_prob) {
+            /* given in percent */
+            mca_sensor_ft_tester_component.aggregator_fail_prob /= 100.0;
+        }
+    } else {
+        mca_sensor_ft_tester_component.aggregator_fail_prob = 0.0;
+    }
     
     return ORCM_SUCCESS;
 }
@@ -117,7 +134,8 @@ static int orcm_sensor_ft_tester_open(void)
 static int orcm_sensor_ft_tester_query(mca_base_module_t **module, int *priority)
 {
     if (0.0 < mca_sensor_ft_tester_component.fail_prob ||
-        0.0 < mca_sensor_ft_tester_component.daemon_fail_prob) {
+        0.0 < mca_sensor_ft_tester_component.daemon_fail_prob ||
+        0.0 < mca_sensor_ft_tester_component.aggregator_fail_prob) {
         *priority = 1;  /* at the bottom */
         *module = (mca_base_module_t *)&orcm_sensor_ft_tester_module;
         /* seed the RNG --- Not sure if we should assume all procs use 

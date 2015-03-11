@@ -58,7 +58,7 @@ orcm_sensor_base_module_t orcm_sensor_ft_tester_module = {
 
 static void sample(orcm_sensor_sampler_t *sampler)
 {
-    float prob;
+    float prob, my_prob, d_prob, agg_prob;
     orte_proc_t *child;
     int i;
 
@@ -67,18 +67,28 @@ static void sample(orcm_sensor_sampler_t *sampler)
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
     /* are we including ourselves? */
-    if (ORTE_PROC_IS_DAEMON &&
-        0 < mca_sensor_ft_tester_component.daemon_fail_prob) {
+    my_prob = 0.0;
+    d_prob = mca_sensor_ft_tester_component.daemon_fail_prob;
+    agg_prob = mca_sensor_ft_tester_component.aggregator_fail_prob;
+
+    if (ORTE_PROC_IS_DAEMON && 0 < d_prob){
+      my_prob = d_prob;
+    }
+    else if (ORTE_PROC_IS_AGGREGATOR && 0 < agg_prob){
+      my_prob = agg_prob;
+    }
+
+    if (my_prob > 0.0){
         OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                              "%s sample:ft_tester considering killing me!",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         /* roll the dice */
         prob = (double)opal_rand(&orcm_sensor_ft_rng_buff) / (double)UINT32_MAX;
-        if (prob < mca_sensor_ft_tester_component.daemon_fail_prob) {
+        if (prob < my_prob) {
             /* commit suicide */
-            OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
+            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                                  "%s sample:ft_tester committing suicide",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
             orte_errmgr.abort(1, NULL);
             return;
         }
@@ -109,10 +119,10 @@ static void sample(orcm_sensor_sampler_t *sampler)
                                  prob, mca_sensor_ft_tester_component.fail_prob));
             if (prob < mca_sensor_ft_tester_component.fail_prob) {
                 /* you shall die... */
-                OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
+                opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                                      "%s sample:ft_tester killing %s",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                     ORTE_NAME_PRINT(&child->name)));
+                                     ORTE_NAME_PRINT(&child->name));
                 kill(child->pid, SIGTERM);
                 /* are we allowing multiple deaths */
                 if (!mca_sensor_ft_tester_component.multi_fail) {

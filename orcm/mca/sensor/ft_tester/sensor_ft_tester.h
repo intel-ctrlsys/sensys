@@ -26,6 +26,7 @@ struct orcm_sensor_ft_tester_component_t {
     orcm_sensor_base_component_t super;
     float fail_prob;
     float daemon_fail_prob;
+    float aggregator_fail_prob;
     bool multi_fail;
 };
 typedef struct orcm_sensor_ft_tester_component_t orcm_sensor_ft_tester_component_t;

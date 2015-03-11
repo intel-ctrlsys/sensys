@@ -389,6 +389,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             /* Delete existing host and update the host list with the freshly 
              * received inventory details*/
             OPAL_LIST_RELEASE(newhost->records);
+            free(newhost->freq_step_list);
             newhost->records=OBJ_NEW(opal_list_t);
 
             /*Extract all required inventory items here */

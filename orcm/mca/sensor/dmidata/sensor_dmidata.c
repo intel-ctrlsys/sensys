@@ -108,9 +108,11 @@ enum inv_item_req
 opal_list_t dmidata_host_list;
 hwloc_topology_t dmidata_hwloc_topology;
 bool sensor_set_hwloc;
+bool cpufreq_loaded = false;
 
 static int init(void)
 {
+    FILE *fptr;
     /* Initialize All available resource that are present in the current system
      * that need to be scanned by the plugin */
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -139,6 +141,14 @@ static int init(void)
                     "hwloc data already initialized");
         dmidata_hwloc_topology = opal_hwloc_topology;
         sensor_set_hwloc = false;
+    }
+    /* Check if cpufreq driver is loaded to collect available frequencies */
+    if(NULL != (fptr = fopen("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies","r"))) {
+        fclose(fptr);
+        cpufreq_loaded = true;
+    } else {
+        opal_output(0,"cpufreq module not loaded, unable to collect frequency list");
+        cpufreq_loaded = false;
     }
     return ORCM_SUCCESS;
 }
@@ -253,17 +263,49 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
     }
 }
 
+static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata_inventory_t *newhost)
+{
+    orcm_metric_value_t *mkv;
+    int size = 0, i;
+    char **freq_list_token;
+
+    if(strcmp(freq_step_list,"NULL") == 0) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+            "Frequency Steps not available");
+    } else {
+        freq_list_token = opal_argv_split(freq_step_list, ' ');
+        size = opal_argv_count(freq_list_token)-1;
+        opal_output(0,"extracting cpu steps");
+        mkv = OBJ_NEW(orcm_metric_value_t);
+        asprintf(&mkv->value.key,"total_freq_steps");
+        mkv->value.type = OPAL_UINT;
+        mkv->value.data.uint = size;
+        opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+
+        for(i = 0; i < size; i++) {
+            mkv = OBJ_NEW(orcm_metric_value_t);
+            asprintf(&mkv->value.key,"freq_step%d",i);
+            mkv->value.type = OPAL_UINT;
+            mkv->value.data.uint = strtol(freq_list_token[i],NULL,10);
+            opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Found Inventory Item freq_step%d : %d",i,mkv->value.data.uint);
+        }
+    }
+    newhost->freq_step_list = strdup(freq_step_list);
+}
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
     int32_t rc;
     char *comp;
-    
+    FILE *fptr;
+    char *freq_list;
+    int size = 0;
     if (mca_sensor_dmidata_component.test) {
         /* just send the test vector */
-        generate_test_vector(inventory_snapshot);     
+        generate_test_vector(inventory_snapshot);
         return;
     }
-    
     comp = strdup("dmidata");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
@@ -273,6 +315,24 @@ static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &dmidata_hwloc_topology, 1, OPAL_HWLOC_TOPO))) {
         ORTE_ERROR_LOG(rc);
         return;
+    }
+    if (cpufreq_loaded == true) {
+        if(NULL != (fptr = fopen("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies","r"))) {
+            fseek(fptr, 0, SEEK_END);
+            size = ftell(fptr);
+            freq_list = (char*)malloc(size);
+            rewind(fptr);
+            fgets(freq_list, size, fptr);
+         } else{
+            freq_list = strdup("NULL");
+         }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &freq_list, 1, OPAL_STRING))) {
+            free(freq_list);
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        free(freq_list);
+
     }
 }
 
@@ -292,43 +352,53 @@ static dmidata_inventory_t* found_inventory_host(char * nodename)
     return NULL;
 }
 
+
 static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
 {
     hwloc_topology_t topo;
     int32_t n, rc;
     dmidata_inventory_t *newhost;
-
+    char *freq_step_list;
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &topo, &n, OPAL_HWLOC_TOPO))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
 
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &freq_step_list, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    opal_output(0,"dmidata_log");
+
     if (NULL != (newhost = found_inventory_host(hostname)))
     {
         /* Check and Verify Node Inventory record and update db/notify user accordingly */
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "dmidata HOST found!! Update node with inventory details");
-        if(opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) {
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"Compared values match for : hwloc; Do nothing");
-        }
-        else {
-            /*@VINFIX: Due to a bug in the opal_dss.copy for OPAL_HWLOC_TOPO data type, this else block will always get
-             * hit and the data will always get copied for now
-             */
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"Compared values don't match for: hwloc; Notify User; Update List; Update Database");
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "dmidata HOST found!!");
+        if((opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) & (strncmp(freq_step_list,newhost->freq_step_list, strlen(freq_step_list)) == 0)) {
+
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Compared values match for : hwloc; Do nothing");
+        } else {
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "Value mismatch : hwloc; Notify User; Update List; Update Database");
             opal_dss.copy((void**)&newhost->hwloc_topo,topo,OPAL_HWLOC_TOPO);
 
-            /*Delete existing host and update the host list with the freshly received inventory details*/
+            /* Delete existing host and update the host list with the freshly 
+             * received inventory details*/
             OPAL_LIST_RELEASE(newhost->records);
             newhost->records=OBJ_NEW(opal_list_t);
 
             /*Extract all required inventory items here */
             extract_baseboard_inventory(topo, hostname, newhost);
             extract_cpu_inventory(topo, hostname, newhost);
+            extract_cpu_freq_steps(freq_step_list, hostname, newhost);
 
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {
-                orcm_db.update_node_features(orcm_sensor_base.dbhandle, newhost->nodename , newhost->records, NULL, NULL);
+                orcm_db.update_node_features(orcm_sensor_base.dbhandle,
+                    newhost->nodename, newhost->records, NULL, NULL);
             }
         }
     } else { /* Node not found, Create new node and attach inventory details */
@@ -341,6 +411,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         /*Extract all required inventory items here */
         extract_baseboard_inventory(topo, hostname, newhost);
         extract_cpu_inventory(topo, hostname, newhost);
+        extract_cpu_freq_steps(freq_step_list, hostname, newhost);
 
         /* Append the new node to the existing host list */
         opal_list_append(&dmidata_host_list, &newhost->super);

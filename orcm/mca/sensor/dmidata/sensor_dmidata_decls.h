@@ -24,7 +24,8 @@ typedef struct {
     char *nodename;
     unsigned long hashId; /* A hash value summing up the inventory record for each node, for quick comparision */
     hwloc_topology_t hwloc_topo;
-    opal_list_t *records; /* An hwloc topology container followed by a list of inventory items */
+    char *freq_step_list;  /* String holding a combined list of frequencies, for easy analysis */
+    opal_list_t *records;   /* An hwloc topology container followed by a list of inventory items */
 } dmidata_inventory_t;
 
 static void dmidata_inv_con(dmidata_inventory_t *trk)

@@ -323,6 +323,7 @@ static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
             freq_list = (char*)malloc(size);
             rewind(fptr);
             fgets(freq_list, size, fptr);
+            fclose(fptr);
          } else{
             freq_list = strdup("NULL");
          }

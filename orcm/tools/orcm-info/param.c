@@ -346,7 +346,6 @@ void orcm_info_do_config(bool want_all)
     char *memdebug;
     char *debug;
     char *threads;
-    char *want_libltdl;
     char *orterun_prefix_by_default;
     char *wtime_support;
     char *symbol_visibility;
@@ -356,7 +355,6 @@ void orcm_info_do_config(bool want_all)
     memprofile = OPAL_ENABLE_MEM_PROFILE ? "yes" : "no";
     memdebug = OPAL_ENABLE_MEM_DEBUG ? "yes" : "no";
     debug = OPAL_ENABLE_DEBUG ? "yes" : "no";
-    want_libltdl = OPAL_WANT_LIBLTDL ? "yes" : "no";
     orterun_prefix_by_default = ORTE_WANT_ORTERUN_PREFIX_BY_DEFAULT ? "yes" : "no";
     wtime_support = OPAL_TIMER_USEC_NATIVE ? "native" : "gettimeofday";
     symbol_visibility = OPAL_C_HAVE_VISIBILITY ? "yes" : "no";
@@ -424,7 +422,6 @@ void orcm_info_do_config(bool want_all)
     orcm_info_out("Internal debug support", "option:debug", debug);
     orcm_info_out("Memory profiling support", "option:mem-profile", memprofile);
     orcm_info_out("Memory debugging support", "option:mem-debug", memdebug);
-    orcm_info_out("libltdl support", "option:dlopen", want_libltdl);
     orcm_info_out("Heterogeneous support", "options:heterogeneous", heterogeneous);
     orcm_info_out("orterun default --prefix", "orterun:prefix_by_default", 
                   orterun_prefix_by_default);

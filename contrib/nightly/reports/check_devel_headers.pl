@@ -10,7 +10,7 @@
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2015      Intel, Inc. All rights reserved
+# Copyright (c) 2015 Cisco Systems, Inc.  All rights reserved.
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
@@ -27,7 +27,7 @@ use File::Find;
 use Getopt::Long;
 use Data::Dumper;
 
-my @projects = qw(opal orte orcm orcmapi scon);
+my @projects = qw(opal orte ompi);
 our $prefix_arg;
 
 &Getopt::Long::Configure("bundling", "require_order");
@@ -89,11 +89,6 @@ sub wanted {
     }
     # We don't want any of the F90 headers
     elsif ($parts[0] eq "ompi" && $parts[1] eq "mpi" && $parts[2] eq "f90") {
-        return;
-    }
-    # The only file we want in opal/libltdl is ltdl.h
-    elsif ($parts[0] eq "opal" && $parts[1] eq "libltdl" &&
-           $name ne "ltdl.h") {
         return;
     }
     # The only file we want in opal/event is event.h

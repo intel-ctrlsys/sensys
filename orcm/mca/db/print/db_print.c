@@ -392,14 +392,27 @@ static void print_value(const opal_value_t *kv, char *tbuf, size_t size)
 
 static void print_time(const struct timeval *time, char *tbuf, size_t size)
 {
-    struct tm *tm_info = localtime(&time->tv_sec);
+    struct timeval nrm_time = *time;
+    struct tm *tm_info;
     char date_time[30];
     char fraction[10];
     char time_zone[10];
 
+    /* Normalize */
+    while (nrm_time.tv_usec < 0) {
+        nrm_time.tv_usec += 1000000;
+        nrm_time.tv_sec--;
+    }
+    while (nrm_time.tv_usec >= 1000000) {
+        nrm_time.tv_usec -= 1000000;
+        nrm_time.tv_sec++;
+    }
+
+    /* Print in format: YYYY-MM-DD HH:MM:SS.fraction time zone */
+    tm_info = localtime(&nrm_time.tv_sec);
     strftime(date_time, sizeof(date_time), "%F %T", tm_info);
     strftime(time_zone, sizeof(time_zone), "%z", tm_info);
     snprintf(fraction, sizeof(fraction), "%.3f",
              (float)(time->tv_usec / 1000000.0));
-    snprintf(tbuf, size, "%s%s%s", date_time, fraction, time_zone);
+    snprintf(tbuf, size, "%s%s%s", date_time, fraction + 1, time_zone);
 }

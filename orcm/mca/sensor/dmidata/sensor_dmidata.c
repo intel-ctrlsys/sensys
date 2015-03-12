@@ -429,7 +429,7 @@ static void generate_test_vector(opal_buffer_t *v)
     int rc;
     char *ctmp;
     hwloc_obj_t obj;
-    char *inv_key, *inv_tv;
+    char *inv_key, *inv_tv, *freq_list;
     uint32_t k;
 
     ctmp = strdup("dmidata");
@@ -445,7 +445,8 @@ static void generate_test_vector(opal_buffer_t *v)
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
         {
             inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR);
-            obj->infos[k].value = inv_tv;
+            free(obj->infos[k].value);
+            obj->infos[k].value = strdup(inv_tv);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Found Inventory Item %s : %s",inv_key, obj->infos[k].value);
         }
@@ -464,7 +465,8 @@ static void generate_test_vector(opal_buffer_t *v)
             if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
             {
                 inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR);
-                obj->infos[k].value = inv_tv;
+                free(obj->infos[k].value);
+                obj->infos[k].value = strdup(inv_tv);
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                     "Found Inventory Item %s : %s",inv_key, obj->infos[k].value);
             }
@@ -472,6 +474,14 @@ static void generate_test_vector(opal_buffer_t *v)
     }
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(v, &dmidata_hwloc_topology, 1, OPAL_HWLOC_TOPO))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    freq_list = strdup("2102100 2000000 3453534 \n");
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(v, &freq_list, 1, OPAL_STRING))) {
+        free(freq_list);
         ORTE_ERROR_LOG(rc);
         return;
     }

@@ -1,6 +1,6 @@
 dnl -*- shell-script -*-
 dnl
-dnl Copyright (c) 2014      Intel, Inc. All rights reserved.
+dnl Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
 dnl $COPYRIGHT$
 dnl 
 dnl Additional copyrights may follow
@@ -15,16 +15,15 @@ AC_DEFUN([MCA_orcm_pwrmgmt_manualfreq_CONFIG], [
 
     AC_ARG_WITH([manualfreq],
                 [AC_HELP_STRING([--with-manualfreq],
-                                [Build manualfreq support (default: yes)])],
-	                        [], with_manualfreq=yes)
+                                [Build manualfreq support (default: yes)])])
 
     # do not build if support not requested
     AS_IF([test "$with_manualfreq" != "no"],
           [AS_IF([test "$opal_found_linux" = "yes"],
                  [$1],
-                 [AC_MSG_WARN([Manual Frequency was requested but is only supported on Linux systems])
-                  AC_MSG_ERROR([Cannot continue])
-                  $2])
-          ],
+                 [AS_IF([test ! -z "$with_manualfreq"],
+                        [AC_MSG_WARN([Manual Frequency was requested but is only supported on Linux systems])
+                         AC_MSG_ERROR([Cannot continue])])
+                  $2])],
           [$2])
 ])dnl

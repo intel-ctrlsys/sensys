@@ -48,8 +48,6 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_componentpower.h"
 
-#include <ipmicmd.h>
-
 /* declare the API functions */
 static int init(void);
 static void finalize(void);

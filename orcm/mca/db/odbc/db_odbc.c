@@ -84,10 +84,10 @@ static void odbc_error_info(SQLSMALLINT handle_type, SQLHANDLE handle);
 static int get_opal_value(const opal_value_t *kv, long long *value_int,
                           double *value_real, char **value_str,
                           int *opal_type, value_type_t *type);
-static void to_sql_timestamp_tm(SQL_TIMESTAMP_STRUCT *sql_timestamp,
-                             const struct tm *time_info);
-static void to_sql_timestamp_tv(SQL_TIMESTAMP_STRUCT *sql_timestamp,
-                             const struct timeval *time);
+static void tm_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
+                                const struct tm *time_info);
+static void tv_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
+                                const struct timeval *time);
 
 mca_db_odbc_module_t mca_db_odbc_module = {
     {
@@ -270,14 +270,14 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
             switch (kv->type) {
             case OPAL_TIMEVAL:
             case OPAL_TIME:
-                to_sql_timestamp_tv(&sampletime, &kv->data.tv);
+                tv_to_sql_timestamp(&sampletime, &kv->data.tv);
                 break;
             case OPAL_STRING:
                 sampletime_str = kv->data.string;
                 /* Note: assuming "%F %T%z" format and ignoring sub second
                 resolution when passed as a string */
                 strptime(sampletime_str, "%F %T%z", &time_info);
-                to_sql_timestamp_tm(&sampletime, &time_info);
+                tm_to_sql_timestamp(&sampletime, &time_info);
                 break;
             default:
                 ERR_MSG_STORE("Invalid value type specified for time stamp");
@@ -635,7 +635,7 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
 
-    to_sql_timestamp_tv(&sampletime, time_stamp);
+    tv_to_sql_timestamp(&sampletime, time_stamp);
 
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
@@ -1250,10 +1250,10 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
         return ORCM_ERROR;
     }
 
-    to_sql_timestamp_tm(&start_time_sql, start_time);
+    tm_to_sql_timestamp(&start_time_sql, start_time);
 
     if (NULL != end_time) {
-        to_sql_timestamp_tm(&end_time_sql, end_time);
+        tm_to_sql_timestamp(&end_time_sql, end_time);
     }
 
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
@@ -1907,7 +1907,7 @@ static int get_opal_value(const opal_value_t *kv, long long *value_int,
     return ORCM_SUCCESS;
 }
 
-static void to_sql_timestamp_tm(SQL_TIMESTAMP_STRUCT *sql_timestamp,
+static void tm_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
                              const struct tm *time_info)
 {
     sql_timestamp->year = time_info->tm_year + 1900;
@@ -1919,11 +1919,11 @@ static void to_sql_timestamp_tm(SQL_TIMESTAMP_STRUCT *sql_timestamp,
     sql_timestamp->fraction = 0;
 }
 
-static void to_sql_timestamp_tv(SQL_TIMESTAMP_STRUCT *sql_timestamp,
+static void tv_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
                              const struct timeval *time)
 {
     struct tm time_info = *localtime(&time->tv_sec);
 
-    to_sql_timestamp_tm(sql_timestamp, &time_info);
+    tm_to_sql_timestamp(sql_timestamp, &time_info);
     sql_timestamp->fraction = time->tv_usec * 1000;
 }

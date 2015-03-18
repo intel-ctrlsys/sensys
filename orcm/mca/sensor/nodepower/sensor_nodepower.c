@@ -233,14 +233,10 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
     int ret;
     char *freq;
     opal_buffer_t data, *bptr;
-    time_t now;
-    char time_str[40];
-    char *timestamp_str;
     bool packed;
 
     unsigned long val1, val2;
     float node_power_cur;
-    struct tm *sample_time;
 
     /* we must be root to run */
     if (0 != geteuid()) {
@@ -356,22 +352,11 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* get the sample time */
-    now = time(NULL);
-    /* pass the time along as a simple string */
-    sample_time = localtime(&now);
-    if (NULL == sample_time) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
-    }
-    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-    asprintf(&timestamp_str, "%s", time_str);
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &(_tv.tv_curr), 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
-        free(timestamp_str);
         return;
     }
-    free(timestamp_str);
 
     if (_readein.ipmi_calls <=2){
         node_power_cur=0.0;
@@ -412,14 +397,15 @@ static void mycleanup(int dbhandle, int status,
 static void nodepower_log(opal_buffer_t *sample)
 {
     char *hostname=NULL;
-    char *sampletime;
     int rc;
     int32_t n;
     opal_list_t *vals;
     opal_value_t *kv;
     int sensor_not_avail=0;
+    struct timeval tv_curr;
 
     float node_power_cur;
+    char time_str[40];
 
     if (!log_enabled) {
         return;
@@ -432,9 +418,15 @@ static void nodepower_log(opal_buffer_t *sample)
         return;
     }
 
-    /* sample time */
+    /* unpack timestamp */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &tv_curr, &n, OPAL_TIMEVAL))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &node_power_cur, &n, OPAL_FLOAT))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
@@ -450,9 +442,15 @@ static void nodepower_log(opal_buffer_t *sample)
     /* load the sample time at the start */
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("ctime");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup(sampletime);
-    free(sampletime);
+    kv->type = OPAL_TIMEVAL;
+    kv->data.tv=tv_curr;
+    strftime(time_str, sizeof(time_str), "%F %T%z", localtime(&(tv_curr.tv_sec)));
+
+    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                       "second=%s\n", time_str);
+
+    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                       "sub-second=%.3f\n", (float)(kv->data.tv.tv_usec)/1000000.0);
     opal_list_append(vals, &kv->super);
 
     /* load the hostname */
@@ -469,11 +467,6 @@ static void nodepower_log(opal_buffer_t *sample)
     kv = OBJ_NEW(opal_value_t);
     kv->key=strdup("nodepower:W");
     kv->type=OPAL_FLOAT;
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &node_power_cur, &n, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
     kv->data.fval=node_power_cur;
     if ((node_power_cur==(float)(-1.0)) || (node_power_cur==(float)(0.0))){
         sensor_not_avail=1;
@@ -481,6 +474,12 @@ static void nodepower_log(opal_buffer_t *sample)
         opal_list_append(vals, &kv->super);
     }
 
+/*
+ *
+don't send as a string. send it as a time_val.
+take advantage of existing time_val field of opal_value_t
+ *
+ */
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
         if (!sensor_not_avail){

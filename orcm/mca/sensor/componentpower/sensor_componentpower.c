@@ -313,15 +313,11 @@ static void componentpower_sample(orcm_sensor_sampler_t *sampler)
     char *freq;
     opal_buffer_t data, *bptr;
     int32_t nsockets;
-    time_t now;
-    char time_str[STR_LEN];
-    char *timestamp_str;
     bool packed;
 
     float power_cur;
     int i;
     unsigned long long interval, msr, rapl_delta;
-    struct tm *sample_time;
 
      /* we must be root to run */
     if (0 != geteuid()) {
@@ -431,22 +427,11 @@ static void componentpower_sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* get the sample time */
-    now = time(NULL);
-    /* pass the time along as a simple string */
-    sample_time = localtime(&now);
-    if (NULL == sample_time) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
-    }
-    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-    asprintf(&timestamp_str, "%s", time_str);
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &(_tv.tv_curr), 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
-        free(timestamp_str);
         return;
     }
-    free(timestamp_str);
 
     for (i=0; i<_rapl.n_sockets; i++){
         if (_rapl.rapl_calls<=1){
@@ -496,7 +481,6 @@ static void mycleanup(int dbhandle, int status,
 static void componentpower_log(opal_buffer_t *sample)
 {
     char *hostname=NULL;
-    char *sampletime;
     char temp_str[64];
     int rc;
     int32_t n, nsockets;
@@ -504,8 +488,9 @@ static void componentpower_log(opal_buffer_t *sample)
     opal_value_t *kv;
     int i;
     int sensor_not_avail=0;
-
-    float power_cur;
+    struct timeval tv_curr;
+    float power_cur, cpu_power_temp[MAX_SOCKETS], ddr_power_temp[MAX_SOCKETS];
+    char time_str[40];
 
     if (!log_enabled) {
         return;
@@ -517,16 +502,10 @@ static void componentpower_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
+
     /* and the number of sockets on that host */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &nsockets, &n, OPAL_INT32))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-
-    /* sample time */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
@@ -536,17 +515,51 @@ static void componentpower_log(opal_buffer_t *sample)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname, nsockets);
 
+    /* timestamp */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &tv_curr, &n, OPAL_TIMEVAL))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    if (nsockets>MAX_SOCKETS)
+        nsockets=MAX_SOCKETS;
+
+    /* cpu power */
+    n=1;
+    for (i=0; i<nsockets; i++){
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &power_cur, &n, OPAL_FLOAT))){
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        cpu_power_temp[i]=power_cur;
+    }
+
+    /* ddr power */
+    n=1;
+    for (i=0; i<nsockets; i++){
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &power_cur, &n, OPAL_FLOAT))){
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        ddr_power_temp[i]=power_cur;
+    }
+
     /* xfr to storage */
     vals = OBJ_NEW(opal_list_t);
 
     /* load the sample time at the start */
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("ctime");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup(sampletime);
-    free(sampletime);
-    opal_list_append(vals, &kv->super);
+    kv->type = OPAL_TIMEVAL;
+    kv->data.tv=tv_curr;
+    strftime(time_str, sizeof(time_str), "%F %T%z", localtime(&(tv_curr.tv_sec)));
 
+    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                       "second=%s\n", time_str);
+    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                       "sub-second=%.3f\n", (float)(kv->data.tv.tv_usec)/1000000.0);
+    opal_list_append(vals, &kv->super);
 
     /* load the hostname */
     kv = OBJ_NEW(opal_value_t);
@@ -563,9 +576,7 @@ static void componentpower_log(opal_buffer_t *sample)
         kv = OBJ_NEW(opal_value_t);
         kv->key=strdup(temp_str);
         kv->type=OPAL_FLOAT;
-        n=1;
-        opal_dss.unpack(sample, &power_cur, &n, OPAL_FLOAT);
-        kv->data.fval=power_cur;
+        kv->data.fval=cpu_power_temp[i];
         if (power_cur<=(float)(0.0)){
             sensor_not_avail=1;
 	} else {
@@ -578,9 +589,7 @@ static void componentpower_log(opal_buffer_t *sample)
         kv = OBJ_NEW(opal_value_t);
         kv->key=strdup(temp_str);
         kv->type=OPAL_FLOAT;
-        n=1;
-        opal_dss.unpack(sample, &power_cur, &n, OPAL_FLOAT);
-        kv->data.fval=power_cur;
+        kv->data.fval=ddr_power_temp[i];
         if (power_cur<=(float)(0.0)){
             sensor_not_avail=1;
         } else {

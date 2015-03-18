@@ -119,6 +119,10 @@ typedef uint8_t orcm_sensor_cmd_flag_t;
 #define ORCM_SENSOR_CMD_T OPAL_UINT8
 
 #define ORCM_SENSOR_SAMPLE_RATE_COMMAND       1
+#define ORCM_SET_SENSOR_COMMAND               2
+#define ORCM_GET_SENSOR_COMMAND               3
+#define ORCM_SET_SENSOR_POLICY_COMMAND        4
+#define ORCM_GET_SENSOR_POLICY_COMMAND        5
 
 /** version string of ORCM */
 ORCM_DECLSPEC extern const char openrcm_version_string[];

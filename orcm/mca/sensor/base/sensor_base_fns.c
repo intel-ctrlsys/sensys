@@ -410,15 +410,24 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                                 opal_buffer_t *buffer, orte_rml_tag_t tag,
                                 void *cbdata)
 {
-    orcm_sensor_cmd_flag_t command;
+    orcm_sensor_cmd_flag_t command, sub_command;
     opal_buffer_t *ans;
     int sample_rate = 0;
-    int rc, response, cnt;
+    int rc, response, cnt, result;
+    char *sensor_name;
+    char *action;
+    float threshold;
+    bool  hi_thres;
+    int   max_count, time_window;
+    orte_notifier_severity_t sev;
+    orcm_sensor_policy_t *plc, *newplc;
+    bool found_me;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_sensor_base_framework.framework_output,
                          "%s sensor:base:receive processing msg",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
+    ans = OBJ_NEW(opal_buffer_t);
     /* unpack the command */
     cnt = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command,
@@ -445,7 +454,6 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                                 orcm_sensor_base.sample_rate);
         }
         /* send back the immediate success*/
-        ans = OBJ_NEW(opal_buffer_t);
         response = ORCM_SUCCESS;
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
             ORTE_ERROR_LOG(rc);
@@ -460,6 +468,217 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
              OBJ_RELEASE(ans);
              return;
         }
+    } else if (ORCM_SET_SENSOR_COMMAND == command) {
+        cnt = 1;
+
+        /* unpack the subcommand */
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sub_command,
+                                                  &cnt, ORCM_SENSOR_CMD_T))) {
+            ORTE_ERROR_LOG(rc);
+            goto answer;
+            return;
+        }
+
+        switch(sub_command) {
+        case ORCM_SET_SENSOR_POLICY_COMMAND:
+            /* unpack sensor name */
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sensor_name,
+                                                  &cnt, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                goto answer;
+            }
+
+            /* unpack threshold value */
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &threshold,
+                                                  &cnt, OPAL_FLOAT))) {
+                ORTE_ERROR_LOG(rc);
+                goto answer;
+            }
+
+            /* unpack threshold type */
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &hi_thres,
+                                                  &cnt, OPAL_BOOL))) {
+                ORTE_ERROR_LOG(rc);
+                goto answer;
+            }
+
+            /* unpack max count */
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &max_count,
+                                                  &cnt, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                goto answer;
+            }
+
+            /* unpack time window */
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &time_window,
+                                                  &cnt, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                goto answer;
+            }
+
+            /* unpack severity level */
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sev,
+                                                  &cnt, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                goto answer;
+            }
+
+            /* unpack notification action */
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &action,
+                                                  &cnt, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                goto answer;
+            }
+
+            /* look for sensor event policy; update with new setting or create new policy if not existing */
+            found_me = false;
+            OPAL_LIST_FOREACH(plc, &orcm_sensor_base.policy, orcm_sensor_policy_t) {
+                if ( (0 == strcmp(sensor_name, plc->sensor_name)) &&
+                     (hi_thres == plc->hi_thres ) &&
+                     (sev == plc->severity) ) {
+                    found_me = true;
+                    /* update existing policy */
+                    plc->threshold = threshold;
+                    plc->max_count = max_count;
+                    plc->time_window = time_window;
+                    plc->action = strdup(action);
+                    break;
+                }
+            }
+
+            if ( !found_me ) {
+                /* matched policy not found, insert into policy list */
+                newplc = OBJ_NEW(orcm_sensor_policy_t);
+                newplc->sensor_name = strdup(sensor_name);
+                newplc->threshold = threshold;
+                newplc->hi_thres  = hi_thres;
+                newplc->max_count = max_count;
+                newplc->time_window = time_window;
+                newplc->severity  = sev;
+                newplc->action = strdup(action);
+
+                opal_list_append(&orcm_sensor_base.policy, &newplc->super);
+                opal_output(0, "Add policy: %s %.2f %s %d %d %d %s!",
+                                    newplc->sensor_name, newplc->threshold, newplc->hi_thres ? "higher" : "lower",
+                                    newplc->max_count, newplc->time_window, newplc->severity, newplc->action);
+            }
+
+            /* send confirmation back to sender */
+            result = 0;
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+
+            break;
+        default:
+            rc = ORTE_ERR_BAD_PARAM;
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &rc, 1, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+
+        }
+
+
+    } else if (ORCM_GET_SENSOR_COMMAND == command) {
+        cnt = 1;
+
+        /* unpack the subcommand */
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sub_command,
+                                                  &cnt, ORCM_SENSOR_CMD_T))) {
+            ORTE_ERROR_LOG(rc);
+            goto answer;
+            return;
+        }
+
+        switch(sub_command) {
+        case ORCM_GET_SENSOR_POLICY_COMMAND:
+
+            /* pack the number of policies we have */
+            cnt = opal_list_get_size(&orcm_sensor_base.policy);
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &cnt, 1, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+
+            /* for each queue, */
+            OPAL_LIST_FOREACH(plc, &orcm_sensor_base.policy, orcm_sensor_policy_t) {
+                /* pack sensor name */
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->sensor_name,
+                                                  1, OPAL_STRING))) {
+                    ORTE_ERROR_LOG(rc);
+                    goto answer;
+                }
+
+                /* pack threshold value */
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->threshold,
+                                                  1, OPAL_FLOAT))) {
+                    ORTE_ERROR_LOG(rc);
+                    goto answer;
+                }
+
+                /* pack threshold type */
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->hi_thres,
+                                                  1, OPAL_BOOL))) {
+                    ORTE_ERROR_LOG(rc);
+                    goto answer;
+                }
+
+                /* pack max count */
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->max_count,
+                                                  1, OPAL_INT))) {
+                    ORTE_ERROR_LOG(rc);
+                    goto answer;
+                }
+
+                /* pack time window */
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->time_window,
+                                                  1, OPAL_INT))) {
+                    ORTE_ERROR_LOG(rc);
+                    goto answer;
+                }
+
+                /* pack severity level */
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->severity,
+                                                  1, OPAL_INT))) {
+                    ORTE_ERROR_LOG(rc);
+                    goto answer;
+                }
+
+                /* pack notification action */
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->action,
+                                                  1, OPAL_STRING))) {
+                    ORTE_ERROR_LOG(rc);
+                    goto answer;
+                }
+            }
+
+            break;
+        default:
+            rc = ORTE_ERR_BAD_PARAM;
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &rc, 1, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+
+        }
+
     }
-    return;
+
+answer:
+
+    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
+                                                      ORCM_RML_TAG_SENSOR,
+                                                      orte_rml_send_callback,
+                                                      NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(ans);
+        return;
+    }
+
 }

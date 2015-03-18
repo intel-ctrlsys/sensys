@@ -108,6 +108,7 @@ static int orcm_sensor_base_close(void)
         orcm_stop_progress_thread("sensor", true);
     }
 
+    OPAL_LIST_DESTRUCT(&orcm_sensor_base.policy);
     for (i=0; i < orcm_sensor_base.modules.size; i++) {
         if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
             continue;
@@ -135,6 +136,7 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
     orcm_sensor_base.dbhandle_acquired = false;
     orcm_sensor_base.ev_active = false;
 
+    OBJ_CONSTRUCT(&orcm_sensor_base.policy, opal_list_t);
     /* construct the array of modules */
     OBJ_CONSTRUCT(&orcm_sensor_base.modules, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_sensor_base.modules, 3, INT_MAX, 1);
@@ -179,3 +181,27 @@ static void sdes(orcm_sensor_sampler_t *p)
 OBJ_CLASS_INSTANCE(orcm_sensor_sampler_t,
                    opal_object_t,
                    scon, sdes);
+
+static void pcon(orcm_sensor_policy_t *plc)
+{
+    plc->sensor_name  = NULL;
+    plc->max_count    = 2;
+    plc->time_window  = 60;
+    plc->threshold    = 30;
+    plc->hi_thres     = true;
+    plc->severity     = ORTE_NOTIFIER_INFO;
+    plc->action       = NULL;
+}
+static void pdes(orcm_sensor_policy_t *plc)
+{
+    if (NULL != plc->action) {
+        free(plc->action);
+    }
+
+    if (NULL != plc->sensor_name) {
+        free(plc->sensor_name);
+    }
+}
+OBJ_CLASS_INSTANCE(orcm_sensor_policy_t,
+                   opal_list_item_t,
+                   pcon, pdes);

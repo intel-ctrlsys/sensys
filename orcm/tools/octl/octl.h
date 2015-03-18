@@ -115,6 +115,12 @@ static orcm_cli_init_t cli_init[] = {
     { { NULL }, "sensor", 0, 0, "sensor" },
     // sample-rate
     { { "sensor", NULL }, "sample-rate", 0, 1, "sensor sample-rate" },
+    { { "sensor", NULL }, "set", 0, 0, "Set Sensor Policy" },
+    // sensor policy subcommand
+    { { "sensor", "set", NULL }, "policy", 0, 8, "Set Sensor Event Policy, sensor set policy node sensor_name threshold hi/lo max_count time_window severity action" },
+    { { "sensor", NULL }, "get", 0, 0, "Get Sensor Policy" },
+    // sensor policy subcommand
+    { { "sensor", "get", NULL }, "policy", 0, 1, "Get Sensor Event Policy" },
 
     /****** power command ******/
     { { NULL }, "power", 0, 0, "Global Power Policy" },

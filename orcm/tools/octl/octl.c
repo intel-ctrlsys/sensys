@@ -659,6 +659,52 @@ static int run_cmd(char *cmd) {
                     ORTE_ERROR_LOG(rc);
                 }
                 break;
+            case 16: //set
+                rc = octl_command_to_int(cmdlist[2]);
+                if (-1 == rc) {
+                    fullcmd = opal_argv_join(cmdlist, ' ');
+                    printf("Unknown command: %s\n", fullcmd);
+                    free(fullcmd);
+                    break;
+                }
+
+                switch(rc) {
+                case 8: //policy
+                    if (ORCM_SUCCESS != (rc = orcm_octl_sensor_policy_set(ORCM_SET_SENSOR_POLICY_COMMAND, cmdlist))) {
+                        ORTE_ERROR_LOG(rc);
+                    }
+                    break;
+                default:
+                    fullcmd = opal_argv_join(cmdlist, ' ');
+                    printf("Illegal command: %s\n", fullcmd);
+                    free(fullcmd);
+                    break;
+                }
+                break;
+
+            case 17: //get
+                rc = octl_command_to_int(cmdlist[2]);
+                if (-1 == rc) {
+                    fullcmd = opal_argv_join(cmdlist, ' ');
+                    printf("Unknown command: %s\n", fullcmd);
+                    free(fullcmd);
+                    break;
+                }
+
+                switch(rc) {
+                case 8: //policy
+                    if (ORCM_SUCCESS != (rc = orcm_octl_sensor_policy_get(ORCM_GET_SENSOR_POLICY_COMMAND, cmdlist))) {
+                        ORTE_ERROR_LOG(rc);
+                    }
+                    break;
+                default:
+                    fullcmd = opal_argv_join(cmdlist, ' ');
+                    printf("Illegal command: %s\n", fullcmd);
+                    free(fullcmd);
+                    break;
+                }
+                break;
+
             default:
                 fullcmd = opal_argv_join(cmdlist, ' ');
                 fprintf(stderr, "Illegal command: %s\n", fullcmd);

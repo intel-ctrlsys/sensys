@@ -424,13 +424,9 @@ int orcm_octl_sensor_sample_rate(char **argv)
 {
     orcm_sensor_cmd_flag_t command = ORCM_SENSOR_SAMPLE_RATE_COMMAND;
     int sample_rate = 0;
-    char *regex = 0;
-    char *comp;
     opal_buffer_t *buf = NULL;
     int rc = ORCM_SUCCESS;
     int cnt, i, result;
-    bool want_result = false;
-    int numopts = 0;
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;

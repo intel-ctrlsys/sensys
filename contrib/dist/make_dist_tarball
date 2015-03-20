@@ -297,7 +297,7 @@ make_tarball() {
     # move
     #
     echo "*** Moving tarballs..."
-    mv orcm-* $distdir
+    mv openrcm-* $distdir
 
     echo "*** All done"
 }

@@ -251,8 +251,8 @@ save=
 chmod a+rX -R .
 
 # move the resulting tarballs to the destdir
-gz="`/bin/ls orcm*tar.gz`"
-bz2="`/bin/ls orcm*tar.bz2`"
+gz="`/bin/ls openrcm*tar.gz`"
+bz2="`/bin/ls openrcm*tar.bz2`"
 mv $gz $bz2 $destdir
 if test "$?" != "0"; then
     cat <<EOF
@@ -269,16 +269,16 @@ fi
 cd $destdir
 
 # make the latest_snapshot.txt file containing the last version
-version="`echo $gz | sed -e 's/orcm-\(.*\)\.tar\.gz/\1/g'`"
+version="`echo $gz | sed -e 's/openrcm-\(.*\)\.tar\.gz/\1/g'`"
 rm -f latest_snapshot.txt
 echo $version > latest_snapshot.txt
 
 # trim the destdir to $max_snapshots
 for ext in gz bz2; do
-    count="`ls orcm*.tar.$ext | wc -l | awk '{ print $1 }'`"
+    count="`ls openrcm*.tar.$ext | wc -l | awk '{ print $1 }'`"
     if test "`expr $count \> $max_snapshots`" = "1"; then
         num_old="`expr $count - $max_snapshots`"
-        old="`ls -rt orcm*.tar.$ext | head -n $num_old`"
+        old="`ls -rt openrcm*.tar.$ext | head -n $num_old`"
         rm -f $old
     fi
 done

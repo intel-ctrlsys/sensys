@@ -285,6 +285,7 @@ static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata
             mkv = OBJ_NEW(orcm_metric_value_t);
             asprintf(&mkv->value.key,"freq_step%d",i);
             mkv->value.type = OPAL_UINT;
+            mkv->units = strdup("kHZ");
             mkv->value.data.uint = strtol(freq_list_token[i],NULL,10);
             opal_list_append(newhost->records, (opal_list_item_t *)mkv);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,

@@ -327,14 +327,16 @@ static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
          } else{
             freq_list = strdup("NULL");
          }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &freq_list, 1, OPAL_STRING))) {
-            free(freq_list);
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        free(freq_list);
-
+    } else {
+        freq_list = strdup("NULL");
     }
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &freq_list, 1, OPAL_STRING))) {
+        free(freq_list);
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    free(freq_list);
 }
 
 static dmidata_inventory_t* found_inventory_host(char * nodename)

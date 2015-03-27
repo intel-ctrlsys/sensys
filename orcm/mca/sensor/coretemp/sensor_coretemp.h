@@ -25,6 +25,7 @@ typedef struct {
     orcm_sensor_base_component_t super;
     bool test;
     bool enable_packagetemp;
+    char *policy;
 } orcm_sensor_coretemp_component_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_coretemp_component_t mca_sensor_coretemp_component;

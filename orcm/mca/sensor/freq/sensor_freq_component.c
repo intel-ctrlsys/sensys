@@ -87,5 +87,14 @@ static int freq_component_register(void)
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_freq_component.test);
+
+    mca_sensor_freq_component.policy = NULL;
+    (void) mca_base_component_var_register (c, "policy",
+                                            "Pass the admin policy",
+                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_freq_component.policy);
+
     return ORCM_SUCCESS;
 }

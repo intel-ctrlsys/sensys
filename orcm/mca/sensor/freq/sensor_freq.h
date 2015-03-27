@@ -25,6 +25,7 @@ typedef struct {
     orcm_sensor_base_component_t super;
     bool test;
     char *policy;
+    bool pstate;
 } orcm_sensor_freq_component_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_freq_component_t mca_sensor_freq_component;

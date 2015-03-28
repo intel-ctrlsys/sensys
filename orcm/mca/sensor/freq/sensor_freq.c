@@ -33,6 +33,7 @@
 #include "opal/util/os_path.h"
 #include "opal/util/output.h"
 #include "opal/util/os_dirpath.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orte/util/name_fns.h"
 #include "orte/util/show_help.h"
@@ -53,7 +54,11 @@ static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void freq_sample(orcm_sensor_sampler_t *sampler);
+static void perthread_freq_sample(int fd, short args, void *cbdata);
+static void collect_sample(orcm_sensor_sampler_t *sampler);
 static void freq_log(opal_buffer_t *buf);
+static void freq_set_sample_rate(int sample_rate);
+static void freq_get_sample_rate(int *sample_rate);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_freq_module = {
@@ -64,7 +69,9 @@ orcm_sensor_base_module_t orcm_sensor_freq_module = {
     freq_sample,
     freq_log,
     NULL,
-    NULL
+    NULL,
+    freq_set_sample_rate,
+    freq_get_sample_rate
 };
 
 /****    COREFREQ EVENT HISTORY TYPE    ****/
@@ -157,6 +164,8 @@ static bool intel_pstate_avail = false;
 static opal_list_t tracking;
 static opal_list_t pstate_list;
 static opal_list_t event_history;
+static orcm_sensor_sampler_t *freq_sampler = NULL;
+static orcm_sensor_freq_t orcm_sensor_freq;
 
 char **corefreq_policy_list; /* store corefreq policies from MCA parameter */
 
@@ -456,7 +465,6 @@ static int init(void)
      * Open up the base directory so we can get a listing
      */
     if (NULL == (cur_dirp = opendir("/sys/devices/system/cpu"))) {
-        OBJ_DESTRUCT(&tracking);
         orte_show_help("help-orcm-sensor-freq.txt", "req-dir-not-found",
                        true, orte_process_info.nodename,
                        "/sys/devices/system/cpu");
@@ -568,13 +576,13 @@ static int init(void)
          * Open up the intel_pstate base directory so we can get a listing
          */
         if (NULL == (cur_dirp = opendir("/sys/devices/system/cpu/intel_pstate"))) {
-            OBJ_DESTRUCT(&tracking);
-            orte_show_help("help-orcm-sensor-freq.txt", "req-dir-not-found",
-                           true, orte_process_info.nodename,
-                           "/sys/devices/system/cpu/intel_pstate");
-            return ORTE_ERROR;
-        }
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                    "pstate information requested but module not in use, freq collection will occur");
+             intel_pstate_avail = false;
+             return ORCM_SUCCESS;
+        } else {
         intel_pstate_avail = true;
+        }
     } else {
         intel_pstate_avail = false;
         return ORCM_SUCCESS;
@@ -641,16 +649,83 @@ static void finalize(void)
  */
 static void start(orte_jobid_t jobid)
 {
+    /* start a separate freq progress thread for sampling */
+    if (mca_sensor_freq_component.use_progress_thread) {
+        if (!orcm_sensor_freq.ev_active) {
+            orcm_sensor_freq.ev_active = true;
+            if (NULL == (orcm_sensor_freq.ev_base = opal_start_progress_thread("freq", true))) {
+                orcm_sensor_freq.ev_active = false;
+                return;
+            }
+        }
+
+        /* setup freq sampler */
+        freq_sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+        /* check if freq sample rate is provided for this*/
+        if (mca_sensor_freq_component.sample_rate) {
+            freq_sampler->rate.tv_sec = mca_sensor_freq_component.sample_rate;
+        } else {
+            freq_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        }
+        freq_sampler->log_data = orcm_sensor_base.log_samples;
+        opal_event_evtimer_set(orcm_sensor_freq.ev_base, &freq_sampler->ev,
+                               perthread_freq_sample, freq_sampler);
+        opal_event_evtimer_add(&freq_sampler->ev, &freq_sampler->rate);
+    }
     return;
 }
 
 
 static void stop(orte_jobid_t jobid)
 {
+    if (orcm_sensor_freq.ev_active) {
+        orcm_sensor_freq.ev_active = false;
+        /* stop the thread without releasing the event base */
+        opal_stop_progress_thread("freq", false);
+    }
     return;
 }
 
 static void freq_sample(orcm_sensor_sampler_t *sampler)
+{
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor freq : freq_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    if (!mca_sensor_freq_component.use_progress_thread) {
+       collect_sample(sampler);
+    }
+
+}
+
+static void perthread_freq_sample(int fd, short args, void *cbdata)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
+
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor freq : perthread_freq_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    
+    /* this has fired in the sampler thread, so we are okay to
+     * just go ahead and sample since we do NOT allow both the
+     * base thread and the component thread to both be actively
+     * calling this component */
+    collect_sample(sampler);
+    /* we now need to push the results into the base event thread
+     * so it can add the data to the base bucket */
+    ORCM_SENSOR_XFER(&sampler->bucket);
+    /* clear the bucket */
+    OBJ_DESTRUCT(&sampler->bucket);
+    OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+    /* check if freq sample rate is provided for this*/
+    if (mca_sensor_freq_component.sample_rate != sampler->rate.tv_sec) {
+        sampler->rate.tv_sec = mca_sensor_freq_component.sample_rate;
+    } 
+    /* set ourselves to sample again */
+    opal_event_evtimer_add(&sampler->ev, &sampler->rate);
+}
+
+static void collect_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     corefreq_tracker_t *trk, *nxt;
@@ -806,6 +881,14 @@ static void freq_sample(orcm_sensor_sampler_t *sampler)
             }
             fclose(fp);
         }
+    } else {
+        /* Pack 0 pstate values available */
+        item_count = 0;
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &item_count, 1, OPAL_UINT))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
     }
 
     /* xfer the data for transmission */
@@ -837,18 +920,16 @@ static void freq_log(opal_buffer_t *sample)
     time_t ts;
     int rc;
     int32_t n, ncores;
-    opal_list_t *vals;
+    opal_list_t *vals, *pstate_vals=NULL;
     opal_value_t *kv;
     float fval;
     int i;
     unsigned int pstate_count = 0, pstate_value = 0;
     char *pstate_name;
-    bool allow_turbo;
 
     if (!log_enabled) {
         return;
     }
-
     /* unpack the host this came from */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
@@ -936,7 +1017,7 @@ static void freq_log(opal_buffer_t *sample)
 
     if (pstate_count > 0) {
         /* xfr to storage */
-        vals = OBJ_NEW(opal_list_t);
+        pstate_vals = OBJ_NEW(opal_list_t);
 
         /* load the sample time at the start */
         if (NULL == sampletime) {
@@ -947,7 +1028,7 @@ static void freq_log(opal_buffer_t *sample)
         kv->key = strdup("ctime");
         kv->type = OPAL_STRING;
         kv->data.string = strdup(sampletime);
-        opal_list_append(vals, &kv->super);
+        opal_list_append(pstate_vals, &kv->super);
 
         /* load the hostname */
         if (NULL == hostname) {
@@ -958,7 +1039,7 @@ static void freq_log(opal_buffer_t *sample)
         kv->key = strdup("hostname");
         kv->type = OPAL_STRING;
         kv->data.string = strdup(hostname);
-        opal_list_append(vals, &kv->super);
+        opal_list_append(pstate_vals, &kv->super);
     }
 
     while(pstate_count > 0)
@@ -988,15 +1069,18 @@ static void freq_log(opal_buffer_t *sample)
             kv->type = OPAL_BOOL;
             kv->data.flag = ((0 == pstate_value) ? true: false);
         }
-        opal_list_append(vals, &kv->super);
+        opal_list_append(pstate_vals, &kv->super);
         pstate_count--;
-
     }
-    /* store it */
-    if (0 <= orcm_sensor_base.dbhandle) {
-        orcm_db.store(orcm_sensor_base.dbhandle, "pstate", vals, mycleanup, NULL);
-    } else {
-        OPAL_LIST_RELEASE(vals);
+
+    if (pstate_vals != NULL)
+    {
+        /* store it */
+        if (0 <= orcm_sensor_base.dbhandle) {
+            orcm_db.store(orcm_sensor_base.dbhandle, "pstate", pstate_vals, mycleanup, NULL);
+        } else {
+            OPAL_LIST_RELEASE(pstate_vals);
+        }
     }
 
  cleanup:
@@ -1004,4 +1088,24 @@ static void freq_log(opal_buffer_t *sample)
         free(hostname);
     }
 
+}
+
+static void freq_set_sample_rate(int sample_rate)
+{
+    /* set the freq sample rate if seperate thread is enabled */
+    if (mca_sensor_freq_component.use_progress_thread) {
+        mca_sensor_freq_component.sample_rate = sample_rate;
+    }
+    return;
+}
+
+static void freq_get_sample_rate(int *sample_rate)
+{
+    if (NULL != sample_rate) {
+    /* check if freq sample rate is provided for this*/
+        if (mca_sensor_freq_component.use_progress_thread) {
+            *sample_rate = mca_sensor_freq_component.sample_rate;
+        }
+    }
+    return;
 }

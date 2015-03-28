@@ -26,7 +26,15 @@ typedef struct {
     bool test;
     char *policy;
     bool pstate;
+    bool use_progress_thread;
+    int sample_rate;
 } orcm_sensor_freq_component_t;
+
+typedef struct {
+    opal_event_base_t *ev_base;
+    bool ev_active;
+    int sample_rate;
+} orcm_sensor_freq_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_freq_component_t mca_sensor_freq_component;
 extern orcm_sensor_base_module_t orcm_sensor_freq_module;

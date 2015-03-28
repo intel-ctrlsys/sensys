@@ -129,8 +129,29 @@ OBJ_CLASS_INSTANCE(corefreq_tracker_t,
                    opal_list_item_t,
                    ctr_con, ctr_des);
 
+typedef struct {
+    opal_list_item_t super;
+    char *file;
+    int value;
+} pstate_tracker_t;
+static void ptrk_con(pstate_tracker_t *trk)
+{
+    trk->file = NULL;
+}
+static void ptrk_des(pstate_tracker_t *trk)
+{
+    if (NULL != trk->file) {
+        free(trk->file);
+    }
+}
+OBJ_CLASS_INSTANCE(pstate_tracker_t,
+                   opal_list_item_t,
+                   ptrk_con, ptrk_des);
+
 static bool log_enabled = true;
+static bool intel_pstate_avail = false;
 static opal_list_t tracking;
+static opal_list_t pstate_list;
 static opal_list_t event_history;
 
 char **corefreq_policy_list; /* store corefreq policies from MCA parameter */
@@ -401,10 +422,12 @@ static int init(void)
     char *filename, *tmp;
     FILE *fp;
     corefreq_tracker_t *trk;
+    pstate_tracker_t *ptrk;
     int i = 0;
     int ret = 0;
 
     /* always construct this so we don't segfault in finalize */
+    OBJ_CONSTRUCT(&tracking, opal_list_t);
     OBJ_CONSTRUCT(&tracking, opal_list_t);
     OBJ_CONSTRUCT(&event_history, opal_list_t);
 
@@ -440,7 +463,7 @@ static int init(void)
      * For each directory
      */
     while (NULL != (entry = readdir(cur_dirp))) {
-        
+
         /*
          * Skip the obvious
          */
@@ -536,12 +559,77 @@ static int init(void)
         return ORTE_ERROR;
     }
 
+    if (mca_sensor_freq_component.pstate == true) {
+        /* 'intel_pstate' configuration settings.
+         * Open up the intel_pstate base directory so we can get a listing
+         */
+        if (NULL == (cur_dirp = opendir("/sys/devices/system/cpu/intel_pstate"))) {
+            OBJ_DESTRUCT(&tracking);
+            orte_show_help("help-orcm-sensor-freq.txt", "req-dir-not-found",
+                           true, orte_process_info.nodename,
+                           "/sys/devices/system/cpu/intel_pstate");
+            return ORTE_ERROR;
+        }
+        intel_pstate_avail = true;
+    } else {
+        intel_pstate_avail = false;
+        return ORCM_SUCCESS;
+    }
+
+    /*
+     * For each directory
+     */
+    while (NULL != (entry = readdir(cur_dirp))) {
+
+        /*
+         * Skip the obvious
+         */
+        if (0 == strncmp(entry->d_name, ".", strlen(".")) ||
+            0 == strncmp(entry->d_name, "..", strlen(".."))) {
+            continue;
+        }
+
+        /* track the info for this core */
+        ptrk = OBJ_NEW(corefreq_tracker_t);
+        ptrk->file = opal_os_path(false, "/sys/devices/system/cpu/intel_pstate", entry->d_name, NULL);
+
+        /* read the static info */
+        if(NULL == (filename = opal_os_path(false, "/sys/devices/system/cpu/intel_pstate", entry->d_name, NULL))) {
+            continue;
+        }
+        if(NULL != (fp = fopen(filename, "r")))
+        {
+            if(NULL!=(tmp = orte_getline(fp))) {
+                ptrk->value = strtoul(tmp, NULL, 10);
+                free(tmp);
+                fclose(fp);
+                free(filename);
+            } else {
+                ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
+                fclose(fp);
+                free(filename);
+                OBJ_RELEASE(ptrk);
+                continue;
+            }
+        } else {
+            ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
+            free(filename);
+            OBJ_RELEASE(ptrk);
+            continue;
+        }
+
+        /* add to our list */
+        opal_list_append(&pstate_list, &ptrk->super);
+    }
+    closedir(cur_dirp);
+
     return ORCM_SUCCESS;
 }
 
 static void finalize(void)
 {
     OPAL_LIST_DESTRUCT(&tracking);
+    OPAL_LIST_DESTRUCT(&pstate_list);
     OPAL_LIST_DESTRUCT(&event_history);
 }
 

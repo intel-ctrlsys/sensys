@@ -214,7 +214,7 @@ fi
 # insert the actual value that we want (so that orcm_get_version.sh
 # will report exactly that version).
 sed -e 's/^repo_rev=.*/repo_rev='$describe/ \
-    -e 's/^want_repo_rev=.*/want_repo_rev=1/' \
+    -e 's/^tarball_version=.*/tarball_version='$describe/ \
     VERSION > VERSION.new
 cp -f VERSION.new VERSION
 rm -f VERSION.new
@@ -243,7 +243,7 @@ LD_LIBRARY_PATH=
 DISTCHECK_CONFIGURE_FLAGS=$CONFIG_FLAGS
 DISTCHECK_MAKE_FLAGS="-j8"
 export DISTCHECK_CONFIGURE_FLAGS DISTCHECK_MAKE_FLAGS
-do_command "make distcheck"
+do_command "make distcheck AM_MAKEFLAGS=$DISTCHECK_MAKE_FLAGS"
 LD_LIBRARY_PATH=$save
 save=
 

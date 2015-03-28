@@ -8,7 +8,7 @@
 
 # e-mail address to send results to
 results_addr=testing@open-mpi.org
-results_addr=rhc
+results_addr=jsquyres
 
 # github repository uri
 master_code_uri=https://github.com/open-mpi/orcm.git
@@ -34,6 +34,10 @@ fi
 
 # Build root - scratch space
 build_root=/home/mpiteam/orcm/nightly-tarball-build-root
+
+# Coverity stuff
+coverity_token=`cat $HOME/coverity/orcm-token.txt`
+coverity_configure_args=
 
 export PATH=$HOME/local/bin:$PATH
 export LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH
@@ -104,11 +108,10 @@ for branch in $branches; do
     # spawn the coverity checker on it afterwards.  Only for this for the
     # master (for now).
     latest_snapshot=`cat $outputroot/$branch/latest_snapshot.txt`
-# JMS Skipped for now
-#    if test "$prev_snapshot" != "$latest_snapshot" && \
-#        test "$branch" = "master"; then
-#        echo "$outputroot/$branch/orcm-$latest_snapshot.tar.bz2" >> $pending_coverity
-#    fi
+    if test "$prev_snapshot" != "$latest_snapshot" && \
+        test "$branch" = "master"; then
+        echo "$outputroot/$branch/orcm-$latest_snapshot.tar.bz2" >> $pending_coverity
+    fi
 
     # Failed builds are not removed.  But if a human forgets to come
     # in here and clean up the old failed builds, we can accumulate
@@ -122,11 +125,10 @@ done
 for tarball in `cat $pending_coverity`; do
     $HOME/scripts/orcm-nightly-coverity.pl \
         --filename=$tarball \
-        --coverity-token=`cat $HOME/coverity-token.txt` \
+        --coverity-token=$coverity_token \
         --verbose \
         --logfile-dir=$HOME/coverity \
         --make-args=-j8 \
-        --configure-args="--enable-mpi-fortran --enable-mpi-java --enable-oshmem --enable-oshmem-fortran --enable-oshmem-java --with-mxm=/opt/mellanox/mxm --with-psm --with-usnic"
-# JMS ^^ definitely need to update these configure params
+        --configure-args="$coverity_configure_args"
 done
 rm -f $pending_coverity

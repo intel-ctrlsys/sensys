@@ -86,6 +86,15 @@
 
 #define ORCM_MAX_LINE_LENGTH  512
 
+
+/* Not-so-evil file-scoped variables */
+static enum
+{
+    ERROR_LEVEL_VERBOSITY = 10
+};
+
+
+
 /* API functions */
 
 static int file20_init(void);
@@ -265,7 +274,7 @@ static int define_system(opal_list_t *config,
                         opal_dss.dump(0, scheduler, ORCM_SCHEDULER);
                     }
                 } else {
-                    opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                    opal_output_verbose(ERROR_LEVEL_VERBOSITY, orcm_cfgi_base_framework.framework_output,
                                         "\tUNKNOWN TAG %s", x->name);
                     return ORTE_ERR_BAD_PARAM;
                 }
@@ -649,13 +658,27 @@ static int parse_orcm_config(orcm_config_t *cfg,
         }
     } else if (0 == strcmp(xml->name, "cores")) {
         if (NULL != xml->value && NULL != xml->value[0]) {
-            /* specifies the cores to be used */
-            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                                "\tCORES %s", xml->value[0]);
-            /* all we need do is push this into the corresponding param */
-            asprintf(&val, OPAL_MCA_PREFIX"orte_daemon_cores=%s", xml->value[0]);
-            opal_argv_append_nosize(&cfg->mca_params, val);
-            free(val);
+            if ( 0 <= strtol(xml->value[0], NULL, 10)  )
+            {
+                /* specifies the cores to be used */
+                opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                                    "\tCORES %s", xml->value[0]);
+                /* all we need do is push this into the corresponding param */
+                asprintf(&val, OPAL_MCA_PREFIX"orte_daemon_cores=%s", xml->value[0]);
+                opal_argv_append_nosize(&cfg->mca_params, val);
+                free(val);
+            }
+            else
+            {
+                /* it's invalid to have an ORCM daemon ID of less than 0, so error out */
+//                opal_output_verbose
+//TODO: Abstract the number "10" as a static variable.  --rmiesenX
+                opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                                    "\tORCM-CORES: INVALID VALUE: %s", xml->value[0]);
+                //TODO: Report the error to STDERR if verbosity is high eough
+                return ORCM_ERR_BAD_PARAM;
+                
+            }
         }
     } else if (0 == strcmp(xml->name, "mca-params")) {
         if (NULL != xml->value && NULL != xml->value[0]) {
@@ -705,7 +728,7 @@ static int parse_orcm_config(orcm_config_t *cfg,
             cfg->aggregator = true;
         }
     } else {
-        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+        opal_output_verbose(ERROR_LEVEL_VERBOSITY, orcm_cfgi_base_framework.framework_output,
 
                             "\tUNKNOWN TAG %s", xml->name);
     }
@@ -876,7 +899,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
             }
         }
     } else {
-        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+        opal_output_verbose(ERROR_LEVEL_VERBOSITY, orcm_cfgi_base_framework.framework_output,
                             "\tUNKNOWN TAG %s", x->name);
     }
     return ORCM_SUCCESS;
@@ -963,7 +986,7 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
             }
         }
     } else {
-        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+        opal_output_verbose(ERROR_LEVEL_VERBOSITY, orcm_cfgi_base_framework.framework_output,
                             "\tUNKNOWN TAG %s", x->name);
     }
     return ORCM_SUCCESS;
@@ -1056,7 +1079,7 @@ static int parse_cluster(orcm_cluster_t *cluster,
                 opal_argv_free(names);
             }
         } else {
-            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+            opal_output_verbose(ERROR_LEVEL_VERBOSITY, orcm_cfgi_base_framework.framework_output,
                                 "\tUNKNOWN TAG %s", x->name);
         }
     }

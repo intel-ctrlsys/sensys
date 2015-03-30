@@ -82,7 +82,7 @@ ORCM_DECLSPEC int orcm_compare_node(orcm_node_t *value1,
                                     orcm_node_t *value2,
                                     opal_data_type_t type);
 ORCM_DECLSPEC int orcm_copy_node(orcm_node_t **dest,
-                                 orcm_node_t *src,  //This is const incorrect. Why should the src parameter be permitted to be modified by the interface given the intent of the function? --rmiesenX
+                                 orcm_node_t *src,
                                  opal_data_type_t type);
 ORCM_DECLSPEC int orcm_print_node(char **output, char *prefix,
                                   orcm_node_t *src, opal_data_type_t type);
@@ -95,7 +95,7 @@ ORCM_DECLSPEC int orcm_compare_rack(orcm_rack_t *value1,
                                     orcm_rack_t *value2,
                                     opal_data_type_t type);
 ORCM_DECLSPEC int orcm_copy_rack(orcm_rack_t **dest,
-                                 orcm_rack_t *src,  //This is const incorrect. Why should the src parameter be permitted to be modified by the interface given the intent of the function? --rmiesenX
+                                 orcm_rack_t *src,
                                  opal_data_type_t type);
 ORCM_DECLSPEC int orcm_print_rack(char **output, char *prefix,
                                   orcm_rack_t *src, opal_data_type_t type);
@@ -108,7 +108,7 @@ ORCM_DECLSPEC int orcm_compare_row(orcm_row_t *value1,
                                    orcm_row_t *value2,
                                    opal_data_type_t type);
 ORCM_DECLSPEC int orcm_copy_row(orcm_row_t **dest,
-                                orcm_row_t *src,  //This is const incorrect. Why should the src parameter be permitted to be modified by the interface given the intent of the function? --rmiesenX
+                                orcm_row_t *src,
                                 opal_data_type_t type);
 ORCM_DECLSPEC int orcm_print_row(char **output, char *prefix,
                                  orcm_row_t *src, opal_data_type_t type);
@@ -121,7 +121,7 @@ ORCM_DECLSPEC int orcm_compare_cluster(orcm_cluster_t *value1,
                                        orcm_cluster_t *value2,
                                        opal_data_type_t type);
 ORCM_DECLSPEC int orcm_copy_cluster(orcm_cluster_t **dest,
-                                    orcm_cluster_t *src,  //This is const incorrect. Why should the src parameter be permitted to be modified by the interface given the intent of the function? --rmiesenX
+                                    orcm_cluster_t *src,
                                     opal_data_type_t type);
 ORCM_DECLSPEC int orcm_print_cluster(char **output, char *prefix,
                                      orcm_cluster_t *src, opal_data_type_t type);
@@ -134,7 +134,7 @@ ORCM_DECLSPEC int orcm_compare_scheduler(orcm_scheduler_t *value1,
                                          orcm_scheduler_t *value2,
                                          opal_data_type_t type);
 ORCM_DECLSPEC int orcm_copy_scheduler(orcm_scheduler_t **dest,
-                                      orcm_scheduler_t *src,  //This is const incorrect. Why should the src parameter be permitted to be modified by the interface given the intent of the function? --rmiesenX
+                                      orcm_scheduler_t *src,
                                       opal_data_type_t type);
 ORCM_DECLSPEC int orcm_print_scheduler(char **output, char *prefix,
                                        orcm_scheduler_t *src, opal_data_type_t type);

@@ -168,8 +168,8 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
  
         // If I am the head daemon, send the message out to everyone else
         if (OPAL_EQUAL == orte_util_compare_name_fields(ORTE_NS_CMP_ALL,
-                                                            &alloc->hnp,
-                                                            ORTE_PROC_MY_NAME)) {
+                                                        &alloc->hnp,
+                                                        ORTE_PROC_MY_NAME)) {
             ans = OBJ_NEW(opal_buffer_t);
 
             if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &command,

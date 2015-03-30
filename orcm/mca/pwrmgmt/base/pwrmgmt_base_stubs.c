@@ -101,7 +101,7 @@ int orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
         if (NULL == (active = (orcm_pwrmgmt_active_module_t*)opal_pointer_array_get_item(&orcm_pwrmgmt_base.modules, i))) {
             continue;
         }
-        if (NULL != active->module->set_attributes) {
+        if (NULL != active->module->component_select) {
             if(OPAL_SUCCESS == active->module->component_select(alloc->id, &alloc->constraints)) {
                 if (active->priority > max_priority) {
                     max_priority = active->priority;
@@ -111,20 +111,29 @@ int orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
         }
     }
     if(!ORTE_PROC_IS_SCHEDULER) {
-        /* If we are changing components, tell the old one to shutdown */
-        if(current != selected_module && NULL != selected_module) {
-            opal_output_verbose(1, orcm_pwrmgmt_base_framework.framework_output,
-                                "%s pwrmgmt:base: disabling component %s",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                selected_module->component->name);
+        if(NULL != selected_module) {
+            /* If we are changing components, tell the old one to shutdown */
+            if(current != selected_module) {
+                opal_output_verbose(1, orcm_pwrmgmt_base_framework.framework_output,
+                                    "%s pwrmgmt:base: disabling component %s",
+                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                    selected_module->component->base_version.mca_component_name);
 
-            if(NULL != selected_module->module->dealloc_notify) {
-                selected_module->module->dealloc_notify(alloc);
+                if(NULL != selected_module->module->dealloc_notify) {
+                    selected_module->module->dealloc_notify(alloc);
+                }
+            }
+            /* If we are the already running component, just call set attributes and return */
+            else {
+                if(NULL != selected_module->module->set_attributes) {
+                    selected_module->module->set_attributes(alloc->id, &alloc->constraints);
+                }
+                return rc;
             }
         }
         selected_module = current;
         if (current != NULL) {
-            orcm_pwrmgmt = *current->module;
+           orcm_pwrmgmt = *current->module;
         }
         /* The dealloc call still needs to be handled bt the base framework */
         orcm_pwrmgmt.dealloc_notify = orcm_pwrmgmt_base_dealloc_notify;
@@ -144,12 +153,13 @@ int orcm_pwrmgmt_base_alloc_notify(orcm_alloc_t* alloc)
     opal_output_verbose(1, orcm_pwrmgmt_base_framework.framework_output,
                         "%s pwrmgmt:base: selected component %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        selected_module->component->name);
+                        selected_module->component->base_version.mca_component_name);
 
     if (NULL != selected_module->module->alloc_notify) {
         /* give this module a chance to operate on it */
         selected_module->module->alloc_notify(alloc);
     }
+
     return ORCM_SUCCESS;
 }
 
@@ -163,7 +173,7 @@ void orcm_pwrmgmt_base_dealloc_notify(orcm_alloc_t* alloc)
         opal_output_verbose(1, orcm_pwrmgmt_base_framework.framework_output,
                             "%s pwrmgmt:base: disabling component %s",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                            selected_module->component->name);
+                            selected_module->component->base_version.mca_component_name);
         selected_module->module->dealloc_notify(alloc);
     }
     /* set all pointers back to us */

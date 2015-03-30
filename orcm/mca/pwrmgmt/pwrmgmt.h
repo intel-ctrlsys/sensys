@@ -216,7 +216,6 @@ typedef orcm_pwrmgmt_base_API_module_1_0_0_t orcm_pwrmgmt_base_API_module_t;
 struct orcm_pwrmgmt_base_component_1_0_0_t {
     mca_base_component_t       base_version;
     mca_base_component_data_t  base_data;
-    char*                      name;
 };
 
 typedef struct orcm_pwrmgmt_base_component_1_0_0_t orcm_pwrmgmt_base_component_1_0_0_t;

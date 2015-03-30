@@ -669,6 +669,13 @@ static int parse_orcm_config(orcm_config_t *cfg,
                 return ORCM_ERR_BAD_PARAM;
             }
         }
+        else
+        {
+            /* a NULL or no value for "port" is an error */
+            opal_output_verbose(ERROR_VERBOSITY_LEVEL, orcm_cfgi_base_framework.framework_output,
+                                "\tORCM-PORT missing value (e.g. <value>55820</value>");
+            return ORCM_ERR_BAD_PARAM;
+        }
     } else if (0 == strcmp(xml->name, "cores")) {
         if (NULL != xml->value && NULL != xml->value[0]) {
             if ( 0 <= strtol(xml->value[0], NULL, 10)  )
@@ -684,11 +691,8 @@ static int parse_orcm_config(orcm_config_t *cfg,
             else
             {
                 /* it's invalid to have an ORCM daemon ID of less than 0, so error out */
-//                opal_output_verbose
-//TODO: Abstract the number "10" as a static variable.  --rmiesenX
                 opal_output_verbose(ERROR_VERBOSITY_LEVEL, orcm_cfgi_base_framework.framework_output,
                                     "\tORCM-CORES: INVALID VALUE: %s", xml->value[0]);
-                //TODO: Report the error to STDERR if verbosity is high eough
                 return ORCM_ERR_BAD_PARAM;
                 
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2014, 2015      Intel, Inc.  All rights reserved. 
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -706,7 +706,8 @@ static int parse_orcm_config(orcm_config_t *cfg,
         }
     } else {
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                            "\tUNKNOWN TAG");
+
+                            "\tUNKNOWN TAG %s", xml->name);
     }
     return ORTE_SUCCESS;
 }
@@ -876,7 +877,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
         }
     } else {
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                            "\tUNKNOWN TAG");
+                            "\tUNKNOWN TAG %s", x->name);
     }
     return ORCM_SUCCESS;
 }
@@ -963,7 +964,7 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
         }
     } else {
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                            "\tUNKNOWN TAG");
+                            "\tUNKNOWN TAG %s", x->name);
     }
     return ORCM_SUCCESS;
 }
@@ -1056,7 +1057,7 @@ static int parse_cluster(orcm_cluster_t *cluster,
             }
         } else {
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                                "\tUNKNOWN TAG");
+                                "\tUNKNOWN TAG %s", x->name);
         }
     }
     return ORCM_SUCCESS;

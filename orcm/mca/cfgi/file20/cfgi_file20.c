@@ -88,11 +88,19 @@
 
 
 /* Not-so-evil file-scoped variables */
-static enum
+enum
 {
-    ERROR_VERBOSITY_LEVEL = 10,
+    ERROR_VERBOSITY_LEVEL = 5,
     MAX_PORT_NUMBER       = 65535  /* 2^16 - 1 */
 };
+
+
+/* File-scoped helper functions: */
+static void report_unknown_tag(const char *tag_name, const char *production_name)
+{
+    opal_output_verbose(ERROR_VERBOSITY_LEVEL, orcm_cfgi_base_framework.framework_output,
+                        "\tUNKNOWN TAG %s ENCOUNTERED WHILE PARSING %s", tag_name, production_name);
+}
 
 
 
@@ -275,8 +283,7 @@ static int define_system(opal_list_t *config,
                         opal_dss.dump(0, scheduler, ORCM_SCHEDULER);
                     }
                 } else {
-                    opal_output_verbose(ERROR_VERBOSITY_LEVEL, orcm_cfgi_base_framework.framework_output,
-                                        "\tUNKNOWN TAG %s", x->name);
+                    report_unknown_tag(x->name, "");
                     return ORTE_ERR_BAD_PARAM;
                 }
             }
@@ -665,7 +672,7 @@ static int parse_orcm_config(orcm_config_t *cfg,
             {
                 /* specified port number is out-of-range, so error out */
                 opal_output_verbose(ERROR_VERBOSITY_LEVEL, orcm_cfgi_base_framework.framework_output,
-                                    "\tORCM-PORT not in range [%i, %i]", 0, MAX_PORT_NUMBER, xml->value[0]);
+                                    "\tORCM-PORT %s not in range [%i, %i]", xml->value[0], 0, MAX_PORT_NUMBER);
                 return ORCM_ERR_BAD_PARAM;
             }
         }
@@ -745,9 +752,8 @@ static int parse_orcm_config(orcm_config_t *cfg,
             cfg->aggregator = true;
         }
     } else {
-        opal_output_verbose(ERROR_VERBOSITY_LEVEL, orcm_cfgi_base_framework.framework_output,
-
-                            "\tUNKNOWN TAG %s", xml->name);
+        report_unknown_tag(xml->name, "configuration for leaf");
+        return ORTE_ERR_BAD_PARAM;
     }
     return ORTE_SUCCESS;
 }
@@ -916,8 +922,8 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
             }
         }
     } else {
-        opal_output_verbose(ERROR_VERBOSITY_LEVEL, orcm_cfgi_base_framework.framework_output,
-                            "\tUNKNOWN TAG %s", x->name);
+        report_unknown_tag(x->name, "rack");
+        return ORTE_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
 }
@@ -1003,8 +1009,8 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
             }
         }
     } else {
-        opal_output_verbose(ERROR_VERBOSITY_LEVEL, orcm_cfgi_base_framework.framework_output,
-                            "\tUNKNOWN TAG %s", x->name);
+        report_unknown_tag(x->name, "row");
+        return ORTE_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
 }
@@ -1096,8 +1102,8 @@ static int parse_cluster(orcm_cluster_t *cluster,
                 opal_argv_free(names);
             }
         } else {
-            opal_output_verbose(ERROR_VERBOSITY_LEVEL, orcm_cfgi_base_framework.framework_output,
-                                "\tUNKNOWN TAG %s", x->name);
+            report_unknown_tag(x->name, "cluster");
+            return ORTE_ERR_BAD_PARAM;
         }
     }
     return ORCM_SUCCESS;

@@ -33,12 +33,19 @@ endif # WANT_FT_CR
 EXTRA_DIST = \
         completion/mpirun.sh \
         completion/mpirun.zsh \
+	database/orcmdb_psql.ini \
+	database/orcmdb_psql.sql \
+	database/psql_odbc_driver.ini \
 	dist/make_dist_tarball \
 	dist/linux/openmpi.spec \
 	dist/mofed/compile_debian_mlnx_example.in \
 	dist/mofed/debian \
 	dist/macosx-pkg/buildpackage.sh \
 	dist/macosx-pkg/ReadMe.rtf \
+	dist/linux/orcmd.sysconfig \
+	dist/linux/orcmd.service \
+	dist/linux/orcmsched.service \
+	dist/linux/orcmsched.sysconfig \
 	platform/optimized \
 	platform/redstorm \
 	platform/cray_xt3 \

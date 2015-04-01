@@ -428,7 +428,7 @@ static int init(void)
 
     /* always construct this so we don't segfault in finalize */
     OBJ_CONSTRUCT(&tracking, opal_list_t);
-    OBJ_CONSTRUCT(&tracking, opal_list_t);
+    OBJ_CONSTRUCT(&pstate_list, opal_list_t);
     OBJ_CONSTRUCT(&event_history, opal_list_t);
 
     /* get policy from MCA parameters */

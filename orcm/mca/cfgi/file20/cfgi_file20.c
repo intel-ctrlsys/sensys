@@ -307,7 +307,16 @@ static int define_system(opal_list_t *config,
         /* scheduler's aren't aggregators, but load their
          * contact info in case needed
          */
-        orcm_util_construct_uri(&uribuf, &scheduler->controller);
+        if ( NULL != scheduler->controller.name )
+        {
+            orcm_util_construct_uri(&uribuf, &scheduler->controller);
+        }
+        else
+        {
+            /* that's an error */
+            ORTE_ERROR_LOG(ORCM_ERR_SILENT);
+            return ORCM_ERR_SILENT;
+        }
         if (!found_me && ORTE_PROC_IS_SCHEDULER) {
             found_me = check_me(&scheduler->controller.config,
                                 scheduler->controller.name, vpid, my_ip);

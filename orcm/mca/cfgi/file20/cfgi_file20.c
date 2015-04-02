@@ -1033,25 +1033,7 @@ static int parse_cluster(orcm_cluster_t *cluster,
     orcm_row_t *r, *row;
 
     OPAL_LIST_FOREACH(x, &xx->subvals, orcm_cfgi_xml_parser_t) {
-        if (0 == strcmp(x->name, "controller")) {
-            /* the value contains the node name of the controller, or an expression
-             * whereby we replace any leading or trailing # with the row name
-             */
-            if (NULL == x->value || NULL == x->value[0]) {
-                /* that's an error */
-                ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
-                return ORTE_ERR_BAD_PARAM;
-            }
-            cluster->controller.name = strdup(x->value[0]);
-            cluster->controller.state = ORTE_NODE_STATE_UNKNOWN;
-            /* parse any subvals that are attached to the cluster controller */
-            OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
-                if (ORCM_SUCCESS != (rc = parse_orcm_config(&cluster->controller.config, xx))) {
-                    ORTE_ERROR_LOG(rc);
-                    return rc;
-                }
-            }
-        } else if (0 == strcmp(x->name, "row")) {
+        if (0 == strcmp(x->name, "row")) {
             /* the value tells us either the name of the row, or a regular expression
              * describing the names of the rows
              */

@@ -374,7 +374,7 @@ static void print_value(const opal_value_t *kv, char *tbuf, size_t size)
         snprintf(tbuf, size, "%lu", (unsigned long)kv->data.pid);
         break;
     case OPAL_BOOL:
-        snprintf(tbuf, size, "%u", kv->data.flag);
+        snprintf(tbuf, size, "%s", kv->data.flag ? "true" : "false");
         break;
     case OPAL_FLOAT:
         snprintf(tbuf, size, "%f", kv->data.fval);

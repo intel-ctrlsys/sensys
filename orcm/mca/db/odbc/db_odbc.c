@@ -1895,6 +1895,10 @@ static int get_opal_value(const opal_value_t *kv, long long *value_int,
         *value_int = kv->data.pid;
         *type = VALUE_INTEGER;
         break;
+    case OPAL_BOOL:
+        *value_int = kv->data.flag;
+        *type = VALUE_INTEGER;
+        break;
     case OPAL_STRING:
         *value_str = kv->data.string;
         *type = VALUE_STRING;

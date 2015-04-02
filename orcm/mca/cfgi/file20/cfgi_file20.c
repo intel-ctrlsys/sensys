@@ -787,6 +787,15 @@ static int parse_node(orcm_node_t *node, int idx, orcm_cfgi_xml_parser_t *x)
     char *name, *p, *q;
     orcm_rack_t *rack = (orcm_rack_t*)node->rack;
 
+    /* make sure that the rack actually has a name before continuing */
+    if ( NULL == rack->name )
+    {
+        /* that's an error */
+        ORTE_ERROR_LOG(ORCM_ERR_SILENT);
+        return ORCM_ERR_SILENT;
+    }
+
+
     if (0 == strcmp(x->name, "name")) {
         /* the value contains the node name, or an expression
          * whereby we replace any leading @ with the rack name and any
@@ -934,7 +943,18 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
         report_unknown_tag(x->name, "rack");
         return ORTE_ERR_BAD_PARAM;
     }
-    return ORCM_SUCCESS;
+    
+    /* make sure that the rack actually has a name before leaving */
+    if ( NULL != rack->name )
+    {
+        return ORCM_SUCCESS;
+    }
+    else
+    {
+        /* that's an error */
+        ORTE_ERROR_LOG(ORCM_ERR_SILENT);
+        return ORCM_ERR_SILENT;
+    }
 }
 
 static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)

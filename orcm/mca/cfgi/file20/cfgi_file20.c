@@ -90,7 +90,7 @@
 /* Not-so-evil file-scoped variables */
 enum
 {
-    ERROR_VERBOSITY_LEVEL = 5,
+    ERROR_VERBOSITY_LEVEL = 1,
     MAX_PORT_NUMBER       = 65535  /* 2^16 - 1 */
 };
 

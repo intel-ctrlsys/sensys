@@ -283,7 +283,7 @@ static int define_system(opal_list_t *config,
                         opal_dss.dump(0, scheduler, ORCM_SCHEDULER);
                     }
                 } else {
-                    report_unknown_tag(x->name, "");
+                    report_unknown_tag(x->name, "configuration");
                     return ORTE_ERR_BAD_PARAM;
                 }
             }

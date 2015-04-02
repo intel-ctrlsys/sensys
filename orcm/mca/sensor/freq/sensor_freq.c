@@ -131,8 +131,9 @@ OBJ_CLASS_INSTANCE(corefreq_tracker_t,
 
 typedef struct {
     opal_list_item_t super;
-    char *file;
-    int value;
+    char *file;     /* sysfs entry file location */
+    char *sysname;  /* sysfs entry name */
+    unsigned int value;
 } pstate_tracker_t;
 static void ptrk_con(pstate_tracker_t *trk)
 {
@@ -142,6 +143,9 @@ static void ptrk_des(pstate_tracker_t *trk)
 {
     if (NULL != trk->file) {
         free(trk->file);
+    }
+    if(NULL != trk->sysname) {
+        free(trk->sysname);
     }
 }
 OBJ_CLASS_INSTANCE(pstate_tracker_t,
@@ -590,8 +594,9 @@ static int init(void)
         }
 
         /* track the info for this core */
-        ptrk = OBJ_NEW(corefreq_tracker_t);
+        ptrk = OBJ_NEW(pstate_tracker_t);
         ptrk->file = opal_os_path(false, "/sys/devices/system/cpu/intel_pstate", entry->d_name, NULL);
+        ptrk->sysname = strdup(entry->d_name);
 
         /* read the static info */
         if(NULL == (filename = opal_os_path(false, "/sys/devices/system/cpu/intel_pstate", entry->d_name, NULL))) {
@@ -651,6 +656,8 @@ static void freq_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     corefreq_tracker_t *trk, *nxt;
+    pstate_tracker_t *ptrk, *pnxt;
+
     FILE *fp;
     char *freq;
     float ghz;
@@ -661,6 +668,7 @@ static void freq_sample(orcm_sensor_sampler_t *sampler)
     char *timestamp_str;
     bool packed;
     struct tm *sample_time;
+    unsigned int item_count = 0;
 
     if (0 == opal_list_get_size(&tracking)) {
         return;
@@ -751,6 +759,57 @@ static void freq_sample(orcm_sensor_sampler_t *sampler)
         fclose(fp);
     }
 
+    if(true == intel_pstate_avail) {
+        item_count = opal_list_get_size(&pstate_list);
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &item_count, 1, OPAL_UINT))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        OPAL_LIST_FOREACH_SAFE(ptrk, pnxt, &pstate_list, pstate_tracker_t) {
+            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
+                                "%s processing freq file %s",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                ptrk->file);
+            /* read the value */
+            if (NULL == (fp = fopen(ptrk->file, "r"))) {
+                /* we can't be read, so remove it from the list */
+                opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
+                                    "%s access denied to freq file %s - removing it",
+                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                    ptrk->file);
+                opal_list_remove_item(&pstate_list, &ptrk->super);
+                OBJ_RELEASE(ptrk);
+                continue;
+            }
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ptrk->sysname, 1, OPAL_STRING))) {
+                    ORTE_ERROR_LOG(ret);
+                    free(freq);
+                    fclose(fp);
+                    OBJ_DESTRUCT(&data);
+                    return;
+            }
+            while (NULL != (freq = orte_getline(fp))) {
+                ptrk->value = strtoul(freq, NULL, 10);
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                    "%s sensor:pstate: file %s : %d",
+                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                    ptrk->file, ptrk->value);
+                if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ptrk->value, 1, OPAL_UINT))) {
+                    ORTE_ERROR_LOG(ret);
+                    free(freq);
+                    fclose(fp);
+                    OBJ_DESTRUCT(&data);
+                    return;
+                }
+                packed = true;
+                free(freq);
+            }
+            fclose(fp);
+        }
+    }
+
     /* xfer the data for transmission */
     if (packed) {
         bptr = &data;
@@ -784,6 +843,9 @@ static void freq_log(opal_buffer_t *sample)
     opal_value_t *kv;
     float fval;
     int i;
+    unsigned int pstate_count = 0, pstate_value = 0;
+    char *pstate_name;
+    bool allow_turbo;
 
     if (!log_enabled) {
         return;
@@ -826,7 +888,6 @@ static void freq_log(opal_buffer_t *sample)
     kv->key = strdup("ctime");
     kv->type = OPAL_STRING;
     kv->data.string = strdup(sampletime);
-    free(sampletime);
     opal_list_append(vals, &kv->super);
 
     /* load the hostname */
@@ -862,6 +923,80 @@ static void freq_log(opal_buffer_t *sample)
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store(orcm_sensor_base.dbhandle, "freq", vals, mycleanup, NULL);
+    } else {
+        OPAL_LIST_RELEASE(vals);
+    }
+
+    /* unpack the pstate entry count */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &pstate_count, &n, OPAL_UINT))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                "Total pstate count: %d", pstate_count);
+
+    if (pstate_count > 0) {
+        /* xfr to storage */
+        vals = OBJ_NEW(opal_list_t);
+
+        /* load the sample time at the start */
+        if (NULL == sampletime) {
+            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("ctime");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(sampletime);
+        opal_list_append(vals, &kv->super);
+
+        /* load the hostname */
+        if (NULL == hostname) {
+            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+            return;
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("hostname");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(hostname);
+        opal_list_append(vals, &kv->super);
+    }
+
+    while(pstate_count > 0)
+    {
+        /* unpack the pstate entry name */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &pstate_name, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        /* unpack the pstate entry value */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &pstate_value, &n, OPAL_UINT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                            "%s : %d",pstate_name, pstate_value);
+
+        kv = OBJ_NEW(opal_value_t);
+        if (0 != strcmp(pstate_name,"no_turbo")) {
+            kv->key = strdup(pstate_name);
+            kv->type = OPAL_UINT;
+            kv->data.uint = pstate_value;
+        } else {
+            kv->key = strdup("allow_turbo");
+            kv->type = OPAL_BOOL;
+            kv->data.flag = ((0 == pstate_value) ? true: false);
+        }
+        opal_list_append(vals, &kv->super);
+        pstate_count--;
+
+    }
+    /* store it */
+    if (0 <= orcm_sensor_base.dbhandle) {
+        orcm_db.store(orcm_sensor_base.dbhandle, "pstate", vals, mycleanup, NULL);
     } else {
         OPAL_LIST_RELEASE(vals);
     }

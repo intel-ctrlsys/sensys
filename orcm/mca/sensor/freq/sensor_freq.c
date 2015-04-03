@@ -599,26 +599,24 @@ static int init(void)
         ptrk->sysname = strdup(entry->d_name);
 
         /* read the static info */
-        if(NULL == (filename = opal_os_path(false, "/sys/devices/system/cpu/intel_pstate", entry->d_name, NULL))) {
+        if(NULL == ptrk->file) {
+            OBJ_RELEASE(ptrk);
             continue;
         }
-        if(NULL != (fp = fopen(filename, "r")))
+        if(NULL != (fp = fopen(ptrk->file, "r")))
         {
             if(NULL!=(tmp = orte_getline(fp))) {
                 ptrk->value = strtoul(tmp, NULL, 10);
                 free(tmp);
                 fclose(fp);
-                free(filename);
             } else {
                 ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
                 fclose(fp);
-                free(filename);
                 OBJ_RELEASE(ptrk);
                 continue;
             }
         } else {
             ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
-            free(filename);
             OBJ_RELEASE(ptrk);
             continue;
         }

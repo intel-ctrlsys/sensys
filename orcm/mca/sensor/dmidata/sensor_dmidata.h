@@ -23,6 +23,8 @@ BEGIN_C_DECLS
 typedef struct {
     orcm_sensor_base_component_t super;
     bool test;
+    bool ntw_dev;
+    bool blk_dev;
 } orcm_sensor_dmidata_component_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_dmidata_component_t mca_sensor_dmidata_component;

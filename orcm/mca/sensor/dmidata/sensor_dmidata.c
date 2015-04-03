@@ -96,7 +96,10 @@ static char inv_keywords[MAX_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWORDS][MAX
      {"board","serial","","","bb_serial","TV_BbSer"},
      {"board","version","","","bb_version","TV_BbVer"},
      {"product","uuid","","","product_uuid","TV_PrUuid"},
-     };
+     {"pci","vendor","","","pci_vendor","TV_PciVen"},
+     {"pci","device","","","pci_device","TV_PciDev"},
+     {"pci","slot","","","pci_device","TV_PciDev"},
+    };
 
 enum inv_item_req
     { 
@@ -248,7 +251,8 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
         {
             mkv = OBJ_NEW(orcm_metric_value_t);
             mkv->value.key = strdup(inv_key);
-            if(!strncmp(inv_key,"cpu_model_number",sizeof("cpu_model_number")) | !strncmp(inv_key,"cpu_family",sizeof("cpu_family")))
+            if(!strncmp(inv_key,"cpu_model_number",sizeof("cpu_model_number")) |
+               !strncmp(inv_key,"cpu_family",sizeof("cpu_family")))
             {
                 mkv->value.type = OPAL_INT;
                 mkv->value.data.integer = strtol(obj->infos[k].value,NULL,10);
@@ -260,6 +264,102 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
         }
+    }
+}
+
+/* Extract the PCI Device with BLOCK class codes */
+static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_inventory_t *newhost)
+{
+    uint32_t k;
+    orcm_metric_value_t *mkv;
+    char *inv_key;
+    /* @VINFIX: HDD/SDD discover is implemented in hwloc v1.11
+     * Until then we will discover only the SATA controllers and collect their inventory
+     */
+    mkv = OBJ_NEW(orcm_metric_value_t);
+    asprintf(&mkv->value.key,"pci_type_%d",pci_count);
+    mkv->value.type = OPAL_STRING;
+    mkv->value.data.string = strdup("BlockDevice");
+    opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+    opal_output(0,"Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+
+    for (k=0; k < obj->infos_count; k++) {
+        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
+        {
+            mkv = OBJ_NEW(orcm_metric_value_t);
+            asprintf(&mkv->value.key,"%s_%d",inv_key,pci_count);
+            mkv->value.type = OPAL_STRING;
+            mkv->value.data.string = strdup(obj->infos[k].value);
+            opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+            opal_output(0,"Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+        }
+    }
+}
+
+/* Extract the PCI Device with NETWORK class codes */
+static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_inventory_t *newhost)
+{
+    uint32_t k;
+    orcm_metric_value_t *mkv;
+    char *inv_key;
+
+    mkv = OBJ_NEW(orcm_metric_value_t);
+    asprintf(&mkv->value.key,"pci_type_%d",pci_count);
+    mkv->value.type = OPAL_STRING;
+    mkv->value.data.string = strdup("NetworkDevice");
+    opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+    opal_output(0,"Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+
+    for (k=0; k < obj->infos_count; k++) {
+        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
+        {
+            mkv = OBJ_NEW(orcm_metric_value_t);
+            asprintf(&mkv->value.key,"%s_%d",inv_key,pci_count);
+            mkv->value.type = OPAL_STRING;
+            mkv->value.data.string = strdup(obj->infos[k].value);
+            opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+            opal_output(0,"Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+        }
+    }
+}
+
+static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata_inventory_t *newhost)
+{
+    hwloc_obj_t obj;
+    uint32_t pci_count=0;
+    unsigned char pci_class, pci_subclass;
+
+    /* SOCKET Level Stats*/
+    if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_PCI_DEVICE, 0))) {
+        /* there are no objects identified for this machine (Weird!) */
+        orte_show_help("help-orcm-sensor-dmidata.txt", "no-socket", true, hostname);
+        ORTE_ERROR_LOG(ORTE_ERROR);
+        return;
+    }
+
+    while (NULL != obj) {
+        pci_class = (obj->attr->pcidev.class_id&0xFF00)>>8;
+        pci_subclass =  (obj->attr->pcidev.class_id&0xFF);
+        switch (pci_class) {
+            case 0x01: /*Block/Mass storage Device*/
+                        if(1) { /* Check for the user defined mca parameter */
+                            extract_blk_inventory(obj,pci_count,newhost);
+                            pci_count++;
+                            obj = obj->next_cousin;
+                        }
+                        continue;
+            case 0x02: /*Network Device*/
+                        if (1) { /* Check for the user defined mca paramer */
+                            extract_ntw_inventory(obj,pci_count,newhost);
+                            pci_count++;
+                            obj = obj->next_cousin;
+                        }
+                        continue;
+            default: /*Other PCI Device, currently not required */
+                        obj = obj->next_cousin;
+                        continue;
+        }
+        obj = obj->next_cousin;
     }
 }
 
@@ -378,7 +478,8 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     {
         /* Check and Verify Node Inventory record and update db/notify user accordingly */
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "dmidata HOST found!!");
-        if((opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) & (strncmp(freq_step_list,newhost->freq_step_list, strlen(freq_step_list)) == 0)) {
+        if((opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) & 
+           (strncmp(freq_step_list,newhost->freq_step_list, strlen(freq_step_list)) == 0) ) {
 
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Compared values match for : hwloc; Do nothing");
@@ -416,13 +517,15 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         extract_baseboard_inventory(topo, hostname, newhost);
         extract_cpu_inventory(topo, hostname, newhost);
         extract_cpu_freq_steps(freq_step_list, hostname, newhost);
+        extract_pci_inventory(topo, hostname, newhost);
 
         /* Append the new node to the existing host list */
         opal_list_append(&dmidata_host_list, &newhost->super);
 
         /* Send the collected inventory details to the database for storage */
         if (0 <= orcm_sensor_base.dbhandle) {
-            orcm_db.update_node_features(orcm_sensor_base.dbhandle, newhost->nodename , newhost->records, NULL, NULL);
+            orcm_db.update_node_features(orcm_sensor_base.dbhandle, newhost->nodename , newhost->records, 
+            NULL, NULL);
         }
     }
 }

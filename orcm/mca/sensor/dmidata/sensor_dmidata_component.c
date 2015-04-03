@@ -79,12 +79,27 @@ static int dmidata_component_register(void)
 {
     mca_base_component_t *c = &mca_sensor_dmidata_component.super.base_version;
 
-     mca_sensor_dmidata_component.test = false;
+    mca_sensor_dmidata_component.test = false;
     (void) mca_base_component_var_register (c, "test",
                                             "Generate and pass test vector",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_dmidata_component.test);
+    mca_sensor_dmidata_component.ntw_dev = false;
+    (void) mca_base_component_var_register (c, "test",
+                                            "Collect pci based network inventory",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_dmidata_component.ntw_dev);
+    mca_sensor_dmidata_component.blk_dev = false;
+    (void) mca_base_component_var_register (c, "test",
+                                            "Collect pci based block devices inventory",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_dmidata_component.blk_dev);
+    
     return ORCM_SUCCESS;
 }

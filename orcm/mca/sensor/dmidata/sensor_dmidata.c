@@ -281,7 +281,8 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
     mkv->value.type = OPAL_STRING;
     mkv->value.data.string = strdup("BlockDevice");
     opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-    opal_output(0,"Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                        "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
 
     for (k=0; k < obj->infos_count; k++) {
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
@@ -291,7 +292,8 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
             mkv->value.type = OPAL_STRING;
             mkv->value.data.string = strdup(obj->infos[k].value);
             opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-            opal_output(0,"Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
         }
     }
 }
@@ -308,7 +310,8 @@ static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
     mkv->value.type = OPAL_STRING;
     mkv->value.data.string = strdup("NetworkDevice");
     opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-    opal_output(0,"Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                        "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
 
     for (k=0; k < obj->infos_count; k++) {
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
@@ -318,7 +321,8 @@ static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
             mkv->value.type = OPAL_STRING;
             mkv->value.data.string = strdup(obj->infos[k].value);
             opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-            opal_output(0,"Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
         }
     }
 }
@@ -345,15 +349,15 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
                         if(true == mca_sensor_dmidata_component.blk_dev) { /* Check for the user defined mca parameter */
                             extract_blk_inventory(obj,pci_count,newhost);
                             pci_count++;
-                            obj = obj->next_cousin;
                         }
+                        obj = obj->next_cousin;                        
                         continue;
             case 0x02: /*Network Device*/
                         if (true == mca_sensor_dmidata_component.ntw_dev) { /* Check for the user defined mca paramer */
                             extract_ntw_inventory(obj,pci_count,newhost);
                             pci_count++;
-                            obj = obj->next_cousin;
                         }
+                        obj = obj->next_cousin;                        
                         continue;
             default: /*Other PCI Device, currently not required */
                         obj = obj->next_cousin;

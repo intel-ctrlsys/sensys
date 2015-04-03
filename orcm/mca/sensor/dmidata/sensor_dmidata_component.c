@@ -87,14 +87,14 @@ static int dmidata_component_register(void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_dmidata_component.test);
     mca_sensor_dmidata_component.ntw_dev = false;
-    (void) mca_base_component_var_register (c, "test",
+    (void) mca_base_component_var_register (c, "ntw_dev",
                                             "Collect pci based network inventory",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_dmidata_component.ntw_dev);
     mca_sensor_dmidata_component.blk_dev = false;
-    (void) mca_base_component_var_register (c, "test",
+    (void) mca_base_component_var_register (c, "blk_dev",
                                             "Collect pci based block devices inventory",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,

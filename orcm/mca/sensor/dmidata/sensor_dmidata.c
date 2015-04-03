@@ -342,14 +342,14 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
         pci_subclass =  (obj->attr->pcidev.class_id&0xFF);
         switch (pci_class) {
             case 0x01: /*Block/Mass storage Device*/
-                        if(1) { /* Check for the user defined mca parameter */
+                        if(true == mca_sensor_dmidata_component.blk_dev) { /* Check for the user defined mca parameter */
                             extract_blk_inventory(obj,pci_count,newhost);
                             pci_count++;
                             obj = obj->next_cousin;
                         }
                         continue;
             case 0x02: /*Network Device*/
-                        if (1) { /* Check for the user defined mca paramer */
+                        if (true == mca_sensor_dmidata_component.ntw_dev) { /* Check for the user defined mca paramer */
                             extract_ntw_inventory(obj,pci_count,newhost);
                             pci_count++;
                             obj = obj->next_cousin;

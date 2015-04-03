@@ -563,7 +563,7 @@ static int init(void)
         return ORTE_ERROR;
     }
 
-    if (mca_sensor_freq_component.pstate == true) {
+    if (true == mca_sensor_freq_component.pstate) {
         /* 'intel_pstate' configuration settings.
          * Open up the intel_pstate base directory so we can get a listing
          */

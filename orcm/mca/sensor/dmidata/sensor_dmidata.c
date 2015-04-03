@@ -99,6 +99,7 @@ static char inv_keywords[MAX_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWORDS][MAX
      {"pci","vendor","","","pci_vendor","TV_PciVen"},
      {"pci","device","","","pci_device","TV_PciDev"},
      {"pci","slot","","","pci_device","TV_PciDev"},
+     {"address","","","","MAC_address","TV_MACAddr"},
     };
 
 enum inv_item_req
@@ -325,6 +326,27 @@ static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
                                 "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
         }
     }
+    if (NULL != obj->first_child) {
+        if (HWLOC_OBJ_OS_DEVICE == obj->first_child->type)
+        {
+            obj = obj->first_child;
+            for (k=0; k < obj->infos_count; k++) {
+                if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
+                {
+                    mkv = OBJ_NEW(orcm_metric_value_t);
+                    asprintf(&mkv->value.key,"%s_%d",inv_key,pci_count);
+                    mkv->value.type = OPAL_STRING;
+                    mkv->value.data.string = strdup(obj->infos[k].value);
+                    opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+                    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                        "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+                }
+            }
+
+
+        }
+    }
+
 }
 
 static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata_inventory_t *newhost)
@@ -350,14 +372,14 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
                             extract_blk_inventory(obj,pci_count,newhost);
                             pci_count++;
                         }
-                        obj = obj->next_cousin;                        
+                        obj = obj->next_cousin;
                         continue;
             case 0x02: /*Network Device*/
                         if (true == mca_sensor_dmidata_component.ntw_dev) { /* Check for the user defined mca paramer */
                             extract_ntw_inventory(obj,pci_count,newhost);
                             pci_count++;
                         }
-                        obj = obj->next_cousin;                        
+                        obj = obj->next_cousin;
                         continue;
             default: /*Other PCI Device, currently not required */
                         obj = obj->next_cousin;

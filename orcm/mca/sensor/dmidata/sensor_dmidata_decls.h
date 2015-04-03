@@ -15,7 +15,7 @@
 #ifndef ORCM_SENSOR_DMIDATA_DECLS_H
 #define ORCM_SENSOR_DMIDATA_DECLS_H
 
-#define MAX_INVENTORY_KEYWORDS      15
+#define MAX_INVENTORY_KEYWORDS      16
 #define MAX_INVENTORY_SUB_KEYWORDS  6  /* 3 for search, 1 for ignore, 1 for naming the inventory item, and 1 for storing TEST_VECTOR */
 #define MAX_INVENTORY_KEYWORD_SIZE  30
 

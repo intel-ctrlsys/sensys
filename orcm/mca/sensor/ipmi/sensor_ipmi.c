@@ -1032,7 +1032,8 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
         Otherwise, leave it as null.
         */
         if (NULL != mca_sensor_ipmi_component.bmc_password) {
-            strncpy(host->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password, sizeof(mca_sensor_ipmi_component.bmc_password));
+            strncpy(host->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password,
+                    sizeof(host->capsule.node.pasw)-1);
         }
 
         host->capsule.node.auth = IPMI_SESSION_AUTHTYPE_PASSWORD;

@@ -45,15 +45,15 @@
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
-#include "sensor_coretemp.h"
+#include "sensor_mcedata.h"
 
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
-static void dmidata_sample(orcm_sensor_sampler_t *sampler);
-static void dmidata_log(opal_buffer_t *buf);
+static void mcedata_sample(orcm_sensor_sampler_t *sampler);
+static void mcedata_log(opal_buffer_t *buf);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_coretemp_module = {
@@ -76,14 +76,15 @@ typedef struct {
     float critical_temp;
     float max_temp;
 } mcedata_tracker_t;
-static void ctr_con(coretemp_tracker_t *trk)
+
+static void ctr_con(mcedata_tracker_t *trk)
 {
     trk->file = NULL;
     trk->label = NULL;
     trk->socket = -1;
     trk->core = -1;
 }
-static void ctr_des(coretemp_tracker_t *trk)
+static void ctr_des(mcedata_tracker_t *trk)
 {
     if (NULL != trk->file) {
         free(trk->file);
@@ -92,13 +93,12 @@ static void ctr_des(coretemp_tracker_t *trk)
         free(trk->label);
     }
 }
-OBJ_CLASS_INSTANCE(coretemp_tracker_t,
+OBJ_CLASS_INSTANCE(mcedata_tracker_t,
                    opal_list_item_t,
                    ctr_con, ctr_des);
 
 static bool log_enabled = true;
 static opal_list_t tracking;
-static opal_list_t event_history;
 
 static char *orte_getline(FILE *fp)
 {
@@ -129,12 +129,10 @@ static int init(void)
     size_t tlen = strlen("temp");
     size_t ilen = strlen("_input");
     FILE *fp;
-    coretemp_tracker_t *trk, *t2;
+    mcedata_tracker_t *trk, *t2;
     bool inserted;
     opal_list_t foobar;
     int corecount = 0;
-    int i = 0;
-    int ret = 0;
     char *skt;
 
     /* always construct this so we don't segfault in finalize */
@@ -145,7 +143,7 @@ static int init(void)
      */
     if (NULL == (cur_dirp = opendir("/sys/bus/platform/devices"))) {
         OBJ_DESTRUCT(&tracking);
-        orte_show_help("help-orcm-sensor-coretemp.txt", "req-dir-not-found",
+        orte_show_help("help-orcm-sensor-mcedata.txt", "req-dir-not-found",
                        true, orte_process_info.nodename,
                        "/sys/bus/platform/devices");
         return ORTE_ERROR;
@@ -200,7 +198,7 @@ static int init(void)
                 continue;
             }
             /* track the info for this core */
-            trk = OBJ_NEW(coretemp_tracker_t);
+            trk = OBJ_NEW(mcedata_tracker_t);
             if (NULL != skt) {
                 trk->socket = strtol(skt, NULL, 10);
             }
@@ -227,13 +225,6 @@ static int init(void)
                     if(NULL != (ptr = strcasestr(trk->label,"core"))) {
                         trk->core = strtol(trk->label+strlen("core "), NULL, 10); /* This stores the core ID under each processor*/
                     } else if (NULL != (ptr = strcasestr(trk->label,"Physical id "))) {
-                        if (mca_sensor_coretemp_component.enable_packagetemp == true) {
-                            trk->core = strtol(trk->label+strlen("Physical id "), NULL, 10); /* This stores the Package ID of each processor*/
-                        } else {
-                            free(tmp);
-                            OBJ_RELEASE(trk);
-                            continue;
-                        }
                     } else {
                         free(tmp);
                         OBJ_RELEASE(trk);
@@ -306,7 +297,7 @@ static int init(void)
 
             /* add to our list, in core order */
             inserted = false;
-            OPAL_LIST_FOREACH(t2, &foobar, coretemp_tracker_t) {
+            OPAL_LIST_FOREACH(t2, &foobar, mcedata_tracker_t) {
                 if (NULL != strcasestr(trk->label,"core")) {
                     if (t2->core > trk->core) {
                         opal_list_insert_pos(&foobar, &t2->super, &trk->super);
@@ -324,7 +315,7 @@ static int init(void)
         free(dirname);
         closedir(tdir);
         /* add the ordered list to our collection */
-        while (NULL != (t2 = (coretemp_tracker_t*)opal_list_remove_first(&foobar))) {
+        while (NULL != (t2 = (mcedata_tracker_t*)opal_list_remove_first(&foobar))) {
             if(NULL != strcasestr(t2->label,"core")) {
                 t2->core = corecount++;
                 sprintf(t2->label, "core %d", t2->core);
@@ -367,12 +358,8 @@ static void stop(orte_jobid_t jobid)
 static void mcedata_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
-    coretemp_tracker_t *trk, *nxt;
-    FILE *fp;
     char *temp;
-    float degc;
     opal_buffer_t data, *bptr;
-    int32_t ncores;
     time_t now;
     char time_str[40];
     char *timestamp_str;
@@ -446,15 +433,10 @@ static void mcedata_log(opal_buffer_t *sample)
 {
     char *hostname=NULL;
     char *sampletime;
-    struct tm time_info;
-    time_t ts;
     int rc;
-    int32_t n, ncores;
+    int32_t n;
     opal_list_t *vals;
     opal_value_t *kv;
-    float fval;
-    int i;
-    char *core_label;
 
     if (!log_enabled) {
         return;
@@ -475,9 +457,9 @@ static void mcedata_log(opal_buffer_t *sample)
     }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                        "%s Received log from host %s with %d cores",
+                        "%s Received log from host %s with xx cores",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        (NULL == hostname) ? "NULL" : hostname, ncores);
+                        (NULL == hostname) ? "NULL" : hostname);
 
     /* xfr to storage */
     vals = OBJ_NEW(opal_list_t);
@@ -497,6 +479,7 @@ static void mcedata_log(opal_buffer_t *sample)
     /* load the hostname */
     if (NULL == hostname) {
         ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        goto cleanup;
         return;
     }
     kv = OBJ_NEW(opal_value_t);

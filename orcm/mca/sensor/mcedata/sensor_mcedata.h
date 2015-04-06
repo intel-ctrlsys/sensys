@@ -24,7 +24,7 @@ BEGIN_C_DECLS
 typedef struct {
     orcm_sensor_base_component_t super;
     bool test;
-    bool enable_;
+    bool collect_cache_errors;
     char *mce_logfile;
 } orcm_sensor_mcedata_component_t;
 

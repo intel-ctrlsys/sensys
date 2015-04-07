@@ -47,6 +47,14 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_mcedata.h"
 
+#define     MCE_REG_COUNT   5
+
+#define     MCG_STATUS  0
+#define     MCG_CAP     1
+#define     MCI_STATUS  2
+#define     MCI_ADDR    3
+#define     MCI_MISC    4
+
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
@@ -55,8 +63,10 @@ static void stop(orte_jobid_t job);
 static void mcedata_sample(orcm_sensor_sampler_t *sampler);
 static void mcedata_log(opal_buffer_t *buf);
 
+static void mcedata_decode(unsigned long *mce_reg);
+
 /* instantiate the module */
-orcm_sensor_base_module_t orcm_sensor_coretemp_module = {
+orcm_sensor_base_module_t orcm_sensor_mcedata_module = {
     init,
     finalize,
     start,
@@ -100,6 +110,13 @@ OBJ_CLASS_INSTANCE(mcedata_tracker_t,
 static bool log_enabled = true;
 static opal_list_t tracking;
 
+char mce_reg_name [MCE_REG_COUNT][12]  = {
+    "MCG_STATUS",
+    "MCG_CAP",
+    "MCI_STATUS",
+    "MCI_ADDR",
+    "MCI_MISC"};
+
 static char *orte_getline(FILE *fp)
 {
     char *ret, *buff;
@@ -114,6 +131,12 @@ static char *orte_getline(FILE *fp)
     
     return NULL;
 }
+
+
+/* mcedata is a special sensor that has to be called on it's own separate thread
+ * It is necessary to catch the machine check errors in real time and send it up
+ * to the aggregator for processing
+ */
 
 /* FOR FUTURE: extend to read cooling device speeds in
  *     current speed: /sys/class/thermal/cooling_deviceN/cur_state
@@ -365,59 +388,83 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
     char *timestamp_str;
     bool packed;
     struct tm *sample_time;
+    uint32_t i = 0;
 
-    if (0 == opal_list_get_size(&tracking)) {
-        return;
-    }
+    uint64_t mce_reg[MCE_REG_COUNT];
+    int count = 0;
+    while (0 == count) {
+        i = 0;
+        count++;
+        /* prep to store the results */
+        OBJ_CONSTRUCT(&data, opal_buffer_t);
+        packed = false;
 
-    /* prep to store the results */
-    OBJ_CONSTRUCT(&data, opal_buffer_t);
-    packed = false;
-
-    /* pack our name */
-    temp = strdup("mcedata");
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &temp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-    free(temp);
-
-    /* store our hostname */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
-
-    /* get the sample time */
-    now = time(NULL);
-    /* pass the time along as a simple string */
-    sample_time = localtime(&now);
-    if (NULL == sample_time) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
-    }
-    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-    asprintf(&timestamp_str, "%s", time_str);
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&data);
-        free(timestamp_str);
-        return;
-    }
-    free(timestamp_str);
-
-    /* xfer the data for transmission */
-    if (packed) {
-        bptr = &data;
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
+        /* pack our name */
+        temp = strdup("mcedata");
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &temp, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
             return;
         }
+        free(temp);
+
+        /* store our hostname */
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+        /* get the sample time */
+        now = time(NULL);
+        /* pass the time along as a simple string */
+        sample_time = localtime(&now);
+        if (NULL == sample_time) {
+            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+            return;
+        }
+        strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
+        asprintf(&timestamp_str, "%s", time_str);
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&data);
+            free(timestamp_str);
+            return;
+        }
+        free(timestamp_str);
+
+        /* Block here for a read call to the mcedata log file */
+        /* read = ();
+         */
+        mce_reg[MCG_STATUS] = 0x0;
+        mce_reg[MCG_CAP]    = 0x1;
+        mce_reg[MCI_STATUS] = 0x2;
+        mce_reg[MCI_ADDR]   = 0x3;
+        mce_reg[MCI_MISC]   = 0x4;
+        packed = true;
+
+        while (i < 5) {
+            opal_output(0,"Packing %s : %lu",mce_reg_name[i], mce_reg[i]);
+            /* store the mce register */
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &mce_reg[i], 1, OPAL_UINT64))) {
+                ORTE_ERROR_LOG(ret);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
+            i++;
+        }
+
+        /* xfer the data for transmission */
+        if (packed) {
+            bptr = &data;
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
+                ORTE_ERROR_LOG(ret);
+                OBJ_DESTRUCT(&data);
+                return;
+            }
+        }
+        OBJ_DESTRUCT(&data);
     }
-    OBJ_DESTRUCT(&data);
 }
 
 static void mycleanup(int dbhandle, int status,
@@ -434,9 +481,10 @@ static void mcedata_log(opal_buffer_t *sample)
     char *hostname=NULL;
     char *sampletime;
     int rc;
-    int32_t n;
+    int32_t n, i = 0;
     opal_list_t *vals;
     opal_value_t *kv;
+    uint64_t mce_reg;
 
     if (!log_enabled) {
         return;
@@ -487,6 +535,28 @@ static void mcedata_log(opal_buffer_t *sample)
     kv->type = OPAL_STRING;
     kv->data.string = strdup(hostname);
     opal_list_append(vals, &kv->super);
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("teststr");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("XYZ");
+    opal_list_append(vals, &kv->super);
+
+    while (i < 5) {
+        /* sample time */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &mce_reg, &n, OPAL_UINT64))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        opal_output(0, "Collected %s: %lu", mce_reg_name[i],mce_reg);
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup(mce_reg_name[i]);
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = mce_reg;
+        opal_list_append(vals, &kv->super);
+        i++;
+    }
 
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {

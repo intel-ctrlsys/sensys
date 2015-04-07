@@ -378,6 +378,17 @@ static void stop(orte_jobid_t jobid)
     return;
 }
 
+static void mcedata_decode(unsigned long *mce_reg)
+{
+    int i = 0;
+    while (i < 5)
+    {
+        opal_output(0,"Value: %lx - %s", mce_reg[i], mce_reg_name[i]);
+        i++;
+    }
+}
+
+
 static void mcedata_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
@@ -444,7 +455,8 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
         packed = true;
 
         while (i < 5) {
-            opal_output(0,"Packing %s : %lu",mce_reg_name[i], mce_reg[i]);
+            opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                        "Packing %s : %lu",mce_reg_name[i], mce_reg[i]);
             /* store the mce register */
             if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &mce_reg[i], 1, OPAL_UINT64))) {
                 ORTE_ERROR_LOG(ret);
@@ -453,6 +465,8 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
             }
             i++;
         }
+
+        mcedata_decode(mce_reg);
 
         /* xfer the data for transmission */
         if (packed) {
@@ -549,7 +563,8 @@ static void mcedata_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        opal_output(0, "Collected %s: %lu", mce_reg_name[i],mce_reg);
+        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                    "Collected %s: %lu", mce_reg_name[i],mce_reg);
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup(mce_reg_name[i]);
         kv->type = OPAL_UINT64;

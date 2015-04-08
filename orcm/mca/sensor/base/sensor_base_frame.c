@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -118,6 +118,9 @@ static int orcm_sensor_base_close(void)
         }
     }
     OBJ_DESTRUCT(&orcm_sensor_base.modules);
+
+    /* clear the per-component-thread collection cache */
+    OBJ_DESTRUCT(&orcm_sensor_base.cache);
     
     /* Close all remaining available components */
     return mca_base_framework_components_close(&orcm_sensor_base_framework, NULL);
@@ -135,7 +138,7 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
     orcm_sensor_base.dbhandle = -1;
     orcm_sensor_base.dbhandle_acquired = false;
     orcm_sensor_base.ev_active = false;
-
+    OBJ_CONSTRUCT(&orcm_sensor_base.cache, opal_buffer_t);
     OBJ_CONSTRUCT(&orcm_sensor_base.policy, opal_list_t);
     /* construct the array of modules */
     OBJ_CONSTRUCT(&orcm_sensor_base.modules, opal_pointer_array_t);
@@ -205,3 +208,15 @@ static void pdes(orcm_sensor_policy_t *plc)
 OBJ_CLASS_INSTANCE(orcm_sensor_policy_t,
                    opal_list_item_t,
                    pcon, pdes);
+
+static void xcon(orcm_sensor_xfer_t *x)
+{
+    OBJ_CONSTRUCT(&x->bucket, opal_buffer_t);
+}
+static void xdes(orcm_sensor_xfer_t *x)
+{
+    OBJ_DESTRUCT(&x->bucket);
+}
+OBJ_CLASS_INSTANCE(orcm_sensor_xfer_t,
+                   opal_object_t,
+                   xcon, xdes);

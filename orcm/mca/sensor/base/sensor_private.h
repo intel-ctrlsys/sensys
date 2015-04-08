@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2012      Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -70,7 +70,8 @@ typedef struct {
     bool ev_active;
     opal_pointer_array_t modules;
     bool log_samples;
-    int sample_rate;    /* Holds the rate at which the sensors need to be sampeled in seconds */
+    int sample_rate;    /* Holds the rate at which the sensors need to be sampled in seconds */
+    opal_buffer_t cache;  // caches any data collected by per-component threads
     opal_list_t policy; /* Holds user configured RAS event policy */
     int dbhandle;       /* Stores the unique database handle assigned for sensor framework after calling db_open */
     bool dbhandle_acquired;
@@ -88,6 +89,27 @@ typedef struct {
 } orcm_sensor_active_module_t;
 OBJ_CLASS_DECLARATION(orcm_sensor_active_module_t);
 
+typedef struct {
+    opal_object_t super;
+    opal_event_t ev;
+    opal_buffer_t bucket;
+} orcm_sensor_xfer_t;
+OBJ_CLASS_DECLARATION(orcm_sensor_xfer_t);
+
+/* transfer a sample bucket from a component sampling
+ * thread to the base event so it can be cached and
+ * included in the next scheduled update */
+#define ORCM_SENSOR_XFER(b)                                     \
+    do {                                                        \
+        orcm_sensor_xfer_t *x;                                  \
+        x = OBJ_NEW(orcm_sensor_xfer_t);                        \
+        opal_dss.copy_payload(&x->bucket, (b));                 \
+        opal_event_set(orcm_sensor_base.ev_base, &x->ev, -1,    \
+                       OPAL_EV_WRITE,                           \
+                       orcm_sensor_base_collect, x);            \
+        opal_event_active(&x->ev, OPAL_EV_WRITE, 1);            \
+    }while(0);
+
 ORCM_DECLSPEC extern orcm_sensor_base_t orcm_sensor_base;
 ORCM_DECLSPEC void orcm_sensor_base_start(orte_jobid_t job);
 ORCM_DECLSPEC void orcm_sensor_base_stop(orte_jobid_t job);
@@ -96,6 +118,7 @@ ORCM_DECLSPEC void orcm_sensor_base_log(char *comp, opal_buffer_t *data);
 ORCM_DECLSPEC void orcm_sensor_base_manually_sample(char *sensors,
                                                     orcm_sensor_sample_cb_fn_t cbfunc,
                                                     void *cbdata);
+ORCM_DECLSPEC void orcm_sensor_base_collect(int fd, short args, void *cbdata);
 
 END_C_DECLS
 #endif

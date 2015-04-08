@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -24,9 +24,17 @@
 
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/errmgr.h"
+#include "orte/mca/rml/rml.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "sensor_ipmi.h"
 #include <../share/ipmiutil/isensor.h>
+
+typedef struct {
+    opal_event_base_t *ev_base;
+    bool ev_active;
+    int sample_rate;
+} orcm_sensor_ipmi_t;
 
 /* declare the API functions */
 static int init(void);
@@ -34,6 +42,8 @@ static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void ipmi_sample(orcm_sensor_sampler_t *sampler);
+static void perthread_ipmi_sample(int fd, short args, void *cbdata);
+static void collect_sample(orcm_sensor_sampler_t *sampler);
 static void ipmi_log(opal_buffer_t *buf);
 static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
@@ -43,6 +53,8 @@ char **sensor_list_token; /* 2D array storing multiple sensor keywords for colle
 
 opal_list_t sensor_active_hosts; /* Hosts list for collecting metrics */
 opal_list_t ipmi_inventory_hosts; /* Hosts list for storing inventory details */
+static orcm_sensor_sampler_t *ipmi_sampler = NULL;
+static orcm_sensor_ipmi_t orcm_sensor_ipmi;
 
 static void ipmi_con(orcm_sensor_hosts_t *host)
 {
@@ -136,7 +148,6 @@ static int init(void)
 
 static void finalize(void)
 {
-    opal_output(0,"IPMI_FINALIZE");
     OPAL_LIST_DESTRUCT(&sensor_active_hosts);
     OPAL_LIST_DESTRUCT(&ipmi_inventory_hosts);
     OBJ_DESTRUCT(current_host_configuration);
@@ -160,12 +171,43 @@ static void start(orte_jobid_t jobid)
     {
         opal_output(0, "sensor group selected: %s", mca_sensor_ipmi_component.sensor_group);
     }
+
+    /* start a separate ipmi progress thread for sampling */
+    if (mca_sensor_ipmi_component.use_progress_thread) {
+        if (!orcm_sensor_ipmi.ev_active) {
+            orcm_sensor_ipmi.ev_active = true;
+            if (NULL == (orcm_sensor_ipmi.ev_base = opal_start_progress_thread("ipmi", true))) {
+                orcm_sensor_ipmi.ev_active = false;
+                return;
+            }
+        }
+
+        /* setup ipmi sampler */
+        ipmi_sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+        /* check if ipmi sample rate is provided for this*/
+        if (mca_sensor_ipmi_component.sample_rate) {
+            ipmi_sampler->rate.tv_sec = mca_sensor_ipmi_component.sample_rate;
+        } else {
+            ipmi_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        } 
+
+        ipmi_sampler->log_data = orcm_sensor_base.log_samples;
+        opal_event_evtimer_set(orcm_sensor_ipmi.ev_base, &ipmi_sampler->ev,
+                               perthread_ipmi_sample, ipmi_sampler);
+        opal_event_evtimer_add(&ipmi_sampler->ev, &ipmi_sampler->rate);
+    }
     return;
 }
 
 static void stop(orte_jobid_t jobid)
 {
     count_log = 0;
+    if (orcm_sensor_ipmi.ev_active) {
+        orcm_sensor_ipmi.ev_active = false;
+        /* stop the thread without releasing the event base */
+        opal_stop_progress_thread("ipmi", false);
+    }
     return;
 }
 
@@ -353,7 +395,8 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
         memset(tempdata, 0x00, sizeof(tempdata));
         ret = ipmi_cmd(READ_FRU_DATA, idata, 4, tempdata, &rlen, &ccode, 0);
         if (ret) {
-            opal_output(0,"FRU Read Number %d retrying in block %d\n", id, i);
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "FRU Read Number %d retrying in block %d\n", id, i);
             ipmi_close();
             if (ffail_count > 15)
             {
@@ -386,7 +429,6 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
             idata[1] += 0x10;
         }
     }
-    opal_output(0,"FRU Read success!");
 
     /*
         Source: Platform Management Fru Document (Rev 1.2)
@@ -535,7 +577,8 @@ int orcm_sensor_ipmi_found(char *nodename, opal_list_t *host_list)
 int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip, opal_list_t *host_list)
 {
     orcm_sensor_hosts_t *newhost;
-    opal_output(0, "Adding New Node: %s, with BMC IP: %s", nodename, bmc_ip);
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                        "Adding New Node: %s, with BMC IP: %s", nodename, bmc_ip);
 
     newhost = OBJ_NEW(orcm_sensor_hosts_t);
     strncpy(newhost->capsule.node.name,nodename,sizeof(newhost->capsule.node.name)-1);
@@ -569,7 +612,6 @@ static ipmi_inventory_t* found_inventory_host(char * nodename)
     OPAL_LIST_FOREACH(host, &ipmi_inventory_hosts, ipmi_inventory_t) {
         if(!strcmp(nodename,host->nodename))
         {
-            opal_output(0,"Found node: %s",nodename);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "Found Node: %s", nodename);
             return host;
@@ -670,7 +712,8 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
 
     if(NULL != (oldhost = found_inventory_host(hostname)))
     {
-        opal_output(0,"Host '%s' Found, comparing values",hostname);
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "Host '%s' Found, comparing values",hostname);
         if(false == compare_ipmi_record(newhost, oldhost))
         {
             opal_output(0,"IPMI Compare failed; Notify User; Update List; Update Database");
@@ -695,7 +738,8 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                 orcm_db.update_node_features(orcm_sensor_base.dbhandle, oldhost->nodename , oldhost->records, NULL, NULL);
             }
         } else {
-            opal_output(0,"ipmi compare passed");
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "ipmi compare passed");
         }
         /* newhost structure can be destroyed after comparision with original list and update */
         OBJ_DESTRUCT(newhost);
@@ -794,6 +838,41 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 {
     int rc;
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor ipmi : ipmi_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    if (!mca_sensor_ipmi_component.use_progress_thread) {
+       collect_sample(sampler);
+    }
+
+}
+
+static void perthread_ipmi_sample(int fd, short args, void *cbdata)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
+
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor ipmi : perthread_ipmi_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    
+    /* this has fired in the sampler thread, so we are okay to
+     * just go ahead and sample since we do NOT allow both the
+     * base thread and the component thread to both be actively
+     * calling this component */
+    collect_sample(sampler);
+    /* we now need to push the results into the base event thread
+     * so it can add the data to the base bucket */
+    ORCM_SENSOR_XFER(&sampler->bucket);
+    /* clear the bucket */
+    OBJ_DESTRUCT(&sampler->bucket);
+    OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+    /* set ourselves to sample again */
+    opal_event_evtimer_add(&sampler->ev, &sampler->rate);
+}
+
+static void collect_sample(orcm_sensor_sampler_t *sampler)
+{
+    int rc;
     opal_buffer_t data, *bptr;
     char *ipmi;
     time_t now;
@@ -806,6 +885,11 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
     static int timeout = 0;
     orcm_sensor_hosts_t *cur_host, *host, *nxt;
     cur_host = current_host_configuration;
+
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor ipmi : collect_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
 
     if (mca_sensor_ipmi_component.test) {
         /* just send the test vector */

@@ -117,5 +117,21 @@ static int ipmi_component_register(void)
                                             & mca_sensor_ipmi_component.sensor_group);
 
 
+    mca_sensor_ipmi_component.use_progress_thread = true;
+    (void) mca_base_component_var_register(c, "use_progress_thread",
+                                           "Use a dedicated progress thread for ipmi sensors [default: true]",
+                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sensor_ipmi_component.use_progress_thread);
+
+    mca_sensor_ipmi_component.sample_rate = 0;
+    (void) mca_base_component_var_register(c, "sample_rate",
+                                           "Sample rate in seconds",
+                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sensor_ipmi_component.sample_rate);
+  
     return ORCM_SUCCESS;
 }

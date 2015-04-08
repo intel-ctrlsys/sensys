@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2012      Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -94,6 +94,15 @@ void orcm_sensor_base_start(orte_jobid_t job)
             orcm_db.open("sensor", NULL, db_open_cb, NULL);
         }
 
+        /* create the event base and start the progress engine, if necessary */
+        if (!orcm_sensor_base.ev_active) {
+            orcm_sensor_base.ev_active = true;
+            if (NULL == (orcm_sensor_base.ev_base = opal_start_progress_thread("sensor", true))) {
+                orcm_sensor_base.ev_active = false;
+                return;
+            }
+        }
+
         /* call the start function of all modules in priority order */
         for (i=0; i < orcm_sensor_base.modules.size; i++) {
             if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
@@ -102,15 +111,6 @@ void orcm_sensor_base_start(orte_jobid_t job)
             mods_active = true;
             if (NULL != i_module->module->start) {
                 i_module->module->start(job);
-            }
-        }
-
-        /* create the event base and start the progress engine, if necessary */
-        if (!orcm_sensor_base.ev_active) {
-            orcm_sensor_base.ev_active = true;
-            if (NULL == (orcm_sensor_base.ev_base = opal_start_progress_thread("sensor", true))) {
-                orcm_sensor_base.ev_active = false;
-                return;
             }
         }
 
@@ -292,7 +292,7 @@ static void take_sample(int fd, short args, void *cbdata)
 {
     orcm_sensor_active_module_t *i_module;
     orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
-    int i;
+    int i, rc;
     
     if (!mods_active) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "sensor sample: no active mods");
@@ -302,6 +302,18 @@ static void take_sample(int fd, short args, void *cbdata)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: sampling sensors",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
+    /* if anything is in the base cache, add it here - this
+     * is safe to do since we are in the base event thread,
+     * and the cache can only be accessed from there */
+    if (0 < orcm_sensor_base.cache.bytes_used) {
+        opal_buffer_t *bptr;
+        bptr = &orcm_sensor_base.cache;
+        opal_dss.copy_payload(&sampler->bucket, bptr);
+        /* clear the cache */
+        OBJ_DESTRUCT(&orcm_sensor_base.cache);
+        OBJ_CONSTRUCT(&orcm_sensor_base.cache, opal_buffer_t);
+    }
 
     /* call the sample function of all modules in priority order from
      * highest to lowest - the heartbeat should always be the lowest
@@ -325,6 +337,7 @@ static void take_sample(int fd, short args, void *cbdata)
         }
     }
 
+ cleanup:
     /* execute the callback, if given */
     if (NULL != sampler->cbfunc) {
         sampler->cbfunc(&sampler->bucket, sampler->cbdata);
@@ -334,8 +347,8 @@ static void take_sample(int fd, short args, void *cbdata)
 
     /* restart the timer, if given */
     if (0 < sampler->rate.tv_sec) {
-        if ( orcm_sensor_base.sample_rate && 
-             sampler->rate.tv_sec != orcm_sensor_base.sample_rate) {
+        if (orcm_sensor_base.sample_rate && 
+            sampler->rate.tv_sec != orcm_sensor_base.sample_rate) {
             sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
         }
         opal_event_evtimer_add(&sampler->ev, &sampler->rate);
@@ -681,4 +694,16 @@ answer:
         return;
     }
 
+}
+
+void orcm_sensor_base_collect(int fd, short args, void *cbdata)
+{
+    orcm_sensor_xfer_t *x = (orcm_sensor_xfer_t*)cbdata;
+
+    /* now that we are in the correct thread,
+     * copy the data to the base cache bucket
+     * so it can be swept up by the next update */
+    opal_dss.copy_payload(&orcm_sensor_base.cache, &x->bucket);
+    /* release memory */
+    OBJ_RELEASE(x);
 }

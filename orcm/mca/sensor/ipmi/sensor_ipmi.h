@@ -32,6 +32,8 @@ typedef struct {
     char *bmc_password;
     char *sensor_list;
     char *sensor_group;
+    bool use_progress_thread;
+    int sample_rate;
 } orcm_sensor_ipmi_component_t;
 
 struct ipmi_properties *first_node;

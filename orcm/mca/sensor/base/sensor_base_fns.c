@@ -292,7 +292,7 @@ static void take_sample(int fd, short args, void *cbdata)
 {
     orcm_sensor_active_module_t *i_module;
     orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
-    int i;
+    int i, rc;
     
     if (!mods_active) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "sensor sample: no active mods");
@@ -337,6 +337,7 @@ static void take_sample(int fd, short args, void *cbdata)
         }
     }
 
+ cleanup:
     /* execute the callback, if given */
     if (NULL != sampler->cbfunc) {
         sampler->cbfunc(&sampler->bucket, sampler->cbdata);

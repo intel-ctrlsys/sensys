@@ -10,7 +10,7 @@
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2006-2014 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2006-2015 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2006-2008 Sun Microsystems, Inc.  All rights reserved.
 # Copyright (c) 2006-2011 Los Alamos National Security, LLC.  All rights
 #                         reserved.
@@ -47,7 +47,7 @@ AC_LANG([C])
 # was set during autogen.sh.
 
 AC_INIT([project_name_long],
-        [m4_normalize(esyscmd([config/opal_get_version.sh VERSION --base]))],
+        [m4_normalize(esyscmd([config/opal_get_version.sh VERSION --tarball]))],
         [https://github.com/open-mpi/orcm/issues], [project_name_short])
 AC_PREREQ(2.60)
 AC_CONFIG_AUX_DIR(config)
@@ -105,17 +105,13 @@ opal_show_subtitle "Checking versions"
 
 # Get the version of ORCM that we are installing
 
-OPAL_SAVE_VERSION([ORTE], [Open MPI Run-Time Environment], 
+OPAL_SAVE_VERSION([ORTE], [Open MPI Run-Time Environment],
                   [$srcdir/VERSION],
                   [orte/include/orte/version.h])
 
 OPAL_SAVE_VERSION([ORCM], [Open Resilient Cluster Manager],
                   [$srcdir/VERSION],
                   [orcm/include/orcm/version.h])
-
-#OPAL_SAVE_VERSION([ORCMAPI], [ORCM SCHEDULING API],
-#                  [$srcdir/VERSION],
-#                  [orcmapi/version.h])
 
 OPAL_SAVE_VERSION([SCON], [Scalable Overlay Network],
                   [$srcdir/VERSION],
@@ -125,12 +121,31 @@ OPAL_SAVE_VERSION([OPAL], [Open Portable Access Layer],
                   [$srcdir/VERSION],
                   [opal/include/opal/version.h])
 
+# We're copying a lot of infrastructure from Open MPI, and some of it
+# depends on OMPI version numbers.  So set those, too.
+OMPI_VERSION=$ORCM_VERSION
+OMPI_MAJOR_VERSION=$ORCM_MAJOR_VERSION
+OMPI_MINOR_VERSION=$ORCM_MINOR_VERSION
+OMPI_RELEASE_VERSION=$ORCM_RELEASE_VERSION
+OMPI_GREEK_VERSION=$ORCM_GREEK_VERSION
+OMPI_REPO_REV=$ORCM_REPO_REV
+OMPI_TARBALL_VERSION=$ORCM_TARBALL_VERSION
+OMPI_RELEASE_DATE=$ORCM_RELEASE_DATE
+
+AC_SUBST(OMPI_VERSION)
+AC_SUBST(OMPI_MAJOR_VERSION)
+AC_SUBST(OMPI_MINOR_VERSION)
+AC_SUBST(OMPI_RELEASE_VERSION)
+AC_SUBST(OMPI_GREEK_VERSION)
+AC_SUBST(OMPI_REPO_REV)
+AC_SUBST(OMPI_TARBALL_VERSION)
+AC_SUBST(OMPI_RELEASE_DATE)
+
 # Get shared library version numbers
 
 . $srcdir/VERSION
 # ORCM level
 AC_SUBST(liborcm_so_version)
-#AC_SUBST(liborcmapi_so_version)
 # SCON level
 AC_SUBST(libscon_so_version)
 AC_SUBST(libmrnetscon_so_version)
@@ -161,21 +176,6 @@ AC_MSG_RESULT([$ltversion])
 # List header files to generate
 
 AC_CONFIG_HEADERS([opal/include/opal_config.h])
-
-# override/fixup the version numbers set by AC_INIT, since on
-# developer builds, there's no good way to know what the version is
-# before running configure :(.  We only use the base version number
-# (ie, no svn r numbers) for the version set in AC_INIT.  This will
-# always match reality because we add the VERSION file (the only way
-# to change the major.minor.release{greek}) into the configure
-# dependencies.  PACKAGE_VERSION the AC_DEFINE doesn't change once set
-# the first time -- AC_INIT's input (so it doesn't have an r number in
-# it).  PACKAGE_VERSION the AC_SUBST can be rewritten along the way,
-# and we'd like it to have the r number in it so that it shows up in
-# the tarball name, so it is set to the full version here.
-PACKAGE_VERSION="$OPAL_VERSION"
-PACKAGE_STRING="${PACKAGE_NAME} ${PACKAGE_VERSION}"
-VERSION="${PACKAGE_VERSION}"
 
 opal_show_subtitle "Initialization, setup"
 

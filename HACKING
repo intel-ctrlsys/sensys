@@ -19,7 +19,7 @@ $HEADER$
 Overview
 ========
 
-This file is here for those who are building/exploring OMPI in its
+This file is here for those who are building/exploring ORCM in its
 source code form, most likely through a developer's tree (i.e., a
 Git clone).
 
@@ -27,25 +27,25 @@ Git clone).
 Debugging vs. Optimized Builds
 ==============================
 
-If you are building Open MPI from a Git clone, the default build
-includes a lot of debugging features.  This happens automatically when
-when configure detects the hidden ".git" Git meta directory (that is
+If you are building ORCM from a Git clone, the default build includes
+a lot of debugging features.  This happens automatically when when
+configure detects the hidden ".git" Git meta directory (that is
 present in all Git clones) in your source tree, and therefore
-activates a number of developer-only debugging features in the Open
-MPI code base.
+activates a number of developer-only debugging features in the ORCM
+code base.
 
 By definition, debugging builds will perform [much] slower than
-optimized builds of Open MPI.  You should *NOT* conduct timing tests
+optimized builds of ORCM.  You should *NOT* conduct timing tests
 or try to run production performance numbers with debugging builds.
 
-If you wish to build an optimized version of Open MPI from a
+If you wish to build an optimized version of ORCM from a
 developer's checkout, you have three main options:
 
 1. Use the "--with-platform=optimized" switch to configure.  This is
    the preferred (and probably easiest) method.  For example:
 
-     shell$ git clone git@github.com:open-mpi/ompi.git
-     shell$ cd ompi
+     shell$ git clone git@github.com:open-mpi/orcm.git
+     shell$ cd orcm
      shell$ ./autogen.pl
      shell$ mkdir build
      shell$ cd build
@@ -53,12 +53,12 @@ developer's checkout, you have three main options:
      [...lots of output...]
      shell$ make all install
 
-2. Use a VPATH build.  Simply build Open MPI from a different
+2. Use a VPATH build.  Simply build ORCM from a different
    directory than the source tree -- one where the .git subdirectory
    is not present.  For example:
 
-     shell$ git clone git@github.com:open-mpi/ompi.git
-     shell$ cd ompi
+     shell$ git clone git@github.com:open-mpi/orcm.git
+     shell$ cd orcm
      shell$ ./autogen.pl
      shell$ mkdir build
      shell$ cd build
@@ -84,12 +84,12 @@ Use of GNU Autoconf, Automake, and Libtool (and m4)
 ===================================================
 
 You need to read/care about this section *ONLY* if you are building
-from a developer's tree (i.e., a Git clone of the Open MPI source
-tree).  If you have an Open MPI distribution tarball, the contents of
+from a developer's tree (i.e., a Git clone of the ORCM source
+tree).  If you have an ORCM distribution tarball, the contents of
 this section are optional -- you can (and probably should) skip
 reading this section.
 
-If you are building Open MPI from a developer's tree, you must first
+If you are building ORCM from a developer's tree, you must first
 install fairly recent versions of the GNU tools Autoconf, Automake,
 and Libtool (and possibly GNU m4, because recent versions of Autoconf
 have specific GNU m4 version requirements).  The specific versions
@@ -107,13 +107,13 @@ shell$ autoconf --version
 shell$ automake --version
 shell$ libtoolize --version
 
-Required version levels for all the OMPI releases can be found here:
+Required version levels for all the ORCM releases can be found here:
 
 http://www.open-mpi.org/source/building.php
 
-To strengthen the above point: the core Open MPI developers typically
+To strengthen the above point: the core ORCM developers typically
 use very, very recent versions of the GNU tools.  There are known bugs
-in older versions of the GNU tools that Open MPI no longer compensates
+in older versions of the GNU tools that ORCM no longer compensates
 for (it seemed senseless to indefinitely support patches for ancient
 versions of Autoconf, for example).  You *WILL* have problems if you
 do not use recent versions of the GNU tools.
@@ -135,7 +135,7 @@ NOTE: On MacOS/X, the default "libtool" program is different than the
         ftp://ftp.gnu.org/gnu/m4/
 
    NOTE: It is certainly easiest to download/build/install all four of
-   these tools together.  But note that Open MPI has no specific m4
+   these tools together.  But note that ORCM has no specific m4
    requirements; it is only listed here because Autoconf requires
    minimum versions of GNU m4.  Hence, you may or may not *need* to
    actually install a new version of GNU m4.  That being said, if you
@@ -210,9 +210,9 @@ NOTE: On MacOS/X, the default "libtool" program is different than the
    m4, Autoconf and Automake build and install very quickly; Libtool will
    take a minute or two.
 
-5. You can now run OMPI's top-level "autogen.pl" script.  This script
+5. You can now run ORCM's top-level "autogen.pl" script.  This script
    will invoke the GNU Autoconf, Automake, and Libtool commands in the
-   proper order and setup to run OMPI's top-level "configure" script.
+   proper order and setup to run ORCM's top-level "configure" script.
 
    Running autogen.pl may take a few minutes, depending on your
    system.  It's not very exciting to watch.  :-)
@@ -232,7 +232,7 @@ NOTE: On MacOS/X, the default "libtool" program is different than the
    5a. You generally need to run autogen.pl whenever the top-level
        file "configure.ac" changes, or any files in the config/ or
        <project>/config/ directories change (these directories are
-       where a lot of "include" files for OMPI's configure script
+       where a lot of "include" files for ORCM's configure script
        live).
 
    5b. You do *NOT* need to re-run autogen.pl if you modify a
@@ -245,13 +245,13 @@ Flex is used during the compilation of a developer's checkout (it is
 not used to build official distribution tarballs).  Other flavors of
 lex are *not* supported: given the choice of making parsing code
 portable between all flavors of lex and doing more interesting work on
-Open MPI, we greatly prefer the latter.
+ORCM, we greatly prefer the latter.
 
 Note that no testing has been performed to see what the minimum
-version of Flex is required by Open MPI.  We suggest that you use
+version of Flex is required by ORCM.  We suggest that you use
 v2.5.35 at the earliest.
 
-*** NOTE: Windows developer builds of Open MPI *require* Flex version
+*** NOTE: Windows developer builds of ORCM *require* Flex version
 2.5.35.  Specifically, we know that v2.5.35 works and 2.5.4a does not.
 We have not tested to figure out exactly what the minimum required
 flex version is on Windows; we suggest that you use 2.5.35 at the
@@ -259,9 +259,9 @@ earliest.  It is for this reason that the
 contrib/dist/make_dist_tarball script checks for a Windows-friendly
 version of flex before continuing.
 
-For now, Open MPI will allow developer builds with Flex 2.5.4.  This
+For now, ORCM will allow developer builds with Flex 2.5.4.  This
 is primarily motivated by the fact that RedHat/Centos 5 ships with
-Flex 2.5.4.  It is likely that someday Open MPI developer builds will
+Flex 2.5.4.  It is likely that someday ORCM developer builds will
 require Flex version >=2.5.35.
 
 Note that the flex-generated code generates some compiler warnings on

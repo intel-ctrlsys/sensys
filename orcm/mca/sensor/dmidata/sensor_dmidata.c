@@ -358,7 +358,7 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
     /* SOCKET Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_PCI_DEVICE, 0))) {
         /* there are no objects identified for this machine (Weird!) */
-        orte_show_help("help-orcm-sensor-dmidata.txt", "no-socket", true, hostname);
+        orte_show_help("help-orcm-sensor-dmidata.txt", "no-pci", true, hostname);
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }

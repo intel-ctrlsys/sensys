@@ -18,3 +18,7 @@ from the node: %s
 Unable to extract socket/CPU level details from the received topology object
 from the node: %s
 #
+[no-pci]
+Unable to extract PCI details from the received topology object
+from the node: %s
+#

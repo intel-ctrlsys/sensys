@@ -13,14 +13,14 @@ SET client_min_messages = warning;
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
 --
 
--- CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
+--CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
 --
 -- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: -
 --
 
--- COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+--COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 SET search_path = public, pg_catalog;
@@ -946,11 +946,28 @@ CREATE TABLE data_sample (
     node_id integer NOT NULL,
     data_item_id integer NOT NULL,
     time_stamp timestamp without time zone NOT NULL,
+    value_int bigint,
     value_real double precision,
     value_str character varying(50),
     units character varying(50),
-    value_int bigint,
     CONSTRAINT data_sample_check CHECK ((((value_int IS NOT NULL) OR (value_real IS NOT NULL)) OR (value_str IS NOT NULL)))
+);
+
+
+--
+-- Name: data_sample_raw; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE data_sample_raw (
+    node character varying(256) NOT NULL,
+    data_item character varying(250) NOT NULL,
+    time_stamp timestamp without time zone NOT NULL,
+    value_int bigint,
+    value_real double precision,
+    value_str character varying(50),
+    units character varying(50),
+    data_type_id integer NOT NULL,
+    CONSTRAINT data_sample_raw_check CHECK ((((value_int IS NOT NULL) OR (value_real IS NOT NULL)) OR (value_str IS NOT NULL)))
 );
 
 
@@ -960,7 +977,7 @@ CREATE TABLE data_sample (
 
 CREATE TABLE node (
     node_id integer NOT NULL,
-    hostname character varying NOT NULL,
+    hostname character varying(256) NOT NULL,
     node_type smallint,
     status smallint,
     num_cpus smallint,
@@ -1869,10 +1886,10 @@ ALTER TABLE ONLY test_param
 -- Name: public; Type: ACL; Schema: -; Owner: -
 --
 
--- REVOKE ALL ON SCHEMA public FROM PUBLIC;
--- REVOKE ALL ON SCHEMA public FROM postgres;
--- GRANT ALL ON SCHEMA public TO postgres;
--- GRANT ALL ON SCHEMA public TO PUBLIC;
+--REVOKE ALL ON SCHEMA public FROM PUBLIC;
+--REVOKE ALL ON SCHEMA public FROM postgres;
+--GRANT ALL ON SCHEMA public TO postgres;
+--GRANT ALL ON SCHEMA public TO PUBLIC;
 
 
 --

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -37,94 +37,81 @@ orcm_db_base_component_t mca_db_postgres_component = {
     {
         ORCM_DB_BASE_VERSION_2_0_0,
 
-         /* Component name and version */
-        .mca_component_name = "postgres",
-        MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
-                              ORCM_RELEASE_VERSION),
-        
+        /* Component name and version */
+        "postgres",
+        ORCM_MAJOR_VERSION,
+        ORCM_MINOR_VERSION,
+        ORCM_RELEASE_VERSION,
+
         /* Component open and close functions */
-        .mca_open_component = NULL,
-        .mca_close_component = NULL,
-        .mca_query_component = NULL,
-        .mca_register_component_params = component_register
+        NULL,
+        NULL,
+        NULL,
+        component_register
     },
-    .base_data = {
+    {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },
-    .priority = 75,
-    .available = component_avail,
-    .create_handle = component_create,
-    .finalize = NULL
+    15,
+    component_avail,
+    component_create,
+    NULL
 };
 
-static int num_worker_threads;
-static char *dbname;
-static char *table;
-static char *user;
 static char *pguri;
 static char *pgoptions;
 static char *pgtty;
+static char *dbname;
+static char *user;
 
 static int component_register(void) {
     mca_base_component_t *c = &mca_db_postgres_component.base_version;
-
-    /* retrieve the name of the database to be used */
-    dbname = NULL;
-    (void) mca_base_component_var_register (c, "database", "Name of database",
-                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
-                                            OPAL_INFO_LVL_9,
-                                            MCA_BASE_VAR_SCOPE_READONLY,
-                                            &dbname);
-
-    /* retrieve the name of the table to be used */
-    table = NULL;
-    (void) mca_base_component_var_register (c, "table", "Name of table",
-                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
-                                            OPAL_INFO_LVL_9,
-                                            MCA_BASE_VAR_SCOPE_READONLY,
-                                            &table);
-     
-    /* retrieve the name of the user to be used */
-    user = NULL;
-    (void) mca_base_component_var_register (c, "user", "Name of database user:password",
-                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
-                                            OPAL_INFO_LVL_9,
-                                            MCA_BASE_VAR_SCOPE_READONLY,
-                                            &user);
     
-    /* retrieve the server:port */
+    /* retrieve the URI: <host>:<port> */
     pguri = NULL;
-    (void) mca_base_component_var_register (c, "uri", "Contact info for Postgres server as ip:port",
-                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
-                                            OPAL_INFO_LVL_9,
-                                            MCA_BASE_VAR_SCOPE_READONLY,
-                                            &pguri);
-    
+    (void)mca_base_component_var_register(c, "uri", "Postgres server URI: "
+                                          "<host>:<port>",
+                                          MCA_BASE_VAR_TYPE_STRING, NULL, 0,
+                                          0, OPAL_INFO_LVL_9,
+                                          MCA_BASE_VAR_SCOPE_READONLY,
+                                          &pguri);
+
     /* retrieve any options to be used */
     pgoptions = NULL;
-    (void) mca_base_component_var_register (c, "options", "Options to pass to the database",
-                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
-                                            OPAL_INFO_LVL_9,
-                                            MCA_BASE_VAR_SCOPE_READONLY,
-                                            &pgoptions);
+    (void)mca_base_component_var_register(c, "options",
+                                          "Additional Postgres options to pass "
+                                          "to the database",
+                                          MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
+                                          OPAL_INFO_LVL_9,
+                                          MCA_BASE_VAR_SCOPE_READONLY,
+                                          &pgoptions);
     
     /* retrieve the tty argument */
     pgtty = NULL;
-    (void) mca_base_component_var_register (c, "tty", "TTY option for database",
-                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
-                                            OPAL_INFO_LVL_9,
-                                            MCA_BASE_VAR_SCOPE_READONLY,
-                                            &pgtty);
+    (void)mca_base_component_var_register(c, "tty", "TTY option for database",
+                                          MCA_BASE_VAR_TYPE_STRING, NULL, 0,
+                                          0, OPAL_INFO_LVL_9,
+                                          MCA_BASE_VAR_SCOPE_READONLY,
+                                          &pgtty);
     
-    /* retrieve the number of worker threads to be used */
-    num_worker_threads = -1;
-    (void) mca_base_component_var_register (c, "num_worker_threads",
-                                            "Number of worker threads to be used",
-                                            MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
-                                            OPAL_INFO_LVL_9,
-                                            MCA_BASE_VAR_SCOPE_READONLY,
-                                            &num_worker_threads);
+
+    /* retrieve the name of the database to be used */
+    dbname = NULL;
+    (void)mca_base_component_var_register(c, "database", "Name of database",
+                                          MCA_BASE_VAR_TYPE_STRING, NULL, 0,
+                                          0, OPAL_INFO_LVL_9,
+                                          MCA_BASE_VAR_SCOPE_READONLY,
+                                          &dbname);
+
+    /* retrieve the name of the user to be used */
+    user = NULL;
+    (void)mca_base_component_var_register(c, "user", "Database login: "
+                                          "<user>:<password>",
+                                          MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
+                                          OPAL_INFO_LVL_9,
+                                          MCA_BASE_VAR_SCOPE_READONLY,
+                                          &user);
 
     return ORCM_SUCCESS;
 }
@@ -146,60 +133,52 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
         return NULL;
     }
     memset(mod, 0, sizeof(mca_db_postgres_module_t));
-    mod->num_worker_threads = -1;
 
     /* copy the APIs across */
     memcpy(mod, &mca_db_postgres_module.api, sizeof(orcm_db_base_module_t));
 
     /* if the props include db info, then use it */
-    OPAL_LIST_FOREACH(kv, props, opal_value_t) {
-        if (0 == strcmp(kv->key, "database")) {
-            mod->dbname = strdup(kv->data.string);
-        } else if (0 == strcmp(kv->key, "table")) {
-            mod->table = strdup(kv->data.string);
-        } else if (0 == strcmp(kv->key, "user")) {
-            mod->user = strdup(kv->data.string);
-        } else if (0 == strcmp(kv->key, "uri")) {
-            mod->pguri = strdup(kv->data.string);
-        } else if (0 == strcmp(kv->key, "options")) {
-            mod->pgoptions = strdup(kv->data.string);
-        } else if (0 == strcmp(kv->key, "tty")) {
-            mod->pgtty = strdup(kv->data.string);
-        } else if (0 == strcmp(kv->key, "num_worker_threads")) {
-            mod->num_worker_threads = kv->data.integer;
+    if (NULL != props) {
+        OPAL_LIST_FOREACH(kv, props, opal_value_t) {
+            if (0 == strcmp(kv->key, "uri")) {
+                mod->pguri = strdup(kv->data.string);
+            } else if (0 == strcmp(kv->key, "options")) {
+                mod->pgoptions = strdup(kv->data.string);
+            } else if (0 == strcmp(kv->key, "tty")) {
+                mod->pgtty = strdup(kv->data.string);
+            } else if (0 == strcmp(kv->key, "database")) {
+                mod->dbname = strdup(kv->data.string);
+            } else if (0 == strcmp(kv->key, "user")) {
+                mod->user = strdup(kv->data.string);
+            }
         }
     }
+
+    if (NULL == mod->pguri) {
+        if (NULL == pguri) {
+            free(mod);
+            return NULL;
+        }
+        mod->pguri = strdup(pguri);
+    }
+
     if (NULL == mod->dbname) {
         if (NULL == dbname) {
-            /* nothing was provided - opt out */
             free(mod);
             return NULL;
         }
         mod->dbname = strdup(dbname);
     }
-    if (NULL == mod->table) {
-        if (NULL == table) {
-            /* nothing was provided - opt out */
-            free(mod);
-            return NULL;
-        }
-        mod->table = strdup(table);
-    }
+
     /* all other entries are optional */
-    if (NULL == mod->user && NULL != user) {
-        mod->user = strdup(user);
-    }
-    if (NULL == mod->pguri && NULL != pguri) {
-        mod->pguri = strdup(pguri);
-    }
     if (NULL == mod->pgoptions && NULL != pgoptions) {
         mod->pgoptions = strdup(pgoptions);
     }
     if (NULL == mod->pgtty && NULL != pgtty) {
         mod->pgtty = strdup(pgtty);
     }
-    if (0 > mod->num_worker_threads && 0 < num_worker_threads) {
-        mod->num_worker_threads = num_worker_threads;
+    if (NULL == mod->user && NULL != user) {
+        mod->user = strdup(user);
     }
 
     /* let the module init */

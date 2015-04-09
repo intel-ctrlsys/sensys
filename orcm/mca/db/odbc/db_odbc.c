@@ -120,8 +120,7 @@ static int odbc_init(struct orcm_db_base_module_t *imod)
     /* break the user info into its login parts */
     login = opal_argv_split(mod->user, ':');
     if (2 != opal_argv_count(login)) {
-        opal_output(0, "db:odbc: User info is invalid: %s",
-                    mod->user);
+        ERROR_MSG_FMT_INIT(mod, "User info is invalid: %s", mod->user);
         opal_argv_free(login);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -256,12 +255,12 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
 
     if (NULL == data_group) {
         ERR_MSG_STORE("No data group specified");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == kvs) {
         ERR_MSG_STORE("No value list specified");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     /* First, retrieve the time stamp and the hostname from the list */
@@ -281,7 +280,7 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
                 break;
             default:
                 ERR_MSG_STORE("Invalid value type specified for time stamp");
-                return ORCM_ERROR;
+                return ORCM_ERR_BAD_PARAM;
             }
             timestamp_item = kv;
         } else if (!strcmp(kv->key, "hostname")) {
@@ -290,7 +289,7 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
                 hostname[sizeof(hostname) - 1] = '\0';
             } else {
                 ERR_MSG_STORE("Invalid value type specified for hostname");
-                return ORCM_ERROR;
+                return ORCM_ERR_BAD_PARAM;
             }
             hostname_item = kv;
         }
@@ -302,11 +301,11 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
 
     if (NULL == timestamp_item) {
         ERR_MSG_STORE("No time stamp provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
     if (NULL == hostname_item) {
         ERR_MSG_STORE("No hostname provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     /* Remove these from the list to avoid processing them again */
@@ -409,7 +408,7 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
         if (ORCM_SUCCESS != ret) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             ERR_MSG_STORE("Unsupported value type");
-            return ORCM_ERROR;
+            return ORCM_ERR_NOT_SUPPORTED;
         }
         change_value_binding = prev_type != curr_type;
         prev_type = curr_type;
@@ -421,7 +420,7 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             opal_argv_free(data_item_argv);
             ERR_MSG_STORE("No data item specified");
-            return ORCM_ERROR;
+            return ORCM_ERR_BAD_PARAM;
         }
         /* Bind the data item parameter. */
         ret = SQLBindParameter(stmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR,
@@ -617,22 +616,22 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
 
     if (NULL == data_group) {
         ERR_MSG_STORE("No data group provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == hostname) {
         ERR_MSG_STORE("No hostname provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == time_stamp) {
         ERR_MSG_STORE("No time stamp provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == samples) {
         ERR_MSG_STORE("No value list provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     tv_to_sql_timestamp(&sampletime, time_stamp);
@@ -729,7 +728,7 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
         if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             ERR_MSG_STORE("Key or data item name not provided for value");
-            return ORCM_ERROR;
+            return ORCM_ERR_BAD_PARAM;
         }
 
         ret = get_opal_value(&mv->value, &value_int, &value_real, &value_str,
@@ -737,7 +736,7 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
         if (ORCM_SUCCESS != ret) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             ERR_MSG_STORE("Unsupported value type");
-            return ORCM_ERROR;
+            return ORCM_ERR_NOT_SUPPORTED;
         }
         change_value_binding = prev_type != curr_type;
         prev_type = curr_type;
@@ -936,6 +935,16 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
     SQLRETURN ret;
     SQLHSTMT stmt;
 
+    if (NULL == hostname) {
+        ERR_MSG_UNF("No hostname provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (NULL == features) {
+        ERR_MSG_UNF("No node features provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
         ERR_MSG_FMT_UNF("SQLAllocHandle returned: %d", ret);
@@ -1010,7 +1019,7 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
         if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             ERR_MSG_UNF("Key or node feature name not provided for value");
-            return ORCM_ERROR;
+            return ORCM_ERR_BAD_PARAM;
         }
 
         ret = get_opal_value(&mv->value, &value_int, &value_real, &value_str,
@@ -1018,7 +1027,7 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
         if (ORCM_SUCCESS != ret) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             ERR_MSG_UNF("Unsupported value type");
-            return ORCM_ERROR;
+            return ORCM_ERR_NOT_SUPPORTED;
         }
         change_value_binding = prev_type != curr_type;
         prev_type = curr_type;
@@ -1227,27 +1236,27 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
 
     if (NULL == hostname) {
         ERR_MSG_RDT("No hostname provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == diag_type) {
         ERR_MSG_RDT("No diagnostic type provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == diag_subtype) {
         ERR_MSG_RDT("No diagnostic subtype provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == start_time) {
         ERR_MSG_RDT("No start time provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == test_result) {
         ERR_MSG_RDT("No test result provided");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     tm_to_sql_timestamp(&start_time_sql, start_time);
@@ -1477,7 +1486,7 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
         if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             ERR_MSG_RDT("Key or test parameter name not provided for value");
-            return ORCM_ERROR;
+            return ORCM_ERR_BAD_PARAM;
         }
 
         ret = get_opal_value(&mv->value, &value_int, &value_real, &value_str,
@@ -1485,7 +1494,7 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
         if (ORCM_SUCCESS != ret) {
             SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             ERR_MSG_RDT("Unsupported value type");
-            return ORCM_ERROR;
+            return ORCM_ERR_NOT_SUPPORTED;
         }
         change_value_binding = prev_type != curr_type;
         prev_type = curr_type;

@@ -25,6 +25,9 @@
 #include <unistd.h>
 #endif
 
+#include <sys/time.h>
+#include <time.h>
+
 #include "libpq-fe.h"
 
 #include "opal_stdint.h"
@@ -36,31 +39,85 @@
 
 #define ORCM_PG_MAX_LINE_LENGTH 4096
 
-static int init(struct orcm_db_base_module_t *imod);
-static void finalize(struct orcm_db_base_module_t *imod);
-static int store(struct orcm_db_base_module_t *imod,
-                 const char *primary_key,
-                 opal_list_t *kvs);
+static int postgres_init(struct orcm_db_base_module_t *imod);
+static void postgres_finalize(struct orcm_db_base_module_t *imod);
+static int postgres_store_sample(struct orcm_db_base_module_t *imod,
+                                 const char *data_group,
+                                 opal_list_t *kvs);
+static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
+                                         const char *hostname,
+                                         opal_list_t *features);
+static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
+                                     const char *hostname,
+                                     const char *diag_type,
+                                     const char *diag_subtype,
+                                     const struct tm *start_time,
+                                     const struct tm *end_time,
+                                     const int *component_index,
+                                     const char *test_result,
+                                     opal_list_t *test_params);
+
+/* Internal helper functions */
+typedef enum {
+    ORCM_DB_ITEM_INTEGER,
+    ORCM_DB_ITEM_REAL,
+    ORCM_DB_ITEM_STRING
+} orcm_db_item_type_t;
+
+typedef struct {
+    orcm_db_item_type_t item_type;
+    opal_data_type_t opal_type;
+    union {
+        long long int value_int;
+        double value_real;
+        char *value_str;
+    } value;
+} orcm_db_item_t;
+
+static const char *NULL_TXT = "NULL";
+
+static void tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
+                                 size_t size);
+static void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
+                                 size_t size);
+static int opal_value_to_orcm_db_item(const opal_value_t *kv,
+                                      orcm_db_item_t *item);
+static inline bool status_ok(PGresult *res);
 
 mca_db_postgres_module_t mca_db_postgres_module = {
     {
-        init,
-        finalize,
-        store,
+        postgres_init,
+        postgres_finalize,
+        postgres_store_sample,
         NULL,
-        NULL,
-        NULL,
+        postgres_update_node_features,
+        postgres_record_diag_test,
         NULL,
         NULL,
         NULL
     },
 };
 
-static int init(struct orcm_db_base_module_t *imod)
+#define ERROR_MSG_FMT_INIT(mod, msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Connection failed: "); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "\tURI: %s", mod->pguri); \
+    opal_output(0, "\tDB: %s", mod->dbname); \
+    opal_output(0, "\tOptions: %s", \
+                NULL == mod->pgoptions ? "NULL" : mod->pgoptions); \
+    opal_output(0, "\tTTY: %s", NULL == mod->pgtty ? "NULL" : mod->pgtty); \
+    opal_output(0, "***********************************************");
+
+static int postgres_init(struct orcm_db_base_module_t *imod)
 {
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
-    char **login=NULL;
-    char **connection=NULL;
+    char **login = NULL;
+    char **uri_parts = NULL;
+    char *host;
+    char *port;
+    int count;
+    PGconn *conn;
 
     /* break the user info into its login parts */
     login = opal_argv_split(mod->user, ':');
@@ -70,37 +127,34 @@ static int init(struct orcm_db_base_module_t *imod)
         opal_argv_free(login);
         return ORCM_ERR_BAD_PARAM;
     }
-    /* break the uri */
-    connection = opal_argv_split(mod->pguri, ':');
-    if (2 != opal_argv_count(connection)) {
+    /* break the URI */
+    uri_parts = opal_argv_split(mod->pguri, ':');
+    count = opal_argv_count(uri_parts);
+    if (2 < count || 1 > count) {
         opal_argv_free(login);
-        opal_argv_free(connection);
-        opal_output(0, "db:postgres: Connection info is invalid: %s",
+        opal_argv_free(uri_parts);
+        opal_output(0, "db:postgres: URI info is invalid: %s",
                     mod->pguri);
         return ORCM_ERR_BAD_PARAM;
     }
+    host = uri_parts[0];
+    port = count > 1 ? uri_parts[1] : NULL;
 
-    conn = PQsetdbLogin(connection[0], connection[1],
+    conn = PQsetdbLogin(host, port,
                         mod->pgoptions,
                         mod->pgtty,
                         mod->dbname,
                         login[0], login[1]);
     opal_argv_free(login);
-    opal_argv_free(connection);
+    opal_argv_free(uri_parts);
 
     if (PQstatus(conn) != CONNECTION_OK) {
-        conn = NULL;
-        opal_output(0, "***********************************************\n");
-        opal_output(0, "db:postgres: Connection failed:\n\tURI: %s\n\tOPTIONS: %s\n\tTTY: %s\n\tDBNAME: %s\n\tUSER: %s",
-                    mod->pguri,
-                    (NULL == mod->pgoptions) ? "NULL" : mod->pgoptions,
-                    (NULL == mod->pgtty) ? "NULL" : mod->pgtty,
-                    mod->dbname,
-                    mod->user);
-        opal_output(0, "\n***********************************************");
-        exit(ORCM_ERR_CONNECTION_FAILED);
+        ERROR_MSG_FMT_INIT(mod, "%s", PQerrorMessage(conn));
+
         return ORCM_ERR_CONNECTION_FAILED;
     }
+
+    mod->conn = conn;
     opal_output_verbose(5, orcm_db_base_framework.framework_output,
                         "db:postgres: Connection established to %s",
                         mod->dbname);
@@ -108,20 +162,18 @@ static int init(struct orcm_db_base_module_t *imod)
     return ORCM_SUCCESS;
 }
 
-static void finalize(struct orcm_db_base_module_t *imod)
+static void postgres_finalize(struct orcm_db_base_module_t *imod)
 {
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+
+    if (NULL != mod->pguri) {
+        free(mod->pguri);
+    }
     if (NULL != mod->dbname) {
         free(mod->dbname);
     }
-    if (NULL != mod->table) {
-        free(mod->table);
-    }
     if (NULL != mod->user) {
         free(mod->user);
-    }
-    if (NULL != mod->pguri) {
-        free(mod->pguri);
     }
     if (NULL != mod->pgoptions) {
         free(mod->pgoptions);
@@ -134,124 +186,667 @@ static void finalize(struct orcm_db_base_module_t *imod)
     }
 }
 
-static int store(struct orcm_db_base_module_t *imod,
-                 const char *primary_key,
-                 opal_list_t *kvs)
+#define ERR_MSG_STORE(msg) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to record data sample: "); \
+    opal_output(0, msg); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_STORE(msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to record data sample: "); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "***********************************************");
+
+static int postgres_store_sample(struct orcm_db_base_module_t *imod,
+                                 const char *data_group,
+                                 opal_list_t *kvs)
 {
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
-    char *query, *vstr;
-    PGresult *res;
-    char **cmdargs=NULL;
-    time_t nowtime;
-    struct tm *nowtm;
-    char tbuf[1024], buf[64];
-    int i;
-    opal_value_t *kv;
 
-    /* cycle through the provided values and construct
-     * an insert command for them - note that the values
-     * MUST be in column-order for the database!
-     */
+    opal_value_t *kv;
+    opal_value_t *timestamp_item = NULL;
+    opal_value_t *hostname_item = NULL;
+
+    char hostname[256];
+    char time_stamp[40];
+    char **data_item_parts;
+    char *data_item;
+    orcm_db_item_t item;
+    char *units;
+    int count;
+    int ret;
+
+    size_t num_items;
+    char **rows;
+    char *values;
+    char *insert_stmt;
+    int i;
+
+    PGresult *res;
+
+    if (NULL == data_group) {
+        ERR_MSG_STORE("No data group specified");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (NULL == kvs) {
+        ERR_MSG_STORE("No value list specified");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    /* First, retrieve the time stamp and the hostname from the list */
     OPAL_LIST_FOREACH(kv, kvs, opal_value_t) {
-        switch (kv->type) {
-        case OPAL_STRING:
-            snprintf(tbuf, sizeof(tbuf), "%s", kv->data.string);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_SIZE:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIsize_t "", kv->data.size);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_INT:
-            snprintf(tbuf, sizeof(tbuf), "%d", kv->data.integer);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_INT8:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIi8 "", kv->data.int8);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_INT16:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIi16 "", kv->data.int16);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_INT32:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIi32 "", kv->data.int32);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_INT64:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIi64 "", kv->data.int64);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_UINT:
-            snprintf(tbuf, sizeof(tbuf), "%u", kv->data.uint);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_UINT8:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIu8 "", kv->data.uint8);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_UINT16:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIu16 "", kv->data.uint16);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_UINT32:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIu32 "", kv->data.uint32);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_UINT64:
-            snprintf(tbuf, sizeof(tbuf), "%" PRIu64 "", kv->data.uint64);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_PID:
-            snprintf(tbuf, sizeof(tbuf), "%lu", (unsigned long)kv->data.pid);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_FLOAT:
-            snprintf(tbuf, sizeof(tbuf), "%f", kv->data.fval);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        case OPAL_TIMEVAL:
-            /* we only care about seconds */
-            nowtime = kv->data.tv.tv_sec;
-            (void)localtime_r(&nowtime, &nowtm);
-            strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", &nowtm);
-            opal_argv_append_nosize(&cmdargs, tbuf);
-            break;
-        default:
-            snprintf(tbuf, sizeof(tbuf), "Unsupported type: %s",
-                     opal_dss.lookup_data_type(kv->type));
-            opal_argv_append_nosize(&cmdargs, tbuf);
+        if (!strcmp(kv->key, "ctime")) {
+            switch (kv->type) {
+            case OPAL_TIMEVAL:
+            case OPAL_TIME:
+                tv_to_str_time_stamp(&kv->data.tv, time_stamp,
+                                     sizeof(time_stamp));
+                break;
+            case OPAL_STRING:
+                strncpy(time_stamp, kv->data.string, sizeof(time_stamp) - 1);
+                hostname[sizeof(time_stamp) - 1] = '\0';
+                break;
+            default:
+                ERR_MSG_STORE("Invalid value type specified for time stamp");
+                return ORCM_ERR_BAD_PARAM;
+            }
+            timestamp_item = kv;
+        } else if (!strcmp(kv->key, "hostname")) {
+            if (OPAL_STRING == kv->type) {
+                strncpy(hostname, kv->data.string, sizeof(hostname) - 1);
+                hostname[sizeof(hostname) - 1] = '\0';
+            } else {
+                ERR_MSG_STORE("Invalid value type specified for hostname");
+                return ORCM_ERR_BAD_PARAM;
+            }
+            hostname_item = kv;
+        }
+
+        if (NULL != timestamp_item && NULL != hostname_item) {
             break;
         }
     }
 
-    /* assemble the value string */
-    vstr = opal_argv_join(cmdargs, ',');
-    opal_argv_free(cmdargs);
+    if (NULL == timestamp_item) {
+        ERR_MSG_STORE("No time stamp provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+    if (NULL == hostname_item) {
+        ERR_MSG_STORE("No hostname provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
 
-    /* create the query */
-    asprintf(&query, "INSERT INTO %s values (%s)", mod->table, vstr);
-    free(vstr);
+    /* Remove these from the list to avoid processing them again */
+    opal_list_remove_item(kvs, (opal_list_item_t *)timestamp_item);
+    opal_list_remove_item(kvs, (opal_list_item_t *)hostname_item);
+    OBJ_RELEASE(timestamp_item);
+    OBJ_RELEASE(hostname_item);
+
+    num_items = opal_list_get_size(kvs);
+    rows = (char *)malloc(sizeof(char *) * (num_items + 1));
+    rows[num_items] = NULL;
+    i = 0;
+    OPAL_LIST_FOREACH(kv, kvs, opal_value_t) {
+        /* kv->key will contain: <data_item>:<units> */
+        data_item_parts = opal_argv_split(kv->key, ':');
+        count = opal_argv_count(data_item_parts);
+        if (count > 0) {
+            data_item = data_item_parts[0];
+            if (count > 1) {
+                units = data_item_parts[1];
+            } else {
+                units = NULL;
+            }
+        } else {
+            opal_argv_free(rows);
+            ERR_MSG_STORE("No data item specified");
+            return ORCM_ERR_BAD_PARAM;
+        }
+
+        ret = opal_value_to_orcm_db_item(kv, &item);
+        if (ORCM_SUCCESS != ret) {
+            ERR_MSG_FMT_STORE("Unsupported data type: %s",
+                              opal_dss.lookup_data_type(kv->type));
+            opal_argv_free(rows);
+            return ORCM_ERR_NOT_SUPPORTED;
+        }
+
+        /* (node,
+         *  data_item,
+         *  time_stamp,
+         *  value_int,
+         *  value_real,
+         *  value_str,
+         *  units,
+         *  data_type_id) */
+        switch (item.item_type) {
+        case ORCM_DB_ITEM_STRING:
+            if (NULL != units) {
+                asprintf(rows + i,
+                         "('%s','%s_%s','%s',NULL,NULL,'%s','%s',%d)",
+                         hostname, data_group, data_item, time_stamp,
+                         item.value.value_str, units, kv->type);
+            } else {
+                asprintf(rows + i,
+                         "('%s','%s_%s','%s',NULL,NULL,'%s',NULL,%d)",
+                         hostname, data_group, data_item, time_stamp,
+                         item.value.value_str, kv->type);
+            }
+            break;
+        case ORCM_DB_ITEM_REAL:
+            if (NULL != units) {
+                asprintf(rows + i,
+                         "('%s','%s_%s','%s',NULL,%f,NULL,'%s',%d)",
+                         hostname, data_group, data_item, time_stamp,
+                         item.value.value_real, units, kv->type);
+            } else {
+                asprintf(rows + i,
+                         "('%s','%s_%s','%s',NULL,%f,NULL,NULL,%d)",
+                         hostname, data_group, data_item, time_stamp,
+                         item.value.value_real, kv->type);
+            }
+            break;
+        default: /* ORCM_DB_ITEM_INTEGER */
+            if (NULL != units) {
+                asprintf(rows + i,
+                         "('%s','%s_%s','%s',%lld,NULL,NULL,'%s',%d)",
+                         hostname, data_group, data_item, time_stamp,
+                         item.value.value_int, units, kv->type);
+            } else {
+                asprintf(rows + i,
+                         "('%s','%s_%s','%s',%lld,NULL,NULL,NULL,%d)",
+                         hostname, data_group, data_item, time_stamp,
+                         item.value.value_int, kv->type);
+            }
+        }
+
+        i++;
+    }
+
+    values = opal_argv_join(rows, ',');
+    opal_argv_free(rows);
+
+    asprintf(&insert_stmt, "insert into data_sample_raw(node,data_item,"
+             "time_stamp,value_int,value_real,value_str,units,data_type_id) "
+             "values %s", values);
+    free(values);
+
+    res = PQexec(mod->conn, insert_stmt);
+    free(insert_stmt);
+
+    if (!status_ok(res)) {
+        PQclear(res);
+        ERR_MSG_FMT_STORE("%s", PQresultErrorMessage(res));
+        return ORCM_ERROR;
+    }
+    PQclear(res);
 
     opal_output_verbose(2, orcm_db_base_framework.framework_output,
-                        "Executing query %s", query);
+                        "postgres_store_sample succeeded");
 
-    /* execute it */
-    res = PQexec(conn, query);
-    free(query);
+    return ORCM_SUCCESS;
+}
 
-    if ((!res) || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-        opal_output(0, "***********************************************\n");
-        opal_output(0, "POSTGRES INSERT COMMAND FAILED - UNABLE TO LOG");
-        opal_output(0, "DATA. ABORTING");
-        opal_output(0, "\n***********************************************");
+#define ERR_MSG_UNF(msg) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to update node features"); \
+    opal_output(0, msg); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_UNF(msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to update node features"); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "***********************************************");
+
+static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
+                                         const char *hostname,
+                                         opal_list_t *features)
+{
+    mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+
+    orcm_metric_value_t *mv;
+
+    const int NUM_PARAMS = 7;
+    char *params[NUM_PARAMS];
+    char *bookmark;
+    orcm_db_item_t item;
+    int ret;
+
+    PGresult *res;
+
+    if (NULL == hostname) {
+        ERR_MSG_UNF("No hostname provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (NULL == features) {
+        ERR_MSG_UNF("No node features provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    /*
+     * $1: p_hostname character varying,
+     * $2: p_feature character varying,
+     * $3: p_data_type_id integer,
+     * $4: p_value_int bigint,
+     * $5: p_value_real double precision,
+     * $6: p_value_str character varying,
+     * $7: p_units character varying
+     * */
+    res = PQprepare(mod->conn, "set_node_feature",
+                    "select set_node_feature($1, $2, $3, $4, $5, $6, $7)");
+    if (!status_ok(res)) {
         PQclear(res);
+        ERR_MSG_FMT_UNF("%s", PQresultErrorMessage(res));
+        return ORCM_ERROR;
+    }
+    PQclear(res);
+
+    res = PQexec(mod->conn, "begin");
+    if (!status_ok(res)) {
+        PQclear(res);
+        ERR_MSG_FMT_UNF("Unable to begin transaction: %s",
+                        PQresultErrorMessage(res));
+        return ORCM_ERROR;
+    }
+    PQclear(res);
+
+    params[0] = hostname;
+    OPAL_LIST_FOREACH(mv, features, orcm_metric_value_t) {
+        if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
+            PQexec(mod->conn, "rollback");
+            ERR_MSG_UNF("Key or node feature name not provided for value");
+            return ORCM_ERR_BAD_PARAM;
+        }
+
+        ret = opal_value_to_orcm_db_item(mv->value, &item);
+        if (ORCM_SUCCESS != ret) {
+            PQexec(mod->conn, "rollback");
+            ERR_MSG_FMT_UNF("Unsupported data type: %s",
+                            opal_dss.lookup_data_type(mv->value.type));
+            return ORCM_ERR_NOT_SUPPORTED;
+        }
+
+        params[1] = mv->value.key;
+        asprintf(params + 2, "%d", item.opal_type);
+        switch (item.item_type) {
+        case ORCM_DB_ITEM_STRING:
+            params[4] = NULL_TXT;
+            params[5] = NULL_TXT;
+            params[6] = item.value.value_str;
+            bookmark = NULL;
+            break;
+        case ORCM_DB_ITEM_REAL:
+            params[4] = NULL_TXT;
+            asprintf(params + 5, "%f", item.value.value_real);
+            bookmark = params[5];
+            params[6] = NULL_TXT;
+            break;
+        default:
+            asprintf(params + 4, "%lld", item.value.value_int);
+            bookmark = params[4];
+            params[5] = NULL_TXT;
+            params[6] = NULL_TXT;
+        }
+        params[6] = mv->units;
+
+        res = PQexecPrepared(mod->conn, "set_node_feature", NUM_PARAMS,
+                             params, NULL, NULL, 0);
+        free(params[2]);
+        if (NULL != bookmark) {
+            free(bookmark);
+        }
+
+        if (!status_ok(res)) {
+            ERR_MSG_FMT_UNF("%s", PQresultErrorMessage(res));
+            return ORCM_ERROR;
+        }
+        PQclear(res);
+    }
+    res = PQexec(mod->conn, "commit");
+    if (!status_ok(res)) {
+        PQclear(res);
+        PQexec(mod->conn, "rollback");
+        ERR_MSG_FMT_UNF("Unable to commit transaction: %s",
+                        PQresultErrorMessage(res));
+        return ORCM_ERROR;
+    }
+    PQclear(res);
+
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                        "postgres_update_node_features succeeded");
+
+    return ORCM_SUCCESS;
+}
+
+#define ERR_MSG_RDT(msg) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to record diagnostic test: "); \
+    opal_output(0, msg); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_RDT(msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to record diagnostic test: "); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "***********************************************");
+
+static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
+                                     const char *hostname,
+                                     const char *diag_type,
+                                     const char *diag_subtype,
+                                     const struct tm *start_time,
+                                     const struct tm *end_time,
+                                     const int *component_index,
+                                     const char *test_result,
+                                     opal_list_t *test_params)
+{
+    mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+
+    const int NUM_TEST_RESULT_PARAMS = 7;
+    const int NUM_TEST_CONFIG_PARAMS = 10;
+
+    char *result_params[NUM_TEST_RESULT_PARAMS];
+    char *config_params[NUM_TEST_CONFIG_PARAMS];
+    char start_time_str[40];
+    char end_time_str[40];
+
+    orcm_metric_value_t *mv;
+    orcm_db_item_t item;
+    char *bookmark;
+
+    PGresult *res;
+    int ret;
+
+    if (NULL == hostname) {
+        ERR_MSG_RDT("No hostname provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (NULL == diag_type) {
+        ERR_MSG_RDT("No diagnostic type provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (NULL == diag_subtype) {
+        ERR_MSG_RDT("No diagnostic subtype provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (NULL == start_time) {
+        ERR_MSG_RDT("No start time provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (NULL == test_result) {
+        ERR_MSG_RDT("No test result provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    /*
+     * $1: hostname
+     * $2: diagnostic type
+     * $3: diagnostic subtype
+     * $4: start time
+     * $5: end time
+     * $6: component index
+     * $7: test result
+     */
+    res = PQprepare(mod->conn, "record_diag_test_result",
+                    "select record_diag_test_result("
+                    "$1, $2, $3, $4, $5, $6, $7)");
+    if (!status_ok(res)) {
+        PQclear(res);
+        ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
+        return ORCM_ERROR;
+    }
+    PQclear(res);
+
+    res = PQexec(mod->conn, "begin");
+    if (!status_ok(res)) {
+        PQclear(res);
+        ERR_MSG_FMT_RDT("Unable to begin transaction: %s",
+                        PQresultErrorMessage(res));
+        return ORCM_ERROR;
+    }
+    PQclear(res);
+
+    tm_to_str_time_stamp(start_time, start_time_str, sizeof(start_time_str));
+    if (NULL != end_time) {
+        tm_to_str_time_stamp(end_time, end_time_str, sizeof(end_time_str));
+    } else {
+        strcpy(end_time_str, "NULL");
+    }
+
+    result_params[0] = hostname;
+    result_params[1] = diag_type;
+    result_params[2] = diag_subtype;
+    result_params[3] = start_time_str;
+    result_params[4] = end_time_str;
+    asprintf(result_params + 5, "%d", component_index);
+    result_params[6] = test_result;
+
+    res = PQexecPrepared(mod->conn, "record_diag_test_result",
+                         NUM_TEST_RESULT_PARAMS, result_params, NULL, NULL, 0);
+    free(result_params[5]);
+    if (!status_ok(res)) {
+        PQclear(res);
+        ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
         return ORCM_ERROR;
     }
 
-    opal_output_verbose(2, orcm_db_base_framework.framework_output,
-                        "Query succeeded");
+    if (NULL == test_params) {
+        /* No test parameters provided, we're done! */
+        opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                            "postgres_record_diag_test succeeded");
+        return ORCM_SUCCESS;
+    }
 
+    /*
+     * $1: hostname
+     * $2: diagnostic type
+     * $3: diagnostic subtype
+     * $4: start time
+     * $5: test parameter
+     * $6: data type
+     * $7: integer value
+     * $8: real value
+     * $9: string value
+     * $10: units
+     */
+    res = PQprepare(mod->conn, "record_diag_test_config",
+                    "select record_diag_test_config("
+                    "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10)");
+    if (!status_ok(res)) {
+        PQclear(res);
+        PQexec(mod->conn, "rollback");
+        ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
+        return ORCM_ERROR;
+    }
     PQclear(res);
+
+    config_params[0] = hostname;
+    config_params[1] = diag_type;
+    config_params[2] = diag_subtype;
+    config_params[3] = start_time_str;
+    OPAL_LIST_FOREACH(mv, test_params, orcm_metric_value_t) {
+        if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
+            PQexec(mod->conn, "rollback");
+            ERR_MSG_RDT("Key or node feature name not provided for value");
+            return ORCM_ERR_BAD_PARAM;
+        }
+
+        ret = opal_value_to_orcm_db_item(mv->value, &item);
+        if (ORCM_SUCCESS != ret) {
+            PQexec(mod->conn, "rollback");
+            ERR_MSG_FMT_RDT("Unsupported data type: %s",
+                            opal_dss.lookup_data_type(mv->value.type));
+            return ORCM_ERR_NOT_SUPPORTED;
+        }
+
+        config_params[4] = mv->value.key;
+        asprintf(config_params + 5, "%d", item.opal_type);
+        switch (item.item_type) {
+        case ORCM_DB_ITEM_STRING:
+            config_params[6] = NULL_TXT;
+            config_params[7] = NULL_TXT;
+            config_params[8] = item.value.value_str;
+            bookmark = NULL;
+            break;
+        case ORCM_DB_ITEM_REAL:
+            config_params[6] = NULL_TXT;
+            asprintf(config_params + 7, "%f", item.value.value_real);
+            bookmark = config_params[7];
+            config_params[8] = NULL_TXT;
+            break;
+        default:
+            asprintf(config_params + 6, "%lld", item.value.value_int);
+            bookmark = config_params[6];
+            config_params[7] = NULL_TXT;
+            config_params[8] = NULL_TXT;
+        }
+        config_params[9] = mv->units;
+
+        res = PQexecPrepared(mod->conn, "record_diag_test_config",
+                             NUM_TEST_CONFIG_PARAMS, config_params, NULL,
+                             NULL, 0);
+        free(config_params[5]);
+        if (NULL != bookmark) {
+            free(bookmark);
+        }
+
+        if (!status_ok(res)) {
+            PQclear(res);
+            PQexec(mod->conn, "rollback");
+            ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
+            return ORCM_ERROR;
+        }
+    }
+
+    res = PQexec(mod->conn, "commit");
+    if (!status_ok(res)) {
+        PQclear(res);
+        PQexec(mod->conn, "rollback");
+        ERR_MSG_FMT_RDT("Unable to commit transaction: %s",
+                        PQresultErrorMessage(res));
+        return ORCM_ERROR;
+    }
+    PQclear(res);
+
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                        "postgres_record_diag_test succeeded");
+
     return ORCM_SUCCESS;
+}
+
+static void tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
+                                 size_t size)
+{
+    struct timeval nrm_time = *time;
+    struct tm *tm_info;
+    char date_time[30];
+    char fraction[10];
+
+    /* Normalize */
+    while (nrm_time.tv_usec < 0) {
+        nrm_time.tv_usec += 1000000;
+        nrm_time.tv_sec--;
+    }
+    while (nrm_time.tv_usec >= 1000000) {
+        nrm_time.tv_usec -= 1000000;
+        nrm_time.tv_sec++;
+    }
+
+    /* Print in format: YYYY-MM-DD HH:MM:SS.fraction time zone */
+    tm_info = localtime(&nrm_time.tv_sec);
+    strftime(date_time, sizeof(date_time), "%F %T", tm_info);
+    snprintf(fraction, sizeof(fraction), "%f",
+             (float)(time->tv_usec / 1000000.0));
+    snprintf(tbuf, size, "%s%s", date_time, fraction + 1);
+}
+
+static void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
+                                 size_t size)
+{
+    strftime(tbuf, size, "%F %T", time);
+}
+
+static int opal_value_to_orcm_db_item(const opal_value_t *kv,
+                                      orcm_db_item_t *item)
+{
+    switch (kv->type) {
+    case OPAL_STRING:
+        item->value.value_str = kv->data.string;
+        item->item_type = ORCM_DB_ITEM_STRING;
+        break;
+    case OPAL_SIZE:
+        item->value.value_int = (long long int)kv->data.size;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_INT:
+        item->value.value_int = (long long int)kv->data.integer;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_INT8:
+        item->value.value_int = (long long int)kv->data.int8;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_INT16:
+        item->value.value_int = (long long int)kv->data.int16;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_INT32:
+        item->value.value_int = (long long int)kv->data.int32;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_INT64:
+        item->value.value_int = (long long int)kv->data.int64;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_UINT:
+        item->value.value_int = (long long int)kv->data.uint;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_UINT8:
+        item->value.value_int = (long long int)kv->data.uint8;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_UINT16:
+        item->value.value_int = (long long int)kv->data.uint16;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_UINT32:
+        item->value.value_int = (long long int)kv->data.uint32;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_UINT64:
+        item->value.value_int = (long long int)kv->data.uint64;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_PID:
+        item->value.value_int = (long long int)kv->data.pid;
+        item->item_type = ORCM_DB_ITEM_INTEGER;
+        break;
+    case OPAL_FLOAT:
+        item->value.value_real = (double)kv->data.fval;
+        item->item_type = ORCM_DB_ITEM_REAL;
+        break;
+    case OPAL_DOUBLE:
+        item->value.value_real = kv->data.dval;
+        item->item_type = ORCM_DB_ITEM_REAL;
+        break;
+    default:
+        return ORCM_ERR_NOT_SUPPORTED;
+    }
+
+    return ORCM_SUCCESS;
+}
+
+static inline bool status_ok(PGresult *res)
+{
+    ExecStatusType status = PQresultStatus(res);
+    return status == PGRES_COMMAND_OK || status == PGRES_TUPLES_OK;
 }

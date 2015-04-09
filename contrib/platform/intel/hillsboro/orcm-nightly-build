@@ -38,6 +38,7 @@ with_slurm=no
 with_ipmi=yes
 with_dmidata=yes
 with_odbc=yes
+with_postgres=/usr/pgsql-9.3/
 with_memtest=yes
 with_cputest=yes
 with_ethtest=yes

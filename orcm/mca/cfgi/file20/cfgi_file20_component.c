@@ -53,8 +53,8 @@ static int component_close(void)
 
 static int component_query(mca_base_module_t **module, int *priority)
 {
-    /* new version */
+    /* deprecated version, retain support at low priority */
     *module = (mca_base_module_t*)&orcm_cfgi_file20_module;
-    *priority = 10;
+    *priority = 5;
     return ORCM_SUCCESS;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2015      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -86,9 +86,12 @@
 
 #define ORCM_MAX_LINE_LENGTH  512
 
-#define V_LO 2
-#define V_HI 10
-#define V_HIGHER 30
+typedef enum error_verbosity_level
+{
+    V_LO     =  2,
+    V_HI     = 10,
+    V_HIGHER = 30
+} error_verbosity_level_t;
 
 /* API functions */
 
@@ -114,6 +117,9 @@ static int lex_xml( char * in_filename, char ** o_text, char *** o_items,
 static int check_validity_of_the_inputs( char ** in_items
                                        , unsigned long in_item_count
                                        );
+static int check_all_port_fields( char ** in_items
+                                , unsigned long in_item_count
+                                );
 static int isa_sectional_item(const char * in_tagtext);
 static int find_beginend_configuration( unsigned long in_start_index
                                       , char ** in_items
@@ -240,9 +246,9 @@ static void file30_finalize(void)
 {
 }
 
-static int parse_config2( char ** in_items
-                        , unsigned long in_sz_items
-                        , opal_list_t *io_config);
+static int parse_config( char ** in_items
+                       , unsigned long in_sz_items
+                       , opal_list_t *io_config);
 static bool check_me(orcm_config_t *config, char *node,
                      orte_vpid_t vpid, char *my_ip);
 
@@ -291,7 +297,7 @@ static int read_config(opal_list_t *config)
         if (V_HIGHER < opal_output_get_verbosity(OUTID)) {
             for(i=0; i!=sz_items; ++i) {
                 /*The OUTID of zero used here was taken from orcm_util_print_xml.*/
-                opal_output(0, "XML-LEXR: %s", items[i]);
+                opal_output(0, "XML-LEXR:%lu: %s", i, items[i]);
             }
         }
 
@@ -303,7 +309,7 @@ static int read_config(opal_list_t *config)
             opal_output_verbose(V_HI, OUTID, "XML VALIDITY CHECKED and PASSED");
         }
 
-        erri=parse_config2(items,sz_items, config);
+        erri=parse_config(items,sz_items, config);
         if(erri){
             opal_output_verbose(V_HI, OUTID, "FAILED TO PARSE THE CFGI XML FILE:%d",erri);
             break;
@@ -730,10 +736,10 @@ static char * tolower_cstr(char * in)
     return in;
 }
 
-static int parse_config2( char ** in_items
-                        , unsigned long in_sz_items
-                        , opal_list_t *io_config
-                        )
+static int parse_config( char ** in_items
+                       , unsigned long in_sz_items
+                       , opal_list_t *io_config
+                       )
 {
     /*
         io_config is a list of items of type orcm_cfgi_xml_parser_t
@@ -1896,6 +1902,7 @@ static int isa_known_tag(const char * in_tagtext)
     case 'a':
     case 'A':
         if( ! strcasecmp(t,"aggregator")) return 1;
+        break;
     case 'c':
     case 'C':
         if( ! strcasecmp(t,"configuration")) return 1;
@@ -1910,7 +1917,8 @@ static int isa_known_tag(const char * in_tagtext)
         break;
     case 'h':
     case 'H':
-            if( ! strcasecmp(t,"host")) return 1;
+        if( ! strcasecmp(t,"host")) return 1;
+        break;
     case 'j':
     case 'J':
         if( ! strcasecmp(t,"junction")) return 1;
@@ -1982,7 +1990,6 @@ static int isa_sectional_item(const char * in_tagtext)
     case 's':
     case 'S':
         if( ! strcasecmp(t,"scheduler")) return 1;
-        break;
         break;
     default:
         return 0;
@@ -2294,7 +2301,7 @@ static int check_validity_of_the_inputs( char ** in_items
             }
 
             t=in_items[i+1];
-            t+=1; /*Jump over the tag*/
+            t+=1; /*Jump over the tab*/
 
             if('y' ==t[0] || 'Y' ==t[0]){
                 /*All good*/
@@ -2309,12 +2316,80 @@ static int check_validity_of_the_inputs( char ** in_items
             break;
         }
 
+        erri=check_all_port_fields(in_items,in_item_count);
+        if(erri) {
+            break;
+        }
+
         break;
     }
     return erri;
 #   undef EMSG0
 #   undef EMSG1
 #   undef EMSG2
+}
+
+static int check_all_port_fields( char ** in_items
+                                , unsigned long in_item_count
+                                )
+{
+    /*Check that port field content is a positive bound integer */
+    const int OUTID = orcm_cfgi_base_framework.framework_output;
+
+    unsigned long i=0;
+    char *t=NULL;
+    char * endptr=NULL;
+    const int base = 10;
+    long number=0;
+
+    int erri=0;
+    while(!erri){
+        for(i=0; i!=in_item_count; ++i){
+            t=in_items[i];
+
+            if('\t'==t[0] || '/'==t[0]){
+                /*Skip ending tags and data fields*/
+                continue;
+            }
+            if('p'!=t[0] && 'P'!=t[0]){
+                /*Not the right tag*/
+                continue;
+            }
+            if( !! strcasecmp(t,"port") ){
+                continue;
+            }
+
+            t=in_items[i+1];
+            t+=1; /*Jump over the tab*/
+
+            endptr=NULL;
+            number = strtol(t, &endptr, base);
+
+            if( '\0' != *endptr){
+                opal_output_verbose(V_LO, OUTID,
+                "ERROR: The value of a node item is not a valid integer");
+                opal_output_verbose(V_LO, OUTID, "Error on lexer element %lu", i+1);
+                erri=__LINE__;
+                /*Do not bail out right away.  Survey all nodes.
+                  That gives a chance to see all mistakes. */
+                /*break;*/
+            }else {
+                if( 0 > number || USHRT_MAX < number){
+                    opal_output_verbose(V_LO, OUTID
+                    ,"ERROR: The value of a node item is not in an acceptable range (0<=n<=SHRT_MAX): %ld"
+                    , number
+                    );
+                    opal_output_verbose(V_LO, OUTID, "Error on lexer element %lu", i+1);
+                    erri=__LINE__;
+                    /*Do not bail out right away.  Survey all nodes.
+                      That gives a chance to see all mistakes. */
+                    /*break;*/
+                }
+            }
+        }
+        break;
+    }
+    return erri;
 }
 
 static int structure_lexed_items( unsigned long in_begin_offset
@@ -2429,7 +2504,7 @@ static int structure_lexed_items( unsigned long in_begin_offset
                 ++k;
             }
         }
-        if(0){
+        if( ! "debug"){
             printf("DEBUG> Section count=%lu  %lu\n",k, ending_sectional_tags);
         }
 
@@ -2576,7 +2651,7 @@ static int structure_lexed_items( unsigned long in_begin_offset
         }
 
         if(sz_section+1 != *o_length_hierarchy){
-            if(0){
+            if( ! "debug"){
                 printf("DEBUG: sz_section=%lu    o_length_hierarchy=%lu\n"
                       ,sz_section,*o_length_hierarchy);
             }
@@ -2606,7 +2681,7 @@ static int structure_lexed_items( unsigned long in_begin_offset
             ++(*o_hier_row_length)[k];
         }
 
-        if(0){
+        if( ! "debug" ){
             printf("DEBUG:\toffset\tstart\tend\tparent\n");
             for(k=0; k!=*o_length_hierarchy; ++k){
                 printf("DEBUG:\to=%lu\ts=%lu\te=%lu\tp=%lu\tc=%lu\thr=%lu\n"
@@ -2645,7 +2720,7 @@ static int structure_lexed_items( unsigned long in_begin_offset
             ++section_counts[k];
         }
 
-        if(0){
+        if( ! "debug" ){
             for(i=0; i!=*o_length_hierarchy; ++i){
                 printf("DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu\n",i
                        , section_counts[i],section_parents[i],section_starts[i]);
@@ -2716,7 +2791,7 @@ static int structure_lexed_items( unsigned long in_begin_offset
             break;
         }
 
-        if(0){
+        if(! "debug"){
             for(i=0; i!=*o_length_hierarchy; ++i){
                 printf("DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu\n",i
                        , section_counts[i],section_parents[i],section_starts[i]);
@@ -2739,7 +2814,7 @@ static int structure_lexed_items( unsigned long in_begin_offset
             ++section_counts[i];
         }
 
-        if(0){
+        if(! "debug"){
             for(i=0; i!=*o_length_hierarchy; ++i){
                 printf("DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu\n",i
                        , section_counts[i],section_parents[i],section_starts[i]);
@@ -3342,7 +3417,3 @@ static int remove_duplicate_singletons( char ** in_items
     }
     return erri;
 }
-
-#undef V_LO
-#undef V_HI
-#undef V_HIGHER

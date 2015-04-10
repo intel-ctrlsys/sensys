@@ -34,7 +34,10 @@
 #include "opal/util/argv.h"
 #include "opal/util/error.h"
 
+#include "orcm/runtime/orcm_globals.h"
+
 #include "orcm/mca/db/base/base.h"
+#include "orcm/mca/db/base/orcm_db_utils.h"
 #include "db_postgres.h"
 
 #define ORCM_PG_MAX_LINE_LENGTH 4096
@@ -58,30 +61,12 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
                                      opal_list_t *test_params);
 
 /* Internal helper functions */
-typedef enum {
-    ORCM_DB_ITEM_INTEGER,
-    ORCM_DB_ITEM_REAL,
-    ORCM_DB_ITEM_STRING
-} orcm_db_item_type_t;
 
-typedef struct {
-    orcm_db_item_type_t item_type;
-    opal_data_type_t opal_type;
-    union {
-        long long int value_int;
-        double value_real;
-        char *value_str;
-    } value;
-} orcm_db_item_t;
-
-static const char *NULL_TXT = "NULL";
 
 static void tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
                                  size_t size);
 static void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
                                  size_t size);
-static int opal_value_to_orcm_db_item(const opal_value_t *kv,
-                                      orcm_db_item_t *item);
 static inline bool status_ok(PGresult *res);
 
 mca_db_postgres_module_t mca_db_postgres_module = {
@@ -285,7 +270,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
     OBJ_RELEASE(hostname_item);
 
     num_items = opal_list_get_size(kvs);
-    rows = (char *)malloc(sizeof(char *) * (num_items + 1));
+    rows = (char **)malloc(sizeof(char *) * (num_items + 1));
     rows[num_items] = NULL;
     i = 0;
     OPAL_LIST_FOREACH(kv, kvs, opal_value_t) {
@@ -410,8 +395,9 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
     orcm_metric_value_t *mv;
 
     const int NUM_PARAMS = 7;
-    char *params[NUM_PARAMS];
-    char *bookmark;
+    const char *params[NUM_PARAMS];
+    char *type_str;
+    char *value_str;
     orcm_db_item_t item;
     int ret;
 
@@ -437,7 +423,8 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
      * $7: p_units character varying
      * */
     res = PQprepare(mod->conn, "set_node_feature",
-                    "select set_node_feature($1, $2, $3, $4, $5, $6, $7)");
+                    "select set_node_feature($1, $2, $3, $4, $5, $6, $7)",
+                    0, NULL);
     if (!status_ok(res)) {
         PQclear(res);
         ERR_MSG_FMT_UNF("%s", PQresultErrorMessage(res));
@@ -462,7 +449,7 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
             return ORCM_ERR_BAD_PARAM;
         }
 
-        ret = opal_value_to_orcm_db_item(mv->value, &item);
+        ret = opal_value_to_orcm_db_item(&mv->value, &item);
         if (ORCM_SUCCESS != ret) {
             PQexec(mod->conn, "rollback");
             ERR_MSG_FMT_UNF("Unsupported data type: %s",
@@ -471,33 +458,34 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
         }
 
         params[1] = mv->value.key;
-        asprintf(params + 2, "%d", item.opal_type);
+        asprintf(&type_str, "%d", item.opal_type);
+        params[2] = type_str;
         switch (item.item_type) {
         case ORCM_DB_ITEM_STRING:
-            params[4] = NULL_TXT;
-            params[5] = NULL_TXT;
+            params[4] = NULL;
+            params[5] = NULL;
             params[6] = item.value.value_str;
-            bookmark = NULL;
+            value_str = NULL;
             break;
         case ORCM_DB_ITEM_REAL:
-            params[4] = NULL_TXT;
-            asprintf(params + 5, "%f", item.value.value_real);
-            bookmark = params[5];
-            params[6] = NULL_TXT;
+            params[4] = NULL;
+            asprintf(&value_str, "%f", item.value.value_real);
+            params[5] = value_str;
+            params[6] = NULL;
             break;
         default:
-            asprintf(params + 4, "%lld", item.value.value_int);
-            bookmark = params[4];
-            params[5] = NULL_TXT;
-            params[6] = NULL_TXT;
+            asprintf(&value_str, "%lld", item.value.value_int);
+            params[4] = value_str;
+            params[5] = NULL;
+            params[6] = NULL;
         }
         params[6] = mv->units;
 
         res = PQexecPrepared(mod->conn, "set_node_feature", NUM_PARAMS,
                              params, NULL, NULL, 0);
-        free(params[2]);
-        if (NULL != bookmark) {
-            free(bookmark);
+        free(type_str);
+        if (NULL != value_str) {
+            free(value_str);
         }
 
         if (!status_ok(res)) {
@@ -549,14 +537,16 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
     const int NUM_TEST_RESULT_PARAMS = 7;
     const int NUM_TEST_CONFIG_PARAMS = 10;
 
-    char *result_params[NUM_TEST_RESULT_PARAMS];
-    char *config_params[NUM_TEST_CONFIG_PARAMS];
+    const char *result_params[NUM_TEST_RESULT_PARAMS];
+    const char *config_params[NUM_TEST_CONFIG_PARAMS];
+    char *index_str;
+    char *type_str;
+    char *value_str;
     char start_time_str[40];
     char end_time_str[40];
 
     orcm_metric_value_t *mv;
     orcm_db_item_t item;
-    char *bookmark;
 
     PGresult *res;
     int ret;
@@ -597,7 +587,8 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
      */
     res = PQprepare(mod->conn, "record_diag_test_result",
                     "select record_diag_test_result("
-                    "$1, $2, $3, $4, $5, $6, $7)");
+                    "$1, $2, $3, $4, $5, $6, $7)",
+                    0, NULL);
     if (!status_ok(res)) {
         PQclear(res);
         ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
@@ -621,17 +612,23 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
         strcpy(end_time_str, "NULL");
     }
 
+    if (NULL == component_index) {
+        index_str = NULL;
+    } else {
+        asprintf(&index_str, "%d", *component_index);
+    }
+
     result_params[0] = hostname;
     result_params[1] = diag_type;
     result_params[2] = diag_subtype;
     result_params[3] = start_time_str;
     result_params[4] = end_time_str;
-    asprintf(result_params + 5, "%d", component_index);
+    result_params[5] = index_str;
     result_params[6] = test_result;
 
     res = PQexecPrepared(mod->conn, "record_diag_test_result",
                          NUM_TEST_RESULT_PARAMS, result_params, NULL, NULL, 0);
-    free(result_params[5]);
+    free(index_str);
     if (!status_ok(res)) {
         PQclear(res);
         ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
@@ -659,7 +656,8 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
      */
     res = PQprepare(mod->conn, "record_diag_test_config",
                     "select record_diag_test_config("
-                    "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10)");
+                    "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                    0, NULL);
     if (!status_ok(res)) {
         PQclear(res);
         PQexec(mod->conn, "rollback");
@@ -679,7 +677,7 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
             return ORCM_ERR_BAD_PARAM;
         }
 
-        ret = opal_value_to_orcm_db_item(mv->value, &item);
+        ret = opal_value_to_orcm_db_item(&mv->value, &item);
         if (ORCM_SUCCESS != ret) {
             PQexec(mod->conn, "rollback");
             ERR_MSG_FMT_RDT("Unsupported data type: %s",
@@ -688,34 +686,35 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
         }
 
         config_params[4] = mv->value.key;
-        asprintf(config_params + 5, "%d", item.opal_type);
+        asprintf(&type_str, "%d", item.opal_type);
+        config_params[5] = type_str;
         switch (item.item_type) {
         case ORCM_DB_ITEM_STRING:
-            config_params[6] = NULL_TXT;
-            config_params[7] = NULL_TXT;
+            config_params[6] = NULL;
+            config_params[7] = NULL;
             config_params[8] = item.value.value_str;
-            bookmark = NULL;
+            value_str = NULL;
             break;
         case ORCM_DB_ITEM_REAL:
-            config_params[6] = NULL_TXT;
-            asprintf(config_params + 7, "%f", item.value.value_real);
-            bookmark = config_params[7];
-            config_params[8] = NULL_TXT;
+            config_params[6] = NULL;
+            asprintf(&value_str, "%f", item.value.value_real);
+            config_params[7] = value_str;
+            config_params[8] = NULL;
             break;
         default:
-            asprintf(config_params + 6, "%lld", item.value.value_int);
-            bookmark = config_params[6];
-            config_params[7] = NULL_TXT;
-            config_params[8] = NULL_TXT;
+            asprintf(&value_str, "%lld", item.value.value_int);
+            config_params[6] = value_str;
+            config_params[7] = NULL;
+            config_params[8] = NULL;
         }
         config_params[9] = mv->units;
 
         res = PQexecPrepared(mod->conn, "record_diag_test_config",
                              NUM_TEST_CONFIG_PARAMS, config_params, NULL,
                              NULL, 0);
-        free(config_params[5]);
-        if (NULL != bookmark) {
-            free(bookmark);
+        free(type_str);
+        if (NULL != value_str) {
+            free(value_str);
         }
 
         if (!status_ok(res)) {
@@ -772,77 +771,6 @@ static void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
                                  size_t size)
 {
     strftime(tbuf, size, "%F %T", time);
-}
-
-static int opal_value_to_orcm_db_item(const opal_value_t *kv,
-                                      orcm_db_item_t *item)
-{
-    switch (kv->type) {
-    case OPAL_STRING:
-        item->value.value_str = kv->data.string;
-        item->item_type = ORCM_DB_ITEM_STRING;
-        break;
-    case OPAL_SIZE:
-        item->value.value_int = (long long int)kv->data.size;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_INT:
-        item->value.value_int = (long long int)kv->data.integer;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_INT8:
-        item->value.value_int = (long long int)kv->data.int8;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_INT16:
-        item->value.value_int = (long long int)kv->data.int16;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_INT32:
-        item->value.value_int = (long long int)kv->data.int32;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_INT64:
-        item->value.value_int = (long long int)kv->data.int64;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_UINT:
-        item->value.value_int = (long long int)kv->data.uint;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_UINT8:
-        item->value.value_int = (long long int)kv->data.uint8;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_UINT16:
-        item->value.value_int = (long long int)kv->data.uint16;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_UINT32:
-        item->value.value_int = (long long int)kv->data.uint32;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_UINT64:
-        item->value.value_int = (long long int)kv->data.uint64;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_PID:
-        item->value.value_int = (long long int)kv->data.pid;
-        item->item_type = ORCM_DB_ITEM_INTEGER;
-        break;
-    case OPAL_FLOAT:
-        item->value.value_real = (double)kv->data.fval;
-        item->item_type = ORCM_DB_ITEM_REAL;
-        break;
-    case OPAL_DOUBLE:
-        item->value.value_real = kv->data.dval;
-        item->item_type = ORCM_DB_ITEM_REAL;
-        break;
-    default:
-        return ORCM_ERR_NOT_SUPPORTED;
-    }
-
-    return ORCM_SUCCESS;
 }
 
 static inline bool status_ok(PGresult *res)

@@ -14,48 +14,20 @@ dnl
 AC_DEFUN([MCA_orcm_db_postgres_CONFIG], [
     AC_CONFIG_FILES([orcm/mca/db/postgres/Makefile])
 
-    orcm_db_postgres_check_prefix_dir=""
-
-    AC_MSG_CHECKING([for PostgreSQL support])
-
-    AC_ARG_WITH([postgres],
-                [AC_HELP_STRING([--with-postgres(=DIR)],
-                                [Build PostgreSQL support, optionally adding DIR to the search path])],
-                [# with_postgres=yes|no|path
-                 AS_IF([test "$with_postgres" = "no"],
-                       [# Support explicitly not requested
-                        AC_MSG_RESULT([support not requested])
-                        [$2]],
-                       [# Support explicitly requested (with_postgres=yes|path)
-                        AS_IF([test "$with_postgres" != "yes"],
-                              [orcm_db_postgres_check_prefix_dir=$with_postgres])
-                        OPAL_CHECK_PACKAGE([db_postgres],
-                                           [libpq-fe.h],
-                                           [postgres],
-                                           [PQsetdbLogin],
-                                           [],
-                                           [$orcm_db_postgres_check_prefix_dir],
-                                           [],
-                                           [$1],
-                                           [AC_MSG_WARN([PostgreSQL database support requested])
-                                            AC_MSG_WARN([but required library not found or link test failed])
-                                            AC_MSG_ERROR([Cannot continue])
-                                            $2])])],
-                [# Support not explicitly requested, try to build if possible
-                 OPAL_CHECK_PACKAGE([db_postgres],
-                                    [libpq-fe.h],
-                                    [postgres],
-                                    [PQsetdbLogin],
-                                    [],
-                                    [],
-                                    [],
-                                    [$1],
-                                    [AC_MSG_WARN([PostgreSQL library not found or link test failed])
-                                     AC_MSG_WARN([building without PostgreSQL support])
-                                     $2])])
-
-    AC_SUBST(db_postgres_CPPFLAGS)
-    AC_SUBST(db_postgres_LDFLAGS)
-    AC_SUBST(db_postgres_LIBS)
+    AC_REQUIRE([OPAL_CHECK_POSTGRES])
+    # This will set:
+    # opal_db_postgres_found, opal_db_postgres_failed,
+    # opal_db_postgres_CPPFLAGS, opal_db_postgres_LDFLAGS, and
+    # opal_db_postgres_LIBS
+    
+    AS_IF([test "$opal_db_postgres_found" = "yes"],
+          [$1],
+          [$2
+           AS_IF([test "$opal_db_postgres_failed" = "yes"],
+                 [AC_MSG_ERROR([Cannot continue])])])
+    
+    AC_SUBST(opal_db_postgres_CPPFLAGS)
+    AC_SUBST(opal_db_postgres_LDFLAGS)
+    AC_SUBST(opal_db_postgres_LIBS)
 
 ])dnl

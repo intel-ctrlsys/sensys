@@ -26,9 +26,13 @@ endif
 
 mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
+mca_db_postgres_la_CPPFLAGS = $(opal_db_postgres_CPPFLAGS)
 mca_db_postgres_la_SOURCES = $(sources)
-mca_db_postgres_la_LDFLAGS = -module -avoid-version
+mca_db_postgres_la_LDFLAGS = -module -avoid-version $(opal_db_postgres_LDFLAGS)
+mca_db_postgres_la_LIBADD = $(opal_db_postgres_LIBS)
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_db_postgres_la_SOURCES =$(sources)
-libmca_db_postgres_la_LDFLAGS = -module -avoid-version
+libmca_db_postgres_la_CPPFLAGS = $(opal_db_postgres_CPPFLAGS)
+libmca_db_postgres_la_LDFLAGS = -module -avoid-version $(opal_db_postgres_LDFLAGS)
+libmca_db_postgres_la_LIBADD = $(opal_db_postgres_LIBS)

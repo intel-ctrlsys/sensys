@@ -36,32 +36,14 @@
 #include <sys/inotify.h>
 #endif
 
-#include "opal/dss/dss.h"
-#include "opal/mca/event/event.h"
 #include "opal/runtime/opal.h"
-#include "opal/runtime/opal_cr.h"
-#include "opal/mca/hwloc/base/base.h"
-#include "opal/mca/pstat/base/base.h"
-#include "opal/util/arch.h"
 #include "opal/util/if.h"
 #include "opal/util/net.h"
+#include "opal/util/opal_environ.h"
 #include "opal/util/os_path.h"
 #include "opal/util/show_help.h"
 
-#include "orte/mca/ess/base/base.h"
-#include "orte/mca/rml/base/base.h"
-#include "orte/mca/rml/base/rml_contact.h"
-#include "orte/mca/routed/base/base.h"
-#include "orte/mca/routed/routed.h"
-#include "orte/mca/oob/base/base.h"
-#include "orte/mca/dfs/base/base.h"
-#include "orte/mca/grpcomm/grpcomm.h"
-#include "orte/mca/grpcomm/base/base.h"
-#include "orte/mca/iof/base/base.h"
-#include "orte/mca/plm/base/base.h"
-#include "orte/mca/odls/base/base.h"
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/filem/base/base.h"
 #include "orte/util/parse_options.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/session_dir.h"
@@ -69,10 +51,6 @@
 #include "orte/util/nidmap.h"
 #include "orte/util/regex.h"
 #include "orte/util/show_help.h"
-#include "orte/mca/errmgr/base/base.h"
-#include "orte/mca/state/base/base.h"
-#include "orte/mca/state/state.h"
-#include "orte/runtime/orte_cr.h"
 #include "orte/runtime/orte_wait.h"
 #include "orte/runtime/orte_globals.h"
 #include "orte/runtime/orte_quit.h"
@@ -112,56 +90,46 @@ orcm_cfgi_base_module_t orcm_cfgi_file30_module = {
     define_system
 };
 
-static int lex_xml( char * in_filename, char ** o_text, char *** o_items,
-                    unsigned long * o_item_count);
-static int check_validity_of_the_inputs( char ** in_items
-                                       , unsigned long in_item_count
-                                       );
-static int check_all_port_fields( char ** in_items
-                                , unsigned long in_item_count
-                                );
+static int lex_xml(char * in_filename, char ** o_text, char *** o_items,
+                   unsigned long * o_item_count);
+static int check_validity_of_the_inputs(char ** in_items,
+                                        unsigned long in_item_count);
+static int check_all_port_fields(char ** in_items,
+                                 unsigned long in_item_count);
 static int isa_sectional_item(const char * in_tagtext);
-static int find_beginend_configuration( unsigned long in_start_index
-                                      , char ** in_items
-                                      , unsigned long in_sz_items
-                                      , int in_1for_record_0for_mod
-                                      , unsigned long * o_begin_config
-                                      , unsigned long * o_end_config
-                                      );
-static int structure_lexed_items( unsigned long in_begin_offset
-                                , unsigned long in_end_offset
-                                , char ** in_items
-                                , unsigned long in_item_count
-                                , long *** o_hierachy
-                                , unsigned long ** o_hier_row_length
-                                , unsigned long * o_length_hierarchy
-                                );
+static int find_beginend_configuration(unsigned long in_start_index,
+                                       char ** in_items,
+                                       unsigned long in_sz_items,
+                                       int in_1for_record_0for_mod,
+                                       unsigned long * o_begin_config,
+                                       unsigned long * o_end_config);
+static int structure_lexed_items(unsigned long in_begin_offset,
+                                 unsigned long in_end_offset,
+                                 char ** in_items,
+                                 unsigned long in_item_count,
+                                 long *** o_hierachy,
+                                 unsigned long ** o_hier_row_length,
+                                 unsigned long * o_length_hierarchy);
 
-static int transfer_to_controller( char ** in_items
-                                 , unsigned long in_hier_row_length
-                                 , long * in_hierarchy
-                                 , orcm_cfgi_xml_parser_t * io_parent
-                                 );
-static int transfer_to_scheduler( char ** in_items
-                                , unsigned long in_hier_row_length
-                                , long * in_hierarchy
-                                , orcm_cfgi_xml_parser_t * io_parent
-                                );
+static int transfer_to_controller(char ** in_items,
+                                  unsigned long in_hier_row_length,
+                                  long * in_hierarchy,
+                                  orcm_cfgi_xml_parser_t * io_parent);
+static int transfer_to_scheduler(char ** in_items,
+                                 unsigned long in_hier_row_length,
+                                 long * in_hierarchy,
+                                 orcm_cfgi_xml_parser_t * io_parent);
 
 static int remove_empty_items(char ** io_items, unsigned long * io_sz_items);
 
 static int isa_singleton(const char * in_tagtext);
-static int remove_duplicate_singletons( char ** in_items
-                                      , long ** io_hierarchy
-                                      , unsigned long * io_hier_row_length
-                                      , unsigned long * io_sz_hierarchy
-                                      );
+static int remove_duplicate_singletons(char ** in_items,
+                                       long ** io_hierarchy,
+                                       unsigned long * io_hier_row_length,
+                                       unsigned long * io_sz_hierarchy);
 
 static int file30_init(void)
 {
-    char * FNAME = orcm_cfgi_base.config_file;
-    const int OUTID = orcm_cfgi_base_framework.framework_output;
-
     char * text = NULL;  /* Owns the array */
     char ** items = NULL; /* Owns the array but not its c-sring entries */
     unsigned long sz_items=0;
@@ -171,71 +139,78 @@ static int file30_init(void)
 
     int version_found=0; /*Set to 1 if found*/
 
-    int erri=0;
+    int erri = ORCM_SUCCESS;
 
-    while(! erri){
+    while (ORCM_SUCCESS == erri){
         if (NULL == orcm_cfgi_base.config_file) {
-            opal_output_verbose(V_LO, OUTID, "NULL FILE");
-            erri=__LINE__; break;
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "NULL FILE");
+            erri = ORCM_ERR_BAD_PARAM;
+            break;
         }
 
-        erri=lex_xml(FNAME,&text,&items,&sz_items);
-        if(erri) {
-            opal_output_verbose(V_LO, OUTID, "FAILED TO PARSE XML CFGI FILE");
+        erri = lex_xml(orcm_cfgi_base.config_file,&text,&items,&sz_items);
+        if (ORCM_SUCCESS != erri) {
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "FAILED TO PARSE XML CFGI FILE");
             break;
         }
 
         /* Now look for the first version data field */
-        for(i=0; i!=sz_items; ++i){
-            if('/'==items[i][0]){
+        for (i=0; i!=sz_items; ++i) {
+            if ('/' == items[i][0]) {
                 continue;
             }
-            if('\t'==items[i][0]){
+            if ('\t' == items[i][0]) {
                 continue;
             }
-            if( ! strcasecmp("version", items[i]) ){
-                if(i+1>=sz_items){
-                    opal_output_verbose(V_LO, OUTID, "MISSING VERSION DATA");
-                    erri=__LINE__;
+            if (0 == strcasecmp("version", items[i])) {
+                if (i+1 >= sz_items) {
+                    opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                        "MISSING VERSION DATA");
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
                 data=items[i+1];
-                if('\t'!=data[0]){
-                    opal_output_verbose(V_LO, OUTID, "BAD PARSING OF VERSION DATA");
-                    erri=__LINE__;
+                if ('\t'!=data[0]) {
+                    opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                        "BAD PARSING OF VERSION DATA");
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
-                if('3'==data[1]){ /* TODO: Check for whitespace if someone quoted the version*/
-                    version_found=1;
+                if ('3' == data[1]) { /* TODO: Check for whitespace if someone quoted the version*/
+                    version_found = 1;
                 } else {
-                    opal_output_verbose(V_LO, OUTID, "EXPECTED VERSION 3 NOT FOUND: %s",data+1);
-                    erri=__LINE__;
+                    opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                        "EXPECTED VERSION 3 NOT FOUND: %s",data+1);
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
             }
         }
-        if(erri) break;
-
-        if( ! version_found){
-            opal_output_verbose(V_LO, OUTID, "VERSION 3 NOT FOUND");
-            erri=__LINE__;
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+        
+        if (0 == version_found){
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "VERSION 3 NOT FOUND");
+            erri = ORCM_ERR_NOT_FOUND;
         }
 
         break;
     }
 
-    if(items){
+    if (NULL != items) {
         free(items);
-        items=NULL;
-        sz_items=0;
+        items = NULL;
+        sz_items = 0;
     }
 
-    if(text){
+    if (NULL != text) {
         free(text);
-        text=NULL;
+        text = NULL;
     }
 
-    if(erri){
+    if (ORCM_SUCCESS != erri) {
         return ORCM_ERR_TAKE_NEXT_OPTION;
     }
 
@@ -246,16 +221,14 @@ static void file30_finalize(void)
 {
 }
 
-static int parse_config( char ** in_items
-                       , unsigned long in_sz_items
-                       , opal_list_t *io_config);
+static int parse_config(char ** in_items,
+                        unsigned long in_sz_items,
+                        opal_list_t *io_config);
 static bool check_me(orcm_config_t *config, char *node,
                      orte_vpid_t vpid, char *my_ip);
 
 static int read_config(opal_list_t *config)
 {
-    char * FNAME = orcm_cfgi_base.config_file;
-    const int OUTID = orcm_cfgi_base_framework.framework_output;
     FILE * fp=NULL;
 
     orcm_cfgi_xml_parser_t *xml; //An iterator, owns nothing.
@@ -266,56 +239,61 @@ static int read_config(opal_list_t *config)
 
     unsigned long i=0;
 
-    int erri=0;
+    int erri = ORCM_SUCCESS;
 
     /*Check if the file exist*/     /*TODO: Use something more robust than fopen */
     fp = fopen(orcm_cfgi_base.config_file, "r");
     if (NULL == fp) {
-        opal_show_help("help-orcm-cfgi.txt", "site-file-not-found", true, orcm_cfgi_base.config_file);
+        orte_show_help("help-orcm-cfgi.txt", "site-file-not-found", true, orcm_cfgi_base.config_file);
         return ORCM_ERR_SILENT;
     }
-    if( fclose(fp) ) {
-        opal_output_verbose(V_HI, OUTID, "FAIL to PROPERLY CLOSE THE CFGI XML FILE");
+    if (0 != fclose(fp)) {
+        opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
+                            "FAIL to PROPERLY CLOSE THE CFGI XML FILE");
         return ORCM_ERR_SILENT;
-    } else{
-        fp=NULL;
+    } else {
+        fp = NULL;
     }
 
-    while(!erri){
-        erri=lex_xml(FNAME,&text,&items,&sz_items);
-        if(erri) {
-            opal_output_verbose(V_HI, OUTID, "FAILED TO XML LEX THE FILE");
+    while (ORCM_SUCCESS == erri) {
+        erri = lex_xml(orcm_cfgi_base.config_file, &text, &items, &sz_items);
+        if (ORCM_SUCCESS != erri) {
+            opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
+                                "FAILED TO XML LEX THE FILE");
             break;
         }
 
-        erri=remove_empty_items(items,&sz_items);
-        if(erri) {
-            opal_output_verbose(V_HI, OUTID, "FAILED TO REMOVE EMPTY FIELDS IN XML CFGI");
+        erri = remove_empty_items(items,&sz_items);
+        if (ORCM_SUCCESS != erri) {
+            opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
+                                "FAILED TO REMOVE EMPTY FIELDS IN XML CFGI");
             break;
         }
 
-        if (V_HIGHER < opal_output_get_verbosity(OUTID)) {
-            for(i=0; i!=sz_items; ++i) {
-                /*The OUTID of zero used here was taken from orcm_util_print_xml.*/
+        if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
+            for (i=0; i!=sz_items; ++i) {
+                /*The orcm_cfgi_base_framework.framework_output of zero used here was taken from orcm_util_print_xml.*/
                 opal_output(0, "XML-LEXR:%lu: %s", i, items[i]);
             }
         }
 
-        erri=check_validity_of_the_inputs(items,sz_items);
-        if(erri) {
-            opal_output_verbose(V_HI, OUTID, "XML VALIDITY CHECK FAILED: %d", erri);
-            break;
-        } else {
-            opal_output_verbose(V_HI, OUTID, "XML VALIDITY CHECKED and PASSED");
-        }
-
-        erri=parse_config(items,sz_items, config);
-        if(erri){
-            opal_output_verbose(V_HI, OUTID, "FAILED TO PARSE THE CFGI XML FILE:%d",erri);
+        erri = check_validity_of_the_inputs(items,sz_items);
+        if (ORCM_SUCCESS != erri) {
+            opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
+                                "XML VALIDITY CHECK FAILED: %d", erri);
             break;
         }
+        opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
+                            "XML VALIDITY CHECKED and PASSED");
 
-        if (V_HIGHER < opal_output_get_verbosity(OUTID)) {
+        erri = parse_config(items,sz_items, config);
+        if (ORCM_SUCCESS != erri) {
+            opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
+                                "FAILED TO PARSE THE CFGI XML FILE:%d",erri);
+            break;
+        }
+
+        if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
             OPAL_LIST_FOREACH(xml, config, orcm_cfgi_xml_parser_t) {
                 orcm_util_print_xml(xml, NULL);
             }
@@ -324,18 +302,18 @@ static int read_config(opal_list_t *config)
         break;
     }
 
-    if(items){
+    if (NULL != items) {
         free(items);
-        items=NULL;
-        sz_items=0;
+        items = NULL;
+        sz_items = 0;
     }
 
-    if(text){
+    if (NULL != text) {
         free(text);
-        text=NULL;
+        text = NULL;
     }
 
-    if(erri){
+    if (ORCM_SUCCESS != erri) {
         return ORCM_ERR_SILENT;
     }
 
@@ -574,7 +552,7 @@ static int define_system(opal_list_t *config,
     OBJ_DESTRUCT(&uribuf);
     OBJ_DESTRUCT(&clusterbuf);
 
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 /*  This function finds the beginning index and the end index, in in_items,
@@ -586,21 +564,13 @@ static int define_system(opal_list_t *config,
         = Zero AND *o_begin_config < *o_end_config at the first one found.
     The search is sequential, lowest indices looked at first.
  */
-static int find_beginend_configuration( unsigned long in_start_index
-                                      , char ** in_items
-                                      , unsigned long in_sz_items
-                                      , int in_1for_record_0for_mod
-                                      , unsigned long * o_begin_config
-                                      , unsigned long * o_end_config
-                                      )
+static int find_beginend_configuration(unsigned long in_start_index,
+                                       char ** in_items,
+                                       unsigned long in_sz_items,
+                                       int in_1for_record_0for_mod,
+                                       unsigned long * o_begin_config,
+                                       unsigned long * o_end_config)
 {
-/* #   define EMSG0(text) fprintf(stderr,text"\n")
-*  #   define EMSG1(text, a1) fprintf(stderr,text"\n",a1)
-*/
-#   define EMSG0(text) opal_output_verbose(V_HI, OUTID, text)
-#   define EMSG1(text, a1) opal_output_verbose(V_HI, OUTID, text,a1)
-
-    const int OUTID = orcm_cfgi_base_framework.framework_output;
     const unsigned long nota_index=(unsigned long)-1;
     char * t=NULL;
 
@@ -610,79 +580,83 @@ static int find_beginend_configuration( unsigned long in_start_index
     *o_begin_config = nota_index;
     *o_end_config   = nota_index;
 
-    int erri=0;
-    while(!erri){
-        if(in_start_index>=in_sz_items){
-            EMSG0("ERROR: Invalid start index for the configuration search");
-            erri=__LINE__;
+    int erri=ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+        if (in_start_index >= in_sz_items) {
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "ERROR: Invalid start index for the configuration search");
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
-        beg=nota_index;
-        for(i=in_start_index; i!=in_sz_items; ++i) {
-            t=in_items[i];
-            if(nota_index==beg){
-                if('c'!=t[0] && 'C'!=t[0]){
+        beg = nota_index;
+        for (i=in_start_index; i!=in_sz_items; ++i) {
+            t = in_items[i];
+            if (nota_index == beg) {
+                if ('c'!=t[0] && 'C'!=t[0]) {
                     continue;
                 }
-                if(strcasecmp(t,"configuration")){
+                if (0 != strcasecmp(t,"configuration")) {
                     continue;
                 }
                 /*configuration found*/
                 beg=i;
-            }else{
+            } else {
                 /*Make sure the found configuration is a RECORD one */
-                if('/'==t[0] || '\t'==t[0]){
+                if ('/'==t[0] || '\t'==t[0]) {
                     /*Skip data field and closing tags*/
                     continue;
                 }
-                if( ! strcasecmp(t,"role")) {
-                    if( '\t' !=in_items[i+1][0]){
-                        EMSG1("ERROR: Parser error at tag \"%s\"", t);
-                        erri=__LINE__;
+                if (0 == strcasecmp(t,"role")) {
+                    if ('\t' != in_items[i+1][0]) {
+                        opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                            "ERROR: Parser error at tag \"%s\"", t);
+                        erri = ORCM_ERR_BAD_PARAM;
                         break;
                     }
-                    t=in_items[i+1];
-                    if( ! strcasecmp(t+1,"RECORD")){
-                        if(in_1for_record_0for_mod==1){
+                    t = in_items[i+1];
+                    if (0 == strcasecmp(t+1,"RECORD")) {
+                        if (in_1for_record_0for_mod == 1) {
                             /*We found what we were looking for*/
                             /*So stop searching*/
                             break;
-                        }else{
+                        } else {
                             /*We are looking for the RECORD configuration.*/
                             /*So restart the search*/
-                            beg=nota_index;
+                            beg = nota_index;
                         }
-                    }else if( ! strcasecmp(t+1,"MOD")){
-                        if(in_1for_record_0for_mod==0){
+                     } else if (0 == strcasecmp(t+1,"MOD")) {
+                        if (0 == in_1for_record_0for_mod) {
                             /*We found what we were looking for*/
                             /*So stop searching*/
                             break;
-                        }else{
+                        } else {
                             /*We are looking for the MOD configuration.*/
                             /*So restart the search*/
-                            beg=nota_index;
+                            beg = nota_index;
                         }
-                    }else{
-                        EMSG1("ERROR: Unkown option found for \"role\" :%s", t);
-                        erri=__LINE__;
+                    } else {
+                        opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                            "ERROR: Unkown option found for \"role\" :%s", t);
+                        erri= ORCM_ERR_BAD_PARAM;
                         break;
                     }
-                } else if( ! strcasecmp(t,"version")){
+                } else if (0 == strcasecmp(t,"version")) {
                     continue;
-                } else if( ! strcasecmp(t,"creation")){
+                } else if (0 == strcasecmp(t,"creation")) {
                     continue;
                 } else {
-                    EMSG1("ERROR: Missing \"role\" tag before the \"%s\" tag",t);
-                    erri=__LINE__;
+                    opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                        "ERROR: Missing \"role\" tag before the \"%s\" tag",t);
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
             }
         }
-        if(erri) {
+        if (ORCM_SUCCESS != erri) {
             break;
         }
-        if(nota_index==beg){
+        if (nota_index == beg) {
             /*Nothing found */
             *o_begin_config = nota_index;
             *o_end_config   = nota_index;
@@ -691,24 +665,25 @@ static int find_beginend_configuration( unsigned long in_start_index
 
         /*===== Find the ending of the RECORD configuration */
         end = nota_index;
-        for(i=beg; i!=in_sz_items; ++i){
-            t=in_items[i];
-            if('/'!=t[0]){
+        for (i=beg; i!=in_sz_items; ++i) {
+            t = in_items[i];
+            if ('/' != t[0]) {
                 /*Looking for an ending tag only*/
                 continue;
             }
             t=in_items[i]+1;
-            if('c'!=t[0]){
+            if ('c' != t[0]) {
                 continue;
             }
-            if( ! strcasecmp(t,"configuration")){
-                end = i + 1; /*+1 since we want one passed the tag*/
+            if (0 == strcasecmp(t,"configuration")) {
+                end = i + 1; /*+1 since we want one past the tag*/
                 break;
             }
         }
-        if(nota_index==end){
-            EMSG0("ERROR: Missing closing tag for the <configuration> of type RECORD");
-            erri=__LINE__;
+        if (nota_index == end) {
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "ERROR: Missing closing tag for the <configuration> of type RECORD");
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
@@ -716,18 +691,16 @@ static int find_beginend_configuration( unsigned long in_start_index
         *o_end_config   = end;
 
         break;
-    }/* while(!erri) */
+    } /* while(!erri) */
 
     return erri;
-#   undef EMSG0
-#   undef EMSG1
 }
 
 static char * tolower_cstr(char * in)
 {
     char * t=in;
-    while(NULL!=t && '\0'!=*t){
-        if('A'>=*t && 'Z'<=*t ){
+    while (NULL!=t && '\0'!=*t) {
+        if ('A'>=*t && 'Z'<=*t ) {
             *t -= 'A';
             *t += 'a';
         }
@@ -736,18 +709,13 @@ static char * tolower_cstr(char * in)
     return in;
 }
 
-static int parse_config( char ** in_items
-                       , unsigned long in_sz_items
-                       , opal_list_t *io_config
-                       )
+static int parse_config(char ** in_items,
+                        unsigned long in_sz_items,
+                        opal_list_t *io_config)
 {
     /*
-        io_config is a list of items of type orcm_cfgi_xml_parser_t
-     */
-#   define EMSG0(text) opal_output_verbose(V_HI, OUTID, text);
-#   define EMSG1(text, a1) opal_output_verbose(V_HI, OUTID, text, a1);
-
-    const int OUTID = orcm_cfgi_base_framework.framework_output;
+      io_config is a list of items of type orcm_cfgi_xml_parser_t
+    */
     const int NEED_RECORD=1;
 
     char * t=NULL, *tt=NULL, *txt=NULL;
@@ -768,244 +736,222 @@ static int parse_config( char ** in_items
     orcm_cfgi_xml_parser_t *parent=NULL;
     orcm_cfgi_xml_parser_t *xml=NULL;
 
-    int erri=0;
-    while(!erri){
+    int erri=ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
         /*===== Find the RECORD configuration */
-        erri = find_beginend_configuration( record_begin
-                                          , in_items
-                                          , in_sz_items
-                                          , NEED_RECORD
-                                          , &record_begin
-                                          , &record_end
-                                          );
-        if(erri){
+        erri = find_beginend_configuration(record_begin, in_items, in_sz_items,
+                                           NEED_RECORD, &record_begin, &record_end);
+        if (ORCM_SUCCESS != erri) {
             break;
         }
-        if(record_begin==record_end){
-            EMSG0("ERROR:The RECORD <configuration> is missing from the XML CFGI file");
-            erri=__LINE__;
+        if (record_begin == record_end) {
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "ERROR:The RECORD <configuration> is missing from the XML CFGI file");
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
         /*===== Parse the found RECORD configuration */
-        erri=structure_lexed_items( record_begin
-                                  , record_end
-                                  , in_items
-                                  , in_sz_items
-                                  , &hierarchy
-                                  , &hier_row_length
-                                  , &sz_hierarchy
-                                  );
-        if(erri){
+        erri = structure_lexed_items(record_begin, record_end, in_items, in_sz_items,
+                                     &hierarchy, &hier_row_length, &sz_hierarchy);
+        if (ORCM_SUCCESS != erri) {
             break;
         }
-        if(0==sz_hierarchy){
-            erri=__LINE__;
+        if (0 == sz_hierarchy) {
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
-        if (!"debug" && V_HIGHER < opal_output_get_verbosity(OUTID)) {
-            for(i=0; i!=sz_hierarchy; ++i) {
+        if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
+            for (i=0; i < sz_hierarchy; ++i) {
                 /*TODO: Remove these printf from parse_config2()*/
-                printf("XML-STRUCT: %lu> ", i);
-                for(j=0; j!=hier_row_length[i]; ++j){
-                    if(0>hierarchy[i][j]){
-                        printf("%ld\t",-1*hierarchy[i][j]);
+                opal_output(0, "XML-STRUCT: %lu> ", i);
+                for (j=0; j < hier_row_length[i]; ++j) {
+                    if (0 > hierarchy[i][j]) {
+                        opal_output(orcm_cfgi_base_framework.framework_output,
+                                    "%ld\t",-1*hierarchy[i][j]);
                     } else {
-                        printf("%s\t", in_items[ hierarchy[i][j] ]);
+                        opal_output(orcm_cfgi_base_framework.framework_output,
+                                    "%s\t", in_items[hierarchy[i][j]]);
                     }
                 }
-                printf("\n");
             }
         }
 
-        erri=remove_duplicate_singletons( in_items
-                                        , hierarchy
-                                        , hier_row_length
-                                        , &sz_hierarchy
-                                        );
-        if(erri){
+        erri = remove_duplicate_singletons(in_items, hierarchy, hier_row_length, &sz_hierarchy);
+        if (ORCM_SUCCESS != erri) {
             break;
         }
 
-        if (V_HIGHER < opal_output_get_verbosity(OUTID)) {
-            for(i=0; i!=sz_hierarchy; ++i) {
+        if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
+            for(i=0; i < sz_hierarchy; ++i) {
                 /*TODO: Remove these printf from parse_config2()*/
-                printf("XML-STRUCT: %lu> ", i);
-                for(j=0; j!=hier_row_length[i]; ++j){
-                    if(0>hierarchy[i][j]){
-                        printf("%ld\t",-1*hierarchy[i][j]);
+                opal_output(0, "XML-STRUCT: %lu> ", i);
+                for (j=0; j < hier_row_length[i]; ++j){
+                    if (0 > hierarchy[i][j]) {
+                        opal_output(0, "%ld\t", -1*hierarchy[i][j]);
                     } else {
-                        printf("%s\t", in_items[ hierarchy[i][j] ]);
+                        opal_output(0, "%s\t", in_items[hierarchy[i][j]]);
                     }
                 }
-                printf("\n");
             }
         }
 
         /*===== Allocate the working stacks */
         hstack = NULL;
-            /*Here multiply by 2 in order to be generous. */
+        /*Here multiply by 2 in order to be generous. */
         sz_stack = 2 * sz_hierarchy;
         hstack = (long*) malloc( sz_stack *sizeof(long));
-        if(!hstack){
-            erri=__LINE__;
+        if (NULL == hstack){
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         memset(hstack,0,sz_stack *sizeof(long));
 
         parent_stack = (orcm_cfgi_xml_parser_t **) malloc( sz_stack *sizeof(orcm_cfgi_xml_parser_t *));
-        if(!parent_stack){
-            erri=__LINE__;
+        if (NULL == parent_stack) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         memset(parent_stack,0,sz_stack *sizeof(orcm_cfgi_xml_parser_t *));
 
         /*===== Start the stacks */
         t = in_items[ hierarchy[0][0] ];
-        if(strcasecmp(t,"configuration")){
-            erri=__LINE__;
+        if (0 != strcasecmp(t,"configuration")) {
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
         sz_stack=0;
 
-        xml=NULL;
         xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-        if(!xml){
-            erri=__LINE__;
+        if (NULL == xml) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         xml->name = strdup(t);
         tolower_cstr(xml->name);
         opal_list_append(io_config, &xml->super);
 
-        for(i=0; i!=hier_row_length[0]; ++i){
-            if(0>hierarchy[0][i]){
+        for (i=0; i < hier_row_length[0]; ++i) {
+            if (0 > hierarchy[0][i]) {
                 parent_stack[sz_stack] = xml;
                 hstack[sz_stack] = -1 *hierarchy[0][i];
                 ++sz_stack;
-            }else{
+            } else {
                 /*Skip configuration specific items*/
             }
         }
         xml=NULL;
 
-        if(0==sz_stack){
-            opal_output_verbose(V_LO, OUTID,"EMPTY configuration hierarchy");
-            erri=__LINE__;
+        if (0 == sz_stack) {
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,"EMPTY configuration hierarchy");
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         } else {
-            opal_output_verbose(V_LO, OUTID, "XML-XFER: on item 0 = configuration");
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "XML-XFER: on item 0 = configuration");
         }
 
         /*===== Stuff the XML into the config */
-        while(sz_stack){
+        while (0 < sz_stack){
             --sz_stack;
-            i=hstack[sz_stack];
-            parent=parent_stack[sz_stack];
+            i = hstack[sz_stack];
+            parent = parent_stack[sz_stack];
 
-            u=hierarchy[i][0];
-            if(u<0){
-                erri=__LINE__; /*That should never happen.*/
+            u = hierarchy[i][0];
+            if (u < 0) {
+                erri = ORCM_ERR_BAD_PARAM; /*That should never happen.*/
                 break;
             }
 
-            t=in_items[u];
-            opal_output_verbose(V_LO, OUTID, "XML-XFER: on item %lu = %s", i, t);
-            if( 'c'==t[0] || 'C'==t[0]) {
-                if(! strcasecmp(t,"controller")){
-                    erri=transfer_to_controller( in_items
-                                               , hier_row_length[i]
-                                               , hierarchy[i]
-                                               , parent
-                                               );
-                    if(erri){
+            t = in_items[u];
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "XML-XFER: on item %lu = %s", i, t);
+            if ('c'==t[0] || 'C'==t[0]) {
+                if (0 == strcasecmp(t,"controller")) {
+                    erri = transfer_to_controller(in_items, hier_row_length[i], hierarchy[i], parent);
+                    if (ORCM_SUCCESS != erri) {
                         break;
                     }
                 }
             } else if( 'j'==t[0] || 'J'==t[0]) {
-                if(! strcasecmp(t,"junction")){
-                    xml = NULL;
+                if (0 == strcasecmp(t,"junction")) {
                     xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-                    if(!xml){
-                        erri=__LINE__;
+                    if (NULL == xml) {
+                        erri = ORCM_ERR_OUT_OF_RESOURCE;
                         break;
                     }
                     opal_list_append(&parent->subvals, &xml->super);
 
-                    for(j=1; j!=hier_row_length[i]; ++j){
-                        uu=hierarchy[i][j];
-                        if(0>uu){
+                    for (j=1; j < hier_row_length[i]; ++j) {
+                        uu = hierarchy[i][j];
+                        if (0 > uu) {
                             hstack[sz_stack]       = -1*uu;
                             parent_stack[sz_stack] = xml;
                             ++sz_stack;
                             continue;
-                        }else{
-                            tt=in_items[uu];
-                            if( ! strcasecmp(tt,"type") ){
+                        } else {
+                            tt = in_items[uu];
+                            if (0 == strcasecmp(tt,"type")) {
                                 xml->name = strdup(in_items[uu+1]+1);
                                 tolower_cstr(parent->name);
-                            } else if( ! strcasecmp(tt,"name") ){
-                                txt=NULL;
+                            } else if (0 == strcasecmp(tt,"name")) {
+                                txt = NULL;
                                 txt = strdup(in_items[uu+1]+1);
                                 tolower_cstr(txt);
-                                if(ORTE_SUCCESS!=opal_argv_append_nosize(&xml->value, txt)){
-                                    erri=__LINE__;
+                                if (OPAL_SUCCESS != opal_argv_append_nosize(&xml->value, txt)) {
+                                    erri = ORCM_ERR_OUT_OF_RESOURCE;
+                                    free(txt);
+                                    txt = NULL;
                                     break;
                                 }
-                                txt=NULL;
-                            } else{
+                                free(txt);
+                                txt = NULL;
+                            } else {
                                 /*Skip the other data fields*/
                             }
                         }
                     }
-                    if(erri){
+                    if (ORCM_SUCCESS != erri){
                         break;
                     }
-                    xml=NULL;
+                    xml = NULL;
                 }
             } else if ('s'==t[0] || 'S'==t[0]) {
-                if(! strcasecmp(t,"scheduler")){
-                    erri=transfer_to_scheduler( in_items
-                                              , hier_row_length[i]
-                                              , hierarchy[i]
-                                              , parent
-                                              );
-                    if(erri){
+                if (0 == strcasecmp(t,"scheduler")) {
+                    erri = transfer_to_scheduler(in_items, hier_row_length[i], hierarchy[i], parent);
+                    if (ORCM_SUCCESS != erri) {
                         break;
                     }
                 }
             } else {
-                erri=__LINE__;
+                erri = ORCM_ERR_BAD_PARAM;
                 break;
             }
         } /*while(sz_stack)*/
-        if(erri){
+        if (ORCM_SUCCESS != erri) {
             break;
         }
-
-
 
         break;
     }
 
     sz_stack=0;
-    if(hstack){
+    if (NULL != hstack) {
         free(hstack);
         hstack=NULL;
     }
-    if(parent_stack){
+    if (NULL != parent_stack) {
         free(parent_stack);
         parent_stack=NULL;
     }
 
-    if(hier_row_length){
+    if (NULL != hier_row_length ){
         free(hier_row_length);
         hier_row_length=NULL;
     }
-    if(hierarchy){
-        for(i=0; i!=sz_hierarchy; ++i){
-            if(hierarchy[i]){
+    if (NULL != hierarchy) {
+        for(i=0; i < sz_hierarchy; ++i) {
+            if (NULL != hierarchy[i]) {
                 free(hierarchy[i]);
                 hierarchy[i]=NULL;
             }
@@ -1016,8 +962,6 @@ static int parse_config( char ** in_items
     }
 
     return erri;
-#   undef EMSG0
-#   undef EMSG1
 }
 
 static bool check_me(orcm_config_t *config, char *node,
@@ -1082,8 +1026,8 @@ static int parse_orcm_config(orcm_config_t *cfg,
                                 "\tCORES %s", xml->value[0]);
             /* all we need do is push this into the corresponding param */
             asprintf(&val, OPAL_MCA_PREFIX"orte_daemon_cores=%s", xml->value[0]);
-            if(ORTE_SUCCESS!=opal_argv_append_nosize(&cfg->mca_params, val)){
-                return ORTE_ERR_OUT_OF_RESOURCE;
+            if (OPAL_SUCCESS != opal_argv_append_nosize(&cfg->mca_params, val)) {
+                return ORCM_ERR_OUT_OF_RESOURCE;
             }
             free(val);
         }
@@ -1100,8 +1044,8 @@ static int parse_orcm_config(orcm_config_t *cfg,
                     } else {
                         val = strdup(vals[n]);
                     }
-                    if(ORTE_SUCCESS!=opal_argv_append_nosize(&cfg->mca_params, val)){
-                        return ORTE_ERR_OUT_OF_RESOURCE;
+                    if (OPAL_SUCCESS != opal_argv_append_nosize(&cfg->mca_params, val)) {
+                        return ORCM_ERR_OUT_OF_RESOURCE;
                     }
                     free(val);
                 }
@@ -1122,8 +1066,8 @@ static int parse_orcm_config(orcm_config_t *cfg,
                                 "\tENVARS %s", xml->value[0]);
             vals = opal_argv_split(xml->value[0], ',');
             for (n=0; NULL != vals[n]; n++) {
-                if(ORTE_SUCCESS!=opal_argv_append_nosize(&cfg->env, vals[n])){
-                    return ORTE_ERR_OUT_OF_RESOURCE;
+                if (OPAL_SUCCESS != opal_argv_append_nosize(&cfg->env, vals[n])) {
+                    return ORCM_ERR_OUT_OF_RESOURCE;
                 }
             }
             opal_argv_free(vals);
@@ -1173,8 +1117,8 @@ static int parse_node(orcm_node_t *node, int idx, orcm_cfgi_xml_parser_t *x)
          */
         if (NULL == x->value || NULL == x->value[0]) {
             /* that's an error */
-            ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
-            return ORTE_ERR_BAD_PARAM;
+            ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+            return ORCM_ERR_BAD_PARAM;
         }
         if ('@' == x->value[0][0]) {
             name = strdup(rack->name);
@@ -1219,8 +1163,8 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
          */
         if (NULL == x->value || NULL == x->value[0]) {
             /* that's an error */
-            ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
-            return ORTE_ERR_BAD_PARAM;
+            ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+            return ORCM_ERR_BAD_PARAM;
         }
         if ('@' == x->value[0][0]) {
             name = strdup(rack->row->name);
@@ -1256,8 +1200,8 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
          */
         if (NULL == x->value || NULL == x->value[0]) {
             /* that's an error */
-            ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
-            return ORTE_ERR_BAD_PARAM;
+            ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+            return ORCM_ERR_BAD_PARAM;
         }
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                             "\tNODE NAME %s", x->value[0]);
@@ -1327,8 +1271,8 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
          */
         if (NULL == x->value || NULL == x->value[0]) {
             /* that's an error */
-            ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
-            return ORTE_ERR_BAD_PARAM;
+            ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+            return ORCM_ERR_BAD_PARAM;
         }
         row->controller.name = pack_charname(row->name[0], x->value[0]);
         row->controller.state = ORTE_NODE_STATE_UNKNOWN;
@@ -1417,8 +1361,8 @@ static int parse_cluster(orcm_cluster_t *cluster,
              */
             if (NULL == x->value || NULL == x->value[0]) {
                 /* that's an error */
-                ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
-                return ORTE_ERR_BAD_PARAM;
+                ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+                return ORCM_ERR_BAD_PARAM;
             }
             cluster->controller.name = strdup(x->value[0]);
             cluster->controller.state = ORTE_NODE_STATE_UNKNOWN;
@@ -1510,8 +1454,8 @@ static int parse_scheduler(orcm_scheduler_t *scheduler,
              */
             if (NULL == x->value || NULL == x->value[0]) {
                 /* that's an error */
-                ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
-                return ORTE_ERR_BAD_PARAM;
+                ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+                return ORCM_ERR_BAD_PARAM;
             }
             /* each value in the argv-array defines a queue, so just
              * pass them back to the scheduler
@@ -1519,8 +1463,8 @@ static int parse_scheduler(orcm_scheduler_t *scheduler,
             if (NULL != x->value) {
                 for (n=0; NULL != x->value[n]; n++) {
                     if(ORTE_SUCCESS!=opal_argv_append_nosize(&scheduler->queues, x->value[n])){
-                        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-                        return ORTE_ERR_OUT_OF_RESOURCE;
+                        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+                        return ORCM_ERR_OUT_OF_RESOURCE;
                     }
                 }
             }
@@ -1528,8 +1472,8 @@ static int parse_scheduler(orcm_scheduler_t *scheduler,
             /* defines the name of the node where the scheduler is running */
             if (NULL == x->value || NULL == x->value[0]) {
                 /* that's an error */
-                ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
-                return ORTE_ERR_BAD_PARAM;
+                ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+                return ORCM_ERR_BAD_PARAM;
             }
             scheduler->controller.name = strdup(x->value[0]);
         } else {
@@ -1574,7 +1518,7 @@ static void setup_environ(char **env)
 
 
 static int is_whitespace(char c){
-    if( ' '==c || '\t'==c || '\n'==c || '\r'==c){
+    if (' '==c || '\t'==c || '\n'==c || '\r'==c) {
         return 1;
     }
     return 0;
@@ -1582,7 +1526,7 @@ static int is_whitespace(char c){
 
 static int is_forbidden(char c){
     int x=c;
-    if( 31 >= x || 127 <= x ){
+    if (31 >= x || 127 <= x) {
         return 1;
     }
     return 0;
@@ -1602,21 +1546,10 @@ static int is_forbidden(char c){
      *  =All data field are preprended by '\t'.
      *  =All closing marker are prepended with '/'.
      */
-static int lex_xml( char * in_filename
-           , char ** o_text
-           , char *** o_items
-           , unsigned long * o_item_count
-           )
+static int lex_xml( char * in_filename, char ** o_text,
+                    char *** o_items, unsigned long * o_item_count)
 {
-/* #   define EMSG0(text) fprintf(stderr,text"\n")
- * #   define EMSG1(text, a1) fprintf(stderr,text"\n",a1)
- */
-#   define EMSG0(text) opal_output_verbose(V_LO, OUTID, text)
-#   define EMSG1(text, a1) opal_output_verbose(V_LO, OUTID, text,a1)
-
-    const int OUTID = orcm_cfgi_base_framework.framework_output;
-
-    int erri=0;
+    int erri=ORCM_SUCCESS;
 
     FILE * fin =NULL;
     unsigned long fsize; /*The number of bytes in the in_filename file*/
@@ -1644,33 +1577,33 @@ static int lex_xml( char * in_filename
     *o_items = NULL;
     *o_item_count = 0;
 
-    while(!erri){
+    while (ORCM_SUCCESS == erri){
         /*----- Get the image of the file */
-        fin=fopen(in_filename, "r");
-        if(!fin){
-            erri=__LINE__;
+        fin = fopen(in_filename, "r");
+        if (NULL == fin) {
+            erri = ORCM_ERR_NOT_FOUND;
             break;
         }
 
-        fseek(fin,0L,SEEK_END);
-        fsize=ftell(fin);
-        fseek(fin,0L,SEEK_SET);
+        fseek(fin, 0L, SEEK_END);
+        fsize = ftell(fin);
+        fseek(fin, 0L, SEEK_SET);
 
-        if(fsize < min_file_size){
-            erri=__LINE__;
+        if (fsize < min_file_size) {
+            erri = ORCM_ERROR;
             break;
         }
 
         tx = (char*) malloc( (fsize + some_added_extra)*sizeof(char));
-        if( ! tx){
-            erri=__LINE__;
+        if (NULL == tx) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         memset(tx,0,fsize + some_added_extra);
 
-        for(i=0; i!=fsize; ++i){
-            ic=fgetc(fin);
-            if(EOF==ic){
+        for (i=0; i < fsize; ++i) {
+            ic = fgetc(fin);
+            if (EOF == ic) {
                 /*It used to be--> erri=__LINE__; */
                 /*Going From Window OS to Linux and back does funny things with
                  *fsize and where one will encounter the EOF.  The EOF may
@@ -1678,20 +1611,23 @@ static int lex_xml( char * in_filename
                  *IF EOF is found early, fsize will be corrected->See @1 marker.
                  *TODO: FInd out why the EOF is not where fsize says it is.
                  */
-                EMSG0("WARNING: unexpected end-of-file encountered\n");
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                    "WARNING: unexpected end-of-file encountered\n");
                 break;
             }
-            if(ic>255){
-                erri=__LINE__;
+            if (ic > 255) {
+                erri = ORCM_ERROR;
                 break;
             }
             c=ic;
             tx[i] = c;
         }
-        if(erri) break;
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
 
-        fsize=i;        /* @1 Correcting fsize if needed. See comment above.*/
-        tx[fsize]='\0';
+        fsize = i;        /* @1 Correcting fsize if needed. See comment above.*/
+        tx[fsize] = '\0';
 
         /*-----Chop things up
          *
@@ -1710,178 +1646,186 @@ static int lex_xml( char * in_filename
          *=All closing marker will be prepended with '/'.
          */
 
-        line_count=1;
-        k=(unsigned long)(-1);
-        for(i=0; i<fsize; ++i){
-            c=tx[i];
-            if(is_whitespace(c)){
-                if('\n'==c){
+        line_count = 1;
+        k = (unsigned long)(-1);
+        for (i=0; i < fsize; ++i) {
+            c = tx[i];
+            if (is_whitespace(c)) {
+                if ('\n' ==c ) {
                     ++line_count;
                 }
                 continue;
             }
-            if('<'==c){
-                if(1==came_from_data){
-                    tx[++k]='\n';
-                    came_from_data=0;
+            if ('<' == c) {
+                if (1 == came_from_data) {
+                    tx[++k ]= '\n';
+                    came_from_data = 0;
                 }
                 p = strchr(tx+i, '>');
-                if(NULL==p){
-                    erri=__LINE__;
+                if (NULL == p) {
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
-                if('!'==tx[i+1] || '?'==tx[i+1]){
+                if ('!' == tx[i+1] || '?' == tx[i+1]) {
                     /*In a directive */
                     /* A directive will end with one of the following:
                             ?>
                         or  -->
                      */
-                    if( '?'==*(p-1) || ('-'==*(p-1) && '-'==*(p-2)) ){
+                    if ('?'==*(p-1) || ('-'==*(p-1) && '-'==*(p-2))) {
                         i += (p-(tx+i)); /*Ratchet up to the ending '>' */
-                        if(i>=fsize){
-                            erri=__LINE__;
+                        if (i >= fsize) {
+                            erri = ORCM_ERR_BAD_PARAM;
                             break;
                         }
                     } else {
                         /*Keep looking*/
-                        while( !('?'==*(p-1) || ('-'==*(p-1) && '-'==*(p-2))) ){
+                        while (!('?'==*(p-1) || ('-'==*(p-1) && '-'==*(p-2)))) {
                             ++p;
                             p = strchr(p, '>');
                         }
                         i += (p-(tx+i)); /*Ratchet up to the ending '>' */
-                        if(i>=fsize){
-                            erri=__LINE__;
+                        if (i >= fsize) {
+                            erri = ORCM_ERR_BAD_PARAM;
                             break;
                         }
                     }
                     continue;
-                }else{
+                } else {
                     /*In a marker*/
-                    for(q=tx+i;q!=p;++q){
-                        if('\t'==*q) continue;
-                        if(is_forbidden(*q)){
-                            erri=__LINE__;
+                    for (q=tx+i; q< p; ++q) {
+                        if ('\t' == *q) {
+                            continue;
+                        }
+                        if (is_forbidden(*q)) {
+                            erri = ORCM_ERR_BAD_PARAM;
                             break;
                         }
                     }
-                    if(erri) break;
+                    if (ORCM_SUCCESS != erri) {
+                        break;
+                    }
 
-                    for(q=tx+i+1; q!=p; ++q){
+                    for(q=tx+i+1; q < p; ++q) {
                         ++k;
-                        tx[k]=*q;
+                        tx[k] = *q;
                     }
                     ++k;
-                    tx[k]='\n';
+                    tx[k] = '\n';
                     i += (p-(tx+i)); /*Ratchet up to the ending '>' */
                     continue;
                 }
-            } else if('"'==c){
+            } else if ('"' == c) {
                 /*in a string*/
                 p = strchr(tx+i+1, '"');
-                if(NULL==p){
-                    erri=__LINE__;
+                if (NULL == p) {
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
-                for(q=tx+i;q!=p;++q){
-                    if('\t'==*q) continue;
-                    if(is_forbidden(*q)){
-                        erri=__LINE__;
+                for (q=tx+i; q < p; ++q) {
+                    if ('\t' == *q) {
+                        continue;
+                    }
+                    if (is_forbidden(*q)) {
+                        erri = ORCM_ERR_BAD_PARAM;
                         break;
                     }
                 }
-                if(erri) break;
+                if (ORCM_SUCCESS != erri) {
+                    break;
+                }
+                
+                tx[++k] = '\t'; /*Prepending*/
 
-                tx[++k]='\t'; /*Prepending*/
-
-                for(q=tx+i+1; q!=p; ++q){
-                    if('\t'==*q){
-                        tx[++k]=' ';
-                    }else{
-                        tx[++k]=*q;
+                for (q=tx+i+1; q < p; ++q) {
+                    if ('\t' == *q) {
+                        tx[++k] = ' ';
+                    } else {
+                        tx[++k] = *q;
                     }
                 }
                 ++k;
-                tx[k]='\n';
+                tx[k] = '\n';
                 i += (p-(tx+i)); /*Ratchet up to the ending '"' */
                 continue;
-            }else{
+            } else {
                 /*This should only be un-quoted field item */
                 /*Yep, putting whitespace in a field item will mangled the text*/
-                if(1!=came_from_data){
-                    tx[++k]='\t';
+                if (1 != came_from_data) {
+                    tx[++k] = '\t';
                 }
                 ++k;
-                tx[k]=c;
-                came_from_data=1;
+                tx[k] = c;
+                came_from_data = 1;
             }
 
         } /*for(i=0; i<fsize; ++i) */
-        if(erri) break;
-
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+        
         ++k;
-        tx[k]='\0';
-        text_length=k;
-        k=0;
+        tx[k] = '\0';
+        text_length = k;
+        k = 0;
 
-        if( ! "debug") {
-            EMSG1("SIZE: %lu\n", text_length);
-            EMSG1("%s\n", tx);
-            EMSG1("|%c|\n", tx[text_length-1]);
+        if (V_LO < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
+            opal_output(orcm_cfgi_base_framework.framework_output, "SIZE: %lu", text_length);
+            opal_output(orcm_cfgi_base_framework.framework_output, "%s", tx);
+            opal_output(orcm_cfgi_base_framework.framework_output, "|%c|", tx[text_length-1]);
         }
 
         /*Count the number of items found */
         k=0;
-        for(i=0; i<text_length; ++i){
-            if ('\n' == tx[i]){
+        for (i=0; i < text_length; ++i) {
+            if ('\n' == tx[i]) {
                 ++k;
             }
         }
-        if(0==k){
-            erri=__LINE__;
+        if (0 == k) {
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
-        sz_tem=k;
+        sz_tem = k;
 
         /*Set up the item array */
-        tem=NULL; /*The working array of items */
         tem = (char**) malloc( sz_tem * sizeof(char*));
-        if(!tem){
-            erri=__LINE__;
+        if (NULL == tem) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         memset(tem,0,sz_tem * sizeof(char*));
 
-        j=0;k=0;
-        for(i=0; i<text_length; ++i){
-            if ('\n' == tx[i]){
-                tx[i]='\0';
+        j=0;
+        k=0;
+        for (i=0; i<text_length; ++i) {
+            if ('\n' == tx[i]) {
+                tx[i ]= '\0';
                 tem[j] = &tx[k];
-                if( ! "debug"){
-                    EMSG1("%s\n",tem[j]);
-                }
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "%s\n",tem[j]);
                 ++j;
                 k=i+1;
             }
         }
-        if(j!=sz_tem){
-            erri=__LINE__;
+        if (j != sz_tem) {
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
         /*Final cleaning up */
-        *o_text=tx;
-        tx=NULL;
+        *o_text = tx;
+        tx = NULL;
 
-        *o_item_count=sz_tem;
-        sz_tem=0;
+        *o_item_count = sz_tem;
+        sz_tem = 0;
 
         *o_items = tem;
-        tem=NULL;
+        tem = NULL;
 
         break;
     }
 
-    if(fin){
+    if (NULL != fin){
         fclose(fin);
         fin=NULL;
     }
@@ -1895,73 +1839,99 @@ static int isa_known_tag(const char * in_tagtext)
 {
     const char * t = in_tagtext;
     /*First a quick check than a fuller one*/
-    if(NULL==t){
+    if (NULL==t) {
         return 0;
     }
-    switch(t[0]){
+    switch (t[0]) {
     case 'a':
     case 'A':
-        if( ! strcasecmp(t,"aggregator")) return 1;
+        if(0 == strcasecmp(t,"aggregator")) {
+            return 1;
+        }
         break;
     case 'c':
     case 'C':
-        if( ! strcasecmp(t,"configuration")) return 1;
-        if( ! strcasecmp(t,"controller")) return 1;
-        if( ! strcasecmp(t,"count")) return 1;
-        if( ! strcasecmp(t,"cores")) return 1;
-        if( ! strcasecmp(t,"creation")) return 1;
+        if (0 == strcasecmp(t,"configuration") ||
+            0 == strcasecmp(t,"controller") ||
+            0 == strcasecmp(t,"cores") ||
+            0 == strcasecmp(t,"creation")) {
+            return 1;
+        }
         break;
     case 'e':
     case 'E':
-        if( ! strcasecmp(t,"envar")) return 1;
+        if (0 == strcasecmp(t,"envar")) {
+            return 1;
+        }
         break;
     case 'h':
     case 'H':
-        if( ! strcasecmp(t,"host")) return 1;
+        if (0 == strcasecmp(t,"host")) {
+            return 1;
+        }
         break;
     case 'j':
     case 'J':
-        if( ! strcasecmp(t,"junction")) return 1;
+        if (0 == strcasecmp(t,"junction")) {
+            return 1;
+        }
         break;
     case 'l':
     case 'L':
-        if( ! strcasecmp(t,"log")) return 1;
+        if (0 == strcasecmp(t,"log")) {
+            return 1;
+        }
         break;
     case 'm':
     case 'M':
-        if( ! strcasecmp(t,"mca-params")) return 1;
+        if (0 == strcasecmp(t,"mca-params")) {
+            return 1;
+        }
         break;
     case 'n':
     case 'N':
-        if( ! strcasecmp(t,"name")) return 1;
+        if (0 == strcasecmp(t,"name")) {
+            return 1;
+        }
         break;
     case 'p':
     case 'P':
-        if( ! strcasecmp(t,"port")) return 1;
+        if (0 == strcasecmp(t,"port")) {
+            return 1;
+        }
         break;
     case 'q':
     case 'Q':
-        if( ! strcasecmp(t,"queues")) return 1;
+        if (0 == strcasecmp(t,"queues")) {
+            return 1;
+        }
         break;
     case 'r':
     case 'R':
-        if( ! strcasecmp(t,"role")) return 1;
+        if (0 == strcasecmp(t,"role")) {
+            return 1;
+        }
         break;
     case 's':
     case 'S':
-        if( ! strcasecmp(t,"scheduler")) return 1;
-        if( ! strcasecmp(t,"shost")) return 1;
+        if (0 == strcasecmp(t,"scheduler") ||
+            0 == strcasecmp(t,"shost")) {
+            return 1;
+        }
         break;
     case 't':
     case 'T':
-        if( ! strcasecmp(t,"type")) return 1;
+        if (0 == strcasecmp(t,"type")) {
+            return 1;
+        }
         break;
     case 'v':
     case 'V':
-        if( ! strcasecmp(t,"version")) return 1;
+        if (0 == strcasecmp(t,"version")) {
+            return 1;
+        }
         break;
     default:
-        return 0;
         break;
     }
     return 0;
@@ -1973,26 +1943,31 @@ static int isa_known_tag(const char * in_tagtext)
 static int isa_sectional_item(const char * in_tagtext)
 {
     const char * t = in_tagtext;
-    if(NULL==t){
+    if (NULL==t) {
         return 0;
     }
     /*First a quick check than a fuller one*/
-    switch(t[0]){
+    switch (t[0]) {
     case 'c':
     case 'C':
-        if( ! strcasecmp(t, "controller")) return 1;
-        if( ! strcasecmp(t,"configuration")) return 1;
+        if (0 == strcasecmp(t, "controller") ||
+            0 == strcasecmp(t,"configuration")) {
+            return 1;
+        }
         break;
     case 'j':
     case 'J':
-        if( ! strcasecmp(t, "junction")) return 1;
+        if (0 == strcasecmp(t, "junction")) {
+            return 1;
+        }
         break;
     case 's':
     case 'S':
-        if( ! strcasecmp(t,"scheduler")) return 1;
+        if (0 == strcasecmp(t,"scheduler")) {
+            return 1;
+        }
         break;
     default:
-        return 0;
         break;
     }
 
@@ -2008,56 +1983,74 @@ static int isa_singleton(const char * in_tagtext)
 {
     const char * t = in_tagtext;
     /*First a quick check than a fuller one*/
-    if(NULL==t){
+    if (NULL == t) {
         return 0;
     }
-    switch(t[0]){
+    switch (t[0]) {
     case 'a':
     case 'A':
-        if( ! strcasecmp(t,"aggregator")) return 1;
+        if (0 == strcasecmp(t,"aggregator")) {
+            return 1;
+        }
     case 'c':
     case 'C':
-        if( ! strcasecmp(t,"controller")) return 1;
-        if( ! strcasecmp(t,"count")) return 1;
-        if( ! strcasecmp(t,"cores")) return 1;
-        if( ! strcasecmp(t,"creation")) return 1;
+        if (0 == strcasecmp(t,"controller") ||
+            0 == strcasecmp(t,"count") ||
+            0 == strcasecmp(t,"cores") ||
+            0 == strcasecmp(t,"creation")) {
+            return 1;
+        }
         break;
     case 'e':
     case 'E':
-        if( ! strcasecmp(t,"envar")) return 1;
+        if (0 == strcasecmp(t,"envar")) {
+            return 1;
+        }
         break;
     case 'h':
     case 'H':
-            if( ! strcasecmp(t,"host")) return 1;
+        if (0 == strcasecmp(t,"host")) {
+            return 1;
+        }
     case 'j':
     case 'J':
         break;
     case 'l':
     case 'L':
-        if( ! strcasecmp(t,"log")) return 1;
+        if (0 == strcasecmp(t,"log")) {
+            return 1;
+        }
         break;
     case 'm':
     case 'M':
         break;
     case 'n':
     case 'N':
-        if( ! strcasecmp(t,"name")) return 1;
+        if (0 == strcasecmp(t,"name")) {
+            return 1;
+        }
         break;
     case 'p':
     case 'P':
-        if( ! strcasecmp(t,"port")) return 1;
+        if (0 == strcasecmp(t,"port")) {
+            return 1;
+        }
         break;
     case 'q':
     case 'Q':
         break;
     case 'r':
     case 'R':
-        if( ! strcasecmp(t,"role")) return 1;
+        if (0 == strcasecmp(t,"role")) {
+            return 1;
+        }
         break;
     case 's':
     case 'S':
-        if( ! strcasecmp(t,"scheduler")) return 1;
-        if( ! strcasecmp(t,"shost")) return 1;
+        if (0 == strcasecmp(t,"scheduler") ||
+            0 == strcasecmp(t,"shost")) {
+            return 1;
+        }
         break;
     case 't':
     case 'T':
@@ -2065,30 +2058,18 @@ static int isa_singleton(const char * in_tagtext)
         break;
     case 'v':
     case 'V':
-        if( ! strcasecmp(t,"version")) return 1;
+        if (0 == strcasecmp(t,"version")) {
+            return 1;
+        }
         break;
     default:
-        return 0;
         break;
     }
     return 0;
 }
 
-static int check_validity_of_the_inputs( char ** in_items
-                                       , unsigned long in_item_count
-                                       )
+static int check_validity_of_the_inputs(char ** in_items, unsigned long in_item_count)
 {
-/* #   define EMSG0(text) fprintf(stderr,text"\n")
- * #   define EMSG1(text, a1) fprintf(stderr,text"\n",a1)
- * #   define EMSG2(text, a1, a2) fprintf(stderr,text"\n",a1,a2)
- */
-
-#   define EMSG0(text) opal_output_verbose(V_LO, OUTID, text)
-#   define EMSG1(text, a1) opal_output_verbose(V_LO, OUTID, text,a1)
-#   define EMSG2(text, a1, a2) opal_output_verbose(V_LO, OUTID, text,a1,a2)
-
-    const int OUTID = orcm_cfgi_base_framework.framework_output;
-
     unsigned long i=0, k=0;
 
     char * t; /*text pointer*/
@@ -2104,40 +2085,43 @@ static int check_validity_of_the_inputs( char ** in_items
     unsigned long t_node=0;
 
     int err2=0;
-    int erri=0;
-    while(!erri){
-        if(0==in_item_count) {
-            EMSG0("ERROR: No XML items to examine.");
-            erri=__LINE__;
+    int erri=ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+        if (0 == in_item_count) {
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "ERROR: No XML items to examine.");
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
         /* Make sure all tags are real ones */
         err2=0;
-        for(i=0; i!=in_item_count; ++i){
-            t=in_items[i];
-            if(NULL==t){
-                EMSG0("ERROR: NULL tag found.");
-                erri=__LINE__;
+        for (i=0; i < in_item_count; ++i) {
+            t = in_items[i];
+            if (NULL == t) {
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                    "ERROR: NULL tag found.");
+                erri = ORCM_ERR_BAD_PARAM;
                 break;
             }
-            if('\t'==t[0]){
+            if ('\t' == t[0]) {
                 continue;
             }
-            if('/'==t[0]){
+            if ('/' == t[0]) {
                 k=1;
-            } else{
+            } else {
                 k=0;
             }
-            if( ! isa_known_tag(t+k) ){
-                EMSG1("ERROR: Unknown XML tag->%s", t);
-                err2=__LINE__;
+            if (!isa_known_tag(t+k)) {
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                    "ERROR: Unknown XML tag->%s", t);
+                err2 = ORCM_ERR_BAD_PARAM;
             }
         }
-        if(err2){
-            erri=err2;
+        if (ORCM_SUCCESS != err2) {
+            erri = err2;
         }
-        if(erri){
+        if (ORCM_SUCCESS != erri) {
             break;
         }
 
@@ -2146,25 +2130,25 @@ static int check_validity_of_the_inputs( char ** in_items
          *opening tag, with a data field in between them.
          */
         err2=0;
-        for(i=0; i!=in_item_count; ++i){
-            t=in_items[i];
-            if('/'==t[0]){
+        for (i=0; i < in_item_count; ++i) {
+            t = in_items[i];
+            if ('/' == t[0]) {
                 ++closings;
-            }else{
-                if('\t'!=t[0]){
+            } else {
+                if ('\t' != t[0]) {
                     ++openings;
                 }
             }
 
-            if( isa_sectional_item(t)){
+            if (isa_sectional_item(t)) {
                 continue;
             }
-            if('\t'==t[0]){
+            if ('\t' == t[0]) {
                 /*Skip data fields.  See below.*/
                 continue;
             }
 
-            if('/'==t[0]){
+            if ('/' == t[0]) {
                 /* We'll focus on going from the opening tag to the closing tag.
                  *So skip the closing tag as they will be found during the search.
                  */
@@ -2175,42 +2159,45 @@ static int check_validity_of_the_inputs( char ** in_items
              * be a data field, and then, after that, it should be a closing tag.
              */
             k=i+1;
-            if(k>=in_item_count || '\t'!=in_items[k][0]){
-                EMSG1("ERROR: Missing data field for XML tag ->%s", t);
-                erri=__LINE__;
+            if (k >= in_item_count || '\t' != in_items[k][0]) {
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                    "ERROR: Missing data field for XML tag ->%s", t);
+                erri = ORCM_ERR_BAD_PARAM;
                 break;
             }
 
             k=i+2;
-            if(k>=in_item_count || '/'!=in_items[k][0]){
-                EMSG1("ERROR: Missing closing tag for XML tag ->%s", t);
-                erri=__LINE__;
+            if (k >= in_item_count || '/' != in_items[k][0]) {
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                    "ERROR: Missing closing tag for XML tag ->%s", t);
+                erri = ORCM_ERR_BAD_PARAM;
                 break;
             }
         }
-        if(err2){
-            erri=err2;
+        if (ORCM_SUCCESS != err2) {
+            erri = err2;
         }
-        if( ! erri){
-            if(openings!=closings){
-                EMSG2("ERROR: The number of opening and closing XML tags do not match: open=%lu close=%lu", openings,closings);
-                erri=__LINE__;
+        if (ORCM_SUCCESS == erri) {
+            if (openings != closings) {
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                    "ERROR: The number of opening and closing XML tags do not match: open=%lu close=%lu", openings,closings);
+                erri = ORCM_ERR_BAD_PARAM;
                 break;
             }
         }
-        if(erri){
+        if (ORCM_SUCCESS != erri){
             break;
         }
 
         /* Make sure there is only a single RECORD configuration */
         record_count=0;
-        for(i=0; i!=in_item_count; ++i){
-            t=in_items[i];
+        for (i=0; i < in_item_count; ++i) {
+            t = in_items[i];
             /* Looking for the "role" tag */
-            if('r'!=t[0] && 'R'!=t[0]){
+            if ('r'!=t[0] && 'R'!=t[0]) {
                 continue;
             }
-            if( !! strcasecmp(t,"role")){
+            if (0 != strcasecmp(t,"role")) {
                 continue;
             }
 
@@ -2219,43 +2206,49 @@ static int check_validity_of_the_inputs( char ** in_items
                been checked above. */
             t=in_items[k];
             ++t; /*Jump over the '\t' */
-            if( ! strcasecmp(t,"RECORD")){
+            if (0 == strcasecmp(t,"RECORD")){
                 ++record_count;
-            } else if( ! strcasecmp(t,"MOD")){
+            } else if (0 == strcasecmp(t,"MOD")) {
                 /*All good. That is what one would expect. */
             } else {
-                EMSG0("ERROR: Unknown data content for the XML tag ->role");
-                erri=__LINE__;
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                    "ERROR: Unknown data content for the XML tag ->role");
+                erri = ORCM_ERR_BAD_PARAM;
                 break;
             }
         }
-        if(erri){
+        if (ORCM_SUCCESS != erri) {
             break;
         }
 
-        if(1 != record_count){
-            EMSG1("ERROR: Incorrect count of XML tag configuration of \"RECORD\" role:%lu",record_count);
-            erri=__LINE__;
+        if (1 != record_count) {
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "ERROR: Incorrect count of XML tag configuration of \"RECORD\" role:%lu",record_count);
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
         /*Making sure that only the allowed junction type are present */
         /*Make sure that only one cluster type is present.*/
         /*Make sure that at least one node is present */
-        t_cluster=t_rack=t_row=t_inter=t_node=0;
-        for(i=0; i!=in_item_count; ++i){
+        t_cluster = 0;
+        t_rack = 0;
+        t_row = 0;
+        t_inter = 0;
+        t_node = 0;
+        for (i=0; i < in_item_count; ++i) {
             t=in_items[i];
 
-            if('\t'==t[0] || '/'==t[0]){
+            if ('\t' == t[0] || '/' == t[0]) {
                 /*Skip ending tags and data fields*/
                 continue;
             }
 
-            if('t'!=t[0] && 'T'!=t[0]){
+            if ('t' != t[0] && 'T' != t[0]) {
                 /*Not the right tag*/
                 continue;
             }
-            if( !! strcasecmp(t,"type") ){
+            if (0 != strcasecmp(t,"type")) {
                 continue;
             }
 
@@ -2264,98 +2257,100 @@ static int check_validity_of_the_inputs( char ** in_items
                been checked above. */
             t=in_items[k];
             ++t; /*Jump over the '\t' */
-            if( ! strcasecmp(t,"cluster")) ++t_cluster;
-            if( ! strcasecmp(t,   "rack")) ++t_rack;
-            if( ! strcasecmp(t,    "row")) ++t_row;
-            if( ! strcasecmp(t,   "node")) ++t_node;
-            if( ! strcasecmp(t,  "inter")) ++t_inter;
+            if (0 == strcasecmp(t,"cluster")) {
+                ++t_cluster;
+            } else if (0 == strcasecmp(t, "rack")) {
+                ++t_rack;
+            } else if (0 == strcasecmp(t, "row")) {
+                ++t_row;
+            } else if (0 == strcasecmp(t, "node")) {
+                ++t_node;
+            } else if (0 == strcasecmp(t, "inter")) {
+                ++t_inter;
+            }
         }
 
-        if(0!=t_inter){
-            EMSG0("ERROR: Junction of type \"inter\" have yet to be implemented.");
-            erri=__LINE__;
+        if (0 != t_inter) {
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "ERROR: Junction of type \"inter\" have yet to be implemented.");
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
-        if(0==t_node){
-            EMSG0("ERROR: At least one junction of type \"node\" must be defined.");
-            erri=__LINE__;
+        if (0 == t_node) {
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "ERROR: At least one junction of type \"node\" must be defined.");
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
         /*Check if the aggregator field is really yes or no*/
-        for(i=0; i!=in_item_count; ++i){
-            t=in_items[i];
+        for (i=0; i < in_item_count; ++i) {
+            t = in_items[i];
 
-            if('\t'==t[0] || '/'==t[0]){
+            if ('\t' == t[0] || '/' == t[0]) {
                 /*Skip ending tags and data fields*/
                 continue;
             }
 
-            if('a'!=t[0] && 'A'!=t[0]){
+            if ('a' != t[0] && 'A' != t[0]) {
                 /*Not the right tag*/
                 continue;
             }
-            if( !! strcasecmp(t,"aggregator") ){
+            if (0 != strcasecmp(t,"aggregator")) {
                 continue;
             }
 
-            t=in_items[i+1];
-            t+=1; /*Jump over the tab*/
+            t = in_items[i+1];
+            t += 1; /*Jump over the tab*/
 
-            if('y' ==t[0] || 'Y' ==t[0]){
+            if ('y' == t[0] || 'Y' == t[0]) {
                 /*All good*/
                 break;
             }
-            if('n' ==t[0] || 'N' ==t[0]){
+            if ('n' == t[0] || 'N' == t[0]) {
                 /*All good*/
                 break;
             }
-            EMSG0("ERROR: \"aggregator\" only allow the values: yes, no");
-            erri=__LINE__;
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "ERROR: \"aggregator\" only allow the values: yes, no");
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
-        erri=check_all_port_fields(in_items,in_item_count);
-        if(erri) {
+        erri = check_all_port_fields(in_items, in_item_count);
+        if (ORCM_SUCCESS != erri) {
             break;
         }
 
         break;
     }
     return erri;
-#   undef EMSG0
-#   undef EMSG1
-#   undef EMSG2
 }
 
-static int check_all_port_fields( char ** in_items
-                                , unsigned long in_item_count
-                                )
+static int check_all_port_fields(char ** in_items, unsigned long in_item_count)
 {
     /*Check that port field content is a positive bound integer */
-    const int OUTID = orcm_cfgi_base_framework.framework_output;
-
     unsigned long i=0;
     char *t=NULL;
     char * endptr=NULL;
     const int base = 10;
     long number=0;
 
-    int erri=0;
-    while(!erri){
-        for(i=0; i!=in_item_count; ++i){
-            t=in_items[i];
+    int erri=ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri){
+        for (i=0; i < in_item_count; ++i){
+            t = in_items[i];
 
-            if('\t'==t[0] || '/'==t[0]){
+            if ('\t' == t[0] || '/' == t[0]) {
                 /*Skip ending tags and data fields*/
                 continue;
             }
-            if('p'!=t[0] && 'P'!=t[0]){
+            if ('p' != t[0] && 'P' != t[0]) {
                 /*Not the right tag*/
                 continue;
             }
-            if( !! strcasecmp(t,"port") ){
+            if (0 != strcasecmp(t,"port")) {
                 continue;
             }
 
@@ -2365,22 +2360,21 @@ static int check_all_port_fields( char ** in_items
             endptr=NULL;
             number = strtol(t, &endptr, base);
 
-            if( '\0' != *endptr){
-                opal_output_verbose(V_LO, OUTID,
-                "ERROR: The value of a node item is not a valid integer");
-                opal_output_verbose(V_LO, OUTID, "Error on lexer element %lu", i+1);
-                erri=__LINE__;
+            if ('\0' != *endptr) {
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                    "ERROR: The value of a node item is not a valid integer");
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "Error on lexer element %lu", i+1);
+                erri = ORCM_ERR_BAD_PARAM;
                 /*Do not bail out right away.  Survey all nodes.
                   That gives a chance to see all mistakes. */
                 /*break;*/
-            }else {
-                if( 0 > number || USHRT_MAX < number){
-                    opal_output_verbose(V_LO, OUTID
-                    ,"ERROR: The value of a node item is not in an acceptable range (0<=n<=SHRT_MAX): %ld"
-                    , number
-                    );
-                    opal_output_verbose(V_LO, OUTID, "Error on lexer element %lu", i+1);
-                    erri=__LINE__;
+            } else {
+                if (0 > number || USHRT_MAX < number) {
+                    opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                        "ERROR: The value of a node item is not in an acceptable range (0<=n<=SHRT_MAX): %ld",
+                                        number);
+                    opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "Error on lexer element %lu", i+1);
+                    erri = ORCM_ERR_BAD_PARAM;
                     /*Do not bail out right away.  Survey all nodes.
                       That gives a chance to see all mistakes. */
                     /*break;*/
@@ -2392,23 +2386,14 @@ static int check_all_port_fields( char ** in_items
     return erri;
 }
 
-static int structure_lexed_items( unsigned long in_begin_offset
-                                , unsigned long in_end_offset
-                                , char ** in_items
-                                , unsigned long in_item_count
-                                , long *** o_hierachy
-                                , unsigned long ** o_hier_row_length
-                                , unsigned long * o_length_hierarchy
-                                )
+static int structure_lexed_items(unsigned long in_begin_offset,
+                                 unsigned long in_end_offset,
+                                 char ** in_items,
+                                 unsigned long in_item_count,
+                                 long *** o_hierachy,
+                                 unsigned long ** o_hier_row_length,
+                                 unsigned long * o_length_hierarchy)
 {
-/* #   define EMSG0(text) fprintf(stderr,text"\n")
- * #   define EMSG1(text, a1) fprintf(stderr,text"\n",a1)
- */
-#   define EMSG0(text) opal_output_verbose(V_LO, OUTID, text)
-#   define EMSG1(text, a1) opal_output_verbose(V_LO, OUTID, text,a1)
-
-    const int OUTID = orcm_cfgi_base_framework.framework_output;
-
     /* in_begin_offset : The start of the offset in in_items where to begin
      *                   the search.
      *                   ==>IMPORTANT: It has to be on a sectional item
@@ -2444,7 +2429,7 @@ static int structure_lexed_items( unsigned long in_begin_offset
      * A little slower maybe but it is real easy to debug.
      */
     const unsigned long nota_index=(unsigned long)(-1);
-    int erri=0;
+    int erri=ORCM_SUCCESS;
 
     unsigned long i=0,k=0;
     unsigned long ending_sectional_tags=0;
@@ -2460,58 +2445,56 @@ static int structure_lexed_items( unsigned long in_begin_offset
     *o_length_hierarchy=0;
     *o_hierachy=NULL;
 
-    while(!erri){
-        if (in_item_count==0){
-            erri=__LINE__;
+    while (ORCM_SUCCESS == erri){
+        if (in_item_count==0) {
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
-        if(  in_begin_offset>=in_end_offset
-          || in_begin_offset>=in_item_count
-          || in_end_offset  >in_item_count
-          ){
-            erri=__LINE__;
+        if (in_begin_offset >= in_end_offset ||
+            in_begin_offset >= in_item_count ||
+            in_end_offset > in_item_count) {
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
-        if( ! isa_sectional_item(in_items[in_begin_offset])){
+        if (!isa_sectional_item(in_items[in_begin_offset])) {
             /*We are not starting on a sectional element*/
-            erri=__LINE__;
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
         /*First count the number of sections we have */
         k=0;
         ending_sectional_tags=0;
-        for (i=in_begin_offset; i!=in_end_offset; ++i){
+        for (i=in_begin_offset; i < in_end_offset; ++i) {
             t=in_items[i];
-            if('\t'==t[0]){
+            if ('\t' == t[0]) {
                 continue;
             }
-            if('/'==t[0]){
-                if( isa_sectional_item(t+1) ){
+            if ('/' == t[0]) {
+                if (isa_sectional_item(t+1)) {
                     ++ending_sectional_tags;
                 }
             }
-            if( !isa_sectional_item(t) ){
+            if (!isa_sectional_item(t)) {
                 continue;
             }
-            if( ! "debug"){
-                printf("Section =%s\n",t);
-            }
-            if('/'==t[0]){
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "Section =%s",t);
+            if ('/'==t[0]) {
                 ++ending_sectional_tags;
             } else {
                 ++k;
             }
         }
-        if( ! "debug"){
-            printf("DEBUG> Section count=%lu  %lu\n",k, ending_sectional_tags);
-        }
+        opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                            "DEBUG> Section count=%lu  %lu\n",k, ending_sectional_tags);
 
-        if(k!=ending_sectional_tags || 0==k){
+        if (k != ending_sectional_tags || 0 == k) {
             /*This crude check to see if we have the ending tag of the starting section*/
-            EMSG0("ERROR:Provided sub-section of XML lexer invalid");
-            erri=__LINE__;
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "ERROR:Provided sub-section of XML lexer invalid");
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
@@ -2519,8 +2502,8 @@ static int structure_lexed_items( unsigned long in_begin_offset
         k=0;
         *o_hierachy=NULL;
         *o_hierachy = (long **) malloc( (*o_length_hierarchy)*sizeof(long *) );
-        if( ! *o_hierachy){
-            erri=__LINE__;
+        if (NULL == *o_hierachy) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         memset(*o_hierachy,0, (*o_length_hierarchy)*sizeof(long *));
@@ -2528,100 +2511,100 @@ static int structure_lexed_items( unsigned long in_begin_offset
         sz_section=0;
         section_starts=NULL;
         section_starts = (unsigned long *) malloc( (*o_length_hierarchy)*sizeof(unsigned long *) );
-        if(!section_starts){
-            erri=__LINE__;
+        if (NULL == section_starts) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         memset(section_starts,0,(*o_length_hierarchy)*sizeof(unsigned long *));
 
         section_ends=NULL;
         section_ends = (unsigned long *) malloc( (*o_length_hierarchy)*sizeof(unsigned long *) );
-        if(!section_ends){
-            erri=__LINE__;
+        if (NULL == section_ends) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         memset(section_ends,0,(*o_length_hierarchy)*sizeof(unsigned long *));
 
         section_parents=NULL;
         section_parents = (unsigned long *) malloc( (*o_length_hierarchy)*sizeof(unsigned long *) );
-        if(!section_parents){
-            erri=__LINE__;
+        if (NULL == section_parents) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         memset(section_parents,0,(*o_length_hierarchy)*sizeof(unsigned long *));
 
         section_counts=NULL;
         section_counts = (unsigned long *) malloc( (*o_length_hierarchy)*sizeof(unsigned long *) );
-        if(!section_counts){
-            erri=__LINE__;
+        if (NULL == section_counts) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         memset(section_counts,0,(*o_length_hierarchy)*sizeof(unsigned long *));
 
         /*Find the beginning and the end of each section, and their parent section */
 
-            /*NOTE: Section_parents does not store indices in in_items.
-             *      It stores indices pointing in section_starts.
-             */
+        /*NOTE: Section_parents does not store indices in in_items.
+         *      It stores indices pointing in section_starts.
+         */
 
-            /*NOTE: The observation here is that an offset of zero in either
-             *      section_ends or section_parents is not possible.
-             *      In the section_parents, only sections being reporting to
-             *      the base section can be zero.
-             *      The entry zero of section_parents cannot be defined as
-             *      the base section has no parents.
-             */
+        /*NOTE: The observation here is that an offset of zero in either
+         *      section_ends or section_parents is not possible.
+         *      In the section_parents, only sections being reporting to
+         *      the base section can be zero.
+         *      The entry zero of section_parents cannot be defined as
+         *      the base section has no parents.
+         */
 
-             /*TODO: Optimize the search for the first empty ending.
-              *      As it is, we are looking at a worst case O(N^2) parsing.
-              *      Using sections_ends as a stack would speed things up.
-              */
+        /*TODO: Optimize the search for the first empty ending.
+         *      As it is, we are looking at a worst case O(N^2) parsing.
+         *      Using sections_ends as a stack would speed things up.
+         */
 
-              /*NOTE: This algorithm is done twice. Once now and once afterward.*/
+        /*NOTE: This algorithm is done twice. Once now and once afterward.*/
         section_parents[0]=nota_index;
 
         sz_section=-1;
-        for (i=in_begin_offset; i!=in_end_offset; ++i){
+        for (i=in_begin_offset; i < in_end_offset; ++i) {
             t=in_items[i];
-            if('\t'==t[0]){ /*Skip data field*/
+            if ('\t' == t[0]) { /*Skip data field*/
                 continue;
             }
-            if('/'==t[0]){ /*An ending*/
-                if( ! isa_sectional_item(t+1) ){
+            if ('/' == t[0]) { /*An ending*/
+                if (!isa_sectional_item(t+1)) {
                     continue;
                 }
-            }else if( !isa_sectional_item(t) ){
+            } else if (!isa_sectional_item(t)) {
                 /*Not a sectional tag, not an ending tag and not a data field*/
-                if((unsigned long)(-1)==sz_section){
+                if ((unsigned long)(-1) == sz_section) {
                     /*I did not expect that here. */
-                    erri=__LINE__;
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
-                for(k=sz_section; k>=0; --k){
-                    if(0==section_ends[k]){
+                for (k=sz_section; k >= 0; --k) {
+                    if (0 == section_ends[k]) {
                         /*Found the first empty ending*/
                         break;
                     }
                 }
-                if(0==k && 0!=section_ends[0]){
+                if (0==k && 0 != section_ends[0]) {
                     /* No empty ending found ???*/
-                    erri=__LINE__;
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
                 ++section_counts[k];
                 continue;
             }
 
-            if('/'==t[0]){ /*An ending tag of a section */
-                for(k=sz_section; k>=0; --k){
-                    if(0==section_ends[k]){
+            if ('/' == t[0]) { /*An ending tag of a section */
+                for (k=sz_section; k >= 0; --k) {
+                    if (0 == section_ends[k]) {
                         /*Found the first empty ending*/
                         break;
                     }
                 }
-                if(0==k && 0!=section_ends[0]){
+                if (0 == k && 0 != section_ends[0]) {
                     /* No empty ending found ???*/
-                    erri=__LINE__;
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
                 section_ends[k]=i;
@@ -2629,156 +2612,151 @@ static int structure_lexed_items( unsigned long in_begin_offset
                 ++sz_section;
                 section_starts[sz_section]=i;
                 section_ends[sz_section]=0;
-                if(0!=sz_section){
+                if (0 != sz_section) {
                     /*Find first empty ending */
-                    for(k=sz_section-1; k>=0; --k){
-                        if(0==section_ends[k]){
+                    for (k=sz_section-1;  k>= 0; --k) {
+                        if (0 == section_ends[k]) {
                             /*Found the first available parent*/
-                            section_parents[sz_section]=k;
+                            section_parents[sz_section] = k;
                             break;
                         }
                     }
-                    if(0==k && 0!=section_ends[0]){
+                    if (0 == k && 0 != section_ends[0]) {
                         /* No parent were found ???*/
-                        erri=__LINE__;
+                        erri = ORCM_ERR_BAD_PARAM;
                         break;
                     }
                 }
             }
         }
-        if(erri) {
+        if (ORCM_SUCCESS != erri) {
             break;
         }
 
-        if(sz_section+1 != *o_length_hierarchy){
-            if( ! "debug"){
-                printf("DEBUG: sz_section=%lu    o_length_hierarchy=%lu\n"
-                      ,sz_section,*o_length_hierarchy);
-            }
-            erri=__LINE__;
+        if (sz_section+1 != *o_length_hierarchy) {
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "DEBUG: sz_section=%lu    o_length_hierarchy=%lu\n",
+                                sz_section, *o_length_hierarchy);
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
         /*Add to the count the number of childrens*/
         *o_hier_row_length=NULL;
         *o_hier_row_length = (unsigned long*)malloc((*o_length_hierarchy)*sizeof(unsigned long));
-        if( ! *o_hier_row_length){
-            erri=__LINE__;
+        if (NULL == *o_hier_row_length) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
         memcpy(*o_hier_row_length,section_counts,(*o_length_hierarchy)*sizeof(unsigned long));
 
         /*Add the sub-sectional items */
-        for(k=0; k!=*o_length_hierarchy; ++k){
-            if(nota_index==section_parents[k]){
+        for (k=0; k < *o_length_hierarchy; ++k) {
+            if (nota_index == section_parents[k]) {
                 continue;
             }
-            i=section_parents[k];
+            i = section_parents[k];
             ++(*o_hier_row_length)[i];
         }
         /*Add the space for section_starts */
-        for(k=0; k!=*o_length_hierarchy; ++k){
+        for (k=0; k < *o_length_hierarchy; ++k) {
             ++(*o_hier_row_length)[k];
         }
 
-        if( ! "debug" ){
-            printf("DEBUG:\toffset\tstart\tend\tparent\n");
-            for(k=0; k!=*o_length_hierarchy; ++k){
-                printf("DEBUG:\to=%lu\ts=%lu\te=%lu\tp=%lu\tc=%lu\thr=%lu\n"
-                      , k
-                      , section_starts[k]
-                      , section_ends[k]
-                      , section_parents[k]
-                      , section_counts[k]
-                      , (*o_hier_row_length)[k]
-                      );
+        if (V_LO < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
+            opal_output(orcm_cfgi_base_framework.framework_output, "DEBUG:\toffset\tstart\tend\tparent");
+            for (k=0; k < *o_length_hierarchy; ++k) {
+                opal_output(orcm_cfgi_base_framework.framework_output,
+                            "DEBUG:\to=%lu\ts=%lu\te=%lu\tp=%lu\tc=%lu\thr=%lu",
+                            k, section_starts[k], section_ends[k], section_parents[k],
+                            section_counts[k], (*o_hier_row_length)[k]);
             }
         }
 
         /*Allocate the memory for the entries in o_hierachy*/
-        for(k=0; k!=*o_length_hierarchy; ++k){
-            i=(*o_hier_row_length)[k];
-            (*o_hierachy)[k]=NULL;
+        for (k=0; k < *o_length_hierarchy; ++k) {
+            i = (*o_hier_row_length)[k];
+            (*o_hierachy)[k] = NULL;
             (*o_hierachy)[k] = (long *) malloc(i * sizeof(long));
-            if( ! (*o_hierachy)[k] ){
-                erri=__LINE__;
+            if (NULL == *o_hierachy[k]) {
+                erri = ORCM_ERR_OUT_OF_RESOURCE;
                 break;
             }
         }
-        if(erri){
+        if (ORCM_SUCCESS != erri){
             break;
         }
 
 
         /*Fill each row of o_hierarchy up */
-        memset(section_ends,0,(*o_length_hierarchy)*sizeof(unsigned long *));
-        memset(section_counts,0,(*o_length_hierarchy)*sizeof(unsigned long *));
+        memset(section_ends, 0, (*o_length_hierarchy)*sizeof(unsigned long *));
+        memset(section_counts, 0, (*o_length_hierarchy)*sizeof(unsigned long *));
 
         /*Add the section_starts to the hierarchy */
-        for(k=0; k!=*o_length_hierarchy; ++k){
+        for (k=0; k < *o_length_hierarchy; ++k) {
             (*o_hierachy)[k][0] = section_starts[k];
             ++section_counts[k];
         }
 
-        if( ! "debug" ){
-            for(i=0; i!=*o_length_hierarchy; ++i){
-                printf("DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu\n",i
-                       , section_counts[i],section_parents[i],section_starts[i]);
-                printf("DEBUG:\t");
-                for(k=0; k!=(*o_hier_row_length)[i]; ++k){
-                    printf("%ld\t", (*o_hierachy)[i][k]);
+        if (V_LO < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
+            for (i=0; i < *o_length_hierarchy; ++i) {
+                opal_output(orcm_cfgi_base_framework.framework_output,
+                            "DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu",
+                            i, section_counts[i], section_parents[i], section_starts[i]);
+                opal_output(orcm_cfgi_base_framework.framework_output, "DEBUG:");
+                for (k=0; k < (*o_hier_row_length)[i]; ++k) {
+                    opal_output(orcm_cfgi_base_framework.framework_output, "\t%ld", (*o_hierachy)[i][k]);
                 }
-                printf("\n");
             }
         }
-            /*Do the same as above but only to get the non-sectional items*/
-            /*No need to recalculate the section_starts.  Keep them for later*/
-            /*No need to recalculate the section_parents.  Keep them for later*/
-            /*section_counts & sections_ends are re-built*/
+        /*Do the same as above but only to get the non-sectional items*/
+        /*No need to recalculate the section_starts.  Keep them for later*/
+        /*No need to recalculate the section_parents.  Keep them for later*/
+        /*section_counts & sections_ends are re-built*/
 
         sz_section=-1;
-        for (i=in_begin_offset; i!=in_end_offset; ++i){
-            t=in_items[i];
-            if('\t'==t[0]){ /*Skip data field*/
+        for (i=in_begin_offset; i < in_end_offset; ++i) {
+            t = in_items[i];
+            if ('\t' == t[0]) { /*Skip data field*/
                 continue;
             }
-            if('/'==t[0]){ /*An ending*/
-                if( ! isa_sectional_item(t+1) ){
+            if ('/' == t[0]) { /*An ending*/
+                if (!isa_sectional_item(t+1)) {
                     continue;
                 }
-            }else if( !isa_sectional_item(t) ){
+            }else if (!isa_sectional_item(t)) {
                 /*Not a sectional tag, not an ending tag and not a data field*/
-                if((unsigned long)(-1)==sz_section){
+                if ((unsigned long)(-1) == sz_section) {
                     /*I did not expect that here. */
-                    erri=__LINE__;
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
-                for(k=sz_section; k>=0; --k){
-                    if(0==section_ends[k]){
+                for (k=sz_section; k >= 0; --k) {
+                    if (0 == section_ends[k]) {
                         /*Found the first empty ending*/
                         break;
                     }
                 }
-                if(0==k && 0!=section_ends[0]){
+                if (0 == k && 0 != section_ends[0]) {
                     /* No empty ending found ???*/
-                    erri=__LINE__;
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
-                (*o_hierachy)[k][ section_counts[k] ] = i;
+                (*o_hierachy)[k][section_counts[k]] = i;
                 ++section_counts[k];
                 continue;
             }
 
-            if('/'==t[0]){ /*An ending tag of a section */
-                for(k=sz_section; k>=0; --k){
-                    if(0==section_ends[k]){
+            if ('/'==t[0]) { /*An ending tag of a section */
+                for (k=sz_section; k >= 0; --k) {
+                    if (0 == section_ends[k]) {
                         /*Found the first empty ending*/
                         break;
                     }
                 }
-                if(0==k && 0!=section_ends[0]){
+                if (0 == k && 0!=section_ends[0]) {
                     /* No empty ending found ???*/
-                    erri=__LINE__;
+                    erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
                 section_ends[k]=i;
@@ -2787,80 +2765,76 @@ static int structure_lexed_items( unsigned long in_begin_offset
                 section_ends[sz_section]=0;
             }
         }
-        if(erri) {
+        if (ORCM_SUCCESS != erri) {
             break;
         }
 
-        if(! "debug"){
-            for(i=0; i!=*o_length_hierarchy; ++i){
-                printf("DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu\n",i
-                       , section_counts[i],section_parents[i],section_starts[i]);
-                printf("DEBUG:\t");
-                for(k=0; k!=(*o_hier_row_length)[i]; ++k){
-                    printf("%ld\t", (*o_hierachy)[i][k]);
+        if (V_LO < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
+            for (i=0; i < *o_length_hierarchy; ++i){
+                opal_output(orcm_cfgi_base_framework.framework_output,
+                            "DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu",
+                            i, section_counts[i], section_parents[i], section_starts[i]);
+                opal_output(orcm_cfgi_base_framework.framework_output, "DEBUG:");
+                for (k=0; k < (*o_hier_row_length)[i]; ++k) {
+                    opal_output(orcm_cfgi_base_framework.framework_output, "\t%ld", (*o_hierachy)[i][k]);
                 }
-                printf("\n");
             }
         }
 
         /*Add the missing childrens */
-            /*This will consume section_counts */
-        for(k=0; k!=*o_length_hierarchy; ++k){
-            if(nota_index==section_parents[k]){
+        /*This will consume section_counts */
+        for (k=0; k < *o_length_hierarchy; ++k) {
+            if (nota_index == section_parents[k]){
                 continue;
             }
-            i=section_parents[k];
-            (*o_hierachy)[i][ section_counts[i] ] = (-1L)*k;
+            i = section_parents[k];
+            (*o_hierachy)[i][section_counts[i]] = (-1L)*k;
             ++section_counts[i];
         }
 
-        if(! "debug"){
-            for(i=0; i!=*o_length_hierarchy; ++i){
-                printf("DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu\n",i
-                       , section_counts[i],section_parents[i],section_starts[i]);
-                printf("DEBUG:\t");
-                for(k=0; k!=(*o_hier_row_length)[i]; ++k){
-                    printf("%ld\t", (*o_hierachy)[i][k]);
+        if (V_LO < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
+            for (i=0; i < *o_length_hierarchy; ++i) {
+                opal_output(orcm_cfgi_base_framework.framework_output,
+                            "DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu\n",
+                            i, section_counts[i],section_parents[i],section_starts[i]);
+                opal_output(orcm_cfgi_base_framework.framework_output, "DEBUG:");
+                for (k=0; k < (*o_hier_row_length)[i]; ++k) {
+                    opal_output(orcm_cfgi_base_framework.framework_output, "\t%ld", (*o_hierachy)[i][k]);
                 }
-                printf("\n");
             }
         }
 
         break;
     }/* while(!erri) */
 
-    if(section_starts){
+    if (NULL != section_starts) {
         free(section_starts);
         section_starts=NULL;
         sz_section=0;
     }
-    if(section_ends){
+    if (NULL != section_ends) {
         free(section_ends);
         section_ends=NULL;
         sz_section=0;
     }
-    if(section_parents){
+    if (NULL != section_parents) {
         free(section_parents);
         section_parents=NULL;
         sz_section=0;
     }
-    if(section_counts){
+    if (NULL != section_counts) {
         free(section_counts);
         section_counts=NULL;
         sz_section=0;
     }
 
-     return erri;
-#   undef EMSG0
-#   undef EMSG1
-
+    return erri;
 }
 
-static int transfer_to_controller( char ** in_items
-                                 , unsigned long in_hier_row_length
-                                 , long * in_hierarchy
-                                 , orcm_cfgi_xml_parser_t * io_parent
-                                 )
+static int transfer_to_controller(char ** in_items,
+                                  unsigned long in_hier_row_length,
+                                  long * in_hierarchy,
+                                  orcm_cfgi_xml_parser_t * io_parent)
 {
     orcm_cfgi_xml_parser_t * xml=NULL;
     unsigned long j=0;
@@ -2870,12 +2844,12 @@ static int transfer_to_controller( char ** in_items
 
     char *tt=NULL, *txt=NULL;
 
-    int erri=0;
-    while(!erri){
+    int erri=ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri){
         xml = NULL;
         xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-        if(!xml){
-            erri=__LINE__;
+        if (NULL == xml) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
 
@@ -2888,126 +2862,118 @@ static int transfer_to_controller( char ** in_items
         xml=NULL;
 
         /*Make sure the controller does not have some sub-level */
-        for(j=1; j!=in_hier_row_length; ++j){
+        for (j=1; j < in_hier_row_length; ++j) {
             uu=in_hierarchy[j];
-            if(0>uu){
-                erri=__LINE__;
+            if (0 > uu) {
+                erri = ORCM_ERR_BAD_PARAM;
                 break;
             }
         }
-        if(erri){
+        if (ORCM_SUCCESS != erri){
             break;
         }
 
         /*First resolve the host */
-        for(j=1; j!=in_hier_row_length; ++j){
-            uu=in_hierarchy[j];
-            tt=in_items[uu];
-            if('h'!=tt[0] && 'H'!=tt[0]){
+        for (j=1; j < in_hier_row_length; ++j) {
+            uu = in_hierarchy[j];
+            tt = in_items[uu];
+            if ('h' != tt[0] && 'H' != tt[0]) {
                 continue;
             }
-            if( ! strcasecmp(tt,"host") ){
-                txt=NULL;
-                txt = strdup(in_items[uu+1]+1);
-                if(ORTE_SUCCESS!=opal_argv_append_nosize(&io_parent->value, txt)){
-                    erri=__LINE__;
+            if (0 == strcasecmp(tt,"host")) {
+                if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&io_parent->value, in_items[uu+1]+1))) {
                     break;
                 }
-                txt=NULL;
             }
         }
-        if(erri){
+        if (ORCM_SUCCESS != erri) {
             break;
         }
 
         /*Then handle the <mca_params> */
-            /*This code is identical to the one used in transfer_to_scheduler*/
-        text_length=0;
-        for(j=1; j!=in_hier_row_length; ++j){
-            uu=in_hierarchy[j];
-            if(0>uu){
+        /*This code is identical to the one used in transfer_to_scheduler*/
+        text_length = 0;
+        for (j=1; j < in_hier_row_length; ++j) {
+            uu = in_hierarchy[j];
+            if (0 > uu){
                 continue;
-            }else{
-                tt=in_items[uu];
-                if('m'!=tt[0] && 'M'!=tt[0]){
+            } else {
+                tt = in_items[uu];
+                if ('m' != tt[0] && 'M' != tt[0]) {
                     continue;
                 }
-                if( ! strcasecmp(tt,"mca-params") ){
+                if (0 == strcasecmp(tt,"mca-params")) {
                     /*Add 1 for either the comma or the ending '\0'*/
                     text_length += strlen(in_items[uu+1]+1) +1;
                 }
             }
         }
 
-        if(text_length){
-            txt=NULL;
-            txt=(char*)malloc(text_length*sizeof(char));
-            if(!txt){
-                erri=__LINE__;
+        if (0 < text_length){
+            txt = (char*)malloc(text_length*sizeof(char));
+            if (NULL == txt) {
+                erri = ORCM_ERR_OUT_OF_RESOURCE;
                 break;
             }
-            memset(txt,0,text_length*sizeof(char));
+            memset(txt, 0, text_length*sizeof(char));
 
-            comma=',';
-            for(j=1; j!=in_hier_row_length; ++j){
-                if(j+1==in_hier_row_length){
-                    comma='\0';
+            comma = ',';
+            for (j=1; j < in_hier_row_length; ++j) {
+                if (j+1 == in_hier_row_length) {
+                    comma = '\0';
                 }
                 uu=in_hierarchy[j];
-                if(0>uu){
+                if (0 > uu){
                     continue;
-                }else{
+                } else {
                     tt=in_items[uu];
-                    if('m'!=tt[0] && 'M'!=tt[0]){
+                    if ('m' != tt[0] && 'M' != tt[0]) {
                         continue;
                     }
-                    if( ! strcasecmp(tt,"mca-params") ){
-                        text_length=strlen(txt);
-                        sprintf(txt+text_length,"%s%c",in_items[uu+1]+1,comma);
+                    if (0 == strcasecmp(tt,"mca-params")) {
+                        text_length = strlen(txt);
+                        sprintf(txt+text_length, "%s%c", in_items[uu+1]+1, comma);
                     }
                 }
             }
 
             xml = NULL;
             xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-            if(!xml){
-                erri=__LINE__;
+            if (NULL == xml) {
+                erri = ORCM_ERR_OUT_OF_RESOURCE;
                 break;
             }
             opal_list_append(&io_parent->subvals, &xml->super);
 
             xml->name = strdup("mca-params");
-            if(ORTE_SUCCESS!=opal_argv_append_nosize(&xml->value, txt)){
-                erri=__LINE__;
+            if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, txt))) {
+                free(txt);
                 break;
             }
-            txt=NULL;
+            free(txt);
 
-        }/*if(text_length)*/
+        } /*if(text_length)*/
 
         /*Then the other fields */
-        for(j=1; j!=in_hier_row_length; ++j){
-            uu=in_hierarchy[j];
-            if(0>uu){
+        for (j=1; j < in_hier_row_length; ++j) {
+            uu = in_hierarchy[j];
+            if (0 > uu) {
                 continue;
             }
-            tt=in_items[uu];
-            xml=NULL;
+            tt = in_items[uu];
+            xml = NULL;
 
-            if( ! strcasecmp(tt,"host") ){
+            if (0 == strcasecmp(tt,"host")) {
                 /*Dealt with before*/
                 continue;
-            } else if(  ! strcasecmp(tt,"port")
-                     || ! strcasecmp(tt,"cores")
-                     || ! strcasecmp(tt,"log")
-                     || ! strcasecmp(tt,"envar")
-                     || ! strcasecmp(tt,"aggregator")
-                     )
-            {
-                xml = NULL;
+            } else if (0 == strcasecmp(tt,"port") ||
+                       0 == strcasecmp(tt,"cores") ||
+                       0 == strcasecmp(tt,"log") ||
+                       0 == strcasecmp(tt,"envar") ||
+                       0 == strcasecmp(tt,"aggregator")) {
                 xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-                if(!xml){
-                    erri=__LINE__;
+                if (NULL == xml) {
+                    erri = ORCM_ERR_OUT_OF_RESOURCE;
                     break;
                 }
                 opal_list_append(&io_parent->subvals, &xml->super);
@@ -3015,34 +2981,29 @@ static int transfer_to_controller( char ** in_items
                 xml->name = strdup(tt);
                 tolower_cstr(xml->name);
 
-                txt=NULL;
-                txt = strdup(in_items[uu+1]+1);
-                if(ORTE_SUCCESS!=opal_argv_append_nosize(&xml->value, txt)){
-                    erri=__LINE__;
+                if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, in_items[uu+1]+1))) {
                     break;
                 }
-                txt=NULL;
 
-            } else if( ! strcasecmp(tt,"mca-params") ){
+            } else if (0 == strcasecmp(tt,"mca-params")) {
                 /*Dealt with before */
                 continue;
-            } else{
-                erri=__LINE__;
+            } else {
+                erri = ORCM_ERR_BAD_PARAM;
                 break;
             }
         } /*for(j=1; j!=hier_row_length[i]; ++j)*/
-        if(erri){
+        if (ORCM_SUCCESS != erri) {
             break;
         }
         break;
     }
     return erri;
 }
-static int transfer_to_scheduler( char ** in_items
-                                , unsigned long in_hier_row_length
-                                , long * in_hierarchy
-                                , orcm_cfgi_xml_parser_t * io_parent
-                                )
+static int transfer_to_scheduler( char ** in_items,
+                                  unsigned long in_hier_row_length,
+                                  long * in_hierarchy,
+                                  orcm_cfgi_xml_parser_t * io_parent)
 {
     orcm_cfgi_xml_parser_t * xml=NULL;
     unsigned long j=0;
@@ -3054,12 +3015,11 @@ static int transfer_to_scheduler( char ** in_items
     unsigned long text_length=0;
     char comma = ',';
 
-    int erri=0;
-    while(!erri){
-        xml = NULL;
+    int erri=ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri){
         xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-        if(!xml){
-            erri=__LINE__;
+        if (NULL == xml) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
 
@@ -3072,146 +3032,143 @@ static int transfer_to_scheduler( char ** in_items
         xml=NULL;
 
         /*Make sure the scheduler does not have some sub-level */
-        for(j=1; j!=in_hier_row_length; ++j){
+        for (j=1; j < in_hier_row_length; ++j) {
             uu=in_hierarchy[j];
-            if(0>uu){
-                erri=__LINE__;
+            if (0 > uu) {
+                erri = ORCM_ERR_BAD_PARAM;
                 break;
             }
         }
-        if(erri){
+        if (ORCM_SUCCESS != erri){
             break;
         }
 
         /*Then handle the <queues> */
         queues_count = 0;
-        for(j=1; j!=in_hier_row_length; ++j){
-            uu=in_hierarchy[j];
-            if(0>uu){
+        for (j=1; j < in_hier_row_length; ++j) {
+            uu = in_hierarchy[j];
+            if (0 > uu) {
                 continue;
-            }else{
-                tt=in_items[uu];
-                if('q'!=tt[0] && 'Q'!=tt[0]){
+            } else {
+                tt = in_items[uu];
+                if ('q' != tt[0] && 'Q' != tt[0]){
                     continue;
                 }
-                if( ! strcasecmp(tt,"queues") ){
+                if (0 == strcasecmp(tt,"queues") ){
                     ++queues_count;
                 }
             }
         }
 
-        if(queues_count){
-            xml = NULL;
+        if (0 < queues_count) {
             xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-            if(!xml){
-                erri=__LINE__;
+            if (NULL == xml) {
+                erri = ORCM_ERR_OUT_OF_RESOURCE;
                 break;
             }
             opal_list_append(&io_parent->subvals, &xml->super);
 
             xml->name = strdup("queues");
 
-            for(j=1; j!=in_hier_row_length; ++j){
-                uu=in_hierarchy[j];
-                if(0>uu){
+            for (j=1; j < in_hier_row_length; ++j) {
+                uu = in_hierarchy[j];
+                if (0 > uu) {
                     continue;
-                }else{
-                    tt=in_items[uu];
-                    if('q'!=tt[0] && 'Q'!=tt[0]){
+                } else {
+                    tt = in_items[uu];
+                    if ('q' != tt[0] && 'Q' != tt[0]) {
                         continue;
                     }
-                    if( ! strcasecmp(tt,"queues") ){
-                        if(ORTE_SUCCESS!=opal_argv_append_nosize(&xml->value, in_items[uu+1]+1)){
-                            erri=__LINE__;
+                    if (0 == strcasecmp(tt,"queues")) {
+                        if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, in_items[uu+1]+1))) {
                             break;
                         }
                     }
                 }
             }
-            if(erri){
+            if (ORCM_SUCCESS != erri) {
                 break;
             }
-        }/*if(queues_count)*/
+        } /*if(queues_count)*/
 
         /*Then handle the <mca_params> */
-            /*This code is identical to the one used in transfer_to_controller*/
+        /*This code is identical to the one used in transfer_to_controller*/
         text_length=0;
-        for(j=1; j!=in_hier_row_length; ++j){
+        for (j=1; j < in_hier_row_length; ++j) {
             uu=in_hierarchy[j];
-            if(0>uu){
+            if (0 > uu){
                 continue;
-            }else{
-                tt=in_items[uu];
-                if('m'!=tt[0] && 'M'!=tt[0]){
+            } else {
+                tt = in_items[uu];
+                if ('m' != tt[0] && 'M' != tt[0]){
                     continue;
                 }
-                if( ! strcasecmp(tt,"mca-params") ){
+                if (0 == strcasecmp(tt,"mca-params")) {
                     /*Add 1 for either the comma or the ending '\0'*/
-                    text_length += strlen(in_items[uu+1]+1) +1;
+                    text_length += strlen(in_items[uu+1]+1) + 1;
                 }
             }
         }
 
-        if(text_length){
+        if (0 < text_length){
             txt=NULL;
             txt=(char*)malloc(text_length*sizeof(char));
-            if(!txt){
-                erri=__LINE__;
+            if (NULL == txt) {
+                erri = ORCM_ERR_OUT_OF_RESOURCE;
                 break;
             }
             memset(txt,0,text_length*sizeof(char));
 
             comma=',';
-            for(j=1; j!=in_hier_row_length; ++j){
-                if(j+1==in_hier_row_length){
+            for (j=1; j < in_hier_row_length; ++j) {
+                if (j+1 == in_hier_row_length) {
                     comma='\0';
                 }
                 uu=in_hierarchy[j];
-                if(0>uu){
+                if (0 > uu) {
                     continue;
-                }else{
+                } else {
                     tt=in_items[uu];
-                    if('m'!=tt[0] && 'M'!=tt[0]){
+                    if ('m' != tt[0] && 'M' != tt[0]) {
                         continue;
                     }
-                    if( ! strcasecmp(tt,"mca-params") ){
-                        text_length=strlen(txt);
-                        sprintf(txt+text_length,"%s%c",in_items[uu+1]+1,comma);
+                    if (0 == strcasecmp(tt,"mca-params")) {
+                        text_length = strlen(txt);
+                        sprintf(txt+text_length, "%s%c" , in_items[uu+1]+1, comma);
                     }
                 }
             }
 
             xml = NULL;
             xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-            if(!xml){
-                erri=__LINE__;
+            if (NULL == xml) {
+                erri = ORCM_ERR_OUT_OF_RESOURCE;
                 break;
             }
             opal_list_append(&io_parent->subvals, &xml->super);
 
             xml->name = strdup("mca-params");
-            if(ORTE_SUCCESS!=opal_argv_append_nosize(&xml->value, txt)){
-                erri=__LINE__;
+            if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, txt))) {
                 break;
             }
             txt=NULL;
-        }/*if(text_length)*/
+        } /*if(text_length)*/
 
         /*The handle the shost*/
-        for(j=1; j!=in_hier_row_length; ++j){
+        for (j=1; j < in_hier_row_length; ++j) {
             uu=in_hierarchy[j];
-            if(0>uu){
+            if (0 > uu) {
                 continue;
-            }else{
+            } else {
                 tt=in_items[uu];
-                if('s'!=tt[0] && 'S'!=tt[0]){
+                if ('s' != tt[0] && 'S' != tt[0]) {
                     continue;
                 }
-                if( ! strcasecmp(tt,"shost") ){
+                if (0 == strcasecmp(tt,"shost")) {
                     xml = NULL;
                     xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-                    if(!xml){
-                        erri=__LINE__;
+                    if (NULL == xml) {
+                        erri = ORCM_ERR_OUT_OF_RESOURCE;
                         break;
                     }
                     opal_list_append(&io_parent->subvals, &xml->super);
@@ -3220,8 +3177,7 @@ static int transfer_to_scheduler( char ** in_items
 
                     txt=NULL;
                     txt = strdup(in_items[uu+1]+1);
-                    if(ORTE_SUCCESS!=opal_argv_append_nosize(&xml->value, txt)){
-                        erri=__LINE__;
+                    if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, txt))) {
                         break;
                     }
                     txt=NULL;
@@ -3230,21 +3186,21 @@ static int transfer_to_scheduler( char ** in_items
         }
 
         /*Then the ports */
-        for(j=1; j!=in_hier_row_length; ++j){
+        for (j=1; j < in_hier_row_length; ++j) {
             uu=in_hierarchy[j];
-            if(0>uu){
+            if (0 > uu) {
                 continue;
             }
             tt=in_items[uu];
-            if('p'!=tt[0] && 'P'!=tt[0]){
+            if ('p' != tt[0] && 'P' != tt[0]) {
                 continue;
             }
 
-            if(  ! strcasecmp(tt,"port") ) {
+            if (0 == strcasecmp(tt,"port")) {
                 xml = NULL;
                 xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-                if(!xml){
-                    erri=__LINE__;
+                if (NULL == xml){
+                    erri = ORCM_ERR_OUT_OF_RESOURCE;
                     break;
                 }
                 opal_list_append(&io_parent->subvals, &xml->super);
@@ -3254,15 +3210,14 @@ static int transfer_to_scheduler( char ** in_items
 
                 txt=NULL;
                 txt = strdup(in_items[uu+1]+1);
-                if(ORTE_SUCCESS!=opal_argv_append_nosize(&xml->value, txt)){
-                    erri=__LINE__;
+                if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, txt))) {
                     break;
                 }
                 txt=NULL;
 
             }
         } /*for(j=1; j!=hier_row_length[i]; ++j)*/
-        if(erri){
+        if (ORCM_SUCCESS != erri) {
             break;
         }
         break;
@@ -3276,50 +3231,50 @@ static int remove_empty_items(char ** io_items, unsigned long * io_sz_items)
     char * t=NULL;
     char * tt=NULL;
 
-    int erri=0;
-    while(!erri){
-        if( ! io_sz_items || !io_items){
-            erri=__LINE__;
+    int erri=ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+        if (!io_sz_items || !io_items) {
+            erri = ORCM_ERR_BAD_PARAM;
             break;
         }
-        if(0==*io_sz_items){
+        if (0 == *io_sz_items) {
             break;
         }
 
-        for(i=0; i!=*io_sz_items; ++i){
+        for (i=0; i < *io_sz_items; ++i) {
             t = io_items[i];
-            if(!t){
+            if ('\0' == t){
                 continue;
             }
-            if('\t'==t[0] || '/'==t[0]){
-                continue;
-            }
-
-            if(i+1 == *io_sz_items){
+            if ('\t' == t[0] || '/' == t[0]) {
                 continue;
             }
 
-            tt=io_items[i+1];
-            if('\t'==tt[0]){
+            if (i+1 == *io_sz_items) {
+                continue;
+            }
+
+            tt = io_items[i+1];
+            if ('\t' == tt[0]) {
                 continue;
             }
 
             ++tt; /*Jump over the foward slash*/
-            if( ! strcasecmp(t,tt) ){
+            if (0 == strcasecmp(t,tt)) {
                 /*Empty field found*/
-                io_items[i]=NULL;
-                io_items[i+1]=NULL;
+                io_items[i] = NULL;
+                io_items[i+1] = NULL;
             }
         }
-        if(erri){
+        if (ORCM_SUCCESS != erri) {
             break;
         }
 
         /*Remove nulled entries */
         k=-1;
-        for(i=0; i!=*io_sz_items; ++i){
+        for (i=0; i < *io_sz_items; ++i) {
             t=io_items[i];
-            if(t){
+            if ('\0' != t) {
                 ++k;
                 io_items[k]=io_items[i];
             }
@@ -3331,85 +3286,77 @@ static int remove_empty_items(char ** io_items, unsigned long * io_sz_items)
     return erri;
 }
 
-static int remove_duplicate_singletons( char ** in_items
-                                      , long ** io_hierarchy
-                                      , unsigned long * io_hier_row_length
-                                      , unsigned long * io_sz_hierarchy
-                                      )
+static int remove_duplicate_singletons(char ** in_items,
+                                       long ** io_hierarchy,
+                                       unsigned long * io_hier_row_length,
+                                       unsigned long * io_sz_hierarchy)
 {
-/* #   define EMSG0(text) fprintf(stderr,text"\n")
- * #   define EMSG1(text, a1) fprintf(stderr,text"\n",a1)
- * #   define EMSG2(text, a1, a2) fprintf(stderr,text"\n",a1,a2)
- */
-#   define EMSG0(text) opal_output_verbose(V_LO, OUTID, text)
-#   define EMSG1(text, a1) opal_output_verbose(V_LO, OUTID, text,a1)
-#   define EMSG2(text, a1, a2) opal_output_verbose(V_LO, OUTID, text,a1,a2)
-
-    const int OUTID = orcm_cfgi_base_framework.framework_output;
-
     unsigned long i=0, j=0, k=0;
     long u=0, v=0;
     char * t=NULL, *tt=NULL, *context=NULL;
 
-    int erri=0;
-    while(!erri){
-        for(i=0; i!=*io_sz_hierarchy; ++i){
-            context= in_items[ io_hierarchy[i][0] ];
-            for(j=0; j!=io_hier_row_length[i]; ++j){
-                u=io_hierarchy[i][j];
-                if(0>u){
+    int erri=ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+        for (i=0; i < *io_sz_hierarchy; ++i) {
+            context = in_items[ io_hierarchy[i][0] ];
+            for (j=0; j < io_hier_row_length[i]; ++j) {
+                u = io_hierarchy[i][j];
+                if (0 > u) {
                     /*=====  Sectional items */
-                    t=in_items[ io_hierarchy[-u][0] ];
-                    if( ! isa_singleton(t) ){
+                    t=in_items[io_hierarchy[-u][0]];
+                    if (!isa_singleton(t)) {
                         continue;
                     }
-                    for(k=j+1; k<io_hier_row_length[i]; ++k){
+                    for (k=j+1; k < io_hier_row_length[i]; ++k) {
                         v=io_hierarchy[i][k];
-                        if(0<=v){
-                            erri=__LINE__;
-                            EMSG1("ERROR: XML parser inconsistency found: %d", erri);
+                        if (0 <= v) {
+                            erri = ORCM_ERR_BAD_PARAM;
+                            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                                "ERROR: XML parser inconsistency found: %d", __LINE__);
                             break;
                         }
                         tt=in_items[ io_hierarchy[-v][0] ];
-                        if( ! strcasecmp(t,tt) ){
-                            EMSG2("ERROR: More than one instance of the command \"%s\" was found in \"%s\"",tt,context);
-                            erri=__LINE__;
+                        if (0 == strcasecmp(t,tt)) {
+                            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                                "ERROR: More than one instance of the command \"%s\" was found in \"%s\"",tt,context);
+                            erri = ORCM_ERR_BAD_PARAM;
                             break;
                         }
                     }
-                    if(erri){
+                    if (ORCM_SUCCESS != erri) {
                         break;
                     }
 
-                }else{
+                } else {
                     /*===== non-Sectional items */
                     t=in_items[u];
-                    if( ! isa_singleton(t) ){
+                    if (!isa_singleton(t)) {
                         continue;
                     }
-                    for(k=j+1; k<io_hier_row_length[i]; ++k){
+                    for (k=j+1; k < io_hier_row_length[i]; ++k) {
                         v=io_hierarchy[i][k];
-                        if(0>v){
+                        if (0 > v) {
                             /*No need to check sectional items */
                             break;
                         }
                         tt=in_items[v];
-                        if( ! strcasecmp(t,tt) ){
-                            EMSG2("ERROR: More than one instance of the command \"%s\" was found in \"%s\"",tt,context);
-                            erri=__LINE__;
+                        if (0 == strcasecmp(t,tt)) {
+                            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                                "ERROR: More than one instance of the command \"%s\" was found in \"%s\"",tt,context);
+                            erri = ORCM_ERR_BAD_PARAM;
                             break;
                         }
                     }
-                    if(erri){
+                    if (ORCM_SUCCESS != erri) {
                         break;
                     }
                 }
             }
-            if(erri){
+            if (ORCM_SUCCESS != erri) {
                 break;
             }
         }
-        if(erri){
+        if (ORCM_SUCCESS != erri) {
             break;
         }
 

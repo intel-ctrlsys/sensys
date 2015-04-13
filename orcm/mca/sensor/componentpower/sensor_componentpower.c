@@ -36,6 +36,8 @@
 #include "opal/util/os_path.h"
 #include "opal/util/output.h"
 #include "opal/util/os_dirpath.h"
+#include "opal/runtime/opal_progress_threads.h"
+
 
 #include "orte/util/name_fns.h"
 #include "orte/util/show_help.h"
@@ -54,6 +56,8 @@ static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void componentpower_sample(orcm_sensor_sampler_t *sampler);
+static void perthread_componentpower_sample(int fd, short args, void *cbdata);
+static void collect_sample(orcm_sensor_sampler_t *sampler);
 static void componentpower_log(opal_buffer_t *buf);
 static int detect_num_sockets(void);
 static int detect_num_cpus(void);
@@ -74,6 +78,8 @@ orcm_sensor_base_module_t orcm_sensor_componentpower_module = {
 __time_val _tv;
 __rapl _rapl;
 
+static orcm_sensor_sampler_t *componentpower_sampler = NULL;
+static orcm_sensor_componentpower_t orcm_sensor_componentpower;
 static bool log_enabled = true;
 
 static int init(void)
@@ -294,6 +300,30 @@ static void start(orte_jobid_t jobid)
         _rapl.ddr_rapl_support=0;
     }
 
+    /* start a separate componentpower progress thread for sampling */
+    if (mca_sensor_componentpower_component.use_progress_thread) {
+        if (!orcm_sensor_componentpower.ev_active) {
+            orcm_sensor_componentpower.ev_active = true;
+            if (NULL == (orcm_sensor_componentpower.ev_base = opal_start_progress_thread("componentpower", true))) {
+                orcm_sensor_componentpower.ev_active = false;
+                return;
+            }
+        }
+
+        /* setup componentpower sampler */
+        componentpower_sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+        /* check if componentpower sample rate is provided for this*/
+        if (mca_sensor_componentpower_component.sample_rate) {
+            componentpower_sampler->rate.tv_sec = mca_sensor_componentpower_component.sample_rate;
+        } else {
+            componentpower_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        }
+        componentpower_sampler->log_data = orcm_sensor_base.log_samples;
+        opal_event_evtimer_set(orcm_sensor_componentpower.ev_base, &componentpower_sampler->ev,
+                               perthread_componentpower_sample, componentpower_sampler);
+        opal_event_evtimer_add(&componentpower_sampler->ev, &componentpower_sampler->rate);
+    }
     return;
 }
 
@@ -302,12 +332,52 @@ static void start(orte_jobid_t jobid)
  */
 static void stop(orte_jobid_t jobid)
 {
+    if (orcm_sensor_componentpower.ev_active) {
+        orcm_sensor_componentpower.ev_active = false;
+        /* stop the thread without releasing the event base */
+        opal_stop_progress_thread("componentpower", false);
+    }
     return;
 }
 /*
  *  sample componentpower every X seconds
 */
 static void componentpower_sample(orcm_sensor_sampler_t *sampler)
+{
+    int rc;
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor componentpower : componentpower_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    if (!mca_sensor_componentpower_component.use_progress_thread) {
+       collect_sample(sampler);
+    }
+
+}
+
+static void perthread_componentpower_sample(int fd, short args, void *cbdata)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
+
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor componentpower : perthread_componentpower_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    
+    /* this has fired in the sampler thread, so we are okay to
+     * just go ahead and sample since we do NOT allow both the
+     * base thread and the component thread to both be actively
+     * calling this component */
+    collect_sample(sampler);
+    /* we now need to push the results into the base event thread
+     * so it can add the data to the base bucket */
+    ORCM_SENSOR_XFER(&sampler->bucket);
+    /* clear the bucket */
+    OBJ_DESTRUCT(&sampler->bucket);
+    OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+    /* set ourselves to sample again */
+    opal_event_evtimer_add(&sampler->ev, &sampler->rate);
+}
+
+static void collect_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     char *freq;

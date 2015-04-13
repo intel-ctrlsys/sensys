@@ -21,6 +21,8 @@ BEGIN_C_DECLS
 typedef struct {
     orcm_sensor_base_component_t super;
     bool test;
+    bool use_progress_thread;
+    int sample_rate;
 } orcm_sensor_nodepower_component_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_nodepower_component_t mca_sensor_nodepower_component;
@@ -66,6 +68,12 @@ typedef struct {
     struct timeval tv_prev;
     unsigned long long interval;
 } __time_val;
+
+typedef struct {
+    opal_event_base_t *ev_base;
+    bool ev_active;
+    int sample_rate;
+} orcm_sensor_nodepower_t;
 
 #define NODEPOWER_PA_R (0xb0)
 #define NODEPOWER_PB_R (0xb2)

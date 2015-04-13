@@ -671,12 +671,12 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
         /* extract the hosts */
         if (NULL != alloc->nodes) {
             opal_output_verbose(2, orcm_globals.output,
-                "REGEX ### nodes = %s", alloc->nodes);
+                                "REGEX ### nodes = %s", alloc->nodes);
             orte_regex_extract_node_names (alloc->nodes, &hosts); 
             for (i=0; hosts[i] != NULL; i++) {
                 if (0 == strcmp(orte_process_info.nodename, hosts[i])) {
                     opal_output_verbose(2, orcm_globals.output,
-                        "REGEX ### node name = %s vpid = %d \n", hosts[i], i);
+                                        "REGEX ### node name = %s vpid = %d \n", hosts[i], i);
                     vpid = i;
                 }
             }
@@ -746,13 +746,13 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
     foo = opal_argv_join(argv, ' ');
     if( hnp ) {
         opal_output_verbose(2, orcm_globals.output,
-                "%s FORKING HNP : %s ...\n\n",
-                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), foo);
+                            "%s FORKING HNP : %s ...\n\n",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), foo);
     } else {
         sleep(2);
         opal_output_verbose(2, orcm_globals.output,
-                "%s FORKING STEPD DAEMONS: %s ...\n\n",
-                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), foo);
+                            "%s FORKING STEPD DAEMONS: %s ...\n\n",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), foo);
     }
     free(foo);
 
@@ -794,41 +794,27 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
         sigprocmask(0, 0, &sigs);
         sigprocmask(SIG_UNBLOCK, &sigs, 0);
 
-#if OPAL_ENABLE_GETPWUID
-        if (alloc->caller_uid) {
-                struct passwd *pwdent;
-
-#ifdef HAVE_GETPWUID
-                pwdent = getpwuid(alloc->caller_uid);
-                if (NULL == pwdent) {
-                    /* this indicates a problem with the passwd system,
-                     * so pretty-print a message and exit
-                     */
-                    orte_show_help("help-orcmsd.txt",
-                                   "orcmsd:session:dir:nopwname", true);
+        /* we can only perform setgid and setuid if we are root */
+        if (0 == geteuid()) {
+            if (0 != alloc->caller_gid) {
+                rc = setgid(alloc->caller_gid);
+                if (rc == -1) {
+                    opal_output(0, "%s : stepd gid %d error %s\n",
+                                orte_process_info.nodename, alloc->caller_gid, strerror(errno));
+                    orte_show_help("help-orcmd.txt", "orcmd:execv-error",
+                                   true, cmd, strerror(errno));
                     exit(1);
                 }
-#endif
-        }
-#endif
-        if (alloc->caller_gid) {
-            rc = setgid(alloc->caller_gid);
-            if (rc == -1) {
-                opal_output(0, "%s : stepd gid %d error %s\n",
-                    orte_process_info.nodename, alloc->caller_gid, strerror(errno));
-                orte_show_help("help-orcmd.txt", "orcmd:execv-error",
-                           true, cmd, strerror(errno));
-                exit(1);
             }
-        }
-        if (alloc->caller_uid) {
-            rc = setuid(alloc->caller_uid);
-            if (rc == -1) {
-                opal_output(0, "%s : stepd uid %d  error  %s\n",
-                    orte_process_info.nodename, alloc->caller_uid, strerror(errno));
-                orte_show_help("help-orcmd.txt", "orcmd:execv-error",
-                           true, cmd, strerror(errno));
-                exit(1);
+            if (0 != alloc->caller_uid) {
+                rc = setuid(alloc->caller_uid);
+                if (rc == -1) {
+                    opal_output(0, "%s : stepd uid %d  error  %s\n",
+                                orte_process_info.nodename, alloc->caller_uid, strerror(errno));
+                    orte_show_help("help-orcmd.txt", "orcmd:execv-error",
+                                   true, cmd, strerror(errno));
+                    exit(1);
+                }
             }
         }
 
@@ -836,7 +822,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
 
         /* if I get here, the execv failed! */
         orte_show_help("help-orcmd.txt", "orcmd:execv-error",
-                   true, cmd, strerror(errno));
+                       true, cmd, strerror(errno));
         exit(1);
     } else {
 
@@ -852,7 +838,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
         req->rate.tv_usec=0;
         req->pid = s_pid;
         opal_event_evtimer_set(orte_event_base, &req->ev,
-                              orcmd_wpid_timer_recv, req);
+                               orcmd_wpid_timer_recv, req);
         opal_event_evtimer_add(&req->ev, &req->rate);
 
         opal_argv_free(argv);

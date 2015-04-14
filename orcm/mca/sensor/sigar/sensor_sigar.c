@@ -37,6 +37,7 @@
 #include "opal/util/output.h"
 #include "opal/mca/pstat/pstat.h"
 #include "opal/mca/event/event.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 
@@ -52,6 +53,8 @@ static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void sigar_sample(orcm_sensor_sampler_t *sampler);
+static void perthread_sigar_sample(int fd, short args, void *cbdata);
+static void collect_sample(orcm_sensor_sampler_t *sampler);
 static void sigar_log(opal_buffer_t *buf);
 
 /* instantiate the module */
@@ -137,6 +140,8 @@ static struct swap_data_t {
 } pswap;
 static bool log_enabled = true;
 static opal_buffer_t test_vector;
+static orcm_sensor_sampler_t *sigar_sampler = NULL;
+static orcm_sensor_sigar_t orcm_sensor_sigar;
 
 static uint64_t metric_diff_calc(sigar_uint64_t newval, uint64_t oldval,
                                  const char *name_for_log,
@@ -235,12 +240,40 @@ static void finalize(void)
  */
 static void start(orte_jobid_t jobid)
 {
+    /* start a separate sigar progress thread for sampling */
+    if (mca_sensor_sigar_component.use_progress_thread) {
+        if (!orcm_sensor_sigar.ev_active) {
+            orcm_sensor_sigar.ev_active = true;
+            if (NULL == (orcm_sensor_sigar.ev_base = opal_start_progress_thread("sigar", true))) {
+                orcm_sensor_sigar.ev_active = false;
+                return;
+            }
+        }
+
+        /* setup sigar sampler */
+        sigar_sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+        /* check if sigar sample rate is provided for this*/
+        if (mca_sensor_sigar_component.sample_rate) {
+            sigar_sampler->rate.tv_sec = mca_sensor_sigar_component.sample_rate;
+        } else {
+            sigar_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        }
+        sigar_sampler->log_data = orcm_sensor_base.log_samples;
+        opal_event_evtimer_set(orcm_sensor_sigar.ev_base, &sigar_sampler->ev,
+                               perthread_sigar_sample, sigar_sampler);
+        opal_event_evtimer_add(&sigar_sampler->ev, &sigar_sampler->rate);
+    }
     return;
 }
 
-
 static void stop(orte_jobid_t jobid)
 {
+    if (orcm_sensor_sigar.ev_active) {
+        orcm_sensor_sigar.ev_active = false;
+        /* stop the thread without releasing the event base */
+        opal_stop_progress_thread("sigar", false);
+    }
     return;
 }
 
@@ -815,7 +848,43 @@ static int sigar_collect_procstat(opal_buffer_t *dataptr)
     
     return ORCM_SUCCESS;
 }
+
 static void sigar_sample(orcm_sensor_sampler_t *sampler)
+{
+    int rc;
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor sigar : sigar_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    if (!mca_sensor_sigar_component.use_progress_thread) {
+       collect_sample(sampler);
+    }
+
+}
+
+static void perthread_sigar_sample(int fd, short args, void *cbdata)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
+
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor sigar : perthread_sigar_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    
+    /* this has fired in the sampler thread, so we are okay to
+     * just go ahead and sample since we do NOT allow both the
+     * base thread and the component thread to both be actively
+     * calling this component */
+    collect_sample(sampler);
+    /* we now need to push the results into the base event thread
+     * so it can add the data to the base bucket */
+    ORCM_SENSOR_XFER(&sampler->bucket);
+    /* clear the bucket */
+    OBJ_DESTRUCT(&sampler->bucket);
+    OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+    /* set ourselves to sample again */
+    opal_event_evtimer_add(&sampler->ev, &sampler->rate);
+}
+
+static void collect_sample(orcm_sensor_sampler_t *sampler)
 {
     opal_buffer_t data, *bptr;
     int rc;

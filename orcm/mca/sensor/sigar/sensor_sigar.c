@@ -851,7 +851,6 @@ static int sigar_collect_procstat(opal_buffer_t *dataptr)
 
 static void sigar_sample(orcm_sensor_sampler_t *sampler)
 {
-    int rc;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor sigar : sigar_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));

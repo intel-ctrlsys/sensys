@@ -837,7 +837,6 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 
 static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 {
-    int rc;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor ipmi : ipmi_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));

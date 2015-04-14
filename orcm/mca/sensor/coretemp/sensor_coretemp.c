@@ -33,6 +33,7 @@
 #include "opal/util/os_path.h"
 #include "opal/util/output.h"
 #include "opal/util/os_dirpath.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orte/util/name_fns.h"
 #include "orte/util/show_help.h"
@@ -53,6 +54,8 @@ static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void coretemp_sample(orcm_sensor_sampler_t *sampler);
+static void perthread_coretemp_sample(int fd, short args, void *cbdata);
+static void collect_sample(orcm_sensor_sampler_t *sampler);
 static void coretemp_log(opal_buffer_t *buf);
 
 /* instantiate the module */
@@ -140,6 +143,8 @@ OBJ_CLASS_INSTANCE(coretemp_tracker_t,
 static bool log_enabled = true;
 static opal_list_t tracking;
 static opal_list_t event_history;
+static orcm_sensor_sampler_t *coretemp_sampler = NULL;
+static orcm_sensor_coretemp_t orcm_sensor_coretemp;
 
 char **coretemp_policy_list; /* store coretemp policies from MCA parameter */
 
@@ -655,16 +660,80 @@ static void finalize(void)
  */
 static void start(orte_jobid_t jobid)
 {
+    /* start a separate coretemp progress thread for sampling */
+    if (mca_sensor_coretemp_component.use_progress_thread) {
+        if (!orcm_sensor_coretemp.ev_active) {
+            orcm_sensor_coretemp.ev_active = true;
+            if (NULL == (orcm_sensor_coretemp.ev_base = opal_start_progress_thread("coretemp", true))) {
+                orcm_sensor_coretemp.ev_active = false;
+                return;
+            }
+        }
+
+        /* setup coretemp sampler */
+        coretemp_sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+        /* check if coretemp sample rate is provided for this*/
+        if (mca_sensor_coretemp_component.sample_rate) {
+            coretemp_sampler->rate.tv_sec = mca_sensor_coretemp_component.sample_rate;
+        } else {
+            coretemp_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        }
+        coretemp_sampler->log_data = orcm_sensor_base.log_samples;
+        opal_event_evtimer_set(orcm_sensor_coretemp.ev_base, &coretemp_sampler->ev,
+                               perthread_coretemp_sample, coretemp_sampler);
+        opal_event_evtimer_add(&coretemp_sampler->ev, &coretemp_sampler->rate);
+    }
     return;
 }
 
 
 static void stop(orte_jobid_t jobid)
 {
+    if (orcm_sensor_coretemp.ev_active) {
+        orcm_sensor_coretemp.ev_active = false;
+        /* stop the thread without releasing the event base */
+        opal_stop_progress_thread("coretemp", false);
+    }
     return;
 }
 
 static void coretemp_sample(orcm_sensor_sampler_t *sampler)
+{
+    int rc;
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor coretemp : coretemp_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    if (!mca_sensor_coretemp_component.use_progress_thread) {
+       collect_sample(sampler);
+    }
+
+}
+
+static void perthread_coretemp_sample(int fd, short args, void *cbdata)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
+
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor coretemp : perthread_coretemp_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    
+    /* this has fired in the sampler thread, so we are okay to
+     * just go ahead and sample since we do NOT allow both the
+     * base thread and the component thread to both be actively
+     * calling this component */
+    collect_sample(sampler);
+    /* we now need to push the results into the base event thread
+     * so it can add the data to the base bucket */
+    ORCM_SENSOR_XFER(&sampler->bucket);
+    /* clear the bucket */
+    OBJ_DESTRUCT(&sampler->bucket);
+    OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+    /* set ourselves to sample again */
+    opal_event_evtimer_add(&sampler->ev, &sampler->rate);
+}
+
+static void collect_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     coretemp_tracker_t *trk, *nxt;

@@ -30,7 +30,15 @@ struct orcm_sensor_file_component_t {
     bool check_access;
     bool check_mod;
     int limit;
+    bool use_progress_thread;
 };
+
+typedef struct {
+    opal_event_base_t *ev_base;
+    bool ev_active;
+    int sample_rate;
+} orcm_sensor_file_t;
+
 typedef struct orcm_sensor_file_component_t orcm_sensor_file_component_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_file_component_t mca_sensor_file_component;

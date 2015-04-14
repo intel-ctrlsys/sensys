@@ -41,6 +41,7 @@
 
 #include "opal_stdint.h"
 #include "opal/util/output.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/errmgr.h"
@@ -58,6 +59,8 @@ static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void file_sample(orcm_sensor_sampler_t *sampler);
+static void perthread_file_sample(int fd, short args, void *cbdata);
+static void collect_sample(orcm_sensor_sampler_t *sampler);
 static void file_log(opal_buffer_t *sample);
 
 /* instantiate the module */
@@ -108,6 +111,8 @@ OBJ_CLASS_INSTANCE(file_tracker_t,
 
 /* local globals */
 static opal_list_t jobs; 
+static orcm_sensor_sampler_t *file_sampler = NULL;
+static orcm_sensor_file_t orcm_sensor_file;
 
 static int init(void)
 {
@@ -252,6 +257,31 @@ static void start(orte_jobid_t jobid)
                          ft->file, ft->check_size ? "SIZE:" : " ",
                          ft->check_access ? "ACCESS TIME:" : " ",
                          ft->check_mod ? "MOD TIME" : " ", ft->limit));
+
+    /* start a separate file progress thread for sampling */
+    if (mca_sensor_file_component.use_progress_thread) {
+        if (!orcm_sensor_file.ev_active) {
+            orcm_sensor_file.ev_active = true;
+            if (NULL == (orcm_sensor_file.ev_base = opal_start_progress_thread("file", true))) {
+                orcm_sensor_file.ev_active = false;
+                return;
+            }
+        }
+
+        /* setup file sampler */
+        file_sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+        /* check if file sample rate is provided for this*/
+        if (mca_sensor_file_component.sample_rate) {
+            file_sampler->rate.tv_sec = mca_sensor_file_component.sample_rate;
+        } else {
+            file_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        }
+        file_sampler->log_data = orcm_sensor_base.log_samples;
+        opal_event_evtimer_set(orcm_sensor_file.ev_base, &file_sampler->ev,
+                               perthread_file_sample, file_sampler);
+        opal_event_evtimer_add(&file_sampler->ev, &file_sampler->rate);
+    }
     return;
 }
 
@@ -275,10 +305,50 @@ static void stop(orte_jobid_t jobid)
             OBJ_RELEASE(item);
         }
     }
+
+    if (orcm_sensor_file.ev_active) {
+        orcm_sensor_file.ev_active = false;
+        /* stop the thread without releasing the event base */
+        opal_stop_progress_thread("file", false);
+    }
     return;
 }
 
 static void file_sample(orcm_sensor_sampler_t *sampler)
+{
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor file : file_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    if (!mca_sensor_file_component.use_progress_thread) {
+       collect_sample(sampler);
+    }
+
+}
+
+static void perthread_file_sample(int fd, short args, void *cbdata)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
+
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor file : perthread_file_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    
+    /* this has fired in the sampler thread, so we are okay to
+     * just go ahead and sample since we do NOT allow both the
+     * base thread and the component thread to both be actively
+     * calling this component */
+    collect_sample(sampler);
+    /* we now need to push the results into the base event thread
+     * so it can add the data to the base bucket */
+    ORCM_SENSOR_XFER(&sampler->bucket);
+    /* clear the bucket */
+    OBJ_DESTRUCT(&sampler->bucket);
+    OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+    /* set ourselves to sample again */
+    opal_event_evtimer_add(&sampler->ev, &sampler->rate);
+}
+
+static void collect_sample(orcm_sensor_sampler_t *sampler)
 {
     struct stat buf;
     opal_list_item_t *item;

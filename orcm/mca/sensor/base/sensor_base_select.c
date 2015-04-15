@@ -211,7 +211,9 @@ int orcm_sensor_base_select(void)
                  */
                 if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
                     i_module->sampling = false;
+                    opal_output(0," ORTE PROC IS HNP/AGGR");
                 } else {
+                    i_module->module->finalize();
                     opal_pointer_array_set_item(&orcm_sensor_base.modules, i, NULL);
                     OBJ_RELEASE(i_module);
                 }

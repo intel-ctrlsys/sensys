@@ -109,7 +109,7 @@ OBJ_CLASS_INSTANCE(mcedata_tracker_t,
 
 static bool log_enabled = true;
 static opal_list_t tracking;
-
+static bool mcelog_avail = false;
 char mce_reg_name [MCE_REG_COUNT][12]  = {
     "MCG_STATUS",
     "MCG_CAP",
@@ -164,11 +164,11 @@ static int init(void)
     /*
      * Open up the base directory so we can get a listing
      */
-    if (NULL == (cur_dirp = opendir("/sys/bus/platform/devices"))) {
+    if (NULL == (cur_dirp = opendir("/dev"))) {
         OBJ_DESTRUCT(&tracking);
         orte_show_help("help-orcm-sensor-mcedata.txt", "req-dir-not-found",
                        true, orte_process_info.nodename,
-                       "/sys/bus/platform/devices");
+                       "/dev");
         return ORTE_ERROR;
     }
 
@@ -176,182 +176,28 @@ static int init(void)
      * For each directory
      */
     while (NULL != (dir_entry = readdir(cur_dirp))) {
-        
-        /* look for coretemp directories */
-        if (0 != strncmp(dir_entry->d_name, "coretemp", strlen("coretemp"))) {
-            continue;
-        }
+
         skt = strchr(dir_entry->d_name, '.');
         if (NULL != skt) {
             skt++;
         }
 
         /* open that directory */
-        if (NULL == (dirname = opal_os_path(false, "/sys/bus/platform/devices", dir_entry->d_name, NULL ))) {
+        if (NULL == (dirname = opal_os_path(false, "/dev", dir_entry->d_name, NULL ))) {
             continue;
         }
-        if (NULL == (tdir = opendir(dirname))) {
-            free(dirname);
-            continue;
-        }
-        OBJ_CONSTRUCT(&foobar, opal_list_t);
-        while (NULL != (entry = readdir(tdir))) {
-            /*
-             * Skip the obvious
-             */
-            if (NULL == entry->d_name) {
-                continue;
-            }
-
-            if (0 == strncmp(entry->d_name, ".", strlen(".")) ||
-                0 == strncmp(entry->d_name, "..", strlen(".."))) {
-                continue;
-            }
-            if (strlen(entry->d_name) < (tlen+ilen)) {
-                /* cannot be a core temp file */
-                continue;
-            }
-            /*
-             * See if this is a core temp file
-             */
-            if (0 != strncmp(entry->d_name, "temp", strlen("temp"))) {
-                continue;
-            }
-            if (0 != strcmp(entry->d_name + strlen(entry->d_name) - ilen, "_input")) {
-                continue;
-            }
-            /* track the info for this core */
-            trk = OBJ_NEW(mcedata_tracker_t);
-            if (NULL != skt) {
-                trk->socket = strtol(skt, NULL, 10);
-            }
-            trk->file = opal_os_path(false, dirname, entry->d_name, NULL);
-            /* take the part up to the first underscore as this will
-             * be used as the start of all the related files
-             */
-            tmp = strdup(entry->d_name);
-            if (NULL == (ptr = strchr(tmp, '_'))) {
-                /* unrecognized format */
-                free(tmp);
-                OBJ_RELEASE(trk);
-                continue;
-            }
-            *ptr = '\0';
-            /* look for critical, max, and label info */
-            asprintf(&filename, "%s/%s_%s", dirname, tmp, "label");
-            if (NULL != (fp = fopen(filename, "r")))
-            {
-                if (NULL != (trk->label = orte_getline(fp)))
-                {
-                    fclose(fp);
-                    free(filename);
-                    if(NULL != (ptr = strcasestr(trk->label,"core"))) {
-                        trk->core = strtol(trk->label+strlen("core "), NULL, 10); /* This stores the core ID under each processor*/
-                    } else if (NULL != (ptr = strcasestr(trk->label,"Physical id "))) {
-                    } else {
-                        free(tmp);
-                        OBJ_RELEASE(trk);
-                        continue; /* We only collect core temperatures for now*/
-                    }
-                } else {
-                    ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
-                    fclose(fp);
-                    free(filename);
-                    free(tmp);
-                    OBJ_RELEASE(trk);
-                    continue;
-                }
-            } else {
-                ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
-                free(filename);
-                free(tmp);
-                OBJ_RELEASE(trk);
-                    continue;
-            }
-            asprintf(&filename, "%s/%s_%s", dirname, tmp, "crit");
-            if (NULL != (fp = fopen(filename, "r")))
-            {
-                if (NULL != (ptr = orte_getline(fp)))
-                {
-                    trk->critical_temp = strtol(ptr, NULL, 10)/1000.0;
-                    free(ptr);
-                    fclose(fp);
-                    free(filename);
-                } else {
-                    ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
-                    fclose(fp);
-                    free(filename);
-                    free(tmp);
-                    OBJ_RELEASE(trk);
-                    continue;
-                }
-            } else {
-                ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
-                free(filename);
-                free(tmp);
-                OBJ_RELEASE(trk);
-                continue;
-            }
-
-            asprintf(&filename, "%s/%s_%s", dirname, tmp, "max");
-            if (NULL != (fp = fopen(filename, "r")))
-            {
-                if (NULL != (ptr = orte_getline(fp)))
-                {
-                    trk->max_temp = strtol(ptr, NULL, 10)/1000.0;
-                    free(ptr);
-                    fclose(fp);
-                    free(filename);
-                } else {
-                    ORTE_ERROR_LOG(ORTE_ERR_FILE_READ_FAILURE);
-                    fclose(fp);
-                    free(filename);
-                    free(tmp);
-                    OBJ_RELEASE(trk);
-                    continue;
-                }
-            } else {
-                ORTE_ERROR_LOG(ORTE_ERR_FILE_OPEN_FAILURE);
-                free(filename);
-                OBJ_RELEASE(trk);
-                free(tmp);
-                continue;
-            }
-
-            /* add to our list, in core order */
-            inserted = false;
-            OPAL_LIST_FOREACH(t2, &foobar, mcedata_tracker_t) {
-                if (NULL != strcasestr(trk->label,"core")) {
-                    if (t2->core > trk->core) {
-                        opal_list_insert_pos(&foobar, &t2->super, &trk->super);
-                        inserted = true;
-                        break;
-                    }
-                }
-            }
-            if (!inserted) {
-                opal_list_append(&foobar, &trk->super);
-            }
-            /* cleanup */
-            free(tmp);
+        if (0 == strcmp(dirname, "/dev/mcelog"))
+        {
+            opal_output(0,"Dirname: %s", dirname);
+            mcelog_avail = true;
         }
         free(dirname);
-        closedir(tdir);
-        /* add the ordered list to our collection */
-        while (NULL != (t2 = (mcedata_tracker_t*)opal_list_remove_first(&foobar))) {
-            if(NULL != strcasestr(t2->label,"core")) {
-                t2->core = corecount++;
-                sprintf(t2->label, "core %d", t2->core);
-            }
-            opal_list_append(&tracking, &t2->super);
-        }
-        OPAL_LIST_DESTRUCT(&foobar);
     }
     closedir(cur_dirp);
 
-    if (0 == opal_list_get_size(&tracking)) {
+    if (mcelog_avail != true ) {
         /* nothing to read */
-        orte_show_help("help-orcm-sensor-coretemp.txt", "no-cores-found",
+        orte_show_help("help-orcm-sensor-mcedata.txt", "no-mcelog",
                        true, orte_process_info.nodename);
         return ORTE_ERROR;
     }

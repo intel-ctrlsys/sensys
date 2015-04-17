@@ -55,6 +55,21 @@
 #define     MCI_ADDR    3
 #define     MCI_MISC    4
 
+#define GEN_CACHE_ERR_MASK  (1<<3)
+#define TLB_ERR_MASK        (1<<4)
+#define MEM_CTRL_ERR_MASK   (1<<7)
+#define CACHE_ERR_MASK      (1<<8)
+#define BUS_IC_ERR_MASK     (1<<11)
+
+typedef enum _mcetype {
+    e_gen_cache_error,
+    e_tlb_error,
+    e_mem_ctrl_error,
+    e_cache_error,
+    e_bus_ic_error,
+    e_unknown_error
+} mcetype;
+
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
@@ -63,7 +78,13 @@ static void stop(orte_jobid_t job);
 static void mcedata_sample(orcm_sensor_sampler_t *sampler);
 static void mcedata_log(opal_buffer_t *buf);
 
-static void mcedata_decode(unsigned long *mce_reg);
+static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals);
+mcetype get_mcetype(uint64_t mci_status);
+static void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
+static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals);
+static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals);
+static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
+static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_mcedata_module = {
@@ -115,7 +136,8 @@ char mce_reg_name [MCE_REG_COUNT][12]  = {
     "MCG_CAP",
     "MCI_STATUS",
     "MCI_ADDR",
-    "MCI_MISC"};
+    "MCI_MISC"
+};
 
 static char *orte_getline(FILE *fp)
 {
@@ -154,8 +176,6 @@ static int init(void)
     FILE *fp;
     mcedata_tracker_t *trk, *t2;
     bool inserted;
-    opal_list_t foobar;
-    int corecount = 0;
     char *skt;
 
     /* always construct this so we don't segfault in finalize */
@@ -224,14 +244,152 @@ static void stop(orte_jobid_t jobid)
     return;
 }
 
-static void mcedata_decode(unsigned long *mce_reg)
+mcetype get_mcetype(uint64_t mci_status)
+{
+    if ( mci_status & BUS_IC_ERR_MASK) {
+        return e_bus_ic_error;
+    } else if (mci_status & CACHE_ERR_MASK) {
+        return e_cache_error;
+    } else if (mci_status & MEM_CTRL_ERR_MASK) {
+        return e_mem_ctrl_error;
+    } else if (mci_status & TLB_ERR_MASK) {
+        return e_tlb_error;
+    } else if (mci_status & GEN_CACHE_ERR_MASK) {
+        return e_gen_cache_error;
+    } else {
+        return e_unknown_error;
+    }
+
+}
+
+static void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
+{
+    opal_value_t *kv;
+    opal_output(0,"MCE Error Type 0 - Generic Cache Hierarchy Errors");
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("ErrorLocation");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("GenCacheError");
+    opal_list_append(vals, &kv->super);
+
+    /* Get the cache level */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("hierarchy_level");
+    kv->type = OPAL_STRING;
+    switch (mce_reg[MCI_STATUS] & 0x3) {
+        case 0: kv->data.string = strdup("Level 0"); break;
+        case 1: kv->data.string = strdup("Level 1"); break;
+        case 2: kv->data.string = strdup("Level 2"); break;
+        case 3: kv->data.string = strdup("Generic"); break;
+    }
+    opal_list_append(vals, &kv->super);
+}
+
+static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals)
+{
+    opal_value_t *kv;
+    opal_output(0,"MCE Error Type 1 - TLB Errors");
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("ErrorLocation");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("TLBError");
+    opal_list_append(vals, &kv->super);
+
+}
+
+static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
+{
+    opal_value_t *kv;
+    opal_output(0,"MCE Error Type 2 - Memory Controller Errors");
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("ErrorLocation");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("MemCtrlError");
+    opal_list_append(vals, &kv->super);
+
+}
+
+static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
+{
+    opal_value_t *kv;
+    opal_output(0,"MCE Error Type 3 - Cache Hierarchy Errors");
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("ErrorLocation");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("CacheError");
+    opal_list_append(vals, &kv->super);
+
+    /* Get the cache level */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("hierarchy_level");
+    kv->type = OPAL_STRING;
+    switch (mce_reg[MCI_STATUS] & 0x3) {
+        case 0: kv->data.string = strdup("Level 0"); break;
+        case 1: kv->data.string = strdup("Level 1"); break;
+        case 2: kv->data.string = strdup("Level 2"); break;
+        case 3: kv->data.string = strdup("Generic"); break;
+    }
+    opal_list_append(vals, &kv->super);
+
+}
+
+static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
+{
+    opal_value_t *kv;
+    opal_output(0,"MCE Error Type 4 - Bus and Interconnect Errors");
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("ErrorLocation");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("BusICError");
+    opal_list_append(vals, &kv->super);
+
+}
+
+static void mcedata_unknown_filter(unsigned long *mce_reg, opal_list_t *vals)
+{
+    opal_value_t *kv;
+    opal_output(0,"MCE Error Type 5 - Unknown Error");
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("ErrorLocation");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("Unknown Error");
+    opal_list_append(vals, &kv->super);
+
+}
+
+static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals)
 {
     int i = 0;
+    mcetype type;
     while (i < 5)
     {
-        opal_output(0,"Value: %lx - %s", mce_reg[i], mce_reg_name[i]);
+        opal_output_verbose(5,  orcm_sensor_base_framework.framework_output,
+                                "Value: %lx - %s", mce_reg[i], mce_reg_name[i]);
         i++;
     }
+
+    type = get_mcetype(mce_reg[MCI_STATUS]);
+    switch (type) {
+        case 0 :    mcedata_gen_cache_filter(mce_reg, vals);
+                    break;
+        case 1 :    mcedata_tlb_filter(mce_reg, vals);
+                    break;
+        case 2 :    mcedata_mem_ctrl_filter(mce_reg, vals);
+                    break;
+        case 3 :    mcedata_cache_filter(mce_reg, vals);
+                    break;
+        case 4 :    mcedata_bus_ic_filter(mce_reg, vals);
+                    break;
+        case 5 :    mcedata_unknown_filter(mce_reg, vals);
+                    break;
+    }
+
 }
 
 
@@ -246,9 +404,9 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
     bool packed;
     struct tm *sample_time;
     uint32_t i = 0;
-
     uint64_t mce_reg[MCE_REG_COUNT];
     int count = 0;
+
     while (0 == count) {
         i = 0;
         count++;
@@ -295,7 +453,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
          */
         mce_reg[MCG_STATUS] = 0x0;
         mce_reg[MCG_CAP]    = 0x1;
-        mce_reg[MCI_STATUS] = 0x2;
+        mce_reg[MCI_STATUS] = 0x8820000000000105;
         mce_reg[MCI_ADDR]   = 0x3;
         mce_reg[MCI_MISC]   = 0x4;
         packed = true;
@@ -311,8 +469,6 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
             }
             i++;
         }
-
-        mcedata_decode(mce_reg);
 
         /* xfer the data for transmission */
         if (packed) {
@@ -344,7 +500,7 @@ static void mcedata_log(opal_buffer_t *sample)
     int32_t n, i = 0;
     opal_list_t *vals;
     opal_value_t *kv;
-    uint64_t mce_reg;
+    uint64_t mce_reg[MCE_REG_COUNT];
 
     if (!log_enabled) {
         return;
@@ -405,19 +561,22 @@ static void mcedata_log(opal_buffer_t *sample)
     while (i < 5) {
         /* sample time */
         n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &mce_reg, &n, OPAL_UINT64))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &mce_reg[i], &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                    "Collected %s: %lu", mce_reg_name[i],mce_reg);
+                    "Collected %s: %lu", mce_reg_name[i],mce_reg[i]);
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup(mce_reg_name[i]);
         kv->type = OPAL_UINT64;
-        kv->data.uint64 = mce_reg;
+        kv->data.uint64 = mce_reg[i];
         opal_list_append(vals, &kv->super);
         i++;
     }
+
+    mcedata_decode(mce_reg, vals);
+
 
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {

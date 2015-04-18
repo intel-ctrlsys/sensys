@@ -328,12 +328,46 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     kv->key = strdup("hierarchy_level");
     kv->type = OPAL_STRING;
     switch (mce_reg[MCI_STATUS] & 0x3) {
-        case 0: kv->data.string = strdup("Level 0"); break;
-        case 1: kv->data.string = strdup("Level 1"); break;
-        case 2: kv->data.string = strdup("Level 2"); break;
-        case 3: kv->data.string = strdup("Generic"); break;
+        case 0: kv->data.string = strdup("L0"); break;
+        case 1: kv->data.string = strdup("L1"); break;
+        case 2: kv->data.string = strdup("L2"); break;
+        case 3: kv->data.string = strdup("G"); break;
     }
     opal_list_append(vals, &kv->super);
+
+    /* Transaction Type */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("transaction_type");
+    kv->type = OPAL_STRING;
+    switch ((mce_reg[MCI_STATUS] & 0xC) >> 2) {
+        case 0: kv->data.string = strdup("I"); break; /* Instruction */
+        case 1: kv->data.string = strdup("D"); break; /* Data */
+        case 2: kv->data.string = strdup("G"); break; /* Generic */
+        default: kv->data.string = strdup("Unknown"); break;
+    }
+    opal_list_append(vals, &kv->super);
+
+    /* Request Type */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("request_type");
+    kv->type = OPAL_STRING;
+    switch ((mce_reg[MCI_STATUS] & 0xF0) >> 4) {
+        case 0: kv->data.string = strdup("ERR"); break;     /* Generic Error */
+        case 1: kv->data.string = strdup("RD"); break;      /* Generic Read */
+        case 2: kv->data.string = strdup("WR"); break;      /* Generic Write */
+        case 3: kv->data.string = strdup("DRD"); break;     /* Data Read */
+        case 4: kv->data.string = strdup("DWR"); break;     /* Data Write */
+        case 5: kv->data.string = strdup("IRD"); break;     /* Instruction Read */
+        case 6: kv->data.string = strdup("PREFETCH"); break;/* Prefetch */
+        case 7: kv->data.string = strdup("EVICT"); break;   /* Evict */
+        case 8: kv->data.string = strdup("SNOOP"); break;   /* Snoop */
+        default: kv->data.string = strdup("Unknown"); break;
+        
+    }
+    opal_list_append(vals, &kv->super);
+
+
+
 
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -18,7 +18,7 @@
  * includes
  */
 
-#include "opal/mca/mca.h"
+#include "orcm/mca/mca.h"
 
 #include "orte/types.h"
 #include "orte/util/attr.h"
@@ -226,9 +226,8 @@ typedef orcm_pwrmgmt_base_component_1_0_0_t orcm_pwrmgmt_base_component_t;
  */
 #define ORCM_PWRMGMT_BASE_VERSION_1_0_0 \
   /* pwrmgmt v1.0 is chained to MCA v2.0 */ \
-  MCA_BASE_VERSION_2_0_0, \
-  /* pwrmgmt v1.0 */ \
-  "pwrmgmt", 1, 0, 0
+    ORCM_MCA_BASE_VERSION_2_1_0("pwrmgmt", 2, 0, 0)
+
 
 /* Global structure for accessing pwrmgmt functions
  */

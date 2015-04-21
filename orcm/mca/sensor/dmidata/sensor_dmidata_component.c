@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
  * Additional copyrights may follow
  * 
  * $HEADER$
@@ -26,17 +26,18 @@ orcm_sensor_dmidata_component_t mca_sensor_dmidata_component = {
     {
         {
             ORCM_SENSOR_BASE_VERSION_1_0_0,
-            
-            "dmidata", /* MCA component name */
-            ORCM_MAJOR_VERSION,  /* MCA component major version */
-            ORCM_MINOR_VERSION,  /* MCA component minor version */
-            ORCM_RELEASE_VERSION,  /* MCA component release version */
-            orcm_sensor_dmidata_open,  /* component open  */
-            orcm_sensor_dmidata_close, /* component close */
-            orcm_sensor_dmidata_query,  /* component query */
-            dmidata_component_register
+            /* Component name and version */
+            .mca_component_name = "dmidata",
+            MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                                  ORCM_RELEASE_VERSION),
+        
+            /* Component open and close functions */
+            .mca_open_component = orcm_sensor_dmidata_open,
+            .mca_close_component = orcm_sensor_dmidata_close,
+            .mca_query_component = orcm_sensor_dmidata_query,
+            .mca_register_component_params = dmidata_component_register
         },
-        {
+        .base_data = {
             /* The component is checkpoint ready */
             MCA_BASE_METADATA_PARAM_CHECKPOINT
         },

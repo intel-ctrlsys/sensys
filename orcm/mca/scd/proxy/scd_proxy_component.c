@@ -1,5 +1,5 @@
 /*
-# Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+# Copyright (c) 2014-2015 Intel, Inc.  All rights reserved. 
  *
  * $COPYRIGHT$
  * 
@@ -37,18 +37,17 @@ orcm_scd_base_component_t mca_scd_proxy_component = {
     {
         ORCM_SCD_BASE_VERSION_1_0_0,
         /* Component name and version */
-        "proxy",
-        ORCM_MAJOR_VERSION,
-        ORCM_MINOR_VERSION,
-        ORCM_RELEASE_VERSION,
+        .mca_component_name = "proxy",
+        MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                              ORCM_RELEASE_VERSION),
         
         /* Component open and close functions */
-        scd_proxy_open,
-        scd_proxy_close,
-        scd_proxy_component_query,
+        .mca_open_component = scd_proxy_open,
+        .mca_close_component = scd_proxy_close,
+        .mca_query_component = scd_proxy_component_query,
         NULL
     },
-    {
+    .base_data = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },

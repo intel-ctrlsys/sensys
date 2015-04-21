@@ -17,7 +17,7 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 
-#include "opal/mca/mca.h"
+#include "orcm/mca/mca.h"
 
 #include "orcm/mca/analytics/analytics_types.h"
 
@@ -131,10 +131,7 @@ typedef struct {
  * Macro for use in components that are of type analytics v1.0.0
  */
 #define ORCM_ANALYTICS_BASE_VERSION_1_0_0 \
-  /* analytics v1.0 is chained to MCA v2.0 */ \
-  MCA_BASE_VERSION_2_0_0, \
-  /* analytics v1.0 */ \
-  "analytics", 1, 0, 0
+    ORCM_MCA_BASE_VERSION_2_1_0("analytics", 1, 0, 0)
 
 /* Global structure for accessing name server functions
  */

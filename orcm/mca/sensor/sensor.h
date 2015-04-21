@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2012      Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -23,7 +23,7 @@
 #include "orcm_config.h"
 #include "orcm/types.h"
 
-#include "opal/mca/mca.h"
+#include "orcm/mca/mca.h"
 
 #include "orte/types.h"
 
@@ -119,9 +119,8 @@ typedef orcm_sensor_base_component_1_0_0_t orcm_sensor_base_component_t;
  */
 #define ORCM_SENSOR_BASE_VERSION_1_0_0 \
   /* sensor v1.0 is chained to MCA v2.0 */ \
-  MCA_BASE_VERSION_2_0_0, \
-  /* sensor v1.0 */ \
-  "sensor", 1, 0, 0
+    ORCM_MCA_BASE_VERSION_2_1_0("sensor", 1, 0, 0)
+
 
 /* Global structure for accessing sensor functions
  */

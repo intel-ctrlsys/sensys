@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -31,26 +31,25 @@ orcm_db_base_component_t mca_db_print_component = {
     {
         ORCM_DB_BASE_VERSION_2_0_0,
 
-        /* Component name and version */
-        "print",
-        ORCM_MAJOR_VERSION,
-        ORCM_MINOR_VERSION,
-        ORCM_RELEASE_VERSION,
-
+         /* Component name and version */
+        .mca_component_name = "print",
+        MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                              ORCM_RELEASE_VERSION),
+        
         /* Component open and close functions */
-        NULL,
-        NULL,
-        NULL,
-        component_register
+        .mca_open_component = NULL,
+        .mca_close_component = NULL,
+        .mca_query_component = NULL,
+        .mca_register_component_params = component_register
     },
-    {
+    .base_data = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },
-    5,
-    component_avail,
-    component_create,
-    NULL
+    .priority = 5,
+    .available = component_avail,
+    .create_handle = component_create,
+    .finalize = NULL
 };
 
 static char *filename;

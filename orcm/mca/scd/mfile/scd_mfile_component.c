@@ -1,5 +1,5 @@
 /*
-# Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+# Copyright (c) 2014-2015 Intel, Inc.  All rights reserved. 
  *
  * $COPYRIGHT$
  * 
@@ -39,18 +39,17 @@ mca_scd_mfile_component_t mca_scd_mfile_component = {
         {
             ORCM_SCD_BASE_VERSION_1_0_0,
             /* Component name and version */
-            "mfile",
-            ORCM_MAJOR_VERSION,
-            ORCM_MINOR_VERSION,
-            ORCM_RELEASE_VERSION,
+            .mca_component_name = "mfile",
+            MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                                  ORCM_RELEASE_VERSION),
         
             /* Component open and close functions */
-            mfile_open,
-            mfile_close,
-            mfile_component_query,
-            mfile_component_register
+            .mca_open_component = scd_mfile_open,
+            .mca_close_component = scd_mfile_close,
+            .mca_query_component = scd_mfile_component_query
+            NULL
         },
-        {
+        .base_data = {
             /* The component is checkpoint ready */
             MCA_BASE_METADATA_PARAM_CHECKPOINT
         },

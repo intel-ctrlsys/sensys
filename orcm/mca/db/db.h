@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc.  All rights reserved.
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -22,9 +22,10 @@
 #include "orcm_config.h"
 #include "orcm/types.h"
 
-#include "opal/mca/mca.h"
 #include "opal/mca/event/event.h"
 #include "opal/dss/dss_types.h"
+
+#include "orcm/mca/mca.h"
 
 /**
  * DATABASE DESIGN
@@ -284,8 +285,7 @@ typedef struct {
  * Macro for use in components that are of type db
  */
 #define ORCM_DB_BASE_VERSION_2_0_0 \
-  MCA_BASE_VERSION_2_0_0, \
-  "db", 2, 0, 0
+    ORCM_MCA_BASE_VERSION_2_1_0("db", 2, 0, 0)
 
 /* Global structure for accessing DB functions */
 ORCM_DECLSPEC extern orcm_db_API_module_t orcm_db;  /* holds API function pointers */

@@ -1,5 +1,5 @@
 /*
-# Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+# Copyright (c) 2014-2015 Intel, Inc.  All rights reserved. 
  *
  * $COPYRIGHT$
  * 
@@ -37,18 +37,17 @@ orcm_pvsn_base_component_t mca_pvsn_wwulf_component = {
     {
         ORCM_PVSN_BASE_VERSION_1_0_0,
         /* Component name and version */
-        "wwulf",
-        ORCM_MAJOR_VERSION,
-        ORCM_MINOR_VERSION,
-        ORCM_RELEASE_VERSION,
+        .mca_component_name = "wwulf",
+        MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                              ORCM_RELEASE_VERSION),
         
         /* Component open and close functions */
-        pvsn_ww_open,
-        pvsn_ww_close,
-        pvsn_ww_component_query,
+        .mca_open_component = pvsn_ww_open,
+        .mca_close_component = pvsn_ww_close,
+        .mca_query_component = pvsn_ww_component_query,
         NULL
     },
-    {
+    .base_data = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -17,7 +17,7 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 
-#include "opal/mca/mca.h"
+#include "orcm/mca/mca.h"
 #include "opal/mca/event/event.h"
 #include "opal/util/output.h"
 
@@ -94,9 +94,7 @@ typedef struct {
  */
 #define ORCM_DIAG_BASE_VERSION_1_0_0 \
   /* diag v1.0 is chained to MCA v2.0 */ \
-  MCA_BASE_VERSION_2_0_0, \
-  /* diag v1.0 */ \
-  "diag", 1, 0, 0
+    ORCM_MCA_BASE_VERSION_2_1_0("diag", 2, 0, 0)
 
 /* Global structure for accessing name server functions
  */

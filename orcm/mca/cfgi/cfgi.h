@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -17,11 +17,11 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 
-#include "opal/mca/mca.h"
 #include "opal/class/opal_list.h"
 
 #include "orte/types.h"
 
+#include "orcm/mca/mca.h"
 #include "orcm/mca/cfgi/cfgi_types.h"
 
 BEGIN_C_DECLS
@@ -81,10 +81,7 @@ typedef orcm_cfgi_base_component_1_0_0_t orcm_cfgi_base_component_t;
  * Macro for use in components that are of type cfgi v1.0.0
  */
 #define ORCM_CFGI_BASE_VERSION_1_0_0 \
-  /* cfgi v1.0 is chained to MCA v2.0 */ \
-  MCA_BASE_VERSION_2_0_0, \
-  /* cfgi v1.0 */ \
-  "cfgi", 1, 0, 0
+    ORCM_MCA_BASE_VERSION_2_1_0("cfgi", 1, 0, 0)
 
 /* Global structure for accessing name server functions
  */

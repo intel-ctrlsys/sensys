@@ -38,25 +38,23 @@ orcm_analytics_base_component_t mca_analytics_average_component = {
     {
         ORCM_ANALYTICS_BASE_VERSION_1_0_0,
         /* Component name and version */
-        "average",
-        ORCM_MAJOR_VERSION,
-        ORCM_MINOR_VERSION,
-        ORCM_RELEASE_VERSION,
+        .mca_component_name = "average",
+        MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                              ORCM_RELEASE_VERSION),
         
         /* Component open and close functions */
-        NULL,
-        NULL,
-        NULL,
-        NULL
+        .mca_open_component = NULL,
+        .mca_close_component = NULL,
+        .mca_query_component = NULL,
     },
-    {
+    .base_data = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },
-    1,
-    component_avail,
-    component_create,
-    NULL
+    .priority = 1,
+    .available = component_avail,
+    .create_handle = component_create,
+    .finalize = NULL
 };
 
 static bool component_avail(void)

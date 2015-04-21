@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -34,21 +34,19 @@ static int postgres_component_register(void);
 orcm_cfgi_dbpg_component_t mca_cfgi_dbpg_component = {
     {
         {
-            ORCM_CFGI_BASE_VERSION_1_0_0,
-
-            /* Component name and version */
-            "dbpg",
-            ORCM_MAJOR_VERSION,
-            ORCM_MINOR_VERSION,
-            ORCM_RELEASE_VERSION,
-
-            /* Component open and close functions */
-            postgres_component_open,
-            postgres_component_close,
-            postgres_component_query,
-            postgres_component_register
+        ORCM_CFGI_BASE_VERSION_1_0_0,
+        /* Component name and version */
+        .mca_component_name = "postgres",
+        MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                              ORCM_RELEASE_VERSION),
+        
+        /* Component open and close functions */
+        .mca_open_component = postgres_component_open,
+        .mca_close_component = postgres_component_close,
+        .mca_query_component = postgres_component_query,
+        .mca_register_component_params = postgres_component_register
         },
-        {
+        .base_data = {
             /* The component is checkpoint ready */
             MCA_BASE_METADATA_PARAM_CHECKPOINT
         },

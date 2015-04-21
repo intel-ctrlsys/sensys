@@ -1,5 +1,5 @@
 /*
-# Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+# Copyright (c) 2014-2015 Intel, Inc.  All rights reserved. 
  *
  * $COPYRIGHT$
  * 
@@ -37,18 +37,16 @@ orcm_diag_base_component_t mca_diag_memtest_component = {
     {
         ORCM_DIAG_BASE_VERSION_1_0_0,
         /* Component name and version */
-        "memtest",
-        ORCM_MAJOR_VERSION,
-        ORCM_MINOR_VERSION,
-        ORCM_RELEASE_VERSION,
+        .mca_component_name = "memtest",
+        MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                              ORCM_RELEASE_VERSION),
         
         /* Component open and close functions */
-        diag_memtest_open,
-        diag_memtest_close,
-        diag_memtest_component_query,
-        NULL
+        .mca_open_component = diag_memtest_open,
+        .mca_close_component = diag_memtest_close,
+        .mca_query_component = diag_memtest_component_query,
     },
-    {
+    .base_data = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },

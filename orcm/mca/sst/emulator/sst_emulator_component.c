@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved. 
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -27,17 +27,19 @@ orcm_sst_emulator_component_t mca_sst_emulator_component = {
     {
         {
             ORCM_SST_BASE_VERSION_1_0_0,
+            /* Component name and version */
+            .mca_component_name = "emulator",
+            MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                                  ORCM_RELEASE_VERSION),
+        
+            /* Component open and close functions */
+            .mca_open_component = component_open,
+            .mca_close_component = component_close,
+            .mca_query_component = component_query,
+            .mca_register_component_params = component_register
 
-            "emulator",
-            ORCM_MAJOR_VERSION,
-            ORCM_MINOR_VERSION,
-            ORCM_RELEASE_VERSION,
-            component_open,
-            component_close,
-            component_query,
-            component_register
         },
-        {
+        .base_data = {
             /* The component is checkpoint ready */
             MCA_BASE_METADATA_PARAM_CHECKPOINT
         },

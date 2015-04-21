@@ -1,5 +1,5 @@
 /*
-# Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+# Copyright (c) 2014-2015 Intel, Inc.  All rights reserved. 
  *
  * $COPYRIGHT$
  * 
@@ -37,18 +37,16 @@ orcm_diag_base_component_t mca_diag_pwr_component = {
     {
         ORCM_DIAG_BASE_VERSION_1_0_0,
         /* Component name and version */
-        "pwr",
-        ORCM_MAJOR_VERSION,
-        ORCM_MINOR_VERSION,
-        ORCM_RELEASE_VERSION,
+        .mca_component_name = "pwr",
+        MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                              ORCM_RELEASE_VERSION),
         
         /* Component open and close functions */
-        diag_pwr_open,
-        diag_pwr_close,
-        diag_pwr_component_query,
-        NULL
+        .mca_open_component = diag_pwr_open,
+        .mca_close_component = diag_pwr_close,
+        .mca_query_component = diag_pwr_component_query,
     },
-    {
+    .base_data = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },

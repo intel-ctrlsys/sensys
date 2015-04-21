@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
  * Copyright (c) 2012      Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved. 
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -29,16 +29,18 @@ static int orcm_sensor_heartbeat_query(mca_base_module_t **module, int *priority
 orcm_sensor_base_component_t mca_sensor_heartbeat_component = {
     {
         ORCM_SENSOR_BASE_VERSION_1_0_0,
-            
-        "heartbeat", /* MCA component name */
-        ORCM_MAJOR_VERSION,  /* MCA component major version */
-        ORCM_MINOR_VERSION,  /* MCA component minor version */
-        ORCM_RELEASE_VERSION,  /* MCA component release version */
-        orcm_sensor_heartbeat_open,  /* component open  */
-        orcm_sensor_heartbeat_close, /* component close */
-        orcm_sensor_heartbeat_query  /* component query */
+        /* Component name and version */
+        .mca_component_name = "heartbeat",
+        MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
+                              ORCM_RELEASE_VERSION),
+        
+        /* Component open and close functions */
+        .mca_open_component = orcm_sensor_heartbeat_open,
+        .mca_close_component = orcm_sensor_heartbeat_close,
+        .mca_query_component = orcm_sensor_heartbeat_query,
+        NULL
     },
-    {
+    .base_data = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },

@@ -25,7 +25,7 @@
 
 #include <string.h>
 
-#include "opal/mca/mca.h"
+#include "orte/mca/mca.h"
 #include "opal/util/output.h"
 #include "opal/mca/base/base.h"
 #include "opal/mca/hwloc/base/base.h"
@@ -115,6 +115,10 @@ void orte_rmaps_base_map_job(int fd, short args, void *cbdata)
                     opal_output_verbose(5, orte_rmaps_base_framework.framework_output,
                                         "mca:rmaps mapping not given - using byslot");
                     ORTE_SET_MAPPING_POLICY(map->mapping, ORTE_MAPPING_BYSLOT);
+                } else if (opal_hwloc_use_hwthreads_as_cpus) {
+                    opal_output_verbose(5, orte_rmaps_base_framework.framework_output,
+                                        "mca:rmaps mapping not given - using byhwthread");
+                    ORTE_SET_MAPPING_POLICY(map->mapping, ORTE_MAPPING_BYHWTHREAD);
                 } else {
                     opal_output_verbose(5, orte_rmaps_base_framework.framework_output,
                                         "mca:rmaps mapping not given - using bycore");
@@ -188,6 +192,10 @@ void orte_rmaps_base_map_job(int fd, short args, void *cbdata)
                     opal_output_verbose(5, orte_rmaps_base_framework.framework_output,
                                         "mca:rmaps mapping not given - using byslot");
                     ORTE_SET_MAPPING_POLICY(jdata->map->mapping, ORTE_MAPPING_BYSLOT);
+                } else if (opal_hwloc_use_hwthreads_as_cpus) {
+                    opal_output_verbose(5, orte_rmaps_base_framework.framework_output,
+                                        "mca:rmaps mapping not given - using byhwthread");
+                    ORTE_SET_MAPPING_POLICY(jdata->map->mapping, ORTE_MAPPING_BYHWTHREAD);
                 } else {
                     opal_output_verbose(5, orte_rmaps_base_framework.framework_output,
                                         "mca:rmaps mapping not given - using bycore");

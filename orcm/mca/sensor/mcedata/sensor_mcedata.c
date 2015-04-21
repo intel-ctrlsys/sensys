@@ -55,11 +55,26 @@
 #define     MCI_ADDR    3
 #define     MCI_MISC    4
 
+/*MSCOD Model specific Error Codes in MCi_STATUS register */
 #define GEN_CACHE_ERR_MASK  (1<<3)
 #define TLB_ERR_MASK        (1<<4)
 #define MEM_CTRL_ERR_MASK   (1<<7)
 #define CACHE_ERR_MASK      (1<<8)
 #define BUS_IC_ERR_MASK     (1<<11)
+
+/*MCi_STATUS Register masks */
+#define MCI_VALID_MASK          ((uint64_t)1<<63)
+#define MCI_OVERFLOW_MASK       ((uint64_t)1<<62)
+#define MCI_UC_MASK             ((uint64_t)1<<61)
+#define MCI_EN_MASK             ((uint64_t)1<<60)
+#define MCI_MISCV_MASK          ((uint64_t)1<<59)
+#define MCI_ADDRV_MASK          ((uint64_t)1<<58)
+#define MCI_PCC_MASK            ((uint64_t)1<<57)
+#define MCI_S_MASK              ((uint64_t)1<<56)
+#define MCI_AR_MASK             ((uint64_t)1<<55)
+
+/* MCi_STATUS health Status tracking */
+#define HEALTH_STATUS_MASK      ((uint64_t)3<<53)
 
 typedef enum _mcetype {
     e_gen_cache_error,
@@ -315,7 +330,18 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     opal_value_t *kv;
+    bool ar, s, pcc, addrv, miscv, en, uc, over, val;
+    uint64_t cache_health;
     opal_output(0,"MCE Error Type 3 - Cache Hierarchy Errors");
+
+    val = (mce_reg[MCI_STATUS] & MCI_VALID_MASK)? true : false ;
+
+    if (false == val) {
+        opal_output(0,"MCi_Status not valid: %lx", mce_reg[MCI_STATUS]);
+        return;
+    } else {
+        opal_output(0,"MCi_status VALID");
+    }
 
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("ErrorLocation");
@@ -362,12 +388,57 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
         case 7: kv->data.string = strdup("EVICT"); break;   /* Evict */
         case 8: kv->data.string = strdup("SNOOP"); break;   /* Snoop */
         default: kv->data.string = strdup("Unknown"); break;
-        
     }
     opal_list_append(vals, &kv->super);
 
 
+    over = (mce_reg[MCI_STATUS] & MCI_OVERFLOW_MASK)? true : false ;
+    val = (mce_reg[MCI_STATUS] & MCI_VALID_MASK)? true : false ;
+    uc = (mce_reg[MCI_STATUS] & MCI_UC_MASK)? true : false ;
+    en = (mce_reg[MCI_STATUS] & MCI_EN_MASK)? true : false ;
+    miscv = (mce_reg[MCI_STATUS] & MCI_MISCV_MASK)? true : false ;
+    addrv = (mce_reg[MCI_STATUS] & MCI_ADDRV_MASK)? true : false ;
+    pcc = (mce_reg[MCI_STATUS] & MCI_PCC_MASK)? true : false ;
+    s = (mce_reg[MCI_STATUS] & MCI_S_MASK)? true : false ;
+    ar = (mce_reg[MCI_STATUS] & MCI_AR_MASK)? true : false ;
 
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("ErrorSeverity");
+    kv->type = OPAL_STRING;
+    if (uc && pcc) {
+        kv->data.string = strdup("UC");
+    } else if(!(uc || pcc)) {
+        kv->data.string = strdup("CE");
+    } else if (uc) {
+        if (!(pcc || s || ar)) {
+            kv->data.string = strdup("UCNA");
+        } else if (!(pcc || (!s) || ar)) {
+            kv->data.string = strdup("SRAO");
+        } else if (!(pcc || (!s) || (!ar))) {
+            kv->data.string = strdup("SRAR");
+        } else {
+            kv->data.string = strdup("UNKNOWN");
+        }
+    } else {
+        kv->data.string = strdup("UNKNOWN");
+    }
+    opal_list_append(vals, &kv->super);
+
+    if(uc) {
+        opal_output(0,"Enhanced chache reporting available");
+        cache_health = (((mce_reg[MCI_STATUS] & HEALTH_STATUS_MASK ) >> 53) && 0x3);
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("CacheHealth");
+        kv->type = OPAL_STRING;
+
+        switch (cache_health) {
+            case 0 : kv->data.string = strdup("NotTracking"); break;
+            case 1 : kv->data.string = strdup("Green"); break;
+            case 2 : kv->data.string = strdup("Yellow"); break;
+            case 3 : kv->data.string = strdup("Reserved"); break;
+        }
+        opal_list_append(vals, &kv->super);
+    }
 
 }
 

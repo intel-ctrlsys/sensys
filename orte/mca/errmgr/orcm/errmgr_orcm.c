@@ -34,9 +34,11 @@
 #include "orte/mca/notifier/notifier.h"
 #include "orte/mca/notifier/base/base.h"
 
+#if 0
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/scd/scd_types.h"
+#endif
 
 #include "errmgr_orcm.h"
 
@@ -142,6 +144,7 @@ static void job_errors(int fd, short args, void *cbdata)
 static void proc_errors(int fd, short args, void *cbdata)
 {
     orte_state_caddy_t *caddy = (orte_state_caddy_t*)cbdata;
+#if 0
     orte_ns_cmp_bitmask_t mask;
     opal_buffer_t *buf;
     orcm_rm_cmd_flag_t command = ORCM_NODESTATE_UPDATE_COMMAND;
@@ -228,7 +231,7 @@ static void proc_errors(int fd, short args, void *cbdata)
         exit(1);
     }
 
-
+#endif
     /* cleanup */
     OBJ_RELEASE(caddy);
 }

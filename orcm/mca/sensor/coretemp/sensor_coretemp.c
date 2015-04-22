@@ -733,7 +733,7 @@ static void perthread_coretemp_sample(int fd, short args, void *cbdata)
     OBJ_DESTRUCT(&sampler->bucket);
     OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
     /* check if coretemp sample rate is provided for this*/
-    if (mca_sensor_coretemp_component.sample_rate) {
+    if (mca_sensor_coretemp_component.sample_rate != sampler->rate.tv_sec) {
         sampler->rate.tv_sec = mca_sensor_coretemp_component.sample_rate;
     } 
     /* set ourselves to sample again */

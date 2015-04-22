@@ -447,129 +447,123 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command,
                                               &cnt, ORCM_SENSOR_CMD_T))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto ERROR;
     }
 
-    if (ORCM_SENSOR_SAMPLE_RATE_COMMAND == command) {
-        /* unpack the sensor name */
+    if (ORCM_SET_SENSOR_COMMAND == command) {
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sensor_name,
-                                                  &cnt, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        /* unpack the sample rate */
-        cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sample_rate,
-                                                  &cnt, OPAL_INT))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-
-        if ((0 == strcmp(sensor_name, "base")) &&
-            sample_rate && (sample_rate != orcm_sensor_base.sample_rate)) {
-            /* Reset the sample rate */
-            orcm_sensor_base_set_sample_rate(sample_rate);
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                                "%s sensor:base: reset sampler with rate %d",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                orcm_sensor_base.sample_rate);
-        } else {
-            /* look for sensor update with new sample rate */
-            /* find the specified module  */
-            found_me = false;
-            for (i=0; i < orcm_sensor_base.modules.size; i++) {
-                if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
-                    continue;
-                }
-                if (0 == strcmp(sensor_name, i_module->component->base_version.mca_component_name)) {
-                    if (NULL != i_module->module->set_sample_rate) {
-                        i_module->module->set_sample_rate(sample_rate);
-                        found_me = true;
-                    }
-                }
-            }
-        }
-
-        /* send back the immediate success*/
-        if (found_me) {
-            response = ORCM_SUCCESS;
-        } else {
-            response = ORTE_ERR_BAD_PARAM;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_RELEASE(ans);
-            return;
-        }
-        if (ORTE_SUCCESS !=
-            (rc = orte_rml.send_buffer_nb(sender, ans,
-                                          ORCM_RML_TAG_SENSOR,
-                                          orte_rml_send_callback, NULL))) {
-             ORTE_ERROR_LOG(rc);
-             OBJ_RELEASE(ans);
-             return;
-        }
-    } else if (ORCM_SET_SENSOR_COMMAND == command) {
-        cnt = 1;
-
         /* unpack the subcommand */
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sub_command,
                                                   &cnt, ORCM_SENSOR_CMD_T))) {
             ORTE_ERROR_LOG(rc);
-            goto answer;
-            return;
+            goto ERROR;
         }
 
         switch(sub_command) {
+        case ORCM_SET_SENSOR_SAMPLE_RATE_COMMAND:
+            /* unpack the sensor name */
+            cnt = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sensor_name,
+                                                      &cnt, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                goto ERROR;
+            }
+
+            cnt = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sample_rate,
+                                                      &cnt, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                goto ERROR;
+            }
+
+            if (0 == strcmp(sensor_name, "base")) { 
+                /* Reset the sample rate */
+                orcm_sensor_base_set_sample_rate(sample_rate);
+                found_me = true;
+            } else {
+                /* look for sensor update with new sample rate */
+                /* find the specified module  */
+                found_me = false;
+                for (i=0; i < orcm_sensor_base.modules.size; i++) {
+                    if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
+                        continue;
+                    }
+                    if (0 == strcmp(sensor_name, i_module->component->base_version.mca_component_name)) {
+                        if (NULL != i_module->module->set_sample_rate) {
+                            i_module->module->set_sample_rate(sample_rate);
+                            found_me = true;
+                        }
+                    }
+                }
+            }
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "%s sensor: %s : reset sampler with rate %d",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                sensor_name,
+                                sample_rate);
+
+            /* send back the immediate success*/
+            if (found_me) {
+                response = ORCM_SUCCESS;
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
+                    ORTE_ERROR_LOG(rc);
+                    OBJ_RELEASE(ans);
+                    return;
+                }
+                goto RESPONSE;
+            } else {
+                goto ERROR;
+            }
+            break;
+
         case ORCM_SET_SENSOR_POLICY_COMMAND:
             /* unpack sensor name */
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sensor_name,
                                                   &cnt, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
-                goto answer;
+                goto ERROR;
             }
 
             /* unpack threshold value */
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &threshold,
                                                   &cnt, OPAL_FLOAT))) {
                 ORTE_ERROR_LOG(rc);
-                goto answer;
+                goto ERROR;
             }
 
             /* unpack threshold type */
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &hi_thres,
                                                   &cnt, OPAL_BOOL))) {
                 ORTE_ERROR_LOG(rc);
-                goto answer;
+                goto ERROR;
             }
 
             /* unpack max count */
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &max_count,
                                                   &cnt, OPAL_INT))) {
                 ORTE_ERROR_LOG(rc);
-                goto answer;
+                goto ERROR;
             }
 
             /* unpack time window */
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &time_window,
                                                   &cnt, OPAL_INT))) {
                 ORTE_ERROR_LOG(rc);
-                goto answer;
+                goto ERROR;
             }
 
             /* unpack severity level */
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sev,
                                                   &cnt, OPAL_INT))) {
                 ORTE_ERROR_LOG(rc);
-                goto answer;
+                goto ERROR;
             }
 
             /* unpack notification action */
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &action,
                                                   &cnt, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
-                goto answer;
+                goto ERROR;
             }
 
             /* look for sensor event policy; update with new setting or create new policy if not existing */
@@ -601,29 +595,24 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
 
                 opal_list_append(&orcm_sensor_base.policy, &newplc->super);
                 opal_output(0, "Add policy: %s %.2f %s %d %d %d %s!",
-                                    newplc->sensor_name, newplc->threshold, newplc->hi_thres ? "higher" : "lower",
-                                    newplc->max_count, newplc->time_window, newplc->severity, newplc->action);
+                                    newplc->sensor_name, newplc->threshold, 
+                                    newplc->hi_thres ? "higher" : "lower",
+                                    newplc->max_count, newplc->time_window, 
+                                    newplc->severity, newplc->action);
             }
 
             /* send confirmation back to sender */
-            result = 0;
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+            response = ORCM_SUCCESS;
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(ans);
                 return;
             }
-
+            goto RESPONSE;
             break;
         default:
-            rc = ORTE_ERR_BAD_PARAM;
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &rc, 1, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(ans);
-                return;
-            }
-
+            goto ERROR;
         }
-
 
     } else if (ORCM_GET_SENSOR_COMMAND == command) {
         cnt = 1;
@@ -632,11 +621,74 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sub_command,
                                                   &cnt, ORCM_SENSOR_CMD_T))) {
             ORTE_ERROR_LOG(rc);
-            goto answer;
-            return;
+            goto ERROR;
         }
 
         switch(sub_command) {
+        case ORCM_GET_SENSOR_SAMPLE_RATE_COMMAND:
+            /* unpack the sensor name */
+            cnt = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sensor_name,
+                                                      &cnt, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                goto ERROR;
+            }
+
+            if (0 == strcmp(sensor_name, "base")) {
+                orcm_sensor_base_get_sample_rate(&sample_rate);
+                found_me = true;
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                    "%s sensor:base: get sample rate %d",
+                                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                    sample_rate);
+            } else {
+                /* look for sensor update with new sample rate */
+                /* find the specified module  */
+                found_me = false;
+                for (i=0; i < orcm_sensor_base.modules.size; i++) {
+                    if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
+                        continue;
+                    }
+                    if (0 == strcmp(sensor_name, i_module->component->base_version.mca_component_name)) {
+                        if (NULL != i_module->module->get_sample_rate) {
+                            i_module->module->get_sample_rate(&sample_rate);
+                            found_me = true;
+                            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                                "%s sensor:%s: get sample rate %d",
+                                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                                sensor_name, sample_rate);
+                        }
+                    }
+                }
+            }
+
+            /* send back the immediate success*/
+            if (found_me) {
+                response = ORCM_SUCCESS;
+            } else {
+                response = ORTE_ERR_NOT_FOUND;
+                goto ERROR;
+            }
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &sensor_name,
+                                                    1, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                goto ERROR;
+            }
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &sample_rate, 1, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(ans);
+                return;
+            }
+            goto RESPONSE;
+            break;
+
         case ORCM_GET_SENSOR_POLICY_COMMAND:
 
             /* pack the number of policies we have */
@@ -653,76 +705,84 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->sensor_name,
                                                   1, OPAL_STRING))) {
                     ORTE_ERROR_LOG(rc);
-                    goto answer;
+                    OBJ_RELEASE(ans);
+                    return;
                 }
 
                 /* pack threshold value */
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->threshold,
                                                   1, OPAL_FLOAT))) {
                     ORTE_ERROR_LOG(rc);
-                    goto answer;
+                    OBJ_RELEASE(ans);
+                    return;
                 }
 
                 /* pack threshold type */
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->hi_thres,
                                                   1, OPAL_BOOL))) {
                     ORTE_ERROR_LOG(rc);
-                    goto answer;
+                    OBJ_RELEASE(ans);
+                    return;
                 }
 
                 /* pack max count */
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->max_count,
                                                   1, OPAL_INT))) {
                     ORTE_ERROR_LOG(rc);
-                    goto answer;
+                    OBJ_RELEASE(ans);
+                    return;
                 }
 
                 /* pack time window */
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->time_window,
                                                   1, OPAL_INT))) {
                     ORTE_ERROR_LOG(rc);
-                    goto answer;
+                    OBJ_RELEASE(ans);
+                    return;
                 }
 
                 /* pack severity level */
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->severity,
                                                   1, OPAL_INT))) {
                     ORTE_ERROR_LOG(rc);
-                    goto answer;
+                    OBJ_RELEASE(ans);
+                    return;
                 }
 
                 /* pack notification action */
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->action,
                                                   1, OPAL_STRING))) {
                     ORTE_ERROR_LOG(rc);
-                    goto answer;
+                    OBJ_RELEASE(ans);
+                    return;
                 }
             }
-
+            goto RESPONSE; 
             break;
-        default:
-            rc = ORTE_ERR_BAD_PARAM;
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &rc, 1, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(ans);
-                return;
-            }
 
+        default:
+            goto ERROR; 
         }
 
     }
 
-answer:
-
-    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
-                                                      ORCM_RML_TAG_SENSOR,
-                                                      orte_rml_send_callback,
-                                                      NULL))) {
+ERROR:
+    response = ORTE_ERR_BAD_PARAM;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(ans);
         return;
     }
 
+RESPONSE:
+    if (ORTE_SUCCESS !=
+        (rc = orte_rml.send_buffer_nb(sender, ans,
+                                      ORCM_RML_TAG_SENSOR,
+                                      orte_rml_send_callback, NULL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(ans);
+        return;
+    }
 }
 
 void orcm_sensor_base_collect(int fd, short args, void *cbdata)
@@ -737,11 +797,13 @@ void orcm_sensor_base_collect(int fd, short args, void *cbdata)
     OBJ_RELEASE(x);
 }
 
+/* sensor sample rate will take effect in the next sampling cycle*/
 void orcm_sensor_base_set_sample_rate(int sample_rate)
 {
     orcm_sensor_base.sample_rate = sample_rate;
 }
 
+/* sensor sample rate will return the sensor base sample rate */
 void orcm_sensor_base_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {

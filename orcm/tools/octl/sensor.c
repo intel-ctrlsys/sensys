@@ -420,9 +420,9 @@ done:
     return rc;
 }
 
-int orcm_octl_sensor_sample_rate(char **argv)
+int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
 {
-    orcm_sensor_cmd_flag_t command = ORCM_SENSOR_SAMPLE_RATE_COMMAND;
+    orcm_sensor_cmd_flag_t command;
     int sample_rate = 0;
     opal_buffer_t *buf = NULL;
     int rc = ORCM_SUCCESS;
@@ -431,33 +431,48 @@ int orcm_octl_sensor_sample_rate(char **argv)
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
 
-    if (4 != opal_argv_count(argv)) {
-        fprintf(stderr, "incorrect arguments to \"sensor sample-rate <value> <node regex>\"\n");
+    if (6 != opal_argv_count(argv)) {
+        fprintf(stderr, "incorrect arguments! \n  usage:\"sensor set sample-rate <sensor-name> <sample-rate> <node-name>\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (isdigit(argv[2][strlen(argv[2]) - 1])) {
-        sample_rate = (int)strtol(argv[2], NULL, 10);
+    if (isdigit(argv[4][strlen(argv[4]) - 1])) {
+        sample_rate = (int)strtol(argv[4], NULL, 10);
     } else {
-        fprintf(stderr, "incorrect argument sample rate is not an integer \n");
+        fprintf(stderr, "incorrect argument sample rate!\n \"%s\" is not an integer \n", argv[4]);
         return ORCM_ERR_BAD_PARAM;
     }
 
-    orte_regex_extract_node_names (argv[3], &nodelist);
+    orte_regex_extract_node_names (argv[5], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        fprintf(stdout, "Error: unable to extract nodelist\n");
+        fprintf(stderr, "incorrect argument nodelist! \n unable to extract nodelist\n");
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
 
     buf = OBJ_NEW(opal_buffer_t);
 
-    /* pack sensor sample rate command */
+    command = ORCM_SET_SENSOR_COMMAND;
+    /* pack sensor set command */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SENSOR_CMD_T))) {
         ORTE_ERROR_LOG(rc);
         goto finish;
     }
+    command = cmd;
+    /* pack sensor sample rate sub command */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
+                                            1, ORCM_SENSOR_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        goto finish;
+    }
+    /* pack sensor name */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[3],
+                                            1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        goto finish;
+    }
+
     /* pack sample_rate value */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &sample_rate,
                                             1, OPAL_INT))) {
@@ -477,7 +492,7 @@ int orcm_octl_sensor_sample_rate(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        fprintf(stdout, "ORCM setting sensor:sample-rate on Node:%s\n", nodelist[i]);
+        fprintf(stdout, "ORCM setting sensor:%s sample-rate on node:%s\n", argv[3], nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
             ORTE_ERROR_LOG(rc);
@@ -508,14 +523,133 @@ int orcm_octl_sensor_sample_rate(char **argv)
              fprintf(stdout, "Failure\n");
          }
     }
-    goto finish;
 
 finish:
     if(buf) OBJ_RELEASE(buf);
     if(xfer) OBJ_RELEASE(xfer);
     if(nodelist) opal_argv_free(nodelist);
     if (ORCM_SUCCESS != rc) {
-        fprintf(stdout, "Error\n");
+        fprintf(stdout, "Failure\n");
     }
     return rc;
+}
+
+int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
+{
+    orcm_sensor_cmd_flag_t command;
+    opal_buffer_t *buf = NULL;
+    int rc, response, cnt, i;
+    orte_process_name_t tgt;
+    orte_rml_recv_cb_t *xfer = NULL;
+    char **nodelist = NULL;
+    char *sensor_name = NULL; 
+    int sample_rate = 0;
+
+    if (5 != opal_argv_count(argv)) {
+        fprintf(stderr, "incorrect arguments! \n\n usage: \"sensor get sample-rate <sensor-name> nodelist\"\n");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    /* setup the receiver nodelist */
+    orte_regex_extract_node_names (argv[4], &nodelist);
+    if (0 == opal_argv_count(nodelist)) {
+        fprintf(stdout, "Error: unable to extract nodelist\n");
+        opal_argv_free(nodelist);
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    /* pack the buffer to send */
+    buf = OBJ_NEW(opal_buffer_t);
+
+    command = ORCM_GET_SENSOR_COMMAND;
+    /* pack the command flag */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
+                                            1, ORCM_SENSOR_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        goto done;
+    }
+
+    command = cmd;
+    /* pack the sub-command flag */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
+                                            1, ORCM_SENSOR_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        goto done;
+    }
+
+    /* pack sensor name */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[3],
+                                            1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        goto done;
+    }
+
+    /* Loop through the nodelist to get sensor sample-rate */
+    xfer = OBJ_NEW(orte_rml_recv_cb_t);
+    for (i = 0; i < opal_argv_count(nodelist); i++) {
+        OBJ_RETAIN(buf);
+        OBJ_RETAIN(xfer);
+
+        xfer->active = true;
+        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                            ORCM_RML_TAG_SENSOR,
+                            ORTE_RML_NON_PERSISTENT,
+                            orte_rml_recv_callback, xfer);
+
+        fprintf(stdout, "ORCM getting sensor %s sample-rate  from node:%s\n", 
+                argv[3], nodelist[i]);
+        if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
+                                                                   &tgt))) {
+            ORTE_ERROR_LOG(rc);
+            goto done;
+        }
+
+        /* send command to node daemon */
+        if (ORTE_SUCCESS !=
+            (rc = orte_rml.send_buffer_nb(&tgt, buf,
+                                          ORCM_RML_TAG_SENSOR,
+                                          orte_rml_send_callback, NULL))) {
+            ORTE_ERROR_LOG(rc);
+            goto done;
+        }
+
+        /* wait for status message */
+        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+
+        cnt=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &response,
+                                                  &cnt, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            goto done;
+        }
+
+        if ( 0 != response ) {
+            rc = ORCM_SUCCESS;
+            fprintf(stdout, "Bad parameter error\n");
+            goto done;
+        } else {
+             printf("Sensor     sample-rate\n");
+             printf("------------------------------------------------------------------------------\n");
+            /* unpack sensor name */
+            cnt = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &sensor_name,
+                                              &cnt, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                goto done;
+            }
+
+            /* unpack sample rate */
+            cnt = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, 
+                                                      &sample_rate,
+                                                      &cnt, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                goto done;
+            }
+
+            printf("%s            %d\n", sensor_name, sample_rate);
+        }
+    }
+done:
+    return ORCM_SUCCESS;
 }

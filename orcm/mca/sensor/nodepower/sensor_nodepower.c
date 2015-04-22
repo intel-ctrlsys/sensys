@@ -26,7 +26,7 @@
 #include <ctype.h>
 #include <sys/types.h>
 
-#define HAVE_HWLOC_DIFF  // protect the hwloc diff.h file from nodepowercmd.h conflict
+#define HAVE_HWLOC_DIFF  // protect the hwloc diff.h file from ipmicmd.h conflict
 #include "opal_stdint.h"
 #include "opal/class/opal_list.h"
 #include "opal/dss/dss.h"
@@ -46,7 +46,7 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_nodepower.h"
 
-#include <nodepowercmd.h>
+#include <ipmicmd.h>
 
 #define MAX_IPMI_RESPONSE 1024
 /* declare the API functions */
@@ -108,7 +108,7 @@ static int call_readein(node_power_data *data, int to_print, unsigned char psu)
     cmd[2]=(unsigned char)0x18;
 /* command */
     cmd[3]=(unsigned char)0x52;
-/* pointer to nodepower data (4 bytes) */
+/* pointer to ipmi data (4 bytes) */
     cmd[4]=(unsigned char)0x0f;
     cmd[5]=psu;
     cmd[6]=(unsigned char)0x07;
@@ -118,12 +118,12 @@ static int call_readein(node_power_data *data, int to_print, unsigned char psu)
     netfn=cmd[2]>>2;
     lun=cmd[2]&0x03;
 
-    ret = nodepower_cmdraw(cmd[3], netfn, cmd[1], cmd[0], lun, &cmd[4], (unsigned char)(len-4), responseData, &responseLength, &completionCode, 0);
+    ret = ipmi_cmdraw(cmd[3], netfn, cmd[1], cmd[0], lun, &cmd[4], (unsigned char)(len-4), responseData, &responseLength, &completionCode, 0);
 
     if(ret) {
         error_string = decode_rv(ret);
-        opal_output(0,"nodepower_cmdraw ERROR : %s \n", error_string);
-        nodepower_close();
+        opal_output(0,"ipmi_cmdraw ERROR : %s \n", error_string);
+        ipmi_close();
         return ORCM_ERROR;
     }
 
@@ -166,7 +166,7 @@ static int call_readein(node_power_data *data, int to_print, unsigned char psu)
         opal_output(0, "ret_val[0]=%lu, ret_val[1]=%lu\n", data->ret_val[0], data->ret_val[1]);
     }
 
-    nodepower_close();
+    ipmi_close();
 
     return ORCM_SUCCESS;
 }
@@ -220,7 +220,7 @@ static void start(orte_jobid_t jobid)
     _readein.readein_b_accu_prev=_node_power.ret_val[0];
     _readein.readein_b_cnt_prev=_node_power.ret_val[1];
 
-    _readein.nodepower_calls=2;
+    _readein.ipmi_calls=2;
     /* start a separate nodepower progress thread for sampling */
     if (mca_sensor_nodepower_component.use_progress_thread) {
         if (!orcm_sensor_nodepower.ev_active) {
@@ -296,7 +296,7 @@ static void perthread_nodepower_sample(int fd, short args, void *cbdata)
     OBJ_DESTRUCT(&sampler->bucket);
     OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
     /* check if nodepower sample rate is provided for this*/
-    if (mca_sensor_nodepower_component.sample_rate) {
+    if (mca_sensor_nodepower_component.sample_rate != sampler->rate.tv_sec) {
         sampler->rate.tv_sec = mca_sensor_nodepower_component.sample_rate;
     } 
     /* set ourselves to sample again */
@@ -333,7 +333,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     _tv.tv_prev=_tv.tv_curr;
 
     ret=call_readein(&_node_power, 0, NODEPOWER_PA_R);
-    _readein.nodepower_calls++;
+    _readein.ipmi_calls++;
     if (ret==ORCM_ERROR){
         opal_output(0,"Unable to read Nodepower");
         _readein.readein_a_accu_curr=_readein.readein_a_accu_prev;
@@ -369,7 +369,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     _readein.readein_a_cnt_prev=_readein.readein_a_cnt_curr;
 
     ret=call_readein(&_node_power, 0, NODEPOWER_PB_R);
-    _readein.nodepower_calls++;
+    _readein.ipmi_calls++;
     if (ret==ORCM_ERROR){
         opal_output(0,"Unable to read Nodepower");
         _readein.readein_b_accu_curr=_readein.readein_b_accu_prev;
@@ -433,7 +433,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         return;
     }
 
-    if (_readein.nodepower_calls <=2){
+    if (_readein.ipmi_calls <=2){
         node_power_cur=0.0;
     } else{
         node_power_cur=(float)(node_power.node_power.cur);

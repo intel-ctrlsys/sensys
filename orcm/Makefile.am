@@ -61,6 +61,7 @@ endif
 include runtime/Makefile.am
 include tools/Makefile.am
 include util/Makefile.am
+include mca/Makefile.am
 
 # Ensure that the man page directory exists before we try to make man
 # page files (because orcm/orcm/man/man3 has no config.status-generated

@@ -44,9 +44,9 @@ mca_scd_mfile_component_t mca_scd_mfile_component = {
                                   ORCM_RELEASE_VERSION),
         
             /* Component open and close functions */
-            .mca_open_component = scd_mfile_open,
-            .mca_close_component = scd_mfile_close,
-            .mca_query_component = scd_mfile_component_query
+            .mca_open_component = mfile_open,
+            .mca_close_component = mfile_close,
+            .mca_query_component = mfile_component_query
             NULL
         },
         .base_data = {

@@ -292,7 +292,7 @@ static void take_sample(int fd, short args, void *cbdata)
 {
     orcm_sensor_active_module_t *i_module;
     orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
-    int i, rc;
+    int i;
     
     if (!mods_active) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "sensor sample: no active mods");
@@ -425,8 +425,9 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
 {
     orcm_sensor_cmd_flag_t command, sub_command;
     opal_buffer_t *ans;
+    orcm_sensor_active_module_t *i_module;
     int sample_rate = 0;
-    int rc, response, cnt, result;
+    int i, rc, response, cnt, result;
     char *sensor_name;
     char *action;
     float threshold;
@@ -450,6 +451,13 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
     }
 
     if (ORCM_SENSOR_SAMPLE_RATE_COMMAND == command) {
+        /* unpack the sensor name */
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sensor_name,
+                                                  &cnt, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
         /* unpack the sample rate */
         cnt = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sample_rate,
@@ -458,16 +466,37 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
             return;
         }
 
-        if (sample_rate && sample_rate != orcm_sensor_base.sample_rate) {
+        if ((0 == strcmp(sensor_name, "base")) &&
+            sample_rate && (sample_rate != orcm_sensor_base.sample_rate)) {
             /* Reset the sample rate */
-            orcm_sensor_base.sample_rate = sample_rate;
+            orcm_sensor_base_set_sample_rate(sample_rate);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "%s sensor:base: reset sampler with rate %d",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 orcm_sensor_base.sample_rate);
+        } else {
+            /* look for sensor update with new sample rate */
+            /* find the specified module  */
+            found_me = false;
+            for (i=0; i < orcm_sensor_base.modules.size; i++) {
+                if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
+                    continue;
+                }
+                if (0 == strcmp(sensor_name, i_module->component->base_version.mca_component_name)) {
+                    if (NULL != i_module->module->set_sample_rate) {
+                        i_module->module->set_sample_rate(sample_rate);
+                        found_me = true;
+                    }
+                }
+            }
         }
+
         /* send back the immediate success*/
-        response = ORCM_SUCCESS;
+        if (found_me) {
+            response = ORCM_SUCCESS;
+        } else {
+            response = ORTE_ERR_BAD_PARAM;
+        }
         if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(ans);
@@ -706,4 +735,16 @@ void orcm_sensor_base_collect(int fd, short args, void *cbdata)
     opal_dss.copy_payload(&orcm_sensor_base.cache, &x->bucket);
     /* release memory */
     OBJ_RELEASE(x);
+}
+
+void orcm_sensor_base_set_sample_rate(int sample_rate)
+{
+    orcm_sensor_base.sample_rate = sample_rate;
+}
+
+void orcm_sensor_base_get_sample_rate(int *sample_rate)
+{
+    if (NULL != sample_rate) {
+        *sample_rate = orcm_sensor_base.sample_rate;
+    }
 }

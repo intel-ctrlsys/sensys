@@ -56,6 +56,8 @@ static void sigar_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_sigar_sample(int fd, short args, void *cbdata);
 static void collect_sample(orcm_sensor_sampler_t *sampler);
 static void sigar_log(opal_buffer_t *buf);
+static void sigar_set_sample_rate(int sample_rate);
+static void sigar_get_sample_rate(int *sample_rate);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_sigar_module = {
@@ -66,7 +68,9 @@ orcm_sensor_base_module_t orcm_sensor_sigar_module = {
     sigar_sample,
     sigar_log,
     NULL,
-    NULL
+    NULL,
+    sigar_set_sample_rate,
+    sigar_get_sample_rate
 };
 
 /* define some local classes */
@@ -879,6 +883,10 @@ static void perthread_sigar_sample(int fd, short args, void *cbdata)
     /* clear the bucket */
     OBJ_DESTRUCT(&sampler->bucket);
     OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+    /* check if sigar sample rate is provided for this*/
+    if (mca_sensor_sigar_component.sample_rate) {
+        sampler->rate.tv_sec = mca_sensor_sigar_component.sample_rate;
+    } 
     /* set ourselves to sample again */
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
@@ -2099,3 +2107,24 @@ static void generate_test_vector(opal_buffer_t *v)
     ui64++;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
 }
+
+static void sigar_set_sample_rate(int sample_rate)
+{
+    /* set the sigar sample rate if seperate thread is enabled */
+    if (mca_sensor_sigar_component.use_progress_thread) {
+        mca_sensor_sigar_component.sample_rate = sample_rate;
+    }
+    return;
+}
+
+static void sigar_get_sample_rate(int *sample_rate)
+{
+    if (NULL != sample_rate) {
+    /* check if sigar sample rate is provided for this*/
+        if (mca_sensor_sigar_component.use_progress_thread) {
+            *sample_rate = mca_sensor_sigar_component.sample_rate;
+        }
+    }
+    return;
+}
+

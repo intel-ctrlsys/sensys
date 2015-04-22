@@ -57,6 +57,8 @@ static void coretemp_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_coretemp_sample(int fd, short args, void *cbdata);
 static void collect_sample(orcm_sensor_sampler_t *sampler);
 static void coretemp_log(opal_buffer_t *buf);
+static void coretemp_set_sample_rate(int sample_rate);
+static void coretemp_get_sample_rate(int *sample_rate);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_coretemp_module = {
@@ -67,7 +69,9 @@ orcm_sensor_base_module_t orcm_sensor_coretemp_module = {
     coretemp_sample,
     coretemp_log,
     NULL,
-    NULL
+    NULL,
+    coretemp_set_sample_rate,
+    coretemp_get_sample_rate
 };
 
 /****    CORETEMP EVENT HISTORY TYPE    ****/
@@ -728,6 +732,10 @@ static void perthread_coretemp_sample(int fd, short args, void *cbdata)
     /* clear the bucket */
     OBJ_DESTRUCT(&sampler->bucket);
     OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+    /* check if coretemp sample rate is provided for this*/
+    if (mca_sensor_coretemp_component.sample_rate) {
+        sampler->rate.tv_sec = mca_sensor_coretemp_component.sample_rate;
+    } 
     /* set ourselves to sample again */
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
@@ -974,4 +982,24 @@ static void coretemp_log(opal_buffer_t *sample)
         free(hostname);
     }
 
+}
+
+static void coretemp_set_sample_rate(int sample_rate)
+{
+    /* set the coretemp sample rate if seperate thread is enabled */
+    if (mca_sensor_coretemp_component.use_progress_thread) {
+        mca_sensor_coretemp_component.sample_rate = sample_rate;
+    }
+    return;
+}
+
+static void coretemp_get_sample_rate(int *sample_rate)
+{
+    if (NULL != sample_rate) {
+    /* check if coretemp sample rate is provided for this*/
+        if (mca_sensor_coretemp_component.use_progress_thread) {
+            *sample_rate = mca_sensor_coretemp_component.sample_rate;
+        }
+    }
+    return;
 }

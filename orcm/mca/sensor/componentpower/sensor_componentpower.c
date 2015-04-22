@@ -62,6 +62,8 @@ static void componentpower_log(opal_buffer_t *buf);
 static int detect_num_sockets(void);
 static int detect_num_cpus(void);
 static void detect_cpu_for_each_socket(void);
+static void componentpower_set_sample_rate(int sample_rate);
+static void componentpower_get_sample_rate(int *sample_rate);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_componentpower_module = {
@@ -72,7 +74,9 @@ orcm_sensor_base_module_t orcm_sensor_componentpower_module = {
     componentpower_sample,
     componentpower_log,
     NULL,
-    NULL
+    NULL,
+    componentpower_set_sample_rate,
+    componentpower_get_sample_rate
 };
 
 __time_val _tv;
@@ -372,6 +376,10 @@ static void perthread_componentpower_sample(int fd, short args, void *cbdata)
     /* clear the bucket */
     OBJ_DESTRUCT(&sampler->bucket);
     OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+    /* check if componentpower sample rate is provided for this*/
+    if (mca_sensor_componentpower_component.sample_rate) {
+        sampler->rate.tv_sec = mca_sensor_componentpower_component.sample_rate;
+    } 
     /* set ourselves to sample again */
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
@@ -679,4 +687,24 @@ static void componentpower_log(opal_buffer_t *sample)
         free(hostname);
     }
 
+}
+
+static void componentpower_set_sample_rate(int sample_rate)
+{
+    /* set the componentpower sample rate if seperate thread is enabled */
+    if (mca_sensor_componentpower_component.use_progress_thread) {
+        mca_sensor_componentpower_component.sample_rate = sample_rate;
+    }
+    return;
+}
+
+static void componentpower_get_sample_rate(int *sample_rate)
+{
+    if (NULL != sample_rate) {
+    /* check if componentpower sample rate is provided for this*/
+        if (mca_sensor_componentpower_component.use_progress_thread) {
+            *sample_rate = mca_sensor_componentpower_component.sample_rate;
+        }
+    }
+    return;
 }

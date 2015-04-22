@@ -119,6 +119,8 @@ ORCM_DECLSPEC void orcm_sensor_base_manually_sample(char *sensors,
                                                     orcm_sensor_sample_cb_fn_t cbfunc,
                                                     void *cbdata);
 ORCM_DECLSPEC void orcm_sensor_base_collect(int fd, short args, void *cbdata);
+ORCM_DECLSPEC void orcm_sensor_base_set_sample_rate(int sample_rate);
+ORCM_DECLSPEC void orcm_sensor_base_get_sample_rate(int *sample_rate);
 
 END_C_DECLS
 #endif

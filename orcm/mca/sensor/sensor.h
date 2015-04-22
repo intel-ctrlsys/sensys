@@ -84,6 +84,11 @@ typedef void (*orcm_sensor_base_module_inventory_log_fn_t) (char *hostname, opal
 /* pass a buffer to the module for logging */
 typedef void (*orcm_sensor_base_module_log_fn_t)(opal_buffer_t *sample);
 
+/* set sample rate in the module */
+typedef void (*orcm_sensor_base_module_set_sample_rate_fn_t)(int sample_rate);
+/* get sample rate in the module */
+typedef void (*orcm_sensor_base_module_get_sample_rate_fn_t)(int *sample_rate);
+
 /*
  * Component modules Ver 1.0
  */
@@ -96,6 +101,8 @@ struct orcm_sensor_base_module_1_0_0_t {
     orcm_sensor_base_module_log_fn_t        log;
     orcm_sensor_base_module_inventory_collect_fn_t  inventory_collect;
     orcm_sensor_base_module_inventory_log_fn_t      inventory_log;
+    orcm_sensor_base_module_set_sample_rate_fn_t    set_sample_rate;
+    orcm_sensor_base_module_get_sample_rate_fn_t    get_sample_rate;
 };
 
 typedef struct orcm_sensor_base_module_1_0_0_t orcm_sensor_base_module_1_0_0_t;

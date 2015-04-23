@@ -545,6 +545,14 @@ static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals)
 
 }
 
+void generate_test_vector(uint64_t *mce_reg) {
+
+        mce_reg[MCG_STATUS] = 0x0;
+        mce_reg[MCG_CAP]    = 0x1000c14;
+        mce_reg[MCI_STATUS] = 0x88000080000000b1;
+        mce_reg[MCI_ADDR]   = 0x3;
+        mce_reg[MCI_MISC]   = 0x40000;
+}
 
 static void mcedata_sample(orcm_sensor_sampler_t *sampler)
 {
@@ -601,16 +609,15 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
         }
         free(timestamp_str);
 
+        if (false == mca_sensor_mcedata_component.test) {
         /* Block here for a read call to the mcedata log file */
         /* read = ();
          */
-        mce_reg[MCG_STATUS] = 0x0;
-        mce_reg[MCG_CAP]    = 0x1000c14;
-        mce_reg[MCI_STATUS] = 0x88000080000000b1;
-        mce_reg[MCI_ADDR]   = 0x3;
-        mce_reg[MCI_MISC]   = 0x40000;
-        packed = true;
-
+            packed = false; /* @VINFIX: Need to implement a sane method to collect mce raw information */
+        } else {
+            generate_test_vector(mce_reg);
+            packed = true;
+        }
         while (i < 5) {
             opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "Packing %s : %lu",mce_reg_name[i], mce_reg[i]);

@@ -396,7 +396,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     }
     opal_list_append(vals, &kv->super);
 
-
+    /* Fig 15-6 of the Intel(R) 64 & IA-32 spec */
     over = (mce_reg[MCI_STATUS] & MCI_OVERFLOW_MASK)? true : false ;
     val = (mce_reg[MCI_STATUS] & MCI_VALID_MASK)? true : false ;
     uc = (mce_reg[MCI_STATUS] & MCI_UC_MASK)? true : false ;

@@ -1,6 +1,6 @@
 # -*- text -*-
 #
-# Copyright (c) 2014     Intel, Inc.  All rights reserved.
+# Copyright (c) 2015     Intel, Inc.  All rights reserved.
 #
 # $COPYRIGHT$
 # 
@@ -10,24 +10,12 @@
 #
 # This is the US/English general help file
 #
-[req-dir-not-found]
-Core temperature monitoring was requested, but this node
-lacks the required directory:
+[mcelog]
+MCE collection was requested but mcelog dependency not met
 
   Node:  %s
-  Directory:  %s
 
-This usually indicates that the "coretemp" kernel module
-has not been loaded. Operation will continue, but core
-temperatures will not be monitored.
+This usually indicates that the "mcelog" daemon has not been
+loaded. Operation will continue, but MCE errors will not be
+monitored.
 #
-[no-cores-found]
-Core temperature monitoring was requested, but this node
-does not appear to have the required core-level files, or
-you lack authority to access them:
-
-  Node:  %s
-
-This usually indicates that the "coretemp" kernel module
-has not been loaded. Operation will continue, but core
-temperatures will not be monitored.

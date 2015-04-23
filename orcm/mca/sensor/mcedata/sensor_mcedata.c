@@ -55,7 +55,7 @@
 #define     MCI_ADDR    3
 #define     MCI_MISC    4
 
-/*MSCOD Model specific Error Codes in MCi_STATUS register */
+/*MCA Error Codes in MCi_STATUS register [15:0]*/
 #define GEN_CACHE_ERR_MASK  (1<<3)
 #define TLB_ERR_MASK        (1<<4)
 #define MEM_CTRL_ERR_MASK   (1<<7)
@@ -72,9 +72,14 @@
 #define MCI_PCC_MASK            ((uint64_t)1<<57)
 #define MCI_S_MASK              ((uint64_t)1<<56)
 #define MCI_AR_MASK             ((uint64_t)1<<55)
+#define EVENT_FILTERED_MASK     ((uint64_t)1<<12) /* Sec. 15.9.2.1 */
 
 /* MCi_STATUS health Status tracking */
-#define HEALTH_STATUS_MASK      ((uint64_t)3<<53)
+#define HEALTH_STATUS_MASK      ((uint64_t)0x3<<53)
+
+/* MCi_MISC Register masks */
+#define MCI_ADDR_MODE_MASK      (0x3<<6)
+#define MCI_RECV_ADDR_MASK      (0x3F)
 
 typedef enum _mcetype {
     e_gen_cache_error,
@@ -331,7 +336,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     opal_value_t *kv;
     bool ar, s, pcc, addrv, miscv, en, uc, over, val;
-    uint64_t cache_health;
+    uint64_t cache_health, addr_type, lsb_addr;
     opal_output(0,"MCE Error Type 3 - Cache Hierarchy Errors");
 
     val = (mce_reg[MCI_STATUS] & MCI_VALID_MASK)? true : false ;
@@ -344,7 +349,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     }
 
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("ErrorLocation");
+    kv->key = strdup("error_location");
     kv->type = OPAL_STRING;
     kv->data.string = strdup("CacheError");
     opal_list_append(vals, &kv->super);
@@ -403,7 +408,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     ar = (mce_reg[MCI_STATUS] & MCI_AR_MASK)? true : false ;
 
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("ErrorSeverity");
+    kv->key = strdup("error_severity");
     kv->type = OPAL_STRING;
     if (uc && pcc) {
         kv->data.string = strdup("UC");
@@ -428,18 +433,50 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
         opal_output(0,"Enhanced chache reporting available");
         cache_health = (((mce_reg[MCI_STATUS] & HEALTH_STATUS_MASK ) >> 53) && 0x3);
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("CacheHealth");
+        kv->key = strdup("cache_health");
         kv->type = OPAL_STRING;
 
         switch (cache_health) {
-            case 0 : kv->data.string = strdup("NotTracking"); break;
-            case 1 : kv->data.string = strdup("Green"); break;
-            case 2 : kv->data.string = strdup("Yellow"); break;
-            case 3 : kv->data.string = strdup("Reserved"); break;
+            case 0: kv->data.string = strdup("NotTracking"); break;
+            case 1: kv->data.string = strdup("Green"); break;
+            case 2: kv->data.string = strdup("Yellow"); break;
+            case 3: kv->data.string = strdup("Reserved"); break;
+            default: kv->data.string = strdup("UNKNOWN"); break;
+
         }
         opal_list_append(vals, &kv->super);
     }
 
+    if(miscv) {
+        opal_output(0,"MISC Register Valid");
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("address_mode");
+        kv->type = OPAL_STRING;
+        addr_type = ((mce_reg[MCI_MISC] & MCI_ADDR_MODE_MASK) >> 6);
+        switch (addr_type) {
+            case 0: kv->data.string = strdup("SegmentOffset"); break;
+            case 1: kv->data.string = strdup("LinearAddress"); break;
+            case 2: kv->data.string = strdup("PhysicalAddress"); break;
+            case 3: kv->data.string = strdup("MemoryAddress"); break;
+            case 7: kv->data.string = strdup("Generic"); break;
+            default: kv->data.string = strdup("Reserved"); break;
+        }
+        opal_list_append(vals, &kv->super);
+        lsb_addr = ((mce_reg[MCI_MISC] & MCI_RECV_ADDR_MASK));
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("recov_addr_lsb");
+        kv->type = OPAL_UINT;
+        kv->data.uint = lsb_addr;
+        opal_list_append(vals, &kv->super);
+    }
+    if (addrv) {
+        opal_output(0,"ADDR Register Valid");
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("err_addr");
+        kv->type = OPAL_UINT64;
+        kv->data.uint64 = mce_reg[MCI_ADDR];
+        opal_list_append(vals, &kv->super);
+    }
 }
 
 static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
@@ -557,7 +594,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
         /* read = ();
          */
         mce_reg[MCG_STATUS] = 0x0;
-        mce_reg[MCG_CAP]    = 0x1;
+        mce_reg[MCG_CAP]    = 0x1000c14;
         mce_reg[MCI_STATUS] = 0x8820000000000105;
         mce_reg[MCI_ADDR]   = 0x3;
         mce_reg[MCI_MISC]   = 0x4;

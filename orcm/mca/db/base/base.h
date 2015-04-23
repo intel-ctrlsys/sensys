@@ -84,6 +84,22 @@ typedef struct {
 } orcm_db_handle_t;
 OBJ_CLASS_DECLARATION(orcm_db_handle_t);
 
+typedef enum {
+    ORCM_DB_ITEM_INTEGER,
+    ORCM_DB_ITEM_REAL,
+    ORCM_DB_ITEM_STRING
+} orcm_db_item_type_t;
+
+typedef struct {
+    orcm_db_item_type_t item_type;
+    opal_data_type_t opal_type;
+    union {
+        long long int value_int;
+        double value_real;
+        char *value_str;
+    } value;
+} orcm_db_item_t;
+
 ORCM_DECLSPEC extern orcm_db_base_t orcm_db_base;
 
 ORCM_DECLSPEC void orcm_db_base_open(char *name,
@@ -137,6 +153,9 @@ ORCM_DECLSPEC void orcm_db_base_remove_data(int dbhandle,
                                             const char *key,
                                             orcm_db_callback_fn_t cbfunc,
                                             void *cbdata);
+
+ORCM_DECLSPEC int opal_value_to_orcm_db_item(const opal_value_t *kv,
+                                             orcm_db_item_t *item);
 
 END_C_DECLS
 

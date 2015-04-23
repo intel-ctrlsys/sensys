@@ -37,7 +37,6 @@
 #include "orcm/runtime/orcm_globals.h"
 
 #include "orcm/mca/db/base/base.h"
-#include "orcm/mca/db/base/orcm_db_utils.h"
 #include "db_postgres.h"
 
 #define ORCM_PG_MAX_LINE_LENGTH 4096
@@ -61,8 +60,6 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
                                      opal_list_t *test_params);
 
 /* Internal helper functions */
-
-
 static void tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
                                  size_t size);
 static void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
@@ -104,6 +101,11 @@ static int postgres_init(struct orcm_db_base_module_t *imod)
     int count;
     PGconn *conn;
 
+    if (NULL == mod->dbname) {
+        opal_output(0, "db:postgres: No database name provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
     /* break the user info into its login parts */
     login = opal_argv_split(mod->user, ':');
     if (2 != opal_argv_count(login)) {
@@ -116,10 +118,10 @@ static int postgres_init(struct orcm_db_base_module_t *imod)
     uri_parts = opal_argv_split(mod->pguri, ':');
     count = opal_argv_count(uri_parts);
     if (2 < count || 1 > count) {
-        opal_argv_free(login);
-        opal_argv_free(uri_parts);
         opal_output(0, "db:postgres: URI info is invalid: %s",
                     mod->pguri);
+        opal_argv_free(login);
+        opal_argv_free(uri_parts);
         return ORCM_ERR_BAD_PARAM;
     }
     host = uri_parts[0];
@@ -206,7 +208,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
     char **rows;
     char *values;
     char *insert_stmt;
-    int i;
+    size_t i;
 
     PGresult *res;
 
@@ -231,7 +233,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
                 break;
             case OPAL_STRING:
                 strncpy(time_stamp, kv->data.string, sizeof(time_stamp) - 1);
-                hostname[sizeof(time_stamp) - 1] = '\0';
+                time_stamp[sizeof(time_stamp) - 1] = '\0';
                 break;
             default:
                 ERR_MSG_STORE("Invalid value type specified for time stamp");
@@ -271,7 +273,9 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
 
     num_items = opal_list_get_size(kvs);
     rows = (char **)malloc(sizeof(char *) * (num_items + 1));
-    rows[num_items] = NULL;
+    for (i = 0; i < num_items + 1; i++) {
+        rows[i] = NULL;
+    }
     i = 0;
     OPAL_LIST_FOREACH(kv, kvs, opal_value_t) {
         /* kv->key will contain: <data_item>:<units> */
@@ -462,22 +466,22 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
         params[2] = type_str;
         switch (item.item_type) {
         case ORCM_DB_ITEM_STRING:
+            params[3] = NULL;
             params[4] = NULL;
-            params[5] = NULL;
-            params[6] = item.value.value_str;
+            params[5] = item.value.value_str;
             value_str = NULL;
             break;
         case ORCM_DB_ITEM_REAL:
-            params[4] = NULL;
+            params[3] = NULL;
             asprintf(&value_str, "%f", item.value.value_real);
-            params[5] = value_str;
-            params[6] = NULL;
+            params[4] = value_str;
+            params[5] = NULL;
             break;
         default:
             asprintf(&value_str, "%lld", item.value.value_int);
-            params[4] = value_str;
+            params[3] = value_str;
+            params[4] = NULL;
             params[5] = NULL;
-            params[6] = NULL;
         }
         params[6] = mv->units;
 
@@ -606,11 +610,6 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
     PQclear(res);
 
     tm_to_str_time_stamp(start_time, start_time_str, sizeof(start_time_str));
-    if (NULL != end_time) {
-        tm_to_str_time_stamp(end_time, end_time_str, sizeof(end_time_str));
-    } else {
-        strcpy(end_time_str, "NULL");
-    }
 
     if (NULL == component_index) {
         index_str = NULL;
@@ -622,7 +621,12 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
     result_params[1] = diag_type;
     result_params[2] = diag_subtype;
     result_params[3] = start_time_str;
-    result_params[4] = end_time_str;
+    if (NULL != end_time) {
+        tm_to_str_time_stamp(end_time, end_time_str, sizeof(end_time_str));
+        result_params[4] = end_time_str;
+    } else {
+        result_params[4] = NULL;
+    }
     result_params[5] = index_str;
     result_params[6] = test_result;
 
@@ -637,6 +641,15 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
 
     if (NULL == test_params) {
         /* No test parameters provided, we're done! */
+        res = PQexec(mod->conn, "commit");
+        if (!status_ok(res)) {
+            PQclear(res);
+            ERR_MSG_FMT_RDT("Unable to commit transaction: %s",
+                            PQresultErrorMessage(res));
+            return ORCM_ERROR;
+        }
+        PQclear(res);
+
         opal_output_verbose(2, orcm_db_base_framework.framework_output,
                             "postgres_record_diag_test succeeded");
         return ORCM_SUCCESS;

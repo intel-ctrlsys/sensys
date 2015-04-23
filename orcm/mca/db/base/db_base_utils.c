@@ -7,11 +7,13 @@
  * $HEADER$
  */
 
-#include "orcm/mca/db/base/orcm_db_utils.h"
+#include "orcm/mca/db/base/base.h"
 
 int opal_value_to_orcm_db_item(const opal_value_t *kv,
                                orcm_db_item_t *item)
 {
+    item->opal_type = kv->type;
+
     switch (kv->type) {
     case OPAL_STRING:
         item->value.value_str = kv->data.string;

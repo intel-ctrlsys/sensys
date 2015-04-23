@@ -39,15 +39,8 @@
 #include "orcm/runtime/orcm_globals.h"
 
 #include "orcm/mca/db/base/base.h"
-#include "orcm/mca/db/base/orcm_db_utils.h"
 
 #include "db_odbc.h"
-
-typedef enum {
-    VALUE_INTEGER,
-    VALUE_REAL,
-    VALUE_STRING
-} value_type_t;
 
 /* Module API functions */
 static int odbc_init(struct orcm_db_base_module_t *imod);

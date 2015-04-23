@@ -477,6 +477,17 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
         kv->data.uint64 = mce_reg[MCI_ADDR];
         opal_list_append(vals, &kv->super);
     }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("corrected_filtering");
+        kv->type = OPAL_BOOL;
+
+    if(mce_reg[MCI_STATUS]&0x1000) {
+        opal_output(0,"Corrected filtering enabled");
+        kv->data.flag = true;
+    } else {
+        kv->data.flag = true;
+    }
+        opal_list_append(vals, &kv->super);
 }
 
 static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)

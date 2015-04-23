@@ -606,9 +606,9 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
          */
         mce_reg[MCG_STATUS] = 0x0;
         mce_reg[MCG_CAP]    = 0x1000c14;
-        mce_reg[MCI_STATUS] = 0x8820000000000105;
+        mce_reg[MCI_STATUS] = 0x88000080000000b1;
         mce_reg[MCI_ADDR]   = 0x3;
-        mce_reg[MCI_MISC]   = 0x4;
+        mce_reg[MCI_MISC]   = 0x40000;
         packed = true;
 
         while (i < 5) {

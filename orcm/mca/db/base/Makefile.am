@@ -15,4 +15,5 @@ headers += \
 libmca_db_la_SOURCES += \
 	base/db_base_frame.c \
 	base/db_base_select.c \
-        base/db_base_stubs.c
+    base/db_base_stubs.c \
+    base/db_base_utils.c

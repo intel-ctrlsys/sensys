@@ -9,6 +9,8 @@
 
 #include "orcm/mca/db/base/base.h"
 
+#include "orcm/constants.h"
+
 int opal_value_to_orcm_db_item(const opal_value_t *kv,
                                orcm_db_item_t *item)
 {

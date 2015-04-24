@@ -122,9 +122,23 @@ MCA_BASE_FRAMEWORK_DECLARE(orcm, db, "ORCM Database Framework",
 
 static void req_con(orcm_db_request_t *p)
 {
+    p->cbdata = NULL;
+
     p->properties = NULL;
+
+    p->hostname = NULL;
+    p->time_stamp = NULL;
+    p->data_group = NULL;
     p->primary_key = NULL;
     p->key = NULL;
+
+    p->diag_subtype = NULL;
+    p->diag_subtype = NULL;
+    p->start_time = NULL;
+    p->end_time = NULL;
+    p->component_index = NULL;
+    p->test_result = NULL;
+
     p->kvs = NULL;
 }
 OBJ_CLASS_INSTANCE(orcm_db_request_t,

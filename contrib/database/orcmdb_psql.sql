@@ -959,7 +959,7 @@ CREATE TABLE data_sample (
 --
 
 CREATE TABLE data_sample_raw (
-    node character varying(256) NOT NULL,
+    hostname character varying(256) NOT NULL,
     data_item character varying(250) NOT NULL,
     time_stamp timestamp without time zone NOT NULL,
     value_int bigint,
@@ -972,40 +972,19 @@ CREATE TABLE data_sample_raw (
 
 
 --
--- Name: node; Type: TABLE; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE TABLE node (
-    node_id integer NOT NULL,
-    hostname character varying(256) NOT NULL,
-    node_type smallint,
-    status smallint,
-    num_cpus smallint,
-    num_sockets smallint,
-    cores_per_socket smallint,
-    threads_per_core smallint,
-    memory smallint
-);
-
-
---
 -- Name: data_samples_view; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW data_samples_view AS
- SELECT data_sample.node_id,
-    node.hostname,
-    data_sample.data_item_id,
-    data_item.name AS data_item,
-    data_item.data_type_id,
-    data_sample.time_stamp,
-    data_sample.value_int,
-    data_sample.value_real,
-    data_sample.value_str,
-    data_sample.units
-   FROM ((data_sample
-     JOIN node ON ((node.node_id = data_sample.node_id)))
-     JOIN data_item ON ((data_item.data_item_id = data_sample.data_item_id)));
+ SELECT data_sample_raw.hostname,
+    data_sample_raw.data_item,
+    data_sample_raw.data_type_id,
+    data_sample_raw.time_stamp,
+    data_sample_raw.value_int,
+    data_sample_raw.value_real,
+    data_sample_raw.value_str,
+    data_sample_raw.units
+   FROM data_sample_raw;
 
 
 --
@@ -1337,6 +1316,23 @@ CREATE TABLE maintenance_record (
     replacement_date date NOT NULL,
     old_serial_number character varying(50) NOT NULL,
     new_serial_number character varying(50) NOT NULL
+);
+
+
+--
+-- Name: node; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE node (
+    node_id integer NOT NULL,
+    hostname character varying(256) NOT NULL,
+    node_type smallint,
+    status smallint,
+    num_cpus smallint,
+    num_sockets smallint,
+    cores_per_socket smallint,
+    threads_per_core smallint,
+    memory smallint
 );
 
 

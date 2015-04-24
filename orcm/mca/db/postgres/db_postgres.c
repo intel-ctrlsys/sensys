@@ -302,7 +302,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
             return ORCM_ERR_NOT_SUPPORTED;
         }
 
-        /* (node,
+        /* (hostname,
          *  data_item,
          *  time_stamp,
          *  value_int,
@@ -357,7 +357,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
     values = opal_argv_join(rows, ',');
     opal_argv_free(rows);
 
-    asprintf(&insert_stmt, "insert into data_sample_raw(node,data_item,"
+    asprintf(&insert_stmt, "insert into data_sample_raw(hostname,data_item,"
              "time_stamp,value_int,value_real,value_str,units,data_type_id) "
              "values %s", values);
     free(values);

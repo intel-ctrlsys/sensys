@@ -322,14 +322,71 @@ static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals)
 static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     opal_value_t *kv;
+    bool ar, s, pcc, addrv, miscv, en, uc, over, val;
+
     opal_output(0,"MCE Error Type 2 - Memory Controller Errors");
 
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("ErrorLocation");
+    kv->key = strdup("error_type");
     kv->type = OPAL_STRING;
-    kv->data.string = strdup("MemCtrlError");
+    kv->data.string = strdup("mem_ctrl_error");
     opal_list_append(vals, &kv->super);
 
+    /* Fig 15-6 of the Intel(R) 64 & IA-32 spec */
+    over = (mce_reg[MCI_STATUS] & MCI_OVERFLOW_MASK)? true : false ;
+    val = (mce_reg[MCI_STATUS] & MCI_VALID_MASK)? true : false ;
+    uc = (mce_reg[MCI_STATUS] & MCI_UC_MASK)? true : false ;
+    en = (mce_reg[MCI_STATUS] & MCI_EN_MASK)? true : false ;
+    miscv = (mce_reg[MCI_STATUS] & MCI_MISCV_MASK)? true : false ;
+    addrv = (mce_reg[MCI_STATUS] & MCI_ADDRV_MASK)? true : false ;
+    pcc = (mce_reg[MCI_STATUS] & MCI_PCC_MASK)? true : false ;
+    s = (mce_reg[MCI_STATUS] & MCI_S_MASK)? true : false ;
+    ar = (mce_reg[MCI_STATUS] & MCI_AR_MASK)? true : false ;
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("error_severity");
+    kv->type = OPAL_STRING;
+    if (uc && pcc) {
+        kv->data.string = strdup("UC");
+    } else if(!(uc || pcc)) {
+        kv->data.string = strdup("CE");
+    } else if (uc) {
+        if (!(pcc || s || ar)) {
+            kv->data.string = strdup("UCNA");
+        } else if (!(pcc || (!s) || ar)) {
+            kv->data.string = strdup("SRAO");
+        } else if (!(pcc || (!s) || (!ar))) {
+            kv->data.string = strdup("SRAR");
+        } else {
+            kv->data.string = strdup("UNKNOWN");
+        }
+    } else {
+        kv->data.string = strdup("UNKNOWN");
+    }
+    opal_list_append(vals, &kv->super);
+
+    /* Request Type */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("request_type");
+    kv->type = OPAL_STRING;
+    switch ((mce_reg[MCI_STATUS] & 0x70) >> 4) {
+        case 0: kv->data.string = strdup("GEN"); break;     /* Generic Undefined Request */
+        case 1: kv->data.string = strdup("RD"); break;      /* Memory Read Error */
+        case 2: kv->data.string = strdup("WR"); break;      /* Memory Write Error */
+        case 3: kv->data.string = strdup("AC"); break;      /* Address/Command Error */
+        case 4: kv->data.string = strdup("MS"); break;      /* Memory Scrubbing Error */
+        default: kv->data.string = strdup("Reserved"); break; /* Reserved */
+    }
+    opal_list_append(vals, &kv->super);
+
+    /* Channel Number */
+    if ((mce_reg[MCI_STATUS] & 0xF) != 0xf) {
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("channel_number");
+        kv->type = OPAL_UINT;
+        kv->data.uint = (mce_reg[MCI_STATUS] & 0xF);
+        opal_list_append(vals, &kv->super);
+    }
 }
 
 static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
@@ -349,9 +406,9 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     }
 
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("error_location");
+    kv->key = strdup("error_type");
     kv->type = OPAL_STRING;
-    kv->data.string = strdup("CacheError");
+    kv->data.string = strdup("cache_error");
     opal_list_append(vals, &kv->super);
 
     /* Get the cache level */

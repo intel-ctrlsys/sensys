@@ -97,7 +97,7 @@ static int freq_component_register(void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_freq_component.policy);
     mca_sensor_freq_component.pstate = true;
-    (void) mca_base_component_var_register (c, "test",
+    (void) mca_base_component_var_register (c, "pstate",
                                             "Enable collecting pstate driver state",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,

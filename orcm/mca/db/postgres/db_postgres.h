@@ -19,6 +19,13 @@ BEGIN_C_DECLS
 
 ORCM_MODULE_DECLSPEC extern orcm_db_base_component_t mca_db_postgres_component;
 
+typedef enum {
+    ORCM_DB_PG_STMT_SET_NODE_FEATURE,
+    ORCM_DB_PG_STMT_RECORD_DIAG_TEST_RESULT,
+    ORCM_DB_PG_STMT_RECORD_DIAG_TEST_CONFIG,
+    ORCM_DB_PG_STMT_NUM_STMTS
+} orcm_db_postgres_prepared_statement_t;
+
 typedef struct {
     orcm_db_base_module_t api;
     char *pguri;
@@ -27,6 +34,7 @@ typedef struct {
     char *dbname;
     char *user;
     PGconn *conn;
+    bool prepared[ORCM_DB_PG_STMT_NUM_STMTS];
 } mca_db_postgres_module_t;
 ORCM_MODULE_DECLSPEC extern mca_db_postgres_module_t mca_db_postgres_module;
 

@@ -99,6 +99,7 @@ static int postgres_init(struct orcm_db_base_module_t *imod)
     char *host;
     char *port;
     int count;
+    int i;
     PGconn *conn;
 
     if (NULL == mod->dbname) {
@@ -142,6 +143,11 @@ static int postgres_init(struct orcm_db_base_module_t *imod)
     }
 
     mod->conn = conn;
+
+    for (i = 0; i < ORCM_DB_PG_STMT_NUM_STMTS; i++) {
+        mod->prepared[i] = false;
+    }
+
     opal_output_verbose(5, orcm_db_base_framework.framework_output,
                         "db:postgres: Connection established to %s",
                         mod->dbname);
@@ -417,24 +423,29 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
         return ORCM_ERR_BAD_PARAM;
     }
 
-    /*
-     * $1: p_hostname character varying,
-     * $2: p_feature character varying,
-     * $3: p_data_type_id integer,
-     * $4: p_value_int bigint,
-     * $5: p_value_real double precision,
-     * $6: p_value_str character varying,
-     * $7: p_units character varying
-     * */
-    res = PQprepare(mod->conn, "set_node_feature",
-                    "select set_node_feature($1, $2, $3, $4, $5, $6, $7)",
-                    0, NULL);
-    if (!status_ok(res)) {
+    /* Prepare the statement only if it hasn't already been prepared */
+    if (!mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE]) {
+        /*
+         * $1: p_hostname character varying,
+         * $2: p_feature character varying,
+         * $3: p_data_type_id integer,
+         * $4: p_value_int bigint,
+         * $5: p_value_real double precision,
+         * $6: p_value_str character varying,
+         * $7: p_units character varying
+         * */
+        res = PQprepare(mod->conn, "set_node_feature",
+                        "select set_node_feature($1, $2, $3, $4, $5, $6, $7)",
+                        0, NULL);
+        if (!status_ok(res)) {
+            PQclear(res);
+            ERR_MSG_FMT_UNF("%s", PQresultErrorMessage(res));
+            return ORCM_ERROR;
+        }
         PQclear(res);
-        ERR_MSG_FMT_UNF("%s", PQresultErrorMessage(res));
-        return ORCM_ERROR;
+
+        mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE] = true;
     }
-    PQclear(res);
 
     res = PQexec(mod->conn, "begin");
     if (!status_ok(res)) {
@@ -580,25 +591,30 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
         return ORCM_ERR_BAD_PARAM;
     }
 
-    /*
-     * $1: hostname
-     * $2: diagnostic type
-     * $3: diagnostic subtype
-     * $4: start time
-     * $5: end time
-     * $6: component index
-     * $7: test result
-     */
-    res = PQprepare(mod->conn, "record_diag_test_result",
-                    "select record_diag_test_result("
-                    "$1, $2, $3, $4, $5, $6, $7)",
-                    0, NULL);
-    if (!status_ok(res)) {
+    /* Prepare the statement only if it hasn't already been prepared */
+    if (!mod->prepared[ORCM_DB_PG_STMT_RECORD_DIAG_TEST_RESULT]) {
+        /*
+         * $1: hostname
+         * $2: diagnostic type
+         * $3: diagnostic subtype
+         * $4: start time
+         * $5: end time
+         * $6: component index
+         * $7: test result
+         */
+        res = PQprepare(mod->conn, "record_diag_test_result",
+                        "select record_diag_test_result("
+                        "$1, $2, $3, $4, $5, $6, $7)",
+                        0, NULL);
+        if (!status_ok(res)) {
+            PQclear(res);
+            ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
+            return ORCM_ERROR;
+        }
         PQclear(res);
-        ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
-        return ORCM_ERROR;
+
+        mod->prepared[ORCM_DB_PG_STMT_RECORD_DIAG_TEST_RESULT] = true;
     }
-    PQclear(res);
 
     res = PQexec(mod->conn, "begin");
     if (!status_ok(res)) {
@@ -655,29 +671,34 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
         return ORCM_SUCCESS;
     }
 
-    /*
-     * $1: hostname
-     * $2: diagnostic type
-     * $3: diagnostic subtype
-     * $4: start time
-     * $5: test parameter
-     * $6: data type
-     * $7: integer value
-     * $8: real value
-     * $9: string value
-     * $10: units
-     */
-    res = PQprepare(mod->conn, "record_diag_test_config",
-                    "select record_diag_test_config("
-                    "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-                    0, NULL);
-    if (!status_ok(res)) {
+    /* Prepare the statement only if it hasn't already been prepared */
+    if (!mod->prepared[ORCM_DB_PG_STMT_RECORD_DIAG_TEST_CONFIG]) {
+        /*
+         * $1: hostname
+         * $2: diagnostic type
+         * $3: diagnostic subtype
+         * $4: start time
+         * $5: test parameter
+         * $6: data type
+         * $7: integer value
+         * $8: real value
+         * $9: string value
+         * $10: units
+         */
+        res = PQprepare(mod->conn, "record_diag_test_config",
+                        "select record_diag_test_config("
+                        "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                        0, NULL);
+        if (!status_ok(res)) {
+            PQclear(res);
+            PQexec(mod->conn, "rollback");
+            ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
+            return ORCM_ERROR;
+        }
         PQclear(res);
-        PQexec(mod->conn, "rollback");
-        ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
-        return ORCM_ERROR;
+
+        mod->prepared[ORCM_DB_PG_STMT_RECORD_DIAG_TEST_CONFIG] = true;
     }
-    PQclear(res);
 
     config_params[0] = hostname;
     config_params[1] = diag_type;

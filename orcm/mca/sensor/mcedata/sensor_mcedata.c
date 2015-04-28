@@ -55,6 +55,18 @@
 #define     MCI_ADDR    3
 #define     MCI_MISC    4
 
+/* MCG_CAP Register Masks */
+#define MCG_LMCE_P_MASK         ((uint64_t)1<<27)
+#define MCG_ELOG_P_MASK         ((uint64_t)1<<26)
+#define MCG_EMC_P_MASK          ((uint64_t)1<<25)
+#define MCG_SER_P_MASK          ((uint64_t)1<<24)
+#define MCG_EXT_CNT_MASK        ((uint64_t)0xff<<16)
+#define MCG_TES_P_MASK          ((uint64_t)1<<11)
+#define MCG_CMCI_P_MASK         ((uint64_t)1<<10)
+#define MCG_EXT_P_MASK          ((uint64_t)1<<9)
+#define MCG_CTL_P_MASK          ((uint64_t)1<<8)
+#define MCG_BANK_COUNT_MASK     ((uint64_t)0xFF)
+
 /*MCA Error Codes in MCi_STATUS register [15:0]*/
 #define GEN_CACHE_ERR_MASK  (1<<3)
 #define TLB_ERR_MASK        (1<<4)
@@ -105,6 +117,7 @@ static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals);
+void generate_test_vector(uint64_t *mce_reg, uint32_t *cpu, uint32_t *socket);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_mcedata_module = {
@@ -323,6 +336,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     opal_value_t *kv;
     bool ar, s, pcc, addrv, miscv, en, uc, over, val;
+    uint64_t addr_type, lsb_addr;
 
     opal_output(0,"MCE Error Type 2 - Memory Controller Errors");
 
@@ -343,28 +357,31 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
     s = (mce_reg[MCI_STATUS] & MCI_S_MASK)? true : false ;
     ar = (mce_reg[MCI_STATUS] & MCI_AR_MASK)? true : false ;
 
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("error_severity");
-    kv->type = OPAL_STRING;
-    if (uc && pcc) {
-        kv->data.string = strdup("UC");
-    } else if(!(uc || pcc)) {
-        kv->data.string = strdup("CE");
-    } else if (uc) {
-        if (!(pcc || s || ar)) {
-            kv->data.string = strdup("UCNA");
-        } else if (!(pcc || (!s) || ar)) {
-            kv->data.string = strdup("SRAO");
-        } else if (!(pcc || (!s) || (!ar))) {
-            kv->data.string = strdup("SRAR");
+    if (((mce_reg[MCG_CAP] & MCG_TES_P_MASK) == MCG_TES_P_MASK) && 
+        ((mce_reg[MCG_CAP] & MCG_CMCI_P_MASK) == MCG_CMCI_P_MASK)) { /* Sec. 15.3.2.2.1 */
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("error_severity");
+        kv->type = OPAL_STRING;
+        if (uc && pcc) {
+            kv->data.string = strdup("UC");
+        } else if(!(uc || pcc)) {
+            kv->data.string = strdup("CE");
+        } else if (uc) {
+            if (!(pcc || s || ar)) {
+                kv->data.string = strdup("UCNA");
+            } else if (!(pcc || (!s) || ar)) {
+                kv->data.string = strdup("SRAO");
+            } else if (!(pcc || (!s) || (!ar))) {
+                kv->data.string = strdup("SRAR");
+            } else {
+                kv->data.string = strdup("UNKNOWN");
+            }
         } else {
             kv->data.string = strdup("UNKNOWN");
         }
-    } else {
-        kv->data.string = strdup("UNKNOWN");
+        opal_list_append(vals, &kv->super);
     }
-    opal_list_append(vals, &kv->super);
-
+    
     /* Request Type */
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("request_type");
@@ -387,6 +404,29 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
         kv->data.uint = (mce_reg[MCI_STATUS] & 0xF);
         opal_list_append(vals, &kv->super);
     }
+    if(miscv  && ((mce_reg[MCG_CAP] & MCG_SER_P_MASK) == MCG_SER_P_MASK)) {
+        opal_output(0,"MISC Register Valid");
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("address_mode");
+        kv->type = OPAL_STRING;
+        addr_type = ((mce_reg[MCI_MISC] & MCI_ADDR_MODE_MASK) >> 6);
+        switch (addr_type) {
+            case 0: kv->data.string = strdup("SegmentOffset"); break;
+            case 1: kv->data.string = strdup("LinearAddress"); break;
+            case 2: kv->data.string = strdup("PhysicalAddress"); break;
+            case 3: kv->data.string = strdup("MemoryAddress"); break;
+            case 7: kv->data.string = strdup("Generic"); break;
+            default: kv->data.string = strdup("Reserved"); break;
+        }
+        opal_list_append(vals, &kv->super);
+        lsb_addr = ((mce_reg[MCI_MISC] & MCI_RECV_ADDR_MASK));
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("recov_addr_lsb");
+        kv->type = OPAL_UINT;
+        kv->data.uint = lsb_addr;
+        opal_list_append(vals, &kv->super);
+    }
+
 }
 
 static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
@@ -464,47 +504,50 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     s = (mce_reg[MCI_STATUS] & MCI_S_MASK)? true : false ;
     ar = (mce_reg[MCI_STATUS] & MCI_AR_MASK)? true : false ;
 
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("error_severity");
-    kv->type = OPAL_STRING;
-    if (uc && pcc) {
-        kv->data.string = strdup("UC");
-    } else if(!(uc || pcc)) {
-        kv->data.string = strdup("CE");
-    } else if (uc) {
-        if (!(pcc || s || ar)) {
-            kv->data.string = strdup("UCNA");
-        } else if (!(pcc || (!s) || ar)) {
-            kv->data.string = strdup("SRAO");
-        } else if (!(pcc || (!s) || (!ar))) {
-            kv->data.string = strdup("SRAR");
+    if (((mce_reg[MCG_CAP] & MCG_TES_P_MASK) == MCG_TES_P_MASK) && 
+        ((mce_reg[MCG_CAP] & MCG_CMCI_P_MASK) == MCG_CMCI_P_MASK)) { /* Sec. 15.3.2.2.1 */
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("error_severity");
+        kv->type = OPAL_STRING;
+        if (uc && pcc) {
+            kv->data.string = strdup("UC");
+        } else if(!(uc || pcc)) {
+            kv->data.string = strdup("CE");
+        } else if (uc) {
+            if (!(pcc || s || ar)) {
+                kv->data.string = strdup("UCNA");
+            } else if (!(pcc || (!s) || ar)) {
+                kv->data.string = strdup("SRAO");
+            } else if (!(pcc || (!s) || (!ar))) {
+                kv->data.string = strdup("SRAR");
+            } else {
+                kv->data.string = strdup("UNKNOWN");
+            }
         } else {
             kv->data.string = strdup("UNKNOWN");
         }
-    } else {
-        kv->data.string = strdup("UNKNOWN");
-    }
-    opal_list_append(vals, &kv->super);
-
-    if(uc) {
-        opal_output(0,"Enhanced chache reporting available");
-        cache_health = (((mce_reg[MCI_STATUS] & HEALTH_STATUS_MASK ) >> 53) && 0x3);
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("cache_health");
-        kv->type = OPAL_STRING;
-
-        switch (cache_health) {
-            case 0: kv->data.string = strdup("NotTracking"); break;
-            case 1: kv->data.string = strdup("Green"); break;
-            case 2: kv->data.string = strdup("Yellow"); break;
-            case 3: kv->data.string = strdup("Reserved"); break;
-            default: kv->data.string = strdup("UNKNOWN"); break;
-
-        }
         opal_list_append(vals, &kv->super);
+
+        if(uc) {
+            opal_output(0,"Enhanced chache reporting available");
+            cache_health = (((mce_reg[MCI_STATUS] & HEALTH_STATUS_MASK ) >> 53) && 0x3);
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("cache_health");
+            kv->type = OPAL_STRING;
+
+            switch (cache_health) {
+                case 0: kv->data.string = strdup("NotTracking"); break;
+                case 1: kv->data.string = strdup("Green"); break;
+                case 2: kv->data.string = strdup("Yellow"); break;
+                case 3: kv->data.string = strdup("Reserved"); break;
+                default: kv->data.string = strdup("UNKNOWN"); break;
+
+            }
+            opal_list_append(vals, &kv->super);
+        }
     }
 
-    if(miscv) {
+    if(miscv && ((mce_reg[MCG_CAP] & MCG_SER_P_MASK) == MCG_SER_P_MASK)) {
         opal_output(0,"MISC Register Valid");
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("address_mode");
@@ -602,13 +645,15 @@ static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals)
 
 }
 
-void generate_test_vector(uint64_t *mce_reg) {
+void generate_test_vector(uint64_t *mce_reg, uint32_t *cpu, uint32_t *socket) {
 
         mce_reg[MCG_STATUS] = 0x0;
         mce_reg[MCG_CAP]    = 0x1000c14;
         mce_reg[MCI_STATUS] = 0x88000080000000b1;
         mce_reg[MCI_ADDR]   = 0x3;
         mce_reg[MCI_MISC]   = 0x40000;
+        *cpu = 5;
+        *socket = 2;
 }
 
 static void mcedata_sample(orcm_sensor_sampler_t *sampler)
@@ -621,7 +666,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
     char *timestamp_str;
     bool packed;
     struct tm *sample_time;
-    uint32_t i = 0;
+    uint32_t i = 0, cpu, socket;
     uint64_t mce_reg[MCE_REG_COUNT];
     int count = 0;
 
@@ -648,6 +693,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
 
+        /*TODO VINFIX: Replace sample time with the TSC recorded when the mce occured */
         /* get the sample time */
         now = time(NULL);
         /* pass the time along as a simple string */
@@ -672,7 +718,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
          */
             packed = false; /* @VINFIX: Need to implement a sane method to collect mce raw information */
         } else {
-            generate_test_vector(mce_reg);
+            generate_test_vector(mce_reg, &cpu, &socket);
             packed = true;
         }
         while (i < 5) {
@@ -686,6 +732,21 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
             }
             i++;
         }
+
+        /* store the logical cpu ID */
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &cpu, 1, OPAL_UINT))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+        /* Store the socket id */
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &socket, 1, OPAL_UINT))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+
+
 
         /* xfer the data for transmission */
         if (packed) {
@@ -718,6 +779,7 @@ static void mcedata_log(opal_buffer_t *sample)
     opal_list_t *vals;
     opal_value_t *kv;
     uint64_t mce_reg[MCE_REG_COUNT];
+    uint32_t cpu, socket;
 
     if (!log_enabled) {
         return;
@@ -769,14 +831,8 @@ static void mcedata_log(opal_buffer_t *sample)
     kv->data.string = strdup(hostname);
     opal_list_append(vals, &kv->super);
 
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("teststr");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup("XYZ");
-    opal_list_append(vals, &kv->super);
-
     while (i < 5) {
-        /* sample time */
+        /* MCE Registers */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &mce_reg[i], &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
@@ -791,6 +847,33 @@ static void mcedata_log(opal_buffer_t *sample)
         opal_list_append(vals, &kv->super);
         i++;
     }
+
+    /* Logical CPU ID */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &cpu, &n, OPAL_UINT))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    /* Socket ID */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &socket, &n, OPAL_UINT))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    
+    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                "Collected logical CPU's ID %d: Socket ID %d", cpu, socket );
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("cpu");
+    kv->type = OPAL_UINT;
+    kv->data.uint = cpu;
+    opal_list_append(vals, &kv->super);
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("socket");
+    kv->type = OPAL_UINT;
+    kv->data.uint = socket;
+    opal_list_append(vals, &kv->super);
 
     mcedata_decode(mce_reg, vals);
 

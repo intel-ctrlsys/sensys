@@ -858,14 +858,12 @@ static int parse_config(char ** in_items,
             break;
         }
 
-opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,"DBG1");
         erri = check_junctions_have_names( in_items, hierarchy, hier_row_length,
                                            sz_hierarchy);
         if (ORCM_SUCCESS != erri) {
             break;
         }
 
-opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,"DBG2");
         if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
             print_xml_structure(in_items, sz_hierarchy, hier_row_length, hierarchy);
         }

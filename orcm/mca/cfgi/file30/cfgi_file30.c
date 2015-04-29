@@ -90,12 +90,23 @@ orcm_cfgi_base_module_t orcm_cfgi_file30_module = {
     define_system
 };
 
+static char * get_name_field( unsigned long in_which_row, char ** in_items,
+                              long ** in_hierarchy, unsigned long * in_hier_row_length,
+                              unsigned long in_sz_hierarchy );
+static int check_junctions_have_names( char ** in_items, long ** in_hierarchy,
+                                       unsigned long * in_hier_row_length,
+                                       unsigned long in_sz_hierarchy);
+static int check_parent_has_uniquely_named_children( char ** in_items,
+                                                     long ** in_hierarchy,
+                                                     unsigned long * in_hier_row_length,
+                                                     unsigned long in_sz_hierarchy );
+
 static int lex_xml(char * in_filename, char ** o_text, char *** o_items,
                    unsigned long * o_item_count);
 static int check_validity_of_the_inputs(char ** in_items,
                                         unsigned long in_item_count);
-static int check_all_port_fields(char ** in_items,
-                                 unsigned long in_item_count);
+static int check_all_port_fields(char ** in_items, unsigned long in_item_count);
+
 static int isa_sectional_item(const char * in_tagtext);
 static int find_beginend_configuration(unsigned long in_start_index,
                                        char ** in_items,
@@ -127,6 +138,10 @@ static int remove_duplicate_singletons(char ** in_items,
                                        long ** io_hierarchy,
                                        unsigned long * io_hier_row_length,
                                        unsigned long * io_sz_hierarchy);
+
+static void print_xml_structure( char ** in_items, unsigned long in_sz_hierarchy,
+                                 unsigned long * in_hier_row_length,
+                                 long ** in_hierarchy);
 
 static int file30_init(void)
 {
@@ -190,7 +205,7 @@ static int file30_init(void)
         if (ORCM_SUCCESS != erri) {
             break;
         }
-        
+
         if (0 == version_found){
             opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "VERSION 3 NOT FOUND");
             erri = ORCM_ERR_NOT_FOUND;
@@ -284,7 +299,7 @@ static int read_config(opal_list_t *config)
             break;
         }
         opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
-                            "XML VALIDITY CHECKED and PASSED");
+                            "XML lexer-level VALIDITY CHECKED and PASSED");
 
         erri = parse_config(items,sz_items, config);
         if (ORCM_SUCCESS != erri) {
@@ -709,6 +724,82 @@ static char * tolower_cstr(char * in)
     return in;
 }
 
+static void print_xml_structure( char ** in_items, unsigned long in_sz_hierarchy,
+                                 unsigned long * in_hier_row_length,
+                                 long ** in_hierarchy)
+{
+    const unsigned int BUFSZ = 1024;
+
+    unsigned long i=0, j=0;
+
+    unsigned long sz_txt = 0, sz=0;
+    char * txt = NULL;
+    char * t = NULL;
+    char buf[BUFSZ];
+    char c = '\0';
+
+    if (0 == in_sz_hierarchy || NULL == in_hier_row_length || NULL == in_hierarchy) {
+        return;
+    }
+
+    for (i=0; i < in_sz_hierarchy; ++i) {
+        /* First find out the length of individual lines. */
+        sz=0;
+
+        snprintf(buf, BUFSZ, "XML-STRUCT: %lu> ", i);
+        sz += strlen(buf);
+
+        for (j=0; j < in_hier_row_length[i]; ++j){
+
+            if (0 > in_hierarchy[i][j]) {
+                snprintf(buf, BUFSZ, "%ld\t", -1*in_hierarchy[i][j] );
+                sz += strlen(buf);
+            } else {
+                snprintf(buf, BUFSZ, "%s\t", in_items[ in_hierarchy[i][j] ] );
+                sz += strlen(buf);
+            }
+        }
+
+        if (sz > sz_txt) {
+            if (NULL != txt) {
+                free(txt);
+                txt=NULL;
+            }
+            sz_txt = 2*sz; /* Times 2 to avoid superfluous mallocs */
+            txt = (char*) calloc(sz_txt, sizeof(char) );
+            if (NULL == txt){
+                /* This should not happen.  Bail out . */
+                return;
+            }
+        }
+
+        /* Then assemble the line and print */
+        t = txt;
+        snprintf(t, BUFSZ, "XML-STRUCT: %lu> ", i);
+        t += strlen(t);
+
+        for (j=0; j < in_hier_row_length[i]; ++j){
+            if ( j+1 >= in_hier_row_length[i]) {
+                c = ' ';
+            } else {
+                c = '\t';
+            }
+            if (0 > in_hierarchy[i][j]) {
+                snprintf(t, BUFSZ, "%ld%c", -1*in_hierarchy[i][j], c );
+            } else {
+                snprintf(t, BUFSZ, "%s%c", in_items[ in_hierarchy[i][j] ], c );
+            }
+            t += strlen(t);
+        }
+
+        opal_output(0, "%s", txt);
+    }
+
+    if (NULL != txt) {
+        free(txt);
+    }
+}
+
 static int parse_config(char ** in_items,
                         unsigned long in_sz_items,
                         opal_list_t *io_config)
@@ -762,58 +853,45 @@ static int parse_config(char ** in_items,
             break;
         }
 
-        if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
-            for (i=0; i < sz_hierarchy; ++i) {
-                /*TODO: Remove these printf from parse_config2()*/
-                opal_output(0, "XML-STRUCT: %lu> ", i);
-                for (j=0; j < hier_row_length[i]; ++j) {
-                    if (0 > hierarchy[i][j]) {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
-                                    "%ld\t",-1*hierarchy[i][j]);
-                    } else {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
-                                    "%s\t", in_items[hierarchy[i][j]]);
-                    }
-                }
-            }
-        }
-
         erri = remove_duplicate_singletons(in_items, hierarchy, hier_row_length, &sz_hierarchy);
         if (ORCM_SUCCESS != erri) {
             break;
         }
 
+opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,"DBG1");
+        erri = check_junctions_have_names( in_items, hierarchy, hier_row_length,
+                                           sz_hierarchy);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,"DBG2");
         if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
-            for(i=0; i < sz_hierarchy; ++i) {
-                /*TODO: Remove these printf from parse_config2()*/
-                opal_output(0, "XML-STRUCT: %lu> ", i);
-                for (j=0; j < hier_row_length[i]; ++j){
-                    if (0 > hierarchy[i][j]) {
-                        opal_output(0, "%ld\t", -1*hierarchy[i][j]);
-                    } else {
-                        opal_output(0, "%s\t", in_items[hierarchy[i][j]]);
-                    }
-                }
-            }
+            print_xml_structure(in_items, sz_hierarchy, hier_row_length, hierarchy);
+        }
+
+        erri = check_parent_has_uniquely_named_children( in_items, hierarchy,
+                                                         hier_row_length,
+                                                         sz_hierarchy);
+        if (ORCM_SUCCESS != erri) {
+            break;
         }
 
         /*===== Allocate the working stacks */
-        hstack = NULL;
+
         /*Here multiply by 2 in order to be generous. */
         sz_stack = 2 * sz_hierarchy;
-        hstack = (long*) malloc( sz_stack *sizeof(long));
+        hstack = (long*) calloc(sz_stack, sizeof(long));
         if (NULL == hstack){
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
-        memset(hstack,0,sz_stack *sizeof(long));
 
-        parent_stack = (orcm_cfgi_xml_parser_t **) malloc( sz_stack *sizeof(orcm_cfgi_xml_parser_t *));
+        parent_stack = (orcm_cfgi_xml_parser_t **) calloc(sz_stack,sizeof(orcm_cfgi_xml_parser_t *));
         if (NULL == parent_stack) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
-        memset(parent_stack,0,sz_stack *sizeof(orcm_cfgi_xml_parser_t *));
 
         /*===== Start the stacks */
         t = in_items[ hierarchy[0][0] ];
@@ -858,7 +936,7 @@ static int parse_config(char ** in_items,
             parent = parent_stack[sz_stack];
 
             u = hierarchy[i][0];
-            if (u < 0) {
+            if (0 > u) {
                 erri = ORCM_ERR_BAD_PARAM; /*That should never happen.*/
                 break;
             }
@@ -1594,12 +1672,11 @@ static int lex_xml( char * in_filename, char ** o_text,
             break;
         }
 
-        tx = (char*) malloc( (fsize + some_added_extra)*sizeof(char));
+        tx = (char*) calloc(fsize + some_added_extra, sizeof(char));
         if (NULL == tx) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
-        memset(tx,0,fsize + some_added_extra);
 
         for (i=0; i < fsize; ++i) {
             ic = fgetc(fin);
@@ -1734,7 +1811,7 @@ static int lex_xml( char * in_filename, char ** o_text,
                 if (ORCM_SUCCESS != erri) {
                     break;
                 }
-                
+
                 tx[++k] = '\t'; /*Prepending*/
 
                 for (q=tx+i+1; q < p; ++q) {
@@ -1763,17 +1840,11 @@ static int lex_xml( char * in_filename, char ** o_text,
         if (ORCM_SUCCESS != erri) {
             break;
         }
-        
+
         ++k;
         tx[k] = '\0';
         text_length = k;
         k = 0;
-
-        if (V_LO < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
-            opal_output(orcm_cfgi_base_framework.framework_output, "SIZE: %lu", text_length);
-            opal_output(orcm_cfgi_base_framework.framework_output, "%s", tx);
-            opal_output(orcm_cfgi_base_framework.framework_output, "|%c|", tx[text_length-1]);
-        }
 
         /*Count the number of items found */
         k=0;
@@ -1789,12 +1860,11 @@ static int lex_xml( char * in_filename, char ** o_text,
         sz_tem = k;
 
         /*Set up the item array */
-        tem = (char**) malloc( sz_tem * sizeof(char*));
+        tem = (char **) calloc(sz_tem, sizeof(char*));
         if (NULL == tem) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
-        memset(tem,0,sz_tem * sizeof(char*));
 
         j=0;
         k=0;
@@ -1802,7 +1872,6 @@ static int lex_xml( char * in_filename, char ** o_text,
             if ('\n' == tx[i]) {
                 tx[i ]= '\0';
                 tem[j] = &tx[k];
-                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "%s\n",tem[j]);
                 ++j;
                 k=i+1;
             }
@@ -1853,6 +1922,7 @@ static int isa_known_tag(const char * in_tagtext)
     case 'C':
         if (0 == strcasecmp(t,"configuration") ||
             0 == strcasecmp(t,"controller") ||
+            0 == strcasecmp(t,"count") ||
             0 == strcasecmp(t,"cores") ||
             0 == strcasecmp(t,"creation")) {
             return 1;
@@ -2361,19 +2431,21 @@ static int check_all_port_fields(char ** in_items, unsigned long in_item_count)
             number = strtol(t, &endptr, base);
 
             if ('\0' != *endptr) {
-                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
-                                    "ERROR: The value of a node item is not a valid integer");
-                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "Error on lexer element %lu", i+1);
+                opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                     "ERROR: The value of a node item is not a valid integer");
+                opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                     "Error on lexer element %lu", i+1);
                 erri = ORCM_ERR_BAD_PARAM;
                 /*Do not bail out right away.  Survey all nodes.
                   That gives a chance to see all mistakes. */
                 /*break;*/
             } else {
                 if (0 > number || USHRT_MAX < number) {
-                    opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
-                                        "ERROR: The value of a node item is not in an acceptable range (0<=n<=SHRT_MAX): %ld",
-                                        number);
-                    opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "Error on lexer element %lu", i+1);
+                    opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                         "ERROR: The value of a node item is not in an acceptable range (0<=n<=SHRT_MAX): %ld",
+                                         number);
+                    opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                         "Error on lexer element %lu", i+1);
                     erri = ORCM_ERR_BAD_PARAM;
                     /*Do not bail out right away.  Survey all nodes.
                       That gives a chance to see all mistakes. */
@@ -2488,7 +2560,7 @@ static int structure_lexed_items(unsigned long in_begin_offset,
             }
         }
         opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
-                            "DEBUG> Section count=%lu  %lu\n",k, ending_sectional_tags);
+                            "Section count=%lu  %lu\n",k, ending_sectional_tags);
 
         if (k != ending_sectional_tags || 0 == k) {
             /*This crude check to see if we have the ending tag of the starting section*/
@@ -2500,46 +2572,36 @@ static int structure_lexed_items(unsigned long in_begin_offset,
 
         *o_length_hierarchy=k;
         k=0;
-        *o_hierachy=NULL;
-        *o_hierachy = (long **) malloc( (*o_length_hierarchy)*sizeof(long *) );
+        *o_hierachy = (long **) calloc(*o_length_hierarchy, sizeof(long *));
         if (NULL == *o_hierachy) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
-        memset(*o_hierachy,0, (*o_length_hierarchy)*sizeof(long *));
 
         sz_section=0;
-        section_starts=NULL;
-        section_starts = (unsigned long *) malloc( (*o_length_hierarchy)*sizeof(unsigned long *) );
+        section_starts = (unsigned long *) calloc(*o_length_hierarchy, sizeof(unsigned long));
         if (NULL == section_starts) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
-        memset(section_starts,0,(*o_length_hierarchy)*sizeof(unsigned long *));
 
-        section_ends=NULL;
-        section_ends = (unsigned long *) malloc( (*o_length_hierarchy)*sizeof(unsigned long *) );
+        section_ends = (unsigned long *) calloc(*o_length_hierarchy, sizeof(unsigned long));
         if (NULL == section_ends) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
-        memset(section_ends,0,(*o_length_hierarchy)*sizeof(unsigned long *));
 
-        section_parents=NULL;
-        section_parents = (unsigned long *) malloc( (*o_length_hierarchy)*sizeof(unsigned long *) );
+        section_parents = (unsigned long *) calloc(*o_length_hierarchy, sizeof(unsigned long));
         if (NULL == section_parents) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
-        memset(section_parents,0,(*o_length_hierarchy)*sizeof(unsigned long *));
 
-        section_counts=NULL;
-        section_counts = (unsigned long *) malloc( (*o_length_hierarchy)*sizeof(unsigned long *) );
+        section_counts = (unsigned long *) calloc(*o_length_hierarchy, sizeof(unsigned long));
         if (NULL == section_counts) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
         }
-        memset(section_counts,0,(*o_length_hierarchy)*sizeof(unsigned long *));
 
         /*Find the beginning and the end of each section, and their parent section */
 
@@ -2635,15 +2697,14 @@ static int structure_lexed_items(unsigned long in_begin_offset,
 
         if (sz_section+1 != *o_length_hierarchy) {
             opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
-                                "DEBUG: sz_section=%lu    o_length_hierarchy=%lu\n",
+                                "DEBUG:: sz_section=%lu    o_length_hierarchy=%lu\n",
                                 sz_section, *o_length_hierarchy);
             erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
         /*Add to the count the number of childrens*/
-        *o_hier_row_length=NULL;
-        *o_hier_row_length = (unsigned long*)malloc((*o_length_hierarchy)*sizeof(unsigned long));
+        *o_hier_row_length = (unsigned long *) calloc(*o_length_hierarchy, sizeof(unsigned long));
         if (NULL == *o_hier_row_length) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
@@ -2663,22 +2724,11 @@ static int structure_lexed_items(unsigned long in_begin_offset,
             ++(*o_hier_row_length)[k];
         }
 
-        if (V_LO < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
-            opal_output(orcm_cfgi_base_framework.framework_output, "DEBUG:\toffset\tstart\tend\tparent");
-            for (k=0; k < *o_length_hierarchy; ++k) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
-                            "DEBUG:\to=%lu\ts=%lu\te=%lu\tp=%lu\tc=%lu\thr=%lu",
-                            k, section_starts[k], section_ends[k], section_parents[k],
-                            section_counts[k], (*o_hier_row_length)[k]);
-            }
-        }
-
         /*Allocate the memory for the entries in o_hierachy*/
         for (k=0; k < *o_length_hierarchy; ++k) {
             i = (*o_hier_row_length)[k];
-            (*o_hierachy)[k] = NULL;
-            (*o_hierachy)[k] = (long *) malloc(i * sizeof(long));
-            if (NULL == *o_hierachy[k]) {
+            (*o_hierachy)[k] = (long *) calloc(i, sizeof(long));
+            if (NULL == (*o_hierachy)[k]) {
                 erri = ORCM_ERR_OUT_OF_RESOURCE;
                 break;
             }
@@ -2689,8 +2739,8 @@ static int structure_lexed_items(unsigned long in_begin_offset,
 
 
         /*Fill each row of o_hierarchy up */
-        memset(section_ends, 0, (*o_length_hierarchy)*sizeof(unsigned long *));
-        memset(section_counts, 0, (*o_length_hierarchy)*sizeof(unsigned long *));
+        memset(section_ends, 0, (*o_length_hierarchy)*sizeof(unsigned long));
+        memset(section_counts, 0, (*o_length_hierarchy)*sizeof(unsigned long));
 
         /*Add the section_starts to the hierarchy */
         for (k=0; k < *o_length_hierarchy; ++k) {
@@ -2698,17 +2748,6 @@ static int structure_lexed_items(unsigned long in_begin_offset,
             ++section_counts[k];
         }
 
-        if (V_LO < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
-            for (i=0; i < *o_length_hierarchy; ++i) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
-                            "DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu",
-                            i, section_counts[i], section_parents[i], section_starts[i]);
-                opal_output(orcm_cfgi_base_framework.framework_output, "DEBUG:");
-                for (k=0; k < (*o_hier_row_length)[i]; ++k) {
-                    opal_output(orcm_cfgi_base_framework.framework_output, "\t%ld", (*o_hierachy)[i][k]);
-                }
-            }
-        }
         /*Do the same as above but only to get the non-sectional items*/
         /*No need to recalculate the section_starts.  Keep them for later*/
         /*No need to recalculate the section_parents.  Keep them for later*/
@@ -2769,18 +2808,6 @@ static int structure_lexed_items(unsigned long in_begin_offset,
             break;
         }
 
-        if (V_LO < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
-            for (i=0; i < *o_length_hierarchy; ++i){
-                opal_output(orcm_cfgi_base_framework.framework_output,
-                            "DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu",
-                            i, section_counts[i], section_parents[i], section_starts[i]);
-                opal_output(orcm_cfgi_base_framework.framework_output, "DEBUG:");
-                for (k=0; k < (*o_hier_row_length)[i]; ++k) {
-                    opal_output(orcm_cfgi_base_framework.framework_output, "\t%ld", (*o_hierachy)[i][k]);
-                }
-            }
-        }
-
         /*Add the missing childrens */
         /*This will consume section_counts */
         for (k=0; k < *o_length_hierarchy; ++k) {
@@ -2790,18 +2817,6 @@ static int structure_lexed_items(unsigned long in_begin_offset,
             i = section_parents[k];
             (*o_hierachy)[i][section_counts[i]] = (-1L)*k;
             ++section_counts[i];
-        }
-
-        if (V_LO < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
-            for (i=0; i < *o_length_hierarchy; ++i) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
-                            "DEBUG:\toffset= %lu  c=%lu  p=%lu  s=%lu\n",
-                            i, section_counts[i],section_parents[i],section_starts[i]);
-                opal_output(orcm_cfgi_base_framework.framework_output, "DEBUG:");
-                for (k=0; k < (*o_hier_row_length)[i]; ++k) {
-                    opal_output(orcm_cfgi_base_framework.framework_output, "\t%ld", (*o_hierachy)[i][k]);
-                }
-            }
         }
 
         break;
@@ -2910,12 +2925,11 @@ static int transfer_to_controller(char ** in_items,
         }
 
         if (0 < text_length){
-            txt = (char*)malloc(text_length*sizeof(char));
+            txt = (char*) calloc(text_length, sizeof(char));
             if (NULL == txt) {
                 erri = ORCM_ERR_OUT_OF_RESOURCE;
                 break;
             }
-            memset(txt, 0, text_length*sizeof(char));
 
             comma = ',';
             for (j=1; j < in_hier_row_length; ++j) {
@@ -3111,13 +3125,11 @@ static int transfer_to_scheduler( char ** in_items,
         }
 
         if (0 < text_length){
-            txt=NULL;
-            txt=(char*)malloc(text_length*sizeof(char));
+            txt = (char*) calloc(text_length, sizeof(char));
             if (NULL == txt) {
                 erri = ORCM_ERR_OUT_OF_RESOURCE;
                 break;
             }
-            memset(txt,0,text_length*sizeof(char));
 
             comma=',';
             for (j=1; j < in_hier_row_length; ++j) {
@@ -3243,7 +3255,7 @@ static int remove_empty_items(char ** io_items, unsigned long * io_sz_items)
 
         for (i=0; i < *io_sz_items; ++i) {
             t = io_items[i];
-            if ('\0' == t){
+            if (NULL == t){
                 continue;
             }
             if ('\t' == t[0] || '/' == t[0]) {
@@ -3274,7 +3286,7 @@ static int remove_empty_items(char ** io_items, unsigned long * io_sz_items)
         k=-1;
         for (i=0; i < *io_sz_items; ++i) {
             t=io_items[i];
-            if ('\0' != t) {
+            if (NULL != t) {
                 ++k;
                 io_items[k]=io_items[i];
             }
@@ -3364,3 +3376,168 @@ static int remove_duplicate_singletons(char ** in_items,
     }
     return erri;
 }
+
+static char * get_name_field( unsigned long in_which_row, char ** in_items,
+                              long ** in_hierarchy, unsigned long * in_hier_row_length,
+                              unsigned long in_sz_hierarchy )
+{
+    char * name_found = NULL;
+
+    unsigned long i = 0;
+    long u = 0;
+    char *t = NULL;
+
+    if (in_which_row >= in_sz_hierarchy){
+        /*No way we'll find a name*/
+        return name_found;
+    }
+
+    for (i=0; i < in_hier_row_length[in_which_row]; ++i) {
+        u = in_hierarchy[in_which_row][i];
+        if (0>u) {
+            continue;
+        }
+        t = in_items[u];
+
+        if ( 0 == strcasecmp(t,"name") ) {
+            t = in_items[u+1];
+            ++t; /*Jump over the tab marker*/
+            name_found = t;
+            break;
+        }
+    }
+
+    return name_found;
+}
+
+static int check_junctions_have_names( char ** in_items, long ** in_hierarchy,
+                                       unsigned long * in_hier_row_length,
+                                       unsigned long in_sz_hierarchy)
+{
+    unsigned long i = 0;
+    char * t = NULL;
+    char *name_found = NULL;
+    long u = 0;
+
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+        for (i = 0; i < in_sz_hierarchy; ++i) {
+            u = in_hierarchy[i][0];
+            if (0>u) {
+                continue;
+            }
+            t = in_items[ u ];
+
+            if ( 0 != strcasecmp(t,"junction") ) {
+                continue;
+            }
+
+            name_found = get_name_field( i, in_items, in_hierarchy,
+                                         in_hier_row_length, in_sz_hierarchy);
+
+            if (NULL == name_found) {
+                opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                    "ERROR: A junction (Lexer item %ld) is missing its name", u);
+                erri = ORCM_ERR_BAD_PARAM;
+                break;
+            }
+        }
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        break;
+    }
+    return erri;
+}
+
+static int check_parent_has_uniquely_named_children( char ** in_items,
+                                                     long ** in_hierarchy,
+                                                     unsigned long * in_hier_row_length,
+                                                     unsigned long in_sz_hierarchy)
+{
+    unsigned long i = 0, j = 0, k = 0;
+    long u = 0, v = 0, context = 0;
+    char *t = NULL, *tt = NULL;
+    char *cA_name = NULL, *cB_name = NULL;
+
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+        /*First find a parent junction*/
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            context= in_hierarchy[i][0];
+            if ( 0 <= context ) {
+                continue;
+            }
+            t = in_items[ -context ];
+
+            if (0 != strcasecmp(t,"junction")) {
+                continue;
+            }
+
+            /*Now look for a child junction */
+            for (j=0; j < in_hier_row_length[i]; ++j) {
+                u = in_hierarchy[i][j];
+                if (0<=u) {
+                    continue;
+                }
+
+                tt = in_items[ in_hierarchy[-u][0] ];
+                if ( 0 != strcasecmp(tt,"junction")) {
+                    continue;
+                }
+
+                cA_name = get_name_field( -u, in_items, in_hierarchy,
+                                          in_hier_row_length, in_sz_hierarchy );
+                if ( NULL == cA_name) {
+                    /*Child without a name --> That should have been checked*/
+                    erri = ORCM_ERR_BAD_PARAM;
+                    break;
+                }
+                for (k=j+1; k<in_hier_row_length[i]; ++k){
+                    /*Look at the other children, if any */
+                    v = in_hierarchy[i][k];
+                    if (0<=v) {
+                        continue;
+                    }
+
+                    tt = in_items[ in_hierarchy[-v][0] ];
+                    if ( 0 != strcasecmp(tt,"junction")) {
+                        continue;
+                    }
+                    cB_name = get_name_field( -v, in_items, in_hierarchy,
+                                              in_hier_row_length, in_sz_hierarchy );
+                    if ( NULL == cB_name) {
+                        /*Child without a name --> That should have been checked*/
+                        erri = ORCM_ERR_BAD_PARAM;
+                        break;
+                    }
+                    if ( 0 == strcmp(cA_name, cB_name) ) {
+                        opal_output_verbose( V_LO, orcm_cfgi_base_framework. framework_output,
+                                            "ERROR: Junction %lu has two children with the same name: %s", i, cB_name);
+                        erri = ORCM_ERR_BAD_PARAM;
+                        break;
+                    }
+                }
+                if (ORCM_SUCCESS != erri) {
+                    break;
+                }
+            }/*for(j=0; j!=io_hier_row_length[i]; ++j)*/
+
+            /* Do not bail out right away in order to try flagging as many errors
+             * as possible.
+             *
+             * if (ORCM_SUCCESS != erri) {
+             *     break;
+             * }
+             */
+        }/*for(i=0; i!=*io_sz_hierarchy; ++i)*/
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        break;
+    }/*while(!erri)*/
+    return erri;
+}
+

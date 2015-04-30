@@ -103,8 +103,8 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
             fprintf(stdout, "There is no active policy!\n");
             goto done;
         } else {
-             printf("Sensor     Threshold     Hi/Lo    Max_Count/Time_Window    Severity     Action\n");
-             printf("------------------------------------------------------------------------------\n");
+             printf("Sensor      Threshold        Hi/Lo    Max_Count/Time_Window    Severity      Action\n");
+             printf("-----------------------------------------------------------------------------------\n");
             for (i = 0; i < num; i++) {
                 /* unpack sensor name */
                 cnt = 1;
@@ -198,8 +198,16 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
                     threstype = strdup("Lo");
                 }
 
-                printf("%-10s %8.3f     %5s   %5d in %5d seconds     %6s    %10s \n", sensor_name,
-                       threshold, threstype, max_count, time_window, sev, action);
+                if ( 0 == strcmp(sensor_name, "coretemp") ) {
+                    printf("%-10s %8.3f %3s     %5s   %5d in %5d seconds     %6s    %10s \n", sensor_name,
+                           threshold, " °C", threstype, max_count, time_window, sev, action);
+                } else if ( 0 == strcmp(sensor_name, "corefreq") ) {
+                    printf("%-10s %8.3f %3s     %5s   %5d in %5d seconds     %6s    %10s \n", sensor_name,
+                           threshold, "GHz", threstype, max_count, time_window, sev, action);
+                } else {
+                    printf("%-10s %8.3f %3s     %5s   %5d in %5d seconds     %6s    %10s \n", sensor_name,
+                           threshold, "   ", threstype, max_count, time_window, sev, action);
+                }
             }
         }
 

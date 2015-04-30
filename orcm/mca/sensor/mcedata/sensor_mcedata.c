@@ -117,7 +117,6 @@ static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals);
-static void generate_test_vector(uint64_t *mce_reg, uint64_t *cpu, uint64_t *socket);
 static uint64_t get_total_lines(char *filename);
 static char* get_line(char *filename, uint64_t line);
 
@@ -235,8 +234,8 @@ static int init(void)
                        true, orte_process_info.nodename);
         return ORTE_ERROR;
     }
-    if(NULL==mca_sensor_mcedata_component.mce_logfile) {
-        mca_sensor_mcedata_component.mce_logfile = strdup("/var/log/messages");
+    if(NULL==mca_sensor_mcedata_component.logfile) {
+        mca_sensor_mcedata_component.logfile = strdup("/var/log/messages");
         mce_default = true;
     }
     return ORCM_SUCCESS;
@@ -246,8 +245,8 @@ static void finalize(void)
 {
     OPAL_LIST_DESTRUCT(&tracking);
     if(true == mce_default) {
-        free(mca_sensor_mcedata_component.mce_logfile);
-        mca_sensor_mcedata_component.mce_logfile = NULL;
+        free(mca_sensor_mcedata_component.logfile);
+        mca_sensor_mcedata_component.logfile = NULL;
     }
 }
 
@@ -811,17 +810,6 @@ static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals)
 
 }
 
-static void generate_test_vector(uint64_t *mce_reg, uint64_t *cpu, uint64_t *socket) {
-
-        mce_reg[MCG_STATUS] = 0x0;
-        mce_reg[MCG_CAP]    = 0x1000c14;
-        mce_reg[MCI_STATUS] = 0x88000080000000b1;
-        mce_reg[MCI_ADDR]   = 0x3;
-        mce_reg[MCI_MISC]   = 0x40000;
-        *cpu = 5;
-        *socket = 2;
-}
-
 static void mcedata_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
@@ -841,22 +829,14 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
     char *loc = NULL;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                        "Logfile used: %s", mca_sensor_mcedata_component.mce_logfile);
-    tot_lines = get_total_lines(mca_sensor_mcedata_component.mce_logfile);
+                        "Logfile used: %s", mca_sensor_mcedata_component.logfile);
+    tot_lines = get_total_lines(mca_sensor_mcedata_component.logfile);
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "Total lines: %lu", tot_lines);
 
-#if 0
-    if (true == mca_sensor_mcedata_component.test) {
-        opal_output(0,"GENERATE TEST VECTORRRRRRRRRRR");
-        generate_test_vector(mce_reg, &cpu, &socket);
-        now = 1430245522 ; /*time(NULL);*/
-        packed = true;
-    }
-#endif
 
     while (index < tot_lines) {
-        line = get_line(mca_sensor_mcedata_component.mce_logfile,index);
+        line = get_line(mca_sensor_mcedata_component.logfile,index);
         if(NULL != line) {
             if(strcasestr(line, "mcelog")) {
                 opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -872,7 +852,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                 line = NULL;
                 index++; /* Move to line BANK */
 
-                line = get_line(mca_sensor_mcedata_component.mce_logfile,index);
+                line = get_line(mca_sensor_mcedata_component.logfile,index);
                 loc = strstr(line, " BANK ");
                 if(NULL != loc) {
                     bank = strtoull(loc+strlen(" BANK"), NULL, 16);
@@ -885,7 +865,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                 index++; /* Move to line RIP */
                 index++; /* Move to line MISC */
  
-                line = get_line(mca_sensor_mcedata_component.mce_logfile,index);
+                line = get_line(mca_sensor_mcedata_component.logfile,index);
                 loc = strstr(line, " BANK ");
                 if(NULL != loc) {
                     mce_reg[MCI_MISC] = strtoull(loc+strlen(" MISC"), NULL, 0);
@@ -896,7 +876,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                 loc = line = NULL;
                 index++; /* Move to line  ADDR */
 
-                line = get_line(mca_sensor_mcedata_component.mce_logfile,index);
+                line = get_line(mca_sensor_mcedata_component.logfile,index);
                 loc = strstr(line, " ADDR ");
                 if(NULL != loc) {
                     mce_reg[MCI_ADDR] = strtoull(loc+strlen(" ADDR"), NULL, 0);
@@ -907,7 +887,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                 loc = line = NULL;
                 index++; /* Move to line  STATUS */
 
-                line = get_line(mca_sensor_mcedata_component.mce_logfile,index);
+                line = get_line(mca_sensor_mcedata_component.logfile,index);
                 loc = strstr(line, " STATUS ");
                 if(NULL != loc) {
                     mce_reg[MCI_STATUS] = strtoull(loc+strlen(" STATUS 0x"), NULL, 16);
@@ -920,7 +900,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
 
                 index++; /* Move to line  PROCESSOR CPUID */
                 index++; /* Move to line  TIME */
-                line = get_line(mca_sensor_mcedata_component.mce_logfile,index);
+                line = get_line(mca_sensor_mcedata_component.logfile,index);
                 loc = strstr(line, " TIME ");
                 if(NULL != loc) {
                     now = strtoull(loc+strlen(" TIME"), NULL, 0);
@@ -931,7 +911,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                 line = NULL;
                 index++; /* Move to line  SOCKETID */
 
-                line = get_line(mca_sensor_mcedata_component.mce_logfile,index);
+                line = get_line(mca_sensor_mcedata_component.logfile,index);
                 loc = strstr(line, " SOCKETID ");
                 if(NULL != loc) {
                     socket = strtoull(loc+strlen(" SOCKETID"), NULL, 0);
@@ -943,7 +923,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                 index++; /* Move to line  APICID */
                 index++; /* Move to line  MCGCAP */
 
-                line = get_line(mca_sensor_mcedata_component.mce_logfile,index);
+                line = get_line(mca_sensor_mcedata_component.logfile,index);
                 loc = strstr(line, " MCGCAP ");
                 if(NULL != loc) {
                     mce_reg[MCG_CAP] = strtoull(loc+strlen(" MCGCAP"), NULL, 0);
@@ -1029,99 +1009,6 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
         }
         index++;
     }
-
-
-#if 0
-    while (0 == count) {
-        i = 0;
-        count++;
-        /* prep to store the results */
-        OBJ_CONSTRUCT(&data, opal_buffer_t);
-        packed = false;
-
-        /* pack our name */
-        temp = strdup("mcedata");
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &temp, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        free(temp);
-
-        /* store our hostname */
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        if (false == mca_sensor_mcedata_component.test) {
-        /* Block here for a read call to the mcedata log file */
-        /* read = ();
-         */
-            packed = false; /* @VINFIX: Need to implement a sane method to collect mce raw information */
-        } else {
-            generate_test_vector(mce_reg, &cpu, &socket);
-            now = 1430245522 ; /*time(NULL);*/
-            packed = true;
-        }
-
-        /*TODO VINFIX: Replace sample time with the TSC recorded when the mce occured */
-        /* get the error occurence time */
-        /* now = time(NULL);*/
-        /* pass the time along as a simple string */
-        sample_time = localtime(&now);
-        if (NULL == sample_time) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
-        }
-        strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-        asprintf(&timestamp_str, "%s", time_str);
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&data);
-            free(timestamp_str);
-            return;
-        }
-        free(timestamp_str);
-
-        while (i < 5) {
-            opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                        "Packing %s : %lu",mce_reg_name[i], mce_reg[i]);
-            /* store the mce register */
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &mce_reg[i], 1, OPAL_UINT64))) {
-                ORTE_ERROR_LOG(ret);
-                OBJ_DESTRUCT(&data);
-                return;
-            }
-            i++;
-        }
-
-        /* store the logical cpu ID */
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &cpu, 1, OPAL_UINT))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        /* Store the socket id */
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &socket, 1, OPAL_UINT))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* xfer the data for transmission */
-        if (packed) {
-            bptr = &data;
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
-                ORTE_ERROR_LOG(ret);
-                OBJ_DESTRUCT(&data);
-                return;
-            }
-        }
-        OBJ_DESTRUCT(&data);
-    }
-#endif
 }
 
 static void mycleanup(int dbhandle, int status,

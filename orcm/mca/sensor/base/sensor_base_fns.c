@@ -427,7 +427,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
     opal_buffer_t *ans;
     orcm_sensor_active_module_t *i_module;
     int sample_rate = 0;
-    int i, rc, response, cnt, result;
+    int i, rc, response, cnt;
     char *sensor_name;
     char *action;
     float threshold;

@@ -23,6 +23,6 @@ SUBDIRS = config contrib $(MCA_PROJECT_SUBDIRS) scon
 EXTRA_DIST = README INSTALL VERSION Doxyfile LICENSE autogen.pl
 
 dist-hook:
-	env LS_COLORS= csh "$(top_srcdir)/config/distscript.csh" "$(top_srcdir)" "$(distdir)" "$(ORCM_VERSION)" "$(ORCM_REPO_REV)"
+	env LS_COLORS= csh "$(top_srcdir)/config/distscript.sh" "$(top_srcdir)" "$(distdir)" "$(ORCM_VERSION)" "$(ORCM_REPO_REV)"
 
 ACLOCAL_AMFLAGS = -I config

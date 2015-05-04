@@ -465,6 +465,21 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
         opal_list_append(vals, &kv->super);
     }
 
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("corrected_filtering");
+    kv->type = OPAL_BOOL;
+
+    if(mce_reg[MCI_STATUS]&0x1000) {
+        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                            "Corrected filtering enabled");
+        kv->data.flag = true;
+    } else {
+        kv->data.flag = true;
+    }
+        opal_list_append(vals, &kv->super);
+
+   
+
 }
 
 static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
@@ -621,9 +636,10 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
         kv->data.uint64 = mce_reg[MCI_ADDR];
         opal_list_append(vals, &kv->super);
     }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("corrected_filtering");
-        kv->type = OPAL_BOOL;
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("corrected_filtering");
+    kv->type = OPAL_BOOL;
 
     if(mce_reg[MCI_STATUS]&0x1000) {
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -633,6 +649,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
         kv->data.flag = true;
     }
         opal_list_append(vals, &kv->super);
+
 }
 
 static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
@@ -822,7 +839,6 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
     struct tm *sample_time;
     uint64_t i = 0, cpu=0, socket=0, bank=0;
     uint64_t mce_reg[MCE_REG_COUNT];
-    int count = 0;
     uint64_t tot_lines;
     static uint64_t index;
     char* line;

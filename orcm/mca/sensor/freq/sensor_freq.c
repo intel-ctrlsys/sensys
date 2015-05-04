@@ -167,6 +167,7 @@ static opal_list_t event_history;
 static orcm_sensor_sampler_t *freq_sampler = NULL;
 static orcm_sensor_freq_t orcm_sensor_freq;
 
+static void generate_test_vector(opal_buffer_t *v);
 char **corefreq_policy_list; /* store corefreq policies from MCA parameter */
 
 static char *orte_getline(FILE *fp)
@@ -751,6 +752,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                         "%s sampling freq",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
+    if (mca_sensor_freq_component.test){
+        /* generate and send a test vector */
+        OBJ_CONSTRUCT(&data, opal_buffer_t);
+        generate_test_vector(&data);
+        bptr = &data;
+        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+        goto cleanup;
+    }
+
     /* prep to store the results */
     OBJ_CONSTRUCT(&data, opal_buffer_t);
     packed = false;
@@ -900,6 +910,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
+
+cleanup:
     OBJ_DESTRUCT(&data);
 }
 
@@ -1108,4 +1120,82 @@ static void freq_get_sample_rate(int *sample_rate)
         }
     }
     return;
+}
+
+static void generate_test_vector(opal_buffer_t *v)
+{
+    int ret;
+    time_t now;
+    char *ctmp, *timestamp_str;
+    char time_str[40];
+    struct tm *sample_time;
+    int32_t ncores;
+    int i;
+/* Units are GHz */
+    float test_freq;
+    float max_freq;
+    float min_freq;
+
+    ncores = 8192;
+    min_freq = 1.0;
+    max_freq = 5.0;
+    test_freq = min_freq;
+
+/* pack the plugin name */
+    ctmp = strdup("freq");
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+    return;
+    }
+    free(ctmp);
+
+/* pack the hostname */
+    if (OPAL_SUCCESS != (ret =
+            opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+/* pack then number of cores */
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ncores, 1, OPAL_INT32))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+/* get the sample time */
+    now = time(NULL);
+/* pass the time along as a simple string */
+    sample_time = localtime(&now);
+    if (NULL == sample_time) {
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        return;
+    }
+    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
+    asprintf(&timestamp_str, "%s", time_str);
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &timestamp_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        free(timestamp_str);
+        return;
+    }
+    free(timestamp_str);
+
+/* Pack test core freqs */
+    for (i=0; i < ncores; i++) {
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &test_freq, 1, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&v);
+        }
+        test_freq += 0.01;
+        if (test_freq >= max_freq){
+            test_freq = min_freq;
+        }
+        }
+
+    opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+        "%s sensor:freq: Size of test vector is %d",
+        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),ncores);
 }

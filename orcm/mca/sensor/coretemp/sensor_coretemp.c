@@ -150,6 +150,7 @@ static opal_list_t event_history;
 static orcm_sensor_sampler_t *coretemp_sampler = NULL;
 static orcm_sensor_coretemp_t orcm_sensor_coretemp;
 
+static void generate_test_vector(opal_buffer_t *v);
 char **coretemp_policy_list; /* store coretemp policies from MCA parameter */
 
 static char *orte_getline(FILE *fp)
@@ -755,6 +756,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     bool packed;
     struct tm *sample_time;
 
+    if (mca_sensor_coretemp_component.test) {
+        /* generate and send a the test vector */
+        OBJ_CONSTRUCT(&data, opal_buffer_t);
+        generate_test_vector(&data);
+        bptr = &data;
+        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+        goto cleanup;
+    }
+
     if (0 == opal_list_get_size(&tracking)) {
         return;
     }
@@ -865,6 +875,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
+cleanup:
     OBJ_DESTRUCT(&data);
 }
 
@@ -1002,4 +1013,82 @@ static void coretemp_get_sample_rate(int *sample_rate)
         }
     }
     return;
+}
+
+static void generate_test_vector(opal_buffer_t *v)
+{
+    int ret;
+    time_t now;
+    char *ctmp, *timestamp_str;
+    char time_str[40];
+    struct tm *sample_time;
+    char *corelabel;
+    int32_t ncores;
+    int i;
+    float degc;
+
+    ncores = 2048 ;
+    degc = 23.0;
+
+/* pack the plugin name */
+    ctmp = strdup("coretemp");
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+    free(ctmp);
+
+/* pack the hostname */
+    if (OPAL_SUCCESS != (ret =
+                opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))){
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+/* pack then number of cores */
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ncores, 1, OPAL_INT32))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+/* get the sample time */
+    now = time(NULL);
+/* pass the time along as a simple string */
+    sample_time = localtime(&now);
+    if (NULL == sample_time) {
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        return;
+    }
+    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
+    asprintf(&timestamp_str, "%s", time_str);
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &timestamp_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        free(timestamp_str);
+        return;
+    }
+    free(timestamp_str);
+
+/* Pack test core readings */
+    for (i=0; i < ncores; i++) {
+        asprintf(&corelabel,"testcore %d",i);
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &corelabel, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&v);
+            free(corelabel);
+        }
+
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &degc, 1, OPAL_FLOAT))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&v);
+        }
+        degc += 1.0;
+        }
+    free(corelabel);
+
+opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+        "%s sensor:coretemp: Size of test vector is %d",
+        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),ncores);
 }

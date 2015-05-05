@@ -71,7 +71,7 @@ ORTE_DECLSPEC extern mca_base_framework_t orte_state_base_framework;
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),     \
                                 __FILE__, __LINE__);                    \
             ORTE_UPDATE_EXIT_STATUS(x);                                 \
-            ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_FORCED_EXIT);  \
+            ORTE_ACTIVATE_JOB_STATE(NULL, ORTE_JOB_STATE_ERROR);  \
         }                                                               \
     } while(0);
 

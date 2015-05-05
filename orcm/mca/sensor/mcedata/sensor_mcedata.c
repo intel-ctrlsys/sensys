@@ -826,7 +826,23 @@ static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals)
     }
 
 }
-
+/* Sample function looks for a standard template that mcelog uses to log the
+ * errors when the 'raw' switch in mcelog's configuration file is enabled
+ * The template it follows is:
+ * CPU
+ * BANK
+ * TSC
+ * RIP
+ * MISC
+ * ADDR
+ * STATUS
+ * MCGSTATUS
+ * PROCESSOR
+ * TIME
+ * SOCKETID
+ * APICID
+ * MCGCAP
+ */
 static void mcedata_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
@@ -850,7 +866,6 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "Total lines: %lu", tot_lines);
 
-
     while (index < tot_lines) {
         line = get_line(mca_sensor_mcedata_component.logfile,index);
         if(NULL != line) {
@@ -863,6 +878,11 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                     cpu = strtoull(loc+strlen(" CPU"), NULL, 16);
                     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                         "CPU: %lx --- %s", cpu, line);
+                } else {
+                    free(line);
+                    line = NULL;
+                    index++; /* Move to next line */
+                    continue;
                 }
                 free(line);
                 line = NULL;
@@ -875,6 +895,11 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                         bank = strtoull(loc+strlen(" BANK"), NULL, 16);
                         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                             "BANK: %lx --- %s", bank, line);
+                    } else {
+                        free(line);
+                        line = NULL;
+                        index++; /* Move to next line */
+                        continue;
                     }
                     free(line);
                     loc = line = NULL;
@@ -893,6 +918,11 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                         mce_reg[MCI_MISC] = strtoull(loc+strlen(" MISC"), NULL, 0);
                         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                             "MCi_MISC: 0x%lx", mce_reg[MCI_MISC]);
+                    } else {
+                        free(line);
+                        line = NULL;
+                        index++; /* Move to next line */
+                        continue;
                     }
                     free(line);
                     loc = line = NULL;
@@ -909,6 +939,11 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                         mce_reg[MCI_ADDR] = strtoull(loc+strlen(" ADDR"), NULL, 0);
                         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                             "MCi_ADDR: 0x%lx", mce_reg[MCI_ADDR]);
+                    } else {
+                        free(line);
+                        line = NULL;
+                        index++; /* Move to next line */
+                        continue;
                     }
                     free(line);
                     loc = line = NULL;
@@ -925,6 +960,11 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                         mce_reg[MCI_STATUS] = strtoull(loc+strlen(" STATUS 0x"), NULL, 16);
                         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                             "MCi_STATUS: 0x%lx", mce_reg[MCI_STATUS]);
+                    } else {
+                        free(line);
+                        line = NULL;
+                        index++; /* Move to next line */
+                        continue;
                     }
                     free(line);
                     loc = line = NULL;
@@ -941,6 +981,11 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                         mce_reg[MCG_STATUS] = strtoull(loc+strlen(" MCGSTATUS 0x"), NULL, 16);
                         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                             "MCG_STATUS: 0x%lx", mce_reg[MCI_STATUS]);
+                    } else {
+                        free(line);
+                        line = NULL;
+                        index++; /* Move to next line */
+                        continue;
                     }
                     free(line);
                     loc = line = NULL;
@@ -958,6 +1003,11 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                         now = strtoull(loc+strlen(" TIME"), NULL, 0);
                         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                             "TIME: %lu", now);
+                    } else {
+                        free(line);
+                        line = NULL;
+                        index++; /* Move to next line */
+                        continue;
                     }
                     free(line);
                     line = NULL;
@@ -974,6 +1024,11 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                         socket = strtoull(loc+strlen(" SOCKETID"), NULL, 0);
                         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                             "SocketID: 0x%lx", socket);
+                    } else {
+                        free(line);
+                        line = NULL;
+                        index++; /* Move to next line */
+                        continue;
                     }
                     free(line);
                     line = NULL;
@@ -991,6 +1046,11 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                         mce_reg[MCG_CAP] = strtoull(loc+strlen(" MCGCAP"), NULL, 0);
                         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                             "MCG_CAP: 0x%lx", mce_reg[MCG_CAP]);
+                    } else {
+                        free(line);
+                        line = NULL;
+                        index++; /* Move to next line */
+                        continue;
                     }
                     free(line);
                     line = NULL;

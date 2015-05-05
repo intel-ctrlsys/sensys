@@ -315,7 +315,7 @@ static char* get_line(char *filename, uint64_t line)
     if(fptr == NULL) {
         opal_output(0,"Unable to open file");
     } else {
-        for (index = 0; index < line; index++)
+        for (index = 0; index <= line; index++)
         {
             if ((linesize = getline(&buffer, &len, fptr)) == -1)
             {
@@ -882,7 +882,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                 index++; /* Move to line MISC */
  
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
-                loc = strstr(line, " BANK ");
+                loc = strstr(line, " MISC ");
                 if(NULL != loc) {
                     mce_reg[MCI_MISC] = strtoull(loc+strlen(" MISC"), NULL, 0);
                     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -914,8 +914,18 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                 loc = line = NULL;
                 index++; /* Move to line  MCGSTATUS */
 
+                line = get_line(mca_sensor_mcedata_component.logfile,index);
+                loc = strstr(line, " MCGSTATUS ");
+                if(NULL != loc) {
+                    mce_reg[MCG_STATUS] = strtoull(loc+strlen(" MCGSTATUS 0x"), NULL, 16);
+                    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                        "MCG_STATUS: 0x%lx", mce_reg[MCI_STATUS]);
+                }
+                free(line);
+                loc = line = NULL;
                 index++; /* Move to line  PROCESSOR CPUID */
                 index++; /* Move to line  TIME */
+
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
                 loc = strstr(line, " TIME ");
                 if(NULL != loc) {
@@ -948,7 +958,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                 }
                 free(line);
                 line = NULL;
-                index++;
+                index++; /* Move to dummy 'mcelog' line */
 
                 /* prep to store the results */
                 OBJ_CONSTRUCT(&data, opal_buffer_t);

@@ -869,96 +869,136 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                 index++; /* Move to line BANK */
 
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
-                loc = strstr(line, " BANK ");
-                if(NULL != loc) {
-                    bank = strtoull(loc+strlen(" BANK"), NULL, 16);
-                    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                                        "BANK: %lx --- %s", bank, line);
+                if(NULL != line) {
+                    loc = strstr(line, " BANK ");
+                    if(NULL != loc) {
+                        bank = strtoull(loc+strlen(" BANK"), NULL, 16);
+                        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                            "BANK: %lx --- %s", bank, line);
+                    }
+                    free(line);
+                    loc = line = NULL;
+                    index++; /* Move to line TSC */
+                    index++; /* Move to line RIP */
+                    index++; /* Move to line MISC */
+                } else {
+                    index++; /* Move to next line */
+                    return;
                 }
-                free(line);
-                loc = line = NULL;
-                index++; /* Move to line TSC */
-                index++; /* Move to line RIP */
-                index++; /* Move to line MISC */
  
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
-                loc = strstr(line, " MISC ");
-                if(NULL != loc) {
-                    mce_reg[MCI_MISC] = strtoull(loc+strlen(" MISC"), NULL, 0);
-                    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                                        "MCi_MISC: 0x%lx", mce_reg[MCI_MISC]);
+                if(NULL != line) {
+                    loc = strstr(line, " MISC ");
+                    if(NULL != loc) {
+                        mce_reg[MCI_MISC] = strtoull(loc+strlen(" MISC"), NULL, 0);
+                        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                            "MCi_MISC: 0x%lx", mce_reg[MCI_MISC]);
+                    }
+                    free(line);
+                    loc = line = NULL;
+                    index++; /* Move to line  ADDR */
+                } else {
+                    index++; /* Move to next line */
+                    return;
                 }
-                free(line);
-                loc = line = NULL;
-                index++; /* Move to line  ADDR */
 
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
-                loc = strstr(line, " ADDR ");
-                if(NULL != loc) {
-                    mce_reg[MCI_ADDR] = strtoull(loc+strlen(" ADDR"), NULL, 0);
-                    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                                        "MCi_ADDR: 0x%lx", mce_reg[MCI_ADDR]);
+                if(NULL != line) {
+                    loc = strstr(line, " ADDR ");
+                    if(NULL != loc) {
+                        mce_reg[MCI_ADDR] = strtoull(loc+strlen(" ADDR"), NULL, 0);
+                        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                            "MCi_ADDR: 0x%lx", mce_reg[MCI_ADDR]);
+                    }
+                    free(line);
+                    loc = line = NULL;
+                    index++; /* Move to line  STATUS */
+                } else {
+                    index++; /* Move to next line */
+                    return;
                 }
-                free(line);
-                loc = line = NULL;
-                index++; /* Move to line  STATUS */
 
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
-                loc = strstr(line, " STATUS ");
-                if(NULL != loc) {
-                    mce_reg[MCI_STATUS] = strtoull(loc+strlen(" STATUS 0x"), NULL, 16);
-                    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                                        "MCi_STATUS: 0x%lx", mce_reg[MCI_STATUS]);
+                if(NULL != line) {
+                    loc = strstr(line, " STATUS ");
+                    if(NULL != loc) {
+                        mce_reg[MCI_STATUS] = strtoull(loc+strlen(" STATUS 0x"), NULL, 16);
+                        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                            "MCi_STATUS: 0x%lx", mce_reg[MCI_STATUS]);
+                    }
+                    free(line);
+                    loc = line = NULL;
+                    index++; /* Move to line  MCGSTATUS */
+                } else {
+                    index++; /* Move to next line */
+                    return;
                 }
-                free(line);
-                loc = line = NULL;
-                index++; /* Move to line  MCGSTATUS */
 
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
-                loc = strstr(line, " MCGSTATUS ");
-                if(NULL != loc) {
-                    mce_reg[MCG_STATUS] = strtoull(loc+strlen(" MCGSTATUS 0x"), NULL, 16);
-                    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                                        "MCG_STATUS: 0x%lx", mce_reg[MCI_STATUS]);
+                if(NULL != line) {
+                    loc = strstr(line, " MCGSTATUS ");
+                    if(NULL != loc) {
+                        mce_reg[MCG_STATUS] = strtoull(loc+strlen(" MCGSTATUS 0x"), NULL, 16);
+                        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                            "MCG_STATUS: 0x%lx", mce_reg[MCI_STATUS]);
+                    }
+                    free(line);
+                    loc = line = NULL;
+                    index++; /* Move to line  PROCESSOR CPUID */
+                    index++; /* Move to line  TIME */
+                } else {
+                    index++; /* Move to next line */
+                    return;
                 }
-                free(line);
-                loc = line = NULL;
-                index++; /* Move to line  PROCESSOR CPUID */
-                index++; /* Move to line  TIME */
 
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
-                loc = strstr(line, " TIME ");
-                if(NULL != loc) {
-                    now = strtoull(loc+strlen(" TIME"), NULL, 0);
-                    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                                        "TIME: %lu", now);
+                if(NULL != line) {
+                    loc = strstr(line, " TIME ");
+                    if(NULL != loc) {
+                        now = strtoull(loc+strlen(" TIME"), NULL, 0);
+                        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                            "TIME: %lu", now);
+                    }
+                    free(line);
+                    line = NULL;
+                    index++; /* Move to line  SOCKETID */
+                } else {
+                    index++; /* Move to next line */
+                    return;
                 }
-                free(line);
-                line = NULL;
-                index++; /* Move to line  SOCKETID */
 
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
-                loc = strstr(line, " SOCKETID ");
-                if(NULL != loc) {
-                    socket = strtoull(loc+strlen(" SOCKETID"), NULL, 0);
-                    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                                        "SocketID: 0x%lx", socket);
+                if(NULL != line) {
+                    loc = strstr(line, " SOCKETID ");
+                    if(NULL != loc) {
+                        socket = strtoull(loc+strlen(" SOCKETID"), NULL, 0);
+                        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                            "SocketID: 0x%lx", socket);
+                    }
+                    free(line);
+                    line = NULL;
+                    index++; /* Move to line  APICID */
+                    index++; /* Move to line  MCGCAP */
+                } else {
+                    index++; /* Move to next line */
+                    return;
                 }
-                free(line);
-                line = NULL;
-                index++; /* Move to line  APICID */
-                index++; /* Move to line  MCGCAP */
 
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
-                loc = strstr(line, " MCGCAP ");
-                if(NULL != loc) {
-                    mce_reg[MCG_CAP] = strtoull(loc+strlen(" MCGCAP"), NULL, 0);
-                    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                                        "MCG_CAP: 0x%lx", mce_reg[MCG_CAP]);
+                if(NULL != line) {
+                    loc = strstr(line, " MCGCAP ");
+                    if(NULL != loc) {
+                        mce_reg[MCG_CAP] = strtoull(loc+strlen(" MCGCAP"), NULL, 0);
+                        opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                                            "MCG_CAP: 0x%lx", mce_reg[MCG_CAP]);
+                    }
+                    free(line);
+                    line = NULL;
+                    index++; /* Move to dummy 'mcelog' line */
+                } else {
+                    index++; /* Move to next line */
+                    return;
                 }
-                free(line);
-                line = NULL;
-                index++; /* Move to dummy 'mcelog' line */
 
                 /* prep to store the results */
                 OBJ_CONSTRUCT(&data, opal_buffer_t);

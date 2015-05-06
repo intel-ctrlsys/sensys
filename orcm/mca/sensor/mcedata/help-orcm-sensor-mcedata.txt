@@ -10,7 +10,7 @@
 #
 # This is the US/English general help file
 #
-[mcelog]
+[no-mcelog]
 MCE collection was requested but mcelog dependency not met
 
   Node:  %s
@@ -19,3 +19,27 @@ This usually indicates that the "mcelog" daemon has not been
 loaded. Operation will continue, but MCE errors will not be
 monitored.
 #
+[req-dir-not-found]
+MCE collection was requested but the following directory is needed
+for the feature to function
+
+  Node:  %s
+  Dir :  %s
+
+This usually indicates that ORCM was launched without proper
+privileges. Operation will continue, but MCE errors will not be
+monitored.
+#
+[mcelog-no-open]
+MCE collection was requested but unable to open the log file
+
+  Node:  %s
+
+This usually indicates that the logfile is opened by another 
+process and unavailable for ORCM to access.
+                    - OR -
+ORCM was launched without proper privileges.
+Operation will continue, but MCE errors will not be monitored.
+
+
+

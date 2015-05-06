@@ -200,8 +200,7 @@ static int init(void)
     if (NULL == (cur_dirp = opendir("/dev"))) {
         OBJ_DESTRUCT(&tracking);
         orte_show_help("help-orcm-sensor-mcedata.txt", "req-dir-not-found",
-                       true, orte_process_info.nodename,
-                       "/dev");
+                       true, orte_process_info.nodename, "/dev");
         return ORTE_ERROR;
     }
 
@@ -209,7 +208,6 @@ static int init(void)
      * For each directory
      */
     while (NULL != (dir_entry = readdir(cur_dirp))) {
-
         skt = strchr(dir_entry->d_name, '.');
         if (NULL != skt) {
             skt++;
@@ -221,7 +219,7 @@ static int init(void)
         }
         if (0 == strcmp(dirname, "/dev/mcelog"))
         {
-            opal_output(0,"Dirname: %s", dirname);
+            opal_output(0,"/dev/mcelog available");
             mcelog_avail = true;
         }
         free(dirname);
@@ -292,7 +290,7 @@ static uint64_t get_total_lines(char *filename)
 
     fptr = fopen (filename, "r");
     if(fptr == NULL) {
-        printf("Unable to open file to get_tot_lines");
+        ("Unable to open file to get_tot_lines");
     } else {
             while ((linesize = getline(&buffer, &len, fptr)) != -1) 
                 linecount++;
@@ -319,11 +317,11 @@ static char* get_line(char *filename, uint64_t line)
         {
             if ((linesize = getline(&buffer, &len, fptr)) == -1)
             {
-                /*opal_output(0,"Requested line is not present in log yet\n");*/
+                orte_show_help("help-orcm-sensor-mcedata.txt", "mcelog-no-open",
+                       true, orte_process_info.nodename);
                 return buffer;
             }
         }
-        /*opal_output(0,"Line : %lu - %s", index, buffer);        */
         fclose(fptr);
     }
     return buffer;
@@ -361,9 +359,9 @@ static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals)
                         "MCE Error Type 1 - TLB Errors");
 
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("ErrorLocation");
+    kv->key = strdup("error_location");
     kv->type = OPAL_STRING;
-    kv->data.string = strdup("TLBError");
+    kv->data.string = strdup("tlb_Error");
     opal_list_append(vals, &kv->super);
 
 }

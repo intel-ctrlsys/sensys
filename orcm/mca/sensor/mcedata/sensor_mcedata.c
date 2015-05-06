@@ -42,9 +42,9 @@
 #include "orte/mca/notifier/base/base.h"
 
 #include "orcm/mca/db/db.h"
-
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
+
 #include "sensor_mcedata.h"
 
 
@@ -112,7 +112,7 @@ static bool log_enabled = true;
 static opal_list_t tracking;
 static bool mcelog_avail = false;
 static bool mce_default = false;
-char mce_reg_name [MCE_REG_COUNT][12]  = {
+const char *mce_reg_name []  = {
     "MCG_STATUS",
     "MCG_CAP",
     "MCI_STATUS",

@@ -40,6 +40,7 @@ orcm_db_API_module_t orcm_db = {
     orcm_db_base_update_node_features,
     orcm_db_base_record_diag_test,
     orcm_db_base_commit,
+    orcm_db_base_rollback,
     orcm_db_base_fetch,
     orcm_db_base_remove_data
 };

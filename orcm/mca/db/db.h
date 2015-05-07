@@ -198,7 +198,15 @@ typedef int (*orcm_db_base_module_record_diag_test_fn_t)(
 typedef void (*orcm_db_base_API_commit_fn_t)(int dbhandle,
                                              orcm_db_callback_fn_t cbfunc,
                                              void *cbdata);
-typedef void (*orcm_db_base_module_commit_fn_t)(struct orcm_db_base_module_t *imod);
+typedef int (*orcm_db_base_module_commit_fn_t)(struct orcm_db_base_module_t *imod);
+
+/*
+ * Rollback or cancel the current database transaction.
+ */
+typedef void (*orcm_db_base_API_rollback_fn_t)(int dbhandle,
+                                               orcm_db_callback_fn_t cbfunc,
+                                               void *cbdata);
+typedef int (*orcm_db_base_module_rollback_fn_t)(struct orcm_db_base_module_t *imod);
 
 /*
  * Retrieve data
@@ -243,6 +251,7 @@ typedef struct  {
     orcm_db_base_module_update_node_features_fn_t update_node_features;
     orcm_db_base_module_record_diag_test_fn_t     record_diag_test;
     orcm_db_base_module_commit_fn_t               commit;
+    orcm_db_base_module_rollback_fn_t             rollback;
     orcm_db_base_module_fetch_fn_t                fetch;
     orcm_db_base_module_remove_fn_t               remove;
 } orcm_db_base_module_t;
@@ -255,6 +264,7 @@ typedef struct {
     orcm_db_base_API_update_node_features_fn_t update_node_features;
     orcm_db_base_API_record_diag_test_fn_t     record_diag_test;
     orcm_db_base_API_commit_fn_t               commit;
+    orcm_db_base_API_rollback_fn_t             rollback;
     orcm_db_base_API_fetch_fn_t                fetch;
     orcm_db_base_API_remove_fn_t               remove;
 } orcm_db_API_module_t;

@@ -142,6 +142,9 @@ ORCM_DECLSPEC void orcm_db_base_record_diag_test(int dbhandle,
 ORCM_DECLSPEC void orcm_db_base_commit(int dbhandle,
                                        orcm_db_callback_fn_t cbfunc,
                                        void *cbdata);
+ORCM_DECLSPEC void orcm_db_base_rollback(int dbhandle,
+                                         orcm_db_callback_fn_t cbfunc,
+                                         void *cbdata);
 ORCM_DECLSPEC void orcm_db_base_fetch(int dbhandle,
                                       const char *primary_key,
                                       const char *key,

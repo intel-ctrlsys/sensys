@@ -58,6 +58,8 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
                                      const int *component_index,
                                      const char *test_result,
                                      opal_list_t *test_params);
+static int postgres_commit(struct orcm_db_base_module_t *imod);
+static int postgres_rollback(struct orcm_db_base_module_t *imod);
 
 /* Internal helper functions */
 static void tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
@@ -74,7 +76,8 @@ mca_db_postgres_module_t mca_db_postgres_module = {
         NULL,
         postgres_update_node_features,
         postgres_record_diag_test,
-        NULL,
+        postgres_commit,
+        postgres_rollback,
         NULL,
         NULL
     },
@@ -196,6 +199,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
                                  opal_list_t *kvs)
 {
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+    int rc = ORCM_SUCCESS;
 
     opal_value_t *kv;
     opal_value_t *timestamp_item = NULL;
@@ -211,12 +215,12 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
     int ret;
 
     size_t num_items;
-    char **rows;
-    char *values;
-    char *insert_stmt;
+    char **rows = NULL;
+    char *values = NULL;
+    char *insert_stmt = NULL;
     size_t i;
 
-    PGresult *res;
+    PGresult *res = NULL;
 
     if (NULL == data_group) {
         ERR_MSG_STORE("No data group specified");
@@ -295,17 +299,17 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
                 units = NULL;
             }
         } else {
-            opal_argv_free(rows);
+            rc = ORCM_ERR_BAD_PARAM;
             ERR_MSG_STORE("No data item specified");
-            return ORCM_ERR_BAD_PARAM;
+            goto cleanup_and_exit;
         }
 
         ret = opal_value_to_orcm_db_item(kv, &item);
         if (ORCM_SUCCESS != ret) {
+            rc = ORCM_ERR_NOT_SUPPORTED;
             ERR_MSG_FMT_STORE("Unsupported data type: %s",
                               opal_dss.lookup_data_type(kv->type));
-            opal_argv_free(rows);
-            return ORCM_ERR_NOT_SUPPORTED;
+            goto cleanup_and_exit;
         }
 
         /* (hostname,
@@ -362,26 +366,55 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
 
     values = opal_argv_join(rows, ',');
     opal_argv_free(rows);
+    rows = NULL;
 
     asprintf(&insert_stmt, "insert into data_sample_raw(hostname,data_item,"
              "time_stamp,value_int,value_real,value_str,units,data_type_id) "
              "values %s", values);
     free(values);
+    values = NULL;
+
+    /* If we're not in auto commit mode, let's start a new transaction (if
+     * one hasn't already been started) */
+    if (!mod->tran_started && !mod->autocommit) {
+        res = PQexec(mod->conn, "begin");
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_STORE("Unable to start transaction: %s",
+                              PQresultErrorMessage(res));
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+        mod->tran_started = true;
+    }
 
     res = PQexec(mod->conn, insert_stmt);
-    free(insert_stmt);
-
     if (!status_ok(res)) {
-        PQclear(res);
-        ERR_MSG_FMT_STORE("%s", PQresultErrorMessage(res));
-        return ORCM_ERROR;
+        rc = ORCM_ERROR;
+        ERR_MSG_STORE(PQresultErrorMessage(res));
+        goto cleanup_and_exit;
     }
     PQclear(res);
+    res = NULL;
 
     opal_output_verbose(2, orcm_db_base_framework.framework_output,
                         "postgres_store_sample succeeded");
 
-    return ORCM_SUCCESS;
+cleanup_and_exit:
+    if (NULL != res) {
+        PQclear(res);
+    }
+
+    if (NULL != rows) {
+        opal_argv_free(rows);
+    }
+
+    if (NULL != insert_stmt) {
+        free(insert_stmt);
+    }
+
+    return rc;
 }
 
 #define ERR_MSG_UNF(msg) \
@@ -401,17 +434,20 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
                                          opal_list_t *features)
 {
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+    int rc = ORCM_SUCCESS;
 
     orcm_metric_value_t *mv;
 
     const int NUM_PARAMS = 7;
     const char *params[NUM_PARAMS];
-    char *type_str;
-    char *value_str;
+    char *type_str = NULL;
+    char *value_str = NULL;
     orcm_db_item_t item;
     int ret;
 
-    PGresult *res;
+    PGresult *res = NULL;
+
+    bool local_tran_started = false;
 
     if (NULL == hostname) {
         ERR_MSG_UNF("No hostname provided");
@@ -438,38 +474,44 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
                         "select set_node_feature($1, $2, $3, $4, $5, $6, $7)",
                         0, NULL);
         if (!status_ok(res)) {
-            PQclear(res);
-            ERR_MSG_FMT_UNF("%s", PQresultErrorMessage(res));
-            return ORCM_ERROR;
+            rc = ORCM_ERROR;
+            ERR_MSG_UNF(PQresultErrorMessage(res));
+            goto cleanup_and_exit;
         }
         PQclear(res);
+        res = NULL;
 
         mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE] = true;
     }
 
-    res = PQexec(mod->conn, "begin");
-    if (!status_ok(res)) {
+    if (mod->autocommit || !mod->tran_started) {
+        res = PQexec(mod->conn, "begin");
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_UNF("Unable to begin transaction: %s",
+                            PQresultErrorMessage(res));
+            goto cleanup_and_exit;
+        }
         PQclear(res);
-        ERR_MSG_FMT_UNF("Unable to begin transaction: %s",
-                        PQresultErrorMessage(res));
-        return ORCM_ERROR;
+        res = NULL;
+
+        local_tran_started = true;
     }
-    PQclear(res);
 
     params[0] = hostname;
     OPAL_LIST_FOREACH(mv, features, orcm_metric_value_t) {
         if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
-            PQexec(mod->conn, "rollback");
+            rc = ORCM_ERR_BAD_PARAM;
             ERR_MSG_UNF("Key or node feature name not provided for value");
-            return ORCM_ERR_BAD_PARAM;
+            goto cleanup_and_exit;
         }
 
         ret = opal_value_to_orcm_db_item(&mv->value, &item);
         if (ORCM_SUCCESS != ret) {
-            PQexec(mod->conn, "rollback");
+            rc = ORCM_ERR_NOT_SUPPORTED;
             ERR_MSG_FMT_UNF("Unsupported data type: %s",
                             opal_dss.lookup_data_type(mv->value.type));
-            return ORCM_ERR_NOT_SUPPORTED;
+            goto cleanup_and_exit;
         }
 
         params[1] = mv->value.key;
@@ -480,7 +522,6 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
             params[3] = NULL;
             params[4] = NULL;
             params[5] = item.value.value_str;
-            value_str = NULL;
             break;
         case ORCM_DB_ITEM_REAL:
             params[3] = NULL;
@@ -498,31 +539,57 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
 
         res = PQexecPrepared(mod->conn, "set_node_feature", NUM_PARAMS,
                              params, NULL, NULL, 0);
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_UNF(PQresultErrorMessage(res));
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+
         free(type_str);
+        type_str = NULL;
         if (NULL != value_str) {
             free(value_str);
+            value_str = NULL;
         }
+    }
 
+    if (mod->autocommit) {
+        res = PQexec(mod->conn, "commit");
         if (!status_ok(res)) {
-            ERR_MSG_FMT_UNF("%s", PQresultErrorMessage(res));
-            return ORCM_ERROR;
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_UNF("Unable to commit transaction: %s",
+                            PQresultErrorMessage(res));
+            goto cleanup_and_exit;
         }
         PQclear(res);
+        res = NULL;
     }
-    res = PQexec(mod->conn, "commit");
-    if (!status_ok(res)) {
-        PQclear(res);
-        PQexec(mod->conn, "rollback");
-        ERR_MSG_FMT_UNF("Unable to commit transaction: %s",
-                        PQresultErrorMessage(res));
-        return ORCM_ERROR;
-    }
-    PQclear(res);
 
     opal_output_verbose(2, orcm_db_base_framework.framework_output,
                         "postgres_update_node_features succeeded");
 
-    return ORCM_SUCCESS;
+cleanup_and_exit:
+    /* If we're in auto commit mode, then make sure our local changes
+     * are either committed or canceled. */
+    if (ORCM_SUCCESS != rc && mod->autocommit && local_tran_started) {
+        res = PQexec(mod->conn, "rollback");
+    }
+
+    if (NULL != res) {
+        PQclear(res);
+    }
+
+    if (NULL != type_str) {
+        free(type_str);
+    }
+
+    if (NULL != value_str) {
+        free(value_str);
+    }
+
+    return rc;
 }
 
 #define ERR_MSG_RDT(msg) \
@@ -548,23 +615,26 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
                                      opal_list_t *test_params)
 {
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+    int rc = ORCM_SUCCESS;
 
     const int NUM_TEST_RESULT_PARAMS = 7;
     const int NUM_TEST_CONFIG_PARAMS = 10;
 
     const char *result_params[NUM_TEST_RESULT_PARAMS];
     const char *config_params[NUM_TEST_CONFIG_PARAMS];
-    char *index_str;
-    char *type_str;
-    char *value_str;
+    char *index_str = NULL;
+    char *type_str = NULL;
+    char *value_str = NULL;
     char start_time_str[40];
     char end_time_str[40];
 
     orcm_metric_value_t *mv;
     orcm_db_item_t item;
 
-    PGresult *res;
+    PGresult *res = NULL;
     int ret;
+
+    bool local_tran_started = false;
 
     if (NULL == hostname) {
         ERR_MSG_RDT("No hostname provided");
@@ -607,23 +677,29 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
                         "$1, $2, $3, $4, $5, $6, $7)",
                         0, NULL);
         if (!status_ok(res)) {
-            PQclear(res);
-            ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
-            return ORCM_ERROR;
+            rc = ORCM_ERROR;
+            ERR_MSG_RDT(PQresultErrorMessage(res));
+            goto cleanup_and_exit;
         }
         PQclear(res);
+        res = NULL;
 
         mod->prepared[ORCM_DB_PG_STMT_RECORD_DIAG_TEST_RESULT] = true;
     }
 
-    res = PQexec(mod->conn, "begin");
-    if (!status_ok(res)) {
+    if (mod->autocommit || !mod->tran_started) {
+        res = PQexec(mod->conn, "begin");
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_RDT("Unable to begin transaction: %s",
+                            PQresultErrorMessage(res));
+            goto cleanup_and_exit;
+        }
         PQclear(res);
-        ERR_MSG_FMT_RDT("Unable to begin transaction: %s",
-                        PQresultErrorMessage(res));
-        return ORCM_ERROR;
+        res = NULL;
+
+        local_tran_started = true;
     }
-    PQclear(res);
 
     tm_to_str_time_stamp(start_time, start_time_str, sizeof(start_time_str));
 
@@ -648,27 +724,34 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
 
     res = PQexecPrepared(mod->conn, "record_diag_test_result",
                          NUM_TEST_RESULT_PARAMS, result_params, NULL, NULL, 0);
-    free(index_str);
     if (!status_ok(res)) {
-        PQclear(res);
-        ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
-        return ORCM_ERROR;
+        rc = ORCM_ERROR;
+        ERR_MSG_RDT(PQresultErrorMessage(res));
+        goto cleanup_and_exit;
     }
+    PQclear(res);
+    res = NULL;
+
+    free(index_str);
+    index_str = NULL;
 
     if (NULL == test_params) {
         /* No test parameters provided, we're done! */
-        res = PQexec(mod->conn, "commit");
-        if (!status_ok(res)) {
+        if (mod->autocommit) {
+            res = PQexec(mod->conn, "commit");
+            if (!status_ok(res)) {
+                rc = ORCM_ERROR;
+                ERR_MSG_FMT_RDT("Unable to commit transaction: %s",
+                                PQresultErrorMessage(res));
+                goto cleanup_and_exit;
+            }
             PQclear(res);
-            ERR_MSG_FMT_RDT("Unable to commit transaction: %s",
-                            PQresultErrorMessage(res));
-            return ORCM_ERROR;
+            res = NULL;
         }
-        PQclear(res);
 
         opal_output_verbose(2, orcm_db_base_framework.framework_output,
                             "postgres_record_diag_test succeeded");
-        return ORCM_SUCCESS;
+        goto cleanup_and_exit;
     }
 
     /* Prepare the statement only if it hasn't already been prepared */
@@ -690,12 +773,12 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
                         "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
                         0, NULL);
         if (!status_ok(res)) {
-            PQclear(res);
-            PQexec(mod->conn, "rollback");
-            ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
-            return ORCM_ERROR;
+            rc = ORCM_ERROR;
+            ERR_MSG_RDT(PQresultErrorMessage(res));
+            goto cleanup_and_exit;
         }
         PQclear(res);
+        res = NULL;
 
         mod->prepared[ORCM_DB_PG_STMT_RECORD_DIAG_TEST_CONFIG] = true;
     }
@@ -706,17 +789,17 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
     config_params[3] = start_time_str;
     OPAL_LIST_FOREACH(mv, test_params, orcm_metric_value_t) {
         if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
-            PQexec(mod->conn, "rollback");
+            rc = ORCM_ERR_BAD_PARAM;
             ERR_MSG_RDT("Key or node feature name not provided for value");
-            return ORCM_ERR_BAD_PARAM;
+            goto cleanup_and_exit;
         }
 
         ret = opal_value_to_orcm_db_item(&mv->value, &item);
         if (ORCM_SUCCESS != ret) {
-            PQexec(mod->conn, "rollback");
+            rc = ORCM_ERR_NOT_SUPPORTED;
             ERR_MSG_FMT_RDT("Unsupported data type: %s",
                             opal_dss.lookup_data_type(mv->value.type));
-            return ORCM_ERR_NOT_SUPPORTED;
+            goto cleanup_and_exit;
         }
 
         config_params[4] = mv->value.key;
@@ -727,7 +810,6 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
             config_params[6] = NULL;
             config_params[7] = NULL;
             config_params[8] = item.value.value_str;
-            value_str = NULL;
             break;
         case ORCM_DB_ITEM_REAL:
             config_params[6] = NULL;
@@ -746,31 +828,107 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
         res = PQexecPrepared(mod->conn, "record_diag_test_config",
                              NUM_TEST_CONFIG_PARAMS, config_params, NULL,
                              NULL, 0);
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_RDT(PQresultErrorMessage(res));
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+
         free(type_str);
+        type_str = NULL;
         if (NULL != value_str) {
             free(value_str);
-        }
-
-        if (!status_ok(res)) {
-            PQclear(res);
-            PQexec(mod->conn, "rollback");
-            ERR_MSG_FMT_RDT("%s", PQresultErrorMessage(res));
-            return ORCM_ERROR;
+            value_str = NULL;
         }
     }
+
+    if (mod->autocommit) {
+        res = PQexec(mod->conn, "commit");
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_RDT("Unable to commit transaction: %s",
+                            PQresultErrorMessage(res));
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+    }
+
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                        "postgres_record_diag_test succeeded");
+
+cleanup_and_exit:
+    /* If we're in auto commit mode, then make sure our local changes
+     * are either committed or canceled. */
+    if (ORCM_SUCCESS != rc && mod->autocommit && local_tran_started) {
+        res = PQexec(mod->conn, "rollback");
+    }
+
+    if (NULL != res) {
+        PQclear(res);
+    }
+
+    if (NULL != index_str) {
+        free(type_str);
+    }
+
+    if (NULL != type_str) {
+        free(type_str);
+    }
+
+    if (NULL != value_str) {
+        free(value_str);
+    }
+
+    return rc;
+}
+
+#define ERR_MSG_COMMIT(msg) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to commit current transaction: "); \
+    opal_output(0, msg); \
+    opal_output(0, "***********************************************");
+
+static int postgres_commit(struct orcm_db_base_module_t *imod)
+{
+    mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+    PGresult *res;
 
     res = PQexec(mod->conn, "commit");
     if (!status_ok(res)) {
         PQclear(res);
-        PQexec(mod->conn, "rollback");
-        ERR_MSG_FMT_RDT("Unable to commit transaction: %s",
-                        PQresultErrorMessage(res));
+        ERR_MSG_COMMIT(PQresultErrorMessage(res));
         return ORCM_ERROR;
     }
     PQclear(res);
 
-    opal_output_verbose(2, orcm_db_base_framework.framework_output,
-                        "postgres_record_diag_test succeeded");
+    mod->tran_started = false;
+
+    return ORCM_SUCCESS;
+}
+
+#define ERR_MSG_ROLLBACK(msg) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to cancel current transaction: "); \
+    opal_output(0, msg); \
+    opal_output(0, "***********************************************");
+
+static int postgres_rollback(struct orcm_db_base_module_t *imod)
+{
+    mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+    PGresult *res;
+
+    res = PQexec(mod->conn, "rollback");
+    if (!status_ok(res)) {
+        PQclear(res);
+        ERR_MSG_ROLLBACK(PQresultErrorMessage(res));
+        return ORCM_ERROR;
+    }
+    PQclear(res);
+
+    mod->tran_started = false;
 
     return ORCM_SUCCESS;
 }

@@ -34,6 +34,8 @@ typedef struct {
     char *dbname;
     char *user;
     PGconn *conn;
+    bool autocommit;
+    bool tran_started;
     bool prepared[ORCM_DB_PG_STMT_NUM_STMTS];
 } mca_db_postgres_module_t;
 ORCM_MODULE_DECLSPEC extern mca_db_postgres_module_t mca_db_postgres_module;

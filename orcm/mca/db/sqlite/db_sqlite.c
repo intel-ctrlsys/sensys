@@ -58,6 +58,7 @@ mca_db_sqlite_module_t mca_db_sqlite_module = {
         NULL,
         NULL,
         NULL,
+        NULL,
         NULL
     },
 };

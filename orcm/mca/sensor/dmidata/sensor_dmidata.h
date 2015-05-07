@@ -25,6 +25,9 @@ typedef struct {
     bool test;
     bool ntw_dev;
     bool blk_dev;
+    bool pci_dev;
+    bool mem_dev;
+    bool freq_steps;
 } orcm_sensor_dmidata_component_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_dmidata_component_t mca_sensor_dmidata_component;

@@ -86,20 +86,41 @@ static int dmidata_component_register(void)
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_dmidata_component.test);
-    mca_sensor_dmidata_component.ntw_dev = false;
+    mca_sensor_dmidata_component.ntw_dev = true;
     (void) mca_base_component_var_register (c, "ntw_dev",
                                             "Collect pci based network inventory",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_dmidata_component.ntw_dev);
-    mca_sensor_dmidata_component.blk_dev = false;
+    mca_sensor_dmidata_component.blk_dev = true;
     (void) mca_base_component_var_register (c, "blk_dev",
                                             "Collect pci based block devices inventory",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_dmidata_component.blk_dev);
-    
+     mca_sensor_dmidata_component.pci_dev = true;
+    (void) mca_base_component_var_register (c, "pci_dev",
+                                            "Collect pci based inventory",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_dmidata_component.pci_dev);
+    mca_sensor_dmidata_component.mem_dev = true;
+    (void) mca_base_component_var_register (c, "mem_dev",
+                                            "Collect memory devices inventory",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_dmidata_component.mem_dev);
+    mca_sensor_dmidata_component.freq_steps = true;
+    (void) mca_base_component_var_register (c, "freq_steps",
+                                            "Collect supported CPU Frequency steps as inventory",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_dmidata_component.freq_steps);
+   
     return ORCM_SUCCESS;
 }

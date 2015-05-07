@@ -274,9 +274,10 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
     uint32_t k;
     orcm_metric_value_t *mkv;
     char *inv_key;
-    /* @VINFIX: HDD/SDD discover is implemented in hwloc v1.11
-     * Until then we will discover only the SATA controllers and collect their inventory
-     */
+    
+    if(false == mca_sensor_dmidata_component.blk_dev) {
+        return;
+    }
     mkv = OBJ_NEW(orcm_metric_value_t);
     asprintf(&mkv->value.key,"pci_type_%d",pci_count);
     mkv->value.type = OPAL_STRING;
@@ -305,7 +306,9 @@ static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
     uint32_t k;
     orcm_metric_value_t *mkv;
     char *inv_key;
-
+    if(false == mca_sensor_dmidata_component.ntw_dev) {
+        return;
+    }
     mkv = OBJ_NEW(orcm_metric_value_t);
     asprintf(&mkv->value.key,"pci_type_%d",pci_count);
     mkv->value.type = OPAL_STRING;
@@ -355,6 +358,11 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
     uint32_t pci_count=0;
     unsigned char pci_class, pci_subclass;
 
+    if((false == mca_sensor_dmidata_component.pci_dev)&(false == mca_sensor_dmidata_component.ntw_dev) &
+        (false == mca_sensor_dmidata_component.blk_dev)) {
+        return;
+    }
+
     /* SOCKET Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_PCI_DEVICE, 0))) {
         /* there are no objects identified for this machine (Weird!) */
@@ -395,6 +403,9 @@ static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata
     int size = 0, i;
     char **freq_list_token;
 
+    if(false == mca_sensor_dmidata_component.freq_steps) {
+        return;
+    }
     if(strcmp(freq_step_list,"NULL") == 0) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "Frequency Steps not available");

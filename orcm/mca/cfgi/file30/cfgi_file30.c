@@ -90,9 +90,11 @@ orcm_cfgi_base_module_t orcm_cfgi_file30_module = {
     define_system
 };
 
-static char * get_name_field( unsigned long in_which_row, char ** in_items,
-                              long ** in_hierarchy, unsigned long * in_hier_row_length,
-                              unsigned long in_sz_hierarchy );
+static char * get_field( const char * in_field_name, unsigned long in_which_row,
+                         char ** in_items, long ** in_hierarchy,
+                         unsigned long * in_hier_row_length,
+                         unsigned long in_sz_hierarchy );
+
 static int check_junctions_have_names( char ** in_items, long ** in_hierarchy,
                                        unsigned long * in_hier_row_length,
                                        unsigned long in_sz_hierarchy);
@@ -100,6 +102,37 @@ static int check_parent_has_uniquely_named_children( char ** in_items,
                                                      long ** in_hierarchy,
                                                      unsigned long * in_hier_row_length,
                                                      unsigned long in_sz_hierarchy );
+
+static int check_host_field_has_matching_port( char ** in_items,
+                                               long ** in_hierarchy,
+                                               unsigned long * in_hier_row_length,
+                                               unsigned long in_sz_hierarchy );
+
+static int check_unique_scheduler( char ** in_items, long ** in_hierarchy,
+                                   unsigned long * in_hier_row_length,
+                                   unsigned long in_sz_hierarchy );
+
+static int check_unique_host_port_pair( char ** in_items, long ** in_hierarchy,
+                                        unsigned long * in_hier_row_length,
+                                        unsigned long in_sz_hierarchy );
+
+static int check_unique_cluster_on_top( char ** in_items, long ** in_hierarchy,
+                                        unsigned long * in_hier_row_length,
+                                        unsigned long in_sz_hierarchy );
+
+/*Put this check after check_unique_cluster_on_top(...) */
+/*This check is to cover a bug or missing feature */
+static int check_no_controller_on_cluster( char ** in_items, long ** in_hierarchy,
+                                           unsigned long * in_hier_row_length,
+                                           unsigned long in_sz_hierarchy );
+
+/*Check that row are before rack */
+/*Note that this check only makes sense in a 4 tiers hierarchy */
+/*So check that we have a 4-tiers hierarchy at the same time. */
+/*This also check if node junction are the only leaf junctions. */
+static int check_row_before_rack_and_4tiers( char ** in_items, long ** in_hierarchy,
+                                             unsigned long * in_hier_row_length,
+                                             unsigned long in_sz_hierarchy );
 
 static int lex_xml(char * in_filename, char ** o_text, char *** o_items,
                    unsigned long * o_item_count);
@@ -875,6 +908,44 @@ static int parse_config(char ** in_items,
             break;
         }
 
+        erri = check_host_field_has_matching_port( in_items, hierarchy,
+                                                   hier_row_length, sz_hierarchy);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        erri = check_unique_scheduler( in_items, hierarchy, hier_row_length,
+                                       sz_hierarchy);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        erri = check_unique_host_port_pair( in_items, hierarchy, hier_row_length,
+                                            sz_hierarchy);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        erri = check_unique_cluster_on_top( in_items, hierarchy, hier_row_length,
+                                            sz_hierarchy);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        erri = check_no_controller_on_cluster( in_items, hierarchy,
+                                               hier_row_length,
+                                               sz_hierarchy);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        erri = check_row_before_rack_and_4tiers( in_items, hierarchy,
+                                               hier_row_length,
+                                               sz_hierarchy);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
         /*===== Allocate the working stacks */
 
         /*Here multiply by 2 in order to be generous. */
@@ -1431,7 +1502,7 @@ static int parse_cluster(orcm_cluster_t *cluster,
     orcm_row_t *r, *row;
 
     OPAL_LIST_FOREACH(x, &xx->subvals, orcm_cfgi_xml_parser_t) {
-        if (0 == strcmp(x->name, "controller")) {
+        if ( 0 == strcmp(x->name, "controller")) {
             /* the value contains the node name of the controller, or an expression
              * whereby we replace any leading or trailing # with the row name
              */
@@ -2297,7 +2368,6 @@ static int check_validity_of_the_inputs(char ** in_items, unsigned long in_item_
         }
 
         /*Making sure that only the allowed junction type are present */
-        /*Make sure that only one cluster type is present.*/
         /*Make sure that at least one node is present */
         t_cluster = 0;
         t_rack = 0;
@@ -2340,7 +2410,7 @@ static int check_validity_of_the_inputs(char ** in_items, unsigned long in_item_
 
         if (0 != t_inter) {
             opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
-                                "ERROR: Junction of type \"inter\" have yet to be implemented.");
+                "ERROR: Junction NOT of type (cluster|row|rack|node) have yet to be implemented.");
             erri = ORCM_ERR_BAD_PARAM;
             break;
         }
@@ -3375,19 +3445,24 @@ static int remove_duplicate_singletons(char ** in_items,
     return erri;
 }
 
-static char * get_name_field( unsigned long in_which_row, char ** in_items,
-                              long ** in_hierarchy, unsigned long * in_hier_row_length,
-                              unsigned long in_sz_hierarchy )
+static char * get_field( const char * in_field_name, unsigned long in_which_row,
+                         char ** in_items, long ** in_hierarchy,
+                         unsigned long * in_hier_row_length,
+                         unsigned long in_sz_hierarchy )
 {
-    char * name_found = NULL;
+    char * found_field = NULL;
 
     unsigned long i = 0;
     long u = 0;
     char *t = NULL;
 
     if (in_which_row >= in_sz_hierarchy){
-        /*No way we'll find a name*/
-        return name_found;
+        /*No way we'll find a field*/
+        return found_field;
+    }
+    if (NULL ==  in_field_name || '\0' == in_field_name[0]) {
+        /*No way we'll find a field*/
+        return found_field;
     }
 
     for (i=0; i < in_hier_row_length[in_which_row]; ++i) {
@@ -3397,15 +3472,15 @@ static char * get_name_field( unsigned long in_which_row, char ** in_items,
         }
         t = in_items[u];
 
-        if ( 0 == strcasecmp(t,"name") ) {
+        if (0 == strcasecmp(t,in_field_name)) {
             t = in_items[u+1];
             ++t; /*Jump over the tab marker*/
-            name_found = t;
+            found_field = t;
             break;
         }
     }
 
-    return name_found;
+    return found_field;
 }
 
 static int check_junctions_have_names( char ** in_items, long ** in_hierarchy,
@@ -3430,7 +3505,7 @@ static int check_junctions_have_names( char ** in_items, long ** in_hierarchy,
                 continue;
             }
 
-            name_found = get_name_field( i, in_items, in_hierarchy,
+            name_found = get_field( "name", i, in_items, in_hierarchy,
                                          in_hier_row_length, in_sz_hierarchy);
 
             if (NULL == name_found) {
@@ -3464,10 +3539,10 @@ static int check_parent_has_uniquely_named_children( char ** in_items,
         /*First find a parent junction*/
         for (i=0; i < in_sz_hierarchy; ++i) {
             context= in_hierarchy[i][0];
-            if ( 0 <= context ) {
+            if ( 0 > context ) {
                 continue;
             }
-            t = in_items[ -context ];
+            t = in_items[ context ];
 
             if (0 != strcasecmp(t,"junction")) {
                 continue;
@@ -3485,7 +3560,7 @@ static int check_parent_has_uniquely_named_children( char ** in_items,
                     continue;
                 }
 
-                cA_name = get_name_field( -u, in_items, in_hierarchy,
+                cA_name = get_field( "name", -u, in_items, in_hierarchy,
                                           in_hier_row_length, in_sz_hierarchy );
                 if ( NULL == cA_name) {
                     /*Child without a name --> That should have been checked*/
@@ -3503,7 +3578,7 @@ static int check_parent_has_uniquely_named_children( char ** in_items,
                     if ( 0 != strcasecmp(tt,"junction")) {
                         continue;
                     }
-                    cB_name = get_name_field( -v, in_items, in_hierarchy,
+                    cB_name = get_field( "name", -v, in_items, in_hierarchy,
                                               in_hier_row_length, in_sz_hierarchy );
                     if ( NULL == cB_name) {
                         /*Child without a name --> That should have been checked*/
@@ -3511,7 +3586,7 @@ static int check_parent_has_uniquely_named_children( char ** in_items,
                         break;
                     }
                     if ( 0 == strcmp(cA_name, cB_name) ) {
-                        opal_output_verbose( V_LO, orcm_cfgi_base_framework. framework_output,
+                        opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
                                             "ERROR: Junction %lu has two children with the same name: %s", i, cB_name);
                         erri = ORCM_ERR_BAD_PARAM;
                         break;
@@ -3524,7 +3599,6 @@ static int check_parent_has_uniquely_named_children( char ** in_items,
 
             /* Do not bail out right away in order to try flagging as many errors
              * as possible.
-             *
              * if (ORCM_SUCCESS != erri) {
              *     break;
              * }
@@ -3539,3 +3613,661 @@ static int check_parent_has_uniquely_named_children( char ** in_items,
     return erri;
 }
 
+static int check_host_field_has_matching_port( char ** in_items,
+                                               long ** in_hierarchy,
+                                               unsigned long * in_hier_row_length,
+                                               unsigned long in_sz_hierarchy )
+{
+    unsigned long i = 0;
+    char *t = NULL;
+    long u = 0;
+    char * host = NULL; /*This will hold a <host> or a <shost> field. */
+    char * port = NULL;
+    int ona_scheduler = 0;
+
+    const char msg_sched[] = "ERROR: Scheduler (lex item= %ld) needs both a shost and a port";
+    const char msg_ctrlr[] = "ERROR: Controller (lex item= %ld) needs both a host and a port";
+
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            u= in_hierarchy[i][0];
+            if ( 0 > u ) {
+                continue;
+            }
+            t = in_items[ u ];
+
+            if (0 != strcasecmp(t,"controller") && 0 != strcasecmp(t,"scheduler")) {
+                continue;
+            }
+
+            port = get_field("port", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+
+            ona_scheduler = 0;
+            if (0 == strcasecmp(t,"controller")) {
+                host = get_field("host", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+            } else {
+                /*On a scheduler */
+                host = get_field("shost", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+                ona_scheduler = 1;
+            }
+
+            if (NULL == port) {
+                if (NULL == host) {
+                    /* All good as neither have been mentioned.  So a pait it is */
+                } else {
+                    if (1 == ona_scheduler) {
+                        opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                             msg_sched, u);
+                    } else {
+                        opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                             msg_ctrlr, u);
+                    }
+                    erri = ORCM_ERR_BAD_PARAM;
+                }
+            } else {
+                if (NULL == host) {
+                    if (1 == ona_scheduler) {
+                        opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                             msg_sched, u);
+                    } else {
+                        opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                             msg_ctrlr, u);
+                    }
+                    erri = ORCM_ERR_BAD_PARAM;
+                } else {
+                    /*All good as both are present*/
+                }
+            }
+
+            /* Do not bail out right away in order to try flagging as many errors
+             * as possible.
+             * if (ORCM_SUCCESS != erri) {
+             *     break;
+             * }
+             */
+        }/*for(i=0; i!=*io_sz_hierarchy; ++i)*/
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        break;
+    }/*while(!erri)*/
+    return erri;
+}
+
+static int check_unique_scheduler( char ** in_items, long ** in_hierarchy,
+                                   unsigned long * in_hier_row_length,
+                                   unsigned long in_sz_hierarchy )
+{
+    unsigned long i = 0;
+    char *t = NULL;
+    long u = 0;
+    unsigned long scheduler_count = 0;
+
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            u= in_hierarchy[i][0];
+            if ( 0 > u ) {
+                continue;
+            }
+            t = in_items[ u ];
+
+            if (0 != strcasecmp(t,"scheduler")) {
+                continue;
+            }
+            ++scheduler_count;
+        }
+
+        if ( 1 != scheduler_count) {
+            opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                 "ERROR: Only a single scheduler is allowed at a time: %lu found.",
+                                 scheduler_count);
+            erri = ORCM_ERR_BAD_PARAM;
+        }
+
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        break;
+    }/*while(!erri)*/
+    return erri;
+}
+
+static int check_unique_host_port_pair( char ** in_items, long ** in_hierarchy,
+                                        unsigned long * in_hier_row_length,
+                                        unsigned long in_sz_hierarchy )
+{
+    unsigned long i = 0, j = 0;
+    char *t = NULL, *t2 = NULL;
+    unsigned long p1=0, p2=0;
+    long u = 0;
+    char ** allhosts = NULL; /*array pointing to all <host> and <shost> fields*/
+                            /*Its length is in_sz_hierarchy */
+    unsigned long * allports = NULL; /*array of port values*/
+
+    char * ampersand_found_in_t  = NULL;
+
+    char * port = NULL;
+    unsigned long port_value = 0;
+    char * endptr = NULL;
+    char * host = NULL; /*Also for shost*/
+
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+
+        allhosts = (char**) calloc(in_sz_hierarchy, sizeof(char*));
+        if (NULL == allhosts) {
+            erri =ORCM_ERR_OUT_OF_RESOURCE;
+            break;
+        }
+        allports = (unsigned long*) calloc(in_sz_hierarchy, sizeof(unsigned long));
+        if (NULL == allports) {
+            erri =ORCM_ERR_OUT_OF_RESOURCE;
+            break;
+        }
+
+        /* ASSUMPTIONS:
+         * 1) All <host>, or <short>, are properly paired with their
+         *    respective ports.
+         *    Consequently, a missing <host> , =NULL, will also have a missing
+         *    port.
+         * 2) The fielded values for ports have been properly ranged.
+         */
+
+        /* Not using a hash function yet, as I'm not too sure yet how to handle
+         * the ampersand @ hierarchical operator.
+         */
+
+        /* First get all <host> <port> pairs */
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            u= in_hierarchy[i][0];
+            if ( 0 > u ) {
+                continue;
+            }
+            t = in_items[ u ];
+
+            if (0 != strcasecmp(t,"controller") && 0 != strcasecmp(t,"scheduler")) {
+                continue;
+            }
+
+            port = get_field("port", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+
+            port_value = strtoul(port, &endptr, 10);
+            /*endptr not checked --> It is assumed that it has been checked before.*/
+            allports[i] = port_value;
+
+            if (0 == strcasecmp(t,"controller")) {
+                host = get_field("host", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+            } else {
+                /*On a scheduler */
+                host = get_field("shost", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+            }
+
+            allhosts[i] = host;
+        }
+
+        /*Make sure no duplicates are found */
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            t  = allhosts[i];
+            p1 = allports[i];
+            if (NULL == t) {
+                continue;
+            }
+
+            ampersand_found_in_t = NULL;
+            ampersand_found_in_t = strchr(t, '@');
+
+            for (j=i+1; j < in_sz_hierarchy; ++j) {
+                t2 = allhosts[j];
+                p2 = allports[j];
+                if (NULL == t2) {
+                    continue;
+                }
+
+                if (p1 == p2) {
+                    if ( 0 == strcmp(t,t2) ) {
+                        if (NULL == ampersand_found_in_t) {
+                            opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                 "ERROR: Duplicate (s)host-port pair found: port=%lu\t(s)host=%s",
+                                 p1, t
+                                 );
+                            erri = ORCM_ERR_BAD_PARAM;
+                            /*Do not bail out as we want to get all possible errors. */
+                        } else {
+                            /* Possible duplicate because the @ character could
+                             * expand to different strings. So assign no error.
+                             */
+                            opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                 "WARNING: Possible duplicate (s)host-port pair found: port=%lu\t(s)host=%s",
+                                 p1, t
+                                 );
+                        }
+                    }
+                }
+            }
+        }
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        break;
+    }/*while(!erri)*/
+
+    if (NULL != allhosts) {
+        free(allhosts);
+        allhosts = NULL;
+    }
+    if (NULL != allports) {
+        free(allports);
+        allports = NULL;
+    }
+
+    return erri;
+}
+
+static int check_unique_cluster_on_top( char ** in_items, long ** in_hierarchy,
+                                        unsigned long * in_hier_row_length,
+                                        unsigned long in_sz_hierarchy )
+{
+    unsigned long i = 0, j = 0;
+    long u = 0, v = 0;
+    char *t = NULL, *tt = NULL;
+
+    unsigned long cluster_count = 0;
+    unsigned long cluster_ontop = 0;
+    unsigned long record_count = 0;
+
+    char * crole = NULL;
+    char * jtype = NULL;
+
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            u= in_hierarchy[i][0];
+            if ( 0 > u ) {
+                continue;
+            }
+            t = in_items[ u ];
+
+            if (0 != strcasecmp(t,"configuration")) {
+                if (0 == strcasecmp(t,"junction")) {
+                    jtype = get_field("type", i, in_items, in_hierarchy,
+                                      in_hier_row_length, in_sz_hierarchy );
+                    if (NULL == jtype) {
+                        opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                       "ERROR: Each junction (LEX item %ld) must have a type property.", u);
+                        erri = ORCM_ERR_BAD_PARAM;
+                        /*Do not break out.  There might be other errors. */
+                        continue;
+                    }
+                    if (0 == strcasecmp(jtype, "cluster")) {
+                        ++cluster_count;
+                    }
+                }
+                continue;
+            }
+
+            crole = get_field("role", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+            if (NULL == crole){
+                opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                       "ERROR: Each configuration must have a role property.");
+                erri = ORCM_ERR_BAD_PARAM;
+                /*Do not break out.  There might be other errors. */
+                continue;
+            }
+            if (0 != strcasecmp(crole, "RECORD")) {
+                continue;
+            }
+            ++record_count;
+
+            /*Make sure a cluster is at the top of the configuration */
+            for (j=0; j < in_hier_row_length[i]; ++j) {
+                v = in_hierarchy[i][j];
+                if (0<=v) {
+                    continue;
+                }
+                jtype = get_field("type", -v, in_items, in_hierarchy,
+                                      in_hier_row_length, in_sz_hierarchy );
+                if (NULL == jtype) {
+                    tt = in_items[ in_hierarchy[-v][0] ];
+                    if (0 == strcasecmp(tt,"junction") ) {
+                        opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                        "ERROR: Each junction (LEX item %ld) must have a type property.",
+                        in_hierarchy[-v][0]);
+                        erri = ORCM_ERR_BAD_PARAM;
+                        /* Break out but continue the complete search. */
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
+                if (0 == strcasecmp(jtype, "cluster")) {
+                    ++cluster_ontop;
+                }
+            }
+        } /* for (i=0; i < in_sz_hierarchy; ++i) */
+
+        if (1 != record_count) {
+            opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+            "ERROR: There must be a single RECORD configuration: %lu found.", record_count);
+            erri = ORCM_ERR_BAD_PARAM;
+        }
+
+        if (1 != cluster_count) {
+            opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+            "ERROR: Each RECORD configuration must have a single cluster junction: %lu found.", cluster_count);
+            erri = ORCM_ERR_BAD_PARAM;
+        }
+
+        if (1 != cluster_ontop) {
+            opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+            "ERROR: Each RECORD configuration must have a single cluster junction at the top: %lu found.", cluster_count);
+            erri = ORCM_ERR_BAD_PARAM;
+        }
+
+        break;
+    }/*while(!erri)*/
+
+    return erri;
+}
+
+static int check_no_controller_on_cluster( char ** in_items, long ** in_hierarchy,
+                                           unsigned long * in_hier_row_length,
+                                           unsigned long in_sz_hierarchy )
+{
+    unsigned long i = 0, j = 0;
+    long u = 0, v = 0;
+    char *t = NULL, *tt = NULL;
+
+    char * jtype = NULL;
+
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            u= in_hierarchy[i][0];
+            if ( 0 > u ) {
+                continue;
+            }
+            t = in_items[ u ];
+
+            if (0 != strcasecmp(t,"junction")) {
+                continue;
+            }
+
+            jtype = get_field("type", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+
+            if (0 != strcasecmp(jtype, "cluster")) {
+                continue;
+            }
+
+            for (j=0; j < in_hier_row_length[i]; ++j) {
+                v = in_hierarchy[i][j];
+                if ( 0 <= v ) {
+                    continue;
+                }
+                tt = in_items[ in_hierarchy[-v][0] ];
+
+                if ( 0 == strcasecmp(tt,"controller")) {
+                    opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                           "ERROR: The cluster junction does not support a controller, yet.");
+                    erri = ORCM_ERR_BAD_PARAM;
+                    /*Do not break out.  There might be other errors. */
+                    continue;
+                }
+            }
+
+            /*We found our unique cluster.  Time to go. */
+            break;
+        }
+
+        break;
+    }/*while(!erri)*/
+
+    return erri;
+}
+
+static int check_row_before_rack_and_4tiers( char ** in_items, long ** in_hierarchy,
+                                             unsigned long * in_hier_row_length,
+                                             unsigned long in_sz_hierarchy )
+{
+    unsigned long i = 0, j = 0;
+    long u = 0, v = 0;
+    char *t = NULL, *tt = NULL;
+
+    char * jtype = NULL, *jtype2 = NULL;
+
+    unsigned long junctions_in_cluster = 0;
+    unsigned long junctions_in_rows = 0;
+    unsigned long junctions_in_racks = 0;
+
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+
+        /*First make sure that below cluster are only rows */
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            u= in_hierarchy[i][0];
+            if ( 0 > u ) {
+                continue;
+            }
+            t = in_items[ u ];
+
+            if (0 != strcasecmp(t,"junction")) {
+                continue;
+            }
+
+            jtype = get_field("type", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+
+            if (0 != strcasecmp(jtype, "cluster")) {
+                continue;
+            }
+
+            junctions_in_cluster = 0;
+            for (j=0; j < in_hier_row_length[i]; ++j) {
+                v = in_hierarchy[i][j];
+                if ( 0 <= v ) {
+                    continue;
+                }
+                tt = in_items[ in_hierarchy[-v][0] ];
+
+                if ( 0 != strcasecmp(tt,"junction")) {
+                    continue;
+                }
+
+                ++junctions_in_cluster;
+
+                jtype2 = get_field("type", -v, in_items, in_hierarchy,
+                                  in_hier_row_length, in_sz_hierarchy );
+
+                if (0 != strcasecmp(jtype2, "row")) {
+                    opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                    "ERROR: A cluster junction must contain only row junction: %s found.",jtype2);
+                    erri = ORCM_ERR_BAD_PARAM;
+                    /*Do not break out.  There might be other errors. */
+                    continue;
+                }
+            }
+            if (0 == junctions_in_cluster) {
+                opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                "ERROR: A cluster junction must contain at least one row junction: 0 found.");
+                erri = ORCM_ERR_BAD_PARAM;
+            }
+
+            /*We found our unique cluster.  Time to go. */
+            break;
+        }
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        /*First make sure that below rows are only racks */
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            u= in_hierarchy[i][0];
+            if ( 0 > u ) {
+                continue;
+            }
+            t = in_items[ u ];
+
+            if (0 != strcasecmp(t,"junction")) {
+                continue;
+            }
+
+            jtype = get_field("type", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+
+            if (0 != strcasecmp(jtype, "row")) {
+                continue;
+            }
+
+            junctions_in_rows = 0;
+            for (j=0; j < in_hier_row_length[i]; ++j) {
+                v = in_hierarchy[i][j];
+                if ( 0 <= v ) {
+                    continue;
+                }
+                tt = in_items[ in_hierarchy[-v][0] ];
+
+                if ( 0 != strcasecmp(tt,"junction")) {
+                    continue;
+                }
+
+                ++junctions_in_rows;
+
+                jtype2 = get_field("type", -v, in_items, in_hierarchy,
+                                  in_hier_row_length, in_sz_hierarchy );
+
+                if (0 != strcasecmp(jtype2, "rack")) {
+                    opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                    "ERROR: A row junction must contain only rack junction: %s found.",jtype2);
+                    erri = ORCM_ERR_BAD_PARAM;
+                    /*Do not break out.  There might be other errors. */
+                    continue;
+                }
+            }
+            if (0 == junctions_in_rows) {
+                opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                "ERROR: Row junction (LEX item %ld) must contain at least one rack junction",u);
+                erri = ORCM_ERR_BAD_PARAM;
+            }
+        }
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        /*First make sure that below racks are only nodes */
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            u= in_hierarchy[i][0];
+            if ( 0 > u ) {
+                continue;
+            }
+            t = in_items[ u ];
+
+            if (0 != strcasecmp(t,"junction")) {
+                continue;
+            }
+
+            jtype = get_field("type", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+
+            if (0 != strcasecmp(jtype, "rack")) {
+                continue;
+            }
+
+            junctions_in_racks = 0;
+            for (j=0; j < in_hier_row_length[i]; ++j) {
+                v = in_hierarchy[i][j];
+                if ( 0 <= v ) {
+                    continue;
+                }
+                tt = in_items[ in_hierarchy[-v][0] ];
+
+                if ( 0 != strcasecmp(tt,"junction")) {
+                    continue;
+                }
+
+                ++junctions_in_racks;
+
+                jtype2 = get_field("type", -v, in_items, in_hierarchy,
+                                  in_hier_row_length, in_sz_hierarchy );
+
+                if (0 != strcasecmp(jtype2, "node")) {
+                    opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                    "ERROR: A rack junction must contain only node junction: %s found.",jtype2);
+                    erri = ORCM_ERR_BAD_PARAM;
+                    /*Do not break out.  There might be other errors. */
+                    continue;
+                }
+            }
+            if (0 == junctions_in_racks) {
+                opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                "ERROR: Rack junction (LEX item %ld) must contain at least one node junction",u);
+                erri = ORCM_ERR_BAD_PARAM;
+            }
+        }
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        /*First make sure nothing is below node junctions */
+        for (i=0; i < in_sz_hierarchy; ++i) {
+            u= in_hierarchy[i][0];
+            if ( 0 > u ) {
+                continue;
+            }
+            t = in_items[ u ];
+
+            if (0 != strcasecmp(t,"junction")) {
+                continue;
+            }
+
+            jtype = get_field("type", i, in_items, in_hierarchy,
+                             in_hier_row_length, in_sz_hierarchy );
+
+            if (0 != strcasecmp(jtype, "node")) {
+                continue;
+            }
+
+            for (j=0; j < in_hier_row_length[i]; ++j) {
+                v = in_hierarchy[i][j];
+                if ( 0 <= v ) {
+                    continue;
+                }
+                tt = in_items[ in_hierarchy[-v][0] ];
+
+                if ( 0 != strcasecmp(tt,"junction")) {
+                    continue;
+                }
+
+                jtype2 = get_field("type", -v, in_items, in_hierarchy,
+                                  in_hier_row_length, in_sz_hierarchy );
+
+                opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                "ERROR: A node junction must contain no other junction: %s found.",jtype2);
+                erri = ORCM_ERR_BAD_PARAM;
+                /*Do not break out.  There might be other errors. */
+            }
+        }
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        break;
+    }/*while(!erri)*/
+
+    return erri;
+}

@@ -72,6 +72,8 @@ orcm_sensor_base_module_t orcm_sensor_file_module = {
     file_sample,
     file_log,
     NULL,
+    NULL,
+    NULL,
     NULL
 };
 

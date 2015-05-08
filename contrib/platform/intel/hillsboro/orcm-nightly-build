@@ -43,3 +43,4 @@ with_cputest=yes
 with_ethtest=yes
 with_nodepower=yes
 with_componentpower=yes
+with_mcedata=yes

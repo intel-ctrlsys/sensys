@@ -29,7 +29,7 @@ orcm_sensor_file_component_t mca_sensor_file_component = {
         {
             ORCM_SENSOR_BASE_VERSION_1_0_0,
             /* Component name and version */
-            .mca_component_name = "componentpower",
+            .mca_component_name = "file",
             MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
                                   ORCM_RELEASE_VERSION),
         

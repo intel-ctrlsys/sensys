@@ -36,7 +36,7 @@ orcm_cfgi_dbpg_component_t mca_cfgi_dbpg_component = {
         {
         ORCM_CFGI_BASE_VERSION_1_0_0,
         /* Component name and version */
-        .mca_component_name = "postgres",
+        .mca_component_name = "dbpg",
         MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
                               ORCM_RELEASE_VERSION),
         

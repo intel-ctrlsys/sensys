@@ -675,31 +675,52 @@ BEGIN
     v_data_item_name := p_data_group || '_';
     v_data_item_name := v_data_item_name || p_data_item;
 
-    -- Get the node ID
-    v_node_id := get_node_id(p_hostname);
-    if (v_node_id = 0) then
-        v_node_id := add_node(p_hostname);
-    end if;
-
-    if (not data_type_exists(p_data_type_id)) then
-        perform add_data_type(p_data_type_id, NULL);
-    end if;
-
-    -- Get the data item ID
-    v_data_item_id := get_data_item_id(v_data_item_name);
-    if (v_data_item_id = 0) then
-        v_data_item_id := add_data_item(v_data_item_name, p_data_type_id);
-    end if;
-
-    -- Add the data sample
-    perform add_data_sample(
-        v_node_id,
-        v_data_item_id,
+    -- Insert in the data_sample_raw table
+    insert into data_sample_raw(
+        hostname,
+        data_item,
+        time_stamp,
+        value_int,
+        value_real,
+        value_str,
+        units,
+        data_type_id)
+    values(
+        p_hostname,
+        v_data_item_name,
         p_time_stamp,
         p_value_int,
         p_value_real,
         p_value_str,
-        p_units);
+        p_units,
+        p_data_type_id);
+
+    -- Disable storing in data_sample table for now...
+    -- Get the node ID
+    -- v_node_id := get_node_id(p_hostname);
+    --if (v_node_id = 0) then
+    --    v_node_id := add_node(p_hostname);
+    --end if;
+
+    --if (not data_type_exists(p_data_type_id)) then
+    --    perform add_data_type(p_data_type_id, NULL);
+    --end if;
+
+    -- Get the data item ID
+    --v_data_item_id := get_data_item_id(v_data_item_name);
+    --if (v_data_item_id = 0) then
+    --    v_data_item_id := add_data_item(v_data_item_name, p_data_type_id);
+    --end if;
+
+    -- Add the data sample
+    --perform add_data_sample(
+    --    v_node_id,
+    --    v_data_item_id,
+    --    p_time_stamp,
+    --    p_value_int,
+    --    p_value_real,
+    --    p_value_str,
+    --    p_units);
 
     return;
 END;

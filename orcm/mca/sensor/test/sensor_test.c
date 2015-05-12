@@ -67,12 +67,18 @@ static int init(void)
     OBJ_CONSTRUCT(&tracking, opal_list_t);
 
 
+    /*
+     * Normally this check is done at the end of init because an empty
+     * test metadata list indicates something went wrong in initialization.  
+     * That is not true of the test sensor, which you may want to run to 
+     * see how sensors work.  So we comment out this check.
+     *
     if (0 == opal_list_get_size(&tracking)) {
-        /* nothing to read */
         orte_show_help("help-orcm-sensor-test.txt", "no-test-found",
                        true, orte_process_info.nodename);
         return ORTE_ERROR;
     }
+    */
 
     return ORCM_SUCCESS;
 }

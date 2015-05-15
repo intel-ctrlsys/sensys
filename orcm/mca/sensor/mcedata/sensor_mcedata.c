@@ -68,6 +68,9 @@ static uint64_t get_total_lines(char *filename);
 static char* get_line(char *filename, uint64_t line);
 static void perthread_mcedata_sample(int fd, short args, void *cbdata);
 static void collect_sample(orcm_sensor_sampler_t *sampler);
+static void mcedata_set_sample_rate(int sample_rate);
+static void mcedata_get_sample_rate(int *sample_rate);
+
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_mcedata_module = {
@@ -78,7 +81,9 @@ orcm_sensor_base_module_t orcm_sensor_mcedata_module = {
     mcedata_sample,
     mcedata_log,
     NULL,
-    NULL
+    NULL,
+    mcedata_set_sample_rate,
+    mcedata_get_sample_rate
 };
 
 typedef struct {
@@ -1285,4 +1290,24 @@ static void mcedata_log(opal_buffer_t *sample)
         free(hostname);
     }
 
+}
+
+static void mcedata_set_sample_rate(int sample_rate)
+{
+    /* set the mcedata sample rate if seperate thread is enabled */
+    if (mca_sensor_mcedata_component.use_progress_thread) {
+        mca_sensor_mcedata_component.sample_rate = sample_rate;
+    }
+    return;
+}
+
+static void mcedata_get_sample_rate(int *sample_rate)
+{
+    if (NULL != sample_rate) {
+    /* check if mcedata sample rate is provided for this*/
+        if (mca_sensor_mcedata_component.use_progress_thread) {
+            *sample_rate = mca_sensor_mcedata_component.sample_rate;
+        }
+    }
+    return;
 }

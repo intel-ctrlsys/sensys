@@ -80,7 +80,16 @@ typedef struct {
     orcm_sensor_base_component_t super;
     bool collect_cache_errors;
     char *logfile;
+    bool use_progress_thread;
+    int sample_rate;
 } orcm_sensor_mcedata_component_t;
+
+typedef struct {
+    opal_event_base_t *ev_base;
+    bool ev_active;
+    int sample_rate;
+} orcm_sensor_mcedata_t;
+
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_mcedata_component_t mca_sensor_mcedata_component;
 extern orcm_sensor_base_module_t orcm_sensor_mcedata_module;

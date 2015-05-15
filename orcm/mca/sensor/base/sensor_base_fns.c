@@ -389,6 +389,8 @@ void orcm_sensor_base_log(char *comp, opal_buffer_t *data)
             return;
         }
     }
+    /* Completed logging all received data */
+    orcm_db.commit(orcm_sensor_base.dbhandle, NULL, NULL);
 }
 
 void orcm_sensor_base_manually_sample(char *sensors,

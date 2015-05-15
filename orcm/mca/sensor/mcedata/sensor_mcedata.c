@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -33,6 +33,7 @@
 #include "opal/util/os_path.h"
 #include "opal/util/output.h"
 #include "opal/util/os_dirpath.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orte/util/name_fns.h"
 #include "orte/util/show_help.h"
@@ -65,6 +66,8 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals);
 static uint64_t get_total_lines(char *filename);
 static char* get_line(char *filename, uint64_t line);
+static void perthread_mcedata_sample(int fd, short args, void *cbdata);
+static void collect_sample(orcm_sensor_sampler_t *sampler);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_mcedata_module = {
@@ -119,6 +122,9 @@ const char *mce_reg_name []  = {
     "MCI_ADDR",
     "MCI_MISC"
 };
+static orcm_sensor_sampler_t *mcedata_sampler = NULL;
+static orcm_sensor_mcedata_t orcm_sensor_mcedata;
+
 
 /* mcedata is a special sensor that has to be called on it's own separate thread
  * It is necessary to catch the machine check errors in real time and send it up
@@ -199,13 +205,69 @@ static void finalize(void)
  */
 static void start(orte_jobid_t jobid)
 {
+    /* start a separate mcedata progress thread for sampling */
+    if (mca_sensor_mcedata_component.use_progress_thread) {
+        if (!orcm_sensor_mcedata.ev_active) {
+            orcm_sensor_mcedata.ev_active = true;
+            if (NULL == (orcm_sensor_mcedata.ev_base = opal_start_progress_thread("mcedata", true))) {
+                orcm_sensor_mcedata.ev_active = false;
+                return;
+            }
+        }
+
+        /* setup mcedata sampler */
+        mcedata_sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+        /* check if mcedata sample rate is provided for this*/
+        if (mca_sensor_mcedata_component.sample_rate) {
+            mcedata_sampler->rate.tv_sec = mca_sensor_mcedata_component.sample_rate;
+        } else {
+            mcedata_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        }
+        mcedata_sampler->log_data = orcm_sensor_base.log_samples;
+        opal_event_evtimer_set(orcm_sensor_mcedata.ev_base, &mcedata_sampler->ev,
+                               perthread_mcedata_sample, mcedata_sampler);
+        opal_event_evtimer_add(&mcedata_sampler->ev, &mcedata_sampler->rate);
+    }
     return;
 }
 
 
 static void stop(orte_jobid_t jobid)
 {
+    if (orcm_sensor_mcedata.ev_active) {
+        orcm_sensor_mcedata.ev_active = false;
+        /* stop the thread without releasing the event base */
+        opal_stop_progress_thread("mcedata", false);
+    }
     return;
+}
+
+static void perthread_mcedata_sample(int fd, short args, void *cbdata)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
+
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor mcedata : perthread_mcedata_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    
+    /* this has fired in the sampler thread, so we are okay to
+     * just go ahead and sample since we do NOT allow both the
+     * base thread and the component thread to both be actively
+     * calling this component */
+    collect_sample(sampler);
+    /* we now need to push the results into the base event thread
+     * so it can add the data to the base bucket */
+    ORCM_SENSOR_XFER(&sampler->bucket);
+    /* clear the bucket */
+    OBJ_DESTRUCT(&sampler->bucket);
+    OBJ_CONSTRUCT(&sampler->bucket, opal_buffer_t);
+    /* check if mcedata sample rate is provided for this*/
+    if (mca_sensor_mcedata_component.sample_rate != sampler->rate.tv_sec) {
+        sampler->rate.tv_sec = mca_sensor_mcedata_component.sample_rate;
+    } 
+    /* set ourselves to sample again */
+    opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
 mcetype get_mcetype(uint64_t mci_status)
@@ -771,6 +833,18 @@ static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals)
     }
 
 }
+
+static void mcedata_sample(orcm_sensor_sampler_t *sampler)
+{
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor mcedata : mcedata_sample: called",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    if (!mca_sensor_mcedata_component.use_progress_thread) {
+       collect_sample(sampler);
+    }
+
+}
+
 /* Sample function looks for a standard template that mcelog uses to log the
  * errors when the 'raw' switch in mcelog's configuration file is enabled
  * The template it follows is:
@@ -788,7 +862,7 @@ static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals)
  * APICID
  * MCGCAP
  */
-static void mcedata_sample(orcm_sensor_sampler_t *sampler)
+static void collect_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     char *temp;
@@ -801,7 +875,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
     uint64_t i = 0, cpu=0, socket=0, bank=0;
     uint64_t mce_reg[MCE_REG_COUNT];
     uint64_t tot_lines;
-    static uint64_t index;
+    static uint64_t index; /* non-volatile declaration to store last read line number */
     char* line;
     char *loc = NULL;
 

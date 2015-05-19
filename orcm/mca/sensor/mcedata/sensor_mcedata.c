@@ -675,7 +675,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
                         "MCE Error Type 4 - Bus and Interconnect Errors");
 
     kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("error_location");
+    kv->key = strdup("error_type");
     kv->type = OPAL_STRING;
     kv->data.string = strdup("bus_ic_error");
     opal_list_append(vals, &kv->super);

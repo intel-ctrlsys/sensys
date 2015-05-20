@@ -94,6 +94,14 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &orcm_sensor_base.set_dynamic_inventory);
 
+    orcm_sensor_base.enable_group_commits = true;
+    (void)mca_base_var_register("orcm", "sensor", "base", "enable_group_commits",
+                                "Enable committing the DB stores per sensor data buffer (Grouping data from multiple components)",
+                                MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                OPAL_INFO_LVL_9,
+                                MCA_BASE_VAR_SCOPE_READONLY,
+                                &orcm_sensor_base.enable_group_commits);
+
     return ORCM_SUCCESS;
 }
 

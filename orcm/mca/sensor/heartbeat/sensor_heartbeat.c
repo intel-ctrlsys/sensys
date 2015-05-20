@@ -42,6 +42,8 @@
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/db/db.h"
+
 #include "sensor_heartbeat.h"
 
 /* declare the API functions */
@@ -287,6 +289,12 @@ static void recv_beats(int status, orte_process_name_t* sender,
             n=1;
         }
     }
+
+    /* At the end of completion of all logs commit the data to db */
+    if(orcm_sensor_base.enable_group_commits ) {
+        orcm_db.commit(orcm_sensor_base.dbhandle, NULL, NULL);
+    }
+
     if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
         ORTE_ERROR_LOG(rc);
     }

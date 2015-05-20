@@ -43,7 +43,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t* sender,
                                 opal_buffer_t* buffer, orte_rml_tag_t tag,
                                 void* cbdata);
 
-static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
+static void db_open_cb(int handle, int status, opal_list_t *props, void *cbdata)
 {
     if (0 == status) {
         orcm_sensor_base.dbhandle = handle;
@@ -57,6 +57,10 @@ static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
                                     recv_inventory, NULL);
         }
     }
+    if (NULL != props) {
+        OPAL_LIST_RELEASE(props);
+    }
+
 }
 
 void orcm_sensor_base_start(orte_jobid_t job)
@@ -64,8 +68,11 @@ void orcm_sensor_base_start(orte_jobid_t job)
     orcm_sensor_active_module_t *i_module;
     int i;
     opal_buffer_t *inventory_snapshot;
-
     orcm_sensor_sampler_t *sampler;
+
+    opal_value_t *kv;
+    opal_list_t *props; /* DB Attributes list */
+
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: sensor start called",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -91,7 +98,20 @@ void orcm_sensor_base_start(orte_jobid_t job)
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
         if (!orcm_sensor_base.dbhandle_acquired && ORCM_PROC_IS_AGGREGATOR) {
-            orcm_db.open("sensor", NULL, db_open_cb, NULL);
+            /* Add a new attribute for disabling autocommit */
+            props = OBJ_NEW(opal_list_t);
+
+            // autocommit
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("autocommit");
+            kv->type = OPAL_BOOL;
+            if(orcm_sensor_base.enable_group_commits ) {
+                kv->data.flag = false; /* Disable Auto commit/Enable grouped commits */
+            } else {
+                kv->data.flag = true; /* Enable Auto commit/Disable grouped commits */
+            }
+            opal_list_append(props, &kv->super);
+            orcm_db.open("sensor", props, db_open_cb, NULL);
         }
 
         /* create the event base and start the progress engine, if necessary */

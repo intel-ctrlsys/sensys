@@ -78,6 +78,7 @@ typedef struct {
     bool collect_metrics;       /* Holds the user configured variable indicating whether sensor metric sampling is enabled or not */
     bool collect_inventory;     /* Holds the user configured variable indicating whether inventory collection is enabled or not */
     bool set_dynamic_inventory; /* Holds the user configured variable indicating whether dynamic inventory collection is enabled or not */
+    bool enable_group_commits; /* Enable per-buffer grouped commits(TRUE) or Enable per-component autocommits (FALSE)*/
 } orcm_sensor_base_t;
 
 typedef struct {

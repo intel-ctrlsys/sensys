@@ -258,11 +258,10 @@ static void start(orte_jobid_t jobid)
         sigar_sampler = OBJ_NEW(orcm_sensor_sampler_t);
 
         /* check if sigar sample rate is provided for this*/
-        if (mca_sensor_sigar_component.sample_rate) {
-            sigar_sampler->rate.tv_sec = mca_sensor_sigar_component.sample_rate;
-        } else {
-            sigar_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        if (!mca_sensor_sigar_component.sample_rate) {
+            mca_sensor_sigar_component.sample_rate = orcm_sensor_base.sample_rate;
         }
+        sigar_sampler->rate.tv_sec = mca_sensor_sigar_component.sample_rate;
         sigar_sampler->log_data = orcm_sensor_base.log_samples;
         opal_event_evtimer_set(orcm_sensor_sigar.ev_base, &sigar_sampler->ev,
                                perthread_sigar_sample, sigar_sampler);

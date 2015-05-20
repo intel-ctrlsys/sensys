@@ -224,11 +224,10 @@ static void start(orte_jobid_t jobid)
         mcedata_sampler = OBJ_NEW(orcm_sensor_sampler_t);
 
         /* check if mcedata sample rate is provided for this*/
-        if (mca_sensor_mcedata_component.sample_rate) {
-            mcedata_sampler->rate.tv_sec = mca_sensor_mcedata_component.sample_rate;
-        } else {
-            mcedata_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        if (!mca_sensor_mcedata_component.sample_rate) {
+            mca_sensor_mcedata_component.sample_rate = orcm_sensor_base.sample_rate;
         }
+        mcedata_sampler->rate.tv_sec = mca_sensor_mcedata_component.sample_rate;
         mcedata_sampler->log_data = orcm_sensor_base.log_samples;
         opal_event_evtimer_set(orcm_sensor_mcedata.ev_base, &mcedata_sampler->ev,
                                perthread_mcedata_sample, mcedata_sampler);

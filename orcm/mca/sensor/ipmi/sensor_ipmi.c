@@ -190,12 +190,10 @@ static void start(orte_jobid_t jobid)
         ipmi_sampler = OBJ_NEW(orcm_sensor_sampler_t);
 
         /* check if ipmi sample rate is provided for this*/
-        if (mca_sensor_ipmi_component.sample_rate) {
-            ipmi_sampler->rate.tv_sec = mca_sensor_ipmi_component.sample_rate;
-        } else {
-            ipmi_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        if (!mca_sensor_ipmi_component.sample_rate) {
+            mca_sensor_ipmi_component.sample_rate = orcm_sensor_base.sample_rate;
         } 
-
+        ipmi_sampler->rate.tv_sec = mca_sensor_ipmi_component.sample_rate;
         ipmi_sampler->log_data = orcm_sensor_base.log_samples;
         opal_event_evtimer_set(orcm_sensor_ipmi.ev_base, &ipmi_sampler->ev,
                                perthread_ipmi_sample, ipmi_sampler);

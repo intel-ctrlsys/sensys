@@ -664,11 +664,10 @@ static void start(orte_jobid_t jobid)
         freq_sampler = OBJ_NEW(orcm_sensor_sampler_t);
 
         /* check if freq sample rate is provided for this*/
-        if (mca_sensor_freq_component.sample_rate) {
-            freq_sampler->rate.tv_sec = mca_sensor_freq_component.sample_rate;
-        } else {
-            freq_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        if (!mca_sensor_freq_component.sample_rate) {
+            mca_sensor_freq_component.sample_rate = orcm_sensor_base.sample_rate;
         }
+        freq_sampler->rate.tv_sec = mca_sensor_freq_component.sample_rate;
         freq_sampler->log_data = orcm_sensor_base.log_samples;
         opal_event_evtimer_set(orcm_sensor_freq.ev_base, &freq_sampler->ev,
                                perthread_freq_sample, freq_sampler);

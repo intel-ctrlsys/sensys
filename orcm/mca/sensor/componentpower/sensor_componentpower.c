@@ -318,11 +318,10 @@ static void start(orte_jobid_t jobid)
         componentpower_sampler = OBJ_NEW(orcm_sensor_sampler_t);
 
         /* check if componentpower sample rate is provided for this*/
-        if (mca_sensor_componentpower_component.sample_rate) {
-            componentpower_sampler->rate.tv_sec = mca_sensor_componentpower_component.sample_rate;
-        } else {
-            componentpower_sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
+        if (!mca_sensor_componentpower_component.sample_rate) {
+            mca_sensor_componentpower_component.sample_rate = orcm_sensor_base.sample_rate;
         }
+        componentpower_sampler->rate.tv_sec = mca_sensor_componentpower_component.sample_rate;
         componentpower_sampler->log_data = orcm_sensor_base.log_samples;
         opal_event_evtimer_set(orcm_sensor_componentpower.ev_base, &componentpower_sampler->ev,
                                perthread_componentpower_sample, componentpower_sampler);

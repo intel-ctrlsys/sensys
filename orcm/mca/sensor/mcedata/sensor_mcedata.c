@@ -128,7 +128,6 @@ const char *mce_reg_name []  = {
     "MCI_MISC"
 };
 static orcm_sensor_sampler_t *mcedata_sampler = NULL;
-static orcm_sensor_mcedata_t orcm_sensor_mcedata;
 
 
 /* mcedata is a special sensor that has to be called on it's own separate thread
@@ -212,10 +211,10 @@ static void start(orte_jobid_t jobid)
 {
     /* start a separate mcedata progress thread for sampling */
     if (mca_sensor_mcedata_component.use_progress_thread) {
-        if (!orcm_sensor_mcedata.ev_active) {
-            orcm_sensor_mcedata.ev_active = true;
-            if (NULL == (orcm_sensor_mcedata.ev_base = opal_start_progress_thread("mcedata", true))) {
-                orcm_sensor_mcedata.ev_active = false;
+        if (!mca_sensor_mcedata_component.ev_active) {
+            mca_sensor_mcedata_component.ev_active = true;
+            if (NULL == (mca_sensor_mcedata_component.ev_base = opal_start_progress_thread("mcedata", true))) {
+                mca_sensor_mcedata_component.ev_active = false;
                 return;
             }
         }
@@ -229,7 +228,7 @@ static void start(orte_jobid_t jobid)
         }
         mcedata_sampler->rate.tv_sec = mca_sensor_mcedata_component.sample_rate;
         mcedata_sampler->log_data = orcm_sensor_base.log_samples;
-        opal_event_evtimer_set(orcm_sensor_mcedata.ev_base, &mcedata_sampler->ev,
+        opal_event_evtimer_set(mca_sensor_mcedata_component.ev_base, &mcedata_sampler->ev,
                                perthread_mcedata_sample, mcedata_sampler);
         opal_event_evtimer_add(&mcedata_sampler->ev, &mcedata_sampler->rate);
     }
@@ -239,8 +238,8 @@ static void start(orte_jobid_t jobid)
 
 static void stop(orte_jobid_t jobid)
 {
-    if (orcm_sensor_mcedata.ev_active) {
-        orcm_sensor_mcedata.ev_active = false;
+    if (mca_sensor_mcedata_component.ev_active) {
+        mca_sensor_mcedata_component.ev_active = false;
         /* stop the thread without releasing the event base */
         opal_stop_progress_thread("mcedata", false);
     }

@@ -757,7 +757,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     struct tm *sample_time;
 
     if (mca_sensor_coretemp_component.test) {
-        /* generate and send a the test vector */
+        /* generate and send the test vector */
         OBJ_CONSTRUCT(&data, opal_buffer_t);
         generate_test_vector(&data);
         bptr = &data;

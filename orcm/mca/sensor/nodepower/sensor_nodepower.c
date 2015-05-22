@@ -85,6 +85,7 @@ static orcm_sensor_sampler_t *nodepower_sampler = NULL;
 static orcm_sensor_nodepower_t orcm_sensor_nodepower;
 node_power_data _node_power, node_power;
 
+static void generate_test_vector(opal_buffer_t *v);
 /*
 use read_ein command to get input power of PSU. refer to PSU spec for details.
  */
@@ -269,6 +270,7 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor nodepower : nodepower_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
     if (!mca_sensor_nodepower_component.use_progress_thread) {
        collect_sample(sampler);
     }
@@ -317,6 +319,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         return;
     }
 
+    if (mca_sensor_nodepower_component.test) {
+
+        /* generate and send a test vector */
+        OBJ_CONSTRUCT(&data, opal_buffer_t);
+        generate_test_vector(&data);
+        bptr = &data;
+        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+        goto cleanup;
+    }
     gettimeofday(&(_tv.tv_curr), NULL);
     if (_tv.tv_curr.tv_usec>=_tv.tv_prev.tv_usec){
         _tv.interval=(unsigned long long)(_tv.tv_curr.tv_sec-_tv.tv_prev.tv_sec)*1000000
@@ -453,6 +464,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
+
+cleanup:
     OBJ_DESTRUCT(&data);
 }
 
@@ -586,4 +599,54 @@ static void nodepower_get_sample_rate(int *sample_rate)
         }
     }
     return;
+}
+
+static void generate_test_vector(opal_buffer_t *v)
+{
+    int ret;
+    char *ctmp, *timestamp_str;
+    float test_power;
+    struct timeval tv_test;
+
+/* Power units are Watts */
+    test_power = 100;
+
+/* pack the plugin name */
+    ctmp = strdup("nodepower");
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+    free(ctmp);
+
+/* pack the hostname */
+    if (OPAL_SUCCESS != (ret =
+                opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))){
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+/* get the time of sampling */
+   gettimeofday(&tv_test,NULL);
+/* pack the sampling time */
+    if (OPAL_SUCCESS != (ret =
+                opal_dss.pack(v, &tv_test, 1, OPAL_TIMEVAL))){
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+/* pack the test power value */
+    if (OPAL_SUCCESS != (ret =
+                opal_dss.pack(v, &test_power, 1, OPAL_FLOAT))){
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+    opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+            "%s sensor:nodepower: Power value of test vector is %f Watts",
+            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),test_power);
 }

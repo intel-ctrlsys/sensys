@@ -86,6 +86,7 @@ static orcm_sensor_nodepower_t orcm_sensor_nodepower;
 node_power_data _node_power, node_power;
 
 static void generate_test_vector(opal_buffer_t *v);
+
 /*
 use read_ein command to get input power of PSU. refer to PSU spec for details.
  */
@@ -326,7 +327,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         generate_test_vector(&data);
         bptr = &data;
         opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
-        goto cleanup;
+        OBJ_DESTRUCT(&data);
+        return;
     }
     gettimeofday(&(_tv.tv_curr), NULL);
     if (_tv.tv_curr.tv_usec>=_tv.tv_prev.tv_usec){
@@ -464,9 +466,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
-
-cleanup:
-    OBJ_DESTRUCT(&data);
 }
 
 static void mycleanup(int dbhandle, int status,
@@ -604,7 +603,7 @@ static void nodepower_get_sample_rate(int *sample_rate)
 static void generate_test_vector(opal_buffer_t *v)
 {
     int ret;
-    char *ctmp, *timestamp_str;
+    char *ctmp;
     float test_power;
     struct timeval tv_test;
 
@@ -616,6 +615,7 @@ static void generate_test_vector(opal_buffer_t *v)
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
+        free(ctmp);
         return;
     }
     free(ctmp);

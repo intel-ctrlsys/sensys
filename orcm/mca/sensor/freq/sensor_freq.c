@@ -1145,6 +1145,7 @@ static void generate_test_vector(opal_buffer_t *v)
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
+        free(ctmp);
     return;
     }
     free(ctmp);
@@ -1192,7 +1193,7 @@ static void generate_test_vector(opal_buffer_t *v)
         if (test_freq >= max_freq){
             test_freq = min_freq;
         }
-        }
+    }
 
     opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
         "%s sensor:freq: Size of test vector is %d",

@@ -762,7 +762,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         generate_test_vector(&data);
         bptr = &data;
         opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
-        goto cleanup;
+        OBJ_DESTRUCT(&data);
+        return;
     }
 
     if (0 == opal_list_get_size(&tracking)) {
@@ -875,7 +876,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
-cleanup:
     OBJ_DESTRUCT(&data);
 }
 
@@ -1035,6 +1035,7 @@ static void generate_test_vector(opal_buffer_t *v)
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
+        free(ctmp);
         return;
     }
     free(ctmp);

@@ -82,7 +82,7 @@ static int componentpower_component_register(void)
     mca_base_component_t *c = &mca_sensor_componentpower_component.super.base_version;
 
     mca_sensor_componentpower_component.test = false;
-    (void) mca_base_component_var_register (c, "componentpower",
+    (void) mca_base_component_var_register (c, "test",
                                             "Generate and pass test vector",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,

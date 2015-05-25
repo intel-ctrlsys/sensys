@@ -86,6 +86,8 @@ static orcm_sensor_sampler_t *componentpower_sampler = NULL;
 static orcm_sensor_componentpower_t orcm_sensor_componentpower;
 static bool log_enabled = true;
 
+static void generate_test_vector(opal_buffer_t *v);
+
 static int init(void)
 {
     return ORCM_SUCCESS;
@@ -228,6 +230,7 @@ static void start(orte_jobid_t jobid)
     if (0 != geteuid()) {
         return;
     }
+
 
     gettimeofday(&(_tv.tv_curr), NULL);
     _tv.tv_prev=_tv.tv_curr;
@@ -400,7 +403,16 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         return;
     }
 
-   gettimeofday(&(_tv.tv_curr), NULL);
+    if (mca_sensor_componentpower_component.test) {
+        /* generate and send a test vector */
+        OBJ_CONSTRUCT(&data, opal_buffer_t);
+        generate_test_vector(&data);
+        bptr = &data;
+        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+    gettimeofday(&(_tv.tv_curr), NULL);
     if (_tv.tv_curr.tv_usec>=_tv.tv_prev.tv_usec){
         _tv.interval=(unsigned long long)(_tv.tv_curr.tv_sec-_tv.tv_prev.tv_sec)*1000000
         +(unsigned long long)(_tv.tv_curr.tv_usec-_tv.tv_prev.tv_usec);
@@ -481,6 +493,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &freq, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
+        free(freq);
         return;
     }
     free(freq);
@@ -538,8 +551,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
-    OBJ_DESTRUCT(&data);
-
 }
 
 static void mycleanup(int dbhandle, int status,
@@ -706,4 +717,80 @@ static void componentpower_get_sample_rate(int *sample_rate)
         }
     }
     return;
+}
+
+static void generate_test_vector(opal_buffer_t *v)
+{
+    int ret;
+    int i;
+    char *ctmp;
+    int32_t nsockets;
+    struct timeval tv_test;
+    float cpu_test_power;
+    float ddr_test_power;
+    nsockets = MAX_SOCKETS;
+
+/* Power units are Watts */
+    cpu_test_power = 100;
+    ddr_test_power = 10;
+
+/* pack the plugin name */
+    ctmp = strdup("componentpower");
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        free(ctmp);
+        return;
+    }
+    free(ctmp);
+
+/* pack the hostname */
+    if (OPAL_SUCCESS != (ret =
+                opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))){
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+    /* pack then number of cores */
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &nsockets, 1, OPAL_INT32))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+/* get the time of sampling */
+    gettimeofday(&tv_test,NULL);
+/* pack the sampling time */
+    if (OPAL_SUCCESS != (ret =
+                opal_dss.pack(v, &tv_test, 1, OPAL_TIMEVAL))){
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+/* pack the cpu test power values */
+    for (i=0; i < nsockets; i++) {
+
+        if (OPAL_SUCCESS != (ret =
+                    opal_dss.pack(v, &cpu_test_power, 1, OPAL_FLOAT))){
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&v);
+            return;
+        }
+        cpu_test_power += 10.0;
+    }
+/* pack the ddr test power value */
+    for (i=0; i < nsockets; i++) {
+        if (OPAL_SUCCESS != (ret =
+                    opal_dss.pack(v, &ddr_test_power, 1, OPAL_FLOAT))){
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&v);
+            return;
+        }
+        ddr_test_power += 1.0;
+    }
+
+    opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+        "%s sensor:componentpower: Number of test sockets is %d with %d cpus each",
+            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),MAX_SOCKETS,MAX_CPUS);
 }

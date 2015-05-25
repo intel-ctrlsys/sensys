@@ -23,6 +23,7 @@ BEGIN_C_DECLS
 
 struct orcm_sensor_resusage_component_t {
     orcm_sensor_base_component_t super;
+    bool test;
     int sample_rate;
     float node_memory_limit;
     float proc_memory_limit;

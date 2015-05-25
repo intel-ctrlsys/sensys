@@ -69,6 +69,8 @@ static bool log_enabled = true;
 static orte_node_t *my_node;
 static orte_proc_t *my_proc;
 
+static void generate_test_vector(opal_buffer_t *v);
+
 static int init(void)
 {
     orte_job_t *jdata;
@@ -120,7 +122,17 @@ static void sample(orcm_sensor_sampler_t *sampler)
 
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "sample:resusage sampling resource usage"));
-    
+    if (mca_sensor_resusage_component.test) {
+        /* generate and send a the test vector */
+        OBJ_CONSTRUCT(&buf, opal_buffer_t);
+        generate_test_vector(&buf);
+        bptr = &buf;
+        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+        OBJ_DESTRUCT(&buf);
+        return;
+    }
+
+
     /* setup a buffer for our stats */
     OBJ_CONSTRUCT(&buf, opal_buffer_t);
     /* pack our name */
@@ -241,7 +253,6 @@ static void sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
-    OBJ_DESTRUCT(&buf);
 
 #if 0
     /* are there any issues with node-level usage? */
@@ -595,4 +606,101 @@ static void res_log(opal_buffer_t *sample)
         }
     }
     free(sampletime);
+}
+
+static void generate_test_vector(opal_buffer_t *v)
+{
+    int ret;
+    time_t now;
+    char *ctmp, *timestamp_str;
+    char time_str[40];
+    struct tm *sample_time;
+    opal_pstats_t *stats;
+    opal_node_stats_t *nstats;
+    
+    /* pack the plugin name */
+    ctmp = strdup("resusage");
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
+    ORTE_ERROR_LOG(ret);
+    OBJ_DESTRUCT(&v);
+    free(ctmp);
+    return;
+    }
+    free(ctmp);
+    
+    /* pack the hostname */
+    if (OPAL_SUCCESS != (ret =
+                opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))){
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+    
+    /* get the sample time */
+    now = time(NULL);
+    /* pass the time along as a simple string */
+    sample_time = localtime(&now);
+    if (NULL == sample_time) {
+        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        return;
+    }
+    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
+    asprintf(&timestamp_str, "%s", time_str);
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &timestamp_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        free(timestamp_str);
+        return;
+    }
+    free(timestamp_str);
+
+    /* update stats on ourself and the node */
+    stats = OBJ_NEW(opal_pstats_t);
+    nstats = OBJ_NEW(opal_node_stats_t);
+    if (ORCM_SUCCESS != (ret = opal_pstat.query(orte_process_info.pid, stats, nstats))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_RELEASE(stats);
+        OBJ_RELEASE(nstats);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+    /* will overwrite only node stats because actual process stats are needed for performance */
+    if (NULL != nstats) {
+    /* set the memory values to something identifiable for testing */
+            nstats->total_mem = 100.1;
+            nstats->free_mem = 200.2;
+            nstats->buffers = 300.3;
+            nstats->cached = 400.4;
+            nstats->swap_cached = 500.5;
+            nstats->swap_total = 600.6;
+            nstats->swap_free = 700.7;
+            nstats->mapped = 800.8;
+            /* set the load averages */
+            nstats->la = 1.0;
+            nstats->la5 = 5.0;
+            nstats->la15 = 15.0;
+    }
+
+    /* the stats framework can't know nodename or rank */
+    strncpy(stats->node, orte_process_info.nodename, (OPAL_PSTAT_MAX_STRING_LEN - 1));
+    stats->rank = ORTE_PROC_MY_NAME->vpid;
+
+    /* pack the node stats */
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &nstats, 1, OPAL_NODE_STAT))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+    /* pack the process stats */
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &stats, 1, OPAL_PSTAT))) {
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
+    }
+
+    opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+            "%s sensor:resusage: Test vector called",
+            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 }

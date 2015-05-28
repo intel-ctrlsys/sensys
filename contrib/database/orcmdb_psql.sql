@@ -455,6 +455,145 @@ $$;
 
 
 --
+-- Name: generate_partition_triggers_ddl(text, text, text, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION generate_partition_triggers_ddl(table_name text, time_stamp_column_name text, partition_interval text, number_of_interval_of_data_to_keep integer DEFAULT 180) RETURNS text
+    LANGUAGE plpgsql IMMUTABLE STRICT
+    AS $_$
+DECLARE
+	ddl_script text;
+	timestamp_mask_by_interval text;
+	insert_stmt text;
+	table_name_from_arg ALIAS FOR table_name;
+	insert_stmt_position integer;
+	insert_stmt_column_name varchar;
+BEGIN
+
+-- Convert the interval to pattern to be used to name partitions
+IF (partition_interval = 'YEAR') THEN
+	timestamp_mask_by_interval := 'YYYY';
+ELSEIF (partition_interval = 'MONTH') THEN
+	timestamp_mask_by_interval := 'YYYYMM';
+ELSEIF (partition_interval = 'DAY') THEN
+	timestamp_mask_by_interval := 'YYYYMMDD';
+ELSEIF (partition_interval = 'HOUR') THEN
+	timestamp_mask_by_interval := 'YYYYMMDDHH24';
+ELSEIF (partition_interval = 'MINUTE') THEN
+	timestamp_mask_by_interval := 'YYYYMMDDHH24MI';
+ELSE
+	RAISE EXCEPTION 'The specified % is not supported interval.  The supported values are YEAR, MONTH, DAY, HOUR, MINUTE', quote_literal(partition_interval);
+END IF;
+
+-- Verify timestamp datatype
+PERFORM 1 FROM information_schema.columns WHERE information_schema.columns.table_name = table_name_from_arg AND column_name = time_stamp_column_name AND data_type LIKE 'timestamp%';
+IF (NOT FOUND) THEN
+	RAISE EXCEPTION 'The specified column % in table % must exists and of type timestamp', quote_literal(time_stamp_column_name), quote_literal(table_name);
+END IF;
+
+-- Generate insert statement
+insert_stmt := 'EXECUTE(''INSERT INTO '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') || '' VALUES ($1';
+FOR insert_stmt_position IN SELECT ordinal_position
+	FROM information_schema.columns
+	WHERE information_schema.columns.table_name = table_name_from_arg AND ordinal_position > 1
+	ORDER BY ordinal_position
+LOOP
+	insert_stmt := insert_stmt || ', $' || insert_stmt_position;
+END LOOP;
+
+insert_stmt := insert_stmt || ');'')
+        USING ';
+-- handling the first column name in the list without starting with the commas
+SELECT 'NEW.' || column_name
+	FROM information_schema.columns
+	WHERE information_schema.columns.table_name = table_name_from_arg AND ordinal_position = 1
+	ORDER BY ordinal_position
+	INTO insert_stmt_column_name;
+insert_stmt := insert_stmt || insert_stmt_column_name;
+
+FOR insert_stmt_column_name IN SELECT column_name
+	FROM information_schema.columns
+	WHERE information_schema.columns.table_name = table_name_from_arg AND ordinal_position > 1
+	ORDER BY ordinal_position
+LOOP
+	insert_stmt := insert_stmt || ', NEW.' || insert_stmt_column_name;
+END LOOP;
+
+insert_stmt := insert_stmt || ';';
+
+
+
+ddl_script := '-- Review the generated code before invocation
+-- Drop old partition is disabled by default.  Uncomment the code in the generated statement to enable auto drop partition.
+-- Partition for ' || quote_literal(table_name) ||
+' based on the timestamp value of column ' || quote_literal(time_stamp_column_name) ||
+' using partition size for every one ' || quote_literal(partition_interval) || '.
+-- New partition name pattern:  ' || quote_literal(table_name || '_' || timestamp_mask_by_interval || '_' || time_stamp_column_name) || '.' ||
+$FUNCTION_CODE_PROLOG$
+-------------------------------
+-- Function: data_sample_raw_insert_trigger()
+
+-- DROP FUNCTION data_sample_raw_insert_trigger();
+
+CREATE OR REPLACE FUNCTION data_sample_raw_insert_trigger()
+  RETURNS trigger AS
+$PARTITION_BODY$
+BEGIN
+$FUNCTION_CODE_PROLOG$ || '
+    IF (NEW.' || time_stamp_column_name || ' IS NULL) THEN
+        NEW.' || time_stamp_column_name || ' := now();
+    END IF;
+
+    PERFORM 1
+            FROM information_schema.tables
+            WHERE table_name = quote_ident(''' || table_name || '_'' || to_char(NEW.time_stamp, ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''');
+    IF NOT FOUND THEN
+        -- Create the partition
+        EXECUTE(''CREATE TABLE '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') ||
+                    '' (CHECK ( ' || time_stamp_column_name || ' >= date_trunc(''''' || partition_interval || ''''', timestamp '''''' || NEW.' || time_stamp_column_name || ' || '''''') '' ||
+                    ''      AND ' || time_stamp_column_name || ' <  date_trunc(''''' || partition_interval || ''''', timestamp '''''' || NEW.' || time_stamp_column_name || ' || '''''' + interval ''''1 ' || partition_interval || ''''') ) ) '' ||
+                    '' INHERITS (' || table_name || '); '');
+        EXECUTE(''CREATE INDEX '' || quote_ident(''index_' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') ||
+                    '' ON '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') ||
+                    '' (' || time_stamp_column_name || '); '');
+        -- Uncomment the drop table statement to not have partition be auto removed
+        -- WARNING *** Non Recoverable once partition has been drop *** WARNING --
+        -- EXECUTE(''DROP TABLE IF EXISTS '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ' - interval ''' || number_of_interval_of_data_to_keep || ' ' || partition_interval || ''', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') || '';'');
+        -- WARNING *** Non Recoverable once partition has been drop *** WARNING --
+    END IF;
+
+    ' || insert_stmt || '
+    RETURN NULL;
+END;
+' || $FUNCTION_CODE_EPILOG$
+$PARTITION_BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100;
+ALTER FUNCTION data_sample_raw_insert_trigger()
+  OWNER TO orcmuser;
+-------------------------------
+  $FUNCTION_CODE_EPILOG$ || '
+
+-------------------------------
+-- Trigger: insert_' || table_name || '_trigger on ' || table_name || '
+
+-- DROP TRIGGER insert_' || table_name || '_trigger ON ' || table_name || ';
+
+CREATE TRIGGER insert_' || table_name || '_trigger
+    BEFORE INSERT
+    ON ' || table_name || '
+    FOR EACH ROW
+    EXECUTE PROCEDURE ' || table_name || '_insert_trigger();
+-------------------------------
+';
+
+RETURN ddl_script;
+
+END;
+$_$;
+
+
+--
 -- Name: get_data_item_id(character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 

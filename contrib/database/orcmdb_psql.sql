@@ -492,7 +492,28 @@ IF (NOT FOUND) THEN
 END IF;
 
 -- Generate insert statement
-insert_stmt := 'EXECUTE(''INSERT INTO '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') || '' VALUES ($1';
+insert_stmt := 'EXECUTE(''INSERT INTO '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') || ''(';
+
+-- Building up the list of column names in the <table_name> (....) section of the INSERT statement
+--     Handling the first column name in the list without the leading commas
+SELECT column_name
+	FROM information_schema.columns
+	WHERE information_schema.columns.table_name = table_name_from_arg AND ordinal_position = 1
+	ORDER BY ordinal_position
+	INTO insert_stmt_column_name;
+insert_stmt := insert_stmt || insert_stmt_column_name;
+--     Handling the rest of the column names with commas separated
+FOR insert_stmt_column_name IN SELECT column_name
+	FROM information_schema.columns
+	WHERE information_schema.columns.table_name = table_name_from_arg AND ordinal_position > 1
+	ORDER BY ordinal_position
+LOOP
+	insert_stmt := insert_stmt || ', ' || insert_stmt_column_name;
+END LOOP;
+-- Building up the list of parameters position for dynamic EXECUTE statement
+--     Handling the first parameter position without the leading commas
+insert_stmt := insert_stmt || ') VALUES ($1';
+--     Handling the rest of the parameter positions with commas separated
 FOR insert_stmt_position IN SELECT ordinal_position
 	FROM information_schema.columns
 	WHERE information_schema.columns.table_name = table_name_from_arg AND ordinal_position > 1
@@ -503,14 +524,15 @@ END LOOP;
 
 insert_stmt := insert_stmt || ');'')
         USING ';
--- handling the first column name in the list without starting with the commas
+-- Building up a list of parameters to the dynamic EXECUTE statement
+--     Handling the first column name in the list without the leading commas
 SELECT 'NEW.' || column_name
 	FROM information_schema.columns
 	WHERE information_schema.columns.table_name = table_name_from_arg AND ordinal_position = 1
 	ORDER BY ordinal_position
 	INTO insert_stmt_column_name;
 insert_stmt := insert_stmt || insert_stmt_column_name;
-
+--     Handling the rest of the column names with commas separated
 FOR insert_stmt_column_name IN SELECT column_name
 	FROM information_schema.columns
 	WHERE information_schema.columns.table_name = table_name_from_arg AND ordinal_position > 1
@@ -529,17 +551,16 @@ ddl_script := '-- Review the generated code before invocation
 ' based on the timestamp value of column ' || quote_literal(time_stamp_column_name) ||
 ' using partition size for every one ' || quote_literal(partition_interval) || '.
 -- New partition name pattern:  ' || quote_literal(table_name || '_' || timestamp_mask_by_interval || '_' || time_stamp_column_name) || '.' ||
-$FUNCTION_CODE_PROLOG$
+'
 -------------------------------
--- Function: data_sample_raw_insert_trigger()
+-- Function: ' || table_name || '_insert_trigger()
 
--- DROP FUNCTION data_sample_raw_insert_trigger();
+-- DROP FUNCTION ' || table_name || '_insert_trigger();
 
-CREATE OR REPLACE FUNCTION data_sample_raw_insert_trigger()
+CREATE OR REPLACE FUNCTION ' || table_name || '_insert_trigger()
   RETURNS trigger AS
 $PARTITION_BODY$
 BEGIN
-$FUNCTION_CODE_PROLOG$ || '
     IF (NEW.' || time_stamp_column_name || ' IS NULL) THEN
         NEW.' || time_stamp_column_name || ' := now();
     END IF;
@@ -565,14 +586,10 @@ $FUNCTION_CODE_PROLOG$ || '
     ' || insert_stmt || '
     RETURN NULL;
 END;
-' || $FUNCTION_CODE_EPILOG$
 $PARTITION_BODY$
-  LANGUAGE plpgsql VOLATILE
-  COST 100;
-ALTER FUNCTION data_sample_raw_insert_trigger()
-  OWNER TO orcmuser;
+  LANGUAGE plpgsql VOLATILE;
 -------------------------------
-  $FUNCTION_CODE_EPILOG$ || '
+
 
 -------------------------------
 -- Trigger: insert_' || table_name || '_trigger on ' || table_name || '

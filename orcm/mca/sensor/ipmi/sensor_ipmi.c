@@ -68,7 +68,7 @@ OBJ_CLASS_INSTANCE(orcm_sensor_hosts_t,
                    opal_list_item_t,
                    ipmi_con, ipmi_des);
 
-orcm_sensor_hosts_t *current_host_configuration;
+orcm_sensor_hosts_t *cur_host;
 
 typedef struct {
     opal_list_item_t super;
@@ -115,6 +115,12 @@ orcm_sensor_base_module_t orcm_sensor_ipmi_module = {
 static opal_buffer_t test_vector;
 static void generate_test_vector(opal_buffer_t *v);
 static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot);
+int get_manuf_date(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host);
+int get_manuf_name(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host);
+int get_product_name(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host);
+int get_serial_number(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host);
+int get_board_part(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host);
+
 static time_t last_sample = 0;
 static bool log_enabled = true;
 
@@ -130,10 +136,11 @@ static int init(void)
 {
     int rc;
     disable_ipmi = 0;
+    char user[16];
 
     OBJ_CONSTRUCT(&sensor_active_hosts, opal_list_t);
     OBJ_CONSTRUCT(&ipmi_inventory_hosts, opal_list_t);
-    current_host_configuration = OBJ_NEW(orcm_sensor_hosts_t);
+    cur_host = OBJ_NEW(orcm_sensor_hosts_t);
     if (mca_sensor_ipmi_component.test) {
         /* generate test vector */
         OBJ_CONSTRUCT(&test_vector, opal_buffer_t);
@@ -141,7 +148,15 @@ static int init(void)
         return OPAL_SUCCESS;
     }
 
-    rc = orcm_sensor_ipmi_get_bmc_cred(current_host_configuration);
+    /* Verify if user has root privileges, if not do not try to read BMC Credentials*/
+    getlogin_r(user, 16);
+    if(geteuid() != 0) {
+        orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-not-superuser",
+                       true, orte_process_info.nodename, user);
+        return ORCM_ERROR;
+    }
+
+    rc = orcm_sensor_ipmi_get_bmc_cred(cur_host);
     if(rc != ORCM_SUCCESS) {
         opal_output(0, "Unable to collect the current host details");
         return ORCM_ERROR;
@@ -154,7 +169,7 @@ static void finalize(void)
 {
     OPAL_LIST_DESTRUCT(&sensor_active_hosts);
     OPAL_LIST_DESTRUCT(&ipmi_inventory_hosts);
-    OBJ_DESTRUCT(current_host_configuration);
+    OBJ_DESTRUCT(cur_host);
 }
 
 /*Start monitoring of local processes */
@@ -163,7 +178,7 @@ static void start(orte_jobid_t jobid)
     /* Select sensor list if no sensors are specified by the user */
     if((NULL==mca_sensor_ipmi_component.sensor_list) & (NULL==mca_sensor_ipmi_component.sensor_group))
     {
-        sensor_list_token = opal_argv_split("PS1 Power In,PS1 Temperature",',');
+        sensor_list_token = opal_argv_split("PS0 Power In,PS0 Temperature",',');
     } else {
         sensor_list_token = opal_argv_split(mca_sensor_ipmi_component.sensor_list,',');
     }
@@ -222,7 +237,6 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
     int ret = 0;
     char *error_string;
     device_id_t devid;
-    char test[16];
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "RETRIEVING LAN CREDENTIALS");
@@ -243,8 +257,6 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
         if(ret)
         {
             error_string = decode_rv(ret);
-            //orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-fail",
-            //               true, orte_process_info.nodename, error_string);
             if (ERR_NO_DRV == ret) {
                 orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-fail",
                                 true, orte_process_info.nodename, error_string);
@@ -271,12 +283,12 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
                 memcpy(&devid.raw, rdata, sizeof(devid));
 
                 /*  Pack the BMC FW Rev */
-                sprintf(test,"%x.%x", devid.bits.fw_rev_1&0x7F,devid.bits.fw_rev_2&0xFF);
-                strncpy(host->capsule.prop.bmc_rev, test, sizeof(test));
+                snprintf(host->capsule.prop.bmc_rev,sizeof(host->capsule.prop.bmc_rev),
+                        "%x.%x", devid.bits.fw_rev_1&0x7F,devid.bits.fw_rev_2&0xFF);
 
                 /*  Pack the IPMI VER */
-                sprintf(test,"%x.%x", devid.bits.ipmi_ver&0xF,devid.bits.ipmi_ver&0xF0);
-                strncpy(host->capsule.prop.ipmi_ver, test, sizeof(test));
+                snprintf(host->capsule.prop.ipmi_ver, sizeof(host->capsule.prop.ipmi_ver),
+                        "%x.%x", devid.bits.ipmi_ver&0xF,devid.bits.ipmi_ver&0xF0);
             } else {
                 error_string = decode_rv(ret);
                 opal_output(0,"Unable to collect IPMI Device ID information: %s",error_string);
@@ -300,15 +312,12 @@ int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
     int rlen = 256;
     int id;
     int max_id = 0;;
-    unsigned char hex_val;
+    unsigned char hex_val=0;
     long int fru_area;
     long int max_fru_area = 0;
     char *error_string;
 
     memset(idata,0x00,4);
-    
-    hex_val = 0x00;
-
     for (id = 0; id < MAX_FRU_DEVICES; id++) {
         memset(rdata[id], 0x00, 256);
         *idata = hex_val;
@@ -340,6 +349,138 @@ int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
     return orcm_sensor_get_fru_data(max_id, max_fru_area, host);
 }
 
+int get_manuf_date (unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host)
+{
+    unsigned int manuf_time[3]; /*holds the manufactured time (in minutes) from 0:00 1/1/96*/
+    unsigned long int manuf_minutes; /*holds the manufactured time (in minutes) from 0:00 1/1/96*/
+    unsigned long int manuf_seconds; /*holds the above time (in seconds)*/
+    time_t raw_seconds;
+    struct tm *time_info;
+    char manuf_date[11]; /*A mm/dd/yyyy or dd/mm/yyyy formatted date 10 + 1 for null byte*/
+
+    /*IPMI time is stored in minutes from 0:00 1/1/1996*/
+    manuf_time[0] = rdata[fru_offset + 3]; /*LSByte of the time*/
+    manuf_time[1] = rdata[fru_offset + 4]; /*MiddleByte of the time*/
+    manuf_time[2] = rdata[fru_offset + 5]; /*MSByte of the time*/
+
+    /*Convert to 1 value*/
+    manuf_minutes = manuf_time[0] + (manuf_time[1] << 8) + (manuf_time[2] << 16);
+    manuf_seconds = manuf_minutes * 60;
+
+    /*Time from epoch = time from ipmi start + difference from epoch to ipmi start*/
+    raw_seconds = manuf_seconds + EPOCH_IPMI_DIFF_TIME;
+    time_info = localtime(&raw_seconds);
+    if (NULL == time_info) {
+    }
+    else {
+        strftime(manuf_date,10,"%x",time_info);
+    }
+
+    strncpy(host->capsule.prop.baseboard_manuf_date, manuf_date, sizeof(host->capsule.prop.baseboard_manuf_date)-1);
+    host->capsule.prop.baseboard_manuf_date[sizeof(host->capsule.prop.baseboard_manuf_date)-1] = '\0';
+
+    return 0;
+}
+
+int get_manuf_name (unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host)
+{
+    int i=0;
+    unsigned char board_manuf_length; /*holds the length (in bytes) of board manuf name*/
+    char *board_manuf; /*hold board manufacturer*/
+
+    board_manuf_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
+    board_manuf = (char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
+    
+    if (NULL == board_manuf) {
+        return -1;
+    }
+
+    for(i = 0; i < board_manuf_length; i++){
+        board_manuf[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + i];
+    }
+
+    board_manuf[i] = '\0';
+    strncpy(host->capsule.prop.baseboard_manufacturer, board_manuf, sizeof(host->capsule.prop.baseboard_manufacturer)-1);
+    host->capsule.prop.baseboard_manufacturer[sizeof(host->capsule.prop.baseboard_manufacturer)-1] = '\0';
+
+    return board_manuf_length;
+}
+
+int get_product_name(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host)
+{
+    int i=0;
+    unsigned char board_product_length; /*holds the length (in bytes) of board product name*/
+    char *board_product_name; /*holds board product name*/
+
+    board_product_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
+    board_product_name = (char*) malloc (board_product_length + 1); /* + 1 for the Null Character */
+
+    if (NULL == board_product_name) {
+        return -1;
+    }
+
+    for(i = 0; i < board_product_length; i++) {
+        board_product_name[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + i];
+    }
+
+    board_product_name[i] = '\0';
+    strncpy(host->capsule.prop.baseboard_name, board_product_name, sizeof(host->capsule.prop.baseboard_serial)-1);
+    host->capsule.prop.baseboard_name[sizeof(host->capsule.prop.baseboard_name)-1] = '\0';
+    free(board_product_name);
+
+    return board_product_length;
+}
+
+int get_serial_number(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host)
+{
+    int i=0;
+    unsigned char board_serial_length; /*holds length (in bytes) of board serial number*/
+    char *board_serial_num; /*will hold board serial number*/
+
+    board_serial_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
+    board_serial_num = (char*) malloc (board_serial_length + 1); /* + 1 for the Null Character */
+
+    if (NULL == board_serial_num) {
+        return -1;
+    }
+
+    for(i = 0; i < board_serial_length; i++) {
+        board_serial_num[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + i];
+    }
+
+    board_serial_num[i] = '\0';
+    strncpy(host->capsule.prop.baseboard_serial, board_serial_num, sizeof(host->capsule.prop.baseboard_serial)-1);
+    host->capsule.prop.baseboard_serial[sizeof(host->capsule.prop.baseboard_serial)-1] = '\0';
+    free(board_serial_num);
+
+    return board_serial_length;
+}
+
+int get_board_part(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host)
+{
+    int i=0;
+    unsigned char board_part_length; /*holds length (in bytes) of the board part number*/
+    char *board_part_num; /*will hold board part number*/
+
+    board_part_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
+    board_part_num = (char*) malloc (board_part_length + 1); /* + 1 for the Null Character */
+
+    if (NULL == board_part_num) {
+        return -1;
+    }
+
+    for (i = 0; i < board_part_length; i++) {
+        board_part_num[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + i];
+    }
+
+    board_part_num[i] = '\0';
+    strncpy(host->capsule.prop.baseboard_part, board_part_num, sizeof(host->capsule.prop.baseboard_part)-1);
+    host->capsule.prop.baseboard_part[sizeof(host->capsule.prop.baseboard_part)-1] = '\0';
+    free(board_part_num);
+
+    return board_part_length;
+}
+
 int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *host)
 {
     int ret;
@@ -351,22 +492,6 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     unsigned char ccode;
     int rdata_offset = 0;
     unsigned char fru_offset;
-
-    unsigned int manuf_time[3]; /*holds the manufactured time (in minutes) from 0:00 1/1/96*/
-    unsigned long int manuf_minutes; /*holds the manufactured time (in minutes) from 0:00 1/1/96*/
-    unsigned long int manuf_seconds; /*holds the above time (in seconds)*/
-    time_t raw_seconds;
-    struct tm *time_info;
-    char manuf_date[11]; /*A mm/dd/yyyy or dd/mm/yyyy formatted date 10 + 1 for null byte*/
-
-    unsigned char board_manuf_length; /*holds the length (in bytes) of board manuf name*/
-    char *board_manuf; /*hold board manufacturer*/
-    unsigned char board_product_length; /*holds the length (in bytes) of board product name*/
-    char *board_product_name; /*holds board product name*/
-    unsigned char board_serial_length; /*holds length (in bytes) of board serial number*/
-    char *board_serial_num; /*will hold board serial number*/
-    unsigned char board_part_length; /*holds length (in bytes) of the board part number*/
-    char *board_part_num; /*will hold board part number*/
 
     rdata = (unsigned char*) malloc(fru_area);
 
@@ -435,107 +560,41 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     /* Board Info */
     fru_offset = rdata[3] * 8; /*Board starting offset is stored in 3, multiples of 8 bytes*/
 
-    /*IPMI time is stored in minutes from 0:00 1/1/1996*/
-    manuf_time[0] = rdata[fru_offset + 3]; /*LSByte of the time*/
-    manuf_time[1] = rdata[fru_offset + 4]; /*MiddleByte of the time*/
-    manuf_time[2] = rdata[fru_offset + 5]; /*MSByte of the time*/
-
-    /*Convert to 1 value*/
-    manuf_minutes = manuf_time[0] + (manuf_time[1] << 8) + (manuf_time[2] << 16);
-    manuf_seconds = manuf_minutes * 60;
-
-    /*Time from epoch = time from ipmi start + difference from epoch to ipmi start*/
-    raw_seconds = manuf_seconds + EPOCH_IPMI_DIFF_TIME;
-    time_info = localtime(&raw_seconds);
-    if (NULL == time_info) {
-        free(rdata);
-        return ORCM_ERROR;
-    }
-    else {
-        strftime(manuf_date,10,"%x",time_info);
-    }
-
-    strncpy(host->capsule.prop.baseboard_manuf_date, manuf_date, sizeof(host->capsule.prop.baseboard_manuf_date)-1);
-    host->capsule.prop.baseboard_manuf_date[sizeof(host->capsule.prop.baseboard_manuf_date)-1] = '\0';
-
-    /* The 2 most significant bytes correspont to the length "type code".
-     * We assume, via the 0x3f mask, that the data is in English ASCII. */
-
-    board_manuf_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
-    board_manuf = (char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
-    
-    if (NULL == board_manuf) {
+    if(0 <= (ret= get_manuf_date(fru_offset, rdata, host))) {
+    } else {
         free(rdata);
         return ORCM_ERROR;
     }
 
-    for(i = 0; i < board_manuf_length; i++){
-        board_manuf[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + i];
-    }
-
-    board_manuf[i] = '\0';
-    strncpy(host->capsule.prop.baseboard_manufacturer, board_manuf, sizeof(host->capsule.prop.baseboard_manufacturer)-1);
-    host->capsule.prop.baseboard_manufacturer[sizeof(host->capsule.prop.baseboard_manufacturer)-1] = '\0';
-
-    board_product_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length] & 0x3f;
-    board_product_name = (char*) malloc (board_product_length + 1); /* + 1 for the Null Character */
-
-    if (NULL == board_product_name) {
+    if(0 <= (ret = get_manuf_name(fru_offset, rdata, host))) {
+        fru_offset+=(ret+1); /*Increment offset */
+    } else {
         free(rdata);
-        free(board_manuf);
         return ORCM_ERROR;
     }
 
-    for(i = 0; i < board_product_length; i++) {
-        board_product_name[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + i];
-    }
-
-    board_product_name[i] = '\0';
-    strncpy(host->capsule.prop.baseboard_name, board_product_name, sizeof(host->capsule.prop.baseboard_serial)-1);
-    host->capsule.prop.baseboard_name[sizeof(host->capsule.prop.baseboard_name)-1] = '\0';
-
-    board_serial_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length] & 0x3f;
-    board_serial_num = (char*) malloc (board_serial_length + 1); /* + 1 for the Null Character */
-
-    if (NULL == board_serial_num) {
+    if(0 <= (ret = get_product_name(fru_offset, rdata, host))) {
+        fru_offset+=(ret+1);
+    } else {
         free(rdata);
-        free(board_manuf);
-        free(board_product_name);
         return ORCM_ERROR;
     }
 
-    for(i = 0; i < board_serial_length; i++) {
-        board_serial_num[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length + 1 + i];
-    }
-
-    board_serial_num[i] = '\0';
-    strncpy(host->capsule.prop.baseboard_serial, board_serial_num, sizeof(host->capsule.prop.baseboard_serial)-1);
-    host->capsule.prop.baseboard_serial[sizeof(host->capsule.prop.baseboard_serial)-1] = '\0';
-
-    board_part_length = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length + board_serial_length + 1] & 0x3f;
-    board_part_num = (char*) malloc (board_part_length + 1); /* + 1 for the Null Character */
-
-    if (NULL == board_part_num) {
+    if(0 <= (ret = get_serial_number(fru_offset, rdata, host))) {
+        fru_offset+=(ret+1);
+    } else {
         free(rdata);
-        free(board_manuf);
-        free(board_product_name);
-        free(board_serial_num);
         return ORCM_ERROR;
     }
 
-    for (i = 0; i < board_part_length; i++) {
-        board_part_num[i] = rdata[fru_offset + BOARD_INFO_DATA_START + 1 + board_manuf_length + 1 + board_product_length + 1 + board_serial_length + 1 + i];
+    if(0 <= (ret = get_board_part(fru_offset, rdata, host))) {
+        fru_offset+=(ret+1);
+    } else {
+        free(rdata);
+        return ORCM_ERROR;
     }
-
-    board_part_num[i] = '\0';
-    strncpy(host->capsule.prop.baseboard_part, board_part_num, sizeof(host->capsule.prop.baseboard_part)-1);
-    host->capsule.prop.baseboard_part[sizeof(host->capsule.prop.baseboard_part)-1] = '\0';
 
     free(rdata);
-    free(board_manuf);
-    free(board_product_name);
-    free(board_serial_num);
-    free(board_part_num);
     return ORCM_SUCCESS;
 }
 
@@ -678,7 +737,6 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             ORTE_ERROR_LOG(rc);
             return;
         }
-        /* opal_output(0,"%s: %s",inv, inv_val);*/
         
         mkv = OBJ_NEW(orcm_metric_value_t);
         mkv->value.key = inv;
@@ -762,11 +820,9 @@ static void ipmi_get_sample_rate(int *sample_rate)
 
 static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
-    orcm_sensor_hosts_t *cur_host;
     int rc;
     unsigned int tot_items = 5;
     char *comp = strdup("ipmi");
-    cur_host = current_host_configuration;
     
     if (mca_sensor_ipmi_component.test) {
         /* generate test vector */
@@ -886,13 +942,12 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     time_t now;
     double tdiff;
     char time_str[40];
-    char *timestamp_str, *sample_str, user[16];
+    char *timestamp_str, *sample_str;
     struct tm *sample_time;
     int int_count=0;
     size_t host_count=0;
     static int timeout = 0;
-    orcm_sensor_hosts_t *cur_host, *host, *nxt;
-    cur_host = current_host_configuration;
+    orcm_sensor_hosts_t *host, *nxt;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor ipmi : collect_sample: called",
@@ -923,14 +978,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 
     if(count_log == 0 && timeout < 3)  /* The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it. */
     {
-        /* Verify if user has root privileges, if not do not try to read BMC Credentials*/
-        getlogin_r(user, 16);
-        if(geteuid() != 0) {
-            orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-not-superuser",
-                           true, orte_process_info.nodename, user);
-            timeout = 3;
-            return;
-        }
         timeout++;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "First Sample: Packing Credentials");
@@ -972,10 +1019,9 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
 
-//        rc = orcm_sensor_ipmi_get_bmc_cred(&cur_host);
         if(ORCM_SUCCESS != rc)
         {
-            opal_output(0, "Retry : %d", timeout);
+            opal_output(0, "Lan Details Collection - Retry : %d", timeout);
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             return;
@@ -1073,10 +1119,10 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         }
         if(!ORTE_PROC_IS_AGGREGATOR)
         {
-            opal_output(0,"PROC_IS_COMPUTE_DAEMON");
+            opal_output_verbose(5,"PROC_IS_COMPUTE_DAEMON");
             disable_ipmi = 1;
         } else {
-            opal_output(0,"PROC_IS_AGGREGATOR");
+            opal_output_verbose(5,"PROC_IS_AGGREGATOR");
         }
 
         return;
@@ -1326,7 +1372,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 return;
             }
             strncpy(nodename,hostname,strlen(hostname)+1);
-            opal_output(0,"IPMI_LOG -> Node %s not found; Logging credentials", hostname);
+            opal_output_verbose(5,"IPMI_LOG -> Node %s not found; Logging credentials", hostname);
             free(hostname);
 
             /* Unpack the host_ip - 3a */
@@ -1456,7 +1502,7 @@ static void ipmi_log(opal_buffer_t *sample)
                     return;
                 }
             } else {
-                opal_output(0,"Node already populated; Not going be added again");
+                opal_output_verbose(5,"Node already populated; Not going be added again");
             }
             /* Log the static information to database */
             /* @VINFIX: Currently will log into the same database as sensor data
@@ -1826,7 +1872,6 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
     int sensor_count = 0;
 
     char sys_pwr_state_str[16], dev_pwr_state_str[16];
-    char test[16];
 
     memset(rdata,0xff,256);
     memset(idata,0xff,4);
@@ -1842,16 +1887,16 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 memcpy(&devid.raw, rdata, sizeof(devid));
 
                 /*  Pack the BMC FW Rev */
-                sprintf(test,"%x.%x", devid.bits.fw_rev_1&0x7F, devid.bits.fw_rev_2&0xFF);
-                strncpy(cap->prop.bmc_rev, test, sizeof(test));
+                snprintf(cap->prop.bmc_rev, sizeof(cap->prop.bmc_rev), 
+                        "%x.%x", devid.bits.fw_rev_1&0x7F, devid.bits.fw_rev_2&0xFF);
 
                 /*  Pack the IPMI VER */
-                sprintf(test,"%x.%x", devid.bits.ipmi_ver&0xF, devid.bits.ipmi_ver&0xF0);
-                strncpy(cap->prop.ipmi_ver, test, sizeof(test));
+                snprintf(cap->prop.ipmi_ver,sizeof(cap->prop.ipmi_ver),
+                        "%x.%x", devid.bits.ipmi_ver&0xF, devid.bits.ipmi_ver&0xF0);
 
                 /*  Pack the Manufacturer ID */
-                sprintf(test,"%02x.%02x", devid.bits.manufacturer_id[1], devid.bits.manufacturer_id[0]);
-                strncpy(cap->prop.man_id, test, sizeof(test));
+                snprintf(cap->prop.man_id, sizeof(cap->prop.man_id),
+                        "%02x.%02x", devid.bits.manufacturer_id[1], devid.bits.manufacturer_id[0]);
             } else {
                 /*disable_ipmi = 1;*/
                 error_string = decode_rv(ret);
@@ -1944,7 +1989,6 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                     typestr = get_unit_type( sdrbuf[20], sdrbuf[21], sdrbuf[22],0);
                     if(orcm_sensor_ipmi_label_found(tag))
                     {
-                        /*opal_output(0, "Found Sensor Label matching:%s",tag);*/
                         /*  Pack the Sensor Metric */
                         cap->prop.collection_metrics[sensor_count]=val;
                         strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
@@ -1954,7 +1998,6 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                     {
                         if(NULL!=strcasestr(tag, mca_sensor_ipmi_component.sensor_group))
                         {
-                            /*opal_output(0, "Found Sensor Label '%s' matching group:%s", tag, mca_sensor_ipmi_component.sensor_group);*/
                             /*  Pack the Sensor Metric */
                             cap->prop.collection_metrics[sensor_count]=val;
                             strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));

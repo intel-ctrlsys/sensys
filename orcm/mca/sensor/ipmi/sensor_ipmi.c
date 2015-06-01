@@ -222,7 +222,7 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
     int ret = 0;
     char *error_string;
     device_id_t devid;
-    char test[16], test1[16];
+    char test[16];
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "RETRIEVING LAN CREDENTIALS");
@@ -246,6 +246,8 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             //orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-fail",
             //               true, orte_process_info.nodename, error_string);
             if (ERR_NO_DRV == ret) {
+                orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-fail",
+                                true, orte_process_info.nodename, error_string);
                 return ORCM_ERROR;
             } else {
                 rlen=20;
@@ -259,8 +261,6 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "RETRIEVED BMC's IP ADDRESS: %s",bmc_ip);
             strncpy(host->capsule.node.bmc_ip,bmc_ip,strlen(bmc_ip)+1);
-            strncpy(host->capsule.node.user,"CUR_USERNAME",strlen("CUR_USERNAME")+1);
-            strncpy(host->capsule.node.pasw,"CUR_PASSWORD",strlen("CUR_PASSWORD")+1);
             orcm_sensor_get_fru_inv(host);
 
             /* Get the DEVICE ID information as well */
@@ -271,21 +271,13 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
                 memcpy(&devid.raw, rdata, sizeof(devid));
 
                 /*  Pack the BMC FW Rev */
-                sprintf(test,"%x", devid.bits.fw_rev_1&0x7F);
-                sprintf(test1,"%x", devid.bits.fw_rev_2&0xFF);
-                strcat(test,".");
-                strcat(test,test1);
+                sprintf(test,"%x.%x", devid.bits.fw_rev_1&0x7F,devid.bits.fw_rev_2&0xFF);
                 strncpy(host->capsule.prop.bmc_rev, test, sizeof(test));
 
                 /*  Pack the IPMI VER */
-                sprintf(test,"%x", devid.bits.ipmi_ver&0xF);
-                sprintf(test1,"%x", devid.bits.ipmi_ver&0xF0);
-                strcat(test,".");
-                strcat(test,test1);
+                sprintf(test,"%x.%x", devid.bits.ipmi_ver&0xF,devid.bits.ipmi_ver&0xF0);
                 strncpy(host->capsule.prop.ipmi_ver, test, sizeof(test));
-            }
-
-            else {
+            } else {
                 error_string = decode_rv(ret);
                 opal_output(0,"Unable to collect IPMI Device ID information: %s",error_string);
             }
@@ -297,7 +289,6 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
         }
         rlen=20;
     }
-
     return ORCM_ERROR;
 }
 
@@ -339,10 +330,8 @@ int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
         /* Convert the hex value in rdata to decimal so we can compare it.*/
         fru_area = rdata[id][0] | (rdata[id][1] << 8) | (rdata[id][2] << 16) | (rdata[id][3] << 24);
 
-        /* 
-        If the newest area is the larget, set the max size to that and
-        mark the max id to be that id.
-        */
+        /* If the newest area is the larget, set the max size to that and
+         * mark the max id to be that id. */
         if (fru_area > max_fru_area) {
             max_fru_area = fru_area;
             max_id = id;
@@ -414,10 +403,8 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
         }
         ipmi_close();
 
-        /*
-        Copy what was read in to the next 16 byte section of rdata
-        and then increment the offset by another 16 for the next read
-        */
+        /* Copy what was read in to the next 16 byte section of rdata
+         * and then increment the offset by another 16 for the next read */
         memcpy(rdata + rdata_offset, &tempdata[1], 16);
         rdata_offset += 16;
 
@@ -425,9 +412,7 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
         if (idata[1] == 240) {
             idata[1] = 0x00;
             idata[2]++;
-        }
-
-        else {
+        } else {
             idata[1] += 0x10;
         }
     }
@@ -473,10 +458,8 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     strncpy(host->capsule.prop.baseboard_manuf_date, manuf_date, sizeof(host->capsule.prop.baseboard_manuf_date)-1);
     host->capsule.prop.baseboard_manuf_date[sizeof(host->capsule.prop.baseboard_manuf_date)-1] = '\0';
 
-    /*
-        The 2 most significant bytes correspont to the length "type code".
-        We assume, via the 0x3f mask, that the data is in English ASCII.
-    */
+    /* The 2 most significant bytes correspont to the length "type code".
+     * We assume, via the 0x3f mask, that the data is in English ASCII. */
 
     board_manuf_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
     board_manuf = (char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
@@ -1843,7 +1826,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
     int sensor_count = 0;
 
     char sys_pwr_state_str[16], dev_pwr_state_str[16];
-    char test[16], test1[16];
+    char test[16];
 
     memset(rdata,0xff,256);
     memset(idata,0xff,4);
@@ -1859,27 +1842,17 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 memcpy(&devid.raw, rdata, sizeof(devid));
 
                 /*  Pack the BMC FW Rev */
-                sprintf(test,"%x", devid.bits.fw_rev_1&0x7F);
-                sprintf(test1,"%x", devid.bits.fw_rev_2&0xFF);
-                strcat(test,".");
-                strcat(test,test1);
+                sprintf(test,"%x.%x", devid.bits.fw_rev_1&0x7F, devid.bits.fw_rev_2&0xFF);
                 strncpy(cap->prop.bmc_rev, test, sizeof(test));
 
                 /*  Pack the IPMI VER */
-                sprintf(test,"%x", devid.bits.ipmi_ver&0xF);
-                sprintf(test1,"%x", devid.bits.ipmi_ver&0xF0);
-                strcat(test,".");
-                strcat(test,test1);
+                sprintf(test,"%x.%x", devid.bits.ipmi_ver&0xF, devid.bits.ipmi_ver&0xF0);
                 strncpy(cap->prop.ipmi_ver, test, sizeof(test));
 
                 /*  Pack the Manufacturer ID */
-                sprintf(test,"%02x", devid.bits.manufacturer_id[1]);
-                sprintf(test1,"%02x", devid.bits.manufacturer_id[0]);
-                strcat(test,test1);
+                sprintf(test,"%02x.%02x", devid.bits.manufacturer_id[1], devid.bits.manufacturer_id[0]);
                 strncpy(cap->prop.man_id, test, sizeof(test));
-            }
-
-            else {
+            } else {
                 /*disable_ipmi = 1;*/
                 error_string = decode_rv(ret);
                 orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-mc-fail",
@@ -1888,9 +1861,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                            cap->node.user, cap->node.pasw, cap->node.auth,
                            cap->node.priv, cap->node.ciph, error_string);
             }
-        }
-
-        else {
+        } else {
             error_string = decode_rv(ret);
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-set-lan-fail",
                            true, orte_process_info.nodename,
@@ -1917,9 +1888,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 /* Copy all retrieved information in a global buffer */
                 memcpy(cap->prop.sys_power_state,sys_pwr_state_str,sizeof(sys_pwr_state_str));
                 memcpy(cap->prop.dev_power_state,dev_pwr_state_str,sizeof(dev_pwr_state_str));
-            }
-
-            else {
+            } else {
                 error_string = decode_rv(ret);
                 orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-mc-fail",
                            true, orte_process_info.nodename,
@@ -1927,9 +1896,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                            cap->node.user, cap->node.pasw, cap->node.auth,
                            cap->node.priv, cap->node.ciph, error_string);
             }
-        }
-
-        else {
+        } else {
             error_string = decode_rv(ret);
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-set-lan-fail",
                            true, orte_process_info.nodename,
@@ -1940,11 +1907,6 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
     }
 
     /* BEGIN: Gathering SDRs */
-    /* @VINFIX : NOTE!!!
-    * Currently Read sensors uses the additional functionality implemented in isensor.h & ievent.h
-    * These files are not part of the libipmiutil and needs to be build along with the IPMI Plugin
-    * No licensing issues since they are released under FreeBSD
-    */ 
     memset(rdata,0xff,256);
     memset(idata,0xff,4);
     ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
@@ -2009,7 +1971,6 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
                 } else {
                     val = 0;
                     typestr = "na";
-                    /*opal_output(0, "%04x: get sensor %x reading ret = %d\n",id,snum,ret);*/
                 }
                 memset(sdrbuf,0,SDR_SZ);
             }

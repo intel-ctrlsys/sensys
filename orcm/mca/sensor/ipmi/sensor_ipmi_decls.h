@@ -45,7 +45,7 @@ typedef struct {
     uchar   fw_rev_2;
     uchar   ipmi_ver;
     uchar   dev_support;
-    uchar   manufacturer_id[2];
+    uchar   manufacturer_id[3];
     uchar   product_id [2];
     uchar   aux_fw_rev[4];
 } _device_id_t;

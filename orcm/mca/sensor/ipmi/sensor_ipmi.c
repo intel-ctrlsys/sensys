@@ -1893,7 +1893,7 @@ void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap)
 
                 /*  Pack the Manufacturer ID */
                 snprintf(cap->prop.man_id, sizeof(cap->prop.man_id),
-                        "%02x.%02x", devid.bits.manufacturer_id[1], devid.bits.manufacturer_id[0]);
+                        "%x%02x%02x", (devid.bits.manufacturer_id[2]&0x0f), devid.bits.manufacturer_id[1], devid.bits.manufacturer_id[0]);
             } else {
                 /*disable_ipmi = 1;*/
                 error_string = decode_rv(ret);

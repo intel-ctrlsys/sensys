@@ -49,7 +49,7 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 static void ipmi_set_sample_rate(int sample_rate);
 static void ipmi_get_sample_rate(int *sample_rate);
-int count_log = 0;
+int first_sample = 0;
 
 char **sensor_list_token; /* 2D array storing multiple sensor keywords for collecting metrics */
 
@@ -219,7 +219,6 @@ static void start(orte_jobid_t jobid)
 
 static void stop(orte_jobid_t jobid)
 {
-    count_log = 0;
     if (orcm_sensor_ipmi.ev_active) {
         orcm_sensor_ipmi.ev_active = false;
         /* stop the thread without releasing the event base */
@@ -567,7 +566,7 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
     }
 
     if(0 <= (ret = get_manuf_name(fru_offset, rdata, host))) {
-        fru_offset+=(ret+1); /*Increment offset */
+        fru_offset+=(ret+1); /*Increment offset to ignore terminating null character */
     } else {
         free(rdata);
         return ORCM_ERROR;
@@ -962,8 +961,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     }
     if(disable_ipmi == 1)
         return;
-    opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
-        "========================SAMPLE: %d===============================", count_log);
 
     /* prep the buffer to collect the data */
     OBJ_CONSTRUCT(&data, opal_buffer_t);
@@ -976,7 +973,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     }
     free(ipmi);
 
-    if(count_log == 0 && timeout < 3)  /* The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it. */
+    if(first_sample == 0 && timeout < 3)  /* The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it. */
     {
         timeout++;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -1126,6 +1123,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
                                 "PROC_IS_AGGREGATOR");
         }
+        first_sample = 1;
 
         return;
     } /* End packing BMC credentials*/
@@ -1341,11 +1339,6 @@ static void ipmi_log(opal_buffer_t *sample)
     }
     if(disable_ipmi == 1)
         return;
-    opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
-        "----------------------LOG: %d----------------------------", count_log);
-    count_log++;
-    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-        "Count Log: %d", count_log);
 
     /* Unpack the host_count identifer */
     n=1;

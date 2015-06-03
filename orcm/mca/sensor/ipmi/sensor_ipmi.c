@@ -1119,10 +1119,12 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         }
         if(!ORTE_PROC_IS_AGGREGATOR)
         {
-            opal_output_verbose(5,"PROC_IS_COMPUTE_DAEMON");
+            opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+                                "PROC_IS_COMPUTE_DAEMON");
             disable_ipmi = 1;
         } else {
-            opal_output_verbose(5,"PROC_IS_AGGREGATOR");
+            opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+                                "PROC_IS_AGGREGATOR");
         }
 
         return;
@@ -1372,7 +1374,8 @@ static void ipmi_log(opal_buffer_t *sample)
                 return;
             }
             strncpy(nodename,hostname,strlen(hostname)+1);
-            opal_output_verbose(5,"IPMI_LOG -> Node %s not found; Logging credentials", hostname);
+            opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+                                "IPMI_LOG -> Node %s not found; Logging credentials", hostname);
             free(hostname);
 
             /* Unpack the host_ip - 3a */
@@ -1502,7 +1505,8 @@ static void ipmi_log(opal_buffer_t *sample)
                     return;
                 }
             } else {
-                opal_output_verbose(5,"Node already populated; Not going be added again");
+                opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+                                    "Node already populated; Not going be added again");
             }
             /* Log the static information to database */
             /* @VINFIX: Currently will log into the same database as sensor data

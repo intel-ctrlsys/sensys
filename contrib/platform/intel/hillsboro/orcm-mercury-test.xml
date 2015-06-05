@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<!-- orcm configuration file. -->
+
+<configuration>
+
+<orcm-aggregators>
+  <nodes>
+    <value>master1</value>
+  </nodes>
+  <port>
+    <value>55805</value>
+  </port>
+  <mca-params>
+    <value>sensor_base_sample_rate=30,sensor_heartbeat_rate=15,sensor_base_log_samples=1,db_print_file=-</value>
+  </mca-params>
+</orcm-aggregators>
+
+<orcm-daemons>
+  <nodes>
+    <value>c01</value>
+    <value>c02</value>
+    <value>c03</value>
+    <value>c04</value>
+  </nodes>
+  <port>
+    <value>55810</value>
+  </port>
+  <cores>
+    <value>0,1,2,3,4,5,6,7</value>
+  </cores>
+  <mca-params>
+    <value>sensor_base_sample_rate=30,sensor_heartbeat_rate=15,sensor_base_log_samples=1,db_print_file=-</value>
+  </mca-params>
+</orcm-daemons>
+
+<orcm-schedulers>
+  <description>Identify the node that houses the ORCM scheduler. Only
+  one allowed at this time</description>
+  <nodes>
+    <value>master1</value>
+  </nodes>
+  <port>
+    <value>55820</value>
+    <description>Port used by orcm scheduler</description>
+  </port>
+  <mca-params>
+    <description>List of MCA params to be used by scheduler</description>
+  </mca-params>
+</orcm-schedulers>
+
+</configuration>

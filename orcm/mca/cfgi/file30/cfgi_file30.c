@@ -122,10 +122,11 @@ orcm_cfgi_base_module_t orcm_cfgi_file30_module = {
 
 typedef enum xml_tree_constants_t
 {
-    xtBLOCK_SIZE = 32UL  /* The size of an allocation block
+    xtBLOCK_SIZE = 32UL, /* The size of an allocation block
                           * See append_spot's in_block_size,
                           * and xml_tree_alloc_* functions.
                           */
+    xtNOTA_CHILD = -1 /* Used by get_first_child() */
 } xml_tree_constants_t;
 
 typedef struct xml_tree_t
@@ -195,29 +196,50 @@ static int xml_tree_grow(unsigned long in_data_size,unsigned long in_block_size,
  * It returns the c-string without transfering ownership.
  * If the xml tag is not found, NULL is returned.
  */
-static char * get_field( const char * in_xml_tag, unsigned long in_which_row,
-                         xml_tree_t * in_tree );
+static const char * get_field( const char * in_xml_tag, unsigned long in_which_row,
+                               const xml_tree_t * in_tree );
 
-/* get_the1stchild returns the row offset into in_tree->heirarchy
+/* get_field4tag(...) returns NULL if the given tag offset does not have
+ * an associated tag; otherwise, it returns the cstring of the field associated
+ * with the tag pointed to in in_tree.items by in_tag_offset_in_items.
+ */
+static const char * get_field4tag(long in_tag_offset_in_items,
+                                  const xml_tree_t * in_tree);
+
+/*in_item_offset is contained within xml_tree_t::hierarchy */
+static bool isa_field(long in_hierarchy_index);
+static bool isa_child(long in_hierarchy_index);
+static long child_to_offset(long in_hierarchy_index);
+
+/* get_first_child returns the row offset into in_tree->hierarchy
  * associated with the child's in_xml_tag.
  * -1 is returned if nothing is found.
  */
-static long get_the1stchild(const char * in_child_xml_tag,
+static long get_first_child(const char * in_child_xml_tag,
                             unsigned long in_parent_row,
-                            xml_tree_t * in_tree );
+                            const xml_tree_t * in_tree );
 
-static void xml_tree_print_lexer(xml_tree_t * in_tree);
-static void xml_tree_print_structure(xml_tree_t * in_xtree);
+static void xml_tree_print_lexer(const xml_tree_t * in_tree);
+static void xml_tree_print_structure(const xml_tree_t * in_xtree);
 
 static int check_junctions_have_names(xml_tree_t * in_tree);
 static int check_parent_has_uniquely_named_children( xml_tree_t * in_tree );
 static int check_host_field_has_matching_port( xml_tree_t * in_tree );
+
 static int check_unique_scheduler( xml_tree_t * in_tree );
+static int check_no_sublevel_on_scheduler( xml_tree_t * in_tree );
+
 static int check_unique_host_port_pair( xml_tree_t * in_tree );
+
 static int check_unique_cluster_on_top( xml_tree_t * in_tree );
+static int check_no_sublevel_on_controller( xml_tree_t * in_tree );
+
 /*Put this check after check_unique_cluster_on_top(...) */
 /*This check is to cover a bug or missing feature */
 static int check_no_controller_on_cluster( xml_tree_t * in_tree );
+
+static bool isa_regex(const char * in_cstring);
+static int check_controller_on_node_junction( xml_tree_t * in_tree );
 /*Check that row are before rack */
 /*Note that this check only makes sense in a 4 tiers hierarchy */
 /*So check that we have a 4-tiers hierarchy at the same time. */
@@ -246,14 +268,30 @@ static int structure_lexed_items(unsigned long in_begin_offset,
 
 static int augment_hierarchy( xml_tree_t * io_xtree );
 
-static int transfer_to_controller(char ** in_items,
-                                  unsigned long in_hier_row_length,
-                                  long * in_hierarchy,
+static void set_parent_isa_node(bool * io_parent_isa_node, const xml_tree_t * in_xtree);
+
+static int transfer_mca_params(unsigned long in_row_in_hier,
+                               const xml_tree_t * in_xtree,
+                               orcm_cfgi_xml_parser_t * io_parent);
+static int transfer_other_items(unsigned long in_row_in_hier,
+                                const xml_tree_t * in_xtree,
+                                orcm_cfgi_xml_parser_t * io_parent);
+
+static int transfer_to_controller(unsigned long in_ctrl_row,
+                                  const xml_tree_t * in_xtree,
                                   orcm_cfgi_xml_parser_t * io_parent);
-static int transfer_to_scheduler(char ** in_items,
-                                 unsigned long in_hier_row_length,
-                                 long * in_hierarchy,
+
+static int transfer_queues_to_scheduler(unsigned long in_sched_row,
+                                        const xml_tree_t * in_xtree,
+                                        orcm_cfgi_xml_parser_t * io_parent);
+
+static int transfer_to_scheduler(unsigned long in_sched_row,
+                                 const xml_tree_t * in_xtree,
                                  orcm_cfgi_xml_parser_t * io_parent);
+
+static int transfer_to_node(unsigned long in_node_row,
+                            const xml_tree_t * in_xtree,
+                            orcm_cfgi_xml_parser_t * io_parent);
 
 static int remove_empty_items(xml_tree_t * io_xtree);
 
@@ -454,15 +492,12 @@ static int read_config(opal_list_t *config)
 }
 
 static void setup_environ(char **env);
-static int parse_cluster(orcm_cluster_t *cluster,
-                         orcm_cfgi_xml_parser_t *x);
+static int parse_cluster(orcm_cluster_t *cluster, orcm_cfgi_xml_parser_t *x);
 static int parse_scheduler(orcm_scheduler_t *scheduler,
                            orcm_cfgi_xml_parser_t *x);
 
-static int define_system(opal_list_t *config,
-                         orcm_node_t **mynode,
-                         orte_vpid_t *num_procs,
-                         opal_buffer_t *buf)
+static int define_system(opal_list_t *config,    orcm_node_t **mynode,
+                         orte_vpid_t *num_procs, opal_buffer_t *buf)
 {
     struct hostent *h;
     char *my_ip;
@@ -842,7 +877,7 @@ static char * tolower_cstr(char * in)
     return in;
 }
 
-static void xml_tree_print_structure( xml_tree_t * in_xtree )
+static void xml_tree_print_structure( const xml_tree_t * in_xtree )
 {
     const unsigned int BUFSZ = 1024;
 
@@ -874,16 +909,16 @@ static void xml_tree_print_structure( xml_tree_t * in_xtree )
 
                 long here = in_xtree->hierarchy[i][j];
 
-                if (0 > here) {
-                        snprintf(buf, BUFSZ, "%ld\t", -1*here );
+                if (isa_child(here)) {
+                        snprintf(buf, BUFSZ, "%ld\t", child_to_offset(here) );
                         sz += strlen(buf);
                     } else {
-                        char * tx = in_xtree->items[here];
+                        const char * tx = in_xtree->items[here];
                         if (isa_sectional_item(tx)) {
                             snprintf(buf, BUFSZ, "%s\t", in_xtree->items[here]);
                             sz += strlen(buf);
                         } else {
-                            char * valu = in_xtree->items[here+1]+1;
+                            const char * valu = get_field4tag(here,in_xtree);
                             snprintf(buf, BUFSZ, "%s=%s\t",tx,valu);
                             sz += strlen(buf);
                         }
@@ -917,14 +952,14 @@ static void xml_tree_print_structure( xml_tree_t * in_xtree )
 
                     long here = in_xtree->hierarchy[i][j];
 
-                    if (0 > here) {
-                        snprintf(t, BUFSZ, "%ld%c", -1*here, c );
+                    if (isa_child(here)) {
+                        snprintf(t, BUFSZ, "%ld%c", child_to_offset(here), c );
                     } else {
-                        char * tx = in_xtree->items[ here ];
+                        const char * tx = in_xtree->items[ here ];
                         if (isa_sectional_item(tx)) {
                             snprintf(t, BUFSZ, "%s%c", tx, c );
                         } else {
-                            char * valu = in_xtree->items[here+1]+1;
+                            const char * valu = get_field4tag(here,in_xtree);
                             snprintf(t, BUFSZ, "%s=%s%c", tx, valu, c );
                         }
                     }
@@ -943,6 +978,31 @@ static void xml_tree_print_structure( xml_tree_t * in_xtree )
     }
 }
 
+static void set_parent_isa_node(bool * io_parent_isa_node, const xml_tree_t * in_xtree)
+{
+    unsigned long i;
+    for (i=0;i <in_xtree->sz_hierarchy; ++i) {
+        io_parent_isa_node[i]=false;
+    }
+    for (i=0;i <in_xtree->sz_hierarchy; ++i) {
+        long dex = in_xtree->hierarchy[i][0];
+        const char * tag = in_xtree->items[dex];
+        if (0 != strcasecmp(tag,TXjunction)) {
+            continue;
+        }
+        const char * jtype = get_field( TXtype, i, in_xtree);
+        if (NULL == jtype || 0 != strcasecmp(jtype,FDnode)) {
+            continue;
+        }
+
+        long child = get_first_child(TXcontrol, i, in_xtree);
+        if (xtNOTA_CHILD == child) {
+            continue;
+        }
+        io_parent_isa_node[child] = true;
+    }
+}
+
 static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
 {
     /*
@@ -950,7 +1010,7 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
     */
     const int NEED_RECORD=1;
 
-    char * t=NULL, *tt=NULL, *txt=NULL;
+    char * t=NULL;
     unsigned long i=0, j=0;
 
     unsigned long record_begin=0;
@@ -961,10 +1021,10 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
     unsigned long sz_stack=0;
     long u=0, uu=0;
 
-    int * parent_isa_node = NULL; /* The array will tell a controller
+    bool * parent_isa_node = NULL; /* The array will tell a controller
                                    * if its parent is a node.
-                                   * 0 -> not a node
-                                   * 1 -> parent is a node
+                                   * false -> not a node
+                                   * true -> parent is a node
                                    */
 
     orcm_cfgi_xml_parser_t *parent=NULL;
@@ -1032,7 +1092,25 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
             break;
         }
 
-        erri = check_no_controller_on_cluster( io_xtree );
+        erri = check_no_sublevel_on_controller( io_xtree );
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        erri = check_no_sublevel_on_scheduler( io_xtree );
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        erri = check_controller_on_node_junction( io_xtree );
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        /*Enable the following code if controller on cluster junction
+         *are not allowed.
+         */
+        if (0) erri = check_no_controller_on_cluster( io_xtree );
         if (ORCM_SUCCESS != erri) {
             break;
         }
@@ -1093,9 +1171,9 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
         opal_list_append(io_config, &xml->super);
 
         for (i=0; i < io_xtree->hier_row_lengths[0]; ++i) {
-            if (0 > io_xtree->hierarchy[0][i]) {
+            if ( isa_child(io_xtree->hierarchy[0][i]) ) {
                 parent_stack[sz_stack] = xml;
-                hstack[sz_stack] = -1 *io_xtree->hierarchy[0][i];
+                hstack[sz_stack] = child_to_offset(io_xtree->hierarchy[0][i]);
                 ++sz_stack;
             } else {
                 /*Skip configuration specific items*/
@@ -1111,26 +1189,7 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
             opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output, "XML-XFER: on item 0 = configuration");
         }
 
-        for (i=0;i <io_xtree->sz_hierarchy; ++i) {
-            long dex = io_xtree->hierarchy[i][0];
-            char * tag = io_xtree->items[dex];
-            if (0 != strcasecmp(tag,TXjunction)) {
-                continue;
-            }
-            char * jtype = get_field( TXtype, i, io_xtree);
-            if (NULL == jtype) {
-                continue;
-            }
-            if (0 != strcasecmp(jtype,FDnode)) {
-                continue;
-            }
-
-            long child = get_the1stchild(TXcontrol,i, io_xtree);
-            if (0 > child) {
-                continue;
-            }
-            parent_isa_node[child] = 1;
-        }
+        set_parent_isa_node(parent_isa_node, io_xtree);
 
         /*===== Stuff the XML into the config */
         while (0 < sz_stack){
@@ -1139,7 +1198,7 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
             parent = parent_stack[sz_stack];
 
             u = io_xtree->hierarchy[i][0];
-            if (0 > u) {
+            if (isa_child(u)) {
                 erri = ORCM_ERR_BAD_PARAM; /*That should never happen.*/
                 break;
             }
@@ -1147,17 +1206,35 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
             t = io_xtree->items[u];
             opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
                                 "XML-XFER: on item %lu = %s", i, t);
-            if ('c'==t[0] || 'C'==t[0]) {
-                if (0 == strcasecmp(t,TXcontrol)) {
-                    erri = transfer_to_controller(io_xtree->items,
-                                                  io_xtree->hier_row_lengths[i],
-                                                  io_xtree->hierarchy[i], parent);
+            if (0 == strcasecmp(t,TXcontrol)) {
+                if (parent_isa_node[i]) {
+                    continue; /*This controller will have been handle
+                               *by the node junction.
+                               */
+                    opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                            "XML-XFER:\t\tcontroller on node");
+                }
+                erri = transfer_to_controller(i, io_xtree, parent);
+                if (ORCM_SUCCESS != erri) {
+                    break;
+                }
+            } else if (0 == strcasecmp(t,TXjunction)) {
+                const char * jtype = get_field(TXtype, i, io_xtree);
+                bool on_a_node = false;
+                if (NULL != jtype && 0==strcasecmp(FDnode, jtype)) {
+                    /*As node junctions are the leaves of the hierarchy,
+                     *we must flatten any controller it must have in
+                     *order to conform to the CFGI file2.0 back-end.
+                     */
+                     on_a_node = true;
+                }
+
+                if (on_a_node) {
+                    erri = transfer_to_node(i, io_xtree, parent);
                     if (ORCM_SUCCESS != erri) {
                         break;
                     }
-                }
-            } else if( 'j'==t[0] || 'J'==t[0]) {
-                if (0 == strcasecmp(t,TXjunction)) {
+                } else {
                     xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
                     if (NULL == xml) {
                         erri = ORCM_ERR_OUT_OF_RESOURCE;
@@ -1167,28 +1244,23 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
 
                     for (j=1; j < io_xtree->hier_row_lengths[i]; ++j) {
                         uu = io_xtree->hierarchy[i][j];
-                        if (0 > uu) {
-                            hstack[sz_stack]       = -1*uu;
+                        if (isa_child(uu)) {
+                            /*Just stack child for processing later.*/
+                            hstack[sz_stack]       = child_to_offset(uu);
                             parent_stack[sz_stack] = xml;
                             ++sz_stack;
                             continue;
                         } else {
-                            tt = io_xtree->items[uu];
-                            if (0 == strcasecmp(tt,TXtype)) {
-                                xml->name = strdup(io_xtree->items[uu+1]+1);
-                                tolower_cstr(parent->name);
-                            } else if (0 == strcasecmp(tt,TXname)) {
-                                txt = NULL;
-                                txt = strdup(io_xtree->items[uu+1]+1);
-                                tolower_cstr(txt);
-                                if (OPAL_SUCCESS != opal_argv_append_nosize(&xml->value, txt)) {
+                            char * tag = io_xtree->items[uu];
+                            const char * field = get_field4tag(uu,io_xtree);
+                            if (0 == strcasecmp(tag,TXtype)) {
+                                xml->name = strdup(field);
+                                tolower_cstr(xml->name);
+                            } else if (0 == strcasecmp(tag,TXname)) {
+                                if (OPAL_SUCCESS != opal_argv_append_nosize(&xml->value, field)) {
                                     erri = ORCM_ERR_OUT_OF_RESOURCE;
-                                    free(txt);
-                                    txt = NULL;
                                     break;
                                 }
-                                free(txt);
-                                txt = NULL;
                             } else {
                                 /*Skip the other data fields*/
                             }
@@ -1201,9 +1273,7 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
                 }
             } else if ('s'==t[0] || 'S'==t[0]) {
                 if (0 == strcasecmp(t,TXscheduler)) {
-                    erri = transfer_to_scheduler(io_xtree->items,
-                                                 io_xtree->hier_row_lengths[i],
-                                                 io_xtree->hierarchy[i], parent);
+                    erri = transfer_to_scheduler(i, io_xtree, parent);
                     if (ORCM_SUCCESS != erri) {
                         break;
                     }
@@ -1289,14 +1359,14 @@ static int parse_orcm_config(orcm_config_t *cfg,
     if (0 == strcmp(xml->name, TXport)) {
         if (NULL != xml->value && NULL != xml->value[0]) {
             /* specifies the orcm-port to be used */
-            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+            opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-PORT %s", xml->value[0]);
             cfg->port = strdup(xml->value[0]);
         }
     } else if (0 == strcmp(xml->name, TXcores)) {
         if (NULL != xml->value && NULL != xml->value[0]) {
             /* specifies the cores to be used */
-            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+            opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                                 "\tCORES %s", xml->value[0]);
             /* all we need do is push this into the corresponding param */
             asprintf(&val, OPAL_MCA_PREFIX"orte_daemon_cores=%s", xml->value[0]);
@@ -1307,7 +1377,7 @@ static int parse_orcm_config(orcm_config_t *cfg,
         }
     } else if (0 == strcmp(xml->name, TXmca_params)) {
         if (NULL != xml->value && NULL != xml->value[0]) {
-            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+            opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-MCA-PARAMS %s", xml->value[0]);
             vals = opal_argv_split(xml->value[0], ',');
             if (NULL != vals) {
@@ -1328,7 +1398,7 @@ static int parse_orcm_config(orcm_config_t *cfg,
         }
     } else if (0 == strcmp(xml->name, TXlog)) {
         if (NULL != xml->value && NULL != xml->value[0]) {
-            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+            opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-LOG %s", xml->value[0]);
             opal_setenv("OPAL_OUTPUT_REDIRECT", "file", true, &cfg->env);
             opal_setenv("OPAL_OUTPUT_LOCATION", xml->value[0], true, &cfg->env);
@@ -1336,7 +1406,7 @@ static int parse_orcm_config(orcm_config_t *cfg,
         }
     } else if  (0 == strcmp(xml->name, TXenvar)) {
         if (NULL != xml->value && NULL != xml->value[0]) {
-            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+            opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                                 "\tENVARS %s", xml->value[0]);
             vals = opal_argv_split(xml->value[0], ',');
             for (n=0; NULL != vals[n]; n++) {
@@ -1348,16 +1418,18 @@ static int parse_orcm_config(orcm_config_t *cfg,
         }
     } else if  (0 == strcmp(xml->name, TXaggregat)) {
         if (NULL != xml->value && NULL != xml->value[0]) {
-            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+            opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                                 "\tAGGREGATOR %s", xml->value[0]);
             if (0 == strncmp("y", xml->value[0], 1)) {
                 cfg->aggregator = true;
+            } else {
+                cfg->aggregator = false;
             }
         } else {
             cfg->aggregator = true;
         }
     } else {
-        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+        opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                             "\tUNKNOWN TAG");
     }
     return ORTE_SUCCESS;
@@ -1641,8 +1713,10 @@ static int parse_cluster(orcm_cluster_t *cluster,
             cluster->controller.name = strdup(x->value[0]);
             cluster->controller.state = ORTE_NODE_STATE_UNKNOWN;
             /* parse any subvals that are attached to the cluster controller */
-            OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
-                if (ORCM_SUCCESS != (rc = parse_orcm_config(&cluster->controller.config, xx))) {
+
+            orcm_cfgi_xml_parser_t * z = NULL;
+            OPAL_LIST_FOREACH(z, &x->subvals, orcm_cfgi_xml_parser_t) {
+                if (ORCM_SUCCESS != (rc = parse_orcm_config(&cluster->controller.config, z))) {
                     ORTE_ERROR_LOG(rc);
                     return rc;
                 }
@@ -2078,6 +2152,37 @@ static int lex_xml( char * in_filename, xml_tree_t * io_xtree)
     return erri;
 }
 
+static bool isa_regex(const char * in_cstring)
+{
+    /*This is a very simple test.  Simple means that it does not check if
+     *the string is a valid regex.
+     */
+    if (NULL == in_cstring) {
+        return false;
+    }
+
+    unsigned long sz = strlen(in_cstring);
+    if (2>= sz) {
+        return false;
+    }
+
+    char * beginb = strchr(in_cstring, '[');
+    if (NULL==beginb) {
+        return false;
+    }
+
+    char *endb = strchr(in_cstring, ']');
+    if (NULL==endb) {
+        return false;
+    }
+
+    if ( (beginb - in_cstring) < (endb - in_cstring) ) {
+        return true;
+    }
+
+    return false;
+}
+
 /*Returns 1 if the tag given is one of the one used.
  *Returns 0 otherwise.
  */
@@ -2091,7 +2196,7 @@ static int isa_known_tag(const char * in_tagtext)
     switch (t[0]) {
     case 'a':
     case 'A':
-        if(0 == strcasecmp(t,TXaggregat)) {
+        if (0 == strcasecmp(t,TXaggregat)) {
             return 1;
         }
         break;
@@ -2301,7 +2406,7 @@ static int isa_singleton(const char * in_tagtext)
         break;
     case 't':
     case 'T':
-        if( ! strcasecmp(t,TXtype)) return 1;
+        if ( ! strcasecmp(t,TXtype)) return 1;
         break;
     case 'v':
     case 'V':
@@ -2724,7 +2829,7 @@ static int structure_lexed_items(unsigned long in_begin_offset,
 
     /*The algorithm is essentially a hierarchical search without using recursion
      * or a stack.
-     * A little slower maybe but it is real easy to debug.
+     * A little slower maybe but it is real easy to fix if wrong.
      */
     const unsigned long nota_index=(unsigned long)(-1);
     int erri=ORCM_SUCCESS;
@@ -2922,7 +3027,7 @@ static int structure_lexed_items(unsigned long in_begin_offset,
 
         if (sz_section+1 != io_xtree->sz_hierarchy) {
             opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
-                                "DEBUG:: sz_section=%lu    sz_hierarchy=%lu\n",
+                                "ERROR:: sz_section=%lu    sz_hierarchy=%lu\n",
                                 sz_section, io_xtree->sz_hierarchy);
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -3069,22 +3174,14 @@ static int structure_lexed_items(unsigned long in_begin_offset,
     return erri;
 }
 
-static int transfer_to_controller(char ** in_items,
-                                  unsigned long in_hier_row_length,
-                                  long * in_hierarchy,
-                                  orcm_cfgi_xml_parser_t * io_parent)
+static int transfer_to_node(unsigned long in_node_row,
+                            const xml_tree_t * in_xtree,
+                            orcm_cfgi_xml_parser_t * io_parent)
 {
-    orcm_cfgi_xml_parser_t * xml=NULL;
-    unsigned long j=0;
-    long uu=0;
-    unsigned long text_length=0;
-    char comma = ',';
+    orcm_cfgi_xml_parser_t * xml = NULL;
 
-    char *tt=NULL, *txt=NULL;
-
-    int erri=ORCM_SUCCESS;
-    while (ORCM_SUCCESS == erri){
-        xml = NULL;
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
         xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
         if (NULL == xml) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
@@ -3093,57 +3190,106 @@ static int transfer_to_controller(char ** in_items,
 
         opal_list_append(&io_parent->subvals, &xml->super);
 
-        xml->name = strdup(TXcontrol);
+        xml->name = strdup(FDnode);
 
-        /* Adjust the parent */
+        /* Adjust the parent, it will be re-used*/
         io_parent = xml;
         xml=NULL;
 
-        /*Make sure the controller does not have some sub-level */
-        for (j=1; j < in_hier_row_length; ++j) {
-            uu=in_hierarchy[j];
-            if (0 > uu) {
-                erri = ORCM_ERR_BAD_PARAM;
-                break;
+        /*First deal with items local to the node, then after its controller */
+        unsigned long j=0;
+        for (j=0; j!=in_xtree->hier_row_lengths[in_node_row]; ++j) {
+            long uu = in_xtree->hierarchy[in_node_row][j];
+            if (isa_child(uu)) {
+                continue; /*to be dealt with later */
             }
-        }
-        if (ORCM_SUCCESS != erri){
-            break;
-        }
 
-        /*First resolve the host */
-        for (j=1; j < in_hier_row_length; ++j) {
-            uu = in_hierarchy[j];
-            tt = in_items[uu];
-            if ('h' != tt[0] && 'H' != tt[0]) {
+            char * tag = in_xtree->items[uu];
+            const char * field = get_field4tag(uu, in_xtree);
+
+            if ( 0 == strcasecmp(tag,TXtype) ||
+                 0 == strcasecmp(tag,TXjunction)
+               ) {
+                /*These are not needed in CFGI version 2.0 */
                 continue;
             }
-            if (0 == strcasecmp(tt,TXhost)) {
-                if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&io_parent->value, in_items[uu+1]+1))) {
+            if (NULL == field) {
+                erri = ORCM_ERR_BAD_PARAM;
+                opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                                     "ERROR: XML syntax corruption found.");
+                break;
+            }
+
+            if (0 == strcasecmp(tag, TXname)) {
+                if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&io_parent->value, field))) {
                     break;
                 }
+                continue;
+            }
+
+            xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
+            if (NULL == xml) {
+                erri = ORCM_ERR_OUT_OF_RESOURCE;
+                break;
+            }
+
+            opal_list_append(&io_parent->subvals, &xml->super);
+
+            xml->name = strdup(tag);
+            tolower_cstr(xml->name);
+
+            if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, field))) {
+                break;
             }
         }
         if (ORCM_SUCCESS != erri) {
             break;
         }
 
-        /*Then handle the <mca_params> */
-        /*This code is identical to the one used in transfer_to_scheduler*/
-        text_length = 0;
-        for (j=1; j < in_hier_row_length; ++j) {
-            uu = in_hierarchy[j];
-            if (0 > uu){
+        /*The following simply drops the node controller's host field.
+         * It is assumed that it is compatible with its node's name, or that
+         * it was checked for error before getting here.
+         */
+        long ctrl_row = get_first_child(TXcontrol, in_node_row, in_xtree);
+        if (xtNOTA_CHILD != ctrl_row) {
+            erri = transfer_other_items(ctrl_row, in_xtree, io_parent);
+            if (ORCM_SUCCESS != erri) {
+                break;
+            }
+
+            erri = transfer_mca_params(ctrl_row, in_xtree, io_parent);
+            if (ORCM_SUCCESS != erri) {
+                break;
+            }
+        }
+
+        break;
+    }
+
+    return erri;
+}
+
+static int transfer_mca_params(unsigned long in_row_in_hier,
+                               const xml_tree_t * in_xtree,
+                               orcm_cfgi_xml_parser_t * io_parent)
+{
+    char * txt = NULL;
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+        unsigned long text_length = 0;
+        unsigned long j = 0;
+        for (j=1; j < in_xtree->hier_row_lengths[in_row_in_hier]; ++j) {
+            long uu = in_xtree->hierarchy[in_row_in_hier][j];
+            if (isa_child(uu)){
                 continue;
-            } else {
-                tt = in_items[uu];
-                if ('m' != tt[0] && 'M' != tt[0]) {
-                    continue;
-                }
-                if (0 == strcasecmp(tt,TXmca_params)) {
-                    /*Add 1 for either the comma or the ending '\0'*/
-                    text_length += strlen(in_items[uu+1]+1) +1;
-                }
+            }
+
+            const char * tt = in_xtree->items[uu];
+            const char * field = get_field4tag(uu, in_xtree);
+
+            if (0 == strcasecmp(tt,TXmca_params)) {
+                /*Add 1 for either the comma or the ending '\0'*/
+                text_length += strlen(field) +1;
             }
         }
 
@@ -3154,27 +3300,24 @@ static int transfer_to_controller(char ** in_items,
                 break;
             }
 
-            comma = ',';
-            for (j=1; j < in_hier_row_length; ++j) {
-                if (j+1 == in_hier_row_length) {
+            char comma = ',';
+            for (j=1; j < in_xtree->hier_row_lengths[in_row_in_hier]; ++j) {
+                if (j+1 == in_xtree->hier_row_lengths[in_row_in_hier]) {
                     comma = '\0';
                 }
-                uu=in_hierarchy[j];
-                if (0 > uu){
+                long uu = in_xtree->hierarchy[in_row_in_hier][j];
+                if (isa_child(uu)){
                     continue;
-                } else {
-                    tt=in_items[uu];
-                    if ('m' != tt[0] && 'M' != tt[0]) {
-                        continue;
-                    }
-                    if (0 == strcasecmp(tt,TXmca_params)) {
-                        text_length = strlen(txt);
-                        sprintf(txt+text_length, "%s%c", in_items[uu+1]+1, comma);
-                    }
+                }
+                const char * tt=in_xtree->items[uu];
+                const char * field = get_field4tag(uu, in_xtree);
+                if (0 == strcasecmp(tt,TXmca_params)) {
+                    text_length = strlen(txt);
+                    sprintf(txt+text_length, "%s%c", field, comma);
                 }
             }
 
-            xml = NULL;
+            orcm_cfgi_xml_parser_t * xml=NULL;
             xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
             if (NULL == xml) {
                 erri = ORCM_ERR_OUT_OF_RESOURCE;
@@ -3187,49 +3330,73 @@ static int transfer_to_controller(char ** in_items,
                 free(txt);
                 break;
             }
-            free(txt);
+            if (NULL!=txt) {
+                free(txt);
+                txt = NULL;
+            }
+        }
+        break;
+    }
 
-        } /*if(text_length)*/
+    if (NULL!=txt) {
+        free(txt);
+        txt = NULL;
+    }
 
-        /*Then the other fields */
-        for (j=1; j < in_hier_row_length; ++j) {
-            uu = in_hierarchy[j];
-            if (0 > uu) {
+    return erri;
+}
+
+static int transfer_other_items(unsigned long in_row_in_hier,
+                                const xml_tree_t * in_xtree,
+                                orcm_cfgi_xml_parser_t * io_parent)
+{
+    /* This function does not process:
+     *      - host tag
+     *      - shost tag
+     *      - mca-parameters
+     *      - queues
+     */
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+        unsigned long j=0;
+        /*Then the other fields, but not the mca-params */
+        /*Start at 1 since 0 is the controller tag*/
+        for (j=1; j < in_xtree->hier_row_lengths[in_row_in_hier]; ++j) {
+            long uu = in_xtree->hierarchy[in_row_in_hier][j];
+            if (isa_child(uu)) {
                 continue;
             }
-            tt = in_items[uu];
-            xml = NULL;
+            const char * tag = in_xtree->items[uu];
+            const char * field = get_field4tag(uu, in_xtree);
 
-            if (0 == strcasecmp(tt,TXhost)) {
-                /*Dealt with before*/
+            if (0 == strcasecmp(tag,TXhost) ||
+                0 == strcasecmp(tag,TXshost) ||
+                0 == strcasecmp(tag,TXqueues) ||
+                0 == strcasecmp(tag,TXmca_params)
+               ) {
+                /*Suppose to have been, or will be, handled elsewhere.*/
                 continue;
-            } else if (0 == strcasecmp(tt,TXport) ||
-                       0 == strcasecmp(tt,TXcores) ||
-                       0 == strcasecmp(tt,TXlog) ||
-                       0 == strcasecmp(tt,TXenvar) ||
-                       0 == strcasecmp(tt,TXaggregat)) {
-                xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-                if (NULL == xml) {
-                    erri = ORCM_ERR_OUT_OF_RESOURCE;
-                    break;
-                }
-                opal_list_append(&io_parent->subvals, &xml->super);
-
-                xml->name = strdup(tt);
-                tolower_cstr(xml->name);
-
-                if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, in_items[uu+1]+1))) {
-                    break;
-                }
-
-            } else if (0 == strcasecmp(tt,TXmca_params)) {
-                /*Dealt with before */
-                continue;
-            } else {
+            }
+            if (NULL == field) {
                 erri = ORCM_ERR_BAD_PARAM;
                 break;
             }
-        } /*for(j=1; j!=hier_row_length[i]; ++j)*/
+
+            orcm_cfgi_xml_parser_t * xml=NULL;
+            xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
+            if (NULL == xml) {
+                erri = ORCM_ERR_OUT_OF_RESOURCE;
+                break;
+            }
+            opal_list_append(&io_parent->subvals, &xml->super);
+
+            xml->name = strdup(tag);
+            tolower_cstr(xml->name);
+
+            if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, field))) {
+                break;
+            }
+        }
         if (ORCM_SUCCESS != erri) {
             break;
         }
@@ -3237,24 +3404,119 @@ static int transfer_to_controller(char ** in_items,
     }
     return erri;
 }
-static int transfer_to_scheduler( char ** in_items,
-                                  unsigned long in_hier_row_length,
-                                  long * in_hierarchy,
+
+static int transfer_to_controller(unsigned long in_ctrl_row,
+                                  const xml_tree_t * in_xtree,
                                   orcm_cfgi_xml_parser_t * io_parent)
 {
-    orcm_cfgi_xml_parser_t * xml=NULL;
-    unsigned long j=0;
-    long uu=0;
-    unsigned long queues_count=0;
-
-    char *tt=NULL, *txt=NULL;
-
-    unsigned long text_length=0;
-    char comma = ',';
-
     int erri=ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri){
+        orcm_cfgi_xml_parser_t * xml = NULL;
         xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
+        if (NULL == xml) {
+            erri = ORCM_ERR_OUT_OF_RESOURCE;
+            break;
+        }
+
+        opal_list_append(&io_parent->subvals, &xml->super);
+
+        xml->name = strdup(TXcontrol);
+
+        /* Adjust the parent*/
+        io_parent = xml;
+        xml=NULL;
+
+        /*First resolve the host */
+        const char * hostf = get_field(TXhost, in_ctrl_row, in_xtree);
+        if (NULL == hostf) {
+            erri = ORCM_ERR_BAD_PARAM;
+            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                                "ERROR: Controller with missing host field");
+            break;
+        }
+        if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&io_parent->value, hostf))) {
+            break;
+        }
+
+        /*Transfer all other items but not host and mca-params*/
+        erri = transfer_other_items(in_ctrl_row, in_xtree, io_parent);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        /*Then handle the <mca_params> */
+        erri = transfer_mca_params(in_ctrl_row, in_xtree, io_parent);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        break;
+    }
+    return erri;
+}
+
+static int transfer_queues_to_scheduler(unsigned long in_sched_row,
+                                        const xml_tree_t * in_xtree,
+                                        orcm_cfgi_xml_parser_t * io_parent)
+{
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+        unsigned long queues_count = 0;
+        unsigned long j=0;
+        for (j=1; j < in_xtree->hier_row_lengths[in_sched_row]; ++j) {
+            long uu = in_xtree->hierarchy[in_sched_row][j];
+            if (isa_child(uu)) {
+                continue;
+            }
+            char * tt = in_xtree->items[uu];
+            if (0 == strcasecmp(tt,TXqueues) ){
+                ++queues_count;
+            }
+        }
+
+        if (0 < queues_count) {
+            orcm_cfgi_xml_parser_t * xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
+            if (NULL == xml) {
+                erri = ORCM_ERR_OUT_OF_RESOURCE;
+                break;
+            }
+            opal_list_append(&io_parent->subvals, &xml->super);
+
+            xml->name = strdup(TXqueues);
+
+            for (j=1; j < in_xtree->hier_row_lengths[in_sched_row]; ++j) {
+                long uu = in_xtree->hierarchy[in_sched_row][j];
+                if (isa_child(uu)) {
+                    continue;
+                }
+                char * tt = in_xtree->items[uu];
+                const char * field = get_field4tag(uu, in_xtree);
+                if (NULL == field) {
+                    erri = ORCM_ERR_BAD_PARAM;
+                    break;
+                }
+                if (0 == strcasecmp(tt,TXqueues)) {
+                    if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, field) )) {
+                        break;
+                    }
+                }
+            }
+            if (ORCM_SUCCESS != erri) {
+                break;
+            }
+        }
+        break;
+    }
+    return erri;
+}
+
+static int transfer_to_scheduler(unsigned long in_sched_row,
+                                 const xml_tree_t * in_xtree,
+                                 orcm_cfgi_xml_parser_t * io_parent)
+{
+    int erri=ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri){
+        orcm_cfgi_xml_parser_t * xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
         if (NULL == xml) {
             erri = ORCM_ERR_OUT_OF_RESOURCE;
             break;
@@ -3268,193 +3530,50 @@ static int transfer_to_scheduler( char ** in_items,
         io_parent = xml;
         xml=NULL;
 
-        /*Make sure the scheduler does not have some sub-level */
-        for (j=1; j < in_hier_row_length; ++j) {
-            uu=in_hierarchy[j];
-            if (0 > uu) {
-                erri = ORCM_ERR_BAD_PARAM;
-                break;
-            }
-        }
-        if (ORCM_SUCCESS != erri){
-            break;
-        }
-
-        /*Then handle the <queues> */
-        queues_count = 0;
-        for (j=1; j < in_hier_row_length; ++j) {
-            uu = in_hierarchy[j];
-            if (0 > uu) {
-                continue;
-            } else {
-                tt = in_items[uu];
-                if ('q' != tt[0] && 'Q' != tt[0]){
-                    continue;
-                }
-                if (0 == strcasecmp(tt,TXqueues) ){
-                    ++queues_count;
-                }
-            }
-        }
-
-        if (0 < queues_count) {
-            xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-            if (NULL == xml) {
-                erri = ORCM_ERR_OUT_OF_RESOURCE;
-                break;
-            }
-            opal_list_append(&io_parent->subvals, &xml->super);
-
-            xml->name = strdup(TXqueues);
-
-            for (j=1; j < in_hier_row_length; ++j) {
-                uu = in_hierarchy[j];
-                if (0 > uu) {
-                    continue;
-                } else {
-                    tt = in_items[uu];
-                    if ('q' != tt[0] && 'Q' != tt[0]) {
-                        continue;
-                    }
-                    if (0 == strcasecmp(tt,TXqueues)) {
-                        if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, in_items[uu+1]+1))) {
-                            break;
-                        }
-                    }
-                }
-            }
-            if (ORCM_SUCCESS != erri) {
-                break;
-            }
-        } /*if(queues_count)*/
-
-        /*Then handle the <mca_params> */
-        /*This code is identical to the one used in transfer_to_controller*/
-        text_length=0;
-        for (j=1; j < in_hier_row_length; ++j) {
-            uu=in_hierarchy[j];
-            if (0 > uu){
-                continue;
-            } else {
-                tt = in_items[uu];
-                if ('m' != tt[0] && 'M' != tt[0]){
-                    continue;
-                }
-                if (0 == strcasecmp(tt,TXmca_params)) {
-                    /*Add 1 for either the comma or the ending '\0'*/
-                    text_length += strlen(in_items[uu+1]+1) + 1;
-                }
-            }
-        }
-
-        if (0 < text_length){
-            txt = (char*) calloc(text_length, sizeof(char));
-            if (NULL == txt) {
-                erri = ORCM_ERR_OUT_OF_RESOURCE;
-                break;
-            }
-
-            comma=',';
-            for (j=1; j < in_hier_row_length; ++j) {
-                if (j+1 == in_hier_row_length) {
-                    comma='\0';
-                }
-                uu=in_hierarchy[j];
-                if (0 > uu) {
-                    continue;
-                } else {
-                    tt=in_items[uu];
-                    if ('m' != tt[0] && 'M' != tt[0]) {
-                        continue;
-                    }
-                    if (0 == strcasecmp(tt,TXmca_params)) {
-                        text_length = strlen(txt);
-                        sprintf(txt+text_length, "%s%c" , in_items[uu+1]+1, comma);
-                    }
-                }
-            }
-
-            xml = NULL;
-            xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-            if (NULL == xml) {
-                erri = ORCM_ERR_OUT_OF_RESOURCE;
-                break;
-            }
-            opal_list_append(&io_parent->subvals, &xml->super);
-
-            xml->name = strdup(TXmca_params);
-            if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, txt))) {
-                break;
-            }
-            txt=NULL;
-        } /*if(text_length)*/
-
-        /*The handle the shost*/
-        for (j=1; j < in_hier_row_length; ++j) {
-            uu=in_hierarchy[j];
-            if (0 > uu) {
-                continue;
-            } else {
-                tt=in_items[uu];
-                if ('s' != tt[0] && 'S' != tt[0]) {
-                    continue;
-                }
-                if (0 == strcasecmp(tt,TXshost)) {
-                    xml = NULL;
-                    xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-                    if (NULL == xml) {
-                        erri = ORCM_ERR_OUT_OF_RESOURCE;
-                        break;
-                    }
-                    opal_list_append(&io_parent->subvals, &xml->super);
-
-                    xml->name = strdup(FDnode);
-
-                    txt=NULL;
-                    txt = strdup(in_items[uu+1]+1);
-                    if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, txt))) {
-                        break;
-                    }
-                    txt=NULL;
-                }
-            }
-        }
-
-        /*Then the ports */
-        for (j=1; j < in_hier_row_length; ++j) {
-            uu=in_hierarchy[j];
-            if (0 > uu) {
+        /*Handle the shost */
+        unsigned long j=0;
+        for (j=1; j < in_xtree->hier_row_lengths[in_sched_row]; ++j) {
+            long uu=in_xtree->hierarchy[in_sched_row][j];
+            if (isa_child(uu)) {
                 continue;
             }
-            tt=in_items[uu];
-            if ('p' != tt[0] && 'P' != tt[0]) {
-                continue;
-            }
+            const char * tt = in_xtree->items[uu];
+            const char * field = get_field4tag(uu, in_xtree);
 
-            if (0 == strcasecmp(tt,TXport)) {
+            if (0 == strcasecmp(tt,TXshost)) {
                 xml = NULL;
                 xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-                if (NULL == xml){
+                if (NULL == xml) {
                     erri = ORCM_ERR_OUT_OF_RESOURCE;
                     break;
                 }
                 opal_list_append(&io_parent->subvals, &xml->super);
 
-                xml->name = strdup(tt);
-                tolower_cstr(xml->name);
+                xml->name = strdup(FDnode);
 
-                txt=NULL;
-                txt = strdup(in_items[uu+1]+1);
-                if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, txt))) {
+                if (OPAL_SUCCESS != (erri = opal_argv_append_nosize(&xml->value, field))) {
                     break;
                 }
-                txt=NULL;
-
             }
-        } /*for(j=1; j!=hier_row_length[i]; ++j)*/
+        }
+
+        erri = transfer_other_items(in_sched_row, in_xtree, io_parent);
         if (ORCM_SUCCESS != erri) {
             break;
         }
+
+        /*Then handle the <queues> */
+        erri = transfer_queues_to_scheduler(in_sched_row, in_xtree, io_parent);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        /*Then handle the <mca_params> */
+        erri = transfer_mca_params(in_sched_row, in_xtree, io_parent);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
         break;
     }
     return erri;
@@ -3542,7 +3661,7 @@ static int check_duplicate_singletons(xml_tree_t * in_xtree)
             context = in_xtree->items[ in_xtree->hierarchy[i][0] ];
             for (j=0; j < in_xtree->hier_row_lengths[i]; ++j) {
                 u = in_xtree->hierarchy[i][j];
-                if (0 > u) {
+                if (isa_child(u)) {
                     /*=====  Sectional items */
                     t = in_xtree->items[in_xtree->hierarchy[-u][0]];
                     if (!isa_singleton(t)) {
@@ -3550,13 +3669,13 @@ static int check_duplicate_singletons(xml_tree_t * in_xtree)
                     }
                     for (k=j+1; k < in_xtree->hier_row_lengths[i]; ++k) {
                         v = in_xtree->hierarchy[i][k];
-                        if (0 <= v) {
+                        if (isa_field(v)) {
                             erri = ORCM_ERR_BAD_PARAM;
                             opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
                                                 "ERROR: XML parser inconsistency found: %d", __LINE__);
                             break;
                         }
-                        tt = in_xtree->items[ in_xtree->hierarchy[-v][0] ];
+                        tt = in_xtree->items[ in_xtree->hierarchy[child_to_offset(v)][0] ];
                         if (0 == strcasecmp(t,tt)) {
                             opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
                                                 "ERROR: More than one instance of the command \"%s\" was found in \"%s\"",tt,context);
@@ -3576,7 +3695,7 @@ static int check_duplicate_singletons(xml_tree_t * in_xtree)
                     }
                     for (k=j+1; k < in_xtree->hier_row_lengths[i]; ++k) {
                         v = in_xtree->hierarchy[i][k];
-                        if (0 > v) {
+                        if (isa_child(v)) {
                             /*No need to check sectional items */
                             break;
                         }
@@ -3606,8 +3725,46 @@ static int check_duplicate_singletons(xml_tree_t * in_xtree)
     return erri;
 }
 
-static char * get_field( const char * in_xml_tag, unsigned long in_which_row,
-                         xml_tree_t * in_tree )
+static bool isa_child(long in_hierarchy_index)
+{
+    return (0 > in_hierarchy_index);
+}
+static bool isa_field(long in_hierarchy_index)
+{
+    return ( ! isa_child(in_hierarchy_index));
+}
+static long child_to_offset(long in_hierarchy_index)
+{
+    return (-in_hierarchy_index);
+}
+
+static const char * get_field4tag(long in_tag_offset_in_items,
+                                  const xml_tree_t * in_tree)
+{
+    const char * field = NULL;
+    if ((unsigned long)in_tag_offset_in_items >= in_tree->sz_items) {
+        return field;
+    }
+
+    const char * tag = in_tree->items[in_tag_offset_in_items];
+
+    if (NULL == tag || '/' == tag[0] || '\t' == tag[0]) {
+        /*Invalid tag*/
+        return field;
+    }
+
+    const char * t = in_tree->items[in_tag_offset_in_items +1];
+    if ('\t' != t[0]) {
+        return field;
+    }
+
+    field = t+1;
+
+    return field;
+}
+
+static const char * get_field( const char * in_xml_tag, unsigned long in_which_row,
+                               const xml_tree_t * in_tree )
 {
     char * found_field = NULL;
 
@@ -3626,7 +3783,7 @@ static char * get_field( const char * in_xml_tag, unsigned long in_which_row,
 
     for (i=0; i < in_tree->hier_row_lengths[in_which_row]; ++i) {
         u = in_tree->hierarchy[in_which_row][i];
-        if (0>u) {
+        if (isa_child(u)) {
             continue;
         }
         t = in_tree->items[u];
@@ -3642,11 +3799,11 @@ static char * get_field( const char * in_xml_tag, unsigned long in_which_row,
     return found_field;
 }
 
-static long get_the1stchild(const char * in_child_xml_tag,
+static long get_first_child(const char * in_child_xml_tag,
                             unsigned long in_parent_row,
-                            xml_tree_t * in_tree )
+                            const xml_tree_t * in_tree )
 {
-    long found_child = -1; /*-1 means not found */
+    long found_child = xtNOTA_CHILD;
 
     if (in_parent_row >= in_tree->sz_hierarchy) {
         /*No way we'll find a child*/
@@ -3660,13 +3817,13 @@ static long get_the1stchild(const char * in_child_xml_tag,
     unsigned long i=0;
     for (i=0; i<in_tree->hier_row_lengths[in_parent_row]; ++i) {
         long dex = in_tree->hierarchy[in_parent_row][i];
-        if (0 <= i) {
+        if (isa_field(dex)) {
             continue;  /*Skip fields*/
         }
-        long child = in_tree->hierarchy[-dex][0];
-        char * childtxt = in_tree->items[child];
+        long child = in_tree->hierarchy[ child_to_offset(dex) ][0];
+        const char * childtxt = in_tree->items[child];
         if (0 == strcasecmp(in_child_xml_tag, childtxt)) {
-            found_child = -dex;
+            found_child = child_to_offset(dex);
             break;
         }
     }
@@ -3677,14 +3834,13 @@ static int check_junctions_have_names(xml_tree_t * in_tree)
 {
     unsigned long i = 0;
     char * t = NULL;
-    char *name_found = NULL;
     long u = 0;
 
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
         for (i = 0; i < in_tree->sz_hierarchy; ++i) {
             u = in_tree->hierarchy[i][0];
-            if (0>u) {
+            if (isa_child(u)) {
                 continue;
             }
             t = in_tree->items[ u ];
@@ -3693,7 +3849,7 @@ static int check_junctions_have_names(xml_tree_t * in_tree)
                 continue;
             }
 
-            name_found = get_field( TXname, i, in_tree);
+            const char * name_found = get_field( TXname, i, in_tree);
 
             if (NULL == name_found) {
                 opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
@@ -3716,14 +3872,13 @@ static int check_parent_has_uniquely_named_children( xml_tree_t * in_tree )
     unsigned long i = 0, j = 0, k = 0;
     long u = 0, v = 0, context = 0;
     char *t = NULL, *tt = NULL;
-    char *cA_name = NULL, *cB_name = NULL;
 
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
         /*First find a parent junction*/
         for (i=0; i < in_tree->sz_hierarchy; ++i) {
             context= in_tree->hierarchy[i][0];
-            if ( 0 > context ) {
+            if ( isa_child(context) ) {
                 continue;
             }
             t = in_tree->items[ context ];
@@ -3735,16 +3890,16 @@ static int check_parent_has_uniquely_named_children( xml_tree_t * in_tree )
             /*Now look for a child junction */
             for (j=0; j < in_tree->hier_row_lengths[i]; ++j) {
                 u = in_tree->hierarchy[i][j];
-                if (0<=u) {
+                if (isa_field(u)) {
                     continue;
                 }
 
-                tt = in_tree->items[ in_tree->hierarchy[-u][0] ];
+                tt = in_tree->items[ in_tree->hierarchy[child_to_offset(u)][0] ];
                 if ( 0 != strcasecmp(tt,TXjunction)) {
                     continue;
                 }
 
-                cA_name = get_field( TXname, -u, in_tree);
+                const char * cA_name = get_field( TXname, child_to_offset(u), in_tree);
                 if ( NULL == cA_name) {
                     /*Child without a name --> That should have been checked*/
                     erri = ORCM_ERR_BAD_PARAM;
@@ -3753,15 +3908,15 @@ static int check_parent_has_uniquely_named_children( xml_tree_t * in_tree )
                 for (k=j+1; k<in_tree->hier_row_lengths[i]; ++k){
                     /*Look at the other children, if any */
                     v = in_tree->hierarchy[i][k];
-                    if (0<=v) {
+                    if (isa_field(v)) {
                         continue;
                     }
 
-                    tt = in_tree->items[ in_tree->hierarchy[-v][0] ];
+                    tt = in_tree->items[ in_tree->hierarchy[child_to_offset(v)][0] ];
                     if ( 0 != strcasecmp(tt,TXjunction)) {
                         continue;
                     }
-                    cB_name = get_field( TXname, -v, in_tree);
+                    const char * cB_name = get_field( TXname, child_to_offset(v), in_tree);
                     if ( NULL == cB_name) {
                         /*Child without a name --> That should have been checked*/
                         erri = ORCM_ERR_BAD_PARAM;
@@ -3801,8 +3956,7 @@ static int check_host_field_has_matching_port( xml_tree_t * in_tree )
     unsigned long i = 0;
     char *t = NULL;
     long u = 0;
-    char * host = NULL; /*This will hold a <host> or a <shost> field. */
-    char * port = NULL;
+    const char * host = NULL; /*This will hold a <host> or a <shost> field. */
     int ona_scheduler = 0;
 
     const char msg_sched[] = "ERROR: Scheduler (lex item= %ld) needs both a shost and a port";
@@ -3813,7 +3967,7 @@ static int check_host_field_has_matching_port( xml_tree_t * in_tree )
 
         for (i=0; i < in_tree->sz_hierarchy; ++i) {
             u= in_tree->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
             t = in_tree->items[ u ];
@@ -3822,7 +3976,7 @@ static int check_host_field_has_matching_port( xml_tree_t * in_tree )
                 continue;
             }
 
-            port = get_field(TXport, i, in_tree);
+            const char * port = get_field(TXport, i, in_tree);
 
             ona_scheduler = 0;
             if (0 == strcasecmp(t,TXcontrol)) {
@@ -3890,7 +4044,7 @@ static int check_unique_scheduler( xml_tree_t * in_tree )
 
         for (i=0; i < in_tree->sz_hierarchy; ++i) {
             u= in_tree->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
             t = in_tree->items[ u ];
@@ -3920,24 +4074,22 @@ static int check_unique_scheduler( xml_tree_t * in_tree )
 static int check_unique_host_port_pair( xml_tree_t * in_tree )
 {
     unsigned long i = 0, j = 0;
-    char *t = NULL, *t2 = NULL;
+    const char *t = NULL, *t2 = NULL;
     unsigned long p1=0, p2=0;
     long u = 0;
-    char ** allhosts = NULL; /*array pointing to all <host> and <shost> fields*/
-                            /*Its length is in_tree->sz_hierarchy */
+    const char ** allhosts = NULL; /*array pointing to all <host> and <shost> fields*/
+                                   /*Its length is in_tree->sz_hierarchy */
     unsigned long * allports = NULL; /*array of port values*/
 
     char * ampersand_found_in_t  = NULL;
 
-    char * port = NULL;
     unsigned long port_value = 0;
     char * endptr = NULL;
-    char * host = NULL; /*Also for shost*/
 
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
 
-        allhosts = (char**) calloc(in_tree->sz_hierarchy, sizeof(char*));
+        allhosts = (const char**) calloc(in_tree->sz_hierarchy, sizeof(char*));
         if (NULL == allhosts) {
             erri =ORCM_ERR_OUT_OF_RESOURCE;
             break;
@@ -3963,7 +4115,7 @@ static int check_unique_host_port_pair( xml_tree_t * in_tree )
         /* First get all <host> <port> pairs */
         for (i=0; i < in_tree->sz_hierarchy; ++i) {
             u= in_tree->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
             t = in_tree->items[ u ];
@@ -3972,12 +4124,13 @@ static int check_unique_host_port_pair( xml_tree_t * in_tree )
                 continue;
             }
 
-            port = get_field(TXport, i, in_tree);
+            const char * port = get_field(TXport, i, in_tree);
 
             port_value = strtoul(port, &endptr, 10);
             /*endptr not checked --> It is assumed that it has been checked before.*/
             allports[i] = port_value;
 
+            const char * host = NULL;
             if (0 == strcasecmp(t,TXcontrol)) {
                 host = get_field(TXhost, i, in_tree);
             } else {
@@ -4057,15 +4210,14 @@ static int check_unique_cluster_on_top( xml_tree_t * in_tree )
     unsigned long cluster_ontop = 0;
     unsigned long record_count = 0;
 
-    char * crole = NULL;
-    char * jtype = NULL;
+    const char * jtype = NULL;
 
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
 
         for (i=0; i < in_tree->sz_hierarchy; ++i) {
             u= in_tree->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
             t = in_tree->items[ u ];
@@ -4087,7 +4239,7 @@ static int check_unique_cluster_on_top( xml_tree_t * in_tree )
                 continue;
             }
 
-            crole = get_field(TXrole, i, in_tree);
+            const char * crole = get_field(TXrole, i, in_tree);
             if (NULL == crole){
                 opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
                        "ERROR: Each configuration must have a role property.");
@@ -4103,16 +4255,16 @@ static int check_unique_cluster_on_top( xml_tree_t * in_tree )
             /*Make sure a cluster is at the top of the configuration */
             for (j=0; j < in_tree->hier_row_lengths[i]; ++j) {
                 v = in_tree->hierarchy[i][j];
-                if (0<=v) {
+                if (isa_field(v)) {
                     continue;
                 }
-                jtype = get_field(TXtype, -v, in_tree);
+                jtype = get_field(TXtype, child_to_offset(v), in_tree);
                 if (NULL == jtype) {
-                    tt = in_tree->items[ in_tree->hierarchy[-v][0] ];
+                    tt = in_tree->items[ in_tree->hierarchy[child_to_offset(v)][0] ];
                     if (0 == strcasecmp(tt,TXjunction) ) {
                         opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
                         "ERROR: Each junction (LEX item %ld) must have a type property.",
-                        in_tree->hierarchy[-v][0]);
+                        in_tree->hierarchy[child_to_offset(v)][0]);
                         erri = ORCM_ERR_BAD_PARAM;
                         /* Break out but continue the complete search. */
                         break;
@@ -4150,20 +4302,79 @@ static int check_unique_cluster_on_top( xml_tree_t * in_tree )
     return erri;
 }
 
-static int check_no_controller_on_cluster( xml_tree_t * in_tree )
+static int check_no_sublevel_on_scheduler( xml_tree_t * in_tree )
 {
-    unsigned long i = 0, j = 0;
-    long u = 0, v = 0;
-    char *t = NULL, *tt = NULL;
+    int erri = ORCM_SUCCESS;
 
-    char * jtype = NULL;
+    unsigned long i=0;
+    for (i=0; i < in_tree->sz_hierarchy; ++i) {
+        long u = in_tree->hierarchy[i][0];
+        const char * t = in_tree->items[u];
+        if (0 !=strcasecmp(t, TXscheduler)) {
+            continue;
+        }
+        unsigned long j=0;
+        for (j=1; j < in_tree->hier_row_lengths[i]; ++j) {
+            long uu = in_tree->hierarchy[i][j];
+            if (isa_child(uu)) {
+                erri = ORCM_ERR_BAD_PARAM;
+                /*Do not break here. Spit out all error.*/
+                opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                "ERROR: Scheduler (%lu) cannot have a child item (%ld)", i, -uu);
+            }
+        }
+    }
+
+    return erri;
+}
+
+static int check_no_sublevel_on_controller( xml_tree_t * in_tree )
+{
+    int erri = ORCM_SUCCESS;
+
+    unsigned long i=0;
+    for (i=0; i < in_tree->sz_hierarchy; ++i) {
+        long u = in_tree->hierarchy[i][0];
+        const char * t = in_tree->items[u];
+        if (0 !=strcasecmp(t, TXcontrol)) {
+            continue;
+        }
+        unsigned long j=0;
+        for (j=1; j < in_tree->hier_row_lengths[i]; ++j) {
+            long uu = in_tree->hierarchy[i][j];
+            if (isa_child(uu)) {
+                erri = ORCM_ERR_BAD_PARAM;
+                /*Do not break here. Spit out all error.*/
+                opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                "ERROR: Controller (%lu) cannot have a child item (%ld)", i, -uu);
+            }
+        }
+    }
+
+    return erri;
+}
+
+static int check_controller_on_node_junction( xml_tree_t * in_tree )
+{
+    /*By convention, the following must be true.
+     * =A node may, or not, have a controller.
+     * =The field's content of the host tag of the node's controller
+     *  must be the same as the name of its parent node junction,
+     *  or "@".
+     * =If the parent node junction's name is a regular expression,
+     *  then that node's controller host field must be "@".
+     */
+
+    unsigned long i = 0;
+    long u = 0;
+    char *t = NULL;
 
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
 
         for (i=0; i < in_tree->sz_hierarchy; ++i) {
             u= in_tree->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
             t = in_tree->items[ u ];
@@ -4172,18 +4383,89 @@ static int check_no_controller_on_cluster( xml_tree_t * in_tree )
                 continue;
             }
 
-            jtype = get_field(TXtype, i, in_tree);
+            const char * jtype = get_field(TXtype, i, in_tree);
+            if (0 != strcasecmp(jtype, FDnode)) {
+                continue;
+            }
 
+            const char * node_name = get_field(TXname, i, in_tree);
+            if (NULL==node_name) {
+                /*This should not happen.  But it should have been caught elsewhere.*/
+                continue;
+            }
+
+            bool node_name_is_regex = isa_regex(node_name);
+
+            long child = get_first_child(TXcontrol, i, in_tree);
+            if (xtNOTA_CHILD == child) {
+                continue;
+            }
+
+            const char * ctrl_host = get_field(TXhost, child, in_tree);
+            if (NULL == ctrl_host) {
+                /*This is not necessarily an error.  For example, it is not an
+                 *an error on a MOD configuration.
+                 */
+                continue;
+            }
+
+            if (0==strcmp(ctrl_host,"@")) {
+                /*The controller can do no wrong with "@" as host name.*/
+                continue;
+            } else {
+                if (node_name_is_regex) {
+                    opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                           "ERROR: A node controller host name must be @ if the parent node name is a regex.");
+                    erri = ORCM_ERR_BAD_PARAM;
+                    break;
+                } else {
+                    if (0 != strcmp(ctrl_host, node_name)) {
+                        opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
+                               "ERROR: A node controller host name must be the same as the non-regex parent node name.");
+                        erri = ORCM_ERR_BAD_PARAM;
+                        break;
+                    }
+                }
+            }
+        }
+
+        break;
+    }/*while(!erri)*/
+
+    return erri;
+}
+
+static int check_no_controller_on_cluster( xml_tree_t * in_tree )
+{
+    unsigned long i = 0, j = 0;
+    long u = 0, v = 0;
+    char *t = NULL, *tt = NULL;
+
+    int erri = ORCM_SUCCESS;
+    while (ORCM_SUCCESS == erri) {
+
+        for (i=0; i < in_tree->sz_hierarchy; ++i) {
+            u= in_tree->hierarchy[i][0];
+            if ( isa_child(u) ) {
+                continue;
+            }
+            t = in_tree->items[ u ];
+
+            if (0 != strcasecmp(t,TXjunction)) {
+                continue;
+            }
+
+            const char * jtype = get_field(TXtype, i, in_tree);
             if (0 != strcasecmp(jtype, FDcluster)) {
                 continue;
             }
 
             for (j=0; j < in_tree->hier_row_lengths[i]; ++j) {
                 v = in_tree->hierarchy[i][j];
-                if ( 0 <= v ) {
+                if ( isa_field(v) ) {
                     continue;
                 }
-                tt = in_tree->items[ in_tree->hierarchy[-v][0] ];
+                tt = in_tree->items[ in_tree->hierarchy[child_to_offset(v)][0] ];
 
                 if ( 0 == strcasecmp(tt,TXcontrol)) {
                     opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
@@ -4210,7 +4492,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
     long u = 0, v = 0;
     char *t = NULL, *tt = NULL;
 
-    char * jtype = NULL, *jtype2 = NULL;
+    const char * jtype = NULL, *jtype2 = NULL;
 
     unsigned long junctions_in_cluster = 0;
     unsigned long junctions_in_rows = 0;
@@ -4222,7 +4504,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
         /*First make sure that below cluster are only rows */
         for (i=0; i < in_tree->sz_hierarchy; ++i) {
             u= in_tree->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
             t = in_tree->items[ u ];
@@ -4240,10 +4522,10 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
             junctions_in_cluster = 0;
             for (j=0; j < in_tree->hier_row_lengths[i]; ++j) {
                 v = in_tree->hierarchy[i][j];
-                if ( 0 <= v ) {
+                if ( isa_field(v) ) {
                     continue;
                 }
-                tt = in_tree->items[ in_tree->hierarchy[-v][0] ];
+                tt = in_tree->items[ in_tree->hierarchy[child_to_offset(v)][0] ];
 
                 if ( 0 != strcasecmp(tt,TXjunction)) {
                     continue;
@@ -4251,7 +4533,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
 
                 ++junctions_in_cluster;
 
-                jtype2 = get_field(TXtype, -v, in_tree);
+                jtype2 = get_field(TXtype, child_to_offset(v), in_tree);
 
                 if (0 != strcasecmp(jtype2, FDrow)) {
                     opal_output_verbose( V_LO, orcm_cfgi_base_framework.framework_output,
@@ -4277,7 +4559,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
         /*First make sure that below rows are only racks */
         for (i=0; i < in_tree->sz_hierarchy; ++i) {
             u= in_tree->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
             t = in_tree->items[ u ];
@@ -4295,7 +4577,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
             junctions_in_rows = 0;
             for (j=0; j < in_tree->hier_row_lengths[i]; ++j) {
                 v = in_tree->hierarchy[i][j];
-                if ( 0 <= v ) {
+                if ( isa_field(v) ) {
                     continue;
                 }
                 tt = in_tree->items[ in_tree->hierarchy[-v][0] ];
@@ -4329,7 +4611,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
         /*First make sure that below racks are only nodes */
         for (i=0; i < in_tree->sz_hierarchy; ++i) {
             u= in_tree->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
             t = in_tree->items[ u ];
@@ -4347,7 +4629,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
             junctions_in_racks = 0;
             for (j=0; j < in_tree->hier_row_lengths[i]; ++j) {
                 v = in_tree->hierarchy[i][j];
-                if ( 0 <= v ) {
+                if ( isa_field(v) ) {
                     continue;
                 }
                 tt = in_tree->items[ in_tree->hierarchy[-v][0] ];
@@ -4381,7 +4663,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
         /*First make sure nothing is below node junctions */
         for (i=0; i < in_tree->sz_hierarchy; ++i) {
             u= in_tree->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
             t = in_tree->items[ u ];
@@ -4398,7 +4680,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
 
             for (j=0; j < in_tree->hier_row_lengths[i]; ++j) {
                 v = in_tree->hierarchy[i][j];
-                if ( 0 <= v ) {
+                if ( isa_field(v) ) {
                     continue;
                 }
                 tt = in_tree->items[ in_tree->hierarchy[-v][0] ];
@@ -4431,7 +4713,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
     long u,v;
     char *t, *tt;
 
-    char * jtype;
+    const char * jtype;
 
     unsigned int nb_inserted_row = 0;
     unsigned int nb_inserted_rack = 0;
@@ -4450,7 +4732,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
         startsize = io_xtree->sz_hierarchy;
         for (i=0; i < startsize; ++i) {
             u= io_xtree ->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
             t = io_xtree ->items[ u ];
@@ -4467,7 +4749,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
 
             for (j=0; j < io_xtree->hier_row_lengths[i]; ++j) {
                 v = io_xtree->hierarchy[i][j];
-                if ( 0 <= v ) {
+                if ( isa_field(v) ) {
                     continue;
                 }
                 tt = io_xtree->items[ io_xtree->hierarchy[-v][0] ];
@@ -4639,7 +4921,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
         for (i=0; i < startsize; ++i) {
 
             u= io_xtree ->hierarchy[i][0];
-            if ( 0 > u ) {
+            if ( isa_child(u) ) {
                 continue;
             }
 
@@ -4656,7 +4938,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
             for (j=0; j < io_xtree->hier_row_lengths[i]; ++j) {
 
                 v = io_xtree->hierarchy[i][j];
-                if ( 0 <= v ) {
+                if ( isa_field(v) ) {
                     continue;
                 }
                 tt = io_xtree->items[ io_xtree->hierarchy[-v][0] ];
@@ -4950,7 +5232,7 @@ static int xml_tree_grow(unsigned long in_data_size,unsigned long in_block_size,
     return ORCM_SUCCESS;
 }
 
-static void xml_tree_print_lexer(xml_tree_t * in_tree)
+static void xml_tree_print_lexer(const xml_tree_t * in_tree)
 {
     unsigned long i;
     if (NULL == in_tree || NULL == in_tree->items) {

@@ -331,6 +331,7 @@ static char* get_line(char *filename, uint64_t line)
             {
                 orte_show_help("help-orcm-sensor-mcedata.txt", "mcelog-no-open",
                        true, orte_process_info.nodename);
+                fclose(fptr);
                 return buffer;
             }
         }
@@ -706,12 +707,24 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
         case 2: kv->data.string = strdup("OBS"); break;
         case 3: kv->data.string = strdup("generic"); break;
     }
+    opal_list_append(vals, &kv->super);
+
+    /* Timeout */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("T");
+    kv->type = OPAL_STRING;
 
     t = ((mce_reg[MCI_MISC] & 0x100) >> 8);
     switch (t) {
         case 0: kv->data.string = strdup("TIMEOUT"); break;
         case 1: kv->data.string = strdup("NOTIMEOUT"); break;
     }
+    opal_list_append(vals, &kv->super);
+
+    /* Memory/IO */
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("II");
+    kv->type = OPAL_STRING;
 
     ii = ((mce_reg[MCI_MISC] & 0xC) >> 2);
     switch (pp) {
@@ -720,6 +733,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
         case 2: kv->data.string = strdup("IO"); break;
         case 3: kv->data.string = strdup("other_transaction"); break;
     }
+    opal_list_append(vals, &kv->super);
 
     /* Get the level */
     kv = OBJ_NEW(opal_value_t);
@@ -821,18 +835,18 @@ static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals)
 
     type = get_mcetype(mce_reg[MCI_STATUS]);
     switch (type) {
-        case 0 :    mcedata_gen_cache_filter(mce_reg, vals);
-                    break;
-        case 1 :    mcedata_tlb_filter(mce_reg, vals);
-                    break;
-        case 2 :    mcedata_mem_ctrl_filter(mce_reg, vals);
-                    break;
-        case 3 :    mcedata_cache_filter(mce_reg, vals);
-                    break;
-        case 4 :    mcedata_bus_ic_filter(mce_reg, vals);
-                    break;
-        case 5 :    mcedata_unknown_filter(mce_reg, vals);
-                    break;
+        case e_gen_cache_error :    mcedata_gen_cache_filter(mce_reg, vals);
+                                    break;
+        case e_tlb_error :          mcedata_tlb_filter(mce_reg, vals);
+                                    break;
+        case e_mem_ctrl_error :     mcedata_mem_ctrl_filter(mce_reg, vals);
+                                    break;
+        case e_cache_error :        mcedata_cache_filter(mce_reg, vals);
+                                    break;
+        case e_bus_ic_error :       mcedata_bus_ic_filter(mce_reg, vals);
+                                    break;
+        case e_unknown_error :      mcedata_unknown_filter(mce_reg, vals);
+                                    break;
     }
 
 }

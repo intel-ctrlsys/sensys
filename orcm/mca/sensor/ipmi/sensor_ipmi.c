@@ -760,7 +760,7 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 
 int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
 {
-    unsigned char idata[4], idata1[4], rdata[20];
+    unsigned char idata[4], rdata[20];
 	unsigned char ccode;
     char bmc_ip[16];
     int rlen = 20;
@@ -806,7 +806,7 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             orcm_sensor_get_fru_inv(host);
 
             /* Get the DEVICE ID information as well */
-            ret = ipmi_cmd(GET_DEVICE_ID, idata1, 0, rdata, &rlen, &ccode, 0);
+            ret = ipmi_cmd(GET_DEVICE_ID, NULL, 0, rdata, &rlen, &ccode, 0);
             if(0 == ret)
             {
                 ipmi_close();
@@ -901,6 +901,7 @@ int orcm_sensor_ipmi_get_manuf_date (unsigned char fru_offset, unsigned char *rd
     raw_seconds = manuf_seconds + EPOCH_IPMI_DIFF_TIME;
     time_info = localtime(&raw_seconds);
     if (NULL == time_info) {
+        return -1;
     }
     else {
         strftime(manuf_date,10,"%x",time_info);
@@ -916,7 +917,7 @@ int orcm_sensor_ipmi_get_manuf_name (unsigned char fru_offset, unsigned char *rd
 {
     int i=0;
     unsigned char board_manuf_length; /*holds the length (in bytes) of board manuf name*/
-    char *board_manuf; /*hold board manufacturer*/
+    char *board_manuf = NULL; /*hold board manufacturer*/
 
     board_manuf_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
     board_manuf = (char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
@@ -1900,7 +1901,7 @@ void orcm_sensor_ipmi_get_power_states(ipmi_capsule_t *cap)
     char sys_pwr_state_str[16], dev_pwr_state_str[16];
     char *error_string;
 
-    memset(rdata,0xff,MAX_IPMI_RESPONSE);
+    memset(rdata,0xff,sizeof(rdata));
     memset(idata,0xff,sizeof(idata));
     ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
     if(0 == ret)

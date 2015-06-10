@@ -767,6 +767,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     /* pack our name */
     freq = strdup("freq");
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &freq, 1, OPAL_STRING))) {
+        free(freq);
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
         return;
@@ -867,7 +868,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             }
             if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ptrk->sysname, 1, OPAL_STRING))) {
                     ORTE_ERROR_LOG(ret);
-                    free(freq);
                     fclose(fp);
                     OBJ_DESTRUCT(&data);
                     return;

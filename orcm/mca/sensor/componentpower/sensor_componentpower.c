@@ -90,6 +90,20 @@ static void generate_test_vector(opal_buffer_t *v);
 
 static int init(void)
 {
+    int n_cpus, i, fd;
+    char path[STR_LEN];
+
+    n_cpus=detect_num_cpus();
+    for (i=0; i<n_cpus; i++){
+        snprintf(path, sizeof(path), "/dev/cpu/%d/msr", i);
+        fd=open(path, O_RDWR);
+        if (fd<0){
+            opal_output(0, "error opening msr file\n");
+            return ORTE_ERROR;
+        }
+        close(fd);
+    }
+
     return ORCM_SUCCESS;
 }
 

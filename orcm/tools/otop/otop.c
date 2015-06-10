@@ -745,7 +745,7 @@ static void print_ranks(opal_list_t *statlist)
              item != opal_list_get_end(statlist);
              item = opal_list_get_next(item)) {
             stats = (opal_pstats_t*)item;
-            if (stats->rank < minrank) {
+            if (NULL != stats && (stats->rank < minrank)) {
                 pstats = stats;
                 minrank = stats->rank;
             }
@@ -832,7 +832,7 @@ static void pretty_print(void)
              * for matching nodes
              */
             item = opal_list_get_first(&recvd_stats);
-            while (item != opal_list_get_end(&recvd_stats)) {
+            while (NULL != item && item != opal_list_get_end(&recvd_stats)) {
                 stats = (opal_pstats_t*)item;
                 next = opal_list_get_next(item);
                 if (0 == strcmp(stats->node, node)) {

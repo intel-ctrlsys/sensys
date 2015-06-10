@@ -611,8 +611,8 @@ static int pretty_print_vpids(orte_job_t *job) {
         free(rankstr);
 
         nodename = NULL;
-        if( orte_get_attribute(&vpid->attributes, ORTE_PROC_NODENAME, (void**)&nodename, OPAL_STRING) &&
-            (int)strlen(nodename) > len_node) {
+        if (orte_get_attribute(&vpid->attributes, ORTE_PROC_NODENAME, (void**)&nodename, OPAL_STRING) &&
+            NULL != nodename && (int)strlen(nodename) > len_node) {
             len_node = strlen(nodename);
         } else if ((int)strlen("Unknown") > len_node) {
             len_node = strlen("Unknown");

@@ -144,7 +144,7 @@ static int init(void)
     }
 
     /* Verify if user has root privileges, if not do not try to read BMC Credentials*/
-    getlogin_r(user, 16);
+    getlogin_r(user, sizeof(user));
     if(geteuid() != 0) {
         orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-not-superuser",
                        true, orte_process_info.nodename, user);
@@ -775,7 +775,7 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
     /* This IPMI call reading the BMC's IP address runs through the
      *  ipmi/imb/KCS driver
      */
-    memset(idata,0x00,4);
+    memset(idata,0x00,sizeof(idata));
 
     /* Read IP Address - Ref Table 23-* LAN Config Parameters of 
      * IPMI v2 Rev 1.1
@@ -837,9 +837,9 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
 int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
 {
     int ret = 0;
-    unsigned char idata[4], rdata[MAX_FRU_DEVICES][256];
+    unsigned char idata[4], rdata[MAX_FRU_DEVICES][MAX_IPMI_RESPONSE];
     unsigned char ccode;
-    int rlen = 256;
+    int rlen = MAX_IPMI_RESPONSE;
     int id;
     int max_id = 0;;
     unsigned char hex_val=0;
@@ -847,9 +847,9 @@ int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
     long int max_fru_area = 0;
     char *error_string;
 
-    memset(idata,0x00,4);
+    memset(idata,0x00,sizeof(idata));
     for (id = 0; id < MAX_FRU_DEVICES; id++) {
-        memset(rdata[id], 0x00, 256);
+        memset(rdata[id], 0x00, MAX_IPMI_RESPONSE);
         *idata = hex_val;
         ret = ipmi_cmd(GET_FRU_INV_AREA, idata, 1, rdata[id], &rlen, &ccode, 0);
         if(ret)
@@ -1015,7 +1015,7 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
 {
     int ret;
     int i, ffail_count=0;
-    int rlen = 256;
+    int rlen = MAX_IPMI_RESPONSE;
     unsigned char idata[4];
     unsigned char tempdata[17];
     unsigned char *rdata;
@@ -1210,6 +1210,12 @@ static bool compare_ipmi_record (ipmi_inventory_t* newhost , ipmi_inventory_t* o
     olditem = (orcm_metric_value_t*)opal_list_get_first(oldhost->records);
 
     for(count = 0; count < record_size ; count++) {
+
+        if((NULL == newitem) | (NULL == olditem)) {
+            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
+                                "Unable to retrieve host record, will mark mismatch");
+            return false;
+        }
         if(newitem->value.type != olditem->value.type) {
             opal_output(0,"IPMI inventory records mismatch: value.type mismatch");
             return false;
@@ -1835,9 +1841,9 @@ void orcm_sensor_ipmi_get_device_id(ipmi_capsule_t *cap)
 {
     int ret = 0;
     char addr[16];
-    unsigned char idata[4], rdata[256];
+    unsigned char idata[4], rdata[MAX_IPMI_RESPONSE];
     unsigned char ccode;
-    int rlen = 256;
+    int rlen = MAX_IPMI_RESPONSE;
     char fdebug = 0;
     device_id_t devid;
     char *error_string;
@@ -1886,16 +1892,16 @@ void orcm_sensor_ipmi_get_power_states(ipmi_capsule_t *cap)
 {
     char addr[16];
     int ret = 0;
-    unsigned char idata[4], rdata[256];
+    unsigned char idata[4], rdata[MAX_IPMI_RESPONSE];
     unsigned char ccode;
-    int rlen = 256;
+    int rlen = MAX_IPMI_RESPONSE;
     char fdebug = 0;
     acpi_power_state_t pwr_state;
     char sys_pwr_state_str[16], dev_pwr_state_str[16];
     char *error_string;
 
-    memset(rdata,0xff,256);
-    memset(idata,0xff,4);
+    memset(rdata,0xff,MAX_IPMI_RESPONSE);
+    memset(idata,0xff,sizeof(idata));
     ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
     if(0 == ret)
     {

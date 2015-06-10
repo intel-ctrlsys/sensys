@@ -27,6 +27,7 @@
 #define MAX_METRIC_NAME         20
 
 #define MAX_FRU_DEVICES  254
+#define MAX_IPMI_RESPONSE 256
 /*Seconds between the epoch (1/1/1970) and IPMI's start time (1/1/1996)*/
 #define EPOCH_IPMI_DIFF_TIME 820454400
 /*

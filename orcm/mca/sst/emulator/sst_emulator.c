@@ -204,7 +204,7 @@ static int emulator_init(void)
     cluster = (orcm_cluster_t*)opal_list_get_first(orcm_clusters);
     row = NULL;
     OPAL_LIST_FOREACH(r, &cluster->rows, orcm_row_t) {
-        if (0 == strcmp(r->name, tgts[0])) {
+        if ((NULL != tgts) && (0 == strcmp(r->name, tgts[0]))) {
             row = r;
             break;
         }

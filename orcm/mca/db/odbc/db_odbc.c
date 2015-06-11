@@ -2063,8 +2063,10 @@ static void tm_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
 static void tv_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
                              const struct timeval *time)
 {
-    struct tm time_info = *localtime(&time->tv_sec);
-
-    tm_to_sql_timestamp(sql_timestamp, &time_info);
-    sql_timestamp->fraction = time->tv_usec * 1000;
+    struct tm *time_info = NULL;
+    time_info = localtime(&time->tv_sec);
+    if (NULL != time_info) {
+        tm_to_sql_timestamp(sql_timestamp, time_info);
+        sql_timestamp->fraction = time->tv_usec * 1000;
+    }
 }

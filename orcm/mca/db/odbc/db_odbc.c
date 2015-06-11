@@ -79,7 +79,7 @@ static int odbc_remove(struct orcm_db_base_module_t *imod,
 static void odbc_error_info(SQLSMALLINT handle_type, SQLHANDLE handle);
 static void tm_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
                                 const struct tm *time_info);
-static void tv_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
+static bool tv_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
                                 const struct timeval *time);
 
 mca_db_odbc_module_t mca_db_odbc_module = {
@@ -275,7 +275,10 @@ static int odbc_store_sample(struct orcm_db_base_module_t *imod,
             switch (kv->type) {
             case OPAL_TIMEVAL:
             case OPAL_TIME:
-                tv_to_sql_timestamp(&sampletime, &kv->data.tv);
+                if (!tv_to_sql_timestamp(&sampletime, &kv->data.tv)) {
+                    ERR_MSG_STORE("Failed to convert timestamp value");
+                    return ORCM_ERR_BAD_PARAM;
+                }
                 break;
             case OPAL_STRING:
                 /* Note: assuming "%F %T%z" format and ignoring sub second
@@ -654,7 +657,10 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
         return ORCM_ERR_BAD_PARAM;
     }
 
-    tv_to_sql_timestamp(&sampletime, time_stamp);
+    if (!tv_to_sql_timestamp(&sampletime, time_stamp)) {
+        ERR_MSG_STORE("Failed to convert timestamp value");
+        return ORCM_ERR_BAD_PARAM;
+    }
 
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
@@ -2060,7 +2066,7 @@ static void tm_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
     sql_timestamp->fraction = 0;
 }
 
-static void tv_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
+static bool tv_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
                              const struct timeval *time)
 {
     struct tm *time_info = NULL;
@@ -2068,5 +2074,8 @@ static void tv_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
     if (NULL != time_info) {
         tm_to_sql_timestamp(sql_timestamp, time_info);
         sql_timestamp->fraction = time->tv_usec * 1000;
+        return true;
+    } else {
+        return false;
     }
 }

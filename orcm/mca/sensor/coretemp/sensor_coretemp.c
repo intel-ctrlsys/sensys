@@ -964,7 +964,12 @@ static void coretemp_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        asprintf(&kv->key, "%s:degrees C", core_label);
+        if(-1 == asprintf(&(kv->key), "%s:degrees C", core_label)) {
+            kv->key = NULL;
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            OBJ_DESTRUCT(kv);
+            goto cleanup;
+        }
         kv->type = OPAL_FLOAT;
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
@@ -992,7 +997,6 @@ static void coretemp_log(opal_buffer_t *sample)
     if (NULL != hostname) {
         free(hostname);
     }
-
 }
 
 static void coretemp_set_sample_rate(int sample_rate)
@@ -1019,10 +1023,11 @@ static void generate_test_vector(opal_buffer_t *v)
 {
     int ret;
     time_t now;
-    char *ctmp, *timestamp_str;
+    char *ctmp;
+    char *timestamp_str;
     char time_str[40];
     struct tm *sample_time;
-    char *corelabel;
+    char *corelabel = NULL;
     int32_t ncores;
     int i;
     float degc;
@@ -1041,8 +1046,7 @@ static void generate_test_vector(opal_buffer_t *v)
     free(ctmp);
 
 /* pack the hostname */
-    if (OPAL_SUCCESS != (ret =
-                opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))){
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
         return;
@@ -1074,11 +1078,18 @@ static void generate_test_vector(opal_buffer_t *v)
 
 /* Pack test core readings */
     for (i=0; i < ncores; i++) {
-        asprintf(&corelabel,"testcore %d",i);
+        if(-1 == asprintf(&corelabel,"testcore %d",i)) {
+            corelabel = NULL;
+            continue;
+        }
         if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &corelabel, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&v);
-            free(corelabel);
+            if(NULL != corelabel) {
+                free(corelabel);
+                corelabel = NULL;
+                continue;
+            }
         }
 
         if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &degc, 1, OPAL_FLOAT))) {
@@ -1086,10 +1097,13 @@ static void generate_test_vector(opal_buffer_t *v)
             OBJ_DESTRUCT(&v);
         }
         degc += 1.0;
-        }
-    free(corelabel);
+    }
+    if(NULL != corelabel) {
+        free(corelabel);
+        corelabel = NULL;
+    }
 
-opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+    opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
         "%s sensor:coretemp: Size of test vector is %d",
         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),ncores);
 }

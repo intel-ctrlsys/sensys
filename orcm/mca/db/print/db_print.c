@@ -421,7 +421,7 @@ static void print_time(const struct timeval *time, char *tbuf, size_t size)
                  (float)(time->tv_usec / 1000000.0));
         snprintf(tbuf, size, "%s%s%s", date_time, fraction + 1, time_zone);
     } else {
-        snprintf(tbuf, size, "NULL");
+        opal_output(0, "ERROR: NULL returned by localtime()");
     }
 
 }

@@ -699,6 +699,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
 
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("participation");
+    kv->type = OPAL_STRING;
 
     pp = ((mce_reg[MCI_MISC] & 0x600) >> 9);
     switch (pp) {

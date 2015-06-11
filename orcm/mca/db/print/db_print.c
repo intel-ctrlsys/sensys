@@ -414,9 +414,14 @@ static void print_time(const struct timeval *time, char *tbuf, size_t size)
 
     /* Print in format: YYYY-MM-DD HH:MM:SS.fraction time zone */
     tm_info = localtime(&nrm_time.tv_sec);
-    strftime(date_time, sizeof(date_time), "%F %T", tm_info);
-    strftime(time_zone, sizeof(time_zone), "%z", tm_info);
-    snprintf(fraction, sizeof(fraction), "%.3f",
-             (float)(time->tv_usec / 1000000.0));
-    snprintf(tbuf, size, "%s%s%s", date_time, fraction + 1, time_zone);
+    if (NULL != tm_info) {
+        strftime(date_time, sizeof(date_time), "%F %T", tm_info);
+        strftime(time_zone, sizeof(time_zone), "%z", tm_info);
+        snprintf(fraction, sizeof(fraction), "%.3f",
+                 (float)(time->tv_usec / 1000000.0));
+        snprintf(tbuf, size, "%s%s%s", date_time, fraction + 1, time_zone);
+    } else {
+        snprintf(tbuf, size, "NULL");
+    }
+
 }

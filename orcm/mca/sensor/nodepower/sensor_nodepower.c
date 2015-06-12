@@ -489,6 +489,7 @@ static void nodepower_log(opal_buffer_t *sample)
     opal_value_t *kv;
     int sensor_not_avail=0;
     struct timeval tv_curr;
+    struct tm *time_info;
 
     float node_power_cur;
     char time_str[40];
@@ -530,7 +531,13 @@ static void nodepower_log(opal_buffer_t *sample)
     kv->key = strdup("ctime");
     kv->type = OPAL_TIMEVAL;
     kv->data.tv=tv_curr;
-    strftime(time_str, sizeof(time_str), "%F %T%z", localtime(&(tv_curr.tv_sec)));
+
+    time_info=localtime(&(tv_curr.tv_sec));
+    if (NULL == time_info) {
+        sensor_not_avail=1;
+    } else {
+        strftime(time_str, sizeof(time_str), "%F %T%z", time_info);
+    }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                        "second=%s\n", time_str);
@@ -554,7 +561,7 @@ static void nodepower_log(opal_buffer_t *sample)
     kv->key=strdup("nodepower:W");
     kv->type=OPAL_FLOAT;
     kv->data.fval=node_power_cur;
-    if ((node_power_cur==(float)(-1.0)) || (node_power_cur==(float)(0.0))){
+    if (node_power_cur<=(float)(0.0)){
         sensor_not_avail=1;
     } else {
         opal_list_append(vals, &kv->super);

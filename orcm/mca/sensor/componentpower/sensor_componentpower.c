@@ -464,7 +464,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                 _rapl.cpu_power[i]=((double)rapl_delta / (double)(_rapl.rapl_esu))/((double)interval/1000000.0);
             }
             if (_rapl.cpu_power[i]>1000.0){
-                _rapl.cpu_power[i]=1000.0;
+                _rapl.cpu_power[i]=-1.0;
             }
             _rapl.cpu_rapl_prev[i]=_rapl.cpu_rapl[i];
         }
@@ -491,7 +491,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                 _rapl.ddr_power[i]=((double)rapl_delta / (double)(_rapl.rapl_esu))/((double)interval/1000000.0);
             }
             if (_rapl.cpu_power[i]>1000.0) {
-                _rapl.cpu_power[i]=1000.0;
+                _rapl.cpu_power[i]=-1.0;
             }
             _rapl.ddr_rapl_prev[i]=_rapl.ddr_rapl[i];
         }
@@ -592,6 +592,7 @@ static void componentpower_log(opal_buffer_t *sample)
     struct timeval tv_curr;
     float power_cur, cpu_power_temp[MAX_SOCKETS], ddr_power_temp[MAX_SOCKETS];
     char time_str[40];
+    struct tm *time_info;
 
     if (!log_enabled) {
         return;
@@ -654,7 +655,13 @@ static void componentpower_log(opal_buffer_t *sample)
     kv->key = strdup("ctime");
     kv->type = OPAL_TIMEVAL;
     kv->data.tv=tv_curr;
-    strftime(time_str, sizeof(time_str), "%F %T%z", localtime(&(tv_curr.tv_sec)));
+
+    time_info=localtime(&(tv_curr.tv_sec));
+    if (NULL == time_info) {
+        sensor_not_avail=1;
+    } else {
+        strftime(time_str, sizeof(time_str), "%F %T%z", time_info);
+    }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                        "second=%s\n", time_str);

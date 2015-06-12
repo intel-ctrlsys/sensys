@@ -1079,8 +1079,9 @@ static void generate_test_vector(opal_buffer_t *v)
 /* Pack test core readings */
     for (i=0; i < ncores; i++) {
         if(-1 == asprintf(&corelabel,"testcore %d",i)) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             corelabel = NULL;
-            continue;
+            return;
         }
         if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &corelabel, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
@@ -1088,13 +1089,14 @@ static void generate_test_vector(opal_buffer_t *v)
             if(NULL != corelabel) {
                 free(corelabel);
                 corelabel = NULL;
-                continue;
+                return;
             }
         }
 
         if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &degc, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&v);
+            return;
         }
         degc += 1.0;
     }

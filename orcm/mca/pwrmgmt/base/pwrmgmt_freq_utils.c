@@ -115,6 +115,7 @@ static opal_list_t tracking;
 int orcm_pwrmgmt_freq_init(void)
 {
     int k;
+    int length;
     DIR *cur_dirp = NULL;
     struct dirent *entry;
     char *filename, *tmp, **vals;
@@ -162,24 +163,32 @@ int orcm_pwrmgmt_freq_init(void)
             continue;
         }
         /* if it ends in other than a digit, then it isn't a cpu directory */
-        if (!isdigit(entry->d_name[strlen(entry->d_name)-1])) {
+        length = strlen(entry->d_name)-1; 
+        if ((0 < length) && (!isdigit(entry->d_name[strlen(entry->d_name)-1]))) {
             continue;
         }
 
         /* track the info for this core */
         trk = OBJ_NEW(pwrmgmt_freq_tracker_t);
         /* trailing digits are the core id */
-        for (k=strlen(entry->d_name)-1; 0 <= k; k--) {
-            if (!isdigit(entry->d_name[k])) {
-                k++;
-                break;
+        if(0 < length) {
+            for (k=length; 0 <= k; k--) {
+                if (!isdigit(entry->d_name[k])) {
+                    k++;
+                    break;
+                }
             }
+            trk->core = strtoul(&entry->d_name[k], NULL, 10);
         }
-        trk->core = strtoul(&entry->d_name[k], NULL, 10);
-        trk->directory = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", NULL);
+        if(NULL == (trk->directory = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", NULL))) {
+            OBJ_RELEASE(trk);
+            continue;
+        }
         
         /* read/save the current settings */
-        filename = opal_os_path(false, trk->directory, "scaling_governor", NULL);
+        if(NULL == (filename = opal_os_path(false, trk->directory, "scaling_governor", NULL))) { 
+            OBJ_RELEASE(trk);
+            continue;
         if (NULL == (fp = fopen(filename, "rw"))) {
             free(filename);
             OBJ_RELEASE(trk);
@@ -190,34 +199,45 @@ int orcm_pwrmgmt_freq_init(void)
         fclose(fp);
         free(filename);
 
-        filename = opal_os_path(false, trk->directory, "scaling_max_freq", NULL);
+        if(NULL == (filename = opal_os_path(false, trk->directory, "scaling_max_freq", NULL))) {
+            OBJ_RELEASE(trk);
+            continue;
+        }
         if (NULL == (fp = fopen(filename, "rw"))) {
             free(filename);
             OBJ_RELEASE(trk);
             continue;
         }
-        tmp = orte_getline(fp);
+        if(NULL !=(tmp = orte_getline(fp))) {
+            trk->system_max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
+            trk->current_max_freq = trk->system_max_freq;
+            free(tmp);
+        }
         fclose(fp);
-        trk->system_max_freq = strtoul(tmp, NULL, 10) / 1000000.0;
-        trk->current_max_freq = trk->system_max_freq;
         free(filename);
-        free(tmp);
 
-        filename = opal_os_path(false, trk->directory, "scaling_min_freq", NULL);
+        if(NULL == (filename = opal_os_path(false, trk->directory, "scaling_min_freq", NULL))) {
+            OBJ_RELEASE(trk);
+            continue;
+        }
         if (NULL == (fp = fopen(filename, "rw"))) {
             free(filename);
             OBJ_RELEASE(trk);
             continue;
         }
-        tmp = orte_getline(fp);
+        if(NULL != (tmp = orte_getline(fp))) {
+            trk->system_min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
+            trk->current_min_freq = trk->system_min_freq;
+            free(tmp);
+        }
         fclose(fp);
-        trk->system_min_freq = strtoul(tmp, NULL, 10) / 1000000.0;
-        trk->current_min_freq = trk->system_min_freq;
         free(filename);
-        free(tmp);
 
         /* get the list of available governors */
-        filename = opal_os_path(false, trk->directory, "scaling_available_governors", NULL);
+        if(NULL == (filename = opal_os_path(false, trk->directory, "scaling_available_governors", NULL))) {
+            OBJ_RELEASE(trk);
+            continue;
+        }
         if (NULL == (fp = fopen(filename, "r"))) {
             free(filename);
             OBJ_RELEASE(trk);
@@ -229,17 +249,23 @@ int orcm_pwrmgmt_freq_init(void)
         if (NULL != tmp) {
             vals = opal_argv_split(tmp, ' ');
             free(tmp);
-            for (k=0; NULL != vals[k]; k++) {
-                kv = OBJ_NEW(opal_value_t);
-                kv->type = OPAL_STRING;
-                kv->data.string = strdup(vals[k]);
-                opal_list_append(&trk->governors, &kv->super);
+            if(NULL != vals) {
+                for (k=0; NULL != vals[k]; k++) {
+                    kv = OBJ_NEW(opal_value_t);
+                    kv->type = OPAL_STRING;
+                    kv->data.string = strdup(vals[k]);
+                    opal_list_append(&trk->governors, &kv->super);
+                }
+                opal_argv_free(vals);
             }
-            opal_argv_free(vals);
         }
 
         /* get the list of available frequencies */
-        filename = opal_os_path(false, trk->directory, "scaling_available_frequencies", NULL);
+        if(NULL == (filename = opal_os_path(false, trk->directory, "scaling_available_frequencies", NULL))) {
+            OBJ_RELEASE(trk);
+            continue;
+        }
+        }
         if (NULL == (fp = fopen(filename, "r"))) {
             free(filename);
             OBJ_RELEASE(trk);
@@ -251,17 +277,22 @@ int orcm_pwrmgmt_freq_init(void)
         if (NULL != tmp) {
             vals = opal_argv_split(tmp, ' ');
             free(tmp);
-            for (k=0; NULL != vals[k]; k++) {
-                kv = OBJ_NEW(opal_value_t);
-                kv->type = OPAL_FLOAT;
-                kv->data.fval = strtoul(vals[k], NULL, 10) / 1000000.0;
-                opal_list_append(&trk->frequencies, &kv->super);
+            if(NULL != vals) {
+                for (k=0; NULL != vals[k]; k++) {
+                    kv = OBJ_NEW(opal_value_t);
+                    kv->type = OPAL_FLOAT;
+                    kv->data.fval = strtoul(vals[k], NULL, 10) / 1000000.0;
+                    opal_list_append(&trk->frequencies, &kv->super);
+                }
+                opal_argv_free(vals);
             }
-            opal_argv_free(vals);
         }
 
         /* see if setspeed is supported */
-        filename = opal_os_path(false, trk->directory, "scaling_setspeed", NULL);
+        if(NULL == (filename = opal_os_path(false, trk->directory, "scaling_setspeed", NULL))) {
+            OBJ_RELEASE(trk);
+            continue;
+        }
         if (NULL != (fp = fopen(filename, "rw"))) {
             trk->setspeed = true;
             fclose(fp);
@@ -375,7 +406,9 @@ int orcm_pwrmgmt_freq_set_governor(int cpu, char* governor)
             return ORCM_ERR_NOT_SUPPORTED;
         }
         /* attempt to set the value */
-        filename = opal_os_path(false, trk->directory, "scaling_governor", NULL);
+        if(NULL == (filename = opal_os_path(false, trk->directory, "scaling_governor", NULL))) {
+            return ORCM_ERR_FILE_WRITE_FAILURE;
+        }
         if (NULL == (fp = fopen(filename, "w"))) {
             free(filename);
             return ORCM_ERR_FILE_WRITE_FAILURE;
@@ -447,7 +480,9 @@ int orcm_pwrmgmt_freq_set_min_freq(int cpu, float freq)
                 
             return ORCM_ERR_NOT_SUPPORTED;
         }
-        filename = opal_os_path(false, trk->directory, "scaling_min_freq", NULL);
+        if(NULL == (filename = opal_os_path(false, trk->directory, "scaling_min_freq", NULL))) {
+            return ORCM_ERR_FILE_WRITE_FAILURE;
+        }
         /* attempt to set the value */
         if (NULL == (fp = fopen(filename, "w"))) {
             /* not allowed - report the error */
@@ -525,7 +560,9 @@ int orcm_pwrmgmt_freq_set_max_freq(int cpu, float freq)
                 
             return ORCM_ERR_NOT_SUPPORTED;
         }
-        filename = opal_os_path(false, trk->directory, "scaling_max_freq", NULL);
+        if(NULL == (filename = opal_os_path(false, trk->directory, "scaling_max_freq", NULL))) {
+            return ORCM_ERR_FILE_WRITE_FAILURE;
+        }
         /* attempt to set the value */
         if (NULL == (fp = fopen(filename, "w"))) {
             /* not allowed - report the error */

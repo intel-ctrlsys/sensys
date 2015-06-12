@@ -299,8 +299,8 @@ static void stop(orte_jobid_t jobid)
     }
     
     for (item = opal_list_get_first(&jobs);
-         item != opal_list_get_end(&jobs);
-         item = opal_list_get_next(item)) {
+        ((item != opal_list_get_end(&jobs)) && (NULL != item));
+        item = opal_list_get_next(item)) {
         ft = (file_tracker_t*)item;
         if (jobid == ft->jobid || ORTE_JOBID_WILDCARD == jobid) {
             opal_list_remove_item(&jobs, item);
@@ -362,10 +362,9 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     
     for (item = opal_list_get_first(&jobs);
-         item != opal_list_get_end(&jobs);
-         item = opal_list_get_next(item)) {
+        ((item != opal_list_get_end(&jobs)) && (NULL != item));
+        item = opal_list_get_next(item)) {
         ft = (file_tracker_t*)item;
-        
         /* stat the file and get its size */
         if (0 > stat(ft->file, &buf)) {
             /* cannot stat file */

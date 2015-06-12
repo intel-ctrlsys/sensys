@@ -182,9 +182,9 @@ static char* check_inv_key(char *inv_key, enum inv_item_req req)
                     "Discarding the inventory item %s with ignore string %s ",inv_keywords[i][3],inv_key);
             } else {
                 if(req == INVENTORY_KEY)
-                    return inv_keywords[i][4];
+                    return inv_keywords[i][4]; /* Returns the inventory item's key */
                 else
-                    return inv_keywords[i][5];
+                    return inv_keywords[i][5]; /* Returns the inventory item's test vector value */
             }
         }
         i++;
@@ -618,13 +618,12 @@ static void generate_test_vector(opal_buffer_t *v)
         obj=obj->next_cousin;
         /* Pack the total CPU Stats present and to be copied */
         for (k=0; k < obj->infos_count; k++) {
-            if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
+            if(NULL != (inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR)))
             {
-                inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR);
                 free(obj->infos[k].value);
                 obj->infos[k].value = strdup(inv_tv);
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                    "Found Inventory Item %s : %s",inv_key, obj->infos[k].value);
+                    "Found Inventory Item %s : %s",obj->infos[k].name, obj->infos[k].value);
             }
         }
     }

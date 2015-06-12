@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2014, 2015      Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2014, 2015      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -474,7 +474,7 @@ static char *orcm_getline(FILE *fp)
 	   buff = strdup(ptr);
 	   return buff;
     }
-    
+
     return NULL;
 }
 
@@ -710,7 +710,7 @@ static int parse_orcm_config(orcm_config_t *cfg,
                 opal_output_verbose(ERROR_VERBOSITY_LEVEL, orcm_cfgi_base_framework.framework_output,
                                     "\tORCM-CORES: INVALID VALUE: %s", xml->value[0]);
                 return ORCM_ERR_BAD_PARAM;
-                
+
             }
         }
     } else if (0 == strcmp(xml->name, "mca-params")) {
@@ -745,10 +745,12 @@ static int parse_orcm_config(orcm_config_t *cfg,
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tENVARS %s", xml->value[0]);
             vals = opal_argv_split(xml->value[0], ',');
-            for (n=0; NULL != vals[n]; n++) {
-                opal_argv_append_nosize(&cfg->env, vals[n]);
+            if (NULL!=vals) {
+                for (n=0; NULL != vals[n]; n++) {
+                    opal_argv_append_nosize(&cfg->env, vals[n]);
+                }
+                opal_argv_free(vals);
             }
-            opal_argv_free(vals);
         }
     } else if  (0 == strcmp(xml->name, "aggregator")) {
         if (NULL != xml->value && NULL != xml->value[0]) {
@@ -943,7 +945,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
         report_unknown_tag(x->name, "rack");
         return ORTE_ERR_BAD_PARAM;
     }
-    
+
     /* make sure that the rack actually has a name before leaving */
     if ( NULL != rack->name )
     {
@@ -1126,6 +1128,7 @@ static int parse_scheduler(orcm_scheduler_t *scheduler,
     orcm_cfgi_xml_parser_t *x;
     int rc, n;
 
+    bool only_one_scheduler = true;
 
     OPAL_LIST_FOREACH(x, &xx->subvals, orcm_cfgi_xml_parser_t) {
         if (0 == strcmp(x->name, "queues")) {
@@ -1152,7 +1155,10 @@ static int parse_scheduler(orcm_scheduler_t *scheduler,
                 ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
                 return ORTE_ERR_BAD_PARAM;
             }
-            scheduler->controller.name = strdup(x->value[0]);
+            if (only_one_scheduler) {
+                scheduler->controller.name = strdup(x->value[0]);
+                only_one_scheduler = false;
+            }
         } else {
             if (ORCM_SUCCESS != (rc = parse_orcm_config(&scheduler->controller.config, x))) {
                 ORTE_ERROR_LOG(rc);

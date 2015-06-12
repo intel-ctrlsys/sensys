@@ -63,7 +63,7 @@ static int record_diag_test(struct orcm_db_base_module_t *imod,
 /* Internal helper functions */
 static void print_values(opal_list_t *values, char ***cmdargs);
 static void print_value(const opal_value_t *kv, char *tbuf, size_t size);
-static void print_time(const struct timeval *time, char *tbuf, size_t size);
+static void print_value(const struct timeval *time, char *tbuf, size_t size);
 
 
 mca_db_print_module_t mca_db_print_module = {
@@ -181,7 +181,7 @@ static int record_data_samples(struct orcm_db_base_module_t *imod,
     }
 
     if (NULL != time_stamp) {
-        print_time(time_stamp, time_str, sizeof(time_str));
+        print_value(time_stamp, time_str, sizeof(time_str));
         snprintf(tbuf, sizeof(tbuf), "%s=%s", "time_stamp", time_str);
         opal_argv_append_nosize(&cmdargs, tbuf);
     }
@@ -385,7 +385,7 @@ static void print_value(const opal_value_t *kv, char *tbuf, size_t size)
         break;
     case OPAL_TIMEVAL:
     case OPAL_TIME:
-        print_time(&kv->data.tv, tbuf, size);
+        print_value(&kv->data.tv, tbuf, size);
         break;
     default:
         snprintf(tbuf, size, "Unsupported type: %s",
@@ -394,7 +394,7 @@ static void print_value(const opal_value_t *kv, char *tbuf, size_t size)
     }
 }
 
-static void print_time(const struct timeval *time, char *tbuf, size_t size)
+static void print_value(const struct timeval *time, char *tbuf, size_t size)
 {
     struct timeval nrm_time = *time;
     struct tm *tm_info;
@@ -421,7 +421,7 @@ static void print_time(const struct timeval *time, char *tbuf, size_t size)
                  (float)(time->tv_usec / 1000000.0));
         snprintf(tbuf, size, "%s%s%s", date_time, fraction + 1, time_zone);
     } else {
-        opal_output(0, "ERROR: NULL returned by localtime()");
+        snprintf(tbuf, size, "ERROR:  Unable to print time");
     }
 
 }

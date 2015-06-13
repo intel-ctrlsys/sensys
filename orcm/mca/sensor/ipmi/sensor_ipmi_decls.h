@@ -27,7 +27,6 @@
 #define MAX_METRIC_NAME         20
 
 #define MAX_FRU_DEVICES  254
-#define MAX_IPMI_RESPONSE 256
 /*Seconds between the epoch (1/1/1970) and IPMI's start time (1/1/1996)*/
 #define EPOCH_IPMI_DIFF_TIME 820454400
 /*
@@ -46,7 +45,7 @@ typedef struct {
     uchar   fw_rev_2;
     uchar   ipmi_ver;
     uchar   dev_support;
-    uchar   manufacturer_id[3];
+    uchar   manufacturer_id[2];
     uchar   product_id [2];
     uchar   aux_fw_rev[4];
 } _device_id_t;
@@ -143,18 +142,8 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host);
 int orcm_sensor_ipmi_found(char *nodename, opal_list_t *host_list);
 unsigned int orcm_sensor_ipmi_counthosts(void);
 int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip, opal_list_t * host_list);
-
+void orcm_sensor_ipmi_exec_call(ipmi_capsule_t *cap);
 int orcm_sensor_ipmi_label_found(char * tag);
 int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host);
 int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *host);
-
-void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap);
-void orcm_sensor_ipmi_get_device_id(ipmi_capsule_t *cap);
-void orcm_sensor_ipmi_get_power_states(ipmi_capsule_t *cap);
-int orcm_sensor_ipmi_get_manuf_date(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host);
-int orcm_sensor_ipmi_get_manuf_name(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host);
-int orcm_sensor_ipmi_get_product_name(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host);
-int orcm_sensor_ipmi_get_serial_number(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host);
-int orcm_sensor_ipmi_get_board_part(unsigned char fru_offset, unsigned char *rdata, orcm_sensor_hosts_t *host);
-
 #endif

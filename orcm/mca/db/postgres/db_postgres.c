@@ -238,8 +238,8 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
             case OPAL_TIMEVAL:
             case OPAL_TIME:
                     if (!tv_to_str_timestamp(&sampletime, &kv->data.tv)) {
-                    ERR_MSG_STORE("Error converting to timstamp value");
-                    return ORCM_ERR_BAD_PARAM;
+                        ERR_MSG_STORE("Failed to convert timestamp value");
+                        return ORCM_ERR_BAD_PARAM;
                     }
                 break;
             case OPAL_STRING:

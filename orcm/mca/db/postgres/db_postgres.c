@@ -286,7 +286,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
     rows = (char **)malloc(sizeof(char *) * (num_items + 1));
     if (NULL == rows) {
         rc = ORCM_ERR_OUT_OF_RESOURCE;
-        ERR_MSG_STORE("No resource available");
+        ERR_MSG_STORE("Unable to allocate memory");
         goto cleanup_and_exit;
     }
     for (i = 0; i < num_items + 1; i++) {

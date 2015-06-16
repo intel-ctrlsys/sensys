@@ -336,8 +336,12 @@ sendresults:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &command, 1, ORCM_DIAG_CMD_T))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
-        free(eth_test);
-        free(gstring);
+        if ( NULL != eth_test ) {
+            free(eth_test);
+        }
+        if ( NULL != gstring ) {
+            free(gstring);
+        }
         return;
     }
 
@@ -346,8 +350,12 @@ sendresults:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &compname, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
-        free(eth_test);
-        free(gstring);
+        if ( NULL != eth_test ) {
+            free(eth_test);
+        }
+        if ( NULL != gstring ) {
+            free(gstring);
+        }
         return;
     }
     free(compname);
@@ -356,8 +364,12 @@ sendresults:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &start_time, 1, OPAL_TIME))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
-        free(eth_test);
-        free(gstring);
+        if ( NULL != eth_test ) {
+            free(eth_test);
+        }
+        if ( NULL != gstring ) {
+            free(gstring);
+        }
         return;
     }
 
@@ -365,8 +377,12 @@ sendresults:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIME))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
-        free(eth_test);
-        free(gstring);
+        if ( NULL != eth_test ) {
+            free(eth_test);
+        }
+        if ( NULL != gstring ) {
+            free(gstring);
+        }
         return;
     }
 
@@ -374,8 +390,12 @@ sendresults:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
-        free(eth_test);
-        free(gstring);
+        if ( NULL != eth_test ) {
+            free(eth_test);
+        }
+        if ( NULL != gstring ) {
+            free(gstring);
+        }
         return;
     }
 
@@ -384,8 +404,12 @@ sendresults:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &diag_result, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
-        free(eth_test);
-        free(gstring);
+        if ( NULL != eth_test ) {
+            free(eth_test);
+        }
+        if ( NULL != gstring ) {
+            free(gstring);
+        }
         return;
     }
     free(diag_result);
@@ -394,8 +418,12 @@ sendresults:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &result_num, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
-        free(eth_test);
-        free(gstring);
+        if ( NULL != eth_test ) {
+            free(eth_test);
+        }
+        if ( NULL != gstring ) {
+            free(gstring);
+        }
         return;
     }
 
@@ -405,8 +433,12 @@ sendresults:
         if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &diag_subtype, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(eth_test);
-            free(gstring);
+            if ( NULL != eth_test ) {
+                free(eth_test);
+            }
+            if ( NULL != gstring ) {
+                free(gstring);
+            }
             return;
         }
         free(diag_subtype);
@@ -414,8 +446,12 @@ sendresults:
         if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &(eth_test->data[i]), 1, OPAL_INT))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
-            free(eth_test);
-            free(gstring);
+            if ( NULL != eth_test ) {
+                free(eth_test);
+            }
+            if ( NULL != gstring ) {
+                free(gstring);
+            }
             return;
         }
     }

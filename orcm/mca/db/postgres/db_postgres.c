@@ -237,10 +237,10 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
             switch (kv->type) {
             case OPAL_TIMEVAL:
             case OPAL_TIME:
-                    if (!tv_to_str_timestamp(&sampletime, &kv->data.tv)) {
-                        ERR_MSG_STORE("Failed to convert timestamp value");
-                        return ORCM_ERR_BAD_PARAM;
-                    }
+                if (!tv_to_str_timestamp(&sampletime, &kv->data.tv)) {
+                    ERR_MSG_STORE("Failed to convert timestamp value");
+                    return ORCM_ERR_BAD_PARAM;
+                }
                 break;
             case OPAL_STRING:
                 strncpy(time_stamp, kv->data.string, sizeof(time_stamp) - 1);
@@ -339,10 +339,6 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
                          hostname, data_group, data_item, time_stamp,
                          item.value.value_str, kv->type);
             }
-            break;
-        case ORCM_DB_ITEM_REAL:
-            break;
-        case ORCM_DB_ITEM_REAL:
             break;
         case ORCM_DB_ITEM_REAL:
             if (NULL != units) {

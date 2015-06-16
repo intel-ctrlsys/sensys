@@ -213,7 +213,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
     char *units;
     int count;
     int ret;
-
+    int ret_tv_to_str_time_stamp;
     size_t num_items;
     char **rows = NULL;
     char *values = NULL;
@@ -238,8 +238,10 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
             switch (kv->type) {
             case OPAL_TIMEVAL:
             case OPAL_TIME:
-                tv_to_str_time_stamp(&kv->data.tv, time_stamp,
-                                     sizeof(time_stamp));
+                    if (!tv_to_str_timestamp(&sampletime, &kv->data.tv)) {
+                    ERR_MSG_STORE("Failed to convert timestamp value");
+                    return ORCM_ERR_BAD_PARAM;
+                    }
                 break;
             case OPAL_STRING:
                 strncpy(time_stamp, kv->data.string, sizeof(time_stamp) - 1);
@@ -283,8 +285,15 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
 
     num_items = opal_list_get_size(kvs);
     rows = (char **)malloc(sizeof(char *) * (num_items + 1));
-    for (i = 0; i < num_items + 1; i++) {
-        rows[i] = NULL;
+    if (rows == NULL) {
+    rc = ORCM_ERR_MEM_LIMIT_EXCEEDED;
+    ERR_MSG_STORE("Memory exceeded, Malloc failed to allocate memory");
+    goto cleanup_and_exit;
+    }
+    else {
+        for (i = 0; i < num_items + 1; i++) {
+	    rows[i] = NULL;
+        }
     }
     i = 0;
     OPAL_LIST_FOREACH(kv, kvs, opal_value_t) {
@@ -333,6 +342,10 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
                          hostname, data_group, data_item, time_stamp,
                          item.value.value_str, kv->type);
             }
+            break;
+        case ORCM_DB_ITEM_REAL:
+            break;
+        case ORCM_DB_ITEM_REAL:
             break;
         case ORCM_DB_ITEM_REAL:
             if (NULL != units) {
@@ -911,10 +924,6 @@ static int postgres_commit(struct orcm_db_base_module_t *imod)
     PQclear(res);
 
     mod->tran_started = false;
-
-    return ORCM_SUCCESS;
-}
-
 #define ERR_MSG_ROLLBACK(msg) \
     opal_output(0, "***********************************************"); \
     opal_output(0, "db:postgres: Unable to cancel current transaction: "); \
@@ -939,11 +948,11 @@ static int postgres_rollback(struct orcm_db_base_module_t *imod)
     return ORCM_SUCCESS;
 }
 
-static void tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
+static bool tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
                                  size_t size)
 {
     struct timeval nrm_time = *time;
-    struct tm *tm_info;
+    struct tm *tm_info = NULL;
     char date_time[30];
     char fraction[10];
 
@@ -959,10 +968,17 @@ static void tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
 
     /* Print in format: YYYY-MM-DD HH:MM:SS.fraction time zone */
     tm_info = localtime(&nrm_time.tv_sec);
-    strftime(date_time, sizeof(date_time), "%F %T", tm_info);
-    snprintf(fraction, sizeof(fraction), "%f",
+    //change
+    if(tm_info != NULL) {
+        strftime(date_time, sizeof(date_time), "%F %T", tm_info);
+        snprintf(fraction, sizeof(fraction), "%f",
              (float)(time->tv_usec / 1000000.0));
-    snprintf(tbuf, size, "%s%s", date_time, fraction + 1);
+        snprintf(tbuf, size, "%s%s", date_time, fraction + 1);
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 static void tm_to_str_time_stamp(const struct tm *time, char *tbuf,

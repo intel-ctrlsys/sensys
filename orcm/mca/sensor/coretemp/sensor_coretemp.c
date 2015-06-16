@@ -891,7 +891,7 @@ static void mycleanup(int dbhandle, int status,
 static void coretemp_log(opal_buffer_t *sample)
 {
     char *hostname=NULL;
-    char *sampletime;
+    char *sampletime = NULL;
     struct tm time_info;
     time_t ts;
     int rc;
@@ -916,14 +916,14 @@ static void coretemp_log(opal_buffer_t *sample)
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &ncores, &n, OPAL_INT32))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto cleanup;
     }
 
     /* sample time */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto cleanup;
     }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -937,19 +937,18 @@ static void coretemp_log(opal_buffer_t *sample)
     /* load the sample time at the start */
     if (NULL == sampletime) {
         ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
+        goto cleanup;
     }
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("ctime");
     kv->type = OPAL_STRING;
     kv->data.string = strdup(sampletime);
-    free(sampletime);
     opal_list_append(vals, &kv->super);
 
     /* load the hostname */
     if (NULL == hostname) {
         ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
+        goto cleanup;
     }
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("hostname");
@@ -996,6 +995,9 @@ static void coretemp_log(opal_buffer_t *sample)
  cleanup:
     if (NULL != hostname) {
         free(hostname);
+    }
+    if (NULL != sampletime) {
+        free(sampletime);
     }
 }
 

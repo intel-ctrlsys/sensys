@@ -290,9 +290,8 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
         goto cleanup_and_exit;
     }
     for (i = 0; i < num_items + 1; i++) {
-	rows[i] = NULL;
+        rows[i] = NULL;
     }
-    
     i = 0;
     OPAL_LIST_FOREACH(kv, kvs, opal_value_t) {
         /* kv->key will contain: <data_item>:<units> */

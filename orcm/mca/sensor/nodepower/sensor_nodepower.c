@@ -177,6 +177,11 @@ static bool log_enabled = true;
 
 static int init(void)
 {
+    /* we must be root to run */
+    if (0 != geteuid()) {
+        return ORTE_ERROR;
+    }
+
     return ORCM_SUCCESS;
 }
 
@@ -535,6 +540,7 @@ static void nodepower_log(opal_buffer_t *sample)
     time_info=localtime(&(tv_curr.tv_sec));
     if (NULL == time_info) {
         sensor_not_avail=1;
+        opal_output(0,"nodepower sensor data not logged due to error of localtime()\n");
     } else {
         strftime(time_str, sizeof(time_str), "%F %T%z", time_info);
     }
@@ -563,6 +569,8 @@ static void nodepower_log(opal_buffer_t *sample)
     kv->data.fval=node_power_cur;
     if (node_power_cur<=(float)(0.0)){
         sensor_not_avail=1;
+        if (_readein.ipmi_calls>4)
+            opal_output(0,"nodepower sensor data not logged due to unexpected return value from PSU\n");
     } else {
         opal_list_append(vals, &kv->super);
     }

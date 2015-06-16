@@ -48,6 +48,7 @@ typedef struct _freq_data {
 }freq_data;
 
 #define RAPL_UNIT 0x606
+#define RAPL_POWER_LIMIT 0x610
 #define RAPL_CPU_ENERGY 0x611
 #define RAPL_DDR_ENERGY 0x619
 #define RAPL_SHIFT1 (0xf0000)

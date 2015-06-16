@@ -917,6 +917,10 @@ static int postgres_commit(struct orcm_db_base_module_t *imod)
     PQclear(res);
 
     mod->tran_started = false;
+
+    return ORCM_SUCCESS;
+}
+
 #define ERR_MSG_ROLLBACK(msg) \
     opal_output(0, "***********************************************"); \
     opal_output(0, "db:postgres: Unable to cancel current transaction: "); \

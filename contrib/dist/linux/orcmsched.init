@@ -14,7 +14,7 @@
 # processname: orcmsched
 # pidfile: /var/run/orcmsched.pid
 
-prefix=/opt/open-rcm
+prefix=/opt/openrcm
 sysconfdir=/etc/sysconfig
 bindir=${prefix}/bin
 prog=orcmsched

@@ -11,7 +11,7 @@ After=network.target
 
 [Service]
 EnvironmentFile=-/etc/sysconfig/orcmd
-ExecStart=/opt/open-rcm/bin/orcmd $ORCMD_OPTS
+ExecStart=/opt/openrcm/bin/orcmd $ORCMD_OPTS
 KillMode=process
 Restart=always
 LimitMEMLOCK=infinity

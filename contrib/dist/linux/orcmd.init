@@ -14,7 +14,7 @@
 # processname: orcmd
 # pidfile: /var/run/orcmd.pid
 
-prefix=/opt/open-rcm
+prefix=/opt/openrcm
 sysconfdir=/etc/sysconfig
 bindir=${prefix}/bin
 prog=orcmd

@@ -11,7 +11,7 @@ After=network.target
 
 [Service]
 EnvironmentFile=-/etc/sysconfig/orcmsched
-ExecStart=/opt/open-rcm/bin/orcmsched $ORCMSCHED_OPTS
+ExecStart=/opt/openrcm/bin/orcmsched $ORCMSCHED_OPTS
 KillMode=process
 Restart=always
 

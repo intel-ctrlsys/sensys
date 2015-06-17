@@ -201,6 +201,10 @@ int orcm_cli_get_cmd(char *prompt,
                 } else if (1 == opal_argv_count(completions)) {
                     /* only 1 possible completion, go ahead and complete it */
                     inputlist = opal_argv_split(input, ' ');
+		    if (NULL == inputlist) {
+			BONK;
+			break;
+		    }
                     if (' ' == input[j-1]) {
                         k = 0;
                     } else if (0 != strncmp(inputlist[(opal_argv_count(inputlist) - 1)],

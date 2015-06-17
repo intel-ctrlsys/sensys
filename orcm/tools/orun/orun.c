@@ -406,6 +406,9 @@ int orun(int argc, char *argv[])
             /* If they specified an absolute path, strip off the
                /bin/<exec_name>" and leave just the prefix */
             orun_globals.path_to_mpirun = opal_dirname(argv[0]);
+	    if (NULL == orun_globals.path_to_mpirun) {
+		return ORTE_ERR_OUT_OF_RESOURCE;
+	    }
             /* Quick sanity check to ensure we got
                something/bin/<exec_name> and that the installation
                tree is at least more or less what we expect it to
@@ -1155,6 +1158,9 @@ static int create_app(int argc, char* argv[],
     if (NULL != orte_forwarded_envars) {
         char **vars;
         vars = opal_argv_split(*orte_forwarded_envars, ',');
+	if (NULL == vars) {
+	    return ORTE_ERR_OUT_OF_RESOURCE;
+	}
         for (i=0; NULL != vars[i]; i++) {
             if (NULL != strchr(vars[i], '=')) {
                 /* user supplied a value */

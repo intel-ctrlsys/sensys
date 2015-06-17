@@ -181,14 +181,19 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
     free(threadname);
-    
+
     OBJ_CONSTRUCT(&module_name, opal_value_t);
     OBJ_CONSTRUCT(&module_attr, opal_value_t);
-    
+
     values = (opal_value_t**)malloc(2 * sizeof(opal_value_t *));
+    if (NULL == values) {
+	OBJ_DESTRUCT(&module_name);
+	OBJ_DESTRUCT(&module_attr);
+	return ORCM_ERR_OUT_OF_RESOURCE;
+    }
     values[0] = &module_name;
     values[1] = &module_attr;
-    
+
     /* create each step (module) of the workflow */
     for (i = 0; i < num_steps; i = i+2) {
         wf_step = OBJ_NEW(orcm_workflow_step_t);

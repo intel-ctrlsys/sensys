@@ -164,8 +164,10 @@ int orcm_pwrmgmt_freq_init(void)
         }
         /* if it ends in other than a digit, then it isn't a cpu directory */
         length = strlen(entry->d_name)-1; 
-        if ((0 < length) && (!isdigit(entry->d_name[strlen(entry->d_name)-1]))) {
-            continue;
+        if (0 < length) {
+            if(!isdigit(entry->d_name[strlen(entry->d_name)-1])) {
+                continue;
+            }
         }
 
         /* track the info for this core */

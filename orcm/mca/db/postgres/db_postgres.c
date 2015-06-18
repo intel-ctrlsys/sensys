@@ -218,7 +218,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
     char *values = NULL;
     char *insert_stmt = NULL;
     size_t i;
-
+ 
     PGresult *res = NULL;
 
     if (NULL == data_group) {
@@ -237,7 +237,8 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
             switch (kv->type) {
             case OPAL_TIMEVAL:
             case OPAL_TIME:
-                if (!tv_to_str_timestamp(&sampletime, &kv->data.tv)) {
+                if (!tv_to_str_time_stamp(&kv->data.tv, time_stamp, 
+                                          sizeof(time_stamp))) {
                     ERR_MSG_STORE("Failed to convert timestamp value");
                     return ORCM_ERR_BAD_PARAM;
                 }
@@ -945,11 +946,11 @@ static int postgres_rollback(struct orcm_db_base_module_t *imod)
     return ORCM_SUCCESS;
 }
 
-static bool tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
+static bool tv_to_str_time_stamp(const struct timeval *time, char *tbuf, 
                                  size_t size)
 {
     struct timeval nrm_time = *time;
-    struct tm *tm_info = NULL;
+    struct tm *tm_info;
     char date_time[30];
     char fraction[10];
 
@@ -968,7 +969,7 @@ static bool tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
     if (NULL != tm_info) {
         strftime(date_time, sizeof(date_time), "%F %T", tm_info);
         snprintf(fraction, sizeof(fraction), "%f",
-             (float)(time->tv_usec / 1000000.0));
+                 (float)(time->tv_usec / 1000000.0));
         snprintf(tbuf, size, "%s%s", date_time, fraction + 1);
         return true;
     } else {

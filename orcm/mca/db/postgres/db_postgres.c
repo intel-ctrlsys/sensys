@@ -413,6 +413,9 @@ cleanup_and_exit:
     if (NULL != insert_stmt) {
         free(insert_stmt);
     }
+    if (NULL != data_item_parts){
+        opal_argv_free(data_item_parts);
+    }
 
     return rc;
 }

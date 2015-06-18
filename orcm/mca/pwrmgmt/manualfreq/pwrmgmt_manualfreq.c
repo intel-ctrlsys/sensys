@@ -269,6 +269,7 @@ static int reset_attributes(orcm_session_id_t session, opal_list_t* attr)
     }
     if(strncmp(name, component_name, strlen(component_name)) ) {
         //we are not the selected component
+        free(name);
         return ORCM_ERROR;
     }
 

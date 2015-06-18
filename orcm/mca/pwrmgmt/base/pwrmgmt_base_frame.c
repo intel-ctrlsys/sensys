@@ -214,6 +214,7 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
                                                       orte_rml_send_callback, NULL))) {
                         ORTE_ERROR_LOG(rc);
                         OBJ_RELEASE(ans);
+                        opal_argv_free(nodelist);
                         return;
                     }
                 }
@@ -221,6 +222,7 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
         }
         
         orcm_pwrmgmt_base_alloc_notify(alloc);
+        opal_argv_free(nodelist);
     break;
     default:
         opal_output(0,

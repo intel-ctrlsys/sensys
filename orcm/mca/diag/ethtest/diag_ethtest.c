@@ -342,6 +342,7 @@ sendresults:
         if ( NULL != gstring ) {
             free(gstring);
         }
+        free(diag_result);
         return;
     }
 
@@ -356,6 +357,7 @@ sendresults:
         if ( NULL != gstring ) {
             free(gstring);
         }
+        free(diag_result);
         return;
     }
     free(compname);
@@ -370,6 +372,7 @@ sendresults:
         if ( NULL != gstring ) {
             free(gstring);
         }
+        free(diag_result);
         return;
     }
 
@@ -383,6 +386,7 @@ sendresults:
         if ( NULL != gstring ) {
             free(gstring);
         }
+        free(diag_result);
         return;
     }
 
@@ -396,6 +400,7 @@ sendresults:
         if ( NULL != gstring ) {
             free(gstring);
         }
+        free(diag_result);
         return;
     }
 
@@ -410,6 +415,7 @@ sendresults:
         if ( NULL != gstring ) {
             free(gstring);
         }
+        free(diag_result);
         return;
     }
     free(diag_result);

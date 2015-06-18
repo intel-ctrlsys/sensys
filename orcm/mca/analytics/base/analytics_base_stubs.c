@@ -127,7 +127,9 @@ static int parse_attributes(opal_list_t *attr_list, char *attr_string) {
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                  output));
             free(output);
+            opal_argv_free(subtokens);
         } else {
+            opal_argv_free(subtokens);
             return ORCM_ERR_BAD_PARAM;
         }
     }

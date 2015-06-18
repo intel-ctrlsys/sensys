@@ -379,11 +379,11 @@ static int corefreq_policy_filter(char *hostname, int core_no, float cf, time_t 
                 /* filter policy threshold reached */
                 if ( hst->count >= plc->max_count ) {
                     /* fire an event */
-                    asprintf(&msg, "host: %s core %d freq %f GHz, %s than threshold %f GHz for %d times in %d seconds",
+                    asprintf(&msg, "host: %s core %d freq %f GHz, %s than or equal to threshold %f GHz for %d times in %d seconds",
                                     hostname, core_no, cf, plc->hi_thres ? "higher" : "lower",
                                     plc->threshold, plc->max_count, plc->time_window);
                     ORTE_NOTIFIER_SYSTEM_EVENT(plc->severity, msg, plc->action);
-                    opal_output(0, "host: %s core %d freq %f GHz, %s than threshold %f GHz for %d times in %d seconds, trigger %s event!",
+                    opal_output(0, "host: %s core %d freq %f GHz, %s than or equal to threshold %f GHz for %d times in %d seconds, trigger %s event!",
                                     hostname, core_no, cf, plc->hi_thres ? "higher" : "lower",
                                     plc->threshold, plc->max_count, plc->time_window, sev);
                     /* stop watching for this history record, remove from list */
@@ -398,11 +398,11 @@ static int corefreq_policy_filter(char *hostname, int core_no, float cf, time_t 
             /* matched sample not seen before, insert into history list */
             if ( 1 == plc->max_count ) {
                 /* fire an event right away, no need to store in history list */
-                asprintf(&msg, "host: %s core %d freq %f GHz, %s than threshold %f GHz for %d times in %d seconds",
+                asprintf(&msg, "host: %s core %d freq %f GHz, %s than or equal to threshold %f GHz for %d times in %d seconds",
                                     hostname, core_no, cf, plc->hi_thres ? "higher" : "lower",
                                     plc->threshold, plc->max_count, plc->time_window);
                 ORTE_NOTIFIER_SYSTEM_EVENT(plc->severity, msg, plc->action);
-                opal_output(0, "host: %s Core %d freq %f GHz, %s than threshold %f GHz for %d times in %d seconds, trigger %s event!",
+                opal_output(0, "host: %s Core %d freq %f GHz, %s than or equal to threshold %f GHz for %d times in %d seconds, trigger %s event!",
                                     hostname, core_no, cf, plc->hi_thres ? "higher" : "lower",
                                     plc->threshold, plc->max_count, plc->time_window, sev);
             } else {

@@ -207,7 +207,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
 
     char hostname[256];
     char time_stamp[40];
-    char **data_item_parts;
+    char **data_item_parts=NULL;
     char *data_item;
     orcm_db_item_t item;
     char *units;
@@ -360,8 +360,11 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
                          item.value.value_int, kv->type);
             }
         }
-
         i++;
+        if (NULL != data_item_parts){
+            opal_argv_free(data_item_parts);
+            data_item_parts = NULL;
+        }
     }
 
     values = opal_argv_join(rows, ',');

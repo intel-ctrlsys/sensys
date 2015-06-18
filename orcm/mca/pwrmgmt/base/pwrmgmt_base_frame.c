@@ -202,6 +202,7 @@ static void orcm_pwrmgmt_base_recv(int status, orte_process_name_t* sender,
                                                                            &tgt))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
+                    opal_argv_free(nodelist);
                     return;
                 }
 

@@ -188,8 +188,8 @@ static void ethtest_run(int sd, short args, void *cbdata)
     int eth_diag_ret = 0;
     int sock;
     struct ifreq ifr;
-    struct ethtool_test *eth_test;
-    struct ethtool_gstrings *gstring;
+    struct ethtool_test *eth_test = NULL;
+    struct ethtool_gstrings *gstring = NULL;
     struct ethtool_drvinfo drvinfo;
     int testinfo_offset;
     int i, ret, rc;

@@ -59,7 +59,11 @@ Prefix: /opt/openrcm
 %define orcm_url https://www.open-mpi.org/projects/orcm/
 %define orcm_specfile %{_topdir}/SPECS/%{orcm_name}-%{orcm_version}.spec
 %{!?configure_options: %define configure_options  %{nil}}
-%define configure_options "--with-platform=contrib/platform/intel/hillsboro/orcm-linux"
+%if 0%{?suse_version} > 1220
+%define configure_options --with-platform=contrib/platform/intel/hillsboro/orcm-linux --with-postgres=/usr/include/pgsql
+%else
+%define configure_options --with-platform=contrib/platform/intel/hillsboro/orcm-linux
+%endif
 %define orcm_configure_params  %{nil}
 %define orcm_compile_root %{orcm_name}-%{orcm_version}
 

@@ -178,7 +178,9 @@ int orcm_pwrmgmt_freq_init(void)
                     break;
                 }
             }
-            trk->core = strtoul(&entry->d_name[k], NULL, 10);
+            if(0 < k) {
+                trk->core = strtoul(&entry->d_name[k], NULL, 10);
+            }
         }
         if(NULL == (trk->directory = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", NULL))) {
             OBJ_RELEASE(trk);

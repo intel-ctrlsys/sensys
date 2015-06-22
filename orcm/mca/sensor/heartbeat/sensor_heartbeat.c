@@ -291,7 +291,7 @@ static void recv_beats(int status, orte_process_name_t* sender,
     }
 
     /* At the end of completion of all logs commit the data to db */
-    if(orcm_sensor_base.enable_group_commits ) {
+    if(orcm_sensor_base.enable_group_commits  && (true == orcm_sensor_base.dbhandle_acquired )) {
         orcm_db.commit(orcm_sensor_base.dbhandle, NULL, NULL);
     }
 

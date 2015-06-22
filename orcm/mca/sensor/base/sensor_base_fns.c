@@ -56,6 +56,9 @@ static void db_open_cb(int handle, int status, opal_list_t *props, void *cbdata)
                                     ORTE_RML_PERSISTENT,
                                     recv_inventory, NULL);
         }
+    } else {
+        opal_output(0,"DB Open failed");
+        orcm_sensor_base.dbhandle_acquired = false;
     }
     if (NULL != props) {
         OPAL_LIST_RELEASE(props);

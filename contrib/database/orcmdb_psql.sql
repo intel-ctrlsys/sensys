@@ -553,11 +553,11 @@ ddl_script := '-- Review the generated code before invocation
 -- New partition name pattern:  ' || quote_literal(table_name || '_' || timestamp_mask_by_interval || '_' || time_stamp_column_name) || '.' ||
 '
 -------------------------------
--- Function: ' || table_name || '_insert_trigger()
+-- Function: ' || table_name || '_partition_handler()
 
--- DROP FUNCTION ' || table_name || '_insert_trigger();
+-- DROP FUNCTION ' || table_name || '_partition_handler();
 
-CREATE OR REPLACE FUNCTION ' || table_name || '_insert_trigger()
+CREATE OR REPLACE FUNCTION ' || table_name || '_partition_handler()
   RETURNS trigger AS
 $PARTITION_BODY$
 BEGIN
@@ -596,11 +596,16 @@ $PARTITION_BODY$
 
 -- DROP TRIGGER insert_' || table_name || '_trigger ON ' || table_name || ';
 
-CREATE TRIGGER insert_' || table_name || '_trigger
-    BEFORE INSERT
-    ON ' || table_name || '
-    FOR EACH ROW
-    EXECUTE PROCEDURE ' || table_name || '_insert_trigger();
+';
+
+-- Comment out the CREATE TRIGGER statement if the trigger already exists
+PERFORM 1 FROM information_schema.triggers WHERE trigger_name = 'insert_' || table_name || '_trigger';
+IF (FOUND) THEN
+    ddl_script := ddl_script || '-- Trigger of the same name already exists.  Reminder to make sure it has the expected behavior.
+-- ';
+END IF;
+
+ddl_script := ddl_script || 'CREATE TRIGGER insert_' || table_name || '_trigger BEFORE INSERT ON ' || table_name || ' FOR EACH ROW EXECUTE PROCEDURE ' || table_name || '_partition_handler();
 -------------------------------
 ';
 

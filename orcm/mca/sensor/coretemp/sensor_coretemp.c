@@ -968,8 +968,10 @@ static void coretemp_log(opal_buffer_t *sample)
             kv->key = NULL;
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             OBJ_DESTRUCT(kv);
+            free(core_label);
             goto cleanup;
         }
+        free(core_label);
         kv->type = OPAL_FLOAT;
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {

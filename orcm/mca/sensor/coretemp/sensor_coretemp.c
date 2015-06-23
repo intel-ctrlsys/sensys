@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
+ *
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -699,6 +700,7 @@ static void stop(orte_jobid_t jobid)
         orcm_sensor_coretemp.ev_active = false;
         /* stop the thread without releasing the event base */
         opal_stop_progress_thread("coretemp", false);
+        OBJ_RELEASE(coretemp_sampler);
     }
     return;
 }
@@ -1066,6 +1068,7 @@ static void generate_test_vector(opal_buffer_t *v)
     sample_time = localtime(&now);
     if (NULL == sample_time) {
         ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        OBJ_DESTRUCT(&v);
         return;
     }
     strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
@@ -1083,6 +1086,7 @@ static void generate_test_vector(opal_buffer_t *v)
         if(-1 == asprintf(&corelabel,"testcore %d",i)) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             corelabel = NULL;
+            OBJ_DESTRUCT(&v);
             return;
         }
         if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &corelabel, 1, OPAL_STRING))) {
@@ -1091,13 +1095,14 @@ static void generate_test_vector(opal_buffer_t *v)
             if(NULL != corelabel) {
                 free(corelabel);
                 corelabel = NULL;
-                return;
             }
+            return;
         }
 
         if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &degc, 1, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&v);
+            free(corelabel);
             return;
         }
         degc += 1.0;

@@ -560,11 +560,18 @@ ddl_script := '-- Review the generated code before invocation
 CREATE OR REPLACE FUNCTION ' || table_name || '_partition_handler()
   RETURNS trigger AS
 $PARTITION_BODY$
-BEGIN
-    IF (NEW.' || time_stamp_column_name || ' IS NULL) THEN
-        NEW.' || time_stamp_column_name || ' := now();
-    END IF;
+BEGIN';
 
+     PERFORM 1 FROM information_schema.columns WHERE information_schema.columns.table_name = table_name_from_arg AND column_name = time_stamp_column_name AND data_type LIKE 'timestamp%' AND is_nullable = 'YES';
+     IF (FOUND) THEN
+         ddl_script := ddl_script || '
+         IF (NEW.' || time_stamp_column_name || ' IS NULL) THEN
+             NEW.' || time_stamp_column_name || ' := now();
+         END IF;
+         ';
+     END IF;
+
+ddl_script := ddl_script || '
     PERFORM 1
             FROM information_schema.tables
             WHERE table_name = quote_ident(''' || table_name || '_'' || to_char(NEW.time_stamp, ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''');

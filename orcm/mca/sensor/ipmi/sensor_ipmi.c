@@ -218,6 +218,7 @@ static void stop(orte_jobid_t jobid)
         orcm_sensor_ipmi.ev_active = false;
         /* stop the thread without releasing the event base */
         opal_stop_progress_thread("ipmi", false);
+        OBJ_RELEASE(ipmi_sampler);
     }
     return;
 }

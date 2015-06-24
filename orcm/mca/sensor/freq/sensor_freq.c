@@ -683,6 +683,7 @@ static void stop(orte_jobid_t jobid)
         orcm_sensor_freq.ev_active = false;
         /* stop the thread without releasing the event base */
         opal_stop_progress_thread("freq", false);
+        OBJ_RELEASE(freq_sampler);
     }
     return;
 }

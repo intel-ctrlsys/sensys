@@ -385,6 +385,7 @@ static void stop(orte_jobid_t jobid)
         orcm_sensor_componentpower.ev_active = false;
         /* stop the thread without releasing the event base */
         opal_stop_progress_thread("componentpower", false);
+        OBJ_RELEASE(componentpower_sampler);
     }
     return;
 }

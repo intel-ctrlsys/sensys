@@ -242,6 +242,7 @@ static void stop(orte_jobid_t jobid)
         mca_sensor_mcedata_component.ev_active = false;
         /* stop the thread without releasing the event base */
         opal_stop_progress_thread("mcedata", false);
+        OBJ_RELEASE(mcedata_sampler);
     }
     return;
 }

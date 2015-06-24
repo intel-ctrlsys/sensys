@@ -831,6 +831,19 @@ $$;
 
 
 --
+-- Name: purge_data(text, text, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION purge_data(name_of_table text, name_of_timestamp_column text, number_of_time_unit_from_now integer, time_unit text) RETURNS void
+  LANGUAGE plpgsql VOLATILE
+  AS $$
+BEGIN
+    EXECUTE('DELETE FROM ' || name_of_table || ' WHERE ' || name_of_table || '.' || name_of_timestamp_column || ' < CURRENT_TIMESTAMP - interval ''' || number_of_time_unit_from_now || ' ' || time_unit || ''';');
+END
+$$;
+
+
+--
 -- Name: record_data_sample(character varying, character varying, character varying, timestamp without time zone, integer, bigint, double precision, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 

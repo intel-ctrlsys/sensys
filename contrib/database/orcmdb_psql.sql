@@ -1,4 +1,8 @@
 --
+-- Copyright (c) 2014-2015 Intel Inc. All rights reserved
+--
+
+--
 -- PostgreSQL database dump
 --
 

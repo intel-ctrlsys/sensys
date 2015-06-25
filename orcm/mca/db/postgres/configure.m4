@@ -1,7 +1,7 @@
 dnl -*- shell-script -*-
 dnl
 dnl Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
-dnl Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+dnl Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
 dnl $COPYRIGHT$
 dnl 
 dnl Additional copyrights may follow

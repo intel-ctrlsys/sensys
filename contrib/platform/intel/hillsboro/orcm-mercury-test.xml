@@ -1,53 +1,38 @@
 <?xml version="1.0"?>
-<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
-
 <!-- orcm configuration file. -->
-
 <configuration>
-
-<orcm-aggregators>
-  <nodes>
-    <value>master1</value>
-  </nodes>
-  <port>
-    <value>55805</value>
-  </port>
-  <mca-params>
-    <value>sensor_base_sample_rate=30,sensor_heartbeat_rate=15,sensor_base_log_samples=1,db_print_file=-</value>
-  </mca-params>
-</orcm-aggregators>
-
-<orcm-daemons>
-  <nodes>
-    <value>c01</value>
-    <value>c02</value>
-    <value>c03</value>
-    <value>c04</value>
-  </nodes>
-  <port>
-    <value>55810</value>
-  </port>
-  <cores>
-    <value>0,1,2,3,4,5,6,7</value>
-  </cores>
-  <mca-params>
-    <value>sensor_base_sample_rate=30,sensor_heartbeat_rate=15,sensor_base_log_samples=1,db_print_file=-</value>
-  </mca-params>
-</orcm-daemons>
-
-<orcm-schedulers>
-  <description>Identify the node that houses the ORCM scheduler. Only
-  one allowed at this time</description>
-  <nodes>
-    <value>master1</value>
-  </nodes>
-  <port>
-    <value>55820</value>
-    <description>Port used by orcm scheduler</description>
-  </port>
-  <mca-params>
-    <description>List of MCA params to be used by scheduler</description>
-  </mca-params>
-</orcm-schedulers>
-
+    <version>3.0</version>
+    <creation>2015Jun24-18:12-dvillen</creation>
+    <role>RECORD</role>
+    <scheduler>
+        <shost>master1</shost>
+        <port>55820</port>
+    </scheduler>
+    <junction>
+        <type>cluster</type>
+        <name>master1</name>
+        <controller>
+            <aggregator>yes</aggregator>
+            <host>master1</host>
+            <port>55805</port>
+            <mca-params>sensor_base_sample_rate=30</mca-params>
+            <mca-params>sensor_heartbeat_rate=15</mca-params>
+            <mca-params>sensor_base_log_samples=1</mca-params>
+            <mca-params>db_print_file=-</mca-params>
+        </controller>
+        <junction>
+            <type>node</type>
+            <name>c[2:1-4]</name>
+            <controller>
+                <host>"@"</host>
+                <port>55810</port>
+                <cores>0,1,2,3,4,5,6,7</cores>
+                <aggregator>no</aggregator>
+                <mca-params>sensor_base_sample_rate=30</mca-params>
+                <mca-params>sensor_heartbeat_rate=15</mca-params>
+                <mca-params>sensor_base_log_samples=1</mca-params>
+                <mca-params>db_print_file=-</mca-params>
+            </controller>
+        </junction>
+    </junction>
 </configuration>

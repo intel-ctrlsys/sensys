@@ -69,6 +69,7 @@ static int orcm_db_base_frame_close(void)
     /* cleanup the globals */
     for (i=0; i < orcm_db_base.handles.size; i++) {
         if (NULL != (hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles, i))) {
+            opal_pointer_array_set_item(&orcm_db_base.handles, i, NULL);
             OBJ_RELEASE(hdl);
         }
     }

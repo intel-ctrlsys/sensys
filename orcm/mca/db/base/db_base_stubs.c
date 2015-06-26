@@ -128,14 +128,16 @@ static void process_close(int fd, short args, void *cbdata)
     }
 
 callback_and_cleanup:
-    if (NULL != req->cbfunc) {
-        req->cbfunc(req->dbhandle, rc, NULL, req->cbdata);
-    }
     /* release the handle */
     opal_pointer_array_set_item(&orcm_db_base.handles, req->dbhandle, NULL);
     if (NULL != hdl) {
         OBJ_RELEASE(hdl);
     }
+
+    if (NULL != req->cbfunc) {
+        req->cbfunc(req->dbhandle, rc, NULL, req->cbdata);
+    }
+
     OBJ_RELEASE(req);
 }
 

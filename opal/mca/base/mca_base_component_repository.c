@@ -6,7 +6,7 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
@@ -16,9 +16,9 @@
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -262,6 +262,7 @@ int mca_base_component_repository_get_components (mca_base_framework_t *framewor
     return OPAL_ERR_NOT_FOUND;
 }
 
+#if OPAL_HAVE_DL_SUPPORT
 static void mca_base_component_repository_release_internal (mca_base_component_repository_item_t *ri) {
     int group_id;
 
@@ -277,6 +278,7 @@ static void mca_base_component_repository_release_internal (mca_base_component_r
         ri->ri_dlhandle = NULL;
     }
 }
+#endif
 
 void mca_base_component_repository_release(const mca_base_component_t *component)
 {

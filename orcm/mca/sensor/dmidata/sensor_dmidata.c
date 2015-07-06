@@ -356,7 +356,7 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
 {
     hwloc_obj_t obj;
     uint32_t pci_count=0;
-    unsigned char pci_class, pci_subclass;
+    unsigned char pci_class;
 
     if((false == mca_sensor_dmidata_component.pci_dev)&(false == mca_sensor_dmidata_component.ntw_dev) &
         (false == mca_sensor_dmidata_component.blk_dev)) {
@@ -373,7 +373,6 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
 
     while (NULL != obj) {
         pci_class = ((obj->attr->pcidev.class_id)&(0xFF00))>>8;
-        pci_subclass =  ((obj->attr->pcidev.class_id)&(0xFF));
         switch (pci_class) {
             case 0x01: /*Block/Mass storage Device*/
                         if(true == mca_sensor_dmidata_component.blk_dev) { /* Check for the user defined mca parameter */

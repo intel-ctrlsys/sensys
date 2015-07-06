@@ -360,7 +360,6 @@ static void take_sample(int fd, short args, void *cbdata)
         }
     }
 
- cleanup:
     /* execute the callback, if given */
     if (NULL != sampler->cbfunc) {
         sampler->cbfunc(&sampler->bucket, sampler->cbdata);

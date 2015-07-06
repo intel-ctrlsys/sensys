@@ -47,7 +47,7 @@ mca_scd_mfile_component_t mca_scd_mfile_component = {
             .mca_open_component = mfile_open,
             .mca_close_component = mfile_close,
             .mca_query_component = mfile_component_query,
-            NULL
+            .mca_register_component_params = mfile_component_register,
         },
         .base_data = {
             /* The component is checkpoint ready */

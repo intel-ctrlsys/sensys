@@ -109,7 +109,7 @@ static int init(void)
                                        IN_DELETE | IN_MODIFY | IN_MOVE))) {
         /* error */
         close(notifier);
-        fclose(file);
+        fclose(resourcefile);
         notifier = -1;
         ORTE_ERROR_LOG(ORTE_ERR_NOT_AVAILABLE);
         return ORTE_ERR_NOT_AVAILABLE;

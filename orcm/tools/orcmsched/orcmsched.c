@@ -78,7 +78,10 @@
 /*
  * Globals
  */
+
+#if OPAL_ENABLE_DEBUG
 static bool orcmsched_spin_flag=false;
+#endif
 
 static struct {
     bool help;
@@ -100,9 +103,11 @@ static opal_cmd_line_init_t cmd_line_opts[] = {
       &orcmsched_globals.version, OPAL_CMD_LINE_TYPE_BOOL,
       "Print version and exit" },
 
-    { NULL, 's', NULL, "spin", 0,
+#if OPAL_ENABLE_DEBUG
+    { NULL, '\0', NULL, "spin", 0,
       &orcmsched_spin_flag, OPAL_CMD_LINE_TYPE_BOOL,
       "Have the scheduler spin until we can connect a debugger to it" },
+#endif
 
     { NULL, '\0', NULL, "daemonize", 0,
       &orcmsched_globals.daemonize, OPAL_CMD_LINE_TYPE_BOOL,
@@ -117,7 +122,11 @@ int main(int argc, char *argv[])
 {
     int ret = 0;
     opal_cmd_line_t cmd_line;
+
+#if OPAL_ENABLE_DEBUG
     int i;
+#endif
+
     char *args = NULL;
     char *str = NULL;
     char *ctmp;
@@ -133,6 +142,13 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
         exit(1);
     }
+
+    /* Initialize the argv parsing handle for the help and version options */
+    if (orcmsched_globals.help || orcmsched_globals.version) {
+        if (ORCM_SUCCESS != (ret=opal_init_util(&argc, &argv))) {
+            return ret;
+        }
+    }
     /*
      * Since this process can now handle MCA/GMCA parameters, make sure to
      * process them.
@@ -142,13 +158,41 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    /* see if they want us to spin until they can connect a debugger to us */
+    if(orcmsched_globals.help) {
+        args = opal_cmd_line_get_usage_msg(&cmd_line);
+        str = opal_show_help_string("help-orcmsched.txt", "usage", false, args);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
+        opal_finalize_util();
+        exit(0);
+    }
+
+    if (orcmsched_globals.version) {
+        str = opal_show_help_string("help-orcmsched.txt", "version", false,
+                                    ORCM_VERSION,
+                                    PACKAGE_BUGREPORT);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
+        opal_finalize_util();
+        exit(0);
+    }
+
+    /* In the debug mode, see if they want us to spin
+     * until they can connect a debugger to us */
+#if OPAL_ENABLE_DEBUG
     i=0;
     while (orcmsched_spin_flag) {
         i++;
-        if (1000 < i) i=0;        
+        if (1000 < i) {
+            i=0;
+        }
     }
-    
+#endif
+
     opal_progress_set_event_flag(OPAL_EVLOOP_ONCE);
 
     /* init the ORCM library */
@@ -165,29 +209,6 @@ int main(int argc, char *argv[])
     if (ORTE_SUCCESS != (ret = orcm_pwrmgmt_base_select())) {
         ORTE_ERROR_LOG(ret);
         exit(1);
-    }
-
-    if(orcmsched_globals.help) {
-        args = opal_cmd_line_get_usage_msg(&cmd_line);
-        str = opal_show_help_string("help-orcmsched.txt", "usage", false, args);
-        if (NULL != str) {
-            printf("%s", str);
-            free(str);
-        }
-        orcm_finalize();
-        exit(0);
-    }
-    
-    if (orcmsched_globals.version) {
-        str = opal_show_help_string("help-orcmsched.txt", "version", false,
-                                    ORCM_VERSION,
-                                    PACKAGE_BUGREPORT);
-        if (NULL != str) {
-            printf("%s", str);
-            free(str);
-        }
-        orcm_finalize();
-        exit(0);
     }
 
     /* detach from controlling terminal

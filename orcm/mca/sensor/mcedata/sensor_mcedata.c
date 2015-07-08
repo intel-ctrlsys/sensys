@@ -593,10 +593,10 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
         }
         opal_list_append(vals, &kv->super);
 
-        if(uc) {
+        if(!uc) {
             opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                 "Enhanced chache reporting available");
-            cache_health = (((mce_reg[MCI_STATUS] & HEALTH_STATUS_MASK ) >> 53) && 0x3);
+            cache_health = (((mce_reg[MCI_STATUS] & HEALTH_STATUS_MASK ) >> 53) & 0x3);
             kv = OBJ_NEW(opal_value_t);
             kv->key = strdup("cache_health");
             kv->type = OPAL_STRING;
@@ -607,7 +607,6 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
                 case 2: kv->data.string = strdup("Yellow"); break;
                 case 3: kv->data.string = strdup("Reserved"); break;
                 default: kv->data.string = strdup("UNKNOWN"); break;
-
             }
             opal_list_append(vals, &kv->super);
         }
@@ -900,6 +899,11 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     tot_lines = get_total_lines(mca_sensor_mcedata_component.logfile);
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "Total lines: %lu", tot_lines);
+    /* In case log file rotates or is stashed and cleared, the index at which mcedata looks
+     * for MCE events has to be reset too */
+    if (index > tot_lines) {
+        index = 0;
+    }
 
     if (true != mca_sensor_mcedata_component.historical_collection) {
         /* If the user requires MCE collection from the point when ORCM was

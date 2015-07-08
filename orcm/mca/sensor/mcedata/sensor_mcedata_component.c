@@ -111,6 +111,12 @@ static int mcedata_component_register(void)
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_mcedata_component.sample_rate);
   
-
+    mca_sensor_mcedata_component.historical_collection = 0;
+    (void) mca_base_component_var_register(c, "historical_collection",
+                                           "Enables MCE collection prior to orcm start",
+                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sensor_mcedata_component.historical_collection);
     return ORCM_SUCCESS;
 }

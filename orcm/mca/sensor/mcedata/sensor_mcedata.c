@@ -891,7 +891,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     uint64_t i = 0, cpu=0, socket=0, bank=0;
     uint64_t mce_reg[MCE_REG_COUNT];
     uint64_t tot_lines;
-    static uint64_t index; /* non-volatile declaration to store last read line number */
+    static uint64_t index = 0; /* non-volatile declaration to store last read line number */
     char* line;
     char *loc = NULL;
 
@@ -901,6 +901,16 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "Total lines: %lu", tot_lines);
 
+    if (true != mca_sensor_mcedata_component.historical_collection) {
+        /* If the user requires MCE collection from the point when ORCM was
+         * started, then we should ignore all the events logged prior to ORCM
+         * launch. */
+        if (0 == index) {
+            /* Need to set this only the first time sample is called immediately
+             * after orcm launch */
+            index = tot_lines;
+        }
+    }
     while (index < tot_lines) {
         line = get_line(mca_sensor_mcedata_component.logfile,index);
         if(NULL != line) {

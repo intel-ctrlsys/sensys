@@ -84,6 +84,7 @@ typedef struct {
     int sample_rate;
     opal_event_base_t *ev_base;
     bool ev_active;
+    bool historical_collection;
 } orcm_sensor_mcedata_component_t;
 
 

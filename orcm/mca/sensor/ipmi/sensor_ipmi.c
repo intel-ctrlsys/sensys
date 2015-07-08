@@ -277,7 +277,8 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(rc);
                 return;
             }
-            strncpy(nodename,hostname,strlen(hostname)+1);
+            strncpy(nodename,hostname,sizeof(nodename)-1);
+            nodename[sizeof(nodename)-1] = '\0';
             opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
                                 "IPMI_LOG -> Node %s not found; Logging credentials", hostname);
             free(hostname);
@@ -294,7 +295,8 @@ static void ipmi_log(opal_buffer_t *sample)
             }
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked host_ip(3a): %s",hostname);
-            strncpy(hostip,hostname,strlen(hostname)+1);
+            strncpy(hostip,hostname,sizeof(hostip)-1);
+            hostip[sizeof(hostip)-1] = '\0';
             free(hostname);
 
             /* Unpack the bmcip - 4a */
@@ -309,7 +311,8 @@ static void ipmi_log(opal_buffer_t *sample)
             }
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked BMC_IP(4a): %s",hostname);
-            strncpy(bmcip,hostname,strlen(hostname)+1);
+            strncpy(bmcip,hostname,sizeof(bmcip)-1);
+            bmcip[sizeof(bmcip)-1] = '\0';
             free(hostname);
 
             /* Unpack the Baseboard Manufacture Date - 5a */
@@ -324,7 +327,7 @@ static void ipmi_log(opal_buffer_t *sample)
             }
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Unpacked Baseboard Manufacture Date(5a): %s", sample_item);
-            strncpy(baseboard_manuf_date,sample_item,(sizeof(baseboard_manuf_date)-1));
+            strncpy(baseboard_manuf_date,sample_item,sizeof(baseboard_manuf_date)-1);
             baseboard_manuf_date[sizeof(baseboard_manuf_date)-1] = '\0';
             free(sample_item);
 
@@ -534,7 +537,8 @@ static void ipmi_log(opal_buffer_t *sample)
         opal_list_append(vals, &kv->super);
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked NodeName: %s", hostname);
-        strncpy(nodename,hostname,strlen(hostname)+1);
+        strncpy(nodename,hostname,sizeof(nodename)-1);
+        nodename[sizeof(nodename)-1] = '\0';
         free(hostname);
 
         /* BMC FW REV - 4 */
@@ -771,7 +775,8 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "RETRIEVING LAN CREDENTIALS");
-    strncpy(host->capsule.node.host_ip,"CUR_HOST_IP",strlen("CUR_HOST_IP")+1);
+    strncpy(host->capsule.node.host_ip,"CUR_HOST_IP",sizeof(host->capsule.node.host_ip)-1);
+    host->capsule.node.host_ip[sizeof(host->capsule.node.host_ip)-1] = '\0';
 
     /* This IPMI call reading the BMC's IP address runs through the
      *  ipmi/imb/KCS driver
@@ -803,7 +808,8 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
             sprintf(bmc_ip,"%d.%d.%d.%d",rdata[1], rdata[2], rdata[3], rdata[4]);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "RETRIEVED BMC's IP ADDRESS: %s",bmc_ip);
-            strncpy(host->capsule.node.bmc_ip,bmc_ip,strlen(bmc_ip)+1);
+            strncpy(host->capsule.node.bmc_ip,bmc_ip,sizeof(host->capsule.node.bmc_ip)-1);
+            host->capsule.node.bmc_ip[sizeof(host->capsule.node.bmc_ip)-1] = '\0';
             orcm_sensor_get_fru_inv(host);
 
             /* Get the DEVICE ID information as well */
@@ -1031,7 +1037,7 @@ int orcm_sensor_get_fru_data(int id, long int fru_area, orcm_sensor_hosts_t *hos
         return ORCM_ERROR;
     }
 
-    memset(rdata,0x00,sizeof(rdata));
+    memset(rdata,0x00,sizeof(fru_area));
     memset(idata,0x00,sizeof(idata));
 
     idata[0] = id;   /*id of the fru device to read from*/
@@ -1158,8 +1164,11 @@ int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip, opal_l
 
     newhost = OBJ_NEW(orcm_sensor_hosts_t);
     strncpy(newhost->capsule.node.name,nodename,sizeof(newhost->capsule.node.name)-1);
+    newhost->capsule.node.name[sizeof(newhost->capsule.node.name)-1] = '\0';
     strncpy(newhost->capsule.node.host_ip,host_ip,sizeof(newhost->capsule.node.host_ip)-1);
+    newhost->capsule.node.host_ip[sizeof(newhost->capsule.node.host_ip)-1] = '\0';
     strncpy(newhost->capsule.node.bmc_ip,bmc_ip,sizeof(newhost->capsule.node.bmc_ip)-1);
+    newhost->capsule.node.bmc_ip[sizeof(newhost->capsule.node.bmc_ip)-1] = '\0';
 
     /* Add to Host list */
     opal_list_append(host_list, &newhost->super);
@@ -1389,7 +1398,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     opal_buffer_t data, *bptr;
     char *ipmi;
     time_t now;
-    double tdiff;
     char time_str[40];
     char *timestamp_str, *sample_str;
     struct tm *sample_time;
@@ -1438,7 +1446,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 
         /* get the sample time */
         now = time(NULL);
-        tdiff = difftime(now, last_sample);
         /* pass the time along as a simple string */
         sample_time = localtime(&now);
         if (NULL == sample_time) {
@@ -1599,9 +1606,11 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 
         /* If the bmc username was passed as an mca parameter, set it. */
         if (NULL != mca_sensor_ipmi_component.bmc_username) {
-            strncpy(host->capsule.node.user, mca_sensor_ipmi_component.bmc_username, sizeof(mca_sensor_ipmi_component.bmc_username));
+            strncpy(host->capsule.node.user, mca_sensor_ipmi_component.bmc_username, sizeof(host->capsule.node.user)-1);
+            host->capsule.node.user[sizeof(host->capsule.node.user)-1] = '\0';
         } else {
-            strncpy(host->capsule.node.user, "root", sizeof("root"));
+            strncpy(host->capsule.node.user, "root", sizeof(host->capsule.node.user)-1);
+            host->capsule.node.user[sizeof(host->capsule.node.user)-1] = '\0';
         }
 
         /*
@@ -1609,8 +1618,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         Otherwise, leave it as null.
         */
         if (NULL != mca_sensor_ipmi_component.bmc_password) {
-            strncpy(host->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password,
-                    sizeof(host->capsule.node.pasw)-1);
+            strncpy(host->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password, sizeof(host->capsule.node.pasw)-1);
+            host->capsule.node.pasw[sizeof(host->capsule.node.pasw)-1] = '\0';
         }
 
         host->capsule.node.auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
@@ -1624,7 +1633,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 
         /* get the sample time */
         now = time(NULL);
-        tdiff = difftime(now, last_sample);
         /* pass the time along as a simple string */
         sample_time = localtime(&now);
         if (NULL == sample_time) {
@@ -1805,38 +1813,40 @@ static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot)
     }
 }
 
-void orcm_sensor_ipmi_get_system_power_state(uchar in, char* str)
+void orcm_sensor_ipmi_get_system_power_state(uchar in, char* str, int str_size)
 {
     char in_r = in & 0x7F;
     switch(in_r) {
-        case 0x0:   strncpy(str,"S0/G0",sizeof("S0/G0")); break;
-        case 0x1:   strncpy(str,"S1",sizeof("S1")); break;
-        case 0x2:   strncpy(str,"S2",sizeof("S2")); break;
-        case 0x3:   strncpy(str,"S3",sizeof("S3")); break;
-        case 0x4:   strncpy(str,"S4",sizeof("S4")); break;
-        case 0x5:   strncpy(str,"S5/G2",sizeof("S5/G2")); break;
-        case 0x6:   strncpy(str,"S4/S5",sizeof("S4/S5")); break;
-        case 0x7:   strncpy(str,"G3",sizeof("G3")); break;
-        case 0x8:   strncpy(str,"sleeping",sizeof("sleeping")); break;
-        case 0x9:   strncpy(str,"G1 sleeping",sizeof("G1 sleeping")); break;
-        case 0x0A:  strncpy(str,"S5 override",sizeof("S5 override")); break;
-        case 0x20:  strncpy(str,"Legacy On",sizeof("Legacy On")); break;
-        case 0x21:  strncpy(str,"Legacy Off",sizeof("Legacy Off")); break;
-        case 0x2A:  strncpy(str,"Unknown",sizeof("Unknown")); break;
-        default:    strncpy(str,"Illegal",sizeof("Illegal")); break;
+        case 0x0:   strncpy(str,"S0/G0",str_size-1); break;
+        case 0x1:   strncpy(str,"S1",str_size-1); break;
+        case 0x2:   strncpy(str,"S2",str_size-1); break;
+        case 0x3:   strncpy(str,"S3",str_size-1); break;
+        case 0x4:   strncpy(str,"S4",str_size-1); break;
+        case 0x5:   strncpy(str,"S5/G2",str_size-1); break;
+        case 0x6:   strncpy(str,"S4/S5",str_size-1); break;
+        case 0x7:   strncpy(str,"G3",str_size-1); break;
+        case 0x8:   strncpy(str,"sleeping",str_size-1); break;
+        case 0x9:   strncpy(str,"G1 sleeping",str_size-1); break;
+        case 0x0A:  strncpy(str,"S5 override",str_size-1); break;
+        case 0x20:  strncpy(str,"Legacy On",str_size-1); break;
+        case 0x21:  strncpy(str,"Legacy Off",str_size-1); break;
+        case 0x2A:  strncpy(str,"Unknown",str_size-1); break;
+        default:    strncpy(str,"Illegal",str_size-1); break;
     }
+    str[str_size-1] = '\0';
 }
-void orcm_sensor_ipmi_get_device_power_state(uchar in, char* str)
+void orcm_sensor_ipmi_get_device_power_state(uchar in, char* str, int str_size)
 {
     char in_r = in & 0x7F;
     switch(in_r) {
-        case 0x0:   strncpy(str,"D0",sizeof("D0")); break;
-        case 0x1:   strncpy(str,"D1",sizeof("D1")); break;
-        case 0x2:   strncpy(str,"D2",sizeof("D2")); break;
-        case 0x3:   strncpy(str,"D3",sizeof("D3")); break;
-        case 0x4:   strncpy(str,"Unknown",sizeof("Unknown")); break;
-        default:    strncpy(str,"Illegal",sizeof("Illegal")); break;
+        case 0x0:   strncpy(str,"D0",str_size-1); break;
+        case 0x1:   strncpy(str,"D1",str_size-1); break;
+        case 0x2:   strncpy(str,"D2",str_size-1); break;
+        case 0x3:   strncpy(str,"D3",str_size-1); break;
+        case 0x4:   strncpy(str,"Unknown",str_size-1); break;
+        default:    strncpy(str,"Illegal",str_size-1); break;
     }
+    str[str_size-1] = '\0';
 }
 
 void orcm_sensor_ipmi_get_device_id(ipmi_capsule_t *cap)
@@ -1912,11 +1922,11 @@ void orcm_sensor_ipmi_get_power_states(ipmi_capsule_t *cap)
         {
             ipmi_close();
             memcpy(&pwr_state.raw, rdata, sizeof(pwr_state));
-            orcm_sensor_ipmi_get_system_power_state(pwr_state.bits.sys_power_state, sys_pwr_state_str);
-            orcm_sensor_ipmi_get_device_power_state(pwr_state.bits.dev_power_state, dev_pwr_state_str);
+            orcm_sensor_ipmi_get_system_power_state(pwr_state.bits.sys_power_state, sys_pwr_state_str, sizeof(sys_pwr_state_str));
+            orcm_sensor_ipmi_get_device_power_state(pwr_state.bits.dev_power_state, dev_pwr_state_str, sizeof(dev_pwr_state_str));
             /* Copy all retrieved information in a global buffer */
-            memcpy(cap->prop.sys_power_state,sys_pwr_state_str,sizeof(sys_pwr_state_str));
-            memcpy(cap->prop.dev_power_state,dev_pwr_state_str,sizeof(dev_pwr_state_str));
+            memcpy(cap->prop.sys_power_state,sys_pwr_state_str,MIN(sizeof(sys_pwr_state_str),sizeof(cap->prop.sys_power_state)));
+            memcpy(cap->prop.dev_power_state,dev_pwr_state_str,MIN(sizeof(dev_pwr_state_str),sizeof(cap->prop.dev_power_state)));
         } else {
             error_string = decode_rv(ret);
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-mc-fail",
@@ -1934,6 +1944,16 @@ void orcm_sensor_ipmi_get_power_states(ipmi_capsule_t *cap)
                        cap->node.priv, cap->node.ciph, error_string);
     }
 }
+
+static bool does_sensor_group_match_sensor_name(char* sensor_group, char* sensor_name)
+{
+    if(1 == strlen(sensor_group) && '*' == sensor_group[0]) {
+        return true;
+    } else {
+        return (NULL != strcasestr(sensor_name, sensor_group));
+    }
+}
+
 void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap)
 {
     char addr[16];
@@ -1976,8 +1996,8 @@ void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap)
             {
                 id = sdrbuf[0] + (sdrbuf[1] << 8); /* this SDR id */
                 if (sdrbuf[3] != 0x01) continue; /* full SDR */
-                strncpy(tag,(char *)&sdrbuf[48],16);
-                tag[16] = 0;
+                strncpy(tag,(char *)&sdrbuf[48],sizeof(tag)-1);
+                tag[(int)(((SDR01REC *)sdrbuf)->id_strlen & 0x1f)] = 0; /* IPMI structure caps copy to 16 characters */
                 snum = sdrbuf[7];
                 ret = GetSensorReading(snum, sdrbuf, reading);
                 if (ret == 0)
@@ -1989,16 +2009,20 @@ void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap)
                         /*  Pack the Sensor Metric */
                         cap->prop.collection_metrics[sensor_count]=val;
                         strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
+                        cap->prop.collection_metrics_units[sensor_count][sizeof(cap->prop.collection_metrics_units[sensor_count])] = '\0';
                         strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
+                        cap->prop.metric_label[sensor_count][sizeof(cap->prop.metric_label[sensor_count])] = '\0';
                         sensor_count++;
                     } else if(NULL!=mca_sensor_ipmi_component.sensor_group)
                     {
-                        if(NULL!=strcasestr(tag, mca_sensor_ipmi_component.sensor_group))
+                        if(true == does_sensor_group_match_sensor_name(mca_sensor_ipmi_component.sensor_group, tag))
                         {
                             /*  Pack the Sensor Metric */
                             cap->prop.collection_metrics[sensor_count]=val;
                             strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
+                            cap->prop.collection_metrics_units[sensor_count][sizeof(cap->prop.collection_metrics_units[sensor_count])] = '\0';
                             strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
+                            cap->prop.metric_label[sensor_count][sizeof(cap->prop.metric_label[sensor_count])] = '\0';
                             sensor_count++;
                         }
                     }

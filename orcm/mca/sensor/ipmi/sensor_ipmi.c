@@ -1945,7 +1945,7 @@ void orcm_sensor_ipmi_get_power_states(ipmi_capsule_t *cap)
     }
 }
 
-static bool does_sensor_group_match_sensor_name(char* sensor_group, char* sensor_name)
+bool does_sensor_group_match_sensor_name(char* sensor_group, char* sensor_name)
 {
     if(1 == strlen(sensor_group) && '*' == sensor_group[0]) {
         return true;

@@ -486,12 +486,9 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
                             "Corrected filtering enabled");
         kv->data.flag = true;
     } else {
-        kv->data.flag = true;
+        kv->data.flag = false;
     }
-        opal_list_append(vals, &kv->super);
-
-
-
+    opal_list_append(vals, &kv->super);
 }
 
 static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
@@ -1016,7 +1013,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                 if(NULL != line) {
                     loc = strstr(line, " MCGSTATUS ");
                     if(NULL != loc) {
-                        mce_reg[MCG_STATUS] = strtoull(loc+strlen(" MCGSTATUS 0x"), NULL, 16);
+                        mce_reg[MCG_STATUS] = strtoull(loc+strlen(" MCGSTATUS 0x"), NULL, 0);
                         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                             "MCG_STATUS: 0x%lx", mce_reg[MCI_STATUS]);
                     } else {

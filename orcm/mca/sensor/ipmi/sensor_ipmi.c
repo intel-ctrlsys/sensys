@@ -49,6 +49,8 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 static void ipmi_set_sample_rate(int sample_rate);
 static void ipmi_get_sample_rate(int *sample_rate);
+bool does_sensor_group_match_sensor_name(char* sensor_group, char* sensor_name);
+
 int first_sample = 0;
 
 char **sensor_list_token; /* 2D array storing multiple sensor keywords for collecting metrics */
@@ -1947,6 +1949,9 @@ void orcm_sensor_ipmi_get_power_states(ipmi_capsule_t *cap)
 
 bool does_sensor_group_match_sensor_name(char* sensor_group, char* sensor_name)
 {
+    if(NULL == sensor_group || NULL == sensor_name) {
+        return false;
+    }
     if(1 == strlen(sensor_group) && '*' == sensor_group[0]) {
         return true;
     } else {

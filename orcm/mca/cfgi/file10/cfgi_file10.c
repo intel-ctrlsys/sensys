@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2014      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -492,7 +492,7 @@ static char *orcm_getline(FILE *fp)
 	   buff = strdup(ptr);
 	   return buff;
     }
-    
+
     return NULL;
 }
 
@@ -1003,7 +1003,11 @@ static void setup_environ(char **env)
      * users to override the config file on the cmd line
      */
     tmp = opal_environ_merge(env, environ);
-
+    if (NULL == tmp) {
+        opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
+        "ERROR: Environment variables merge failed.");
+        return;
+    }
     /* now cycle thru the result and push MCA params back into our
      * environment. We will overwrite some existing values,
      * but no harm done

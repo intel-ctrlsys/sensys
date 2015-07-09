@@ -1875,6 +1875,11 @@ static void setup_environ(char **env)
      * users to override the config file on the cmd line
      */
     tmp = opal_environ_merge(env, environ);
+    if (NULL == tmp) {
+        opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+        "ERROR: Environment variables merge failed.");
+        return;
+    }
 
     /* now cycle thru the result and push MCA params back into our
      * environment. We will overwrite some existing values,

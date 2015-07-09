@@ -712,7 +712,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     kv->key = strdup("T");
     kv->type = OPAL_STRING;
 
-    t = ((mce_reg[MCI_STATUS] & 0x100) >> 8);
+    t = (((mce_reg[MCI_STATUS] & 0x100) >> 8) & 0x3);
     switch (t) {
         case 0: kv->data.string = strdup("TIMEOUT"); break;
         case 1: kv->data.string = strdup("NOTIMEOUT"); break;

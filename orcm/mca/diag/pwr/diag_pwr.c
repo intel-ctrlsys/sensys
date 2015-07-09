@@ -339,8 +339,8 @@ static void finalize(void)
 
 /*** REMINDER: THIS CALLBACK IS EXECUTED IN THE
  * DB EVENT BASE ***/
-static void mycleanup(int dbhandle, int status,
-                      opal_list_t *kvs, void *cbdata)
+static void mycleanup(int dbhandle, int status, opal_list_t *kvs,
+                      opal_list_t *ret, void *cbdata)
 {
     OPAL_LIST_RELEASE(kvs);
 }

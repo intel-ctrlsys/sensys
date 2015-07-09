@@ -350,16 +350,16 @@ static void sample(orcm_sensor_sampler_t *sampler)
 #endif
 }
 
-static void mycleanup(int dbhandle, int status,
-                      opal_list_t *kvs, void *cbdata)
+static void mycleanup(int dbhandle, int status, opal_list_t *kvs,
+                      opal_list_t *ret, void *cbdata)
 {
     OPAL_LIST_RELEASE(kvs);
     if (ORTE_SUCCESS != status) {
         log_enabled = false;
     }
 }
-static void mycleanup_procstat(int dbhandle, int status,
-                      opal_list_t *kvs, void *cbdata)
+static void mycleanup_procstat(int dbhandle, int status, opal_list_t *kvs,
+                               opal_list_t *ret, void *cbdata)
 {
     OPAL_LIST_RELEASE(kvs);
     if (ORTE_SUCCESS != status) {

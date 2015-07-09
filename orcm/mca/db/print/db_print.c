@@ -71,6 +71,7 @@ mca_db_print_module_t mca_db_print_module = {
         init,
         finalize,
         store,
+        NULL,
         record_data_samples,
         update_node_features,
         record_diag_test,

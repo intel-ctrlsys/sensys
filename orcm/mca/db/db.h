@@ -41,9 +41,19 @@ BEGIN_C_DECLS
 /* forward declare */
 struct orcm_db_base_module_t;
 
+typedef enum {
+    ORCM_DB_ENV_DATA,
+    ORCM_DB_INVENTORY_DATA,
+    ORCM_DB_DIAG_DATA,
+    ORCM_DB_EVENT_DATA
+} orcm_db_data_type_t;
+
 /* callback function for async requests */
-typedef void (*orcm_db_callback_fn_t)(int dbhandle, int status,
-                                      opal_list_t *kvs, void *cbdata);
+typedef void (*orcm_db_callback_fn_t)(int dbhandle,
+                                      int status,
+                                      opal_list_t *in,
+                                      opal_list_t *out,
+                                      void *cbdata);
 
 /*
  * Initialize the module
@@ -123,6 +133,18 @@ typedef void (*orcm_db_base_API_store_fn_t)(int dbhandle,
 typedef int (*orcm_db_base_module_store_fn_t)(struct orcm_db_base_module_t *imod,
                                               const char *primary_key,
                                               opal_list_t *kvs);
+
+typedef void (*orcm_db_base_API_store_new_fn_t)(int dbhandle,
+                                                orcm_db_data_type_t data_type,
+                                                opal_list_t *input,
+                                                opal_list_t *ret,
+                                                orcm_db_callback_fn_t cbfunc,
+                                                void *cbdata);
+typedef int (*orcm_db_base_module_store_new_fn_t)(
+        struct orcm_db_base_module_t *imod,
+        orcm_db_data_type_t data_type,
+        opal_list_t *input,
+        opal_list_t *ret);
 
 /*
  * Specialized API function for storing data samples from components from the
@@ -247,6 +269,7 @@ typedef struct  {
     orcm_db_base_module_init_fn_t                 init;
     orcm_db_base_module_finalize_fn_t             finalize;
     orcm_db_base_module_store_fn_t                store;
+    orcm_db_base_module_store_new_fn_t            store_new;
     orcm_db_base_module_record_data_samples_fn_t  record_data_samples;
     orcm_db_base_module_update_node_features_fn_t update_node_features;
     orcm_db_base_module_record_diag_test_fn_t     record_diag_test;
@@ -260,6 +283,7 @@ typedef struct {
     orcm_db_base_API_open_fn_t                 open;
     orcm_db_base_API_close_fn_t                close;
     orcm_db_base_API_store_fn_t                store;
+    orcm_db_base_API_store_new_fn_t            store_new;
     orcm_db_base_API_record_data_samples_fn_t  record_data_samples;
     orcm_db_base_API_update_node_features_fn_t update_node_features;
     orcm_db_base_API_record_diag_test_fn_t     record_diag_test;

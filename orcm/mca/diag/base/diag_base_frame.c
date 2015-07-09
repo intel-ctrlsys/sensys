@@ -41,9 +41,10 @@ orcm_diag_API_module_t orcm_diag = {
 };
 orcm_diag_base_t orcm_diag_base;
 
-static void db_open_cb(int handle, int status, opal_list_t *kvs, void *cbdata)
+static void db_open_cb(int handle, int status, opal_list_t *kvs,
+                       opal_list_t *ret, void *cbdata)
 {
-    if (0 == status) {
+    if (ORCM_SUCCESS == status) {
         orcm_diag_base.dbhandle = handle;
     }
 }

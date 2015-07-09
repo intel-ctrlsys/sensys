@@ -43,7 +43,8 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t* sender,
                                 opal_buffer_t* buffer, orte_rml_tag_t tag,
                                 void* cbdata);
 
-static void db_open_cb(int handle, int status, opal_list_t *props, void *cbdata)
+static void db_open_cb(int handle, int status, opal_list_t *props,
+                       opal_list_t *ret, void *cbdata)
 {
     if (0 == status) {
         orcm_sensor_base.dbhandle = handle;

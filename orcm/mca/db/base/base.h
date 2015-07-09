@@ -24,6 +24,7 @@
 #include "opal/mca/event/event.h"
 #include "opal/class/opal_list.h"
 #include "opal/class/opal_pointer_array.h"
+#include "opal/class/opal_bitmap.h"
 #include "opal/dss/dss.h"
 
 #include "orcm/mca/db/db.h"
@@ -53,8 +54,11 @@ OBJ_CLASS_DECLARATION(orcm_db_base_active_component_t);
 typedef struct {
     opal_object_t super;
     opal_event_t ev;
-    int dbhandle;
 
+    int dbhandle;
+    orcm_db_data_type_t data_type;
+    opal_list_t *input;
+    opal_list_t *output;
     orcm_db_callback_fn_t cbfunc;
     void *cbdata;
 
@@ -114,6 +118,12 @@ ORCM_DECLSPEC void orcm_db_base_store(int dbhandle,
                                       opal_list_t *kvs,
                                       orcm_db_callback_fn_t cbfunc,
                                       void *cbdata);
+ORCM_DECLSPEC void orcm_db_base_store_new(int dbhandle,
+                                          orcm_db_data_type_t data_type,
+                                          opal_list_t *input,
+                                          opal_list_t *ret,
+                                          orcm_db_callback_fn_t cbfunc,
+                                          void *cbdata);
 ORCM_DECLSPEC void orcm_db_base_record_data_samples(
         int dbhandle,
         const char *hostname,
@@ -159,6 +169,11 @@ ORCM_DECLSPEC void orcm_db_base_remove_data(int dbhandle,
 
 ORCM_DECLSPEC int opal_value_to_orcm_db_item(const opal_value_t *kv,
                                              orcm_db_item_t *item);
+ORCM_DECLSPEC int find_items(const char *keys[],
+                             int num_keys,
+                             opal_list_t *list,
+                             opal_value_t *items[],
+                             opal_bitmap_t *map);
 
 END_C_DECLS
 

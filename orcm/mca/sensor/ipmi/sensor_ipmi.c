@@ -2013,10 +2013,10 @@ void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap)
                     {
                         /*  Pack the Sensor Metric */
                         cap->prop.collection_metrics[sensor_count]=val;
-                        strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
-                        cap->prop.collection_metrics_units[sensor_count][sizeof(cap->prop.collection_metrics_units[sensor_count])] = '\0';
-                        strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
-                        cap->prop.metric_label[sensor_count][sizeof(cap->prop.metric_label[sensor_count])] = '\0';
+                        strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count])-1);
+                        cap->prop.collection_metrics_units[sensor_count][sizeof(cap->prop.collection_metrics_units[sensor_count])-1] = '\0';
+                        strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count])-1);
+                        cap->prop.metric_label[sensor_count][sizeof(cap->prop.metric_label[sensor_count])-1] = '\0';
                         sensor_count++;
                     } else if(NULL!=mca_sensor_ipmi_component.sensor_group)
                     {
@@ -2024,10 +2024,10 @@ void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap)
                         {
                             /*  Pack the Sensor Metric */
                             cap->prop.collection_metrics[sensor_count]=val;
-                            strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count]));
-                            cap->prop.collection_metrics_units[sensor_count][sizeof(cap->prop.collection_metrics_units[sensor_count])] = '\0';
-                            strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count]));
-                            cap->prop.metric_label[sensor_count][sizeof(cap->prop.metric_label[sensor_count])] = '\0';
+                            strncpy(cap->prop.collection_metrics_units[sensor_count],typestr,sizeof(cap->prop.collection_metrics_units[sensor_count])-1);
+                            cap->prop.collection_metrics_units[sensor_count][sizeof(cap->prop.collection_metrics_units[sensor_count])-1] = '\0';
+                            strncpy(cap->prop.metric_label[sensor_count],tag,sizeof(cap->prop.metric_label[sensor_count])-1);
+                            cap->prop.metric_label[sensor_count][sizeof(cap->prop.metric_label[sensor_count])-1] = '\0';
                             sensor_count++;
                         }
                     }

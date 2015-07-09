@@ -99,8 +99,17 @@ static char inv_keywords[MAX_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWORDS][MAX
      {"pci","vendor","","","pci_vendor","TV_PciVen"},
      {"pci","device","","","pci_device","TV_PciDev"},
      {"pci","slot","","","pci_device","TV_PciDev"},
-     {"address","","","","MAC_address","TV_MACAddr"},
     };
+
+static char osdev_keywords[MAX_OSDEV_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWORDS][MAX_INVENTORY_KEYWORD_SIZE] = {
+     {"address","","","","MAC_address","TV_MACAddr"},
+     {"linuxdeviceid","","","","linux_device_id","TV_DeviceID"},
+     {"vendor","","","","vendor","TV_DeviceVen"},
+     {"model","","","","model","TV_DeviceMod"},
+     {"revision","","","","revision","TV_DeviceRev"},
+     {"serialnumber","","","","serial_number","TV_DeviceSN"},
+     {"type","","","","type","TV_DeviceType"},
+};
 
 enum inv_item_req
     { 
@@ -166,6 +175,24 @@ static void finalize(void)
                             "Destroying sensor initialized hwloc object");
         hwloc_topology_destroy(dmidata_hwloc_topology);
     }
+}
+
+static char* check_osdev_key(char *inv_key, enum inv_item_req req)
+{
+    int i = 0;
+
+    while (i<MAX_OSDEV_INVENTORY_KEYWORDS)
+    {
+        if (0 == strcasecmp(inv_key,osdev_keywords[i][0]))
+        {
+            if(req == INVENTORY_KEY)
+                return osdev_keywords[i][4]; /* Returns the inventory item's key */
+            else
+                return osdev_keywords[i][5]; /* Returns the inventory item's test vector value */
+        }
+        i++;
+    }
+    return NULL;
 }
 
 static char* check_inv_key(char *inv_key, enum inv_item_req req)
@@ -278,6 +305,7 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
     if(false == mca_sensor_dmidata_component.blk_dev) {
         return;
     }
+
     mkv = OBJ_NEW(orcm_metric_value_t);
     asprintf(&mkv->value.key,"pci_type_%d",pci_count);
     mkv->value.type = OPAL_STRING;
@@ -298,8 +326,28 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
                                 "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
         }
     }
-}
 
+    if (NULL != obj->first_child) {
+        if (HWLOC_OBJ_OS_DEVICE == obj->first_child->type)
+        {
+            obj = obj->first_child;
+            for (k=0; k < obj->infos_count; k++) {
+                if(NULL != (inv_key = check_osdev_key(obj->infos[k].name, INVENTORY_KEY)))
+                {
+                    mkv = OBJ_NEW(orcm_metric_value_t);
+                    asprintf(&mkv->value.key,"%s_%d",inv_key,pci_count);
+                    mkv->value.type = OPAL_STRING;
+                    mkv->value.data.string = strdup(obj->infos[k].value);
+                    opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+                    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                        "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+                }
+            }
+
+
+        }
+    }
+}
 /* Extract the PCI Device with NETWORK class codes */
 static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_inventory_t *newhost)
 {
@@ -334,7 +382,7 @@ static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
         {
             obj = obj->first_child;
             for (k=0; k < obj->infos_count; k++) {
-                if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
+                if(NULL != (inv_key = check_osdev_key(obj->infos[k].name, INVENTORY_KEY)))
                 {
                     mkv = OBJ_NEW(orcm_metric_value_t);
                     asprintf(&mkv->value.key,"%s_%d",inv_key,pci_count);
@@ -355,6 +403,7 @@ static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
 static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata_inventory_t *newhost)
 {
     hwloc_obj_t obj;
+    hwloc_obj_t prev;
     uint32_t pci_count=0;
     unsigned char pci_class;
 
@@ -364,7 +413,9 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
     }
 
     /* SOCKET Level Stats*/
-    if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_PCI_DEVICE, 0))) {
+
+    prev = NULL;
+    if (NULL == (obj = hwloc_get_next_pcidev(topo, prev))){
         /* there are no objects identified for this machine (Weird!) */
         orte_show_help("help-orcm-sensor-dmidata.txt", "no-pci", true, hostname);
         ORTE_ERROR_LOG(ORTE_ERROR);
@@ -375,24 +426,22 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
         pci_class = ((obj->attr->pcidev.class_id)&(0xFF00))>>8;
         switch (pci_class) {
             case 0x01: /*Block/Mass storage Device*/
-                        if(true == mca_sensor_dmidata_component.blk_dev) { /* Check for the user defined mca parameter */
-                            extract_blk_inventory(obj,pci_count,newhost);
-                            pci_count++;
-                        }
-                        obj = obj->next_cousin;
-                        continue;
-            case 0x02: /*Network Device*/
-                        if (true == mca_sensor_dmidata_component.ntw_dev) { /* Check for the user defined mca paramer */
-                            extract_ntw_inventory(obj,pci_count,newhost);
-                            pci_count++;
-                        }
-                        obj = obj->next_cousin;
-                        continue;
+                if(true == mca_sensor_dmidata_component.blk_dev) { /* Check for the user defined mca parameter */
+                    extract_blk_inventory(obj,pci_count,newhost);
+                    pci_count++;
+                }
+                break;
+           case 0x02: /*Network Device*/
+                if (true == mca_sensor_dmidata_component.ntw_dev) { /* Check for the user defined mca paramer */
+                    extract_ntw_inventory(obj,pci_count,newhost);
+                    pci_count++;
+                }
+                break;
             default: /*Other PCI Device, currently not required */
-                        obj = obj->next_cousin;
-                        continue;
+                break;
         }
-        obj = obj->next_cousin;
+        prev = obj;
+        obj = hwloc_get_next_pcidev(topo, prev);
     }
 }
 
@@ -542,6 +591,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             extract_baseboard_inventory(topo, hostname, newhost);
             extract_cpu_inventory(topo, hostname, newhost);
             extract_cpu_freq_steps(freq_step_list, hostname, newhost);
+            extract_pci_inventory(topo, hostname, newhost);
 
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {

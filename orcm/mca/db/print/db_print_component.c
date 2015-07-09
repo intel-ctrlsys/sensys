@@ -56,7 +56,7 @@ static char *filename;
 
 static int component_register(void)
 {
-    filename = NULL;
+    filename = "-";
     (void) mca_base_component_var_register (&mca_db_print_component.base_version,
                                             "file", "Print to the indicated file (- => stdout, + => stderr)",
                                             MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,

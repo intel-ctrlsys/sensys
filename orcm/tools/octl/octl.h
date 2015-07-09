@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2014      Intel, Inc. All rights reserved
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -168,6 +168,15 @@ static orcm_cli_init_t cli_init[] = {
     // strict subcommand
     { { "power", "get", NULL }, "strict", 0, 0, "Get Strictness Policy For Frequency Settings" },
 
+    /****** logical group command ******/
+    { { NULL }, "grouping", 0, 0, "Logical Grouping Information" },
+    { { "grouping", NULL }, "load", 0, 1, "Load a logical grouping to replace default: load <new logical grouping file>" },
+    { { "grouping", NULL }, "add", 0, 2, "Add a tag-value pair to the groupings: add <tag> <node-regex>" },
+    { { "grouping", NULL }, "remove", 0, 2, "Remove a tag-value pair to the groupings: remove <tag> <node-regex>" },
+    { { "grouping", NULL }, "save", 0, 1, "Save current logical grouping to a file: save <target output file>" },
+    { { "grouping", NULL }, "listnode", 0, 1, "List nodes associated with a given tag: listnode <tag>" },
+    { { "grouping", NULL }, "listtag", 0, 1, "List tags associated with given nodes: listtag <node regex>" },
+
     /* End of list */
     { { NULL }, NULL, 0, 0, NULL }
 };
@@ -209,6 +218,11 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "strict",            //29
                                      "sensor",            //30
                                      "sample-rate",       //31
+                                     "grouping",          //32
+                                     "load",              //33
+                                     "save",              //34
+                                     "listnode",          //35
+                                     "listtag",           //36
                                      "\0" };
 
 END_C_DECLS

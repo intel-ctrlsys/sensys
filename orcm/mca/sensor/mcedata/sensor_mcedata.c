@@ -714,8 +714,8 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
 
     t = (((mce_reg[MCI_STATUS] & 0x100) >> 8) & 0x1);
     switch (t) {
-        case 0: kv->data.string = strdup("TIMEOUT"); break;
-        case 1: kv->data.string = strdup("NOTIMEOUT"); break;
+        case 0: kv->data.string = strdup("NOTIMEOUT"); break;
+        case 1: kv->data.string = strdup("TIMEOUT"); break;
     }
     opal_list_append(vals, &kv->super);
 

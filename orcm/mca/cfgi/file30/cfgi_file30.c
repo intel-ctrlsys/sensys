@@ -1600,8 +1600,9 @@ static int parse_node(orcm_node_t *node, int idx, orcm_cfgi_xml_parser_t *x)
 static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
 {
     char *name, *p, *q;
-    int n, rc, nnodes, digits;
-    orcm_cfgi_xml_parser_t *xx;
+    char **vals, **names;
+    int n, rc, digits;
+    orcm_cfgi_xml_parser_t *xx, *y;
     orcm_node_t *node, *nd;
 
     if (0 == strcmp(x->name, TXcontrol)) {
@@ -1654,26 +1655,52 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
         }
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                             "\tNODE NAME %s", x->value[0]);
-        /* if the first character is a #, then this is the number of nodes
-         * to be defined
-         */
-        if ('#' == x->value[0][0]) {
-            nnodes = strtol(&x->value[0][1], NULL, 10);
-            for (n=0; n < nnodes; n++) {
-                node = OBJ_NEW(orcm_node_t);
-                node->rack = (struct orcm_rack_t*)rack;
-                node->state = ORTE_NODE_STATE_UNKNOWN;
-                opal_list_append(&rack->nodes, &node->super);
+        /* define the nodes */
+        vals = opal_argv_split(x->value[0], ',');
+        if (NULL != vals) {
+            names = NULL;
+            for (n=0; NULL != vals[n]; n++) {
+                if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(vals[n], &names))) {
+                    opal_argv_free(vals);
+                    opal_argv_free(names);
+                    return rc;
+                }
+            }
+            if (NULL == names) {
+                /* that's an error */
+                opal_argv_free(vals);
+                return ORCM_ERR_BAD_PARAM;
+            }
+            /* see if we have each racks object - it not, create it */
+            for (n=0; NULL != names[n]; n++) {
+                node = NULL;
+                OPAL_LIST_FOREACH(nd, &rack->nodes, orcm_node_t) {
+                    if (0 == strcmp(nd->name, names[n])) {
+                        node = nd;
+                        break;
+                    }
+                }
+                if (NULL == node) {
+                    opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                                        "\tNEW ROW NAME %s", names[n]);
+                    node = OBJ_NEW(orcm_node_t);
+                    node->name = strdup(names[n]);
+                    opal_list_append(&rack->nodes, &node->super);
+                }
                 /* now cycle thru the rest of this config element and apply
                  * those values to this node
                  */
-                OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
-                    if (ORCM_SUCCESS != (rc = parse_node(node, n, xx))) {
+                OPAL_LIST_FOREACH(y, &x->subvals, orcm_cfgi_xml_parser_t) {
+                    if (ORCM_SUCCESS != (rc = parse_node(node, n, y))) {
                         ORTE_ERROR_LOG(rc);
+                        opal_argv_free(vals);
+                        opal_argv_free(names);
                         return rc;
                     }
                 }
             }
+            opal_argv_free(vals);
+            opal_argv_free(names);
         } else {
             /* see if we already have this node */
             node = NULL;
@@ -1710,8 +1737,9 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
 
 static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
 {
-    int n, rc, nracks;
-    orcm_cfgi_xml_parser_t *xx;
+    int n, rc;
+    orcm_cfgi_xml_parser_t *xx, *y;
+    char **vals, **names;
     orcm_rack_t *rack, *r;
 
     if (0 == strcmp(x->name, TXcontrol)) {
@@ -1743,26 +1771,52 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
         }
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                             "\tRACK NAME %s", x->value[0]);
-        /* if the first character is a #, then this is the number of racks
-         * to be defined - the racks are named by their controllers
-         */
-        if ('#' == x->value[0][0]) {
-            nracks = strtol(&x->value[0][1], NULL, 10);
-            for (n=0; n < nracks; n++) {
-                rack = OBJ_NEW(orcm_rack_t);
-                rack->row = row;
-                OBJ_RETAIN(row);
-                opal_list_append(&row->racks, &rack->super);
+        /* define the racks */
+        vals = opal_argv_split(x->value[0], ',');
+        if (NULL != vals) {
+            names = NULL;
+            for (n=0; NULL != vals[n]; n++) {
+                if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(vals[n], &names))) {
+                    opal_argv_free(vals);
+                    opal_argv_free(names);
+                    return rc;
+                }
+            }
+            if (NULL == names) {
+                /* that's an error */
+                opal_argv_free(vals);
+                return ORCM_ERR_BAD_PARAM;
+            }
+            /* see if we have each racks object - it not, create it */
+            for (n=0; NULL != names[n]; n++) {
+                rack = NULL;
+                OPAL_LIST_FOREACH(r, &row->racks, orcm_rack_t) {
+                    if (0 == strcmp(r->name, names[n])) {
+                        rack = r;
+                        break;
+                    }
+                }
+                if (NULL == rack) {
+                    opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                                        "\tNEW ROW NAME %s", names[n]);
+                    rack = OBJ_NEW(orcm_rack_t);
+                    rack->name = strdup(names[n]);
+                    opal_list_append(&row->racks, &rack->super);
+                }
                 /* now cycle thru the rest of this config element and apply
                  * those values to this rack
                  */
-                OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
-                    if (ORCM_SUCCESS != (rc = parse_rack(rack, n, xx))) {
+                OPAL_LIST_FOREACH(y, &x->subvals, orcm_cfgi_xml_parser_t) {
+                    if (ORCM_SUCCESS != (rc = parse_rack(rack, n, y))) {
                         ORTE_ERROR_LOG(rc);
+                        opal_argv_free(vals);
+                        opal_argv_free(names);
                         return rc;
                     }
                 }
             }
+            opal_argv_free(vals);
+            opal_argv_free(names);
         } else {
             /* see if we already have this rack */
             rack = NULL;
@@ -1846,7 +1900,7 @@ static int parse_cluster(orcm_cluster_t *cluster,
             if (NULL != vals) {
                 names = NULL;
                 for (n=0; NULL != vals[n]; n++) {
-                    if (ORTE_SUCCESS != (rc = orte_regex_extract_name_range(vals[n], &names))) {
+                    if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(vals[n], &names))) {
                         opal_argv_free(vals);
                         opal_argv_free(names);
                         return rc;

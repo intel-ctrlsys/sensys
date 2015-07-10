@@ -725,7 +725,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     kv->type = OPAL_STRING;
 
     ii = (((mce_reg[MCI_STATUS] & 0xC) >> 2)&0x3);
-    switch (pp) {
+    switch (ii) {
         case 0: kv->data.string = strdup("M"); break;
         case 1: kv->data.string = strdup("reserved"); break;
         case 2: kv->data.string = strdup("IO"); break;

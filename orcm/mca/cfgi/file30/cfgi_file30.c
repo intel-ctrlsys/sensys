@@ -619,6 +619,20 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
                                     cluster->controller.name, vpid, my_ip);
                 if (found_me) {
                     *mynode = &cluster->controller;
+                    OBJ_RETAIN(*mynode);
+                    if (NULL != scheduler) {
+                        /* define my HNP to be the scheduler, if available */
+                        ORTE_PROC_MY_HNP->jobid = scheduler->controller.daemon.jobid;
+                        ORTE_PROC_MY_HNP->vpid = scheduler->controller.daemon.vpid;
+                    } else {
+                        /* otherwise, it is just myself */
+                        ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_NAME->jobid;
+                        ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_NAME->vpid;
+                    }
+                    /* define my daemon as myself */
+                    ORTE_PROC_MY_DAEMON->jobid = ORTE_PROC_MY_NAME->jobid;
+                    ORTE_PROC_MY_DAEMON->vpid = ORTE_PROC_MY_NAME->vpid;
+
                 }
             }
             ++vpid;
@@ -645,6 +659,26 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
                                         row->controller.name, vpid, my_ip);
                     if (found_me) {
                         *mynode = &row->controller;
+                        OBJ_RETAIN(*mynode);
+                        if (NULL != scheduler) {
+                           /* define my HNP to be the scheduler, if available */
+                           ORTE_PROC_MY_HNP->jobid = scheduler->controller.daemon.jobid;
+                           ORTE_PROC_MY_HNP->vpid = scheduler->controller.daemon.vpid;
+                        } else {
+                           /* otherwise, it is just myself */
+                           ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_NAME->jobid;
+                           ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_NAME->vpid;
+                        }
+                        if (ORTE_NODE_STATE_UNDEF != cluster->controller.state) {
+                           /* define my DAEMON to be the cluster, if available */
+                           ORTE_PROC_MY_DAEMON->jobid = cluster->controller.daemon.jobid;
+                           ORTE_PROC_MY_DAEMON->vpid = cluster->controller.daemon.vpid;
+                        } else {
+                           /* otherwise, it is just myself */
+                           ORTE_PROC_MY_DAEMON->jobid = ORTE_PROC_MY_NAME->jobid;
+                           ORTE_PROC_MY_DAEMON->vpid = ORTE_PROC_MY_NAME->vpid;
+                        }
+
                     }
                 }
                 ++vpid;
@@ -666,6 +700,30 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
                                             rack->controller.name, vpid, my_ip);
                         if (found_me) {
                             *mynode = &rack->controller;
+                            OBJ_RETAIN(*mynode);
+                            (*mynode)->rack = (struct orcm_rack_t*)rack;
+                            OBJ_RETAIN(rack);
+                            if (NULL != scheduler) {
+                               /* define my HNP to be the scheduler, if available */
+                               ORTE_PROC_MY_HNP->jobid = scheduler->controller.daemon.jobid;
+                               ORTE_PROC_MY_HNP->vpid = scheduler->controller.daemon.vpid;
+                            } else {
+                               /* otherwise, it is just myself */
+                               ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_NAME->jobid;
+                               ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_NAME->vpid;
+                            }
+
+                            if (ORTE_NODE_STATE_UNDEF != row->controller.state) {
+                               ORTE_PROC_MY_DAEMON->jobid = row->controller.daemon.jobid;
+                               ORTE_PROC_MY_DAEMON->vpid = row->controller.daemon.vpid;
+                            } else if (ORTE_NODE_STATE_UNDEF != cluster->controller.state) {
+                               ORTE_PROC_MY_DAEMON->jobid = cluster->controller.daemon.jobid;
+                               ORTE_PROC_MY_DAEMON->vpid = cluster->controller.daemon.vpid;
+                            } else {
+                               /* otherwise, it is just myself */
+                               ORTE_PROC_MY_DAEMON->jobid = ORTE_PROC_MY_NAME->jobid;
+                               ORTE_PROC_MY_DAEMON->vpid = ORTE_PROC_MY_NAME->vpid;
+                            }
                         }
                     }
                     ++vpid;
@@ -680,6 +738,33 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
                         found_me = check_me(&node->config, node->name, vpid, my_ip);
                         if (found_me) {
                             *mynode = node;
+                            OBJ_RETAIN(*mynode);
+                            (*mynode)->rack = (struct orcm_rack_t*)rack;
+                            OBJ_RETAIN(rack);
+                            if (NULL != scheduler) {
+                               /* define my HNP to be the scheduler, if available */
+                               ORTE_PROC_MY_HNP->jobid = scheduler->controller.daemon.jobid;
+                               ORTE_PROC_MY_HNP->vpid = scheduler->controller.daemon.vpid;
+                            } else {
+                               /* otherwise, it is just myself */
+                               ORTE_PROC_MY_HNP->jobid = ORTE_PROC_MY_NAME->jobid;
+                               ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_NAME->vpid;
+                            }
+
+                            if (ORTE_NODE_STATE_UNDEF != rack->controller.state) {
+                               ORTE_PROC_MY_DAEMON->jobid = rack->controller.daemon.jobid;
+                               ORTE_PROC_MY_DAEMON->vpid = rack->controller.daemon.vpid;
+                            }  else if (ORTE_NODE_STATE_UNDEF != row->controller.state) {
+                               ORTE_PROC_MY_DAEMON->jobid = row->controller.daemon.jobid;
+                               ORTE_PROC_MY_DAEMON->vpid = row->controller.daemon.vpid;
+                            } else if (ORTE_NODE_STATE_UNDEF != cluster->controller.state) {
+                               ORTE_PROC_MY_DAEMON->jobid = cluster->controller.daemon.jobid;
+                               ORTE_PROC_MY_DAEMON->vpid = cluster->controller.daemon.vpid;
+                            } else {
+                               /* otherwise, it is just myself */
+                               ORTE_PROC_MY_DAEMON->jobid = ORTE_PROC_MY_NAME->jobid;
+                               ORTE_PROC_MY_DAEMON->vpid = ORTE_PROC_MY_NAME->vpid;
+                            }
                         }
                     }
                     ++vpid;
@@ -1880,6 +1965,7 @@ static void setup_environ(char **env)
         "ERROR: Environment variables merge failed.");
         return;
     }
+
 
     /* now cycle thru the result and push MCA params back into our
      * environment. We will overwrite some existing values,

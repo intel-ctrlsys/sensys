@@ -87,20 +87,14 @@ def disable_partition_trigger(table_name):
           "as is." % table_name)
 
 
-def main(table_name, column_name, interval, interval_to_keep,
-         enable_purging=False):
-    """Execute the generated code from generate_partition_triggers_ddl()
-    function.
+def main():
+    """Main driver"""
+    table_name = "data_sample_raw"
+    column_name = "time_stamp"
+    interval = "DAY"
+    interval_to_keep = 10
+    enable_purging = True
 
-    :param table_name: The name of the table to apply the partition
-    :param column_name: The column name to partition on.  This column need to
-    be a Postgres timestamp datatype
-    :param interval: The interval unit supported by Postgres (e.g. YEAR, MONTH,
-    DAY, HOUR, MINUTE).  The size of the partition is one unit of this interval.
-    :param interval_to_keep: The number of interval to keep before purging
-    :param enable_purging: True to drop old partition when create new partition.
-    :return:  None.  Only print output.
-    """
     disable_partition_trigger(table_name)
 
     enable_partition_trigger(table_name, column_name, interval,
@@ -117,4 +111,4 @@ if __name__ == "__main__":
               "[:<port>]/<database>")
 
     db_engine = connect_to_db(db_url=db_url)
-    main("data_sample_raw", "time_stamp", "DAY", 10, enable_purging=True)
+    main()

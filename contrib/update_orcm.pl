@@ -58,7 +58,7 @@ my @ompi_leading_ignores = ("ompi", "test", "examples", "config/ompi", "orte/too
                             "autogen.pl", "configure.ac", "config/opal_mca.m4", "config/opal_setup_wrappers.m4",
                             "config/orte_config_files.m4", "contrib/Makefile.am", "contrib/platform",
                             "contrib/nightly", "contrib/dist",
-                            "opal/threads", "opal/tools/wrappers",
+                            "opal/threads", "opal/tools/wrappers", "opal/mca/pmix",
                             "orte/mca/errmgr/default_app", "orte/mca/ess/env",
                             "orte/mca/ess/hnp", "orte/mca/ess/lsf",
                             "orte/mca/ess/singleton", "orte/mca/ess/slurm",
@@ -67,7 +67,7 @@ my @ompi_leading_ignores = ("ompi", "test", "examples", "config/ompi", "orte/too
                             "orte/mca/state/state.h", "orte/mca/state/app", 
                             "orte/mca/state/hnp", "orte/mca/state/novm",
                             "orte/mca/state/staged", "orte/tools/Makefile.am", "orte/util/proc_info.h",
-                            ".mailmap", ".hgignore_global", "AUTHORS", "NEWS", "Makefile.ompi-rules");
+                            "orte/orted/pmix", ".mailmap", ".hgignore_global", "AUTHORS", "NEWS", "Makefile.ompi-rules");
 
 
 my @orcm_ignores = (".gitignore", ".hgignore_global", ".mailmap", "Makefile.am", "README", "VERSION",

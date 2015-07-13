@@ -16,7 +16,7 @@
  *                         reserved.
  * Copyright (c) 2006-2007 Voltaire All rights reserved.
  * Copyright (c) 2009-2012 Oracle and/or its affiliates.  All rights reserved.
- * Copyright (c) 2011-2014 NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2011-2015 NVIDIA Corporation.  All rights reserved.
  * Copyright (c) 2012      Oak Ridge National Laboratory.  All rights reserved
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved
  * Copyright (c) 2014-2015 Research Organization for Information Science
@@ -199,6 +199,10 @@ static int btl_openib_component_register(void)
            "open" failing is not printed */
         return OPAL_ERR_NOT_AVAILABLE;
     }
+
+#if OPAL_CUDA_SUPPORT
+    mca_common_cuda_register_mca_variables();
+#endif
 
     return OPAL_SUCCESS;
 }
@@ -3376,12 +3380,15 @@ progress_pending_frags_wqe(mca_btl_base_endpoint_t *ep, const int qpn)
             frag = opal_list_remove_first(&ep->qps[qpn].no_wqe_pending_frags[i]);
             if(NULL == frag)
                 break;
+            assert(0 == frag->opal_list_item_refcount);
             tmp_ep = to_com_frag(frag)->endpoint;
             ret = mca_btl_openib_endpoint_post_send(tmp_ep, to_send_frag(frag));
             if (OPAL_SUCCESS != ret) {
                 /* NTH: this handles retrying if we are out of credits but other errors are not
                  * handled (maybe abort?). */
-                opal_list_prepend (&ep->qps[qpn].no_wqe_pending_frags[i], (opal_list_item_t *) frag);
+                if (OPAL_ERR_RESOURCE_BUSY != ret) {
+                    opal_list_prepend (&ep->qps[qpn].no_wqe_pending_frags[i], (opal_list_item_t *) frag);
+                }
                 break;
             }
        }

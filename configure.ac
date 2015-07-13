@@ -204,7 +204,7 @@ AH_TOP([/* -*- c -*-
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -367,11 +367,7 @@ AC_CHECK_TYPES(ptrdiff_t)
 # Check for type sizes
 #
 
-# need the C++ language real quick to get the sizeof_bool
-AC_LANG_PUSH(C++)
-AC_CHECK_SIZEOF(bool)
-AC_LANG_POP(C++)
-
+AC_CHECK_SIZEOF(_Bool)
 AC_CHECK_SIZEOF(char)
 AC_CHECK_SIZEOF(short)
 AC_CHECK_SIZEOF(int)

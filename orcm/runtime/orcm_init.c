@@ -130,7 +130,7 @@ int orcm_init(orcm_proc_type_t flags)
     /* we don't need a progress thread as all our tools loop inside themselves,
      * so define orte_event_base to be the base opal_event_base
      */
-    orte_event_base = opal_event_base;
+    orte_event_base = opal_sync_event_base;
 
     /* setup the globals */
     orcm_clusters = OBJ_NEW(opal_list_t);

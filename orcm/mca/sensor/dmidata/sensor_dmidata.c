@@ -26,6 +26,8 @@
 #include <dirent.h>
 #endif  /* HAVE_DIRENT_H */
 
+#include <ctype.h>
+
 #include "opal_stdint.h"
 #include "opal/class/opal_list.h"
 #include "opal/dss/dss.h"
@@ -111,6 +113,16 @@ static char osdev_keywords[MAX_OSDEV_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWO
      {"type","","","","type","TV_DeviceType"},
 };
 
+static char misc_keywords[MAX_MISC_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWORDS][MAX_INVENTORY_KEYWORD_SIZE] = {
+     {"Type","","","","type","TV_miscType"},
+     {"DeviceLocation","","","","device_location","TV_DeviceLoc"},
+     {"BankLocation","","","","bank_location","TV_BankLoc"},
+     {"Vendor","","","","vendor","TV_Vendor"},
+     {"SerialNumber","","","","serial_number","TV_SerialNum"},
+     {"AssetTag","","","","asset_tag","TV_AssetTag"},
+     {"PartNumber","","","","part_number","TV_PartNum"},
+};
+
 enum inv_item_req
     { 
         INVENTORY_KEY, 
@@ -123,6 +135,17 @@ hwloc_topology_t dmidata_hwloc_topology;
 bool sensor_set_hwloc;
 bool cpufreq_loaded = false;
 
+
+#define addStringRecord(key_str, valueStr) {      \
+    mkv = OBJ_NEW(orcm_metric_value_t);    \
+    mkv->value.type = OPAL_STRING;         \
+    mkv->value.key = (key_str);                  \
+    mkv->value.data.string = (valueStr);        \
+    opal_list_append(newhost->records, (opal_list_item_t *)mkv);        \
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output, \
+      "Found %s : %s",mkv->value.key, mkv->value.data.string);         \
+}
+
 static int init(void)
 {
     FILE *fptr;
@@ -132,8 +155,7 @@ static int init(void)
                         "dmidata init");
     OBJ_CONSTRUCT(&dmidata_host_list, opal_list_t);
     sensor_set_hwloc = false;
-    if(NULL == opal_hwloc_topology)
-    {
+    if(NULL == opal_hwloc_topology) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "opal_hwloc_topology object uninitialized;Running Init");
         if(0 == hwloc_topology_init(&dmidata_hwloc_topology)) {
@@ -177,14 +199,28 @@ static void finalize(void)
     }
 }
 
+static char* check_misc_key(char *misc_key, enum inv_item_req req)
+{
+    int i = 0;
+
+    while (i<MAX_MISC_INVENTORY_KEYWORDS) {
+        if (0 == strcasecmp(misc_key,misc_keywords[i][0])) {
+            if(req == INVENTORY_KEY)
+                return misc_keywords[i][4]; /* Returns the inventory item's key */
+            else
+                return misc_keywords[i][5]; /* Returns the inventory item's test vector value */
+        }
+        i++;
+    }
+    return NULL;
+}
+
 static char* check_osdev_key(char *inv_key, enum inv_item_req req)
 {
     int i = 0;
 
-    while (i<MAX_OSDEV_INVENTORY_KEYWORDS)
-    {
-        if (0 == strcasecmp(inv_key,osdev_keywords[i][0]))
-        {
+    while (i<MAX_OSDEV_INVENTORY_KEYWORDS) {
+        if (0 == strcasecmp(inv_key,osdev_keywords[i][0])) {
             if(req == INVENTORY_KEY)
                 return osdev_keywords[i][4]; /* Returns the inventory item's key */
             else
@@ -199,12 +235,9 @@ static char* check_inv_key(char *inv_key, enum inv_item_req req)
 {
     int i = 0;
 
-    while (i<MAX_INVENTORY_KEYWORDS)
-    {
-        if ((NULL != strcasestr(inv_key,inv_keywords[i][0])) & (NULL != strcasestr(inv_key,inv_keywords[i][1])) & (NULL != strcasestr(inv_key,inv_keywords[i][2])))
-        {
-            if((NULL != strcasestr(inv_key,inv_keywords[i][3])) & (strlen(inv_keywords[i][3])> 0))
-            {
+    while (i<MAX_INVENTORY_KEYWORDS) {
+        if ((NULL != strcasestr(inv_key,inv_keywords[i][0])) & (NULL != strcasestr(inv_key,inv_keywords[i][1])) & (NULL != strcasestr(inv_key,inv_keywords[i][2]))) {
+            if((NULL != strcasestr(inv_key,inv_keywords[i][3])) & (strlen(inv_keywords[i][3])> 0)) {
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                     "Discarding the inventory item %s with ignore string %s ",inv_keywords[i][3],inv_key);
             } else {
@@ -234,15 +267,8 @@ static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, d
 
     /* Pack the total MACHINE Stats present and to be copied */
     for (k=0; k < obj->infos_count; k++) {
-        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
-        {
-            mkv = OBJ_NEW(orcm_metric_value_t);
-            mkv->value.type = OPAL_STRING;
-            mkv->value.key = strdup(inv_key);
-            mkv->value.data.string = strdup(obj->infos[k].value);
-            opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
+        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY))) {
+            addStringRecord(strdup(inv_key), strdup(obj->infos[k].value));
         }
     }
 }
@@ -261,8 +287,7 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
         ORTE_ERROR_LOG(ORTE_ERROR);
         return;
     }
-    while(NULL != obj->next_cousin)
-    {
+    while(NULL != obj->next_cousin) {
         socket_count++;
         obj=obj->next_cousin;
     }
@@ -275,13 +300,11 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
     /* Pack the total SOCKET Stats present and to be copied */
     /* @VINFIX: Collect the CPU information of each CPU in each SOCKET */
     for (k=0; k < obj->infos_count; k++) {
-        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
-        {
+        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY))) {
             mkv = OBJ_NEW(orcm_metric_value_t);
             mkv->value.key = strdup(inv_key);
             if(!strncmp(inv_key,"cpu_model_number",sizeof("cpu_model_number")) |
-               !strncmp(inv_key,"cpu_family",sizeof("cpu_family")))
-            {
+               !strncmp(inv_key,"cpu_family",sizeof("cpu_family"))) {
                 mkv->value.type = OPAL_INT;
                 mkv->value.data.integer = strtol(obj->infos[k].value,NULL,10);
             } else {
@@ -301,46 +324,28 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
     uint32_t k;
     orcm_metric_value_t *mkv;
     char *inv_key;
+    char *key_str;
     
     if(false == mca_sensor_dmidata_component.blk_dev) {
         return;
     }
 
-    mkv = OBJ_NEW(orcm_metric_value_t);
-    asprintf(&mkv->value.key,"pci_type_%d",pci_count);
-    mkv->value.type = OPAL_STRING;
-    mkv->value.data.string = strdup("BlockDevice");
-    opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                        "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+    asprintf(&key_str,"pci_type_%d",pci_count);
+    addStringRecord(key_str, strdup("BlockDevice"));
 
     for (k=0; k < obj->infos_count; k++) {
-        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
-        {
-            mkv = OBJ_NEW(orcm_metric_value_t);
-            asprintf(&mkv->value.key,"%s_%d",inv_key,pci_count);
-            mkv->value.type = OPAL_STRING;
-            mkv->value.data.string = strdup(obj->infos[k].value);
-            opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                                "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY))) {
+            addStringRecord(strdup(inv_key), strdup(obj->infos[k].value));
         }
     }
 
     if (NULL != obj->first_child) {
-        if (HWLOC_OBJ_OS_DEVICE == obj->first_child->type)
-        {
+        if (HWLOC_OBJ_OS_DEVICE == obj->first_child->type) {
             obj = obj->first_child;
             for (k=0; k < obj->infos_count; k++) {
-                if(NULL != (inv_key = check_osdev_key(obj->infos[k].name, INVENTORY_KEY)))
-                {
-                    mkv = OBJ_NEW(orcm_metric_value_t);
-                    asprintf(&mkv->value.key,"%s_%d",inv_key,pci_count);
-                    mkv->value.type = OPAL_STRING;
-                    mkv->value.data.string = strdup(obj->infos[k].value);
-                    opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-                    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                                        "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+                if(NULL != (inv_key = check_osdev_key(obj->infos[k].name, INVENTORY_KEY))) {
+                    asprintf(&key_str,"pci_type_%d",pci_count);
+                    addStringRecord(key_str, strdup(obj->infos[k].value));
                 }
             }
 
@@ -354,50 +359,30 @@ static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
     uint32_t k;
     orcm_metric_value_t *mkv;
     char *inv_key;
+    char *key_str;
     if(false == mca_sensor_dmidata_component.ntw_dev) {
         return;
     }
-    mkv = OBJ_NEW(orcm_metric_value_t);
-    asprintf(&mkv->value.key,"pci_type_%d",pci_count);
-    mkv->value.type = OPAL_STRING;
-    mkv->value.data.string = strdup("NetworkDevice");
-    opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                        "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+    asprintf(&key_str,"pci_type_%d",pci_count);
+    addStringRecord(key_str, strdup("NetworkDevice"));
 
     for (k=0; k < obj->infos_count; k++) {
-        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
-        {
-            mkv = OBJ_NEW(orcm_metric_value_t);
-            asprintf(&mkv->value.key,"%s_%d",inv_key,pci_count);
-            mkv->value.type = OPAL_STRING;
-            mkv->value.data.string = strdup(obj->infos[k].value);
-            opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                                "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY))) {
+            asprintf(&key_str,"%s_%d",inv_key,pci_count);
+            addStringRecord(key_str, strdup(obj->infos[k].value));
         }
     }
     if (NULL != obj->first_child) {
-        if (HWLOC_OBJ_OS_DEVICE == obj->first_child->type)
-        {
+        if (HWLOC_OBJ_OS_DEVICE == obj->first_child->type) {
             obj = obj->first_child;
             for (k=0; k < obj->infos_count; k++) {
-                if(NULL != (inv_key = check_osdev_key(obj->infos[k].name, INVENTORY_KEY)))
-                {
-                    mkv = OBJ_NEW(orcm_metric_value_t);
-                    asprintf(&mkv->value.key,"%s_%d",inv_key,pci_count);
-                    mkv->value.type = OPAL_STRING;
-                    mkv->value.data.string = strdup(obj->infos[k].value);
-                    opal_list_append(newhost->records, (opal_list_item_t *)mkv);
-                    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                                        "Found PCI Item %s : %s",mkv->value.key,mkv->value.data.string);
+                if(NULL != (inv_key = check_osdev_key(obj->infos[k].name, INVENTORY_KEY))) {
+                    asprintf(&key_str,"%s_%d",inv_key,pci_count);
+                    addStringRecord(key_str, strdup(obj->infos[k].value));
                 }
             }
-
-
         }
     }
-
 }
 
 static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata_inventory_t *newhost)
@@ -445,6 +430,59 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
     }
 }
 
+static void extract_memory_inventory(hwloc_topology_t topo, char *hostname, dmidata_inventory_t *newhost)
+{
+    orcm_metric_value_t *mkv;
+    hwloc_obj_t obj;
+    hwloc_obj_t memobj;
+    uint32_t mem_count;
+    const char *value;
+    char *key_str;
+    char *misc_key;
+    char *c_start;
+    char *c_end;
+    unsigned int i, k, len;
+
+    if (false == mca_sensor_dmidata_component.mem_dev){
+        return;
+    }
+
+    mem_count = 0;
+    obj = hwloc_get_root_obj(topo);
+
+    for (i=0; i < obj->arity; i++){
+        memobj = obj->children[i];
+        if (memobj->type != HWLOC_OBJ_MISC){
+          continue;
+        }
+        value = hwloc_obj_get_info_by_name(memobj, "Type");
+        if (strcmp(value, "MemoryModule")){
+          continue;
+        }
+      
+        mem_count++;
+
+        for (k=0; k < memobj->infos_count; k++) {
+            if(NULL != (misc_key = check_misc_key(memobj->infos[k].name, INVENTORY_KEY))) {
+                asprintf(&key_str,"%s_%d",misc_key,mem_count);
+
+                /* Some memory value fields are padded with spaces at the end. */
+                c_start = memobj->infos[k].value;
+                len = strlen(c_start);
+                c_end = c_start + len - 1;
+                while ((c_end != c_start) && isspace((int)(*c_end))) c_end--;
+                len = c_end - c_start + 1;
+              
+                addStringRecord(key_str, strndup(c_start, len));
+            }
+        }
+    }
+
+    if (0 == mem_count){
+        orte_show_help("help-orcm-sensor-dmidata.txt", "no-memory", true, hostname);
+        ORTE_ERROR_LOG(ORTE_ERROR);
+    }
+}
 static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata_inventory_t *newhost)
 {
     orcm_metric_value_t *mkv;
@@ -538,8 +576,7 @@ static dmidata_inventory_t* found_inventory_host(char * nodename)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Finding Node in dmidata inventory: %s", nodename);
     OPAL_LIST_FOREACH_SAFE(host, nxt, &dmidata_host_list, dmidata_inventory_t) {
-        if(!strcmp(nodename,host->nodename))
-        {
+        if(!strcmp(nodename,host->nodename)) {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "Found Node: %s", nodename);
             return host;
@@ -567,8 +604,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         return;
     }
 
-    if (NULL != (newhost = found_inventory_host(hostname)))
-    {
+    if (NULL != (newhost = found_inventory_host(hostname))) {
         /* Check and Verify Node Inventory record and update db/notify user accordingly */
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "dmidata HOST found!!");
         if((opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) & 
@@ -592,6 +628,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             extract_cpu_inventory(topo, hostname, newhost);
             extract_cpu_freq_steps(freq_step_list, hostname, newhost);
             extract_pci_inventory(topo, hostname, newhost);
+            extract_memory_inventory(topo, hostname, newhost);
 
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {
@@ -612,6 +649,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         extract_cpu_inventory(topo, hostname, newhost);
         extract_cpu_freq_steps(freq_step_list, hostname, newhost);
         extract_pci_inventory(topo, hostname, newhost);
+        extract_memory_inventory(topo, hostname, newhost);
 
         /* Append the new node to the existing host list */
         opal_list_append(&dmidata_host_list, &newhost->super);
@@ -642,8 +680,7 @@ static void generate_test_vector(opal_buffer_t *v)
     }
     /* Pack the total MACHINE Stats present and to be copied */
     for (k=0; k < obj->infos_count; k++) {
-        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY)))
-        {
+        if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY))) {
             inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR);
             if(NULL != inv_tv) {
                 free(obj->infos[k].value);
@@ -663,13 +700,11 @@ static void generate_test_vector(opal_buffer_t *v)
         return;
     }
     /* Set Text Vector for all cousins at the OBJ_SOCKET level */
-    while(NULL != (obj->next_cousin))
-    {
+    while(NULL != (obj->next_cousin)) {
         obj=obj->next_cousin;
         /* Pack the total CPU Stats present and to be copied */
         for (k=0; k < obj->infos_count; k++) {
-            if(NULL != (inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR)))
-            {
+            if(NULL != (inv_tv = check_inv_key(obj->infos[k].name, INVENTORY_TEST_VECTOR))) {
                 free(obj->infos[k].value);
                 obj->infos[k].value = strdup(inv_tv);
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,

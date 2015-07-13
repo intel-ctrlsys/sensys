@@ -22,3 +22,7 @@ from the node: %s
 Unable to extract PCI details from the received topology object
 from the node: %s
 #
+[no-memory]
+Unable to extract memory details from the received topology object
+from the node: %s
+#

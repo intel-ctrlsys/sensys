@@ -4,22 +4,21 @@
 import os
 from sqlalchemy import create_engine, DDL
 
+DEBUG = False
 
 db_engine = None
 
 
-def connect_to_db(db_url, debug=False):
+def connect_to_db(db_url):
     """Set the db_engine instance
 
     :param db_url: The database connection string in the format
     postgresql[+<driver>://[<username>[:<password>]]@<server>[:<port>]/<database>.
 
     See SQLAlchemy database dialect for more information.
-    :param debug: Set to True to enable echo of actual SQL statement being
-    issued to the database
     :return:  Database engine
     """
-    return create_engine(db_url, echo=debug)
+    return create_engine(db_url, echo=DEBUG)
 
 
 def enable_partition_trigger(table_name, column_name, interval,
@@ -39,7 +38,8 @@ def enable_partition_trigger(table_name, column_name, interval,
     generated_ddl_sql_stmt = (
         """SELECT generate_partition_triggers_ddl('%s', '%s', '%s', %d);""" %
         (table_name, column_name, interval, interval_to_keep))
-    print(generated_ddl_sql_stmt)
+    if DEBUG:
+        print(generated_ddl_sql_stmt)
     partition_trigger_ddl_stmt = db_engine.execute(generated_ddl_sql_stmt).scalar()
 
     # Enable auto purging within the table partitioning function
@@ -49,8 +49,35 @@ def enable_partition_trigger(table_name, column_name, interval,
             "EXECUTE('DROP TABLE IF EXISTS ' || quote_ident('")
         print("Uncommented the DROP expired partition as new partition being "
               "created")
-    print(partition_trigger_ddl_stmt)
+    if DEBUG:
+        print(partition_trigger_ddl_stmt)
     db_engine.execute(DDL(partition_trigger_ddl_stmt))
+
+    # Verify the trigger and the partition handler functions do exist
+    verify_trigger_stmt = ("SELECT 1 "
+                           "FROM information_schema.triggers "
+                           "WHERE trigger_name = 'insert_%s_trigger';" %
+                           table_name)
+    verify_trigger_result = db_engine.execute(verify_trigger_stmt).scalar()
+    if verify_trigger_result:
+        print("Verified 'insert_%s_trigger' exists" % table_name)
+    else:
+        raise RuntimeError("The expected trigger 'insert_%s_trigger' does not "
+                           "exist after enabled partition on %s" %
+                           (table_name, table_name))
+
+    verify_handler_stmt = ("SELECT 1 "
+                           "FROM information_schema.routines "
+                           "WHERE routine_name = '%s_partition_handler';" %
+                           table_name)
+    verify_handler_result = db_engine.execute(verify_handler_stmt).scalar()
+    if verify_handler_result:
+        print("Verified '%s_partition_handler' exists" % table_name)
+    else:
+        raise RuntimeError("The expected partition handler function "
+                           "'%s_partition_handler' does not exist after "
+                           "enabled partition on %s" % (table_name, table_name))
+
     print("Partition trigger enabled for table '%s' on column '%s' "
           "split every 1 %s and %s" % (
         table_name, column_name, interval,

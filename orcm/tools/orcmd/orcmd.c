@@ -673,7 +673,7 @@ slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, char *hnp_uri, orc
             opal_output_verbose(2, orcm_globals.output,
                                 "REGEX ### nodes = %s", alloc->nodes);
             orte_regex_extract_node_names (alloc->nodes, &hosts); 
-            for (i=0; hosts[i] != NULL; i++) {
+            for (i=0; NULL != hosts && NULL != hosts[i]; i++) {
                 if (0 == strcmp(orte_process_info.nodename, hosts[i])) {
                     opal_output_verbose(2, orcm_globals.output,
                                         "REGEX ### node name = %s vpid = %d \n", hosts[i], i);

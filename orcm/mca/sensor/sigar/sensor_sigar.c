@@ -1990,8 +1990,8 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        OBJ_DESTRUCT(st);
-    }
+        OBJ_RELEASE(st);
+    } 
     if (NULL != hostname) {
         free(hostname);
     }

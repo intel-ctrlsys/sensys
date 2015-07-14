@@ -1598,8 +1598,6 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
         }
 
         replace_ampersand(&x->value[0], rack->name);
-
-        rack->name = strdup(x->value[0]);
         rack->controller.name = strdup(rack->name);
         rack->controller.state = ORTE_NODE_STATE_UNKNOWN;
         /* parse any config that is attached to the rack controller */
@@ -1623,8 +1621,8 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
         /* define the nodes */
         vals = opal_argv_split(x->value[0], ',');
         if (NULL != vals) {
-            names = NULL;
             for (n=0; NULL != vals[n]; n++) {
+                names = NULL;
                 if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(vals[n], &names))) {
                     opal_argv_free(vals);
                     opal_argv_free(names);
@@ -1648,11 +1646,11 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
                     }
                     if (NULL == node) {
                         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                                            "\tNEW ROW NAME %s", names[m]);
+                                            "\tNEW NODE NAME %s", names[m]);
                         node = OBJ_NEW(orcm_node_t);
                         node->name = strdup(names[m]);
                         OBJ_RETAIN(rack);
-                        node->rack = (struct orcm_rack_t*)rack;
+                        node->rack = rack;
                         node->state = ORTE_NODE_STATE_UNKNOWN;
                         opal_list_append(&rack->nodes, &node->super);
                     }
@@ -1662,13 +1660,15 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
                     OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
                         if (ORCM_SUCCESS != (rc = parse_node(node, 0, xx))) {
                             ORTE_ERROR_LOG(rc);
+                            opal_argv_free(names);
+                            opal_argv_free(vals);
                             return rc;
                         }
                     }
                 }  
+                opal_argv_free(names);
             }
             opal_argv_free(vals);
-            opal_argv_free(names);
         }
     } else {
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
@@ -1682,6 +1682,8 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
     int n, rc;
     orcm_cfgi_xml_parser_t *xx;
     orcm_rack_t *rack, *r;
+    char **vals = NULL;
+    char **names = NULL;
 
     if (0 == strcmp(x->name, TXcontrol)) {
         /* the value contains the node name of the controller, or an expression
@@ -1714,8 +1716,7 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                             "\tRACK NAME %s", x->value[0]);
         /* define the racks */
-        char ** vals = opal_argv_split(x->value[0], ',');
-        char ** names = NULL;
+        vals = opal_argv_split(x->value[0], ',');
         if (NULL != vals) {
             for (n = 0; NULL !=vals[n]; ++n) {
                 names = NULL;
@@ -1724,44 +1725,46 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
                     opal_argv_free(names);
                     return rc;
                 }
-            }
-            if (NULL == names) {
-                opal_argv_free(vals);
-                return ORCM_ERR_BAD_PARAM;
-            }
-            /*if we have each rack object - if not, create it */
-            int m;
-            for (m=0; NULL != names[m]; m++) {
-                replace_ampersand(&names[m], row->name);
-                rack = NULL;
-                OPAL_LIST_FOREACH(r, &row->racks, orcm_rack_t) {
-                    if (0 == strcmp(r->name, names[m])) {
-                        rack = r;
-                        break;
+                if (NULL == names) {
+                    opal_argv_free(vals);
+                    return ORCM_ERR_BAD_PARAM;
+                }
+                /*if we have each rack object - if not, create it */
+                int m;
+                for (m=0; NULL != names[m]; m++) {
+                    replace_ampersand(&names[m], row->name);
+                    rack = NULL;
+                    OPAL_LIST_FOREACH(r, &row->racks, orcm_rack_t) {
+                        if (0 == strcmp(r->name, names[m])) {
+                            rack = r;
+                            break;
+                        }
+                    }
+                    if (NULL == rack) {
+                        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                                            "\tNEW RACK NAME %s", names[m]);
+                        rack = OBJ_NEW(orcm_rack_t);
+                        rack->name = strdup(names[m]);
+                        OBJ_RETAIN(row);
+                        rack->row = row;
+                        opal_list_append(&row->racks, &rack->super);
+                    }
+                    /* now cycle thru the rest of this config element and apply
+                     * those values to this rack
+                     */
+                    OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
+                        if (ORCM_SUCCESS != (rc = parse_rack(rack, 0, xx))) {
+                            ORTE_ERROR_LOG(rc);
+                            opal_argv_free(vals);
+                            opal_argv_free(names);
+                            return rc;
+                        }
                     }
                 }
-                if (NULL == rack) {
-                    rack = OBJ_NEW(orcm_rack_t);
-                    OBJ_RETAIN(row);
-                    rack->row = row;
-                    rack->name = strdup(names[m]);
-                    opal_list_append(&row->racks, &rack->super);
-                }
-                /* now cycle thru the rest of this config element and apply
-                 * those values to this rack
-                 */
-                OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
-                    if (ORCM_SUCCESS != (rc = parse_rack(rack, 0, xx))) {
-                        ORTE_ERROR_LOG(rc);
-                        opal_argv_free(vals);
-                        opal_argv_free(names);
-                        return rc;
-                    }
-                }
+                opal_argv_free(names);
             }
+            opal_argv_free(vals);
         }
-        opal_argv_free(vals);
-        opal_argv_free(names);
     } else {
         opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                             "\tUNKNOWN TAG");
@@ -1774,8 +1777,9 @@ static int parse_cluster(orcm_cluster_t *cluster,
 {
     orcm_cfgi_xml_parser_t *x, *y;
     int rc, n;
-    char **vals, **names;
     orcm_row_t *r, *row;
+    char **vals = NULL;
+    char **names = NULL;
 
     int only_one_cluster_controller=0;
 
@@ -1819,10 +1823,10 @@ static int parse_cluster(orcm_cluster_t *cluster,
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tROW NAME %s", x->value[0]);
             /* define the rows */
-            names = NULL;
             vals = opal_argv_split(x->value[0], ',');
             if (NULL != vals) {
                 for (n=0; NULL != vals[n]; n++) {
+                    names = NULL;
                     if (ORTE_SUCCESS != (rc = orte_regex_extract_node_names(vals[n], &names))) {
                         opal_argv_free(vals);
                         opal_argv_free(names);
@@ -1864,9 +1868,9 @@ static int parse_cluster(orcm_cluster_t *cluster,
                             }
                         }
                     }
+                    opal_argv_free(names);
                 }
                 opal_argv_free(vals);
-                opal_argv_free(names);
             }
         } else {
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,

@@ -464,7 +464,7 @@ static void extract_memory_inventory(hwloc_topology_t topo, char *hostname, dmid
           continue;
         }
         value = hwloc_obj_get_info_by_name(memobj, "Type");
-        if (strcmp(value, "MemoryModule")){
+        if (NULL != value || 0 != strcmp(value, "MemoryModule")) {
           continue;
         }
       
@@ -477,7 +477,7 @@ static void extract_memory_inventory(hwloc_topology_t topo, char *hostname, dmid
                 /* Some memory value fields are padded with spaces at the end. */
                 c_start = memobj->infos[k].value;
                 len = strlen(c_start);
-                c_end = c_start + len - 1;
+                c_end = (0 < len) ? (c_start + len - 1) : c_start;
                 while ((c_end != c_start) && isspace((int)(*c_end))) c_end--;
                 len = c_end - c_start + 1;
               

@@ -464,7 +464,7 @@ static void extract_memory_inventory(hwloc_topology_t topo, char *hostname, dmid
           continue;
         }
         value = hwloc_obj_get_info_by_name(memobj, "Type");
-        if (NULL != value || 0 != strcmp(value, "MemoryModule")) {
+        if (NULL == value || 0 != strcmp(value, "MemoryModule")) {
           continue;
         }
       

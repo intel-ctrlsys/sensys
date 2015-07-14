@@ -448,6 +448,13 @@ static void extract_memory_inventory(hwloc_topology_t topo, char *hostname, dmid
         return;
     }
 
+    /*
+     * The memory objects are attached as children to root.  They are not available through
+     * hwloc_*_by_type() calls.  This will be fixed in hwloc v2.  Also, memory should be
+     * under the NumaNode it are closest to, but at this point in time hwloc developers
+     * can't say for sure what that is.
+     */
+
     mem_count = 0;
     obj = hwloc_get_root_obj(topo);
 

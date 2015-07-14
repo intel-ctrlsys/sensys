@@ -335,7 +335,8 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
 
     for (k=0; k < obj->infos_count; k++) {
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY))) {
-            addStringRecord(strdup(inv_key), strdup(obj->infos[k].value));
+            asprintf(&key_str,"%s_%d",inv_key,pci_count);
+            addStringRecord(key_str, strdup(obj->infos[k].value));
         }
     }
 
@@ -344,7 +345,7 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
             obj = obj->first_child;
             for (k=0; k < obj->infos_count; k++) {
                 if(NULL != (inv_key = check_osdev_key(obj->infos[k].name, INVENTORY_KEY))) {
-                    asprintf(&key_str,"pci_type_%d",pci_count);
+                    asprintf(&key_str,"%s_%d",inv_key,pci_count);
                     addStringRecord(key_str, strdup(obj->infos[k].value));
                 }
             }

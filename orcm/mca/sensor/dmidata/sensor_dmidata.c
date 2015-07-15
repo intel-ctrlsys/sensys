@@ -146,6 +146,26 @@ bool cpufreq_loaded = false;
       "Found %s : %s",mkv->value.key, mkv->value.data.string);         \
 }
 
+void dmidata_inv_con(dmidata_inventory_t *trk)
+{
+    trk->records = OBJ_NEW(opal_list_t);
+}
+
+void dmidata_inv_des(dmidata_inventory_t *trk)
+{
+    if(NULL != trk) {
+        if(NULL != trk->records) {
+            OPAL_LIST_RELEASE(trk->records);
+        }
+        if (NULL != trk->nodename) {
+            free(trk->nodename);
+        }
+        if (NULL != trk->freq_step_list) {
+            free(trk->freq_step_list);
+        }
+    }
+}
+
 static int init(void)
 {
     FILE *fptr;

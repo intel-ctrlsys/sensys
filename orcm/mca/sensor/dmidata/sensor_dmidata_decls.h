@@ -30,23 +30,6 @@ typedef struct {
     opal_list_t *records;   /* An hwloc topology container followed by a list of inventory items */
 } dmidata_inventory_t;
 
-static void dmidata_inv_con(dmidata_inventory_t *trk)
-{
-    trk->records = OBJ_NEW(opal_list_t);
-}
-static void dmidata_inv_des(dmidata_inventory_t *trk)
-{
-    if(NULL != trk) {
-        if(NULL != trk->records) {
-            OPAL_LIST_RELEASE(trk->records);
-        }
-        if (NULL != trk->nodename) {
-            free(trk->nodename);
-        }
-        if (NULL != trk->freq_step_list) {
-            free(trk->freq_step_list);
-        }
-    }
-}
-
+extern void dmidata_inv_con(dmidata_inventory_t *trk);
+extern void dmidata_inv_des(dmidata_inventory_t *trk);
 #endif

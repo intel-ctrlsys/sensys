@@ -118,7 +118,7 @@ static int ipmi_component_register(void)
                                             & mca_sensor_ipmi_component.sensor_group);
 
 
-    mca_sensor_ipmi_component.use_progress_thread = true;
+    mca_sensor_ipmi_component.use_progress_thread = false;
     (void) mca_base_component_var_register(c, "use_progress_thread",
                                            "Use a dedicated progress thread for ipmi sensors [default: true]",
                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,

@@ -49,7 +49,7 @@ typedef struct _node_power_data{
     orcm_sensor_nodepower_stats_value power_b;        //power, in Watts
     unsigned char raw_string[256];
     int str_len;
-    unsigned long ret_val[2];
+    unsigned long long ret_val[2];
 }node_power_data;
 
 typedef struct {

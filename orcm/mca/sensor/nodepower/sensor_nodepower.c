@@ -151,13 +151,13 @@ static int call_readein(node_power_data *data, int to_print, unsigned char psu)
             temp_value[1]|=0x80;
         }
         temp_value[2]>>=1;
-        data->ret_val[0]=*((unsigned long *)temp_value);
+        data->ret_val[0]=*((unsigned long long*)temp_value);
 
         memset(temp_value, 0, 8);
         temp_value[0]=responseData[4];
         temp_value[1]=responseData[5];
         temp_value[2]=responseData[6];
-        data->ret_val[1]=*((unsigned long *)temp_value);
+        data->ret_val[1]=*((unsigned long long*)temp_value);
     } else {
         memset(data->raw_string, 0, 7);
         data->ret_val[0]=0;
@@ -165,7 +165,7 @@ static int call_readein(node_power_data *data, int to_print, unsigned char psu)
     }
 
     if (to_print){
-        opal_output(0, "ret_val[0]=%lu, ret_val[1]=%lu\n", data->ret_val[0], data->ret_val[1]);
+        opal_output(0, "ret_val[0]=%llu, ret_val[1]=%llu\n", data->ret_val[0], data->ret_val[1]);
     }
 
     ipmi_close();
@@ -317,8 +317,10 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     char *freq;
     opal_buffer_t data, *bptr;
     bool packed;
+    bool a_error = false;
+    bool b_error = false;
 
-    unsigned long val1, val2;
+    unsigned long long val1, val2;
     float node_power_cur;
 
     /* we must be root to run */
@@ -327,7 +329,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     }
 
     if (mca_sensor_nodepower_component.test) {
-
         /* generate and send a test vector */
         OBJ_CONSTRUCT(&data, opal_buffer_t);
         generate_test_vector(&data);
@@ -350,10 +351,11 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     }
     _tv.tv_prev=_tv.tv_curr;
 
+retry_a:
     ret=call_readein(&_node_power, 0, NODEPOWER_PA_R);
     _readein.ipmi_calls++;
     if (ret==ORCM_ERROR){
-        opal_output(0,"Unable to read Nodepower");
+        opal_output(0,"Unable to read Nodepower PA");
         _readein.readein_a_accu_curr=_readein.readein_a_accu_prev;
         _readein.readein_a_cnt_curr=_readein.readein_a_cnt_prev;
     } else {
@@ -361,21 +363,23 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         _readein.readein_a_cnt_curr=_node_power.ret_val[1];
     }
 
-    /* detect overflow and calculate psu power */
+    /* detect overflow */
     if (_readein.readein_a_accu_curr >= _readein.readein_a_accu_prev){
         val1=_readein.readein_a_accu_curr - _readein.readein_a_accu_prev;
     } else {
-        val1=_readein.readein_a_accu_curr + 32768 - _readein.readein_a_accu_prev;
+       a_error=true;
     }
 
-    if (_readein.readein_a_cnt_curr >= _readein.readein_a_cnt_prev){
+    if (_readein.readein_a_cnt_curr >= _readein.readein_a_cnt_prev && !a_error){
         val2=_readein.readein_a_cnt_curr - _readein.readein_a_cnt_prev;
     } else {
-        val2=_readein.readein_a_cnt_curr + 65536 - _readein.readein_a_cnt_prev;
+        a_error=true;
     }
 
+    /* detect same sensor sample */
     if (!val2){
         val2=1;
+        a_error=true;
     }
 
     node_power.power_a.cur=(double)val1/(double)val2;
@@ -386,10 +390,18 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     _readein.readein_a_accu_prev=_readein.readein_a_accu_curr;
     _readein.readein_a_cnt_prev=_readein.readein_a_cnt_curr;
 
+    /* read again */
+    if (a_error){
+        a_error=false;
+        if(_readein.ipmi_calls<=6)
+            goto retry_a;
+    }
+
+retry_b:
     ret=call_readein(&_node_power, 0, NODEPOWER_PB_R);
     _readein.ipmi_calls++;
     if (ret==ORCM_ERROR){
-        opal_output(0,"Unable to read Nodepower");
+        opal_output(0,"Unable to read Nodepower PB");
         _readein.readein_b_accu_curr=_readein.readein_b_accu_prev;
         _readein.readein_b_cnt_curr=_readein.readein_b_cnt_prev;
     } else {
@@ -397,21 +409,23 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         _readein.readein_b_cnt_curr=_node_power.ret_val[1];
     }
 
-    /* detect overflow and calculate psu power */
+    /* detect overflow */
     if (_readein.readein_b_accu_curr >= _readein.readein_b_accu_prev){
         val1=_readein.readein_b_accu_curr - _readein.readein_b_accu_prev;
     } else {
-        val1=_readein.readein_b_accu_curr + 32768 - _readein.readein_b_accu_prev;
+        b_error=true;
     }
 
-    if (_readein.readein_b_cnt_curr >= _readein.readein_b_cnt_prev){
+    if (_readein.readein_b_cnt_curr >= _readein.readein_b_cnt_prev && !b_error){
         val2=_readein.readein_b_cnt_curr - _readein.readein_b_cnt_prev;
     } else {
-        val2=_readein.readein_b_cnt_curr + 65536 - _readein.readein_b_cnt_prev;
+       b_error=true;
     }
 
+    /* detect same sensor sample */
     if (!val2){
         val2=1;
+        b_error=true;
     }
 
     node_power.power_b.cur=(double)val1/(double)val2;
@@ -423,6 +437,14 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 
     _readein.readein_b_accu_prev=_readein.readein_b_accu_curr;
     _readein.readein_b_cnt_prev=_readein.readein_b_cnt_curr;
+
+    /* read again */
+    if (b_error)
+    {
+        b_error=false;
+        if(_readein.ipmi_calls<=6)
+            goto retry_b;
+    }
 
     /* prep to store the results */
     OBJ_CONSTRUCT(&data, opal_buffer_t);

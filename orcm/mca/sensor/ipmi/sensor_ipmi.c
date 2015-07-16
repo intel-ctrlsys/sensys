@@ -166,7 +166,7 @@ static void finalize(void)
 {
     OPAL_LIST_DESTRUCT(&sensor_active_hosts);
     OPAL_LIST_DESTRUCT(&ipmi_inventory_hosts);
-    OBJ_DESTRUCT(cur_host);
+    OBJ_RELEASE(cur_host);
 }
 
 /*Start monitoring of local processes */
@@ -1334,7 +1334,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                                 "ipmi compare passed");
         }
         /* newhost structure can be destroyed after comparision with original list and update */
-        OBJ_DESTRUCT(newhost);
+        OBJ_RELEASE(newhost);
 
     } else {
         /* Append the new node to the existing host list */

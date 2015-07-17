@@ -576,14 +576,23 @@ ddl_script := ddl_script || '
             FROM information_schema.tables
             WHERE table_name = quote_ident(''' || table_name || '_'' || to_char(NEW.time_stamp, ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''');
     IF NOT FOUND THEN
-        -- Create the partition
-        EXECUTE(''CREATE TABLE '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') ||
-                    '' (CHECK ( ' || time_stamp_column_name || ' >= date_trunc(''''' || partition_interval || ''''', timestamp '''''' || NEW.' || time_stamp_column_name || ' || '''''') '' ||
-                    ''      AND ' || time_stamp_column_name || ' <  date_trunc(''''' || partition_interval || ''''', timestamp '''''' || NEW.' || time_stamp_column_name || ' || '''''' + interval ''''1 ' || partition_interval || ''''') ) ) '' ||
-                    '' INHERITS (' || table_name || '); '');
-        EXECUTE(''CREATE INDEX '' || quote_ident(''index_' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') ||
-                    '' ON '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') ||
-                    '' (' || time_stamp_column_name || '); '');
+        BEGIN
+            -- Create the partition
+            EXECUTE(''CREATE TABLE IF NOT EXISTS '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') ||
+                        '' (CHECK ( ' || time_stamp_column_name || ' >= date_trunc(''''' || partition_interval || ''''', timestamp '''''' || NEW.' || time_stamp_column_name || ' || '''''') '' ||
+                        ''      AND ' || time_stamp_column_name || ' <  date_trunc(''''' || partition_interval || ''''', timestamp '''''' || NEW.' || time_stamp_column_name || ' || '''''' + interval ''''1 ' || partition_interval || ''''') ) ) '' ||
+                        '' INHERITS (' || table_name || '); '');
+            EXECUTE(''CREATE INDEX '' || quote_ident(''index_' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') ||
+                        '' ON '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') ||
+                        '' (' || time_stamp_column_name || '); '');
+        EXCEPTION
+            WHEN duplicate_table THEN
+                -- This error also applies to duplicate index
+                -- Ignore error
+        END;
+        --
+        -- <Place holder for data archive statement to be execute before DROP partition>
+        --
         -- Uncomment the drop table statement to not have partition be auto removed
         -- WARNING *** Non Recoverable once partition has been drop *** WARNING --
         -- EXECUTE(''DROP TABLE IF EXISTS '' || quote_ident(''' || table_name || '_'' || to_char(NEW.' || time_stamp_column_name || ' - interval ''' || number_of_interval_of_data_to_keep || ' ' || partition_interval || ''', ''' || timestamp_mask_by_interval || ''') || ''_' || time_stamp_column_name || ''') || '';'');

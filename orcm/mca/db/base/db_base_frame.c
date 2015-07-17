@@ -83,7 +83,7 @@ static int orcm_db_base_frame_close(void)
             active->component->finalize();
         }
     }
-    OBJ_DESTRUCT(&orcm_db_base.actives);
+    OPAL_LIST_DESTRUCT(&orcm_db_base.actives);
 
     if (orcm_db_base_create_evbase && orcm_db_base.ev_base_active) {
         orcm_db_base.ev_base_active = false;

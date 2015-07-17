@@ -180,6 +180,8 @@ static void postgres_finalize(struct orcm_db_base_module_t *imod)
     if (NULL != mod->conn) {
         PQfinish(mod->conn);
     }
+
+    free(mod);
 }
 
 #define ERR_MSG_STORE(msg) \

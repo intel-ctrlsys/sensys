@@ -106,6 +106,8 @@ static void finalize(struct orcm_db_base_module_t *imod)
         stderr != mod->fp) {
         fclose(mod->fp);
     }
+
+    free(mod);
 }
 
 static int store(struct orcm_db_base_module_t *imod,

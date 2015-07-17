@@ -210,6 +210,8 @@ static void odbc_finalize(struct orcm_db_base_module_t *imod)
     if (NULL != mod->envhandle) {
         SQLFreeHandle(SQL_HANDLE_ENV, mod->envhandle);
     }
+
+    free(mod);
 }
 
 #define ERR_MSG_STORE(msg) \

@@ -988,5 +988,7 @@ static void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
 static inline bool status_ok(PGresult *res)
 {
     ExecStatusType status = PQresultStatus(res);
-    return status == PGRES_COMMAND_OK || status == PGRES_TUPLES_OK;
+    return (status == PGRES_COMMAND_OK
+            || status == PGRES_TUPLES_OK
+            || status == PGRES_NONFATAL_ERROR);
 }

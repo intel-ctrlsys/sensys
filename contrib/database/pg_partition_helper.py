@@ -10,7 +10,7 @@ def connect_to_db(db_url, verbose=False):
     """Set the db_engine instance
 
     :param db_url: The database connection string in the format
-    postgresql[+<driver>://[<username>[:<password>]]@<server>[:<port>]/<database>.
+    postgresql[+<driver>://[<username>[:<password>]]@<server>[:<port>]/<database>.d
 
     See SQLAlchemy database dialect for more information.
     :param verbose: Echo all SQL command
@@ -20,31 +20,31 @@ def connect_to_db(db_url, verbose=False):
 
 
 def enable_partition_trigger(db_engine, table_name, column_name, interval,
-                             interval_to_keep, verbose=False):
+                             partitions_to_keep, verbose=False):
     """Execute the generated code from generate_partition_triggers_ddl()
     function.
 
     :param db_engine:  The database engine to execute the SQL statements
     :param table_name: The name of the table to apply the partition
     :param column_name: The column name to partition on.  This column need to
-    be a Postgres timestamp datatype
+    be a Postgres timestamp data type
     :param interval: The interval unit supported by Postgres (e.g. YEAR, MONTH,
     DAY, HOUR, MINUTE).  The size of the partition is one unit of this interval.
-    :param interval_to_keep: The number of interval to keep before purging.
-    Value less than 1 will set to keep all intervals (disabled auto purging).
+    :param partitions_to_keep: The number of partitions to keep before purging.
+    Value less than 1 will set to keep all partitions (disabled auto purging).
     :param verbose: Print the command being used
     :return:  None.  Only print output.
     """
     generated_ddl_sql_stmt = (
         """SELECT generate_partition_triggers_ddl('%s', '%s', '%s', %d);""" %
-        (table_name, column_name, interval, interval_to_keep))
+        (table_name, column_name, interval, partitions_to_keep))
     if verbose:
         print(generated_ddl_sql_stmt)
     partition_trigger_ddl_stmt = db_engine.execute(
         generated_ddl_sql_stmt).scalar()
 
     # Enable auto purging within the table partitioning function
-    if interval_to_keep > 0:
+    if partitions_to_keep > 0:
         partition_trigger_ddl_stmt = partition_trigger_ddl_stmt.replace(
             "-- EXECUTE('DROP TABLE IF EXISTS ' || quote_ident('",
             "EXECUTE('DROP TABLE IF EXISTS ' || quote_ident('")
@@ -82,9 +82,9 @@ def enable_partition_trigger(db_engine, table_name, column_name, interval,
     print("Partition trigger enabled for table '%s' on column '%s' "
           "split every 1 %s and %s" % (
               table_name, column_name, interval,
-              "keep only last %d intervals" % (
-                  interval_to_keep) if interval_to_keep > 0
-              else "keep all intervals"))
+              "keep only last %d partitions" % (
+                  partitions_to_keep) if partitions_to_keep > 0
+              else "keep all partitions"))
 
 
 def disable_partition_trigger(db_engine, table_name, verbose=False):
@@ -125,9 +125,9 @@ def main():
     """Main driver"""
     main_parser = argparse.ArgumentParser(add_help=False,
         description="PostgreSQL Table Partition Helper.  Use this program to "
-                    "enable table partition with and without auto dropping old "
-                    "partition.  This program can also be used to disable "
-                    "table partition.")
+                    "enable table partitioning with and without auto dropping "
+                    "of old partitions.  This program can also be used to "
+                    "disable table partition.")
     # The parent_parser is to parse the common arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("-v", "--verbose", action='store_true')
@@ -138,7 +138,7 @@ def main():
              "also be set in the environment variable "
              "'PG_DB_URL'")
     parent_parser.add_argument("table", type=str,
-        help="The name of the table to enable or disable partition.  This "
+        help="The name of the table to enable or disable partitioning.  This "
              "table must have at least one column that is a PostgreSQL "
              "timestamp data type.")
 
@@ -150,16 +150,16 @@ def main():
                                            help="Disable partition")
 
     enable_parser.add_argument("column", type=str,
-        help="The name of the column to partition on.  This column need to be "
+        help="The name of the column to partition on.  This column needs to be "
              "a PostgreSQL timestamp data type.")
     enable_parser.add_argument("interval", type=str,
         choices=["MINUTE", "HOUR", "DAY", "MONTH", "YEAR"],
         help="The interval unit to partition the data by.  This is the "
              "partition size.")
-    enable_parser.add_argument("--interval-to-keep", type=int, default=0,
-        help="The number of interval to keep before purging by.  Specify a "
-             "value less than 1 will disable auto purging old partition (keep "
-             "all partitions).  Default value is 0.")
+    enable_parser.add_argument("--partitions-to-keep", type=int, default=0,
+        help="The number of partitions to keep before purging.  "
+             "Specify a value less than 1 will disable auto purging old "
+             "partitions (keep all partitions).  Default value is 0.")
 
     args = main_parser.parse_args()
     if args.verbose:
@@ -172,7 +172,7 @@ def main():
     if not db_url:
         raise RuntimeError("Neither --db_url option is specify nor The "
                            "'PG_DB_URL' environment variable is set.  Please "
-                           "use the --db_url command line option or set the "
+                           "use the --db_url command-line option or set the "
                            "environment variable with the following pattern:\n"
                            "postgresql[+<driver>://[<username>[:<password>]]"
                            "@<server>[:<port>]/<database>\n\n"
@@ -182,7 +182,7 @@ def main():
     db_engine = connect_to_db(db_url=db_url, verbose=args.verbose)
     if args.subparser_name == "enable":
         enable_partition_trigger(db_engine, args.table, args.column,
-                                 args.interval, args.interval_to_keep,
+                                 args.interval, args.partitions_to_keep,
                                  verbose=args.verbose)
     if args.subparser_name == "disable":
         disable_partition_trigger(db_engine, args.table, verbose=args.verbose)

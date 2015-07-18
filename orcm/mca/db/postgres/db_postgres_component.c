@@ -200,7 +200,6 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
     /* let the module init */
     if (ORCM_SUCCESS != mod->api.init((struct orcm_db_base_module_t*)mod)) {
         mod->api.finalize((struct orcm_db_base_module_t*)mod);
-        free(mod);
         return NULL;
     }
 

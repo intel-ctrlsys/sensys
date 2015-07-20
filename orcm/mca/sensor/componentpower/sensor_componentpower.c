@@ -520,8 +520,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             } else {
                 _rapl.ddr_power[i]=((double)rapl_delta / (double)(_rapl.rapl_esu))/((double)interval/1000000.0);
             }
-            if (_rapl.cpu_power[i]>1000.0) {
-                _rapl.cpu_power[i]=-1.0;
+            if (_rapl.ddr_power[i]>1000.0) {
+                _rapl.ddr_power[i]=-1.0;
             }
             _rapl.ddr_rapl_prev[i]=_rapl.ddr_rapl[i];
         }

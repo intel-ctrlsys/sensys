@@ -32,7 +32,6 @@
 #include "orte/util/regex.h"
 
 #include "orcm/runtime/orcm_globals.h"
-#include "orcm/runtime/orcm_progress.h"
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/pwrmgmt/base/base.h"
 #include "orcm/mca/pwrmgmt/base/pwrmgmt_freq_utils.h"

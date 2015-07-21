@@ -18,10 +18,10 @@
 #include "opal/dss/dss.h"
 #include "opal/threads/threads.h"
 #include "opal/util/output.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 
-#include "orcm/runtime/orcm_progress.h"
 #include "orcm/mca/pvsn/base/base.h"
 
 
@@ -51,7 +51,7 @@ static int orcm_pvsn_base_close(void)
     if (orcm_pvsn_base.ev_active) {
         orcm_pvsn_base.ev_active = false;
         /* stop the thread */
-        orcm_stop_progress_thread("pvsn", true);
+        opal_stop_progress_thread("pvsn", true);
     }
 
     return mca_base_framework_components_close(&orcm_pvsn_base_framework, NULL);
@@ -74,7 +74,7 @@ static int orcm_pvsn_base_open(mca_base_open_flag_t flags)
 
     /* create the event base */
     orcm_pvsn_base.ev_active = true;
-    if (NULL == (orcm_pvsn_base.ev_base = orcm_start_progress_thread("pvsn", progress_thread_engine, NULL))) {
+    if (NULL == (orcm_pvsn_base.ev_base = opal_start_progress_thread("pvsn", true))) {
         orcm_pvsn_base.ev_active = false;
         return ORCM_ERR_OUT_OF_RESOURCE;
     }

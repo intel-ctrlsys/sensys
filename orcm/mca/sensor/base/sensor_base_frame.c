@@ -26,10 +26,10 @@
 #include "opal/mca/base/base.h"
 #include "opal/class/opal_pointer_array.h"
 #include "opal/threads/threads.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 
-#include "orcm/runtime/orcm_progress.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 
@@ -113,7 +113,7 @@ static int orcm_sensor_base_close(void)
     if (orcm_sensor_base.ev_active) {
         orcm_sensor_base.ev_active = false;
         /* stop the thread */
-        orcm_stop_progress_thread("sensor", true);
+        opal_stop_progress_thread("sensor", true);
     }
 
     OPAL_LIST_DESTRUCT(&orcm_sensor_base.policy);

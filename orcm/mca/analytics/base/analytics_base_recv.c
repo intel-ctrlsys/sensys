@@ -45,11 +45,11 @@ int orcm_analytics_base_comm_start(void)
     if (recv_issued) {
         return ORCM_SUCCESS;
     }
-    
+
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                          "%s analytics:base:receive start comm",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    
+
     orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
                             ORCM_RML_TAG_ANALYTICS,
                             ORTE_RML_PERSISTENT,
@@ -70,10 +70,10 @@ int orcm_analytics_base_comm_stop(void)
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                          "%s analytics:base:receive stop comm",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    
+
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
     recv_issued = false;
-    
+
     return ORCM_SUCCESS;
 }
 
@@ -152,11 +152,11 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
                          "%s analytics:base:receive processing msg from %s",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          ORTE_NAME_PRINT(sender)));
-    
+
     ans = OBJ_NEW(opal_buffer_t);
 
     command = analytics_base_recv_unpack_command(buffer, ANALYTICS_COUNT_DEFAULT);
-    
+
     switch (command) {
         case ORCM_ANALYTICS_WORKFLOW_CREATE:
             if (ORCM_SUCCESS == (ret = orcm_analytics_base_workflow_create(buffer, &id))) {

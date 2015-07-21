@@ -177,7 +177,7 @@ static int orcm_analytics_base_subtokenize_attributes(char **tokens, opal_list_t
 {
     char **subtokens = NULL;
     int i, array_length, subarray_length = 0;
-    
+
 
     array_length = opal_argv_count(tokens);
 
@@ -214,7 +214,7 @@ static void* orcm_analytics_base_progress_thread_engine(opal_object_t *obj)
 {
     opal_thread_t *thread = (opal_thread_t *)obj;
     orcm_workflow_t *wf = (orcm_workflow_t *)thread->t_arg;
-    
+
     while (wf->ev_active) {
         opal_event_loop(wf->ev_base, OPAL_EVLOOP_ONCE);
     }
@@ -309,7 +309,7 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
                                               &cnt, OPAL_INT))) {
         goto error;
     }
-    
+
     wf = orcm_analytics_base_workflow_object_init(wfid);
 
 
@@ -317,11 +317,11 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
         ORTE_ERROR_LOG(rc);
         goto error;
     }
-    
-    
+
+
     cnt = MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP * num_steps;
     values = (opal_value_t**)malloc(cnt * sizeof(opal_value_t *));
-    
+
     /* unpack the requested module name and attributes stored in opal_values */
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, values,
                                               &cnt, OPAL_VALUE))) {
@@ -335,11 +335,11 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
         if (OPAL_SUCCESS != (rc = orcm_analytics_base_workflow_step_create(wf, values, i))) {
             goto error;
         }
-    
+
     }
-    
+
     free(values);
-    
+
     /* add workflow to the master list of workflows */
     opal_list_append(&orcm_analytics_base_wf.workflows, &wf->super);
     return ORCM_SUCCESS;
@@ -358,7 +358,7 @@ int orcm_analytics_base_workflow_delete(int workflow_id)
 {
     orcm_workflow_t *wf;
     orcm_workflow_t *next;
-    
+
     OPAL_LIST_FOREACH_SAFE(wf, next, &orcm_analytics_base_wf.workflows, orcm_workflow_t) {
         if (workflow_id == wf->workflow_id) {
             /* stop the event thread */
@@ -375,7 +375,7 @@ int orcm_analytics_base_workflow_delete(int workflow_id)
 void orcm_analytics_base_send_data(opal_value_array_t *data)
 {
     orcm_workflow_t *wf;
-    
+
     OPAL_LIST_FOREACH(wf, &orcm_analytics_base_wf.workflows, orcm_workflow_t) {
         OBJ_RETAIN(data);
         ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), data);

@@ -70,7 +70,7 @@ int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workstep)
                       mca_base_component_list_item_t) {
         basecomp = (mca_base_component_t *)cli->cli_component;
         component = (orcm_analytics_base_component_t *)basecomp;
-        
+
         if (0 == strncmp(basecomp->mca_component_name,
                          workstep->analytic,
                          MCA_BASE_MAX_COMPONENT_NAME_LEN + 1)) {
@@ -85,6 +85,6 @@ int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workstep)
             }
         }
     }
-    
+
     return ORCM_SUCCESS;
 }

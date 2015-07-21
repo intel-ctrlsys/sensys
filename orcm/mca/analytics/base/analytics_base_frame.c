@@ -102,7 +102,7 @@ static int orcm_analytics_base_close(void)
 static int orcm_analytics_base_open(mca_base_open_flag_t flags)
 {
     int rc;
-    
+
     /* setup the base objects */
     OBJ_CONSTRUCT(&orcm_analytics_base_wf.workflows, opal_list_t);
 
@@ -195,11 +195,11 @@ static void value_des(orcm_analytics_value_t *p)
     if (NULL != p->sensor_name) {
         free(p->sensor_name);
     }
-   
+
     if (NULL != p->node_regex) {
         free(p->node_regex);
     }
-   
+
 }
 OBJ_CLASS_INSTANCE(orcm_analytics_value_t,
                    opal_object_t,

@@ -31,12 +31,38 @@
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
 
+static int orcm_analytics_base_select_create_handle(orcm_analytics_base_component_t *component,
+                                                    mca_base_component_t *basecomp,
+                                                    orcm_workflow_step_t *workstep);
+
+static int orcm_analytics_base_select_create_handle(orcm_analytics_base_component_t *component,
+                                                    mca_base_component_t *basecomp,
+                                                    orcm_workflow_step_t *workstep)
+{
+    if (!component->available()) {
+        ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+        return ORCM_ERR_NOT_AVAILABLE;
+    }
+
+    /* create a handle to the module, store in workstep */
+    if (NULL == (workstep->mod = component->create_handle())) {
+        opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
+                            "mca:analytics:select: Skipping component [%s]. "
+                            "It does not implement a query function",
+                            basecomp->mca_component_name );
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+    return ORCM_SUCCESS;
+}
+
 
 int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workstep)
 {
     mca_base_component_list_item_t *cli = NULL;
     orcm_analytics_base_component_t *component = NULL;
     mca_base_component_t *basecomp = NULL;
+    int ret;
 
     /* Find requested component, and ask if it is available */
     OPAL_LIST_FOREACH(cli,
@@ -52,18 +78,10 @@ int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workstep)
                                 "mca:analytics:select: found requested component %s",
                                 basecomp->mca_component_name);
             
-            if (!component->available()) {
-                ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
-                return ORCM_ERR_NOT_AVAILABLE;
-            }
-            
-            /* create a handle to the module, store in workstep */
-            if (NULL == (workstep->mod = component->create_handle())) {
-                opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
-                                    "mca:analytics:select: Skipping component [%s]. It does not implement a query function",
-                                    basecomp->mca_component_name );
-                ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-                return ORCM_ERR_OUT_OF_RESOURCE;
+            if (ORCM_SUCCESS != (ret = orcm_analytics_base_select_create_handle(component,
+                                                                                basecomp,
+                                                                                workstep))) {
+                return ret;
             }
         }
     }

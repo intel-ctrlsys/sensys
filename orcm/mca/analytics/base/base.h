@@ -32,20 +32,6 @@ BEGIN_C_DECLS
  */
 ORCM_DECLSPEC extern mca_base_framework_t orcm_analytics_base_framework;
 
-/* sensors send data to framework to pass to each workflow */
-ORCM_DECLSPEC int orcm_analytics_base_send_data(opal_value_array_t *data);
-
-typedef struct {
-    /* list of active workflows */
-    opal_list_t workflows;
-} orcm_analytics_base_t;
-ORCM_DECLSPEC extern orcm_analytics_base_t orcm_analytics_base;
-
-ORCM_DECLSPEC void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
-                                                                        orcm_workflow_step_t *wf_step,
-                                                                        opal_value_array_t *data);
-
-/* base code stubs */
 
 END_C_DECLS
 #endif

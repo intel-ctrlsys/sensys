@@ -19,60 +19,10 @@
 
 #include "orcm/mca/mca.h"
 
+
 #include "orcm/mca/analytics/analytics_types.h"
 
 BEGIN_C_DECLS
-
-/* Maybe following goes in activate_analytics_workflow_step() */
-/* If tap_output in attributes, send data
- * If opal_list_get_next(steps) == opal_list_get_end(steps)
- *  OBJ_RELEASE(data)
- * else
- */
-#define ORCM_ACTIVATE_WORKFLOW_STEP(a, b)                                          \
-    do {                                                                           \
-        opal_list_item_t *list_item = opal_list_get_next(&(a)->steps);             \
-        orcm_workflow_step_t *wf_step_item = (orcm_workflow_step_t *)list_item;    \
-        if (list_item == opal_list_get_end(&(a)->steps)) {                         \
-            opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
-                                "%s TRIED TO ACTIVATE EMPTY WORKFLOW %d AT %s:%d", \
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
-                                (a)->workflow_id,                                  \
-                                __FILE__, __LINE__);                               \
-        } else {                                                                   \
-            opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
-                                "%s ACTIVATE WORKFLOW %d MODULE %s AT %s:%d",      \
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
-                                (a)->workflow_id, wf_step_item->analytic,          \
-                                __FILE__, __LINE__);                               \
-            orcm_analytics.activate_analytics_workflow_step((a),                   \
-                                                            wf_step_item,          \
-                                                            (b));                  \
-        }                                                                          \
-    }while(0);
-
-#define ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(a, b)                                     \
-    do {                                                                           \
-        opal_list_item_t *list_item = opal_list_get_next(&(a)->steps);             \
-        orcm_workflow_step_t *wf_step_item = (orcm_workflow_step_t *)list_item;    \
-        if (list_item == opal_list_get_end(&(a)->steps)) {                         \
-            opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
-                                "%s END OF WORKFLOW %d AT %s:%d",                  \
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
-                                (a)->workflow_id,                                  \
-                                __FILE__, __LINE__);                               \
-        } else {                                                                   \
-            opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
-                                "%s ACTIVATE NEXT WORKFLOW %d MODULE %s AT %s:%d", \
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
-                                (a)->workflow_id, wf_step_item->analytic,          \
-                                __FILE__, __LINE__);                               \
-            orcm_analytics.activate_analytics_workflow_step((a),                   \
-                                                            wf_step_item,          \
-                                                            (b));                  \
-        }                                                                          \
-    }while(0);
-
 
 /* Module functions */
 
@@ -85,14 +35,14 @@ typedef void (*orcm_analytics_base_module_finalize_fn_t)(struct orcm_analytics_b
 /* do the real work in the selected module */
 typedef void (*orcm_analytics_base_module_analyze_fn_t)(int fd, short args, void* cb);
 
-/*
- * Ver 1.0
- */
+
 typedef struct {
     orcm_analytics_base_module_init_fn_t        init;
     orcm_analytics_base_module_finalize_fn_t    finalize;
     orcm_analytics_base_module_analyze_fn_t     analyze;
+    opal_hash_table_t*                          orcm_mca_analytics_hash_table;
 } orcm_analytics_base_module_t;
+
 
 /*
  * the component data structure
@@ -118,13 +68,11 @@ typedef struct {
     mca_analytics_base_component_finalize_fn_t   finalize;
 } orcm_analytics_base_component_t;
 
-/* define an API module */
-typedef void (*orcm_analytics_API_module_activate_analytics_workflow_step_fn_t)(orcm_workflow_t *wf,
-                                                                                orcm_workflow_step_t *wf_step,
-                                                                                opal_value_array_t *data);
+
+typedef void (*orcm_analytics_API_module_send_data_fn_t)(opal_value_array_t *data);
 
 typedef struct {
-    orcm_analytics_API_module_activate_analytics_workflow_step_fn_t activate_analytics_workflow_step;
+    orcm_analytics_API_module_send_data_fn_t                        send_data;
 } orcm_analytics_API_module_t;
 
 /*
@@ -135,7 +83,7 @@ typedef struct {
 
 /* Global structure for accessing name server functions
  */
-/* holds API function pointers */
+/* holds Global API function pointers */
 ORCM_DECLSPEC extern orcm_analytics_API_module_t orcm_analytics;
 
 END_C_DECLS

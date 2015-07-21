@@ -320,7 +320,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     bool a_error = false;
     bool b_error = false;
 
-    unsigned long long val1, val2;
+    unsigned long long val1 = 0, val2 = 0;
     float node_power_cur;
 
     /* we must be root to run */

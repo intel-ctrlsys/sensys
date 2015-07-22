@@ -80,7 +80,7 @@ static void orcm_analytics_base_tapinfo(orcm_workflow_step_t *wf_step,
                                  data->array_size, OPAL_VALUE)))) {
             ORTE_ERROR_LOG(rc);
         }
-        
+
         if (OPAL_SUCCESS == rc) {
             if (OPAL_SUCCESS == (rc = orte_util_convert_string_to_process_name(&tapproc, taphost))) {
                 OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
@@ -191,7 +191,7 @@ static int orcm_analytics_base_subtokenize_attributes(char **tokens, opal_list_t
             orcm_analytics_base_append_attributes(subtokens, attr_list );
 
         } else {
-        	opal_argv_free(subtokens);
+            opal_argv_free(subtokens);
             return ORCM_ERR_BAD_PARAM;
         }
     }
@@ -265,7 +265,7 @@ static int orcm_analytics_base_workflow_step_create(orcm_workflow_t *wf,
     wf_step->analytic = strdup(values[i]->data.string);
 
     if (NULL != values[i+1]) {
-    	rc = orcm_analytics_base_parse_attributes(&wf_step->attributes, values[i+1]->data.string);
+        rc = orcm_analytics_base_parse_attributes(&wf_step->attributes, values[i+1]->data.string);
         if (ORCM_SUCCESS != rc ) {
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(wf_step);
@@ -303,7 +303,7 @@ static orcm_workflow_t* orcm_analytics_base_workflow_object_init(int *wfid)
 int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
 {
     int num_steps;
-	int step;
+    int step;
     int cnt;
     int rc = ORCM_SUCCESS;
     orcm_workflow_t *wf = NULL;
@@ -317,7 +317,7 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
     }
 
     if (NULL == (wf = orcm_analytics_base_workflow_object_init(wfid))) {
-    	goto error;
+        goto error;
     }
 
 

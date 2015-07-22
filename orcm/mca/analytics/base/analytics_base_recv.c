@@ -65,7 +65,7 @@ int orcm_analytics_base_comm_stop(void)
     if (true != recv_issued) {
         return ORCM_SUCCESS;
     }
-    
+
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                          "%s analytics:base:receive stop comm",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
@@ -145,7 +145,7 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
                                      void* cbdata)
 {
     int ret;
-	int id;
+    int id;
     opal_buffer_t *ans = NULL;
     orcm_analytics_cmd_flag_t command;
 
@@ -160,14 +160,14 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
 
     switch (command) {
         case ORCM_ANALYTICS_WORKFLOW_CREATE:
-        	ret = orcm_analytics_base_workflow_create(buffer, &id);
+            ret = orcm_analytics_base_workflow_create(buffer, &id);
             if (ORCM_SUCCESS == ret) {
                 ret = analytics_base_recv_pack_int(ans, id, ANALYTICS_COUNT_DEFAULT);
             }
             break;
         case ORCM_ANALYTICS_WORKFLOW_DELETE:
             /* unpack the id */
-        	id = analytics_base_recv_unpack_int(buffer, ANALYTICS_COUNT_DEFAULT);
+            id = analytics_base_recv_unpack_int(buffer, ANALYTICS_COUNT_DEFAULT);
             if (ORCM_ERROR != id) {
                 ret = orcm_analytics_base_workflow_delete(id);
             }

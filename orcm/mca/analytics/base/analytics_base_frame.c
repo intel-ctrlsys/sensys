@@ -132,8 +132,8 @@ static void wkstep_con(orcm_workflow_step_t *p)
 static void wkstep_des(orcm_workflow_step_t *p)
 {
     if (NULL == p) {
-        return;
-	}
+       return;
+    }
     OPAL_LIST_DESTRUCT(&p->attributes);
     free(p->analytic);
 }
@@ -151,7 +151,7 @@ static void wk_des(orcm_workflow_t *p)
 {
     if (NULL == p) {
         return;
-	}
+    }
     if (NULL != p->ev_base) {
         orcm_stop_progress_thread(p->name, true);
     }
@@ -171,9 +171,9 @@ static void wkcaddy_con(orcm_workflow_caddy_t *p)
 }
 static void wkcaddy_des(orcm_workflow_caddy_t *p)
 {
-	if (NULL == p) {
+    if (NULL == p) {
         return;
-	}
+    }
     OBJ_RELEASE(p->wf);
     OBJ_RELEASE(p->wf_step);
     OBJ_RELEASE(p->data);
@@ -192,7 +192,7 @@ static void value_des(orcm_analytics_value_t *p)
 {
     if (NULL == p) {
         return;
-	}
+    }
     free(p->comma_sep_plugin_list);
     free(p->sensor_name);
     free(p->node_regex);

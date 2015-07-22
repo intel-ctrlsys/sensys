@@ -42,7 +42,7 @@ static void orcm_analytics_base_recv_send_answer(orte_process_name_t* sender,
 
 int orcm_analytics_base_comm_start(void)
 {
-    if (recv_issued) {
+    if (true == recv_issued) {
         return ORCM_SUCCESS;
     }
 
@@ -56,14 +56,13 @@ int orcm_analytics_base_comm_start(void)
                             orcm_analytics_base_recv,
                             NULL);
     recv_issued = true;
-    
     return ORCM_SUCCESS;
 }
 
 
 int orcm_analytics_base_comm_stop(void)
 {
-    if (!recv_issued) {
+    if (true != recv_issued) {
         return ORCM_SUCCESS;
     }
     
@@ -73,7 +72,6 @@ int orcm_analytics_base_comm_stop(void)
 
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
     recv_issued = false;
-
     return ORCM_SUCCESS;
 }
 
@@ -82,7 +80,8 @@ static int analytics_base_recv_pack_int(opal_buffer_t* buffer, int value, int co
 {
     int ret;
 
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(buffer, &value, count, OPAL_INT))) {
+    ret = opal_dss.pack(buffer, &value, count, OPAL_INT);
+    if (OPAL_SUCCESS != ret) {
         OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                              "%s analytics:base:receive can't pack value",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
@@ -95,11 +94,12 @@ static int analytics_base_recv_pack_int(opal_buffer_t* buffer, int value, int co
 
 static int analytics_base_recv_unpack_int(opal_buffer_t* buffer, int count)
 {
-    int ret, value;
+    int ret;
+    int value;
 
     /* unpack the command */
-    if (OPAL_SUCCESS != (ret = opal_dss.unpack(buffer, &value,
-                                              &count, OPAL_INT))) {
+    ret = opal_dss.unpack(buffer, &value, &count, OPAL_INT);
+    if (OPAL_SUCCESS != ret) {
         ORTE_ERROR_LOG(ret);
         return ORCM_ERROR;
     }
@@ -114,8 +114,8 @@ static orcm_analytics_cmd_flag_t analytics_base_recv_unpack_command(opal_buffer_
     orcm_analytics_cmd_flag_t value;
 
     /* unpack the command */
-    if (OPAL_SUCCESS != (ret = opal_dss.unpack(buffer, &value,
-                                              &count, ORCM_ANALYTICS_CMD_T))) {
+    ret = opal_dss.unpack(buffer, &value, &count, ORCM_ANALYTICS_CMD_T);
+    if (OPAL_SUCCESS != ret ) {
         ORTE_ERROR_LOG(ret);
         return ORCM_ANALYTICS_WORFLOW_ERROR;
     }
@@ -144,8 +144,9 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
                                      opal_buffer_t* buffer, orte_rml_tag_t tag,
                                      void* cbdata)
 {
-    int ret, id;
-    opal_buffer_t *ans;
+    int ret;
+	int id;
+    opal_buffer_t *ans = NULL;
     orcm_analytics_cmd_flag_t command;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
@@ -159,14 +160,15 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
 
     switch (command) {
         case ORCM_ANALYTICS_WORKFLOW_CREATE:
-            if (ORCM_SUCCESS == (ret = orcm_analytics_base_workflow_create(buffer, &id))) {
+        	ret = orcm_analytics_base_workflow_create(buffer, &id);
+            if (ORCM_SUCCESS == ret) {
                 ret = analytics_base_recv_pack_int(ans, id, ANALYTICS_COUNT_DEFAULT);
             }
             break;
         case ORCM_ANALYTICS_WORKFLOW_DELETE:
             /* unpack the id */
-            if (ORCM_ERROR != (id = analytics_base_recv_unpack_int(buffer,
-                                                                   ANALYTICS_COUNT_DEFAULT))) {
+        	id = analytics_base_recv_unpack_int(buffer, ANALYTICS_COUNT_DEFAULT);
+            if (ORCM_ERROR != id) {
                 ret = orcm_analytics_base_workflow_delete(id);
             }
             break;

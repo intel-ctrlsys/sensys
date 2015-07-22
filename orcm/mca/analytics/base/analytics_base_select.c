@@ -39,7 +39,7 @@ static int orcm_analytics_base_select_create_handle(orcm_analytics_base_componen
                                                     mca_base_component_t *basecomp,
                                                     orcm_workflow_step_t *workstep)
 {
-    if (!component->available()) {
+    if (true != component->available()) {
         ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
         return ORCM_ERR_NOT_AVAILABLE;
     }
@@ -77,7 +77,6 @@ int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workstep)
             opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
                                 "mca:analytics:select: found requested component %s",
                                 basecomp->mca_component_name);
-            
             if (ORCM_SUCCESS != (ret = orcm_analytics_base_select_create_handle(component,
                                                                                 basecomp,
                                                                                 workstep))) {

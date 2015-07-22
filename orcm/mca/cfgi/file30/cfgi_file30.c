@@ -1616,7 +1616,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
             ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
             return ORCM_ERR_BAD_PARAM;
         }
-        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+        opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                             "\tNODE NAME %s", x->value[0]);
         /* define the nodes */
         vals = opal_argv_split(x->value[0], ',');
@@ -1634,8 +1634,12 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
                     return ORCM_ERR_BAD_PARAM;
                 }
                 /* see if we have each racks object - it not, create it */
+                int sz_names = opal_argv_count(names);
                 int m=0;
-                for (m=0; NULL != names[m]; m++) {
+                for (m=0; m < sz_names; m++) {
+                    if (NULL == names[m]) {
+                        continue;
+                    }
                     replace_ampersand(&names[m], rack->name);
                     node = NULL;
                     OPAL_LIST_FOREACH(nd, &rack->nodes, orcm_node_t) {
@@ -1645,12 +1649,12 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
                         }
                     }
                     if (NULL == node) {
-                        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                        opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                                             "\tNEW NODE NAME %s", names[m]);
                         node = OBJ_NEW(orcm_node_t);
                         node->name = strdup(names[m]);
                         OBJ_RETAIN(rack);
-                        node->rack = rack;
+                        node->rack = (struct orcm_rack_t *) rack;
                         node->state = ORTE_NODE_STATE_UNKNOWN;
                         opal_list_append(&rack->nodes, &node->super);
                     }
@@ -1665,13 +1669,13 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
                             return rc;
                         }
                     }
-                }  
+                }
                 opal_argv_free(names);
             }
             opal_argv_free(vals);
         }
     } else {
-        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+        opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                             "\tUNKNOWN TAG");
     }
     return ORCM_SUCCESS;
@@ -1730,8 +1734,12 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
                     return ORCM_ERR_BAD_PARAM;
                 }
                 /*if we have each rack object - if not, create it */
+                int sz_names = opal_argv_count(names);
                 int m;
-                for (m=0; NULL != names[m]; m++) {
+                for (m=0; m < sz_names; m++) {
+                    if (NULL == names[m]) {
+                        continue;
+                    }
                     replace_ampersand(&names[m], row->name);
                     rack = NULL;
                     OPAL_LIST_FOREACH(r, &row->racks, orcm_rack_t) {
@@ -1741,7 +1749,7 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
                         }
                     }
                     if (NULL == rack) {
-                        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+                        opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                                             "\tNEW RACK NAME %s", names[m]);
                         rack = OBJ_NEW(orcm_rack_t);
                         rack->name = strdup(names[m]);
@@ -1766,7 +1774,7 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
             opal_argv_free(vals);
         }
     } else {
-        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
+        opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
                             "\tUNKNOWN TAG");
     }
     return ORCM_SUCCESS;
@@ -1944,6 +1952,9 @@ static void setup_environ(char **env)
      * users to override the config file on the cmd line
      */
     tmp = opal_environ_merge(env, environ);
+    if (NULL == tmp) {
+        return;
+    }
 
     /* now cycle thru the result and push MCA params back into our
      * environment. We will overwrite some existing values,
@@ -5425,7 +5436,7 @@ void replace_ampersand(char** io_name_to_modify, char * in_parent_name)
         return;
     }
 
-    unsigned long sz_parent = strlen(in_parent_name);
+    unsigned long sz_parent = strlen(parent);
     unsigned long sz_text = strlen(text);
     unsigned long sz_final = sz_text;
 
@@ -5451,7 +5462,7 @@ void replace_ampersand(char** io_name_to_modify, char * in_parent_name)
     for (i=0; i < sz_text; ++i) {
         if ('@' == text[i]) {
            for (j=0; j < sz_parent; ++j) {
-              newtext[k++] = in_parent_name[j];
+              newtext[k++] = parent[j];
            }
         } else {
            newtext[k++] = text[i];

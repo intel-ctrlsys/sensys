@@ -311,8 +311,8 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
 
     /* unpack the number of workflow steps */
     cnt = ANALYTICS_COUNT_DEFAULT;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &num_steps,
-                                              &cnt, OPAL_INT))) {
+    rc = opal_dss.unpack(buffer, &num_steps, &cnt, OPAL_INT);
+    if (OPAL_SUCCESS != rc) {
         goto error;
     }
 
@@ -320,8 +320,8 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
         goto error;
     }
 
-
-    if (ORCM_SUCCESS != (rc = orcm_analytics_base_create_new_workflow_event_base(wf))) {
+    rc = orcm_analytics_base_create_new_workflow_event_base(wf);
+    if (ORCM_SUCCESS != rc) {
         ORTE_ERROR_LOG(rc);
         goto error;
     }
@@ -331,7 +331,8 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
     values = (opal_value_t**)malloc(cnt * sizeof(opal_value_t *));
 
     /* unpack the requested module name and attributes stored in opal_values */
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, values, &cnt, OPAL_VALUE))) {
+    rc = opal_dss.unpack(buffer, values, &cnt, OPAL_VALUE);
+    if (OPAL_SUCCESS != rc) {
         ORTE_ERROR_LOG(rc);
         goto error;
     }
@@ -339,7 +340,8 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
 
     /* create each step (module) of the workflow */
     for (step = 0; step < cnt; step = step + MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP) {
-        if (OPAL_SUCCESS != (rc = orcm_analytics_base_workflow_step_create(wf, values, step))) {
+        rc = orcm_analytics_base_workflow_step_create(wf, values, step);
+        if (OPAL_SUCCESS != rc) {
             goto error;
         }
 

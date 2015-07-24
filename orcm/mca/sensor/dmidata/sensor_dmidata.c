@@ -202,7 +202,7 @@ static int init(void)
         fclose(fptr);
         cpufreq_loaded = true;
     } else {
-        opal_output(0,"cpufreq module not loaded, unable to collect frequency list");
+        opal_output(0,"Unable to collect frequency list");
         cpufreq_loaded = false;
     }
     return ORCM_SUCCESS;

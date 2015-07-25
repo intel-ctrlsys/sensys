@@ -114,7 +114,7 @@ for branch in $branches; do
     if test "$prev_snapshot" != "$latest_snapshot" && \
         test "$branch" = "master"; then
         echo "=== Saving output for a Coverity run"
-        echo "$outputroot/$branch/orcm-$latest_snapshot.tar.bz2" >> $pending_coverity
+        echo "$outputroot/$branch/openrcm-$latest_snapshot.tar.bz2" >> $pending_coverity
     else
         echo "=== NOT saving output for a Coverity run"
     fi

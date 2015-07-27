@@ -323,6 +323,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     unsigned long long val1 = 0, val2 = 0;
     float node_power_cur;
 
+    _readein.ipmi_calls=0;
+
     /* we must be root to run */
     if (0 != geteuid()) {
         return;
@@ -442,7 +444,7 @@ retry_b:
     if (b_error)
     {
         b_error=false;
-        if(_readein.ipmi_calls<=6)
+        if(_readein.ipmi_calls<=7)
             goto retry_b;
     }
 
@@ -473,7 +475,7 @@ retry_b:
         return;
     }
 
-    if (_readein.ipmi_calls <=2){
+    if (_readein.ipmi_calls<2){
         node_power_cur=0.0;
     } else{
         node_power_cur=(float)(node_power.node_power.cur);

@@ -12,6 +12,15 @@
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
+#ifdef HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
 
 #include "opal/util/argv.h"
 #include "opal/util/output.h"
@@ -31,6 +40,7 @@ static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
                                    char ***completions, opal_list_t *options);
 static int print_completions(orcm_cli_t *cli, char **input);
 static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input);
+static void set_handler_default(int sig);
 
 int orcm_cli_create(orcm_cli_t *cli,
                     orcm_cli_init_t *table)
@@ -155,8 +165,15 @@ int orcm_cli_get_cmd(char *prompt,
     j = 0;
     space = false;
 
+    set_handler_default(SIGTERM);
+    set_handler_default(SIGINT);
+    set_handler_default(SIGHUP);
+    set_handler_default(SIGPIPE);
+    set_handler_default(SIGCHLD);
+
     /* prep the console */
     tcgetattr(STDIN_FILENO, &initial_settings);
+
     settings = initial_settings;
 
     /* Set the console mode to no-echo, raw input. */
@@ -174,7 +191,6 @@ int orcm_cli_get_cmd(char *prompt,
         case '\t':   // auto-completion
             space = false;
             options = NULL;
-            opal_argv_free(completions);
             completions = NULL;
             /* break command line so far into array of strings */
             inputlist = opal_argv_split(input, ' ');
@@ -299,7 +315,6 @@ int orcm_cli_get_cmd(char *prompt,
         case '?':   // help special char
             /* list help message of possible completions */
             options = NULL;
-            opal_argv_free(inputlist);
             inputlist = opal_argv_split(input, ' ');
             printf("\nPossible commands:\n");
             print_completions(cli, inputlist);
@@ -319,6 +334,15 @@ int orcm_cli_get_cmd(char *prompt,
             input[j++] = c;
             break;
         }
+        if (NULL != completions) {
+            opal_argv_free(completions);
+            completions = NULL;
+        }
+        if ((NULL != inputlist) && 
+            (opal_argv_count(inputlist))) {
+            opal_argv_free(inputlist);
+            inputlist = NULL;
+        }
     }
 
  process:
@@ -328,8 +352,13 @@ int orcm_cli_get_cmd(char *prompt,
     /* return the assembled command */
     *cmd = strdup(input);
 
-    opal_argv_free(completions);
-    opal_argv_free(inputlist);
+    if (NULL != completions) {
+        opal_argv_free(completions);
+    }
+    if ((NULL != inputlist) && 
+        (opal_argv_count(inputlist))) {
+        opal_argv_free(inputlist);
+    }
     return rc;
 }
 
@@ -367,7 +396,6 @@ static int get_completions(orcm_cli_t *cli, char **input,
             }
         }
     }
-    opal_argv_free(input);
     if (!found) {
         return ORCM_ERR_NOT_FOUND;
     }
@@ -414,7 +442,6 @@ static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
             }
         }
     }
-    opal_argv_free(input);
     if (!found) {
         return ORCM_ERR_NOT_FOUND;
     }
@@ -451,7 +478,6 @@ static int print_completions(orcm_cli_t *cli, char **input)
             }
         }
     }
-    opal_argv_free(input);
     if (!found) {
         return ORCM_ERR_NOT_FOUND;
     }
@@ -488,7 +514,6 @@ static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input)
             }
         }
     }
-    opal_argv_free(input);
     if (!found) {
         return ORCM_ERR_NOT_FOUND;
     }
@@ -535,6 +560,21 @@ static void print_subtree(orcm_cli_cmd_t *command, int level)
         print_subtree(sub_command, level+1);
     }
 }
+
+int orcm_cli_print_cmd_help(orcm_cli_t *cli, char **input) 
+{
+    return print_completions(cli, input);
+}
+
+static void set_handler_default(int sig)
+{
+    struct sigaction act;
+    act.sa_handler = SIG_DFL;
+    act.sa_flags = 0;
+    sigemptyset(&act.sa_mask);
+    sigaction(sig, &act, (struct sigaction *)0);
+}
+
 
 /***   CLASS INSTANCES   ***/
 static void cmdcon(orcm_cli_cmd_t *p)

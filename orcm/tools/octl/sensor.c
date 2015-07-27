@@ -14,7 +14,8 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
 {
     orcm_sensor_cmd_flag_t command;
     opal_buffer_t *buf = NULL;
-    int rc, cnt, i;
+    int rc = ORCM_SUCCESS;
+    int cnt, i;
     int num = 0;
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
@@ -27,16 +28,18 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
     bool hi_thres;
     int max_count, time_window;
     orte_notifier_severity_t severity;
+    char *errmsg = NULL;
 
     if (4 != opal_argv_count(argv)) {
-        fprintf(stderr, "incorrect arguments to \"sensor get policy\"\n");
+        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"sensor \
+get policy <nodelist>\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
     /* setup the receiver nodelist */
     orte_regex_extract_node_names (argv[3], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        fprintf(stdout, "Error: unable to extract nodelist\n");
+        fprintf(stdout, "ERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -48,7 +51,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
     /* pack the command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SENSOR_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -56,7 +58,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
     /* pack the sub-command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SENSOR_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -72,10 +73,9 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, xfer);
 
-        fprintf(stdout, "ORCM getting sensor policy from Node:%s\n", nodelist[i]);
+        fprintf(stdout, "\nORCM getting sensor policy from Node:%s\n", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
-            ORTE_ERROR_LOG(rc);
             goto done;
         }
 
@@ -84,7 +84,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_SENSOR,
                                           orte_rml_send_callback, NULL))) {
-            ORTE_ERROR_LOG(rc);
             goto done;
         }
 
@@ -94,23 +93,21 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
         cnt=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &num,
                                                   &cnt, OPAL_INT))) {
-            ORTE_ERROR_LOG(rc);
             goto done;
         }
 
         if ( 0 == num ) {
             rc = ORCM_SUCCESS;
-            fprintf(stdout, "There is no active policy!\n");
+            fprintf(stdout, "\nThere is no active policy!\n");
             goto done;
         } else {
-             printf("Sensor      Threshold        Hi/Lo    Max_Count/Time_Window    Severity      Action\n");
+             printf("\nSensor      Threshold        Hi/Lo    Max_Count/Time_Window    Severity      Action\n");
              printf("-----------------------------------------------------------------------------------\n");
             for (i = 0; i < num; i++) {
                 /* unpack sensor name */
                 cnt = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &sensor_name,
                                                   &cnt, OPAL_STRING))) {
-                    ORTE_ERROR_LOG(rc);
                     goto done;
                 }
 
@@ -118,7 +115,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
                 cnt = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &threshold,
                                                   &cnt, OPAL_FLOAT))) {
-                    ORTE_ERROR_LOG(rc);
                     goto done;
                 }
 
@@ -126,7 +122,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
                 cnt = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &hi_thres,
                                                   &cnt, OPAL_BOOL))) {
-                    ORTE_ERROR_LOG(rc);
                     goto done;
                 }
 
@@ -134,7 +129,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
                 cnt = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &max_count,
                                                   &cnt, OPAL_INT))) {
-                    ORTE_ERROR_LOG(rc);
                     goto done;
                 }
 
@@ -142,7 +136,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
                 cnt = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &time_window,
                                                   &cnt, OPAL_INT))) {
-                    ORTE_ERROR_LOG(rc);
                     goto done;
                 }
 
@@ -150,7 +143,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
                 cnt = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &severity,
                                                   &cnt, OPAL_INT))) {
-                    ORTE_ERROR_LOG(rc);
                     goto done;
                 }
 
@@ -158,7 +150,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
                 cnt = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &action,
                                                   &cnt, OPAL_STRING))) {
-                    ORTE_ERROR_LOG(rc);
                     goto done;
                 }
 
@@ -215,19 +206,26 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
     }
 
 done:
-    if ( buf ) {
+    if (buf) {
         OBJ_RELEASE(buf);
     }
-    if ( xfer ) {
+    if (xfer) {
         OBJ_RELEASE(xfer);
     }
-    if ( nodelist ) {
+    if (nodelist) {
         opal_argv_free(nodelist);
     }
 
-    if ( ORCM_SUCCESS != rc ) {
-        fprintf(stdout, "Error\n");
-    }
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
+
+    if (ORCM_SUCCESS != rc) {
+        errmsg = ORTE_ERROR_NAME(rc);
+        if (NULL != errmsg) {
+            fprintf(stdout, "\nERROR: %s\n", errmsg);
+        } else {
+            fprintf(stdout, "\nERROR: Internal\n");
+        }
+    } 
     return rc;
 }
 
@@ -236,7 +234,8 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
 {
     orcm_sensor_cmd_flag_t command;
     opal_buffer_t *buf = NULL;
-    int rc, cnt, i, result;
+    int rc = ORCM_SUCCESS;
+    int cnt, i, result;
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
@@ -244,16 +243,20 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     bool hi_thres;
     int max_count, time_window;
     orte_notifier_severity_t sev;
+    char *errmsg = NULL;
 
     if (11 != opal_argv_count(argv)) {
-        fprintf(stderr, "incorrect arguments to \"sensor set policy\"\n");
+        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"sensor set \
+policy <nodelist> <sensor name> <threshold value> \
+<threshold type> <max count> <time window> <severity> \
+<action>\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
     /* setup the receiver nodelist */
     orte_regex_extract_node_names (argv[3], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        fprintf(stdout, "Error: unable to extract nodelist\n");
+        fprintf(stdout, "ERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -265,7 +268,6 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     /* pack the command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SENSOR_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -273,14 +275,12 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     /* pack the sub-command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SENSOR_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
     /* pack sensor name */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[4],
                                             1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -288,7 +288,6 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     threshold = (float)atof(argv[5]);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &threshold,
                                             1, OPAL_FLOAT))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -303,7 +302,6 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &hi_thres,
                                             1, OPAL_BOOL))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -316,7 +314,6 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &max_count,
                                             1, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -329,7 +326,6 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &time_window,
                                             1, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -356,14 +352,12 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &sev,
                                             1, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
     /* pack notification action */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[10],
                                             1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -382,7 +376,6 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
         fprintf(stdout, "ORCM setting sensor policy on Node:%s\n", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
-            ORTE_ERROR_LOG(rc);
             goto done;
         }
 
@@ -391,7 +384,6 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_SENSOR,
                                           orte_rml_send_callback, NULL))) {
-            ORTE_ERROR_LOG(rc);
             goto done;
         }
 
@@ -401,7 +393,6 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
         cnt=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,
                                                   &cnt, OPAL_INT))) {
-            ORTE_ERROR_LOG(rc);
             goto done;
         }
         if (ORCM_SUCCESS == result) {
@@ -412,19 +403,25 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     }
 
 done:
-    if ( buf ) {
+    if (buf) {
         OBJ_RELEASE(buf);
     }
-    if ( xfer ) {
+    if (xfer) {
         OBJ_RELEASE(xfer);
     }
-    if ( nodelist ) {
+    if (nodelist) {
         opal_argv_free(nodelist);
     }
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
 
-    if ( ORCM_SUCCESS != rc ) {
-        fprintf(stdout, "Error\n");
-    }
+    if (ORCM_SUCCESS != rc) {
+        errmsg = ORTE_ERROR_NAME(rc);
+        if (NULL != errmsg) {
+            fprintf(stdout, "\nERROR: %s\n", errmsg);
+        } else {
+            fprintf(stdout, "\nERROR: Internal\n");
+        }
+    } 
     return rc;
 }
 
@@ -438,9 +435,11 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
+    char *errmsg = NULL;
 
     if (6 != opal_argv_count(argv)) {
-        fprintf(stderr, "incorrect arguments! \n  usage:\"sensor set sample-rate <sensor-name> <sample-rate> <node-name>\"\n");
+        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"sensor \
+set sample-rate <sensor-name> <sample-rate> <node-list>\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -464,28 +463,24 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
     /* pack sensor set command */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SENSOR_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
-        goto finish;
+        goto done;
     }
     command = cmd;
     /* pack sensor sample rate sub command */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SENSOR_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
-        goto finish;
+        goto done;
     }
     /* pack sensor name */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[3],
                                             1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        goto finish;
+        goto done;
     }
 
     /* pack sample_rate value */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &sample_rate,
                                             1, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
-        goto finish;
+        goto done;
     }
 
     xfer = OBJ_NEW(orte_rml_recv_cb_t);
@@ -503,8 +498,7 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
         fprintf(stdout, "ORCM setting sensor:%s sample-rate on node:%s\n", argv[3], nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
-            ORTE_ERROR_LOG(rc);
-            goto finish;
+            goto done;
         }
 
         /* send command to node daemon */
@@ -512,8 +506,7 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_SENSOR,
                                           orte_rml_send_callback, NULL))) {
-            ORTE_ERROR_LOG(rc);
-            goto finish;
+            goto done;
         }
 
         /* wait for status message */ 
@@ -522,23 +515,34 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
         cnt=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,
                                                   &cnt, OPAL_INT))) {
-            ORTE_ERROR_LOG(rc);
-            goto finish;
+            goto done;
          }
          if (ORCM_SUCCESS == result) {
-             fprintf(stdout, "Success\n");
+             fprintf(stdout, "\nSuccess\n");
          } else {
-             fprintf(stdout, "Failure\n");
+             fprintf(stdout, "\nFailure\n");
          }
     }
 
-finish:
-    if(buf) OBJ_RELEASE(buf);
-    if(xfer) OBJ_RELEASE(xfer);
-    if(nodelist) opal_argv_free(nodelist);
-    if (ORCM_SUCCESS != rc) {
-        fprintf(stdout, "Failure\n");
+done:
+    if(buf) {
+       OBJ_RELEASE(buf);
     }
+    if(xfer) {
+       OBJ_RELEASE(xfer);
+    }
+    if(nodelist) {
+       opal_argv_free(nodelist);
+    }
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
+    if (ORCM_SUCCESS != rc) {
+        errmsg = ORTE_ERROR_NAME(rc);
+        if (NULL != errmsg) {
+            fprintf(stdout, "\nERROR: %s\n", errmsg);
+        } else {
+            fprintf(stdout, "\nERROR: Internal\n");
+        }
+    } 
     return rc;
 }
 
@@ -546,22 +550,25 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
 {
     orcm_sensor_cmd_flag_t command;
     opal_buffer_t *buf = NULL;
-    int rc, response, cnt, i;
+    int rc = ORCM_SUCCESS;
+    int response, cnt, i;
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
     char *sensor_name = NULL; 
     int sample_rate = 0;
+    char *errmsg = NULL;
 
     if (5 != opal_argv_count(argv)) {
-        fprintf(stderr, "incorrect arguments! \n\n usage: \"sensor get sample-rate <sensor-name> nodelist\"\n");
+        fprintf(stderr, "\n  incorrect arguments! \n\n usage: \"sensor \
+get sample-rate <sensor-name> <nodelist>\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
     /* setup the receiver nodelist */
     orte_regex_extract_node_names (argv[4], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        fprintf(stdout, "Error: unable to extract nodelist\n");
+        fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -573,7 +580,6 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
     /* pack the command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SENSOR_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -581,14 +587,12 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
     /* pack the sub-command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SENSOR_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
     /* pack sensor name */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[3],
                                             1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
         goto done;
     }
 
@@ -604,11 +608,10 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, xfer);
 
-        fprintf(stdout, "ORCM getting sensor %s sample-rate  from node:%s\n", 
+        fprintf(stdout, "\nORCM getting sensor %s sample-rate  from node:%s\n", 
                 argv[3], nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
-            ORTE_ERROR_LOG(rc);
             goto done;
         }
 
@@ -617,7 +620,6 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_SENSOR,
                                           orte_rml_send_callback, NULL))) {
-            ORTE_ERROR_LOG(rc);
             goto done;
         }
 
@@ -627,22 +629,20 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
         cnt=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &response,
                                                   &cnt, OPAL_INT))) {
-            ORTE_ERROR_LOG(rc);
             goto done;
         }
 
         if ( 0 != response ) {
             rc = ORCM_SUCCESS;
-            fprintf(stdout, "Bad parameter error\n");
+            fprintf(stdout, "\nERROR: Bad parameter\n");
             goto done;
         } else {
-             printf("Sensor     sample-rate\n");
+             printf("\nSensor     sample-rate\n");
              printf("------------------------------------------------------------------------------\n");
             /* unpack sensor name */
             cnt = 1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &sensor_name,
                                               &cnt, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
                 goto done;
             }
 
@@ -651,13 +651,31 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, 
                                                       &sample_rate,
                                                       &cnt, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
                 goto done;
             }
 
             printf("%s            %d\n", sensor_name, sample_rate);
         }
     }
+
 done:
-    return ORCM_SUCCESS;
+    if(buf) {
+       OBJ_RELEASE(buf);
+    }
+    if(xfer) {
+       OBJ_RELEASE(xfer);
+    }
+    if(nodelist) {
+       opal_argv_free(nodelist);
+    }
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
+    if (ORCM_SUCCESS != rc) {
+        errmsg = ORTE_ERROR_NAME(rc);
+        if (NULL != errmsg) {
+            fprintf(stdout, "\nERROR: %s\n", errmsg);
+        } else {
+            fprintf(stdout, "\nERROR: Internal\n");
+        }
+    } 
+    return rc;
 }

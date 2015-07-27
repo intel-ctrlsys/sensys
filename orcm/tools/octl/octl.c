@@ -17,6 +17,7 @@ static int orcm_octl_work(int argc, char *argv[]);
 static int run_cmd(char *cmd);
 static int octl_facility_setup(void);
 static int octl_facility_cleanup(void);
+static void octl_print_illegal_command(char *cmd);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -94,6 +95,7 @@ main(int argc, char *argv[])
 static int orcm_octl_work(int argc, char *argv[])
 {
     opal_cmd_line_t cmd_line;
+    bool interactive = false;
     orcm_octl_globals_t tmp = { false,    /* help */
         false,    /* version */
         false,    /* verbose */
@@ -170,28 +172,49 @@ static int orcm_octl_work(int argc, char *argv[])
     if (0 == tailc) {
         /* if the user hasn't specified any commands,
          * run interactive cli to help build it */
+        interactive = true;
         OBJ_CONSTRUCT(&cli, orcm_cli_t);
         orcm_cli_create(&cli, cli_init);
         /* give help on top level commands */
         printf("*** WELCOME TO OCTL ***\n Possible commands:\n");
-        OPAL_LIST_FOREACH(cmd, &cli.cmds, orcm_cli_cmd_t) {
-            orcm_cli_print_cmd(cmd, NULL);
+        orcm_cli_print_cmd_help(&cli, NULL); 
+
+        while (true == interactive) {
+            mycmd = NULL;
+            /* run interactive cli */
+            ret = orcm_cli_get_cmd("octl", &cli, &mycmd);
+            if (ORCM_SUCCESS != ret) {
+                octl_print_illegal_command(mycmd);
+                if (NULL != mycmd) {
+                    free(mycmd);
+                }
+                continue;
+            }
+            if (!mycmd) {
+                fprintf(stderr, "\nNo command specified\n");
+                continue;
+            }
+            if ((0 == strcmp(mycmd,"quit")) ||
+               (0 == strcmp(mycmd,"exit"))) {
+                printf("\nExiting...\n");
+                interactive = false;
+                free(mycmd);
+                continue;
+            }
+            ret = run_cmd(mycmd);
+            if (ORCM_ERROR == ret) {
+                printf("\nUse \'%s<tab>\' or \'%s<?>\' for help.\n", mycmd, mycmd);
+            }
+            free(mycmd);
         }
-        mycmd = NULL;
-        /* run interactive cli */
-        orcm_cli_get_cmd("octl", &cli, &mycmd);
-        if (!mycmd) {
-            fprintf(stderr, "\nNo command specified\n");
-        }
+        OBJ_DESTRUCT(&cli);
     } else {
         /* otherwise use the user specified command */
         mycmd = (opal_argv_join(tailv, ' '));
+        ret = run_cmd(mycmd);
+        free(mycmd);
     }
-
-    ret = run_cmd(mycmd);
-    free(mycmd);
     opal_argv_free(tailv);
-
     return ret;
 }
 
@@ -214,9 +237,9 @@ static int octl_command_to_int(char *command)
     return -1;
 }
 
-static int run_cmd(char *cmd) {
+static int run_cmd(char *cmd) 
+{
     char **cmdlist = NULL;
-    char *fullcmd = NULL;
     int rc;
     int sz_cmdlist = 0;
 
@@ -230,9 +253,7 @@ static int run_cmd(char *cmd) {
 
     rc = octl_command_to_int(cmdlist[0]);
     if (-1 == rc) {
-        fullcmd = opal_argv_join(cmdlist, ' ');
-        fprintf(stderr, "Unknown command: %s\n", fullcmd);
-        free(fullcmd);
+        octl_print_illegal_command(cmd);
         opal_argv_free(cmdlist);
         return ORCM_ERROR;
     }
@@ -242,295 +263,190 @@ static int run_cmd(char *cmd) {
     case 0: //resource
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Unknown command: %s\n", fullcmd);
-            free(fullcmd);
             rc = ORCM_ERROR;
             break;
         }
 
         switch (rc) {
         case 4: //status
-            if (ORCM_SUCCESS != (rc = orcm_octl_resource_status(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_resource_status(cmdlist);
             break;
         case 5: //add
-            if (ORCM_SUCCESS != (rc = orcm_octl_resource_add(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_resource_add(cmdlist);
             break;
         case 6: //remove
-            if (ORCM_SUCCESS != (rc = orcm_octl_resource_remove(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_resource_remove(cmdlist);
             break;
         case 7: //drain
-            if (ORCM_SUCCESS != (rc = orcm_octl_resource_drain(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_resource_drain(cmdlist);
             break;
         case 18: //resume
-            if (ORCM_SUCCESS != (rc = orcm_octl_resource_resume(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_resource_resume(cmdlist);
             break;
         default:
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Illegal command: %s\n", fullcmd);
-            free(fullcmd);
+            rc = ORCM_ERROR;
             break;
         }
         break;
     case 1: // queue
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Unknown command: %s\n", fullcmd);
-            free(fullcmd);
             rc = ORCM_ERROR;
             break;
         }
 
         switch (rc) {
         case 4: //status
-            if (ORCM_SUCCESS != (rc = orcm_octl_queue_status(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_queue_status(cmdlist);
             break;
         case 8: //policy
-            if (ORCM_SUCCESS != (rc = orcm_octl_queue_policy(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_queue_policy(cmdlist);
             break;
         case 9: //define
-            if (ORCM_SUCCESS != (rc = orcm_octl_queue_define(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_queue_define(cmdlist);
             break;
         case 5: //add
-            if (ORCM_SUCCESS != (rc = orcm_octl_queue_add(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_queue_add(cmdlist);
             break;
         case 6: //remove
-            if (ORCM_SUCCESS != (rc = orcm_octl_queue_remove(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_queue_remove(cmdlist);
             break;
         case 10: //acl
-            if (ORCM_SUCCESS != (rc = orcm_octl_queue_acl(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_queue_acl(cmdlist);
             break;
         case 11: //priority
-            if (ORCM_SUCCESS != (rc = orcm_octl_queue_priority(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_queue_priority(cmdlist);
             break;
         default:
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Illegal command: %s\n", fullcmd);
-            free(fullcmd);
+            rc = ORCM_ERROR;
             break;
         }
         break;
     case 2: // session
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Unknown command: %s\n", fullcmd);
-            free(fullcmd);
             rc = ORCM_ERROR;
             break;
         }
 
         switch (rc) {
         case 4: //status
-            if (ORCM_SUCCESS != (rc = orcm_octl_session_status(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_session_status(cmdlist);
             break;
         case 12: //cancel
-            if (ORCM_SUCCESS != (rc = orcm_octl_session_cancel(cmdlist))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_session_cancel(cmdlist);
             break;
         case 16: //set
             rc = octl_command_to_int(cmdlist[2]);
             if (-1 == rc) {
-                fullcmd = opal_argv_join(cmdlist, ' ');
-                printf("Unknown command: %s\n", fullcmd);
-                free(fullcmd);
                 break;
             }
 
             switch(rc) {
             case 20: //budget
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_set(ORCM_SET_POWER_BUDGET_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_set(ORCM_SET_POWER_BUDGET_COMMAND, cmdlist);
                 break;
             case 21: //mode
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_set(ORCM_SET_POWER_MODE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_set(ORCM_SET_POWER_MODE_COMMAND, cmdlist);
                 break;
             case 22: //window
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_set(ORCM_SET_POWER_WINDOW_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_set(ORCM_SET_POWER_WINDOW_COMMAND, cmdlist);
                 break;
             case 23: //overage
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_set(ORCM_SET_POWER_OVERAGE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_set(ORCM_SET_POWER_OVERAGE_COMMAND, cmdlist);
                 break;
             case 24: //underage
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_set(ORCM_SET_POWER_UNDERAGE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_set(ORCM_SET_POWER_UNDERAGE_COMMAND, cmdlist);
                 break;
             case 25: //overage_time
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_set(ORCM_SET_POWER_OVERAGE_TIME_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_set(ORCM_SET_POWER_OVERAGE_TIME_COMMAND, cmdlist);
                 break;
             case 26: //underage_time
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_set(ORCM_SET_POWER_UNDERAGE_TIME_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_set(ORCM_SET_POWER_UNDERAGE_TIME_COMMAND, cmdlist);
                 break;
             case 27: //frequency
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_set(ORCM_SET_POWER_FREQUENCY_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_set(ORCM_SET_POWER_FREQUENCY_COMMAND, cmdlist);
                 break;
             case 29: //strict
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_set(ORCM_SET_POWER_STRICT_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_set(ORCM_SET_POWER_STRICT_COMMAND, cmdlist);
                 break;
             default:
-                fullcmd = opal_argv_join(cmdlist, ' ');
-                printf("Illegal command: %s\n", fullcmd);
-                free(fullcmd);
+                rc = ORCM_ERROR;
                 break;
             }
             break;
         case 17: //get
             rc = octl_command_to_int(cmdlist[2]);
             if (-1 == rc) {
-                fullcmd = opal_argv_join(cmdlist, ' ');
-                printf("Unknown command: %s\n", fullcmd);
-                free(fullcmd);
                 break;
             }
 
             switch(rc) {
             case 20: //budget
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_get(ORCM_GET_POWER_BUDGET_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_get(ORCM_GET_POWER_BUDGET_COMMAND, cmdlist);
                 break;
             case 21: //mode
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_get(ORCM_GET_POWER_MODE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_get(ORCM_GET_POWER_MODE_COMMAND, cmdlist);
                 break;
             case 22: //window
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_get(ORCM_GET_POWER_WINDOW_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_get(ORCM_GET_POWER_WINDOW_COMMAND, cmdlist);
                 break;
             case 23: //overage
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_get(ORCM_GET_POWER_OVERAGE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_get(ORCM_GET_POWER_OVERAGE_COMMAND, cmdlist);
                 break;
             case 24: //underage
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_get(ORCM_GET_POWER_UNDERAGE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_get(ORCM_GET_POWER_UNDERAGE_COMMAND, cmdlist);
                 break;
             case 25: //overage_time
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_get(ORCM_GET_POWER_OVERAGE_TIME_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_get(ORCM_GET_POWER_OVERAGE_TIME_COMMAND, cmdlist);
                 break;
             case 26: //underage_time
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_get(ORCM_GET_POWER_UNDERAGE_TIME_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_get(ORCM_GET_POWER_UNDERAGE_TIME_COMMAND, cmdlist);
                 break;
             case 27: //frequency
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_get(ORCM_GET_POWER_FREQUENCY_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_get(ORCM_GET_POWER_FREQUENCY_COMMAND, cmdlist);
                 break;
             case 28: //modes
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_MODES_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_MODES_COMMAND, cmdlist);
                 break;
             case 29: //strict
-                if (ORCM_SUCCESS != (rc = orcm_octl_session_get(ORCM_GET_POWER_STRICT_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_session_get(ORCM_GET_POWER_STRICT_COMMAND, cmdlist);
                 break;
             default:
-                fullcmd = opal_argv_join(cmdlist, ' ');
-                printf("Illegal command: %s\n", fullcmd);
-                free(fullcmd);
+                rc = ORCM_ERROR;
                 break;
             }
         break;
         default:
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Illegal command: %s\n", fullcmd);
-            free(fullcmd);
+            rc = ORCM_ERROR;
             break;
         }
         break;
     case 3: // diag
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Unknown command: %s\n", fullcmd);
-            free(fullcmd);
             rc = ORCM_ERROR;
             break;
         }
 
         switch (rc) {
             case 13: //cpu
-                if (ORCM_SUCCESS != (rc = orcm_octl_diag_cpu(cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_diag_cpu(cmdlist);
                 break;
             case 19: //eth
-                if (ORCM_SUCCESS != (rc = orcm_octl_diag_eth(cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_diag_eth(cmdlist);
                 break;
             case 14: //mem
-                if (ORCM_SUCCESS != (rc = orcm_octl_diag_mem(cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_diag_mem(cmdlist);
                 break;
             default:
-                fullcmd = opal_argv_join(cmdlist, ' ');
-                fprintf(stderr, "Illegal command: %s\n", fullcmd);
-                free(fullcmd);
+                rc = ORCM_ERROR;
                 break;
         }
         break;
     case 15: // power
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Unknown command: %s\n", fullcmd);
-            free(fullcmd);
             rc = ORCM_ERROR;
             break;
         }
@@ -539,129 +455,81 @@ static int run_cmd(char *cmd) {
         case 16: //set
             rc = octl_command_to_int(cmdlist[2]);
             if (-1 == rc) {
-                fullcmd = opal_argv_join(cmdlist, ' ');
-                printf("Unknown command: %s\n", fullcmd);
-                free(fullcmd);
                 break;
             }
 
             switch(rc) {
             case 20: //budget
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(ORCM_SET_POWER_BUDGET_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_set(ORCM_SET_POWER_BUDGET_COMMAND, cmdlist);
                 break;
             case 21: //mode
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(ORCM_SET_POWER_MODE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_set(ORCM_SET_POWER_MODE_COMMAND, cmdlist);
                 break;
             case 22: //window
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(ORCM_SET_POWER_WINDOW_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_set(ORCM_SET_POWER_WINDOW_COMMAND, cmdlist);
                 break;
             case 23: //overage
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(ORCM_SET_POWER_OVERAGE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_set(ORCM_SET_POWER_OVERAGE_COMMAND, cmdlist);
                 break;
             case 24: //underage
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(ORCM_SET_POWER_UNDERAGE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_set(ORCM_SET_POWER_UNDERAGE_COMMAND, cmdlist);
                 break;
             case 25: //overage_time
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(ORCM_SET_POWER_OVERAGE_TIME_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_set(ORCM_SET_POWER_OVERAGE_TIME_COMMAND, cmdlist);
                 break;
             case 26: //underage_time
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(ORCM_SET_POWER_UNDERAGE_TIME_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_set(ORCM_SET_POWER_UNDERAGE_TIME_COMMAND, cmdlist);
                 break;
             case 27: //frequency
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(ORCM_SET_POWER_FREQUENCY_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_set(ORCM_SET_POWER_FREQUENCY_COMMAND, cmdlist);
                 break;
             case 29: //strict
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_set(ORCM_SET_POWER_STRICT_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_set(ORCM_SET_POWER_STRICT_COMMAND, cmdlist);
                 break;
             default:
-                fullcmd = opal_argv_join(cmdlist, ' ');
-                fprintf(stderr, "Illegal command: %s\n", fullcmd);
-                free(fullcmd);
+                rc = ORCM_ERROR;
                 break;
             }
             break;
         case 17: //get
             rc = octl_command_to_int(cmdlist[2]);
             if (-1 == rc) {
-                fullcmd = opal_argv_join(cmdlist, ' ');
-                printf("Unknown command: %s\n", fullcmd);
-                free(fullcmd);
                 break;
             }
 
             switch(rc) {
             case 20: //budget
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_BUDGET_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_BUDGET_COMMAND, cmdlist);
                 break;
             case 21: //mode
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_MODE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_MODE_COMMAND, cmdlist);
                 break;
             case 22: //window
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_WINDOW_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_WINDOW_COMMAND, cmdlist);
                 break;
             case 23: //overage
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_OVERAGE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_OVERAGE_COMMAND, cmdlist);
                 break;
             case 24: //underage
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_UNDERAGE_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_UNDERAGE_COMMAND, cmdlist);
                 break;
             case 25: //overage_time
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_OVERAGE_TIME_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_OVERAGE_TIME_COMMAND, cmdlist);
                 break;
             case 26: //underage_time
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_UNDERAGE_TIME_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_UNDERAGE_TIME_COMMAND, cmdlist);
                 break;
             case 27: //frequency
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_FREQUENCY_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_FREQUENCY_COMMAND, cmdlist);
                 break;
             case 28: //modes
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_MODES_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_MODES_COMMAND, cmdlist);
                 break;
             case 29: //strict
-                if (ORCM_SUCCESS != (rc = orcm_octl_power_get(ORCM_GET_POWER_STRICT_COMMAND, cmdlist))) {
-                    ORTE_ERROR_LOG(rc);
-                }
+                rc = orcm_octl_power_get(ORCM_GET_POWER_STRICT_COMMAND, cmdlist);
                 break;
             default:
-                fullcmd = opal_argv_join(cmdlist, ' ');
-                printf("Illegal command: %s\n", fullcmd);
-                free(fullcmd);
+                rc = ORCM_ERROR;
                 break;
             }
             break;
@@ -670,9 +538,6 @@ static int run_cmd(char *cmd) {
     case 30: // sensor
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Unknown command: %s\n", fullcmd);
-            free(fullcmd);
             rc = ORCM_ERROR;
             break;
         }
@@ -681,9 +546,6 @@ static int run_cmd(char *cmd) {
             case 16: //set
                 rc = octl_command_to_int(cmdlist[2]);
                 if (-1 == rc) {
-                    fullcmd = opal_argv_join(cmdlist, ' ');
-                    printf("Unknown command: %s\n", fullcmd);
-                    free(fullcmd);
                     break;
                 }
 
@@ -695,9 +557,7 @@ static int run_cmd(char *cmd) {
                     rc = orcm_octl_sensor_sample_rate_set(ORCM_SET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
                     break;
                 default:
-                    fullcmd = opal_argv_join(cmdlist, ' ');
-                    printf("Illegal command: %s\n", fullcmd);
-                    free(fullcmd);
+                    rc = ORCM_ERROR;
                     break;
                 }
                 break;
@@ -705,9 +565,6 @@ static int run_cmd(char *cmd) {
             case 17: //get
                 rc = octl_command_to_int(cmdlist[2]);
                 if (-1 == rc) {
-                    fullcmd = opal_argv_join(cmdlist, ' ');
-                    printf("Unknown command: %s\n", fullcmd);
-                    free(fullcmd);
                     break;
                 }
 
@@ -719,76 +576,55 @@ static int run_cmd(char *cmd) {
                     rc = orcm_octl_sensor_sample_rate_get(ORCM_GET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
                     break;
                 default:
-                    fullcmd = opal_argv_join(cmdlist, ' ');
-                    printf("Illegal command: %s\n", fullcmd);
-                    free(fullcmd);
+                    rc = ORCM_ERROR;
                     break;
                 }
                 break;
 
             default:
-                fullcmd = opal_argv_join(cmdlist, ' ');
-                fprintf(stderr, "Illegal command: %s\n", fullcmd);
-                free(fullcmd);
+                rc = ORCM_ERROR;
                 break;
         }
         break;
     case 32: //grouping
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Unknown command: %s\n", fullcmd);
-            free(fullcmd);
             rc = ORCM_ERROR;
             break;
         }
         switch (rc)
         {
         case 33: //load
-            if (ORCM_SUCCESS != (rc = orcm_octl_grouping_load(sz_cmdlist, cmdlist, &logro))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_grouping_load(sz_cmdlist, cmdlist, &logro);
             break;
         case 5: //add
-            if (ORCM_SUCCESS != (rc = orcm_octl_grouping_add(sz_cmdlist, cmdlist, &logro))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_grouping_add(sz_cmdlist, cmdlist, &logro);
             break;
         case 6: //remove
-            if (ORCM_SUCCESS != (rc = orcm_octl_grouping_remove(sz_cmdlist, cmdlist, &logro))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_grouping_remove(sz_cmdlist, cmdlist, &logro);
             break;
         case 34: //save
-            if (ORCM_SUCCESS != (rc = orcm_octl_grouping_save(sz_cmdlist, cmdlist, &logro))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_grouping_save(sz_cmdlist, cmdlist, &logro);
             break;
         case 35: //listnode
-            if (ORCM_SUCCESS != (rc = orcm_octl_grouping_listnode(sz_cmdlist, cmdlist, &logro))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_grouping_listnode(sz_cmdlist, cmdlist, &logro);
             break;
         case 36: //listtag
-            if (ORCM_SUCCESS != (rc = orcm_octl_grouping_listtag(sz_cmdlist, cmdlist, &logro))) {
-                ORTE_ERROR_LOG(rc);
-            }
+            rc = orcm_octl_grouping_listtag(sz_cmdlist, cmdlist, &logro);
             break;
         default:
-            fullcmd = opal_argv_join(cmdlist, ' ');
-            fprintf(stderr, "Illegal command: %s\n", fullcmd);
-            free(fullcmd);
+            rc = ORCM_ERROR;
             break;
         }
         break;
     default:
-        fullcmd = opal_argv_join(cmdlist, ' ');
-        fprintf(stderr, "Illegal command: %s\n", fullcmd);
-        free(fullcmd);
         rc = ORCM_ERROR;
         break;
     }
 
+    if (ORCM_ERROR == rc) {
+        octl_print_illegal_command(cmd);
+    }
     opal_argv_free(cmdlist);
     return rc;
 }
@@ -803,4 +639,12 @@ static int octl_facility_cleanup(void)
 {
     OBJ_DESTRUCT(&logro);
     return ORCM_SUCCESS;
+}
+
+static void octl_print_illegal_command(char *cmd)
+{
+    if (NULL != cmd) {
+        fprintf(stderr, "\nERROR: Illegal command: %s\n", cmd);
+    }
+    return;
 }

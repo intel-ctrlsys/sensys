@@ -15,6 +15,11 @@ Usage: octl [OPTIONS]
   Open Resilient Cluster Manager "octl" Tool
 
 %s
+
+Interactive shell:
+Use 'quit' or 'exit' - for exiting the shell
+Use '<tab>' or '<?>' for help
+
 [version]
 octl %s
 

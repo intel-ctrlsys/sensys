@@ -41,7 +41,7 @@ repo_rev=
 # tarball_version is not empty, the tarball filename will be of the
 # form openmpi-<tarball_version>.tar.*.
 
-tarball_version=gitclone
+tarball_version=1.0.0a1
 
 # The date when this release was created
 

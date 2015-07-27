@@ -28,6 +28,16 @@ BEGIN_C_DECLS
 
 ORCM_MODULE_DECLSPEC extern orcm_analytics_base_component_t mca_analytics_filter_component;
 
+/*Structure to store data from OFLOW*/
+typedef struct {
+	char* nodeid_label;
+	char* sensor_label;
+	char* coreid_label;
+	char** nodeid;
+	char** sensorname;
+	char** coreid;
+} filter_workflow_value;
+
 typedef struct {
     orcm_analytics_base_module_t api;
 } mca_analytics_filter_module_t;

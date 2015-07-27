@@ -1139,10 +1139,8 @@ static void orcmsd_batch_launch(char *batchfile)
         opal_argv_join(argv, ' ');
         */
         ret = execve(batchfile, argv, orte_launch_environ);
-        opal_output(0, "%s BATCH JOB execve - %d errno - %d  args  %s %s %s %s\n",
-               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ret, errno, batchfile, 
-                             (1 < argc) ? argv[1] : "" ,
-                             orte_launch_environ[0], orte_launch_environ[1]);
+        opal_output(0, "\n%s BATCH JOB \'execve\' FAILED: return=%d errno=%d  batchfile=%s\n",
+               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ret, errno, batchfile);
         exit(-1);
     } else {
         /* I am the parent - report the batch pid back

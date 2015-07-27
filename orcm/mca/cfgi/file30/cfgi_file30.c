@@ -1845,9 +1845,10 @@ static int parse_cluster(orcm_cluster_t *cluster,
                         opal_argv_free(vals);
                         return ORCM_ERR_BAD_PARAM;
                     }
-                    /* see if we have each row object - it not, create it */
+                    /* see if we have each row object - if not, create it */
                     int m;
                     for (m=0; NULL != names[m]; m++) {
+                        replace_ampersand(&names[m], cluster->name);
                         row = NULL;
                         OPAL_LIST_FOREACH(r, &cluster->rows, orcm_row_t) {
                             if (0 == strcmp(r->name, names[m])) {

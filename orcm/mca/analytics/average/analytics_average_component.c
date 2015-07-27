@@ -75,7 +75,7 @@ static struct orcm_analytics_base_module_t *component_create(void)
     /* copy the APIs across */
     memcpy(mod, &orcm_analytics_average_module.api, sizeof(orcm_analytics_base_module_t));
     /* let the module init itself */
-    if (OPAL_SUCCESS != mod->api.init((struct orcm_analytics_base_module_t*)mod)) {
+    if (ORCM_SUCCESS != mod->api.init((struct orcm_analytics_base_module_t*)mod)) {
         /* release the module and return the error */
         free(mod);
         return NULL;

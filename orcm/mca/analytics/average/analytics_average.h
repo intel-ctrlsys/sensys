@@ -26,6 +26,15 @@ BEGIN_C_DECLS
  * Local Component structures
  */
 
+typedef struct
+{
+    opal_object_t super;
+    unsigned int num_sample;
+    opal_value_t *value_average;
+} orcm_mca_analytics_average_item_value;
+
+OBJ_CLASS_DECLARATION(orcm_mca_analytics_average_item_value);
+
 ORCM_MODULE_DECLSPEC extern orcm_analytics_base_component_t mca_analytics_average_component;
 
 typedef struct {

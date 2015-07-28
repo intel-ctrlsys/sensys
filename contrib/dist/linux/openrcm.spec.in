@@ -62,7 +62,7 @@ Prefix: /opt/openrcm
 %if 0%{?suse_version} > 1220
 %define configure_options --with-platform=contrib/platform/intel/hillsboro/orcm-linux --with-postgres=/usr/include/pgsql
 %else
-%define configure_options --with-platform=contrib/platform/intel/hillsboro/orcm-linux
+%define configure_options --with-platform=contrib/platform/intel/hillsboro/orcm-linux --with-postgres=/usr/pgsql-9.3
 %endif
 %define orcm_configure_params  %{nil}
 %define orcm_compile_root %{orcm_name}-%{orcm_version}
@@ -113,8 +113,8 @@ BuildRequires: libtool-ltdl
 %endif 
 BuildRequires: sigar >= 1.6.4
 BuildRequires: sigar-devel >= 1.6.4
-BuildRequires: unixODBC
-BuildRequires: unixODBC-devel
+BuildRequires: postgresql93
+BuildRequires: postgresql93-devel
 Requires: ipmiutil-devel >= 2.9.5
 Requires: sigar >= 1.6.4
 

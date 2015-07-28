@@ -316,8 +316,8 @@ BuildRequires: libtool-ltdl
 %endif
 BuildRequires: sigar >= 1.6.4 
 BuildRequires: sigar-devel >= 1.6.4
-BuildRequires: unixODBC
-BuildRequires: unixODBC-devel
+BuildRequires: postgresql93
+BuildRequires: postgresql93-devel
 Requires: ipmiutil-devel >= 2.9.5
 Requires: sigar >= 1.6.4
 

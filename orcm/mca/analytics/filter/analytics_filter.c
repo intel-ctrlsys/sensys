@@ -29,10 +29,10 @@ mca_analytics_filter_module_t orcm_analytics_filter_module = { { init, finalize,
         analyze } };
 
 static int analytics_filter_data(opal_value_array_t *filter_sample_array,
-        filter_workflow_value *workflow_value, void* cbdata);
+        filter_workflow_value_t *workflow_value, void* cbdata);
 
-static int filter_analytics_array_create(
-        opal_value_array_t **analytics_sample_array) {
+static int filter_analytics_array_create(opal_value_array_t **analytics_sample_array)
+{
     int rc;
 
     /*Init the analytics array and set its size */
@@ -46,18 +46,20 @@ static int filter_analytics_array_create(
     return ORCM_SUCCESS;
 }
 
-static int init(struct orcm_analytics_base_module_t *imod) {
+static int init(struct orcm_analytics_base_module_t *imod)
+{
     return ORCM_SUCCESS;
 }
 
-static void finalize(struct orcm_analytics_base_module_t *imod) {
+static void finalize(struct orcm_analytics_base_module_t *imod)
+{
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
         "%s analytics:filter:finalize", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 }
 
 /*Function to parse the data received from OFLOW*/
-static int filter_parse_workflow(void *cbdata,
-        filter_workflow_value *workflow_value) {
+static int filter_parse_workflow(void *cbdata, filter_workflow_value_t *workflow_value)
+{
     orcm_workflow_caddy_t *parse_workflow_caddy;
     opal_value_t *temp;
     workflow_value->nodeid_label = "nodeid";
@@ -76,9 +78,7 @@ static int filter_parse_workflow(void *cbdata,
 
     parse_workflow_caddy = (orcm_workflow_caddy_t *) cbdata;
 
-    OPAL_LIST_FOREACH(temp, &parse_workflow_caddy->wf_step->attributes, opal_value_t)
-    {
-
+    OPAL_LIST_FOREACH(temp, &parse_workflow_caddy->wf_step->attributes, opal_value_t) {
         if (0 == strncmp(temp->key, workflow_value->nodeid_label,strlen(temp->key))) {
             workflow_value->nodeid = opal_argv_split(temp->data.string, ';');
         } else if (0 == strncmp(temp->key, workflow_value->sensor_label,strlen(temp->key))) {
@@ -93,7 +93,8 @@ static int filter_parse_workflow(void *cbdata,
 
 /*Function to filter sample data received based on user request*/
 static int analytics_filter_data(opal_value_array_t *filter_sample_array,
-        filter_workflow_value *workflow_value, void* cbdata) {
+        filter_workflow_value_t *workflow_value, void* cbdata)
+{
     int rc;
     orcm_workflow_caddy_t *caddy;
     orcm_analytics_value_t *analytics_value;
@@ -134,7 +135,8 @@ static int analytics_filter_data(opal_value_array_t *filter_sample_array,
                         /*Check for CoreID present or not*/
                         if (0 < coreid_array_length) {
                             for (core_index = 0;core_index < coreid_array_length; core_index++) {
-                                /*If NodeID, SensorName & CoreID available save the data to send it to next plug-in*/
+                                /*If NodeID, SensorName & CoreID available save
+                                 * the data to send it to next plug-in*/
                                 if ((0 == strncmp(workflow_value->nodeid[node_index],
                                                 analytics_value->node_regex,
                                                 strlen(workflow_value->nodeid[node_index])))
@@ -154,12 +156,16 @@ static int analytics_filter_data(opal_value_array_t *filter_sample_array,
                             }
                         } else {
 
-                            /*If NodeID & SensorNameavailable save the data to send it to next plug-in*/
-                            if ((0 == strncmp(workflow_value->nodeid[node_index],analytics_value->node_regex,
+                            /*If NodeID & SensorNameavailable save
+                             * the data to send it to next plug-in*/
+                            if ((0 == strncmp(workflow_value->nodeid[node_index],
+                                              analytics_value->node_regex,
                                       strlen(workflow_value->nodeid[node_index])))
-                                    && (0 == strncmp(workflow_value->sensorname[sensor_index],analytics_value->sensor_name,
+                                    && (0 == strncmp(workflow_value->sensorname[sensor_index],
+                                                        analytics_value->sensor_name,
                                              strlen(workflow_value->sensorname[sensor_index])))) {
-                                rc = opal_value_array_set_item(filter_sample_array, item_index,analytics_value);
+                                rc = opal_value_array_set_item(filter_sample_array, item_index,
+                                                               analytics_value);
                                 if (OPAL_SUCCESS != rc) {
                                     return ORCM_ERR_BAD_PARAM;
                                 }
@@ -172,11 +178,14 @@ static int analytics_filter_data(opal_value_array_t *filter_sample_array,
                 else if (0 < coreid_array_length) {
                     for (core_index = 0; core_index < coreid_array_length; core_index++) {
                         /*If NodeID & CoreID available save the data to send it to next plug-in*/
-                        if ((0 == strncmp(workflow_value->nodeid[node_index], analytics_value->node_regex,
+                        if ((0 == strncmp(workflow_value->nodeid[node_index],
+                                          analytics_value->node_regex,
                                           strlen(workflow_value->nodeid[node_index])))
-                                && (0 == strncmp(workflow_value->coreid[core_index], analytics_value->data.key,
+                                && (0 == strncmp(workflow_value->coreid[core_index],
+                                                 analytics_value->data.key,
                                          strlen(workflow_value->coreid[core_index])))) {
-                            rc = opal_value_array_set_item(filter_sample_array, item_index, analytics_value);
+                            rc = opal_value_array_set_item(filter_sample_array, item_index,
+                                                           analytics_value);
                             if (OPAL_SUCCESS != rc) {
                                 return ORCM_ERR_BAD_PARAM;
                             }
@@ -187,7 +196,8 @@ static int analytics_filter_data(opal_value_array_t *filter_sample_array,
                     //*If only NodeID available then save the data to send it to next plug-in*/
                     if (0 == strncmp(workflow_value->nodeid[node_index], analytics_value->node_regex,
                                      strlen(workflow_value->nodeid[node_index]))) {
-                        rc = opal_value_array_set_item(filter_sample_array,item_index, analytics_value);
+                        rc = opal_value_array_set_item(filter_sample_array,item_index,
+                                                       analytics_value);
                         if (OPAL_SUCCESS != rc) {
                             return ORCM_ERR_BAD_PARAM;
                         }
@@ -204,7 +214,8 @@ static int analytics_filter_data(opal_value_array_t *filter_sample_array,
                 if (0 < coreid_array_length) {
                     for (core_index = 0; core_index < coreid_array_length;
                             core_index++) {
-                        /*If SensorName & CoreID available save the data to send it to next plug-in*/
+                        /*If SensorName & CoreID available save
+                         * the data to send it to next plug-in*/
                         if ((0 == strncmp(workflow_value->sensorname[sensor_index],
                                         analytics_value->sensor_name,
                                         strlen(workflow_value->sensorname[sensor_index])))
@@ -263,12 +274,13 @@ static int analytics_filter_data(opal_value_array_t *filter_sample_array,
     return ORCM_SUCCESS;
 }
 
-static void analyze(int sd, short args, void *cbdata) {
+static void analyze(int sd, short args, void *cbdata)
+{
     orcm_workflow_caddy_t *filter_analyze_caddy;
     opal_value_array_t *filter_sample_array = NULL;
 
-    filter_workflow_value *workflow_value = malloc(
-            sizeof(filter_workflow_value));
+    filter_workflow_value_t *workflow_value = malloc(
+            sizeof(filter_workflow_value_t));
     if ( NULL == workflow_value) {
         OPAL_OUTPUT_VERBOSE((1, orcm_analytics_base_framework.framework_output,
                             "%s Insufficient data", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));

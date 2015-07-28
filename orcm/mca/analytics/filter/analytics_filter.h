@@ -36,7 +36,7 @@ typedef struct {
 	char** nodeid;
 	char** sensorname;
 	char** coreid;
-} filter_workflow_value;
+} filter_workflow_value_t;
 
 typedef struct {
     orcm_analytics_base_module_t api;

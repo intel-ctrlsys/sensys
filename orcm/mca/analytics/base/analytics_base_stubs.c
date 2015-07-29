@@ -41,6 +41,7 @@ static void orcm_analytics_base_set_event_workflow_step(orcm_workflow_t *wf,
 static orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *wf,
                                                                orcm_workflow_step_t *wf_step,
                                                                opal_value_array_t *data);
+static int orcm_analytics_base_workflow_list_append_ids(opal_buffer_t *buffer, size_t size);
 
 static int workflow_id = 0;
 
@@ -376,12 +377,95 @@ int orcm_analytics_base_workflow_delete(int workflow_id)
             /* remove workflow from the master list */
             opal_list_remove_item(&orcm_analytics_base_wf.workflows, &wf->super);
             OBJ_RELEASE(wf);
+            return workflow_id;
         }
+    }
+    return ORCM_ERROR;
+}
+
+static int orcm_analytics_base_workflow_list_append_ids(opal_buffer_t *buffer, size_t size)
+{
+    int workflow_ids[size];
+    orcm_workflow_t *wf = NULL;
+    unsigned int temp = 0;
+    int rc;
+
+    OPAL_LIST_FOREACH(wf, &orcm_analytics_base_wf.workflows, orcm_workflow_t) {
+        if (temp < size) {
+            workflow_ids[temp] = wf->workflow_id;
+            temp++;
+        }
+    }
+    rc = analytics_base_recv_pack_int(buffer, workflow_ids, size);
+    return rc;
+}
+
+int orcm_analytics_base_workflow_list(opal_buffer_t *buffer)
+{
+    size_t workflow_list_size = 0;
+    int rc;
+
+    workflow_list_size = opal_list_get_size(&orcm_analytics_base_wf.workflows);
+    rc = analytics_base_recv_pack_int(buffer, (int *)&workflow_list_size, ANALYTICS_COUNT_DEFAULT);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+    if (0 < workflow_list_size) {
+        rc = orcm_analytics_base_workflow_list_append_ids(buffer, workflow_list_size);
+    }
+
+    return rc;
+}
+
+int orcm_analytics_base_array_create(opal_value_array_t **analytics_sample_array, int ncores)
+{
+    int rc;
+
+    /*Init the analytics array and set its size */
+    *analytics_sample_array = OBJ_NEW(opal_value_array_t);
+
+    rc = opal_value_array_init(*analytics_sample_array, sizeof(orcm_analytics_value_t));
+    if (OPAL_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    rc = opal_value_array_reserve(*analytics_sample_array, ncores);
+    if (OPAL_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
+        return ORCM_ERR_OUT_OF_RESOURCE;
     }
     return ORCM_SUCCESS;
 }
 
-void orcm_analytics_base_send_data(opal_value_array_t *data)
+
+int orcm_analytics_base_array_append(opal_value_array_t *analytics_sample_array, int index,
+                                     char *plugin_name, char *host_name, opal_value_t *sample)
+{
+    orcm_analytics_value_t analytics_sample;
+    int rc;
+
+    /*fill the analytics structure with the sensor data */
+    analytics_sample.sensor_name = strdup(plugin_name);
+    analytics_sample.node_regex = strdup(host_name);
+    memcpy(&analytics_sample.data, sample, sizeof(opal_value_t));
+
+    rc = opal_value_array_set_item(analytics_sample_array, index, &analytics_sample);
+    if (OPAL_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
+        return ORCM_ERR_BAD_PARAM;
+    }
+    return ORCM_SUCCESS;
+}
+
+
+void orcm_analytics_base_array_cleanup(opal_value_array_t *analytics_sample_array)
+{
+    OBJ_RELEASE(analytics_sample_array);
+}
+
+
+void orcm_analytics_base_array_send(opal_value_array_t *data)
 {
     orcm_workflow_t *wf = NULL;
 

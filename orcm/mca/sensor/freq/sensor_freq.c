@@ -44,6 +44,8 @@
 
 #include "orcm/mca/db/db.h"
 
+#include "orcm/mca/analytics/analytics.h"
+
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_freq.h"
@@ -930,7 +932,7 @@ static void freq_log(opal_buffer_t *sample)
     char *sampletime;
     struct tm time_info;
     time_t ts;
-    int rc;
+    int rc, analytics_rc;
     int32_t n, ncores;
     opal_list_t *vals, *pstate_vals=NULL;
     opal_value_t *kv;
@@ -938,6 +940,7 @@ static void freq_log(opal_buffer_t *sample)
     int i;
     unsigned int pstate_count = 0, pstate_value = 0;
     char *pstate_name;
+    opal_value_array_t *analytics_sample_array = NULL;
 
     if (!log_enabled) {
         return;
@@ -992,6 +995,9 @@ static void freq_log(opal_buffer_t *sample)
     kv->data.string = strdup(hostname);
     opal_list_append(vals, &kv->super);
 
+    /*If analytics_rc returns error, rest of the analytics API's will not be called */
+    analytics_rc = orcm_analytics.array_create(&analytics_sample_array, ncores);
+
     for (i=0; i < ncores; i++) {
         kv = OBJ_NEW(opal_value_t);
         asprintf(&kv->key, "core%d:GHz", i);
@@ -1009,6 +1015,10 @@ static void freq_log(opal_buffer_t *sample)
 
         kv->data.fval = fval;
         opal_list_append(vals, &kv->super);
+        if (ORCM_SUCCESS == analytics_rc) {
+            analytics_rc = orcm_analytics.array_append(analytics_sample_array, i,
+                                                       "freq", hostname, kv);
+        }
     }
 
     /* store it */
@@ -1016,6 +1026,11 @@ static void freq_log(opal_buffer_t *sample)
         orcm_db.store(orcm_sensor_base.dbhandle, "freq", vals, mycleanup, NULL);
     } else {
         OPAL_LIST_RELEASE(vals);
+    }
+
+    /*send the sample to analytics after it is processed by database */
+    if (ORCM_SUCCESS == analytics_rc) {
+        orcm_analytics.array_send(analytics_sample_array);
     }
 
     /* unpack the pstate entry count */
@@ -1096,6 +1111,9 @@ static void freq_log(opal_buffer_t *sample)
     }
 
  cleanup:
+    if (NULL != analytics_sample_array) {
+        orcm_analytics.array_cleanup(analytics_sample_array);
+    }
     if (NULL != hostname) {
         free(hostname);
     }

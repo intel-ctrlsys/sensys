@@ -41,7 +41,10 @@ static int orcm_analytics_base_open(mca_base_open_flag_t flags);
  * Global variables
  */
 orcm_analytics_API_module_t orcm_analytics = {
-    orcm_analytics_base_send_data
+    orcm_analytics_base_array_create,
+    orcm_analytics_base_array_append,
+    orcm_analytics_base_array_cleanup,
+    orcm_analytics_base_array_send
 };
 orcm_analytics_base_wf_t orcm_analytics_base_wf;
 
@@ -153,7 +156,7 @@ static void wk_des(orcm_workflow_t *p)
         return;
     }
     if (NULL != p->ev_base) {
-        orcm_stop_progress_thread(p->name, true);
+        orcm_analytics_stop_wokflow_thread(p);
     }
     free(p->name);
     OPAL_LIST_DESTRUCT(&p->steps);

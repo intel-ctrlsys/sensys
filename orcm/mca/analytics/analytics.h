@@ -19,7 +19,6 @@
 
 #include "orcm/mca/mca.h"
 
-
 #include "orcm/mca/analytics/analytics_types.h"
 
 BEGIN_C_DECLS
@@ -69,10 +68,20 @@ typedef struct {
 } orcm_analytics_base_component_t;
 
 
+typedef int (*orcm_analytics_API_module_array_create_fn_t) (opal_value_array_t **analytics_sample_array,
+                                                            int ncores);
+typedef int (*orcm_analytics_API_module_array_append_fn_t) (opal_value_array_t *analytics_sample_array,
+                                                            int index, char *plugin_name,
+                                                            char *host_name, opal_value_t *sample);
+typedef void (*orcm_analytics_API_module_array_cleanup_fn_t) (opal_value_array_t *analytics_sample_array);
 typedef void (*orcm_analytics_API_module_send_data_fn_t)(opal_value_array_t *data);
 
+
 typedef struct {
-    orcm_analytics_API_module_send_data_fn_t                        send_data;
+    orcm_analytics_API_module_array_create_fn_t      array_create;
+    orcm_analytics_API_module_array_append_fn_t      array_append;
+    orcm_analytics_API_module_array_cleanup_fn_t     array_cleanup;
+    orcm_analytics_API_module_send_data_fn_t         array_send;
 } orcm_analytics_API_module_t;
 
 /*

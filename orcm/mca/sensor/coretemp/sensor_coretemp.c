@@ -44,6 +44,8 @@
 
 #include "orcm/mca/db/db.h"
 
+#include "orcm/mca/analytics/analytics.h"
+
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_coretemp.h"
@@ -902,6 +904,8 @@ static void coretemp_log(opal_buffer_t *sample)
     float fval;
     int i;
     char *core_label;
+    opal_value_array_t *analytics_sample_array = NULL;
+    int analytics_rc;
 
     if (!log_enabled) {
         return;
@@ -957,6 +961,9 @@ static void coretemp_log(opal_buffer_t *sample)
     kv->data.string = strdup(hostname);
     opal_list_append(vals, &kv->super);
 
+    /*If analytics_rc returns error, rest of the analytics API's will not be called */
+    analytics_rc = orcm_analytics.array_create(&analytics_sample_array, ncores);
+
     for (i=0; i < ncores; i++) {
         kv = OBJ_NEW(opal_value_t);
         n=1;
@@ -986,6 +993,10 @@ static void coretemp_log(opal_buffer_t *sample)
 
         kv->data.fval = fval;
         opal_list_append(vals, &kv->super);
+        if (ORCM_SUCCESS == analytics_rc) {
+            analytics_rc = orcm_analytics.array_append(analytics_sample_array, i,
+                                                       "coretemp", hostname, kv);
+        }
     }
 
     /* store it */
@@ -995,7 +1006,15 @@ static void coretemp_log(opal_buffer_t *sample)
         OPAL_LIST_RELEASE(vals);
     }
 
+    /*send the sample to analytics after it is processed by database */
+    if (ORCM_SUCCESS == analytics_rc) {
+        orcm_analytics.array_send(analytics_sample_array);
+    }
+
  cleanup:
+    if (NULL != analytics_sample_array) {
+        orcm_analytics.array_cleanup(analytics_sample_array);
+    }
     if (NULL != hostname) {
         free(hostname);
     }

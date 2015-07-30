@@ -889,7 +889,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     struct tm *sample_time;
     uint64_t i = 0, cpu=0, socket=0, bank=0;
     uint64_t mce_reg[MCE_REG_COUNT];
-    uint64_t tot_lines;
+    uint64_t tot_lines=0;
+    static uint64_t prev_total=0;
     static uint64_t index = 0; /* non-volatile declaration to store last read line number */
     char* line;
     char *loc = NULL;
@@ -897,14 +898,18 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "Logfile used: %s", mca_sensor_mcedata_component.logfile);
     tot_lines = get_total_lines(mca_sensor_mcedata_component.logfile);
-    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                        "Total lines: %lu", tot_lines);
+
     /* In case log file rotates or is stashed and cleared, the index at which mcedata looks
      * for MCE events has to be reset too */
-    if (index > tot_lines) {
+    if (tot_lines < prev_total) {
         index = 0;
+        prev_total = 0;
+    } else {
+        prev_total = tot_lines;
     }
 
+    opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                        "Total lines: %lu", tot_lines);
     if (true != mca_sensor_mcedata_component.historical_collection) {
         /* If the user requires MCE collection from the point when ORCM was
          * started, then we should ignore all the events logged prior to ORCM
@@ -1103,7 +1108,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                     }
                     free(line);
                     line = NULL;
-                    index++; /* Move to dummy 'mcelog' line */
                 } else {
                     index++; /* Move to next line */
                     return;

@@ -77,6 +77,9 @@ int orcm_octl_grouping_remove(int argc, char **argv, opal_list_t * io_group);
 int orcm_octl_grouping_save(int argc, char **argv, opal_list_t * io_group);
 int orcm_octl_grouping_listnode(int argc, char **argv, opal_list_t * io_group);
 int orcm_octl_grouping_listtag(int argc, char **argv, opal_list_t * io_group);
+int orcm_octl_analytics_workflow_add(char *file);
+int orcm_octl_analytics_workflow_remove(char **value);
+int orcm_octl_analytics_workflow_list (char **value);
 
 END_C_DECLS
 

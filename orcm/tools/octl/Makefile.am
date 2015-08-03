@@ -33,13 +33,14 @@ octl_SOURCES = \
         diag.c \
         octl.h \
         octl.c \
-	power.c \
+        power.c \
         queue.c \
         resource.c \
         session.c \
         sensor.c \
         grouping.h \
-        grouping.c
+        grouping.c \
+        analytics.c
 
 # the following empty octl_LDFLAGS is used
 #  so that the octl can be compiled statically

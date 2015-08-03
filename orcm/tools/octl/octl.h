@@ -177,8 +177,16 @@ static orcm_cli_init_t cli_init[] = {
     { { "grouping", NULL }, "listnode", 0, 1, "List nodes associated with a given tag: listnode <tag>" },
     { { "grouping", NULL }, "listtag", 0, 1, "List tags associated with given nodes: listtag <node regex>" },
 
+
     /* quit command */
     { { NULL }, "quit/exit", 0, 0, "Exit the shell" },
+
+    /****** Analytics workflow commands ******/
+    { { NULL }, "analytics", 0, 0, "Analytics information" },
+    { { "analytics", NULL }, "workflow", 0, 0, "workflow manipulation commands" },
+    { { "analytics", "workflow", NULL }, "add", 0, 1, "add workflow: add file..txt" },
+    { { "analytics", "workflow", NULL }, "remove", 0, 2, "remove workflow: remove VPID workflow_id" },
+    { { "analytics", "workflow", NULL }, "get", 0, 0, "list workflow: get VPID" },
 
     /* End of list */
     { { NULL }, NULL, 0, 0, NULL }
@@ -226,7 +234,9 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "save",              //34
                                      "listnode",          //35
                                      "listtag",           //36
-                                     "quit/Exit",         //37
+                                     "quit\/Exit",        //37
+                                     "analytics",         //38
+                                     "workflow",          //39
                                      "\0" };
 
 END_C_DECLS

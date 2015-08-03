@@ -374,6 +374,82 @@ $$;
 
 
 --
+-- Name: alert_db_size(double precision, double precision, double precision, double precision, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION alert_db_size(
+    max_db_size_in_gb double precision,
+    log_level_percentage double precision,
+    warning_level_percentage double precision,
+    critical_level_percentage double precision,
+    log_tag text)
+  RETURNS text AS
+$BODY$
+-- Query the current database for its size and compare with the
+-- specified arguments to raise the corresponding message.
+-- Parameter size restriction:
+--     0 < max_db_size_in_gb
+--     0 <= notice < warning < critical <= 1.0
+-- Note:  Enable "log_destination='syslog'" in postgresql.conf to log to syslog
+DECLARE
+    actual_db_size bigint;
+    max_db_size BIGINT;
+    db_log_size bigint;
+    db_warning_size bigint;
+    db_critical_size bigint;
+    message_prefix text;
+BEGIN
+    -- Input validation
+    IF (0 >= max_db_size_in_gb) THEN
+        RAISE EXCEPTION '[%] The maximum database size must be greater than 0.0 GB', log_tag USING HINT = 'Invalid argument';
+    END IF;
+    IF (0 > CRITICAL_level_percentage OR CRITICAL_level_percentage > 1) THEN
+        RAISE EXCEPTION '[%] The percentage values must be between 0.0 and 1.0', log_tag USING HINT = 'Invalid  argument';
+    END IF;
+    IF (WARNING_level_percentage >= CRITICAL_level_percentage) THEN
+        RAISE EXCEPTION '[%] The WARNING level percentage must be less than the CRITICAL level percentage', log_tag USING HINT = 'Invalid  argument';
+    END IF;
+    IF (LOG_level_percentage >= WARNING_level_percentage) THEN
+        RAISE EXCEPTION '[%] The LOG level percentage must be less than the WARNING level percentage', log_tag USING HINT = 'Invalid  argument';
+    END IF;
+    -- Check permission
+    IF NOT (pg_catalog.has_database_privilege(current_database(), 'CONNECT')) THEN
+        RAISE EXCEPTION '[%] User ''%'' does not have permission to query ''%'' database size', log_tag, current_user, current_database();
+    END IF;
+
+    -- Convert size to byte for finer comparison
+    max_db_size      = CAST(max_db_size_in_gb * 1024 * 1024 * 1024 AS BIGINT);
+    db_log_size      = CAST(max_db_size * LOG_level_percentage AS BIGINT);
+    db_warning_size  = CAST(max_db_size * WARNING_level_percentage AS BIGINT);
+    db_critical_size = CAST(max_db_size * CRITICAL_level_percentage AS BIGINT);
+
+    SELECT
+        pg_catalog.pg_database_size(d.datname)
+    INTO actual_db_size
+    FROM pg_catalog.pg_database d
+    WHERE d.datname = current_database();
+
+    -- Text to be included in all output
+    message_prefix = '[' || log_tag || '] The ''' || current_database() || ''' database size (' || pg_catalog.pg_size_pretty(actual_db_size) || ') ';
+
+    if (actual_db_size > db_critical_size) THEN
+        RAISE EXCEPTIOn   '% exceeded critical level (% %% = %). ', message_prefix, 100 * CRITICAL_level_percentage,  pg_catalog.pg_size_pretty(db_critical_size) ;
+    ELSEIF (actual_db_size > db_warning_size) THEN
+        RAISE WARNING   '% exceeded warning level (% %% = %). ', message_prefix, 100 * WARNING_level_percentage,  pg_catalog.pg_size_pretty(db_warning_size) ;
+        RETURn message_prefix || 'exceeded warning level (' || (100 * WARNING_level_percentage) || '% = ' || pg_catalog.pg_size_pretty(db_warning_size) || ').';
+    ELSEIF (actual_db_size > db_log_size) THEN
+        RAISE LOG   '% exceeded log level (% %% = %). ', message_prefix, 100 * LOG_level_percentage,  pg_catalog.pg_size_pretty(db_log_size) ;
+        RETURn message_prefix || 'exceeded log level (' || (100 * LOG_level_percentage) || '% = ' || pg_catalog.pg_size_pretty(db_log_size) || ').';
+    ELSE
+        RETURn message_prefix || 'is within limit (' || ROUND( CAST((100 * CAST(actual_db_size AS double precision) / max_db_size) AS NUMERIC), 2) || '% of ' || pg_catalog.pg_size_pretty(max_db_size) || ')';
+    END IF;
+END;
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100;
+
+
+--
 -- Name: data_type_exists(integer); Type: FUNCTION; Schema: public; Owner: -
 --
 

@@ -94,7 +94,7 @@ static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *param
             wf_agg->jobid = 0;
             wf_agg->vpid = (orte_vpid_t)strtol(input_array[0].data.string,
                                                (char **)NULL, 10);
-            printf("Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
+            fprintf(stdout, "Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
             *params_array_length = 0;
             set_vpid = 1;
             continue;
@@ -119,12 +119,12 @@ static int orcm_oct_analytics_wf_add_store(int params_array_length, opal_value_t
     for (oflow_line_item=0; oflow_line_item < params_array_length ; oflow_line_item++) {
 
         if (params_array_length > OFLOW_MAX_ARRAY_SIZE) {
-            printf("Too many params %d in the OFLOW file are being sent, OFLOW exiting",
+            fprintf(stderr, "Too many params %d in the OFLOW file are being sent, OFLOW exiting",
                     params_array_length);
             return ORCM_ERR_BAD_PARAM;
         }
 
-        printf("KEY: %s \n\tVALUE: %s\n", input_array[oflow_line_item].key,
+        fprintf(stdout, "KEY: %s \n\tVALUE: %s\n", input_array[oflow_line_item].key,
                 input_array[oflow_line_item].data.string );
         workflow_params_array[oflow_line_item] = (opal_value_t *)(input_array + oflow_line_item);
    }
@@ -176,7 +176,7 @@ static int orcm_octl_analytics_wf_add_unpack_buffer(opal_buffer_t *buf, orte_rml
         orcm_octl_analytics_process_error(rc, buf, xfer);
         return ORCM_ERROR;
     }
-    printf("Workflow created with id: %i\n", workflow_id);
+    fprintf(stdout, "Workflow created with id: %i\n", workflow_id);
     return ORCM_SUCCESS;
 
 }
@@ -196,7 +196,7 @@ int orcm_octl_analytics_workflow_add(char *file)
 
 
     if (NULL == (fp = fopen(file, "r"))) {
-        perror("Can't open workflow file");
+        fprintf(stderr, "Can't open workflow file");
         return ORCM_ERR_BAD_PARAM;
     }
     
@@ -266,10 +266,10 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
     if (0 != isdigit(value[3][strlen(value[3])-1])) {
         wf_agg->jobid = 0;
         wf_agg->vpid = (orte_vpid_t)strtol(value[3], NULL, 10);
-        printf("Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
+        fprintf(stdout, "Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
     }
     else {
-        printf("incorrect argument VPID id!\n \"%s\" is not an integer \n", value[3]);
+        fprintf(stderr, "incorrect argument VPID id!\n \"%s\" is not an integer \n", value[3]);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -277,7 +277,7 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
         *workflow_id = (int)strtol(value[4], NULL, 10);
     }
     else {
-        printf("incorrect argument workflow id!\n \"%s\" is not an integer \n", value[4]);
+        fprintf(stderr, "incorrect argument workflow id!\n \"%s\" is not an integer \n", value[4]);
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
@@ -317,10 +317,10 @@ static int orcm_octl_analytics_wf_remove_unpack_buffer(opal_buffer_t *buf, orte_
         return ORCM_ERROR;
     }
     if (ORCM_ERROR != workflow_id) {
-        printf("Workflow deleted %d\n", workflow_id);
+        fprintf(stdout, "Workflow deleted %d\n", workflow_id);
     }
     else {
-        printf("workflow not found\n");
+        fprintf(stdout, "workflow not found\n");
     }
     return ORCM_SUCCESS;
 
@@ -370,17 +370,17 @@ int orcm_octl_analytics_workflow_remove(char **value)
 static int orcm_octl_analytics_wf_list_parse_args(char **value, orte_process_name_t *wf_agg)
 {
     if (4 != opal_argv_count(value)) {
-        fprintf(stderr, "incorrect arguments! \n usage: \"analytics workflow list vpid \"\n");
+        fprintf(stderr, "incorrect arguments! \n usage: \"analytics workflow get vpid \"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (0 != isdigit(value[3][strlen(value[3])-1])) {
         wf_agg->jobid = 0;
         wf_agg->vpid = (orte_vpid_t)strtol(value[3], NULL, 10);
-        printf("Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
+        fprintf(stdout, "Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
     }
     else {
-        printf("incorrect argument VPID id!\n \"%s\" is not an integer \n", value[3]);
+        fprintf(stderr, "incorrect argument VPID id!\n \"%s\" is not an integer \n", value[3]);
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
@@ -422,12 +422,12 @@ static int orcm_octl_analytics_wf_list_unpack_buffer(opal_buffer_t *buf, orte_rm
             return ORCM_ERROR;
         }
         for (temp = 0; temp < cnt; temp++) {
-            printf("workflow id is: %d\n", workflow_ids[temp] );
+            fprintf(stdout, "workflow id is: %d\n", workflow_ids[temp] );
         }
 
     }
     else {
-        printf("No workflow ids\n");
+        fprintf(stdout, "No workflow ids\n");
     }
     return ORCM_SUCCESS;
 }
@@ -513,7 +513,8 @@ static int orcm_octl_wf_add_parse_line(FILE *fp, int *params_array_length,
                 tokenized[token_index].data.string = strdup (tokens[(token_index*2) + 1]);
             }
         }
-
+        /*Analytics framework expects workstep to have 2 tokens. "Step name" and its "args
+         *If user chose to ignore args. OCTL CLI tool has to append args for workstep  */
         if (0 != (*params_array_length)%2 ) {
             tokenized[token_index].type = OPAL_STRING;
             tokenized[token_index].key = strdup ("args");

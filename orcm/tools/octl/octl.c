@@ -617,6 +617,43 @@ static int run_cmd(char *cmd)
             break;
         }
         break;
+    case 38: //Analytics
+        rc = octl_command_to_int(cmdlist[1]);
+        if (-1 == rc) {
+            rc = ORCM_ERROR;
+            break;
+        }
+        switch (rc)
+        {
+        case 39: //workflow
+            rc = octl_command_to_int(cmdlist[2]);
+            if (-1 == rc) {
+                rc = ORCM_ERROR;
+                break;
+            }
+            switch(rc)
+            {
+            case 5://add
+                orcm_octl_analytics_workflow_add(cmdlist[3]);
+                break;
+            case 6://remove
+                orcm_octl_analytics_workflow_remove(cmdlist);
+                break;
+            case 17://get
+                orcm_octl_analytics_workflow_list(cmdlist);
+                break;
+            default:
+                rc = ORCM_ERROR;
+                break;
+            }
+            break;
+
+        default:
+            rc = ORCM_ERROR;
+            break;
+        }
+        break;
+
     default:
         rc = ORCM_ERROR;
         break;

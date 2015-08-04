@@ -28,7 +28,7 @@ static void orcm_octl_analytics_process_error(int rc, opal_buffer_t *buf,
 static void orcm_octl_analytics_output_setup(orte_rml_recv_cb_t *xfer);
 static int orcm_octl_analytics_wf_send_buffer(orte_process_name_t *wf_agg,
                                               opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
-static void orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *params_array_length,
+static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *params_array_length,
                                              opal_value_t *input_array, orte_process_name_t *wf_agg);
 static int orcm_oct_analytics_wf_add_store(int params_array_length, opal_value_t *input_array,
                                            opal_value_t **workflow_params_array);
@@ -82,9 +82,11 @@ static int orcm_octl_analytics_wf_send_buffer(orte_process_name_t *wf_agg,
     return ORCM_SUCCESS;
 }
 
-static void orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *params_array_length,
+static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *params_array_length,
                                              opal_value_t *input_array, orte_process_name_t *wf_agg)
 {
+    int set_vpid = 0;
+
     while ( OFLOW_FAILURE != orcm_octl_wf_add_parse_line(fp,
                              params_array_length, input_array + *params_array_length) ) {
 
@@ -94,12 +96,18 @@ static void orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *para
                                                (char **)NULL, 10);
             printf("Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
             *params_array_length = 0;
+            set_vpid = 1;
             continue;
         }
         else {
             (*step_size)++;
         }
     }
+
+    if (1 == set_vpid) {
+        return ORCM_SUCCESS;
+    }
+    return ORCM_ERROR;
 
 }
 
@@ -196,8 +204,12 @@ int orcm_octl_analytics_workflow_add(char *file)
 
     params_array_length = 0;
 
-    orcm_octl_analytics_wf_add_parse(fp, &step_size, &params_array_length,
-                                     oflow_input_file_array, &wf_agg);
+    rc = orcm_octl_analytics_wf_add_parse(fp, &step_size, &params_array_length,
+                                          oflow_input_file_array, &wf_agg);
+    if (ORCM_SUCCESS != rc) {
+        free (oflow_input_file_array);
+        return rc;
+    }
 
     fclose(fp);
 
@@ -251,7 +263,7 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (isdigit(value[3][strlen(value[3])-1])) {
+    if (0 != isdigit(value[3][strlen(value[3])-1])) {
         wf_agg->jobid = 0;
         wf_agg->vpid = (orte_vpid_t)strtol(value[3], NULL, 10);
         printf("Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
@@ -261,7 +273,7 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (isdigit(value[4][strlen(value[4])-1])) {
+    if (0 != isdigit(value[4][strlen(value[4])-1])) {
         *workflow_id = (int)strtol(value[4], NULL, 10);
     }
     else {
@@ -362,7 +374,7 @@ static int orcm_octl_analytics_wf_list_parse_args(char **value, orte_process_nam
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (isdigit(value[3][strlen(value[3])-1])) {
+    if (0 != isdigit(value[3][strlen(value[3])-1])) {
         wf_agg->jobid = 0;
         wf_agg->vpid = (orte_vpid_t)strtol(value[3], NULL, 10);
         printf("Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
@@ -403,7 +415,7 @@ static int orcm_octl_analytics_wf_list_unpack_buffer(opal_buffer_t *buf, orte_rm
         return ORCM_ERROR;
     }
 
-    if (cnt > 0) {
+    if (0 < cnt) {
         workflow_ids = (int *)malloc(cnt * sizeof(int));
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, workflow_ids, &cnt, OPAL_INT))) {
             orcm_octl_analytics_process_error(rc, buf, xfer);
@@ -486,16 +498,29 @@ static int orcm_octl_wf_add_parse_line(FILE *fp, int *params_array_length,
         token_array_length = opal_argv_count(tokens);
         *params_array_length += token_array_length/2;
 
-        if (*params_array_length > OFLOW_MAX_ARRAY_SIZE) {
+        if (*params_array_length >= OFLOW_MAX_ARRAY_SIZE) {
             return OFLOW_FAILURE;
         }
 
         for (token_index=0; token_index < token_array_length/2;
                    token_index=token_index+1) {
+
             tokenized[token_index].type = OPAL_STRING;
-            tokenized[token_index].key = strdup (tokens[(token_index*2)]);
-            tokenized[token_index].data.string = strdup (tokens[(token_index*2) + 1]);
+            if (NULL != tokens[(token_index*2)] ) {
+                tokenized[token_index].key = strdup (tokens[(token_index*2)]);
+            }
+            if (NULL != tokens[(token_index*2) + 1] ) {
+                tokenized[token_index].data.string = strdup (tokens[(token_index*2) + 1]);
+            }
         }
+
+        if (0 != (*params_array_length)%2 ) {
+            tokenized[token_index].type = OPAL_STRING;
+            tokenized[token_index].key = strdup ("args");
+            tokenized[token_index].data.string = NULL;
+            *params_array_length = *params_array_length + 1;
+        }
+
         /*opal_argv_free(tokens);*/
         opal_argv_free(tokens);
         return OFLOW_SUCCESS;

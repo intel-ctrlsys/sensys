@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2014      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -199,7 +199,7 @@ int orcm_octl_analytics_workflow_add(char *file)
         fprintf(stderr, "Can't open workflow file");
         return ORCM_ERR_BAD_PARAM;
     }
-    
+
     oflow_input_file_array = (opal_value_t *)malloc(OFLOW_MAX_ARRAY_SIZE * sizeof(opal_value_t));
 
     params_array_length = 0;
@@ -222,7 +222,7 @@ int orcm_octl_analytics_workflow_add(char *file)
 
     xfer = OBJ_NEW(orte_rml_recv_cb_t);
     orcm_octl_analytics_output_setup(xfer);
-    
+
     buf = OBJ_NEW(opal_buffer_t);
 
     rc = orcm_octl_analytics_wf_add_pack_buffer(buf, xfer, step_size, params_array_length,
@@ -252,7 +252,7 @@ int orcm_octl_analytics_workflow_add(char *file)
     free (oflow_input_file_array);
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
     return ORTE_SUCCESS;
-    
+
 }
 
 static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_id,

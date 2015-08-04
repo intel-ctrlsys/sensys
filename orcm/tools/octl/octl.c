@@ -18,6 +18,7 @@ static int run_cmd(char *cmd);
 static int octl_facility_setup(void);
 static int octl_facility_cleanup(void);
 static void octl_print_illegal_command(char *cmd);
+static void octl_print_error(int rc);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -105,7 +106,6 @@ static int orcm_octl_work(int argc, char *argv[])
     char *args = NULL;
     char *str = NULL;
     orcm_cli_t cli;
-    orcm_cli_cmd_t *cmd;
     int tailc;
     char **tailv = NULL;
     int ret;
@@ -624,6 +624,8 @@ static int run_cmd(char *cmd)
 
     if (ORCM_ERROR == rc) {
         octl_print_illegal_command(cmd);
+    } else if (ORCM_SUCCESS != rc) {
+        octl_print_error(rc);
     }
     opal_argv_free(cmdlist);
     return rc;
@@ -647,4 +649,18 @@ static void octl_print_illegal_command(char *cmd)
         fprintf(stderr, "\nERROR: Illegal command: %s\n", cmd);
     }
     return;
+}
+
+static void octl_print_error(int rc)
+{
+    char *errmsg = NULL;
+
+    if (ORCM_SUCCESS != rc) {
+        errmsg = ORTE_ERROR_NAME(rc);
+        if (NULL != errmsg) {
+            fprintf(stdout, "\nERROR: %s\n", errmsg);
+        } else {
+            fprintf(stdout, "\nERROR: Internal\n");
+        }
+    } 
 }

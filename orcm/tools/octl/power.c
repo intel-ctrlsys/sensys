@@ -26,7 +26,8 @@ int orcm_octl_power_set(int cmd, char **argv)
     bool per_session = false;
     
     if (4 != opal_argv_count(argv)) {
-        fprintf(stderr, "incorrect arguments to \"power set\"\n");
+        fprintf(stderr, "\n  incorrect arguments! \n\n usage: \"power set\
+<command>  <value>\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -45,7 +46,6 @@ int orcm_octl_power_set(int cmd, char **argv)
     /* pack the command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SCD_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;
@@ -55,7 +55,6 @@ int orcm_octl_power_set(int cmd, char **argv)
     /* pack the sub-command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SCD_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;
@@ -64,7 +63,6 @@ int orcm_octl_power_set(int cmd, char **argv)
     /* This is a global power setting, not per session */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &per_session,
                                             1, OPAL_BOOL))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;
@@ -77,7 +75,6 @@ int orcm_octl_power_set(int cmd, char **argv)
             
         /* pack the power budget */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
             return rc;
@@ -92,14 +89,13 @@ int orcm_octl_power_set(int cmd, char **argv)
         }
         
         if (0 > int_param || ORCM_PWRMGMT_NUM_MODES <= int_param ) {
-            printf("Illegal Power Management Mode\n");
+            printf("\nIllegal Power Management Mode\n");
             return ORCM_ERR_BAD_PARAM;
         }
         // FIXME: validate that power mode is valid
             
         /* pack the power mode */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
             return rc;
@@ -111,7 +107,6 @@ int orcm_octl_power_set(int cmd, char **argv)
             
         /* pack the power window */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
             return rc;
@@ -123,7 +118,6 @@ int orcm_octl_power_set(int cmd, char **argv)
             
         /* pack the power overage */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
             return rc;
@@ -135,7 +129,6 @@ int orcm_octl_power_set(int cmd, char **argv)
             
         /* pack the power underage */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
             return rc;
@@ -147,7 +140,6 @@ int orcm_octl_power_set(int cmd, char **argv)
             
         /* pack the power overage time */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
             return rc;
@@ -159,7 +151,6 @@ int orcm_octl_power_set(int cmd, char **argv)
             
         /* pack the power underage time */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
             return rc;
@@ -177,7 +168,6 @@ int orcm_octl_power_set(int cmd, char **argv)
                 float_param = ORCM_PWRMGMT_MIN_FREQ;
             }
             else {
-                ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
                 OBJ_RELEASE(buf);
                 OBJ_DESTRUCT(&xfer);
                 return ORCM_ERR_BAD_PARAM; 
@@ -187,7 +177,6 @@ int orcm_octl_power_set(int cmd, char **argv)
             
         /* pack the power freq */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &float_param, 1, OPAL_FLOAT))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
             return rc;
@@ -205,7 +194,6 @@ int orcm_octl_power_set(int cmd, char **argv)
                 bool_param = false;
             }
             else {
-                ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
                 OBJ_RELEASE(buf);
                 OBJ_DESTRUCT(&xfer);
                 return ORCM_ERR_BAD_PARAM; 
@@ -215,15 +203,12 @@ int orcm_octl_power_set(int cmd, char **argv)
             
         /* pack the power freq */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &bool_param, 1, OPAL_BOOL))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
         break;
     default:
-        printf("Illegal power command: %d\n", cmd);
-        ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return ORTE_ERR_BAD_PARAM;
@@ -234,7 +219,6 @@ int orcm_octl_power_set(int cmd, char **argv)
                                                       ORCM_RML_TAG_SCD,
                                                       orte_rml_send_callback,
                                                       NULL))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;
@@ -244,14 +228,13 @@ int orcm_octl_power_set(int cmd, char **argv)
     ORTE_WAIT_FOR_COMPLETION(xfer.active);
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
                                               &n, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
     if (0 == result) {
-        printf("Success\n");
+        printf("\nSuccess\n");
     } else {
-        printf("Failure\n");
+        printf("\nFailure\n");
     }
     
     return ORCM_SUCCESS;
@@ -269,12 +252,13 @@ int orcm_octl_power_get(int cmd, char **argv)
     bool per_session = false;
     
     if (3 != opal_argv_count(argv)) {
-        fprintf(stderr, "incorrect arguments to \"power get\"\n");
+        fprintf(stderr, "\n  incorrect arguments! \n\n usage: \"power get\
+<command> \"\n");
         return ORCM_ERR_BAD_PARAM;
     }
   
     if (ORCM_GET_POWER_MODES_COMMAND == cmd) {
-        printf("Possible Modes: {%s", orcm_pwrmgmt_get_mode_string(0));
+        printf("\nPossible Modes: {%s", orcm_pwrmgmt_get_mode_string(0));
         for(i = 1; i < ORCM_PWRMGMT_NUM_MODES; i++) {
             printf(", %s",orcm_pwrmgmt_get_mode_string(i));
         }
@@ -298,7 +282,6 @@ int orcm_octl_power_get(int cmd, char **argv)
     /* pack the command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SCD_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;
@@ -308,7 +291,6 @@ int orcm_octl_power_get(int cmd, char **argv)
     /* pack the sub-command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_SCD_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;
@@ -317,7 +299,6 @@ int orcm_octl_power_get(int cmd, char **argv)
     /* This is a global power setting, not per session */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &per_session,
                                             1, OPAL_BOOL))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;
@@ -328,7 +309,6 @@ int orcm_octl_power_get(int cmd, char **argv)
                                                       ORCM_RML_TAG_SCD,
                                                       orte_rml_send_callback,
                                                       NULL))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;
@@ -339,13 +319,11 @@ int orcm_octl_power_get(int cmd, char **argv)
 
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &success,
                                               &n, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
 
     if(OPAL_SUCCESS != success) {
-        ORTE_ERROR_LOG(success);
         OBJ_DESTRUCT(&xfer);
         return success;
     }
@@ -354,95 +332,84 @@ int orcm_octl_power_get(int cmd, char **argv)
     case ORCM_GET_POWER_BUDGET_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        printf("Current cluster power budget: %d watts\n", int_param);
+        printf("\nCurrent cluster power budget: %d watts\n", int_param);
     break;
     case ORCM_GET_POWER_MODE_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        printf("Current default power mode: %s\n", orcm_pwrmgmt_get_mode_string(int_param));
+        printf("\nCurrent default power mode: %s\n", orcm_pwrmgmt_get_mode_string(int_param));
     break;
     case ORCM_GET_POWER_WINDOW_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        printf("Current default power window: %d ms\n", int_param);
+        printf("\nCurrent default power window: %d ms\n", int_param);
     break;
     case ORCM_GET_POWER_OVERAGE_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        printf("Current default power budget overage limit: %d watts\n", int_param);
+        printf("\nCurrent default power budget overage limit: %d watts\n", int_param);
     break;
     case ORCM_GET_POWER_UNDERAGE_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        printf("Current default power budget underage limit: %d watts\n", int_param);
+        printf("\nCurrent default power budget underage limit: %d watts\n", int_param);
     break;
     case ORCM_GET_POWER_OVERAGE_TIME_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        printf("Current default power overage time limit: %d ms\n", int_param);
+        printf("\nCurrent default power overage time limit: %d ms\n", int_param);
     break;
     case ORCM_GET_POWER_UNDERAGE_TIME_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        printf("Current default power underage time limit: %d ms\n", int_param);
+        printf("\nCurrent default power underage time limit: %d ms\n", int_param);
     break;
     case ORCM_GET_POWER_FREQUENCY_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &float_param,
                                                   &n, OPAL_FLOAT))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
         if(fabsf((float)(float_param - (float)ORCM_PWRMGMT_MIN_FREQ)) < 0.0001) {
-            printf("Current default power frequency: MAX_FREQ");
+            printf("\nCurrent default power frequency: MAX_FREQ");
         }
         else if(fabsf((float)(float_param - (float)ORCM_PWRMGMT_MIN_FREQ)) < 0.0001) {
-            printf("Current default power frequency: MIN_FREQ");
+            printf("\nCurrent default power frequency: MIN_FREQ");
         }
         else {
-            printf("Current default power frequency: %f GHz\n", float_param);
+            printf("\nCurrent default power frequency: %f GHz\n", float_param);
         }
     break;
     case ORCM_GET_POWER_STRICT_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &bool_param,
                                                   &n, OPAL_BOOL))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
-        printf("Current default frequency strict setting: %s\n", bool_param ? "true" : "false");
+        printf("\nCurrent default frequency strict setting: %s\n", bool_param ? "true" : "false");
     break;
     default:
-        printf("Illegal power command: %d\n", cmd);
-        ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return ORTE_ERR_BAD_PARAM;

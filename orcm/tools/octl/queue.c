@@ -11,6 +11,7 @@
 
 #include "orcm/mca/scd/base/base.h"
 
+
 int orcm_octl_queue_status(char **argv)
 {
     orcm_alloc_t **allocs;
@@ -33,7 +34,6 @@ int orcm_octl_queue_status(char **argv)
     command = ORCM_SESSION_INFO_COMMAND;
     /* pack the session info command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_SCD_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
         return rc;
     }
@@ -41,7 +41,6 @@ int orcm_octl_queue_status(char **argv)
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
                                                       ORCM_RML_TAG_SCD,
                                                       orte_rml_send_callback, NULL))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;
@@ -51,7 +50,6 @@ int orcm_octl_queue_status(char **argv)
     ORTE_WAIT_FOR_COMPLETION(xfer.active);
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &num_queues, &n, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&xfer);
         return rc;
     }
@@ -63,14 +61,12 @@ int orcm_octl_queue_status(char **argv)
         /* get the name */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &name, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
         /* get the number of sessions on the queue */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &num_sessions, &n, OPAL_INT))) {
-            ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
@@ -84,7 +80,6 @@ int orcm_octl_queue_status(char **argv)
             }
             /* get the sessions on the queue */
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, allocs, &num_sessions, ORCM_ALLOC))) {
-                ORTE_ERROR_LOG(rc);
                 OBJ_DESTRUCT(&xfer);
                 return rc;
             }

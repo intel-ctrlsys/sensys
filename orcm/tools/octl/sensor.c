@@ -28,7 +28,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
     bool hi_thres;
     int max_count, time_window;
     orte_notifier_severity_t severity;
-    char *errmsg = NULL;
 
     if (4 != opal_argv_count(argv)) {
         fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"sensor \
@@ -218,14 +217,6 @@ done:
 
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
 
-    if (ORCM_SUCCESS != rc) {
-        errmsg = ORTE_ERROR_NAME(rc);
-        if (NULL != errmsg) {
-            fprintf(stdout, "\nERROR: %s\n", errmsg);
-        } else {
-            fprintf(stdout, "\nERROR: Internal\n");
-        }
-    } 
     return rc;
 }
 
@@ -243,7 +234,6 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     bool hi_thres;
     int max_count, time_window;
     orte_notifier_severity_t sev;
-    char *errmsg = NULL;
 
     if (11 != opal_argv_count(argv)) {
         fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"sensor set \
@@ -396,9 +386,9 @@ policy <nodelist> <sensor name> <threshold value> \
             goto done;
         }
         if (ORCM_SUCCESS == result) {
-            fprintf(stdout, "Success\n");
+            fprintf(stdout, "\nSuccess\n");
         } else {
-            fprintf(stdout, "Failure\n");
+            fprintf(stdout, "\nFailure\n");
         }
     }
 
@@ -414,14 +404,6 @@ done:
     }
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
 
-    if (ORCM_SUCCESS != rc) {
-        errmsg = ORTE_ERROR_NAME(rc);
-        if (NULL != errmsg) {
-            fprintf(stdout, "\nERROR: %s\n", errmsg);
-        } else {
-            fprintf(stdout, "\nERROR: Internal\n");
-        }
-    } 
     return rc;
 }
 
@@ -435,7 +417,6 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
-    char *errmsg = NULL;
 
     if (6 != opal_argv_count(argv)) {
         fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"sensor \
@@ -535,14 +516,6 @@ done:
        opal_argv_free(nodelist);
     }
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
-    if (ORCM_SUCCESS != rc) {
-        errmsg = ORTE_ERROR_NAME(rc);
-        if (NULL != errmsg) {
-            fprintf(stdout, "\nERROR: %s\n", errmsg);
-        } else {
-            fprintf(stdout, "\nERROR: Internal\n");
-        }
-    } 
     return rc;
 }
 
@@ -557,7 +530,6 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
     char **nodelist = NULL;
     char *sensor_name = NULL; 
     int sample_rate = 0;
-    char *errmsg = NULL;
 
     if (5 != opal_argv_count(argv)) {
         fprintf(stderr, "\n  incorrect arguments! \n\n usage: \"sensor \
@@ -669,13 +641,5 @@ done:
        opal_argv_free(nodelist);
     }
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
-    if (ORCM_SUCCESS != rc) {
-        errmsg = ORTE_ERROR_NAME(rc);
-        if (NULL != errmsg) {
-            fprintf(stdout, "\nERROR: %s\n", errmsg);
-        } else {
-            fprintf(stdout, "\nERROR: Internal\n");
-        }
-    } 
     return rc;
 }

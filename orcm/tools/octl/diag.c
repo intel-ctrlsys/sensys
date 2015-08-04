@@ -1,4 +1,7 @@
 /*
+  inodes>
+    <value>raj-linux-01</value>
+  </nodes>
  * Copyright (c) 2014      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  * 
@@ -22,13 +25,14 @@ int orcm_octl_diag_cpu(char **argv)
     char **nodelist = NULL;
 
     if (3 != opal_argv_count(argv)) {
-        fprintf(stderr, "incorrect arguments to \"diag cpu\", expecting node regex\n");
+        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"diag \
+cpu <node-list>\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
     orte_regex_extract_node_names (argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        fprintf(stdout, "Error: unable to extract nodelist\n");
+        fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -39,27 +43,23 @@ int orcm_octl_diag_cpu(char **argv)
     /* pack idag start command */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_DIAG_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     /* pack component */
     comp = strdup("cputest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     free(comp);
     /* pack if we want to wait for results */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &want_result,
                                             1, OPAL_BOOL))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     /* pack number of options to send */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &numopts,
                                             1, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     /* pack options */
@@ -77,10 +77,9 @@ int orcm_octl_diag_cpu(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        fprintf(stdout, "ORCM Executing Diag:cpu on Node:%s\n", nodelist[i]);
+        fprintf(stdout, "\nORCM Executing Diag:cpu on Node:%s\n", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
-            ORTE_ERROR_LOG(rc);
             goto finish;
         }
 
@@ -89,7 +88,6 @@ int orcm_octl_diag_cpu(char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_DIAG,
                                           orte_rml_send_callback, NULL))) {
-            ORTE_ERROR_LOG(rc);
             goto finish;
         }
 
@@ -102,13 +100,12 @@ int orcm_octl_diag_cpu(char **argv)
             cnt=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,
                                                       &cnt, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
                 goto finish;
             }
             if (ORCM_SUCCESS == result) {
-                fprintf(stdout, "Success\n");
+                fprintf(stdout, "\nSuccess\n");
             } else {
-                fprintf(stdout, "Failure\n");
+                fprintf(stdout, "\nFailure\n");
             }
         }
     }
@@ -118,9 +115,6 @@ finish:
     if(buf) OBJ_RELEASE(buf);
     if(xfer) OBJ_RELEASE(xfer);
     if(nodelist) opal_argv_free(nodelist);
-    if (ORCM_SUCCESS != rc) {
-        fprintf(stdout, "Error\n");
-    }
     return rc;
 }
 
@@ -137,13 +131,13 @@ int orcm_octl_diag_eth(char **argv)
     char **nodelist = NULL;
 
     if (3 != opal_argv_count(argv)) {
-        fprintf(stderr, "incorrect arguments to \"diag eth\", expecting node regex\n");
+        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"diag eth <nodelist>\n"); 
         return ORCM_ERR_BAD_PARAM;
     }
 
     orte_regex_extract_node_names (argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        fprintf(stdout, "Error: unable to extract nodelist\n");
+        fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -153,27 +147,23 @@ int orcm_octl_diag_eth(char **argv)
     /* pack idag start command */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_DIAG_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     /* pack component */
     comp = strdup("ethtest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     free(comp);
     /* pack if we want to wait for results */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &want_result,
                                             1, OPAL_BOOL))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     /* pack number of options to send */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &numopts,
                                             1, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     /* pack options */
@@ -191,10 +181,9 @@ int orcm_octl_diag_eth(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        fprintf(stdout, "ORCM Executing Diag:eth on Node:%s\n", nodelist[i]);
+        fprintf(stdout, "\nORCM Executing Diag:eth on Node:%s\n", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
-            ORTE_ERROR_LOG(rc);
             goto finish;
         }
 
@@ -203,7 +192,6 @@ int orcm_octl_diag_eth(char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_DIAG,
                                           orte_rml_send_callback, NULL))) {
-            ORTE_ERROR_LOG(rc);
             goto finish;
         }
 
@@ -216,13 +204,12 @@ int orcm_octl_diag_eth(char **argv)
             cnt=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,
                                                       &cnt, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
                 goto finish;
             }
             if (ORCM_SUCCESS == result) {
-                fprintf(stdout, "Success\n");
+                fprintf(stdout, "\nSuccess\n");
             } else {
-                fprintf(stdout, "Failure\n");
+                fprintf(stdout, "\nFailure\n");
             }
         }
     }
@@ -237,9 +224,6 @@ finish:
     if(buf) OBJ_RELEASE(buf);
     if(xfer) OBJ_RELEASE(xfer);
     if(nodelist) opal_argv_free(nodelist);
-    if (ORCM_SUCCESS != rc) {
-        fprintf(stdout, "Error\n");
-    }
     return rc;
 }
 
@@ -256,13 +240,13 @@ int orcm_octl_diag_mem(char **argv)
     char **nodelist = NULL;
 
     if (3 != opal_argv_count(argv)) {
-        fprintf(stderr, "incorrect arguments to \"diag mem\", expecting node regex\n");
+        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"diag mem <nodelist>\n"); 
         return ORCM_ERR_BAD_PARAM;
     }
 
     orte_regex_extract_node_names (argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        fprintf(stdout, "Error: unable to extract nodelist\n");
+        fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -272,27 +256,23 @@ int orcm_octl_diag_mem(char **argv)
     /* pack idag start command */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_DIAG_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     /* pack component */
     comp = strdup("memtest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     free(comp);
     /* pack if we want to wait for results */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &want_result,
                                             1, OPAL_BOOL))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     /* pack number of options to send */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &numopts,
                                             1, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
         goto finish;
     }
     /* pack options */
@@ -310,10 +290,9 @@ int orcm_octl_diag_mem(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        fprintf(stdout, "ORCM Executing Diag:mem on Node:%s\n", nodelist[i]);
+        fprintf(stdout, "\nORCM Executing Diag:mem on Node:%s\n", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
-            ORTE_ERROR_LOG(rc);
             goto finish;
         }
 
@@ -322,7 +301,6 @@ int orcm_octl_diag_mem(char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_DIAG,
                                           orte_rml_send_callback, NULL))) {
-            ORTE_ERROR_LOG(rc);
             goto finish;
         }
 
@@ -335,13 +313,12 @@ int orcm_octl_diag_mem(char **argv)
             cnt=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,
                                                       &cnt, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
                 goto finish;
             }
             if (ORCM_SUCCESS == result) {
-                fprintf(stdout, "Success\n");
+                fprintf(stdout, "\nSuccess\n");
             } else {
-                fprintf(stdout, "Failure\n");
+                fprintf(stdout, "\nFailure\n");
             }
         }
     }
@@ -351,8 +328,5 @@ finish:
     if(buf) OBJ_RELEASE(buf);
     if(xfer) OBJ_RELEASE(xfer);
     if(nodelist) opal_argv_free(nodelist);
-    if (ORCM_SUCCESS != rc) {
-        fprintf(stdout, "Error\n");
-    }
     return rc;
 }

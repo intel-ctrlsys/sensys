@@ -158,18 +158,6 @@ static int odbc_init(struct orcm_db_base_module_t *imod)
         return ORCM_ERR_CONNECTION_FAILED;
     }
 
-    ret = SQLSetConnectAttr(mod->dbhandle, SQL_ATTR_AUTOCOMMIT,
-                            (SQLPOINTER)SQL_AUTOCOMMIT_OFF, 0);
-    if (!(SQL_SUCCEEDED(ret))) {
-        opal_argv_free(login);
-        SQLFreeHandle(SQL_HANDLE_DBC, mod->dbhandle);
-        mod->dbhandle = NULL;
-        SQLFreeHandle(SQL_HANDLE_ENV, mod->envhandle);
-        mod->envhandle = NULL;
-        ERROR_MSG_FMT_INIT(mod, "SQLSetConnectAttr returned: %d", ret);
-        return ORCM_ERR_CONNECTION_FAILED;
-    }
-
     ret = SQLConnect(mod->dbhandle, (SQLCHAR *)mod->odbcdsn, SQL_NTS,
                      (SQLCHAR *)login[0], SQL_NTS,
                      (SQLCHAR *)login[1], SQL_NTS);
@@ -182,8 +170,18 @@ static int odbc_init(struct orcm_db_base_module_t *imod)
         ERROR_MSG_FMT_INIT(mod, "SQLConnect returned: %d", ret);
         return ORCM_ERR_CONNECTION_FAILED;
     }
-
     opal_argv_free(login);
+
+    ret = SQLSetConnectAttr(mod->dbhandle, SQL_ATTR_AUTOCOMMIT,
+                            (SQLPOINTER)SQL_AUTOCOMMIT_OFF, 0);
+    if (!(SQL_SUCCEEDED(ret))) {
+        SQLFreeHandle(SQL_HANDLE_DBC, mod->dbhandle);
+        mod->dbhandle = NULL;
+        SQLFreeHandle(SQL_HANDLE_ENV, mod->envhandle);
+        mod->envhandle = NULL;
+        ERROR_MSG_FMT_INIT(mod, "SQLSetConnectAttr returned: %d", ret);
+        return ORCM_ERR_CONNECTION_FAILED;
+    }
 
     opal_output_verbose(5, orcm_db_base_framework.framework_output,
                         "db:odbc: Connection established to %s",

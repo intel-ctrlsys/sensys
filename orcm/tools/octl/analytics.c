@@ -16,7 +16,7 @@
 #define OFLOW_FAILURE   0
 
 #define OFLOW_MAX_LINE_LENGTH  4096
-#define OFLOW_MAX_ARRAY_SIZE   128
+#define OFLOW_MAX_ARRAY_SIZE   OFLOW_MAX_LINE_LENGTH
 
 /******************
  * Local Functions
@@ -89,6 +89,10 @@ static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *param
     while ( OFLOW_FAILURE != orcm_octl_wf_add_parse_line(fp,
                              params_array_length, input_array + *params_array_length) ) {
 
+        if (NULL == input_array[0].key) {
+            fprintf(stderr, "\n VPID isn't present in the workflow file \n");
+            return ORCM_ERROR;
+        }
         if (0 == strncmp("VPID", input_array[0].key, OFLOW_MAX_LINE_LENGTH)) {
             wf_agg->jobid = 0;
             wf_agg->vpid = (orte_vpid_t)strtol(input_array[0].data.string,
@@ -101,12 +105,17 @@ static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *param
         else {
             (*step_size)++;
         }
+        if (*params_array_length >= OFLOW_MAX_ARRAY_SIZE) {
+            fprintf(stderr, "\n file is too big to parse \n");
+            return ORCM_ERROR;
+        }
     }
 
-    if (1 == set_vpid) {
-        return ORCM_SUCCESS;
+    if (1 != set_vpid) {
+        fprintf(stderr, "\n VPID isn't present in the workflow file \n");
+        return ORCM_ERROR;
     }
-    return ORCM_ERROR;
+    return ORCM_SUCCESS;
 
 }
 
@@ -189,7 +198,7 @@ int orcm_octl_analytics_workflow_add(char *file)
     int params_array_length = 0;
     int step_size = 0;
     FILE *fp;
-    opal_value_t *oflow_input_file_array;
+    opal_value_t *oflow_input_file_array = NULL;
     opal_value_t *workflow_params_array[OFLOW_MAX_ARRAY_SIZE] ;
     orte_process_name_t wf_agg;
 
@@ -202,12 +211,17 @@ int orcm_octl_analytics_workflow_add(char *file)
 
     oflow_input_file_array = (opal_value_t *)malloc(OFLOW_MAX_ARRAY_SIZE * sizeof(opal_value_t));
 
+    if (NULL == oflow_input_file_array) {
+        fprintf(stderr, "\n Error in Memory allocation\n");
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
     params_array_length = 0;
 
     rc = orcm_octl_analytics_wf_add_parse(fp, &step_size, &params_array_length,
                                           oflow_input_file_array, &wf_agg);
     if (ORCM_SUCCESS != rc) {
         free (oflow_input_file_array);
+        fclose(fp);
         return rc;
     }
 
@@ -404,7 +418,7 @@ static int orcm_octl_analytics_wf_list_unpack_buffer(opal_buffer_t *buf, orte_rm
 {
     int cnt;
     int n;
-    int *workflow_ids;
+    int *workflow_ids = NULL;
     int rc;
     int temp;
 
@@ -417,14 +431,19 @@ static int orcm_octl_analytics_wf_list_unpack_buffer(opal_buffer_t *buf, orte_rm
 
     if (0 < cnt) {
         workflow_ids = (int *)malloc(cnt * sizeof(int));
+        if (NULL == workflow_ids) {
+            orcm_octl_analytics_process_error(rc, buf, xfer);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
         if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, workflow_ids, &cnt, OPAL_INT))) {
             orcm_octl_analytics_process_error(rc, buf, xfer);
+            free(workflow_ids);
             return rc;
         }
         for (temp = 0; temp < cnt; temp++) {
             fprintf(stdout, "workflow id is: %d\n", workflow_ids[temp] );
         }
-
+        free(workflow_ids);
     }
     else {
         fprintf(stdout, "\nNo workflow ids\n");
@@ -499,6 +518,7 @@ static int orcm_octl_wf_add_parse_line(FILE *fp, int *params_array_length,
         *params_array_length += token_array_length/2;
 
         if (*params_array_length >= OFLOW_MAX_ARRAY_SIZE) {
+            opal_argv_free(tokens);
             return OFLOW_FAILURE;
         }
 

@@ -93,7 +93,7 @@ static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *param
             wf_agg->jobid = 0;
             wf_agg->vpid = (orte_vpid_t)strtol(input_array[0].data.string,
                                                (char **)NULL, 10);
-            fprintf(stdout, "Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
+            fprintf(stdout, "\nSending to %s\n", ORTE_NAME_PRINT(wf_agg));
             *params_array_length = 0;
             set_vpid = 1;
             continue;
@@ -118,7 +118,7 @@ static int orcm_oct_analytics_wf_add_store(int params_array_length, opal_value_t
     for (oflow_line_item=0; oflow_line_item < params_array_length ; oflow_line_item++) {
 
         if (params_array_length > OFLOW_MAX_ARRAY_SIZE) {
-            fprintf(stderr, "Too many params %d in the OFLOW file are being sent, OFLOW exiting",
+            fprintf(stderr, "\nToo many params %d in the OFLOW file are being sent, OFLOW exiting",
                     params_array_length);
             return ORCM_ERR_BAD_PARAM;
         }
@@ -175,7 +175,7 @@ static int orcm_octl_analytics_wf_add_unpack_buffer(opal_buffer_t *buf, orte_rml
         orcm_octl_analytics_process_error(rc, buf, xfer);
         return rc;
     }
-    fprintf(stdout, "Workflow created with id: %i\n", workflow_id);
+    fprintf(stdout, "\nWorkflow created with id: %i\n", workflow_id);
     return ORCM_SUCCESS;
 
 }
@@ -195,7 +195,7 @@ int orcm_octl_analytics_workflow_add(char *file)
 
 
     if (NULL == (fp = fopen(file, "r"))) {
-        fprintf(stderr, "Can't open workflow file");
+        fprintf(stderr, "\nCan't open workflow file");
         fprintf(stderr, "\n usage: \"analytics workflow add workflow.txt\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
@@ -259,17 +259,17 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
                                                     orte_process_name_t *wf_agg)
 {
     if (5 != opal_argv_count(value)) {
-        fprintf(stderr, "incorrect arguments! \n usage: \"analytics workflow remove vpid workflow_id\"\n");
+        fprintf(stderr, "\nincorrect arguments! \n usage: \"analytics workflow remove vpid workflow_id\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (0 != isdigit(value[3][strlen(value[3])-1])) {
         wf_agg->jobid = 0;
         wf_agg->vpid = (orte_vpid_t)strtol(value[3], NULL, 10);
-        fprintf(stdout, "Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
+        fprintf(stdout, "\nSending to %s\n", ORTE_NAME_PRINT(wf_agg));
     }
     else {
-        fprintf(stderr, "incorrect argument VPID id!\n \"%s\" is not an integer \n", value[3]);
+        fprintf(stderr, "\nincorrect argument VPID id!\n \"%s\" is not an integer \n", value[3]);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -277,7 +277,7 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
         *workflow_id = (int)strtol(value[4], NULL, 10);
     }
     else {
-        fprintf(stderr, "incorrect argument workflow id!\n \"%s\" is not an integer \n", value[4]);
+        fprintf(stderr, "\nincorrect argument workflow id!\n \"%s\" is not an integer \n", value[4]);
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
@@ -317,10 +317,10 @@ static int orcm_octl_analytics_wf_remove_unpack_buffer(opal_buffer_t *buf, orte_
         return rc;
     }
     if (ORCM_ERROR != workflow_id) {
-        fprintf(stdout, "Workflow deleted %d\n", workflow_id);
+        fprintf(stdout, "\nWorkflow deleted %d\n", workflow_id);
     }
     else {
-        fprintf(stdout, "workflow not found\n");
+        fprintf(stdout, "\nworkflow not found\n");
     }
     return ORCM_SUCCESS;
 
@@ -370,17 +370,17 @@ int orcm_octl_analytics_workflow_remove(char **value)
 static int orcm_octl_analytics_wf_list_parse_args(char **value, orte_process_name_t *wf_agg)
 {
     if (4 != opal_argv_count(value)) {
-        fprintf(stderr, "incorrect arguments! \n usage: \"analytics workflow get vpid \"\n");
+        fprintf(stderr, "\nincorrect arguments! \n usage: \"analytics workflow get vpid \"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (0 != isdigit(value[3][strlen(value[3])-1])) {
         wf_agg->jobid = 0;
         wf_agg->vpid = (orte_vpid_t)strtol(value[3], NULL, 10);
-        fprintf(stdout, "Sending to %s\n", ORTE_NAME_PRINT(wf_agg));
+        fprintf(stdout, "\nSending to %s\n", ORTE_NAME_PRINT(wf_agg));
     }
     else {
-        fprintf(stderr, "incorrect argument VPID id!\n \"%s\" is not an integer \n", value[3]);
+        fprintf(stderr, "\nincorrect argument VPID id!\n \"%s\" is not an integer \n", value[3]);
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
@@ -427,7 +427,7 @@ static int orcm_octl_analytics_wf_list_unpack_buffer(opal_buffer_t *buf, orte_rm
 
     }
     else {
-        fprintf(stdout, "No workflow ids\n");
+        fprintf(stdout, "\nNo workflow ids\n");
     }
     return ORCM_SUCCESS;
 }

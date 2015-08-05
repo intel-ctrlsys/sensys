@@ -80,6 +80,7 @@ int orcm_octl_resource_status(char **argv)
     if (OPAL_SUCCESS !=
         (rc = opal_dss.pack(buf, &command, 1, ORCM_SCD_CMD_T))) {
         OBJ_RELEASE(buf);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
     /* send it to the scheduler */
@@ -90,6 +91,7 @@ int orcm_octl_resource_status(char **argv)
                                                       NULL))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -99,6 +101,7 @@ int orcm_octl_resource_status(char **argv)
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &num_nodes,
                                               &n, OPAL_INT))) {
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -111,12 +114,14 @@ int orcm_octl_resource_status(char **argv)
         nodes = (orcm_node_t**)malloc(num_nodes * sizeof(orcm_node_t*));
         if (!nodes) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return ORTE_ERR_OUT_OF_RESOURCE;
         }
         /* get the sessions on the queue */
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, nodes,
                                                   &num_nodes, ORCM_NODE))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         /* We want to combine all the nodes with the same attributes,
@@ -157,6 +162,7 @@ int orcm_octl_resource_status(char **argv)
             if (ORTE_SUCCESS != (rc = orte_regex_create(nodelist, &regexp))) {
                 OPAL_LIST_DESTRUCT(&containers);
                 OBJ_DESTRUCT(&xfer);
+                orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
                 return rc;
             }
             if (21 > strlen(regexp)) {
@@ -178,6 +184,7 @@ int orcm_octl_resource_status(char **argv)
     }
 
     OBJ_DESTRUCT(&xfer);
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
 
     return ORCM_SUCCESS;
 }
@@ -221,6 +228,7 @@ drain <nodelist>\"\n");
                                             1, ORCM_RM_CMD_T))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
 
@@ -229,6 +237,7 @@ drain <nodelist>\"\n");
                                             1, OPAL_INT8))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
 
@@ -237,6 +246,7 @@ drain <nodelist>\"\n");
                                             1, OPAL_STRING))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
 
@@ -247,6 +257,7 @@ drain <nodelist>\"\n");
                                                       NULL))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
     /* get result */
@@ -263,6 +274,7 @@ drain <nodelist>\"\n");
         printf("\nFailure\n");
     }
 
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
     return ORCM_SUCCESS;
 }
 
@@ -295,6 +307,7 @@ resume <nodelist>\"\n");
                                             1, ORCM_RM_CMD_T))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
 
@@ -303,6 +316,7 @@ resume <nodelist>\"\n");
                                             1, OPAL_INT8))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
 
@@ -311,6 +325,7 @@ resume <nodelist>\"\n");
                                             1, OPAL_STRING))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
 
@@ -321,6 +336,7 @@ resume <nodelist>\"\n");
                                                       NULL))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
     /* get result */
@@ -329,6 +345,7 @@ resume <nodelist>\"\n");
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
                                               &n, OPAL_INT))) {
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
     if (ORCM_SUCCESS == result) {
@@ -337,5 +354,6 @@ resume <nodelist>\"\n");
         printf("\nFailure\n");
     }
 
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
     return ORCM_SUCCESS;
 }

@@ -48,6 +48,7 @@ int orcm_octl_power_set(int cmd, char **argv)
                                             1, ORCM_SCD_CMD_T))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
     
@@ -57,6 +58,7 @@ int orcm_octl_power_set(int cmd, char **argv)
                                             1, ORCM_SCD_CMD_T))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -65,6 +67,7 @@ int orcm_octl_power_set(int cmd, char **argv)
                                             1, OPAL_BOOL))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -77,6 +80,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -90,6 +94,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         
         if (0 > int_param || ORCM_PWRMGMT_NUM_MODES <= int_param ) {
             printf("\nIllegal Power Management Mode\n");
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return ORCM_ERR_BAD_PARAM;
         }
         // FIXME: validate that power mode is valid
@@ -98,6 +103,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -109,6 +115,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -120,6 +127,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -131,6 +139,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -142,6 +151,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -153,6 +163,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -170,6 +181,7 @@ int orcm_octl_power_set(int cmd, char **argv)
             else {
                 OBJ_RELEASE(buf);
                 OBJ_DESTRUCT(&xfer);
+                orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
                 return ORCM_ERR_BAD_PARAM; 
             }
         }
@@ -179,6 +191,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &float_param, 1, OPAL_FLOAT))) {
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -196,6 +209,7 @@ int orcm_octl_power_set(int cmd, char **argv)
             else {
                 OBJ_RELEASE(buf);
                 OBJ_DESTRUCT(&xfer);
+                orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
                 return ORCM_ERR_BAD_PARAM; 
             }
         }
@@ -205,12 +219,14 @@ int orcm_octl_power_set(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &bool_param, 1, OPAL_BOOL))) {
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
     default:
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return ORTE_ERR_BAD_PARAM;
     }
 
@@ -221,6 +237,7 @@ int orcm_octl_power_set(int cmd, char **argv)
                                                       NULL))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
     /* get result */
@@ -229,6 +246,7 @@ int orcm_octl_power_set(int cmd, char **argv)
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
                                               &n, OPAL_INT))) {
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
     if (0 == result) {
@@ -284,6 +302,7 @@ int orcm_octl_power_get(int cmd, char **argv)
                                             1, ORCM_SCD_CMD_T))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
     
@@ -293,6 +312,7 @@ int orcm_octl_power_get(int cmd, char **argv)
                                             1, ORCM_SCD_CMD_T))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -301,6 +321,7 @@ int orcm_octl_power_get(int cmd, char **argv)
                                             1, OPAL_BOOL))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -311,6 +332,7 @@ int orcm_octl_power_get(int cmd, char **argv)
                                                       NULL))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
     /* get result */
@@ -320,11 +342,13 @@ int orcm_octl_power_get(int cmd, char **argv)
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &success,
                                               &n, OPAL_INT))) {
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
     if(OPAL_SUCCESS != success) {
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return success;
     }
  
@@ -333,6 +357,7 @@ int orcm_octl_power_get(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         printf("\nCurrent cluster power budget: %d watts\n", int_param);
@@ -341,6 +366,7 @@ int orcm_octl_power_get(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         printf("\nCurrent default power mode: %s\n", orcm_pwrmgmt_get_mode_string(int_param));
@@ -349,6 +375,7 @@ int orcm_octl_power_get(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         printf("\nCurrent default power window: %d ms\n", int_param);
@@ -357,6 +384,7 @@ int orcm_octl_power_get(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         printf("\nCurrent default power budget overage limit: %d watts\n", int_param);
@@ -365,6 +393,7 @@ int orcm_octl_power_get(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         printf("\nCurrent default power budget underage limit: %d watts\n", int_param);
@@ -373,6 +402,7 @@ int orcm_octl_power_get(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         printf("\nCurrent default power overage time limit: %d ms\n", int_param);
@@ -381,6 +411,7 @@ int orcm_octl_power_get(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
                                                   &n, OPAL_INT32))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         printf("\nCurrent default power underage time limit: %d ms\n", int_param);
@@ -389,6 +420,7 @@ int orcm_octl_power_get(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &float_param,
                                                   &n, OPAL_FLOAT))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         if(fabsf((float)(float_param - (float)ORCM_PWRMGMT_MIN_FREQ)) < 0.0001) {
@@ -405,6 +437,7 @@ int orcm_octl_power_get(int cmd, char **argv)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &bool_param,
                                                   &n, OPAL_BOOL))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         printf("\nCurrent default frequency strict setting: %s\n", bool_param ? "true" : "false");
@@ -412,9 +445,11 @@ int orcm_octl_power_get(int cmd, char **argv)
     default:
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return ORTE_ERR_BAD_PARAM;
     }
 
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
     return ORCM_SUCCESS;
 }
 

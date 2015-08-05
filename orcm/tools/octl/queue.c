@@ -35,6 +35,7 @@ int orcm_octl_queue_status(char **argv)
     /* pack the session info command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_SCD_CMD_T))) {
         OBJ_RELEASE(buf);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
     /* send it to the scheduler */
@@ -43,6 +44,7 @@ int orcm_octl_queue_status(char **argv)
                                                       orte_rml_send_callback, NULL))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -51,6 +53,7 @@ int orcm_octl_queue_status(char **argv)
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &num_queues, &n, OPAL_INT))) {
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -62,12 +65,14 @@ int orcm_octl_queue_status(char **argv)
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &name, &n, OPAL_STRING))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         /* get the number of sessions on the queue */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &num_sessions, &n, OPAL_INT))) {
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
 
@@ -76,11 +81,13 @@ int orcm_octl_queue_status(char **argv)
         if (0 < num_sessions) {
             allocs = (orcm_alloc_t**)malloc(num_sessions * sizeof(orcm_alloc_t*));
             if (NULL == allocs) {
+                orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
                 return ORCM_ERR_OUT_OF_RESOURCE;
             }
             /* get the sessions on the queue */
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, allocs, &num_sessions, ORCM_ALLOC))) {
                 OBJ_DESTRUCT(&xfer);
+                orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
                 return rc;
             }
             /* loop through sessions, and print them */
@@ -100,6 +107,7 @@ int orcm_octl_queue_status(char **argv)
     }
 
     OBJ_DESTRUCT(&xfer);
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
 
     return ORTE_SUCCESS;
 }

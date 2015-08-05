@@ -115,6 +115,7 @@ finish:
     if(buf) OBJ_RELEASE(buf);
     if(xfer) OBJ_RELEASE(xfer);
     if(nodelist) opal_argv_free(nodelist);
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_DIAG);
     return rc;
 }
 
@@ -224,6 +225,7 @@ finish:
     if(buf) OBJ_RELEASE(buf);
     if(xfer) OBJ_RELEASE(xfer);
     if(nodelist) opal_argv_free(nodelist);
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_DIAG);
     return rc;
 }
 
@@ -328,5 +330,6 @@ finish:
     if(buf) OBJ_RELEASE(buf);
     if(xfer) OBJ_RELEASE(xfer);
     if(nodelist) opal_argv_free(nodelist);
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_DIAG);
     return rc;
 }

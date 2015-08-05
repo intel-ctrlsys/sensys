@@ -213,6 +213,7 @@ int orcm_octl_analytics_workflow_add(char *file)
 
     if (NULL == oflow_input_file_array) {
         fprintf(stderr, "\n Error in Memory allocation\n");
+        fclose(fp);
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
     params_array_length = 0;

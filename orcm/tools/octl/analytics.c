@@ -50,7 +50,6 @@ static int orcm_octl_analytics_wf_list_unpack_buffer(opal_buffer_t *buf, orte_rm
 static void orcm_octl_analytics_process_error(int rc, opal_buffer_t *buf,
                                               orte_rml_recv_cb_t *xfer)
 {
-    ORTE_ERROR_LOG(rc);
     OBJ_RELEASE(buf);
     OBJ_DESTRUCT(xfer);
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
@@ -77,7 +76,7 @@ static int orcm_octl_analytics_wf_send_buffer(orte_process_name_t *wf_agg,
                                                       ORCM_RML_TAG_ANALYTICS,
                                                       orte_rml_send_callback, NULL))) {
         orcm_octl_analytics_process_error(rc, buf, xfer);
-        return ORCM_ERROR;
+        return rc;
     }
     return ORCM_SUCCESS;
 }
@@ -141,26 +140,26 @@ static int orcm_octl_analytics_wf_add_pack_buffer(opal_buffer_t *buf, orte_rml_r
 
     command = ORCM_ANALYTICS_WORKFLOW_CREATE;
     /* pack the alloc command flag */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
+    if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
         orcm_octl_analytics_process_error(rc, buf, xfer);
-        return ORCM_ERROR;
+        return rc;
     }
     /* pack the length of the array */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &step_size, 1, OPAL_INT))) {
+    if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &step_size, 1, OPAL_INT))) {
         orcm_octl_analytics_process_error(rc, buf, xfer);
-        return ORCM_ERROR;
+        return rc;
     }
     if (array_length > 0) {
         /* pack the array */
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, workflow_params_array,
+        if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, workflow_params_array,
                                                 array_length, OPAL_VALUE))) {
             orcm_octl_analytics_process_error(rc, buf, xfer);
-            return ORCM_ERROR;
+            return rc;
         }
     }
     else {
         orcm_octl_analytics_process_error(rc, buf, xfer);
-        return ORCM_ERROR;
+        return rc;
     }
     return rc;
 }
@@ -172,9 +171,9 @@ static int orcm_octl_analytics_wf_add_unpack_buffer(opal_buffer_t *buf, orte_rml
     int workflow_id;
 
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_id, &n, OPAL_INT))) {
+    if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_id, &n, OPAL_INT))) {
         orcm_octl_analytics_process_error(rc, buf, xfer);
-        return ORCM_ERROR;
+        return rc;
     }
     fprintf(stdout, "Workflow created with id: %i\n", workflow_id);
     return ORCM_SUCCESS;
@@ -197,6 +196,7 @@ int orcm_octl_analytics_workflow_add(char *file)
 
     if (NULL == (fp = fopen(file, "r"))) {
         fprintf(stderr, "Can't open workflow file");
+        fprintf(stderr, "\n usage: \"analytics workflow add workflow.txt\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -292,14 +292,14 @@ static int orcm_octl_analytics_wf_remove_pack_buffer(opal_buffer_t *buf, int wor
 
     command = ORCM_ANALYTICS_WORKFLOW_DELETE;
     /* pack the alloc command flag */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
+    if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
         orcm_octl_analytics_process_error(rc, buf, xfer);
-        return ORCM_ERROR;
+        return rc;
     }
     /* pack the length of the array */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &workflow_id, 1, OPAL_INT))) {
+    if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &workflow_id, 1, OPAL_INT))) {
         orcm_octl_analytics_process_error(rc, buf, xfer);
-        return ORCM_ERROR;
+        return rc;
     }
     return ORCM_SUCCESS;
 }
@@ -312,9 +312,9 @@ static int orcm_octl_analytics_wf_remove_unpack_buffer(opal_buffer_t *buf, orte_
 
     n=1;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_id, &n, OPAL_INT))) {
+    if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_id, &n, OPAL_INT))) {
         orcm_octl_analytics_process_error(rc, buf, xfer);
-        return ORCM_ERROR;
+        return rc;
     }
     if (ORCM_ERROR != workflow_id) {
         fprintf(stdout, "Workflow deleted %d\n", workflow_id);
@@ -393,9 +393,9 @@ static int orcm_octl_analytics_wf_list_pack_buffer(opal_buffer_t *buf, orte_rml_
 
     command = ORCM_ANALYTICS_WORKFLOW_LIST;
     /* pack the alloc command flag */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
+    if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
         orcm_octl_analytics_process_error(rc, buf, xfer);
-        return ORCM_ERROR;
+        return rc;
     }
     return ORCM_SUCCESS;
 }
@@ -410,16 +410,16 @@ static int orcm_octl_analytics_wf_list_unpack_buffer(opal_buffer_t *buf, orte_rm
 
     n=1;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &cnt, &n, OPAL_INT))) {
+    if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &cnt, &n, OPAL_INT))) {
         orcm_octl_analytics_process_error(rc, buf, xfer);
-        return ORCM_ERROR;
+        return rc;
     }
 
     if (0 < cnt) {
         workflow_ids = (int *)malloc(cnt * sizeof(int));
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, workflow_ids, &cnt, OPAL_INT))) {
+        if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, workflow_ids, &cnt, OPAL_INT))) {
             orcm_octl_analytics_process_error(rc, buf, xfer);
-            return ORCM_ERROR;
+            return rc;
         }
         for (temp = 0; temp < cnt; temp++) {
             fprintf(stdout, "workflow id is: %d\n", workflow_ids[temp] );

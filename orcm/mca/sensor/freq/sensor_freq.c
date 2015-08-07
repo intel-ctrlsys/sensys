@@ -43,6 +43,7 @@
 #include "orte/mca/notifier/base/base.h"
 
 #include "orcm/mca/db/db.h"
+#include "orcm/runtime/orcm_globals.h"
 
 #include "orcm/mca/analytics/analytics.h"
 
@@ -739,12 +740,9 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     float ghz;
     opal_buffer_t data, *bptr;
     int32_t ncores;
-    time_t now;
-    char time_str[40];
-    char *timestamp_str;
     bool packed;
-    struct tm *sample_time;
     unsigned int item_count = 0;
+    struct timeval current_time;
 
     if (0 == opal_list_get_size(&tracking)) {
         return;
@@ -793,22 +791,14 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* get the sample time */
-    now = time(NULL);
-    /* pass the time along as a simple string */
-    sample_time = localtime(&now);
-    if (NULL == sample_time) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
-    }
-    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-    asprintf(&timestamp_str, "%s", time_str);
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
+    /* get the sample time */
+    gettimeofday(&current_time, NULL);
+
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
-        free(timestamp_str);
         return;
     }
-    free(timestamp_str);
 
     OPAL_LIST_FOREACH_SAFE(trk, nxt, &tracking, corefreq_tracker_t) {
         opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
@@ -929,10 +919,9 @@ static void mycleanup(int dbhandle, int status, opal_list_t *kvs,
 static void freq_log(opal_buffer_t *sample)
 {
     char *hostname=NULL;
-    char *sampletime;
-    struct tm time_info;
-    time_t ts;
-    int rc, analytics_rc;
+    struct timeval sampletime;
+    int rc;
+    int analytics_rc;
     int32_t n, ncores;
     opal_list_t *vals, *pstate_vals=NULL;
     opal_value_t *kv;
@@ -941,6 +930,7 @@ static void freq_log(opal_buffer_t *sample)
     unsigned int pstate_count = 0, pstate_value = 0;
     char *pstate_name;
     opal_value_array_t *analytics_sample_array = NULL;
+    orcm_metric_value_t *sensor_metric;
 
     if (!log_enabled) {
         return;
@@ -960,9 +950,9 @@ static void freq_log(opal_buffer_t *sample)
 
     /* sample time */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto cleanup;
     }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -973,15 +963,10 @@ static void freq_log(opal_buffer_t *sample)
     /* xfr to storage */
     vals = OBJ_NEW(opal_list_t);
 
-    /* load the sample time at the start */
-    if (NULL == sampletime) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
-    }
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("ctime");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup(sampletime);
+    kv->type = OPAL_TIMEVAL;
+    kv->data.tv = sampletime;
     opal_list_append(vals, &kv->super);
 
     /* load the hostname */
@@ -998,10 +983,27 @@ static void freq_log(opal_buffer_t *sample)
     /*If analytics_rc returns error, rest of the analytics API's will not be called */
     analytics_rc = orcm_analytics.array_create(&analytics_sample_array, ncores);
 
+    kv = OBJ_NEW(opal_value_t);
+    if (NULL == kv) {
+        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
+    kv->key = strdup("data_group");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("freq");
+    opal_list_append(vals, &kv->super);
+
     for (i=0; i < ncores; i++) {
-        kv = OBJ_NEW(opal_value_t);
-        asprintf(&kv->key, "core%d:GHz", i);
-        kv->type = OPAL_FLOAT;
+        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+
+        asprintf(&(sensor_metric->value.key), "core%d", i);
+        sensor_metric->units = strdup("GHz");
+        sensor_metric->value.type = OPAL_FLOAT;
+
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
@@ -1009,21 +1011,20 @@ static void freq_log(opal_buffer_t *sample)
         }
 
         /* check corefreq event policy */
-        strptime(sampletime, "%F %T%z", &time_info);
-        ts = mktime(&time_info);
-        corefreq_policy_filter(hostname, i, fval, ts);
+        corefreq_policy_filter(hostname, i, fval, sampletime.tv_sec);
 
-        kv->data.fval = fval;
-        opal_list_append(vals, &kv->super);
-        if (ORCM_SUCCESS == analytics_rc) {
+        sensor_metric->value.data.fval = fval;
+        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+
+      /*  if (ORCM_SUCCESS == analytics_rc) {
             analytics_rc = orcm_analytics.array_append(analytics_sample_array, i,
                                                        "freq", hostname, kv);
-        }
+        } */
     }
 
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
-        orcm_db.store(orcm_sensor_base.dbhandle, "freq", vals, mycleanup, NULL);
+        orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
     } else {
         OPAL_LIST_RELEASE(vals);
     }
@@ -1037,7 +1038,7 @@ static void freq_log(opal_buffer_t *sample)
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &pstate_count, &n, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto cleanup;
     }
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                 "Total pstate count: %d", pstate_count);
@@ -1046,26 +1047,31 @@ static void freq_log(opal_buffer_t *sample)
         /* xfr to storage */
         pstate_vals = OBJ_NEW(opal_list_t);
 
-        /* load the sample time at the start */
-        if (NULL == sampletime) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
-        }
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("ctime");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(sampletime);
+        kv->type = OPAL_TIMEVAL;
+        kv->data.tv = sampletime;
         opal_list_append(pstate_vals, &kv->super);
 
         /* load the hostname */
         if (NULL == hostname) {
             ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
+            goto cleanup;
         }
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("hostname");
         kv->type = OPAL_STRING;
         kv->data.string = strdup(hostname);
+        opal_list_append(pstate_vals, &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        if (NULL == kv) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        kv->key = strdup("data_group");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup("pstate");
         opal_list_append(pstate_vals, &kv->super);
     }
 
@@ -1075,28 +1081,34 @@ static void freq_log(opal_buffer_t *sample)
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &pstate_name, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            return;
+            goto cleanup;
         }
         /* unpack the pstate entry value */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &pstate_value, &n, OPAL_UINT))) {
             ORTE_ERROR_LOG(rc);
-            return;
+            goto cleanup;
         }
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "%s : %d",pstate_name, pstate_value);
 
-        kv = OBJ_NEW(opal_value_t);
-        if (0 != strcmp(pstate_name,"no_turbo")) {
-            kv->key = strdup(pstate_name);
-            kv->type = OPAL_UINT;
-            kv->data.uint = pstate_value;
-        } else {
-            kv->key = strdup("allow_turbo");
-            kv->type = OPAL_BOOL;
-            kv->data.flag = ((0 == pstate_value) ? true: false);
+        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
         }
-        opal_list_append(pstate_vals, &kv->super);
+        if (0 != strcmp(pstate_name,"no_turbo")) {
+            sensor_metric->value.key = strdup(pstate_name);
+            sensor_metric->value.type = OPAL_UINT;
+            sensor_metric->value.data.uint = pstate_value;
+            sensor_metric->units = NULL;
+        } else {
+            sensor_metric->value.key = strdup("allow_turbo");
+            sensor_metric->value.type = OPAL_BOOL;
+            sensor_metric->value.data.flag = ((0 == pstate_value) ? true: false);
+            sensor_metric->units = NULL;
+        }
+        opal_list_append(pstate_vals, (opal_list_item_t *)sensor_metric);
         pstate_count--;
     }
 
@@ -1104,7 +1116,7 @@ static void freq_log(opal_buffer_t *sample)
     {
         /* store it */
         if (0 <= orcm_sensor_base.dbhandle) {
-            orcm_db.store(orcm_sensor_base.dbhandle, "pstate", pstate_vals, mycleanup, NULL);
+            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, pstate_vals, NULL, mycleanup, NULL);
         } else {
             OPAL_LIST_RELEASE(pstate_vals);
         }
@@ -1114,6 +1126,7 @@ static void freq_log(opal_buffer_t *sample)
     if (NULL != analytics_sample_array) {
         orcm_analytics.array_cleanup(analytics_sample_array);
     }
+
     if (NULL != hostname) {
         free(hostname);
     }

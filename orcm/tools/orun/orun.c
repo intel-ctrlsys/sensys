@@ -1213,6 +1213,7 @@ static int create_app(int argc, char* argv[],
                                true, "get the cwd", rc);
                 goto cleanup;
             }
+            cwd[OPAL_PATH_MAX-1]='\0';
             /* construct the absolute path */
             app->cwd = opal_os_path(false, cwd, orun_globals.wdir, NULL);
         }
@@ -1226,6 +1227,7 @@ static int create_app(int argc, char* argv[],
                            true, "get the cwd", rc);
             goto cleanup;
         }
+        cwd[OPAL_PATH_MAX-1]='\0';
         app->cwd = strdup(cwd);
         orte_remove_attribute(&app->attributes, ORTE_APP_USER_CWD);
     }

@@ -160,14 +160,12 @@ static int cputest_log(opal_buffer_t *buf)
         kv->key = strdup("start_time");
         kv->type = OPAL_TIMEVAL;
         kv->data.tv = start_time;
-        free(start_time);
         opal_list_append(vals[i], &kv->super);
 
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("end_time");
         kv->type = OPAL_TIMEVAL;
         kv->data.tv = end_time;
-        free(end_time);
         opal_list_append(vals[i], &kv->super);
 
         kv = OBJ_NEW(opal_value_t);

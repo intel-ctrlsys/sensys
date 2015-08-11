@@ -427,7 +427,6 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
     kv->key = strdup("ctime");
     kv->type = OPAL_TIMEVAL;
     kv->data.tv = sampletime;
-    free(sampletime);
     opal_list_append(vals, &kv->super);
 
     /* load the hostname */
@@ -442,7 +441,7 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
     opal_list_append(vals, &kv->super);
 
     /* load the number of cpus that were running the virus */
-    mv = OBJ_NEW(orcm_metric__value_t);
+    mv = OBJ_NEW(orcm_metric_value_t);
     mv->value.key = strdup("nactive");
     mv->value.type = OPAL_INT32;
     mv->value.data.int32 = coll->n_active_cores;

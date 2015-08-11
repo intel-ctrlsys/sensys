@@ -98,76 +98,154 @@ static void finalize(void)
     return;
 }
 
+static void mycleanup(int dbhandle, int status, opal_list_t *kvs,
+                      opal_list_t *ret, void *cbdata)
+{
+    OPAL_LIST_RELEASE(kvs);
+    if (ORCM_SUCCESS != status){
+        ORTE_ERROR_LOG(status);
+    }
+}
+
 
 static int cputest_log(opal_buffer_t *buf)
 {
     int cnt, rc;
-    time_t start_time;
-    time_t end_time;
-    struct tm *starttime;
-    struct tm *endtime;
     char *nodename;
     int diag_result;
+    opal_list_t *vals[3];
+    opal_value_t *kv;
+    struct timeval start_time;
+    struct timeval end_time;
+    int i;
 
     /* Unpack start Time */
     cnt = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &start_time,
-                                              &cnt, OPAL_TIME))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &start_time, &cnt, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }
 
     /* Unpack end time */
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &end_time,
-                                              &cnt, OPAL_TIME))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &end_time, &cnt, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }
 
     /* Unpack the node name */
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &nodename,
-                                              &cnt, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &nodename, &cnt, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }
 
     /* Unpack our results */
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_result,
-                                              &cnt, OPAL_INT))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &diag_result, &cnt, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }
     /* add results */
 
-    starttime = localtime(&start_time);
-    endtime   = localtime(&end_time);
+    vals[0] = OBJ_NEW(opal_list_t);
+    vals[1] = OBJ_NEW(opal_list_t);
+    vals[2] = OBJ_NEW(opal_list_t);
+
+    for(i = 0; i < 3; i++){
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("hostname");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(nodename);
+        opal_list_append(vals[i], &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("start_time");
+        kv->type = OPAL_TIMEVAL;
+        kv->data.tv = start_time;
+        free(start_time);
+        opal_list_append(vals[i], &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("end_time");
+        kv->type = OPAL_TIMEVAL;
+        kv->data.tv = end_time;
+        free(end_time);
+        opal_list_append(vals[i], &kv->super);
+
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup("diag_type");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup("cpu");
+        opal_list_append(vals[i], &kv->super);
+    }
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("diag_subtype");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("floating point");
+    opal_list_append(vals[0], &kv->super);
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("diag_subtype");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("prime number");
+    opal_list_append(vals[1], &kv->super);
+
+    kv = OBJ_NEW(opal_value_t);
+    kv->key = strdup("diag_subtype");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("stress test");
+    opal_list_append(vals[2], &kv->super);
+
     /* send diag test result to db */
     if (0 <= orcm_diag_base.dbhandle) {
         if ( DIAG_CPU_FP_TST & diag_result ) {
-            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "floating point", starttime, endtime,
-                                 NULL, "FAIL", NULL, NULL, NULL);
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("test_result");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup("FAIL");
+            opal_list_append(vals[0], &kv->super);
+
         } else {
-            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "floating point", starttime, endtime,
-                                 NULL, "PASS", NULL, NULL, NULL);
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("test_result");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup("PASS");
+            opal_list_append(vals[0], &kv->super);
         }
+        orcm_db.store_new(orcm_diag_base.dbhandle, ORCM_DB_DIAG_DATA, vals[0], NULL, mycleanup, NULL);
 
         if ( DIAG_CPU_PRIME_TST & diag_result ) {
-            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "prime number", starttime, endtime,
-                                 NULL, "FAIL", NULL, NULL, NULL);
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("test_result");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup("FAIL");
+            opal_list_append(vals[1], &kv->super);
         } else {
-            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "prime number", starttime, endtime,
-                                 NULL, "PASS", NULL, NULL, NULL);
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("test_result");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup("PASS");
+            opal_list_append(vals[1], &kv->super);
         }
+        orcm_db.store_new(orcm_diag_test.dbhandle, ORCM_DB_DIAG_DATA, vals[1], NULL, mycleanup, NULL);
 
         if ( DIAG_CPU_STRESS_TST & diag_result ) {
-            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "stress test", starttime, endtime,
-                                 NULL, "FAIL", NULL, NULL, NULL);
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("test_result");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup("FAIL");
+            opal_list_append(vals[2], &kv->super);
         } else {
-            orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, "cpu", "stress test", starttime, endtime,
-                                 NULL, "PASS", NULL, NULL, NULL);
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup("test_result");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup("PASS");
+            opal_list_append(vals[2], &kv->super);
         }
-    }
-
+        orcm_db.store_new(orcm_diag_test.dbhandle, ORCM_DB_DIAG_DATA, vals[2], NULL, mycleanup, NULL);
+    }    
+    OPAL_LIST_RELEASE(vals[0]);
+    OPAL_LIST_RELEASE(vals[1]);
+    OPAL_LIST_RELEASE(vals[2]);
     return ORCM_SUCCESS;
 }
 
@@ -179,8 +257,8 @@ static void cputest_run(int sd, short args, void *cbdata)
     int cpu_diag_ret = 0;
     orcm_diag_cmd_flag_t command = ORCM_DIAG_AGG_COMMAND;
     opal_buffer_t *data = NULL;
-    time_t now;
-    time_t start_time;
+    struct timeval now;
+    struct timeval start_time;
     char *compname;
     orte_process_name_t *tgt;
     int rc;
@@ -200,8 +278,6 @@ static void cputest_run(int sd, short args, void *cbdata)
         /* still run diags? */
         /* return; */
     }
-
-    start_time = time(NULL);
 
     numprocs = get_nprocs();
 
@@ -235,7 +311,6 @@ static void cputest_run(int sd, short args, void *cbdata)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
     }
 
-    now = time(NULL);
     data = OBJ_NEW(opal_buffer_t);
 
     /* pack aggregator command */
@@ -255,13 +330,15 @@ static void cputest_run(int sd, short args, void *cbdata)
     free(compname);
 
     /* Pack start Time */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &start_time, 1, OPAL_TIME))) {
+    gettimeofday(&start_time, NULL);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &start_time, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
         return;
     }
 
     /* Pack the Time */
+    gettimeofday(&now, NULL);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIME))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);

@@ -41,6 +41,7 @@
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/mca/db/db.h"
+#include "orcm/runtime/orcm_globals.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -520,6 +521,7 @@ static void nodepower_log(opal_buffer_t *sample)
     int sensor_not_avail=0;
     struct timeval tv_curr;
     struct tm *time_info;
+    orcm_metric_value_t *sensor_metric;
 
     float node_power_cur;
     char time_str[40];
@@ -587,17 +589,34 @@ static void nodepower_log(opal_buffer_t *sample)
       kv->data.string = strdup(hostname);
     }
     opal_list_append(vals, &kv->super);
+    free(hostname);
+
 
     kv = OBJ_NEW(opal_value_t);
-    kv->key=strdup("nodepower:W");
-    kv->type=OPAL_FLOAT;
-    kv->data.fval=node_power_cur;
+    if (NULL == kv) {
+        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+        return;
+    }
+    kv->key = strdup("data_group");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("nodepower");
+    opal_list_append(vals, &kv->super);
+
+    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+        return;
+    }
+    sensor_metric->value.key=strdup("nodepower");
+    sensor_metric->value.type=OPAL_FLOAT;
+    sensor_metric->value.data.fval=node_power_cur;
+    sensor_metric->units = strdup("W");
     if (node_power_cur<=(float)(0.0)){
         sensor_not_avail=1;
         if (_readein.ipmi_calls>4)
             opal_output(0,"nodepower sensor data not logged due to unexpected return value from PSU\n");
     } else {
-        opal_list_append(vals, &kv->super);
+        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
     }
 
 /*
@@ -609,14 +628,10 @@ take advantage of existing time_val field of opal_value_t
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
         if (!sensor_not_avail){
-            orcm_db.store(orcm_sensor_base.dbhandle, "nodepower", vals, mycleanup, NULL);
+            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
         }
     } else {
         OPAL_LIST_RELEASE(vals);
-    }
-
-    if (NULL != hostname) {
-        free(hostname);
     }
 }
 

@@ -115,10 +115,9 @@ orcm_sensor_base_module_t orcm_sensor_ipmi_module = {
 
 /* local variables */
 static opal_buffer_t test_vector;
-static time_t last_sample = 0;
 static bool log_enabled = true;
 static void mycleanup(int dbhandle, int status,
-                      opal_list_t *kvs, void *cbdata);
+                      opal_list_t *kvs, opal_list_t *ret, void *cbdata);
 static void generate_test_vector(opal_buffer_t *v);
 static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot);
 
@@ -238,7 +237,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
 static void ipmi_log(opal_buffer_t *sample)
 {
-    char *hostname, *sampletime, *sample_item, *sample_name, *sample_unit, *key_unit;
+    char *hostname, *sample_item, *sample_name, *sample_unit;
     char nodename[64], hostip[16], bmcip[16], baseboard_manuf_date[11], baseboard_manufacturer[30], baseboard_name[16], baseboard_serial[16], baseboard_part[16];
     float float_item;
     unsigned uint_item;
@@ -246,6 +245,9 @@ static void ipmi_log(opal_buffer_t *sample)
     int32_t n;
     opal_list_t *vals;
     opal_value_t *kv;
+    struct timeval sampletime;
+    orcm_metric_value_t *sensor_metric;
+
     int host_count;
     if (!log_enabled) {
         return;
@@ -264,12 +266,8 @@ static void ipmi_log(opal_buffer_t *sample)
 
             /* sample time - 1b */
             n=1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
                 ORTE_ERROR_LOG(rc);
-                return;
-            }
-            if (NULL == sampletime) {
-                ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
                 return;
             }
 
@@ -426,70 +424,102 @@ static void ipmi_log(opal_buffer_t *sample)
 
             kv = OBJ_NEW(opal_value_t);
             kv->key = strdup("ctime");
-            kv->type = OPAL_STRING;
-            kv->data.string = strdup(sampletime);
+            kv->type = OPAL_TIMEVAL;
+            kv->data.tv = sampletime;
             opal_list_append(vals, &kv->super);
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "UnPacked cTime: %s", sampletime);
-            free(sampletime);
 
             kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("nodename");
+            kv->key = strdup("hostname");
             kv->type = OPAL_STRING;
             kv->data.string = strdup(nodename);
             opal_list_append(vals, &kv->super);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "UnPacked NodeName: %s", nodename);
 
-             /* Add Baseboard manufacture date */
             kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("BBmanuf_date");
+            if (NULL == kv) {
+                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+                return;
+            }
+            kv->key = strdup("data_group");
             kv->type = OPAL_STRING;
-            kv->data.string = strdup(baseboard_manuf_date);
+            kv->data.string = strdup("ipmi");
             opal_list_append(vals, &kv->super);
+
+             /* Add Baseboard manufacture date */
+            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            if (NULL == sensor_metric) {
+                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+                return;
+            }
+            sensor_metric->value.key = strdup("BBmanuf_date");
+            sensor_metric->value.type = OPAL_STRING;
+            sensor_metric->value.data.string = strdup(baseboard_manuf_date);
+            sensor_metric->units = NULL;
+            opal_list_append(vals, (opal_list_item_t *)sensor_metric);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "UnPacked NodeName: %s", nodename);
 
              /* Add Baseboard manufacturer name */
-            kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("BBmanuf");
-            kv->type = OPAL_STRING;
-            kv->data.string = strdup(baseboard_manufacturer);
-            opal_list_append(vals, &kv->super);
+            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            if (NULL == sensor_metric) {
+                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+                return;
+            }
+            sensor_metric->value.key = strdup("BBmanuf");
+            sensor_metric->value.type = OPAL_STRING;
+            sensor_metric->value.data.string = strdup(baseboard_manufacturer);
+            sensor_metric->units = NULL;
+            opal_list_append(vals, (opal_list_item_t *)sensor_metric);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "UnPacked NodeName: %s", nodename);
 
              /* Add Baseboard product name */
-            kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("BBname");
-            kv->type = OPAL_STRING;
-            kv->data.string = strdup(baseboard_name);
-            opal_list_append(vals, &kv->super);
+            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            if (NULL == sensor_metric) {
+                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+                return;
+            }
+            sensor_metric->value.key = strdup("BBname");
+            sensor_metric->value.type = OPAL_STRING;
+            sensor_metric->value.data.string = strdup(baseboard_name);
+            sensor_metric->units = NULL;
+            opal_list_append(vals, (opal_list_item_t *)sensor_metric);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "UnPacked NodeName: %s", nodename);
 
             /* Add Baseboard serial number */
-            kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("BBserial");
-            kv->type = OPAL_STRING;
-            kv->data.string = strdup(baseboard_serial);
-            opal_list_append(vals, &kv->super);
+            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            if (NULL == sensor_metric) {
+                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+                return;
+            }
+            sensor_metric->value.key = strdup("BBserial");
+            sensor_metric->value.type = OPAL_STRING;
+            sensor_metric->value.data.string = strdup(baseboard_serial);
+            sensor_metric->units = NULL;
+            opal_list_append(vals, (opal_list_item_t *)sensor_metric);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "UnPacked NodeName: %s", nodename);
 
             /* Add Baseboard part number */
-            kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("BBpart");
-            kv->type = OPAL_STRING;
-            kv->data.string = strdup(baseboard_part);
-            opal_list_append(vals, &kv->super);
+            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            if (NULL == sensor_metric) {
+                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+                return;
+            }
+            sensor_metric->value.key = strdup("BBpart");
+            sensor_metric->value.type = OPAL_STRING;
+            sensor_metric->value.data.string = strdup(baseboard_part);
+            sensor_metric->units = NULL;
+            opal_list_append(vals, (opal_list_item_t *)sensor_metric);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "UnPacked NodeName: %s", nodename);
 
             /* Send the unpacked data for one Node */
             /* store it */
             if (0 <= orcm_sensor_base.dbhandle) {
-                orcm_db.store(orcm_sensor_base.dbhandle, "ipmi", vals, mycleanup, NULL);
+                orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
             } else {
                 OPAL_LIST_RELEASE(vals);
             }
@@ -509,22 +539,16 @@ static void ipmi_log(opal_buffer_t *sample)
 
         /* sample time - 2 */
         n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
-        if (NULL == sampletime) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
-        }
+
         kv = OBJ_NEW(opal_value_t);
         kv->key = strdup("ctime");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(sampletime);
+        kv->type = OPAL_TIMEVAL;
+        kv->data.tv = sampletime;
         opal_list_append(vals, &kv->super);
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "UnPacked cTime: %s", sampletime);
-        free(sampletime);
 
         /* Unpack the node_name - 3 */
         n=1;
@@ -533,7 +557,7 @@ static void ipmi_log(opal_buffer_t *sample)
             return;
         }
         kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("nodename");
+        kv->key = strdup("hostname");
         kv->type = OPAL_STRING;
         kv->data.string = strdup(hostname);
         opal_list_append(vals, &kv->super);
@@ -543,17 +567,33 @@ static void ipmi_log(opal_buffer_t *sample)
         nodename[sizeof(nodename)-1] = '\0';
         free(hostname);
 
+        /* Pack sensor name */
+        kv = OBJ_NEW(opal_value_t);
+        if (NULL == kv) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            return;
+        }
+        kv->key = strdup("data_group");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup("ipmi");
+        opal_list_append(vals, &kv->super);
+
         /* BMC FW REV - 4 */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("bmcfwrev");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(sample_item);
-        opal_list_append(vals, &kv->super);
+        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            return;
+        }
+        sensor_metric->value.key = strdup("bmcfwrev");
+        sensor_metric->value.type = OPAL_STRING;
+        sensor_metric->value.data.string = strdup(sample_item);
+        sensor_metric->units = NULL;
+        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked bmcfwrev: %s", sample_item);
         free(sample_item);
@@ -564,11 +604,16 @@ static void ipmi_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("ipmiver");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(sample_item);
-        opal_list_append(vals, &kv->super);
+        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            return;
+        }
+        sensor_metric->value.key = strdup("ipmiver");
+        sensor_metric->value.type = OPAL_STRING;
+        sensor_metric->value.data.string = strdup(sample_item);
+        sensor_metric->units = NULL;
+        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked ipmiver: %s", sample_item);
         free(sample_item);
@@ -579,11 +624,16 @@ static void ipmi_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("manufacturer_id");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(sample_item);
-        opal_list_append(vals, &kv->super);
+        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            return;
+        }
+        sensor_metric->value.key = strdup("manufacturer_id");
+        sensor_metric->value.type = OPAL_STRING;
+        sensor_metric->value.data.string = strdup(sample_item);
+        sensor_metric->units = NULL;
+        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked MANUF-ID: %s", sample_item);
         free(sample_item);
@@ -594,11 +644,16 @@ static void ipmi_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("sys_power_state");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(sample_item);
-        opal_list_append(vals, &kv->super);
+        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            return;
+        }
+        sensor_metric->value.key = strdup("sys_power_state");
+        sensor_metric->value.type = OPAL_STRING;
+        sensor_metric->value.data.string = strdup(sample_item);
+        sensor_metric->units = NULL;
+        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
         free(sample_item);
 
         /* Device Power State - 8 */
@@ -607,11 +662,16 @@ static void ipmi_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("dev_power_state");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(sample_item);
-        opal_list_append(vals, &kv->super);
+        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            return;
+        }
+        sensor_metric->value.key = strdup("dev_power_state");
+        sensor_metric->value.type = OPAL_STRING;
+        sensor_metric->value.data.string = strdup(sample_item);
+        sensor_metric->units = NULL;
+        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked DEV_PSTATE: %s", sample_item);
         free(sample_item);
@@ -626,7 +686,6 @@ static void ipmi_log(opal_buffer_t *sample)
         /* Log All non-string metrics here */
         for(unsigned int count_metrics=0;count_metrics<uint_item;count_metrics++)
         {
-            key_unit = NULL; /* reset pointers */
             /* Metric Name */
             n=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_name, &n, OPAL_STRING))) {
@@ -648,39 +707,27 @@ static void ipmi_log(opal_buffer_t *sample)
                 return;
             }
 
-            /* allocate memory for "sample_name"+":"+"sample_unit"+"\0" */
-            key_unit = (char*) malloc(strlen(sample_name)+strlen(sample_unit)+2);
-            if (key_unit == NULL)
-            {
-                ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-                free(sample_name);
-                free(sample_unit);
-                continue;
+            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            if (NULL == sensor_metric) {
+                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+                return;
             }
-            strcpy(key_unit,sample_name);
-            if(strlen(sample_unit) > 0)
-            {
-                strcat(key_unit,":");
-                strcat(key_unit,sample_unit);
-            }
-
-            kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup(key_unit);
-            kv->type = OPAL_FLOAT;
-            kv->data.fval = float_item;
+            sensor_metric->value.key = strdup(sample_name);
+            sensor_metric->value.type = OPAL_FLOAT;
+            sensor_metric->value.data.fval = float_item;
+            sensor_metric->units = strdup(sample_unit);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "UnPacked %s: %f", key_unit, float_item);
-            opal_list_append(vals, &kv->super);
+                "UnPacked %s: %f", sample_name, float_item);
+            opal_list_append(vals, (opal_list_item_t *)sensor_metric);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "PACKED DATA: %s:%f", kv->key, kv->data.fval);
+                "PACKED DATA: %s:%f", sensor_metric->value.key, sensor_metric->value.data.fval);
             free(sample_name);
             free(sample_unit);
-            free(key_unit);
         }
         /* Send the unpacked data for one Node */
         /* store it */
         if (0 <= orcm_sensor_base.dbhandle) {
-            orcm_db.store(orcm_sensor_base.dbhandle, "ipmi", vals, mycleanup, NULL);
+            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
         } else {
             OPAL_LIST_RELEASE(vals);
         }
@@ -768,7 +815,7 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
 {
     unsigned char idata[4], rdata[20];
-	unsigned char ccode;
+    unsigned char ccode;
     char bmc_ip[16];
     int rlen = 20;
     int ret = 0;
@@ -1399,14 +1446,12 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     int rc;
     opal_buffer_t data, *bptr;
     char *ipmi;
-    time_t now;
-    char time_str[40];
-    char *timestamp_str, *sample_str;
-    struct tm *sample_time;
+    char *sample_str;
     int int_count=0;
     size_t host_count=0;
     static int timeout = 0;
     orcm_sensor_hosts_t *host, *nxt;
+    struct timeval current_time;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor ipmi : collect_sample: called",
@@ -1446,24 +1491,13 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
 
-        /* get the sample time */
-        now = time(NULL);
-        /* pass the time along as a simple string */
-        sample_time = localtime(&now);
-        if (NULL == sample_time) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
-        }
-        strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-        asprintf(&timestamp_str, "%s", time_str);
+        gettimeofday(&current_time, NULL);
 
-        /* Pack the Sample Time - 1b */
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             return;
         }
-        free(timestamp_str);
 
         /* Pack our node name - 2a*/
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
@@ -1633,27 +1667,13 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         orcm_sensor_ipmi_get_power_states(&host->capsule);
         orcm_sensor_ipmi_get_sensor_reading(&host->capsule);
 
-        /* get the sample time */
-        now = time(NULL);
-        /* pass the time along as a simple string */
-        sample_time = localtime(&now);
-        if (NULL == sample_time) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
-        }
-        strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-        asprintf(&timestamp_str, "%s", time_str);
+        gettimeofday(&current_time, NULL);
 
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "***** TimeStamp: %s",timestamp_str);
-        /* Pack the Sample Time - 2 */
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
             return;
         }
-        free(timestamp_str);
-
         /* Pack the nodeName - 3 */
         sample_str = (char *)&host->capsule.node.name;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -1757,7 +1777,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     }
 
     OBJ_DESTRUCT(&data);
-    last_sample = now;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Total nodes sampled: %d",int_count);
     /* this is currently a no-op */

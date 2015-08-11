@@ -224,7 +224,7 @@ static int cputest_log(opal_buffer_t *buf)
             kv->data.string = strdup("PASS");
             opal_list_append(vals[1], &kv->super);
         }
-        orcm_db.store_new(orcm_diag_test.dbhandle, ORCM_DB_DIAG_DATA, vals[1], NULL, mycleanup, NULL);
+        orcm_db.store_new(orcm_diag_base.dbhandle, ORCM_DB_DIAG_DATA, vals[1], NULL, mycleanup, NULL);
 
         if ( DIAG_CPU_STRESS_TST & diag_result ) {
             kv = OBJ_NEW(opal_value_t);
@@ -239,7 +239,7 @@ static int cputest_log(opal_buffer_t *buf)
             kv->data.string = strdup("PASS");
             opal_list_append(vals[2], &kv->super);
         }
-        orcm_db.store_new(orcm_diag_test.dbhandle, ORCM_DB_DIAG_DATA, vals[2], NULL, mycleanup, NULL);
+        orcm_db.store_new(orcm_diag_base.dbhandle, ORCM_DB_DIAG_DATA, vals[2], NULL, mycleanup, NULL);
     }    
     OPAL_LIST_RELEASE(vals[0]);
     OPAL_LIST_RELEASE(vals[1]);

@@ -499,7 +499,7 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
     char **rows = NULL;
     char *values = NULL;
     char *insert_stmt = NULL;
-    size_t i;
+    size_t i, j;
 
     opal_value_t *kv;
     orcm_metric_value_t *mv;
@@ -594,6 +594,7 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
 
     /* Build the SQL command with the data provided in the list */
     i = 0;
+    j = 0;
     OPAL_LIST_FOREACH(mv, input, orcm_metric_value_t) {
         /* Ignore the items that have already been processed */
         if (opal_bitmap_is_set_bit(&item_bm, i)) {
@@ -627,12 +628,12 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
         switch (item.item_type) {
         case ORCM_DB_ITEM_STRING:
             if (NULL != units) {
-                asprintf(rows + i,
+                asprintf(rows + j,
                          "('%s','%s_%s','%s',NULL,NULL,'%s','%s',%d)",
                          hostname, data_group, data_item, time_stamp,
                          item.value.value_str, units, mv->value.type);
             } else {
-                asprintf(rows + i,
+                asprintf(rows + j,
                          "('%s','%s_%s','%s',NULL,NULL,'%s',NULL,%d)",
                          hostname, data_group, data_item, time_stamp,
                          item.value.value_str, mv->value.type);
@@ -640,12 +641,12 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
             break;
         case ORCM_DB_ITEM_REAL:
             if (NULL != units) {
-                asprintf(rows + i,
+                asprintf(rows + j,
                          "('%s','%s_%s','%s',NULL,%f,NULL,'%s',%d)",
                          hostname, data_group, data_item, time_stamp,
                          item.value.value_real, units, mv->value.type);
             } else {
-                asprintf(rows + i,
+                asprintf(rows + j,
                          "('%s','%s_%s','%s',NULL,%f,NULL,NULL,%d)",
                          hostname, data_group, data_item, time_stamp,
                          item.value.value_real, mv->value.type);
@@ -653,18 +654,19 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
             break;
         default: /* ORCM_DB_ITEM_INTEGER */
             if (NULL != units) {
-                asprintf(rows + i,
+                asprintf(rows + j,
                          "('%s','%s_%s','%s',%lld,NULL,NULL,'%s',%d)",
                          hostname, data_group, data_item, time_stamp,
                          item.value.value_int, units, mv->value.type);
             } else {
-                asprintf(rows + i,
+                asprintf(rows + j,
                          "('%s','%s_%s','%s',%lld,NULL,NULL,NULL,%d)",
                          hostname, data_group, data_item, time_stamp,
                          item.value.value_int, mv->value.type);
             }
         }
         i++;
+        j++;
     }
 
     values = opal_argv_join(rows, ',');

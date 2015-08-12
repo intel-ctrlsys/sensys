@@ -240,10 +240,11 @@ static int cputest_log(opal_buffer_t *buf)
             opal_list_append(vals[2], &kv->super);
         }
         orcm_db.store_new(orcm_diag_base.dbhandle, ORCM_DB_DIAG_DATA, vals[2], NULL, mycleanup, NULL);
-    }    
-    OPAL_LIST_RELEASE(vals[0]);
-    OPAL_LIST_RELEASE(vals[1]);
-    OPAL_LIST_RELEASE(vals[2]);
+    } else {
+        OPAL_LIST_RELEASE(vals[0]);
+        OPAL_LIST_RELEASE(vals[1]);
+        OPAL_LIST_RELEASE(vals[2]);
+    }
     return ORCM_SUCCESS;
 }
 

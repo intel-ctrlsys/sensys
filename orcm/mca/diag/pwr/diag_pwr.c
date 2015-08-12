@@ -474,7 +474,6 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
         /* the database framework will release the values */
-        //orcm_db.store(orcm_sensor_base.dbhandle, "pwr-calib", vals, mycleanup, NULL); //old store
 	orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL); 
     } else {
         /* cleanup the xfr storage */

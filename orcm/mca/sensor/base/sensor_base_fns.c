@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012      Los Alamos National Security, Inc. All rights reserved.
  * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  *
@@ -120,7 +120,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
         /* create the event base and start the progress engine, if necessary */
         if (!orcm_sensor_base.ev_active) {
             orcm_sensor_base.ev_active = true;
-            if (NULL == (orcm_sensor_base.ev_base = opal_start_progress_thread("sensor", true))) {
+            if (NULL == (orcm_sensor_base.ev_base = opal_progress_thread_init("sensor"))) {
                 orcm_sensor_base.ev_active = false;
                 return;
             }
@@ -154,7 +154,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
         }
     } else if (!orcm_sensor_base.ev_active) {
         orcm_sensor_base.ev_active = true;
-        opal_restart_progress_thread("sensor");
+        opal_progress_thread_resume("sensor");
     }
 
     if(true == orcm_sensor_base.collect_inventory) {
@@ -175,7 +175,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
     } else {
          opal_output_verbose(5, orcm_sensor_base_framework.framework_output,"sensor:base inventory collection not requested");
     }
-    return;    
+    return;
 }
 
 void collect_inventory_info(opal_buffer_t *inventory_snapshot)
@@ -256,7 +256,7 @@ static void recv_inventory(int status, orte_process_name_t* sender,
                 }
             }
             free(temp);
-            n=1;            
+            n=1;
         }
     }
     if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
@@ -291,7 +291,7 @@ void orcm_sensor_base_stop(orte_jobid_t job)
     if (orcm_sensor_base.ev_active) {
         orcm_sensor_base.ev_active = false;
         /* stop the thread without releasing the event base */
-        opal_stop_progress_thread("sensor", false);
+        opal_progress_thread_pause("sensor");
     }
 
     /* call the stop function of all modules in priority order */
@@ -316,7 +316,7 @@ static void take_sample(int fd, short args, void *cbdata)
     orcm_sensor_active_module_t *i_module;
     orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
     int i;
-    
+
     if (!mods_active) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "sensor sample: no active mods");
         return;
@@ -369,7 +369,7 @@ static void take_sample(int fd, short args, void *cbdata)
 
     /* restart the timer, if given */
     if (0 < sampler->rate.tv_sec) {
-        if (orcm_sensor_base.sample_rate && 
+        if (orcm_sensor_base.sample_rate &&
             sampler->rate.tv_sec != orcm_sensor_base.sample_rate) {
             sampler->rate.tv_sec = orcm_sensor_base.sample_rate;
         }
@@ -498,7 +498,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                 goto ERROR;
             }
 
-            if (0 == strcmp(sensor_name, "base")) { 
+            if (0 == strcmp(sensor_name, "base")) {
                 /* Reset the sample rate */
                 orcm_sensor_base_set_sample_rate(sample_rate);
                 found_me = true;
@@ -617,9 +617,9 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
 
                 opal_list_append(&orcm_sensor_base.policy, &newplc->super);
                 opal_output(0, "Add policy: %s %.2f %s %d %d %d %s!",
-                                    newplc->sensor_name, newplc->threshold, 
+                                    newplc->sensor_name, newplc->threshold,
                                     newplc->hi_thres ? "higher" : "lower",
-                                    newplc->max_count, newplc->time_window, 
+                                    newplc->max_count, newplc->time_window,
                                     newplc->severity, newplc->action);
             }
 
@@ -779,11 +779,11 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                     return;
                 }
             }
-            goto RESPONSE; 
+            goto RESPONSE;
             break;
 
         default:
-            goto ERROR; 
+            goto ERROR;
         }
 
     }

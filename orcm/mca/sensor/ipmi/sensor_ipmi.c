@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -190,7 +190,7 @@ static void start(orte_jobid_t jobid)
     if (mca_sensor_ipmi_component.use_progress_thread) {
         if (!orcm_sensor_ipmi.ev_active) {
             orcm_sensor_ipmi.ev_active = true;
-            if (NULL == (orcm_sensor_ipmi.ev_base = opal_start_progress_thread("ipmi", true))) {
+            if (NULL == (orcm_sensor_ipmi.ev_base = opal_progress_thread_init("ipmi"))) {
                 orcm_sensor_ipmi.ev_active = false;
                 return;
             }
@@ -202,7 +202,7 @@ static void start(orte_jobid_t jobid)
         /* check if ipmi sample rate is provided for this*/
         if (!mca_sensor_ipmi_component.sample_rate) {
             mca_sensor_ipmi_component.sample_rate = orcm_sensor_base.sample_rate;
-        } 
+        }
         ipmi_sampler->rate.tv_sec = mca_sensor_ipmi_component.sample_rate;
         ipmi_sampler->log_data = orcm_sensor_base.log_samples;
         opal_event_evtimer_set(orcm_sensor_ipmi.ev_base, &ipmi_sampler->ev,
@@ -217,7 +217,7 @@ static void stop(orte_jobid_t jobid)
     if (orcm_sensor_ipmi.ev_active) {
         orcm_sensor_ipmi.ev_active = false;
         /* stop the thread without releasing the event base */
-        opal_stop_progress_thread("ipmi", false);
+        opal_progress_thread_pause("ipmi");
         OBJ_RELEASE(ipmi_sampler);
     }
     return;
@@ -392,10 +392,10 @@ static void ipmi_log(opal_buffer_t *sample)
             baseboard_part[sizeof(baseboard_part)-1] = '\0';
             free(sample_item);
 
-            /* Add the node only if it has not been added previously, for the 
+            /* Add the node only if it has not been added previously, for the
              * off chance that the compute node daemon was started once before,
              * and after running for sometime was killed
-             * VINFIX: Eventually, this node which is already present and is 
+             * VINFIX: Eventually, this node which is already present and is
              * re-started has to be removed first, and then added again afresh,
              * just so that we update our list with the latest credentials
              */
@@ -404,7 +404,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 if(ORCM_SUCCESS != orcm_sensor_ipmi_addhost(nodename, hostip, bmcip, &sensor_active_hosts)) /* Add the node to the slave list of the aggregator */
                 {
                     opal_output(0,"Unable to add the new host! Try restarting ORCM");
-                    orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-addhost-fail", 
+                    orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-addhost-fail",
                            true, orte_process_info.nodename, nodename);
                     return;
                 }
@@ -627,7 +627,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 ORTE_ERROR_LOG(rc);
                 return;
             }
-            
+
             /* Metric Value*/
             n=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &float_item, &n, OPAL_FLOAT))) {
@@ -686,7 +686,7 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
     int rc;
     unsigned int tot_items = 5;
     char *comp = strdup("ipmi");
-    
+
     if (mca_sensor_ipmi_component.test) {
         /* generate test vector */
         generate_test_vector_inv(inventory_snapshot);
@@ -778,10 +778,10 @@ int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host)
      */
     memset(idata,0x00,sizeof(idata));
 
-    /* Read IP Address - Ref Table 23-* LAN Config Parameters of 
+    /* Read IP Address - Ref Table 23-* LAN Config Parameters of
      * IPMI v2 Rev 1.1
      */
-    idata[1] = GET_BMC_IP_CMD; 
+    idata[1] = GET_BMC_IP_CMD;
     for(idata[0] = 0; idata[0]<16;idata[0]++)
     {
         ret = ipmi_cmd(GET_LAN_CONFIG, idata, 4, rdata, &rlen,&ccode, 0);
@@ -922,7 +922,7 @@ int orcm_sensor_ipmi_get_manuf_name (unsigned char fru_offset, unsigned char *rd
 
     board_manuf_length = rdata[fru_offset + BOARD_INFO_DATA_START] & 0x3f;
     board_manuf = (char*) malloc (board_manuf_length + 1); /* + 1 for the Null Character */
-    
+
     if (NULL == board_manuf) {
         return -1;
     }
@@ -1200,7 +1200,7 @@ static bool compare_ipmi_record (ipmi_inventory_t* newhost , ipmi_inventory_t* o
 {
     orcm_metric_value_t *newitem, *olditem;
     unsigned int count = 0, record_size = 0;
-    /* @VINFIX: Need to come up with a clever way to implement comparision of different 
+    /* @VINFIX: Need to come up with a clever way to implement comparision of different
      * ipmi inventory records
      */
     if((record_size = opal_list_get_size(newhost->records)) != opal_list_get_size(oldhost->records))
@@ -1275,7 +1275,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             ORTE_ERROR_LOG(rc);
             return;
         }
-        
+
         mkv = OBJ_NEW(orcm_metric_value_t);
         mkv->value.key = inv;
 
@@ -1312,7 +1312,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                     mkv_copy->value.type = OPAL_STRING;
                     mkv_copy->value.data.string = strdup(mkv->value.data.string);
                 }
-                opal_list_append(oldhost->records,(opal_list_item_t *)mkv_copy);   
+                opal_list_append(oldhost->records,(opal_list_item_t *)mkv_copy);
             }
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {
@@ -1328,7 +1328,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     } else {
         /* Append the new node to the existing host list */
         opal_list_append(&ipmi_inventory_hosts, &newhost->super);
-        
+
         /* Send the collected inventory details to the database for storage */
         if (0 <= orcm_sensor_base.dbhandle) {
             orcm_db.update_node_features(orcm_sensor_base.dbhandle, newhost->nodename , newhost->records, NULL, NULL);
@@ -1363,7 +1363,7 @@ static void perthread_ipmi_sample(int fd, short args, void *cbdata)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor ipmi : perthread_ipmi_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    
+
     /* this has fired in the sampler thread, so we are okay to
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
@@ -1378,7 +1378,7 @@ static void perthread_ipmi_sample(int fd, short args, void *cbdata)
     /* check if ipmi sample rate is provided for this*/
     if (mca_sensor_ipmi_component.sample_rate != sampler->rate.tv_sec) {
         sampler->rate.tv_sec = mca_sensor_ipmi_component.sample_rate;
-    } 
+    }
     /* set ourselves to sample again */
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
@@ -1643,7 +1643,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
         free(timestamp_str);
- 
+
         /* Pack the nodeName - 3 */
         sample_str = (char *)&host->capsule.node.name;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -1776,7 +1776,7 @@ static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot)
     int rc;
     if(NULL != inventory_snapshot)
     {
-    
+
         comp = strdup("ipmi");
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
@@ -1860,7 +1860,7 @@ void orcm_sensor_ipmi_get_device_id(ipmi_capsule_t *cap)
             memcpy(&devid.raw, rdata, sizeof(devid));
 
             /*  Pack the BMC FW Rev */
-            snprintf(cap->prop.bmc_rev, sizeof(cap->prop.bmc_rev), 
+            snprintf(cap->prop.bmc_rev, sizeof(cap->prop.bmc_rev),
                     "%x.%x", devid.bits.fw_rev_1&0x7F, devid.bits.fw_rev_2&0xFF);
 
             /*  Pack the IPMI VER */
@@ -1874,7 +1874,7 @@ void orcm_sensor_ipmi_get_device_id(ipmi_capsule_t *cap)
             /*disable_ipmi = 1;*/
             error_string = decode_rv(ret);
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-mc-fail",
-                       true, orte_process_info.nodename, 
+                       true, orte_process_info.nodename,
                        orte_process_info.nodename, cap->node.bmc_ip,
                        cap->node.user, cap->node.pasw, cap->node.auth,
                        cap->node.priv, cap->node.ciph, error_string);

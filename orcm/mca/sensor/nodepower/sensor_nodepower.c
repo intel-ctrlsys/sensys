@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2014-2015  Intel, Inc. All rights reserved.
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -232,7 +232,7 @@ static void start(orte_jobid_t jobid)
     if (mca_sensor_nodepower_component.use_progress_thread) {
         if (!orcm_sensor_nodepower.ev_active) {
             orcm_sensor_nodepower.ev_active = true;
-            if (NULL == (orcm_sensor_nodepower.ev_base = opal_start_progress_thread("nodepower", true))) {
+            if (NULL == (orcm_sensor_nodepower.ev_base = opal_progress_thread_init("nodepower"))) {
                 orcm_sensor_nodepower.ev_active = false;
                 return;
             }
@@ -263,7 +263,7 @@ static void stop(orte_jobid_t jobid)
     if (orcm_sensor_nodepower.ev_active) {
         orcm_sensor_nodepower.ev_active = false;
         /* stop the thread without releasing the event base */
-        opal_stop_progress_thread("nodepower", false);
+        opal_progress_thread_pause("nodepower");
         OBJ_RELEASE(nodepower_sampler);
     }
     return;
@@ -291,7 +291,7 @@ static void perthread_nodepower_sample(int fd, short args, void *cbdata)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor nodepower : perthread_nodepower_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    
+
     /* this has fired in the sampler thread, so we are okay to
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
@@ -306,7 +306,7 @@ static void perthread_nodepower_sample(int fd, short args, void *cbdata)
     /* check if nodepower sample rate is provided for this*/
     if (mca_sensor_nodepower_component.sample_rate != sampler->rate.tv_sec) {
         sampler->rate.tv_sec = mca_sensor_nodepower_component.sample_rate;
-    } 
+    }
     /* set ourselves to sample again */
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }

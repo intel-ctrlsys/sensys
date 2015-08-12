@@ -7,6 +7,7 @@
  *                         All rights reserved.
  * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
  *                         reserved.
+ * Copyright (c) 2015 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -93,9 +94,7 @@ const opal_pmix_base_module_t opal_pmix_native_module = {
     native_get_attr_nb,
     native_spawn,
     native_job_connect,
-    native_job_disconnect,
-    opal_pmix_base_register_handler,
-    opal_pmix_base_deregister_handler
+    native_job_disconnect
 };
 
 // local variables
@@ -191,12 +190,13 @@ static int native_init(void)
         opal_argv_free(uri);
 
         /* create an event base and progress thread for us */
-        if (NULL == (mca_pmix_native_component.evbase = opal_start_progress_thread("pmix_native", true))) {
+        if (NULL == (mca_pmix_native_component.evbase =
+                     opal_progress_thread_init(NULL))) {
             return OPAL_ERROR;
         }
     }
 
-    /* we will connect on first send */
+     /* we will connect on first send */
 
     return OPAL_SUCCESS;
 }
@@ -253,7 +253,7 @@ static int native_fini(void)
     }
 
     if (NULL != mca_pmix_native_component.evbase) {
-        opal_stop_progress_thread("pmix_native", true);
+        opal_progress_thread_finalize(NULL);
         mca_pmix_native_component.evbase = NULL;
     }
 

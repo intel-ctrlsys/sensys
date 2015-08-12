@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
- * Copyright (c) 2012-2013 Los Alamos National Security, Inc.  All rights reserved. 
+ * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2013 Los Alamos National Security, Inc.  All rights reserved.
  * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -87,7 +87,7 @@ static int orcm_db_base_frame_close(void)
 
     if (orcm_db_base_create_evbase && orcm_db_base.ev_base_active) {
         orcm_db_base.ev_base_active = false;
-        opal_stop_progress_thread("db", true);
+        opal_progress_thread_finalize("db");
     }
 
     return mca_base_framework_components_close(&orcm_db_base_framework, NULL);
@@ -103,7 +103,7 @@ static int orcm_db_base_frame_open(mca_base_open_flag_t flags)
         /* create our own event base */
         orcm_db_base.ev_base_active = true;
         if (NULL == (orcm_db_base.ev_base =
-                opal_start_progress_thread("db", true))) {
+                opal_progress_thread_init("db"))) {
             orcm_db_base.ev_base_active = false;
             return ORCM_ERROR;
         }

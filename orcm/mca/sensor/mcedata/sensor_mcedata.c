@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -213,7 +213,7 @@ static void start(orte_jobid_t jobid)
     if (mca_sensor_mcedata_component.use_progress_thread) {
         if (!mca_sensor_mcedata_component.ev_active) {
             mca_sensor_mcedata_component.ev_active = true;
-            if (NULL == (mca_sensor_mcedata_component.ev_base = opal_start_progress_thread("mcedata", true))) {
+            if (NULL == (mca_sensor_mcedata_component.ev_base = opal_progress_thread_init("mcedata"))) {
                 mca_sensor_mcedata_component.ev_active = false;
                 return;
             }
@@ -241,7 +241,7 @@ static void stop(orte_jobid_t jobid)
     if (mca_sensor_mcedata_component.ev_active) {
         mca_sensor_mcedata_component.ev_active = false;
         /* stop the thread without releasing the event base */
-        opal_stop_progress_thread("mcedata", false);
+        opal_progress_thread_pause("mcedata");
         OBJ_RELEASE(mcedata_sampler);
     }
     return;
@@ -254,7 +254,7 @@ static void perthread_mcedata_sample(int fd, short args, void *cbdata)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor mcedata : perthread_mcedata_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    
+
     /* this has fired in the sampler thread, so we are okay to
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
@@ -269,7 +269,7 @@ static void perthread_mcedata_sample(int fd, short args, void *cbdata)
     /* check if mcedata sample rate is provided for this*/
     if (mca_sensor_mcedata_component.sample_rate != sampler->rate.tv_sec) {
         sampler->rate.tv_sec = mca_sensor_mcedata_component.sample_rate;
-    } 
+    }
     /* set ourselves to sample again */
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
@@ -305,7 +305,7 @@ static uint64_t get_total_lines(char *filename)
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "Unable to open file to get_tot_lines");
     } else {
-            while ((linesize = getline(&buffer, &len, fptr)) != -1) 
+            while ((linesize = getline(&buffer, &len, fptr)) != -1)
                 linecount++;
             fclose(fptr);
     }
@@ -430,7 +430,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
         }
         opal_list_append(vals, &kv->super);
     }
-    
+
     /* Request Type */
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("request_type");
@@ -490,7 +490,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
     }
         opal_list_append(vals, &kv->super);
 
-   
+
 
 }
 
@@ -948,7 +948,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                     index++; /* Move to next line */
                     return;
                 }
- 
+
                 line = get_line(mca_sensor_mcedata_component.logfile,index);
                 if(NULL != line) {
                     loc = strstr(line, " MISC ");
@@ -1275,7 +1275,7 @@ static void mcedata_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    
+
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                 "Collected logical CPU's ID %d: Socket ID %d", cpu, socket );
     kv = OBJ_NEW(opal_value_t);

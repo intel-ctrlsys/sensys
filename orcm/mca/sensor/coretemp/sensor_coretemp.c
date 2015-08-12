@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -164,7 +164,7 @@ static char *orte_getline(FILE *fp)
 	   buff = strdup(input);
 	   return buff;
     }
-    
+
     return NULL;
 }
 
@@ -464,7 +464,7 @@ static int init(void)
      * For each directory
      */
     while (NULL != (dir_entry = readdir(cur_dirp))) {
-        
+
         /* look for coretemp directories */
         if (0 != strncmp(dir_entry->d_name, "coretemp", strlen("coretemp"))) {
             continue;
@@ -669,7 +669,7 @@ static void start(orte_jobid_t jobid)
     if (mca_sensor_coretemp_component.use_progress_thread) {
         if (!orcm_sensor_coretemp.ev_active) {
             orcm_sensor_coretemp.ev_active = true;
-            if (NULL == (orcm_sensor_coretemp.ev_base = opal_start_progress_thread("coretemp", true))) {
+            if (NULL == (orcm_sensor_coretemp.ev_base = opal_progress_thread_init("coretemp"))) {
                 orcm_sensor_coretemp.ev_active = false;
                 return;
             }
@@ -698,7 +698,7 @@ static void stop(orte_jobid_t jobid)
     if (orcm_sensor_coretemp.ev_active) {
         orcm_sensor_coretemp.ev_active = false;
         /* stop the thread without releasing the event base */
-        opal_stop_progress_thread("coretemp", false);
+        opal_progress_thread_pause("coretemp");
         OBJ_RELEASE(coretemp_sampler);
     }
     return;
@@ -722,7 +722,7 @@ static void perthread_coretemp_sample(int fd, short args, void *cbdata)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor coretemp : perthread_coretemp_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    
+
     /* this has fired in the sampler thread, so we are okay to
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
@@ -737,7 +737,7 @@ static void perthread_coretemp_sample(int fd, short args, void *cbdata)
     /* check if coretemp sample rate is provided for this*/
     if (mca_sensor_coretemp_component.sample_rate != sampler->rate.tv_sec) {
         sampler->rate.tv_sec = mca_sensor_coretemp_component.sample_rate;
-    } 
+    }
     /* set ourselves to sample again */
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }

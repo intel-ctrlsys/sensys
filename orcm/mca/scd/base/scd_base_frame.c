@@ -226,30 +226,30 @@ static int orcm_scd_base_close(void)
     int i;
     hwloc_topology_t t;
     orcm_node_t *node;
-    
+
     /* stop the thread */
-    opal_stop_progress_thread("scd", true);
+    opal_progress_thread_finalize("scd");
 
     /* deconstruct the base objects */
     OPAL_LIST_DESTRUCT(&orcm_scd_base.states);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.rmstates);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.queues);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.tracking);
-    
+
     for (i = 0; i < orcm_scd_base.topologies.size; i++) {
         if (NULL != (t = (hwloc_topology_t)opal_pointer_array_get_item(&orcm_scd_base.topologies, i))) {
             hwloc_topology_destroy(t);
         }
     }
     OBJ_DESTRUCT(&orcm_scd_base.topologies);
-    
+
     for (i = 0; i < orcm_scd_base.nodes.size; i++) {
         if (NULL != (node = (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, i))) {
             OBJ_RELEASE(node);
         }
     }
     OBJ_DESTRUCT(&orcm_scd_base.nodes);
-    
+
     /* give the selected plugin a chance to finalize */
     if (NULL != orcm_scd_base.module->finalize) {
         orcm_scd_base.module->finalize();
@@ -287,10 +287,10 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
 
     /* create the event base */
     if (NULL ==
-        (orcm_scd_base.ev_base = opal_start_progress_thread("scd", true))) {
+        (orcm_scd_base.ev_base = opal_progress_thread_init("scd"))) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
-    
+
     return rc;
 }
 
@@ -337,10 +337,10 @@ const char *orcm_scd_node_state_to_str(orcm_scd_node_state_t state)
         break;
     case ORCM_SCD_NODE_STATE_UNKNOWN:
         s = "UNKNOWN";
-        break;     
+        break;
     case ORCM_SCD_NODE_STATE_UNALLOC:
         s = "UNALLOCATED";
-        break;     
+        break;
     case ORCM_SCD_NODE_STATE_ALLOC:
         s = "ALLOCATED";
         break;
@@ -356,7 +356,7 @@ const char *orcm_scd_node_state_to_str(orcm_scd_node_state_t state)
 const char *orcm_rm_session_state_to_str(orcm_scd_base_rm_session_state_t state)
 {
     char *s;
-    
+
     switch (state) {
         case ORCM_SESSION_STATE_UNDEF:
             s = "UNDEF";

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2004-2011 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
@@ -8,9 +8,9 @@
  * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -112,7 +112,7 @@ OBJ_CLASS_INSTANCE(file_tracker_t,
                    ft_constructor, ft_destructor);
 
 /* local globals */
-static opal_list_t jobs; 
+static opal_list_t jobs;
 static orcm_sensor_sampler_t *file_sampler = NULL;
 static orcm_sensor_file_t orcm_sensor_file;
 
@@ -125,12 +125,12 @@ static int init(void)
 static void finalize(void)
 {
     opal_list_item_t *item;
-    
+
     while (NULL != (item = opal_list_remove_first(&jobs))) {
         OBJ_RELEASE(item);
     }
     OBJ_DESTRUCT(&jobs);
-    
+
     return;
 }
 
@@ -169,12 +169,12 @@ static void start(orte_jobid_t jobid)
     if (jobid == ORTE_PROC_MY_NAME->jobid && ORTE_JOBID_WILDCARD != jobid) {
         return;
     }
-    
+
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "%s starting file monitoring for job %s",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          ORTE_JOBID_PRINT(jobid)));
-    
+
     /* get the local jobdat for this job */
     if (NULL == (jobdat = orte_get_job_data_object(jobid))) {
         ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
@@ -194,7 +194,7 @@ static void start(orte_jobid_t jobid)
         ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
         return;
     }
-            
+
     /* search the environ to get the filename */
     if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_filename", &filename)) {
         /* was a default file given */
@@ -264,7 +264,7 @@ static void start(orte_jobid_t jobid)
     if (mca_sensor_file_component.use_progress_thread) {
         if (!orcm_sensor_file.ev_active) {
             orcm_sensor_file.ev_active = true;
-            if (NULL == (orcm_sensor_file.ev_base = opal_start_progress_thread("file", true))) {
+            if (NULL == (orcm_sensor_file.ev_base = opal_progress_thread_init("file"))) {
                 orcm_sensor_file.ev_active = false;
                 return;
             }
@@ -292,12 +292,12 @@ static void stop(orte_jobid_t jobid)
 {
     opal_list_item_t *item;
     file_tracker_t *ft;
-    
+
     /* cannot monitor my own job */
     if (jobid == ORTE_PROC_MY_NAME->jobid && ORTE_JOBID_WILDCARD != jobid) {
         return;
     }
-    
+
     for (item = opal_list_get_first(&jobs);
         ((item != opal_list_get_end(&jobs)) && (NULL != item));
         item = opal_list_get_next(item)) {
@@ -311,7 +311,7 @@ static void stop(orte_jobid_t jobid)
     if (orcm_sensor_file.ev_active) {
         orcm_sensor_file.ev_active = false;
         /* stop the thread without releasing the event base */
-        opal_stop_progress_thread("file", false);
+        opal_progress_thread_pause("file");
     }
     return;
 }
@@ -334,7 +334,7 @@ static void perthread_file_sample(int fd, short args, void *cbdata)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor file : perthread_file_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    
+
     /* this has fired in the sampler thread, so we are okay to
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
@@ -360,7 +360,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "%s sampling files",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    
+
     for (item = opal_list_get_first(&jobs);
         ((item != opal_list_get_end(&jobs)) && (NULL != item));
         item = opal_list_get_next(item)) {
@@ -374,7 +374,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                                  ft->file));
             continue;
         }
-        
+
         OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                              "%s size %lu access %s\tmod %s",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
@@ -407,7 +407,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                 ft->last_mod = buf.st_mtime;
             }
         }
-        
+
     CHECK:
         OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                              "%s sampled file %s tick %d",

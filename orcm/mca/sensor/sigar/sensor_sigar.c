@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -248,7 +248,7 @@ static void start(orte_jobid_t jobid)
     if (mca_sensor_sigar_component.use_progress_thread) {
         if (!orcm_sensor_sigar.ev_active) {
             orcm_sensor_sigar.ev_active = true;
-            if (NULL == (orcm_sensor_sigar.ev_base = opal_start_progress_thread("sigar", true))) {
+            if (NULL == (orcm_sensor_sigar.ev_base = opal_progress_thread_init("sigar"))) {
                 orcm_sensor_sigar.ev_active = false;
                 return;
             }
@@ -275,7 +275,7 @@ static void stop(orte_jobid_t jobid)
     if (orcm_sensor_sigar.ev_active) {
         orcm_sensor_sigar.ev_active = false;
         /* stop the thread without releasing the event base */
-        opal_stop_progress_thread("sigar", false);
+        opal_progress_thread_pause("sigar");
     }
     return;
 }
@@ -378,7 +378,7 @@ static int sigar_collect_cpu(opal_buffer_t *dataptr)
 
     }
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                        "cpu user: %" PRIu64 " sys: %" PRIu64 " idle: %" PRIu64 " wait: %" PRIu64 " nice: %" PRIu64 " total: %" PRIu64 "", 
+                        "cpu user: %" PRIu64 " sys: %" PRIu64 " idle: %" PRIu64 " wait: %" PRIu64 " nice: %" PRIu64 " total: %" PRIu64 "",
             (uint64_t)cpu.user, (uint64_t)cpu.sys, (uint64_t)cpu.idle, (uint64_t)cpu.wait, (uint64_t)cpu.nice, (uint64_t)cpu.total);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &log_group, 1, OPAL_BOOL))) {
         return rc;
@@ -473,7 +473,7 @@ static int sigar_collect_disk(opal_buffer_t *dataptr, double tdiff)
             log_group = false;
         } else {
             opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                                "FileSystem: %s Reads: %" PRIu64 " Writes: %" PRIu64 " ReadBytes: %" PRIu64 " WriteBytes: %" PRIu64 "", 
+                                "FileSystem: %s Reads: %" PRIu64 " Writes: %" PRIu64 " ReadBytes: %" PRIu64 " WriteBytes: %" PRIu64 "",
                                 dit->mount_pt, (uint64_t)fsusage.disk.reads, (uint64_t)fsusage.disk.writes, (uint64_t)fsusage.disk.read_bytes, (uint64_t)fsusage.disk.write_bytes);
             /* compute the number of reads since last reading */
             reads = metric_diff_calc(fsusage.disk.reads, dit->reads, dit->mount_pt, "disk reads");
@@ -488,7 +488,7 @@ static int sigar_collect_disk(opal_buffer_t *dataptr, double tdiff)
             write_bytes = metric_diff_calc(fsusage.disk.write_bytes, dit->write_bytes, dit->mount_pt, "disk write bytes");
             dit->write_bytes = fsusage.disk.write_bytes;  /* old = new */
             opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
-                                "FileSystem: %s ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "", 
+                                "FileSystem: %s ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "",
                                 dit->mount_pt, (uint64_t)reads, (uint64_t)writes, (uint64_t)read_bytes, (uint64_t)write_bytes);
             /* accumulate the values */
             tdisk.reads += reads;
@@ -510,10 +510,10 @@ static int sigar_collect_disk(opal_buffer_t *dataptr, double tdiff)
     if (false == log_group)
         return ORCM_ERR_SENSOR_READ_FAIL;
     opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
-                        "Totals: ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "", 
+                        "Totals: ReadsChange: %" PRIu64 " WritesChange: %" PRIu64 " ReadBytesChange: %" PRIu64 " WriteBytesChange: %" PRIu64 "",
                         (uint64_t)tdisk.reads, (uint64_t)tdisk.writes, (uint64_t)tdisk.read_bytes, (uint64_t)tdisk.write_bytes);
     opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
-                        "Totals: ReadTime: %" PRIu64 " WriteTime: %" PRIu64 " ioTime: %" PRIu64 "", 
+                        "Totals: ReadTime: %" PRIu64 " WriteTime: %" PRIu64 " ioTime: %" PRIu64 "",
                         (uint64_t)tdisk.rtime, (uint64_t)tdisk.wtime, (uint64_t)tdisk.qtime);
 
 
@@ -590,7 +590,7 @@ static int sigar_collect_network(opal_buffer_t *dataptr, double tdiff)
             log_group = false;
         } else {
             opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                                "Interface: %s RecvdPackets: %" PRIu64 " RecvdBytes: %" PRIu64 " TransPackets: %" PRIu64 " TransBytes: %" PRIu64 "", 
+                                "Interface: %s RecvdPackets: %" PRIu64 " RecvdBytes: %" PRIu64 " TransPackets: %" PRIu64 " TransBytes: %" PRIu64 "",
                                 sit->interface, (uint64_t)ifc.rx_packets, (uint64_t)ifc.rx_bytes, (uint64_t)ifc.tx_packets, (uint64_t)ifc.tx_bytes);
             /* compute the number of recvd packets since last reading */
             rxpkts = metric_diff_calc(ifc.rx_packets, sit->rx_packets, sit->interface, "rx packets");
@@ -605,7 +605,7 @@ static int sigar_collect_network(opal_buffer_t *dataptr, double tdiff)
             txbytes = metric_diff_calc(ifc.tx_bytes, sit->tx_bytes, sit->interface, "tx bytes");
             sit->tx_bytes = ifc.tx_bytes;  /* old = new */
             opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
-                                "Interface: %s RxPkts: %" PRIu64 " TxPkts: %" PRIu64 " RxBytes: %" PRIu64 " TxBytes: %" PRIu64 "", 
+                                "Interface: %s RxPkts: %" PRIu64 " TxPkts: %" PRIu64 " RxBytes: %" PRIu64 " TxBytes: %" PRIu64 "",
                                 sit->interface, (uint64_t)rxpkts, (uint64_t)txpkts, (uint64_t)rxbytes, (uint64_t)txbytes);
             /* accumulate the values */
             tnet.rx_packets += rxpkts;
@@ -621,7 +621,7 @@ static int sigar_collect_network(opal_buffer_t *dataptr, double tdiff)
         }
     }
     opal_output_verbose(4, orcm_sensor_base_framework.framework_output,
-                        "Totals: RxPkts: %" PRIu64 " TxPkts: %" PRIu64 " RxBytes: %" PRIu64 " TxBytes: %" PRIu64 "", 
+                        "Totals: RxPkts: %" PRIu64 " TxPkts: %" PRIu64 " RxBytes: %" PRIu64 " TxBytes: %" PRIu64 "",
                         (uint64_t)tnet.rx_packets, (uint64_t)tnet.tx_packets, (uint64_t)tnet.rx_bytes, (uint64_t)tnet.tx_bytes);
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(dataptr, &log_group, 1, OPAL_BOOL))) {
@@ -848,7 +848,7 @@ static int sigar_collect_procstat(opal_buffer_t *dataptr)
             return rc;
         }
     }
-    
+
     return ORCM_SUCCESS;
 }
 
@@ -870,7 +870,7 @@ static void perthread_sigar_sample(int fd, short args, void *cbdata)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor sigar : perthread_sigar_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    
+
     /* this has fired in the sampler thread, so we are okay to
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
@@ -885,7 +885,7 @@ static void perthread_sigar_sample(int fd, short args, void *cbdata)
     /* check if sigar sample rate is provided for this*/
     if (mca_sensor_sigar_component.sample_rate != sampler->rate.tv_sec) {
         sampler->rate.tv_sec = mca_sensor_sigar_component.sample_rate;
-    } 
+    }
     /* set ourselves to sample again */
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
@@ -962,7 +962,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
-    
+
     /* 2. Swap Memory stats */
     if(mca_sensor_sigar_component.swap) {
         if(ORCM_ERR_SENSOR_READ_FAIL == (rc = sigar_collect_swap(&data))) {
@@ -1413,7 +1413,7 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        data_avail = true;  
+        data_avail = true;
         /* disk read ops rate */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
@@ -1533,7 +1533,7 @@ static void sigar_log(opal_buffer_t *sample)
         kv->type = OPAL_UINT64;
         kv->data.uint64 = uint64;
         opal_list_append(vals, &kv->super);
-        
+
         /* disk Total io Ops Time count */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
@@ -1674,7 +1674,7 @@ static void sigar_log(opal_buffer_t *sample)
         kv->data.uint64 = uint64;
         opal_list_append(vals, &kv->super);
     }
-    
+
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
         ORTE_ERROR_LOG(rc);
@@ -1991,7 +1991,7 @@ static void sigar_log(opal_buffer_t *sample)
             return;
         }
         OBJ_DESTRUCT(st);
-    } 
+    }
     if (NULL != hostname) {
         free(hostname);
     }

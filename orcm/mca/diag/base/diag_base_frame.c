@@ -57,7 +57,7 @@ static int orcm_diag_base_close(void)
     }
 
     /* stop the thread */
-    opal_stop_progress_thread("diag", true);
+    opal_progress_thread_finalize("diag");
 
     /* deconstruct the base objects */
     OPAL_LIST_DESTRUCT(&orcm_diag_base.modules);
@@ -83,7 +83,7 @@ static int orcm_diag_base_open(mca_base_open_flag_t flags)
     }
 
     /* create the event base and start the progress thread */
-    if (NULL == (orcm_diag_base.ev_base = opal_start_progress_thread("diag", true))) {
+    if (NULL == (orcm_diag_base.ev_base = opal_progress_thread_init("diag"))) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
 

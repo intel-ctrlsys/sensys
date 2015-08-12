@@ -354,7 +354,6 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
     collector_t *coll = (collector_t*)cbdata;
     opal_buffer_t *buf=NULL;
     char *hostname=NULL, *component;
-    //char *sampletime;
     struct timeval sampletime;
     int rc;
     int32_t n, ncores;

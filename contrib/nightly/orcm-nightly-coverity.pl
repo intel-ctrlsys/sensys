@@ -126,7 +126,7 @@ safe_system(0, "tar xf $filename_arg");
 my $tarball_filename = basename($filename_arg);
 $tarball_filename =~ m/^openrcm-(.+)\.tar.+$/;
 my $orcm_ver = $1;
-chdir("orcm-$orcm_ver");
+chdir("openrcm-$orcm_ver");
 
 verbose "*** Configuring ORCM tarball\n";
 safe_system(0, "./configure $configure_args", "configure");

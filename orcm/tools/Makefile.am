@@ -3,9 +3,9 @@
 # Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
 #
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
@@ -17,7 +17,6 @@ SUBDIRS += \
         tools/opwrvirus \
         tools/orcm-emulator \
         tools/orcm-info \
-        tools/orcmctrld \
         tools/orcmd \
         tools/orcmsched \
         tools/orun \
@@ -36,7 +35,6 @@ DIST_SUBDIRS += \
         tools/opwrvirus \
         tools/orcm-emulator \
         tools/orcm-info \
-        tools/orcmctrld \
         tools/orcmd \
         tools/orcmsched \
         tools/orun \

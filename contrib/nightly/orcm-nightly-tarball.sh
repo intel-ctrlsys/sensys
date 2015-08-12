@@ -8,7 +8,6 @@
 
 # e-mail address to send results to
 results_addr=testing@open-mpi.org
-results_addr=jsquyres
 
 # github repository uri
 master_code_uri=https://github.com/open-mpi/orcm.git
@@ -37,7 +36,7 @@ build_root=/home/mpiteam/orcm/nightly-tarball-build-root
 
 # Coverity stuff
 coverity_token=`cat $HOME/coverity/orcm-token.txt`
-coverity_configure_args="--with-usnic --with-libfabric=/u/mpiteam/libfabric-1.0.0/install"
+coverity_configure_args=
 
 export PATH=$HOME/local/bin:$PATH
 export LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH

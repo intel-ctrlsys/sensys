@@ -43,6 +43,7 @@
 #include "orte/mca/notifier/base/base.h"
 
 #include "orcm/mca/db/db.h"
+#include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 
@@ -883,10 +884,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     char *temp;
     opal_buffer_t data, *bptr;
     time_t now;
-    char time_str[40];
-    char *timestamp_str;
     bool packed;
-    struct tm *sample_time;
     uint64_t i = 0, cpu=0, socket=0, bank=0;
     uint64_t mce_reg[MCE_REG_COUNT];
     uint64_t tot_lines=0;
@@ -894,6 +892,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     static uint64_t index = 0; /* non-volatile declaration to store last read line number */
     char* line;
     char *loc = NULL;
+    struct timeval current_time;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "Logfile used: %s", mca_sensor_mcedata_component.logfile);
@@ -1133,20 +1132,13 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                     return;
                 }
 
-                sample_time = localtime(&now);
-                if (NULL == sample_time) {
-                    ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-                    return;
-                }
-                strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-                asprintf(&timestamp_str, "%s", time_str);
-                if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &timestamp_str, 1, OPAL_STRING))) {
+                gettimeofday(&current_time, NULL);
+
+                if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
                     ORTE_ERROR_LOG(ret);
                     OBJ_DESTRUCT(&data);
-                    free(timestamp_str);
                     return;
                 }
-                free(timestamp_str);
 
                 while (i < 5) {
                     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -1202,13 +1194,14 @@ static void mycleanup(int dbhandle, int status, opal_list_t *kvs,
 static void mcedata_log(opal_buffer_t *sample)
 {
     char *hostname=NULL;
-    char *sampletime;
+    struct timeval sampletime;
     int rc;
     int32_t n, i = 0;
     opal_list_t *vals;
     opal_value_t *kv;
     uint64_t mce_reg[MCE_REG_COUNT];
     uint32_t cpu, socket;
+    orcm_metric_value_t *sensor_metric;
 
     if (!log_enabled) {
         return;
@@ -1223,7 +1216,7 @@ static void mcedata_log(opal_buffer_t *sample)
 
     /* sample time */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
@@ -1237,15 +1230,10 @@ static void mcedata_log(opal_buffer_t *sample)
     vals = OBJ_NEW(opal_list_t);
 
     /* load the sample time at the start */
-    if (NULL == sampletime) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
-    }
     kv = OBJ_NEW(opal_value_t);
     kv->key = strdup("ctime");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup(sampletime);
-    free(sampletime);
+    kv->type = OPAL_TIMEVAL;
+    kv->data.tv = sampletime;
     opal_list_append(vals, &kv->super);
 
     /* load the hostname */
@@ -1260,6 +1248,16 @@ static void mcedata_log(opal_buffer_t *sample)
     kv->data.string = strdup(hostname);
     opal_list_append(vals, &kv->super);
 
+    kv = OBJ_NEW(opal_value_t);
+    if (NULL == kv) {
+        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+        return;
+    }
+    kv->key = strdup("data_group");
+    kv->type = OPAL_STRING;
+    kv->data.string = strdup("mcedata");
+    opal_list_append(vals, &kv->super);
+
     while (i < 5) {
         /* MCE Registers */
         n=1;
@@ -1269,11 +1267,16 @@ static void mcedata_log(opal_buffer_t *sample)
         }
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                     "Collected %s: %lu", mce_reg_name[i],mce_reg[i]);
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup(mce_reg_name[i]);
-        kv->type = OPAL_UINT64;
-        kv->data.uint64 = mce_reg[i];
-        opal_list_append(vals, &kv->super);
+        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            return;
+        }
+        sensor_metric->value.key = strdup(mce_reg_name[i]);
+        sensor_metric->value.type = OPAL_UINT64;
+        sensor_metric->value.data.uint64 = mce_reg[i];
+        sensor_metric->units = NULL;
+        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
         i++;
     }
 
@@ -1293,23 +1296,35 @@ static void mcedata_log(opal_buffer_t *sample)
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                 "Collected logical CPU's ID %d: Socket ID %d", cpu, socket );
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("cpu");
-    kv->type = OPAL_UINT;
-    kv->data.uint = cpu;
-    opal_list_append(vals, &kv->super);
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("socket");
-    kv->type = OPAL_UINT;
-    kv->data.uint = socket;
-    opal_list_append(vals, &kv->super);
+
+    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+        return;
+    }
+    sensor_metric->value.key = strdup("cpu");
+    sensor_metric->value.type = OPAL_UINT;
+    sensor_metric->value.data.uint = cpu;
+    sensor_metric->units = NULL;
+    opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+
+    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+        return;
+    }
+    sensor_metric->value.key = strdup("socket");
+    sensor_metric->value.type = OPAL_UINT;
+    sensor_metric->value.data.uint = socket;
+    sensor_metric->units = NULL;
+    opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     mcedata_decode(mce_reg, vals);
 
 
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
-        orcm_db.store(orcm_sensor_base.dbhandle, "mcedata", vals, mycleanup, NULL);
+        orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
     } else {
         OPAL_LIST_RELEASE(vals);
     }

@@ -337,7 +337,7 @@ static void cputest_run(int sd, short args, void *cbdata)
 
     /* Pack the Time */
     gettimeofday(&now, NULL);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIME))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
         return;

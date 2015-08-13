@@ -468,6 +468,6 @@ void orcm_analytics_base_array_send(opal_value_array_t *data)
 
     OPAL_LIST_FOREACH(wf, &orcm_analytics_base_wf.workflows, orcm_workflow_t) {
         OBJ_RETAIN(data);
-        ORCM_ACTIVATE_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), data);
+        ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), data);
     }
 }

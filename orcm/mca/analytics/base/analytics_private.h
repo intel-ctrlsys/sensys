@@ -65,15 +65,8 @@ typedef struct {
 
 ORCM_DECLSPEC extern orcm_analytics_base_db_t orcm_analytics_base_db;
 
-/* execute the next workflow step of a workflow */
+/* executes the next workflow step in a workflow */
 #define ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf, prev_wf_step, data)                   \
-    do {                                                                           \
-        orcm_analytics_base_store(wf, prev_wf_step, data);                         \
-        ORCM_ACTIVATE_WORKFLOW_STEP(wf, prev_wf_step, data);                       \
-    }while(0);
-
-/* executes the workflow step in a workflow */
-#define ORCM_ACTIVATE_WORKFLOW_STEP(wf, prev_wf_step, data)                        \
     do {                                                                           \
         opal_list_item_t *list_item = opal_list_get_next(prev_wf_step);            \
         if (NULL == list_item){                                                    \

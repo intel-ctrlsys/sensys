@@ -212,6 +212,10 @@ static void analyze(int sd, short args, void *cbdata)
         }
     }
 
+    /* load data to database if needed */
+    orcm_analytics_base_store(current_caddy->wf,
+                              current_caddy->wf_step, analytics_average_array);
+
     /* if the new caddy is filled right, then go ahead to activate next workflow step */
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(current_caddy->wf, current_caddy->wf_step,
                                      analytics_average_array);

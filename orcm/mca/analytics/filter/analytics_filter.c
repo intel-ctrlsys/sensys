@@ -334,6 +334,11 @@ static void analyze(int sd, short args, void *cbdata)
         return;
     }
 
+    /* load data to database if needed */
+    orcm_analytics_base_store(filter_analyze_caddy->wf,
+                              filter_analyze_caddy->wf_step,
+                              filter_sample_array);
+
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(filter_analyze_caddy->wf,
                                      filter_analyze_caddy->wf_step, filter_sample_array);
 

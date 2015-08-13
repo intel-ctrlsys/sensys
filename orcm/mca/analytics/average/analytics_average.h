@@ -30,7 +30,7 @@ typedef struct
 {
     opal_object_t super;
     unsigned int num_sample;
-    opal_value_t *value_average;
+    orcm_metric_value_t *value_average;
 } orcm_mca_analytics_average_item_value;
 
 OBJ_CLASS_DECLARATION(orcm_mca_analytics_average_item_value);

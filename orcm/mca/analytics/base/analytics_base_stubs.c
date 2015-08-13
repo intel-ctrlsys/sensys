@@ -25,7 +25,6 @@
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
 
-
 static orcm_workflow_t* orcm_analytics_base_workflow_object_init(int *wfid);
 static int orcm_analytics_base_workflow_step_create(orcm_workflow_t *wf,
                                                     opal_value_t **values, int i);
@@ -44,7 +43,6 @@ static orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *
 static int orcm_analytics_base_workflow_list_append_ids(opal_buffer_t *buffer, size_t size);
 
 static int workflow_id = 0;
-
 
 #ifdef ANALYTICS_TAP_INFO
 static void orcm_analytics_base_tapinfo(orcm_workflow_step_t *wf_step,
@@ -254,7 +252,6 @@ static int orcm_analytics_base_create_new_workflow_event_base(orcm_workflow_t *w
     return rc;
 }
 
-
 static int orcm_analytics_base_workflow_step_create(orcm_workflow_t *wf,
                                                     opal_value_t **values, int i)
 {
@@ -440,7 +437,7 @@ int orcm_analytics_base_array_create(opal_value_array_t **analytics_sample_array
 
 
 int orcm_analytics_base_array_append(opal_value_array_t *analytics_sample_array, int index,
-                                     char *plugin_name, char *host_name, opal_value_t *sample)
+                                     char *plugin_name, char *host_name, orcm_metric_value_t *sample)
 {
     orcm_analytics_value_t analytics_sample;
     int rc;
@@ -448,7 +445,7 @@ int orcm_analytics_base_array_append(opal_value_array_t *analytics_sample_array,
     /*fill the analytics structure with the sensor data */
     analytics_sample.sensor_name = strdup(plugin_name);
     analytics_sample.node_regex = strdup(host_name);
-    memcpy(&analytics_sample.data, sample, sizeof(opal_value_t));
+    memcpy(&(analytics_sample.data), sample, sizeof(orcm_metric_value_t));
 
     rc = opal_value_array_set_item(analytics_sample_array, index, &analytics_sample);
     if (OPAL_SUCCESS != rc) {
@@ -471,6 +468,6 @@ void orcm_analytics_base_array_send(opal_value_array_t *data)
 
     OPAL_LIST_FOREACH(wf, &orcm_analytics_base_wf.workflows, orcm_workflow_t) {
         OBJ_RETAIN(data);
-        ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), data);
+        ORCM_ACTIVATE_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), data);
     }
 }

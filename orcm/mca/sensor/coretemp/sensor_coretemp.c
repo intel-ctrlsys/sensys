@@ -983,10 +983,10 @@ static void coretemp_log(opal_buffer_t *sample)
 
         sensor_metric->value.data.fval = fval;
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-        /*if (ORCM_SUCCESS == analytics_rc) {
-            analytics_rc = orcm_analytics.array_append(analytics_sample_array, i,
-                                                       "coretemp", hostname, kv);
-        }*/
+        if (ORCM_SUCCESS == analytics_rc) {
+            analytics_rc = orcm_analytics.array_append(analytics_sample_array, i, "coretemp",
+                                                       hostname, sensor_metric);
+        }
     }
 
     /* store it */

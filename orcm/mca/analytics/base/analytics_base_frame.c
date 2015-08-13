@@ -24,7 +24,6 @@
 #include "orcm/mca/analytics/base/analytics_private.h"
 
 #include "orcm/runtime/orcm_progress.h"
-
 /*
  * The following file was created by configure.  It contains extern
  * statements and the definition of an array of pointers to each
@@ -37,6 +36,7 @@ static void orcm_analytics_stop_wokflow_step(orcm_workflow_step_t *wf_step);
 static void orcm_analytics_stop_wokflow_thread(orcm_workflow_t *wf);
 static int orcm_analytics_base_close(void);
 static int orcm_analytics_base_open(mca_base_open_flag_t flags);
+
 /*
  * Global variables
  */
@@ -92,6 +92,9 @@ static int orcm_analytics_base_close(void)
     /* Destroy the base objects */
     OPAL_LIST_DESTRUCT(&orcm_analytics_base_wf.workflows);
 
+    /* close the database handle */
+    orcm_analytics_base_close_db();
+
     return mca_base_framework_components_close(&orcm_analytics_base_framework,
                                                NULL);
 }
@@ -118,6 +121,9 @@ static int orcm_analytics_base_open(mca_base_open_flag_t flags)
         return rc;
     }
     
+    /* open the database handle */
+    orcm_analytics_base_open_db();
+
     return rc;
 }
 

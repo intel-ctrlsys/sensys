@@ -15,4 +15,5 @@ libmca_analytics_la_SOURCES += \
     base/analytics_base_frame.c \
     base/analytics_base_recv.c \
     base/analytics_base_select.c \
-    base/analytics_base_stubs.c
+    base/analytics_base_stubs.c \
+    base/analytics_base_db.c

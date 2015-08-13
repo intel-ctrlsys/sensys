@@ -21,6 +21,7 @@
 #include "opal/class/opal_value_array.h"
 #include "opal/class/opal_list.h"
 #include "opal/mca/event/event.h"
+#include "orcm/runtime/orcm_globals.h"
 
 BEGIN_C_DECLS
 
@@ -62,7 +63,7 @@ OBJ_CLASS_DECLARATION(orcm_workflow_caddy_t);
 /* define a orcm_analytics_value_t object */
 typedef struct {
     opal_object_t  super;
-    opal_value_t   data;  /*data*/
+    orcm_metric_value_t data;  /*data*/
     char           *comma_sep_plugin_list; /*comma separated list of plugins that contributed to this data*/
     char           *sensor_name; /*name of the actual sensor*/
     char           *node_regex; /*regex of all nodes this data pertains to*/

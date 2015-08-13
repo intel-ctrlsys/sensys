@@ -20,6 +20,7 @@
 #include "orcm/mca/mca.h"
 
 #include "orcm/mca/analytics/analytics_types.h"
+#include "opal/class/opal_hash_table.h"
 
 BEGIN_C_DECLS
 
@@ -72,7 +73,7 @@ typedef int (*orcm_analytics_API_module_array_create_fn_t) (opal_value_array_t *
                                                             int ncores);
 typedef int (*orcm_analytics_API_module_array_append_fn_t) (opal_value_array_t *analytics_sample_array,
                                                             int index, char *plugin_name,
-                                                            char *host_name, opal_value_t *sample);
+                                                            char *host_name, orcm_metric_value_t *sample);
 typedef void (*orcm_analytics_API_module_array_cleanup_fn_t) (opal_value_array_t *analytics_sample_array);
 typedef void (*orcm_analytics_API_module_send_data_fn_t)(opal_value_array_t *data);
 

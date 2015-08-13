@@ -438,7 +438,7 @@ BEGIN
         RAISE EXCEPTION   '% exceeded critical level (% %% = %). ', message_prefix, 100 * critical_level_percentage,  pg_catalog.pg_size_pretty(db_critical_size) ;
     ELSEIF (actual_db_size > db_warning_size) THEN
         RAISE WARNING  '% exceeded warning level (% %% = %). ', message_prefix, 100 * warning_level_percentage,  pg_catalog.pg_size_pretty(db_warning_size) ;
-        RETURN message_prefix || 'exceeded warning level (' || (100 * warning_level_percentage) || '% = ' || pg_catalog.pg_size_pretty(db_warning_size) || ').';
+        RETURN message_prefix || ' exceeded warning level (' || (100 * warning_level_percentage) || '% = ' || pg_catalog.pg_size_pretty(db_warning_size) || ').';
     ELSEIF (actual_db_size > db_log_size) THEN
         RAISE LOG   '% exceeded log level (% %% = %). ', message_prefix, 100 * log_level_percentage,  pg_catalog.pg_size_pretty(db_log_size) ;
         RETURN message_prefix || ' exceeded log level (' || (100 * log_level_percentage) || '% = ' || pg_catalog.pg_size_pretty(db_log_size) || ').';

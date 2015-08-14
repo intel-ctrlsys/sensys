@@ -42,6 +42,10 @@ static void finalize(struct orcm_db_base_module_t *imod);
 static int store(struct orcm_db_base_module_t *imod,
                  const char *primary_key,
                  opal_list_t *kvs);
+static int store_new(struct orcm_db_base_module_t *imod,
+                      orcm_db_data_type_t data_type,
+                      opal_list_t *kvs,
+                      opal_list_t *ret);
 static int record_data_samples(struct orcm_db_base_module_t *imod,
                                const char *hostname,
                                const struct timeval *time_stamp,
@@ -64,6 +68,9 @@ static int record_diag_test(struct orcm_db_base_module_t *imod,
 static void print_values(opal_list_t *values, char ***cmdargs);
 static void print_value(const opal_value_t *kv, char *tbuf, size_t size);
 static void print_time_value(const struct timeval *time, char *tbuf, size_t size);
+static void print_decode_opal_list(opal_list_t *kvs, char ***cmdargs);
+static void print_opal_value_t(opal_list_item_t *list_item, char ***cmdargs);
+static void print_orcm_metric_t(opal_list_item_t *list_item, char ***cmdargs);
 
 
 mca_db_print_module_t mca_db_print_module = {
@@ -71,7 +78,7 @@ mca_db_print_module_t mca_db_print_module = {
         init,
         finalize,
         store,
-        NULL,
+        store_new,
         record_data_samples,
         update_node_features,
         record_diag_test,
@@ -164,6 +171,97 @@ static int store(struct orcm_db_base_module_t *imod,
     opal_argv_free(cmdargs);
 
     return ORCM_SUCCESS;
+}
+
+static int store_new(struct orcm_db_base_module_t *imod,
+                      orcm_db_data_type_t data_type,
+                      opal_list_t *kvs,
+                      opal_list_t *ret)
+{
+    mca_db_print_module_t *mod = (mca_db_print_module_t*)imod;
+    char **cmdargs=NULL, *vstr;
+
+
+    /* cycle through the provided values and print them */
+    /* print the data in the following format: <key>=<value>:<units> */
+    print_decode_opal_list(kvs, &cmdargs);
+
+    /* assemble the value string */
+    vstr = opal_argv_join(cmdargs, ',');
+
+    /* print it */
+    fprintf(mod->fp, "DB request: store; data:\n%s\n", vstr);
+    free(vstr);
+    opal_argv_free(cmdargs);
+
+    return ORCM_SUCCESS;
+
+}
+
+static void print_decode_opal_list(opal_list_t *kvs, char ***cmdargs)
+{
+    opal_list_item_t *list_item = NULL;
+    opal_list_item_t *next = NULL;
+    const char *opal_value_name = "opal_value_t";
+    const char *orcm_metric_name = "orcm_metric_value_t";
+
+    next = &(kvs->opal_list_sentinel);
+    do {
+        list_item = opal_list_get_next(next);
+        if (NULL == list_item) {
+            break;
+        }
+        if (list_item == opal_list_get_end(kvs)) {
+            break;
+        }
+        next = list_item;
+        if (0 == strncmp(list_item->super.obj_class->cls_name, opal_value_name,
+                         strlen(opal_value_name))) {
+            print_opal_value_t(list_item, cmdargs);
+
+        }
+        else if (0 == strncmp(list_item->super.obj_class->cls_name, orcm_metric_name,
+                              strlen(orcm_metric_name))) {
+            print_orcm_metric_t(list_item, cmdargs);
+        }
+
+    }while(true);
+
+}
+
+static void print_opal_value_t(opal_list_item_t *list_item, char ***cmdargs)
+{
+    opal_value_t *kv;
+    int len;
+    char tbuf[1024];
+
+    kv =  (opal_value_t *)list_item;
+    snprintf(tbuf, sizeof(tbuf), "%s=", kv->key);
+    len = strlen(tbuf);
+
+    print_value(kv, tbuf + len, sizeof(tbuf) - len);
+    opal_argv_append_nosize(cmdargs, tbuf);
+
+}
+
+static void print_orcm_metric_t(opal_list_item_t *list_item, char ***cmdargs)
+{
+    orcm_metric_value_t *kv;
+    int len;
+    char tbuf[1024];
+
+    kv =  (orcm_metric_value_t *)list_item;
+    snprintf(tbuf, sizeof(tbuf), "%s=", kv->value.key);
+    len = strlen(tbuf);
+
+    print_value(&(kv->value), tbuf + len, sizeof(tbuf) - len);
+
+    /* units were included, so add them to the buffer */
+    if (NULL != kv->units) {
+        len = strlen(tbuf);
+        snprintf(tbuf + len, sizeof(tbuf) - len, ":%s", kv->units);
+    }
+    opal_argv_append_nosize(cmdargs, tbuf);
 }
 
 static int record_data_samples(struct orcm_db_base_module_t *imod,

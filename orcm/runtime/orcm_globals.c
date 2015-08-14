@@ -102,7 +102,6 @@ const char *orcm_node_state_to_char(orcm_node_state_t state)
 
 static void omv_constructor(orcm_metric_value_t *omvp)
 {
-    OBJ_CONSTRUCT(&omvp->value, opal_value_t);
     omvp->units = NULL;
 }
 
@@ -111,8 +110,6 @@ static void omv_destructor(orcm_metric_value_t *omvp)
     if (NULL != omvp->units) {
         free(omvp->units);
     }
-
-    OBJ_DESTRUCT(&omvp->value);
 }
 
 OBJ_CLASS_INSTANCE(orcm_metric_value_t,

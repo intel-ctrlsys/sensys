@@ -28,10 +28,10 @@ typedef struct {
 } mca_db_print_module_t;
 ORCM_MODULE_DECLSPEC extern mca_db_print_module_t mca_db_print_module;
 
-typedef void  (*orcm_db_print_list_item) (opal_list_item_t *item, char *tbuf);
+typedef void  (*orcm_db_print_list_item_fn_t) (opal_list_item_t *item, char *tbuf);
 typedef struct {
     const char *name;
-    orcm_db_print_list_item print;
+    orcm_db_print_list_item_fn_t print;
 } db_print_types_t;
 
 END_C_DECLS

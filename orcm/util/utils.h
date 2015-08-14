@@ -25,4 +25,6 @@ ORCM_DECLSPEC int orcm_util_get_dependents(opal_list_t *targets,
 ORCM_DECLSPEC void orcm_util_print_xml(orcm_cfgi_xml_parser_t *x,
                                        char *pfx);
 
+ORCM_DECLSPEC opal_value_t* orcm_util_load_opal_value(char *key, void *data,
+                                                      opal_data_type_t type);
 #endif

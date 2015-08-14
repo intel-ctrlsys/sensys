@@ -47,12 +47,23 @@
 #include "orcm/mca/diag/base/base.h"
 #include "diag_memtest.h"
 
+#include "orcm/util/utils.h"
+
 #define	NPAGE_SIZE	(  4UL << 10)
 
 static int init(void);
 static void finalize(void);
 static int memtest_log(opal_buffer_t *buf);
 static void memtest_run(int sd, short args, void *cbdata);
+
+/* prepare input data for the data structure */
+static opal_list_t* memtest_prepare_db_input(struct timeval start_time,
+                                             struct timeval end_time,
+                                             char *nodename, char *diag_type,
+                                             char *diag_subtype, char *diag_result);
+
+static void orcm_diag_memtest_db_cleanup(int db_handle, int status, opal_list_t *list,
+                                         opal_list_t *ret, void *cbdata);
 
 static int mem_diag_ret = ORCM_SUCCESS;
 
@@ -167,14 +178,81 @@ static void memcheck(unsigned int *addr, size_t size) {
 
 }
 
+static opal_list_t* memtest_prepare_db_input(struct timeval start_time,
+                                             struct timeval end_time,
+                                             char *nodename, char *diag_type,
+                                             char *diag_subtype, char *diag_result)
+{
+    opal_list_t *db_input = NULL;
+    opal_value_t *kv = NULL;
+
+    db_input = OBJ_NEW(opal_list_t);
+    if (NULL != db_input) {
+        /* load the start time */
+        kv = orcm_util_load_opal_value("start_time", &start_time, OPAL_TIMEVAL);
+        if (NULL == kv) {
+            goto memtestcleanup;
+        }
+        opal_list_append(db_input, &(kv->super));
+
+        /* load the end time */
+        kv = orcm_util_load_opal_value("end_time", &end_time, OPAL_TIMEVAL);
+        if (NULL == kv) {
+            goto memtestcleanup;
+        }
+        opal_list_append(db_input, &(kv->super));
+
+        /* load the hostname */
+        kv = orcm_util_load_opal_value("hostname", nodename, OPAL_STRING);
+        if (NULL == kv) {
+            goto memtestcleanup;
+        }
+        opal_list_append(db_input, &(kv->super));
+
+        /* load the diag type */
+        kv = orcm_util_load_opal_value("diag_type", diag_type, OPAL_STRING);
+        if (NULL == kv) {
+            goto memtestcleanup;
+        }
+        opal_list_append(db_input, &(kv->super));
+
+        /* load the diag subtype */
+        kv = orcm_util_load_opal_value("diag_subtype", diag_subtype, OPAL_STRING);
+        if (NULL == kv) {
+            goto memtestcleanup;
+        }
+        opal_list_append(db_input, &(kv->super));
+
+        /* load the diag result */
+        kv = orcm_util_load_opal_value("test_result", diag_result, OPAL_STRING);
+        if (NULL == kv) {
+            goto memtestcleanup;
+        }
+        opal_list_append(db_input, &(kv->super));
+    }
+
+    return db_input;
+
+memtestcleanup:
+    OPAL_LIST_RELEASE(db_input);
+    return NULL;
+}
+
+static void orcm_diag_memtest_db_cleanup(int db_handle, int status, opal_list_t *list,
+                                         opal_list_t *ret, void *cbdata)
+{
+    OPAL_LIST_RELEASE(list);
+
+    if (ORTE_SUCCESS != status) {
+        ORTE_ERROR_LOG(status);
+    }
+}
 
 static int memtest_log(opal_buffer_t *buf)
 {
     int cnt, rc;
-    time_t start_time;
-    time_t end_time;
-    struct tm *starttime;
-    struct tm *endtime;
+    struct timeval start_time;
+    struct timeval end_time;
     char *nodename;
     char *diag_type;
     char *diag_subtype;
@@ -183,14 +261,14 @@ static int memtest_log(opal_buffer_t *buf)
     /* Unpack start Time */
     cnt = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &start_time,
-                                              &cnt, OPAL_TIME))) {
+                                              &cnt, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }
 
     /* Unpack end time */  
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &end_time,
-                                              &cnt, OPAL_TIME))) {
+                                              &cnt, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }
@@ -223,16 +301,21 @@ static int memtest_log(opal_buffer_t *buf)
         return rc;
     }
 
-    starttime = localtime(&start_time);
-    endtime   = localtime(&end_time); 
+    opal_list_t *db_input = memtest_prepare_db_input(start_time, end_time, nodename,
+                                                     diag_type, diag_subtype, diag_result);
+    if (NULL == db_input) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
 
     /* send diag test result to db */
     if (0 <= orcm_diag_base.dbhandle) {
-        orcm_db.record_diag_test(orcm_diag_base.dbhandle, nodename, diag_type, diag_subtype, starttime, endtime, 
-                                 NULL, diag_result, NULL, NULL, NULL);
+        orcm_db.store_new(orcm_diag_base.dbhandle, ORCM_DB_DIAG_DATA, db_input,
+                          NULL, orcm_diag_memtest_db_cleanup, NULL);
+        return ORCM_SUCCESS;
     }
 
-    return ORCM_SUCCESS;
+    OPAL_LIST_RELEASE(db_input);
+    return ORCM_ERR_NO_CONNECTION_ALLOWED;
 }
 
 static void memtest_run(int sd, short args, void *cbdata)
@@ -245,8 +328,8 @@ static void memtest_run(int sd, short args, void *cbdata)
     size_t size, rest;
     orcm_diag_cmd_flag_t command = ORCM_DIAG_AGG_COMMAND;
     opal_buffer_t *data = NULL;
-    time_t now;
-    time_t start_time;
+    struct timeval now;
+    struct timeval start_time;
     char *compname;
     char *diag_type;
     char *diag_subtype;
@@ -270,7 +353,7 @@ static void memtest_run(int sd, short args, void *cbdata)
         /* return; */
     }
 
-    start_time = time(NULL);
+    gettimeofday(&start_time, NULL);
 
     sysinfo(&info);
 
@@ -365,7 +448,7 @@ static void memtest_run(int sd, short args, void *cbdata)
     }
 
 sendresults:
-    now = time(NULL);
+    gettimeofday(&now, NULL);
     data = OBJ_NEW(opal_buffer_t);
 
     /* pack aggregator command */
@@ -385,14 +468,14 @@ sendresults:
     free(compname);
 
     /* Pack start Time */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &start_time, 1, OPAL_TIME))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &start_time, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
         return;
     }
 
     /* Pack the Time */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIME))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &now, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
         return;

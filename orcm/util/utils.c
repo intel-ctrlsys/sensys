@@ -189,3 +189,20 @@ void orcm_util_print_xml(orcm_cfgi_xml_parser_t *x, char *pfx)
     }
     free(p2);
 }
+
+opal_value_t* orcm_util_load_opal_value(char *key, void *data, opal_data_type_t type)
+{
+    int rc = -1;
+    opal_value_t *kv = OBJ_NEW(opal_value_t);
+
+    if (NULL != kv) {
+      kv->key = strdup(key);
+      rc = opal_value_load(kv, data, type);
+      if (OPAL_SUCCESS != rc) {
+          OBJ_RELEASE(kv);
+          kv = NULL;
+      }
+    }
+
+    return kv;
+}

@@ -43,9 +43,9 @@ static int store(struct orcm_db_base_module_t *imod,
                  const char *primary_key,
                  opal_list_t *kvs);
 static int store_new(struct orcm_db_base_module_t *imod,
-                      orcm_db_data_type_t data_type,
-                      opal_list_t *kvs,
-                      opal_list_t *ret);
+                     orcm_db_data_type_t data_type,
+                     opal_list_t *kvs,
+                     opal_list_t *ret);
 static int record_data_samples(struct orcm_db_base_module_t *imod,
                                const char *hostname,
                                const struct timeval *time_stamp,

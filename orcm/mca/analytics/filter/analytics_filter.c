@@ -284,6 +284,7 @@ static void analyze(int sd, short args, void *cbdata)
     if ( NULL == workflow_value) {
         OPAL_OUTPUT_VERBOSE((1, orcm_analytics_base_framework.framework_output,
                             "%s Insufficient data", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+        return;
     }
     int analytics_rc;
     int rc;

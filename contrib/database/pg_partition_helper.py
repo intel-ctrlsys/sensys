@@ -170,7 +170,7 @@ def main():
     else:
         db_url = os.getenv("PG_DB_URL")
     if not db_url:
-        raise RuntimeError("Neither --db_url option is specify nor The "
+        raise RuntimeError("Neither --db_url option is specified nor The "
                            "'PG_DB_URL' environment variable is set.  Please "
                            "use the --db_url command-line option or set the "
                            "environment variable with the following pattern:\n"

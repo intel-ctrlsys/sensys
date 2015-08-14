@@ -53,7 +53,7 @@ def run_alert_db_size(db_engine, max_db_size_in_gb, log_level_percentage,
 
     See SQLAlchemy database dialect for more information.
     :param max_db_size_in_gb:  The maximum database size expressed in Gigabytes
-    to be consider as 100% full.  Value must be greater than 0.
+    to be considered as 100% full.  Value must be greater than 0.
     :param log_level_percentage:  The percentage of the maximum database
     size to trigger a 'LOG' level.  Value must be between 0.0 and 1.0.
     :param warning_level_percentage:  The percentage of the maximum database
@@ -97,8 +97,8 @@ def main():
              "also be set in the environment variable "
              "'PG_DB_URL'")
     main_parser.add_argument("max_db_size_in_gb", type=float,
-        help="The maximum database size expressed in Gigabytes to be consider "
-             "as 100%% full.  Value must be greater than 0.")
+        help="The maximum database size expressed in Gigabytes to be "
+             "considered as 100%% full.  Value must be greater than 0.")
 
     main_parser.add_argument("--log-level-percentage", type=float,
         default=0.50,
@@ -130,7 +130,7 @@ def main():
     else:
         db_url = os.getenv("PG_DB_URL")
     if not db_url:
-        raise RuntimeError("Neither --db_url option is specify nor The "
+        raise RuntimeError("Neither --db_url option is specified nor The "
                            "'PG_DB_URL' environment variable is set.  Please "
                            "use the --db_url command-line option or set the "
                            "environment variable with the following pattern:\n"

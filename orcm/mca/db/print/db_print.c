@@ -211,8 +211,7 @@ static void print_decode_opal_list(opal_list_t *kvs, char ***cmdargs)
 
     OPAL_LIST_FOREACH(list_item, kvs, opal_list_item_t) {
         for (types_index = 0; types_index < sizeof(types)/sizeof(db_print_types_t); types_index ++) {
-            if (0 == strncmp(list_item->super.obj_class->cls_name, types[types_index].name,
-                             strlen(types[types_index].name))) {
+            if (0 == strcmp(list_item->super.obj_class->cls_name, types[types_index].name)) {
                 types[types_index].print(list_item, tbuf);
                 opal_argv_append_nosize(cmdargs, tbuf);
             }

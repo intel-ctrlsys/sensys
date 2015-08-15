@@ -1453,27 +1453,27 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
                                   &item_bm);
 
     /* Check the parameters */
-    if (NULL == params[0]) {
+    if (NULL == param_items[0]) {
         ERR_MSG_RDT("No hostname provided");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (NULL == params[1]) {
+    if (NULL == param_items[1]) {
         ERR_MSG_RDT("No diagnostic type provided");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (NULL == params[2]) {
+    if (NULL == param_items[2]) {
         ERR_MSG_RDT("No diagnostic subtype provided");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (NULL == params[3]) {
+    if (NULL == param_items[3]) {
         ERR_MSG_RDT("No start time provided");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (NULL == params[4]) {
+    if (NULL == param_items[4]) {
         ERR_MSG_RDT("No test result provided");
         return ORCM_ERR_BAD_PARAM;
     }
@@ -1625,7 +1625,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
     result_params[1] = diag_type;
     result_params[2] = diag_subtype;
     result_params[3] = start_time_str;
-    if (NULL != params[5]) {
+    if (NULL != param_items[5]) {
         result_params[4] = end_time_str;
     } else {
         result_params[4] = NULL;

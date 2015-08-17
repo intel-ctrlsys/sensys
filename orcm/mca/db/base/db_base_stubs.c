@@ -34,8 +34,8 @@ static void process_open(int fd, short args, void *cbdata)
     bool found;
 
     /* see if the caller provided the magic "components" property */
-    if (NULL != req->properties) {
-        OPAL_LIST_FOREACH(kv, req->properties, opal_value_t) {
+    if (NULL != req->input) {
+        OPAL_LIST_FOREACH(kv, req->input, opal_value_t) {
             if (0 == strcmp(kv->key, "components")) {
                 cmps = opal_argv_split(kv->data.string, ',');
                 break;
@@ -60,7 +60,7 @@ static void process_open(int fd, short args, void *cbdata)
         }
         if (found) {
             /* let this component try */
-            if (NULL != (mod = component->create_handle(req->properties))) {
+            if (NULL != (mod = component->create_handle(req->input))) {
                 /* create the handle */
                 hdl = OBJ_NEW(orcm_db_handle_t);
                 hdl->component = component;

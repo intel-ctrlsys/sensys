@@ -56,15 +56,6 @@ static void finalize(void);
 static int memtest_log(opal_buffer_t *buf);
 static void memtest_run(int sd, short args, void *cbdata);
 
-/* prepare input data for the data structure */
-static opal_list_t* memtest_prepare_db_input(struct timeval start_time,
-                                             struct timeval end_time,
-                                             char *nodename, char *diag_type,
-                                             char *diag_subtype, char *diag_result);
-
-static void orcm_diag_memtest_db_cleanup(int db_handle, int status, opal_list_t *list,
-                                         opal_list_t *ret, void *cbdata);
-
 static int mem_diag_ret = ORCM_SUCCESS;
 
 orcm_diag_base_module_t orcm_diag_memtest_module = {
@@ -178,76 +169,6 @@ static void memcheck(unsigned int *addr, size_t size) {
 
 }
 
-static opal_list_t* memtest_prepare_db_input(struct timeval start_time,
-                                             struct timeval end_time,
-                                             char *nodename, char *diag_type,
-                                             char *diag_subtype, char *diag_result)
-{
-    opal_list_t *db_input = NULL;
-    opal_value_t *kv = NULL;
-
-    db_input = OBJ_NEW(opal_list_t);
-    if (NULL != db_input) {
-        /* load the start time */
-        kv = orcm_util_load_opal_value("start_time", &start_time, OPAL_TIMEVAL);
-        if (NULL == kv) {
-            goto memtestcleanup;
-        }
-        opal_list_append(db_input, &(kv->super));
-
-        /* load the end time */
-        kv = orcm_util_load_opal_value("end_time", &end_time, OPAL_TIMEVAL);
-        if (NULL == kv) {
-            goto memtestcleanup;
-        }
-        opal_list_append(db_input, &(kv->super));
-
-        /* load the hostname */
-        kv = orcm_util_load_opal_value("hostname", nodename, OPAL_STRING);
-        if (NULL == kv) {
-            goto memtestcleanup;
-        }
-        opal_list_append(db_input, &(kv->super));
-
-        /* load the diag type */
-        kv = orcm_util_load_opal_value("diag_type", diag_type, OPAL_STRING);
-        if (NULL == kv) {
-            goto memtestcleanup;
-        }
-        opal_list_append(db_input, &(kv->super));
-
-        /* load the diag subtype */
-        kv = orcm_util_load_opal_value("diag_subtype", diag_subtype, OPAL_STRING);
-        if (NULL == kv) {
-            goto memtestcleanup;
-        }
-        opal_list_append(db_input, &(kv->super));
-
-        /* load the diag result */
-        kv = orcm_util_load_opal_value("test_result", diag_result, OPAL_STRING);
-        if (NULL == kv) {
-            goto memtestcleanup;
-        }
-        opal_list_append(db_input, &(kv->super));
-    }
-
-    return db_input;
-
-memtestcleanup:
-    OPAL_LIST_RELEASE(db_input);
-    return NULL;
-}
-
-static void orcm_diag_memtest_db_cleanup(int db_handle, int status, opal_list_t *list,
-                                         opal_list_t *ret, void *cbdata)
-{
-    OPAL_LIST_RELEASE(list);
-
-    if (ORTE_SUCCESS != status) {
-        ORTE_ERROR_LOG(status);
-    }
-}
-
 static int memtest_log(opal_buffer_t *buf)
 {
     int cnt, rc;
@@ -301,8 +222,9 @@ static int memtest_log(opal_buffer_t *buf)
         return rc;
     }
 
-    opal_list_t *db_input = memtest_prepare_db_input(start_time, end_time, nodename,
-                                                     diag_type, diag_subtype, diag_result);
+    opal_list_t *db_input = orcm_diag_base_prepare_db_input(start_time, end_time,
+                                                            nodename, diag_type,
+                                                            diag_subtype, diag_result);
     if (NULL == db_input) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
@@ -310,7 +232,7 @@ static int memtest_log(opal_buffer_t *buf)
     /* send diag test result to db */
     if (0 <= orcm_diag_base.dbhandle) {
         orcm_db.store_new(orcm_diag_base.dbhandle, ORCM_DB_DIAG_DATA, db_input,
-                          NULL, orcm_diag_memtest_db_cleanup, NULL);
+                          NULL, orcm_diag_base_db_cleanup, NULL);
         return ORCM_SUCCESS;
     }
 

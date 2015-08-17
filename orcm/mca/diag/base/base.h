@@ -84,5 +84,13 @@ ORCM_DECLSPEC void orcm_diag_base_log(char *dname, opal_buffer_t *buf);
 ORCM_DECLSPEC int orcm_diag_base_comm_start(void);
 ORCM_DECLSPEC int orcm_diag_base_comm_stop(void);
 
+/* function to prepared input data for the database log */
+opal_list_t* orcm_diag_base_prepare_db_input(struct timeval start_time,
+                                             struct timeval end_time,
+                                             char *nodename, char *diag_type,
+                                             char *diag_subtype, char *diag_result);
+
+void orcm_diag_base_db_cleanup(int db_handle, int status, opal_list_t *list,
+                               opal_list_t *ret, void *cbdata);
 END_C_DECLS
 #endif

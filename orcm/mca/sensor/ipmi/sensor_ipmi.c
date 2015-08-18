@@ -1376,6 +1376,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             }
 
             kv = orcm_util_load_opal_value("hostname", oldhost->nodename, OPAL_STRING);
+            opal_list_append(newhost->records, &kv->super);
 
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {

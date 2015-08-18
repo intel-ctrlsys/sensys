@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc.  All rights reserved.
  * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /** @file:
@@ -67,7 +67,7 @@ typedef void (*orcm_db_base_module_finalize_fn_t)(struct orcm_db_base_module_t *
 
 /*
  * Open a database
- * 
+ *
  * Open a database for access (read, write, etc.). The request
  * can contain a user-specified name for this database that
  * has nothing to do with the backend database - it is solely
@@ -90,7 +90,7 @@ typedef void (*orcm_db_base_module_finalize_fn_t)(struct orcm_db_base_module_t *
  *
  * Just like the standard POSIX file open, the call will return
  * a unique "handle" that must be provided with any subsequent
- * call to store or fetch data from this database. 
+ * call to store or fetch data from this database.
  */
 typedef void (*orcm_db_base_API_open_fn_t)(char *name,
                                            opal_list_t *properties,
@@ -112,17 +112,17 @@ typedef void (*orcm_db_base_API_close_fn_t)(int dbhandle,
 
 /*
  * Store one or more data elements against a primary key.  The values are
- * passed as a key-value list in the kvs parameter.  The semantics of the 
- * primary key and list of values will depend on the data that needs to be 
+ * passed as a key-value list in the kvs parameter.  The semantics of the
+ * primary key and list of values will depend on the data that needs to be
  * stored.
  *
- * At the moment the API store function is designed to handle storing data 
- * collected by the sensor framework components.  In this case, the primary key 
- * is a name for the group of data being passed (to classify the data and avoid 
- * naming conflicts with other data items collected by other sensors) and the 
- * list of values shall contain: the time stamp, the hostname and the values. 
- * For the values, sensors may optionally provide the data units in the key 
- * field using the following format: <data item name>:<data units>.  Note that 
+ * At the moment the API store function is designed to handle storing data
+ * collected by the sensor framework components.  In this case, the primary key
+ * is a name for the group of data being passed (to classify the data and avoid
+ * naming conflicts with other data items collected by other sensors) and the
+ * list of values shall contain: the time stamp, the hostname and the values.
+ * For the values, sensors may optionally provide the data units in the key
+ * field using the following format: <data item name>:<data units>.  Note that
  * this means the colon (":") is a reserved character.
  */
 typedef void (*orcm_db_base_API_store_fn_t)(int dbhandle,

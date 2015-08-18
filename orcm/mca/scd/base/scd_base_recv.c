@@ -39,18 +39,18 @@ int orcm_scd_base_comm_start(void)
     if (recv_issued) {
         return ORTE_SUCCESS;
     }
-    
+
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:receive start comm",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    
+
     orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
                             ORCM_RML_TAG_SCD,
                             ORTE_RML_PERSISTENT,
                             orcm_scd_base_recv,
                             NULL);
     recv_issued = true;
-    
+
     return ORTE_SUCCESS;
 }
 
@@ -60,14 +60,14 @@ int orcm_scd_base_comm_stop(void)
     if (!recv_issued) {
         return ORTE_SUCCESS;
     }
-    
+
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:base:receive stop comm",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    
+
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
     recv_issued = false;
-    
+
     return ORTE_SUCCESS;
 }
 
@@ -111,7 +111,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         ORTE_ERROR_LOG(rc);
         goto answer;
     }
-    
+
     if (ORCM_SESSION_REQ_COMMAND == command) {
         /* session request - this comes in the form of a
          * requested allocation to support the session
@@ -126,7 +126,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         int32_t alloc_power_underage_time = orcm_scd_base_get_cluster_power_underage_time();
         float alloc_power_frequency = orcm_scd_base_get_cluster_power_frequency();
         bool alloc_power_strict = orcm_scd_base_get_cluster_power_strict();
-        
+
         int32_t node_power_budget = 0;
         cnt = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &alloc,
@@ -349,8 +349,8 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                 }
                 OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                                      "%s scd:base:receive PACKING NODE: %s (%s)",
-                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), 
-                                     nodes[i]->name, 
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                     nodes[i]->name,
                                      ORTE_NAME_PRINT(&nodes[i]->daemon)));
                 i++;
             }
@@ -376,7 +376,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         return;
     } else if (ORCM_SET_POWER_COMMAND == command) {
         cnt = 1;
-        
+
         /* unpack the subcommand */
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sub_command,
                                                   &cnt, ORCM_SCD_CMD_T))) {
@@ -493,7 +493,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
-                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY, 
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY,
                                                         ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_MODE_COMMAND:
@@ -502,7 +502,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
-                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, 
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY,
                                                         ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                             orcm_pwrmgmt.alloc_notify(alloc);
                         break;
@@ -512,7 +512,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
-                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_WINDOW_KEY, 
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_WINDOW_KEY,
                                                         ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_OVERAGE_COMMAND:
@@ -521,7 +521,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
-                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY, 
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY,
                                                         ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_UNDERAGE_COMMAND:
@@ -530,7 +530,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
-                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY, 
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY,
                                                         ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_OVERAGE_TIME_COMMAND:
@@ -539,7 +539,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
-                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY, 
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY,
                                                         ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_UNDERAGE_TIME_COMMAND:
@@ -548,7 +548,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
-                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY, 
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY,
                                                         ORTE_ATTR_GLOBAL, &int_param, OPAL_INT32);
                         break;
                         case ORCM_SET_POWER_FREQUENCY_COMMAND:
@@ -557,7 +557,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
-                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, 
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY,
                                                         ORTE_ATTR_GLOBAL, &float_param, OPAL_FLOAT);
                         break;
                         case ORCM_SET_POWER_STRICT_COMMAND:
@@ -566,7 +566,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 goto answer;
                             }
-                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_FREQ_STRICT_KEY, 
+                            result = orte_set_attribute(&alloc->constraints, ORCM_PWRMGMT_FREQ_STRICT_KEY,
                                                         ORTE_ATTR_GLOBAL, &bool_param, OPAL_BOOL);
                         break;
                         default:
@@ -792,7 +792,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                 ORTE_ERROR_LOG(rc);
                 goto answer;
             }
- 
+
             //let's find the session
             found = false;
             /* for each queue, */
@@ -803,7 +803,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                         found = true;
                         switch(sub_command) {
                         case ORCM_GET_POWER_BUDGET_COMMAND:
-                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY, 
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY,
                                                             (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
@@ -822,10 +822,10 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
-                            }                   
+                            }
                         break;
                         case ORCM_GET_POWER_MODE_COMMAND:
-                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY, 
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY,
                                                             (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
@@ -844,10 +844,10 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
-                            }                   
+                            }
                         break;
                         case ORCM_GET_POWER_WINDOW_COMMAND:
-                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_WINDOW_KEY, 
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_WINDOW_KEY,
                                                             (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (result = opal_dss.pack(ans, &rc, 1, OPAL_INT))) {
@@ -866,10 +866,10 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
-                            }                   
+                            }
                         break;
                         case ORCM_GET_POWER_OVERAGE_COMMAND:
-                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY, 
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY,
                                                             (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
@@ -888,10 +888,10 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
-                            }                   
+                            }
                         break;
                         case ORCM_GET_POWER_UNDERAGE_COMMAND:
-                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY, 
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY,
                                                             (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
@@ -910,10 +910,10 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
-                            }                   
+                            }
                         break;
                         case ORCM_GET_POWER_OVERAGE_TIME_COMMAND:
-                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY, 
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY,
                                                             (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
@@ -932,10 +932,10 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
-                            }                   
+                            }
                         break;
                         case ORCM_GET_POWER_UNDERAGE_TIME_COMMAND:
-                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY, 
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY,
                                                             (void**)&int_param_ptr, OPAL_INT32)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
@@ -954,10 +954,10 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
-                            }                   
+                            }
                         break;
                         case ORCM_GET_POWER_FREQUENCY_COMMAND:
-                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY, 
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY,
                                                             (void**)&float_param_ptr, OPAL_FLOAT)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
@@ -976,10 +976,10 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
-                            }                   
+                            }
                         break;
                         case ORCM_GET_POWER_STRICT_COMMAND:
-                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_FREQ_STRICT_KEY, 
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_FREQ_STRICT_KEY,
                                                             (void**)&bool_param_ptr, OPAL_BOOL)) {
                                 result = ORTE_ERR_BAD_PARAM;
                                 if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
@@ -998,7 +998,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                                 ORTE_ERROR_LOG(rc);
                                 OBJ_RELEASE(ans);
                                 return;
-                            }                   
+                            }
                         break;
                        default:
                            rc = ORTE_ERR_BAD_PARAM;

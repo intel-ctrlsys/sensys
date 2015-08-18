@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -31,7 +31,7 @@ orcm_sensor_sigar_component_t mca_sensor_sigar_component = {
             .mca_component_name = "sigar",
             MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
                                   ORCM_RELEASE_VERSION),
-        
+
             /* Component open and close functions */
             .mca_open_component = orcm_sensor_sigar_open,
             .mca_close_component = orcm_sensor_sigar_close,
@@ -156,6 +156,6 @@ static int sigar_component_register(void)
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_sigar_component.sample_rate);
-  
+
     return ORCM_SUCCESS;
 }

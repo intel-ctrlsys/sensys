@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -129,7 +129,7 @@ static char *orte_getline(FILE *fp)
         buff = strdup(input);
         return buff;
     }
-    
+
     return NULL;
 }
 
@@ -170,7 +170,7 @@ static int init(void)
      * For each directory
      */
     while (NULL != (entry = readdir(cur_dirp))) {
-        
+
         /*
          * Skip the obvious
          */
@@ -200,7 +200,7 @@ static int init(void)
         }
         trk->core = strtoul(&entry->d_name[k], NULL, 10);
         trk->directory = opal_os_path(false, "/sys/devices/system/cpu", entry->d_name, "cpufreq", NULL);
-        
+
         /* read/save the current settings */
         filename = opal_os_path(false, trk->directory, "scaling_governor", NULL);
         fp = fopen(filename, "r");
@@ -211,7 +211,7 @@ static int init(void)
             }
             fclose(fp);
             free(filename);
-            
+
             filename = opal_os_path(false, trk->directory, "scaling_max_freq", NULL);
             fp = fopen(filename, "r");
             if(fp) {
@@ -228,7 +228,7 @@ static int init(void)
                 if (tmp) {
                     free(tmp);
                 }
-                
+
                 filename = opal_os_path(false, trk->directory, "scaling_min_freq", NULL);
                 fp = fopen(filename, "r");
                 if (fp) {
@@ -507,7 +507,7 @@ static void calibrate(void)
     OPAL_OUTPUT_VERBOSE((5, orcm_diag_base_framework.framework_output,
                          "%s diag:pwr:calibrate",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
- 
+
     /* loop over all cpus */
     OPAL_LIST_FOREACH_SAFE(trk, nxt, &tracking, tracker_t) {
         /* ensure the governor is set to userspace so we can control the freq */
@@ -583,7 +583,7 @@ static void calibrate(void)
             opal_output_verbose(1, orcm_diag_base_framework.framework_output,
                                 "%s pwr:calibrate terminating power virus pid %lu",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                (unsigned long)trk->pid);            
+                                (unsigned long)trk->pid);
             kill(trk->pid, SIGKILL);
             trk->child_alive = false;
         }

@@ -2294,7 +2294,7 @@ static void sigar_log(opal_buffer_t *sample)
             goto cleanup;
         }
         OBJ_RELEASE(st);
-    } 
+    }
 cleanup:
     if (NULL != hostname) {
         free(hostname);

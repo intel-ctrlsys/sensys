@@ -1693,6 +1693,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             OBJ_DESTRUCT(&data);
             return;
         }
+
         /* Pack the nodeName - 3 */
         sample_str = (char *)&host->capsule.node.name;
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,

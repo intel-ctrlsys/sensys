@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.  All rights
- *                         reserved. 
- * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+ *                         reserved.
+ * Copyright (c) 2014      Intel, Inc.  All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -735,7 +735,7 @@ static void generate_test_vector(opal_buffer_t *v)
     struct tm *sample_time;
     opal_pstats_t *stats;
     opal_node_stats_t *nstats;
-    
+
     /* pack the plugin name */
     ctmp = strdup("resusage");
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
@@ -745,7 +745,7 @@ static void generate_test_vector(opal_buffer_t *v)
     return;
     }
     free(ctmp);
-    
+
     /* pack the hostname */
     if (OPAL_SUCCESS != (ret =
                 opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))){
@@ -753,7 +753,7 @@ static void generate_test_vector(opal_buffer_t *v)
         OBJ_DESTRUCT(&v);
         return;
     }
-    
+
     /* get the sample time */
     now = time(NULL);
     /* pass the time along as a simple string */

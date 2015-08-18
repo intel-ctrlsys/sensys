@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2014      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -491,7 +491,7 @@ set sample-rate <sensor-name> <sample-rate> <node-list>\"\n");
             goto done;
         }
 
-        /* wait for status message */ 
+        /* wait for status message */
         ORTE_WAIT_FOR_COMPLETION(xfer->active);
 
         cnt=1;
@@ -529,7 +529,7 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
-    char *sensor_name = NULL; 
+    char *sensor_name = NULL;
     int sample_rate = 0;
 
     if (5 != opal_argv_count(argv)) {
@@ -581,7 +581,7 @@ get sample-rate <sensor-name> <nodelist>\"\n");
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, xfer);
 
-        fprintf(stdout, "\nORCM getting sensor %s sample-rate  from node:%s\n", 
+        fprintf(stdout, "\nORCM getting sensor %s sample-rate  from node:%s\n",
                 argv[3], nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
@@ -621,7 +621,7 @@ get sample-rate <sensor-name> <nodelist>\"\n");
 
             /* unpack sample rate */
             cnt = 1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, 
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data,
                                                       &sample_rate,
                                                       &cnt, OPAL_INT))) {
                 goto done;

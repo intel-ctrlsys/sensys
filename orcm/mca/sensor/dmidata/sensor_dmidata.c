@@ -43,6 +43,7 @@
 
 #include "orcm/mca/db/db.h"
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/util/utils.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -652,29 +653,6 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             OPAL_LIST_RELEASE(newhost->records);
             free(newhost->freq_step_list);
             newhost->records=OBJ_NEW(opal_list_t);
-
-            /*Extract all required inventory items here */
-            extract_baseboard_inventory(topo, hostname, newhost);
-            extract_cpu_inventory(topo, hostname, newhost);
-            extract_cpu_freq_steps(freq_step_list, hostname, newhost);
-            extract_pci_inventory(topo, hostname, newhost);
-            extract_memory_inventory(topo, hostname, newhost);
-
-            kv = OBJ_NEW(opal_value_t);
-            if (NULL == kv) {
-                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
-            }
-            kv->key = strdup("hostname");
-            kv->type = OPAL_STRING;
-            kv->data.string = strdup(newhost->nodename);
-            opal_list_append(newhost->records, &kv->super);
-
-            /* Send the collected inventory details to the database for storage */
-            if (0 <= orcm_sensor_base.dbhandle) {
-                orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA,
-                                  newhost->records, NULL, NULL, NULL);
-            }
         }
     } else { /* Node not found, Create new node and attach inventory details */
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -684,31 +662,25 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         /* @VINFIX: Need to fix the bug in dss copy for OPAL_HWLOC_TOPO */
         opal_dss.copy((void**)&newhost->hwloc_topo,topo,OPAL_HWLOC_TOPO);
 
-        /*Extract all required inventory items here */
-        extract_baseboard_inventory(topo, hostname, newhost);
-        extract_cpu_inventory(topo, hostname, newhost);
-        extract_cpu_freq_steps(freq_step_list, hostname, newhost);
-        extract_pci_inventory(topo, hostname, newhost);
-        extract_memory_inventory(topo, hostname, newhost);
-
         /* Append the new node to the existing host list */
         opal_list_append(&dmidata_host_list, &newhost->super);
 
-        kv = OBJ_NEW(opal_value_t);
-        if (NULL == kv) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            return;
-        }
-        kv->key = strdup("hostname");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(newhost->nodename);
-        opal_list_append(newhost->records, &kv->super);
+    }
 
-        /* Send the collected inventory details to the database for storage */
-        if (0 <= orcm_sensor_base.dbhandle) {
-            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA,
-                              newhost->records, NULL, NULL, NULL);
-        }
+    kv = orcm_util_load_opal_value("hostname", newhost->nodename, OPAL_STRING);
+    opal_list_append(newhost->records, &kv->super);
+
+    /*Extract all required inventory items here */
+    extract_baseboard_inventory(topo, hostname, newhost);
+    extract_cpu_inventory(topo, hostname, newhost);
+    extract_cpu_freq_steps(freq_step_list, hostname, newhost);
+    extract_pci_inventory(topo, hostname, newhost);
+    extract_memory_inventory(topo, hostname, newhost);
+
+    /* Send the collected inventory details to the database for storage */
+    if (0 <= orcm_sensor_base.dbhandle) {
+        orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA,
+                          newhost->records, NULL, NULL, NULL);
     }
 }
 

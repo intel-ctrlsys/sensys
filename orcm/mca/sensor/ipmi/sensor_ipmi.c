@@ -21,6 +21,7 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "orcm/mca/db/db.h"
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/util/utils.h"
 
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/errmgr.h"
@@ -1374,15 +1375,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                 opal_list_append(oldhost->records,(opal_list_item_t *)mkv_copy);
             }
 
-            kv = OBJ_NEW(opal_value_t);
-            if (NULL == kv) {
-                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
-            }
-            kv->key = strdup("hostname");
-            kv->type = OPAL_STRING;
-            kv->data.string = strdup(oldhost->nodename);
-            opal_list_append(oldhost->records, &kv->super);
+            kv = orcm_util_load_opal_value("hostname", oldhost->nodename, OPAL_STRING);
 
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {
@@ -1399,14 +1392,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         /* Append the new node to the existing host list */
         opal_list_append(&ipmi_inventory_hosts, &newhost->super);
         
-        kv = OBJ_NEW(opal_value_t);
-        if (NULL == kv) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            return;
-        }
-        kv->key = strdup("hostname");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(newhost->nodename);
+        kv = orcm_util_load_opal_value("hostname", newhost->nodename, OPAL_STRING);
         opal_list_append(newhost->records, &kv->super);
 
         /* Send the collected inventory details to the database for storage */

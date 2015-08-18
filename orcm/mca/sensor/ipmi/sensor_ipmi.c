@@ -1381,7 +1381,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                                     "Unable to allocate data");
                 return;
             }
-            opal_list_append(newhost->records, &kv->super);
+            opal_list_prepend(oldhost->records, &kv->super);
 
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {
@@ -1404,7 +1404,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                                 "Unable to allocate data");
             return;
         }
-        opal_list_append(newhost->records, &kv->super);
+        opal_list_prepend(newhost->records, &kv->super);
 
         /* Send the collected inventory details to the database for storage */
         if (0 <= orcm_sensor_base.dbhandle) {

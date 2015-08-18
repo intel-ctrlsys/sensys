@@ -643,6 +643,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
 
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Compared values match for : hwloc; Do nothing");
+            return;
         } else {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Value mismatch : hwloc; Notify User; Update List; Update Database");

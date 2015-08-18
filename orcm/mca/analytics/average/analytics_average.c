@@ -25,7 +25,7 @@
 
 static int init(struct orcm_analytics_base_module_t *imod);
 static void finalize(struct orcm_analytics_base_module_t *imod);
-static void analyze(int sd, short args, void *cbdata);
+static int analyze(int sd, short args, void *cbdata);
 
 /* analyze function for each data of the sample */
 static orcm_metric_value_t* analyze_sample_item(orcm_analytics_value_t *current_value,
@@ -177,25 +177,28 @@ static orcm_metric_value_t* analyze_sample_item(orcm_analytics_value_t *current_
     return current_item->value_average;
 }
 
-static void analyze(int sd, short args, void *cbdata)
+static int analyze(int sd, short args, void *cbdata)
 {
     orcm_workflow_caddy_t *current_caddy = NULL;
     orcm_analytics_value_t *current_value = NULL;
     opal_value_array_t *analytics_average_array = NULL;
     mca_analytics_average_module_t *mod = NULL;
     orcm_metric_value_t *average_metric_value = NULL;
-    int index = -1, array_size = -1;
+    int index = -1, array_size = -1, rc = -1;
 
     if (NULL == cbdata) {
         OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
             "%s analytics:average:NULL caddy data passed by the previous workflow step",
             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-            return;
+            return ORCM_ERROR;
     }
 
     current_caddy = (orcm_workflow_caddy_t *)cbdata;
     array_size = opal_value_array_get_size(current_caddy->data);
-    orcm_analytics.array_create(&analytics_average_array, array_size);
+    rc = orcm_analytics.array_create(&analytics_average_array, array_size);
+    if (ORCM_SUCCESS != rc) {
+            return ORCM_ERR_OUT_OF_RESOURCE;
+    }
     mod = (mca_analytics_average_module_t *)current_caddy->imod;
 
     for (index = 0; index < array_size; index++) {
@@ -220,4 +223,6 @@ static void analyze(int sd, short args, void *cbdata)
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(current_caddy->wf, current_caddy->wf_step,
                                      analytics_average_array);
     OBJ_RELEASE(current_caddy);
+
+    return ORCM_SUCCESS;
 }

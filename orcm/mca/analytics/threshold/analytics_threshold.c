@@ -23,7 +23,7 @@
 
 static int init(struct orcm_analytics_base_module_t *imod);
 static void finalize(struct orcm_analytics_base_module_t *imod);
-static void analyze(int sd, short args, void *cbdata);
+static int analyze(int sd, short args, void *cbdata);
 
 mca_analytics_threshold_module_t orcm_analytics_threshold_module = {
     {
@@ -53,7 +53,7 @@ static void finalize(struct orcm_analytics_base_module_t *imod)
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 }
 
-static void analyze(int sd, short args, void *cbdata)
+static int analyze(int sd, short args, void *cbdata)
 {
     orcm_workflow_caddy_t *caddy = (orcm_workflow_caddy_t *)cbdata;
 #if 0
@@ -61,4 +61,6 @@ static void analyze(int sd, short args, void *cbdata)
     mod = (mca_analytics_threshold_module_t *)caddy->imod;
 #endif
     OBJ_RELEASE(caddy);
+
+    return ORCM_SUCCESS;
 }

@@ -25,7 +25,7 @@
 
 static int init(struct orcm_analytics_base_module_t *imod);
 static void finalize(struct orcm_analytics_base_module_t *imod);
-static void analyze(int sd, short args, void *cbdata);
+static int analyze(int sd, short args, void *cbdata);
 
 mca_analytics_filter_module_t orcm_analytics_filter_module = { { init, finalize,
         analyze } };
@@ -292,10 +292,12 @@ static int analytics_filter_data(opal_value_array_t *filter_sample_array,
     return ORCM_SUCCESS;
 }
 
-static void analyze(int sd, short args, void *cbdata)
+static int analyze(int sd, short args, void *cbdata)
 {
     orcm_workflow_caddy_t *filter_analyze_caddy = NULL;
     opal_value_array_t *filter_sample_array = NULL;
+    orcm_analytics_value_t *verbose_value;
+    unsigned int verbose_count;
     int analytics_rc = -1, rc = -1;
 
     filter_workflow_value_t *workflow_value = (filter_workflow_value_t *)malloc(
@@ -303,14 +305,14 @@ static void analyze(int sd, short args, void *cbdata)
     if ( NULL == workflow_value) {
         OPAL_OUTPUT_VERBOSE((1, orcm_analytics_base_framework.framework_output,
                             "%s Insufficient data", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        return;
+        return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
     if ( NULL == cbdata) {
         OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
             "%s analytics:average:NULL caddy data passed by the previous workflow step",
             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        return;
+        return ORCM_ERROR;
     }
 
     filter_analyze_caddy = (orcm_workflow_caddy_t *) cbdata;
@@ -321,17 +323,26 @@ static void analyze(int sd, short args, void *cbdata)
 
     rc = filter_parse_workflow(cbdata, workflow_value);
     if (ORCM_SUCCESS != rc) {
-        return;
+        return ORCM_ERROR;
     }
 
     analytics_rc = filter_analytics_array_create(&filter_sample_array);
     if (ORCM_SUCCESS != analytics_rc) {
-        return;
+        return ORCM_ERROR;
     }
 
     rc = analytics_filter_data(filter_sample_array, workflow_value, cbdata);
     if (ORCM_SUCCESS != rc) {
-        return;
+        return ORCM_ERROR;
+    }
+
+    for(verbose_count = 0; verbose_count < filter_sample_array->array_size; verbose_count++) {
+        verbose_value = opal_value_array_get_item(filter_sample_array, verbose_count);
+
+        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output, "%s"
+            "FILTERED DATA Based on Sensor Name: %s | Hostname %s | Data %f",
+              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), verbose_value->sensor_name, verbose_value->node_regex,
+              verbose_value->data.value.data.fval));
     }
 
     /* load data to database if needed */
@@ -343,4 +354,6 @@ static void analyze(int sd, short args, void *cbdata)
                                      filter_analyze_caddy->wf_step, filter_sample_array);
 
     OBJ_RELEASE(filter_analyze_caddy);
+
+    return ORCM_SUCCESS;
 }

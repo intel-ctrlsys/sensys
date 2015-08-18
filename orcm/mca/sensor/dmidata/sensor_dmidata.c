@@ -620,6 +620,8 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     int32_t n, rc;
     dmidata_inventory_t *newhost;
     char *freq_step_list;
+    opal_value_t *kv;
+
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &topo, &n, OPAL_HWLOC_TOPO))) {
         ORTE_ERROR_LOG(rc);
@@ -658,10 +660,20 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             extract_pci_inventory(topo, hostname, newhost);
             extract_memory_inventory(topo, hostname, newhost);
 
+            kv = OBJ_NEW(opal_value_t);
+            if (NULL == kv) {
+                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+                return;
+            }
+            kv->key = strdup("hostname");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(newhost->nodename);
+            opal_list_append(newhost->records, &kv->super);
+
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {
-                orcm_db.update_node_features(orcm_sensor_base.dbhandle,
-                    newhost->nodename, newhost->records, NULL, NULL);
+                orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA,
+                                  newhost->records, NULL, NULL, NULL);
             }
         }
     } else { /* Node not found, Create new node and attach inventory details */
@@ -682,10 +694,20 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         /* Append the new node to the existing host list */
         opal_list_append(&dmidata_host_list, &newhost->super);
 
+        kv = OBJ_NEW(opal_value_t);
+        if (NULL == kv) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            return;
+        }
+        kv->key = strdup("hostname");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(newhost->nodename);
+        opal_list_append(newhost->records, &kv->super);
+
         /* Send the collected inventory details to the database for storage */
         if (0 <= orcm_sensor_base.dbhandle) {
-            orcm_db.update_node_features(orcm_sensor_base.dbhandle, newhost->nodename , newhost->records, 
-            NULL, NULL);
+            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA,
+                              newhost->records, NULL, NULL, NULL);
         }
     }
 }

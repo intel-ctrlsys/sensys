@@ -1311,6 +1311,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     int rc, n;
     ipmi_inventory_t *newhost, *oldhost;
     orcm_metric_value_t *mkv, *mkv_copy;
+    opal_value_t *kv;
 
     newhost = OBJ_NEW(ipmi_inventory_t);
     newhost->nodename = strdup(hostname);
@@ -1372,9 +1373,20 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                 }
                 opal_list_append(oldhost->records,(opal_list_item_t *)mkv_copy);
             }
+
+            kv = OBJ_NEW(opal_value_t);
+            if (NULL == kv) {
+                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+                return;
+            }
+            kv->key = strdup("hostname");
+            kv->type = OPAL_STRING;
+            kv->data.string = strdup(oldhost->nodename);
+            opal_list_append(oldhost->records, &kv->super);
+
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {
-                orcm_db.update_node_features(orcm_sensor_base.dbhandle, oldhost->nodename , oldhost->records, NULL, NULL);
+                orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA , oldhost->records, NULL, NULL, NULL);
             }
         } else {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -1386,10 +1398,20 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     } else {
         /* Append the new node to the existing host list */
         opal_list_append(&ipmi_inventory_hosts, &newhost->super);
+        
+        kv = OBJ_NEW(opal_value_t);
+        if (NULL == kv) {
+            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+            return;
+        }
+        kv->key = strdup("hostname");
+        kv->type = OPAL_STRING;
+        kv->data.string = strdup(newhost->nodename);
+        opal_list_append(newhost->records, &kv->super);
 
         /* Send the collected inventory details to the database for storage */
         if (0 <= orcm_sensor_base.dbhandle) {
-            orcm_db.update_node_features(orcm_sensor_base.dbhandle, newhost->nodename , newhost->records, NULL, NULL);
+            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA , newhost->records, NULL, NULL, NULL);
         }
     }
 }

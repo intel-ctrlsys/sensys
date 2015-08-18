@@ -668,6 +668,11 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     }
 
     kv = orcm_util_load_opal_value("hostname", newhost->nodename, OPAL_STRING);
+    if (NULL == kv) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "Unable to allocate data");
+        return;
+    }
     opal_list_append(newhost->records, &kv->super);
 
     /*Extract all required inventory items here */

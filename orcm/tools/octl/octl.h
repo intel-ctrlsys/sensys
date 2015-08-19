@@ -170,12 +170,9 @@ static orcm_cli_init_t cli_init[] = {
 
     /****** logical group command ******/
     { { NULL }, "grouping", 0, 0, "Logical Grouping Information" },
-    { { "grouping", NULL }, "load", 0, 1, "Load a logical grouping to replace default: load <new logical grouping file>" },
     { { "grouping", NULL }, "add", 0, 2, "Add a tag-value pair to the groupings: add <tag> <node-regex>" },
     { { "grouping", NULL }, "remove", 0, 2, "Remove a tag-value pair to the groupings: remove <tag> <node-regex>" },
-    { { "grouping", NULL }, "save", 0, 1, "Save current logical grouping to a file: save <target output file>" },
-    { { "grouping", NULL }, "listnode", 0, 1, "List nodes associated with a given tag: listnode <tag>" },
-    { { "grouping", NULL }, "listtag", 0, 1, "List tags associated with given nodes: listtag <node regex>" },
+    { { "grouping", NULL }, "list", 0, 2, "List tag-value pair. Use * for either tag or node: list <tag> <node-regex>" },
 
     /****** Analytics workflow commands ******/
     { { NULL }, "analytics", 0, 0, "Analytics information" },
@@ -229,13 +226,10 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "sensor",            //30
                                      "sample-rate",       //31
                                      "grouping",          //32
-                                     "load",              //33
-                                     "save",              //34
-                                     "listnode",          //35
-                                     "listtag",           //36
-                                     "quit\/Exit",        //37
-                                     "analytics",         //38
-                                     "workflow",          //39
+                                     "list",              //33
+                                     "quit\/Exit",        //34
+                                     "analytics",         //35
+                                     "workflow",          //36
                                      "\0" };
 
 END_C_DECLS

@@ -9,13 +9,13 @@
 
 #include "orcm/tools/octl/common.h"
 #include "orcm/tools/octl/octl.h"
+#include "orcm/util/logical_group.h"
 
 /******************
  * Local Functions
  ******************/
 static int orcm_octl_work(int argc, char *argv[]);
 static int run_cmd(char *cmd);
-static int octl_facility_setup(void);
 static int octl_facility_cleanup(void);
 static void octl_print_illegal_command(char *cmd);
 static void octl_print_error(int rc);
@@ -55,22 +55,11 @@ opal_cmd_line_init_t cmd_line_opts[] = {
     { NULL, '\0', NULL, NULL, 0, NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
 };
 
-/*****************************************
- * Global facilities
- *****************************************/
-opal_list_t logro; //Of type orcm_logro_pair_t
-
 int
 main(int argc, char *argv[])
 {
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
-        erri = octl_facility_setup();
-        if (ORCM_SUCCESS != erri) {
-            fprintf(stderr, "octl setup failed.\n");
-            break;
-        }
-
         /* initialize, parse command line, and setup frameworks */
         erri = orcm_octl_work(argc, argv);
         if (ORCM_SUCCESS != erri) {
@@ -177,7 +166,7 @@ static int orcm_octl_work(int argc, char *argv[])
         orcm_cli_create(&cli, cli_init);
         /* give help on top level commands */
         printf("*** WELCOME TO OCTL ***\n Possible commands:\n");
-        orcm_cli_print_cmd_help(&cli, NULL); 
+        orcm_cli_print_cmd_help(&cli, NULL);
 
         while (true == interactive) {
             mycmd = NULL;
@@ -237,7 +226,7 @@ static int octl_command_to_int(char *command)
     return -1;
 }
 
-static int run_cmd(char *cmd) 
+static int run_cmd(char *cmd)
 {
     char **cmdlist = NULL;
     int rc;
@@ -594,30 +583,21 @@ static int run_cmd(char *cmd)
         }
         switch (rc)
         {
-        case 33: //load
-            rc = orcm_octl_grouping_load(sz_cmdlist, cmdlist, &logro);
-            break;
         case 5: //add
-            rc = orcm_octl_grouping_add(sz_cmdlist, cmdlist, &logro);
+            rc = orcm_octl_grouping_add(sz_cmdlist, cmdlist);
             break;
         case 6: //remove
-            rc = orcm_octl_grouping_remove(sz_cmdlist, cmdlist, &logro);
+            rc = orcm_octl_grouping_remove(sz_cmdlist, cmdlist);
             break;
-        case 34: //save
-            rc = orcm_octl_grouping_save(sz_cmdlist, cmdlist, &logro);
-            break;
-        case 35: //listnode
-            rc = orcm_octl_grouping_listnode(sz_cmdlist, cmdlist, &logro);
-            break;
-        case 36: //listtag
-            rc = orcm_octl_grouping_listtag(sz_cmdlist, cmdlist, &logro);
+        case 33: //list
+            rc = orcm_octl_grouping_list(sz_cmdlist, cmdlist);
             break;
         default:
             rc = ORCM_ERROR;
             break;
         }
         break;
-    case 38: //Analytics
+    case 35: //Analytics
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
             rc = ORCM_ERROR;
@@ -625,7 +605,7 @@ static int run_cmd(char *cmd)
         }
         switch (rc)
         {
-        case 39: //workflow
+        case 36: //workflow
             rc = octl_command_to_int(cmdlist[2]);
             if (-1 == rc) {
                 rc = ORCM_ERROR;
@@ -668,16 +648,10 @@ static int run_cmd(char *cmd)
     return rc;
 }
 
-static int octl_facility_setup(void)
-{
-    OBJ_CONSTRUCT(&logro, opal_list_t);
-    return ORCM_SUCCESS;
-}
-
 static int octl_facility_cleanup(void)
 {
-    OBJ_DESTRUCT(&logro);
-    return ORCM_SUCCESS;
+    int erri = orcm_logical_group_delete();
+    return erri;
 }
 
 static void octl_print_illegal_command(char *cmd)
@@ -699,5 +673,5 @@ static void octl_print_error(int rc)
         } else {
             fprintf(stderr, "\nERROR: Internal\n");
         }
-    } 
+    }
 }

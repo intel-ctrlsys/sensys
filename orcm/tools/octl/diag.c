@@ -1,7 +1,4 @@
 /*
-  inodes>
-    <value>raj-linux-01</value>
-  </nodes>
  * Copyright (c) 2014      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  * 

@@ -7,278 +7,194 @@
  * $HEADER$
  */
 #include "orcm/tools/octl/common.h"
+#include "orcm/util/logical_group.h"
 #include "orte/util/regex.h"
 
 #define VERBO 0
 #define OUTID 0
 
-#define MSG0(verbosity, id, txt) fprintf(stderr,txt)
-#define MSG1(verbosity, id, txt, arg1) fprintf(stderr,txt,arg1)
+#define MSG_HEADER ""
+#define MSG_FOOTER "\n"
 
-static void logro_pair_ctor(orcm_logro_pair_t *ptr)
+#define ORCM_OCTL_GROUPING_MSG0(verbosity, id, txt)       fprintf(stdout,MSG_HEADER txt MSG_FOOTER)
+#define ORCM_OCTL_GROUPING_MSG2(verbosity, id, txt, arg1, arg2) fprintf(stdout,MSG_HEADER txt MSG_FOOTER,arg1,arg2)
+
+#define ORCM_OCTL_GROUPING_EMSG0(verbosity, id, txt)       fprintf(stderr,MSG_HEADER"ERROR: "txt MSG_FOOTER)
+#define ORCM_OCTL_GROUPING_EMSG1(verbosity, id, txt, arg1) fprintf(stderr,MSG_HEADER"ERROR: "txt MSG_FOOTER,arg1)
+
+int orcm_octl_grouping_add(int argc, char **argv)
 {
-    ptr->tag = NULL;
-    ptr->nodename = NULL;
-}
-static void logro_pair_dtor(orcm_logro_pair_t *ptr)
-{
-    if (NULL != ptr->tag) {
-        free(ptr->tag);
-        ptr->tag = NULL;
-    }
-    if (NULL != ptr->nodename) {
-        free(ptr->nodename);
-        ptr->nodename = NULL;
-    }
-}
-OBJ_CLASS_INSTANCE(orcm_logro_pair_t, opal_list_item_t,
-                   logro_pair_ctor, logro_pair_dtor);
-
-static int grouping_parse_from_file(opal_list_t * io_group,
-                                    const char * in_filename)
-{
-    int erri = ORCM_SUCCESS;
-    while (ORCM_SUCCESS == erri) {
-        if (NULL == io_group || NULL == in_filename || '\0' == in_filename[0]) {
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-
-        printf("TODO: parse in_filename =  %s\n", in_filename);
-
-        break;
-    }
-    return erri;
-}
-
-static int grouping_save_to_file(opal_list_t * io_group,
-                                 const char * in_filename)
-{
-    int erri = ORCM_SUCCESS;
-    while (ORCM_SUCCESS == erri) {
-
-        printf("TODO: emit in_filename =  %s\n", in_filename);
-
-        break;
-    }
-    return erri;
-}
-
-int orcm_octl_grouping_load(int argc, char **argv, opal_list_t * io_group)
-{
-    int erri = ORCM_SUCCESS;
-    while (ORCM_SUCCESS == erri) {
-        if (3 != argc) {
-            MSG1(VERBO,OUTID,"\nIncorrect argument count. One needed, %d provided.\n", argc);
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-
-        const char * filename = argv[2];
-
-        erri = grouping_parse_from_file(io_group, filename);
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
-        break;
-    }
-    return erri;
-}
-
-int orcm_octl_grouping_add(int argc, char **argv, opal_list_t * io_group)
-{
-    char ** nodelist = NULL;
-    int sz_nodelist = 0;
+    char * local_argv[4] = {0};
 
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
         if (4 != argc) {
-            MSG1(VERBO,OUTID,"\nIncorrect argument count. Two needed, %d provided.\n", argc);
+            ORCM_OCTL_GROUPING_EMSG1(VERBO,OUTID,"Incorrect argument count. Two needed, %d provided.", argc -2);
+            ORCM_OCTL_GROUPING_EMSG0(VERBO,OUTID,"Correct syntax: [octl] grouping add <tag> <node>");
             erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
-        if (NULL == io_group) {
-            MSG0(VERBO,OUTID,"\nDuring addition,bad grouping provided.\n");
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-
-        const char * tag = argv[2];
+        char * tag = argv[2];
         char * noderegex = argv[3];
 
-        erri = orte_regex_extract_node_names(noderegex, &nodelist);
-        if (ORTE_SUCCESS != erri) {
-            break;
-        }
-        sz_nodelist = opal_argv_count(nodelist);
-
-        int i;
-        for (i=0; i<sz_nodelist; ++i) {
-            orcm_logro_pair_t * p = NULL;
-            p = OBJ_NEW(orcm_logro_pair_t);
-            if (NULL == p) {
-                erri = ORCM_ERR_OUT_OF_RESOURCE;
-                break;
-            }
-            p->tag = strdup(tag);
-            p->nodename = strdup(nodelist[i]);
-            opal_list_append(io_group, &p->super);
-            p = NULL;
-        }
+        erri = orcm_logical_group_init();
         if (ORCM_SUCCESS != erri) {
             break;
         }
+
+        if( ! opal_list_is_empty(LGROUP.logro)){
+            OBJ_DESTRUCT(LGROUP.logro);
+            OBJ_CONSTRUCT(LGROUP.logro, opal_list_t);
+        }
+
+        local_argv[2] = LGROUP.storage_filename;
+        erri = orcm_grouping_op_load(3, &local_argv[0], LGROUP.logro);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        local_argv[2] = tag;
+        local_argv[3] = noderegex;
+        erri = orcm_grouping_op_add(4, &local_argv[0], LGROUP.logro);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        local_argv[2] = LGROUP.storage_filename;
+        erri = orcm_grouping_op_save(3, &local_argv[0], LGROUP.logro);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        ORCM_OCTL_GROUPING_MSG0(VERBO,OUTID, "Data added.");
+
         break;
     }
-
-    opal_argv_free(nodelist);
-    nodelist = NULL;
-    sz_nodelist = 0;
 
     return erri;
 }
 
-int orcm_octl_grouping_remove(int argc, char **argv, opal_list_t * io_group)
+int orcm_octl_grouping_remove(int argc, char **argv)
 {
-    char ** nodelist = NULL;
-    int sz_nodelist = 0;
+    char * local_argv[4] = {0};
 
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
         if (4 != argc) {
-            MSG1(VERBO,OUTID,"\nIncorrect argument count. Two needed, %d provided.\n", argc);
+            ORCM_OCTL_GROUPING_EMSG1(VERBO,OUTID,"Incorrect argument count. Two needed, %d provided.", argc -2);
+            ORCM_OCTL_GROUPING_EMSG0(VERBO,OUTID,"Correct syntax: [octl] grouping remove <tag> <node>");
             erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
-        if (NULL == io_group || opal_list_is_empty(io_group)) {
-            //There is no logical grouping. Nothing to remove.
-            break;
-        }
-
-        const char * tag = argv[2];
-        char * noderegex = argv[3];
-
-        erri = orte_regex_extract_node_names(noderegex, &nodelist);
-        if (ORTE_SUCCESS != erri) {
-            break;
-        }
-        sz_nodelist = opal_argv_count(nodelist);
-
-        int k;
-        for (k = 0; k < sz_nodelist; ++k) {
-            const char * nodname = nodelist[k];
-            orcm_logro_pair_t * itr = NULL;
-            orcm_logro_pair_t * next = NULL;
-            OPAL_LIST_FOREACH_SAFE(itr, next, io_group, orcm_logro_pair_t) {
-                if (0 == strcmp(nodname, itr->nodename)) {
-                    if (0 == strcmp(tag, itr->tag)) {
-                        opal_list_remove_item(io_group, &itr->super);
-                        OBJ_RELEASE(itr);
-                    }
-                }
-            }
-        }
-
-        break;
-    }
-
-    opal_argv_free(nodelist);
-    nodelist=NULL;
-    sz_nodelist = 0;
-
-    return erri;
-}
-
-int orcm_octl_grouping_save(int argc, char **argv, opal_list_t * io_group)
-{
-    int erri = ORCM_SUCCESS;
-    while (ORCM_SUCCESS == erri) {
-        if (3 != argc) {
-            MSG1(VERBO,OUTID,"\nIncorrect argument count. One needed, %d provided.\n", argc);
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-
-        if (NULL == io_group || opal_list_is_empty(io_group)) {
-            //There is no logical grouping.
-            break;
-        }
-
-        const char * filename = argv[2];
-
-        erri = grouping_save_to_file(io_group, filename);
+        erri = orcm_logical_group_init();
         if (ORCM_SUCCESS != erri) {
             break;
         }
 
+        if( ! opal_list_is_empty(LGROUP.logro)){
+            OBJ_DESTRUCT(LGROUP.logro);
+            OBJ_CONSTRUCT(LGROUP.logro, opal_list_t);
+        }
+
+        local_argv[2] = LGROUP.storage_filename;
+        erri = orcm_grouping_op_load(3, &local_argv[0], LGROUP.logro);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        char * tag = argv[2];
+        char * noderegex = argv[3];
+
+        local_argv[2] = tag;
+        local_argv[3] = noderegex;
+
+        erri = orcm_grouping_op_remove(4, &local_argv[0], LGROUP.logro);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        local_argv[2] = LGROUP.storage_filename;
+        erri = orcm_grouping_op_save(3, &local_argv[0], LGROUP.logro);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        ORCM_OCTL_GROUPING_MSG0(VERBO,OUTID, "Data removed.");
+
         break;
     }
     return erri;
 }
 
-int orcm_octl_grouping_listnode(int argc, char **argv, opal_list_t * io_group)
+int orcm_octl_grouping_list(int argc, char **argv)
 {
+    char ** nodelist = NULL;
+    int sz_nodelist = 0;
+
+    char * local_argv[4] = {0};
+
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
-        if (3 != argc) {
-            MSG1(VERBO,OUTID,"\nIncorrect argument count. One needed, %d provided.\n", argc);
+        if (4 != argc) {
+            ORCM_OCTL_GROUPING_EMSG1(VERBO,OUTID,"Incorrect argument count. Two needed, %d provided.", argc -2);
+            ORCM_OCTL_GROUPING_EMSG0(VERBO,OUTID,"Correct syntax: [octl] grouping list <tag> <node>");
             erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
-        if (NULL == io_group || opal_list_is_empty(io_group)) {
+        erri = orcm_logical_group_init();
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        if( ! opal_list_is_empty(LGROUP.logro)){
+            OBJ_DESTRUCT(LGROUP.logro);
+            OBJ_CONSTRUCT(LGROUP.logro, opal_list_t);
+        }
+
+        local_argv[2] = LGROUP.storage_filename;
+        erri = orcm_grouping_op_load(3, &local_argv[0], LGROUP.logro);
+        if (ORCM_SUCCESS != erri) {
+            break;
+        }
+
+        if (opal_list_is_empty(LGROUP.logro))
+        {
             //There is no logical grouping. Nothing to list out.
+            ORCM_OCTL_GROUPING_MSG0(VERBO,OUTID, "\n");
             break;
         }
 
-        const char * tag = argv[2];
+        char * tag = argv[2];
+        char * noderegex = argv[3];
+
+        int do_all_tag = is_do_all_wildcard(tag);
 
         orcm_logro_pair_t * itr = NULL;
-        OPAL_LIST_FOREACH(itr, io_group, orcm_logro_pair_t) {
-            if (0 == strcmp(tag, itr->tag)) {
-                fprintf(stdout,"%s\n", itr->nodename);
+        if (is_do_all_wildcard(noderegex)) {
+            OPAL_LIST_FOREACH(itr, LGROUP.logro, orcm_logro_pair_t) {
+                if (do_all_tag || 0 == strcmp(tag, itr->tag)) {
+                    ORCM_OCTL_GROUPING_MSG2(VERBO,OUTID, "%s\n %s", itr->tag, itr->nodename);
+                }
             }
-        }
-        break;
-    }
-    return erri;
-}
+        } else {
+            erri = orte_regex_extract_node_names(noderegex, &nodelist);
+            if (ORTE_SUCCESS != erri) {
+                break;
+            }
+            sz_nodelist = opal_argv_count(nodelist);
 
-int orcm_octl_grouping_listtag(int argc, char **argv, opal_list_t * io_group)
-{
-    char ** nodelist = NULL;
-    int sz_nodelist = 0;
-
-    int erri = ORCM_SUCCESS;
-    while (ORCM_SUCCESS == erri) {
-        if (3 != argc) {
-            MSG1(VERBO,OUTID,"\nIncorrect argument count. One needed, %d provided.\n", argc);
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-
-        if (NULL == io_group || opal_list_is_empty(io_group)) {
-            //There is no logical grouping. Nothing to list out.
-            break;
-        }
-
-        char * noderegex = argv[2];
-
-        erri = orte_regex_extract_node_names(noderegex, &nodelist);
-        if (ORTE_SUCCESS != erri) {
-            break;
-        }
-        sz_nodelist = opal_argv_count(nodelist);
-
-        int k;
-        for (k = 0; k < sz_nodelist; ++k) {
-            const char * nodname = nodelist[k];
-            orcm_logro_pair_t * itr = NULL;
-            OPAL_LIST_FOREACH(itr, io_group, orcm_logro_pair_t) {
-                if (0 == strcmp(nodname, itr->nodename)) {
-                    fprintf(stdout,"%s\n", itr->tag);
+            int k;
+            for (k = 0; k < sz_nodelist; ++k) {
+                const char * nodname = nodelist[k];
+                OPAL_LIST_FOREACH(itr, LGROUP.logro, orcm_logro_pair_t) {
+                    if (0 == strcmp(nodname, itr->nodename) &&
+                        (do_all_tag || 0 == strcmp(tag, itr->tag)) )
+                    {
+                        ORCM_OCTL_GROUPING_MSG2(VERBO,OUTID, "%s\n %s", itr->tag, itr->nodename);
+                    }
                 }
             }
         }

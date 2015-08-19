@@ -13,10 +13,13 @@
 headers += \
         util/utils.h \
         util/cli.h \
-        util/attr.h
+        util/attr.h \
+        util/logical_group.h
 
 liborcm_la_SOURCES += \
         util/error_strings.c \
         util/utils.c \
         util/cli.c \
-        util/attr.c
+        util/attr.c \
+	util/logical_group.c
+

@@ -42,8 +42,6 @@
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/version.h"
 
-#include "grouping.h"
-
 BEGIN_C_DECLS
 
 int orcm_octl_resource_status(char **argv);
@@ -71,12 +69,9 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv);
 int orcm_octl_sensor_sample_rate_get(int cmd, char **argv);
 int orcm_octl_sensor_policy_set(int cmd, char **argv);
 int orcm_octl_sensor_policy_get(int cmd, char **argv);
-int orcm_octl_grouping_load(int argc, char **argv, opal_list_t * io_group);
-int orcm_octl_grouping_add(int argc, char **argv, opal_list_t * io_group);
-int orcm_octl_grouping_remove(int argc, char **argv, opal_list_t * io_group);
-int orcm_octl_grouping_save(int argc, char **argv, opal_list_t * io_group);
-int orcm_octl_grouping_listnode(int argc, char **argv, opal_list_t * io_group);
-int orcm_octl_grouping_listtag(int argc, char **argv, opal_list_t * io_group);
+int orcm_octl_grouping_add(int argc, char **argv);
+int orcm_octl_grouping_remove(int argc, char **argv);
+int orcm_octl_grouping_list(int argc, char **argv);
 int orcm_octl_analytics_workflow_add(char *file);
 int orcm_octl_analytics_workflow_remove(char **value);
 int orcm_octl_analytics_workflow_list (char **value);

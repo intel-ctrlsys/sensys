@@ -1796,14 +1796,20 @@ static int odbc_store_node_features(mca_db_odbc_module_t *mod,
     }
 
     /* Bind hostname parameter. */
-    ret = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
-                           0, 0, (SQLPOINTER)hostname, strlen(hostname), NULL);
-    if (!(SQL_SUCCEEDED(ret))) {
-        rc = ORCM_ERROR;
-        ERR_MSG_FMT_UNF("SQLBindParameter 1 returned: %d", ret);
-        goto cleanup_and_exit;
+    if (NULL == hostname) {
+        ERR_MSG_UNF("No hostname provided");
+        rc = ORCM_ERR_BAD_PARAM;
+	goto cleanup_and_exit;
     }
-
+    else {
+    	ret = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+        	                   0, 0, (SQLPOINTER)hostname, strlen(hostname), NULL);
+    	if (!(SQL_SUCCEEDED(ret))) {
+        	rc = ORCM_ERROR;
+        	ERR_MSG_FMT_UNF("SQLBindParameter 1 returned: %d", ret);
+        	goto cleanup_and_exit;
+    	}
+    }
     /* Bind data type parameter. */
     ret = SQLBindParameter(stmt, 3, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER,
                            0, 0, (SQLPOINTER)&item.opal_type,

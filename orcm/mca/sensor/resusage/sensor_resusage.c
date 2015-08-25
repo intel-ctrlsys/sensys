@@ -575,7 +575,12 @@ static void res_log(opal_buffer_t *sample)
             }
             kv->key = strdup("data_group");
             kv->type = OPAL_STRING;
-            kv->data.string = strdup(primary_key);
+	    if (NULL == primary_key){
+	    	return;
+	    }
+	    else {
+            	kv->data.string = strdup(primary_key);
+	    }
             opal_list_append(vals, &kv->super);
 
             sensor_metric = OBJ_NEW(orcm_metric_value_t);

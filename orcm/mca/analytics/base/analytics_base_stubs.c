@@ -20,7 +20,7 @@
 #include "orte/mca/rml/rml.h"
 #include "orte/util/name_fns.h"
 
-#include "orcm/runtime/orcm_progress.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
@@ -30,7 +30,6 @@ static int orcm_analytics_base_workflow_step_create(orcm_workflow_t *wf,
                                                     opal_value_t **values, int i);
 static int orcm_analytics_base_create_new_workflow_event_base(orcm_workflow_t *wf);
 static int orcm_analytics_base_create_event_base(orcm_workflow_t *wf, char *threadname);
-static void* orcm_analytics_base_progress_thread_engine(opal_object_t *obj);
 static int orcm_analytics_base_parse_attributes(opal_list_t *attr_list, char *attr_string);
 static int orcm_analytics_base_subtokenize_attributes(char **tokens, opal_list_t *attr_list);
 static void orcm_analytics_base_append_attributes(char **subtokens, opal_list_t *attr_list);
@@ -112,6 +111,9 @@ static orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *
     orcm_workflow_caddy_t *caddy = NULL;
 
     caddy = OBJ_NEW(orcm_workflow_caddy_t);
+    if (NULL == caddy) {
+        return NULL;
+    }
 
     OBJ_RETAIN(wf);
     caddy->wf = wf;
@@ -144,6 +146,13 @@ void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
     orcm_workflow_caddy_t *caddy = NULL;
 
     caddy = orcm_analytics_base_create_caddy(wf, wf_step, data);
+
+    if (NULL == caddy) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                             "%s analytics:base:caddy can't be created, do nothing!",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+        return;
+    }
 
 #ifdef ANALYTICS_TAP_INFO
     orcm_analytics_base_tapinfo(wf_step, data);
@@ -213,28 +222,12 @@ static int orcm_analytics_base_parse_attributes(opal_list_t *attr_list, char *at
     return ret;
 }
 
-static void* orcm_analytics_base_progress_thread_engine(opal_object_t *obj)
-{
-    opal_thread_t *thread = (opal_thread_t *)obj;
-    orcm_workflow_t *wf = (orcm_workflow_t *)thread->t_arg;
-
-    while (true == wf->ev_active) {
-        opal_event_loop(wf->ev_base, OPAL_EVLOOP_ONCE);
-    }
-    return OPAL_THREAD_CANCELLED;
-}
-
-
 static int orcm_analytics_base_create_event_base(orcm_workflow_t *wf, char *threadname)
 {
 
     wf->ev_active = true;
-    if (NULL ==
-        (wf->ev_base = orcm_start_progress_thread(threadname,
-                                                  orcm_analytics_base_progress_thread_engine,
-                                                  (void *)wf))) {
+    if (NULL == (wf->ev_base = opal_start_progress_thread(threadname, true))) {
         wf->ev_active = false;
-        free(threadname);
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
     return ORCM_SUCCESS;
@@ -259,6 +252,10 @@ static int orcm_analytics_base_workflow_step_create(orcm_workflow_t *wf,
     int rc;
 
     wf_step = OBJ_NEW(orcm_workflow_step_t);
+
+    if (NULL == wf_step) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
 
     wf_step->analytic = strdup(values[i]->data.string);
 
@@ -290,6 +287,9 @@ static orcm_workflow_t* orcm_analytics_base_workflow_object_init(int *wfid)
     orcm_workflow_t *wf = NULL;
 
     wf = OBJ_NEW(orcm_workflow_t);
+    if (NULL == wf) {
+        return NULL;
+    }
     wf->workflow_id = workflow_id;
     workflow_id++;
     *wfid = wf->workflow_id;
@@ -352,9 +352,6 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
     return ORCM_SUCCESS;
 
 error:
-    if (NULL != buffer) {
-        OBJ_RELEASE(buffer);
-    }
     if (NULL != wf) {
         OBJ_RELEASE(wf);
     }
@@ -393,7 +390,7 @@ static int orcm_analytics_base_workflow_list_append_ids(opal_buffer_t *buffer, s
             temp++;
         }
     }
-    rc = analytics_base_recv_pack_int(buffer, workflow_ids, size);
+    rc = orcm_analytics_base_recv_pack_int(buffer, workflow_ids, size);
     return rc;
 }
 
@@ -403,7 +400,7 @@ int orcm_analytics_base_workflow_list(opal_buffer_t *buffer)
     int rc;
 
     workflow_list_size = opal_list_get_size(&orcm_analytics_base_wf.workflows);
-    rc = analytics_base_recv_pack_int(buffer, (int *)&workflow_list_size, ANALYTICS_COUNT_DEFAULT);
+    rc = orcm_analytics_base_recv_pack_int(buffer, (int *)&workflow_list_size, ANALYTICS_COUNT_DEFAULT);
     if (ORCM_SUCCESS != rc) {
         return rc;
     }

@@ -753,7 +753,12 @@ int orcm_node_names(char *in_regexp, char ***o_names)
         }
 
         char * tag = in_regexp;
-        while('\0' != *tag && ' ' != *tag && '\t' != *tag) {
+        if (NULL  == tag) {
+            erri = ORCM_ERR_BAD_PARAM;
+            break;
+        }
+
+        while('\0' != *tag && (' ' == *tag || '\t' == *tag)) {
             ++tag;
         }
 

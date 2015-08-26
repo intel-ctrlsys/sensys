@@ -947,14 +947,12 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
     }
 
     kv = param_items[0];
-    if (!strcmp(kv->key, "hostname")) {
-        if (OPAL_STRING == kv->type) {
-            hostname = kv->data.string;
-        } else {
-            ERR_MSG_UNF("Invalid value type specified for hostname");
-            rc = ORCM_ERR_BAD_PARAM;
-            goto cleanup_and_exit;
-        }
+    if (OPAL_STRING == kv->type) {
+        hostname = kv->data.string;
+    } else {
+        ERR_MSG_UNF("Invalid value type specified for hostname");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
     }
 
     if (num_items <= (size_t)NUM_PARAMS) {

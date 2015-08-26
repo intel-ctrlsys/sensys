@@ -576,10 +576,10 @@ static void res_log(opal_buffer_t *sample)
             kv->key = strdup("data_group");
             kv->type = OPAL_STRING;
 	    if (NULL == primary_key){
-	    	return;
+	        return;
 	    }
 	    else {
-            	kv->data.string = strdup(primary_key);
+            kv->data.string = strdup(primary_key);
 	    }
             opal_list_append(vals, &kv->super);
 

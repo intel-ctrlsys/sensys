@@ -97,7 +97,7 @@ int find_items(const char *keys[], int num_keys, opal_list_t *list,
     int num_found = 0;
     bool found[num_keys];
     for(j=0;j<num_keys;j++)
-    {	
+    {
 	found[j]= false;
     }
     OPAL_LIST_FOREACH(kv, list, opal_value_t) {

@@ -159,7 +159,9 @@ int get_newline(FILE * in_fin, char * io_line, int in_max_line_length,
         return ORCM_SUCCESS;
     }
 
-    io_line[strlen(io_line)-1] = '\0';  /* remove newline */
+    if ('\0' != io_line[0]) {
+        io_line[strlen(io_line)-1] = '\0';  /* remove newline */
+    }
 
     return ORCM_SUCCESS;
 }
@@ -413,7 +415,7 @@ int grouping_save_to_file(opal_list_t * io_group, const char * in_filename)
 
         orcm_logro_pair_t * itr = NULL;
         OPAL_LIST_FOREACH(itr, io_group, orcm_logro_pair_t) {
-            if (NULL == itr || NULL == itr->tag || NULL == itr->nodename) {
+            if (NULL == itr->tag || NULL == itr->nodename) {
                 continue;
             }
             if ('\0' == itr->tag[0] || '\0' == itr->nodename[0]) {
@@ -650,11 +652,17 @@ int orcm_grouping_list(char * in_tag, char * in_node_regex, unsigned int * o_cou
     }
 
     if (ORCM_SUCCESS != erri) {
-        opal_argv_free(*o_tags);
-        *o_tags = NULL;
-        opal_argv_free(*o_nodes);
-        *o_nodes = NULL;
-        *o_count = 0;
+        if (NULL != o_tags) {
+            opal_argv_free(*o_tags);
+            *o_tags = NULL;
+        }
+        if (NULL != o_nodes) {
+            opal_argv_free(*o_nodes);
+            *o_nodes = NULL;
+        }
+        if (NULL != o_count) {
+            *o_count = 0;
+        }
     }
 
     opal_argv_free(nodelist);
@@ -737,7 +745,9 @@ int orcm_grouping_listnodes(char * in_tag,
         csv = NULL;
     } else {
         SAFEFREE(csv);
-        *o_count = 0;
+        if (NULL != o_count) {
+            *o_count = 0;
+        }
     }
 
     return erri;

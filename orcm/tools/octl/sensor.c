@@ -502,7 +502,8 @@ set sample-rate <sensor-name> <sample-rate> <node-list>\"\n");
          if (ORCM_SUCCESS == result) {
              fprintf(stdout, "\nSuccess\n");
          } else {
-             fprintf(stdout, "\nFailure\n");
+             ORTE_ERROR_LOG(result);
+             fprintf(stdout, "Failure\n");
          }
     }
 

@@ -75,6 +75,10 @@ void orcm_sensor_base_start(orte_jobid_t job)
 
     opal_value_t *kv;
     opal_list_t *props; /* DB Attributes list */
+    
+    int limit;
+    int *ptr_sample_rate;
+    char *env_limit;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: sensor start called",
@@ -126,11 +130,38 @@ void orcm_sensor_base_start(orte_jobid_t job)
             }
         }
 
+        /* Reads the limit value for the sampling rate */
+        if (NULL == (env_limit = getenv(OPAL_MCA_PREFIX"sensor_limit_sample_rate"))) {
+            limit = 0;
+        } else {
+            limit = atoi(env_limit);
+            opal_output(0,"%s sensor:limit:Configured limit for sampling rate = %d",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                    limit);
+        }
+
         /* call the start function of all modules in priority order */
         for (i=0; i < orcm_sensor_base.modules.size; i++) {
             if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
                 continue;
             }
+            
+            /* Checks if the value of the sampling rate exceeds the limit.
+             * If so, then reset its value to the limit value.
+             */
+            if (NULL != i_module->module->get_sample_rate) {
+                i_module->module->get_sample_rate(ptr_sample_rate);
+                if (*ptr_sample_rate < limit) {
+                    opal_output(0, "%s sensor:limit:Sampling rate for %s exceeds limits (%d). Resetting (%d)\n", 
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                i_module->component->base_version.mca_component_name,
+                                *ptr_sample_rate, 
+                                limit);
+                    i_module->module->set_sample_rate(limit);
+                }
+            }
+
+             
             mods_active = true;
             if (NULL != i_module->module->start) {
                 i_module->module->start(job);
@@ -452,18 +483,23 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
     int i, rc, response, cnt;
     char *sensor_name;
     char *action;
+    char *env_limit;
+    int limit;
     float threshold;
     bool  hi_thres;
     int   max_count, time_window;
     orte_notifier_severity_t sev;
     orcm_sensor_policy_t *plc, *newplc;
     bool found_me;
+    int db_queue = 0;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_sensor_base_framework.framework_output,
                          "%s sensor:base:receive processing msg",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
     ans = OBJ_NEW(opal_buffer_t);
+    response = ORCM_SUCCESS;
+    
     /* unpack the command */
     cnt = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command,
@@ -497,6 +533,26 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                 ORTE_ERROR_LOG(rc);
                 goto ERROR;
             }
+            
+            /* Check if sampling rate exceeds configured limit */
+            if (NULL == (env_limit = getenv(OPAL_MCA_PREFIX"sensor_limit_sample_rate"))) {
+                limit = 0;
+            } else {
+                limit = atoi(env_limit);
+            }
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "%s sensor:limit:sample rate limit=%d",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                limit);
+            if (limit > 0 && sample_rate < limit) {
+                opal_output(0, "%s sensor:limit:sample rate exceeds limit(%d) =%d",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                            limit,
+                            sample_rate);
+                response = ORCM_ERR_SENSOR_LIMIT_EXCEEDED;
+                goto ERROR;
+            }
+            
 
             if (0 == strcmp(sensor_name, "base")) {
                 /* Reset the sample rate */
@@ -789,7 +845,10 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
     }
 
 ERROR:
-    response = ORTE_ERR_BAD_PARAM;
+    if (ORCM_SUCCESS == response) {
+        response = ORTE_ERR_BAD_PARAM;
+    }
+    
     if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(ans);

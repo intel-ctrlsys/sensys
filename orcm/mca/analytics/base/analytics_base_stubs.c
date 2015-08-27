@@ -442,7 +442,11 @@ int orcm_analytics_base_array_append(opal_value_array_t *analytics_sample_array,
     /*fill the analytics structure with the sensor data */
     analytics_sample.sensor_name = strdup(plugin_name);
     analytics_sample.node_regex = strdup(host_name);
-    memcpy(&(analytics_sample.data), sample, sizeof(orcm_metric_value_t));
+
+    analytics_sample.data.units = strdup(sample->units);
+    analytics_sample.data.value.key = strdup(sample->value.key);
+    analytics_sample.data.value.type = sample->value.type;
+    analytics_sample.data.value.data = sample->value.data;
 
     rc = opal_value_array_set_item(analytics_sample_array, index, &analytics_sample);
     if (OPAL_SUCCESS != rc) {

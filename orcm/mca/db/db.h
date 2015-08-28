@@ -265,7 +265,7 @@ typedef int (*orcm_db_base_module_remove_fn_t)(struct orcm_db_base_module_t *imo
 /*
  * the standard module data structure
  */
-typedef struct  {
+struct orcm_db_base_module_t{
     orcm_db_base_module_init_fn_t                 init;
     orcm_db_base_module_finalize_fn_t             finalize;
     orcm_db_base_module_store_fn_t                store;
@@ -277,7 +277,9 @@ typedef struct  {
     orcm_db_base_module_rollback_fn_t             rollback;
     orcm_db_base_module_fetch_fn_t                fetch;
     orcm_db_base_module_remove_fn_t               remove;
-} orcm_db_base_module_t;
+};
+
+typedef struct orcm_db_base_module_t orcm_db_base_module_t;
 
 typedef struct {
     orcm_db_base_API_open_fn_t                 open;

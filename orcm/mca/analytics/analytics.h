@@ -36,7 +36,7 @@ typedef void (*orcm_analytics_base_module_finalize_fn_t)(struct orcm_analytics_b
 typedef int (*orcm_analytics_base_module_analyze_fn_t)(int fd, short args, void* cb);
 
 
-typedef struct {
+typedef struct orcm_analytics_base_module_t {
     orcm_analytics_base_module_init_fn_t        init;
     orcm_analytics_base_module_finalize_fn_t    finalize;
     orcm_analytics_base_module_analyze_fn_t     analyze;

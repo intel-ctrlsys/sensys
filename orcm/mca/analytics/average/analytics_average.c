@@ -23,8 +23,8 @@
 
 #define HASH_TABLE_SIZE 10000
 
-static int init(struct orcm_analytics_base_module_t *imod);
-static void finalize(struct orcm_analytics_base_module_t *imod);
+static int init(orcm_analytics_base_module_t *imod);
+static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
 
 /* analyze function for each data of the sample */
@@ -64,7 +64,7 @@ mca_analytics_average_module_t orcm_analytics_average_module = {
     },
 };
 
-static int init(struct orcm_analytics_base_module_t *imod)
+static int init(orcm_analytics_base_module_t *imod)
 {
     if (NULL == imod) {
         return ORCM_ERROR;
@@ -75,7 +75,7 @@ static int init(struct orcm_analytics_base_module_t *imod)
     return ORCM_SUCCESS;
 }
 
-static void finalize(struct orcm_analytics_base_module_t *imod)
+static void finalize(orcm_analytics_base_module_t *imod)
 {
     if (NULL != imod) {
         mca_analytics_average_module_t *mod = (mca_analytics_average_module_t *)imod;

@@ -25,7 +25,9 @@
 
 BEGIN_C_DECLS
 
-struct orcm_analytics_base_module_t;
+struct orcm_analytics_base_module;
+
+typedef struct orcm_analytics_base_module orcm_analytics_base_module_t;
 
 /* define a workflow "step" object - this object
  * specifies what operation is to be performed
@@ -34,7 +36,7 @@ typedef struct {
     opal_list_item_t super;
     opal_list_t attributes;
     char *analytic;
-    struct orcm_analytics_base_module_t *mod;
+    orcm_analytics_base_module_t *mod;
 } orcm_workflow_step_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_step_t);
 
@@ -56,7 +58,7 @@ typedef struct {
     orcm_workflow_step_t *wf_step;
     orcm_workflow_t    *wf;
     opal_value_array_t *data;
-    struct orcm_analytics_base_module_t *imod;
+    orcm_analytics_base_module_t *imod;
 } orcm_workflow_caddy_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_caddy_t);
 

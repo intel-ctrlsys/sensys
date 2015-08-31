@@ -28,7 +28,7 @@ const char *orcm_analytics_threshold_component_version_string =
  * Local functionality
  */
 static bool component_avail(void);
-static struct orcm_analytics_base_module_t *component_create(void);
+static orcm_analytics_base_module_t *component_create(void);
 
 /*
  * Instantiate the public struct with all of our public information
@@ -63,7 +63,7 @@ static bool component_avail(void)
     return true;
 }
 
-static struct orcm_analytics_base_module_t *component_create(void)
+static orcm_analytics_base_module_t *component_create(void)
 {
     mca_analytics_threshold_module_t *mod;
     
@@ -75,10 +75,10 @@ static struct orcm_analytics_base_module_t *component_create(void)
     /* copy the APIs across */
     memcpy(mod, &orcm_analytics_threshold_module.api, sizeof(orcm_analytics_base_module_t));
     /* let the module init itself */
-    if (OPAL_SUCCESS != mod->api.init((struct orcm_analytics_base_module_t*)mod)) {
+    if (OPAL_SUCCESS != mod->api.init((orcm_analytics_base_module_t*)mod)) {
         /* release the module and return the error */
         free(mod);
         return NULL;
     }
-    return (struct orcm_analytics_base_module_t*)mod;
+    return (orcm_analytics_base_module_t*)mod;
 }

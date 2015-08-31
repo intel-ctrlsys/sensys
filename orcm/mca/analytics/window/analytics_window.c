@@ -21,8 +21,8 @@
 #include "orcm/mca/analytics/base/base.h"
 #include "analytics_window.h"
 
-static int init(struct orcm_analytics_base_module_t *imod);
-static void finalize(struct orcm_analytics_base_module_t *imod);
+static int init(orcm_analytics_base_module_t *imod);
+static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
 
 mca_analytics_window_module_t orcm_analytics_window_module = {
@@ -33,7 +33,7 @@ mca_analytics_window_module_t orcm_analytics_window_module = {
     }
 };
 
-static int init(struct orcm_analytics_base_module_t *imod)
+static int init(orcm_analytics_base_module_t *imod)
 {
 #if 0
     mca_analytics_window_module_t *mod;
@@ -42,7 +42,7 @@ static int init(struct orcm_analytics_base_module_t *imod)
     return ORCM_SUCCESS;
 }
 
-static void finalize(struct orcm_analytics_base_module_t *imod)
+static void finalize(orcm_analytics_base_module_t *imod)
 {
 #if 0
     mca_analytics_window_module_t *mod;

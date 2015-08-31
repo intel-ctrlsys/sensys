@@ -149,7 +149,7 @@ int get_newline(FILE * in_fin, char * io_line, int in_max_line_length,
 {
     *o_eof_found = 0;
 
-    if (NULL == in_fin || NULL == io_line) {
+    if (NULL == in_fin || NULL == io_line || 0 == in_max_line_length) {
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -159,8 +159,9 @@ int get_newline(FILE * in_fin, char * io_line, int in_max_line_length,
         return ORCM_SUCCESS;
     }
 
-    if ('\0' != io_line[0]) {
-        io_line[strlen(io_line)-1] = '\0';  /* remove newline */
+    unsigned long sz = strlen(io_line);
+    if (0 != sz) {
+        io_line[sz-1] = '\0';  /* remove newline */
     }
 
     return ORCM_SUCCESS;
@@ -277,7 +278,7 @@ int orcm_grouping_op_remove(int argc, char **argv, opal_list_t * io_group)
         break;
     }
 
-    if (NULL == nodelist) {
+    if (NULL != nodelist) {
         opal_argv_free(nodelist);
         nodelist=NULL;
         sz_nodelist = 0;
@@ -596,6 +597,7 @@ int orcm_grouping_list(char * in_tag, char * in_node_regex, unsigned int * o_cou
                     char * tp = NULL;
                     int checkt = asprintf(&tp, "%s", itr->tag);
                     if (-1 == checkt) {
+                        SAFEFREE(tp);
                         ORCM_OCTL_LGROUPING_EMSG0(VERBO,OUTID, "Failed to allocate for a tag in logical grouping.");
                         erri = ORCM_ERR_OUT_OF_RESOURCE;
                         break;
@@ -603,6 +605,7 @@ int orcm_grouping_list(char * in_tag, char * in_node_regex, unsigned int * o_cou
                     char * np = NULL;
                     int checkn = asprintf(&np, "%s", itr->nodename);
                     if (-1 == checkn) {
+                        SAFEFREE(tp);
                         ORCM_OCTL_LGROUPING_EMSG0(VERBO,OUTID, "Failed to allocate for a node in logical grouping.");
                         erri = ORCM_ERR_OUT_OF_RESOURCE;
                         break;
@@ -629,6 +632,7 @@ int orcm_grouping_list(char * in_tag, char * in_node_regex, unsigned int * o_cou
                         char * tp = NULL;
                         int checkt = asprintf(&tp, "%s", itr->tag);
                         if (-1 == checkt) {
+                            SAFEFREE(tp);
                             ORCM_OCTL_LGROUPING_EMSG0(VERBO,OUTID, "Failed to allocate for a tag in logical grouping.");
                             erri = ORCM_ERR_OUT_OF_RESOURCE;
                             break;
@@ -636,6 +640,7 @@ int orcm_grouping_list(char * in_tag, char * in_node_regex, unsigned int * o_cou
                         char * np = NULL;
                         int checkn = asprintf(&np, "%s", itr->nodename);
                         if (-1 == checkn) {
+                            SAFEFREE(tp);
                             ORCM_OCTL_LGROUPING_EMSG0(VERBO,OUTID, "Failed to allocate for a node in logical grouping.");
                             erri = ORCM_ERR_OUT_OF_RESOURCE;
                             break;

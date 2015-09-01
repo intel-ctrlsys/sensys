@@ -77,12 +77,15 @@ void orcm_sensor_base_start(orte_jobid_t job)
     opal_list_t *props; /* DB Attributes list */
 
     int limit = 0;
-    int *ptr_sample_rate = NULL;
+    int ptr_sample_rate = 0;
     char *env_limit = NULL;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: sensor start called",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+
+    opal_output(0,"%s sensor:base: sensor start called",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
     /* if no modules are active, then there is nothing to do */
     if (0 == orcm_sensor_base.modules.size) {
@@ -150,12 +153,12 @@ void orcm_sensor_base_start(orte_jobid_t job)
              * If so, then reset its value to the limit value.
              */
             if (NULL != i_module->module->get_sample_rate) {
-                i_module->module->get_sample_rate(ptr_sample_rate);
-                if (*ptr_sample_rate < limit) {
+                i_module->module->get_sample_rate(&ptr_sample_rate);
+                if (ptr_sample_rate < limit) {
                     opal_output(0, "%s sensor:limit:Sampling rate for %s exceeds limits (%d). Resetting (%d)\n",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 i_module->component->base_version.mca_component_name,
-                                *ptr_sample_rate,
+                                ptr_sample_rate,
                                 limit);
                     i_module->module->set_sample_rate(limit);
                 }

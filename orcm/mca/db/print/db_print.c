@@ -92,6 +92,9 @@ mca_db_print_module_t mca_db_print_module = {
         NULL,
         NULL,
         NULL,
+        NULL,
+        NULL,
+        NULL,
         NULL
     },
 };

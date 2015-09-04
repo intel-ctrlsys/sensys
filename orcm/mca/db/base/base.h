@@ -78,6 +78,7 @@ typedef struct {
    const char *test_result;
 
     opal_list_t *kvs;
+    const char *view_name;
 } orcm_db_request_t;
 OBJ_CLASS_DECLARATION(orcm_db_request_t);
 
@@ -156,11 +157,19 @@ ORCM_DECLSPEC void orcm_db_base_rollback(int dbhandle,
                                          orcm_db_callback_fn_t cbfunc,
                                          void *cbdata);
 ORCM_DECLSPEC void orcm_db_base_fetch(int dbhandle,
-                                      const char *primary_key,
-                                      const char *key,
+                                      const char *view,
+                                      opal_list_t *filters,
                                       opal_list_t *kvs,
                                       orcm_db_callback_fn_t cbfunc,
                                       void *cbdata);
+ORCM_DECLSPEC int orcm_db_base_get_num_rows(int dbhandle,
+                                            int rshandle,
+                                            int *num_rows);
+ORCM_DECLSPEC int orcm_db_base_get_next_row(int dbhandle,
+                                            int rshandle,
+                                            opal_list_t *row);
+ORCM_DECLSPEC int orcm_db_base_close_result_set(int dbhandle,
+                                                int rshandle);
 ORCM_DECLSPEC void orcm_db_base_remove_data(int dbhandle,
                                             const char *primary_key,
                                             const char *key,
@@ -176,5 +185,7 @@ ORCM_DECLSPEC int find_items(const char *keys[],
                              opal_bitmap_t *map);
 
 END_C_DECLS
+
+char* build_query_from_view_name_and_filters(const char* view_name, opal_list_t* filters);
 
 #endif

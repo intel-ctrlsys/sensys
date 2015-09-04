@@ -48,6 +48,26 @@ typedef enum {
     ORCM_DB_EVENT_DATA
 } orcm_db_data_type_t;
 
+typedef enum {
+    NONE,
+    LT,
+    GT,
+    EQ,
+    NE,
+    LE,
+    GE,
+    CONTAINS,
+    STARTS_WITH,
+    ENDS_WITH,
+    IN
+} orcm_db_comparison_op_t;
+
+typedef struct {
+    opal_value_t value;
+    orcm_db_comparison_op_t op;
+} orcm_db_filter_t;
+OBJ_CLASS_DECLARATION(orcm_db_filter_t);
+
 /* callback function for async requests */
 typedef void (*orcm_db_callback_fn_t)(int dbhandle,
                                       int status,
@@ -238,15 +258,51 @@ typedef int (*orcm_db_base_module_rollback_fn_t)(struct orcm_db_base_module_t *i
  * of opal_keyval_t objects.
  */
 typedef void (*orcm_db_base_API_fetch_fn_t)(int dbhandle,
-                                            const char *primary_key,
-                                            const char *key,
+                                            const char* view,
+                                            opal_list_t *filters,
                                             opal_list_t *kvs,
                                             orcm_db_callback_fn_t cbfunc,
                                             void *cbdata);
 typedef int (*orcm_db_base_module_fetch_fn_t)(struct orcm_db_base_module_t *imod,
-                                              const char *primary_key,
-                                              const char *key,
+                                              const char* view,
+                                              opal_list_t *filters,
                                               opal_list_t *kvs);
+
+/*
+ * Get the number of rows returned in a result set (previously fetched from the
+ * database).
+ */
+typedef int (*orcm_db_base_API_get_num_rows_fn_t)(
+        int dbhandle,
+        int rshandle,
+        int *num_rows);
+typedef int (*orcm_db_base_module_get_num_rows_fn_t)(
+        struct orcm_db_base_module_t *imod,
+        int rshandle,
+        int *num_rows);
+
+/*
+ * Get the next row from a result set (previously fetched from the database).
+ */
+typedef int (*orcm_db_base_API_get_next_row_fn_t)(
+        int dbhandle,
+        int rshandle,
+        opal_list_t *row);
+typedef int (*orcm_db_base_module_get_next_row_fn_t)(
+        struct orcm_db_base_module_t *imod,
+        int rshandle,
+        opal_list_t *row);
+
+/*
+ * Close a result set (previously allocated as a result of fetching data from
+ * the database).
+ */
+typedef int (*orcm_db_base_API_close_result_set_fn_t)(
+        int dbhandle,
+        int rshandle);
+typedef int (*orcm_db_base_module_close_result_set_fn_t)(
+        struct orcm_db_base_module_t *imod,
+        int rshandle);
 /*
  * Delete data
  *
@@ -276,6 +332,9 @@ struct orcm_db_base_module_t{
     orcm_db_base_module_commit_fn_t               commit;
     orcm_db_base_module_rollback_fn_t             rollback;
     orcm_db_base_module_fetch_fn_t                fetch;
+    orcm_db_base_module_get_num_rows_fn_t         get_num_rows;
+    orcm_db_base_module_get_next_row_fn_t         get_next_row;
+    orcm_db_base_module_close_result_set_fn_t     close_result_set;
     orcm_db_base_module_remove_fn_t               remove;
 };
 
@@ -292,6 +351,9 @@ typedef struct {
     orcm_db_base_API_commit_fn_t               commit;
     orcm_db_base_API_rollback_fn_t             rollback;
     orcm_db_base_API_fetch_fn_t                fetch;
+    orcm_db_base_API_get_num_rows_fn_t         get_num_rows;
+    orcm_db_base_API_get_next_row_fn_t         get_next_row;
+    orcm_db_base_API_close_result_set_fn_t     close_result_set;
     orcm_db_base_API_remove_fn_t               remove;
 } orcm_db_API_module_t;
 

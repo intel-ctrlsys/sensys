@@ -27,6 +27,7 @@ typedef struct {
     SQLHENV envhandle;
     SQLHDBC dbhandle;
     bool autocommit;
+    opal_pointer_array_t *results_sets;
 } mca_db_odbc_module_t;
 ORCM_MODULE_DECLSPEC extern mca_db_odbc_module_t mca_db_odbc_module;
 

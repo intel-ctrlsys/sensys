@@ -83,6 +83,22 @@ static void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
                                  size_t size);
 static inline bool status_ok(PGresult *res);
 
+static int postgres_fetch(struct orcm_db_base_module_t *imod,
+                          const char *view,
+                          opal_list_t *filters,
+                          opal_list_t *output);
+
+static int postgres_get_num_rows(struct orcm_db_base_module_t *imod,
+                                 int rshandle,
+                                 int *num_rows);
+
+static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
+                                 int rshandle,
+                                 opal_list_t *row);
+
+static int postgres_close_result_set(struct orcm_db_base_module_t *imod,
+                                     int rshandle);
+
 mca_db_postgres_module_t mca_db_postgres_module = {
     {
         postgres_init,
@@ -94,7 +110,10 @@ mca_db_postgres_module_t mca_db_postgres_module = {
         postgres_record_diag_test,
         postgres_commit,
         postgres_rollback,
-        NULL,
+        postgres_fetch,
+        postgres_get_num_rows,
+        postgres_get_next_row,
+        postgres_close_result_set,
         NULL
     },
 };
@@ -120,6 +139,8 @@ static int postgres_init(struct orcm_db_base_module_t *imod)
     int count;
     int i;
     PGconn *conn;
+
+    mod->results_sets = OBJ_NEW(opal_pointer_array_t);
 
     if (NULL == mod->dbname) {
         opal_output(0, "db:postgres: No database name provided");
@@ -196,7 +217,8 @@ static void postgres_finalize(struct orcm_db_base_module_t *imod)
     if (NULL != mod->conn) {
         PQfinish(mod->conn);
     }
-
+    OBJ_RELEASE(mod->results_sets);
+    mod->results_sets = NULL;
     free(mod);
 }
 
@@ -1882,6 +1904,52 @@ static bool tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
     }
 }
 
+static bool time_stamp_str_to_tv(char* stamp, struct timeval* time_value)
+{
+    char buffer[5]; // largest component is year 4 + 1 for '\0';
+    struct tm t;
+
+    if(NULL == stamp || NULL == time_value) {
+        return false;
+    }
+    memset(&t, 0, sizeof(struct tm));
+
+    strncpy(buffer, stamp, 4); /* get year */
+    buffer[4] = '\0';
+    t.tm_year = atoi(buffer) - 1900;
+
+    strncpy(buffer, &stamp[5], 2); /* get month */
+    buffer[2] = '\0';
+    t.tm_mon = atoi(buffer) - 1;
+
+    strncpy(buffer, &stamp[8], 2); /* get day of month */
+    buffer[2] = '\0';
+    t.tm_mday = atoi(buffer);
+
+    strncpy(buffer, &stamp[11], 2); /* get hour of day */
+    buffer[2] = '\0';
+    t.tm_hour = atoi(buffer);
+
+    strncpy(buffer, &stamp[14], 2); /* get minute of the hour */
+    buffer[2] = '\0';
+    t.tm_min = atoi(buffer);
+
+    strncpy(buffer, &stamp[17], 2); /* get seconds of the minute */
+    buffer[2] = '\0';
+    t.tm_sec = atoi(buffer);
+
+    if(23 <= strlen(stamp)) {
+        strncpy(buffer, &stamp[20], 3); /* get microseconds (resolution is milliseconds) of the second */
+        buffer[3] = '\0';
+        time_value->tv_usec = atoi(buffer) * 1000;
+    } else {
+        time_value->tv_usec = 0;
+    }
+    time_value->tv_sec = mktime(&t);
+
+    return true;
+}
+
 static void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
                                  size_t size)
 {
@@ -1894,4 +1962,367 @@ static inline bool status_ok(PGresult *res)
     return (status == PGRES_COMMAND_OK
             || status == PGRES_TUPLES_OK
             || status == PGRES_NONFATAL_ERROR);
+}
+
+#define ERR_MSG_FMT_FETCH(msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to fetch data: "); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "***********************************************");
+
+/**************************************************************************************************
+ * If fetch features are added or column names change or opal types change for a column name
+ * change here!!!
+ **************************************************************************************************/
+static const char *opal_type_column_name = "data_type_id";
+static const char *value_column_names[] = {
+    "value_str",
+    "value_int",
+    "value_real",
+    NULL
+};
+
+static int get_str_column(PGresult* results)
+{
+    return PQfnumber(results, value_column_names[0]);
+}
+
+static int get_real_column(PGresult* results)
+{
+    return PQfnumber(results, value_column_names[2]);
+}
+
+static int get_int_column(PGresult* results)
+{
+    return PQfnumber(results, value_column_names[1]);
+}
+
+static bool is_column_name_a_value_column(const char* column_name)
+{
+    int i = 0;
+    bool rv = false;
+
+    while(NULL != value_column_names[i]) {
+        if(0 == strcmp(column_name, value_column_names[i])) {
+            rv = true;
+            break;
+        }
+        ++i;
+    }
+    return rv;
+}
+
+static const struct {
+    char* column_name;
+    opal_data_type_t data_type;
+} fixed_name_type_map[] = { /* union set of supported columns names from DB tables/views */
+    { "node_id",    OPAL_INT     },
+    { "hostname",   OPAL_STRING  },
+    { "data_item",  OPAL_STRING  },
+    { "units",      OPAL_STRING  },
+    { "feature",    OPAL_STRING  },
+    { "feature_id", OPAL_INT     },
+    { "time_stamp", OPAL_TIMEVAL },
+    { NULL,         OPAL_UNDEF   } /* Marks the end of the list */
+};
+
+static opal_data_type_t get_opal_type_from_column_name(const char* column_name)
+{
+    opal_data_type_t rv = OPAL_UNDEF;
+    int item_index = 0;
+    while(NULL != fixed_name_type_map[item_index].column_name) {
+        if(0 == strcmp(column_name, fixed_name_type_map[item_index].column_name)) {
+            rv = fixed_name_type_map[item_index].data_type;
+            break;
+        }
+        ++item_index;
+    }
+    return rv;
+}
+/**************************************************************************************************/
+
+#define NO_ROWS     (-1)
+#define NO_COLUMN   NO_ROWS
+
+static int postgres_fetch(struct orcm_db_base_module_t *imod,
+                         const char *view,
+                         opal_list_t *filters,
+                         opal_list_t *kvs)
+{
+    mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+    int rc = ORCM_SUCCESS;
+    PGresult *results = NULL;
+    int handle = -1;
+    opal_value_t *result = NULL;
+    char* query = NULL;
+
+    if(NULL == view || 0 == strlen(view)) {
+        ERR_MSG_FMT_FETCH("database view passed was %s or empty!", "NULL");
+        return ORCM_ERR_NOT_IMPLEMENTED;
+    }
+
+    if(NULL == kvs) {
+        ERR_MSG_FMT_FETCH("Argument 'kvs' passed was NULL but was expected to be valid opal_list_t pointer: %d", 0);
+        rc = ORCM_ERROR;
+        goto cleanup_and_exit;
+    }
+    query = build_query_from_view_name_and_filters(view, filters);
+    if(NULL == query) {
+        ERR_MSG_FMT_FETCH("build_query_from_view_name_and_filters returned: %s", "NULL");
+        rc = ORCM_ERROR;
+        goto cleanup_and_exit;
+    }
+    results = PQexec(mod->conn, query);
+    if(!status_ok(results)) {
+        ERR_MSG_FMT_FETCH("PQexec returned: %s", "NULL");
+        rc = ORCM_ERROR;
+        goto cleanup_and_exit;
+    }
+
+    /* Add new results set handle */
+    handle = opal_pointer_array_add(mod->results_sets, (void*)results);
+    if(-1 == handle) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_FETCH("opal_pointer_array_add returned: %d", -1);
+        goto cleanup_and_exit;
+    }
+    mod->current_row = 0; /* Simulate 'get_next_row' functionality. */
+
+    /* Create returned handle object */
+    result = OBJ_NEW(opal_value_t);
+    result->type = OPAL_INT;
+    result->data.integer = handle;
+    opal_list_append(kvs, (void*)result); /* takes ownership */
+
+cleanup_and_exit:
+    free(query);
+    return rc;
+}
+
+static int postgres_get_num_rows(struct orcm_db_base_module_t *imod,
+                                 int rshandle,
+                                 int *num_rows)
+{
+    int rc = ORCM_ERROR;
+    mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+    PGresult *results = (PGresult*)opal_pointer_array_get_item(mod->results_sets, rshandle);
+    if(NULL != results) {
+        int row_count = PQntuples(results);
+        if(NO_ROWS <= row_count) { /* No rows (0) is OK */
+            *num_rows = row_count;
+            rc = ORCM_SUCCESS;
+        }
+    }
+    return rc;
+}
+
+static bool is_supported_opal_int_type(opal_data_type_t type)
+{
+    if(OPAL_BYTE == type || OPAL_BOOL == type || OPAL_SIZE == type || OPAL_PID == type ||
+       OPAL_INT == type || OPAL_INT8 == type || OPAL_INT16 == type || OPAL_INT32 == type || OPAL_INT64 == type ||
+       OPAL_UINT == type || OPAL_UINT8 == type || OPAL_UINT16 == type || OPAL_UINT32 == type || OPAL_UINT64 == type) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+static opal_value_t *get_value_object(PGresult *results, int row, opal_data_type_t type)
+{
+    if(OPAL_STRING == type && NO_COLUMN == get_str_column(results)) {
+        return NULL;
+    }
+    if((OPAL_FLOAT == type || OPAL_DOUBLE == type) && NO_COLUMN == get_real_column(results)) {
+        return NULL;
+    }
+    if(true == is_supported_opal_int_type(type) && NO_COLUMN == get_real_column(results)) {
+        return NULL;
+    }
+    opal_value_t *rv = OBJ_NEW(opal_value_t);
+    rv->type = type;
+    rv->key = strdup("value");
+    switch(type) { /* all PQgetvalue buffers are owned by PQ */
+        case OPAL_BYTE:
+            rv->data.byte = *((uint8_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_BOOL:
+            rv->data.flag = ((*((uint8_t*)PQgetvalue(results, row, get_int_column(results)))) == 0)?false:true;
+            break;
+        case OPAL_STRING:
+            rv->data.string = strdup(PQgetvalue(results, row, get_str_column(results)));
+            break;
+        case OPAL_SIZE:
+            rv->data.size = *((size_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_PID:
+            rv->data.pid = *((pid_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_INT:
+            rv->data.integer = *((int*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_INT8:
+            rv->data.int8 = *((int8_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_INT16:
+            rv->data.int16 = *((int16_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_INT32:
+            rv->data.int32 = *((int32_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_INT64:
+            rv->data.int64 = *((int64_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_UINT:
+            rv->data.uint = *((unsigned int*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_UINT8:
+            rv->data.uint8 = *((uint8_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_UINT16:
+            rv->data.uint16 = *((uint16_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_UINT32:
+            rv->data.uint32 = *((uint32_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_UINT64:
+            rv->data.uint64 = *((uint64_t*)PQgetvalue(results, row, get_int_column(results)));
+            break;
+        case OPAL_FLOAT:
+            rv->data.fval = (float)*((double*)PQgetvalue(results, row, get_real_column(results)));
+            break;
+        case OPAL_DOUBLE:
+            rv->data.dval = *((double*)PQgetvalue(results, row, get_real_column(results)));
+            break;
+        default: /* No supported basic data type so ignore it */
+            ERR_MSG_FMT_FETCH("An unsupported orcm value type was encountered: %d", type);
+            OBJ_RELEASE(rv);
+            return NULL;
+    }
+
+    return rv;
+}
+
+static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
+                                 int rshandle,
+                                 opal_list_t *row)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+    PGresult *results = (PGresult*)opal_pointer_array_get_item(mod->results_sets, rshandle);
+    int cols = -1;
+    int data_type_col = -1;
+    opal_data_type_t data_type = OPAL_UNDEF;
+    int data_length = -1;
+    opal_value_t *value_object = NULL;
+    bool inserted_value = false;
+    void* value_buffer = NULL;
+
+    if(NULL == results) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_FETCH("Bad results handle: %d", rshandle);
+        goto next_cleanup;
+    }
+
+    /* get row ORCM data value type */
+    data_type_col = PQfnumber(results, opal_type_column_name);
+    if(NO_COLUMN != data_type_col) {
+        data_length = PQgetlength(results, mod->current_row, data_type_col);
+        value_buffer = malloc(data_length);
+        value_buffer = (void*)PQgetvalue(results, mod->current_row, data_type_col);
+        data_type = (opal_data_type_t)*((int*)value_buffer);
+        free(value_buffer);
+        value_buffer = NULL;
+
+        /* retrieve 1 correctly typed object for one of 'value_str', 'value_int', 'value_real' */
+        value_object = get_value_object(results, mod->current_row, data_type);
+    } else {
+        data_type_col = PQfnumber(results, "value_int");
+        data_length = PQgetlength(results, mod->current_row, data_type_col);
+        if(0 >= data_length) {
+            data_type_col = PQfnumber(results, "value_real");
+            data_length = PQgetlength(results, mod->current_row, data_type_col);
+            if(0 >= data_length) {
+                data_type_col = PQfnumber(results, "value_str");
+                data_length = PQgetlength(results, mod->current_row, data_type_col);
+                if(0 >= data_length) {
+                    data_type = OPAL_UNDEF;
+                } else {
+                    data_type = OPAL_STRING;
+                }
+            } else {
+                data_type = OPAL_DOUBLE;
+            }
+        } else {
+            data_type = OPAL_INT64;
+        }
+        /* retrieve 1 correctly typed object for one of 'value_str', 'value_int', 'value_real' */
+        value_object = get_value_object(results, mod->current_row, data_type);
+        data_type_col = -1;
+    }
+
+    /* Get row general column data */
+    cols = PQnfields(results);
+    for(int i = 0; i < cols; ++i) {
+        opal_value_t* kv = NULL;
+        opal_data_type_t type = OPAL_UNDEF;
+        char* name_ref = NULL;
+        if(i == data_type_col) { /* skip data_type_id column */
+            continue;
+        }
+
+        name_ref = PQfname(results, i);
+        if(true == is_column_name_a_value_column(name_ref)) {
+            if(false == inserted_value && NULL != value_object) {
+                opal_list_append(row, &value_object->super);
+                value_object = NULL;
+                inserted_value = true;
+            }
+            continue; /* skip all 'value_*' named columns as thjey are already handled */
+        }
+
+        type = get_opal_type_from_column_name(name_ref);
+        if(OPAL_UNDEF == type) {
+            ERR_MSG_FMT_FETCH("An unrecognized column name '%s' was encountered and skipped during a call to 'get_next_row'", name_ref);
+            continue; /* skip unknown fields */
+        }
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup(name_ref);
+        kv->type = type;
+        switch(type) {
+            case OPAL_STRING:
+                kv->data.string = strdup(PQgetvalue(results, mod->current_row, i));
+                break;
+            case OPAL_INT:
+                kv->data.integer = atoi(PQgetvalue(results, mod->current_row, i));
+                break;
+            case OPAL_TIMEVAL:
+                time_stamp_str_to_tv(PQgetvalue(results, mod->current_row, i), &kv->data.tv);
+                break;
+        }
+        opal_list_append(row, &kv->super);
+    }
+    ++(mod->current_row); /* move to next row */
+
+next_cleanup:
+    free(value_object);
+    return rc;
+}
+
+static int postgres_close_result_set(struct orcm_db_base_module_t *imod,
+                                     int rshandle)
+{
+    mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+    PGresult *results = (PGresult*)opal_pointer_array_get_item(mod->results_sets, rshandle);
+
+    if(NULL == results) {
+        ERR_MSG_FMT_FETCH("Bad results handle: %d", rshandle);
+        PQclear(results);
+        return ORCM_ERROR;
+    }
+
+    PQclear(results);
+
+    opal_pointer_array_set_item(mod->results_sets, rshandle, NULL);
+
+    return ORCM_SUCCESS;
 }

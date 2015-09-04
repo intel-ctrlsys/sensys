@@ -586,8 +586,8 @@ void orcm_db_base_rollback(int dbhandle,
 static void process_fetch(int fd, short args, void *cbdata)
 {
     orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
-    orcm_db_handle_t *hdl;
-    int rc;
+    orcm_db_handle_t *hdl = NULL;
+    int rc = ORCM_SUCCESS;
 
     /* get the handle object */
     hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles,
@@ -603,7 +603,7 @@ static void process_fetch(int fd, short args, void *cbdata)
 
     if (NULL != hdl->module->fetch) {
         rc = hdl->module->fetch((struct orcm_db_base_module_t*)hdl->module,
-                                req->primary_key, req->key, req->output);
+                                req->view_name, req->input, req->output);
     } else {
         rc = ORCM_ERR_NOT_IMPLEMENTED;
     }
@@ -616,8 +616,8 @@ callback_and_cleanup:
 }
 
 void orcm_db_base_fetch(int dbhandle,
-                        const char *primary_key,
-                        const char *key,
+                        const char *view,
+                        opal_list_t *filters,
                         opal_list_t *kvs,
                         orcm_db_callback_fn_t cbfunc,
                         void *cbdata)
@@ -630,16 +630,49 @@ void orcm_db_base_fetch(int dbhandle,
      */
     req = OBJ_NEW(orcm_db_request_t);
     req->dbhandle = dbhandle;
-    req->primary_key = (char*)primary_key;
-    req->key = (char*)key;
+    req->input = filters;
     req->output = kvs;
     req->cbfunc = cbfunc;
     req->cbdata = cbdata;
+    req->view_name = view;
     opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
                    OPAL_EV_WRITE,
                    process_fetch, req);
     opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
     opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
+}
+
+int orcm_db_base_get_num_rows(int dbhandle, int rshandle, int *num_rows)
+{
+    orcm_db_handle_t *hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles, dbhandle);
+
+    if (NULL == hdl || NULL == hdl->module || NULL == hdl->module->get_num_rows) {
+        return ORCM_ERROR;
+    }
+
+    return hdl->module->get_num_rows((struct orcm_db_base_module_t*)hdl->module, rshandle, num_rows);
+}
+
+int orcm_db_base_get_next_row(int dbhandle, int rshandle, opal_list_t *row)
+{
+    orcm_db_handle_t *hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles, dbhandle);
+
+    if (NULL == hdl || NULL == hdl->module || NULL == hdl->module->get_next_row) {
+        return ORCM_ERROR;
+    }
+
+    return hdl->module->get_next_row((struct orcm_db_base_module_t*)hdl->module, rshandle, row);
+}
+
+int orcm_db_base_close_result_set(int dbhandle, int rshandle)
+{
+    orcm_db_handle_t *hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles, dbhandle);
+
+    if (NULL == hdl || NULL == hdl->module || NULL == hdl->module->close_result_set) {
+        return ORCM_ERROR;
+    }
+
+    return hdl->module->close_result_set((struct orcm_db_base_module_t*)hdl->module, rshandle);
 }
 
 static void process_remove(int fd, short args, void *cbdata)

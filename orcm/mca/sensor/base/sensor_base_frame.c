@@ -113,7 +113,7 @@ static int orcm_sensor_base_close(void)
     if (orcm_sensor_base.ev_active) {
         orcm_sensor_base.ev_active = false;
         /* stop the thread */
-        opal_stop_progress_thread("sensor", true);
+        opal_progress_thread_finalize("sensor");
     }
 
     OPAL_LIST_DESTRUCT(&orcm_sensor_base.policy);

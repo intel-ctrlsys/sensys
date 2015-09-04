@@ -226,7 +226,7 @@ static int orcm_analytics_base_create_event_base(orcm_workflow_t *wf, char *thre
 {
 
     wf->ev_active = true;
-    if (NULL == (wf->ev_base = opal_start_progress_thread(threadname, true))) {
+    if (NULL == (wf->ev_base = opal_progress_thread_init(threadname))) {
         wf->ev_active = false;
         return ORCM_ERR_OUT_OF_RESOURCE;
     }

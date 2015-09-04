@@ -17,13 +17,13 @@
 #include "opal/mca/event/event.h"
 #include "opal/dss/dss.h"
 #include "opal/util/output.h"
+#include "opal/runtime/opal_progress_threads.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
 
-#include "opal/runtime/opal_progress_threads.h"
 /*
  * The following file was created by configure.  It contains extern
  * statements and the definition of an array of pointers to each
@@ -64,7 +64,7 @@ static void orcm_analytics_stop_wokflow_thread(orcm_workflow_t *wf)
         wf->ev_active = false;
         /* Stop each Workflow thread */
         asprintf(&threadname, "wfid%i", wf->workflow_id);
-        opal_stop_progress_thread(threadname, true);
+        opal_progress_thread_finalize(threadname);
     }
     free(threadname);
 }

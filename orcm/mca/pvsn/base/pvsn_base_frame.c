@@ -51,7 +51,7 @@ static int orcm_pvsn_base_close(void)
     if (orcm_pvsn_base.ev_active) {
         orcm_pvsn_base.ev_active = false;
         /* stop the thread */
-        opal_stop_progress_thread("pvsn", true);
+        opal_progress_thread_finalize("pvsn");
     }
 
     return mca_base_framework_components_close(&orcm_pvsn_base_framework, NULL);
@@ -74,7 +74,7 @@ static int orcm_pvsn_base_open(mca_base_open_flag_t flags)
 
     /* create the event base */
     orcm_pvsn_base.ev_active = true;
-    if (NULL == (orcm_pvsn_base.ev_base = opal_start_progress_thread("pvsn", true))) {
+    if (NULL == (orcm_pvsn_base.ev_base = opal_progress_thread_init("pvsn"))) {
         orcm_pvsn_base.ev_active = false;
         return ORCM_ERR_OUT_OF_RESOURCE;
     }

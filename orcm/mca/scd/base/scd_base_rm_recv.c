@@ -28,6 +28,8 @@
 #include "orcm/mca/cfgi/cfgi_types.h"
 #include "orcm/mca/scd/base/base.h"
 
+#include "orcm/util/logical_group.h"
+
 static bool rm_recv_issued=false;
 
 static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
@@ -425,7 +427,7 @@ static int update_nodestate_byname(orcm_node_state_t state, char *regexp, hwloc_
     }
     
     if (ORTE_SUCCESS !=
-        (rc = orte_regex_extract_node_names(regexp, &nodenames))) {
+        (rc = orcm_node_names(regexp, &nodenames))) {
         ORTE_ERROR_LOG(rc);
         opal_argv_free(nodenames);
         return rc;

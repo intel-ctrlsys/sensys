@@ -8,6 +8,7 @@
  */
 
 #include "orcm/tools/octl/common.h"
+#include "orcm/util/logical_group.h"
 
 int orcm_octl_diag_cpu(char **argv)
 {
@@ -27,13 +28,12 @@ cpu <node-list>\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    orte_regex_extract_node_names (argv[2], &nodelist);
+    orcm_node_names(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
-
 
     buf = OBJ_NEW(opal_buffer_t);
 
@@ -133,7 +133,7 @@ int orcm_octl_diag_eth(char **argv)
         return ORCM_ERR_BAD_PARAM;
     }
 
-    orte_regex_extract_node_names (argv[2], &nodelist);
+    orcm_node_names(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
@@ -243,7 +243,7 @@ int orcm_octl_diag_mem(char **argv)
         return ORCM_ERR_BAD_PARAM;
     }
 
-    orte_regex_extract_node_names (argv[2], &nodelist);
+    orcm_node_names(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);

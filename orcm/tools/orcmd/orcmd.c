@@ -119,6 +119,7 @@ static int kill_local(pid_t pid, int signum);
 int main(int argc, char *argv[])
 {
     int ret;
+    int i;
     opal_cmd_line_t cmd_line;
     char *ctmp;
     char *args = NULL;
@@ -182,6 +183,12 @@ int main(int argc, char *argv[])
         }
         opal_finalize_util();
         exit(0);
+    }
+
+    for(i=1; i < argc; i++){
+      if ((strcmp(argv[i],"sensor_ipmi_bmc_password") == 0) || (strcmp(argv[i],"sensor_ipmi_bmc_username") == 0)){
+        memset(argv[i+1],'X', strlen(argv[i+1]));
+      }
     }
 
     /***************

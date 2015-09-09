@@ -3375,7 +3375,7 @@ static int odbc_fetch(struct orcm_db_base_module_t *imod,
     }
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
-        ERR_MSG_FMT_FETCH("SQLAllocHandle returned: %d", ret);
+        ERR_MSG_FMT_FETCH("SQLAllocHandle returned %d for SQL_HANDLE_STMT handle creation (DB Handle=0x%016lx)!", ret, (size_t)mod->dbhandle);
         rc = ORCM_ERROR;
         goto cleanup_and_exit;
     }
@@ -3451,15 +3451,21 @@ static int get_number_of_columns(SQLHSTMT results)
 
 static int get_column_number_by_name(SQLHSTMT results, const char* name)
 {
+    SQLULEN col_size = 0;
+    SQLSMALLINT dec_dig = 0;
+    SQLSMALLINT nullable = 0;
+    SQLSMALLINT type = 0;
+    SQLSMALLINT name_len = 0;
     char column_name[COLUMN_NAME_WIDTH];
     int cols = get_number_of_columns(results);
     if(-1 != cols) {
-        for(int i = 0; i < cols; ++i) {
-            SQLRETURN ret = SQLDescribeCol(results, (SQLUSMALLINT)i, (SQLCHAR*)column_name, COLUMN_NAME_WIDTH, NULL, NULL, NULL, NULL, NULL);
+        for(int i = 1; i <= cols; ++i) {
+            SQLRETURN ret = SQLDescribeCol(results, (SQLUSMALLINT)i, (SQLCHAR*)column_name, (SQLSMALLINT)COLUMN_NAME_WIDTH, &name_len, &type, &col_size, &dec_dig, &nullable);
             if(!(SQL_SUCCEEDED(ret))) {
-                ERR_MSG_FMT_FETCH("SQLDescribeCol returned: %d", ret);
+                ERR_MSG_FMT_FETCH("SQLDescribeCol returned #1: %d", ret);
                 return NO_COLUMN;
             }
+            column_name[name_len] = '\0';
             if(0 == strcmp(column_name, name)) {
                 return i;
             }
@@ -3470,6 +3476,11 @@ static int get_column_number_by_name(SQLHSTMT results, const char* name)
 
 static int get_value_column(SQLHSTMT results, int index)
 {
+    SQLULEN col_size = 0;
+    SQLSMALLINT dec_dig = 0;
+    SQLSMALLINT nullable = 0;
+    SQLSMALLINT type = 0;
+    SQLSMALLINT name_len = 0;
     char column_name[COLUMN_NAME_WIDTH];
     SQLSMALLINT column_count = 0;
     SQLRETURN ret = SQLNumResultCols(results, &column_count);
@@ -3477,12 +3488,13 @@ static int get_value_column(SQLHSTMT results, int index)
         ERR_MSG_FMT_FETCH("SQLNumResultCols returned: %d", ret);
         return NO_COLUMN;
     }
-    for(int i = 0; i < (int)column_count; ++i) {
-        ret = SQLDescribeCol(results, (SQLUSMALLINT)i, (SQLCHAR*)column_name, COLUMN_NAME_WIDTH, NULL, NULL, NULL, NULL, NULL);
+    for(int i = 1; i <= (int)column_count; ++i) {
+        ret = SQLDescribeCol(results, (SQLUSMALLINT)i, (SQLCHAR*)column_name, (SQLSMALLINT)COLUMN_NAME_WIDTH, &name_len, &type, &col_size, &dec_dig, &nullable);
         if(!(SQL_SUCCEEDED(ret))) {
-            ERR_MSG_FMT_FETCH("SQLDescribeCol returned: %d", ret);
+            ERR_MSG_FMT_FETCH("SQLDescribeCol returned #2: %d", ret);
             return NO_COLUMN;
         }
+        column_name[name_len] = '\0';
         if(0 == strcmp(column_name, value_column_names[index])) {
             return i;
         }
@@ -3508,24 +3520,25 @@ static bool is_column_name_a_value_column(const char* column_name)
 static opal_data_type_t get_opal_type_from_sql_type(SQLSMALLINT sql_type)
 {
     switch(sql_type) { /* Based on sql_types.h and dss_types.h */
-    case SQL_CHAR:
-        return OPAL_INT8;
-    case SQL_NUMERIC:
-        return OPAL_BYTE;
-    case SQL_DECIMAL:
-        return OPAL_BYTE;
+    case SQL_BIGINT:
+        return OPAL_INT64;
     case SQL_INTEGER:
-        return OPAL_INT;
+        return OPAL_INT32;
     case SQL_SMALLINT:
         return OPAL_INT16;
     case SQL_FLOAT:
         return OPAL_DOUBLE;
     case SQL_REAL:
         return OPAL_FLOAT;
+    case SQL_DECIMAL:
+    case SQL_NUMERIC:
     case SQL_DOUBLE:
         return OPAL_DOUBLE;
     case SQL_DATETIME:
         return OPAL_TIMEVAL;
+    case SQL_CHAR:
+    case SQL_VARCHAR:
+        return OPAL_STRING;
     default:
         return OPAL_UNDEF;
     }
@@ -3549,6 +3562,7 @@ static bool is_supported_opal_int_type(opal_data_type_t type)
 
 static opal_value_t *get_value_object(SQLHSTMT results, int unused, opal_data_type_t type)
 {
+    SQLLEN result_len = 0;
     SQLRETURN ret = SQL_SUCCESS;
     int column = NO_COLUMN;
     if(OPAL_STRING == type && NO_COLUMN == get_value_column(results, VALUE_STR_COLUMN_NUM)) {
@@ -3578,9 +3592,9 @@ static opal_value_t *get_value_object(SQLHSTMT results, int unused, opal_data_ty
         case OPAL_UINT32:
         case OPAL_UINT64:
             column = get_value_column(results, VALUE_INT_COLUMN_NUM);
-            ret = SQLGetData(results, column, SQL_BIGINT, &rv->data.uint64, sizeof(uint64_t), NULL);
+            ret = SQLGetData(results, column, SQL_BIGINT, &rv->data.uint64, sizeof(uint64_t), &result_len);
             if(!(SQL_SUCCEEDED(ret))) {
-                ERR_MSG_FMT_FETCH("SQLGetData returned: %d", ret);
+                ERR_MSG_FMT_FETCH("SQLGetData returned #4: %d", ret);
                 OBJ_RELEASE(rv);
                 return NULL;
             }
@@ -3589,9 +3603,9 @@ static opal_value_t *get_value_object(SQLHSTMT results, int unused, opal_data_ty
             {
                 int64_t local;
                 column = get_value_column(results, VALUE_INT_COLUMN_NUM);
-                ret = SQLGetData(results, column, SQL_BIGINT, &local, sizeof(int64_t), NULL);
+                ret = SQLGetData(results, column, SQL_BIGINT, &local, sizeof(int64_t), &result_len);
                 if(!(SQL_SUCCEEDED(ret))) {
-                    ERR_MSG_FMT_FETCH("SQLGetData returned: %d", ret);
+                    ERR_MSG_FMT_FETCH("SQLGetData returned #5: %d", ret);
                     OBJ_RELEASE(rv);
                     return NULL;
                 }
@@ -3600,18 +3614,26 @@ static opal_value_t *get_value_object(SQLHSTMT results, int unused, opal_data_ty
             break;
         case OPAL_STRING:
             {
+                SQLULEN col_size = 0;
+                SQLSMALLINT dec_dig = 0;
+                SQLSMALLINT nullable = 0;
+                SQLSMALLINT type = 0;
+                SQLSMALLINT name_len = 0;
+                char column_name[COLUMN_NAME_WIDTH];
                 size_t size = 0;
                 column = get_value_column(results, VALUE_STR_COLUMN_NUM);
-                ret = SQLDescribeCol(results, column, NULL, 0, NULL, NULL, (SQLULEN*)&size, NULL, NULL);
+                ret = SQLDescribeCol(results, column, (SQLCHAR*)column_name, (SQLSMALLINT)COLUMN_NAME_WIDTH, &name_len, &type, &col_size, &dec_dig, &nullable);
                 if(!(SQL_SUCCEEDED(ret))) {
-                    ERR_MSG_FMT_FETCH("SQLDescribeCol returned: %d", ret);
+                    ERR_MSG_FMT_FETCH("SQLDescribeCol returned #3: %d", ret);
                     OBJ_RELEASE(rv);
                     return NULL;
                 }
+                size = (size_t)col_size;
+                column_name[name_len] = '\0';
                 rv->data.string = (char*)malloc(size);
-                ret = SQLGetData(results, column, SQL_C_CHAR, &rv->data.string, (SQLLEN)(size), NULL);
+                ret = SQLGetData(results, column, SQL_C_CHAR, &rv->data.string, (SQLLEN)(size), &result_len);
                 if(!(SQL_SUCCEEDED(ret))) {
-                    ERR_MSG_FMT_FETCH("SQLGetData returned: %d", ret);
+                    ERR_MSG_FMT_FETCH("SQLGetData returned #6: %d", ret);
                     OBJ_RELEASE(rv);
                     return NULL;
                 }
@@ -3621,9 +3643,9 @@ static opal_value_t *get_value_object(SQLHSTMT results, int unused, opal_data_ty
             {
                 double dbl;
                 column = get_value_column(results, VALUE_REAL_COLUMN_NUM);
-                ret = SQLGetData(results, column, SQL_DOUBLE, &dbl, sizeof(double), NULL);
+                ret = SQLGetData(results, column, SQL_DOUBLE, &dbl, sizeof(double), &result_len);
                 if(!(SQL_SUCCEEDED(ret))) {
-                    ERR_MSG_FMT_FETCH("SQLGetData returned: %d", ret);
+                    ERR_MSG_FMT_FETCH("SQLGetData returned #7: %d", ret);
                     OBJ_RELEASE(rv);
                     return NULL;
                 }
@@ -3632,9 +3654,9 @@ static opal_value_t *get_value_object(SQLHSTMT results, int unused, opal_data_ty
             break;
         case OPAL_DOUBLE:
             column = get_value_column(results, VALUE_REAL_COLUMN_NUM);
-            ret = SQLGetData(results, column, SQL_DOUBLE, &rv->data.dval, sizeof(double), NULL);
+            ret = SQLGetData(results, column, SQL_DOUBLE, &rv->data.dval, sizeof(double), &result_len);
             if(!(SQL_SUCCEEDED(ret))) {
-                ERR_MSG_FMT_FETCH("SQLGetData returned: %d", ret);
+                ERR_MSG_FMT_FETCH("SQLGetData returned #8: %d", ret);
                 OBJ_RELEASE(rv);
                 return NULL;
             }
@@ -3654,17 +3676,18 @@ static int odbc_get_next_row(struct orcm_db_base_module_t *imod,
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
     SQLHSTMT stmt = (SQLHSTMT)opal_pointer_array_get_item(mod->results_sets, rshandle);
     int rc = ORCM_SUCCESS;
-    SQLULEN len = 0;
+
     SQLRETURN ret = SQL_SUCCESS;
     int cols = -1;
     int data_type_col = -1;
     opal_data_type_t data_type = OPAL_UNDEF;
     bool inserted_value = false;
     opal_value_t* value_object = NULL;
+    SQLLEN result_len = 0;
 
-    if(SQL_NULL_HSTMT != stmt) {
+    if(SQL_NULL_HSTMT == stmt) {
         rc = ORCM_ERROR;
-        ERR_MSG_FMT_FETCH("Bad results handle: %d", rshandle);
+        ERR_MSG_FMT_FETCH("SQLAllocHandle returned %d for SQL_HANDLE_STMT handle creation (DB Handle=0x%016lx)!", ret, (size_t)mod->dbhandle);
         return ORCM_ERROR;
     }
 
@@ -3679,7 +3702,7 @@ static int odbc_get_next_row(struct orcm_db_base_module_t *imod,
     /* get row ORCM data value type */
     data_type_col = get_column_number_by_name(stmt, opal_type_column_name);
     if(NO_COLUMN != data_type_col) {
-        ret = SQLGetData(stmt, data_type_col, SQL_C_LONG, &data_type, sizeof(opal_data_type_t), NULL);
+        ret = SQLGetData(stmt, data_type_col, SQL_C_LONG, &data_type, sizeof(opal_data_type_t), &result_len);
         if(!(SQL_SUCCEEDED(ret))) {
             ERR_MSG_FMT_FETCH("SQLGetData returned: %d", ret);
             rc = ORCM_ERROR;
@@ -3695,6 +3718,7 @@ static int odbc_get_next_row(struct orcm_db_base_module_t *imod,
             data_type_col = get_value_column(stmt, VALUE_INT_COLUMN_NUM);
             data_type = OPAL_INT64;
             if(NO_COLUMN == data_type_col) {
+                data_type_col = get_value_column(stmt, VALUE_REAL_COLUMN_NUM);
                 data_type = OPAL_DOUBLE;
             }
         }
@@ -3704,21 +3728,29 @@ static int odbc_get_next_row(struct orcm_db_base_module_t *imod,
 
     /* Get row general column data */
     cols = get_number_of_columns(stmt);
-    for(int i = 0; i < cols; ++i) {
+    for(int i = 1; i <= cols; ++i) {
+        SQLULEN len = 0;
         opal_value_t* kv = NULL;
         opal_data_type_t type = OPAL_UNDEF;
         char name_ref[COLUMN_NAME_WIDTH];
         SQLSMALLINT sql_data_type = -1;
+        SQLSMALLINT dec_dig = 0;
+        SQLSMALLINT nullable = 0;
+        SQLSMALLINT name_len = 0;
 
         if(i == data_type_col) { /* skip 'data_type_id' column */
             continue;
         }
 
-        ret = SQLDescribeCol(stmt, (SQLUSMALLINT)i, (SQLCHAR*)name_ref, (SQLSMALLINT)COLUMN_NAME_WIDTH, NULL, &sql_data_type, &len, NULL, NULL);
+        ret = SQLDescribeCol(stmt, (SQLUSMALLINT)i, (SQLCHAR*)name_ref, (SQLSMALLINT)COLUMN_NAME_WIDTH, &name_len, &sql_data_type, &len, &dec_dig, &nullable);
         if(!(SQL_SUCCEEDED(ret))) {
-            ERR_MSG_FMT_FETCH("SQLDescribeCol returned: %d", ret);
+            ERR_MSG_FMT_FETCH("SQLDescribeCol returned #4: %d", ret);
             rc = ORCM_ERROR;
             goto next_cleanup;
+        }
+        name_ref[name_len] = '\0';
+        if(-1 == sql_data_type) {
+            sql_data_type = SQL_VARCHAR; /* In practice, the SQLDescribeCol is not returning a type for the 'string' values when the underlying DB is postgres. */
         }
         if(true == is_column_name_a_value_column(name_ref)) {
             if(false == inserted_value && NULL != value_object) {
@@ -3741,23 +3773,24 @@ static int odbc_get_next_row(struct orcm_db_base_module_t *imod,
             case OPAL_STRING:
                 {
                     char* buffer = malloc(len + 1);
-                    ret = SQLGetData(stmt, data_type_col, SQL_C_CHAR, buffer, len + 1, NULL);
+                    ret = SQLGetData(stmt, i, SQL_C_CHAR, buffer, len + 1, &result_len);
                     if(!(SQL_SUCCEEDED(ret))) {
-                        ERR_MSG_FMT_FETCH("SQLGetData returned: %d", ret);
+                        ERR_MSG_FMT_FETCH("SQLGetData returned #1: %d", ret);
                         rc = ORCM_ERROR;
                         free(buffer);
+                        OBJ_RELEASE(kv);
                         goto next_cleanup;
                     }
                     kv->data.string = strdup(buffer);
                     free(buffer);
-                    OBJ_RELEASE(kv);
                 }
                 break;
             case OPAL_INT:
-                ret = SQLGetData(stmt, data_type_col, SQL_C_LONG, &kv->data.integer, sizeof(kv->data.integer), NULL);
+                ret = SQLGetData(stmt, i, SQL_C_LONG, &kv->data.integer, sizeof(kv->data.integer), &result_len);
                 if(!(SQL_SUCCEEDED(ret))) {
-                    ERR_MSG_FMT_FETCH("SQLGetData returned: %d", ret);
+                    ERR_MSG_FMT_FETCH("SQLGetData returned #2: %d", ret);
                     rc = ORCM_ERROR;
+                    OBJ_RELEASE(kv);
                     goto next_cleanup;
                 }
                 break;
@@ -3765,10 +3798,11 @@ static int odbc_get_next_row(struct orcm_db_base_module_t *imod,
                 {
                     SQL_TIMESTAMP_STRUCT time_stamp;
                     struct tm temp_tm;
-                    ret = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &time_stamp, sizeof(time_stamp), NULL);
+                    ret = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &time_stamp, sizeof(time_stamp), &result_len);
                     if(!(SQL_SUCCEEDED(ret))) {
-                        ERR_MSG_FMT_FETCH("SQLGetData returned: %d", ret);
+                        ERR_MSG_FMT_FETCH("SQLGetData returned #3: %d", ret);
                         rc = ORCM_ERROR;
+                        OBJ_RELEASE(kv);
                         goto next_cleanup;
                     }
                     /* The year in tm represents the number of years since 1900 */
@@ -3786,7 +3820,7 @@ static int odbc_get_next_row(struct orcm_db_base_module_t *imod,
                 }
                 break;
         }
-        opal_list_append(row, &kv->super);
+        opal_list_append(row, (opal_list_item_t*)kv);
     }
 next_cleanup:
     return rc;
@@ -3798,7 +3832,7 @@ static int odbc_close_result_set(struct orcm_db_base_module_t *imod,
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
     SQLHSTMT stmt = (SQLHSTMT)opal_pointer_array_get_item(mod->results_sets, rshandle);
 
-    if(SQL_NULL_HSTMT != stmt) {
+    if(SQL_NULL_HSTMT == stmt) {
         ERR_MSG_FMT_FETCH("Bad results handle: %d", rshandle);
         return ORCM_ERROR;
     }

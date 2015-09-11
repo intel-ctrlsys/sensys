@@ -172,11 +172,11 @@ int orcm_octl_grouping_list(int argc, char **argv)
 
         int do_all_tag = is_do_all_wildcard(tag);
 
-        orcm_logro_pair_t * itr = NULL;
+        orcm_logical_group_node_t * itr = NULL;
         if (is_do_all_wildcard(noderegex)) {
-            OPAL_LIST_FOREACH(itr, LGROUP.logro, orcm_logro_pair_t) {
+            OPAL_LIST_FOREACH(itr, LGROUP.logro, orcm_logical_group_node_t) {
                 if (do_all_tag || 0 == strcmp(tag, itr->tag)) {
-                    ORCM_OCTL_GROUPING_MSG2(VERBO,OUTID, "%s\n %s", itr->tag, itr->nodename);
+                    ORCM_OCTL_GROUPING_MSG2(VERBO,OUTID, "%s\n %s", itr->tag, itr->noderegx);
                 }
             }
         } else {
@@ -189,11 +189,11 @@ int orcm_octl_grouping_list(int argc, char **argv)
             int k;
             for (k = 0; k < sz_nodelist; ++k) {
                 const char * nodname = nodelist[k];
-                OPAL_LIST_FOREACH(itr, LGROUP.logro, orcm_logro_pair_t) {
-                    if (0 == strcmp(nodname, itr->nodename) &&
+                OPAL_LIST_FOREACH(itr, LGROUP.logro, orcm_logical_group_node_t) {
+                    if (0 == strcmp(nodname, itr->noderegx) &&
                         (do_all_tag || 0 == strcmp(tag, itr->tag)) )
                     {
-                        ORCM_OCTL_GROUPING_MSG2(VERBO,OUTID, "%s\n %s", itr->tag, itr->nodename);
+                        ORCM_OCTL_GROUPING_MSG2(VERBO,OUTID, "%s\n %s", itr->tag, itr->noderegx);
                     }
                 }
             }

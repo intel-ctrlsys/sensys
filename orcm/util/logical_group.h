@@ -12,24 +12,26 @@
 #include "orcm_config.h"
 
 #include "opal/class/opal_list.h"
+#include "opal/class/opal_hash_table.h"
+
+#define MAX_LINE_LENGTH 1024
+#define HASH_SIZE 1000
 
 BEGIN_C_DECLS
 
 typedef struct {
     opal_list_item_t super;
-    char * tag;
-    char * nodename;
-} orcm_logro_pair_t;
-OBJ_CLASS_DECLARATION(orcm_logro_pair_t);
+    char *node;
+} orcm_logical_group_node_t;
+OBJ_CLASS_DECLARATION(orcm_logical_group_node_t);
 
-typedef struct orcm_lgroup_t {
-    opal_list_t * logro; //It contains object of type orcm_logro_pair_t.
-                         //It is not owned by this struct.
-    char * storage_filename;
-} orcm_lgroup_t;
+typedef struct orcm_logical_group_t {
+    opal_hash_table_t *groups; //It contains object of type orcm_logical_group_pair_t.
+    char *storage_filename;
+} orcm_logical_group_t;
 
-extern opal_list_t LOGRO; //Global as requested.
-extern orcm_lgroup_t LGROUP; //Global as requested.
+extern opal_hash_table_t GROUPS; //Global as requested.
+extern orcm_logical_group_t LGROUP; //Global as requested.
 
 //====== ACTUAL PUBLIC INTERFACE
 
@@ -69,32 +71,33 @@ ORCM_DECLSPEC int orcm_node_names_list(char *in_regexp, char **o_nodelist);
 ORCM_DECLSPEC int orcm_logical_group_delete(void);
 
 //====== PRIVATE SECTIONS
-ORCM_DECLSPEC int orcm_grouping_op_add(int argc, char **argv, opal_list_t * io_group);
-ORCM_DECLSPEC int orcm_grouping_op_remove(int argc, char **argv, opal_list_t * io_group);
-ORCM_DECLSPEC int orcm_grouping_op_save(int argc, char **argv, opal_list_t * io_group);
-ORCM_DECLSPEC int orcm_grouping_op_load(int argc, char **argv, opal_list_t * io_group);
+ORCM_DECLSPEC int orcm_grouping_op_add(char *tag, char *node_regex,
+                                       opal_hash_table_t *io_group);
+ORCM_DECLSPEC int orcm_grouping_op_remove(char *tag, char *node_regex,
+                                          opal_hash_table_t *io_group);
+ORCM_DECLSPEC int orcm_grouping_op_save(char *storage_filename, opal_hash_table_t *io_group);
+ORCM_DECLSPEC int orcm_grouping_op_load(char *storage_filename, opal_hash_table_t *io_group);
 
-ORCM_DECLSPEC int grouping_parse_from_file(opal_list_t * io_group,
-                                           const char * in_filename,
-                                           int * o_file_missing);
-ORCM_DECLSPEC int grouping_save_to_file(opal_list_t * io_group,
-                                        const char * in_filename);
+ORCM_DECLSPEC int grouping_parse_from_file(opal_hash_table_t *io_group,
+                                           const char *in_filename,
+                                           int *o_file_missing);
+ORCM_DECLSPEC int grouping_save_to_file(opal_hash_table_t *io_group,
+                                        const char *in_filename);
 
-ORCM_DECLSPEC int is_do_all_wildcard(const char * in_text);
+ORCM_DECLSPEC int is_do_all_wildcard(const char *in_text);
 
-ORCM_DECLSPEC void logro_pair_ctor(orcm_logro_pair_t *ptr);
-ORCM_DECLSPEC void logro_pair_dtor(orcm_logro_pair_t *ptr);
+ORCM_DECLSPEC void logical_group_pair_construct(orcm_logical_group_node_t *ptr);
+ORCM_DECLSPEC void logical_group_pair_destruct(orcm_logical_group_node_t *ptr);
 
-ORCM_DECLSPEC int is_comment(const char * in_line);
-ORCM_DECLSPEC int is_tag(const char * in_line);
-ORCM_DECLSPEC int is_attribute(const char * in_line);
+ORCM_DECLSPEC int is_comment(const char *in_line);
+ORCM_DECLSPEC int is_tag(const char *in_line);
+ORCM_DECLSPEC int is_nodelist(const char *in_line);
 
-ORCM_DECLSPEC void trim(char * in_line, char ** o_new_start);
-ORCM_DECLSPEC int get_newline(FILE * in_fin, char * io_line, int in_max_line_length,
-                              int * o_eof_found);
+ORCM_DECLSPEC void trim(char *in_line, char **o_new_start);
+ORCM_DECLSPEC int get_newline(FILE *in_fin, char *io_line, int *o_eof_found);
 
 ORCM_DECLSPEC int orcm_logical_group_init(void);
-ORCM_DECLSPEC int orcm_adjust_logical_grouping_path(char * in_install_dirs_prefix);
+ORCM_DECLSPEC int orcm_adjust_logical_grouping_path(char *in_install_dirs_prefix);
 
 int orcm_logical_group_trim_noderegex(char *in_regexp, char **o_regexp);
 int orcm_logical_group_is_valid_tag(char *tag);

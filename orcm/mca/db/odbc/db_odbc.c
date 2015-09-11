@@ -3631,7 +3631,8 @@ static opal_value_t *get_value_object(SQLHSTMT results, int unused, opal_data_ty
                 size = (size_t)col_size;
                 column_name[name_len] = '\0';
                 rv->data.string = (char*)malloc(size);
-                ret = SQLGetData(results, column, SQL_C_CHAR, &rv->data.string, (SQLLEN)(size), &result_len);
+                memset(rv->data.string, 0, (int)size);
+                ret = SQLGetData(results, column, SQL_C_CHAR, rv->data.string, (SQLLEN)(size), &result_len);
                 if(!(SQL_SUCCEEDED(ret))) {
                     ERR_MSG_FMT_FETCH("SQLGetData returned #6: %d", ret);
                     OBJ_RELEASE(rv);

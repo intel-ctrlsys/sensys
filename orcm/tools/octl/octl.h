@@ -178,8 +178,8 @@ static orcm_cli_init_t cli_init[] = {
     { { NULL }, "analytics", 0, 0, "Analytics information" },
     { { "analytics", NULL }, "workflow", 0, 0, "workflow manipulation commands" },
     { { "analytics", "workflow", NULL }, "add", 0, 1, "add workflow: add file..txt" },
-    { { "analytics", "workflow", NULL }, "remove", 0, 2, "remove workflow: remove VPID workflow_id" },
-    { { "analytics", "workflow", NULL }, "get", 0, 0, "list workflow: get VPID" },
+    { { "analytics", "workflow", NULL }, "remove", 0, 2, "remove workflow: remove nodelist workflow_id" },
+    { { "analytics", "workflow", NULL }, "get", 0, 0, "list workflow: get nodelist" },
 
     /* quit command */
     { { NULL }, "quit\/exit", 0, 0, "Exit the shell" },

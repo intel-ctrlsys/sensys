@@ -217,11 +217,17 @@ int main(int argc, char *argv[])
                             NULL);
 
     if (ORCM_PROC_IS_AGGREGATOR) {
-        opal_output(0, "\n******************************\n%s: ORCM version: %s AGGREGATOR: %s started and connected to AGGREGATOR: %s\n******************************\n",
-                    ctmp,
-                    ORCM_VERSION,
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT));
+        if ((ORTE_PROC_MY_PARENT->jobid == ORTE_PROC_MY_SCHEDULER->jobid) 
+            && (ORTE_PROC_MY_PARENT->vpid == ORTE_PROC_MY_SCHEDULER->vpid)) {
+            opal_output(0, "\n******************************\n%s: ORCM version: %s AGGREGATOR: %s started and connected to SCHEDULER: %s\n******************************\n",
+                ctmp, ORCM_VERSION, ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT));
+
+        } else {
+            opal_output(0, "\n******************************\n%s: ORCM version: %s AGGREGATOR: %s started and connected to AGGREGATOR: %s\n******************************\n",
+                ctmp, ORCM_VERSION, ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                ORTE_NAME_PRINT(ORTE_PROC_MY_PARENT));
+        }
     } else {
         opal_output(0, "\n******************************\n%s: ORCM version: %s DAEMON: %s started and connected to AGGREGATOR: %s\n******************************\n",
                     ctmp,

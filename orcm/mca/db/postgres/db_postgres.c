@@ -28,8 +28,6 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "libpq-fe.h"
-
 #include "opal_stdint.h"
 #include "opal/util/argv.h"
 #include "opal/util/error.h"
@@ -39,6 +37,17 @@
 
 #include "orcm/mca/db/base/base.h"
 #include "db_postgres.h"
+
+#undef PACKAGE_BUGREPORT
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
+#undef PACKAGE_URL
+
+#include "libpq-fe.h"
+#include "postgres_fe.h"
+#include "catalog/pg_type.h"
 
 #define ORCM_PG_MAX_LINE_LENGTH 4096
 
@@ -2012,33 +2021,70 @@ static bool is_column_name_a_value_column(const char* column_name)
     return rv;
 }
 
-static const struct {
-    char* column_name;
-    opal_data_type_t data_type;
-} fixed_name_type_map[] = { /* union set of supported columns names from DB tables/views */
-    { "node_id",    OPAL_INT     },
-    { "hostname",   OPAL_STRING  },
-    { "data_item",  OPAL_STRING  },
-    { "units",      OPAL_STRING  },
-    { "feature",    OPAL_STRING  },
-    { "feature_id", OPAL_INT     },
-    { "time_stamp", OPAL_TIMEVAL },
-    { NULL,         OPAL_UNDEF   } /* Marks the end of the list */
-};
-
-static opal_data_type_t get_opal_type_from_column_name(const char* column_name)
+static opal_data_type_t get_opal_type_from_postgres_type(Oid pg_type)
 {
-    opal_data_type_t rv = OPAL_UNDEF;
-    int item_index = 0;
-    while(NULL != fixed_name_type_map[item_index].column_name) {
-        if(0 == strcmp(column_name, fixed_name_type_map[item_index].column_name)) {
-            rv = fixed_name_type_map[item_index].data_type;
-            break;
-        }
-        ++item_index;
+    switch(pg_type) {
+    case BOOLOID:
+        return OPAL_BOOL;
+    case BYTEAOID:
+        return OPAL_BYTE;
+    case CHAROID:
+        return OPAL_INT8;
+    case NAMEOID:
+    case BPCHAROID:
+    case VARCHAROID:
+    case TSVECTOROID:
+    case CSTRINGOID:
+        return OPAL_STRING;
+    case INT8OID:
+        return OPAL_INT64;
+    case INT2OID:
+        return OPAL_INT16;
+    case INT2VECTOROID:
+    case INT2ARRAYOID:
+        return OPAL_INT16_ARRAY;
+    case INT4OID:
+        return OPAL_INT32;
+    case TEXTOID:
+        return OPAL_STRING;
+    case OIDOID:
+    case XIDOID:
+    case CIDOID:
+    case REGTYPEOID:
+        return OPAL_UINT32;
+    case TIDOID:
+    case BITOID:
+    case VARBITOID:
+    case UUIDOID:
+        return OPAL_UINT8_ARRAY;
+    case OIDVECTOROID:
+    case INT4ARRAYOID:
+    case OIDARRAYOID:
+    case REGTYPEARRAYOID:
+        return OPAL_UINT32_ARRAY;
+    case FLOAT4OID:
+        return OPAL_FLOAT;
+    case FLOAT8OID:
+        return OPAL_DOUBLE;
+    case ABSTIMEOID:
+    case TIMESTAMPOID:
+    case TIMESTAMPTZOID:
+    case DATEOID:
+        return OPAL_TIMEVAL;
+    case TEXTARRAYOID:
+    case CSTRINGARRAYOID:
+        return OPAL_STRING_ARRAY;
+    case FLOAT4ARRAYOID:
+        return OPAL_FLOAT_ARRAY;
+    case TIMETZOID:
+    case INTERVALOID:
+    case TIMEOID:
+        return OPAL_TIME;
+    default:
+        return OPAL_UNDEF;
     }
-    return rv;
 }
+
 /**************************************************************************************************/
 
 #define NO_ROWS     (-1)
@@ -2263,6 +2309,7 @@ static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
     /* Get row general column data */
     cols = PQnfields(results);
     for(int i = 0; i < cols; ++i) {
+        Oid pg_type;
         opal_value_t* kv = NULL;
         opal_data_type_t type = OPAL_UNDEF;
         char* name_ref = NULL;
@@ -2271,6 +2318,7 @@ static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
         }
 
         name_ref = PQfname(results, i);
+        pg_type = PQftype(results, i);
         if(true == is_column_name_a_value_column(name_ref)) {
             if(false == inserted_value && NULL != value_object) {
                 opal_list_append(row, &value_object->super);
@@ -2280,7 +2328,7 @@ static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
             continue; /* skip all 'value_*' named columns as thjey are already handled */
         }
 
-        type = get_opal_type_from_column_name(name_ref);
+        type = get_opal_type_from_postgres_type(pg_type);
         if(OPAL_UNDEF == type) {
             ERR_MSG_FMT_FETCH("An unrecognized column name '%s' was encountered and skipped during a call to 'get_next_row'", name_ref);
             continue; /* skip unknown fields */

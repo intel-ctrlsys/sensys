@@ -644,7 +644,7 @@ ddl_script := ddl_script || '
 -- New partition name pattern:  ' || quote_literal(table_name || '_' || timestamp_mask_by_interval || '_' || time_stamp_column_name) || '.' ||
 '
 -------------------------------
-CREATE OR REPLACE FUNCTION data_sample_raw_partition_handler()
+CREATE OR REPLACE FUNCTION ' || table_name || '_partition_handler()
   RETURNS trigger
   LANGUAGE plpgsql VOLATILE
 AS

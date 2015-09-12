@@ -28,6 +28,8 @@
 
 #include "orcm/mca/scd/base/base.h"
 
+#include "orcm/util/logical_group.h"
+
 /* create a container for resource states */
 typedef struct {
     opal_list_item_t super;
@@ -206,6 +208,7 @@ int orcm_octl_resource_drain(char **argv)
     opal_buffer_t *buf;
     orte_rml_recv_cb_t xfer;
     int rc, n, result;
+    char *nodelist = NULL;
 
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "\n  incorrect arguments! \n\n usage: \"resource \
@@ -242,7 +245,12 @@ drain <nodelist>\"\n");
     }
 
     /* pack the nodelist */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[2],
+    if (ORCM_SUCCESS != (rc = orcm_node_names_list(argv[2], &nodelist))) {
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &nodelist,
                                             1, OPAL_STRING))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
@@ -285,6 +293,7 @@ int orcm_octl_resource_resume(char **argv)
     opal_buffer_t *buf;
     orte_rml_recv_cb_t xfer;
     int rc, n, result;
+    char *nodelist = NULL;
 
     if (3 != opal_argv_count(argv)) {
         fprintf(stderr, "\n  incorrect arguments! \n\n usage: \"resource \
@@ -321,7 +330,12 @@ resume <nodelist>\"\n");
     }
 
     /* pack the nodelist */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[2],
+    if (ORCM_SUCCESS != (rc = orcm_node_names_list(argv[2], &nodelist))) {
+        OBJ_RELEASE(buf);
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &nodelist,
                                             1, OPAL_STRING))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);

@@ -61,6 +61,11 @@ ORCM_DECLSPEC int orcm_grouping_listnodes(char * in_tag, unsigned int * o_count,
 //   in_regexp = $abc      --> logical grouping tag = abc
 ORCM_DECLSPEC int orcm_node_names(char *in_regexp, char ***o_names);
 
+/* This function takes a regex. If the regex is a tap, then decode it
+ * to a comma separated node list. Otherwise, leave the way it is.
+ */
+ORCM_DECLSPEC int orcm_node_names_list(char *in_regexp, char **o_nodelist);
+
 ORCM_DECLSPEC int orcm_logical_group_delete(void);
 
 //====== PRIVATE SECTIONS
@@ -90,6 +95,12 @@ ORCM_DECLSPEC int get_newline(FILE * in_fin, char * io_line, int in_max_line_len
 
 ORCM_DECLSPEC int orcm_logical_group_init(void);
 ORCM_DECLSPEC int orcm_adjust_logical_grouping_path(char * in_install_dirs_prefix);
+
+int orcm_logical_group_trim_noderegex(char *in_regexp, char **o_regexp);
+int orcm_logical_group_is_valid_tag(char *tag);
+int orcm_logical_group_prepare_for_nodes(char *in_regexp, char **o_regexp);
+int orcm_logical_group_tag_to_nodes(char *tag, char ***o_names);
+int orcm_logical_group_tag_to_nodelist(char *tag, char **o_nodelist);
 
 END_C_DECLS
 

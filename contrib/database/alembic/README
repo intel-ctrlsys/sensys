@@ -1,0 +1,11 @@
+Generic single-database configuration.
+
+Use the autogenerate to generate the diff between the SQLAlchemy model and the
+current state of the database.
+
+alembic -c alembic.ini revision --autogenerate -m "Change description"
+
+For more detail refer to Alembic's documentation
+
+A complete tutorial on how to use Alembic is available here:
+http://alembic.readthedocs.org/en/latest/tutorial.html

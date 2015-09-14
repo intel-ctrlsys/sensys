@@ -11,6 +11,7 @@
 
 #include "orcm/mca/analytics/analytics_types.h"
 #include "orcm/tools/octl/common.h"
+#include "orcm/util/logical_group.h"
 
 #define OFLOW_SUCCESS   1
 #define OFLOW_FAILURE   0
@@ -107,7 +108,7 @@ static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *param
                  * Resetting the array index will help in storing only the work steps */
                 *params_array_length = 0;
                 set_nodelist = 1;
-                rc = orte_regex_extract_node_names (input_array[0].data.string, nodelist);
+                rc = orcm_node_names (input_array[0].data.string, nodelist);
                 if (ORCM_SUCCESS != rc) {
                     return ORCM_ERROR;
                 }
@@ -310,7 +311,7 @@ int orcm_octl_analytics_workflow_add(char *file)
         }
     }
     orcm_octl_analytics_wf_add_error(buf, NULL, oflow_input_file_array, nodelist);
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 
 }
 
@@ -324,7 +325,7 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
     }
 
     if (NULL != value[3]) {
-        rc = orte_regex_extract_node_names (value[3], nodelist);
+        rc = orcm_node_names (value[3], nodelist);
         if (ORCM_SUCCESS != rc) {
             return ORCM_ERROR;
         }
@@ -443,7 +444,7 @@ int orcm_octl_analytics_workflow_remove(char **value)
 
     }
     orcm_octl_analytics_process_error(buf, NULL, nodelist);
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 
 }
 
@@ -457,7 +458,7 @@ static int orcm_octl_analytics_wf_list_parse_args(char **value, char ***nodelist
     }
 
     if (NULL != value[3]) {
-        rc = orte_regex_extract_node_names (value[3], nodelist);
+        rc = orcm_node_names (value[3], nodelist);
         if (ORCM_SUCCESS != rc) {
             return ORCM_ERROR;
         }
@@ -573,7 +574,7 @@ int orcm_octl_analytics_workflow_list(char **value)
         }
     }
     orcm_octl_analytics_process_error(buf, NULL, nodelist);
-    return ORTE_SUCCESS;
+    return ORCM_SUCCESS;
 }
 
 /* get key/value from line */

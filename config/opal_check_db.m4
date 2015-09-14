@@ -1,12 +1,38 @@
 # -*- shell-script -*-
 #
-# Copyright (c) 2014      Intel, Inc. All rights reserved.
+# Copyright (c) 2014-2015  Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
 #
 # $HEADER$
 #
+# --------------------------------------------------------
+dnl SPECIAL_POSTGRES_SERVER_HEADER_CHECK(headerlist, prefixdir,
+dnl                                      [action if found], [action if not found])
+dnl (This will fail on SUSE just like the original OPAL_CHECK_PACKAGE does without proper
+dnl  soft-linked folders)
+AC_DEFUN([SPECIAL_POSTGRES_SERVER_HEADER_CHECK],[
+special_postgres_save_CPPFLAGS=$CPPFLAGS
+
+AC_MSG_CHECKING([for PostgreSQL Server support])
+AS_IF([test "$2" != "" ], [ CPPFLAGS="$CPPFLAGS -I$2/include/server" ], [])
+
+# The C lines below are not intented on purpose.
+AC_CHECK_HEADERS([$1],
+                 [$3],
+                 [$4],
+                 [
+#ifdef HAVE_POSTGRES_FE_H
+#include <postgres_fe.h>
+#endif
+#ifdef HAVE_PG_TYPE_H
+#include <pg_type.h>
+#endif
+                 ])
+CPPFLAGS=$special_postgres_save_CPPFLAGS
+])
+
 # --------------------------------------------------------
 AC_DEFUN([OPAL_CHECK_POSTGRES],[
 
@@ -36,7 +62,22 @@ AC_ARG_WITH([postgres],
                                        [opal_db_postgres_found="yes"],
                                        [AC_MSG_WARN([PostgreSQL database support requested])
                                         AC_MSG_WARN([but required library not found or link test failed])
-                                        opal_db_postgres_failed="yes"])])],
+                                        opal_db_postgres_failed="yes"])
+                    AS_IF([test "$opal_db_postgres_found" = "yes"],
+                          [# If found check to see if the required Postgres Server headers are installed
+                           SPECIAL_POSTGRES_SERVER_HEADER_CHECK([postgres_fe.h catalog/pg_type.h],
+                                                                [$with_postgres],
+                                                                [],
+                                                                [ AC_MSG_WARN([PostgreSQL database support requested])
+                                                                  AC_MSG_WARN([but required server headers were not found])
+                                                                  opal_db_postgres_found="no"
+                                                                  opal_db_postgres_failed="yes"])
+                          AS_IF([test "$opal_db_postgres_failed" != "yes"],
+                                [opal_db_postgres_CPPFLAGS="$opal_db_postgres_CPPFLAGS -I$with_postgres/include/server"],
+                                [])
+                          ],
+                          [])
+                    ])],
             [# Support not explicitly requested, try to build if possible
              OPAL_CHECK_PACKAGE([opal_db_postgres],
                                 [libpq-fe.h],
@@ -45,9 +86,21 @@ AC_ARG_WITH([postgres],
                                 [],
                                 [],
                                 [],
-                                [opal_db_postgres_found="yes"],
+                                [opal_db_postgres_found="yes"
+                                 CPPFLAGS],
                                 [AC_MSG_WARN([PostgreSQL library not found or link test failed])
-                                 AC_MSG_WARN([building without PostgreSQL support])])])
+                                 AC_MSG_WARN([building without PostgreSQL support])])
+             AS_IF([test "$opal_db_postgres_found" = "yes"],
+                   [# If found check to see if the required Postgres Server headers are installed
+                    SPECIAL_POSTGRES_SERVER_HEADER_CHECK([postgres_fe.h catalog/pg_type.h],
+                                                         [],
+                                                         [CPPFLAGS],
+                                                         [ AC_MSG_WARN([PostgreSQL database support requested])
+                                                           AC_MSG_WARN([but required server headers were not found])
+                                                           opal_db_postgres_found="no"])
+                   ],
+                   [])
+            ])
 ])
 
 # --------------------------------------------------------

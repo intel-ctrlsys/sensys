@@ -758,77 +758,141 @@ int orcm_grouping_listnodes(char * in_tag,
     return erri;
 }
 
+int orcm_logical_group_trim_noderegex(char *in_regexp, char **o_regexp)
+{
+    char *regexp = in_regexp;
+    int erri = ORCM_SUCCESS;
+
+    if (NULL != regexp) {
+        while('\0' != *regexp && (' ' == *regexp || '\t' == *regexp)) {
+            ++regexp;
+        }
+
+        if ('\0' == *regexp) {
+            fprintf(stderr, "\n  ERROR: Given node regex is empty.\n");
+            regexp = NULL;
+            erri = ORCM_ERR_BAD_PARAM;
+        }
+    }
+
+    *o_regexp = regexp;
+    return erri;
+}
+
+int orcm_logical_group_is_valid_tag(char *tag)
+{
+    char *comma = NULL;
+    char *openb = NULL;
+    char *closeb = NULL;
+
+    if ('\0' == tag[0]) {
+        fprintf(stderr, "\n  ERROR: Given logical grouping tag is empty.\n");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    comma = strchr(tag, ',');
+    openb = strchr(tag, '[');
+    closeb= strchr(tag, ']');
+
+    /* the regular expression can not include comma, nor the openb bigger than the closeb*/
+    if (NULL != comma) {
+        fprintf(stderr, "\n  ERROR: Given logical grouping tag must not be a csv list.\n");
+        return ORCM_ERR_BAD_PARAM;
+    }
+    if (openb < closeb) {
+        fprintf(stderr, "\n  ERROR: Given logical grouping tag must not be a regex.\n");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    return ORCM_SUCCESS;
+}
+
+int orcm_logical_group_tag_to_nodes(char *tag, char ***o_names)
+{
+    char *all_nodes = "*";
+    unsigned int count = 0;
+    char **tags = NULL;
+    char **nodes = NULL;
+    int erri = orcm_logical_group_is_valid_tag(tag);
+    if (ORCM_SUCCESS != erri) {
+        return erri;
+    }
+
+    erri = orcm_grouping_list(tag, all_nodes, &count, &tags, &nodes);
+    opal_argv_free(tags);
+    tags = NULL;
+    if (0 == count) {
+        //This imitates what is done inside orte_regex_extract_node_names().
+        *o_names = NULL;
+        opal_argv_free(nodes);
+    } else {
+        *o_names = nodes;
+        nodes = NULL;
+    }
+
+    return erri;
+}
+
+int orcm_logical_group_tag_to_nodelist(char *tag, char **o_nodelist)
+{
+    unsigned int count = 0;
+    int erri = orcm_logical_group_is_valid_tag(tag);
+    if (ORCM_SUCCESS != erri) {
+        return erri;
+    }
+
+    return orcm_grouping_listnodes(tag, &count, o_nodelist);
+}
+
+int orcm_logical_group_prepare_for_nodes(char *in_regexp, char **o_regexp)
+{
+    int erri = orcm_logical_group_trim_noderegex(in_regexp, o_regexp);
+    if (ORCM_SUCCESS != erri) {
+        return erri;
+    }
+
+    return orcm_logical_group_init();
+}
+
 int orcm_node_names(char *in_regexp, char ***o_names)
 {
     int erri = ORCM_SUCCESS;
-    while (ORCM_SUCCESS == erri) {
-        erri = orcm_logical_group_init();
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
+    char *o_regexp = NULL;
 
-        char * tag = in_regexp;
-        if (NULL  == tag) {
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-
-        while('\0' != *tag && (' ' == *tag || '\t' == *tag)) {
-            ++tag;
-        }
-
-        if ('\0' == *tag) {
-            fprintf(stderr, "\n  ERROR: Given node regex is empty.\n");
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-
-        if ('$' == tag[0]) {
-            ++tag; //Omit the '$' character
-
-            if ('\0' == tag[0]) {
-                fprintf(stderr, "\n  ERROR: Given logical grouping tag is empty.\n");
-                erri = ORCM_ERR_BAD_PARAM;
-                break;
-            }
-
-            char * comma = strchr(tag, ',');
-            char * openb = strchr(tag, '[');
-            char * closeb= strchr(tag, ']');
-
-            if (NULL != comma) {
-                fprintf(stderr, "\n  ERROR: Given logical grouping tag must not be a csv list.\n");
-                erri = ORCM_ERR_BAD_PARAM;
-                break;
-            } else if (openb < closeb) {
-                //If openb > closeb, than it is not a regex.
-                fprintf(stderr, "\n  ERROR: Given logical grouping tag must not be a regex.\n");
-                erri = ORCM_ERR_BAD_PARAM;
-                break;
-            }
-
-            char * all_nodes = "*";
-            unsigned int count = 0;
-            char ** tags = NULL;
-            char ** nodes = NULL;
-            erri = orcm_grouping_list(tag, all_nodes,
-                                      &count, &tags, &nodes);
-            opal_argv_free(tags);
-            tags = NULL;
-            if (0 == count) {
-                //This imitates what is done inside orte_regex_extract_node_names().
-                *o_names = NULL;
-                opal_argv_free(nodes);
-            } else {
-                *o_names = nodes;
-                nodes = NULL;
-            }
-        } else {
-            erri = orte_regex_extract_node_names(in_regexp, o_names);
-        }
-        break;
+    erri = orcm_logical_group_prepare_for_nodes(in_regexp, &o_regexp);
+    if (ORCM_SUCCESS != erri) {
+        return erri;
     }
+
+    /* If the node regex is a tag: starting with $ */
+    if ('$' == o_regexp[0]) {
+        ++o_regexp; //Omit the '$' character
+        erri = orcm_logical_group_tag_to_nodes(o_regexp, o_names);
+    } else {
+        erri = orte_regex_extract_node_names(in_regexp, o_names);
+    }
+
     return erri;
+}
+
+int orcm_node_names_list(char *in_regexp, char **o_nodelist)
+{
+    int erri = ORCM_SUCCESS;
+    char *o_regexp = NULL;
+
+    erri = orcm_logical_group_prepare_for_nodes(in_regexp, &o_regexp);
+    if (ORCM_SUCCESS != erri) {
+        return erri;
+    }
+
+    if ('$' == o_regexp[0]) {
+        ++o_regexp;
+        erri = orcm_logical_group_tag_to_nodelist(o_regexp, o_nodelist);
+    } else {
+        *o_nodelist = in_regexp;
+    }
+
+    return ORCM_SUCCESS;
 }
 
 int orcm_adjust_logical_grouping_path(char * in_install_dirs_prefix)

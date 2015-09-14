@@ -61,7 +61,7 @@ ORCM_DECLSPEC int orcm_grouping_listnodes(char * in_tag, unsigned int * o_count,
 //   in_regexp = $abc      --> logical grouping tag = abc
 ORCM_DECLSPEC int orcm_node_names(char *in_regexp, char ***o_names);
 
-/* This function takes a regex. If the regex is a tap, then decode it
+/* This function takes a regex. If the regex is a tag, then decode it
  * to a comma separated node list. Otherwise, leave the way it is.
  */
 ORCM_DECLSPEC int orcm_node_names_list(char *in_regexp, char **o_nodelist);

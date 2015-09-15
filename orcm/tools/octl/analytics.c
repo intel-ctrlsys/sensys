@@ -222,7 +222,7 @@ static int orcm_octl_analytics_wf_add_unpack_buffer(orte_rml_recv_cb_t *xfer)
 int orcm_octl_analytics_workflow_add(char *file)
 {
     orte_rml_recv_cb_t *xfer = NULL;
-    opal_buffer_t *buf;
+    opal_buffer_t *buf = NULL;
     int rc;
     int params_array_length = 0;
     int step_size = 0;
@@ -270,10 +270,22 @@ int orcm_octl_analytics_workflow_add(char *file)
 
 
     buf = OBJ_NEW(opal_buffer_t);
+    if (NULL == buf) {
+        free (oflow_input_file_array);
+        free (nodelist);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
 
     for (node_index = 0; node_index < opal_argv_count(nodelist); node_index++) {
 
         xfer = OBJ_NEW(orte_rml_recv_cb_t);
+        if (NULL == xfer) {
+            free (oflow_input_file_array);
+            free (nodelist);
+            OBJ_RELEASE(buf);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+
         orcm_octl_analytics_output_setup(xfer);
 
         OBJ_RETAIN(buf);
@@ -404,10 +416,19 @@ int orcm_octl_analytics_workflow_remove(char **value)
 
 
     buf = OBJ_NEW(opal_buffer_t);
+    if (NULL == buf) {
+        free (nodelist);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
 
     for (node_index = 0; node_index < opal_argv_count(nodelist); node_index++) {
 
         xfer = OBJ_NEW(orte_rml_recv_cb_t);
+        if (NULL == xfer) {
+            free (nodelist);
+            OBJ_RELEASE(buf);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
         orcm_octl_analytics_output_setup(xfer);
 
         OBJ_RETAIN(buf);
@@ -535,10 +556,19 @@ int orcm_octl_analytics_workflow_list(char **value)
     }
 
     buf = OBJ_NEW(opal_buffer_t);
+    if (NULL == buf) {
+        free (nodelist);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
 
     for (node_index = 0; node_index < opal_argv_count(nodelist); node_index++) {
 
         xfer = OBJ_NEW(orte_rml_recv_cb_t);
+        if (NULL == xfer) {
+            free (nodelist);
+            OBJ_RELEASE(buf);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
         orcm_octl_analytics_output_setup(xfer);
 
         OBJ_RETAIN(buf);

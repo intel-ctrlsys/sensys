@@ -10,8 +10,6 @@
 # --------------------------------------------------------
 dnl SPECIAL_POSTGRES_SERVER_HEADER_CHECK(headerlist, prefixdir,
 dnl                                      [action if found], [action if not found])
-dnl (This will fail on SUSE just like the original OPAL_CHECK_PACKAGE does without proper
-dnl  soft-linked folders)
 AC_DEFUN([SPECIAL_POSTGRES_SERVER_HEADER_CHECK],[
 special_postgres_save_CPPFLAGS=$CPPFLAGS
 

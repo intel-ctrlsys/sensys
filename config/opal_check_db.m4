@@ -10,7 +10,7 @@
 # --------------------------------------------------------
 dnl SPECIAL_POSTGRES_SERVER_HEADER_CHECK(headerlist, prefixdir,
 dnl                                      [action if found], [action if not found])
-AC_DEFUN([SPECIAL_POSTGRES_SERVER_HEADER_CHECK],[
+AC_DEFUN([POSTGRES_SERVER_HEADER_CHECK],[
 special_postgres_save_CPPFLAGS=$CPPFLAGS
 
 AC_MSG_CHECKING([for PostgreSQL Server support])
@@ -63,13 +63,13 @@ AC_ARG_WITH([postgres],
                                         opal_db_postgres_failed="yes"])
                     AS_IF([test "$opal_db_postgres_found" = "yes"],
                           [# If found check to see if the required Postgres Server headers are installed
-                           SPECIAL_POSTGRES_SERVER_HEADER_CHECK([postgres_fe.h catalog/pg_type.h],
-                                                                [$with_postgres],
-                                                                [],
-                                                                [ AC_MSG_WARN([PostgreSQL database support requested])
-                                                                  AC_MSG_WARN([but required server headers were not found])
-                                                                  opal_db_postgres_found="no"
-                                                                  opal_db_postgres_failed="yes"])
+                           POSTGRES_SERVER_HEADER_CHECK([postgres_fe.h catalog/pg_type.h],
+                                                        [$with_postgres],
+                                                        [],
+                                                        [ AC_MSG_WARN([PostgreSQL database support requested])
+                                                          AC_MSG_WARN([but required server headers were not found])
+                                                          opal_db_postgres_found="no"
+                                                          opal_db_postgres_failed="yes"])
                           AS_IF([test "$opal_db_postgres_failed" != "yes"],
                                 [opal_db_postgres_CPPFLAGS="$opal_db_postgres_CPPFLAGS -I$with_postgres/include/server"],
                                 [])
@@ -90,12 +90,12 @@ AC_ARG_WITH([postgres],
                                  AC_MSG_WARN([building without PostgreSQL support])])
              AS_IF([test "$opal_db_postgres_found" = "yes"],
                    [# If found check to see if the required Postgres Server headers are installed
-                    SPECIAL_POSTGRES_SERVER_HEADER_CHECK([postgres_fe.h catalog/pg_type.h],
-                                                         [],
-                                                         [CPPFLAGS],
-                                                         [ AC_MSG_WARN([PostgreSQL database support requested])
-                                                           AC_MSG_WARN([but required server headers were not found])
-                                                           opal_db_postgres_found="no"])
+                    POSTGRES_SERVER_HEADER_CHECK([postgres_fe.h catalog/pg_type.h],
+                                                 [],
+                                                 [CPPFLAGS],
+                                                 [ AC_MSG_WARN([PostgreSQL database support requested])
+                                                   AC_MSG_WARN([but required server headers were not found])
+                                                   opal_db_postgres_found="no"])
                    ],
                    [])
             ])

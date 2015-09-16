@@ -70,7 +70,7 @@ static int errmgr_orcm_component_query(mca_base_module_t **module, int *priority
 {
     if (ORTE_PROC_IS_CM) {
         /* set our priority high as we are the default for orcm */
-        *priority = 1000;
+        *priority = 1001;
         *module = (mca_base_module_t *)&orte_errmgr_orcm_module;
         return ORTE_SUCCESS;        
     }

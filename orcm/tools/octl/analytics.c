@@ -318,9 +318,7 @@ int orcm_octl_analytics_workflow_add(char *file)
             orcm_octl_analytics_wf_add_error(buf, xfer,oflow_input_file_array, nodelist);
             return rc;
         }
-        if (NULL != xfer) {
-            OBJ_RELEASE(xfer);
-        }
+        OBJ_RELEASE(xfer);
     }
     orcm_octl_analytics_wf_add_error(buf, NULL, oflow_input_file_array, nodelist);
     return ORCM_SUCCESS;
@@ -459,10 +457,7 @@ int orcm_octl_analytics_workflow_remove(char **value)
             return rc;
         }
 
-        if (NULL != xfer) {
-            OBJ_RELEASE(xfer);
-        }
-
+        OBJ_RELEASE(xfer);
     }
     orcm_octl_analytics_process_error(buf, NULL, nodelist);
     return ORCM_SUCCESS;
@@ -552,6 +547,7 @@ int orcm_octl_analytics_workflow_list(char **value)
 
     rc = orcm_octl_analytics_wf_list_parse_args(value, &nodelist);
     if (ORCM_SUCCESS != rc) {
+        free(nodelist);
         return rc;
     }
 
@@ -599,9 +595,7 @@ int orcm_octl_analytics_workflow_list(char **value)
             return rc;
         }
 
-        if (NULL != xfer) {
-            OBJ_RELEASE(xfer);
-        }
+        OBJ_RELEASE(xfer);
     }
     orcm_octl_analytics_process_error(buf, NULL, nodelist);
     return ORCM_SUCCESS;

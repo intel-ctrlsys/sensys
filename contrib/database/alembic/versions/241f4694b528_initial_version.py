@@ -1273,13 +1273,7 @@ def downgrade():
               "'%s' is not a supported database dialect." % dialect.name)
         return
 
-    try:
-        op.drop_table('data_sample_raw')
-    except sa.exc.InternalError:
-        print("Aborted this downgrade, if there are dependency objects added "
-              "outside the upgrade step, please remove them first.")
-        raise
-
+    op.drop_table('data_sample_raw')
     op.drop_table('diag_test_config')
     op.drop_table('node_feature')
     op.drop_table('maintenance_record')

@@ -2,6 +2,9 @@
 Object Relational Mapper (ORM)
 
 """
+from distutils.version import StrictVersion
+import os
+import alembic
 from alembic.config import Config
 from alembic import command
 import logging
@@ -12,6 +15,17 @@ from sqlalchemy import Date, DateTime
 from sqlalchemy import Float, ForeignKey, ForeignKeyConstraint, Integer, String
 from sqlalchemy import SmallInteger, Table, Text
 from sqlalchemy.ext import declarative
+
+
+# Minimum required version of SQLAlchemy and Alembic for the Database
+# migration code to work correctly.  Specifically the naming convention feature
+# that are necessary to provide predictable database constraints' names.
+if StrictVersion(alembic.__version__) < StrictVersion("0.8.2"):
+    raise RuntimeError("The Alembic version need to be at least 0.8.2.  "
+                       "The installed version is %s" % alembic.__version__)
+if StrictVersion(sa.__version__) < StrictVersion("0.9.2"):
+    raise RuntimeError("The SQLAlchemy version need to be at least 0.9.2.  "
+                       "The installed version is %s" % sa.__version__)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -317,9 +331,6 @@ def setup(db_url=None, alembic_ini="alembic.ini"):
     """Setup all SQLAlchemy sessions and connections
 
     :param db_url: The database URL as required by SQLAlchemy
-    :param pool_size: The size of the connection pool to maintain
-    :param pool_recycle: The number in minutes to wait for the of idle
-        connection before recycling it back to the pool.
     :param alembic_ini: Alembic config file
     :return: None
     """
@@ -356,7 +367,7 @@ def setup(db_url=None, alembic_ini="alembic.ini"):
 if __name__ == "__main__":
     import pprint
 
-    setup()
+    setup(os.getenv("PG_DB_URL"))
     dummy_query = session.query(data_sample_raw_table).limit(10)
     print("Sample list of  DataSampleRaw")
     print(pprint.pformat(dummy_query.all()))

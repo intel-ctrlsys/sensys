@@ -614,13 +614,13 @@ static int run_cmd(char *cmd)
             switch(rc)
             {
             case 5://add
-                orcm_octl_analytics_workflow_add(cmdlist[3]);
+                rc = orcm_octl_analytics_workflow_add(cmdlist[3]);
                 break;
             case 6://remove
-                orcm_octl_analytics_workflow_remove(cmdlist);
+                rc = orcm_octl_analytics_workflow_remove(cmdlist);
                 break;
             case 17://get
-                orcm_octl_analytics_workflow_list(cmdlist);
+                rc = orcm_octl_analytics_workflow_list(cmdlist);
                 break;
             default:
                 rc = ORCM_ERROR;

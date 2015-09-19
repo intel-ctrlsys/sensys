@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2015      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -11,6 +11,7 @@
 
 #include "orcm/mca/analytics/analytics_types.h"
 #include "orcm/tools/octl/common.h"
+#include "orcm/util/logical_group.h"
 
 #define OFLOW_SUCCESS   1
 #define OFLOW_FAILURE   0
@@ -23,35 +24,41 @@
  ******************/
 static int orcm_octl_wf_add_parse_line(FILE *fp, int *params_array_length,
                                        opal_value_t tokenized[]);
-static void orcm_octl_analytics_process_error(int rc, opal_buffer_t *buf,
-                                              orte_rml_recv_cb_t *xfer);
+static void orcm_octl_analytics_process_error(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer, char **list);
 static void orcm_octl_analytics_output_setup(orte_rml_recv_cb_t *xfer);
 static int orcm_octl_analytics_wf_send_buffer(orte_process_name_t *wf_agg,
                                               opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
 static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *params_array_length,
-                                             opal_value_t *input_array, orte_process_name_t *wf_agg);
+                                             opal_value_t *input_array, char ***nodelist);
 static int orcm_oct_analytics_wf_add_store(int params_array_length, opal_value_t *input_array,
                                            opal_value_t **workflow_params_array);
+static void orcm_octl_analytics_wf_add_error(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer,
+                                             opal_value_t *input_array, char **nodelist);
 static int orcm_octl_analytics_wf_add_pack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer,
                                                   int step_size, int array_length,
                                                   opal_value_t **workflow_params_array);
-static int orcm_octl_analytics_wf_add_unpack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
-static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_id,
-                                                    orte_process_name_t *wf_agg);
+static int orcm_octl_analytics_wf_add_unpack_buffer(orte_rml_recv_cb_t *xfer);
+static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_id, char ***nodelist);
 static int orcm_octl_analytics_wf_remove_pack_buffer(opal_buffer_t *buf, int workflow_id,
                                                      orte_rml_recv_cb_t *xfer);
-static int orcm_octl_analytics_wf_remove_unpack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
-static int orcm_octl_analytics_wf_list_parse_args(char **value, orte_process_name_t *wf_agg);
+static int orcm_octl_analytics_wf_remove_unpack_buffer(orte_rml_recv_cb_t *xfer);
+static int orcm_octl_analytics_wf_list_parse_args(char **value, char ***nodelist);
 static int orcm_octl_analytics_wf_list_pack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
-static int orcm_octl_analytics_wf_list_unpack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
+static int orcm_octl_analytics_wf_list_unpack_buffer(orte_rml_recv_cb_t *xfer);
 
 
 
-static void orcm_octl_analytics_process_error(int rc, opal_buffer_t *buf,
-                                              orte_rml_recv_cb_t *xfer)
+static void orcm_octl_analytics_process_error(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer, char **list)
 {
-    OBJ_RELEASE(buf);
-    OBJ_DESTRUCT(xfer);
+    if (NULL != buf) {
+        OBJ_RELEASE(buf);
+    }
+    if (NULL != xfer) {
+        OBJ_RELEASE(xfer);
+    }
+
+    free (list);
+
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
 }
 
@@ -75,45 +82,67 @@ static int orcm_octl_analytics_wf_send_buffer(orte_process_name_t *wf_agg,
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(wf_agg, buf,
                                                       ORCM_RML_TAG_ANALYTICS,
                                                       orte_rml_send_callback, NULL))) {
-        orcm_octl_analytics_process_error(rc, buf, xfer);
-        return rc;
+        return ORCM_ERROR;
     }
     return ORCM_SUCCESS;
 }
 
 static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *params_array_length,
-                                             opal_value_t *input_array, orte_process_name_t *wf_agg)
+                                             opal_value_t *input_array, char ***nodelist)
 {
-    int set_vpid = 0;
+    int set_nodelist = 0;
+    int set_filter_plugin = 0;
+    int rc;
 
     while ( OFLOW_FAILURE != orcm_octl_wf_add_parse_line(fp,
                              params_array_length, input_array + *params_array_length) ) {
 
         if (NULL == input_array[0].key) {
-            fprintf(stderr, "\n VPID isn't present in the workflow file \n");
+            fprintf(stderr, "\n nodelist isn't present in the workflow file \n");
             return ORCM_ERROR;
         }
-        if (0 == strncmp("VPID", input_array[0].key, OFLOW_MAX_LINE_LENGTH)) {
-            wf_agg->jobid = 0;
-            wf_agg->vpid = (orte_vpid_t)strtol(input_array[0].data.string,
-                                               (char **)NULL, 10);
-            fprintf(stdout, "\nSending to %s\n", ORTE_NAME_PRINT(wf_agg));
-            *params_array_length = 0;
-            set_vpid = 1;
-            continue;
+
+        if (0 == set_nodelist) {
+            if (0 == strcmp("nodelist", input_array[0].key)) {
+                /*This will reset the array index for next iteration.
+                 * Resetting the array index will help in storing only the work steps */
+                *params_array_length = 0;
+                set_nodelist = 1;
+                rc = orcm_node_names (input_array[0].data.string, nodelist);
+                if (ORCM_SUCCESS != rc) {
+                    return ORCM_ERROR;
+                }
+                continue;
+            }
+            else {
+                fprintf(stderr, "\n nodelist isn't present in the workflow file \n");
+                return ORCM_ERROR;
+            }
+        }
+        else if (0 == set_filter_plugin) {
+            if (0 == strcmp("component", input_array[0].key)) {
+                if (0 == strncmp("filter", input_array[0].data.string, 6)) {
+                    set_filter_plugin = 1;
+                    (*step_size)++;
+                }
+                else {
+                    fprintf(stderr, "\n filter plugin isn't present in the start of workflow file \n");
+                    return ORCM_ERROR;
+                }
+            }
+            else {
+                fprintf(stderr, "\n filter plugin isn't present in the start of workflow file \n");
+                return ORCM_ERROR;
+            }
         }
         else {
             (*step_size)++;
         }
+
         if (*params_array_length >= OFLOW_MAX_ARRAY_SIZE) {
             fprintf(stderr, "\n file is too big to parse \n");
             return ORCM_ERROR;
         }
-    }
-
-    if (1 != set_vpid) {
-        fprintf(stderr, "\n VPID isn't present in the workflow file \n");
-        return ORCM_ERROR;
     }
     return ORCM_SUCCESS;
 
@@ -140,6 +169,13 @@ static int orcm_oct_analytics_wf_add_store(int params_array_length, opal_value_t
 
 }
 
+static void orcm_octl_analytics_wf_add_error(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer,
+                                             opal_value_t *input_array, char **nodelist)
+{
+    free (input_array);
+    orcm_octl_analytics_process_error(buf, xfer, nodelist);
+}
+
 static int orcm_octl_analytics_wf_add_pack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer,
                                                   int step_size, int array_length,
                                                   opal_value_t **workflow_params_array)
@@ -148,32 +184,26 @@ static int orcm_octl_analytics_wf_add_pack_buffer(opal_buffer_t *buf, orte_rml_r
     orcm_analytics_cmd_flag_t command;
 
     command = ORCM_ANALYTICS_WORKFLOW_CREATE;
-    /* pack the alloc command flag */
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
-        orcm_octl_analytics_process_error(rc, buf, xfer);
-        return rc;
+        return ORCM_ERROR;
     }
     /* pack the length of the array */
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &step_size, 1, OPAL_INT))) {
-        orcm_octl_analytics_process_error(rc, buf, xfer);
-        return rc;
+        return ORCM_ERROR;
     }
     if (array_length > 0) {
-        /* pack the array */
         if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, workflow_params_array,
                                                 array_length, OPAL_VALUE))) {
-            orcm_octl_analytics_process_error(rc, buf, xfer);
-            return rc;
+            return ORCM_ERROR;
         }
     }
     else {
-        orcm_octl_analytics_process_error(rc, buf, xfer);
-        return rc;
+        rc = ORCM_ERROR;
     }
     return rc;
 }
 
-static int orcm_octl_analytics_wf_add_unpack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer)
+static int orcm_octl_analytics_wf_add_unpack_buffer(orte_rml_recv_cb_t *xfer)
 {
     int n;
     int rc;
@@ -181,8 +211,7 @@ static int orcm_octl_analytics_wf_add_unpack_buffer(opal_buffer_t *buf, orte_rml
 
     n=1;
     if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_id, &n, OPAL_INT))) {
-        orcm_octl_analytics_process_error(rc, buf, xfer);
-        return rc;
+        return ORCM_ERROR;
     }
     fprintf(stdout, "\nWorkflow created with id: %i\n", workflow_id);
     return ORCM_SUCCESS;
@@ -193,14 +222,16 @@ static int orcm_octl_analytics_wf_add_unpack_buffer(opal_buffer_t *buf, orte_rml
 int orcm_octl_analytics_workflow_add(char *file)
 {
     orte_rml_recv_cb_t *xfer = NULL;
-    opal_buffer_t *buf;
+    opal_buffer_t *buf = NULL;
     int rc;
     int params_array_length = 0;
     int step_size = 0;
+    int node_index;
     FILE *fp;
     opal_value_t *oflow_input_file_array = NULL;
     opal_value_t *workflow_params_array[OFLOW_MAX_ARRAY_SIZE] ;
     orte_process_name_t wf_agg;
+    char **nodelist = NULL;
 
 
     if (NULL == (fp = fopen(file, "r"))) {
@@ -219,9 +250,10 @@ int orcm_octl_analytics_workflow_add(char *file)
     params_array_length = 0;
 
     rc = orcm_octl_analytics_wf_add_parse(fp, &step_size, &params_array_length,
-                                          oflow_input_file_array, &wf_agg);
-    if (ORCM_SUCCESS != rc) {
+                                          oflow_input_file_array, &nodelist);
+    if ((ORCM_SUCCESS != rc) || (NULL == nodelist)) {
         free (oflow_input_file_array);
+        free (nodelist);
         fclose(fp);
         return rc;
     }
@@ -232,59 +264,85 @@ int orcm_octl_analytics_workflow_add(char *file)
                                          workflow_params_array);
     if (ORCM_SUCCESS != rc) {
         free (oflow_input_file_array);
+        free (nodelist);
         return rc;
     }
 
-    xfer = OBJ_NEW(orte_rml_recv_cb_t);
-    orcm_octl_analytics_output_setup(xfer);
 
     buf = OBJ_NEW(opal_buffer_t);
+    if (NULL == buf) {
+        free (oflow_input_file_array);
+        free (nodelist);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
 
-    rc = orcm_octl_analytics_wf_add_pack_buffer(buf, xfer, step_size, params_array_length,
+    for (node_index = 0; node_index < opal_argv_count(nodelist); node_index++) {
+
+        xfer = OBJ_NEW(orte_rml_recv_cb_t);
+        if (NULL == xfer) {
+            free (oflow_input_file_array);
+            free (nodelist);
+            OBJ_RELEASE(buf);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+
+        orcm_octl_analytics_output_setup(xfer);
+
+        OBJ_RETAIN(buf);
+
+        if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[node_index],
+                                                                   &wf_agg))) {
+            orcm_octl_analytics_wf_add_error(buf, xfer,oflow_input_file_array, nodelist);
+            return rc;
+        }
+
+        rc = orcm_octl_analytics_wf_add_pack_buffer(buf, xfer, step_size, params_array_length,
                                                 workflow_params_array);
-    if (ORCM_SUCCESS != rc) {
-        free (oflow_input_file_array);
-        return rc;
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_wf_add_error(buf, xfer,oflow_input_file_array, nodelist);
+            return rc;
+        }
+
+
+        rc = orcm_octl_analytics_wf_send_buffer(&wf_agg, buf, xfer);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_wf_add_error(buf, xfer,oflow_input_file_array, nodelist);
+            return rc;
+        }
+
+        /* unpack workflow id */
+        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+
+        rc = orcm_octl_analytics_wf_add_unpack_buffer(xfer);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_wf_add_error(buf, xfer,oflow_input_file_array, nodelist);
+            return rc;
+        }
+        OBJ_RELEASE(xfer);
     }
-
-
-    rc = orcm_octl_analytics_wf_send_buffer(&wf_agg, buf, xfer);
-    if (ORCM_SUCCESS != rc) {
-        free (oflow_input_file_array);
-        return rc;
-    }
-
-    /* unpack workflow id */
-    ORTE_WAIT_FOR_COMPLETION(xfer->active);
-
-    rc = orcm_octl_analytics_wf_add_unpack_buffer(buf, xfer);
-    if (ORCM_SUCCESS != rc) {
-        free (oflow_input_file_array);
-        return rc;
-    }
-
-    OBJ_DESTRUCT(xfer);
-    free (oflow_input_file_array);
-    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
-    return ORTE_SUCCESS;
+    orcm_octl_analytics_wf_add_error(buf, NULL, oflow_input_file_array, nodelist);
+    return ORCM_SUCCESS;
 
 }
 
-static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_id,
-                                                    orte_process_name_t *wf_agg)
+static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_id, char ***nodelist)
 {
+    int rc;
+
     if (5 != opal_argv_count(value)) {
-        fprintf(stderr, "\nincorrect arguments! \n usage: \"analytics workflow remove vpid workflow_id\"\n");
+        fprintf(stderr, "\nincorrect arguments! \n usage: \"analytics workflow remove nodelist workflow_id\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (0 != isdigit(value[3][strlen(value[3])-1])) {
-        wf_agg->jobid = 0;
-        wf_agg->vpid = (orte_vpid_t)strtol(value[3], NULL, 10);
-        fprintf(stdout, "\nSending to %s\n", ORTE_NAME_PRINT(wf_agg));
+    if (NULL != value[3]) {
+        rc = orcm_node_names (value[3], nodelist);
+        if (ORCM_SUCCESS != rc) {
+            return ORCM_ERROR;
+        }
+
     }
     else {
-        fprintf(stderr, "\nincorrect argument VPID id!\n \"%s\" is not an integer \n", value[3]);
+        fprintf(stderr, "\nincorrect argument nodelist!\n \"%s\" is NULL \n", value[3]);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -308,18 +366,16 @@ static int orcm_octl_analytics_wf_remove_pack_buffer(opal_buffer_t *buf, int wor
     command = ORCM_ANALYTICS_WORKFLOW_DELETE;
     /* pack the alloc command flag */
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
-        orcm_octl_analytics_process_error(rc, buf, xfer);
-        return rc;
+        return ORCM_ERROR;
     }
     /* pack the length of the array */
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &workflow_id, 1, OPAL_INT))) {
-        orcm_octl_analytics_process_error(rc, buf, xfer);
-        return rc;
+        return ORCM_ERROR;
     }
     return ORCM_SUCCESS;
 }
 
-static int orcm_octl_analytics_wf_remove_unpack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer)
+static int orcm_octl_analytics_wf_remove_unpack_buffer(orte_rml_recv_cb_t *xfer)
 {
     int n;
     int rc;
@@ -328,8 +384,7 @@ static int orcm_octl_analytics_wf_remove_unpack_buffer(opal_buffer_t *buf, orte_
     n=1;
 
     if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_id, &n, OPAL_INT))) {
-        orcm_octl_analytics_process_error(rc, buf, xfer);
-        return rc;
+        return ORCM_ERROR;
     }
     if (ORCM_ERROR != workflow_id) {
         fprintf(stdout, "\nWorkflow deleted %d\n", workflow_id);
@@ -347,55 +402,86 @@ int orcm_octl_analytics_workflow_remove(char **value)
     orte_rml_recv_cb_t *xfer = NULL;
     opal_buffer_t *buf;
     orte_process_name_t wf_agg;
+    char **nodelist=NULL;
+    int node_index;
     int rc;
 
-    rc = orcm_octl_analytics_wf_remove_parse_args(value, &workflow_id, &wf_agg);
-    if (ORCM_SUCCESS != rc) {
+    rc = orcm_octl_analytics_wf_remove_parse_args(value, &workflow_id, &nodelist);
+    if ((ORCM_SUCCESS != rc) ||(NULL == nodelist) ) {
+        free(nodelist);
         return rc;
     }
 
-    xfer = OBJ_NEW(orte_rml_recv_cb_t);
-    orcm_octl_analytics_output_setup(xfer);
 
     buf = OBJ_NEW(opal_buffer_t);
-
-    rc = orcm_octl_analytics_wf_remove_pack_buffer(buf, workflow_id, xfer);
-    if (ORCM_SUCCESS != rc) {
-        return rc;
+    if (NULL == buf) {
+        free (nodelist);
+        return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
-    rc = orcm_octl_analytics_wf_send_buffer(&wf_agg, buf, xfer);
-    if (ORCM_SUCCESS != rc) {
-        return rc;
+    for (node_index = 0; node_index < opal_argv_count(nodelist); node_index++) {
+
+        xfer = OBJ_NEW(orte_rml_recv_cb_t);
+        if (NULL == xfer) {
+            free (nodelist);
+            OBJ_RELEASE(buf);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+        orcm_octl_analytics_output_setup(xfer);
+
+        OBJ_RETAIN(buf);
+
+        if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[node_index],
+                                                                   &wf_agg))) {
+            orcm_octl_analytics_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        rc = orcm_octl_analytics_wf_remove_pack_buffer(buf, workflow_id, xfer);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        rc = orcm_octl_analytics_wf_send_buffer(&wf_agg, buf, xfer);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+
+        rc = orcm_octl_analytics_wf_remove_unpack_buffer(xfer);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        OBJ_RELEASE(xfer);
     }
-
-    ORTE_WAIT_FOR_COMPLETION(xfer->active);
-
-    rc = orcm_octl_analytics_wf_remove_unpack_buffer(buf, xfer);
-    if (ORCM_SUCCESS != rc) {
-        return rc;
-    }
-
-    OBJ_DESTRUCT(xfer);
-    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
-    return ORTE_SUCCESS;
+    orcm_octl_analytics_process_error(buf, NULL, nodelist);
+    return ORCM_SUCCESS;
 
 }
 
-static int orcm_octl_analytics_wf_list_parse_args(char **value, orte_process_name_t *wf_agg)
+static int orcm_octl_analytics_wf_list_parse_args(char **value, char ***nodelist)
 {
+    int rc;
+
     if (4 != opal_argv_count(value)) {
-        fprintf(stderr, "\nincorrect arguments! \n usage: \"analytics workflow get vpid \"\n");
+        fprintf(stderr, "\nincorrect arguments! \n usage: \"analytics workflow get nodelist \"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (0 != isdigit(value[3][strlen(value[3])-1])) {
-        wf_agg->jobid = 0;
-        wf_agg->vpid = (orte_vpid_t)strtol(value[3], NULL, 10);
-        fprintf(stdout, "\nSending to %s\n", ORTE_NAME_PRINT(wf_agg));
+    if (NULL != value[3]) {
+        rc = orcm_node_names (value[3], nodelist);
+        if (ORCM_SUCCESS != rc) {
+            return ORCM_ERROR;
+        }
+
     }
     else {
-        fprintf(stderr, "\nincorrect argument VPID id!\n \"%s\" is not an integer \n", value[3]);
+        fprintf(stderr, "\nincorrect argument nodelist!\n \"%s\" is NULL \n", value[3]);
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
@@ -409,13 +495,13 @@ static int orcm_octl_analytics_wf_list_pack_buffer(opal_buffer_t *buf, orte_rml_
     command = ORCM_ANALYTICS_WORKFLOW_LIST;
     /* pack the alloc command flag */
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
-        orcm_octl_analytics_process_error(rc, buf, xfer);
+
         return rc;
     }
     return ORCM_SUCCESS;
 }
 
-static int orcm_octl_analytics_wf_list_unpack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer)
+static int orcm_octl_analytics_wf_list_unpack_buffer(orte_rml_recv_cb_t *xfer)
 {
     int cnt;
     int n;
@@ -426,20 +512,17 @@ static int orcm_octl_analytics_wf_list_unpack_buffer(opal_buffer_t *buf, orte_rm
     n=1;
 
     if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &cnt, &n, OPAL_INT))) {
-        orcm_octl_analytics_process_error(rc, buf, xfer);
-        return rc;
+        return ORCM_ERROR;
     }
 
     if (0 < cnt) {
         workflow_ids = (int *)malloc(cnt * sizeof(int));
         if (NULL == workflow_ids) {
-            orcm_octl_analytics_process_error(rc, buf, xfer);
             return ORCM_ERR_OUT_OF_RESOURCE;
         }
         if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, workflow_ids, &cnt, OPAL_INT))) {
-            orcm_octl_analytics_process_error(rc, buf, xfer);
             free(workflow_ids);
-            return rc;
+            return ORCM_ERROR;
         }
         for (temp = 0; temp < cnt; temp++) {
             fprintf(stdout, "workflow id is: %d\n", workflow_ids[temp] );
@@ -458,38 +541,64 @@ int orcm_octl_analytics_workflow_list(char **value)
     orte_rml_recv_cb_t *xfer = NULL;
     opal_buffer_t *buf;
     orte_process_name_t wf_agg;
+    char **nodelist=NULL;
+    int node_index;
     int rc;
 
-    rc = orcm_octl_analytics_wf_list_parse_args(value, &wf_agg);
+    rc = orcm_octl_analytics_wf_list_parse_args(value, &nodelist);
     if (ORCM_SUCCESS != rc) {
+        free(nodelist);
         return rc;
     }
-
-    xfer = OBJ_NEW(orte_rml_recv_cb_t);
-    orcm_octl_analytics_output_setup(xfer);
 
     buf = OBJ_NEW(opal_buffer_t);
-
-    rc = orcm_octl_analytics_wf_list_pack_buffer(buf, xfer);
-    if (ORCM_SUCCESS != rc) {
-        return rc;
+    if (NULL == buf) {
+        free (nodelist);
+        return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
-    rc = orcm_octl_analytics_wf_send_buffer(&wf_agg, buf, xfer);
-    if (ORCM_SUCCESS != rc) {
-        return rc;
+    for (node_index = 0; node_index < opal_argv_count(nodelist); node_index++) {
+
+        xfer = OBJ_NEW(orte_rml_recv_cb_t);
+        if (NULL == xfer) {
+            free (nodelist);
+            OBJ_RELEASE(buf);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+        orcm_octl_analytics_output_setup(xfer);
+
+        OBJ_RETAIN(buf);
+
+        if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[node_index],
+                                                                   &wf_agg))) {
+            orcm_octl_analytics_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        rc = orcm_octl_analytics_wf_list_pack_buffer(buf, xfer);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        rc = orcm_octl_analytics_wf_send_buffer(&wf_agg, buf, xfer);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+
+        rc = orcm_octl_analytics_wf_list_unpack_buffer(xfer);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        OBJ_RELEASE(xfer);
     }
-
-    ORTE_WAIT_FOR_COMPLETION(xfer->active);
-
-    rc = orcm_octl_analytics_wf_list_unpack_buffer(buf, xfer);
-    if (ORCM_SUCCESS != rc) {
-        return rc;
-    }
-
-    OBJ_DESTRUCT(xfer);
-    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
-    return ORTE_SUCCESS;
+    orcm_octl_analytics_process_error(buf, NULL, nodelist);
+    return ORCM_SUCCESS;
 }
 
 /* get key/value from line */
@@ -500,15 +609,17 @@ static int orcm_octl_wf_add_parse_line(FILE *fp, int *params_array_length,
     char **tokens = NULL;
     char input[OFLOW_MAX_LINE_LENGTH];
     size_t i;
-    int token_index, token_array_length = 0;
+    int token_index;
+    int token_array_length = 0;
+    size_t input_str_length;
 
     ret = fgets(input, OFLOW_MAX_LINE_LENGTH, fp);
     if (NULL != ret) {
-        /* remove newline */
-        input[strlen(input)-1] = '\0';
+        input_str_length = strlen(input);
+        input[input_str_length-1] = '\0';
         /* strip leading spaces */
         ptr = input;
-        for (i=0; i < strlen(input)-1; i++) {
+        for (i=0; i < input_str_length-1; i++) {
             if (' ' != input[i]) {
                 ptr = &input[i];
                 break;
@@ -523,8 +634,7 @@ static int orcm_octl_wf_add_parse_line(FILE *fp, int *params_array_length,
             return OFLOW_FAILURE;
         }
 
-        for (token_index=0; token_index < token_array_length/2;
-                   token_index=token_index+1) {
+        for (token_index=0; token_index < token_array_length/2; token_index++) {
 
             tokenized[token_index].type = OPAL_STRING;
             if (NULL != tokens[(token_index*2)] ) {

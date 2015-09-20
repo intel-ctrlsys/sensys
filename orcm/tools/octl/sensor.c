@@ -37,7 +37,7 @@ get policy <nodelist>\"\n");
     }
 
     /* setup the receiver nodelist */
-    orcm_node_names(argv[3], &nodelist);
+    orcm_logical_group_node_names(argv[3], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "ERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
@@ -245,7 +245,7 @@ policy <nodelist> <sensor name> <threshold value> \
     }
 
     /* setup the receiver nodelist */
-    orcm_node_names(argv[3], &nodelist);
+    orcm_logical_group_node_names(argv[3], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "ERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
@@ -436,7 +436,7 @@ set sample-rate <sensor-name> <sample-rate> <node-list>\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    orcm_node_names(argv[5], &nodelist);
+    orcm_logical_group_node_names(argv[5], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stderr, "incorrect argument nodelist! \n unable to extract nodelist\n");
         opal_argv_free(nodelist);
@@ -544,7 +544,7 @@ get sample-rate <sensor-name> <nodelist>\"\n");
     }
 
     /* setup the receiver nodelist */
-    orcm_node_names(argv[4], &nodelist);
+    orcm_logical_group_node_names(argv[4], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);

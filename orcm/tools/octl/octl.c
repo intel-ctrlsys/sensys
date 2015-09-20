@@ -584,13 +584,13 @@ static int run_cmd(char *cmd)
         switch (rc)
         {
         case 5: //add
-            rc = orcm_octl_grouping_add(sz_cmdlist, cmdlist);
+            rc = orcm_octl_logical_group_add(sz_cmdlist, cmdlist);
             break;
         case 6: //remove
-            rc = orcm_octl_grouping_remove(sz_cmdlist, cmdlist);
+            rc = orcm_octl_logical_group_remove(sz_cmdlist, cmdlist);
             break;
         case 33: //list
-            rc = orcm_octl_grouping_list(sz_cmdlist, cmdlist);
+            rc = orcm_octl_logical_group_list(sz_cmdlist, cmdlist);
             break;
         default:
             rc = ORCM_ERROR;
@@ -650,7 +650,7 @@ static int run_cmd(char *cmd)
 
 static int octl_facility_cleanup(void)
 {
-    int erri = orcm_logical_group_delete();
+    int erri = orcm_logical_group_finalize();
     return erri;
 }
 

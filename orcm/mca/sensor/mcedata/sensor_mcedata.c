@@ -151,45 +151,117 @@ static long log_file_pos;
 /* MCE log lines for reporting*/
 static char *log_lines[mcelog_sentinel];
 
-static void get_log_lines(FILE *fp)
+static void start_log_file(void)
+{
+    FILE *fp;
+    long tot_bytes = -1;
+    long ret;
+    log_file_pos = 0;
+    char buf[128];
+
+    if (true != mca_sensor_mcedata_component.historical_collection) {
+        /* If the user requires MCE collection from the point when sensor was
+         * started, then we should ignore all the events logged prior to start
+         * of sensor. */
+
+        fp = fopen(mca_sensor_mcedata_component.logfile, "r");
+        if (NULL != fp){
+          ret = fseek(fp, 0, SEEK_END);
+
+          if (0 == ret){
+            tot_bytes = ftell(fp);
+          }
+
+          fclose(fp);
+        }
+
+        if (tot_bytes < 0){
+            snprintf(buf, 127, "mcedata log file error: %s",strerror(errno));
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output, buf);
+            return;
+        }
+
+        log_file_pos = tot_bytes;
+    }
+}
+
+static long update_log_file_size(FILE *fp)
+{
+    long tot_bytes;
+    int ret;
+    static int errorReported = 0;
+    char buf[128];
+
+    if (fp){
+        ret = fseek(fp, 0, SEEK_END);
+
+        if (ret == 0){
+          tot_bytes = ftell(fp);
+        }
+    }
+
+    if (tot_bytes < 0){
+        if (!errorReported){
+            snprintf(buf, 127, "mcedata log file error: %s",strerror(errno));
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                buf);
+            errorReported = 1;
+        }
+        return -1;
+    }
+
+    /* In case log file rotates or is stashed and cleared, the index 
+     * at which mcedata looks for MCE events has to be reset too */
+
+    if (tot_bytes < log_file_pos) {
+        log_file_pos = 0;
+    }
+
+    return tot_bytes;
+}
+
+static void free_log_lines(void)
 {
     int i;
+    for (i=0; i < mcelog_sentinel; i++){
+        if (log_lines[i] != NULL){
+          free(log_lines[i]);
+          log_lines[i] = NULL;
+        }
+    }
+}
+
+static void get_log_lines(FILE *fp)
+{
     int nextTag = 0;
     char *ptr=NULL;
     size_t n=0;
-  
-    for (i=0; i < mcelog_sentinel; i++){
-        log_lines[i] = NULL;
-    }
-  
+
     while (nextTag < mcelog_sentinel && -1 != getline(&ptr, &n, fp)){
-  
+ 
         if (strstr(ptr, "mcelog") && strstr(ptr, log_line_token[nextTag])){
             log_lines[nextTag++] = ptr;
         }
         else{
             free(ptr);
         }
-    
+
         ptr = NULL;
         n = 0;
     }
-  
+
     if (nextTag > 0 && nextTag < mcelog_sentinel){
-  
-      // MCE log messages are several lines long.  We started to get an
-      // mcelog message, but hit the end of file before getting it all.
-      // In the rare case that this happens, we will miss that MC error.  
-      // Since MC errors tend to happen in multiples, we are not going to 
-      // handle this case unless it's requested.
-  
-      for (i=0; i < nextTag; i++){
-          free(log_lines[i]);
-          log_lines[i] = NULL;
-      }
+
+        // MCE log messages are several lines long.  We started to get an
+        // mcelog message, but hit the end of file before getting it all.
+        // In the rare case that this happens, we will miss that MC error.
+        // Since MC errors tend to happen in multiples, we are not going to
+        // handle this case unless it's requested.
+ 
+
+        free_log_lines();
     }
 }
-
 
 /* mcedata is a special sensor that has to be called on it's own separate thread
  * It is necessary to catch the machine check errors in real time and send it up
@@ -270,37 +342,7 @@ static void finalize(void)
  */
 static void start(orte_jobid_t jobid)
 {
-    FILE *fp;
-    long tot_bytes = -1;
-    long ret;
-    log_file_pos = 0;
-    char buf[128];
-
-    if (true != mca_sensor_mcedata_component.historical_collection) {
-        /* If the user requires MCE collection from the point when sensor was
-         * started, then we should ignore all the events logged prior to start
-         * of sensor. */
-
-        fp = fopen(mca_sensor_mcedata_component.logfile, "r");
-        if (NULL != fp){
-          ret = fseek(fp, 0, SEEK_END);
-    
-          if (0 == ret){
-            tot_bytes = ftell(fp);
-          }
-
-          fclose(fp);
-        }
-
-    
-        if (tot_bytes < 0){
-            snprintf(buf, 127, "mcedata log file error: %s",strerror(errno));
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output, buf);
-            return;
-        }
-
-        log_file_pos = tot_bytes;
-    }
+    start_log_file();
 
     /* start a separate mcedata progress thread for sampling */
     if (mca_sensor_mcedata_component.use_progress_thread) {
@@ -933,41 +975,22 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     bool packed;
     uint64_t i = 0, cpu=0, socket=0, bank=0, j;
     uint64_t mce_reg[MCE_REG_COUNT];
-    long tot_bytes=-1;
+    long tot_bytes;
     char* line;
     char *loc = NULL;
     struct timeval current_time;
     FILE *fp;
-    char buf[128];
-    static int errorReported=0;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "Logfile used: %s", mca_sensor_mcedata_component.logfile);
 
     fp = fopen(mca_sensor_mcedata_component.logfile, "r");
-    if (fp){
-        ret = fseek(fp, 0, SEEK_END);
 
-        if (ret == 0){
-          tot_bytes = ftell(fp);
-        }
-    }
+    tot_bytes = update_log_file_size(fp);
 
     if (tot_bytes < 0){
-        if (!errorReported){
-            snprintf(buf, 127, "mcedata log file error: %s",strerror(errno));
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                                buf);
-            errorReported = 1;
-        }
-        fclose(fp);
-        return;
-    }
-
-    /* In case log file rotates or is stashed and cleared, the index at which mcedata looks
-     * for MCE events has to be reset too */
-    if (tot_bytes < log_file_pos) {
-        log_file_pos = 0;
+      fclose(fp);
+      return;
     }
 
     fseek(fp, log_file_pos, SEEK_SET);
@@ -977,7 +1000,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         get_log_lines(fp);
 
         if (log_lines[mcelog_cpu] == NULL){ // no more mce errors in log file
-            break;           
+            break;
         }
 
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -1037,9 +1060,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "MCG_CAP: 0x%lx", mce_reg[MCG_CAP]);
 
-        for (j=0; j < mcelog_sentinel; j++){
-            free(log_lines[j]);
-        }
+        free_log_lines();
 
         /* prep to store the results */
         OBJ_CONSTRUCT(&data, opal_buffer_t);

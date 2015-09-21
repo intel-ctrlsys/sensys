@@ -17,7 +17,7 @@ int orcm_octl_logical_group_add(int argc, char **argv)
 
     if (4 != argc) {
         ORCM_UTIL_ERROR_MSG_WITH_ARG("Incorrect argument count. Two needed, "
-        		                     "%d provided.", argc -2);
+                                     "%d provided.", argc -2);
         ORCM_UTIL_ERROR_MSG("Correct syntax: [octl] grouping add <tag> <node>");
         return ORCM_ERR_BAD_PARAM;
     }
@@ -57,7 +57,7 @@ int orcm_octl_logical_group_remove(int argc, char **argv)
 
     if (4 != argc) {
         ORCM_UTIL_ERROR_MSG_WITH_ARG("Incorrect argument count. Two needed, "
-        		                     "%d provided.", argc -2);
+                                     "%d provided.", argc -2);
         ORCM_UTIL_ERROR_MSG("Correct syntax: [octl] grouping remove <tag> <node>");
         return ORCM_ERR_BAD_PARAM;
     }
@@ -125,7 +125,7 @@ int orcm_octl_logical_group_list(int argc, char **argv)
 
     if (4 != argc) {
         ORCM_UTIL_ERROR_MSG_WITH_ARG("Incorrect argument count. "
-        		                     "Two needed, %d provided.", argc -2);
+                                     "Two needed, %d provided.", argc -2);
         ORCM_UTIL_ERROR_MSG("Correct syntax: [octl] grouping list <tag> <node>");
         return ORCM_ERR_BAD_PARAM;
     }

@@ -129,7 +129,7 @@ int orcm_octl_diag_eth(char **argv)
     char **nodelist = NULL;
 
     if (3 != opal_argv_count(argv)) {
-        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"diag eth <nodelist>\n"); 
+        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"diag eth <nodelist>\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -239,7 +239,7 @@ int orcm_octl_diag_mem(char **argv)
     char **nodelist = NULL;
 
     if (3 != opal_argv_count(argv)) {
-        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"diag mem <nodelist>\n"); 
+        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"diag mem <nodelist>\n");
         return ORCM_ERR_BAD_PARAM;
     }
 

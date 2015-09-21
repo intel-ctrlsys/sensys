@@ -999,7 +999,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 
         get_log_lines(fp);
 
-        if (log_lines[mcelog_cpu] == NULL){ // no more mce errors in log file
+        if (NULL == log_lines[mcelog_cpu]){ // no more mce errors in log file
             break;
         }
 

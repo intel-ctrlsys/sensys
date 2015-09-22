@@ -254,6 +254,11 @@ static int orcmsched_init(void)
         error = "orte_oob_base_select";
         goto error;
     }
+    if (!opal_list_get_size(&orte_oob_base.actives)) {
+        ret = ORTE_ERROR;
+        error = "orte_oob: Found 0 active transports";
+        goto error;
+    }
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_rml_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
         error = "orte_rml_base_open";
@@ -424,8 +429,8 @@ static int orcmsched_init(void)
     return ORCM_SUCCESS;
     
  error:
-    orte_show_help("help-orte-runtime.txt",
-                   "orte_init:startup:internal-failure",
+    orte_show_help("help-orcm-runtime.txt",
+                   "orcm_init:startup:internal-failure",
                    true, error, ORTE_ERROR_NAME(ret), ret);
     
     return ORCM_ERR_SILENT;

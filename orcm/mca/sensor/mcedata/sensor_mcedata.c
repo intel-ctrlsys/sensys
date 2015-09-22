@@ -986,6 +986,9 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 
     fp = fopen(mca_sensor_mcedata_component.logfile, "r");
 
+    if (NULL == fp) {
+        return;
+    }
     tot_bytes = update_log_file_size(fp);
 
     if (tot_bytes < 0){

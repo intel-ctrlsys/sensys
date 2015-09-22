@@ -451,7 +451,7 @@ static opal_list_t *
 orcm_logical_group_list_specific_nodes(opal_list_t *value, char **nodes)
 {
     int index = -1, count = opal_argv_count(nodes);
-    orcm_logical_group_node_t *node_item = NULL, *new_node_item = NULL;
+    orcm_logical_group_node_t *node_item = NULL;
     opal_list_t *new_value = NULL;
 
     if (0 == count) {

@@ -211,10 +211,10 @@ int orcm_logical_group_init(void)
         }
 
         LOGICAL_GROUP.groups = OBJ_NEW(opal_hash_table_t);
-        opal_hash_table_init(LOGICAL_GROUP.groups, HASH_SIZE);
         if (NULL == LOGICAL_GROUP.groups) {
             return ORCM_ERR_OUT_OF_RESOURCE;
         }
+        opal_hash_table_init(LOGICAL_GROUP.groups, HASH_SIZE);
     }
 
     return ORCM_SUCCESS;
@@ -241,9 +241,8 @@ static bool node_exist(opal_list_t *group_nodes, char *new_node)
 
     OPAL_LIST_FOREACH(node_item, group_nodes, orcm_logical_group_node_t) {
         if (NULL == node_item) {
-            continue;
+            break;
         }
-
         if (0 == strncmp(node_item->node, new_node, strlen(node_item->node))) {
             exist = true;
             break;
@@ -340,7 +339,9 @@ static int orcm_logical_group_hash_table_remove_nodes(char *tag,
             }
             if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]))) {
                 opal_list_remove_item(value, &node_item->super);
-                OBJ_RELEASE(node_item);
+                if (NULL != node_item) {
+                    OBJ_RELEASE(node_item);
+                }
                 break;
             }
         }
@@ -521,8 +522,8 @@ static opal_hash_table_t *orcm_logical_group_list_a_tag(char *tag, char **nodes,
     if (OPAL_SUCCESS == opal_hash_table_get_value_ptr(groups, tag,
                                                       strlen(tag), (void**)&value)) {
         o_groups = OBJ_NEW(opal_hash_table_t);
-        opal_hash_table_init(o_groups, HASH_SIZE);
         if (NULL != o_groups) {
+            opal_hash_table_init(o_groups, HASH_SIZE);
             if (do_all_node) {
                 opal_hash_table_set_value_ptr(o_groups, tag, strlen(tag), value);
             } else {
@@ -656,7 +657,7 @@ static void orcm_logical_group_trim_line(char *line, char **o_line)
     }
 
     /* trim the beginning */
-    while('\0' != *in_line_travesal){
+    while(NULL != in_line_travesal && '\0' != *in_line_travesal){
         if (' ' == *in_line_travesal || '\t' == *in_line_travesal) {
             ++in_line_travesal;
             continue;
@@ -666,10 +667,13 @@ static void orcm_logical_group_trim_line(char *line, char **o_line)
     *o_line = in_line_travesal;
 
     /* trim the end */
-    in_line_travesal = line + (strlen(line) - 1);
-    while(' ' == *in_line_travesal || '\t' == *in_line_travesal) {
-        in_line_travesal = '\0';
-        in_line_travesal--;
+    if (0 < strlen(line)) {
+        in_line_travesal = line + (strlen(line) - 1);
+        while(NULL != in_line_travesal && 0 < strlen(in_line_travesal) &&
+              (' ' == *in_line_travesal || '\t' == *in_line_travesal)) {
+            in_line_travesal = '\0';
+            in_line_travesal--;
+        }
     }
 }
 
@@ -687,7 +691,7 @@ static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
     }
 
     line_length = strlen(io_line);
-    if (0 != line_length) {
+    if (0 < line_length) {
         io_line[line_length - 1] = '\0';
     }
 
@@ -783,11 +787,12 @@ static int orcm_logical_group_save_to_file_copy(char *tag, opal_list_t *nodes_li
     }
 
     OPAL_LIST_FOREACH(node_regex, nodes_list, orcm_logical_group_node_t) {
-        if (NULL != node_regex) {
-            ret = fprintf(storage_file, "nodelist=%s\n", node_regex->node);
-            if (0 > ret) {
-                return ORCM_ERR_FILE_WRITE_FAILURE;
-            }
+        if (NULL == node_regex) {
+            return ORCM_ERR_FILE_WRITE_FAILURE;
+        }
+        ret = fprintf(storage_file, "nodelist=%s\n", node_regex->node);
+        if (0 > ret) {
+            return ORCM_ERR_FILE_WRITE_FAILURE;
         }
     }
 
@@ -861,7 +866,9 @@ static int orcm_logical_group_save_to_file_concat(char *tag, opal_list_t *nodes_
     opal_list_t *new_nodes_list = orcm_logical_group_convert_nodes_list(nodes_list,
                                                   MAX_LINE_LENGTH - strlen("namelist="));
     erri = orcm_logical_group_save_to_file_copy(tag, new_nodes_list, storage_file);
-    OPAL_LIST_RELEASE(new_nodes_list);
+    if (NULL != new_nodes_list) {
+        OPAL_LIST_RELEASE(new_nodes_list);
+    }
     return erri;
 }
 
@@ -1123,7 +1130,7 @@ static unsigned int orcm_logical_group_list_addup_size(opal_list_t *value, int c
     OPAL_LIST_FOREACH(node_item, value, orcm_logical_group_node_t) {
         index++;
         if (NULL == node_item) {
-            continue;
+            break;
         }
         size += (strlen(node_item->node) + 1);
     }

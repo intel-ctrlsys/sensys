@@ -109,7 +109,9 @@ static int orcm_octl_logical_group_print_list(opal_hash_table_t *groups)
                 ORCM_UTIL_MSG_WITH_ARG("nodelist=%s", node_item->node);
             }
         }
-        OPAL_LIST_RELEASE(new_value);
+        if (NULL != new_value) {
+            OPAL_LIST_RELEASE(new_value);
+        }
         in_node = o_node;
         o_node = NULL;
     }
@@ -153,7 +155,7 @@ int orcm_octl_logical_group_list(int argc, char **argv)
     erri = orcm_octl_logical_group_print_list(o_groups);
 
 cleanup:
-    if (o_groups != LOGICAL_GROUP.groups) {
+    if (o_groups != LOGICAL_GROUP.groups && NULL != o_groups) {
         opal_hash_table_remove_all(o_groups);
         OBJ_RELEASE(o_groups);
     }

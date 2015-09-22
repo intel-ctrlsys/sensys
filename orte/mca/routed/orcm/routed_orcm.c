@@ -295,11 +295,15 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
             child->vpid = cluster_name.vpid;
             opal_bitmap_init(&child->relatives, orte_process_info.num_procs);
             opal_list_append(&my_children, &child->super);
+        } else if (cluster_name.jobid == ORTE_PROC_MY_NAME->jobid &&
+                   cluster_name.vpid == ORTE_PROC_MY_NAME->vpid) {
+            /* it's me - so the row controllers will be my direct children */
+            i_am_cluster_ctlr = true;
+            if (sched_present) {
+                ORTE_PROC_MY_PARENT->jobid = sched_name.jobid;
+                ORTE_PROC_MY_PARENT->vpid = sched_name.vpid;
+            }
         }
-    } else if (cluster_name.jobid == ORTE_PROC_MY_NAME->jobid &&
-               cluster_name.vpid == ORTE_PROC_MY_NAME->vpid) {
-        /* it's me - so the row controllers will be my direct children */
-        i_am_cluster_ctlr = true;
     }
 
     /* and the number of rows in the system */

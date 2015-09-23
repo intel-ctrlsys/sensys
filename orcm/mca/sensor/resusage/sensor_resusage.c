@@ -555,6 +555,9 @@ static void res_log(opal_buffer_t *sample)
         while (OPAL_SUCCESS == (rc = opal_dss.unpack(sample, &st, &n, OPAL_PSTAT))) {
             vals = OBJ_NEW(opal_list_t);
             asprintf(&primary_key, "procstat_%s",st->cmd);
+	    if (NULL == primary_key){
+                goto error;
+	    }
 
             kv = OBJ_NEW(opal_value_t);
             kv->key = strdup("ctime");
@@ -571,22 +574,17 @@ static void res_log(opal_buffer_t *sample)
             kv = OBJ_NEW(opal_value_t);
             if (NULL == kv) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             kv->key = strdup("data_group");
             kv->type = OPAL_STRING;
-	    if (NULL == primary_key){
-	        return;
-	    }
-	    else {
             kv->data.string = strdup(primary_key);
-	    }
             opal_list_append(vals, &kv->super);
 
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("rank");
             sensor_metric->value.type = OPAL_INT32;
@@ -597,7 +595,7 @@ static void res_log(opal_buffer_t *sample)
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("pid");
             sensor_metric->value.type = OPAL_PID;
@@ -608,7 +606,7 @@ static void res_log(opal_buffer_t *sample)
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("cmd");
             sensor_metric->value.type = OPAL_STRING;
@@ -619,13 +617,13 @@ static void res_log(opal_buffer_t *sample)
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("state");
             sensor_metric->value.type = OPAL_STRING;
             sensor_metric->value.data.string = (char*)malloc(3 * sizeof(char));
             if (NULL == sensor_metric->value.data.string) {
-                return;
+                goto error;
             }
             sensor_metric->value.data.string[0] = st->state[0];
             sensor_metric->value.data.string[1] = st->state[1];
@@ -636,7 +634,7 @@ static void res_log(opal_buffer_t *sample)
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("percent_cpu");
             sensor_metric->value.type = OPAL_FLOAT;
@@ -647,7 +645,7 @@ static void res_log(opal_buffer_t *sample)
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("priority");
             sensor_metric->value.type = OPAL_INT32;
@@ -658,7 +656,7 @@ static void res_log(opal_buffer_t *sample)
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("num_threads");
             sensor_metric->value.type = OPAL_INT16;
@@ -669,7 +667,7 @@ static void res_log(opal_buffer_t *sample)
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("vsize");
             sensor_metric->value.type = OPAL_FLOAT;
@@ -680,7 +678,7 @@ static void res_log(opal_buffer_t *sample)
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("rss");
             sensor_metric->value.type = OPAL_FLOAT;
@@ -691,7 +689,7 @@ static void res_log(opal_buffer_t *sample)
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("peak_vsize");
             sensor_metric->value.type = OPAL_FLOAT;
@@ -702,7 +700,7 @@ static void res_log(opal_buffer_t *sample)
             sensor_metric = OBJ_NEW(orcm_metric_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-                return;
+                goto error;
             }
             sensor_metric->value.key = strdup("processor");
             sensor_metric->value.type = OPAL_INT16;
@@ -729,6 +727,15 @@ static void res_log(opal_buffer_t *sample)
             OBJ_RELEASE(nst);
         }
     }
+    return;
+
+error:
+       if (NULL != primary_key) {
+           free (primary_key);
+       }
+       if (NULL != vals) {
+           OBJ_RELEASE(vals);
+       }
 }
 
 static void generate_test_vector(opal_buffer_t *v)

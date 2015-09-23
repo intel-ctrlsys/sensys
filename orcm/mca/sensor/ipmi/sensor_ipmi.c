@@ -753,6 +753,7 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
+        free(comp);
         return;
     }
     free(comp);
@@ -995,6 +996,7 @@ int orcm_sensor_ipmi_get_manuf_name (unsigned char fru_offset, unsigned char *rd
     strncpy(host->capsule.prop.baseboard_manufacturer, board_manuf, sizeof(host->capsule.prop.baseboard_manufacturer)-1);
     host->capsule.prop.baseboard_manufacturer[sizeof(host->capsule.prop.baseboard_manufacturer)-1] = '\0';
 
+    free(board_manuf);
     return board_manuf_length;
 }
 

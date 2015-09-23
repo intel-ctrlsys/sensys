@@ -1076,6 +1076,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         /* pack our name */
         temp = strdup("mcedata");
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &temp, 1, OPAL_STRING))) {
+            free(temp);
+            fclose(fp);
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
             return;
@@ -1084,6 +1086,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 
         /* store our hostname */
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+            fclose(fp);
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
             return;
@@ -1092,6 +1095,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         gettimeofday(&current_time, NULL);
 
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
+            fclose(fp);
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
             return;
@@ -1102,6 +1106,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
                         "Packing %s : %lu",mce_reg_name[i], mce_reg[i]);
             /* store the mce register */
             if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &mce_reg[i], 1, OPAL_UINT64))) {
+                fclose(fp);
                 ORTE_ERROR_LOG(ret);
                 OBJ_DESTRUCT(&data);
                 return;
@@ -1111,12 +1116,14 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 
         /* store the logical cpu ID */
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &cpu, 1, OPAL_UINT))) {
+            fclose(fp);
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
             return;
         }
         /* Store the socket id */
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &socket, 1, OPAL_UINT))) {
+            fclose(fp);
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
             return;
@@ -1126,6 +1133,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         if (packed) {
             bptr = &data;
             if (OPAL_SUCCESS != (ret = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
+                fclose(fp);
                 ORTE_ERROR_LOG(ret);
                 OBJ_DESTRUCT(&data);
                 return;

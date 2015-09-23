@@ -327,7 +327,7 @@ class TestResult(Base):
     name = Column(String(250), nullable=False, unique=True)
 
 
-def setup(db_url=None, alembic_ini="alembic.ini"):
+def setup(alembic_ini="alembic.ini"):
     """Setup all SQLAlchemy sessions and connections
 
     :param db_url: The database URL as required by SQLAlchemy
@@ -335,8 +335,9 @@ def setup(db_url=None, alembic_ini="alembic.ini"):
     :return: None
     """
     alembic_conf = Config(alembic_ini)
+    db_url = alembic_conf.get_section_option("alembic", "sqlalchemy.url")
     if not db_url:
-        db_url = alembic_conf.get_section_option("alembic", "sqlalchemy.url")
+        db_url = os.getenv("PG_DB_URL")
     if not db_url:
         raise RuntimeError("The db_url is not in the kwarg "
                            "nor in the alembic_ini file.")
@@ -366,8 +367,7 @@ def setup(db_url=None, alembic_ini="alembic.ini"):
 
 if __name__ == "__main__":
     import pprint
-
-    setup(os.getenv("PG_DB_URL"))
+    setup()
     dummy_query = session.query(data_sample_raw_table).limit(10)
     print("Sample list of  DataSampleRaw")
     print(pprint.pformat(dummy_query.all()))

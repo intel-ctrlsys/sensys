@@ -147,7 +147,7 @@ int orcm_octl_logical_group_list(int argc, char **argv)
     }
 
     o_groups = orcm_logical_group_list(tag, node_regex, LOGICAL_GROUP.groups);
-    if (o_groups == NULL || 0 == opal_hash_table_get_size(o_groups)) {
+    if (NULL == o_groups || 0 == opal_hash_table_get_size(o_groups)) {
         ORCM_UTIL_MSG("\nThere are no logical groups yet!");
         goto cleanup;
     }

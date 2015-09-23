@@ -650,7 +650,7 @@ cleanup:
 
 static void orcm_logical_group_trim_line(char *line, char **o_line)
 {
-    char *in_line_travesal = line;
+    char *in_line_travesal = line, *in_line_travesal_back = NULL;
 
     if (NULL == in_line_travesal || NULL == o_line) {
         return;
@@ -669,11 +669,14 @@ static void orcm_logical_group_trim_line(char *line, char **o_line)
     /* trim the end */
     if (NULL != in_line_travesal) {
         if (0 < strlen(in_line_travesal)) {
-            in_line_travesal += (strlen(in_line_travesal) - 1);
-            while (0 < strlen(in_line_travesal) &&
-                   (' ' == *in_line_travesal || '\t' == *in_line_travesal)) {
-                *in_line_travesal = '\0';
-                in_line_travesal--;
+            in_line_travesal_back = in_line_travesal + (strlen(in_line_travesal) - 1);
+            while (' ' == *in_line_travesal_back || '\t' == *in_line_travesal_back) {
+                *in_line_travesal_back = '\0';
+                if (0 < strlen(in_line_travesal)) {
+                    in_line_travesal_back--;
+                } else {
+                    break;
+                }
             }
         }
     }

@@ -650,34 +650,24 @@ cleanup:
 
 static void orcm_logical_group_trim_line(char *line, char **o_line)
 {
-    char *in_line_travesal = line, *in_line_travesal_back = NULL;
+    char *in_line_travesal = NULL;
 
-    if (NULL == in_line_travesal || NULL == o_line) {
+    if (NULL == line || NULL == o_line) {
         return;
     }
 
     /* trim the beginning */
-    while(NULL != in_line_travesal && '\0' != *in_line_travesal){
-        if (' ' == *in_line_travesal || '\t' == *in_line_travesal) {
-            ++in_line_travesal;
-            continue;
-        }
-        break;
+    while(' ' == *line || '\t' == *line) {
+        line++;
     }
-    *o_line = in_line_travesal;
+    *o_line = line;
 
     /* trim the end */
-    if (NULL != in_line_travesal) {
-        if (0 < strlen(in_line_travesal)) {
-            in_line_travesal_back = in_line_travesal + (strlen(in_line_travesal) - 1);
-            while (' ' == *in_line_travesal_back || '\t' == *in_line_travesal_back) {
-                *in_line_travesal_back = '\0';
-                if (0 < strlen(in_line_travesal)) {
-                    in_line_travesal_back--;
-                } else {
-                    break;
-                }
-            }
+    if ('\0' != *line) {
+        in_line_travesal = line + strlen(line) - 1;
+        while (in_line_travesal > line && (' ' == *in_line_travesal || '\t' == *in_line_travesal)) {
+            *in_line_travesal = '\0';
+            in_line_travesal--;
         }
     }
 }

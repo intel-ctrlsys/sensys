@@ -2300,7 +2300,13 @@ static void sigar_log(opal_buffer_t *sample)
         }
         OBJ_RELEASE(st);
     }
+    goto done;
+
 cleanup:
+    if (NULL != primary_key) {
+        free(primary_key);
+    }
+done:
     if (NULL != hostname) {
         free(hostname);
     }

@@ -672,7 +672,7 @@ static void orcm_logical_group_trim_line(char *line, char **o_line)
             in_line_travesal += (strlen(in_line_travesal) - 1);
             while (0 < strlen(in_line_travesal) &&
                    (' ' == *in_line_travesal || '\t' == *in_line_travesal)) {
-                in_line_travesal = '\0';
+                *in_line_travesal = '\0';
                 in_line_travesal--;
             }
         }

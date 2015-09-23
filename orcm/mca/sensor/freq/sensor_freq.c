@@ -675,7 +675,11 @@ static void start(orte_jobid_t jobid)
         opal_event_evtimer_set(orcm_sensor_freq.ev_base, &freq_sampler->ev,
                                perthread_freq_sample, freq_sampler);
         opal_event_evtimer_add(&freq_sampler->ev, &freq_sampler->rate);
+    }else{
+	 mca_sensor_freq_component.sample_rate = orcm_sensor_base.sample_rate;
+
     }
+
     return;
 }
 
@@ -1146,9 +1150,7 @@ static void freq_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {
     /* check if freq sample rate is provided for this*/
-        if (mca_sensor_freq_component.use_progress_thread) {
             *sample_rate = mca_sensor_freq_component.sample_rate;
-        }
     }
     return;
 }

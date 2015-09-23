@@ -210,7 +210,11 @@ static void start(orte_jobid_t jobid)
         opal_event_evtimer_set(orcm_sensor_ipmi.ev_base, &ipmi_sampler->ev,
                                perthread_ipmi_sample, ipmi_sampler);
         opal_event_evtimer_add(&ipmi_sampler->ev, &ipmi_sampler->rate);
+    }else{
+	 mca_sensor_ipmi_component.sample_rate = orcm_sensor_base.sample_rate;
+
     }
+
     return;
 }
 
@@ -1426,9 +1430,7 @@ static void ipmi_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {
     /* check if ipmi sample rate is provided for this*/
-        if (mca_sensor_ipmi_component.use_progress_thread) {
             *sample_rate = mca_sensor_ipmi_component.sample_rate;
-        }
     }
     return;
 }

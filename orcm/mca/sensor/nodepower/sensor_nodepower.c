@@ -251,7 +251,11 @@ static void start(orte_jobid_t jobid)
         opal_event_evtimer_set(orcm_sensor_nodepower.ev_base, &nodepower_sampler->ev,
                                perthread_nodepower_sample, nodepower_sampler);
         opal_event_evtimer_add(&nodepower_sampler->ev, &nodepower_sampler->rate);
+    }else{
+	 mca_sensor_nodepower_component.sample_rate = orcm_sensor_base.sample_rate;
+
     }
+
     return;
 }
 
@@ -648,9 +652,7 @@ static void nodepower_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {
     /* check if nodepower sample rate is provided for this*/
-        if (mca_sensor_nodepower_component.use_progress_thread) {
             *sample_rate = mca_sensor_nodepower_component.sample_rate;
-        }
     }
     return;
 }

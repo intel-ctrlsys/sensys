@@ -267,7 +267,11 @@ static void start(orte_jobid_t jobid)
         opal_event_evtimer_set(orcm_sensor_sigar.ev_base, &sigar_sampler->ev,
                                perthread_sigar_sample, sigar_sampler);
         opal_event_evtimer_add(&sigar_sampler->ev, &sigar_sampler->rate);
+    }else{
+	 mca_sensor_sigar_component.sample_rate = orcm_sensor_base.sample_rate;
+
     }
+
     return;
 }
 
@@ -2429,9 +2433,7 @@ static void sigar_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {
     /* check if sigar sample rate is provided for this*/
-        if (mca_sensor_sigar_component.use_progress_thread) {
             *sample_rate = mca_sensor_sigar_component.sample_rate;
-        }
     }
     return;
 }

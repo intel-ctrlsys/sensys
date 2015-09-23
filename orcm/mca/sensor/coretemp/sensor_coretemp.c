@@ -691,7 +691,11 @@ static void start(orte_jobid_t jobid)
         opal_event_evtimer_set(orcm_sensor_coretemp.ev_base, &coretemp_sampler->ev,
                                perthread_coretemp_sample, coretemp_sampler);
         opal_event_evtimer_add(&coretemp_sampler->ev, &coretemp_sampler->rate);
+    }else{
+	 mca_sensor_coretemp_component.sample_rate = orcm_sensor_base.sample_rate;
+
     }
+
     return;
 }
 
@@ -1023,9 +1027,7 @@ static void coretemp_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {
     /* check if coretemp sample rate is provided for this*/
-        if (mca_sensor_coretemp_component.use_progress_thread) {
             *sample_rate = mca_sensor_coretemp_component.sample_rate;
-        }
     }
     return;
 }

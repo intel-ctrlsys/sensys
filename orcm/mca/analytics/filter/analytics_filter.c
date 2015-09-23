@@ -53,6 +53,17 @@ static int filter_analytics_array_create(opal_value_array_t **analytics_sample_a
     return ORCM_SUCCESS;
 }
 
+static void dest_filter_workflow_value(filter_workflow_value_t *workflow_value)
+{
+    free(workflow_value->nodeid_label);
+    free(workflow_value->sensor_label);
+    free(workflow_value->coreid_label);
+    free(workflow_value->nodeid);
+    free(workflow_value->sensorname);
+    free(workflow_value->coreid);
+    free(workflow_value);
+}
+
 static int init(orcm_analytics_base_module_t *imod)
 {
     return ORCM_SUCCESS;
@@ -305,7 +316,7 @@ static int analyze(int sd, short args, void *cbdata)
     if ( NULL == workflow_value) {
         OPAL_OUTPUT_VERBOSE((1, orcm_analytics_base_framework.framework_output,
                             "%s Insufficient data", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        free(workflow_value);
+        dest_filter_workflow_value(workflow_value);
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
@@ -313,7 +324,7 @@ static int analyze(int sd, short args, void *cbdata)
         OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
             "%s analytics:average:NULL caddy data passed by the previous workflow step",
             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        free(workflow_value);
+        dest_filter_workflow_value(workflow_value);
         return ORCM_ERROR;
     }
 
@@ -325,19 +336,20 @@ static int analyze(int sd, short args, void *cbdata)
 
     rc = filter_parse_workflow(cbdata, workflow_value);
     if (ORCM_SUCCESS != rc) {
-        free(workflow_value);
+        dest_filter_workflow_value(workflow_value);
         return ORCM_ERROR;
     }
 
     analytics_rc = filter_analytics_array_create(&filter_sample_array);
     if (ORCM_SUCCESS != analytics_rc) {
-        free(workflow_value);
+        dest_filter_workflow_value(workflow_value);
         return ORCM_ERROR;
     }
 
     rc = analytics_filter_data(filter_sample_array, workflow_value, cbdata);
     if (ORCM_SUCCESS != rc) {
-        free(workflow_value);
+        dest_filter_workflow_value(workflow_value);
+        OBJ_RELEASE(filter_sample_array);
         return ORCM_ERROR;
     }
 
@@ -358,7 +370,8 @@ static int analyze(int sd, short args, void *cbdata)
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(filter_analyze_caddy->wf,
                                      filter_analyze_caddy->wf_step, filter_sample_array);
 
-    free(workflow_value);
+    dest_filter_workflow_value(workflow_value);
+    OBJ_RELEASE(filter_sample_array);
     OBJ_RELEASE(filter_analyze_caddy);
 
     return ORCM_SUCCESS;

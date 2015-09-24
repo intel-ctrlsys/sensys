@@ -780,6 +780,7 @@ static int odbc_store_data_sample(mca_db_odbc_module_t *mod,
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
         ERR_MSG_FMT_STORE("SQLAllocHandle returned: %d", ret);
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERROR;
     }
 
@@ -1073,6 +1074,7 @@ cleanup_and_exit:
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
 
+    OBJ_DESTRUCT(&item_bm);
     return rc;
 }
 
@@ -1786,6 +1788,7 @@ static int odbc_store_node_features(mca_db_odbc_module_t *mod,
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
         ERR_MSG_FMT_UNF("SQLAllocHandle returned: %d", ret);
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERROR;
     }
 
@@ -2053,6 +2056,8 @@ cleanup_and_exit:
     if (SQL_NULL_HSTMT != stmt) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
+
+    OBJ_DESTRUCT(&item_bm);
 
     return rc;
 }
@@ -2616,26 +2621,31 @@ static int odbc_store_diag_test(mca_db_odbc_module_t *mod,
     /* Check the parameters */
     if (NULL == param_items[0]) {
         ERR_MSG_RDT("No hostname provided");
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == param_items[1]) {
         ERR_MSG_RDT("No diagnostic type provided");
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == param_items[2]) {
         ERR_MSG_RDT("No diagnostic subtype provided");
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == param_items[3]) {
         ERR_MSG_RDT("No start time provided");
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == param_items[4]) {
         ERR_MSG_RDT("No test result provided");
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -3163,6 +3173,8 @@ cleanup_and_exit:
     if (SQL_NULL_HSTMT != stmt) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
+
+    OBJ_DESTRUCT(&item_bm);
 
     return rc;
 }

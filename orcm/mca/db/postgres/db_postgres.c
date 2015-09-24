@@ -750,6 +750,7 @@ cleanup_and_exit:
         free(insert_stmt);
     }
 
+    OBJ_DESTRUCT(&item_bm);
     return rc;
 }
 
@@ -1129,6 +1130,7 @@ cleanup_and_exit:
         free(value_str);
     }
 
+    OBJ_DESTRUCT(&item_bm);
     return rc;
 }
 
@@ -1484,26 +1486,31 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
     /* Check the parameters */
     if (NULL == param_items[0]) {
         ERR_MSG_RDT("No hostname provided");
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == param_items[1]) {
         ERR_MSG_RDT("No diagnostic type provided");
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == param_items[2]) {
         ERR_MSG_RDT("No diagnostic subtype provided");
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == param_items[3]) {
         ERR_MSG_RDT("No start time provided");
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (NULL == param_items[4]) {
         ERR_MSG_RDT("No test result provided");
+        OBJ_DESTRUCT(&item_bm);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -1831,6 +1838,7 @@ cleanup_and_exit:
         free(value_str);
     }
 
+    OBJ_DESTRUCT(&item_bm);
     return rc;
 }
 
@@ -2261,7 +2269,6 @@ static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
     int data_length = -1;
     opal_value_t *value_object = NULL;
     bool inserted_value = false;
-    void* value_buffer = NULL;
 
     if(NULL == results) {
         rc = ORCM_ERROR;
@@ -2272,12 +2279,7 @@ static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
     /* get row ORCM data value type */
     data_type_col = PQfnumber(results, opal_type_column_name);
     if(NO_COLUMN != data_type_col) {
-        data_length = PQgetlength(results, mod->current_row, data_type_col);
-        value_buffer = malloc(data_length);
-        value_buffer = (void*)PQgetvalue(results, mod->current_row, data_type_col);
-        data_type = (opal_data_type_t)*((int*)value_buffer);
-        free(value_buffer);
-        value_buffer = NULL;
+        data_type = atoi(PQgetvalue(results, mod->current_row, data_type_col));
 
         /* retrieve 1 correctly typed object for one of 'value_str', 'value_int', 'value_real' */
         value_object = get_value_object(results, mod->current_row, data_type);

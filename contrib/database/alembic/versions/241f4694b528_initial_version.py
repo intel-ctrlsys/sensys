@@ -15,9 +15,6 @@ import sqlalchemy as sa
 import textwrap
 
 
-dialect = op.get_context().dialect
-
-
 def _postgresql_upgrade_ddl():
     op.execute(textwrap.dedent("""
         CREATE OR REPLACE VIEW data_samples_view AS
@@ -1257,20 +1254,22 @@ def upgrade():
         sa.Column('data_type_id', sa.Integer(), nullable=False),
         sa.CheckConstraint('(value_int  IS NOT NULL OR value_real IS NOT NULL OR value_str  IS NOT NULL)', name=op.f('ck_data_sample_raw_at_least_one_value')))
 
-    if 'postgresql' in dialect.name:
+    db_dialect = op.get_context().dialect
+    if 'postgresql' in db_dialect.name:
         _postgresql_upgrade_ddl()
     else:
         print("Views were not created.  "
-              "'%s' is not a supported database dialect." % dialect.name)
+              "'%s' is not a supported database dialect." % db_dialect.name)
         return
 
 
 def downgrade():
-    if 'postgresql' in dialect.name:
+    db_dialect = op.get_context().dialect
+    if 'postgresql' in db_dialect.name:
         _postgresql_downgrade_ddl()
     else:
         print("Views were not dropped.  "
-              "'%s' is not a supported database dialect." % dialect.name)
+              "'%s' is not a supported database dialect." % db_dialect.name)
         return
 
     op.drop_table('data_sample_raw')

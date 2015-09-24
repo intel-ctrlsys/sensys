@@ -43,7 +43,7 @@ int orcm_octl_logical_group_add(int argc, char **argv)
         goto cleanup;
     }
 
-    ORCM_UTIL_MSG("\nGrouping: Add done successfully!");
+    ORCM_UTIL_MSG("\nGrouping: Add operation done successfully!");
 
 cleanup:
     orcm_logical_group_finalize();
@@ -148,7 +148,7 @@ int orcm_octl_logical_group_list(int argc, char **argv)
 
     o_groups = orcm_logical_group_list(tag, node_regex, LOGICAL_GROUP.groups);
     if (NULL == o_groups || 0 == opal_hash_table_get_size(o_groups)) {
-        ORCM_UTIL_MSG("\nThere is no record!");
+        ORCM_UTIL_MSG("\nThere are no logical groups yet!");
         goto cleanup;
     }
 

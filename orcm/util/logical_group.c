@@ -671,7 +671,7 @@ static void orcm_logical_group_trim_line(char *line, char **o_line)
 static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
                                           int max_line_length, int *o_eof)
 {
-    char *ret = NULL;
+    char *ret = NULL, *line_break = NULL;
 
     /* max_line_length -1 is to give space for ending '\0' */
     ret = fgets(io_line, max_line_length - 1, storage_file);
@@ -684,8 +684,8 @@ static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
     }
 
     /* trim the last '\n' introduced by line break */
-    if (0 < strlen(io_line)) {
-        *(io_line + strlen(io_line) - 1) = '\0';
+    if (NULL != (line_break = strchr(io_line, '\n'))) {
+        *line_break = '\0';
     }
 
     return ORCM_SUCCESS;

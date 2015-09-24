@@ -316,7 +316,7 @@ static int analyze(int sd, short args, void *cbdata)
     if ( NULL == workflow_value) {
         OPAL_OUTPUT_VERBOSE((1, orcm_analytics_base_framework.framework_output,
                             "%s Insufficient data", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        dest_filter_workflow_value(workflow_value);
+        free(workflow_value);
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
@@ -324,7 +324,7 @@ static int analyze(int sd, short args, void *cbdata)
         OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
             "%s analytics:average:NULL caddy data passed by the previous workflow step",
             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        dest_filter_workflow_value(workflow_value);
+        free(workflow_value);
         return ORCM_ERROR;
     }
 

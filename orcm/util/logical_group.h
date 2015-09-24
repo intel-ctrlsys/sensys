@@ -45,8 +45,9 @@ extern char *current_tag;
 
 /* public APIs to be used by everywhere in ORCM */
 
-/* Give a node regex (could be a group name of a collection of nodes),
- * return a comma separated node list */
+/* Give a node regex, if the node regex is a tag of group name, then
+ * return a comma separated node list; otherwise, remain unchanged
+ * */
 ORCM_DECLSPEC int orcm_logical_group_node_names_list(char *regex, char **o_nodelist);
 
 /* Give a node regex (could be a group name of a collection of nodes),

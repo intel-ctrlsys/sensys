@@ -684,7 +684,7 @@ static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
     }
 
     /* trim the last '\n' introduced by line break */
-    if ('\0' != *io_line) {
+    if (0 < strlen(io_line)) {
         *(io_line + strlen(io_line) - 1) = '\0';
     }
 

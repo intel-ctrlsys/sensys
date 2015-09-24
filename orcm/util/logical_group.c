@@ -334,14 +334,9 @@ static int orcm_logical_group_hash_table_remove_nodes(char *tag,
     orcm_logical_group_node_t *node_item = NULL, *next_node_item = NULL;
     for (index = 0; index < count; index++) {
         OPAL_LIST_FOREACH_SAFE(node_item, next_node_item, value, orcm_logical_group_node_t) {
-            if (NULL == node_item) {
-                return ORCM_ERR_BAD_PARAM;
-            }
             if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]))) {
                 opal_list_remove_item(value, &node_item->super);
-                if (NULL != node_item) {
-                    OBJ_RELEASE(node_item);
-                }
+                OBJ_RELEASE(node_item);
                 break;
             }
         }
@@ -665,7 +660,8 @@ static void orcm_logical_group_trim_line(char *line, char **o_line)
     /* trim the end */
     if ('\0' != *line) {
         in_line_travesal = line + strlen(line) - 1;
-        while (in_line_travesal > line && (' ' == *in_line_travesal || '\t' == *in_line_travesal)) {
+        while (in_line_travesal > line &&
+               (' ' == *in_line_travesal || '\t' == *in_line_travesal)) {
             *in_line_travesal = '\0';
             in_line_travesal--;
         }
@@ -676,18 +672,20 @@ static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
                                           int max_line_length, int *o_eof)
 {
     char *ret = NULL;
-    unsigned long line_length = 0;
 
     /* max_line_length -1 is to give space for ending '\0' */
     ret = fgets(io_line, max_line_length - 1, storage_file);
     if (NULL == ret) {
-        *o_eof = 1;
-        return ORCM_SUCCESS;
+        if (0 != feof(storage_file)) {
+            *o_eof = 1;
+            return ORCM_SUCCESS;
+        }
+        return ORCM_ERR_FILE_READ_FAILURE;
     }
 
-    line_length = strlen(io_line);
-    if (0 < line_length) {
-        io_line[line_length - 1] = '\0';
+    /* trim the last '\n' introduced by line break */
+    if ('\0' != *io_line) {
+        *(io_line + strlen(io_line) - 1) = '\0';
     }
 
     return ORCM_SUCCESS;
@@ -720,7 +718,7 @@ static int orcm_logical_group_parsing(char *tag, FILE *storage_file, char *line_
 
     while (1) {
         eof = 0;
-        line_buf[0] = '\0';
+        memset(line_buf, '\0', strlen(line_buf));
         erri = orcm_logical_group_get_newline(storage_file, line_buf,
                                               MAX_LINE_LENGTH, &eof);
         if (ORCM_SUCCESS != erri || 1 == eof) {
@@ -1134,7 +1132,7 @@ static unsigned int orcm_logical_group_list_addup_size(opal_list_t *value, int c
 }
 
 static int orcm_logical_group_listval_to_nodelist_internal(opal_list_t *value,
-                                                            char **o_nodelist, int count)
+                                                           char **o_nodelist, int count)
 {
     int index = 0, erri = ORCM_SUCCESS;
     orcm_logical_group_node_t *node_item = NULL;

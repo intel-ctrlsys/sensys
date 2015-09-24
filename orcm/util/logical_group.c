@@ -676,6 +676,7 @@ static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
                                           int max_line_length, int *o_eof)
 {
     char *ret = NULL;
+    unsigned long line_length = 0;
 
     /* max_line_length -1 is to give space for ending '\0' */
     ret = fgets(io_line, max_line_length - 1, storage_file);
@@ -1133,7 +1134,7 @@ static unsigned int orcm_logical_group_list_addup_size(opal_list_t *value, int c
 }
 
 static int orcm_logical_group_listval_to_nodelist_internal(opal_list_t *value,
-                                                           char **o_nodelist, int count)
+                                                            char **o_nodelist, int count)
 {
     int index = 0, erri = ORCM_SUCCESS;
     orcm_logical_group_node_t *node_item = NULL;

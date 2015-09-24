@@ -58,9 +58,9 @@ static void dest_filter_workflow_value(filter_workflow_value_t *workflow_value)
     free(workflow_value->nodeid_label);
     free(workflow_value->sensor_label);
     free(workflow_value->coreid_label);
-    free(workflow_value->nodeid);
-    free(workflow_value->sensorname);
-    free(workflow_value->coreid);
+    opal_argv_free(workflow_value->nodeid);
+    opal_argv_free(workflow_value->sensorname);
+    opal_argv_free(workflow_value->coreid);
     free(workflow_value);
 }
 
@@ -80,9 +80,9 @@ static int filter_parse_workflow(void *cbdata, filter_workflow_value_t *workflow
 {
     orcm_workflow_caddy_t *parse_workflow_caddy = NULL;
     opal_value_t *temp = NULL;
-    workflow_value->nodeid_label = "nodeid";
-    workflow_value->sensor_label = "sensorname";
-    workflow_value->coreid_label = "coreid";
+    workflow_value->nodeid_label = strdup("nodeid");
+    workflow_value->sensor_label = strdup("sensorname");
+    workflow_value->coreid_label = strdup("coreid");
     workflow_value->nodeid = NULL;
     workflow_value->sensorname = NULL;
     workflow_value->coreid = NULL;
@@ -371,7 +371,6 @@ static int analyze(int sd, short args, void *cbdata)
                                      filter_analyze_caddy->wf_step, filter_sample_array);
 
     dest_filter_workflow_value(workflow_value);
-    OBJ_RELEASE(filter_sample_array);
     OBJ_RELEASE(filter_analyze_caddy);
 
     return ORCM_SUCCESS;

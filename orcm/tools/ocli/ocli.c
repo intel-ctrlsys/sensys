@@ -142,6 +142,9 @@ static int orcm_ocli_init(int argc, char *argv[])
     /* initialize orcm for use as a tool */
     if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL))) {
         fprintf(stderr, "Failed to initialize\n");
+        if (NULL != tailv) {
+            free(tailv);
+        }
         exit(ret);
     }
 

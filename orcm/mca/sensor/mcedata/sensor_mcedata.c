@@ -187,7 +187,7 @@ static void start_log_file(void)
 
 static long update_log_file_size(FILE *fp)
 {
-    long tot_bytes;
+    long tot_bytes = -1;
     int ret;
     static int errorReported = 0;
     char buf[128];

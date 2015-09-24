@@ -215,6 +215,18 @@ done:
     if (nodelist) {
         opal_argv_free(nodelist);
     }
+    if (sev) {
+        free(sev);
+    }
+    if (threstype) {
+        free(threstype);
+    }
+    if (action) {
+        free(action);
+    }
+    if (sensor_name) {
+        free(sensor_name);
+    }
 
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
 

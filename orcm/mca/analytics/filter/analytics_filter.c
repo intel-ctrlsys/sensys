@@ -371,7 +371,6 @@ static int analyze(int sd, short args, void *cbdata)
                                      filter_analyze_caddy->wf_step, filter_sample_array);
 
     dest_filter_workflow_value(workflow_value);
-    OBJ_RELEASE(filter_analyze_caddy);
 
     return ORCM_SUCCESS;
 }

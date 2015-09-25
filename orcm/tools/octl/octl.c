@@ -675,9 +675,9 @@ static void octl_print_error(int rc)
     if (ORCM_SUCCESS != rc) {
         const char *errmsg = ORTE_ERROR_NAME(rc);
         if (NULL != errmsg) {
-            fprintf(stderr, "\nERROR: %s\n", errmsg);
+            fprintf(stdout, "\nERROR: %s\n", errmsg);
         } else {
-            fprintf(stderr, "\nERROR: Internal\n");
+            fprintf(stdout, "\nERROR: Internal\n");
         }
     }
 }

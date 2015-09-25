@@ -123,9 +123,6 @@ static int orcm_logical_group_trim_noderegex(char *regex, char **o_regex);
 /* whether a given group name is valid or not */
 static int orcm_logical_group_is_valid_tag(char *tag);
 
-/* prepare for getting a collection of nodes */
-static int orcm_logical_group_prepare_for_nodes(char *regex, char **o_regex);
-
 /* check whether a group name exists in the hash table or not */
 static int orcm_logical_group_check_tag(char *tag, opal_list_t **value, int *count,
                                         opal_hash_table_t **io_groups);
@@ -1014,16 +1011,6 @@ static int orcm_logical_group_is_valid_tag(char *tag)
     return ORCM_SUCCESS;
 }
 
-static int orcm_logical_group_prepare_for_nodes(char *regex, char **o_regex)
-{
-    int erri = orcm_logical_group_trim_noderegex(regex, o_regex);
-    if (ORCM_SUCCESS != erri) {
-        return erri;
-    }
-
-    return orcm_logical_group_init();
-}
-
 static int orcm_logical_group_check_tag(char *tag, opal_list_t **value, int *count,
                                         opal_hash_table_t **io_groups)
 {
@@ -1091,7 +1078,7 @@ int orcm_logical_group_node_names(char *regex, char ***o_names)
     int erri = ORCM_SUCCESS;
     char *o_regex = NULL;
 
-    erri = orcm_logical_group_prepare_for_nodes(regex, &o_regex);
+    erri = orcm_logical_group_trim_noderegex(regex, &o_regex);
     if (ORCM_SUCCESS != erri) {
         goto finalize;
     }
@@ -1099,6 +1086,10 @@ int orcm_logical_group_node_names(char *regex, char ***o_names)
     /* If the node regex is a tag: starting with $ */
     if ('$' == o_regex[0]) {
         ++o_regex; //Omit the '$' character
+        erri = orcm_logical_group_init();
+        if (ORCM_SUCCESS != erri) {
+            goto finalize;
+        }
         erri = orcm_logical_group_load_from_file(o_regex, LOGICAL_GROUP.storage_filename,
                                           LOGICAL_GROUP.groups);
         if (ORCM_SUCCESS != erri) {
@@ -1203,13 +1194,17 @@ int orcm_logical_group_node_names_list(char *regex, char **o_nodelist)
     int erri = ORCM_SUCCESS;
     char *o_regex = NULL;
 
-    erri = orcm_logical_group_prepare_for_nodes(regex, &o_regex);
+    erri = orcm_logical_group_trim_noderegex(regex, &o_regex);
     if (ORCM_SUCCESS != erri) {
         goto finalize;
     }
 
     if ('$' == o_regex[0]) {
         ++o_regex;
+        erri = orcm_logical_group_init();
+        if (ORCM_SUCCESS != erri) {
+            goto finalize;
+        }
         erri = orcm_logical_group_load_from_file(NULL, LOGICAL_GROUP.storage_filename,
                                                  LOGICAL_GROUP.groups);
         if (ORCM_SUCCESS != erri) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -22,17 +22,32 @@
 #include "orte/mca/rml/rml.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/util/name_fns.h"
+#include "orte/runtime/orte_wait.h"
 
 #include "orcm/util/attr.h"
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/pwrmgmt/base/base.h"
 #include "orcm/mca/scd/base/base.h"
 
+#include "orcm/mca/db/db.h"
+#include "orcm/mca/db/base/base.h"
+
 static bool recv_issued=false;
 
 static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
-                               opal_buffer_t* buffer, orte_rml_tag_t tag,
-                               void* cbdata);
+                        opal_buffer_t* buffer, orte_rml_tag_t tag,
+                        void* cbdata);
+
+void open_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out, void *cbdata);
+void close_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out, void *cbdata);
+void fetch_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out, void *cbdata);
+bool is_wanted_column(const char* name);
+char* get_plugin_from_sensor_name(const char* sensor_name);
+int get_inventory_list(opal_list_t *filters, opal_list_t **results);
+void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
+                              opal_buffer_t* buffer, orte_rml_tag_t tag,
+                              void* cbdata);
+
 
 int orcm_scd_base_comm_start(void)
 {
@@ -49,6 +64,10 @@ int orcm_scd_base_comm_start(void)
                             ORTE_RML_PERSISTENT,
                             orcm_scd_base_recv,
                             NULL);
+    /* setup to to receive 'fetch' commands */
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH, ORTE_RML_PERSISTENT,
+                            orcm_scd_base_fetch_recv, NULL);
+
     recv_issued = true;
 
     return ORTE_SUCCESS;
@@ -1038,5 +1057,293 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(ans);
         return;
+    }
+}
+
+typedef struct {
+    int dbhandle;
+    int session_handle;
+    int number_of_rows;
+    int status;
+    bool active;
+} fetch_cb_data, *fetch_cb_data_ptr;
+
+void open_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out, void *cbdata)
+{
+    fetch_cb_data* data = (fetch_cb_data*)cbdata;
+    data->dbhandle = dbhandle;
+    data->status = status;
+    data->session_handle = -1;
+    data->number_of_rows = -1;
+    data->active = false;
+}
+
+void close_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out, void *cbdata)
+{
+    fetch_cb_data* data = (fetch_cb_data*)cbdata;
+    data->status = status;
+    data->active = false;
+}
+
+void fetch_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out, void *cbdata)
+{
+    fetch_cb_data* data = (fetch_cb_data*)cbdata;
+    if(ORCM_SUCCESS == status && dbhandle == data->dbhandle) {
+        if(NULL != out && 0 != opal_list_get_size(out)) {
+            opal_value_t *handle_object = (opal_value_t*)opal_list_get_first(out);
+            if(NULL != handle_object && OPAL_INT == handle_object->type) {
+                data->session_handle = handle_object->data.integer;
+            } else {
+                status = ORCM_ERROR;
+            }
+        } else {
+            status = ORCM_ERROR;
+        }
+    }
+    if(NULL != in) {
+        OPAL_LIST_RELEASE(in);
+    }
+    if(NULL != out) {
+        OPAL_LIST_RELEASE(out);
+    }
+    data->status = status;
+    data->active = false;
+}
+
+bool is_wanted_column(const char* name)
+{
+    static char *wanted_column_names[] = {
+        "hostname",
+        "feature",
+        "value",
+        NULL
+    };
+    bool rv = false;
+    for(int i = 0; NULL != wanted_column_names[i]; ++i) {
+        if(0 == strcmp(wanted_column_names[i], name)) {
+            rv = true;
+            break;
+        }
+    }
+    return rv;
+}
+
+char* get_plugin_from_sensor_name(const char* sensor_name)
+{
+    char* pos1 = strchr(sensor_name, '_');
+    if(NULL != pos1) {
+        char* pos2 = strchr(++pos1, '_');
+        if(NULL != pos2) {
+            size_t length = (size_t)(--pos2) - (size_t)pos1 + 2;
+            char* plugin = (char*)malloc(length);
+            strncpy(plugin, pos1, length - 1);
+            plugin[length - 1] = '\0';
+        return plugin;
+        } else {
+            return NULL;
+        }
+    } else {
+        return NULL;
+    }
+}
+
+int get_inventory_list(opal_list_t *filters, opal_list_t **results)
+{
+    int num_rows = 0;
+    opal_list_t *fetch_output = OBJ_NEW(opal_list_t);
+    fetch_cb_data data;
+
+    data.dbhandle = -1;
+
+    data.active = true;
+    orcm_db.open(NULL, NULL, open_callback, &data);
+    ORTE_WAIT_FOR_COMPLETION(data.active);
+
+    if(ORCM_SUCCESS != data.status) {
+        opal_output(0, "Failed to open database to retrieve inventory");
+        return data.status;
+    }
+
+    data.active = true;
+    orcm_db.fetch(data.dbhandle, "node_features_view", filters, fetch_output, fetch_callback, &data);
+    ORTE_WAIT_FOR_COMPLETION(data.active);
+
+    if(ORCM_SUCCESS != data.status || -1 == data.session_handle) {
+        opal_output(0, "Failed to fetch the inventory database");
+        return ORCM_ERROR;
+    }
+
+    data.status = orcm_db.get_num_rows(data.dbhandle, data.session_handle, &num_rows);
+    if(ORCM_SUCCESS != data.status) {
+        opal_output(0, "Failed to get number of inventory rows in the inventory database");
+        return ORCM_ERROR;
+    }
+
+    if(0 < num_rows) {
+        bool first_item = true;
+        *results = OBJ_NEW(opal_list_t);
+        for(int i = 0; i < num_rows; ++i) {
+            opal_list_t *row = OBJ_NEW(opal_list_t);
+            opal_value_t *string_row = OBJ_NEW(opal_value_t);
+            char tmp[256]; /* Arbitrary but large enough. */
+            opal_value_t *item = NULL;
+            bool first_column = true;
+            int col_num = 0;
+
+            data.status = orcm_db.get_next_row(data.dbhandle, data.session_handle, row);
+
+            if(ORCM_SUCCESS != data.status) {
+                opal_output(0, "Failed to get inventory row %d in the inventory database", i);
+                return ORCM_ERROR;
+            }
+            tmp[0] = '"';
+            tmp[1] = '\0';
+            OPAL_LIST_FOREACH(item, row, opal_value_t) {
+                if(true == is_wanted_column(item->key)) {
+                    if(false == first_column) {
+                        strcat(tmp, "\",\"");
+                    }
+                    if(0 == strcmp(item->key, "feature"))
+                    {
+                        char* plugin = get_plugin_from_sensor_name(item->data.string);
+                        strcat(tmp, plugin);
+                        free(plugin);
+                    } else {
+                        strcat(tmp, item->data.string);
+                    }
+                    if(true == first_column) {
+                        first_column = false;
+                    }
+                }
+                ++col_num;
+            }
+            strcat(tmp, "\"");
+            if(true == first_item) {
+                string_row->type = OPAL_STRING;
+                string_row->data.string = strdup("\"Node Name\",\"Source Plugin Name\",\"Sensor Name\"");
+                opal_list_append(*results, &string_row->super);
+                string_row = OBJ_NEW(opal_value_t);
+            }
+            string_row->type = OPAL_STRING;
+            string_row->data.string = strdup(tmp);
+            opal_list_append(*results, &string_row->super);
+            first_item = false;
+
+            OPAL_LIST_RELEASE(row);
+        }
+    }
+
+    data.status = orcm_db.close_result_set(data.dbhandle, data.session_handle);
+
+    if(ORCM_SUCCESS != data.status) {
+        opal_output(0, "Failed to close the inventory database results handle");
+        OPAL_LIST_RELEASE(*results);
+        *results = NULL;
+        return data.status;
+    }
+    data.active = true;
+    orcm_db.close(data.dbhandle, close_callback, &data);
+    if(ORCM_SUCCESS != data.status) {
+        opal_output(0, "Failed to close the inventory database handle");
+        return data.status;
+    }
+    ORTE_WAIT_FOR_COMPLETION(data.active);
+
+    return data.status;
+}
+
+void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
+                              opal_buffer_t* buffer, orte_rml_tag_t tag,
+                              void* cbdata)
+{
+    int rc = ORCM_SUCCESS;
+    int n = 1;
+    orcm_rm_cmd_flag_t command = 0;
+    opal_list_t *filter_list = NULL;
+    uint16_t filters_list_count = 0;
+    char* tmp_str = NULL;
+    char* tmp_key = NULL;
+    opal_value_t *tmp_value = NULL;
+    uint8_t operation = 0;
+    orcm_db_filter_t *tmp_filter = NULL;
+    opal_list_t *results_list = NULL;
+    uint16_t results_count;
+    opal_buffer_t *response_buffer = NULL;
+    int returned_status = 0;
+
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command, &n, ORCM_RM_CMD_T))) {
+        ORTE_ERROR_LOG (rc);
+        return;
+    }
+    switch(command) {
+        case ORCM_GET_DB_SENSOR_INVENTORY_COMMAND:
+            /* Build filter list */
+            n = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &filters_list_count, &n, OPAL_UINT16))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            for(uint16_t i = 0; i < filters_list_count; ++i) {
+                n = 1;
+                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &tmp_key, &n, OPAL_STRING))) {
+                    ORTE_ERROR_LOG(rc);
+                    OPAL_LIST_RELEASE(filter_list);
+                    return;
+                }
+                n = 1;
+                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &operation, &n, OPAL_UINT8))) {
+                    ORTE_ERROR_LOG(rc);
+                    OPAL_LIST_RELEASE(filter_list);
+                    return;
+                }
+                n = 1;
+                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &tmp_str, &n, OPAL_STRING))) {
+                    ORTE_ERROR_LOG(rc);
+                    OPAL_LIST_RELEASE(filter_list);
+                    return;
+                }
+                if(NULL == filter_list) {
+                    filter_list = OBJ_NEW(opal_list_t);
+                }
+                tmp_filter = OBJ_NEW(orcm_db_filter_t);
+                tmp_filter->value.type = OPAL_STRING;
+                tmp_filter->value.key = tmp_key;
+                tmp_filter->value.data.string = tmp_str;
+                tmp_filter->op = (orcm_db_comparison_op_t)operation;
+                opal_list_append(filter_list, &tmp_filter->value.super);
+            }
+            returned_status = get_inventory_list(filter_list, &results_list);
+            response_buffer = OBJ_NEW(opal_buffer_t);
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(response_buffer, &returned_status, 1, OPAL_INT))) {
+                ORTE_ERROR_LOG(rc);
+                goto send_buffer;
+            }
+            if(ORCM_SUCCESS == rc && 0 == returned_status && NULL != results_list) {
+                results_count = (uint16_t)opal_list_get_size(results_list);
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(response_buffer, &results_count, 1, OPAL_UINT16))) {
+                    ORTE_ERROR_LOG(rc);
+                    goto send_buffer;
+                }
+                OPAL_LIST_FOREACH(tmp_value, results_list, opal_value_t) {
+                    if (OPAL_SUCCESS != (rc = opal_dss.pack(response_buffer, &tmp_value->data.string, 1, OPAL_STRING))) {
+                        ORTE_ERROR_LOG(rc);
+                        goto send_buffer;
+                    }
+                }
+            }
+send_buffer:
+            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, response_buffer,
+                                                              ORCM_RML_TAG_ORCMD_FETCH,
+                                                              orte_rml_send_callback, cbdata))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(response_buffer);
+                return;
+            }
+            if(NULL != results_list) {
+                OPAL_LIST_RELEASE(results_list);
+            }
+            break;
+        default:
+            opal_output(0, "%s: COMMAND UNKNOWN", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     }
 }

@@ -1,15 +1,22 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2015  Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
  *
  * $HEADER$
  */
+#include "orte/mca/notifier/notifier.h"
 
 #include "orcm/tools/octl/common.h"
-#include "orte/mca/notifier/notifier.h"
 #include "orcm/util/logical_group.h"
+#include "orcm/mca/db/base/base.h"
+#include "orcm/mca/db/db.h"
+
+/***
+Remove 'implicit' warnings...
+****/
+int orcm_octl_sensor_inventory_get(int command, char** argv);
 
 int orcm_octl_sensor_policy_get(int cmd, char **argv)
 {
@@ -660,4 +667,218 @@ done:
     }
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
     return rc;
+}
+
+static int get_inventory_list(int cmd, opal_list_t *filterlist, opal_list_t** results)
+{
+    int n = 1;
+    orcm_rm_cmd_flag_t command = (orcm_rm_cmd_flag_t)cmd;
+    orcm_db_filter_t *tmp_filter = NULL;
+    int rc = -1;
+    opal_buffer_t *buffer = OBJ_NEW(opal_buffer_t);
+    uint16_t filterlist_count = 0;
+    orte_rml_recv_cb_t *xfer = NULL;
+    uint16_t results_count = 0;
+    int returned_status = 0;
+
+    if(NULL == filterlist || NULL == results)
+    {
+        rc = ORCM_ERR_BAD_PARAM;
+        goto inv_list_cleanup;
+    }
+    filterlist_count = (uint16_t)opal_list_get_size(filterlist);
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &command, 1, ORCM_RM_CMD_T))) {
+        ORTE_ERROR_LOG(rc);
+        goto inv_list_cleanup;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &filterlist_count, 1, OPAL_UINT16))) {
+        ORTE_ERROR_LOG(rc);
+        goto inv_list_cleanup;
+    }
+    OPAL_LIST_FOREACH(tmp_filter, filterlist, orcm_db_filter_t) {
+        uint8_t operation = (uint8_t)tmp_filter->op;
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &tmp_filter->value.key, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            goto inv_list_cleanup;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &operation, 1, OPAL_UINT8))) {
+            ORTE_ERROR_LOG(rc);
+            goto inv_list_cleanup;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &tmp_filter->value.data.string, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            goto inv_list_cleanup;
+        }
+    }
+
+    xfer = OBJ_NEW(orte_rml_recv_cb_t);
+    OBJ_RETAIN(xfer);
+    OBJ_RETAIN(buffer);
+    xfer->active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH, ORTE_RML_NON_PERSISTENT,
+                            orte_rml_recv_callback, xfer);
+
+    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buffer,
+                                                      ORCM_RML_TAG_ORCMD_FETCH,
+                                                      orte_rml_send_callback, xfer))) {
+        ORTE_ERROR_LOG(rc);
+        goto inv_list_cleanup;
+    }
+
+    /* wait for status message */
+    ORTE_WAIT_FOR_COMPLETION(xfer->active);
+
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &returned_status, &n, OPAL_INT))) {
+        goto inv_list_cleanup;
+    }
+    if(0 == returned_status) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &results_count, &n, OPAL_UINT16))) {
+            goto inv_list_cleanup;
+        }
+        (*results) = OBJ_NEW(opal_list_t);
+        for(uint16_t i = 0; i < results_count; ++i) {
+            char* tmp_str = NULL;
+            opal_value_t *tmp_value = NULL;
+
+            n = 1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &tmp_str, &n, OPAL_STRING))) {
+                goto inv_list_cleanup;
+            }
+            tmp_value = OBJ_NEW(opal_value_t);
+            tmp_value->type = OPAL_STRING;
+            tmp_value->data.string = tmp_str;
+            opal_list_append(*results, &tmp_value->super);
+        }
+    } else {
+        printf("* No Results Returned *\n");
+        rc = ORCM_SUCCESS;
+        *results = NULL;
+    }
+inv_list_cleanup:
+    OBJ_RELEASE(xfer);
+    OBJ_RELEASE(buffer);
+    OPAL_LIST_RELEASE(filterlist);
+    return rc;
+}
+int orcm_octl_sensor_inventory_get(int cmd, char **argv)
+{
+    char* default_filter="%"; /* SQL default filter */
+    int rv = ORCM_SUCCESS;
+    int argc = opal_argv_count(argv);
+    char *raw_node_list = NULL;
+    int node_count = 0;
+    char *filter = NULL;
+    char *filter2 = NULL;
+    char **argv_node_list = NULL;
+    opal_list_t *node_list = NULL;
+    opal_list_t *filter_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+    opal_list_t *returned_list = NULL;
+    opal_value_t *line = NULL;
+
+    if(ORCM_GET_DB_SENSOR_INVENTORY_COMMAND != cmd) {
+        fprintf(stdout, "ERROR: incorrect command argument: %d\n", cmd);
+        rv = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_sensor_inventory_get_cleanup;
+    }
+
+    if (5 < argc || 4 > argc) {
+        fprintf(stdout, "ERROR: incorrect arguments!\n  Usage: \"sensor get inventory nodelist [wildcard-filter]\"\n");
+        rv = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_sensor_inventory_get_cleanup;
+    }
+
+    raw_node_list = argv[3];
+    if(5 == argc) {
+        filter = argv[4];
+    }
+    orcm_logical_group_node_names(raw_node_list, &argv_node_list);
+    node_count = opal_argv_count(argv_node_list);
+
+    if (NULL == raw_node_list || 0 == node_count) {
+        fprintf(stdout, "ERROR: unable to extract nodelist or an empty list was specified\n");
+        rv = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_sensor_inventory_get_cleanup;
+    }
+
+    /* Replace wildcard '*' with SQL wildcard '%' */
+    bool found_wildcard = false;
+    if(NULL == filter) {
+        filter = default_filter;
+    } else {
+        for(size_t i = 0; i < strlen(filter); ++i) {
+            if('*' == filter[i]) {
+                filter[i] = '%';
+                found_wildcard = true;
+            }
+        }
+    }
+
+    /* Build input node list */
+    node_list = OBJ_NEW(opal_list_t);
+    for(int i = 0; i < node_count; ++i) {
+        opal_value_t *item = OBJ_NEW(opal_value_t);
+        item->type = OPAL_STRING;
+        item->data.string = strdup(argv_node_list[i]);
+        opal_list_append(node_list, &item->super);
+    }
+
+    /* Build query filter list (currently one item) */
+    filter_list = OBJ_NEW(opal_list_t);
+    filter_item = OBJ_NEW(orcm_db_filter_t);
+    filter_item->value.type = OPAL_STRING;
+    filter_item->value.key = strdup("feature");
+    if(true == found_wildcard) {
+        asprintf(&filter2, "sensor_%s", filter);
+    } else {
+        asprintf(&filter2, "sensor_%s%%", filter);
+    }
+    filter_item->value.data.string = filter2;
+    filter_item->op = STARTS_WITH;
+    opal_list_append(filter_list, (opal_list_item_t*)filter_item);
+    if(NULL != node_list && 0 < node_count) {
+        opal_value_t *node = NULL;
+        size_t length = node_count;
+        OPAL_LIST_FOREACH(node, node_list, opal_value_t) {
+            length += strlen(node->data.string) + 2;
+        }
+        filter = malloc(length + 1);
+        filter[0] = '\0';
+        OPAL_LIST_FOREACH(node, node_list, opal_value_t) {
+            strcat(filter, "'");
+            strcat(filter, node->data.string);
+            strcat(filter, "',");
+        }
+        filter[strlen(filter) - 1] = '\0'; /* Remove trailing comma */
+        filter_item = OBJ_NEW(orcm_db_filter_t);
+        filter_item->value.type = OPAL_STRING;
+        filter_item->value.key = strdup("hostname");
+        filter_item->value.data.string = filter;
+        filter_item->op = IN;
+        opal_list_append(filter_list, &filter_item->value.super);
+    }
+    if(NULL != node_list) {
+        OPAL_LIST_RELEASE(node_list);
+    }
+    /* Get list of results from scheduler (or other management node) */
+    rv = get_inventory_list(cmd, filter_list, &returned_list);
+    if(rv != ORCM_SUCCESS) {
+        fprintf(stderr, "ERROR: unable to get results via ORCM scheduler\n");
+        goto orcm_octl_sensor_inventory_get_cleanup;
+    }
+
+    /* Raw CSV output for now... */
+    if(NULL != returned_list) {
+        OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
+            printf("%s\n", line->data.string);
+        }
+        OPAL_LIST_RELEASE(returned_list);
+    }
+
+orcm_octl_sensor_inventory_get_cleanup:
+    if(NULL != raw_node_list) {
+        opal_argv_free(argv_node_list);
+    }
+    return ORCM_SUCCESS; /* Seems octl prints an bad error message if you don't return success...*/
 }

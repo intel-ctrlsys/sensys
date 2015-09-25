@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2009-2010 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -105,7 +105,7 @@ typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_GET_POWER_FREQUENCY_COMMAND     27
 #define ORCM_GET_POWER_MODES_COMMAND         28
 #define ORCM_GET_POWER_STRICT_COMMAND        29
-
+#define ORCM_GET_DB_SENSOR_INVENTORY_COMMAND 30
 
 /* define diagnostic commands */
 typedef uint8_t orcm_diag_cmd_flag_t;
@@ -160,6 +160,8 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 #define ORCM_RML_TAG_AT            (ORTE_RML_TAG_MAX + 10)
 /* sensor */
 #define ORCM_RML_TAG_SENSOR        (ORTE_RML_TAG_MAX + 11)
+/* db fetch */
+#define ORCM_RML_TAG_ORCMD_FETCH   (ORTE_RML_TAG_MAX + 12)
 
 /* define event base priorities */
 #define ORCM_SCHED_PRI OPAL_EV_MSG_HI_PRI

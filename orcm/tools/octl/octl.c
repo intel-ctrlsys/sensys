@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -10,6 +10,11 @@
 #include "orcm/tools/octl/common.h"
 #include "orcm/tools/octl/octl.h"
 #include "orcm/util/logical_group.h"
+
+/***
+Remove 'implicit' warnings...
+****/
+int orcm_octl_sensor_inventory_get(int command, char** argv);
 
 /******************
  * Local Functions
@@ -564,6 +569,9 @@ static int run_cmd(char *cmd)
                 case 31: //sample-rate
                     rc = orcm_octl_sensor_sample_rate_get(ORCM_GET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
                     break;
+                case 37: //inventory
+                    rc = orcm_octl_sensor_inventory_get(ORCM_GET_DB_SENSOR_INVENTORY_COMMAND, cmdlist);
+                    break;
                 default:
                     rc = ORCM_ERROR;
                     break;
@@ -664,14 +672,12 @@ static void octl_print_illegal_command(char *cmd)
 
 static void octl_print_error(int rc)
 {
-    char *errmsg = NULL;
-
     if (ORCM_SUCCESS != rc) {
-        errmsg = ORTE_ERROR_NAME(rc);
+        const char *errmsg = ORTE_ERROR_NAME(rc);
         if (NULL != errmsg) {
-            fprintf(stderr, "\nERROR: %s\n", errmsg);
+            fprintf(stdout, "\nERROR: %s\n", errmsg);
         } else {
-            fprintf(stderr, "\nERROR: Internal\n");
+            fprintf(stdout, "\nERROR: Internal\n");
         }
     }
 }

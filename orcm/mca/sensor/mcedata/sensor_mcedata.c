@@ -46,6 +46,7 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/runtime/orcm_globals.h"
 
 #include "sensor_mcedata.h"
 
@@ -70,6 +71,8 @@ static void perthread_mcedata_sample(int fd, short args, void *cbdata);
 static void collect_sample(orcm_sensor_sampler_t *sampler);
 static void mcedata_set_sample_rate(int sample_rate);
 static void mcedata_get_sample_rate(int *sample_rate);
+static void mcedata_inventory_collect(opal_buffer_t *inventory_snapshot);
+static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 
 
 /* instantiate the module */
@@ -80,8 +83,8 @@ orcm_sensor_base_module_t orcm_sensor_mcedata_module = {
     stop,
     mcedata_sample,
     mcedata_log,
-    NULL,
-    NULL,
+    mcedata_inventory_collect,
+    mcedata_inventory_log,
     mcedata_set_sample_rate,
     mcedata_get_sample_rate
 };
@@ -210,7 +213,7 @@ static long update_log_file_size(FILE *fp)
         return -1;
     }
 
-    /* In case log file rotates or is stashed and cleared, the index 
+    /* In case log file rotates or is stashed and cleared, the index
      * at which mcedata looks for MCE events has to be reset too */
 
     if (tot_bytes < log_file_pos) {
@@ -238,7 +241,7 @@ static void get_log_lines(FILE *fp)
     size_t n=0;
 
     while (nextTag < mcelog_sentinel && -1 != getline(&ptr, &n, fp)){
- 
+
         if (strstr(ptr, "mcelog") && strstr(ptr, log_line_token[nextTag])){
             log_lines[nextTag++] = ptr;
         }
@@ -257,7 +260,7 @@ static void get_log_lines(FILE *fp)
         // In the rare case that this happens, we will miss that MC error.
         // Since MC errors tend to happen in multiples, we are not going to
         // handle this case unless it's requested.
- 
+
 
         free_log_lines();
     }
@@ -306,7 +309,7 @@ static int init(void)
         if (NULL == (dirname = opal_os_path(false, "/dev", dir_entry->d_name, NULL ))) {
             continue;
         }
-        if (0 == strcmp(dirname, "/dev/mcelog"))
+        if (0 == strcmp(dir_entry->d_name, "mcelog"))
         {
             opal_output(0,"/dev/mcelog available");
             mcelog_avail = true;
@@ -473,7 +476,7 @@ static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals)
 static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     opal_value_t *kv;
-    bool ar, s, pcc, addrv, miscv, en, uc, over, val;
+    bool ar, s, pcc, miscv, uc;
     uint64_t addr_type, lsb_addr;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -486,12 +489,8 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, &kv->super);
 
     /* Fig 15-6 of the Intel(R) 64 & IA-32 spec */
-    over = (mce_reg[MCI_STATUS] & MCI_OVERFLOW_MASK)? true : false ;
-    val = (mce_reg[MCI_STATUS] & MCI_VALID_MASK)? true : false ;
     uc = (mce_reg[MCI_STATUS] & MCI_UC_MASK)? true : false ;
-    en = (mce_reg[MCI_STATUS] & MCI_EN_MASK)? true : false ;
     miscv = (mce_reg[MCI_STATUS] & MCI_MISCV_MASK)? true : false ;
-    addrv = (mce_reg[MCI_STATUS] & MCI_ADDRV_MASK)? true : false ;
     pcc = (mce_reg[MCI_STATUS] & MCI_PCC_MASK)? true : false ;
     s = (mce_reg[MCI_STATUS] & MCI_S_MASK)? true : false ;
     ar = (mce_reg[MCI_STATUS] & MCI_AR_MASK)? true : false ;
@@ -584,7 +583,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     opal_value_t *kv;
-    bool ar, s, pcc, addrv, miscv, en, uc, over, val;
+    bool ar, s, pcc, addrv, miscv, uc, val;
     uint64_t cache_health, addr_type, lsb_addr;
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "MCE Error Type 3 - Cache Hierarchy Errors");
@@ -649,10 +648,8 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, &kv->super);
 
     /* Fig 15-6 of the Intel(R) 64 & IA-32 spec */
-    over = (mce_reg[MCI_STATUS] & MCI_OVERFLOW_MASK)? true : false ;
     val = (mce_reg[MCI_STATUS] & MCI_VALID_MASK)? true : false ;
     uc = (mce_reg[MCI_STATUS] & MCI_UC_MASK)? true : false ;
-    en = (mce_reg[MCI_STATUS] & MCI_EN_MASK)? true : false ;
     miscv = (mce_reg[MCI_STATUS] & MCI_MISCV_MASK)? true : false ;
     addrv = (mce_reg[MCI_STATUS] & MCI_ADDRV_MASK)? true : false ;
     pcc = (mce_reg[MCI_STATUS] & MCI_PCC_MASK)? true : false ;
@@ -754,7 +751,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     opal_value_t *kv;
     uint64_t pp, t, ii;
-    bool ar, s, pcc, addrv, miscv, en, uc, over, val;
+    bool ar, s, pcc, miscv, uc;
     uint64_t addr_type, lsb_addr;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -836,12 +833,8 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, &kv->super);
 
     /* Fig 15-6 of the Intel(R) 64 & IA-32 spec */
-    over = (mce_reg[MCI_STATUS] & MCI_OVERFLOW_MASK)? true : false ;
-    val = (mce_reg[MCI_STATUS] & MCI_VALID_MASK)? true : false ;
     uc = (mce_reg[MCI_STATUS] & MCI_UC_MASK)? true : false ;
-    en = (mce_reg[MCI_STATUS] & MCI_EN_MASK)? true : false ;
     miscv = (mce_reg[MCI_STATUS] & MCI_MISCV_MASK)? true : false ;
-    addrv = (mce_reg[MCI_STATUS] & MCI_ADDRV_MASK)? true : false ;
     pcc = (mce_reg[MCI_STATUS] & MCI_PCC_MASK)? true : false ;
     s = (mce_reg[MCI_STATUS] & MCI_S_MASK)? true : false ;
     ar = (mce_reg[MCI_STATUS] & MCI_AR_MASK)? true : false ;
@@ -977,7 +970,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     opal_buffer_t data, *bptr;
     time_t now;
     bool packed;
-    uint64_t i = 0, cpu=0, socket=0, bank=0, j;
+    uint64_t i = 0, cpu=0, socket=0, bank=0;
     uint64_t mce_reg[MCE_REG_COUNT];
     long tot_bytes;
     char* line;
@@ -1318,4 +1311,105 @@ static void mcedata_get_sample_rate(int *sample_rate)
             *sample_rate = mca_sensor_mcedata_component.sample_rate;
     }
     return;
+}
+
+static void mcedata_inventory_collect(opal_buffer_t *inventory_snapshot)
+{
+    static char *sensor_names[] = {
+        "error_type",
+        "error_severity",
+        "request_type",
+        "channel_number",
+        "address_mode",
+        "recov_addr_lsb",
+        "corrected_filtering",
+        "hierarchy_level",
+        "transaction_type",
+        "cache_health",
+        "err_addr",
+        "participation",
+        "II",
+        "ErrorLocation"
+    };
+    unsigned int tot_items = 14; /* count of strings above */
+    unsigned int i = 0;
+    char *comp = strdup("mcedata");
+    int rc = OPAL_SUCCESS;
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        free(comp);
+        return;
+    }
+    free(comp);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    for(i = 0; i < tot_items; ++i) {
+        asprintf(&comp, "sensor_mcedata_%d", i+1);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            free(comp);
+            return;
+        }
+        free(comp);
+        comp = strdup(sensor_names[i]);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            free(comp);
+            return;
+        }
+        free(comp);
+    }
+}
+
+static void my_inventory_log_cleanup(int dbhandle, int status, opal_list_t *kvs, opal_list_t *output, void *cbdata)
+{
+    OBJ_RELEASE(kvs);
+}
+
+static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
+{
+    unsigned int tot_items = 0;
+    int n = 1;
+    opal_list_t *records = NULL;
+    int rc = OPAL_SUCCESS;
+
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &tot_items, &n, OPAL_UINT))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    records = OBJ_NEW(opal_list_t);
+    while(tot_items > 0) {
+        char *inv = NULL;
+        char *inv_val = NULL;
+        orcm_metric_value_t *mkv = NULL;
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(records);
+            return;
+        }
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv_val, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(records);
+            return;
+        }
+
+        mkv = OBJ_NEW(orcm_metric_value_t);
+        mkv->value.key = inv;
+        mkv->value.type = OPAL_STRING;
+        mkv->value.data.string = inv_val;
+        opal_list_append(records, (opal_list_item_t*)mkv);
+
+        --tot_items;
+    }
+    if (0 <= orcm_sensor_base.dbhandle) {
+        orcm_db.update_node_features(orcm_sensor_base.dbhandle, strdup(hostname), records, my_inventory_log_cleanup, NULL);
+    } else {
+        my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
+    }
 }

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2014-2015  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -71,7 +71,7 @@ static int init(void)
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:mfile:init",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    
+
     /* define our state machine */
     num_states = sizeof(states) / sizeof(orcm_scd_session_state_t);
     for (i=0; i < num_states; i++) {
@@ -125,7 +125,7 @@ static int init(void)
         ORTE_ERROR_LOG(rc);
         return rc;
     }
-    
+    free(file);
     return ORCM_SUCCESS;
 }
 
@@ -161,7 +161,7 @@ static void mfile_find_queue(int sd, short args, void *cbdata)
     orcm_queue_t *q;
 
     /* cycle across the queues and select the one that best
-     * fits this session request.  for MFILE, its just the 
+     * fits this session request.  for MFILE, its just the
      * default always.
      */
 
@@ -195,7 +195,7 @@ static void mfile_allocated(int sd, short args, void *cbdata)
 
     OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                          "%s scd:mfile:allocated - (session: %d) got nodelist %s\n",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), 
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          caddy->session->id,
                          caddy->session->alloc->nodes));
 
@@ -309,7 +309,7 @@ static void inotify_handler(int fd, short args, void *cbdata)
         return;
     } else {
         opal_output_verbose(2,orcm_scd_base_framework.framework_output,
-                             "%s Inotify Event: Short read: %ld", 
+                             "%s Inotify Event: Short read: %ld",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (long)sz);
     }
 }

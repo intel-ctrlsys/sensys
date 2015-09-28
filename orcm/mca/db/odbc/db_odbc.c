@@ -2745,7 +2745,8 @@ static int odbc_store_diag_test(mca_db_odbc_module_t *mod,
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &stmt);
     if (!(SQL_SUCCEEDED(ret))) {
         ERR_MSG_FMT_RDT("SQLAllocHandle returned: %d", ret);
-        return ORCM_ERROR;
+        rc = ORCM_ERROR;
+        goto cleanup_and_exit;
     }
 
     /* Record the diag. test result */

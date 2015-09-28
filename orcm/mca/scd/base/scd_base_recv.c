@@ -1136,9 +1136,11 @@ char* get_plugin_from_sensor_name(const char* sensor_name)
         if(NULL != pos2) {
             size_t length = (size_t)(--pos2) - (size_t)pos1 + 2;
             char* plugin = (char*)malloc(length);
-            strncpy(plugin, pos1, length - 1);
-            plugin[length - 1] = '\0';
-        return plugin;
+            if(NULL != plugin) {
+                strncpy(plugin, pos1, length - 1);
+                plugin[length - 1] = '\0';
+            }
+            return plugin;
         } else {
             return NULL;
         }
@@ -1161,6 +1163,9 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
 
     if(ORCM_SUCCESS != data.status) {
         opal_output(0, "Failed to open database to retrieve inventory");
+        if(NULL != filters) {
+            OPAL_LIST_RELEASE(filters);
+        }
         return data.status;
     }
 
@@ -1201,15 +1206,15 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
             OPAL_LIST_FOREACH(item, row, opal_value_t) {
                 if(true == is_wanted_column(item->key)) {
                     if(false == first_column) {
-                        strcat(tmp, "\",\"");
+                        strncat(tmp, "\",\"", 255);
                     }
                     if(0 == strcmp(item->key, "feature"))
                     {
                         char* plugin = get_plugin_from_sensor_name(item->data.string);
-                        strcat(tmp, plugin);
+                        strncat(tmp, plugin, 255);
                         free(plugin);
                     } else {
-                        strcat(tmp, item->data.string);
+                        strncat(tmp, item->data.string, 255);
                     }
                     if(true == first_column) {
                         first_column = false;
@@ -1217,7 +1222,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
                 }
                 ++col_num;
             }
-            strcat(tmp, "\"");
+            strncat(tmp, "\"", 255);
             if(true == first_item) {
                 string_row->type = OPAL_STRING;
                 string_row->data.string = strdup("\"Node Name\",\"Source Plugin Name\",\"Sensor Name\"");
@@ -1287,19 +1292,25 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 n = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &tmp_key, &n, OPAL_STRING))) {
                     ORTE_ERROR_LOG(rc);
-                    OPAL_LIST_RELEASE(filter_list);
+                    if(NULL != filter_list) {
+                        OPAL_LIST_RELEASE(filter_list);
+                    }
                     return;
                 }
                 n = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &operation, &n, OPAL_UINT8))) {
                     ORTE_ERROR_LOG(rc);
-                    OPAL_LIST_RELEASE(filter_list);
+                    if(NULL != filter_list) {
+                        OPAL_LIST_RELEASE(filter_list);
+                    }
                     return;
                 }
                 n = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &tmp_str, &n, OPAL_STRING))) {
                     ORTE_ERROR_LOG(rc);
-                    OPAL_LIST_RELEASE(filter_list);
+                    if(NULL != filter_list) {
+                        OPAL_LIST_RELEASE(filter_list);
+                    }
                     return;
                 }
                 if(NULL == filter_list) {

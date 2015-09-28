@@ -817,7 +817,8 @@ static int sigar_collect_procstat(opal_buffer_t *dataptr)
         stats = OBJ_NEW(opal_pstats_t);
 
         stats->pid = orte_process_info.pid;
-        strncpy(stats->cmd, proc_info.name, sizeof(stats->cmd));
+        strncpy(stats->cmd, proc_info.name, sizeof(stats->cmd)-1);
+        stats->cmd[sizeof(stats->cmd)-1] = '\0';
         stats->state[0] = proc_info.state;
         stats->state[1] = '\0';
         stats->priority = proc_info.priority;

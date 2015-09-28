@@ -1023,7 +1023,6 @@ int orcm_sensor_ipmi_get_manuf_name (unsigned char fru_offset, unsigned char *rd
     free(board_manuf);
     host->capsule.prop.baseboard_manufacturer[sizeof(host->capsule.prop.baseboard_manufacturer)-1] = '\0';
 
-    free(board_manuf);
     return board_manuf_length;
 }
 
@@ -1430,7 +1429,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     } else {
         /* Append the new node to the existing host list */
         opal_list_append(&ipmi_inventory_hosts, &newhost->super);
-        
+
         kv = orcm_util_load_opal_value("hostname", newhost->nodename, OPAL_STRING);
         if (NULL == kv) {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,

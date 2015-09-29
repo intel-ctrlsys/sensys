@@ -174,7 +174,7 @@ static int orcm_logical_group_adjust_path(char *install_dirs_prefix)
         return ORCM_SUCCESS;
     }
 
-    check = asprintf(&new_file, "%s/etc/orcm-logical_grouping.txt", install_dirs_prefix);
+    check = asprintf(&new_file, "%s/etc/orcm-logical-grouping.txt", install_dirs_prefix);
     if (-1 == check) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
@@ -197,7 +197,7 @@ int orcm_logical_group_init(void)
 
     if (NULL == LOGICAL_GROUP.groups) {
         SAFEFREE(LOGICAL_GROUP.storage_filename);
-        LOGICAL_GROUP.storage_filename = strdup("./orcm-logical_grouping.txt");
+        LOGICAL_GROUP.storage_filename = strdup("./orcm-logical-grouping.txt");
         if (NULL == LOGICAL_GROUP.storage_filename) {
             return ORCM_ERR_OUT_OF_RESOURCE;
         }
@@ -670,8 +670,8 @@ static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
 {
     char *ret = NULL, *line_break = NULL;
 
-    /* max_line_length -1 is to give space for ending '\0' */
-    ret = fgets(io_line, max_line_length - 1, storage_file);
+    /* +2 means to include the last '\0' and the line break '\n' */
+    ret = fgets(io_line, max_line_length + 2, storage_file);
     if (NULL == ret) {
         if (0 != feof(storage_file)) {
             *o_eof = 1;
@@ -747,7 +747,8 @@ static int orcm_logical_group_parse_from_file(char *tag, FILE *storage_file,
         return ORCM_ERR_BAD_PARAM;
     }
 
-    line_buf = (char*)malloc(MAX_LINE_LENGTH * sizeof(char));
+    /* +2 means adding '\0' in the end, and '\n' line break */
+    line_buf = (char*)malloc((MAX_LINE_LENGTH + 2) * sizeof(char));
     if (NULL == line_buf) {
         ORCM_UTIL_ERROR_MSG("Failed to allocate line buffer for logical groupings.");
         return ORCM_ERR_OUT_OF_RESOURCE;

@@ -91,6 +91,7 @@ static int init(void)
         free(file);
         return ORCM_ERR_NOT_FOUND;
     }
+    free(file);
     for (i=0; i < orcm_scd_base.nodes.size; i ++) {
         if (NULL == (node = (orcm_node_t*)opal_pointer_array_get_item(&orcm_scd_base.nodes, i))) {
             continue;
@@ -125,7 +126,6 @@ static int init(void)
         ORTE_ERROR_LOG(rc);
         return rc;
     }
-    free(file);
     return ORCM_SUCCESS;
 }
 
@@ -246,6 +246,7 @@ static void mfile_cancel(int sd, short args, void *cbdata)
     OBJ_RELEASE(caddy);
 }
 
+#define FILENAME_BUFFER_SIZE 4096
 static void inotify_handler(int fd, short args, void *cbdata)
 {
     struct {
@@ -261,7 +262,7 @@ static void inotify_handler(int fd, short args, void *cbdata)
     sz = read(fd, &data, sizeof(data));
 
     if (0 < data.len) {
-        if (data.len != (sz = read(fd, filename, data.len))) {
+        if (data.len != (sz = read(fd, filename, MIN(data.len, FILENAME_BUFFER_SIZE - 1)))) {
             opal_output(0, "INCOMPLETE READ");
             return;
         }

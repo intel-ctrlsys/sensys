@@ -23,6 +23,12 @@ int orcm_octl_logical_group_add(int argc, char **argv)
     }
     tag = argv[2];
     node_regex = argv[3];
+    if (0 == strncmp(tag, "*", strlen(tag)) ||
+        0 == strncmp(node_regex, "*", strlen(node_regex))) {
+        ORCM_UTIL_ERROR_MSG("Neither the group name nor the "
+                            "node regex can be a wildcard for add!");
+        return ORCM_ERR_BAD_PARAM;
+    }
 
     if (ORCM_SUCCESS != (erri = orcm_logical_group_init())) {
         goto cleanup;

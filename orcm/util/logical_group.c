@@ -220,7 +220,7 @@ int orcm_logical_group_init(void)
 static int orcm_logical_group_hash_table_get(opal_hash_table_t *groups, char *tag,
                                              opal_list_t **o_group_nodes)
 {
-    int erri = opal_hash_table_get_value_ptr(groups, tag, strlen(tag), (void**)o_group_nodes);
+    int erri = opal_hash_table_get_value_ptr(groups, tag, strlen(tag) + 1, (void**)o_group_nodes);
     if (OPAL_ERR_NOT_FOUND == erri || NULL == *o_group_nodes) {
         *o_group_nodes = OBJ_NEW(opal_list_t);
         if (NULL == *o_group_nodes) {
@@ -279,7 +279,7 @@ static int orcm_logical_group_add_internal(char *tag, char **nodes,
     }
 
     if (erri == ORCM_SUCCESS) {
-        erri = opal_hash_table_set_value_ptr(io_groups, tag, strlen(tag), group_nodes);
+        erri = opal_hash_table_set_value_ptr(io_groups, tag, strlen(tag) + 1, group_nodes);
     }
 
     return erri;
@@ -340,10 +340,10 @@ static int orcm_logical_group_hash_table_remove_nodes(char *tag,
     }
 
     if (opal_list_is_empty(value)) {
-        return opal_hash_table_remove_value_ptr(io_groups, tag, strlen(tag));
+        return opal_hash_table_remove_value_ptr(io_groups, tag, strlen(tag) + 1);
     }
 
-    return opal_hash_table_set_value_ptr(io_groups, tag, strlen(tag), value);
+    return opal_hash_table_set_value_ptr(io_groups, tag, strlen(tag) + 1, value);
 }
 
 static int orcm_logical_group_remove_all_tags(char **nodes, int do_all_node,
@@ -379,9 +379,9 @@ static int orcm_logical_group_remove_a_tag(char *tag, char **nodes, int do_all_n
     opal_list_t *value = NULL;
 
     if (OPAL_SUCCESS == (erri = opal_hash_table_get_value_ptr(io_groups, tag,
-                                                      strlen(tag), (void**)&value))) {
+                                                      strlen(tag) + 1, (void**)&value))) {
         if (do_all_node) {
-            return opal_hash_table_remove_value_ptr(io_groups, tag, strlen(tag));
+            return opal_hash_table_remove_value_ptr(io_groups, tag, strlen(tag) + 1);
         }
 
         return orcm_logical_group_hash_table_remove_nodes(tag, value, nodes, io_groups);
@@ -512,16 +512,16 @@ static opal_hash_table_t *orcm_logical_group_list_a_tag(char *tag, char **nodes,
     opal_list_t *value = NULL, *new_value = NULL;
 
     if (OPAL_SUCCESS == opal_hash_table_get_value_ptr(groups, tag,
-                                                      strlen(tag), (void**)&value)) {
+                                                      strlen(tag) + 1, (void**)&value)) {
         o_groups = OBJ_NEW(opal_hash_table_t);
         if (NULL != o_groups) {
             opal_hash_table_init(o_groups, HASH_SIZE);
             if (do_all_node) {
-                opal_hash_table_set_value_ptr(o_groups, tag, strlen(tag), value);
+                opal_hash_table_set_value_ptr(o_groups, tag, strlen(tag) + 1, value);
             } else {
                 new_value = orcm_logical_group_list_specific_nodes(value, nodes);
                 if (NULL != new_value) {
-                    opal_hash_table_set_value_ptr(o_groups, tag, strlen(tag), new_value);
+                    opal_hash_table_set_value_ptr(o_groups, tag, strlen(tag) + 1, new_value);
                 }
             }
         }
@@ -704,7 +704,7 @@ static int orcm_logical_group_pass(char *tag, char *node_regex,
     }
     opal_list_append(group_nodes, &node_item->super);
 
-    return opal_hash_table_set_value_ptr(io_group, tag, strlen(tag), group_nodes);
+    return opal_hash_table_set_value_ptr(io_group, tag, strlen(tag) + 1, group_nodes);
 }
 
 static int orcm_logical_group_parsing(char *tag, FILE *storage_file, char *line_buf,
@@ -1022,7 +1022,7 @@ static int orcm_logical_group_check_tag(char *tag, opal_list_t **value, int *cou
 
     *io_groups = orcm_logical_group_list(tag, "*", LOGICAL_GROUP.groups);
     if (NULL == *io_groups || 0 == opal_hash_table_get_size(*io_groups) || ORCM_SUCCESS !=
-        opal_hash_table_get_value_ptr(*io_groups, tag, strlen(tag), (void**)value)) {
+        opal_hash_table_get_value_ptr(*io_groups, tag, strlen(tag) + 1, (void**)value)) {
         erri = ORCM_ERR_BAD_PARAM;
     } else if (NULL == *value || 0 == (*count = opal_list_get_size(*value))) {
         erri = ORCM_ERR_BAD_PARAM;

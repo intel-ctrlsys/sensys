@@ -712,7 +712,7 @@ static void generate_test_vector(opal_buffer_t *v)
 
 static void nodepower_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
-    unsigned int tot_items = 1;
+    unsigned int tot_items = 2;
     char *comp = strdup("nodepower");
     int rc = OPAL_SUCCESS;
 
@@ -722,7 +722,21 @@ static void nodepower_inventory_collect(opal_buffer_t *inventory_snapshot)
         return;
     }
     free(comp);
+
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    /* store our hostname */
+    comp = strdup("hostname");
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        free(comp);
+        return;
+    }
+    free(comp);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
@@ -786,7 +800,7 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
         --tot_items;
     }
     if (0 <= orcm_sensor_base.dbhandle) {
-        orcm_db.update_node_features(orcm_sensor_base.dbhandle, strdup(hostname), records, my_inventory_log_cleanup, NULL);
+        orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);
     } else {
         my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
     }

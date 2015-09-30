@@ -1277,7 +1277,7 @@ static void freq_inventory_collect(opal_buffer_t *inventory_snapshot)
     if(mca_sensor_freq_component.test) {
         generate_test_inv_data(inventory_snapshot);
     } else {
-        unsigned int tot_items = (unsigned int)opal_list_get_size(&tracking);
+        unsigned int tot_items = (unsigned int)opal_list_get_size(&tracking) + 1; /* include "hostname"/nodename pair */
         unsigned int i = 0;
         char *comp = strdup("freq");
         int rc = OPAL_SUCCESS;
@@ -1288,12 +1288,27 @@ static void freq_inventory_collect(opal_buffer_t *inventory_snapshot)
             return;
         }
         free(comp);
+
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
-        for(i = 0; i < tot_items; ++i)
-        {
+        --tot_items; /* adjust back for extra "hostname"/nodename pair */
+
+        /* store our hostname */
+        comp = strdup("hostname");
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            free(comp);
+            return;
+        }
+        free(comp);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+
+        for(i = 0; i < tot_items; ++i) {
             asprintf(&comp, "sensor_freq_%d", i+1);
             if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
@@ -1356,7 +1371,7 @@ static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         --tot_items;
     }
     if (0 <= orcm_sensor_base.dbhandle) {
-        orcm_db.update_node_features(orcm_sensor_base.dbhandle, strdup(hostname), records, my_inventory_log_cleanup, NULL);
+        orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);
     } else {
         my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
     }

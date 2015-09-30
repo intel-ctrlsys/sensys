@@ -1331,7 +1331,7 @@ static void mcedata_inventory_collect(opal_buffer_t *inventory_snapshot)
         "II",
         "ErrorLocation"
     };
-    unsigned int tot_items = 14; /* count of strings above */
+    unsigned int tot_items = 15; /* count of strings above + "hostname" pair */
     unsigned int i = 0;
     char *comp = strdup("mcedata");
     int rc = OPAL_SUCCESS;
@@ -1346,6 +1346,21 @@ static void mcedata_inventory_collect(opal_buffer_t *inventory_snapshot)
         ORTE_ERROR_LOG(rc);
         return;
     }
+    --tot_items; /* don't count "hostname"/nodename pair */
+
+    /* store our hostname */
+    comp = strdup("hostname");
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        free(comp);
+        return;
+    }
+    free(comp);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
     for(i = 0; i < tot_items; ++i) {
         asprintf(&comp, "sensor_mcedata_%d", i+1);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
@@ -1408,7 +1423,7 @@ static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         --tot_items;
     }
     if (0 <= orcm_sensor_base.dbhandle) {
-        orcm_db.update_node_features(orcm_sensor_base.dbhandle, strdup(hostname), records, my_inventory_log_cleanup, NULL);
+        orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);
     } else {
         my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
     }

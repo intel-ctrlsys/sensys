@@ -1207,15 +1207,15 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
             OPAL_LIST_FOREACH(item, row, opal_value_t) {
                 if(true == is_wanted_column(item->key)) {
                     if(false == first_column) {
-                        strncat(tmp, "\",\"", TMP_BUFFER_SIZE - 4);
+                        strncat(tmp, "\",\"", TMP_BUFFER_SIZE - strlen(tmp) - 4);
                     }
                     if(0 == strcmp(item->key, "feature"))
                     {
                         char* plugin = get_plugin_from_sensor_name(item->data.string);
-                        strncat(tmp, plugin, TMP_BUFFER_SIZE - strlen(plugin) - 1);
+                        strncat(tmp, plugin, TMP_BUFFER_SIZE - strlen(tmp) - strlen(plugin) - 1);
                         free(plugin);
                     } else {
-                        strncat(tmp, item->data.string, TMP_BUFFER_SIZE - strlen(item->data.string) - 1);
+                        strncat(tmp, item->data.string, TMP_BUFFER_SIZE - strlen(tmp) - strlen(item->data.string) - 1);
                     }
                     if(true == first_column) {
                         first_column = false;
@@ -1223,7 +1223,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
                 }
                 ++col_num;
             }
-            strncat(tmp, "\"", TMP_BUFFER_SIZE - 2);
+            strncat(tmp, "\"", TMP_BUFFER_SIZE - strlen(tmp) - 2);
             if(true == first_item) {
                 string_row->type = OPAL_STRING;
                 string_row->data.string = strdup("\"Node Name\",\"Source Plugin Name\",\"Sensor Name\"");

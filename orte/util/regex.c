@@ -588,7 +588,9 @@ static int regex_parse_node_range(char *base, char *range, int num_digits, char 
         orte_show_help("help-regex.txt",
                        "regex:num-digits-too-small", true, num_digits_with_range);
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
-        free(num_digits_with_range);
+        if (num_digits_with_range != range) {
+            free(num_digits_with_range);
+        }
         return ORTE_ERR_BAD_PARAM;
     }
     /* Make strings for all values in the range */

@@ -1153,6 +1153,7 @@ char* get_plugin_from_sensor_name(const char* sensor_name)
 #define SAFE_OPAL_LIST_RELEASE(x) if(NULL!=x) { OPAL_LIST_RELEASE(x); x = NULL; }
 int get_inventory_list(opal_list_t *filters, opal_list_t **results)
 {
+    int rv = ORCM_SUCCESS;
     int num_rows = 0;
     opal_list_t *fetch_output = OBJ_NEW(opal_list_t);
     fetch_cb_data data;
@@ -1172,7 +1173,8 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
         if(NULL != filters) {
             SAFE_OPAL_LIST_RELEASE(filters);
         }
-        return data.status;
+        rv = data.status;
+        goto clean_exit;
     }
 
     data.active = true;
@@ -1181,14 +1183,14 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
 
     if(ORCM_SUCCESS != data.status || -1 == data.session_handle) {
         opal_output(0, "Failed to fetch the inventory database");
-        data.status = ORCM_ERROR;
+        rv = ORCM_ERROR;
         goto clean_exit;
     }
 
     data.status = orcm_db.get_num_rows(data.dbhandle, data.session_handle, &num_rows);
     if(ORCM_SUCCESS != data.status) {
         opal_output(0, "Failed to get number of inventory rows in the inventory database");
-        data.status = ORCM_ERROR;
+        rv = ORCM_ERROR;
         goto clean_exit;
     }
 
@@ -1206,18 +1208,18 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
 
             if(ORCM_SUCCESS != data.status) {
                 opal_output(0, "Failed to get inventory row %d in the inventory database", i);
-                data.status = ORCM_ERROR;
+                rv = ORCM_ERROR;
                 goto error_exit;
             }
             if(-1 == asprintf(&tmp, "\"")) {
-                data.status = ORCM_ERROR;
+                rv = ORCM_ERROR;
                 goto error_exit;
             }
             OPAL_LIST_FOREACH(item, row, opal_value_t) {
                 if(true == is_wanted_column(item->key)) {
                     if(false == first_column) {
                         if(-1 == asprintf(&new_tmp, "%s\",\"", tmp)) {
-                            data.status = ORCM_ERROR;
+                            rv = ORCM_ERROR;
                             goto error_exit;
                         }
                         SAFE_FREE(tmp);
@@ -1228,7 +1230,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
                     {
                         char* plugin = get_plugin_from_sensor_name(item->data.string);
                         if(-1 == asprintf(&new_tmp, "%s%s", tmp, plugin)) {
-                            data.status = ORCM_ERROR;
+                            rv = ORCM_ERROR;
                             SAFE_FREE(plugin);
                             goto error_exit;
                         }
@@ -1238,7 +1240,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
                         new_tmp = NULL;
                     } else {
                         if(-1 == asprintf(&new_tmp, "%s%s", tmp, item->data.string)) {
-                            data.status = ORCM_ERROR;
+                            rv = ORCM_ERROR;
                             goto error_exit;
                         }
                         SAFE_FREE(tmp);
@@ -1252,7 +1254,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
                 ++col_num;
             }
             if(-1 == asprintf(&new_tmp, "%s\"", tmp)) {
-                data.status = ORCM_ERROR;
+                rv = ORCM_ERROR;
                 goto error_exit;
             }
             SAFE_FREE(tmp);
@@ -1294,7 +1296,7 @@ clean_exit:
         opal_output(0, "Failed to close the inventory database handle");
     }
 
-    return data.status;
+    return rv;
 }
 #undef SAFE_OPAL_LIST_RELEASE
 #undef SAFE_FREE

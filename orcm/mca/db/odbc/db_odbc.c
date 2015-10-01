@@ -43,6 +43,8 @@
 
 #include "db_odbc.h"
 
+extern bool is_supported_opal_int_type(opal_data_type_t type);
+
 /* Module API functions */
 static int odbc_init(struct orcm_db_base_module_t *imod);
 static void odbc_finalize(struct orcm_db_base_module_t *imod);
@@ -3442,14 +3444,8 @@ static int odbc_get_num_rows(struct orcm_db_base_module_t *imod, int rshandle, i
  **************************************************************************************************/
  #define COLUMN_NAME_WIDTH 48 /* size is arbitrary but reasonable */
  #define NO_COLUMN         (-1)
-
-static const char *opal_type_column_name = "data_type_id";
-static const char *value_column_names[] = {
-    "value_str",
-    "value_int",
-    "value_real",
-    NULL
-};
+extern const char *opal_type_column_name;
+extern const char *value_column_names[];
 
 static int get_number_of_columns(SQLHSTMT results)
 {
@@ -3557,17 +3553,6 @@ static opal_data_type_t get_opal_type_from_sql_type(SQLSMALLINT sql_type)
     }
 }
 /**************************************************************************************************/
-
-static bool is_supported_opal_int_type(opal_data_type_t type)
-{
-    if(OPAL_BYTE == type || OPAL_BOOL == type || OPAL_SIZE == type || OPAL_PID == type ||
-       OPAL_INT == type || OPAL_INT8 == type || OPAL_INT16 == type || OPAL_INT32 == type || OPAL_INT64 == type ||
-       OPAL_UINT == type || OPAL_UINT8 == type || OPAL_UINT16 == type || OPAL_UINT32 == type || OPAL_UINT64 == type) {
-        return true;
-    } else {
-        return false;
-    }
-}
 
 #define VALUE_STR_COLUMN_NUM    0
 #define VALUE_INT_COLUMN_NUM    1

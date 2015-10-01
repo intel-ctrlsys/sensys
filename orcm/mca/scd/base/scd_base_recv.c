@@ -1255,6 +1255,9 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
                 data.status = ORCM_ERROR;
                 goto error_exit;
             }
+            SAFE_FREE(tmp);
+            tmp = new_tmp;
+            new_tmp = NULL;
             if(true == first_item) {
                 string_row->type = OPAL_STRING;
                 string_row->data.string = strdup("\"Node Name\",\"Source Plugin Name\",\"Sensor Name\"");

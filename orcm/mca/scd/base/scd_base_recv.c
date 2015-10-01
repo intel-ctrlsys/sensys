@@ -1183,14 +1183,14 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
 
     if(ORCM_SUCCESS != data.status || -1 == data.session_handle) {
         opal_output(0, "Failed to fetch the inventory database");
-        rv = ORCM_ERROR;
+        rv = data.status;
         goto clean_exit;
     }
 
     data.status = orcm_db.get_num_rows(data.dbhandle, data.session_handle, &num_rows);
     if(ORCM_SUCCESS != data.status) {
         opal_output(0, "Failed to get number of inventory rows in the inventory database");
-        rv = ORCM_ERROR;
+        rv = data.status;
         goto clean_exit;
     }
 
@@ -1208,7 +1208,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
 
             if(ORCM_SUCCESS != data.status) {
                 opal_output(0, "Failed to get inventory row %d in the inventory database", i);
-                rv = ORCM_ERROR;
+                rv = data.status;
                 goto error_exit;
             }
             if(-1 == asprintf(&tmp, "\"")) {

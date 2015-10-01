@@ -58,6 +58,7 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
     orcm_logical_group_node_names(argv[3], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
+        nodelist = NULL;
         error = "nodelist not found";
         rc = ORCM_ERR_BAD_PARAM;
         goto done;
@@ -301,6 +302,7 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     orcm_logical_group_node_names(argv[3], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
+        nodelist = NULL;
         error = "nodelist not found";
         rc = ORCM_ERR_BAD_PARAM;
         goto done;
@@ -523,6 +525,7 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
     orcm_logical_group_node_names(argv[5], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
+        nodelist = NULL;
         error = "nodelist not found";
         rc = ORCM_ERR_BAD_PARAM;
         goto done;
@@ -653,6 +656,7 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
     orcm_logical_group_node_names(argv[4], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
+        nodelist = NULL;
         error = "nodelist not found";
         rc = ORCM_ERR_BAD_PARAM;
         goto done;

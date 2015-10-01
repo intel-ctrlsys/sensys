@@ -100,7 +100,7 @@ static int component_select(orcm_session_id_t session, opal_list_t* attr)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
     int32_t mode, *mode_ptr;
-    char* name;
+    char* name = NULL;
     opal_list_t* data = NULL;
     opal_value_t *kv;
     bool governor_supported = false;
@@ -145,7 +145,9 @@ static int component_select(orcm_session_id_t session, opal_list_t* attr)
             goto error;
         }
     }
-    free (name);
+    if (NULL != name) {
+        free(name);
+    }
     return ORCM_SUCCESS;
 error:
     if (NULL != name) {

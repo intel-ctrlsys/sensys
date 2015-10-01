@@ -44,3 +44,17 @@ USAGE: sensor get sample-rate <sensor-name> <nodelist>
 ERROR: %s
 USAGE: sensor set sample-rate <sensor-name> <sample-rate>  <nodelist>
 
+[octl:grouping:add-usage]
+ERROR: %s
+USAGE: grouping add <tag> <nodelist>
+
+[octl:grouping:add-wildcard]
+ERROR: Neither the group name nor the node regex can be a wildcard for add!
+
+[octl:grouping:remove-usage]
+ERROR: %s
+USAGE: grouping remove <tag> <nodelist>
+
+[octl:grouping:list-usage]
+ERROR: %s
+USAGE: grouping list <tag> <nodelist>

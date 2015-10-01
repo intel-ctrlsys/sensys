@@ -16,17 +16,15 @@ int orcm_octl_logical_group_add(int argc, char **argv)
     char *tag = NULL, *node_regex = NULL;
 
     if (4 != argc) {
-        ORCM_UTIL_ERROR_MSG_WITH_ARG("Incorrect argument count. Two needed, "
-                                     "%d provided.", argc -2);
-        ORCM_UTIL_ERROR_MSG("Correct syntax: [octl] grouping add <tag> <node>");
+        orte_show_help("help-octl.txt",
+                       "octl:grouping:add-usage", true, "invalid arguments!");
         return ORCM_ERR_BAD_PARAM;
     }
     tag = argv[2];
     node_regex = argv[3];
     if (0 == strncmp(tag, "*", strlen(tag)) ||
         0 == strncmp(node_regex, "*", strlen(node_regex))) {
-        ORCM_UTIL_ERROR_MSG("Neither the group name nor the "
-                            "node regex can be a wildcard for add!");
+        orte_show_help("help-octl.txt", "octl:grouping:add-wildcard", true);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -62,9 +60,8 @@ int orcm_octl_logical_group_remove(int argc, char **argv)
     char *tag = NULL, *node_regex = NULL, *pass_tag = NULL;
 
     if (4 != argc) {
-        ORCM_UTIL_ERROR_MSG_WITH_ARG("Incorrect argument count. Two needed, "
-                                     "%d provided.", argc -2);
-        ORCM_UTIL_ERROR_MSG("Correct syntax: [octl] grouping remove <tag> <node>");
+        orte_show_help("help-octl.txt",
+                       "octl:grouping:remove-usage", true, "invalid arguments!");
         return ORCM_ERR_BAD_PARAM;
     }
     tag = argv[2];

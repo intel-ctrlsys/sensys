@@ -184,7 +184,7 @@ static orcm_cli_init_t cli_init[] = {
     { { "analytics", "workflow", NULL }, "get", 0, 0, "list workflow: get nodelist" },
 
     /* quit command */
-    { { NULL }, "quit/exit", 0, 0, "Exit the shell" },
+    { { NULL }, "quit", 0, 0, "Exit the shell" },
 
     /* End of list */
     { { NULL }, NULL, 0, 0, NULL }
@@ -229,7 +229,7 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "sample-rate",       //31
                                      "grouping",          //32
                                      "list",              //33
-                                     "quit/exit",         //34
+                                     "quit",              //34
                                      "analytics",         //35
                                      "workflow",          //36
                                      "inventory",         //37

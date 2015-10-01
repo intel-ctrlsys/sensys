@@ -17,10 +17,30 @@ Usage: octl [OPTIONS]
 %s
 
 Interactive shell:
-Use 'quit' or 'exit' - for exiting the shell
+Use 'quit' - for exiting the shell
 Use '<tab>' or '<?>' for help
 
 [version]
 octl %s
 
 Report bugs to %s
+
+[octl:command-line:failure]
+ERROR: %s
+
+[octl:get:policy-usage]
+ERROR: %s
+USAGE: sensor get policy <nodelist>
+
+[octl:set:policy-usage]
+ERROR: %s
+USAGE: sensor set policy <nodelist>
+
+[octl:get:sample-rate-usage]
+ERROR: %s
+USAGE: sensor get sample-rate <sensor-name> <nodelist>
+
+[octl:set:sample-rate-usage]
+ERROR: %s
+USAGE: sensor set sample-rate <sensor-name> <sample-rate>  <nodelist>
+

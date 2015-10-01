@@ -188,8 +188,7 @@ static int orcm_octl_work(int argc, char *argv[])
                 fprintf(stderr, "\nNo command specified\n");
                 continue;
             }
-            if ((0 == strcmp(mycmd,"quit")) ||
-               (0 == strcmp(mycmd,"exit"))) {
+            if (0 == strcmp(mycmd,"quit")) {
                 printf("\nExiting...\n");
                 interactive = false;
                 free(mycmd);

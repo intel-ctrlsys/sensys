@@ -494,6 +494,8 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
     orte_notifier_severity_t sev;
     orcm_sensor_policy_t *plc, *newplc;
     bool found_me;
+    char *error = NULL;
+
 
     OPAL_OUTPUT_VERBOSE((5, orcm_sensor_base_framework.framework_output,
                          "%s sensor:base:receive processing msg",
@@ -552,6 +554,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                             limit,
                             sample_rate);
                 response = ORCM_ERR_SENSOR_LIMIT_EXCEEDED;
+                asprintf(&error,"sensor sample rate %d exceeds limit %d", sample_rate, limit);
                 goto ERROR;
             }
 
@@ -592,6 +595,8 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                 }
                 goto RESPONSE;
             } else {
+                response = ORTE_ERR_NOT_FOUND;
+                asprintf(&error,"%s sensor module not found", sensor_name);
                 goto ERROR;
             }
             break;
@@ -691,6 +696,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
             goto RESPONSE;
             break;
         default:
+            asprintf(&error,"sensor set command %d not found", sub_command);
             goto ERROR;
         }
 
@@ -747,12 +753,13 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                 response = ORCM_SUCCESS;
             } else {
                 response = ORTE_ERR_NOT_FOUND;
+                asprintf(&error,"%s sensor module not found", sensor_name);
                 goto ERROR;
             }
             if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(ans);
-                return;
+                goto ERROR;
             }
 
             if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &sensor_name,
@@ -764,7 +771,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
             if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &sample_rate, 1, OPAL_INT))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(ans);
-                return;
+                goto ERROR;
             }
             goto RESPONSE;
             break;
@@ -776,7 +783,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
             if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &cnt, 1, OPAL_INT))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(ans);
-                return;
+                goto ERROR;
             }
 
             /* for each queue, */
@@ -786,7 +793,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                                                   1, OPAL_STRING))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
-                    return;
+                    goto ERROR;
                 }
 
                 /* pack threshold value */
@@ -794,7 +801,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                                                   1, OPAL_FLOAT))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
-                    return;
+                    goto ERROR;
                 }
 
                 /* pack threshold type */
@@ -802,7 +809,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                                                   1, OPAL_BOOL))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
-                    return;
+                    goto ERROR;
                 }
 
                 /* pack max count */
@@ -810,7 +817,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                                                   1, OPAL_INT))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
-                    return;
+                    goto ERROR;
                 }
 
                 /* pack time window */
@@ -818,7 +825,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                                                   1, OPAL_INT))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
-                    return;
+                    goto ERROR;
                 }
 
                 /* pack severity level */
@@ -826,7 +833,7 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                                                   1, OPAL_INT))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
-                    return;
+                    goto ERROR;
                 }
 
                 /* pack notification action */
@@ -834,28 +841,37 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                                                   1, OPAL_STRING))) {
                     ORTE_ERROR_LOG(rc);
                     OBJ_RELEASE(ans);
-                    return;
+                    goto ERROR;
                 }
             }
             goto RESPONSE;
             break;
 
         default:
+            asprintf(&error,"sensor get command %d not found", sub_command);
             goto ERROR;
         }
 
     }
 
 ERROR:
-    if (ORCM_SUCCESS == response) {
-        response = ORTE_ERR_BAD_PARAM;
-    }
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(ans);
         return;
     }
+    if (NULL == error) {
+        asprintf(&error,"sensor data buffer mismatch");
+    }
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &error, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_RELEASE(ans);
+        free(error);
+        return;
+    }
+    free(error);
 
 RESPONSE:
     if (ORTE_SUCCESS !=

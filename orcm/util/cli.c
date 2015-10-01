@@ -199,6 +199,7 @@ int orcm_cli_get_cmd(char *prompt,
             if (ORCM_ERR_NOT_FOUND == rc) {
                 /* Bad command not in tree, Bonk */
                 BONK;
+                rc = ORCM_SUCCESS;
                 break;
             } else if (ORCM_SUCCESS == rc) {
                 if (NULL == completions) {
@@ -322,6 +323,7 @@ int orcm_cli_get_cmd(char *prompt,
             break;
 
         default:   // everything else
+            rc = ORCM_SUCCESS;
             space = false;
             if (ORCM_MAX_CLI_LENGTH == j) {
                 /* can't go that far - bonk */

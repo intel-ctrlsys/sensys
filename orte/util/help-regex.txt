@@ -31,6 +31,16 @@ We do not know how to parse this character - please contact the
 Open MPI help list for assistance.
 
 #
+[regex:start-range-missing]
+While trying to parse a regular expression to extract a list
+of node names, the regex parser could not find the start of a range:
+
+    regexp: %s
+
+A range must start with a '[' - please contact the
+Open MPI help list for assistance.
+
+#
 [regex:end-range-missing]
 While trying to parse a regular expression to extract a list
 of node names, the regex parser could not find the end of a range:
@@ -59,6 +69,7 @@ it does not know how to parse:
     regexp: %s
 
 Please contact the Open MPI help list for assistance.
+
 #
 [regex:num-digits-missing]
 While trying to parse a regular expression to extract the node
@@ -68,3 +79,45 @@ digits in the names:
    regexp: %s
 
 Please contact the Open MPI help list for assistance.
+
+#
+[regex:consecutive-rightleft-brackets]
+While trying to parse a regular expression to extract a list
+of node names, the regex parser encountered consecutive right left brackets
+in the string:
+
+    regexp: %s
+
+We do not know how to parse this character - please contact the
+Open MPI help list for assistance.
+
+#
+[regex:no-base-range]
+While trying to parse a regular expression to extract a list
+of node names, the regex parser could not find the base of a range:
+
+    regexp: %s
+
+A range must have a base before '[' - please contact the
+Open MPI help list for assistance.
+
+#
+[regex:num-digits-too-small]
+While trying to parse a regular expression to extract a list
+of node names, the regex parser found that the number of digits is too small:
+
+    regexp: %s
+
+A range's number of digits should be at least the same of the number of digits of the 
+node that has the maximum number - please contact the
+Open MPI help list for assistance.
+
+#
+[regex:range-left-bigger-right]
+While trying to parse a regular expression to extract a list of node names, 
+the regex parser found that the left value is bigger than the right one of a range:
+
+    regexp: %s
+
+A range's right value should be no less than the left value - please contact the
+Open MPI help list for assistance.

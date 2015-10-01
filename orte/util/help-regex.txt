@@ -27,7 +27,7 @@ at the beginning of the string:
 
     regexp: %s
 
-We do not know how to parse this character - please contact the
+We do not know how to parse this character - please refer to the
 Open MPI help list for assistance.
 
 #
@@ -37,7 +37,7 @@ of node names, the regex parser could not find the start of a range:
 
     regexp: %s
 
-A range must start with a '[' - please contact the
+A range must start with a '[' - please refer to the
 Open MPI help list for assistance.
 
 #
@@ -47,7 +47,7 @@ of node names, the regex parser could not find the end of a range:
 
     regexp: %s
 
-A range must end with a ']' - please contact the
+A range must end with a ']' - please refer to the
 Open MPI help list for assistance.
 
 #
@@ -58,7 +58,7 @@ not know how to parse:
 
     regexp: %s
 
-Please contact the Open MPI help list for assistance.
+Please refer to the Open MPI help list for assistance.
 
 #
 [regex:bad-ppn]
@@ -68,7 +68,7 @@ it does not know how to parse:
 
     regexp: %s
 
-Please contact the Open MPI help list for assistance.
+Please refer to the Open MPI help list for assistance.
 
 #
 [regex:num-digits-missing]
@@ -78,7 +78,7 @@ digits in the names:
 
    regexp: %s
 
-Please contact the Open MPI help list for assistance.
+Please refer to the Open MPI help list for assistance.
 
 #
 [regex:consecutive-rightleft-brackets]
@@ -88,7 +88,7 @@ in the string:
 
     regexp: %s
 
-We do not know how to parse this character - please contact the
+We do not know how to parse this character - please refer to the
 Open MPI help list for assistance.
 
 #
@@ -98,7 +98,7 @@ of node names, the regex parser could not find the base of a range:
 
     regexp: %s
 
-A range must have a base before '[' - please contact the
+A range must have a base before '[' - please refer to the
 Open MPI help list for assistance.
 
 #
@@ -109,15 +109,24 @@ of node names, the regex parser found that the number of digits is too small:
     regexp: %s
 
 A range's number of digits should be at least the same of the number of digits of the 
-node that has the maximum number - please contact the
+node that has the maximum number - please refer to the
 Open MPI help list for assistance.
 
 #
 [regex:range-left-bigger-right]
-While trying to parse a regular expression to extract a list of node names, 
-the regex parser found that the left value is bigger than the right one of a range:
+While trying to parse a regular expression to extract a list of node names,
+the regex parser found that the left value is greater than the right one of a range:
 
     regexp: %s
 
-A range's right value should be no less than the left value - please contact the
+A range's left value should not be greater than the right value - please refer to the
 Open MPI help list for assistance.
+
+#
+[regex:value-out-of-range]
+While trying to parse a regular expression to extract a list of node names,
+the regex parser found that the value is out of range:
+
+    regexp: %s
+
+please refer to the Open MPI help list for assistance.

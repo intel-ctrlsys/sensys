@@ -43,8 +43,6 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
 
     orte_notifier_severity_t severity;
 
-    orte_help_want_aggregate = false;
-
     if (4 != opal_argv_count(argv)) {
         error = "incorrect arguments!";
         rc = ORCM_ERR_BAD_PARAM;
@@ -287,8 +285,6 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     orte_notifier_severity_t sev;
     char *error = NULL;
 
-    orte_help_want_aggregate = false;
-
     if (11 != opal_argv_count(argv)) {
         error = "incorrect arguments!";
         rc = ORCM_ERR_BAD_PARAM;
@@ -502,8 +498,6 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
     char *error = NULL;
-
-    orte_help_want_aggregate = false;
 
     if (6 != opal_argv_count(argv)) {
         error = "incorrect arguments!";

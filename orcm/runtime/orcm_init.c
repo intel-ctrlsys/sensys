@@ -196,6 +196,7 @@ int orcm_init(orcm_proc_type_t flags)
     
     /* flag that orte is initialized so things can work */
     orte_initialized = true;
+    orte_help_want_aggregate = false;
 
     return ORCM_SUCCESS;
 

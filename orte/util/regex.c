@@ -58,6 +58,7 @@
 #include "orte/util/regex.h"
 
 #include <math.h>
+#include <errno.h>
 
 #define ORTE_MAX_NODE_PREFIX        50
 
@@ -317,37 +318,35 @@ int orte_regex_extract_node_names(char *regexp, char ***names)
         /* Find the base */
         len = strlen(base);
         for (i = 0; i <= len; ++i) {
-            if (base[i] == '[') {
+            if ('[' == base[i]) {
                 /* we found a range. this gets dealt with below */
                 base[i] = '\0';
                 found_range = true;
                 break;
             }
-            if (base[i] == ',') {
+            if (',' == base[i]) {
                 /* we found a singleton node, and there are more to come */
                 base[i] = '\0';
                 found_range = false;
                 more_to_come = true;
                 break;
             }
-            if (base[i] == '\0') {
-                /* we found a singleton node */
+            if ('\0' == base[i] || ']' == base[i]) {
+                /* we found a singleton node, or we found
+                 * a right bracket, but not a left one */
                 found_range = false;
                 more_to_come = false;
                 break;
             }
-            if (']' == base[i]) {
-                /* we found a right bracket, but not a left one */
-                break;
-            }
         }
-        if (i == 0 && !found_range) {
-            /* we found a special character including ']' at the beginning of the string */
+        if (0 == i && !found_range) {
+            /* we found a special character, which may be ']',
+             * at the beginning of the string */
             orte_show_help("help-regex.txt", "regex:special-char", true, regexp);
             free(orig);
             return ORTE_ERR_BAD_PARAM;
         }
-        if (i == 0 && found_range) {
+        if (0 == i && found_range) {
             /* we found no base at the beginning of a range */
             orte_show_help("help-regex.txt", "regex:no-base-range", true, regexp);
             free(orig);
@@ -364,7 +363,7 @@ int orte_regex_extract_node_names(char *regexp, char ***names)
             /* If we found a range, get the number of digits in the numbers */
             i++;  /* step over the [ */
             for (j=i; j < len; j++) {
-                if (base[j] == ':') {
+                if (':' == base[j]) {
                     base[j] = '\0';
                     break;
                 }
@@ -376,10 +375,15 @@ int orte_regex_extract_node_names(char *regexp, char ***names)
                 return ORTE_ERR_BAD_PARAM;
             }
             num_digits = strtol(&base[i], NULL, 10);
+            if (errno == ERANGE) {
+                orte_show_help("help_regex.txt", "regex:value-out-of-range", true, &base[i]);
+                free(orig);
+                return ORTE_ERR_BAD_PARAM;
+            }
             i = j + 1;  /* step over the : */
             /* now find the end of the range */
             for (j = i; j < len; ++j) {
-                if (base[j] == ']') {
+                if (']' == base[j]) {
                     if ((j + 1) < len && '[' == base[j + 1]) {
                         orte_show_help("help-regex.txt",
                                     "regex:consecutive-rightleft-brackets", true, regexp);
@@ -397,9 +401,9 @@ int orte_regex_extract_node_names(char *regexp, char ***names)
                 return ORTE_ERR_BAD_PARAM;
             }
             /* check for a suffix */
-            if (j+1 < len && base[j+1] != ',') {
+            if (j+1 < len && ',' != base[j+1]) {
                 /* find the next comma, if present */
-                for (k=j+1; k < len && base[k] != ','; k++);
+                for (k=j+1; k < len && ',' != base[k]; k++);
                 if (k < len) {
                     base[k] = '\0';
                 }
@@ -425,7 +429,7 @@ int orte_regex_extract_node_names(char *regexp, char ***names)
                 free(orig);
                 return ret;
             }
-            if (j+1 < len && base[j + 1] == ',') {
+            if (j+1 < len && ',' == base[j + 1]) {
                 more_to_come = true;
                 base = &base[j + 2];
             } else {
@@ -531,7 +535,12 @@ static int regex_parse_node_range(char *base, char *range, int num_digits, char 
     for (found = false, i = 0; i < len; ++i) {
         if (isdigit((int) range[i])) {
             if (!found) {
-                start = atoi(range + i);
+                start = strtol(range + i, NULL, 10);
+                if (errno == ERANGE) {
+                    orte_show_help("help_regex.txt",
+                                   "regex:value-out-of-range", true, range + i);
+                    return ORTE_ERR_BAD_PARAM;
+                }
                 found = true;
                 break;
             }
@@ -562,6 +571,11 @@ static int regex_parse_node_range(char *base, char *range, int num_digits, char 
         for (; i < len; ++i) {
             if (isdigit(range[i])) {
                 end = strtol(range + i, NULL, 10);
+                if (errno == ERANGE) {
+                    orte_show_help("help_regex.txt",
+                                   "regex:value-out-of-range", true, range + i);
+                    return ORTE_ERR_BAD_PARAM;
+                }
                 found = true;
                 break;
             }

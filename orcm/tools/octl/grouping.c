@@ -135,9 +135,8 @@ int orcm_octl_logical_group_list(int argc, char **argv)
     char *tag = NULL, *node_regex = NULL, *pass_tag = NULL;
 
     if (4 != argc) {
-        ORCM_UTIL_ERROR_MSG_WITH_ARG("Incorrect argument count. "
-                                     "Two needed, %d provided.", argc -2);
-        ORCM_UTIL_ERROR_MSG("Correct syntax: [octl] grouping list <tag> <node>");
+        orte_show_help("help-octl.txt",
+                       "octl:grouping:list-usage", true, "invalid arguments!");
         return ORCM_ERR_BAD_PARAM;
     }
     tag = argv[2];

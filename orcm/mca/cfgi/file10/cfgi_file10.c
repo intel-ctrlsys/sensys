@@ -74,24 +74,21 @@ static int file10_init(void)
      * line - if it is version 1.x, then that is us
      */
     if (NULL == orcm_cfgi_base.config_file) {
-        opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
-                            "NULL FILE");
+        opal_output(orcm_cfgi_base_framework.framework_output, "NULL FILE");
         return ORCM_ERR_TAKE_NEXT_OPTION;
     }
     if (NULL == (fp = fopen(orcm_cfgi_base.config_file, "r"))) {
-        opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
-                            "CANT OPEN %s", orcm_cfgi_base.config_file);
+        opal_output(orcm_cfgi_base_framework.framework_output,
+                    "CANT OPEN %s", orcm_cfgi_base.config_file);
         return ORCM_ERR_TAKE_NEXT_OPTION;
     }
     if (NULL == (line = orcm_getline(fp))) {
-        opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
-                            "FAILED TO GET LINE");
+        opal_output(orcm_cfgi_base_framework.framework_output, "FAILED TO GET LINE");
         fclose(fp);
         return ORCM_ERR_TAKE_NEXT_OPTION;
     }
     if (NULL == (ptr = strchr(line, '='))) {
-        opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
-                            "NOT FIND =");
+        opal_output(orcm_cfgi_base_framework.framework_output, "NOT FIND =");
         free(line);
         fclose(fp);
         return ORCM_ERR_TAKE_NEXT_OPTION;
@@ -99,8 +96,7 @@ static int file10_init(void)
     ptr++; // points to the quote
     ptr++; // points to the version number
     if ('1' != *ptr) {
-        opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
-                            "NOT FOUND 1: %s", ptr);
+        opal_output(orcm_cfgi_base_framework.framework_output, "NOT FOUND 1: %s", ptr);
         free(line);
         fclose(fp);
         return ORCM_ERR_TAKE_NEXT_OPTION;
@@ -1004,8 +1000,8 @@ static void setup_environ(char **env)
      */
     tmp = opal_environ_merge(env, environ);
     if (NULL == tmp) {
-        opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
-        "ERROR: Environment variables merge failed.");
+        opal_output(orcm_cfgi_base_framework.framework_output,
+                    "ERROR: Environment variables merge failed.");
         return;
     }
     /* now cycle thru the result and push MCA params back into our

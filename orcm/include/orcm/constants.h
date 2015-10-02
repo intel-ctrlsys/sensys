@@ -130,13 +130,9 @@ enum {
      */
     ORCM_ERR_PLACEHOLDER                     = (ORCM_ERR_BASE - 1),
     ORCM_ERR_SENSOR_READ_FAIL                = (ORCM_ERR_BASE - 2),
-    ORCM_ERR_ALL_NODE_EXIST                  = (ORCM_ERR_BASE - 3),
-    ORCM_ERR_PART_NODE_EXIST                 = (ORCM_ERR_BASE - 4),
-    ORCM_ERR_GROUP_NOT_EXIST                 = (ORCM_ERR_BASE - 5),
-    ORCM_ERR_NONE_NODE_EXIST                 = (ORCM_ERR_BASE - 6),
-    ORCM_ERR_PART_NODE_NOT_EXIST             = (ORCM_ERR_BASE - 7),
-    ORCM_ERR_NO_RECORD                       = (ORCM_ERR_BASE - 8),
-    ORCM_ERR_INCORRECT_ARGUMENTS             = (ORCM_ERR_BASE - 9)
+    ORCM_ERR_NO_ANY_GROUP                    = (ORCM_ERR_BASE - 3),
+    ORCM_ERR_GROUP_NOT_EXIST                 = (ORCM_ERR_BASE - 4),
+    ORCM_ERR_NODE_NOT_EXIST                  = (ORCM_ERR_BASE - 5)
 };
 
 #define ORCM_ERR_MAX                      (ORCM_ERR_BASE - 100)

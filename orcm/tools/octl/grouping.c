@@ -57,7 +57,7 @@ cleanup:
 int orcm_octl_logical_group_remove(int argc, char **argv)
 {
     int erri = ORCM_SUCCESS;
-    char *tag = NULL, *node_regex = NULL, *pass_tag = NULL;
+    char *tag = NULL, *node_regex = NULL, *pass_tag = NULL, *err_str = NULL;
 
     if (4 != argc) {
         orte_show_help("help-octl.txt",
@@ -80,6 +80,12 @@ int orcm_octl_logical_group_remove(int argc, char **argv)
 
     if (ORCM_SUCCESS != (erri = orcm_logical_group_remove(tag,
                          node_regex, LOGICAL_GROUP.groups))) {
+        if (ORCM_ERR_NO_ANY_GROUP == erri ||
+            ORCM_ERR_GROUP_NOT_EXIST == erri || ORCM_ERR_NODE_NOT_EXIST == erri) {
+            orcm_err2str(erri, (const char**)(&err_str));
+            orte_show_help("help-octl.txt", "octl:grouping:remove-failure", true, err_str);
+            erri = ORCM_ERR_BAD_PARAM;
+        }
         goto cleanup;
     }
 

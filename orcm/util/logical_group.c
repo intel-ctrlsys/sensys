@@ -25,6 +25,13 @@ static int orcm_logical_group_add_internal(char *tag, char **nodes,
                                            opal_list_t *group_nodes,
                                            opal_hash_table_t *io_groups);
 
+/* check if all the nodes do exist in a group */
+static int orcm_logical_group_all_nodes_exist_one_tag(opal_list_t *value, char **nodes);
+
+/* check if all the nodes do exist in all groups */
+static int orcm_logical_group_all_nodes_exist_all_tags(opal_hash_table_t *groups,
+                                                       char **nodes);
+
 /* remove nodes of a group in the hash table */
 static int orcm_logical_group_hash_table_remove_nodes(char *tag,
                                                       opal_list_t *value,
@@ -322,6 +329,50 @@ int is_do_all_wildcard(char *text)
     return answer;
 }
 
+static int orcm_logical_group_all_nodes_exist_one_tag(opal_list_t *value, char **nodes)
+{
+    int index = -1, count = opal_argv_count(nodes);
+    orcm_logical_group_node_t *node_item = NULL;
+    bool exist = false;
+
+    for (index = 0; index < count; index++) {
+        exist = false;
+        OPAL_LIST_FOREACH(node_item, value, orcm_logical_group_node_t) {
+            if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]))) {
+                exist = true;
+                break;
+            }
+        }
+        if (!exist) {
+            return ORCM_ERR_NODE_NOT_EXIST;
+        }
+    }
+
+    return ORCM_SUCCESS;
+}
+
+static int orcm_logical_group_all_nodes_exist_all_tags(opal_hash_table_t *groups,
+                                                       char **nodes)
+{
+    int erri = ORCM_SUCCESS;
+    char *key = NULL;
+    size_t key_size = 0;
+    opal_list_t *value = NULL;
+    void *in_node = NULL, *out_node = NULL;
+
+    while (OPAL_SUCCESS == opal_hash_table_get_next_key_ptr(groups, (void**)&key,
+                                         &key_size, (void**)&value, in_node, &out_node)) {
+            if (ORCM_SUCCESS !=
+                (erri = orcm_logical_group_all_nodes_exist_one_tag(value, nodes))) {
+                return erri;
+            }
+            in_node = out_node;
+            out_node = NULL;
+    }
+
+    return erri;
+}
+
 static int orcm_logical_group_hash_table_remove_nodes(char *tag,
                                                       opal_list_t *value,
                                                       char **nodes,
@@ -329,6 +380,7 @@ static int orcm_logical_group_hash_table_remove_nodes(char *tag,
 {
     int index = -1, count = opal_argv_count(nodes);
     orcm_logical_group_node_t *node_item = NULL, *next_node_item = NULL;
+
     for (index = 0; index < count; index++) {
         OPAL_LIST_FOREACH_SAFE(node_item, next_node_item, value, orcm_logical_group_node_t) {
             if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]))) {
@@ -359,6 +411,11 @@ static int orcm_logical_group_remove_all_tags(char **nodes, int do_all_node,
         return opal_hash_table_remove_all(io_groups);
     }
 
+    if (ORCM_SUCCESS !=
+        (erri = orcm_logical_group_all_nodes_exist_all_tags(io_groups, nodes))) {
+        return erri;
+    }
+
     while (OPAL_SUCCESS == opal_hash_table_get_next_key_ptr(io_groups, (void**)&key,
                                          &key_size, (void**)&value, in_node, &out_node)) {
             erri = orcm_logical_group_hash_table_remove_nodes(key, value, nodes, io_groups);
@@ -383,8 +440,14 @@ static int orcm_logical_group_remove_a_tag(char *tag, char **nodes, int do_all_n
         if (do_all_node) {
             return opal_hash_table_remove_value_ptr(io_groups, tag, strlen(tag) + 1);
         }
-
+        if (ORCM_SUCCESS != (erri = orcm_logical_group_all_nodes_exist_one_tag(value, nodes))) {
+            return erri;
+        }
         return orcm_logical_group_hash_table_remove_nodes(tag, value, nodes, io_groups);
+    }
+
+    if (OPAL_ERR_NOT_FOUND == erri) {
+        return ORCM_ERR_GROUP_NOT_EXIST;
     }
 
     return erri;
@@ -407,7 +470,7 @@ int orcm_logical_group_remove(char *tag, char *node_regex, opal_hash_table_t *io
     char **nodes = NULL;
 
     if (0 == opal_hash_table_get_size(io_groups)) {
-        return erri;
+        return ORCM_ERR_NO_ANY_GROUP;
     }
 
     do_all_tag = is_do_all_wildcard(tag);

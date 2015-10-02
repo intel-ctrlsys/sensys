@@ -55,6 +55,10 @@ ERROR: Neither the group name nor the node regex can be a wildcard for add!
 ERROR: %s
 USAGE: grouping remove <tag> <nodelist>
 
+[octl:grouping:remove-failure]
+ERROR: %s
+Grouping Remove Failed!
+
 [octl:grouping:list-usage]
 ERROR: %s
 USAGE: grouping list <tag> <nodelist>

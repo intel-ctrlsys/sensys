@@ -80,9 +80,9 @@ static bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step)
         if (NULL == attribute) {
             break;
         }
-        if (0 == strncmp(attribute->key, db_attribute_key, strlen(attribute->key))) {
+        if (0 == strncmp(attribute->key, db_attribute_key, strlen(attribute->key) + 1)) {
             if (0 == strncmp(attribute->data.string, db_attribute_value_check,
-                strlen(attribute->data.string))) {
+                strlen(attribute->data.string) + 1)) {
                 load_to_db = true;
             }
             break;

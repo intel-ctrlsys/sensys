@@ -22,8 +22,8 @@ int orcm_octl_logical_group_add(int argc, char **argv)
     }
     tag = argv[2];
     node_regex = argv[3];
-    if (0 == strncmp(tag, "*", strlen(tag)) ||
-        0 == strncmp(node_regex, "*", strlen(node_regex))) {
+    if (0 == strncmp(tag, "*", strlen(tag) + 1) ||
+        0 == strncmp(node_regex, "*", strlen(node_regex) + 1)) {
         orte_show_help("help-octl.txt", "octl:grouping:add-wildcard", true);
         return ORCM_ERR_BAD_PARAM;
     }

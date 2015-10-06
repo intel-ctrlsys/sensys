@@ -247,7 +247,7 @@ static bool node_exist(opal_list_t *group_nodes, char *new_node)
         if (NULL == node_item) {
             break;
         }
-        if (0 == strncmp(node_item->node, new_node, strlen(node_item->node))) {
+        if (0 == strncmp(node_item->node, new_node, strlen(node_item->node) + 1)) {
             exist = true;
             break;
         }
@@ -322,7 +322,7 @@ int is_do_all_wildcard(char *text)
 {
     int answer = 0;
     if (NULL != text) {
-        if(0 == strncmp(text, "*", strlen(text))) {
+        if(0 == strncmp(text, "*", strlen(text) + 1)) {
             answer = 1;
         }
     }
@@ -338,7 +338,7 @@ static int orcm_logical_group_all_nodes_exist_one_tag(opal_list_t *value, char *
     for (index = 0; index < count; index++) {
         exist = false;
         OPAL_LIST_FOREACH(node_item, value, orcm_logical_group_node_t) {
-            if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]))) {
+            if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]) + 1)) {
                 exist = true;
                 break;
             }
@@ -383,7 +383,7 @@ static int orcm_logical_group_hash_table_remove_nodes(char *tag,
 
     for (index = 0; index < count; index++) {
         OPAL_LIST_FOREACH_SAFE(node_item, next_node_item, value, orcm_logical_group_node_t) {
-            if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]))) {
+            if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]) + 1)) {
                 opal_list_remove_item(value, &node_item->super);
                 OBJ_RELEASE(node_item);
                 break;
@@ -521,7 +521,7 @@ orcm_logical_group_list_specific_nodes(opal_list_t *value, char **nodes)
                 if (NULL == node_item) {
                     return NULL;
                 }
-                if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]))) {
+                if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]) + 1)) {
                     orcm_logical_group_list_append(node_item->node, new_value);
                     break;
                 }
@@ -662,7 +662,7 @@ static int orcm_logical_group_split_line(char *line, char ***o_line_fields)
 
 static int orcm_logical_group_process_tag_line(char *tag)
 {
-    if (NULL == current_tag || (0 != strncmp(current_tag, tag, strlen(current_tag)))) {
+    if (NULL == current_tag || (0 != strncmp(current_tag, tag, strlen(current_tag) + 1))) {
         SAFEFREE(current_tag);
         current_tag = strdup(tag);
     }
@@ -684,11 +684,11 @@ static int orcm_logical_group_process_line(char *tag, char *line,
         goto cleanup;
     }
 
-    if (0 == strncmp(line_fields[0], "group name", strlen(line_fields[0]))) {
+    if (0 == strncmp(line_fields[0], "group name", strlen(line_fields[0]) + 1)) {
         erri = orcm_logical_group_process_tag_line(line_fields[1]);
-    } else if (0 == strncmp(line_fields[0], "nodelist", strlen(line_fields[0]))) {
+    } else if (0 == strncmp(line_fields[0], "nodelist", strlen(line_fields[0]) + 1)) {
         if (tag == NULL || (1 != is_do_all_wildcard(tag) &&
-                            0 != strncmp(current_tag, tag, strlen(current_tag)))) {
+                            0 != strncmp(current_tag, tag, strlen(current_tag) + 1))) {
             erri = orcm_logical_group_pass(current_tag, line_fields[1], groups);
         } else {
             erri = orcm_logical_group_add(current_tag, line_fields[1], groups);
@@ -943,7 +943,8 @@ static int orcm_logical_group_save_to_file_internal(char *tag, FILE *storage_fil
     } else {
         while (ORCM_SUCCESS == opal_hash_table_get_next_key_ptr(groups, (void**)&key,
                                         &key_size, (void**)&value, in_node, &out_node)) {
-            if (0 == strncmp(key, tag, strlen(key)) || 0 == strncmp(tag, "*", strlen(tag))) {
+            if (0 == strncmp(key, tag, strlen(key) + 1) ||
+                0 == strncmp(tag, "*", strlen(tag) + 1)) {
                 erri = orcm_logical_group_save_to_file_concat(key, value, storage_file);
                 if (ORCM_SUCCESS != erri) {
                     break;
@@ -1054,7 +1055,7 @@ static int orcm_logical_group_is_valid_tag(char *tag)
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (0 == strncmp(tag, "*", strlen(tag))) {
+    if (0 == strncmp(tag, "*", strlen(tag) + 1)) {
         ORCM_UTIL_ERROR_MSG("Given logical grouping tag could not be *");
         return ORCM_ERR_BAD_PARAM;
     }

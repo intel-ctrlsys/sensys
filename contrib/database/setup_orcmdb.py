@@ -1,3 +1,6 @@
+#
+# Copyright (c) 2015 Intel Inc. All rights reserved
+#
 from argparse import ArgumentParser
 import ConfigParser
 from sqlalchemy.exc import OperationalError
@@ -11,7 +14,7 @@ def main():
     parser = ArgumentParser(description="Setup ORCM database")
     parser.add_argument("--alembic-ini", dest='alembic_ini',
                         metavar='/path/to/alembic/config/file',
-                        type=str, default="alembic.ini",
+                        type=str, default="schema_migration.ini",
                         help="A path to the Alembic config file")
     args = parser.parse_args()
 

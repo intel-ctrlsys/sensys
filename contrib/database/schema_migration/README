@@ -1,9 +1,11 @@
+Copyright (c) 2015 Intel Inc. All rights reserved
+
 Generic single-database configuration.
 
 Use the autogenerate to generate the diff between the SQLAlchemy model and the
 current state of the database.
 
-alembic -c alembic.ini revision --autogenerate -m "Change description"
+alembic -c schema_migration.ini revision --autogenerate -m "Change description"
 
 For more detail refer to Alembic's documentation
 

@@ -33,17 +33,18 @@ endif # WANT_FT_CR
 EXTRA_DIST = \
     completion/mpirun.sh \
     completion/mpirun.zsh \
-    database/alembic.ini \
     database/models.py \
     database/orcmdb_psql.ini \
     database/orcmdb_psql.sql \
     database/pg_alert_runner.py \
     database/pg_partition_helper.py \
     database/psql_odbc_driver.ini \
-    database/alembic/env.py \
-    database/alembic/README \
-    database/alembic/script.py.mako \
-    database/alembic/versions \
+    database/schema_migration.ini \
+    database/setup_orcmdb.py \
+    database/schema_migration/env.py \
+    database/schema_migration/README \
+    database/schema_migration/script.py.mako \
+    database/schema_migration/versions \
     dist/make_dist_tarball \
     dist/linux/openmpi.spec \
     dist/mofed/compile_debian_mlnx_example.in \

@@ -1,3 +1,6 @@
+#
+# Copyright (c) 2015 Intel Inc. All rights reserved
+#
 """${message}
 
 Revision ID: ${up_revision}

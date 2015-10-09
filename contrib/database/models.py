@@ -1,3 +1,6 @@
+#
+# Copyright (c) 2015 Intel Inc. All rights reserved
+#
 """This module contains a set of classes that used by SQLAlchemy for
 Object Relational Mapper (ORM)
 
@@ -327,7 +330,7 @@ class TestResult(Base):
     name = Column(String(250), nullable=False, unique=True)
 
 
-def setup(alembic_ini="alembic.ini"):
+def setup(alembic_ini="schema_migration.ini"):
     """Setup all SQLAlchemy sessions and connections
 
     :param db_url: The database URL as required by SQLAlchemy

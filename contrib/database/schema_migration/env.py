@@ -1,3 +1,6 @@
+#
+# Copyright (c) 2015 Intel Inc. All rights reserved
+#
 from __future__ import with_statement
 from alembic import context
 from sqlalchemy import create_engine, pool
@@ -31,7 +34,7 @@ tag_url = context.get_tag_argument()
 
 missing_db_url_msg = ("Please set the database connection string in "
                       "either 'PG_DB_URL' environment variable or specify "
-                      "it in the alembic config file under "
+                      "it in the schema_migration config file under "
                       "'sqlalchemy.url'.\nConnection string pattern:\n"
                       "postgresql[+<driver>://[<username>[:<password>]]"
                       "@<server>[:<port>]/<database>\n\n"

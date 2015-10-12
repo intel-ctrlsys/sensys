@@ -527,7 +527,7 @@ static void nodepower_log(opal_buffer_t *sample)
     int sensor_not_avail=0;
     struct timeval tv_curr;
     struct tm *time_info;
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
 
     float node_power_cur;
     char time_str[40];
@@ -608,7 +608,7 @@ static void nodepower_log(opal_buffer_t *sample)
     kv->data.string = strdup("nodepower");
     opal_list_append(vals, &kv->super);
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     if (NULL == sensor_metric) {
         ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
         return;
@@ -776,7 +776,7 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
     while(tot_items > 0) {
         char *inv = NULL;
         char *inv_val = NULL;
-        orcm_metric_value_t *mkv = NULL;
+        orcm_value_t *mkv = NULL;
 
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
@@ -791,7 +791,7 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
             return;
         }
 
-        mkv = OBJ_NEW(orcm_metric_value_t);
+        mkv = OBJ_NEW(orcm_value_t);
         mkv->value.key = inv;
         mkv->value.type = OPAL_STRING;
         mkv->value.data.string = inv_val;

@@ -699,7 +699,7 @@ static int odbc_store_data_sample(mca_db_odbc_module_t *mod,
     orcm_db_item_type_t prev_type = ORCM_DB_ITEM_INTEGER;
     bool change_value_binding = true;
 
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
     opal_value_t *kv;
     int i;
 
@@ -876,7 +876,7 @@ static int odbc_store_data_sample(mca_db_odbc_module_t *mod,
 
     /* Store all the samples passed in the list */
     i = 0;
-    OPAL_LIST_FOREACH(mv, input, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
         /* Ignore the items that have already been processed */
         if (opal_bitmap_is_set_bit(&item_bm, i)) {
             i++;
@@ -1089,7 +1089,7 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
     int rc = ORCM_SUCCESS;
 
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
 
     SQL_TIMESTAMP_STRUCT sampletime;
     orcm_db_item_t item;
@@ -1215,7 +1215,7 @@ static int odbc_record_data_samples(struct orcm_db_base_module_t *imod,
         goto cleanup_and_exit;
     }
 
-    OPAL_LIST_FOREACH(mv, samples, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, samples, orcm_value_t) {
         if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
             rc = ORCM_ERR_BAD_PARAM;
             ERR_MSG_STORE("Key or data item name not provided for value");
@@ -1437,7 +1437,7 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
     int rc = ORCM_SUCCESS;
 
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
     orcm_db_item_t item;
     orcm_db_item_type_t prev_type = ORCM_DB_ITEM_INTEGER;
     bool change_value_binding = true;
@@ -1528,7 +1528,7 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
         goto cleanup_and_exit;
     }
 
-    OPAL_LIST_FOREACH(mv, features, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, features, orcm_value_t) {
         if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
             rc = ORCM_ERR_BAD_PARAM;
             ERR_MSG_UNF("Key or node feature name not provided for value");
@@ -1743,7 +1743,7 @@ static int odbc_store_node_features(mca_db_odbc_module_t *mod,
     bool change_value_binding = true;
 
     opal_value_t *kv;
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
 
     SQLLEN null_len = SQL_NULL_DATA;
     SQLRETURN ret;
@@ -1860,7 +1860,7 @@ static int odbc_store_node_features(mca_db_odbc_module_t *mod,
 
     /* Store all the node features provided in the list */
     i = 0;
-    OPAL_LIST_FOREACH(mv, input, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
         /* Skip the items that have already been processed */
         if (opal_bitmap_is_set_bit(&item_bm, i)) {
             i++;
@@ -2097,7 +2097,7 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
     mca_db_odbc_module_t *mod = (mca_db_odbc_module_t*)imod;
     int rc = ORCM_SUCCESS;
 
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
 
     SQL_TIMESTAMP_STRUCT start_time_sql;
     SQL_TIMESTAMP_STRUCT end_time_sql;
@@ -2374,7 +2374,7 @@ static int odbc_record_diag_test(struct orcm_db_base_module_t *imod,
         goto cleanup_and_exit;
     }
 
-    OPAL_LIST_FOREACH(mv, test_params, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, test_params, orcm_value_t) {
         if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
             rc = ORCM_ERR_BAD_PARAM;
             ERR_MSG_RDT("Key or test parameter name not provided for value");
@@ -2603,7 +2603,7 @@ static int odbc_store_diag_test(mca_db_odbc_module_t *mod,
     bool change_value_binding = true;
 
     opal_value_t *kv;
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
 
     SQLLEN null_len = SQL_NULL_DATA;
     SQLRETURN ret;
@@ -2979,7 +2979,7 @@ static int odbc_store_diag_test(mca_db_odbc_module_t *mod,
     }
 
     i = 0;
-    OPAL_LIST_FOREACH(mv, input, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
         /* Skip the items that have already been processed */
         if (opal_bitmap_is_set_bit(&item_bm, i)) {
             i++;

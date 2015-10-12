@@ -265,7 +265,7 @@ static void ipmi_log(opal_buffer_t *sample)
     opal_list_t *vals;
     opal_value_t *kv;
     struct timeval sampletime;
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
 
     int host_count;
     if (!log_enabled) {
@@ -466,7 +466,7 @@ static void ipmi_log(opal_buffer_t *sample)
             opal_list_append(vals, &kv->super);
 
              /* Add Baseboard manufacture date */
-            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            sensor_metric = OBJ_NEW(orcm_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
                 return;
@@ -480,7 +480,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 "UnPacked NodeName: %s", nodename);
 
              /* Add Baseboard manufacturer name */
-            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            sensor_metric = OBJ_NEW(orcm_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
                 return;
@@ -494,7 +494,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 "UnPacked NodeName: %s", nodename);
 
              /* Add Baseboard product name */
-            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            sensor_metric = OBJ_NEW(orcm_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
                 return;
@@ -508,7 +508,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 "UnPacked NodeName: %s", nodename);
 
             /* Add Baseboard serial number */
-            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            sensor_metric = OBJ_NEW(orcm_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
                 return;
@@ -522,7 +522,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 "UnPacked NodeName: %s", nodename);
 
             /* Add Baseboard part number */
-            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            sensor_metric = OBJ_NEW(orcm_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
                 return;
@@ -603,7 +603,7 @@ static void ipmi_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             return;
@@ -623,7 +623,7 @@ static void ipmi_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             return;
@@ -643,7 +643,7 @@ static void ipmi_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             return;
@@ -663,7 +663,7 @@ static void ipmi_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             return;
@@ -681,7 +681,7 @@ static void ipmi_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             return;
@@ -726,7 +726,7 @@ static void ipmi_log(opal_buffer_t *sample)
                 return;
             }
 
-            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            sensor_metric = OBJ_NEW(orcm_value_t);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
                 return;
@@ -1289,7 +1289,7 @@ static ipmi_inventory_t* found_inventory_host(char * nodename)
 
 static bool compare_ipmi_record (ipmi_inventory_t* newhost , ipmi_inventory_t* oldhost)
 {
-    orcm_metric_value_t *newitem, *olditem;
+    orcm_value_t *newitem, *olditem;
     unsigned int count = 0, record_size = 0;
     /* @VINFIX: Need to come up with a clever way to implement comparision of different
      * ipmi inventory records
@@ -1299,8 +1299,8 @@ static bool compare_ipmi_record (ipmi_inventory_t* newhost , ipmi_inventory_t* o
         opal_output(0,"IPMI Inventory compare failed: Unequal item count;");
         return false;
     }
-    newitem = (orcm_metric_value_t*)opal_list_get_first(newhost->records);
-    olditem = (orcm_metric_value_t*)opal_list_get_first(oldhost->records);
+    newitem = (orcm_value_t*)opal_list_get_first(newhost->records);
+    olditem = (orcm_value_t*)opal_list_get_first(oldhost->records);
 
     for(count = 0; count < record_size ; count++) {
 
@@ -1331,8 +1331,8 @@ static bool compare_ipmi_record (ipmi_inventory_t* newhost , ipmi_inventory_t* o
                 return false;
             }
         }
-        newitem = (orcm_metric_value_t*)opal_list_get_next(newitem);
-        olditem = (orcm_metric_value_t*)opal_list_get_next(olditem);
+        newitem = (orcm_value_t*)opal_list_get_next(newitem);
+        olditem = (orcm_value_t*)opal_list_get_next(olditem);
     }
 
     return true;
@@ -1343,7 +1343,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     unsigned int tot_items;
     int rc, n;
     ipmi_inventory_t *newhost, *oldhost;
-    orcm_metric_value_t *mkv, *mkv_copy;
+    orcm_value_t *mkv, *mkv_copy;
     opal_value_t *kv;
 
     n=1;
@@ -1368,7 +1368,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             return;
         }
 
-        mkv = OBJ_NEW(orcm_metric_value_t);
+        mkv = OBJ_NEW(orcm_value_t);
         mkv->value.key = inv;
 
         if(!strncmp(inv,"bmc_ver",sizeof("bmc_ver")) | !strncmp(inv,"ipmi_ver",sizeof("ipmi_ver")))
@@ -1392,8 +1392,8 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             opal_output(0,"IPMI Compare failed; Notify User; Update List; Update Database");
             OPAL_LIST_RELEASE(oldhost->records);
             oldhost->records=OBJ_NEW(opal_list_t);
-            OPAL_LIST_FOREACH(mkv, newhost->records, orcm_metric_value_t) {
-                mkv_copy = OBJ_NEW(orcm_metric_value_t);
+            OPAL_LIST_FOREACH(mkv, newhost->records, orcm_value_t) {
+                mkv_copy = OBJ_NEW(orcm_value_t);
                 mkv_copy->value.key = strdup(mkv->value.key);
 
                 if(!strncmp(mkv->value.key,"bmc_ver",sizeof("bmc_ver")) | !strncmp(mkv->value.key,"ipmi_ver",sizeof("ipmi_ver")))

@@ -76,7 +76,7 @@ static void print_orcm_metric_t(opal_list_item_t *list_item, char *tbuf);
 
 db_print_types_t types[] = {
     {"opal_value_t", print_opal_value_t},
-    {"orcm_metric_value_t", print_orcm_metric_t},
+    {"orcm_value_t", print_orcm_metric_t},
 };
 
 
@@ -236,10 +236,10 @@ static void print_opal_value_t(opal_list_item_t *list_item, char *tbuf)
 
 static void print_orcm_metric_t(opal_list_item_t *list_item, char *tbuf)
 {
-    orcm_metric_value_t *kv;
+    orcm_value_t *kv;
     int len;
 
-    kv =  (orcm_metric_value_t *)list_item;
+    kv =  (orcm_value_t *)list_item;
     snprintf(tbuf, DB_PRINT_BUF_SIZE, "%s=", kv->value.key);
     len = strlen(tbuf);
 
@@ -393,13 +393,13 @@ static int record_diag_test(struct orcm_db_base_module_t *imod,
 
 static void print_values(opal_list_t *values, char ***cmdargs)
 {
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
     char tbuf[1024];
     int len;
 
     /* cycle through the provided values and print them */
     /* print the data in the following format: <key>=<value>:<units> */
-    OPAL_LIST_FOREACH(mv, values, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, values, orcm_value_t) {
         if (NULL != mv->value.key) {
             snprintf(tbuf, sizeof(tbuf), "%s=", mv->value.key);
             len = strlen(tbuf);

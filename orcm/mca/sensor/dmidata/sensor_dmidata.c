@@ -138,7 +138,7 @@ bool cpufreq_loaded = false;
 
 
 #define addStringRecord(key_str, valueStr) {      \
-    mkv = OBJ_NEW(orcm_metric_value_t);    \
+    mkv = OBJ_NEW(orcm_value_t);    \
     mkv->value.type = OPAL_STRING;         \
     mkv->value.key = (key_str);                  \
     mkv->value.data.string = (valueStr);        \
@@ -276,7 +276,7 @@ static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, d
 {
     hwloc_obj_t obj;
     uint32_t k;
-    orcm_metric_value_t *mkv;
+    orcm_value_t *mkv;
     char *inv_key;
     /* MACHINE Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(topo, HWLOC_OBJ_MACHINE, 0))) {
@@ -298,7 +298,7 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
 {
     hwloc_obj_t obj;
     uint32_t k;
-    orcm_metric_value_t *mkv;
+    orcm_value_t *mkv;
     char *inv_key;
     unsigned int socket_count=1;
     /* SOCKET Level Stats*/
@@ -312,7 +312,7 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
         socket_count++;
         obj=obj->next_cousin;
     }
-    mkv = OBJ_NEW(orcm_metric_value_t);
+    mkv = OBJ_NEW(orcm_value_t);
     mkv->value.type = OPAL_UINT;
     mkv->value.key = strdup("num_sockets");;
     mkv->value.data.uint = socket_count;
@@ -322,7 +322,7 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
     /* @VINFIX: Collect the CPU information of each CPU in each SOCKET */
     for (k=0; k < obj->infos_count; k++) {
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY))) {
-            mkv = OBJ_NEW(orcm_metric_value_t);
+            mkv = OBJ_NEW(orcm_value_t);
             mkv->value.key = strdup(inv_key);
             if(!strncmp(inv_key,"cpu_model_number",sizeof("cpu_model_number")) |
                !strncmp(inv_key,"cpu_family",sizeof("cpu_family"))) {
@@ -343,7 +343,7 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
 static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_inventory_t *newhost)
 {
     uint32_t k;
-    orcm_metric_value_t *mkv;
+    orcm_value_t *mkv;
     char *inv_key;
     char *key_str;
     
@@ -379,7 +379,7 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
 static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_inventory_t *newhost)
 {
     uint32_t k;
-    orcm_metric_value_t *mkv;
+    orcm_value_t *mkv;
     char *inv_key;
     char *key_str;
     if(false == mca_sensor_dmidata_component.ntw_dev) {
@@ -454,7 +454,7 @@ static void extract_pci_inventory(hwloc_topology_t topo, char *hostname, dmidata
 
 static void extract_memory_inventory(hwloc_topology_t topo, char *hostname, dmidata_inventory_t *newhost)
 {
-    orcm_metric_value_t *mkv;
+    orcm_value_t *mkv;
     hwloc_obj_t obj;
     hwloc_obj_t memobj;
     uint32_t mem_count;
@@ -514,7 +514,7 @@ static void extract_memory_inventory(hwloc_topology_t topo, char *hostname, dmid
 }
 static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata_inventory_t *newhost)
 {
-    orcm_metric_value_t *mkv;
+    orcm_value_t *mkv;
     int size = 0, i;
     char **freq_list_token;
 
@@ -528,14 +528,14 @@ static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata
     } else {
         freq_list_token = opal_argv_split(freq_step_list, ' ');
         size = opal_argv_count(freq_list_token)-1;
-        mkv = OBJ_NEW(orcm_metric_value_t);
+        mkv = OBJ_NEW(orcm_value_t);
         asprintf(&mkv->value.key,"total_freq_steps");
         mkv->value.type = OPAL_UINT;
         mkv->value.data.uint = size;
         opal_list_append(newhost->records, (opal_list_item_t *)mkv);
 
         for(i = 0; i < size; i++) {
-            mkv = OBJ_NEW(orcm_metric_value_t);
+            mkv = OBJ_NEW(orcm_value_t);
             asprintf(&mkv->value.key,"freq_step%d",i);
             mkv->value.type = OPAL_UINT;
             mkv->units = strdup("kHz");

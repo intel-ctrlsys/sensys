@@ -435,7 +435,7 @@ int orcm_analytics_base_array_create(opal_value_array_t **analytics_sample_array
 
 
 int orcm_analytics_base_array_append(opal_value_array_t *analytics_sample_array, int index,
-                                     char *plugin_name, char *host_name, orcm_metric_value_t *sample)
+                                     char *plugin_name, char *host_name, orcm_value_t *sample)
 {
     orcm_analytics_value_t analytics_sample;
     int rc;

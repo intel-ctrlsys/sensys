@@ -31,7 +31,7 @@ ORCM_DECLSPEC int orcm_analytics_base_array_create(opal_value_array_t **analytic
                                                    int ncores);
 ORCM_DECLSPEC int orcm_analytics_base_array_append(opal_value_array_t *analytics_sample_array,
                                                    int index, char *plugin_name,
-                                                   char *host_name, orcm_metric_value_t *sample);
+                                                   char *host_name, orcm_value_t *sample);
 ORCM_DECLSPEC void orcm_analytics_base_array_cleanup(opal_value_array_t *analytics_sample_array);
 ORCM_DECLSPEC void orcm_analytics_base_array_send(opal_value_array_t *data);
 

@@ -899,7 +899,7 @@ static void coretemp_log(opal_buffer_t *sample)
     char *core_label;
     opal_value_array_t *analytics_sample_array = NULL;
     int analytics_rc;
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
 
     if (!log_enabled) {
         return;
@@ -964,7 +964,7 @@ static void coretemp_log(opal_buffer_t *sample)
     analytics_rc = orcm_analytics.array_create(&analytics_sample_array, ncores);
 
     for (i=0; i < ncores; i++) {
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1237,7 +1237,7 @@ static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snap
     while(tot_items > 0) {
         char *inv = NULL;
         char *inv_val = NULL;
-        orcm_metric_value_t *mkv = NULL;
+        orcm_value_t *mkv = NULL;
 
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
@@ -1252,7 +1252,7 @@ static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snap
             return;
         }
 
-        mkv = OBJ_NEW(orcm_metric_value_t);
+        mkv = OBJ_NEW(orcm_value_t);
         mkv->value.key = inv;
         mkv->value.type = OPAL_STRING;
         mkv->value.data.string = inv_val;

@@ -436,18 +436,18 @@ mcetype get_mcetype(uint64_t mci_status)
 
 static void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "MCE Error Type 0 - Generic Cache Hierarchy Errors");
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("ErrorLocation");
     sensor_metric->value.type = OPAL_STRING;
     sensor_metric->value.data.string = strdup("GenCacheError");
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Get the cache level */
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("hierarchy_level");
     sensor_metric->value.type = OPAL_STRING;
     switch (mce_reg[MCI_STATUS] & 0x3) {
@@ -461,11 +461,11 @@ static void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 
 static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "MCE Error Type 1 - TLB Errors");
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("error_location");
     sensor_metric->value.type = OPAL_STRING;
     sensor_metric->value.data.string = strdup("tlb_Error");
@@ -475,14 +475,14 @@ static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals)
 
 static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
     bool ar, s, pcc, miscv, uc;
     uint64_t addr_type, lsb_addr;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "MCE Error Type 2 - Memory Controller Errors");
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("error_type");
     sensor_metric->value.type = OPAL_STRING;
     sensor_metric->value.data.string = strdup("mem_ctrl_error");
@@ -497,7 +497,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 
     if (((mce_reg[MCG_CAP] & MCG_TES_P_MASK) == MCG_TES_P_MASK) &&
         ((mce_reg[MCG_CAP] & MCG_CMCI_P_MASK) == MCG_CMCI_P_MASK)) { /* Sec. 15.3.2.2.1 */
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("error_severity");
         sensor_metric->value.type = OPAL_STRING;
         if (uc && pcc) {
@@ -521,7 +521,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
     }
 
     /* Request Type */
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("request_type");
     sensor_metric->value.type = OPAL_STRING;
     switch ((mce_reg[MCI_STATUS] & 0x70) >> 4) {
@@ -536,7 +536,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 
     /* Channel Number */
     if ((mce_reg[MCI_STATUS] & 0xF) != 0xf) {
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("channel_number");
         sensor_metric->value.type = OPAL_UINT;
         sensor_metric->value.data.uint = (mce_reg[MCI_STATUS] & 0xF);
@@ -545,7 +545,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
     if(miscv  && ((mce_reg[MCG_CAP] & MCG_SER_P_MASK) == MCG_SER_P_MASK)) {
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "MISC Register Valid");
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("address_mode");
         sensor_metric->value.type = OPAL_STRING;
         addr_type = ((mce_reg[MCI_MISC] & MCI_ADDR_MODE_MASK) >> 6);
@@ -559,14 +559,14 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
         }
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
         lsb_addr = ((mce_reg[MCI_MISC] & MCI_RECV_ADDR_MASK));
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("recov_addr_lsb");
         sensor_metric->value.type = OPAL_UINT;
         sensor_metric->value.data.uint = lsb_addr;
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
     }
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("corrected_filtering");
     sensor_metric->value.type = OPAL_BOOL;
 
@@ -582,7 +582,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 
 static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
     bool ar, s, pcc, addrv, miscv, uc, val;
     uint64_t cache_health, addr_type, lsb_addr;
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -599,14 +599,14 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
                             "MCi_status VALID");
     }
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("error_type");
     sensor_metric->value.type = OPAL_STRING;
     sensor_metric->value.data.string = strdup("cache_error");
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Get the cache level */
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("hierarchy_level");
     sensor_metric->value.type = OPAL_STRING;
     switch (mce_reg[MCI_STATUS] & 0x3) {
@@ -618,7 +618,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Transaction Type */
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("transaction_type");
     sensor_metric->value.type = OPAL_STRING;
     switch ((mce_reg[MCI_STATUS] & 0xC) >> 2) {
@@ -630,7 +630,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Request Type */
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("request_type");
     sensor_metric->value.type = OPAL_STRING;
     switch ((mce_reg[MCI_STATUS] & 0xF0) >> 4) {
@@ -658,7 +658,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 
     if (((mce_reg[MCG_CAP] & MCG_TES_P_MASK) == MCG_TES_P_MASK) &&
         ((mce_reg[MCG_CAP] & MCG_CMCI_P_MASK) == MCG_CMCI_P_MASK)) { /* Sec. 15.3.2.2.1 */
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("error_severity");
         sensor_metric->value.type = OPAL_STRING;
         if (uc && pcc) {
@@ -684,7 +684,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
             opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                 "Enhanced chache reporting available");
             cache_health = (((mce_reg[MCI_STATUS] & HEALTH_STATUS_MASK ) >> 53) & 0x3);
-            sensor_metric = OBJ_NEW(orcm_metric_value_t);
+            sensor_metric = OBJ_NEW(orcm_value_t);
             sensor_metric->value.key = strdup("cache_health");
             sensor_metric->value.type = OPAL_STRING;
 
@@ -702,7 +702,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     if(miscv && ((mce_reg[MCG_CAP] & MCG_SER_P_MASK) == MCG_SER_P_MASK)) {
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "MISC Register Valid");
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("address_mode");
         sensor_metric->value.type = OPAL_STRING;
         addr_type = ((mce_reg[MCI_MISC] & MCI_ADDR_MODE_MASK) >> 6);
@@ -716,7 +716,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
         }
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
         lsb_addr = ((mce_reg[MCI_MISC] & MCI_RECV_ADDR_MASK));
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("recov_addr_lsb");
         sensor_metric->value.type = OPAL_UINT;
         sensor_metric->value.data.uint = lsb_addr;
@@ -725,14 +725,14 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     if (addrv) {
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "ADDR Register Valid");
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("err_addr");
         sensor_metric->value.type = OPAL_UINT64;
         sensor_metric->value.data.uint64 = mce_reg[MCI_ADDR];
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
     }
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("corrected_filtering");
     sensor_metric->value.type = OPAL_BOOL;
 
@@ -749,7 +749,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 
 static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
     uint64_t pp, t, ii;
     bool ar, s, pcc, miscv, uc;
     uint64_t addr_type, lsb_addr;
@@ -757,14 +757,14 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "MCE Error Type 4 - Bus and Interconnect Errors");
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("error_type");
     sensor_metric->value.type = OPAL_STRING;
     sensor_metric->value.data.string = strdup("bus_ic_error");
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Request Type */
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("request_type");
     sensor_metric->value.type = OPAL_STRING;
     switch ((mce_reg[MCI_STATUS] & 0xF0) >> 4) {
@@ -781,7 +781,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     }
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("participation");
     sensor_metric->value.type = OPAL_STRING;
 
@@ -795,7 +795,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Timeout */
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("T");
     sensor_metric->value.type = OPAL_STRING;
 
@@ -807,7 +807,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Memory/IO */
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("II");
     sensor_metric->value.type = OPAL_STRING;
 
@@ -821,7 +821,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Get the level */
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("hierarchy_level");
     sensor_metric->value.type = OPAL_STRING;
     switch (mce_reg[MCI_STATUS] & 0x3) {
@@ -841,7 +841,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
 
     if (((mce_reg[MCG_CAP] & MCG_TES_P_MASK) == MCG_TES_P_MASK) &&
         ((mce_reg[MCG_CAP] & MCG_CMCI_P_MASK) == MCG_CMCI_P_MASK)) { /* Sec. 15.3.2.2.1 */
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("error_severity");
         sensor_metric->value.type = OPAL_STRING;
         if (uc && pcc) {
@@ -867,7 +867,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     if(miscv && ((mce_reg[MCG_CAP] & MCG_SER_P_MASK) == MCG_SER_P_MASK)) {
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "MISC Register Valid");
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("address_mode");
         sensor_metric->value.type = OPAL_STRING;
         addr_type = ((mce_reg[MCI_MISC] & MCI_ADDR_MODE_MASK) >> 6);
@@ -881,7 +881,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
         }
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
         lsb_addr = ((mce_reg[MCI_MISC] & MCI_RECV_ADDR_MASK));
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         sensor_metric->value.key = strdup("recov_addr_lsb");
         sensor_metric->value.type = OPAL_UINT;
         sensor_metric->value.data.uint = lsb_addr;
@@ -891,11 +891,11 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
 
 static void mcedata_unknown_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "MCE Error Type 5 - Unknown Error");
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     sensor_metric->value.key = strdup("ErrorLocation");
     sensor_metric->value.type = OPAL_STRING;
     sensor_metric->value.data.string = strdup("Unknown Error");
@@ -1160,7 +1160,7 @@ static void mcedata_log(opal_buffer_t *sample)
     opal_value_t *kv;
     uint64_t mce_reg[MCE_REG_COUNT];
     uint32_t cpu, socket;
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
 
     if (!log_enabled) {
         return;
@@ -1226,7 +1226,7 @@ static void mcedata_log(opal_buffer_t *sample)
         }
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                     "Collected %s: %lu", mce_reg_name[i],mce_reg[i]);
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             return;
@@ -1256,7 +1256,7 @@ static void mcedata_log(opal_buffer_t *sample)
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                 "Collected logical CPU's ID %d: Socket ID %d", cpu, socket );
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     if (NULL == sensor_metric) {
         ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
         return;
@@ -1267,7 +1267,7 @@ static void mcedata_log(opal_buffer_t *sample)
     sensor_metric->units = NULL;
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-    sensor_metric = OBJ_NEW(orcm_metric_value_t);
+    sensor_metric = OBJ_NEW(orcm_value_t);
     if (NULL == sensor_metric) {
         ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
         return;
@@ -1399,7 +1399,7 @@ static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     while(tot_items > 0) {
         char *inv = NULL;
         char *inv_val = NULL;
-        orcm_metric_value_t *mkv = NULL;
+        orcm_value_t *mkv = NULL;
 
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
@@ -1414,7 +1414,7 @@ static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
             return;
         }
 
-        mkv = OBJ_NEW(orcm_metric_value_t);
+        mkv = OBJ_NEW(orcm_value_t);
         mkv->value.key = inv;
         mkv->value.type = OPAL_STRING;
         mkv->value.data.string = inv_val;

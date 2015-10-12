@@ -183,8 +183,8 @@ const char *orcm_node_state_to_char(orcm_node_state_t state);
 typedef struct {
     opal_value_t value;
     char *units;
-} orcm_metric_value_t;
-ORCM_DECLSPEC OBJ_CLASS_DECLARATION(orcm_metric_value_t);
+} orcm_value_t;
+ORCM_DECLSPEC OBJ_CLASS_DECLARATION(orcm_value_t);
 
 END_C_DECLS
 

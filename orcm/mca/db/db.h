@@ -169,7 +169,7 @@ typedef int (*orcm_db_base_module_store_new_fn_t)(
 /*
  * Specialized API function for storing data samples from components from the
  * sensor framework.  The samples are provided as a list of type
- * orcm_metric_value_t.
+ * orcm_value_t.
  */
 typedef void (*orcm_db_base_API_record_data_samples_fn_t)(
         int dbhandle,
@@ -189,7 +189,7 @@ typedef int (*orcm_db_base_module_record_data_samples_fn_t)(
 /*
  * Update one or more features for a node as part of the inventory data, for
  * example: number of sockets, cores per socket, RAM, etc.  The features are
- * passed as a list of key-value pairs plus units: orcm_metric_value_t.  The
+ * passed as a list of key-value pairs plus units: orcm_value_t.  The
  * units may be left NULL if not applicable.
  */
 typedef void (*orcm_db_base_API_update_node_features_fn_t)(
@@ -207,7 +207,7 @@ typedef int (*orcm_db_base_module_update_node_features_fn_t)(
  * Store diagnostic test data for a particular diagnostic test that was run.
  * The data that can be stored includes: the test result and an optional list
  * of test parameters. The test parameters are passed as a list of key-value
- * pairs plus units: orcm_metric_value_t. The units may be left NULL if not
+ * pairs plus units: orcm_value_t. The units may be left NULL if not
  * applicable.
  */
 typedef void (*orcm_db_base_API_record_diag_test_fn_t)(

@@ -1151,7 +1151,7 @@ static void sigar_log(opal_buffer_t *sample)
     char *primary_key;
     opal_pstats_t *st;
     struct timeval sampletime;
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
 
     if (!log_enabled) {
         return;
@@ -1220,7 +1220,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1237,7 +1237,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1254,7 +1254,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1271,7 +1271,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1297,7 +1297,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1314,7 +1314,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1331,7 +1331,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1348,7 +1348,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1374,7 +1374,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1391,7 +1391,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1408,7 +1408,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1434,7 +1434,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1451,7 +1451,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1468,7 +1468,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1493,7 +1493,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1510,7 +1510,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1527,7 +1527,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1544,7 +1544,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1561,7 +1561,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1578,7 +1578,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1595,7 +1595,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1612,7 +1612,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1629,7 +1629,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1646,7 +1646,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1663,7 +1663,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1688,7 +1688,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1705,7 +1705,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1722,7 +1722,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1739,7 +1739,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1756,7 +1756,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1773,7 +1773,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1790,7 +1790,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1807,7 +1807,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1824,7 +1824,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1841,7 +1841,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1867,7 +1867,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             return;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1929,7 +1929,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1946,7 +1946,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1963,7 +1963,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1979,7 +1979,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -1996,7 +1996,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2013,7 +2013,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2030,7 +2030,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2099,7 +2099,7 @@ static void sigar_log(opal_buffer_t *sample)
         opal_list_append(vals, &kv->super);
 
 
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2110,7 +2110,7 @@ static void sigar_log(opal_buffer_t *sample)
         sensor_metric->units = NULL;
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2121,7 +2121,7 @@ static void sigar_log(opal_buffer_t *sample)
         sensor_metric->units = NULL;
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2138,7 +2138,7 @@ static void sigar_log(opal_buffer_t *sample)
         sensor_metric->units = NULL;
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2149,7 +2149,7 @@ static void sigar_log(opal_buffer_t *sample)
         sensor_metric->units = NULL;
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2160,7 +2160,7 @@ static void sigar_log(opal_buffer_t *sample)
         sensor_metric->units = NULL;
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2171,7 +2171,7 @@ static void sigar_log(opal_buffer_t *sample)
         sensor_metric->units = NULL;
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2182,7 +2182,7 @@ static void sigar_log(opal_buffer_t *sample)
         sensor_metric->units = strdup("Bytes");
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2193,7 +2193,7 @@ static void sigar_log(opal_buffer_t *sample)
         sensor_metric->units = strdup("Bytes");
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2210,7 +2210,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2227,7 +2227,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2244,7 +2244,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2261,7 +2261,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2278,7 +2278,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
@@ -2579,7 +2579,7 @@ static void sigar_inventory_log(char *hostname, opal_buffer_t *inventory_snapsho
     while(tot_items > 0) {
         char *inv = NULL;
         char *inv_val = NULL;
-        orcm_metric_value_t *mkv = NULL;
+        orcm_value_t *mkv = NULL;
 
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
@@ -2594,7 +2594,7 @@ static void sigar_inventory_log(char *hostname, opal_buffer_t *inventory_snapsho
             return;
         }
 
-        mkv = OBJ_NEW(orcm_metric_value_t);
+        mkv = OBJ_NEW(orcm_value_t);
         mkv->value.key = inv;
         mkv->value.type = OPAL_STRING;
         mkv->value.data.string = inv_val;

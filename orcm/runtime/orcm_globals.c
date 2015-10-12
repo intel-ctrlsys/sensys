@@ -100,19 +100,19 @@ const char *orcm_node_state_to_char(orcm_node_state_t state)
     return s;
 }
 
-static void omv_constructor(orcm_metric_value_t *omvp)
+static void omv_constructor(orcm_value_t *omvp)
 {
     omvp->units = NULL;
 }
 
-static void omv_destructor(orcm_metric_value_t *omvp)
+static void omv_destructor(orcm_value_t *omvp)
 {
     if (NULL != omvp->units) {
         free(omvp->units);
     }
 }
 
-OBJ_CLASS_INSTANCE(orcm_metric_value_t,
+OBJ_CLASS_INSTANCE(orcm_value_t,
                    opal_value_t,
                    omv_constructor,
                    omv_destructor);

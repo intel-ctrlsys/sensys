@@ -359,7 +359,7 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
     int32_t n, ncores;
     opal_list_t *vals;
     opal_value_t *kv;
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
     float fval;
     int i;
 
@@ -408,7 +408,7 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
     vals = OBJ_NEW(opal_list_t);
 
     /* start by marking this as calib data */
-    mv = OBJ_NEW(orcm_metric_value_t);
+    mv = OBJ_NEW(orcm_value_t);
     mv->value.key = strdup("CALIB");
     mv->value.type = OPAL_STRING;
     mv->value.data.string = strdup("PWR");
@@ -440,7 +440,7 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
     opal_list_append(vals, &kv->super);
 
     /* load the number of cpus that were running the virus */
-    mv = OBJ_NEW(orcm_metric_value_t);
+    mv = OBJ_NEW(orcm_value_t);
     mv->value.key = strdup("nactive");
     mv->value.type = OPAL_INT32;
     mv->value.data.int32 = coll->n_active_cores;
@@ -448,7 +448,7 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
     opal_list_append(vals, &mv->value.super);
 
     /* load the frequency */
-    mv = OBJ_NEW(orcm_metric_value_t);
+    mv = OBJ_NEW(orcm_value_t);
     mv->value.key = strdup("nactive");
     mv->value.type = OPAL_FLOAT;
     mv->value.data.fval = coll->freq;
@@ -457,7 +457,7 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
 
     /* load the power reading from each cpu */
     for (i=0; i < ncores; i++) {
-        mv = OBJ_NEW(orcm_metric_value_t);
+        mv = OBJ_NEW(orcm_value_t);
         asprintf(&mv->value.key, "core%d", i);
         mv->value.type = OPAL_FLOAT;
         n=1;

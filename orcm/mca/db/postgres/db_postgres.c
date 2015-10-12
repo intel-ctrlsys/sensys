@@ -536,7 +536,7 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
     size_t i, j;
 
     opal_value_t *kv;
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
 
     PGresult *res = NULL;
 
@@ -629,7 +629,7 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
     /* Build the SQL command with the data provided in the list */
     i = 0;
     j = 0;
-    OPAL_LIST_FOREACH(mv, input, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
         /* Ignore the items that have already been processed */
         if (opal_bitmap_is_set_bit(&item_bm, i)) {
             i++;
@@ -776,7 +776,7 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
     int rc = ORCM_SUCCESS;
 
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
 
     const int NUM_PARAMS = 7;
     const char *params[NUM_PARAMS];
@@ -839,7 +839,7 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
     }
 
     params[0] = hostname;
-    OPAL_LIST_FOREACH(mv, features, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, features, orcm_value_t) {
         if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
             rc = ORCM_ERR_BAD_PARAM;
             ERR_MSG_UNF("Key or node feature name not provided for value");
@@ -954,7 +954,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
     orcm_db_item_t item;
     size_t num_items;
 
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
     opal_value_t *kv;
     int i;
 
@@ -1037,7 +1037,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
     /* Build and execute the SQL commands to store the data in the list */
     sp_params[0] = hostname;
     i = 0;
-    OPAL_LIST_FOREACH(mv, input, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
         /* Ignore the items that have already been processed. */
         if (opal_bitmap_is_set_bit(&item_bm, i)) {
             i++;
@@ -1173,7 +1173,7 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
     char start_time_str[40];
     char end_time_str[40];
 
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
     orcm_db_item_t item;
 
     PGresult *res = NULL;
@@ -1332,7 +1332,7 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
     config_params[1] = diag_type;
     config_params[2] = diag_subtype;
     config_params[3] = start_time_str;
-    OPAL_LIST_FOREACH(mv, test_params, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, test_params, orcm_value_t) {
         if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
             rc = ORCM_ERR_BAD_PARAM;
             ERR_MSG_RDT("Key or node feature name not provided for value");
@@ -1469,7 +1469,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
     char start_time_str[40];
     char end_time_str[40];
 
-    orcm_metric_value_t *mv;
+    orcm_value_t *mv;
     opal_value_t *kv;
     orcm_db_item_t item;
     int i;
@@ -1740,7 +1740,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
     config_params[2] = diag_subtype;
     config_params[3] = start_time_str;
     i = 0;
-    OPAL_LIST_FOREACH(mv, input, orcm_metric_value_t) {
+    OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
         /* Ignore the items that have already been processed */
         if (opal_bitmap_is_set_bit(&item_bm, i)) {
             i++;

@@ -626,7 +626,7 @@ static void componentpower_log(opal_buffer_t *sample)
     float power_cur, cpu_power_temp[MAX_SOCKETS], ddr_power_temp[MAX_SOCKETS];
     char time_str[40];
     struct tm *time_info;
-    orcm_metric_value_t *sensor_metric;
+    orcm_value_t *sensor_metric;
 
     if (!log_enabled) {
         return;
@@ -727,7 +727,7 @@ static void componentpower_log(opal_buffer_t *sample)
 
     for (i=0; i<nsockets; i++){
         snprintf(temp_str, sizeof(temp_str), "cpu%d_power", i);
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             return;
@@ -748,7 +748,7 @@ static void componentpower_log(opal_buffer_t *sample)
 
     for (i=0; i<nsockets; i++){
         snprintf(temp_str, sizeof(temp_str), "ddr%d_power", i);
-        sensor_metric = OBJ_NEW(orcm_metric_value_t);
+        sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             return;
@@ -1013,7 +1013,7 @@ static void componentpower_inventory_log(char *hostname, opal_buffer_t *inventor
     while(tot_items > 0) {
         char *inv = NULL;
         char *inv_val = NULL;
-        orcm_metric_value_t *mkv = NULL;
+        orcm_value_t *mkv = NULL;
 
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
@@ -1028,7 +1028,7 @@ static void componentpower_inventory_log(char *hostname, opal_buffer_t *inventor
             return;
         }
 
-        mkv = OBJ_NEW(orcm_metric_value_t);
+        mkv = OBJ_NEW(orcm_value_t);
         mkv->value.key = inv;
         mkv->value.type = OPAL_STRING;
         mkv->value.data.string = inv_val;

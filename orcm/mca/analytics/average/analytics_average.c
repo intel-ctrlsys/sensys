@@ -28,7 +28,7 @@ static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
 
 /* analyze function for each data of the sample */
-static orcm_metric_value_t* analyze_sample_item(orcm_analytics_value_t *current_value,
+static orcm_value_t* analyze_sample_item(orcm_analytics_value_t *current_value,
                                                 opal_hash_table_t *orcm_mca_analytics_hash_table,
                                                 int index, int wf_id);
 
@@ -43,7 +43,7 @@ static void compute_average(orcm_mca_analytics_average_item_value *previous_item
 static void average_item_value_con(orcm_mca_analytics_average_item_value *value)
 {
     value->num_sample = 0;
-    value->value_average = OBJ_NEW(orcm_metric_value_t);
+    value->value_average = OBJ_NEW(orcm_value_t);
 }
 
 static void average_item_value_des(orcm_mca_analytics_average_item_value *value)
@@ -110,7 +110,7 @@ static void compute_average(orcm_mca_analytics_average_item_value *previous_item
                      current_value->data.value.data.fval) / previous_item->num_sample;
 }
 
-static orcm_metric_value_t* analyze_sample_item(orcm_analytics_value_t *current_value,
+static orcm_value_t* analyze_sample_item(orcm_analytics_value_t *current_value,
                                                 opal_hash_table_t *orcm_mca_analytics_hash_table,
                                                 int index, int wf_id)
 {
@@ -183,7 +183,7 @@ static int analyze(int sd, short args, void *cbdata)
     orcm_analytics_value_t *current_value = NULL;
     opal_value_array_t *analytics_average_array = NULL;
     mca_analytics_average_module_t *mod = NULL;
-    orcm_metric_value_t *average_metric_value = NULL;
+    orcm_value_t *average_metric_value = NULL;
     int index = -1, array_size = -1, rc = -1;
 
     if (NULL == cbdata) {

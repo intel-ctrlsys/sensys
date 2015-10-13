@@ -499,7 +499,7 @@ static void process_commit(int fd, short args, void *cbdata)
         goto callback_and_cleanup;
     }
     if (NULL != hdl->module->commit) {
-        rc = hdl->module->commit((struct orcm_db_base_module_t*)hdl->module);
+        hdl->module->commit((struct orcm_db_base_module_t*)hdl->module);
     } else {
         rc = ORCM_ERR_NOT_IMPLEMENTED;
     }
@@ -550,7 +550,7 @@ static void process_rollback(int fd, short args, void *cbdata)
         goto callback_and_cleanup;
     }
     if (NULL != hdl->module->rollback) {
-        rc = hdl->module->rollback((struct orcm_db_base_module_t*)hdl->module);
+        hdl->module->rollback((struct orcm_db_base_module_t*)hdl->module);
     } else {
         rc = ORCM_ERR_NOT_IMPLEMENTED;
     }

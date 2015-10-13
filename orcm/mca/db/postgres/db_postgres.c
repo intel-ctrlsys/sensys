@@ -1858,8 +1858,8 @@ static int postgres_commit(struct orcm_db_base_module_t *imod)
 
     res = PQexec(mod->conn, "commit");
     if (!status_ok(res)) {
-        ERR_MSG_COMMIT(PQresultErrorMessage(res));
         PQclear(res);
+        ERR_MSG_COMMIT(PQresultErrorMessage(res));
         return ORCM_ERROR;
     }
     PQclear(res);
@@ -1882,8 +1882,8 @@ static int postgres_rollback(struct orcm_db_base_module_t *imod)
 
     res = PQexec(mod->conn, "rollback");
     if (!status_ok(res)) {
-        ERR_MSG_ROLLBACK(PQresultErrorMessage(res));
         PQclear(res);
+        ERR_MSG_ROLLBACK(PQresultErrorMessage(res));
         return ORCM_ERROR;
     }
     PQclear(res);

@@ -235,14 +235,6 @@ static void check_heartbeat(int fd, short dummy, void *arg)
     opal_event_evtimer_add(tmp, &check_time);
 }
 
-static void recv_beats_db_store_cb(int dbhandle, int status, opal_list_t *in,
-                                   opal_list_t *out, void *cbdata) {
-	if (ORCM_SUCCESS != status) {
-		ORTE_ERROR_LOG(status);
-		orcm_db.rollback(dbhandle, NULL, NULL);
-	}
-}
-
 static void recv_beats(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
                        orte_rml_tag_t tag, void *cbdata)
@@ -300,7 +292,7 @@ static void recv_beats(int status, orte_process_name_t* sender,
 
     /* At the end of completion of all logs commit the data to db */
     if(orcm_sensor_base.enable_group_commits  && (true == orcm_sensor_base.dbhandle_acquired )) {
-        orcm_db.commit(orcm_sensor_base.dbhandle, recv_beats_db_store_cb, NULL);
+        orcm_db.commit(orcm_sensor_base.dbhandle, NULL, NULL);
     }
 
     if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {

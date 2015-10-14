@@ -36,7 +36,7 @@ liborcm_la_LIBADD = \
 	$(MCA_orcm_FRAMEWORK_LIBS) \
 	$(ORTE_TOP_BUILDDIR)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
 liborcm_la_DEPENDENCIES = $(lib@ORTE_LIB_PREFIX@open_rte_la_LIBADD)
-liborcm_la_LDFLAGS = \
+liborcm_la_LDFLAGS = -lstdc++ \
         -version-info $(liborcm_so_version) \
         $(ORCM_LIBORCM_EXTRA_LDFLAGS)
 

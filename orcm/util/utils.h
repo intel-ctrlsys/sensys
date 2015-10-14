@@ -14,6 +14,7 @@
 #include "orcm/constants.h"
 
 #include "opal/dss/dss_types.h"
+#include "opal/class/opal_bitmap.h"
 
 #include "orcm/mca/cfgi/cfgi_types.h"
 
@@ -38,4 +39,13 @@ ORCM_DECLSPEC void orcm_util_print_xml(orcm_cfgi_xml_parser_t *x,
 
 ORCM_DECLSPEC opal_value_t* orcm_util_load_opal_value(char *key, void *data,
                                                       opal_data_type_t type);
+
+ORCM_DECLSPEC orcm_value_t* orcm_util_load_orcm_value(char *key, void *data,
+                                               opal_data_type_t type, char *units);
+
+ORCM_DECLSPEC opal_value_t* orcm_util_copy_opal_value(opal_value_t* src);
+ORCM_DECLSPEC orcm_value_t* orcm_util_copy_orcm_value(orcm_value_t* src);
+
+ORCM_DECLSPEC int find_items(const char *keys[], int num_keys, opal_list_t *list,
+                             opal_value_t *items[], opal_bitmap_t *map);
 #endif

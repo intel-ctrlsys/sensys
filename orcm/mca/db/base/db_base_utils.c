@@ -113,38 +113,6 @@ int opal_value_to_orcm_db_item(const opal_value_t *kv,
     return ORCM_SUCCESS;
 }
 
-int find_items(const char *keys[], int num_keys, opal_list_t *list,
-               opal_value_t *items[], opal_bitmap_t *map)
-{
-    opal_value_t *kv;
-    int i = 0;
-    int j = 0;
-    int num_found = 0;
-    bool found[num_keys];
-    for(j=0;j<num_keys;j++)
-    {
-	found[j]= false;
-    }
-    OPAL_LIST_FOREACH(kv, list, opal_value_t) {
-        for (j = 0; j < num_keys; j++) {
-            if (!found[j] && !strcmp(kv->key, keys[j])) {
-                num_found++;
-                found[j] = true;
-                items[j] = kv;
-                opal_bitmap_set_bit(map, i);
-
-                break;
-            }
-        }
-        if (num_found >= num_keys) {
-            break;
-        }
-        i++;
-    }
-
-    return num_found;
-}
-
 char* timeval_to_iso8601(struct timeval* tv)
 { /* ISO8601: 'YYYY-MM-DDThh:mm:ss.nnn' */
     char* new_str = NULL;
@@ -375,4 +343,3 @@ void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
 {
     strftime(tbuf, size, "%F %T", time);
 }
-

@@ -927,7 +927,6 @@ static void freq_log(opal_buffer_t *sample)
     char *hostname=NULL;
     struct timeval sampletime;
     int rc;
-    int analytics_rc;
     int32_t n, ncores;
     opal_list_t *vals, *pstate_vals=NULL;
     opal_value_t *kv;
@@ -935,7 +934,6 @@ static void freq_log(opal_buffer_t *sample)
     int i;
     unsigned int pstate_count = 0, pstate_value = 0;
     char *pstate_name;
-    opal_value_array_t *analytics_sample_array = NULL;
     orcm_value_t *sensor_metric;
 
     if (!log_enabled) {
@@ -986,9 +984,6 @@ static void freq_log(opal_buffer_t *sample)
     kv->data.string = strdup(hostname);
     opal_list_append(vals, &kv->super);
 
-    /*If analytics_rc returns error, rest of the analytics API's will not be called */
-    analytics_rc = orcm_analytics.array_create(&analytics_sample_array, ncores);
-
     kv = OBJ_NEW(opal_value_t);
     if (NULL == kv) {
         ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
@@ -1022,23 +1017,16 @@ static void freq_log(opal_buffer_t *sample)
         sensor_metric->value.data.fval = fval;
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-        if (ORCM_SUCCESS == analytics_rc) {
-            analytics_rc = orcm_analytics.array_append(analytics_sample_array, i,
-                                                       "freq", hostname, sensor_metric);
-        }
     }
 
     /* store it */
-    if (0 <= orcm_sensor_base.dbhandle) {
-        orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
-    } else {
-        OPAL_LIST_RELEASE(vals);
-    }
+//    if (0 <= orcm_sensor_base.dbhandle) {
+//        orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
+//    } else {
+//        OPAL_LIST_RELEASE(vals);
+//    }
 
-    /*send the sample to analytics after it is processed by database */
-    if (ORCM_SUCCESS == analytics_rc) {
-        orcm_analytics.array_send(analytics_sample_array);
-    }
+    orcm_analytics.send_data(vals);
 
     /* unpack the pstate entry count */
     n=1;
@@ -1121,18 +1109,16 @@ static void freq_log(opal_buffer_t *sample)
     if (pstate_vals != NULL)
     {
         /* store it */
-        if (0 <= orcm_sensor_base.dbhandle) {
-            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, pstate_vals, NULL, mycleanup, NULL);
-        } else {
-            OPAL_LIST_RELEASE(pstate_vals);
-        }
+//        if (0 <= orcm_sensor_base.dbhandle) {
+//            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, pstate_vals, NULL, mycleanup, NULL);
+//        } else {
+//            OPAL_LIST_RELEASE(pstate_vals);
+//        }
+
+        orcm_analytics.send_data(pstate_vals);
     }
 
  cleanup:
-    if (NULL != analytics_sample_array) {
-        orcm_analytics.array_cleanup(analytics_sample_array);
-    }
-
     if (NULL != hostname) {
         free(hostname);
     }

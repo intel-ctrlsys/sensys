@@ -57,23 +57,10 @@ typedef struct {
     opal_event_t ev;
     orcm_workflow_step_t *wf_step;
     orcm_workflow_t    *wf;
-    opal_value_array_t *data;
+    opal_list_t *data;
     orcm_analytics_base_module_t *imod;
 } orcm_workflow_caddy_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_caddy_t);
-
-/* define a orcm_analytics_value_t object */
-typedef struct {
-    opal_object_t  super;
-    orcm_value_t data;  /*data*/
-    char           *comma_sep_plugin_list; /*comma separated list of plugins that contributed to this data*/
-    char           *sensor_name; /*name of the actual sensor*/
-    char           *node_regex; /*regex of all nodes this data pertains to*/
-    struct timeval start_time; /*begining of time window for this data*/
-    struct timeval end_time; /*end of time window for this data*/
-    bool           measured; /*is this data measured or calculated*/
-} orcm_analytics_value_t;
-OBJ_CLASS_DECLARATION(orcm_analytics_value_t);
 
 /* define a few commands */
 typedef uint8_t orcm_analytics_cmd_flag_t;

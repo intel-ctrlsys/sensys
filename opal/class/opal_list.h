@@ -184,8 +184,8 @@ typedef struct opal_list_t opal_list_t;
             while (NULL != (it = opal_list_remove_first(list))) {       \
                 OBJ_RELEASE(it);                                        \
             }                                                           \
-            OBJ_RELEASE(list);                                          \
         }                                                               \
+        OBJ_RELEASE(list);                                              \
     } while(0);
 
 

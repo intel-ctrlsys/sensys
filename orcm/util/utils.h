@@ -46,6 +46,6 @@ ORCM_DECLSPEC orcm_value_t* orcm_util_load_orcm_value(char *key, void *data,
 ORCM_DECLSPEC opal_value_t* orcm_util_copy_opal_value(opal_value_t* src);
 ORCM_DECLSPEC orcm_value_t* orcm_util_copy_orcm_value(orcm_value_t* src);
 
-ORCM_DECLSPEC int find_items(const char *keys[], int num_keys, opal_list_t *list,
+ORCM_DECLSPEC int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
                              opal_value_t *items[], opal_bitmap_t *map);
 #endif

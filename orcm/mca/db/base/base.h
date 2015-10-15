@@ -178,7 +178,7 @@ ORCM_DECLSPEC void orcm_db_base_remove_data(int dbhandle,
 
 ORCM_DECLSPEC int opal_value_to_orcm_db_item(const opal_value_t *kv,
                                              orcm_db_item_t *item);
-ORCM_DECLSPEC int find_items(const char *keys[],
+ORCM_DECLSPEC int orcm_util_find_items(const char *keys[],
                              int num_keys,
                              opal_list_t *list,
                              opal_value_t *items[],

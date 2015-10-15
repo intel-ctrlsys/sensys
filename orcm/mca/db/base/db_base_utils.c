@@ -17,7 +17,7 @@ char* timeval_to_iso8601(struct timeval* tv);
 bool is_supported_opal_int_type(opal_data_type_t type);
 int opal_value_to_orcm_db_item(const opal_value_t *kv,
                                orcm_db_item_t *item);
-int find_items(const char *keys[], int num_keys, opal_list_t *list,
+int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
                opal_value_t *items[], opal_bitmap_t *map);
 bool tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
                           size_t size);

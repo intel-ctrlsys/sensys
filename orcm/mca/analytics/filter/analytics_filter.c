@@ -139,7 +139,7 @@ static int analytics_filter_data(opal_list_t *filter_list,
     num_items = opal_list_get_size(sample_data_list);
     OBJ_CONSTRUCT(&item_bm, opal_bitmap_t);
     opal_bitmap_init(&item_bm, (int)num_items);
-    find_items(params, NUM_PARAMS, sample_data_list, param_items, &item_bm);
+    orcm_util_find_items(params, NUM_PARAMS, sample_data_list, param_items, &item_bm);
 
     /*Find the array length of user inputs*/
     nodeid_array_length = opal_argv_count(workflow_value->nodeid);

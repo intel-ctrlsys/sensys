@@ -208,12 +208,11 @@ opal_value_t* orcm_util_load_opal_value(char *key, void *data, opal_data_type_t 
 }
 
 
-static int orcm_util_copy_opal_value_data(opal_value_t*dest, opal_value_t*src)
+static int orcm_util_copy_opal_value_data(opal_value_t *dest, opal_value_t *src)
 {
 
     if (NULL == dest && OPAL_STRING != src->type && OPAL_BYTE_OBJECT != src->type) {
         /* just set the fields to zero */
-        memset(&dest->data, 0, sizeof(dest->data));
         return ORCM_SUCCESS;
     }
 
@@ -377,7 +376,7 @@ orcm_value_t* orcm_util_load_orcm_value(char *key, void *data, opal_data_type_t 
 
 
 
-int find_items(const char *keys[], int num_keys, opal_list_t *list,
+int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
                opal_value_t *items[], opal_bitmap_t *map)
 {
     opal_value_t *kv;
@@ -385,9 +384,10 @@ int find_items(const char *keys[], int num_keys, opal_list_t *list,
     int j = 0;
     int num_found = 0;
     bool found[num_keys];
-    for(j=0;j<num_keys;j++)
+
+    for (j=0;j<num_keys;j++)
     {
-    found[j]= false;
+        found[j]= false;
     }
     OPAL_LIST_FOREACH(kv, list, opal_value_t) {
         for (j = 0; j < num_keys; j++) {

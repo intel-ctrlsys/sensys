@@ -79,7 +79,7 @@ class DataSample(Base):
     time_stamp = Column(DateTime, primary_key=True, nullable=False)
     value_int = Column(BigInteger)
     value_real = Column(Float(53))
-    value_str = Column(String(50))
+    value_str = Column(String(500))
     units = Column(String(50))
 
 
@@ -90,7 +90,7 @@ data_sample_raw_table = Table('data_sample_raw',
       Column('time_stamp', DateTime, nullable=False),
       Column('value_int', BigInteger),
       Column('value_real', Float(53)),
-      Column('value_str', String(50)),
+      Column('value_str', String(500)),
       Column('units', String(50)),
       Column('data_type_id', Integer, nullable=False),
       CheckConstraint('(value_int  IS NOT NULL OR '

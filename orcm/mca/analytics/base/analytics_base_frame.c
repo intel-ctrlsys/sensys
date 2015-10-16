@@ -32,6 +32,7 @@
 
 #include "orcm/mca/analytics/base/static-components.h"
 
+static int orcm_analytics_base_register(mca_base_register_flag_t flags);
 static void orcm_analytics_stop_wokflow_step(orcm_workflow_step_t *wf_step);
 static void orcm_analytics_stop_wokflow_thread(orcm_workflow_t *wf);
 static int orcm_analytics_base_close(void);
@@ -41,12 +42,22 @@ static int orcm_analytics_base_open(mca_base_open_flag_t flags);
  * Global variables
  */
 orcm_analytics_API_module_t orcm_analytics = {
-    orcm_analytics_base_array_create,
-    orcm_analytics_base_array_append,
-    orcm_analytics_base_array_cleanup,
-    orcm_analytics_base_array_send
+        orcm_analytics_base_send_data
 };
-orcm_analytics_base_wf_t orcm_analytics_base_wf;
+orcm_analytics_base_t orcm_analytics_base;
+
+static int orcm_analytics_base_register(mca_base_register_flag_t flags)
+{
+    orcm_analytics_base.set_db_logging = false;
+    (void)mca_base_var_register("orcm", "analytics", "base", "set_db_logging",
+                                "Enable DB logging",
+                                MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                OPAL_INFO_LVL_9,
+                                MCA_BASE_VAR_SCOPE_READONLY,
+                                &orcm_analytics_base.set_db_logging);
+    return ORCM_SUCCESS;
+
+}
 
 static void orcm_analytics_stop_wokflow_step(orcm_workflow_step_t *wf_step)
 {
@@ -84,13 +95,13 @@ static int orcm_analytics_base_close(void)
 {
     orcm_workflow_t *wf = NULL;
 
-    OPAL_LIST_FOREACH (wf, &orcm_analytics_base_wf.workflows, orcm_workflow_t) {
+    OPAL_LIST_FOREACH (wf, &orcm_analytics_base.workflows, orcm_workflow_t) {
         orcm_analytics_stop_wokflow(wf);
     }
     orcm_analytics_base_comm_stop();
 
     /* Destroy the base objects */
-    OPAL_LIST_DESTRUCT(&orcm_analytics_base_wf.workflows);
+    OPAL_LIST_DESTRUCT(&orcm_analytics_base.workflows);
 
     /* close the database handle */
     orcm_analytics_base_close_db();
@@ -108,7 +119,7 @@ static int orcm_analytics_base_open(mca_base_open_flag_t flags)
     int rc;
 
     /* setup the base objects */
-    OBJ_CONSTRUCT(&orcm_analytics_base_wf.workflows, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_analytics_base.workflows, opal_list_t);
 
     rc = mca_base_framework_components_open(&orcm_analytics_base_framework, flags);
     if (OPAL_SUCCESS != rc) {
@@ -127,7 +138,7 @@ static int orcm_analytics_base_open(mca_base_open_flag_t flags)
     return rc;
 }
 
-MCA_BASE_FRAMEWORK_DECLARE(orcm, analytics, NULL, NULL,
+MCA_BASE_FRAMEWORK_DECLARE(orcm, analytics, "ORCM Analytics", orcm_analytics_base_register,
                            orcm_analytics_base_open, orcm_analytics_base_close,
                            mca_analytics_base_static_components, 0);
 
@@ -185,27 +196,8 @@ static void wkcaddy_des(orcm_workflow_caddy_t *p)
     }
     OBJ_RELEASE(p->wf);
     OBJ_RELEASE(p->wf_step);
-    OBJ_RELEASE(p->data);
+    OPAL_LIST_RELEASE(p->data);
 }
 OBJ_CLASS_INSTANCE(orcm_workflow_caddy_t,
                    opal_object_t,
                    wkcaddy_con, wkcaddy_des);
-
-static void value_con(orcm_analytics_value_t *p)
-{
-    p->comma_sep_plugin_list = NULL;
-    p->sensor_name = NULL;
-    p->node_regex = NULL;
-}
-static void value_des(orcm_analytics_value_t *p)
-{
-    if (NULL == p) {
-        return;
-    }
-    free(p->comma_sep_plugin_list);
-    free(p->sensor_name);
-    free(p->node_regex);
-}
-OBJ_CLASS_INSTANCE(orcm_analytics_value_t,
-                   opal_object_t,
-                   value_con, value_des);

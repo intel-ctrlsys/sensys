@@ -550,7 +550,7 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
     opal_bitmap_init(&item_bm, (int)num_items);
 
     /* Get the main parameters form the list */
-    find_items(params, NUM_PARAMS, input, param_items, &item_bm);
+    orcm_util_find_items(params, NUM_PARAMS, input, param_items, &item_bm);
 
     /* Check the parameters */
     if (NULL == param_items[0]) {
@@ -972,7 +972,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
     opal_bitmap_init(&item_bm, (int)num_items);
 
     /* Get the main parameters from the list */
-    find_items(params, NUM_PARAMS, input, param_items, &item_bm);
+    orcm_util_find_items(params, NUM_PARAMS, input, param_items, &item_bm);
 
     /* Check parameters */
     if (NULL == param_items[0]) {
@@ -1483,7 +1483,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
     opal_bitmap_init(&item_bm, (int)num_items);
 
     /* Get the main parameters from the list */
-    num_params_found = find_items(params, NUM_PARAMS, input, param_items,
+    num_params_found = orcm_util_find_items(params, NUM_PARAMS, input, param_items,
                                   &item_bm);
 
     /* Check the parameters */

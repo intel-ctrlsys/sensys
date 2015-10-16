@@ -26,14 +26,8 @@ ORCM_DECLSPEC int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t 
 ORCM_DECLSPEC void orcm_analytics_stop_wokflow(orcm_workflow_t *wf);
 ORCM_DECLSPEC void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
                                                                         orcm_workflow_step_t *wf_step,
-                                                                        opal_value_array_t *data);
-ORCM_DECLSPEC int orcm_analytics_base_array_create(opal_value_array_t **analytics_sample_array,
-                                                   int ncores);
-ORCM_DECLSPEC int orcm_analytics_base_array_append(opal_value_array_t *analytics_sample_array,
-                                                   int index, char *plugin_name,
-                                                   char *host_name, orcm_value_t *sample);
-ORCM_DECLSPEC void orcm_analytics_base_array_cleanup(opal_value_array_t *analytics_sample_array);
-ORCM_DECLSPEC void orcm_analytics_base_array_send(opal_value_array_t *data);
+                                                                        opal_list_t *data);
+ORCM_DECLSPEC void orcm_analytics_base_send_data(opal_list_t *data);
 
 void orcm_analytics_base_db_open_cb(int handle, int status, opal_list_t *props,
                                     opal_list_t *ret, void *cbdata);
@@ -44,10 +38,11 @@ void orcm_analytics_base_open_db(void);
 /* close a database handle */
 void orcm_analytics_base_close_db(void);
 
+/*function to verify whether workflow step has attribute to store in db or not*/
+bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step);
+
 /* function to store the data results after each workflow step when required */
-int orcm_analytics_base_store(orcm_workflow_t *wf,
-                              orcm_workflow_step_t *wf_step,
-                              opal_value_array_t *data_results);
+int orcm_analytics_base_store(opal_list_t *data_results);
 
 #define ANALYTICS_COUNT_DEFAULT 1
 #define MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP 2
@@ -55,8 +50,9 @@ int orcm_analytics_base_store(orcm_workflow_t *wf,
 typedef struct {
     /* list of active workflows */
     opal_list_t workflows;
-} orcm_analytics_base_wf_t;
-ORCM_DECLSPEC extern orcm_analytics_base_wf_t orcm_analytics_base_wf;
+    bool set_db_logging;
+} orcm_analytics_base_t;
+ORCM_DECLSPEC extern orcm_analytics_base_t orcm_analytics_base;
 
 typedef struct {
     int db_handle;
@@ -75,7 +71,7 @@ ORCM_DECLSPEC extern orcm_analytics_base_db_t orcm_analytics_base_db;
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
                                 (wf)->workflow_id,                                 \
                                 __FILE__, __LINE__);                               \
-            OBJ_RELEASE(data);                                                     \
+            OPAL_LIST_RELEASE(data);                                                     \
             break;                                                                 \
         }                                                                          \
         orcm_workflow_step_t *wf_step_item = (orcm_workflow_step_t *)list_item;    \
@@ -85,7 +81,7 @@ ORCM_DECLSPEC extern orcm_analytics_base_db_t orcm_analytics_base_db;
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
                                 (wf)->workflow_id,                                 \
                                 __FILE__, __LINE__);                               \
-            OBJ_RELEASE(data);                                                     \
+            OPAL_LIST_RELEASE(data);                                                     \
         } else {                                                                   \
             opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
                                 "%s ACTIVATE NEXT WORKFLOW %d MODULE %s AT %s:%d", \

@@ -897,8 +897,6 @@ static void coretemp_log(opal_buffer_t *sample)
     float fval;
     int i;
     char *core_label;
-    opal_value_array_t *analytics_sample_array = NULL;
-    int analytics_rc;
     orcm_value_t *sensor_metric;
 
     if (!log_enabled) {
@@ -960,9 +958,6 @@ static void coretemp_log(opal_buffer_t *sample)
     kv->data.string = strdup("coretemp");
     opal_list_append(vals, &kv->super);
 
-    /*If analytics_rc returns error, rest of the analytics API's will not be called */
-    analytics_rc = orcm_analytics.array_create(&analytics_sample_array, ncores);
-
     for (i=0; i < ncores; i++) {
         sensor_metric = OBJ_NEW(orcm_value_t);
         if (NULL == sensor_metric) {
@@ -989,28 +984,19 @@ static void coretemp_log(opal_buffer_t *sample)
 
         sensor_metric->value.data.fval = fval;
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-        if (ORCM_SUCCESS == analytics_rc) {
-            analytics_rc = orcm_analytics.array_append(analytics_sample_array, i, "coretemp",
-                                                       hostname, sensor_metric);
-        }
     }
 
-    /* store it */
+    /* store it
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
     } else {
         OPAL_LIST_RELEASE(vals);
     }
+*/
+    orcm_analytics.send_data(vals);
 
-    /*send the sample to analytics after it is processed by database */
-    if (ORCM_SUCCESS == analytics_rc) {
-        orcm_analytics.array_send(analytics_sample_array);
-    }
 
  cleanup:
-    if (NULL != analytics_sample_array) {
-        orcm_analytics.array_cleanup(analytics_sample_array);
-    }
     if (NULL != hostname) {
         free(hostname);
     }

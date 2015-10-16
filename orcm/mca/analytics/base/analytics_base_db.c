@@ -9,10 +9,12 @@
 
 #include "orcm/mca/analytics/base/analytics_private.h"
 #include "orcm/mca/db/db.h"
+#include "orcm/util/utils.h"
 
 
 static void orcm_analytics_db_cleanup(int db_handle, int status, opal_list_t *list,
                                       opal_list_t *ret, void *cbdata);
+static opal_list_t* orcm_analytics_base_copy_analytics_list(orcm_analytics_value_t *analytics_data);
 
 orcm_analytics_base_db_t orcm_analytics_base_db = {-1, false};
 
@@ -96,4 +98,54 @@ int orcm_analytics_base_store(opal_list_t *data_results)
 
     /* Database connection is not allowed */
     return ORCM_ERR_NO_CONNECTION_ALLOWED;
+}
+
+static opal_list_t* orcm_analytics_base_copy_analytics_list(orcm_analytics_value_t *analytics_data)
+{
+    opal_list_t *data_results;
+    orcm_value_t *current_value = NULL;
+    orcm_value_t *analytics_orcm_value = NULL;
+
+    data_results = OBJ_NEW(opal_list_t);
+    if (NULL == data_results) {
+        return NULL;
+    }
+
+    OPAL_LIST_FOREACH(current_value, analytics_data->key, orcm_value_t) {
+        analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
+        if (NULL == analytics_orcm_value) {
+            return NULL;
+        }
+        opal_list_append(data_results, (opal_list_item_t *)analytics_orcm_value);
+    }
+
+    OPAL_LIST_FOREACH(current_value, analytics_data->non_compute_data, orcm_value_t) {
+        analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
+        if (NULL == analytics_orcm_value) {
+            return NULL;
+        }
+        opal_list_append(data_results, (opal_list_item_t *)analytics_orcm_value);
+    }
+
+    OPAL_LIST_FOREACH(current_value, analytics_data->compute_data, orcm_value_t) {
+        analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
+        if (NULL == analytics_orcm_value) {
+            return NULL;
+        }
+        opal_list_append(data_results, (opal_list_item_t *)analytics_orcm_value);
+    }
+    return data_results;
+}
+
+int orcm_analytics_base_store_analytics(orcm_analytics_value_t *analytics_data)
+{
+    opal_list_t *data_results;
+
+    if (NULL == analytics_data) {
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    data_results = orcm_analytics_base_copy_analytics_list(analytics_data);
+
+    return orcm_analytics_base_store(data_results);
 }

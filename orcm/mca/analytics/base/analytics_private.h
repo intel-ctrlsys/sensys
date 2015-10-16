@@ -26,16 +26,13 @@ ORCM_DECLSPEC int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t 
 ORCM_DECLSPEC void orcm_analytics_stop_wokflow(orcm_workflow_t *wf);
 ORCM_DECLSPEC void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
                                                                         orcm_workflow_step_t *wf_step,
-                                                                        opal_list_t *data);
-ORCM_DECLSPEC void orcm_analytics_base_send_data(opal_list_t *data);
+                                                                        uint64_t hash_key,
+                                                                        orcm_analytics_value_t *data);
+ORCM_DECLSPEC void orcm_analytics_base_send_data(orcm_analytics_value_t *data);
 
 void orcm_analytics_base_db_open_cb(int handle, int status, opal_list_t *props,
                                     opal_list_t *ret, void *cbdata);
-
-/* open a database handle */
 void orcm_analytics_base_open_db(void);
-
-/* close a database handle */
 void orcm_analytics_base_close_db(void);
 
 /*function to verify whether workflow step has attribute to store in db or not*/
@@ -43,6 +40,9 @@ bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step);
 
 /* function to store the data results after each workflow step when required */
 int orcm_analytics_base_store(opal_list_t *data_results);
+
+/* function to store data of type orcm_analytics_value_t*/
+ORCM_DECLSPEC int orcm_analytics_base_store_analytics(orcm_analytics_value_t *analytics_data);
 
 #define ANALYTICS_COUNT_DEFAULT 1
 #define MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP 2
@@ -62,7 +62,7 @@ typedef struct {
 ORCM_DECLSPEC extern orcm_analytics_base_db_t orcm_analytics_base_db;
 
 /* executes the next workflow step in a workflow */
-#define ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf, prev_wf_step, data)                   \
+#define ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf, prev_wf_step, hash_key, data)         \
     do {                                                                           \
         opal_list_item_t *list_item = opal_list_get_next(prev_wf_step);            \
         if (NULL == list_item){                                                    \
@@ -71,7 +71,7 @@ ORCM_DECLSPEC extern orcm_analytics_base_db_t orcm_analytics_base_db;
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
                                 (wf)->workflow_id,                                 \
                                 __FILE__, __LINE__);                               \
-            OPAL_LIST_RELEASE(data);                                                     \
+            OBJ_RELEASE(data);                                                     \
             break;                                                                 \
         }                                                                          \
         orcm_workflow_step_t *wf_step_item = (orcm_workflow_step_t *)list_item;    \
@@ -81,7 +81,7 @@ ORCM_DECLSPEC extern orcm_analytics_base_db_t orcm_analytics_base_db;
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
                                 (wf)->workflow_id,                                 \
                                 __FILE__, __LINE__);                               \
-            OPAL_LIST_RELEASE(data);                                                     \
+            OBJ_RELEASE(data);                                                     \
         } else {                                                                   \
             opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
                                 "%s ACTIVATE NEXT WORKFLOW %d MODULE %s AT %s:%d", \
@@ -89,8 +89,9 @@ ORCM_DECLSPEC extern orcm_analytics_base_db_t orcm_analytics_base_db;
                                 (wf)->workflow_id, wf_step_item->analytic,         \
                                 __FILE__, __LINE__);                               \
             orcm_analytics_base_activate_analytics_workflow_step((wf),             \
-                                                            wf_step_item,          \
-                                                            (data));               \
+                                                                 wf_step_item,     \
+                                                                 hash_key,         \
+                                                                 (data));          \
         }                                                                          \
     }while(0);
 END_C_DECLS

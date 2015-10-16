@@ -182,11 +182,38 @@ OBJ_CLASS_INSTANCE(orcm_workflow_t,
                    opal_list_item_t,
                    wk_con, wk_des);
 
+static void analytics_value_con(orcm_analytics_value_t *p)
+{
+    p->key = NULL;
+    p->non_compute_data = NULL;
+    p->compute_data = NULL;
+}
+static void analytics_value_des(orcm_analytics_value_t *p)
+{
+    if (NULL == p) {
+        return;
+    }
+
+    if ( NULL != p->key) {
+        OPAL_LIST_RELEASE(p->key);
+    }
+    if ( NULL != p->non_compute_data) {
+        OPAL_LIST_RELEASE(p->non_compute_data);
+    }
+    if ( NULL != p->non_compute_data) {
+        OPAL_LIST_RELEASE(p->compute_data);
+    }
+}
+OBJ_CLASS_INSTANCE(orcm_analytics_value_t,
+                   opal_object_t,
+                   analytics_value_con, analytics_value_des);
+
 static void wkcaddy_con(orcm_workflow_caddy_t *p)
 {
     p->wf = NULL;
     p->wf_step = NULL;
     p->data = NULL;
+    p->analytics_value = NULL;
     p->imod = NULL;
 }
 static void wkcaddy_des(orcm_workflow_caddy_t *p)
@@ -197,6 +224,7 @@ static void wkcaddy_des(orcm_workflow_caddy_t *p)
     OBJ_RELEASE(p->wf);
     OBJ_RELEASE(p->wf_step);
     OPAL_LIST_RELEASE(p->data);
+    OBJ_RELEASE(p->analytics_value);
 }
 OBJ_CLASS_INSTANCE(orcm_workflow_caddy_t,
                    opal_object_t,

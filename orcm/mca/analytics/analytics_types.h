@@ -51,6 +51,14 @@ typedef struct {
 } orcm_workflow_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_t);
 
+typedef struct {
+    opal_object_t super;
+    opal_list_t *key;
+    opal_list_t *non_compute_data;
+    opal_list_t *compute_data;
+} orcm_analytics_value_t;
+OBJ_CLASS_DECLARATION(orcm_analytics_value_t);
+
 /* define a workflow caddy object */
 typedef struct {
     opal_object_t super;
@@ -58,6 +66,8 @@ typedef struct {
     orcm_workflow_step_t *wf_step;
     orcm_workflow_t    *wf;
     opal_list_t *data;
+    uint64_t hash_key;
+    orcm_analytics_value_t *analytics_value;
     orcm_analytics_base_module_t *imod;
 } orcm_workflow_caddy_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_caddy_t);

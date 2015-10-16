@@ -38,7 +38,8 @@ static void orcm_analytics_base_set_event_workflow_step(orcm_workflow_t *wf,
                                                         orcm_workflow_caddy_t *caddy);
 static orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *wf,
                                                                orcm_workflow_step_t *wf_step,
-                                                               opal_list_t *data);
+                                                               uint64_t hash_key,
+                                                               orcm_analytics_value_t *data);
 static int orcm_analytics_base_workflow_list_append_ids(opal_buffer_t *buffer, size_t size);
 
 static int workflow_id = 0;
@@ -106,7 +107,8 @@ static void orcm_analytics_base_tapinfo(orcm_workflow_step_t *wf_step,
 
 static orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *wf,
                                                                orcm_workflow_step_t *wf_step,
-                                                               opal_list_t *data)
+                                                               uint64_t hash_key,
+                                                               orcm_analytics_value_t *data)
 {
     orcm_workflow_caddy_t *caddy = NULL;
 
@@ -121,8 +123,10 @@ static orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *
     OBJ_RETAIN(wf_step);
     caddy->wf_step = wf_step;
 
+    caddy->hash_key = hash_key;
+
     /* data was retain'd before it got here */
-    caddy->data = data;
+    caddy->analytics_value = data;
     caddy->imod = wf_step->mod;
 
     return caddy;
@@ -141,11 +145,12 @@ static void orcm_analytics_base_set_event_workflow_step(orcm_workflow_t *wf,
 
 void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
                                                           orcm_workflow_step_t *wf_step,
-                                                          opal_list_t *data)
+                                                          uint64_t hash_key,
+                                                          orcm_analytics_value_t *data)
 {
     orcm_workflow_caddy_t *caddy = NULL;
 
-    caddy = orcm_analytics_base_create_caddy(wf, wf_step, data);
+    caddy = orcm_analytics_base_create_caddy(wf, wf_step, hash_key, data);
 
     if (NULL == caddy) {
         OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
@@ -413,25 +418,25 @@ int orcm_analytics_base_workflow_list(opal_buffer_t *buffer)
 }
 
 
-void orcm_analytics_base_send_data(opal_list_t *data)
+void orcm_analytics_base_send_data(orcm_analytics_value_t *data)
 {
     orcm_workflow_t *wf = NULL;
-    int ret_db;
+    int ret_db = ORCM_SUCCESS;
 
     if (true == orcm_analytics_base.set_db_logging) {
-        ret_db = orcm_analytics_base_store(data);
+        ret_db = orcm_analytics_base_store_analytics(data);
 
     }
 
     OPAL_LIST_FOREACH(wf, &orcm_analytics_base.workflows, orcm_workflow_t) {
-        OBJ_RETAIN(data);
-        ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), data);
+        //OBJ_RETAIN(data);
+        //ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), data);
     }
 
     if (ORCM_SUCCESS != ret_db) {
          OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                               "%s analytics:base:Data can't be written to DB",
                               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-         OPAL_LIST_RELEASE(data);
+         OBJ_RELEASE(data);
      }
 }

@@ -82,8 +82,8 @@ orcm_sensor_base_module_t orcm_sensor_componentpower_module = {
     componentpower_get_sample_rate
 };
 
-__time_val _tv;
-__rapl _rapl;
+static __time_val _tv;
+static __rapl _rapl;
 
 static orcm_sensor_sampler_t *componentpower_sampler = NULL;
 static orcm_sensor_componentpower_t orcm_sensor_componentpower;
@@ -736,7 +736,7 @@ static void componentpower_log(opal_buffer_t *sample)
         sensor_metric->value.type=OPAL_FLOAT;
         sensor_metric->value.data.fval =cpu_power_temp[i];
         sensor_metric->units = strdup("W");
-        if (power_cur<=(float)(0.0)){
+        if (cpu_power_temp[i]<=(float)(0.0)){
             sensor_not_avail=1;
             if (_rapl.rapl_calls>3){
                 opal_output(0,"componentpower sensor data not logged due to unexpected return value from RAPL\n");
@@ -757,7 +757,7 @@ static void componentpower_log(opal_buffer_t *sample)
         sensor_metric->value.type=OPAL_FLOAT;
         sensor_metric->value.data.fval=ddr_power_temp[i];
         sensor_metric->units = strdup("W");
-        if (power_cur<=(float)(0.0)){
+        if (ddr_power_temp[i]<=(float)(0.0)){
             sensor_not_avail=1;
             if (_rapl.rapl_calls>3){
                 opal_output(0,"componentpower sensor data not logged due to unexpected return value from RAPL\n");

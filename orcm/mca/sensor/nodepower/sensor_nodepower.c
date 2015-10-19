@@ -79,8 +79,8 @@ orcm_sensor_base_module_t orcm_sensor_nodepower_module = {
     nodepower_get_sample_rate
 };
 
-__readein _readein;
-__time_val _tv;
+static __readein _readein;
+static __time_val _tv;
 
 int init_done=0;
 

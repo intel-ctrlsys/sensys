@@ -2,15 +2,15 @@
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
  * @file
  *
- * IPMI resource manager sensor 
+ * IPMI resource manager sensor
  */
 #ifndef ORCM_SENSOR_IPMI_H
 #define ORCM_SENSOR_IPMI_H
@@ -27,6 +27,7 @@ typedef struct {
     orcm_sensor_base_component_t super;
     //char *sensors;
     bool test;
+    char *sel_state_filename;
     //ipmi_capsule_t sample;
     char *bmc_username;
     char *bmc_password;

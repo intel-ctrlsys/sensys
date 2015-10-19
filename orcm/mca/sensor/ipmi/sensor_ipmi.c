@@ -30,6 +30,7 @@
 
 #include "sensor_ipmi.h"
 #include <../share/ipmiutil/isensor.h>
+#include "sensor_ipmi_sel.h"
 
 typedef struct {
     opal_event_base_t *ev_base;
@@ -51,6 +52,9 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
 static void ipmi_set_sample_rate(int sample_rate);
 static void ipmi_get_sample_rate(int *sample_rate);
 bool does_sensor_group_match_sensor_name(char* sensor_group, char* sensor_name);
+void orcm_sensor_ipmi_get_sel_events(ipmi_capsule_t* capsule);
+void orcm_sensor_sel_ras_event_callback(const char* event, const char* hostname, void* user_object);
+void orcm_sensor_sel_error_callback(int level, const char* msg);
 
 int first_sample = 0;
 
@@ -552,8 +556,7 @@ static void ipmi_log(opal_buffer_t *sample)
         "Total Samples to be unpacked: %d", host_count);
 
     /* START UNPACKING THE DATA and Store it in a opal_list_t item. */
-    for(int count = 0; count < host_count; count++)
-    {
+    for(int count = 0; count < host_count; count++) {
         vals = OBJ_NEW(opal_list_t);
 
         /* sample time - 2 */
@@ -743,6 +746,35 @@ static void ipmi_log(opal_buffer_t *sample)
             free(sample_name);
             free(sample_unit);
         }
+
+        /* IPMI SEL Records Storage into the opal_list_t 'vals' */
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint_item, &n, OPAL_UINT))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+        for(unsigned int count_metrics=0;count_metrics<uint_item;count_metrics++) {
+            char* record_string = NULL;
+
+            sensor_metric = OBJ_NEW(orcm_value_t);
+            if (NULL == sensor_metric) {
+                ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+                return;
+            }
+            n=1;
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &record_string, &n, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            sensor_metric->value.key = strdup("sel_event_record"); /* all events have this "name" */
+            sensor_metric->value.type = OPAL_STRING;
+            sensor_metric->value.data.string = record_string;
+
+            opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
+                "UnPacked sel_record_event: %s", record_string);
+            opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        }
+
         /* Send the unpacked data for one Node */
         /* store it */
         if (0 <= orcm_sensor_base.dbhandle) {
@@ -1501,6 +1533,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     static int timeout = 0;
     orcm_sensor_hosts_t *host, *nxt;
     struct timeval current_time;
+    uint32_t sel_count;
+    opal_value_t* sel_iterator;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor ipmi : collect_sample: called",
@@ -1716,11 +1750,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         orcm_sensor_ipmi_get_power_states(&host->capsule);
         orcm_sensor_ipmi_get_sensor_reading(&host->capsule);
 
+        host->capsule.prop.collected_sel_records = OBJ_NEW(opal_list_t);
+        orcm_sensor_ipmi_get_sel_events(&host->capsule);
+
         gettimeofday(&current_time, NULL);
 
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
+            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
             return;
         }
 
@@ -1731,6 +1769,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
+            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
             return;
         }
 
@@ -1741,6 +1780,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
+            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
             return;
         }
 
@@ -1751,6 +1791,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
+            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
             return;
         }
 
@@ -1761,6 +1802,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
+            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
             return;
         }
 
@@ -1771,6 +1813,7 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
+            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
             return;
         }
 
@@ -1781,19 +1824,20 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&data);
+            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
             return;
         }
 
         /* Pack the total Number of Metrics Sampled */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &host->capsule.prop.total_metrics, 1, OPAL_UINT))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_DESTRUCT(&data);
-                return;
-            }
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
+            return;
+        }
 
         /*  Pack the non-string metrics and their units - 11-> END */
-        for(int count_metrics=0;count_metrics<host->capsule.prop.total_metrics;count_metrics++)
-        {
+        for(int count_metrics=0;count_metrics<host->capsule.prop.total_metrics;count_metrics++) {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "***** %s: %f",host->capsule.prop.metric_label[count_metrics], host->capsule.prop.collection_metrics[count_metrics]);
 
@@ -1801,12 +1845,14 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_DESTRUCT(&data);
+                OBJ_RELEASE(host->capsule.prop.collected_sel_records);
                 return;
             }
 
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &host->capsule.prop.collection_metrics[count_metrics], 1, OPAL_FLOAT))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_DESTRUCT(&data);
+                OBJ_RELEASE(host->capsule.prop.collected_sel_records);
                 return;
             }
 
@@ -1814,9 +1860,28 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_DESTRUCT(&data);
+                OBJ_RELEASE(host->capsule.prop.collected_sel_records);
                 return;
             }
         }
+
+        /* Pack the total Number of SEL records */
+        sel_count = opal_list_get_size(host->capsule.prop.collected_sel_records);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sel_count, 1, OPAL_UINT))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_DESTRUCT(&data);
+            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
+            return;
+        }
+        OPAL_LIST_FOREACH(sel_iterator, host->capsule.prop.collected_sel_records, opal_value_t) {
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sel_iterator->data.string, 1, OPAL_STRING))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_DESTRUCT(&data);
+                OBJ_RELEASE(host->capsule.prop.collected_sel_records);
+                return;
+            }
+        }
+        OBJ_RELEASE(host->capsule.prop.collected_sel_records);
     }
     /* Pack the list into a buffer and pass it onto heartbeat */
     bptr = &data;
@@ -2178,4 +2243,35 @@ static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *inventory_lis
         ipmi_close();
         return ORCM_SUCCESS;
     }
+}
+
+void orcm_sensor_sel_error_callback(int level, const char* msg)
+{
+    char* line;
+    if(0 == level) {
+        asprintf(&line, "ERROR: collecting IPMI SEL records: %s\n", msg);
+        opal_output(0, line);
+    } else {
+        asprintf(&line, "INFO: collecting IPMI SEL records: %s\n", msg);
+        opal_output_verbose(level, orcm_sensor_base_framework.framework_output, line);
+    }
+    free(line);
+}
+
+void orcm_sensor_sel_ras_event_callback(const char* event, const char* hostname, void* user_object)
+{
+    opal_list_t* record_list = (opal_list_t*)user_object;
+    opal_value_t* record = OBJ_NEW(opal_value_t);
+    record->type = OPAL_STRING;
+    record->data.string = strdup(event);
+    opal_list_append(record_list, &record->super);
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "SEL Record Read: %s: %s", hostname, event);
+}
+
+void orcm_sensor_ipmi_get_sel_events(ipmi_capsule_t* capsule)
+{
+    process_node_sel_logs((const char*)capsule->node.name, (const char*)capsule->node.bmc_ip,
+                          (const char*)capsule->node.user, (const char*)capsule->node.pasw,
+                          mca_sensor_ipmi_component.sel_state_filename, orcm_sensor_sel_error_callback,
+                          orcm_sensor_sel_ras_event_callback, (void*)capsule->prop.collected_sel_records);
 }

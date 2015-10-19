@@ -2,15 +2,15 @@
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
  * @file
  *
- * IPMI resource manager sensor 
+ * IPMI resource manager sensor
  */
 #ifndef ORTE_SENSOR_IPMI_DECLS_H
 #define ORTE_SENSOR_IPMI_DECLS_H
@@ -98,6 +98,8 @@ typedef struct {
 
     float collection_metrics[TOTAL_FLOAT_METRICS];  /* Array to store all non-string metrics */
     char collection_metrics_units[TOTAL_FLOAT_METRICS][MAX_UNIT_LENGTH]; /* Array to store units for all non-string metrics */
+    /* SEL records */
+    opal_list_t* collected_sel_records;
 } ipmi_properties_t;
 
 typedef struct {
@@ -133,7 +135,7 @@ typedef enum {
     MAN_ID = 10,
     BASEBOARD_SERIAL = 11,
     SYS_POWER_STATE = 12,
-    DEV_POWER_STATE = 13,    
+    DEV_POWER_STATE = 13,
 } ipmi_property_t;
 
 // Function Declarations

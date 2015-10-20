@@ -43,9 +43,6 @@ orcm_pvsn_API_module_t orcm_pvsn = {
 };
 orcm_pvsn_base_t orcm_pvsn_base;
 
-/* local vars */
-static void* progress_thread_engine(opal_object_t *obj);
-
 static int orcm_pvsn_base_close(void)
 {
     if (orcm_pvsn_base.ev_active) {
@@ -86,13 +83,6 @@ MCA_BASE_FRAMEWORK_DECLARE(orcm, pvsn, NULL, NULL,
                            orcm_pvsn_base_open, orcm_pvsn_base_close,
                            mca_pvsn_base_static_components, 0);
 
-static void* progress_thread_engine(opal_object_t *obj)
-{
-    while (orcm_pvsn_base.ev_active) {
-        opal_event_loop(orcm_pvsn_base.ev_base, OPAL_EVLOOP_ONCE);
-    }
-    return OPAL_THREAD_CANCELLED;
-}
 
 /***   CLASS INSTANTIATIONS   ***/
 static void imcon(orcm_pvsn_image_t *p)

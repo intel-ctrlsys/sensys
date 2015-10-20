@@ -1,0 +1,2 @@
+SUBDIRS=ft_tester
+

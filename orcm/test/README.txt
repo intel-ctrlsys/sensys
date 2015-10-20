@@ -47,8 +47,12 @@ To run the test:
 
 configure
 make
-make install
+make install   (required only on shared library builds)
 make check
+
+The "make install" step is not required for static builds.  For shared
+library builds, libtool requires a "make install" before the test executable
+can locate the libraries.
 
 As "make check" is running you will see a display of tests that are passing
 or failing.  A total is listed at the end.  More information may be found

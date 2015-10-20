@@ -28,11 +28,28 @@ check_PROGRAMS = test_ft_tester
 
 test_ft_tester_SOURCES = test_ft_tester.c
 
+#
+# Libraries we depend on
+#
+
+FT_TESTER_BUILD_DIR=$(top_builddir)/orcm/mca/sensor/ft_tester
+
+if MCA_BUILD_orcm_sensor_ft_tester_DSO
+
+FT_TESTER_LIB=$(FT_TESTER_BUILD_DIR)/mca_sensor_ft_tester.la 
+
+else
+
+FT_TESTER_LIB=$(FT_TESTER_BUILD_DIR)/libmca_sensor_ft_tester.la 
+
+endif
+
 test_ft_tester_LDADD = \
-        $(top_builddir)/orcm/mca/sensor/ft_tester/mca_sensor_ft_tester.la \
+        $(FT_TESTER_LIB) \
         $(top_builddir)/orcm/liborcm.la \
         $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
         $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
+
 
 #
 # Preprocessor flags

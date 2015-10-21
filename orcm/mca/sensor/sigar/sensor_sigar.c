@@ -2346,21 +2346,20 @@ static void generate_test_vector(opal_buffer_t *v)
     char *ctmp, *date;
     uint64_t ui64;
     float ft;
-    time_t now;
+    double d;
+    struct timeval current_time;
+    bool log_group = true;
 
     ctmp = strdup("sigar");
     opal_dss.pack(v, &ctmp, 1, OPAL_STRING);
     free(ctmp);
     opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING);
     /* get the time so it will be unique each time */
-    now = time(NULL);
-    /* pass the time along as a simple string */
-    date = ctime(&now);
-    if(NULL != date && 0 != strlen(date)) {
-        /* strip the trailing newline */
-        date[strlen(date)-1] = '\0';
-    }
-    opal_dss.pack(v, &date, 1, OPAL_STRING);
+    gettimeofday(&current_time, NULL);
+    opal_dss.pack(v, &current_time, 1, OPAL_TIMEVAL);
+
+    /* log_group */
+    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
     /* mem_total */
     ui64 = 1;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
@@ -2373,6 +2372,9 @@ static void generate_test_vector(opal_buffer_t *v)
     /* mem_actual_free */
     ui64++;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+
+    /* log_group */
+    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
     /* swap total */
     ui64++;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
@@ -2385,6 +2387,9 @@ static void generate_test_vector(opal_buffer_t *v)
     /* swap page out */
     ui64++;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+
+    /* log_group */
+    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
     /* cpu user */
     ft = 1.0;
     opal_dss.pack(v, &ft, 1, OPAL_FLOAT);
@@ -2394,6 +2399,9 @@ static void generate_test_vector(opal_buffer_t *v)
     /* cpu idle */
     ft += 1.0;
     opal_dss.pack(v, &ft, 1, OPAL_FLOAT);
+
+    /* log_group */
+    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
     /* la */
     ft += 1.0;
     opal_dss.pack(v, &ft, 1, OPAL_FLOAT);
@@ -2403,10 +2411,19 @@ static void generate_test_vector(opal_buffer_t *v)
     /* la15 */
     ft += 1.0;
     opal_dss.pack(v, &ft, 1, OPAL_FLOAT);
+
+    /* log_group */
+    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
     /* reads */
     ui64++;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
     /* writes */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* read speed */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* write speed */
     ui64++;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
     /* read bytes */
@@ -2421,12 +2438,88 @@ static void generate_test_vector(opal_buffer_t *v)
     /* tx packets */
     ui64++;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* rx bytes */
+    /* disk_rt_total */
     ui64++;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* tx bytes */
+    /* disk_wt_total */
     ui64++;
     opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* disk_iot_total */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+
+    /* log_group */
+    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
+    /* net_rp_rate */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* net_wp_rate */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* net_rb_rate */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* net_wb_rate */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* net_wb_total */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* net_rb_total */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* net_wp_total */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* net_rp_total */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* net_tx_errors */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+    /* net_tx_errors */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
+
+    /* log_group */
+    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
+    /* uptime */
+    d += 1.0;
+    opal_dss.pack(v, &d, 1, OPAL_DOUBLE);
+
+    /* log_group */
+    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
+    /* total_processes */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
+    /* sleeping_processes */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
+    /* running_processes */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
+    /* zombie_processes */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
+    /* stopped_processes */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
+    /* idle_processes */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
+    /* threads */
+    ui64++;
+    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
+
+    /* Sending no more groups */
+    log_group = false;
+
+    /* log_group */
+    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
+
+    /* log_group */
+    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
+
 }
 
 static void sigar_set_sample_rate(int sample_rate)

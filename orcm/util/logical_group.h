@@ -14,6 +14,7 @@
 #include "opal/class/opal_list.h"
 #include "opal/class/opal_hash_table.h"
 #include "orcm/util/utils.h"
+#include <fcntl.h>
 
 #define MAX_LINE_LENGTH 1024
 #define HASH_SIZE 1000
@@ -40,6 +41,13 @@ typedef struct {
     char *storage_filename;
 } orcm_logical_group_t;
 
+typedef struct {
+    FILE *file;
+    int fd;
+    struct flock file_lock;
+} file_with_lock_t;
+
+extern file_with_lock_t logical_group_file_lock;
 extern orcm_logical_group_t LOGICAL_GROUP;
 extern char *current_tag;
 
@@ -78,8 +86,7 @@ int orcm_logical_group_load_from_file(char *tag, char *storage_filename,
                                       opal_hash_table_t *io_groups);
 
 /* save the content of an in-memory hash table to the storage file */
-int orcm_logical_group_save_to_file(char *tag, char *storage_filename,
-                                    opal_hash_table_t *groups);
+int orcm_logical_group_save_to_file(char *tag, opal_hash_table_t *groups);
 
 /* functions that may be used by others */
 

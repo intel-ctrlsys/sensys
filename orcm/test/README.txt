@@ -21,6 +21,10 @@ run when you type "make check".  The directory structure of "orcm/test"
 mirrors that of the orcm source tree.
 
 test
+├── gtest_example
+│   ├── failingTest.cpp
+│   ├── Makefile.am
+│   └── passingTest.cpp
 ├── Makefile.am
 ├── mca
 │   ├── analytics
@@ -37,13 +41,35 @@ test
     ├── ocli
     └── octl
 
+
 There was formerly a directory named "orcm/test" that was moved to
 "orcm/old_test".  The tests in that directory do not appear to be in use.
 
-Initially there is only one test - a test of the ft_tester sensor.  
+Initially there are two tests, to serve as examples.  The test in 
+mca/sensor/ft_tester is a test of the ft_tester sensor.  It is a standalone
+test that links with the ft_tester object file and with the orcm, orte and
+opal libraries.  It calls each of the functions in the sensor framework
+interface and validates that their behavior is correct.
 
-To run the test:
-===============
+The second example is the two simple tests in gtest_example.  These are linked
+with the Google Test framework.  They are not linked with any of the
+ORCM code.  To build and run tests that use this framework, you must supply
+two configuration options when configuring ORCM:
+
+--with-gtest-incdir=
+--with-gtest-libdir=
+
+The first option is the path to the directory containing the "gtest" directory
+under which are the gtest header files.
+
+The second option is the path to the directory containing libgtest_main.a.  
+There are many ways to build Google Test, which result in different library
+names.  If your library does not have this name, you must rename it to
+"libgtest_main.a".  Obviously this is not portable to systems like Windows
+that have a different naming scheme for libraries.
+
+To run the tests:
+================
 
 configure
 make
@@ -70,13 +96,19 @@ orcm/test if it does not already exist.
 In Makefile.am in the directory just above, add your new directory name to 
 the SUBDIRS variable list so make will recurse into your directory.
 
-Create a Makefile.am in your directory, which will be used to generate
-the Makefile that builds and runs your test.  See the comments in
-orcm/test/mca/sensor/ft_tester/Makefile.am for an explanation of
-the special targets interpreted by automake.
+If your test should be run conditionally only if Google Test was
+found, then include its Makefile conditionally in SUBDIRS using the example 
+in orcm/test/Makefile.am.
 
-In config/orcm_config_files.m4, add your Makefile to the list of makefiles
+Create a Makefile.am in your directory, which will be used to generate
+the Makefile that builds and runs your test.  See the Makefile.am in
+orcm/test/mca/sensor/ft_tester or orcm/test/gtets_example for help.
+
+In config/grei_config_files.m4, add your Makefile to the list of makefiles
 to be processed by the "configure" command.
+
+If you have added or changed a Makefile.am, then you have to rerun
+the autogen.pl script and re-configure.
 
 Details on building test suites with automake can be found here:
 
@@ -84,4 +116,26 @@ https://www.gnu.org/software/automake/manual/html_node/Tests.html
 
 Note that tests should return 0 on success, 99 on a test error not
 related to the code under test, 77 if the test is skipped, and any
-other value (like 1) if the test fails..
+other value (like 1) if the test fails.
+
+More about using Google Test:
+============================
+The gtest configure macro (config/grei_check_gtest.m4) that runs at
+configure time does the following if you supplied the --with-gtest-incdir and 
+--with-gtest-libdir options and the headers and library were found.
+
+In the generated opal/include/opal_config.h we get:
+
+#define HAVE_GTEST 1
+
+As variables that can be used in Makefile.am we get:
+
+@GTEST_INCLUDE_DIR@  
+@GTEST_LIBRARY_DIR@ 
+
+As a boolean in the Makefile.am we get
+
+HAVE_GTEST
+
+which is true if we have found the Google Test headers and library and
+false otherwise.

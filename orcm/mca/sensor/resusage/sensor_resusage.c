@@ -149,7 +149,7 @@ static void sample(orcm_sensor_sampler_t *sampler)
     nstats = OBJ_NEW(opal_node_stats_t);
     if (ORCM_SUCCESS != (rc = opal_pstat.query(orte_process_info.pid, stats, nstats))) {
         ORTE_ERROR_LOG(rc);
-        OBJ_DESTRUCT(stats);
+        OBJ_RELEASE(stats);
         OBJ_RELEASE(nstats);
         OBJ_DESTRUCT(&buf);
         return;
@@ -173,6 +173,8 @@ static void sample(orcm_sensor_sampler_t *sampler)
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(stats);
+        OBJ_RELEASE(nstats);
         return;
     }
 
@@ -182,17 +184,23 @@ static void sample(orcm_sensor_sampler_t *sampler)
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &current_time, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(stats);
+        OBJ_RELEASE(nstats);
         return;
     }
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &nstats, 1, OPAL_NODE_STAT))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(stats);
+        OBJ_RELEASE(nstats);
         return;
     }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &stats, 1, OPAL_PSTAT))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&buf);
+        OBJ_RELEASE(stats);
+        OBJ_RELEASE(nstats);
         return;
     }
 
@@ -230,6 +238,8 @@ static void sample(orcm_sensor_sampler_t *sampler)
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &stats, 1, OPAL_PSTAT))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_DESTRUCT(&buf);
+                OBJ_RELEASE(stats);
+                OBJ_RELEASE(nstats);
                 return;
             }
         }
@@ -241,10 +251,14 @@ static void sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&buf);
+            OBJ_RELEASE(stats);
+            OBJ_RELEASE(nstats);
             return;
         }
     }
-
+    OBJ_RELEASE(stats);
+    OBJ_RELEASE(nstats);
+    OBJ_DESTRUCT(&buf);
 #if 0
     /* are there any issues with node-level usage? */
     nst = (opal_node_stats_t*)opal_ring_buffer_poke(&my_node->stats, -1);
@@ -822,6 +836,8 @@ static void generate_test_vector(opal_buffer_t *v)
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &nstats, 1, OPAL_NODE_STAT))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
+        OBJ_RELEASE(stats);
+        OBJ_RELEASE(nstats);
         return;
     }
 
@@ -829,12 +845,16 @@ static void generate_test_vector(opal_buffer_t *v)
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &stats, 1, OPAL_PSTAT))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
+        OBJ_RELEASE(stats);
+        OBJ_RELEASE(nstats);
         return;
     }
 
     opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
             "%s sensor:resusage: Test vector called",
             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    OBJ_RELEASE(stats);
+    OBJ_RELEASE(nstats);
 }
 
 static void res_inventory_collect(opal_buffer_t *inventory_snapshot)
@@ -955,6 +975,7 @@ static void res_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
         opal_list_append(records, (opal_list_item_t*)mkv);
 
         --tot_items;
+        OBJ_RELEASE(mkv);
     }
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);

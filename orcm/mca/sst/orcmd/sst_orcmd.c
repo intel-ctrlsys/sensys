@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -84,6 +84,7 @@
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/db/base/base.h"
 #include "orcm/mca/diag/base/base.h"
+#include "orcm/mca/evgen/base/base.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/sensor.h"
 #include "orcm/mca/pwrmgmt/base/base.h"
@@ -161,7 +162,7 @@ static int orcmd_init(void)
         error = "setup job array";
         goto error;
     }
-    
+
     orte_node_pool = OBJ_NEW(opal_pointer_array_t);
     if (ORTE_SUCCESS != (ret = opal_pointer_array_init(orte_node_pool,
                                                        ORTE_GLOBAL_ARRAY_BLOCK_SIZE,
@@ -270,11 +271,11 @@ static int orcmd_init(void)
     /* setup callback for SIGPIPE */
     setup_sighandler(SIGPIPE, &epipe_handler, epipe_signal_callback);
     /* Set signal handlers to catch kill signals so we can properly clean up
-     * after ourselves. 
+     * after ourselves.
      */
     setup_sighandler(SIGTERM, &term_handler, shutdown_signal);
     setup_sighandler(SIGINT, &int_handler, shutdown_signal);
-    
+
     /** setup callbacks for signals we should ignore */
     setup_sighandler(SIGUSR1, &sigusr1_handler, signal_callback);
     setup_sighandler(SIGUSR2, &sigusr2_handler, signal_callback);
@@ -284,7 +285,7 @@ static int orcmd_init(void)
     {
         hwloc_obj_t obj;
         unsigned i, j;
-        
+
         /* get the local topology */
         if (NULL == opal_hwloc_topology) {
             if (OPAL_SUCCESS != opal_hwloc_base_get_topology()) {
@@ -293,7 +294,7 @@ static int orcmd_init(void)
                 goto error;
             }
         }
-        
+
         /* remove the hostname from the topology. Unfortunately, hwloc
          * decided to add the source hostname to the "topology", thus
          * rendering it unusable as a pure topological description. So
@@ -318,7 +319,7 @@ static int orcmd_init(void)
                 break;
             }
         }
-        
+
         if (15 < opal_output_get_verbosity(orcm_sst_base_framework.framework_output)) {
             opal_output(0, "%s Topology Info:", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
             opal_dss.dump(0, opal_hwloc_topology, OPAL_HWLOC_TOPO);
@@ -372,7 +373,7 @@ static int orcmd_init(void)
             }
         }
     }
-#endif            
+#endif
 
     /* open and select the pstat framework */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&opal_pstat_base_framework, 0))) {
@@ -401,7 +402,7 @@ static int orcmd_init(void)
         error = "orte_state_base_select";
         goto error;
     }
-    
+
     /* open the notifier */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_notifier_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -417,7 +418,7 @@ static int orcmd_init(void)
         error = "orte_errmgr_base_open";
         goto error;
     }
-    
+
     /* Setup the communication infrastructure */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_oob_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -449,7 +450,7 @@ static int orcmd_init(void)
         error = "orte_rml_base_select";
         goto error;
     }
-    
+
     /* select the notifier*/
     if (ORTE_SUCCESS != (ret = orte_notifier_base_select())) {
         ORTE_ERROR_LOG(ret);
@@ -567,7 +568,7 @@ static int orcmd_init(void)
         error = "orte_grpcomm_base_select";
         goto error;
     }
-    
+
     /* Open/select the odls */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_odls_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -579,14 +580,14 @@ static int orcmd_init(void)
         error = "orte_odls_base_select";
         goto error;
     }
-    
+
     /* enable communication with the rml */
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);
         error = "orte_rml.enable_comm";
         goto error;
     }
-    
+
     /* setup the FileM */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_filem_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -598,7 +599,7 @@ static int orcmd_init(void)
         error = "orte_filem_base_select";
         goto error;
     }
-    
+
     /*
      * Initalize the CR setup
      * Note: Always do this, even in non-FT builds.
@@ -610,11 +611,23 @@ static int orcmd_init(void)
         error = "orte_cr_init";
         goto error;
     }
-    
+
     /* setup the ANALYTICS framework */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_analytics_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
         error = "orcm_analytics_base_open";
+        goto error;
+    }
+
+    /* setup the EVGEN framework */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_evgen_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_evgen_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orcm_evgen_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_evgen_select";
         goto error;
     }
 
@@ -643,7 +656,7 @@ static int orcmd_init(void)
         error = "orcm_pwrmgmt_select";
         goto error;
     }
-    
+
     /* setup the DFS framework */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_dfs_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -694,7 +707,7 @@ static void orcmd_finalize(void)
         opal_event_signal_del(&sigusr1_handler);
         opal_event_signal_del(&sigusr2_handler);
     }
-    
+
     /* cleanup */
     if (NULL != log_path) {
         unlink(log_path);
@@ -722,6 +735,7 @@ static void orcmd_finalize(void)
 
     (void) mca_base_framework_close(&orcm_db_base_framework);
     (void) mca_base_framework_close(&opal_dstore_base_framework);
+    (void) mca_base_framework_close(&orcm_evgen_base_framework);
 
     /* cleanup any lingering session directories */
     orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);

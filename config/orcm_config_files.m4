@@ -32,10 +32,5 @@ AC_DEFUN([ORCM_CONFIG_FILES],[
     orcm/tools/wrappers/Makefile
     orcm/tools/wrappers/orcm.pc
     orcm/tools/wrappers/orcmcc-wrapper-data.txt
-
-    orcm/test/Makefile
-    orcm/test/mca/Makefile
-    orcm/test/mca/sensor/Makefile
-    orcm/test/mca/sensor/ft_tester/Makefile
     ])
 ])

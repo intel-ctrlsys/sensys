@@ -1244,6 +1244,12 @@ m4_ifdef([opal_CONFIG_LOCAL], [opal_CONFIG_LOCAL])
 m4_ifdef([orte_CONFIG_LOCAL], [orte_CONFIG_LOCAL])
 
 ############################################################################
+# GREI checks
+############################################################################
+
+GREI_FIND_GTEST
+
+############################################################################
 # Party on
 ############################################################################
 
@@ -1278,5 +1284,6 @@ ORTE_CONFIG_FILES
 ORCM_CONFIG_FILES
 #ORCMAPI_CONFIG_FILES
 SCON_CONFIG_FILES
+GREI_CONFIG_FILES
 
 AC_OUTPUT

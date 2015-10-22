@@ -48,20 +48,19 @@
 
 
 /* Static API's */
-static void mylog(orte_notifier_base_severity_t severity, int errcode,
-                  const char *msg, va_list ap);
-static void myhelplog(orte_notifier_base_severity_t severity, int errcode,
-                      const char *filename,
-                      const char *topic, va_list ap);
-static void mypeerlog(orte_notifier_base_severity_t severity, int errcode,
-                      orte_process_name_t *peer_proc,
-                      const char *msg, va_list ap);
+static int init(void);
+static void finalize(void);
+static void mylog(orte_notifier_request_t *req);
+static void myevent(orte_notifier_request_t *req);
+static void myreport(orte_notifier_request_t *req);
 
-/* Module */
+/* Module def */
 orte_notifier_base_module_t orte_notifier_smtp_module = {
-    NULL,
-    NULL,
+    init,
+    finalize,
     mylog,
+    myevent,
+    myreport
 };
 
 typedef enum {
@@ -78,6 +77,16 @@ typedef struct {
     char *msg;
     char *prev_string;
 } message_status_t;
+
+static int init(void)
+{
+    return ORTE_SUCCESS;
+}
+
+static void finalize(void)
+{
+    return;
+}
 
 /*
  * Convert lone \n's to \r\n
@@ -309,14 +318,70 @@ static int send_email(char *msg)
     return err;
 }
 
-static void mylog(orte_notifier_base_severity_t severity, int errcode,
-                  const char *msg, va_list ap)
+static void mylog(orte_notifier_request_t *req)
 {
-    char *output;
+    char tod[48];
+    char *output = NULL;
 
-    /* If there was a message, output it */
-    vasprintf(&output, msg, ap);
+    opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                           "notifier:syslog:mylog function called with severity %d errcode %d and messg %s",
+                           (int)req->severity, req->errcode, req->msg);
+    (void)ctime_r(&req->t, tod);
+    tod[strlen(tod)] = '\0';
 
+    asprintf(&output, "[%s]%s %s: JOBID %s REPORTS ERROR %s: %s", tod,
+           ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+           orte_notifier_base_sev2str(req->severity),
+           ORTE_JOBID_PRINT((NULL == req->jdata) ?
+                            ORTE_JOBID_INVALID : req->jdata->jobid),
+           orte_job_state_to_str(req->state),
+           (NULL == req->msg) ? "<N/A>" : req->msg);
+
+    if (NULL != output) {
+        send_email(output);
+        free(output);
+    }
+}
+
+static void myevent(orte_notifier_request_t *req)
+{
+    char tod[48];
+    char *output = NULL;
+
+    opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                           "notifier:syslog:myevent function called with severity %d and messg %s",
+                           (int)req->severity, req->msg);
+    (void)ctime_r(&req->t, tod);
+    tod[strlen(tod)] = '\0';
+
+    asprintf(&output, "[%s]%s %s SYSTEM EVENT : %s", tod,
+           ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+           orte_notifier_base_sev2str(req->severity),
+           (NULL == req->msg) ? "<N/A>" : req->msg);
+    if (NULL != output) {
+        send_email(output);
+        free(output);
+    }
+}
+
+static void myreport(orte_notifier_request_t *req)
+{
+    char tod[48];
+    char *output = NULL;
+
+    opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                           "notifier:syslog:myreport function called with severity %d state %s and messg %s",
+                           (int)req->severity, orte_job_state_to_str(req->state),
+                           req->msg);
+    (void)ctime_r(&req->t, tod);
+    tod[strlen(tod)] = '\0';
+
+    asprintf(&output, "[%s]%s JOBID %s REPORTS STATE %s: %s", tod,
+           ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+           ORTE_JOBID_PRINT((NULL == req->jdata) ?
+                            ORTE_JOBID_INVALID : req->jdata->jobid),
+           orte_job_state_to_str(req->state),
+           (NULL == req->msg) ? "<N/A>" : req->msg);
     if (NULL != output) {
         send_email(output);
         free(output);

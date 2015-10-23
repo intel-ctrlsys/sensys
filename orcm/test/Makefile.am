@@ -1,5 +1,5 @@
 if HAVE_GTEST
-gtestSubdirs=gtest_example
+gtestSubdirs=mca gtest_example
 endif
 
-SUBDIRS=mca $(gtestSubdirs)
+SUBDIRS=$(gtestSubdirs)

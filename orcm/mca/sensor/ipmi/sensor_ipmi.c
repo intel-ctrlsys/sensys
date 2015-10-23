@@ -2247,14 +2247,13 @@ static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *inventory_lis
 
 void orcm_sensor_sel_error_callback(int level, const char* msg)
 {
+    static char* level_strings[2] = {
+        "ERROR",
+        "INFO"
+    };
     char* line;
-    if(0 == level) {
-        asprintf(&line, "ERROR: collecting IPMI SEL records: %s\n", msg);
-        opal_output(0, line);
-    } else {
-        asprintf(&line, "INFO: collecting IPMI SEL records: %s\n", msg);
-        opal_output_verbose(level, orcm_sensor_base_framework.framework_output, line);
-    }
+    asprintf(&line, "%s: collecting IPMI SEL records: %s\n", (0 == level)?level_strings[0]:level_strings[1], msg);
+    opal_output_verbose(level, orcm_sensor_base_framework.framework_output, line);
     free(line);
 }
 

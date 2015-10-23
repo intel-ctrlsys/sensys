@@ -1138,10 +1138,10 @@ if test "$OPAL_TOP_BUILDDIR" != "$OPAL_TOP_SRCDIR"; then
     # variables, lest the $(foo) names try to get evaluated here.
     # Yuck!
     CPPFLAGS='-I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include -I$(top_builddir)/orte/include -I$(top_srcdir)/orcm/include -I$(top_builddir)/orcm/include'" $CPPFLAGS"
-    CXXFLAGS='-std=c++98 -I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include -I$(top_builddir)/orte/include -I$(top_srcdir)/orcm/include -I$(top_builddir)/orcm/include'" $CXXFLAGS"
+    CXXFLAGS='-std=c++11 -I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include -I$(top_builddir)/orte/include -I$(top_srcdir)/orcm/include -I$(top_builddir)/orcm/include'" $CXXFLAGS"
 else
     CPPFLAGS='-I$(top_srcdir) -I$(top_srcdir)/orte/include -I$(top_srcdir)/orcm/include'" $CPPFLAGS"
-    CXXFLAGS='-std=c++98 -I$(top_srcdir) -I$(top_srcdir)/orte/include -I$(top_srcdir)/orcm/include'" $CXXFLAGS"
+    CXXFLAGS='-std=c++11 -I$(top_srcdir) -I$(top_srcdir)/orte/include -I$(top_srcdir)/orcm/include'" $CXXFLAGS"
 fi
 
 # OMPI/ORTE wants some additional processing of the flags (e.g., get

@@ -320,7 +320,9 @@ opal_value_t* orcm_util_copy_opal_value(opal_value_t* src)
 
     dest = OBJ_NEW(opal_value_t);
     if (NULL != dest) {
-        dest->key = strdup(src->key);
+        if (NULL != src->key) {
+            dest->key = strdup(src->key);
+        }
         dest->type = src->type;
         rc = orcm_util_copy_opal_value_data(dest, src);
         if (ORCM_SUCCESS != rc) {
@@ -343,16 +345,20 @@ orcm_value_t* orcm_util_copy_orcm_value(orcm_value_t* src)
 
     dest = OBJ_NEW(orcm_value_t);
     if (NULL != dest) {
-        dest->value.key = strdup(src->value.key);
+        if (NULL != src->value.key) {
+            dest->value.key = strdup(src->value.key);
+        }
         dest->value.type = src->value.type;
         rc = orcm_util_copy_opal_value_data(&dest->value, &src->value);
         if (ORCM_SUCCESS != rc) {
             OBJ_RELEASE(dest);
             dest = NULL;
+            return dest;
         }
-        dest->units = strdup(src->units);
+        if ( NULL != src->units ) {
+            dest->units = strdup(src->units);
+        }
     }
-
     return dest;
 }
 
@@ -362,17 +368,69 @@ orcm_value_t* orcm_util_load_orcm_value(char *key, void *data, opal_data_type_t 
     orcm_value_t *kv = OBJ_NEW(orcm_value_t);
 
     if (NULL != kv) {
-        kv->value.key = strdup(key);
+        if (NULL != key) {
+            kv->value.key = strdup(key);
+        }
         rc = opal_value_load(&kv->value, data, type);
         if (ORCM_SUCCESS != rc) {
             OBJ_RELEASE(kv);
             kv = NULL;
+            return kv;
         }
-        kv->units = strdup(units);
+        if ( NULL != units ) {
+            kv->units = strdup(units);
+        }
     }
     return kv;
 }
 
+orcm_analytics_value_t* orcm_util_load_orcm_analytics_value(opal_list_t *key,
+                                                            opal_list_t *non_compute,
+                                                            opal_list_t *compute)
+{
+    orcm_analytics_value_t *analytics_vals = OBJ_NEW(orcm_analytics_value_t);
+
+    if (NULL != analytics_vals) {
+        if (NULL != key) {
+            OBJ_RETAIN(key);
+            analytics_vals->key = key;
+        }
+        else {
+            analytics_vals->key = OBJ_NEW(opal_list_t);
+            if (NULL == analytics_vals->key) {
+                ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+                return NULL;
+            }
+
+        }
+
+        if (NULL != non_compute) {
+            OBJ_RETAIN(non_compute);
+            analytics_vals->non_compute_data = non_compute;
+        }
+        else {
+            analytics_vals->non_compute_data = OBJ_NEW(opal_list_t);
+            if (NULL == analytics_vals->non_compute_data) {
+                ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+                return NULL;
+            }
+
+        }
+
+        if (NULL != compute) {
+            OBJ_RETAIN(compute);
+            analytics_vals->compute_data = compute;
+        }
+        else {
+            analytics_vals->compute_data = OBJ_NEW(opal_list_t);
+            if (NULL == analytics_vals->compute_data) {
+                ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+                return NULL;
+            }
+        }
+    }
+    return analytics_vals;
+}
 
 
 
@@ -407,4 +465,20 @@ int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
     }
 
     return num_found;
+}
+
+/* create a hash key of 64bit for a given key.
+ * This function is borrowed from the opal layer */
+uint64_t orcm_util_create_hash_key(void *key, size_t key_size)
+{
+    uint64_t hash;
+    const unsigned char *scanner;
+    size_t index;
+
+    hash = 0;
+    scanner = (const unsigned char *)key;
+    for (index = 0; index < key_size; index += 1) {
+        hash = ORCM_UTIL_HASH_MULTIPLIER * hash + *scanner++;
+    }
+    return hash;
 }

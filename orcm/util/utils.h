@@ -17,6 +17,7 @@
 #include "opal/class/opal_bitmap.h"
 
 #include "orcm/mca/cfgi/cfgi_types.h"
+#include "orcm/mca/analytics/analytics.h"
 
 #define SAFEFREE(p) if(NULL!=p) {free(p); p=NULL;}
 #define MSG_HEADER ""
@@ -28,6 +29,8 @@
 #define ORCM_UTIL_ERROR_MSG(txt) fprintf(stderr, MSG_ERR_HEADER"ERROR: "txt MSG_FOOTER)
 #define ORCM_UTIL_ERROR_MSG_WITH_ARG(txt, arg) \
             fprintf(stderr, MSG_ERR_HEADER"ERROR: "txt MSG_FOOTER, arg)
+
+#define ORCM_UTIL_HASH_MULTIPLIER 31
 
 ORCM_DECLSPEC void orcm_util_construct_uri(opal_buffer_t *buf,
                                            orcm_node_t *node);
@@ -46,6 +49,12 @@ ORCM_DECLSPEC orcm_value_t* orcm_util_load_orcm_value(char *key, void *data,
 ORCM_DECLSPEC opal_value_t* orcm_util_copy_opal_value(opal_value_t* src);
 ORCM_DECLSPEC orcm_value_t* orcm_util_copy_orcm_value(orcm_value_t* src);
 
+ORCM_DECLSPEC orcm_analytics_value_t* orcm_util_load_orcm_analytics_value(opal_list_t *key,
+                                                            opal_list_t *non_compute,
+                                                            opal_list_t *compute);
+
 ORCM_DECLSPEC int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
                              opal_value_t *items[], opal_bitmap_t *map);
+
+ORCM_DECLSPEC uint64_t orcm_util_create_hash_key(void *key, size_t key_size);
 #endif

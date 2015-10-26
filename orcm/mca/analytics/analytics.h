@@ -69,7 +69,7 @@ typedef struct {
 } orcm_analytics_base_component_t;
 
 
-typedef void (*orcm_analytics_API_module_send_data_fn_t)(opal_list_t *data);
+typedef void (*orcm_analytics_API_module_send_data_fn_t)(orcm_analytics_value_t *data);
 
 
 typedef struct {

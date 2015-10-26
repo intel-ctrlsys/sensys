@@ -45,7 +45,10 @@
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/mca/db/db.h"
+#include "orcm/util/utils.h"
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/mca/analytics/analytics.h"
+
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -87,7 +90,6 @@ static __rapl _rapl;
 
 static orcm_sensor_sampler_t *componentpower_sampler = NULL;
 static orcm_sensor_componentpower_t orcm_sensor_componentpower;
-static bool log_enabled = true;
 
 static void generate_test_vector(opal_buffer_t *v);
 
@@ -600,15 +602,6 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     }
 }
 
-static void mycleanup(int dbhandle, int status, opal_list_t *kvs,
-                      opal_list_t *ret, void *cbdata)
-{
-    OPAL_LIST_RELEASE(kvs);
-    if (ORTE_SUCCESS != status) {
-        log_enabled = false;
-    }
-}
-
 /*
  *  componentpower to be picked up by heartbeat
  */
@@ -618,8 +611,6 @@ static void componentpower_log(opal_buffer_t *sample)
     char temp_str[64];
     int rc;
     int32_t n, nsockets;
-    opal_list_t *vals;
-    opal_value_t *kv;
     int i;
     int sensor_not_avail=0;
     struct timeval tv_curr;
@@ -627,23 +618,23 @@ static void componentpower_log(opal_buffer_t *sample)
     char time_str[40];
     struct tm *time_info;
     orcm_value_t *sensor_metric;
+    orcm_analytics_value_t *analytics_vals;
+    opal_list_t *key;
+    opal_list_t *non_compute_data;
 
-    if (!log_enabled) {
-        return;
-    }
 
     /* unpack the host this came from */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto cleanup;
     }
 
     /* and the number of sockets on that host */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &nsockets, &n, OPAL_INT32))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto cleanup;
     }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -655,7 +646,7 @@ static void componentpower_log(opal_buffer_t *sample)
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &tv_curr, &n, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto cleanup;
     }
 
     if (nsockets>MAX_SOCKETS)
@@ -666,7 +657,7 @@ static void componentpower_log(opal_buffer_t *sample)
     for (i=0; i<nsockets; i++){
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &power_cur, &n, OPAL_FLOAT))){
             ORTE_ERROR_LOG(rc);
-            return;
+            goto cleanup;
         }
         cpu_power_temp[i]=power_cur;
     }
@@ -676,19 +667,29 @@ static void componentpower_log(opal_buffer_t *sample)
     for (i=0; i<nsockets; i++){
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &power_cur, &n, OPAL_FLOAT))){
             ORTE_ERROR_LOG(rc);
-            return;
+            goto cleanup;
         }
         ddr_power_temp[i]=power_cur;
     }
 
-    /* xfr to storage */
-    vals = OBJ_NEW(opal_list_t);
+    key = OBJ_NEW(opal_list_t);
+    if (NULL == key) {
+        goto cleanup;
 
-    /* load the sample time at the start */
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("ctime");
-    kv->type = OPAL_TIMEVAL;
-    kv->data.tv=tv_curr;
+    }
+
+    non_compute_data = OBJ_NEW(opal_list_t);
+    if (NULL == non_compute_data) {
+        goto cleanup;
+
+    }
+
+
+    sensor_metric = orcm_util_load_orcm_value("ctime", &tv_curr, OPAL_TIMEVAL, NULL);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
 
     time_info=localtime(&(tv_curr.tv_sec));
     if (NULL == time_info) {
@@ -701,79 +702,98 @@ static void componentpower_log(opal_buffer_t *sample)
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                        "second=%s\n", time_str);
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                       "sub-second=%.3f\n", (float)(kv->data.tv.tv_usec)/1000000.0);
-    opal_list_append(vals, &kv->super);
+                       "sub-second=%.3f\n", (float)(tv_curr.tv_usec)/1000000.0);
+    opal_list_append(non_compute_data, (opal_list_item_t *)sensor_metric);
 
     /* load the hostname */
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("hostname");
-    kv->type = OPAL_STRING;
-    if (hostname==NULL)
-        kv->data.string = strdup("NULL");
-    else
-        kv->data.string = strdup(hostname);
-    opal_list_append(vals, &kv->super);
-    free(hostname);
-
-    kv = OBJ_NEW(opal_value_t);
-    if (NULL == kv) {
-        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-        return;
+    sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
     }
-    kv->key = strdup("data_group");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup("componentpower");
-    opal_list_append(vals, &kv->super);
+    opal_list_append(key, (opal_list_item_t *)sensor_metric);
+
+    sensor_metric = orcm_util_load_orcm_value("data_group", "componentpower", OPAL_STRING, NULL);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
+    opal_list_append(key, (opal_list_item_t *)sensor_metric);
 
     for (i=0; i<nsockets; i++){
-        snprintf(temp_str, sizeof(temp_str), "cpu%d_power", i);
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            return;
+        analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
+        if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
+             (NULL == analytics_vals->non_compute_data) ||(NULL == analytics_vals->compute_data)) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
         }
-        sensor_metric->value.key=strdup(temp_str);
-        sensor_metric->value.type=OPAL_FLOAT;
-        sensor_metric->value.data.fval =cpu_power_temp[i];
-        sensor_metric->units = strdup("W");
+
+        if (0 > snprintf(temp_str, sizeof(temp_str), "cpu%d_power", i)) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+
+        sensor_metric = orcm_util_load_orcm_value(temp_str, &cpu_power_temp[i], OPAL_FLOAT, "W");
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        
         if (cpu_power_temp[i]<=(float)(0.0)){
             sensor_not_avail=1;
             if (_rapl.rapl_calls>3){
                 opal_output(0,"componentpower sensor data not logged due to unexpected return value from RAPL\n");
             }
-    } else {
-            opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        } else {
+            opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
         }
+
+        if (!sensor_not_avail) {
+            orcm_analytics.send_data(analytics_vals);
+        }
+        OBJ_RELEASE(analytics_vals);
     }
 
     for (i=0; i<nsockets; i++){
-        snprintf(temp_str, sizeof(temp_str), "ddr%d_power", i);
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            return;
+        analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
+        if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
+             (NULL == analytics_vals->non_compute_data) ||(NULL == analytics_vals->compute_data)) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
         }
-        sensor_metric->value.key=strdup(temp_str);
-        sensor_metric->value.type=OPAL_FLOAT;
-        sensor_metric->value.data.fval=ddr_power_temp[i];
-        sensor_metric->units = strdup("W");
+
+        if (0 > snprintf(temp_str, sizeof(temp_str), "ddr%d_power", i)) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        sensor_metric = orcm_util_load_orcm_value(temp_str, &ddr_power_temp[i], OPAL_FLOAT, "W");
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        
         if (ddr_power_temp[i]<=(float)(0.0)){
             sensor_not_avail=1;
             if (_rapl.rapl_calls>3){
                 opal_output(0,"componentpower sensor data not logged due to unexpected return value from RAPL\n");
             }
         } else {
-            opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+            opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
         }
+
+        if (!sensor_not_avail) {
+            orcm_analytics.send_data(analytics_vals);
+        }
+        OBJ_RELEASE(analytics_vals);
     }
 
-    /* store it */
-    if (0 <= orcm_sensor_base.dbhandle) {
-        if (!sensor_not_avail){
-            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
-        }
-    } else {
-        OPAL_LIST_RELEASE(vals);
+cleanup:
+    SAFEFREE(hostname);
+    if ( NULL != key) {
+        OPAL_LIST_RELEASE(key);
+    }
+    if ( NULL != non_compute_data) {
+        OPAL_LIST_RELEASE(non_compute_data);
     }
 }
 

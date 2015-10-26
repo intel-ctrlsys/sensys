@@ -43,6 +43,8 @@
 
 #include "orcm/mca/db/db.h"
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/mca/analytics/analytics.h"
+#include "orcm/util/utils.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -145,7 +147,7 @@ static struct swap_data_t {
     uint64_t page_in;
     uint64_t page_out;
 } pswap;
-static bool log_enabled = true;
+
 static opal_buffer_t test_vector;
 static orcm_sensor_sampler_t *sigar_sampler = NULL;
 static orcm_sensor_sigar_t orcm_sensor_sigar;
@@ -1116,24 +1118,282 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     last_sample = now;
 }
 
-static void mycleanup(int dbhandle, int status, opal_list_t *kvs,
-                      opal_list_t *ret, void *cbdata)
+static void sigar_log_sample_item(opal_list_t *key, opal_list_t *non_compute_data, char *sample_key,
+                                void *sample_item, opal_data_type_t type, char *units )
 {
-    OPAL_LIST_RELEASE(kvs);
-    if (ORTE_SUCCESS != status) {
-        log_enabled = false;
+    orcm_value_t *sensor_metric;
+    orcm_analytics_value_t *analytics_vals;
+
+    analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
+    if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
+         (NULL == analytics_vals->non_compute_data) ||(NULL == analytics_vals->compute_data)) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
+
+    sensor_metric = orcm_util_load_orcm_value(sample_key, sample_item, type, units);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
+
+    opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
+    orcm_analytics.send_data(analytics_vals);
+
+ cleanup:
+    OBJ_RELEASE(analytics_vals);
+
+}
+
+static void sigar_log_process_lvl_stats(opal_buffer_t *sample, struct timeval sampletime, char *hostname)
+{
+    orcm_value_t *sensor_metric;
+    opal_list_t *key;
+    opal_list_t *non_compute_data;
+    char state[3];
+    opal_pstats_t *st;
+    char *primary_key;
+    int64_t int64;
+    bool log_group = false;
+    double sample_double;
+    int n;
+    int rc;
+
+    /* Check if any process level stats are being sent */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
+        ORTE_ERROR_LOG(rc);
+        goto cleanup;
+    }
+    while(true == log_group) {
+
+        key = OBJ_NEW(opal_list_t);
+        if (NULL == key) {
+            goto cleanup;
+        }
+
+        non_compute_data = OBJ_NEW(opal_list_t);
+        if (NULL == non_compute_data) {
+            goto cleanup;
+        }
+
+        sensor_metric = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, NULL);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        opal_list_append(non_compute_data, (opal_list_item_t *)sensor_metric);
+
+
+        sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        opal_list_append(key, (opal_list_item_t *)sensor_metric);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &st, &n, OPAL_PSTAT))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        asprintf(&primary_key, "procstat_%s",st->cmd);
+        if (NULL == primary_key){
+            goto cleanup;
+        }
+
+        sensor_metric = orcm_util_load_orcm_value("data_group", primary_key, OPAL_STRING, NULL);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        opal_list_append(key, (opal_list_item_t *)sensor_metric);
+
+        sigar_log_sample_item(key, non_compute_data, "pid", &st->pid, OPAL_PID, NULL);
+
+        sigar_log_sample_item(key, non_compute_data, "cmd", st->cmd, OPAL_STRING, NULL);
+
+        if (0 > snprintf(state, sizeof(state), "%s", st->state)) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "state", state, OPAL_STRING, NULL);
+
+        sigar_log_sample_item(key, non_compute_data, "percent_cpu", &st->percent_cpu, OPAL_FLOAT, NULL);
+
+        sigar_log_sample_item(key, non_compute_data, "priority", &st->priority, OPAL_INT32, NULL);
+
+        sigar_log_sample_item(key, non_compute_data, "num_threads", &st->num_threads, OPAL_INT16, NULL);
+
+        sigar_log_sample_item(key, non_compute_data, "vsize", &st->vsize, OPAL_FLOAT, "Bytes");
+
+        sigar_log_sample_item(key, non_compute_data, "rss", &st->rss, OPAL_FLOAT, "Bytes");
+
+        sigar_log_sample_item(key, non_compute_data, "processor", &st->processor, OPAL_INT16, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "shared_memory", &int64, OPAL_INT64, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "minor_faults", &int64, OPAL_INT64, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "major_faults", &int64, OPAL_INT64, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "page_faults", &int64, OPAL_INT64, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_double, &n, OPAL_DOUBLE))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "percent", &sample_double, OPAL_DOUBLE, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        OBJ_RELEASE(st);
+    }
+
+cleanup:
+    SAFEFREE(primary_key);
+
+    if ( NULL != key) {
+        OPAL_LIST_RELEASE(key);
+    }
+    if ( NULL != non_compute_data) {
+        OPAL_LIST_RELEASE(non_compute_data);
     }
 }
 
-static void mycleanup_procstat(int dbhandle, int status, opal_list_t *kvs,
-                               opal_list_t *ret, void *cbdata)
+static void sigar_log_process_stats(opal_buffer_t *sample, struct timeval sampletime, char *hostname)
 {
-    OPAL_LIST_RELEASE(kvs);
-    if (ORTE_SUCCESS != status) {
-        log_enabled = false;
+    orcm_value_t *sensor_metric;
+    opal_list_t *key;
+    opal_list_t *non_compute_data;
+    int64_t int64;
+    bool log_group = false;
+    int n;
+    int rc;
+
+    /* Unpack the collected process stats and store them in the database */
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
+        ORTE_ERROR_LOG(rc);
+        goto cleanup;
     }
-    if(NULL != cbdata)
-        free(cbdata);
+
+    if (log_group) {
+
+        key = OBJ_NEW(opal_list_t);
+        if (NULL == key) {
+            goto cleanup;
+        }
+
+        non_compute_data = OBJ_NEW(opal_list_t);
+        if (NULL == non_compute_data) {
+            goto cleanup;
+        }
+
+        sensor_metric = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, NULL);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        opal_list_append(non_compute_data, (opal_list_item_t *)sensor_metric);
+
+
+        sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        opal_list_append(key, (opal_list_item_t *)sensor_metric);
+
+        sensor_metric = orcm_util_load_orcm_value("data_group", "procstat", OPAL_STRING, NULL);
+        if (NULL == sensor_metric) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            goto cleanup;
+        }
+        opal_list_append(key, (opal_list_item_t *)sensor_metric);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "total_processes", &int64, OPAL_INT64, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "sleeping_processes", &int64, OPAL_INT64, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "running_processes", &int64, OPAL_INT64, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "zombie_processes", &int64, OPAL_INT64, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "stopped_processes", &int64, OPAL_INT64, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "idle_processes", &int64, OPAL_INT64, NULL);
+
+        n=1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+        sigar_log_sample_item(key, non_compute_data, "total_threads", &int64, OPAL_INT64, NULL);
+
+    cleanup:
+        if (NULL != key) {
+            OPAL_LIST_RELEASE(key);
+        }
+        if (NULL != non_compute_data) {
+            OPAL_LIST_RELEASE(non_compute_data);
+        }
+    }
+
 }
 
 static void sigar_log(opal_buffer_t *sample)
@@ -1141,22 +1401,14 @@ static void sigar_log(opal_buffer_t *sample)
     char *hostname;
     int rc;
     int32_t n;
-    opal_list_t *vals;
-    opal_value_t *kv;
     uint64_t uint64;
-    int64_t int64;
     float fval;
-    bool log_group = false, data_avail = false;
+    bool log_group = false;
     double sample_double;
-    char *primary_key;
-    opal_pstats_t *st;
     struct timeval sampletime;
     orcm_value_t *sensor_metric;
-
-    if (!log_enabled) {
-        return;
-    }
-
+    opal_list_t *key;
+    opal_list_t *non_compute_data;
 
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
@@ -1169,8 +1421,15 @@ static void sigar_log(opal_buffer_t *sample)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname);
 
-    /* prep the xfr storage */
-    vals = OBJ_NEW(opal_list_t);
+    key = OBJ_NEW(opal_list_t);
+    if (NULL == key) {
+        goto cleanup;
+    }
+
+    non_compute_data = OBJ_NEW(opal_list_t);
+    if (NULL == non_compute_data) {
+        goto cleanup;
+    }
 
     /* sample time */
     n=1;
@@ -1179,32 +1438,27 @@ static void sigar_log(opal_buffer_t *sample)
         goto cleanup;
     }
 
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("ctime");
-    kv->type = OPAL_TIMEVAL;
-    kv->data.tv = sampletime;
-    opal_list_append(vals, &kv->super);
-
-    /* load the hostname */
-    if (NULL == hostname) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
-    }
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("hostname");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup(hostname);
-    opal_list_append(vals, &kv->super);
-
-    kv = OBJ_NEW(opal_value_t);
-    if (NULL == kv) {
-        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+    sensor_metric = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, NULL);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         goto cleanup;
     }
-    kv->key = strdup("data_group");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup("sigar");
-    opal_list_append(vals, &kv->super);
+    opal_list_append(non_compute_data, (opal_list_item_t *)sensor_metric);
+
+
+    sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
+    opal_list_append(key, (opal_list_item_t *)sensor_metric);
+
+    sensor_metric = orcm_util_load_orcm_value("data_group", "sigar", OPAL_STRING, NULL);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
+    opal_list_append(key, (opal_list_item_t *)sensor_metric);
 
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
@@ -1213,23 +1467,15 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        data_avail = true;
+
         /* total memory */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("mem_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("Bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+
+        sigar_log_sample_item(key, non_compute_data, "mem_total", &uint64, OPAL_UINT64, "Bytes");
 
         /* total used memory */
         n=1;
@@ -1237,16 +1483,8 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("mem_used");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("Bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+
+        sigar_log_sample_item(key, non_compute_data, "mem_used", &uint64, OPAL_UINT64, "Bytes");
 
         /* actual used memory */
         n=1;
@@ -1254,16 +1492,8 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("mem_actual_used");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("Bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+
+        sigar_log_sample_item(key, non_compute_data, "mem_actual_used", &uint64, OPAL_UINT64, "Bytes");
 
         /* actual free memory */
         n=1;
@@ -1271,16 +1501,8 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("mem_actual_free");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("Bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+
+        sigar_log_sample_item(key, non_compute_data, "mem_actual_free", &uint64, OPAL_UINT64, "Bytes");
     }
 
     n=1;
@@ -1290,23 +1512,14 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        data_avail = true;
+
         /* total swap memory */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("swap_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("Bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "swap_total", &uint64, OPAL_UINT64, "Bytes");
 
         /* swap used */
         n=1;
@@ -1314,16 +1527,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("swap_used");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("Bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "swap_used", &uint64, OPAL_UINT64, "Bytes");
 
         /* swap pages in */
         n=1;
@@ -1331,16 +1535,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("swap_page_in");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("Bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "swap_page_in", &uint64, OPAL_UINT64, "Bytes");
 
         /* swap pages out */
         n=1;
@@ -1348,16 +1543,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("swap_page_out");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("Bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "swap_page_out", &uint64, OPAL_UINT64, "Bytes");
     }
 
     n=1;
@@ -1367,23 +1553,14 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        data_avail = true;
+
         /* cpu user */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("cpu_user");
-        sensor_metric->value.type = OPAL_FLOAT;
-        sensor_metric->value.data.fval = fval;
-        sensor_metric->units = strdup("%");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "cpu_user", &fval, OPAL_FLOAT, "%");
 
         /* cpu sys */
         n=1;
@@ -1391,16 +1568,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("cpu_sys");
-        sensor_metric->value.type = OPAL_FLOAT;
-        sensor_metric->value.data.fval = fval;
-        sensor_metric->units = strdup("%");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "cpu_sys", &fval, OPAL_FLOAT, "%");
 
         /* cpu idle */
         n=1;
@@ -1408,16 +1576,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("cpu_idle");
-        sensor_metric->value.type = OPAL_FLOAT;
-        sensor_metric->value.data.fval = fval;
-        sensor_metric->units = strdup("%");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "cpu_idle", &fval, OPAL_FLOAT, "%");
     }
 
     n=1;
@@ -1427,23 +1586,14 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        data_avail = true;
+
         /* la0 */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("load0");
-        sensor_metric->value.type = OPAL_FLOAT;
-        sensor_metric->value.data.fval = fval;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "load0", &fval, OPAL_FLOAT, NULL);
 
         /* la5 */
         n=1;
@@ -1451,16 +1601,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("load1");
-        sensor_metric->value.type = OPAL_FLOAT;
-        sensor_metric->value.data.fval = fval;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "load1", &fval, OPAL_FLOAT, NULL);
 
         /* la15 */
         n=1;
@@ -1468,16 +1609,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("load2");
-        sensor_metric->value.type = OPAL_FLOAT;
-        sensor_metric->value.data.fval = fval;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "load2", &fval, OPAL_FLOAT, NULL);
     }
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
@@ -1486,40 +1618,22 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        data_avail = true;
+
         /* disk read ops rate */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("disk_ro_rate");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("ops/sec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_ro_rate", &uint64, OPAL_UINT64, "ops/sec");
 
         /* disk write ops rate */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
-            return;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
         }
-        sensor_metric->value.key = strdup("disk_wo_rate");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("ops/sec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_wo_rate", &uint64, OPAL_UINT64, "ops/sec");
 
         /* disk read bytes/sec */
         n=1;
@@ -1527,16 +1641,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("disk_rb_rate");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("bytes/sec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_rb_rate", &uint64, OPAL_UINT64, "bytes/sec");
 
         /* disk write bytes/sec */
         n=1;
@@ -1544,16 +1649,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("disk_wb_rate");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("bytes/sec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_wb_rate", &uint64, OPAL_UINT64, "bytes/sec");
 
         /* disk Total Read Ops count */
         n=1;
@@ -1561,16 +1657,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("disk_ro_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("ops");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_ro_total", &uint64, OPAL_UINT64, "ops");
 
         /* disk Total Write Ops count */
         n=1;
@@ -1578,16 +1665,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("disk_wo_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("ops");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_wo_total", &uint64, OPAL_UINT64, "ops");
 
         /* disk Total Read Bytes count */
         n=1;
@@ -1595,16 +1673,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("disk_rb_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_rb_total", &uint64, OPAL_UINT64, "bytes");
 
         /* disk Total Write Bytes count */
         n=1;
@@ -1612,16 +1681,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("disk_wb_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_wb_total", &uint64, OPAL_UINT64, "bytes");
 
         /* disk Total Read Ops Time duration */
         n=1;
@@ -1629,16 +1689,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("disk_rt_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("msec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_rt_total", &uint64, OPAL_UINT64, "msec");
 
         /* disk Total Write Ops Time count */
         n=1;
@@ -1646,16 +1697,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("disk_wt_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("msec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_wt_total", &uint64, OPAL_UINT64, "msec");
 
         /* disk Total io Ops Time count */
         n=1;
@@ -1663,16 +1705,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("disk_iot_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("msec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "disk_iot_total", &uint64, OPAL_UINT64, "msec");
     }
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
@@ -1681,23 +1714,14 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
     if(log_group) {
-        data_avail = true;
+
         /* net recv packet rate */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("net_rp_rate");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("packets/sec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "net_rp_rate", &uint64, OPAL_UINT64, "packets/sec");
 
         /* net tx packet rate */
         n=1;
@@ -1705,16 +1729,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("net_wp_rate");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("packets/sec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "net_wp_rate", &uint64, OPAL_UINT64, "packets/sec");
 
         /* net recv bytes rate */
         n=1;
@@ -1722,16 +1737,7 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("net_rb_rate");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("bytes/sec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "net_rb_rate", &uint64, OPAL_UINT64, "bytes/sec");
 
         /* net tx bytes rate */
         n=1;
@@ -1739,33 +1745,15 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("net_wb_rate");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("bytes/sec");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "net_wb_rate", &uint64, OPAL_UINT64, "bytes/sec");
 
         /* net tx bytes total */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
-            return;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
         }
-        sensor_metric->value.key = strdup("net_wb_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("Mbytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "net_wb_total", &uint64, OPAL_UINT64, "Mbytes");
 
         /* net rx bytes total */
         n=1;
@@ -1773,550 +1761,70 @@ static void sigar_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("net_rb_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("Mbytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "net_rb_total", &uint64, OPAL_UINT64, "Mbytes");
 
         /* net tx packets total */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
-            return;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
         }
-        sensor_metric->value.key = strdup("net_wp_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("packets");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "net_wp_total", &uint64, OPAL_UINT64, "packets");
 
         /* net rx packets total */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
-            return;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
         }
-        sensor_metric->value.key = strdup("net_rp_total");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("packets");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "net_rp_total", &uint64, OPAL_UINT64, "packets");
 
         /* net tx errors total */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
-            return;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
         }
-        sensor_metric->value.key = strdup("net_tx_errors");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("errors");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "net_tx_errors", &uint64, OPAL_UINT64, "errors");
 
         /* net rx errors total */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint64, &n, OPAL_UINT64))) {
             ORTE_ERROR_LOG(rc);
-            return;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
             goto cleanup;
         }
-        sensor_metric->value.key = strdup("net_rx_errors");
-        sensor_metric->value.type = OPAL_UINT64;
-        sensor_metric->value.data.uint64 = uint64;
-        sensor_metric->units = strdup("errors");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        sigar_log_sample_item(key, non_compute_data, "net_rx_errors", &uint64, OPAL_UINT64, "errors");
     }
 
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-
-    if(log_group) {
-        data_avail = true;
-        /* process System Uptime */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_double, &n, OPAL_DOUBLE))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("uptime");
-        sensor_metric->value.type = OPAL_DOUBLE;
-        sensor_metric->value.data.dval = sample_double;
-        sensor_metric->units = strdup("seconds");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-    }
-    /* store it */
-    if ((0 <= orcm_sensor_base.dbhandle) & (true == data_avail)) {
-        orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
-    } else {
-        OPAL_LIST_RELEASE(vals);
-    }
-
-    /* Unpack the collected process stats and store them in the database */
-    n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-
-    if(log_group) {
-        vals = OBJ_NEW(opal_list_t);
-
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("ctime");
-        kv->type = OPAL_TIMEVAL;
-        kv->data.tv = sampletime;
-        opal_list_append(vals, &kv->super);
-
-        /* load the hostname */
-        if (NULL == hostname) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            return;
-        }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("hostname");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(hostname);
-        opal_list_append(vals, &kv->super);
-
-        kv = OBJ_NEW(opal_value_t);
-        if (NULL == kv) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        kv->key = strdup("data_group");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup("procstat");
-        opal_list_append(vals, &kv->super);
-
-        /* process threads */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("total_processes");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* process threads */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("sleeping_processes");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* process threads */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("running_processes");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-        /* process threads */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("zombie_processes");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* process threads */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("stopped_processes");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* process threads */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("idle_processes");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* process threads */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("total_threads");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* store it */
-        if (0 <= orcm_sensor_base.dbhandle) {
-            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
-        } else {
-            OPAL_LIST_RELEASE(vals);
-        }
-    }
-    /* Check if any process level stats are being sent */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
         ORTE_ERROR_LOG(rc);
         goto cleanup;
     }
-    while(true == log_group) {
-        vals = OBJ_NEW(opal_list_t);
 
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("ctime");
-        kv->type = OPAL_TIMEVAL;
-        kv->data.tv = sampletime;
-        opal_list_append(vals, &kv->super);
+    if(log_group) {
 
-        /* load the hostname */
-        if (NULL == hostname) {
-            ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            goto cleanup;
-        }
-        kv = OBJ_NEW(opal_value_t);
-        kv->key = strdup("hostname");
-        kv->type = OPAL_STRING;
-        kv->data.string = strdup(hostname);
-        opal_list_append(vals, &kv->super);
-
-        /* process id */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &st, &n, OPAL_PSTAT))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        /* Do not free primary_key! It will be freed in mycleanup_procstat */
-        asprintf(&primary_key, "procstat_%s",st->cmd);
-
-        kv = OBJ_NEW(opal_value_t);
-        if (NULL == kv) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        kv->key = strdup("data_group");
-        kv->type = OPAL_STRING;
-	if (NULL == primary_key){
-		return;
-	}
-	else {
-        kv->data.string = strdup(primary_key);
-	}
-        opal_list_append(vals, &kv->super);
-
-
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("pid");
-        sensor_metric->value.type = OPAL_PID;
-        sensor_metric->value.data.pid = st->pid;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("cmd");
-        sensor_metric->value.type = OPAL_STRING;
-        sensor_metric->value.data.string = strdup(st->cmd);
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("state");
-        sensor_metric->value.type = OPAL_STRING;
-        sensor_metric->value.data.string = (char*)malloc(3 * sizeof(char));
-        if (NULL == sensor_metric->value.data.string) {
-            goto cleanup;
-        }
-        sensor_metric->value.data.string[0] = st->state[0];
-        sensor_metric->value.data.string[1] = st->state[1];
-        sensor_metric->value.data.string[2] = '\0';
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("percent_cpu");
-        sensor_metric->value.type = OPAL_FLOAT;
-        sensor_metric->value.data.fval = st->percent_cpu;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("priority");
-        sensor_metric->value.type = OPAL_INT32;
-        sensor_metric->value.data.int32 = st->priority;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("num_threads");
-        sensor_metric->value.type = OPAL_INT16;
-        sensor_metric->value.data.int16 = st->num_threads;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("vsize");
-        sensor_metric->value.type = OPAL_FLOAT;
-        sensor_metric->value.data.fval = st->vsize;
-        sensor_metric->units = strdup("Bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("rss");
-        sensor_metric->value.type = OPAL_FLOAT;
-        sensor_metric->value.data.fval = st->rss;
-        sensor_metric->units = strdup("Bytes");
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("processor");
-        sensor_metric->value.type = OPAL_INT16;
-        sensor_metric->value.data.int16 = st->processor;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* process Shared Memory */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("shared memory");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* process minor_faults */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("minor_faults");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* process major_faults */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("major_faults");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* process total_page_faults */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &int64, &n, OPAL_INT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("page_faults");
-        sensor_metric->value.type = OPAL_INT64;
-        sensor_metric->value.data.int64 = int64;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-        /* process cpu percent */
+        /* process System Uptime */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_double, &n, OPAL_DOUBLE))) {
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        sensor_metric = OBJ_NEW(orcm_value_t);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
-        sensor_metric->value.key = strdup("percent");
-        sensor_metric->value.type = OPAL_DOUBLE;
-        sensor_metric->value.data.dval = sample_double;
-        sensor_metric->units = NULL;
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
-       /* store it */
-        if (0 <= orcm_sensor_base.dbhandle) {
-            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup_procstat, primary_key);
-        } else {
-            OPAL_LIST_RELEASE(vals);
-            if(primary_key!=NULL) {
-                free(primary_key);
-            }
-        }
-
-        /* process cpu percent */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log_group, &n, OPAL_BOOL))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        OBJ_RELEASE(st);
+        sigar_log_sample_item(key, non_compute_data, "uptime", &sample_double, OPAL_DOUBLE, "seconds");
     }
-    goto done;
+
+    sigar_log_process_stats(sample, sampletime, hostname);
+
+    sigar_log_process_lvl_stats(sample, sampletime, hostname);
 
 cleanup:
-    if (NULL != primary_key) {
-        free(primary_key);
+    if ( NULL != non_compute_data) {
+        OPAL_LIST_RELEASE(non_compute_data);
     }
-done:
-    if (NULL != hostname) {
-        free(hostname);
+    if ( NULL != key) {
+        OPAL_LIST_RELEASE(key);
     }
+    SAFEFREE(hostname);
 }
 
 /* Helper function to calculate the metric differences */
@@ -2343,7 +1851,7 @@ static uint64_t metric_diff_calc(sigar_uint64_t newval, uint64_t oldval,
 
 static void generate_test_vector(opal_buffer_t *v)
 {
-    char *ctmp, *date;
+    char *ctmp;
     uint64_t ui64;
     float ft;
     double d;

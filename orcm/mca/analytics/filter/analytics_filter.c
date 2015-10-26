@@ -349,7 +349,7 @@ static int analyze(int sd, short args, void *cbdata)
     }
 
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(filter_analyze_caddy->wf,
-                                     filter_analyze_caddy->wf_step, filter_list);
+                                     filter_analyze_caddy->wf_step, 0, filter_list);
 
     dest_filter_workflow_value(workflow_value);
 

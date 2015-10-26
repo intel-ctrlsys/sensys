@@ -41,7 +41,9 @@
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/mca/db/db.h"
+#include "orcm/util/utils.h"
 #include "orcm/runtime/orcm_globals.h"
+#include "orcm/mca/analytics/analytics.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -175,8 +177,6 @@ static int call_readein(node_power_data *data, int to_print, unsigned char psu)
 
     return ORCM_SUCCESS;
 }
-
-static bool log_enabled = true;
 
 static int init(void)
 {
@@ -505,15 +505,6 @@ retry_b:
     }
 }
 
-static void mycleanup(int dbhandle, int status, opal_list_t *kvs,
-                      opal_list_t *ret, void *cbdata)
-{
-    OPAL_LIST_RELEASE(kvs);
-    if (ORTE_SUCCESS != status) {
-        log_enabled = false;
-    }
-}
-
 /*
  nodepower to be picked up by heartbeat
  */
@@ -522,38 +513,33 @@ static void nodepower_log(opal_buffer_t *sample)
     char *hostname=NULL;
     int rc;
     int32_t n;
-    opal_list_t *vals;
-    opal_value_t *kv;
     int sensor_not_avail=0;
     struct timeval tv_curr;
     struct tm *time_info;
     orcm_value_t *sensor_metric;
-
     float node_power_cur;
     char time_str[40];
+    orcm_analytics_value_t *analytics_vals;
 
-    if (!log_enabled) {
-        return;
-    }
 
     /* unpack the host this came from */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto cleanup;
     }
 
     /* unpack timestamp */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &tv_curr, &n, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto cleanup;
     }
 
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &node_power_cur, &n, OPAL_FLOAT))) {
         ORTE_ERROR_LOG(rc);
-        return;
+        goto cleanup;
     }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -561,14 +547,18 @@ static void nodepower_log(opal_buffer_t *sample)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname);
 
-    /* xfr to storage */
-    vals = OBJ_NEW(opal_list_t);
+    analytics_vals = orcm_util_load_orcm_analytics_value(NULL, NULL, NULL);
+    if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
+         (NULL == analytics_vals->non_compute_data) ||(NULL == analytics_vals->compute_data)) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
 
-    /* load the sample time at the start */
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("ctime");
-    kv->type = OPAL_TIMEVAL;
-    kv->data.tv=tv_curr;
+    sensor_metric = orcm_util_load_orcm_value("ctime", &tv_curr, OPAL_TIMEVAL, NULL);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
 
     time_info=localtime(&(tv_curr.tv_sec));
     if (NULL == time_info) {
@@ -582,63 +572,45 @@ static void nodepower_log(opal_buffer_t *sample)
                        "second=%s\n", time_str);
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                       "sub-second=%.3f\n", (float)(kv->data.tv.tv_usec)/1000000.0);
-    opal_list_append(vals, &kv->super);
+                       "sub-second=%.3f\n", (float)(tv_curr.tv_usec)/1000000.0);
+    opal_list_append(analytics_vals->non_compute_data, (opal_list_item_t *)sensor_metric);
 
     /* load the hostname */
-    kv = OBJ_NEW(opal_value_t);
-    kv->key = strdup("hostname");
-    kv->type = OPAL_STRING;
-    if (hostname==NULL){
-      kv->data.string = strdup("NULL");
-    } else {
-      kv->data.string = strdup(hostname);
-    }
-    opal_list_append(vals, &kv->super);
-    free(hostname);
-
-
-    kv = OBJ_NEW(opal_value_t);
-    if (NULL == kv) {
-        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-        return;
-    }
-    kv->key = strdup("data_group");
-    kv->type = OPAL_STRING;
-    kv->data.string = strdup("nodepower");
-    opal_list_append(vals, &kv->super);
-
-    sensor_metric = OBJ_NEW(orcm_value_t);
+    sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
     if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
-        return;
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
     }
-    sensor_metric->value.key=strdup("nodepower");
-    sensor_metric->value.type=OPAL_FLOAT;
-    sensor_metric->value.data.fval=node_power_cur;
-    sensor_metric->units = strdup("W");
+    opal_list_append(analytics_vals->key, (opal_list_item_t *)sensor_metric);
+
+    sensor_metric = orcm_util_load_orcm_value("data_group", "nodepower", OPAL_STRING, NULL);
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
+    opal_list_append(analytics_vals->key, (opal_list_item_t *)sensor_metric);
+
+    sensor_metric = orcm_util_load_orcm_value("nodepower", &node_power_cur, OPAL_FLOAT, "W");
+    if (NULL == sensor_metric) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        goto cleanup;
+    }
+
     if (node_power_cur<=(float)(0.0)){
         sensor_not_avail=1;
         if (_readein.ipmi_calls>4)
             opal_output(0,"nodepower sensor data not logged due to unexpected return value from PSU\n");
     } else {
-        opal_list_append(vals, (opal_list_item_t *)sensor_metric);
+        opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
     }
 
-/*
- *
-don't send as a string. send it as a time_val.
-take advantage of existing time_val field of opal_value_t
- *
- */
-    /* store it */
-    if (0 <= orcm_sensor_base.dbhandle) {
-        if (!sensor_not_avail){
-            orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
-        }
-    } else {
-        OPAL_LIST_RELEASE(vals);
+    if (!sensor_not_avail) {
+        orcm_analytics.send_data(analytics_vals);
     }
+    OBJ_RELEASE(analytics_vals);
+
+cleanup:
+    SAFEFREE(hostname);
 }
 
 static void nodepower_set_sample_rate(int sample_rate)

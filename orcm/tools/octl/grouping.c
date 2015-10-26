@@ -32,6 +32,7 @@ int orcm_octl_logical_group_add(int argc, char **argv)
         goto cleanup;
     }
 
+    logical_group_file_lock.file_lock.l_type = F_WRLCK;
     if (ORCM_SUCCESS != (erri = orcm_logical_group_load_from_file(tag,
                          LOGICAL_GROUP.storage_filename, LOGICAL_GROUP.groups))) {
         goto cleanup;
@@ -42,8 +43,7 @@ int orcm_octl_logical_group_add(int argc, char **argv)
         goto cleanup;
     }
 
-    if (ORCM_SUCCESS != (erri = orcm_logical_group_save_to_file(tag,
-                         LOGICAL_GROUP.storage_filename, LOGICAL_GROUP.groups))) {
+    if (ORCM_SUCCESS != (erri = orcm_logical_group_save_to_file(tag, LOGICAL_GROUP.groups))) {
         goto cleanup;
     }
 
@@ -73,6 +73,7 @@ int orcm_octl_logical_group_remove(int argc, char **argv)
     if (0 == is_do_all_wildcard(node_regex)) {
         pass_tag = tag;
     }
+    logical_group_file_lock.file_lock.l_type = F_WRLCK;
     if (ORCM_SUCCESS != (erri = orcm_logical_group_load_from_file(pass_tag,
                          LOGICAL_GROUP.storage_filename, LOGICAL_GROUP.groups))) {
         goto cleanup;
@@ -89,8 +90,7 @@ int orcm_octl_logical_group_remove(int argc, char **argv)
         goto cleanup;
     }
 
-    if (ORCM_SUCCESS != (erri = orcm_logical_group_save_to_file(tag,
-                         LOGICAL_GROUP.storage_filename, LOGICAL_GROUP.groups))) {
+    if (ORCM_SUCCESS != (erri = orcm_logical_group_save_to_file(tag, LOGICAL_GROUP.groups))) {
         goto cleanup;
     }
 
@@ -149,6 +149,7 @@ int orcm_octl_logical_group_list(int argc, char **argv)
     if (0 == is_do_all_wildcard(node_regex)) {
         pass_tag = tag;
     }
+    logical_group_file_lock.file_lock.l_type = F_RDLCK;
     if (ORCM_SUCCESS != (erri = orcm_logical_group_load_from_file(pass_tag,
                          LOGICAL_GROUP.storage_filename, LOGICAL_GROUP.groups))) {
         goto cleanup;

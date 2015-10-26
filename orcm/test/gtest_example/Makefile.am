@@ -6,15 +6,25 @@
 include $(top_srcdir)/Makefile.ompi-rules
 
 #
-# Tests.  "make check" return values:
+# Tests.  "make check" expects these return values:
 #
 # 0:              pass
 # 77:             skipped test
-# 99:             hard error, stop testing
+# 99:             error
 # other non-zero: fail
 #
 
+#
+# List of tests
+#
+
 TESTS = passingTest failingTest
+
+#
+# XFAIL_TESTS means this test is supposed to fail.
+#
+
+XFAIL_TESTS = failingTest
 
 #
 # Executables to be built for "make check"

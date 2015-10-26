@@ -104,6 +104,9 @@ Create a Makefile.am in your directory, which will be used to generate
 the Makefile that builds and runs your test.  See the Makefile.am in
 orcm/test/mca/sensor/ft_tester or orcm/test/gtets_example for help.
 
+The automakeVariables.pdf file in this directory describes the predefined
+variables that you may want to use in Makefile.am.
+
 In config/grei_config_files.m4, add your Makefile to the list of makefiles
 to be processed by the "configure" command.
 
@@ -139,3 +142,9 @@ HAVE_GTEST
 
 which is true if we have found the Google Test headers and library and
 false otherwise.
+
+Problems:
+========
+If a test fails or reports an error (return code 99), the testing
+stops.  This is not supposed to happen.  "make check" is supposed to
+run all tests in spite of failures and report the result.  

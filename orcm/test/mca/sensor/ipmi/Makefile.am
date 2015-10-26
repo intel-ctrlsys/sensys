@@ -52,4 +52,4 @@ AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto -lipmiutil $(MOCKING)
 # Preprocessor flags
 #
 
-AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_builddir)/..
+AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_srcdir)

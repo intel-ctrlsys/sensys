@@ -87,6 +87,11 @@ in each test's directory in log files.
 Test results can be uploaded to a test server.  Details are at the
 gnu.org link below.
 
+If a test fails, then "make check" will immediately stop running tests.
+Until you fix the problem, you can list your test in the Makefile.am after
+XFAIL_TESTS in addition to TESTS.  This tells the test system that the
+test is supposed to fail.  (See gtest_example/Makefile.am.)
+
 To add a test:
 =============
 

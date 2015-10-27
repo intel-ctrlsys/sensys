@@ -19,12 +19,26 @@
 #include "orcm_config.h"
 
 #include "orcm/mca/analytics/analytics.h"
+#include "orte/mca/notifier/base/base.h"
 
 BEGIN_C_DECLS
 
 /*
  * Local Component structures
  */
+
+typedef struct
+{
+    opal_object_t super;
+    double hi;
+    orte_notifier_severity_t hi_sev;
+    char* hi_action;
+    double low;
+    orte_notifier_severity_t low_sev;
+    char* low_action;
+} orcm_mca_analytics_threshold_policy_t;
+
+OBJ_CLASS_DECLARATION(orcm_mca_analytics_threshold_policy_t);
 
 ORCM_MODULE_DECLSPEC extern orcm_analytics_base_component_t mca_analytics_threshold_component;
 

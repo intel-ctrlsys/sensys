@@ -220,7 +220,7 @@ static int orcm_analytics_base_parse_attributes(opal_list_t *attr_list, char *at
     if (NULL == attr_string){
         return ORCM_SUCCESS;
     }
-    tokens = opal_argv_split(attr_string, ',');
+    tokens = opal_argv_split(attr_string, ';');
 
     ret = orcm_analytics_base_subtokenize_attributes(tokens, attr_list);
 
@@ -429,8 +429,8 @@ void orcm_analytics_base_send_data(orcm_analytics_value_t *data)
     }
 
     OPAL_LIST_FOREACH(wf, &orcm_analytics_base.workflows, orcm_workflow_t) {
-        //OBJ_RETAIN(data);
-        //ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), data);
+        OBJ_RETAIN(data);
+        ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), 0, data);
     }
 
     if (ORCM_SUCCESS != ret_db) {
@@ -439,4 +439,21 @@ void orcm_analytics_base_send_data(orcm_analytics_value_t *data)
                               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
          OBJ_RELEASE(data);
      }
+}
+
+int assert_caddy_data(void *cbdata)
+{
+    orcm_workflow_caddy_t *current_caddy = NULL;
+
+    if (NULL == cbdata) {
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    current_caddy = (orcm_workflow_caddy_t *)cbdata;
+    if (NULL == current_caddy->imod || NULL == current_caddy->wf ||
+        NULL == current_caddy->wf_step || NULL == current_caddy->analytics_value) {
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    return ORCM_SUCCESS;
 }

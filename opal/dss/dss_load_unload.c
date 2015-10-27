@@ -248,6 +248,10 @@ int opal_value_load(opal_value_t *kv,
         kv->data.fval = *(float*)(data);
         break;
 
+    case OPAL_DOUBLE:
+        kv->data.dval = *(double*)(data);
+        break;
+
     case OPAL_TIMEVAL:
         tv = (struct timeval*)data;
         kv->data.tv.tv_sec = tv->tv_sec;

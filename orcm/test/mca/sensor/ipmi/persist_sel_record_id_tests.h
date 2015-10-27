@@ -18,12 +18,12 @@ class ut_persist_sel_record_id: public testing::Test
         const static std::string backup_filename;
         const static std::string new_filename;
 
-        const static std::vector<std::string> messy_file;
-        const static std::vector<std::string> messy_file_golden1;
-        const static std::vector<std::string> messy_file_golden2;
-        const static std::vector<std::string> messy_file_golden3;
-        const static std::vector<std::string> messy_file_golden4;
-        const static std::vector<std::string> messy_file_golden5;
+        static std::vector<std::string> messy_file;
+        static std::vector<std::string> messy_file_golden1;
+        static std::vector<std::string> messy_file_golden2;
+        static std::vector<std::string> messy_file_golden3;
+        static std::vector<std::string> messy_file_golden4;
+        static std::vector<std::string> messy_file_golden5;
 
         static std::vector<std::string> error_list;
         static int fail_when_zero_counter;

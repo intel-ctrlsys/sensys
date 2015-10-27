@@ -1132,33 +1132,17 @@ opal_show_subtitle "Compiler flags"]
 # will install it for us. If we VPATH building, we do need to include the
 # source directories, however.
 #
-__gcc_M=$(gcc --version | head -1 | cut -f 3 -d ' ' | cut -f 1 -d '.')
-__gcc_m=$(gcc --version | head -1 | cut -f 3 -d ' ' | cut -f 2 -d '.')
-__gcc_cpp_ver=
-if test "$__gcc_M" == "4"; then
-    if test $__gcc_m -ge 4; then
-        __gcc_cpp_ver="-std=c++03"
-    fi
-    if test $__gcc_m -ge 8; then
-        __gcc_cpp_ver="-std=c++11"
-    fi
-elif test "$__gcc_M" == "5"; then
-    __gcc_cpp_ver="-std=c++11"
-fi
 if test "$OPAL_TOP_BUILDDIR" != "$OPAL_TOP_SRCDIR"; then
     # Note the embedded m4 directives here -- we must embed them
     # rather than have successive assignments to these shell
     # variables, lest the $(foo) names try to get evaluated here.
     # Yuck!
     CPPFLAGS='-I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include -I$(top_builddir)/orte/include -I$(top_srcdir)/orcm/include -I$(top_builddir)/orcm/include'" $CPPFLAGS"
-    CXXFLAGS='-I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include -I$(top_builddir)/orte/include -I$(top_srcdir)/orcm/include -I$(top_builddir)/orcm/include'" $CXXFLAGS $__gcc_cpp_ver"
+    CXXFLAGS='-I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/opal/include -I$(top_srcdir)/orte/include -I$(top_builddir)/orte/include -I$(top_srcdir)/orcm/include -I$(top_builddir)/orcm/include'" $CXXFLAGS"
 else
     CPPFLAGS='-I$(top_srcdir) -I$(top_srcdir)/orte/include -I$(top_srcdir)/orcm/include'" $CPPFLAGS"
-    CXXFLAGS='-I$(top_srcdir) -I$(top_srcdir)/orte/include -I$(top_srcdir)/orcm/include'" $CXXFLAGS $__gcc_cpp_ver"
+    CXXFLAGS='-I$(top_srcdir) -I$(top_srcdir)/orte/include -I$(top_srcdir)/orcm/include'" $CXXFLAGS"
 fi
-unset __gcc_M
-unset __gcc_m
-unset __gcc_cpp_ver
 
 # OMPI/ORTE wants some additional processing of the flags (e.g., get
 # versions without optimization for debugger modules).

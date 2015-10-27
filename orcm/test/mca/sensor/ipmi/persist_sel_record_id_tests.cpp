@@ -1,7 +1,7 @@
 // Project Includes
 #include "sensor_ipmi_sel_mocked_functions.h"
 #include "persist_sel_record_id_tests.h"
-#include "../../../../mca/sensor/ipmi/persist_sel_record_id.h"
+#include "orcm/mca/sensor/ipmi/persist_sel_record_id.h"
 
 // C++ Includes
 #include <iostream>
@@ -22,122 +22,123 @@ const string ut_persist_sel_record_id::test_filename = "test_persist_sel_record_
 const string ut_persist_sel_record_id::backup_filename = test_filename + ".backup";
 const string ut_persist_sel_record_id::new_filename = test_filename + ".new";
 
-const vector<string> ut_persist_sel_record_id::messy_file = {
-    "",
-    "test_aggregator=49",
-    "test_node01=3",
-    "=1",
-    "test_node02=3",
-    "test_node03=3",
-    "  test_node04 =\t3  ",
-    "test_node05=3",
-    "test_node06=3",
-    "test_node07=3",
-    "",
-    "test_node08=invalid3u4more",
-    "test_node09=3",
-    "",
-    "missing_node",
-    "test_node10=3",
-    "test_node11=blue3red",
-    "test_node12=3",
-    "test_node13=3",
-    "",
-};
-
-const vector<string> ut_persist_sel_record_id::messy_file_golden1 = {
-    "test_aggregator=100",
-    "test_node01=3",
-    "test_node02=3",
-    "test_node03=3",
-    "test_node04=3",
-    "test_node05=3",
-    "test_node06=3",
-    "test_node07=3",
-    "test_node08=invalid3u4more",
-    "test_node09=3",
-    "test_node10=3",
-    "test_node11=blue3red",
-    "test_node12=3",
-    "test_node13=3"
-};
-
-const vector<string> ut_persist_sel_record_id::messy_file_golden2 = {
-    "test_aggregator=49",
-    "test_node01=3",
-    "test_node02=3",
-    "test_node03=3",
-    "test_node04=3",
-    "test_node05=3",
-    "test_node06=3",
-    "test_node07=3",
-    "test_node08=invalid3u4more",
-    "test_node09=3",
-    "test_node10=3",
-    "test_node11=77",
-    "test_node12=3",
-    "test_node13=3"
-};
-
-const vector<string> ut_persist_sel_record_id::messy_file_golden3 = {
-    "test_aggregator=49",
-    "test_node01=3",
-    "test_node02=3",
-    "test_node03=3",
-    "test_node04=3",
-    "test_node05=3",
-    "test_node06=3",
-    "test_node07=3",
-    "test_node08=34",
-    "test_node09=3",
-    "test_node10=3",
-    "test_node11=blue3red",
-    "test_node12=3",
-    "test_node13=3"
-};
-
-const vector<string> ut_persist_sel_record_id::messy_file_golden4 = {
-    "test_aggregator=49",
-    "test_node01=3",
-    "test_node02=3",
-    "test_node03=3",
-    "test_node04=3",
-    "test_node05=3",
-    "test_node06=3",
-    "test_node07=3",
-    "test_node08=invalid3u4more",
-    "test_node09=3",
-    "test_node10=3",
-    "test_node11=blue3red",
-    "test_node12=3",
-    "test_node13=3",
-    "test_node15=53"
-};
-
-const vector<string> ut_persist_sel_record_id::messy_file_golden5 = {
-    "test_aggregator=171",
-    "test_node01=3",
-    "test_node02=3",
-    "test_node03=3",
-    "test_node04=3",
-    "test_node05=3",
-    "test_node06=3",
-    "test_node07=3",
-    "test_node08=invalid3u4more",
-    "test_node09=3",
-    "test_node10=3",
-    "test_node11=blue3red",
-    "test_node12=3",
-    "test_node13=3"
-};
+vector<string> ut_persist_sel_record_id::messy_file;
+vector<string> ut_persist_sel_record_id::messy_file_golden1;
+vector<string> ut_persist_sel_record_id::messy_file_golden2;
+vector<string> ut_persist_sel_record_id::messy_file_golden3;
+vector<string> ut_persist_sel_record_id::messy_file_golden4;
+vector<string> ut_persist_sel_record_id::messy_file_golden5;
 
 // Test Helper Methods in Fixture
 void ut_persist_sel_record_id::SetUpTestCase()
 {
+    messy_file.push_back("");
+    messy_file.push_back("test_aggregator=49");
+    messy_file.push_back("test_node01=3");
+    messy_file.push_back("=1");
+    messy_file.push_back("test_node02=3");
+    messy_file.push_back("test_node03=3");
+    messy_file.push_back("  test_node04 =\t3  ");
+    messy_file.push_back("test_node05=3");
+    messy_file.push_back("test_node06=3");
+    messy_file.push_back("test_node07=3");
+    messy_file.push_back("");
+    messy_file.push_back("test_node08=invalid3u4more");
+    messy_file.push_back("test_node09=3");
+    messy_file.push_back("");
+    messy_file.push_back("missing_node");
+    messy_file.push_back("test_node10=3");
+    messy_file.push_back("test_node11=blue3red");
+    messy_file.push_back("test_node12=3");
+    messy_file.push_back("test_node13=3");
+    messy_file.push_back("");
+
+    messy_file_golden1.push_back("test_aggregator=100");
+    messy_file_golden1.push_back("test_node01=3");
+    messy_file_golden1.push_back("test_node02=3");
+    messy_file_golden1.push_back("test_node03=3");
+    messy_file_golden1.push_back("test_node04=3");
+    messy_file_golden1.push_back("test_node05=3");
+    messy_file_golden1.push_back("test_node06=3");
+    messy_file_golden1.push_back("test_node07=3");
+    messy_file_golden1.push_back("test_node08=invalid3u4more");
+    messy_file_golden1.push_back("test_node09=3");
+    messy_file_golden1.push_back("test_node10=3");
+    messy_file_golden1.push_back("test_node11=blue3red");
+    messy_file_golden1.push_back("test_node12=3");
+    messy_file_golden1.push_back("test_node13=3");
+
+    messy_file_golden2.push_back("test_aggregator=49");
+    messy_file_golden2.push_back("test_node01=3");
+    messy_file_golden2.push_back("test_node02=3");
+    messy_file_golden2.push_back("test_node03=3");
+    messy_file_golden2.push_back("test_node04=3");
+    messy_file_golden2.push_back("test_node05=3");
+    messy_file_golden2.push_back("test_node06=3");
+    messy_file_golden2.push_back("test_node07=3");
+    messy_file_golden2.push_back("test_node08=invalid3u4more");
+    messy_file_golden2.push_back("test_node09=3");
+    messy_file_golden2.push_back("test_node10=3");
+    messy_file_golden2.push_back("test_node11=77");
+    messy_file_golden2.push_back("test_node12=3");
+    messy_file_golden2.push_back("test_node13=3");
+
+    messy_file_golden3.push_back("test_aggregator=49");
+    messy_file_golden3.push_back("test_node01=3");
+    messy_file_golden3.push_back("test_node02=3");
+    messy_file_golden3.push_back("test_node03=3");
+    messy_file_golden3.push_back("test_node04=3");
+    messy_file_golden3.push_back("test_node05=3");
+    messy_file_golden3.push_back("test_node06=3");
+    messy_file_golden3.push_back("test_node07=3");
+    messy_file_golden3.push_back("test_node08=34");
+    messy_file_golden3.push_back("test_node09=3");
+    messy_file_golden3.push_back("test_node10=3");
+    messy_file_golden3.push_back("test_node11=blue3red");
+    messy_file_golden3.push_back("test_node12=3");
+    messy_file_golden3.push_back("test_node13=3");
+
+    messy_file_golden4.push_back("test_aggregator=49");
+    messy_file_golden4.push_back("test_node01=3");
+    messy_file_golden4.push_back("test_node02=3");
+    messy_file_golden4.push_back("test_node03=3");
+    messy_file_golden4.push_back("test_node04=3");
+    messy_file_golden4.push_back("test_node05=3");
+    messy_file_golden4.push_back("test_node06=3");
+    messy_file_golden4.push_back("test_node07=3");
+    messy_file_golden4.push_back("test_node08=invalid3u4more");
+    messy_file_golden4.push_back("test_node09=3");
+    messy_file_golden4.push_back("test_node10=3");
+    messy_file_golden4.push_back("test_node11=blue3red");
+    messy_file_golden4.push_back("test_node12=3");
+    messy_file_golden4.push_back("test_node13=3");
+    messy_file_golden4.push_back("test_node15=53");
+
+    messy_file_golden5.push_back("test_aggregator=171");
+    messy_file_golden5.push_back("test_node01=3");
+    messy_file_golden5.push_back("test_node02=3");
+    messy_file_golden5.push_back("test_node03=3");
+    messy_file_golden5.push_back("test_node04=3");
+    messy_file_golden5.push_back("test_node05=3");
+    messy_file_golden5.push_back("test_node06=3");
+    messy_file_golden5.push_back("test_node07=3");
+    messy_file_golden5.push_back("test_node08=invalid3u4more");
+    messy_file_golden5.push_back("test_node09=3");
+    messy_file_golden5.push_back("test_node10=3");
+    messy_file_golden5.push_back("test_node11=blue3red");
+    messy_file_golden5.push_back("test_node12=3");
+    messy_file_golden5.push_back("test_node13=3");
 }
 
 void ut_persist_sel_record_id::TearDownTestCase()
 {
+    messy_file.clear();
+    messy_file_golden1.clear();
+    messy_file_golden2.clear();
+    messy_file_golden3.clear();
+    messy_file_golden4.clear();
+    messy_file_golden5.clear();
+
     test_reset();
 }
 

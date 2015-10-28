@@ -212,7 +212,6 @@ static void wkcaddy_con(orcm_workflow_caddy_t *p)
 {
     p->wf = NULL;
     p->wf_step = NULL;
-    p->data = NULL;
     p->analytics_value = NULL;
     p->imod = NULL;
 }
@@ -221,10 +220,15 @@ static void wkcaddy_des(orcm_workflow_caddy_t *p)
     if (NULL == p) {
         return;
     }
-    OBJ_RELEASE(p->wf);
-    OBJ_RELEASE(p->wf_step);
-    OPAL_LIST_RELEASE(p->data);
-    OBJ_RELEASE(p->analytics_value);
+    if (NULL != p->wf) {
+        OBJ_RELEASE(p->wf);
+    }
+    if (NULL != p->wf_step) {
+        OBJ_RELEASE(p->wf_step);
+    }
+    if (NULL != p->analytics_value) {
+        OBJ_RELEASE(p->analytics_value);
+    }
 }
 OBJ_CLASS_INSTANCE(orcm_workflow_caddy_t,
                    opal_object_t,

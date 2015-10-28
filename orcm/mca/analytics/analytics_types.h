@@ -65,7 +65,6 @@ typedef struct {
     opal_event_t ev;
     orcm_workflow_step_t *wf_step;
     orcm_workflow_t    *wf;
-    opal_list_t *data;
     uint64_t hash_key;
     orcm_analytics_value_t *analytics_value;
     orcm_analytics_base_module_t *imod;

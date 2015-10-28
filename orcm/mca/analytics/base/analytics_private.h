@@ -28,6 +28,7 @@ ORCM_DECLSPEC void orcm_analytics_base_activate_analytics_workflow_step(orcm_wor
                                                                         orcm_workflow_step_t *wf_step,
                                                                         uint64_t hash_key,
                                                                         orcm_analytics_value_t *data);
+
 ORCM_DECLSPEC void orcm_analytics_base_send_data(orcm_analytics_value_t *data);
 
 void orcm_analytics_base_db_open_cb(int handle, int status, opal_list_t *props,
@@ -43,6 +44,9 @@ int orcm_analytics_base_store(opal_list_t *data_results);
 
 /* function to store data of type orcm_analytics_value_t*/
 ORCM_DECLSPEC int orcm_analytics_base_store_analytics(orcm_analytics_value_t *analytics_data);
+
+/* function to assert that the input caddy data is valid */
+int assert_caddy_data(void *cbdata);
 
 #define ANALYTICS_COUNT_DEFAULT 1
 #define MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP 2

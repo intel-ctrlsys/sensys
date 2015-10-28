@@ -196,7 +196,9 @@ opal_value_t* orcm_util_load_opal_value(char *key, void *data, opal_data_type_t 
     opal_value_t *kv = OBJ_NEW(opal_value_t);
 
     if (NULL != kv) {
-        kv->key = strdup(key);
+        if (NULL != key) {
+            kv->key = strdup(key);
+        }
         rc = opal_value_load(kv, data, type);
         if (ORCM_SUCCESS != rc) {
             OBJ_RELEASE(kv);
@@ -291,6 +293,10 @@ static int orcm_util_copy_opal_value_data(opal_value_t *dest, opal_value_t *src)
 
     case OPAL_FLOAT:
         dest->data.fval = src->data.fval;
+        break;
+
+    case OPAL_DOUBLE:
+        dest->data.dval = src->data.dval;
         break;
 
     case OPAL_TIMEVAL:
@@ -500,3 +506,127 @@ uint64_t orcm_util_create_hash_key(void *key, size_t key_size)
     }
     return hash;
 }
+
+static orcm_analytics_value_t *orcm_util_retain_key_noncompute(opal_list_t *key,
+                                                               opal_list_t *non_compute)
+{
+    orcm_analytics_value_t *analytics_vals = OBJ_NEW(orcm_analytics_value_t);
+
+    if (NULL != analytics_vals) {
+        if (NULL != key) {
+            OBJ_RETAIN(key);
+            analytics_vals->key = key;
+        }
+        if (NULL != non_compute) {
+            OBJ_RETAIN(non_compute);
+            analytics_vals->non_compute_data = non_compute;
+        }
+    }
+
+    return analytics_vals;
+}
+
+opal_list_t* orcm_util_copy_opal_list(opal_list_t *src)
+{
+    opal_list_t *dest = NULL;
+    orcm_value_t *list_item = NULL;
+    orcm_value_t *new_list_item = NULL;
+
+    if (NULL != src) {
+        dest = OBJ_NEW(opal_list_t);
+        if (NULL == dest) {
+            goto cleanup;
+        }
+        OPAL_LIST_FOREACH(list_item, src, orcm_value_t) {
+            if (NULL == list_item) {
+                goto cleanup;
+            }
+            new_list_item = orcm_util_load_orcm_value(list_item->value.key, &(list_item->value.data),
+                                                      list_item->value.type, list_item->units);
+            if (NULL == new_list_item) {
+                goto cleanup;
+            }
+            opal_list_append(dest, (opal_list_item_t *)new_list_item);
+        }
+        return dest;
+    }
+
+cleanup:
+    if (NULL != new_list_item) {
+        OBJ_RELEASE(new_list_item);
+    }
+    if (NULL != dest) {
+        OPAL_LIST_RELEASE(dest);
+    }
+    return NULL;
+}
+
+/* create an orcm_analytics_value that retains the key and non_compute data and
+ * assign the input compute list to it. This function is not supposed to be used as a
+ * general function that creates an orcm_analytics_value. It is used to pass the new
+ * compute data from one plugin to the next one
+ * */
+orcm_analytics_value_t* orcm_util_load_orcm_analytics_value_compute(opal_list_t *key,
+                                                            opal_list_t *non_compute,
+                                                            opal_list_t *compute) {
+    orcm_analytics_value_t *analytics_vals = orcm_util_retain_key_noncompute(key, non_compute);
+
+    if (NULL != analytics_vals) {
+        analytics_vals->compute_data = compute;
+    }
+
+    return analytics_vals;
+}
+
+double orcm_util_get_number_orcm_value(orcm_value_t *source_value)
+{
+    double ret;
+
+    if (NULL == source_value) {
+        return 0.0;
+    }
+
+    switch(source_value->value.type) {
+    case OPAL_INT:
+        ret = (double)(source_value->value.data.integer);
+        break;
+    case OPAL_INT8:
+        ret = (double)(source_value->value.data.int8);
+        break;
+    case OPAL_INT16:
+        ret = (double)(source_value->value.data.int16);
+        break;
+    case OPAL_INT32:
+        ret = (double)(source_value->value.data.int32);
+        break;
+    case OPAL_INT64:
+        ret = (double)(source_value->value.data.int64);
+        break;
+    case OPAL_UINT:
+        ret = (double)(source_value->value.data.uint);;
+        break;
+    case OPAL_UINT8:
+        ret = (double)(source_value->value.data.uint8);
+        break;
+    case OPAL_UINT16:
+        ret = (double)(source_value->value.data.uint16);
+        break;
+    case OPAL_UINT32:
+        ret = (double)(source_value->value.data.uint32);
+        break;
+    case OPAL_UINT64:
+        ret = (double)(source_value->value.data.int64);
+        break;
+    case OPAL_FLOAT:
+        ret = (double)(source_value->value.data.fval);
+        break;
+    case OPAL_DOUBLE:
+        ret = source_value->value.data.dval;
+        break;
+    default:
+        ret = 0.0;
+    }
+
+    return ret;
+}
+

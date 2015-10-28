@@ -49,7 +49,19 @@ ORCM_DECLSPEC orcm_value_t* orcm_util_load_orcm_value(char *key, void *data,
 ORCM_DECLSPEC opal_value_t* orcm_util_copy_opal_value(opal_value_t* src);
 ORCM_DECLSPEC orcm_value_t* orcm_util_copy_orcm_value(orcm_value_t* src);
 
+/* copy a list of orcm_value_t to another list */
+ORCM_DECLSPEC opal_list_t* orcm_util_copy_opal_list(opal_list_t *src);
+
+/* get the number from the orcm_value_t and convert the number to double for computing */
+ORCM_DECLSPEC double orcm_util_get_number_orcm_value(orcm_value_t *source_value);
+
 ORCM_DECLSPEC orcm_analytics_value_t* orcm_util_load_orcm_analytics_value(opal_list_t *key,
+                                                            opal_list_t *non_compute,
+                                                            opal_list_t *compute);
+
+/* create an orcm_analytics_value that retains the key and
+ * non_compute data and assign the compute data to it */
+ORCM_DECLSPEC orcm_analytics_value_t* orcm_util_load_orcm_analytics_value_compute(opal_list_t *key,
                                                             opal_list_t *non_compute,
                                                             opal_list_t *compute);
 

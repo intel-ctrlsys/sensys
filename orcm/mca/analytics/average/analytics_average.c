@@ -37,16 +37,13 @@ static int computing_the_average(orcm_analytics_average_item_value *new_average_
 
 /* an internal function to compute the average*/
 static
-orcm_value_t *compute_average_internal(opal_list_t *compute_data,
-                                       orcm_analytics_average_item_value *prev_average_value);
+orcm_analytics_average_item_value *compute_average_internal(opal_list_t *compute_data,
+                                   orcm_analytics_average_item_value *prev_average_value);
 
 /* compute the average of the sample data */
 static orcm_analytics_average_item_value *compute_average(opal_hash_table_t *hash_table,
                                                           uint64_t hash_key,
                                                           opal_list_t *compute_data);
-
-/* assert that the input caddy data is valid */
-static int assert_caddy_data(void *cbdata);
 
 /* fill the computation data list to be passed to the next plugin */
 static
@@ -61,7 +58,9 @@ static void average_item_value_con(orcm_analytics_average_item_value *value)
 
 static void average_item_value_des(orcm_analytics_average_item_value *value)
 {
-    OBJ_RELEASE(value->value_average);
+    if (NULL != value->value_average) {
+        OBJ_RELEASE(value->value_average);
+    }
 }
 
 OBJ_CLASS_INSTANCE(orcm_analytics_average_item_value,
@@ -111,16 +110,20 @@ static orcm_analytics_average_item_value* create_first_value(orcm_value_t *list_
 
     current_item = OBJ_NEW(orcm_analytics_average_item_value);
     if (NULL != current_item) {
-        current_item->value_average = OBJ_NEW(orcm_analytics_value_t);
+        current_item->num_sample = 0;
+        current_item->value_average = OBJ_NEW(orcm_value_t);
         if (NULL == current_item->value_average) {
             OBJ_RELEASE(current_item);
             return NULL;
         }
-        current_item->num_sample = 0;
-        current_item->value_average->units = strdup(list_item->units);
-        current_item->value_average->value.key = strdup(list_item->value.key);
-        current_item->value_average->value.type = OPAL_FLOAT;
-        current_item->value_average->value.data.fval = 0.0;
+        if (NULL != list_item->units) {
+            current_item->value_average->units = strdup(list_item->units);
+        }
+        if (NULL != list_item->value.key) {
+            current_item->value_average->value.key = strdup(list_item->value.key);
+        }
+        current_item->value_average->value.type = OPAL_DOUBLE;
+        current_item->value_average->value.data.dval = 0.0;
     }
 
     return current_item;
@@ -129,7 +132,7 @@ static orcm_analytics_average_item_value* create_first_value(orcm_value_t *list_
 static int computing_the_average(orcm_analytics_average_item_value *new_average_value,
                                  opal_list_t *compute_data)
 {
-    float sum = 0.0;
+    double sum = 0.0;
     orcm_value_t *list_item = NULL;
     size_t size = opal_list_get_size(compute_data);
 
@@ -137,11 +140,11 @@ static int computing_the_average(orcm_analytics_average_item_value *new_average_
         if (NULL == list_item) {
             return ORCM_ERR_BAD_PARAM;
         }
-        sum += list_item->value.data.fval;
+        sum += orcm_util_get_number_orcm_value(list_item);
     }
 
-    new_average_value->value_average->value.data.fval =
-       (new_average_value->value_average->value.data.fval * new_average_value->num_sample + sum) /
+    new_average_value->value_average->value.data.dval =
+       (new_average_value->value_average->value.data.dval * new_average_value->num_sample + sum) /
        (new_average_value->num_sample + size);
     new_average_value->num_sample += size;
 
@@ -149,8 +152,8 @@ static int computing_the_average(orcm_analytics_average_item_value *new_average_
 }
 
 static
-orcm_value_t *compute_average_internal(opal_list_t *compute_data,
-                                       orcm_analytics_average_item_value *prev_average_value)
+orcm_analytics_average_item_value *compute_average_internal(opal_list_t *compute_data,
+                                   orcm_analytics_average_item_value *prev_average_value)
 {
     orcm_analytics_average_item_value *new_average_value = NULL;
 
@@ -207,23 +210,6 @@ cleanup:
     return NULL;
 }
 
-static int assert_caddy_data(void *cbdata)
-{
-    orcm_workflow_caddy_t *current_caddy = NULL;
-
-    if (NULL == cbdata) {
-        return ORCM_ERR_BAD_PARAM;
-    }
-
-    current_caddy = (orcm_workflow_caddy_t *)cbdata;
-    if (NULL == current_caddy->imod || NULL == current_caddy->wf ||
-        NULL == current_caddy->wf_step || NULL == current_caddy->analytics_value) {
-        return ORCM_ERR_BAD_PARAM;
-    }
-
-    return ORCM_SUCCESS;
-}
-
 static
 orcm_analytics_value_t *fill_analytics_value(orcm_analytics_average_item_value *average_value,
                                              orcm_analytics_value_t *analytics_value)
@@ -236,63 +222,59 @@ orcm_analytics_value_t *fill_analytics_value(orcm_analytics_average_item_value *
     if (NULL == compute_list_to_next) {
         return NULL;
     }
-    compute_list_item = orcm_util_copy_orcm_value(average_value->value_average);
+    compute_list_item = orcm_util_load_orcm_value(average_value->value_average->value.key,
+                                                  &(average_value->value_average->value.data),
+                                                  average_value->value_average->value.type,
+                                                  average_value->value_average->units);
     if (NULL == compute_list_item) {
-        return NULL;
-    }
-    opal_list_append(compute_list_to_next, (opal_list_item_t *)compute_list_item);
-    analytics_value_to_next = OBJ_NEW(orcm_analytics_value_t);
-    if (NULL == analytics_value_to_next) {
         OPAL_LIST_RELEASE(compute_list_to_next);
         return NULL;
     }
-    analytics_value_to_next->key = analytics_value->key;
-    analytics_value_to_next->non_compute_data = analytics_value->non_compute_data;
-    analytics_value_to_next->compute_data = compute_list_to_next;
+    opal_list_append(compute_list_to_next, (opal_list_item_t *)compute_list_item);
+    analytics_value_to_next = orcm_util_load_orcm_analytics_value_compute(analytics_value->key,
+                                  analytics_value->non_compute_data, compute_list_to_next);
 
     return analytics_value_to_next;
 }
 
 static int analyze(int sd, short args, void *cbdata)
 {
-    orcm_workflow_caddy_t *current_caddy = NULL;
+    orcm_workflow_caddy_t *current_caddy = (orcm_workflow_caddy_t *)cbdata;
     orcm_analytics_average_item_value *average_value = NULL;
     orcm_analytics_value_t *analytics_value_to_next = NULL;
     mca_analytics_average_module_t *mod = NULL;
+    int rc = -1;
 
-    if (ORCM_SUCCESS != assert_caddy_data(cbdata)) {
-        return ORCM_ERR_BAD_PARAM;
+    if (ORCM_SUCCESS != (rc = assert_caddy_data(cbdata))) {
+        goto cleanup;
     }
-    current_caddy = (orcm_workflow_caddy_t *)cbdata;
     mod = (mca_analytics_average_module_t *)current_caddy->imod;
 
     average_value = compute_average(mod->api.orcm_mca_analytics_hash_table,
                                     current_caddy->hash_key,
                                     current_caddy->analytics_value->compute_data);
     if (NULL == average_value) {
-        return ORCM_ERROR;
+        rc = ORCM_ERROR;
+        goto cleanup;
     }
+
+    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                         "%s analytics:average:AVERAGE is: %f %s, and the number of sample is:%u",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), average_value->value_average->value.data.dval,
+                         average_value->value_average->units, average_value->num_sample));
 
     analytics_value_to_next = fill_analytics_value(average_value, current_caddy->analytics_value);
     if (NULL == analytics_value_to_next) {
-        return ORCM_ERROR;
+        rc = ORCM_ERROR;
+        goto cleanup;
     }
-
-    /* load data to database if needed */
-//    if (true == orcm_analytics_base_db_check(current_caddy->wf_step)) {
-//        OBJ_RETAIN(analytics_average_list);
-//        rc = orcm_analytics_base_store(analytics_average_list);
-//        if (ORCM_SUCCESS != rc) {
-//             OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-//                                  "%s analytics:average:Data can't be written to DB",
-//                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-//             OPAL_LIST_RELEASE(analytics_average_list);
-//         }
-//    }
 
     /* if the new caddy is filled right, then go ahead to activate next workflow step */
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(current_caddy->wf, current_caddy->wf_step,
                                      current_caddy->hash_key, analytics_value_to_next);
-    OBJ_RELEASE(current_caddy);
-    return ORCM_SUCCESS;
+cleanup:
+    if (NULL != current_caddy) {
+        OBJ_RELEASE(current_caddy);
+    }
+    return rc;
 }

@@ -24,7 +24,7 @@ sel_record::sel_record(const unsigned char* buffer) : decoded_string_("")
     char tmp[128]; // More than enough for one line...
     uchar* real_data = (uchar*)&buffer[2];
     decode_sel_entry(real_data, (char*)tmp, 128);
-    while('\n' == tmp[strlen(tmp)-1]) {
+    while(strlen(tmp) > 0 && '\n' == tmp[strlen(tmp)-1]) {
         tmp[strlen(tmp)-1] = '\0';
     }
     decoded_string_ = (const char*)tmp;

@@ -519,7 +519,7 @@ static void nodepower_log(opal_buffer_t *sample)
     orcm_value_t *sensor_metric;
     float node_power_cur;
     char time_str[40];
-    orcm_analytics_value_t *analytics_vals;
+    orcm_analytics_value_t *analytics_vals = NULL;
 
 
     /* unpack the host this came from */
@@ -607,10 +607,12 @@ static void nodepower_log(opal_buffer_t *sample)
     if (!sensor_not_avail) {
         orcm_analytics.send_data(analytics_vals);
     }
-    OBJ_RELEASE(analytics_vals);
 
 cleanup:
     SAFEFREE(hostname);
+    if ( NULL != analytics_vals) {
+        OBJ_RELEASE(analytics_vals);
+    }
 }
 
 static void nodepower_set_sample_rate(int sample_rate)

@@ -919,7 +919,7 @@ static void freq_log(opal_buffer_t *sample)
     struct timeval sampletime;
     int rc;
     int32_t n, ncores;
-    orcm_analytics_value_t *analytics_vals;
+    orcm_analytics_value_t *analytics_vals = NULL;
     opal_list_t *key = NULL;
     opal_list_t *non_compute_data = NULL;
     opal_list_t *pstate_key = NULL;
@@ -927,9 +927,9 @@ static void freq_log(opal_buffer_t *sample)
     float fval;
     int i;
     unsigned int pstate_count = 0, pstate_value = 0;
-    char *pstate_name;
+    char *pstate_name = NULL;
     char *core_label = NULL;
-    orcm_value_t *sensor_metric;
+    orcm_value_t *sensor_metric = NULL;
     bool pstate_flag;
 
     /* unpack the host this came from */
@@ -1141,6 +1141,9 @@ static void freq_log(opal_buffer_t *sample)
     }
     if ( NULL != pstate_non_compute_data) {
         OPAL_LIST_RELEASE(pstate_non_compute_data);
+    }
+    if ( NULL != analytics_vals) {
+        OBJ_RELEASE(analytics_vals);
     }
 }
 

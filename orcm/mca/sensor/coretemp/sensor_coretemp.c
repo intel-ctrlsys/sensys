@@ -883,13 +883,13 @@ static void coretemp_log(opal_buffer_t *sample)
     struct timeval sampletime;
     int rc;
     int32_t n, ncores;
-    orcm_analytics_value_t *analytics_vals;
+    orcm_analytics_value_t *analytics_vals = NULL;
     opal_list_t *key = NULL;
     opal_list_t *non_compute_data = NULL;
     float fval;
     int i;
     char *core_label = NULL;
-    orcm_value_t *sensor_metric;
+    orcm_value_t *sensor_metric = NULL;
 
     /* unpack the host this came from */
     n=1;
@@ -998,6 +998,9 @@ cleanup:
     }
     if ( NULL != non_compute_data) {
         OPAL_LIST_RELEASE(non_compute_data);
+    }
+    if ( NULL != analytics_vals) {
+        OBJ_RELEASE(analytics_vals);
     }
 }
 

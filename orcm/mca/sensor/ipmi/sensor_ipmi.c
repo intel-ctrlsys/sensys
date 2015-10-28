@@ -258,7 +258,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
 
 static void ipmi_log_extract_create_string(opal_buffer_t *sample, char *dest_string, size_t dest_str_size)
 {
-    char *extract_item;
+    char *extract_item = NULL;
     int n = 1;
     int rc;
 
@@ -277,10 +277,10 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
     int rc;
     int32_t n;
     struct timeval sampletime;
-    orcm_value_t *sensor_metric;
-    orcm_analytics_value_t *analytics_vals;
-    opal_list_t *key;
-    opal_list_t *non_compute_data;
+    orcm_value_t *sensor_metric = NULL;
+    orcm_analytics_value_t *analytics_vals = NULL;
+    opal_list_t *key = NULL;
+    opal_list_t *non_compute_data = NULL;
 
     /* sample time - 1b */
     n=1;
@@ -444,8 +444,8 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
 static void ipmi_log_sample_item(opal_list_t *key, opal_list_t *non_compute_data, char *sample_key,
                                 void *sample_item, opal_data_type_t type, char *units )
 {
-    orcm_value_t *sensor_metric;
-    orcm_analytics_value_t *analytics_vals;
+    orcm_value_t *sensor_metric = NULL;
+    orcm_analytics_value_t *analytics_vals = NULL;
 
     analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
     if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
@@ -464,21 +464,25 @@ static void ipmi_log_sample_item(opal_list_t *key, opal_list_t *non_compute_data
     orcm_analytics.send_data(analytics_vals);
 
  cleanup:
-    OBJ_RELEASE(analytics_vals);
-
+     if ( NULL != analytics_vals) {
+         OBJ_RELEASE(analytics_vals);
+     }
 }
 
 static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_count)
 {
-    char *hostname, *sample_item, *sample_name, *sample_unit;
+    char *hostname = NULL;
+    char *sample_item = NULL;
+    char *sample_name = NULL;
+    char *sample_unit = NULL;
     float float_item;
     unsigned uint_item;
     int rc;
     int32_t n;
     struct timeval sampletime;
-    orcm_value_t *sensor_metric;
-    opal_list_t *key;
-    opal_list_t *non_compute_data;
+    orcm_value_t *sensor_metric = NULL;
+    opal_list_t *key = NULL;
+    opal_list_t *non_compute_data = NULL;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Total Samples to be unpacked: %d", host_count);
@@ -544,7 +548,7 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
             "UnPacked bmcfwrev: %s", sample_item);
 
         ipmi_log_sample_item(key, non_compute_data, "bmcfwrev", sample_item, OPAL_STRING, NULL);
-        free(sample_item);
+        SAFEFREE(sample_item);
 
         /* IPMI VER - 5 */
         n=1;
@@ -556,7 +560,7 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
             "UnPacked ipmiver: %s", sample_item);
 
         ipmi_log_sample_item(key, non_compute_data, "ipmiver", sample_item, OPAL_STRING, NULL);
-        free(sample_item);
+        SAFEFREE(sample_item);
 
         /* Manufacturer ID - 6 */
         n=1;
@@ -568,7 +572,7 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
             "UnPacked MANUF-ID: %s", sample_item);
 
         ipmi_log_sample_item(key, non_compute_data, "manufacturer_id", sample_item, OPAL_STRING, NULL);
-        free(sample_item);
+        SAFEFREE(sample_item);
 
         /* System Power State - 7 */
         n=1;
@@ -578,7 +582,7 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
         }
 
         ipmi_log_sample_item(key, non_compute_data, "sys_power_state", sample_item, OPAL_STRING, NULL);
-        free(sample_item);
+        SAFEFREE(sample_item);
 
         /* Device Power State - 8 */
         n=1;
@@ -590,7 +594,7 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
             "UnPacked DEV_PSTATE: %s", sample_item);
 
         ipmi_log_sample_item(key, non_compute_data, "dev_power_state", sample_item, OPAL_STRING, NULL);
-        free(sample_item);
+        SAFEFREE(sample_item);
 
         /* Total BMC sensor Metrics sampled - 9 (Not necessary for db_store) */
         n=1;
@@ -625,8 +629,8 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
             ipmi_log_sample_item(key, non_compute_data, sample_name, &float_item, OPAL_FLOAT, sample_unit);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "UnPacked %s: %f", sample_name, float_item);
-            free(sample_name);
-            free(sample_unit);
+            SAFEFREE(sample_name);
+            SAFEFREE(sample_unit);
         }
 
         /* IPMI SEL Records Storage into the opal_list_t 'vals' */
@@ -647,9 +651,7 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
         }
 
     cleanup:
-        if (NULL != hostname) {
-            free(hostname);
-        }
+        SAFEFREE(hostname);
         if ( NULL != key) {
             OPAL_LIST_RELEASE(key);
         }

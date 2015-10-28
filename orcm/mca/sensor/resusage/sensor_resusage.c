@@ -359,8 +359,8 @@ static void sample(orcm_sensor_sampler_t *sampler)
 static void res_log_sample_item(opal_list_t *key, opal_list_t *non_compute_data, char *sample_key,
                                 void *sample_item, opal_data_type_t type, char *units )
 {
-    orcm_value_t *sensor_metric;
-    orcm_analytics_value_t *analytics_vals;
+    orcm_value_t *sensor_metric = NULL;
+    orcm_analytics_value_t *analytics_vals = NULL;
 
     analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
     if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
@@ -379,15 +379,17 @@ static void res_log_sample_item(opal_list_t *key, opal_list_t *non_compute_data,
     orcm_analytics.send_data(analytics_vals);
 
 cleanup:
-    OBJ_RELEASE(analytics_vals);
+    if ( NULL != analytics_vals) {
+        OBJ_RELEASE(analytics_vals);
+    }
 
 }
 
 static void res_log_node_stats(opal_node_stats_t *nst, char *node, struct timeval sampletime)
 {
-    orcm_value_t *sensor_metric;
-    opal_list_t *key;
-    opal_list_t *non_compute_data;
+    orcm_value_t *sensor_metric = NULL;
+    opal_list_t *key = NULL;
+    opal_list_t *non_compute_data = NULL;
 
     key = OBJ_NEW(opal_list_t);
     if (NULL == key) {
@@ -454,10 +456,10 @@ cleanup:
 
 static void res_log_process_stats(opal_pstats_t *st, char *node, struct timeval sampletime)
 {
-    char *primary_key;
-    orcm_value_t *sensor_metric;
-    opal_list_t *key;
-    opal_list_t *non_compute_data;
+    char *primary_key = NULL;
+    orcm_value_t *sensor_metric = NULL;
+    opal_list_t *key = NULL;
+    opal_list_t *non_compute_data = NULL;
     char state[3];
 
     key = OBJ_NEW(opal_list_t);
@@ -537,7 +539,7 @@ static void res_log(opal_buffer_t *sample)
     opal_pstats_t *st=NULL;
     opal_node_stats_t *nst=NULL;
     int rc, n;
-    char *node;
+    char *node = NULL;
     struct timeval sampletime;
 
 

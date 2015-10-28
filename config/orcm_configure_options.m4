@@ -1,11 +1,11 @@
 dnl -*- shell-script -*-
 dnl
-dnl Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
+dnl Copyright (c) 2013-2015 Intel, Inc.  All rights reserved.
 dnl
 dnl $COPYRIGHT$
-dnl 
+dnl
 dnl Additional copyrights may follow
-dnl 
+dnl
 dnl $HEADER$
 dnl
 
@@ -27,6 +27,18 @@ AC_DEFUN([ORCM_LOAD_CONFIGURATION],[
         else
             AC_MSG_RESULT([no])
             AC_SUBST(OPAL_SITE_CONFIG_FILE_FOUND, "no")
+        fi
+    fi
+    if test "$with_syslog" = "yes"; then
+        AC_MSG_CHECKING([for rsyslog support config file])
+        rsyslog_config_file="10-rsyslog_orcm.conf"
+        if test -r "${platform_file_dir}/${rsyslog_config_file}" ; then
+            AC_SUBST(OPAL_SYSLOG_CONFIG_FILE, [$platform_file_dir/$rsyslog_config_file])
+            AC_MSG_RESULT([$platform_file_dir/$rsyslog_config_file])
+            AC_SUBST(OPAL_SYSLOG_CONFIG_FILE_FOUND, "yes")
+        else
+            AC_MSG_RESULT([no])
+            AC_SUBST(OPAL_SYSLOG_CONFIG_FILE_FOUND, "no")
         fi
     fi
 ])dnl

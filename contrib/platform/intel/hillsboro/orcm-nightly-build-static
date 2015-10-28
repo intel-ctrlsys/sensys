@@ -40,5 +40,6 @@ with_dmidata=yes
 with_odbc=yes
 with_memtest=yes
 with_nodepower=yes
+with_syslog=yes
 with_componentpower=yes
 with_mcedata=yes

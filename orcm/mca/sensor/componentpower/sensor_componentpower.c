@@ -617,10 +617,10 @@ static void componentpower_log(opal_buffer_t *sample)
     float power_cur, cpu_power_temp[MAX_SOCKETS], ddr_power_temp[MAX_SOCKETS];
     char time_str[40];
     struct tm *time_info;
-    orcm_value_t *sensor_metric;
-    orcm_analytics_value_t *analytics_vals;
-    opal_list_t *key;
-    opal_list_t *non_compute_data;
+    orcm_value_t *sensor_metric = NULL;
+    orcm_analytics_value_t *analytics_vals = NULL;
+    opal_list_t *key = NULL;
+    opal_list_t *non_compute_data = NULL;
 
 
     /* unpack the host this came from */
@@ -794,6 +794,9 @@ cleanup:
     }
     if ( NULL != non_compute_data) {
         OPAL_LIST_RELEASE(non_compute_data);
+    }
+    if ( NULL != analytics_vals) {
+        OBJ_RELEASE(analytics_vals);
     }
 }
 

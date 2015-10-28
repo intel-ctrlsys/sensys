@@ -1121,8 +1121,8 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 static void sigar_log_sample_item(opal_list_t *key, opal_list_t *non_compute_data, char *sample_key,
                                 void *sample_item, opal_data_type_t type, char *units )
 {
-    orcm_value_t *sensor_metric;
-    orcm_analytics_value_t *analytics_vals;
+    orcm_value_t *sensor_metric = NULL;
+    orcm_analytics_value_t *analytics_vals = NULL;
 
     analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
     if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
@@ -1141,18 +1141,20 @@ static void sigar_log_sample_item(opal_list_t *key, opal_list_t *non_compute_dat
     orcm_analytics.send_data(analytics_vals);
 
  cleanup:
-    OBJ_RELEASE(analytics_vals);
+    if ( NULL != analytics_vals) {
+        OBJ_RELEASE(analytics_vals);
+    }
 
 }
 
 static void sigar_log_process_lvl_stats(opal_buffer_t *sample, struct timeval sampletime, char *hostname)
 {
-    orcm_value_t *sensor_metric;
-    opal_list_t *key;
-    opal_list_t *non_compute_data;
+    orcm_value_t *sensor_metric = NULL;
+    opal_list_t *key = NULL;
+    opal_list_t *non_compute_data = NULL;
     char state[3];
     opal_pstats_t *st;
-    char *primary_key;
+    char *primary_key = NULL;
     int64_t int64;
     bool log_group = false;
     double sample_double;
@@ -1287,9 +1289,9 @@ cleanup:
 
 static void sigar_log_process_stats(opal_buffer_t *sample, struct timeval sampletime, char *hostname)
 {
-    orcm_value_t *sensor_metric;
-    opal_list_t *key;
-    opal_list_t *non_compute_data;
+    orcm_value_t *sensor_metric = NULL;
+    opal_list_t *key = NULL;
+    opal_list_t *non_compute_data = NULL;
     int64_t int64;
     bool log_group = false;
     int n;
@@ -1406,9 +1408,9 @@ static void sigar_log(opal_buffer_t *sample)
     bool log_group = false;
     double sample_double;
     struct timeval sampletime;
-    orcm_value_t *sensor_metric;
-    opal_list_t *key;
-    opal_list_t *non_compute_data;
+    orcm_value_t *sensor_metric = NULL;
+    opal_list_t *key = NULL;
+    opal_list_t *non_compute_data = NULL;
 
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {

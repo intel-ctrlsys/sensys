@@ -229,6 +229,9 @@ static int orcm_util_copy_opal_value_data(opal_value_t *dest, opal_value_t *src)
         }
         if (NULL != src->data.string) {
             dest->data.string = strdup(src->data.string);
+            if (NULL == dest->data.string) {
+                return ORCM_ERR_OUT_OF_RESOURCE;
+            }
         } else {
             dest->data.string = NULL;
         }
@@ -322,6 +325,9 @@ opal_value_t* orcm_util_copy_opal_value(opal_value_t* src)
     if (NULL != dest) {
         if (NULL != src->key) {
             dest->key = strdup(src->key);
+            if (NULL == dest->key) {
+                return NULL;
+            }
         }
         dest->type = src->type;
         rc = orcm_util_copy_opal_value_data(dest, src);
@@ -347,6 +353,9 @@ orcm_value_t* orcm_util_copy_orcm_value(orcm_value_t* src)
     if (NULL != dest) {
         if (NULL != src->value.key) {
             dest->value.key = strdup(src->value.key);
+            if (NULL == dest->value.key) {
+                return NULL;
+            }
         }
         dest->value.type = src->value.type;
         rc = orcm_util_copy_opal_value_data(&dest->value, &src->value);
@@ -357,6 +366,9 @@ orcm_value_t* orcm_util_copy_orcm_value(orcm_value_t* src)
         }
         if ( NULL != src->units ) {
             dest->units = strdup(src->units);
+            if (NULL == dest->units) {
+                return NULL;
+            }
         }
     }
     return dest;
@@ -370,6 +382,9 @@ orcm_value_t* orcm_util_load_orcm_value(char *key, void *data, opal_data_type_t 
     if (NULL != kv) {
         if (NULL != key) {
             kv->value.key = strdup(key);
+            if (NULL == kv->value.key) {
+                return NULL;
+            }
         }
         rc = opal_value_load(&kv->value, data, type);
         if (ORCM_SUCCESS != rc) {
@@ -379,6 +394,9 @@ orcm_value_t* orcm_util_load_orcm_value(char *key, void *data, opal_data_type_t 
         }
         if ( NULL != units ) {
             kv->units = strdup(units);
+            if (NULL == kv->units) {
+                return NULL;
+            }
         }
     }
     return kv;

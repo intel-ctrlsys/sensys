@@ -117,6 +117,7 @@ static opal_list_t* orcm_analytics_base_copy_analytics_list(orcm_analytics_value
             return NULL;
         }
         opal_list_append(data_results, (opal_list_item_t *)analytics_orcm_value);
+        analytics_orcm_value = NULL;
     }
 
     OPAL_LIST_FOREACH(current_value, analytics_data->non_compute_data, orcm_value_t) {
@@ -125,6 +126,7 @@ static opal_list_t* orcm_analytics_base_copy_analytics_list(orcm_analytics_value
             return NULL;
         }
         opal_list_append(data_results, (opal_list_item_t *)analytics_orcm_value);
+        analytics_orcm_value = NULL;
     }
 
     OPAL_LIST_FOREACH(current_value, analytics_data->compute_data, orcm_value_t) {
@@ -133,6 +135,7 @@ static opal_list_t* orcm_analytics_base_copy_analytics_list(orcm_analytics_value
             return NULL;
         }
         opal_list_append(data_results, (opal_list_item_t *)analytics_orcm_value);
+        analytics_orcm_value = NULL;
     }
     return data_results;
 }

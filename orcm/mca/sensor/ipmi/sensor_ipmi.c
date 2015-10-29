@@ -427,7 +427,9 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
     }
 
     orcm_analytics.send_data(analytics_vals);
-    OBJ_RELEASE(analytics_vals);
+    if ( NULL != analytics_vals) {
+        OBJ_RELEASE(analytics_vals);
+    }
 
  cleanup:
     if ( NULL != key) {

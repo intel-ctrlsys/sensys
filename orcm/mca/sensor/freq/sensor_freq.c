@@ -913,6 +913,22 @@ cleanup:
     OBJ_DESTRUCT(&data);
 }
 
+static void freq_log_cleanup(char *label, char *hostname, opal_list_t *key,
+                             opal_list_t *non_compute_data, orcm_analytics_value_t *analytics_vals)
+{
+    SAFEFREE(label);
+    SAFEFREE(hostname);
+    if ( NULL != key) {
+        OPAL_LIST_RELEASE(key);
+    }
+    if ( NULL != non_compute_data) {
+        OPAL_LIST_RELEASE(non_compute_data);
+    }
+    if ( NULL != analytics_vals) {
+        OBJ_RELEASE(analytics_vals);
+    }
+}
+
 static void freq_log(opal_buffer_t *sample)
 {
     char *hostname=NULL;
@@ -949,7 +965,8 @@ static void freq_log(opal_buffer_t *sample)
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
-        goto cleanup;
+        freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+        return;
     }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -960,39 +977,45 @@ static void freq_log(opal_buffer_t *sample)
     /* xfr to storage */
     key = OBJ_NEW(opal_list_t);
     if (NULL == key) {
-        goto cleanup;
+        freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+        return;
 
     }
 
     non_compute_data = OBJ_NEW(opal_list_t);
     if (NULL == non_compute_data) {
-        goto cleanup;
+        freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+        return;
 
     }
 
     sensor_metric = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, NULL);
     if (NULL == sensor_metric) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
+        freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+        return;
     }
     opal_list_append(non_compute_data, (opal_list_item_t *)sensor_metric);
 
     /* load the hostname */
     if (NULL == hostname) {
         ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+        freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
         return;
     }
     sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
     if (NULL == sensor_metric) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
+        freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+        return;
     }
     opal_list_append(key, (opal_list_item_t *)sensor_metric);
 
     sensor_metric = orcm_util_load_orcm_value("data_group", "freq", OPAL_STRING, NULL);
     if (NULL == sensor_metric) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
+        freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+        return;
     }
     opal_list_append(key, (opal_list_item_t *)sensor_metric);
 
@@ -1001,24 +1024,28 @@ static void freq_log(opal_buffer_t *sample)
         if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
              (NULL == analytics_vals->non_compute_data) ||(NULL == analytics_vals->compute_data)) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
+            freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+            return;
         }
 
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
-            goto cleanup;
+            freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+            return;
         }
 
         if (0 > asprintf(&core_label, "core%d", i)) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
+            freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+            return;
         }
 
         sensor_metric = orcm_util_load_orcm_value(core_label, &fval, OPAL_FLOAT, "GHZ");
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
+            freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+            return;
         }
         SAFEFREE(core_label);
 
@@ -1029,12 +1056,15 @@ static void freq_log(opal_buffer_t *sample)
         orcm_analytics.send_data(analytics_vals);
         OBJ_RELEASE(analytics_vals);
     }
+    /* Don't release analytics_vals. It's retain(ed) and being used in the workflows
+     * at this point. This doesn't cause any memory leak*/
+    freq_log_cleanup(NULL, NULL, key, non_compute_data, NULL);
 
     /* unpack the pstate entry count */
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &pstate_count, &n, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
-        goto cleanup;
+        return;
     }
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                 "Total pstate count: %d", pstate_count);
@@ -1043,39 +1073,43 @@ static void freq_log(opal_buffer_t *sample)
         /* xfr to storage */
         pstate_key = OBJ_NEW(opal_list_t);
         if (NULL == pstate_key) {
-            goto cleanup;
-
+            freq_log_cleanup(NULL, hostname, pstate_key, pstate_non_compute_data, NULL);
+            return;
         }
 
         pstate_non_compute_data = OBJ_NEW(opal_list_t);
         if (NULL == pstate_non_compute_data) {
-            goto cleanup;
-
+            freq_log_cleanup(NULL, hostname, pstate_key, pstate_non_compute_data, NULL);
+            return;
         }
 
         sensor_metric = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, NULL);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
+            freq_log_cleanup(NULL, hostname, pstate_key, pstate_non_compute_data, NULL);
+            return;
         }
         opal_list_append(pstate_non_compute_data, (opal_list_item_t *)sensor_metric);
 
         /* load the hostname */
         if (NULL == hostname) {
             ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-            goto cleanup;
+            freq_log_cleanup(NULL, hostname, pstate_key, pstate_non_compute_data, NULL);
+            return;
         }
         sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
+            freq_log_cleanup(NULL, hostname, pstate_key, pstate_non_compute_data, NULL);
+            return;
         }
         opal_list_append(pstate_key, (opal_list_item_t *)sensor_metric);
 
         sensor_metric = orcm_util_load_orcm_value("data_group", "pstate", OPAL_STRING, NULL);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
+            freq_log_cleanup(NULL, hostname, pstate_key, pstate_non_compute_data, NULL);
+            return;
         }
         opal_list_append(pstate_key, (opal_list_item_t *)sensor_metric);
     }
@@ -1086,13 +1120,15 @@ static void freq_log(opal_buffer_t *sample)
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &pstate_name, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            goto cleanup;
+            freq_log_cleanup(pstate_name, hostname, pstate_key, pstate_non_compute_data, NULL);
+            return;
         }
         /* unpack the pstate entry value */
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &pstate_value, &n, OPAL_UINT))) {
             ORTE_ERROR_LOG(rc);
-            goto cleanup;
+            freq_log_cleanup(pstate_name, hostname, pstate_key, pstate_non_compute_data, NULL);
+            return;
         }
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "%s : %d",pstate_name, pstate_value);
@@ -1101,7 +1137,8 @@ static void freq_log(opal_buffer_t *sample)
         if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
              (NULL == analytics_vals->non_compute_data) ||(NULL == analytics_vals->compute_data) ) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
+            freq_log_cleanup(pstate_name, hostname, pstate_key, pstate_non_compute_data, NULL);
+            return;
         }
 
         if (0 != strcmp(pstate_name,"no_turbo")) {
@@ -1109,7 +1146,8 @@ static void freq_log(opal_buffer_t *sample)
                                                       OPAL_UINT, NULL);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-                goto cleanup;
+                freq_log_cleanup(pstate_name, hostname, pstate_key, pstate_non_compute_data, analytics_vals);
+                return;
             }
         } else {
             pstate_flag = ((0 == pstate_value) ? true: false);
@@ -1117,7 +1155,8 @@ static void freq_log(opal_buffer_t *sample)
                                                       OPAL_BOOL, NULL);
             if (NULL == sensor_metric) {
                 ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-                goto cleanup;
+                freq_log_cleanup(pstate_name, hostname, pstate_key, pstate_non_compute_data, analytics_vals);
+                return;
             }
         }
         opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
@@ -1125,26 +1164,9 @@ static void freq_log(opal_buffer_t *sample)
         orcm_analytics.send_data(analytics_vals);
         OBJ_RELEASE(analytics_vals);
     }
-
- cleanup:
-    SAFEFREE(hostname);
-    SAFEFREE(pstate_name);
-    SAFEFREE(core_label);
-    if ( NULL != key) {
-        OPAL_LIST_RELEASE(key);
-    }
-    if ( NULL != non_compute_data) {
-        OPAL_LIST_RELEASE(non_compute_data);
-    }
-    if ( NULL != pstate_key) {
-        OPAL_LIST_RELEASE(pstate_key);
-    }
-    if ( NULL != pstate_non_compute_data) {
-        OPAL_LIST_RELEASE(pstate_non_compute_data);
-    }
-    if ( NULL != analytics_vals) {
-        OBJ_RELEASE(analytics_vals);
-    }
+    /* Don't release analytics_vals. It's retain(ed) and being used in the workflows at
+     * this point. This doesn't cause any memory leak*/
+    freq_log_cleanup(pstate_name, hostname, pstate_key, pstate_non_compute_data, NULL);
 }
 
 static void freq_set_sample_rate(int sample_rate)

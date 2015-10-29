@@ -437,7 +437,6 @@ void orcm_analytics_base_send_data(orcm_analytics_value_t *data)
          OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                               "%s analytics:base:Data can't be written to DB",
                               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-         OBJ_RELEASE(data);
      }
 }
 

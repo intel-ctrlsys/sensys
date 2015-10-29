@@ -112,14 +112,13 @@ static orte_notifier_severity_t get_severity(char* severity)
 }
 
 static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
-                             orcm_mca_analytics_threshold_policy_t *threshold_policy, opal_list_t* threshold_list)
+                             orcm_mca_analytics_threshold_policy_t *threshold_policy,
+                             opal_list_t* threshold_list)
 {
     char* msg1 = NULL;
     char* msg2 = NULL;
     char* action_hi = NULL;
     char* action_low = NULL;
-    char* key_id = NULL;
-    char* units = NULL;
     orcm_value_t *current_value = NULL;
     orcm_value_t *analytics_orcm_value = NULL;
     opal_list_t *sample_data_list = NULL;
@@ -127,12 +126,12 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
     double val = 0.0;
 
     if(NULL == current_caddy || NULL == threshold_policy || NULL == threshold_list) {
-        rc = ORCM_ERR_OUT_OF_RESOURCE;
+        rc = ORCM_ERR_BAD_PARAM;
         goto done;
     }
     sample_data_list = current_caddy->analytics_value->compute_data;
     if (NULL == sample_data_list) {
-        rc = ORCM_ERR_OUT_OF_RESOURCE;
+        rc = ORCM_ERROR;
         goto done;
     }
     if(NULL != threshold_policy->hi_action) {
@@ -141,23 +140,16 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
     if(NULL != threshold_policy->low_action) {
         action_low = strdup(threshold_policy->low_action);
     }
-
     OPAL_LIST_FOREACH(current_value, sample_data_list, orcm_value_t) {
         if(NULL == current_value){
             rc = ORCM_ERROR;
             goto done;
         }
-        if(NULL != current_value->units){
-            units = strdup(current_value->units);
-        }
-        if(NULL != current_value->value.key){
-            key_id = strdup(current_value->value.key);
-        }
         val = orcm_util_get_number_orcm_value(current_value);
 
         if(val >= threshold_policy->hi && NULL != action_hi){
             if(0 < asprintf(&msg1, "%s value %.02f %s,greater than threshold %.02f %s",
-                                             key_id,val,units,threshold_policy->hi,units)){
+                            current_value->value.key,val,current_value->units,threshold_policy->hi,current_value->units)){
                 OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                                      "%s analytics:threshold:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg1));
                 if(0 != strcmp(action_hi,"none")) {
@@ -170,8 +162,8 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
             }
         }
         else if(val <= threshold_policy->low && NULL != action_low && threshold_policy->low != threshold_policy->hi) {
-            if(0 < asprintf(&msg2, "%s value %.02f, lower than threshold %.02f %s",
-                                                key_id,val,threshold_policy->low,units)) {
+            if(0 < asprintf(&msg2, "%s value %.02f %s, lower than threshold %.02f %s",
+                            current_value->value.key,val,current_value->units,threshold_policy->low,current_value->units)) {
                 OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                                      "%s analytics:threshold:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg2));
                 if(0 != strcmp(action_low, "none")) {
@@ -185,8 +177,6 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
         }
     }
 done:
-    SAFEFREE(units);
-    SAFEFREE(key_id);
     SAFEFREE(action_hi);
     SAFEFREE(action_low);
     return rc;
@@ -209,13 +199,13 @@ static int get_threshold_policy(void *cbdata,orcm_mca_analytics_threshold_policy
     char* tval = NULL;
 
     if(NULL == cbdata || NULL == threshold_policy) {
-        rc = ORCM_ERR_OUT_OF_RESOURCE;
+        rc = ORCM_ERR_BAD_PARAM;
         goto done;
     }
     current_caddy = (orcm_workflow_caddy_t *)cbdata;
     temp = (opal_value_t*)opal_list_get_first(&current_caddy->wf_step->attributes);
     if(NULL == temp) {
-        rc = ORCM_ERR_OUT_OF_RESOURCE;
+        rc = ORCM_ERR_NOT_FOUND;
         goto done;
     }
 
@@ -228,12 +218,16 @@ static int get_threshold_policy(void *cbdata,orcm_mca_analytics_threshold_policy
         }
         for(i=0; i<count; i++) {
             token = opal_argv_split(policy[i], '|');
-            if(opal_argv_count(token) != 4) {
+            if(NULL == token || opal_argv_count(token) != 4) {
                 rc = ORCM_ERR_BAD_PARAM;
                 goto done;
             }
 
             tval = strdup(token[1]);
+            if(NULL == tval) {
+                rc = ORCM_ERR_BAD_PARAM;
+                goto done;
+            }
             for (j=0; j < (int)strlen(tval); j++) {
                 if (!isdigit(tval[i]) && '-' != tval[i] && '+' != tval[i] && '.' != tval[i]) {
                     rc = ORCM_ERR_BAD_PARAM;
@@ -268,18 +262,20 @@ static int get_threshold_policy(void *cbdata,orcm_mca_analytics_threshold_policy
                 rc = ORCM_ERR_BAD_PARAM;
                 goto done;
             }
+            SAFEFREE(tval);
+            SAFEFREE(severity);
+            opal_argv_free(token);
         }
-
     }
     else {
         rc = ORCM_ERR_BAD_PARAM;
     }
 done:
-    SAFEFREE(severity);
     SAFEFREE(label);
     SAFEFREE(tval);
-    opal_argv_free(token);
+    SAFEFREE(severity);
     opal_argv_free(policy);
+    opal_argv_free(token);
     return rc;
 }
 
@@ -292,14 +288,14 @@ static int analyze(int sd, short args, void *cbdata)
     orcm_workflow_caddy_t *current_caddy = NULL;
 
     if (ORCM_SUCCESS != assert_caddy_data(cbdata)) {
-        return ORCM_ERR_OUT_OF_RESOURCE;
+        return ORCM_ERROR;
     }
 
     current_caddy = (orcm_workflow_caddy_t *)cbdata;
 
     threshold_policy = OBJ_NEW(orcm_mca_analytics_threshold_policy_t);
     if(NULL == threshold_policy){
-        rc = ORCM_ERROR;
+        rc = ORCM_ERR_OUT_OF_RESOURCE;
         goto done;
     }
     rc = get_threshold_policy(cbdata,threshold_policy);
@@ -312,25 +308,13 @@ static int analyze(int sd, short args, void *cbdata)
 
     threshold_list = OBJ_NEW(opal_list_t);
     if(NULL == threshold_list || NULL == threshold_policy){
-        rc = ORCM_ERROR;
+        rc = ORCM_ERR_OUT_OF_RESOURCE;
         goto done;
     }
     rc = monitor_threshold(current_caddy, threshold_policy, threshold_list);
     if(ORCM_SUCCESS != rc){
-
         goto done;
     }
-
-    /*if (true == orcm_analytics_base_db_check(current_caddy->wf_step)) {
-        OBJ_RETAIN(threshold_list);
-        rc = orcm_analytics_base_store(threshold_list);
-        if (ORCM_SUCCESS != rc) {
-            OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                    "%s analytics:threshold:Data can't be written to DB",
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-            OPAL_LIST_RELEASE(threshold_list);
-        }
-    }*/
     analytics_value_to_next = OBJ_NEW(orcm_analytics_value_t);
     if(NULL != threshold_list)
     {

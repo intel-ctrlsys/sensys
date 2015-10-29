@@ -234,7 +234,7 @@ static int get_threshold_policy(void *cbdata,orcm_mca_analytics_threshold_policy
             }
 
             tval = strdup(token[1]);
-            for (j=0; j < strlen(tval); j++) {
+            for (j=0; j < (int)strlen(tval); j++) {
                 if (!isdigit(tval[i]) && '-' != tval[i] && '+' != tval[i] && '.' != tval[i]) {
                     rc = ORCM_ERR_BAD_PARAM;
                     goto done;

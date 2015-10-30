@@ -226,16 +226,12 @@ static int orcm_util_copy_opal_value_data(opal_value_t *dest, opal_value_t *src)
         dest->data.byte = src->data.byte;
         break;
     case OPAL_STRING:
-        if (NULL != dest->data.string) {
-            free(dest->data.string);
-        }
+        SAFEFREE(dest->data.string);
         if (NULL != src->data.string) {
             dest->data.string = strdup(src->data.string);
             if (NULL == dest->data.string) {
                 return ORCM_ERR_OUT_OF_RESOURCE;
             }
-        } else {
-            dest->data.string = NULL;
         }
         break;
     case OPAL_SIZE:

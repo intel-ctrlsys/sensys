@@ -1041,7 +1041,7 @@ static void freq_log(opal_buffer_t *sample)
             return;
         }
 
-        sensor_metric = orcm_util_load_orcm_value(core_label, &fval, OPAL_FLOAT, "GHZ");
+        sensor_metric = orcm_util_load_orcm_value(core_label, &fval, OPAL_FLOAT, "GHz");
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
             freq_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);

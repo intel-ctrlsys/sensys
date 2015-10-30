@@ -1153,7 +1153,7 @@ static void sigar_log_process_lvl_stats(opal_buffer_t *sample, struct timeval sa
     opal_list_t *key = NULL;
     opal_list_t *non_compute_data = NULL;
     char state[3];
-    opal_pstats_t *st;
+    opal_pstats_t *st = NULL;
     char *primary_key = NULL;
     int64_t int64;
     bool log_group = false;
@@ -1287,7 +1287,7 @@ cleanup:
     if ( NULL != non_compute_data) {
         OPAL_LIST_RELEASE(non_compute_data);
     }
-    if (NULL == st) {
+    if (NULL != st) {
         OBJ_RELEASE(st);
     }
 }
@@ -1405,7 +1405,7 @@ static void sigar_log_process_stats(opal_buffer_t *sample, struct timeval sample
 
 static void sigar_log(opal_buffer_t *sample)
 {
-    char *hostname;
+    char *hostname = NULL;
     int rc;
     int32_t n;
     uint64_t uint64;

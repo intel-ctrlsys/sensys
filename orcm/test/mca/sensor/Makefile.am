@@ -1,5 +1,6 @@
 if HAVE_GTEST
-gtestSubdirs=ipmi
+gtestSubdirs=ipmi errcounts
 endif
 
-SUBDIRS=ft_tester $(gtestSubdirs)
+# Removed ft_tester from production runs.
+SUBDIRS=$(gtestSubdirs) #ft_tester

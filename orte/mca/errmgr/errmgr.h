@@ -137,7 +137,7 @@ OBJ_CLASS_DECLARATION(orte_errmgr_predicted_map_t);
 
 #define ORTE_ERROR_NAME(n)  opal_strerror(n)
 #define ORTE_ERROR_LOG(n)                       \
-        orte_errmgr.logfn(n, __FILE__, __LINE__);
+        orte_errmgr.logfn(n, (char*)__FILE__, __LINE__);
 
 /*
  * Framework Interfaces

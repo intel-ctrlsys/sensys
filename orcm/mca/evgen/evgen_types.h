@@ -205,6 +205,7 @@ OBJ_CLASS_DECLARATION(orcm_ras_event_t);
 #define ORCM_SUBCOMPONENT_ACC       "orcm.sub.acc"      // accelerator card in node board
 #define ORCM_SUBCOMPONENT_CLIN      "orcm.sub.clin"     // coolant intake (air or liquid)
 #define ORCM_SUBCOMPONENT_CLOUT     "orcm.sub.clout"    // coolant outlet (air or liquid)
+#define ORCM_SUBCOMPONENT_MEM       "orcm.sub.mem"      // ECC Memory sub-components
 
 /* define some common physical locations - multiple combinations of
  * these can be provided to fully describe the hierarcy of the location */

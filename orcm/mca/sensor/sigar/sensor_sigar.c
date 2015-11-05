@@ -1860,8 +1860,8 @@ static void generate_test_vector(opal_buffer_t *v)
 {
     char *ctmp;
     uint64_t ui64;
-    float ft;
-    double d;
+    float ft = 0.0;
+    double d = 0.0;
     struct timeval current_time;
     bool log_group = true;
 

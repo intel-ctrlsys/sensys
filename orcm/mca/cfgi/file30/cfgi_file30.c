@@ -1657,7 +1657,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
                         node = OBJ_NEW(orcm_node_t);
                         node->name = strdup(names[m]);
                         OBJ_RETAIN(rack);
-                        node->rack = (struct orcm_rack_t *) rack;
+                        node->rack = rack;
                         node->state = ORTE_NODE_STATE_UNKNOWN;
                         opal_list_append(&rack->nodes, &node->super);
                     }

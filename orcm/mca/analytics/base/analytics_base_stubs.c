@@ -440,7 +440,7 @@ void orcm_analytics_base_send_data(orcm_analytics_value_t *data)
      }
 }
 
-int assert_caddy_data(void *cbdata)
+int orcm_analytics_base_assert_caddy_data(void *cbdata)
 {
     orcm_workflow_caddy_t *current_caddy = NULL;
 
@@ -455,4 +455,36 @@ int assert_caddy_data(void *cbdata)
     }
 
     return ORCM_SUCCESS;
+}
+
+uint64_t orcm_analytics_base_timeval_to_uint64(struct timeval time)
+{
+    uint64_t time_sec = (uint64_t)time.tv_sec;
+    double time_usec = (double)time.tv_usec / 10E6;
+    if (0.5 <= time_usec) {
+        time_sec++;
+    }
+    return time_sec;
+}
+
+int orcm_analytics_base_get_sample_time(opal_list_t *list, uint64_t *sample_time)
+{
+    orcm_value_t *value_item = NULL;
+    bool found_time = false;
+
+    OPAL_LIST_FOREACH(value_item, list, orcm_value_t) {
+        if (NULL == value_item || NULL == value_item->value.key) {
+            return ORCM_ERR_BAD_PARAM;
+        }
+        if (NULL != strstr(value_item->value.key, "time")) {
+            found_time = true;
+            break;
+        }
+    }
+    if (found_time) {
+        *sample_time = orcm_analytics_base_timeval_to_uint64(value_item->value.data.tv);
+        return ORCM_SUCCESS;
+    }
+
+    return ORCM_ERR_BAD_PARAM;
 }

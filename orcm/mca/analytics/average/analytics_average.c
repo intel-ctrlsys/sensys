@@ -83,19 +83,24 @@ static int init(orcm_analytics_base_module_t *imod)
     }
 
     mca_analytics_average_module_t *mod = (mca_analytics_average_module_t *)imod;
-    mod->api.orcm_mca_analytics_hash_table = OBJ_NEW(opal_hash_table_t);
-    if (NULL == mod->api.orcm_mca_analytics_hash_table) {
+    mod->api.orcm_mca_analytics_data_store = OBJ_NEW(opal_hash_table_t);
+    if (NULL == mod->api.orcm_mca_analytics_data_store) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
-    return opal_hash_table_init(mod->api.orcm_mca_analytics_hash_table, HASH_TABLE_SIZE);
+    return opal_hash_table_init((opal_hash_table_t*)(mod->api.orcm_mca_analytics_data_store),
+                                HASH_TABLE_SIZE);
 }
 
 static void finalize(orcm_analytics_base_module_t *imod)
 {
     if (NULL != imod) {
         mca_analytics_average_module_t *mod = (mca_analytics_average_module_t *)imod;
-        OBJ_RELEASE(mod->api.orcm_mca_analytics_hash_table);
+        opal_hash_table_t *average_hash_table = (opal_hash_table_t *)
+                                                mod->api.orcm_mca_analytics_data_store;
+        if (NULL != average_hash_table) {
+            OBJ_RELEASE(average_hash_table);
+        }
         free(mod);
     }
 }
@@ -245,12 +250,12 @@ static int analyze(int sd, short args, void *cbdata)
     mca_analytics_average_module_t *mod = NULL;
     int rc = -1;
 
-    if (ORCM_SUCCESS != (rc = assert_caddy_data(cbdata))) {
+    if (ORCM_SUCCESS != (rc = orcm_analytics_base_assert_caddy_data(cbdata))) {
         goto cleanup;
     }
     mod = (mca_analytics_average_module_t *)current_caddy->imod;
 
-    average_value = compute_average(mod->api.orcm_mca_analytics_hash_table,
+    average_value = compute_average((opal_hash_table_t*)mod->api.orcm_mca_analytics_data_store,
                                     current_caddy->hash_key,
                                     current_caddy->analytics_value->compute_data);
     if (NULL == average_value) {

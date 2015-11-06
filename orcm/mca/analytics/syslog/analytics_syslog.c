@@ -98,7 +98,7 @@ static int syslog_parse_workflow(void *cbdata, syslog_workflow_value_t *workflow
     }
 
     parse_workflow_caddy = (orcm_workflow_caddy_t *) cbdata;
-    if (ORCM_SUCCESS != assert_caddy_data(cbdata)) {
+    if (ORCM_SUCCESS != orcm_analytics_base_assert_caddy_data(cbdata)) {
         return ORCM_ERROR;
     }
 
@@ -241,7 +241,7 @@ static int analyze(int sd, short args, void *cbdata)
     syslog_workflow_value_t *workflow_value = (syslog_workflow_value_t *)malloc(
                                               sizeof(syslog_workflow_value_t));
 
-    if (ORCM_SUCCESS != (rc = assert_caddy_data(cbdata))) {
+    if (ORCM_SUCCESS != (rc = orcm_analytics_base_assert_caddy_data(cbdata))) {
         return ORCM_ERROR;
     }
 

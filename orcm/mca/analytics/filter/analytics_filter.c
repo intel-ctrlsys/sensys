@@ -170,7 +170,7 @@ static int analyze(int sd, short args, void *cbdata)
     char *wf_id = NULL, *hash_key = NULL;
     orcm_analytics_value_t *analytics_value_to_next = NULL;
 
-    if (ORCM_SUCCESS != (rc = assert_caddy_data(cbdata))) {
+    if (ORCM_SUCCESS != (rc = orcm_analytics_base_assert_caddy_data(cbdata))) {
         goto cleanup;
     }
 

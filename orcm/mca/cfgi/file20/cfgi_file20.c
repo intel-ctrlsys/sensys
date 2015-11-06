@@ -901,7 +901,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
             nnodes = strtol(&x->value[0][1], NULL, 10);
             for (n=0; n < nnodes; n++) {
                 node = OBJ_NEW(orcm_node_t);
-                node->rack = (struct orcm_rack_t*)rack;
+                node->rack = rack;
                 node->state = ORTE_NODE_STATE_UNKNOWN;
                 opal_list_append(&rack->nodes, &node->super);
                 /* now cycle thru the rest of this config element and apply
@@ -927,7 +927,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
                 node = OBJ_NEW(orcm_node_t);
                 node->name = strdup(x->value[0]);
                 OBJ_RETAIN(rack);
-                node->rack = (struct orcm_rack_t*)rack;
+                node->rack = rack;
                 node->state = ORTE_NODE_STATE_UNKNOWN;
                 opal_list_append(&rack->nodes, &node->super);
             }

@@ -366,7 +366,7 @@ static int define_system(opal_list_t *config,
                         if (found_me) {
                             *mynode = &rack->controller;
                             OBJ_RETAIN(*mynode);
-                            (*mynode)->rack = (struct orcm_rack_t*)rack;
+                            (*mynode)->rack = rack;
                             OBJ_RETAIN(rack);
                             if (NULL != scheduler) {
                                 /* define my HNP to be the scheduler, if available */
@@ -410,7 +410,7 @@ static int define_system(opal_list_t *config,
                         if (found_me) {
                             *mynode = node;
                             OBJ_RETAIN(node);
-                            node->rack = (struct orcm_rack_t*)rack;
+                            node->rack = rack;
                             OBJ_RETAIN(rack);
                             if (ORTE_NODE_STATE_UNDEF != rack->controller.state) {
                                 /* define my daemon */
@@ -711,7 +711,7 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
                 node->name = strdup(val);
                 node->state = ORTE_NODE_STATE_UNKNOWN;
                 OBJ_RETAIN(rack);
-                node->rack = (struct orcm_rack_t*)rack;
+                node->rack = rack;
                 opal_list_append(&rack->nodes, &node->super);
             }
         }

@@ -22,6 +22,20 @@
 
 BEGIN_C_DECLS
 
+typedef struct {
+    opal_object_t super;
+    int win_size;
+    char *win_unit;
+    uint64_t win_left;
+    uint64_t win_right;
+    uint64_t num_sample_recv;
+    double sum_min_max;
+    double sum_square;
+    char *compute_type;
+    char *win_type;
+} win_statistics_t;
+OBJ_CLASS_DECLARATION(win_statistics_t);
+
 /*
  * Local Component structures
  */

@@ -40,7 +40,7 @@ struct orcm_analytics_base_module {
     orcm_analytics_base_module_init_fn_t        init;
     orcm_analytics_base_module_finalize_fn_t    finalize;
     orcm_analytics_base_module_analyze_fn_t     analyze;
-    opal_hash_table_t*                          orcm_mca_analytics_hash_table;
+    void*                                       orcm_mca_analytics_data_store;
 };
 
 

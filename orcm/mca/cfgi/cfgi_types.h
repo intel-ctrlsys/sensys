@@ -55,12 +55,13 @@ OBJ_CLASS_DECLARATION(orcm_config_t);
 /* predeclare an object to avoid
  * circular references
  */
-struct orcm_rack_t;
+struct orcm_rack;
+typedef struct orcm_rack orcm_rack_t;
 
 typedef struct {
     opal_list_item_t super;
     char *name;
-    struct orcm_rack_t *rack;
+    orcm_rack_t *rack;
     orte_process_name_t daemon;
     orcm_config_t config;
     orcm_node_state_t state;         //writable *only* by rm after init
@@ -90,13 +91,13 @@ typedef struct {
 } orcm_row_t;
 OBJ_CLASS_DECLARATION(orcm_row_t);
 
-typedef struct {
+struct orcm_rack {
     opal_list_item_t super;
     char *name;
     orcm_row_t *row;
     orcm_node_t controller;
     opal_list_t nodes;
-} orcm_rack_t;
+} ;
 OBJ_CLASS_DECLARATION(orcm_rack_t);
 
 typedef struct {

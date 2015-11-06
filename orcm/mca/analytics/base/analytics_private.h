@@ -85,7 +85,13 @@ ORCM_DECLSPEC int orcm_analytics_base_event_set_reporter(orcm_ras_event_t *analy
                                                          void *data, opal_data_type_t type, char *units);
 
 /* function to assert that the input caddy data is valid */
-int assert_caddy_data(void *cbdata);
+int orcm_analytics_base_assert_caddy_data(void *cbdata);
+
+/* function to convert the timeval to uint64_t with rounded microsecond */
+uint64_t orcm_analytics_base_timeval_to_uint64(struct timeval time);
+
+/* function to get the time in uint64_t for a list of coming data samples */
+int orcm_analytics_base_get_sample_time(opal_list_t *list, uint64_t *sample_time);
 
 #define ANALYTICS_COUNT_DEFAULT 1
 #define MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP 2

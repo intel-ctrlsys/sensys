@@ -265,6 +265,7 @@ static int get_threshold_policy(void *cbdata,orcm_mca_analytics_threshold_policy
             SAFEFREE(tval);
             SAFEFREE(severity);
             opal_argv_free(token);
+            token = NULL;
         }
     }
     else {
@@ -275,7 +276,9 @@ done:
     SAFEFREE(tval);
     SAFEFREE(severity);
     opal_argv_free(policy);
+    policy = NULL;
     opal_argv_free(token);
+    token = NULL;
     return rc;
 }
 

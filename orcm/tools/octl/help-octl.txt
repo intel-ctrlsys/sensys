@@ -34,7 +34,7 @@ USAGE: sensor get policy <nodelist>
 
 [octl:set:policy-usage]
 ERROR: %s
-USAGE: sensor set policy <nodelist>
+USAGE: sensor set policy <nodelist> <sensor name> <threshold value> <threshold type> <max count> <time window> <severity> <action>
 
 [octl:get:sample-rate-usage]
 ERROR: %s

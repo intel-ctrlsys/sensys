@@ -1,2 +1,2 @@
-SUBDIRS=analytics sensor
+SUBDIRS=sensor analytics
 

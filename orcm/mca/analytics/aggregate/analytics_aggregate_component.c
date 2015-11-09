@@ -16,13 +16,13 @@
 #include "orte/mca/errmgr/errmgr.h"
 
 #include "orcm/runtime/orcm_globals.h"
-#include "analytics_average.h"
+#include "analytics_aggregate.h"
 
 /*
  * Public string for version number
  */
-const char *orcm_analytics_average_component_version_string =
-    "ORCM ANALYTICS average MCA component version " ORCM_VERSION;
+const char *orcm_analytics_aggregate_component_version_string =
+    "ORCM ANALYTICS aggregate MCA component version " ORCM_VERSION;
 
 /*
  * Local functionality
@@ -34,11 +34,11 @@ static orcm_analytics_base_module_t *component_create(void);
  * Instantiate the public struct with all of our public information
  * and pointer to our public functions in it
  */
-orcm_analytics_base_component_t mca_analytics_average_component = {
+orcm_analytics_base_component_t mca_analytics_aggregate_component = {
     {
         ORCM_ANALYTICS_BASE_VERSION_1_0_0,
         /* Component name and version */
-        .mca_component_name = "average",
+        .mca_component_name = "aggregate",
         MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
                               ORCM_RELEASE_VERSION),
         
@@ -65,15 +65,15 @@ static bool component_avail(void)
 
 static orcm_analytics_base_module_t *component_create(void)
 {
-    mca_analytics_average_module_t *mod;
+    mca_analytics_aggregate_module_t *mod;
     
-    mod = (mca_analytics_average_module_t*)malloc(sizeof(mca_analytics_average_module_t));
+    mod = (mca_analytics_aggregate_module_t*)malloc(sizeof(mca_analytics_aggregate_module_t));
     if (NULL == mod) {
         ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
         return NULL;
     }
     /* copy the APIs across */
-    memcpy(mod, &orcm_analytics_average_module.api, sizeof(orcm_analytics_base_module_t));
+    memcpy(mod, &orcm_analytics_aggregate_module.api, sizeof(orcm_analytics_base_module_t));
     /* let the module init itself */
     if (ORCM_SUCCESS != mod->api.init((orcm_analytics_base_module_t*)mod)) {
         /* release the module and return the error */

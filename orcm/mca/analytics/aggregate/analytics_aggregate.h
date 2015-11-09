@@ -13,8 +13,8 @@
  * 
  */
 
-#ifndef MCA_analytics_average_EXPORT_H
-#define MCA_analytics_average_EXPORT_H
+#ifndef MCA_analytics_aggregate_EXPORT_H
+#define MCA_analytics_aggregate_EXPORT_H
 
 #include "orcm_config.h"
 
@@ -29,18 +29,20 @@ BEGIN_C_DECLS
 typedef struct
 {
     opal_object_t super;
+    double average;
+    double min;
+    double max;
     unsigned int num_sample;
-    orcm_value_t *value_average;
-} orcm_analytics_average_item_value;
+}orcm_analytics_aggregate;
 
-OBJ_CLASS_DECLARATION(orcm_analytics_average_item_value);
+OBJ_CLASS_DECLARATION(aggregate);
 
-ORCM_MODULE_DECLSPEC extern orcm_analytics_base_component_t mca_analytics_average_component;
+ORCM_MODULE_DECLSPEC extern orcm_analytics_base_component_t mca_analytics_aggregate_component;
 
 typedef struct {
     orcm_analytics_base_module_t api;
-} mca_analytics_average_module_t;
-ORCM_DECLSPEC extern mca_analytics_average_module_t orcm_analytics_average_module;
+} mca_analytics_aggregate_module_t;
+ORCM_DECLSPEC extern mca_analytics_aggregate_module_t orcm_analytics_aggregate_module;
 
 END_C_DECLS
 

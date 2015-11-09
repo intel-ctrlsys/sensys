@@ -10,4 +10,5 @@ if HAVE_GTEST
 gtestSubdirs=window
 endif
 
-SUBDIRS=$(gtestSubdirs)
+SUBDIRS=$(gtestSubdirs) aggregate
+

@@ -566,7 +566,6 @@ static void res_log(opal_buffer_t *sample)
 
     if (mca_sensor_resusage_component.log_node_stats) {
         res_log_node_stats(nst, node, sampletime);
-        OBJ_RELEASE(nst);
     }
 
     if (mca_sensor_resusage_component.log_process_stats) {
@@ -574,9 +573,10 @@ static void res_log(opal_buffer_t *sample)
         n=1;
         while (OPAL_SUCCESS == (rc = opal_dss.unpack(sample, &st, &n, OPAL_PSTAT))) {
             res_log_process_stats(st, node, sampletime);
-            OBJ_RELEASE(st);
+            if (NULL != st) {
+                OBJ_RELEASE(st);
+            }
             n=1;
-
         }
         if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
             ORTE_ERROR_LOG(rc);
@@ -585,6 +585,12 @@ static void res_log(opal_buffer_t *sample)
 
 cleanup:
     SAFEFREE(node);
+    if (NULL != nst) {
+        OBJ_RELEASE(nst);
+    }
+    if (NULL != st) {
+        OBJ_RELEASE(st);
+    }
 }
 
 static void generate_test_vector(opal_buffer_t *v)
@@ -808,7 +814,6 @@ static void res_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
         opal_list_append(records, (opal_list_item_t*)mkv);
 
         --tot_items;
-        OBJ_RELEASE(mkv);
     }
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);

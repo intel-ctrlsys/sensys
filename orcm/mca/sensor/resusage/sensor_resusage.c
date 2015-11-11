@@ -565,15 +565,17 @@ static void res_log(opal_buffer_t *sample)
     }
 
     if (mca_sensor_resusage_component.log_node_stats) {
-        res_log_node_stats(nst, node, sampletime);
+        if (NULL != nst) {
+            res_log_node_stats(nst, node, sampletime);
+        }
     }
 
     if (mca_sensor_resusage_component.log_process_stats) {
         /* unpack all process stats */
         n=1;
         while (OPAL_SUCCESS == (rc = opal_dss.unpack(sample, &st, &n, OPAL_PSTAT))) {
-            res_log_process_stats(st, node, sampletime);
             if (NULL != st) {
+                res_log_process_stats(st, node, sampletime);
                 OBJ_RELEASE(st);
             }
             n=1;

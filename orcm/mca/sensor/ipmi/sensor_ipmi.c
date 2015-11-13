@@ -525,7 +525,7 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked NodeName: %s", hostname);
 
-        sensor_metric = orcm_util_load_orcm_value("hostname", &hostname, OPAL_STRING, NULL);
+        sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
         if (NULL == sensor_metric) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
             goto cleanup;

@@ -65,6 +65,8 @@ static int record_diag_test(struct orcm_db_base_module_t *imod,
                             const int *component_index,
                             const char *test_result,
                             opal_list_t *test_params);
+static int commit(struct orcm_db_base_module_t *imod);
+static int rollback(struct orcm_db_base_module_t *imod);
 
 /* Internal helper functions */
 static void print_values(opal_list_t *values, char ***cmdargs);
@@ -89,8 +91,8 @@ mca_db_print_module_t mca_db_print_module = {
         record_data_samples,
         update_node_features,
         record_diag_test,
-        NULL,
-        NULL,
+        commit,
+        rollback,
         NULL,
         NULL,
         NULL,
@@ -388,6 +390,20 @@ static int record_diag_test(struct orcm_db_base_module_t *imod,
     free(vstr);
     opal_argv_free(cmdargs);
 
+    return ORCM_SUCCESS;
+}
+
+static int commit(struct orcm_db_base_module_t *imod)
+{
+    mca_db_print_module_t *mod = (mca_db_print_module_t*)imod;
+    fprintf(mod->fp, "DB request: commit; (no-op)\n");
+    return ORCM_SUCCESS;
+}
+
+static int rollback(struct orcm_db_base_module_t *imod)
+{
+    mca_db_print_module_t *mod = (mca_db_print_module_t*)imod;
+    fprintf(mod->fp, "DB request: rollback; (no-op)\n");
     return ORCM_SUCCESS;
 }
 

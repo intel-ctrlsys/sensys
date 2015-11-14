@@ -59,6 +59,7 @@ extern void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
                                  size_t size);
 
 static int postgres_init(struct orcm_db_base_module_t *imod);
+static void postgres_reconnect_if_needed(mca_db_postgres_module_t* mod);
 static void postgres_finalize(struct orcm_db_base_module_t *imod);
 static int postgres_store_sample(struct orcm_db_base_module_t *imod,
                                  const char *data_group,
@@ -94,6 +95,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
                                     opal_list_t *ret);
 
 static inline bool status_ok(PGresult *res);
+static inline bool is_fatal(PGresult *res);
 
 static int postgres_fetch(struct orcm_db_base_module_t *imod,
                           const char *view,
@@ -205,6 +207,13 @@ static int postgres_init(struct orcm_db_base_module_t *imod)
                         mod->dbname);
 
     return ORCM_SUCCESS;
+}
+
+static void postgres_reconnect_if_needed(mca_db_postgres_module_t* mod) {
+    if (CONNECTION_BAD == PQstatus(mod->conn)) {
+        opal_output(0, "Attempt to reset the PostgreSQL connection.");
+        PQreset(mod->conn);
+    }
 }
 
 static void postgres_finalize(struct orcm_db_base_module_t *imod)
@@ -469,6 +478,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
             rc = ORCM_ERROR;
             ERR_MSG_FMT_STORE("Unable to start transaction: %s",
                               PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -480,6 +490,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
     if (!status_ok(res)) {
         rc = ORCM_ERROR;
         ERR_MSG_STORE(PQresultErrorMessage(res));
+        postgres_reconnect_if_needed(mod);
         goto cleanup_and_exit;
     }
     PQclear(res);
@@ -721,6 +732,7 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
             rc = ORCM_ERROR;
             ERR_MSG_FMT_STORE("Unable to start transaction: %s",
                               PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -732,6 +744,7 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
     if (!status_ok(res)) {
         rc = ORCM_ERROR;
         ERR_MSG_STORE(PQresultErrorMessage(res));
+        postgres_reconnect_if_needed(mod);
         goto cleanup_and_exit;
     }
     PQclear(res);
@@ -830,6 +843,7 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
             rc = ORCM_ERROR;
             ERR_MSG_FMT_UNF("Unable to begin transaction: %s",
                             PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -882,6 +896,7 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
         if (!status_ok(res)) {
             rc = ORCM_ERROR;
             ERR_MSG_UNF(PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -901,6 +916,7 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
             rc = ORCM_ERROR;
             ERR_MSG_FMT_UNF("Unable to commit transaction: %s",
                             PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -915,6 +931,9 @@ cleanup_and_exit:
      * are either committed or canceled. */
     if (ORCM_SUCCESS != rc && mod->autocommit && local_tran_started) {
         res = PQexec(mod->conn, "rollback");
+        if (!status_ok(res)) {
+            postgres_reconnect_if_needed(mod);
+        }
     }
 
     if (NULL != res) {
@@ -1026,6 +1045,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
             rc = ORCM_ERROR;
             ERR_MSG_FMT_UNF("Unable to begin transaction: %s",
                             PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -1085,6 +1105,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
         if (!status_ok(res)) {
             rc = ORCM_ERROR;
             ERR_MSG_UNF(PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -1105,6 +1126,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
             rc = ORCM_ERROR;
             ERR_MSG_FMT_UNF("Unable to commit transaction: %s",
                             PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -1119,6 +1141,9 @@ cleanup_and_exit:
      * are either committed or canceled. */
     if (ORCM_SUCCESS != rc && mod->autocommit && local_tran_started) {
         res = PQexec(mod->conn, "rollback");
+        if (!status_ok(res)) {
+            postgres_reconnect_if_needed(mod);
+        }
     }
 
     if (NULL != res) {
@@ -1238,6 +1263,7 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
             rc = ORCM_ERROR;
             ERR_MSG_FMT_RDT("Unable to begin transaction: %s",
                             PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -1272,6 +1298,7 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
     if (!status_ok(res)) {
         rc = ORCM_ERROR;
         ERR_MSG_RDT(PQresultErrorMessage(res));
+        postgres_reconnect_if_needed(mod);
         goto cleanup_and_exit;
     }
     PQclear(res);
@@ -1288,6 +1315,7 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
                 rc = ORCM_ERROR;
                 ERR_MSG_FMT_RDT("Unable to commit transaction: %s",
                                 PQresultErrorMessage(res));
+                postgres_reconnect_if_needed(mod);
                 goto cleanup_and_exit;
             }
             PQclear(res);
@@ -1376,6 +1404,7 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
         if (!status_ok(res)) {
             rc = ORCM_ERROR;
             ERR_MSG_RDT(PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -1395,6 +1424,7 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
             rc = ORCM_ERROR;
             ERR_MSG_FMT_RDT("Unable to commit transaction: %s",
                             PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -1409,6 +1439,9 @@ cleanup_and_exit:
      * are either committed or canceled. */
     if (ORCM_SUCCESS != rc && mod->autocommit && local_tran_started) {
         res = PQexec(mod->conn, "rollback");
+        if (!status_ok(res)) {
+            postgres_reconnect_if_needed(mod);
+        }
     }
 
     if (NULL != res) {
@@ -1644,6 +1677,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
             rc = ORCM_ERROR;
             ERR_MSG_FMT_RDT("Unable to begin transaction: %s",
                             PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -1677,6 +1711,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
     if (!status_ok(res)) {
         rc = ORCM_ERROR;
         ERR_MSG_RDT(PQresultErrorMessage(res));
+        postgres_reconnect_if_needed(mod);
         goto cleanup_and_exit;
     }
     PQclear(res);
@@ -1693,6 +1728,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
                 rc = ORCM_ERROR;
                 ERR_MSG_FMT_RDT("Unable to commit transaction: %s",
                                 PQresultErrorMessage(res));
+                postgres_reconnect_if_needed(mod);
                 goto cleanup_and_exit;
             }
             PQclear(res);
@@ -1789,6 +1825,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
         if (!status_ok(res)) {
             rc = ORCM_ERROR;
             ERR_MSG_RDT(PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -1809,6 +1846,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
             rc = ORCM_ERROR;
             ERR_MSG_FMT_RDT("Unable to commit transaction: %s",
                             PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
@@ -1823,6 +1861,9 @@ cleanup_and_exit:
      * are either committed or canceled. */
     if (ORCM_SUCCESS != rc && mod->autocommit && local_tran_started) {
         res = PQexec(mod->conn, "rollback");
+        if (!status_ok(res)) {
+            postgres_reconnect_if_needed(mod);
+        }
     }
 
     if (NULL != res) {
@@ -1858,8 +1899,9 @@ static int postgres_commit(struct orcm_db_base_module_t *imod)
 
     res = PQexec(mod->conn, "commit");
     if (!status_ok(res)) {
-        PQclear(res);
         ERR_MSG_COMMIT(PQresultErrorMessage(res));
+        PQclear(res);
+        postgres_reconnect_if_needed(mod);
         return ORCM_ERROR;
     }
     PQclear(res);
@@ -1882,8 +1924,9 @@ static int postgres_rollback(struct orcm_db_base_module_t *imod)
 
     res = PQexec(mod->conn, "rollback");
     if (!status_ok(res)) {
-        PQclear(res);
         ERR_MSG_ROLLBACK(PQresultErrorMessage(res));
+        PQclear(res);
+        postgres_reconnect_if_needed(mod);
         return ORCM_ERROR;
     }
     PQclear(res);
@@ -1899,6 +1942,11 @@ static inline bool status_ok(PGresult *res)
     return (status == PGRES_COMMAND_OK
             || status == PGRES_TUPLES_OK
             || status == PGRES_NONFATAL_ERROR);
+}
+
+static inline bool is_fatal(PGresult *res)
+{
+    return (NULL == res || PGRES_FATAL_ERROR == PQresultStatus(res));
 }
 
 #define ERR_MSG_FMT_FETCH(msg, ...) \
@@ -2045,6 +2093,7 @@ static int postgres_fetch(struct orcm_db_base_module_t *imod,
     if(!status_ok(results)) {
         ERR_MSG_FMT_FETCH("PQexec returned: %s", "NULL");
         rc = ORCM_ERROR;
+        postgres_reconnect_if_needed(mod);
         goto cleanup_and_exit;
     }
 

@@ -188,9 +188,17 @@ install -D -m 0755 contrib/dist/linux/orcmsched.init %{buildroot}%{_initddir}/or
 %endif
 install -D -m 0644 contrib/dist/linux/orcmd.sysconfig %{buildroot}/etc/sysconfig/orcmd
 install -D -m 0644 contrib/dist/linux/orcmsched.sysconfig %{buildroot}/etc/sysconfig/orcmsched
+install -D -m 0644 contrib/database/models.py %{buildroot}%{_sysconfdir}/models.py
 install -D -m 0644 contrib/database/orcmdb_psql.ini %{buildroot}%{_sysconfdir}/orcmdb_psql.ini
-install -D -m 0644 contrib/database/orcmdb_psql.sql %{buildroot}%{_sysconfdir}/orcmdb_psql.sql
+install -D -m 0644 contrib/database/pg_alert_runner.py %{buildroot}%{_sysconfdir}/pg_alert_runner.py
+install -D -m 0644 contrib/database/pg_partition_helper.py %{buildroot}%{_sysconfdir}/pg_partition_helper.py
 install -D -m 0644 contrib/database/psql_odbc_driver.ini %{buildroot}%{_sysconfdir}/psql_odbc_driver.ini
+install -D -m 0644 contrib/database/schema_migration.ini %{buildroot}%{_sysconfdir}/schema_migration.ini
+install -D -m 0644 contrib/database/setup_orcmdb.py %{buildroot}%{_sysconfdir}/setup_orcmdb.py
+install -D -m 0644 contrib/database/schema_migration/env.py %{buildroot}%{_sysconfdir}/schema_migration/env.py
+install -D -m 0644 contrib/database/schema_migration/README %{buildroot}%{_sysconfdir}/schema_migration/README
+install -D -m 0644 contrib/database/schema_migration/script.py.mako %{buildroot}%{_sysconfdir}/schema_migration/script.py.mako
+install -D -m 0644 contrib/database/schema_migration/versions/* -t %{buildroot}%{_sysconfdir}/schema_migration/versions
 
 #
 # create a module file on request
@@ -369,9 +377,17 @@ install -D -m 0755 contrib/dist/linux/orcmsched.init %{buildroot}%{_initddir}/or
 %endif
 install -D -m 0644 contrib/dist/linux/orcmd.sysconfig %{buildroot}/etc/sysconfig/orcmd
 install -D -m 0644 contrib/dist/linux/orcmsched.sysconfig %{buildroot}/etc/sysconfig/orcmsched
+install -D -m 0644 contrib/database/models.py %{buildroot}%{_sysconfdir}/models.py
 install -D -m 0644 contrib/database/orcmdb_psql.ini %{buildroot}%{_sysconfdir}/orcmdb_psql.ini
-install -D -m 0644 contrib/database/orcmdb_psql.sql %{buildroot}%{_sysconfdir}/orcmdb_psql.sql
+install -D -m 0644 contrib/database/pg_alert_runner.py %{buildroot}%{_sysconfdir}/pg_alert_runner.py
+install -D -m 0644 contrib/database/pg_partition_helper.py %{buildroot}%{_sysconfdir}/pg_partition_helper.py
 install -D -m 0644 contrib/database/psql_odbc_driver.ini %{buildroot}%{_sysconfdir}/psql_odbc_driver.ini
+install -D -m 0644 contrib/database/schema_migration.ini %{buildroot}%{_sysconfdir}/schema_migration.ini
+install -D -m 0644 contrib/database/setup_orcmdb.py %{buildroot}%{_sysconfdir}/setup_orcmdb.py
+install -D -m 0644 contrib/database/schema_migration/env.py %{buildroot}%{_sysconfdir}/schema_migration/env.py
+install -D -m 0644 contrib/database/schema_migration/README %{buildroot}%{_sysconfdir}/schema_migration/README
+install -D -m 0644 contrib/database/schema_migration/script.py.mako %{buildroot}%{_sysconfdir}/schema_migration/script.py.mako
+install -D -m 0644 contrib/database/schema_migration/versions/* -t %{buildroot}%{_sysconfdir}/schema_migration/versions
 
 
 %clean

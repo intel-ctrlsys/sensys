@@ -35,7 +35,6 @@ EXTRA_DIST = \
     completion/mpirun.zsh \
     database/models.py \
     database/orcmdb_psql.ini \
-    database/orcmdb_psql.sql \
     database/pg_alert_runner.py \
     database/pg_partition_helper.py \
     database/psql_odbc_driver.ini \

@@ -640,7 +640,6 @@ static int run_cmd(char *cmd)
             break;
         }
         break;
-
     default:
         rc = ORCM_ERROR;
         break;

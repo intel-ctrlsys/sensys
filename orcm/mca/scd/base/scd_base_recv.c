@@ -1164,7 +1164,7 @@ int assemble_response(opal_list_t *db_query_results, opal_buffer_t **response_bu
 
     /*Init response buffer*/
     *response_buffer = OBJ_NEW(opal_buffer_t);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(*response_buffer, 
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(*response_buffer,
                                             &returned_status, 1, OPAL_INT))) {
         rc = ORCM_ERR_PACK_FAILURE;
         ORTE_ERROR_LOG(rc);
@@ -1192,7 +1192,7 @@ int assemble_response(opal_list_t *db_query_results, opal_buffer_t **response_bu
             }
         }
     }
-    return rc;   
+    return rc;
 }
 
 char *query_header(const char* db_view)
@@ -1318,7 +1318,7 @@ int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_vi
             row = OBJ_NEW(opal_list_t);
             data.status = orcm_db.get_next_row(data.dbhandle, data.session_handle, row);
             if (ORCM_SUCCESS != data.status){
-                opal_output(0, "Failed to get inventory row %d in the inventory database", 
+                opal_output(0, "Failed to get row %d when querying the database",
                             row_index);
                 db_status = data.status;
                 goto db_cleanup;
@@ -1546,10 +1546,10 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 ORTE_ERROR_LOG(rc);
                 return;
             }
-            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, 
+            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender,
                                                               response_buffer,
                                                               ORCM_RML_TAG_ORCMD_FETCH,
-                                                              orte_rml_send_callback, 
+                                                              orte_rml_send_callback,
                                                               cbdata))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(response_buffer);
@@ -1598,10 +1598,10 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 ORTE_ERROR_LOG(rc);
                 return;
             }
-            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, 
+            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender,
                                                               response_buffer,
                                                               ORCM_RML_TAG_ORCMD_FETCH,
-                                                              orte_rml_send_callback, 
+                                                              orte_rml_send_callback,
                                                               cbdata))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(response_buffer);
@@ -1625,10 +1625,10 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 ORTE_ERROR_LOG(rc);
                 return;
             }
-            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, 
+            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender,
                                                               response_buffer,
                                                               ORCM_RML_TAG_ORCMD_FETCH,
-                                                              orte_rml_send_callback, 
+                                                              orte_rml_send_callback,
                                                               cbdata))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(response_buffer);
@@ -1652,10 +1652,10 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 ORTE_ERROR_LOG(rc);
                 return;
             }
-            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, 
+            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender,
                                                               response_buffer,
                                                               ORCM_RML_TAG_ORCMD_FETCH,
-                                                              orte_rml_send_callback, 
+                                                              orte_rml_send_callback,
                                                               cbdata))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(response_buffer);

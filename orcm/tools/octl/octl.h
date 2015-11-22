@@ -183,6 +183,16 @@ static orcm_cli_init_t cli_init[] = {
     { { "analytics", "workflow", NULL }, "remove", 0, 2, "remove workflow: remove nodelist workflow_id" },
     { { "analytics", "workflow", NULL }, "get", 0, 0, "list workflow: get nodelist" },
 
+    /****** Query commands ******/
+    { { NULL}, "query", 0, 0, "Query data from DB" },
+    { { "query", NULL}, "history", 0, 4, "query RAS history of the given nodes" },
+    { { "query", NULL}, "sensor", 0, 6, "query sensor values within given limits" },
+    { { "query", NULL}, "log", 0, 2, "query log of events" },
+    { { "query", NULL}, "idle", 0, 1, "query idle hosts" },
+    { { "query", NULL}, "node", 0, 1, "query ras information of the given nodes" },
+    { { "query", "node", NULL}, "status", 0, 1, "query status of given nodes" },
+
+
     /* quit command */
     { { NULL }, "quit", 0, 0, "Exit the shell" },
 
@@ -233,6 +243,11 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "analytics",         //35
                                      "workflow",          //36
                                      "inventory",         //37
+                                     "query",             //38
+                                     "history",           //39
+                                     "log",               //40
+                                     "idle",              //41
+                                     "node",              //42
                                      "\0" };
 
 END_C_DECLS

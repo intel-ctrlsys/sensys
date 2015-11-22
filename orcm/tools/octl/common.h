@@ -75,6 +75,10 @@ int orcm_octl_logical_group_list(int argc, char **argv);
 int orcm_octl_analytics_workflow_add(char *file);
 int orcm_octl_analytics_workflow_remove(char **value);
 int orcm_octl_analytics_workflow_list (char **value);
+int orcm_octl_query_sensor(int cmd, char **argv);
+int orcm_octl_query_log(int cmd, char **argv);
+int orcm_octl_query_idle(int cmd, char **argv);
+int orcm_octl_query_node(int cmd, char **argv);
 
 END_C_DECLS
 

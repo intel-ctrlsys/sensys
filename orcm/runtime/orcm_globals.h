@@ -106,6 +106,11 @@ typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_GET_POWER_MODES_COMMAND         28
 #define ORCM_GET_POWER_STRICT_COMMAND        29
 #define ORCM_GET_DB_SENSOR_INVENTORY_COMMAND 30
+#define ORCM_GET_DB_QUERY_HISTORY_COMMAND    31
+#define ORCM_GET_DB_QUERY_SENSOR_COMMAND     32
+#define ORCM_GET_DB_QUERY_LOG_COMMAND        33
+#define ORCM_GET_DB_QUERY_IDLE_COMMAND       34
+#define ORCM_GET_DB_QUERY_NODE_COMMAND       35
 
 /* define diagnostic commands */
 typedef uint8_t orcm_diag_cmd_flag_t;

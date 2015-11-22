@@ -206,6 +206,8 @@ char *assemble_datetime(char *date_str, char *time_str)
             strcat(date_time_str, " ");
             if (false == replace_wildcard(&new_time_str, true)){
                 strcat(date_time_str, new_time_str);
+            } else {
+                fprintf(stdout, "\nWARNING: time input was ignored due the presence of the * character\n");
             }
         } else {
             SAFE_FREE(date_time_str);
@@ -511,7 +513,7 @@ orcm_db_filter_t *build_node_item(char **expanded_node_list)
     str_length++;
     hosts_filter = calloc(sizeof(char), str_length);
     node_count = opal_argv_count(expanded_node_list);
-    for(int i=0; i < node_count; i++){
+    for(int i=0; i < node_count; ++i){
         strcat(hosts_filter, "'");
         strcat(hosts_filter, expanded_node_list[i]);
         strcat(hosts_filter, "'");
@@ -547,7 +549,7 @@ int orcm_octl_query_sensor(int cmd, char **argv)
     opal_list_t *returned_list = NULL;
     opal_value_t *line = NULL;
 
-    if(ORCM_GET_DB_QUERY_SENSOR_COMMAND != cmd && 
+    if(ORCM_GET_DB_QUERY_SENSOR_COMMAND != cmd &&
        ORCM_GET_DB_QUERY_HISTORY_COMMAND !=cmd) {
         fprintf(stdout, "\nERROR: incorrect command argument: %d", cmd);
         rc = ORCM_ERR_BAD_PARAM;
@@ -606,6 +608,7 @@ int orcm_octl_query_log(int cmd, char **argv)
         goto orcm_octl_query_log_cleanup;
     }
     if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
+        rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_log_cleanup;
     }
     /* Build input node list */
@@ -657,6 +660,7 @@ int orcm_octl_query_idle(int cmd, char **argv)
         goto orcm_octl_query_idle_cleanup;
     }
     if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
+        rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_idle_cleanup;
     }
     /* Build input node list */
@@ -708,6 +712,7 @@ int orcm_octl_query_node(int cmd, char **argv)
         goto orcm_octl_query_node_cleanup;
     }
     if (ORCM_SUCCESS != (rc = get_nodes_from_args(argv, &argv_node_list))){
+        rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_node_cleanup;
     }
     /* Build input node list */
@@ -739,5 +744,5 @@ int orcm_octl_query_node(int cmd, char **argv)
         }
     }
 orcm_octl_query_node_cleanup:
-    return ORCM_SUCCESS;
+    return rc;
 }

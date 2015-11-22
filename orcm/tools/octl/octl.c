@@ -634,7 +634,37 @@ static int run_cmd(char *cmd)
                 break;
             }
             break;
-
+        }
+        break;
+    case 38: //Query
+        rc = octl_command_to_int(cmdlist[1]);
+        if (-1 == rc) {
+            rc = ORCM_ERROR;
+            break;
+        }
+        switch(rc)
+        {
+        case 30://sensor
+            rc = orcm_octl_query_sensor(ORCM_GET_DB_QUERY_SENSOR_COMMAND,cmdlist);
+            break;
+        case 39://history
+            rc = orcm_octl_query_sensor(ORCM_GET_DB_QUERY_HISTORY_COMMAND,cmdlist);
+            break;
+        case 40://log
+            rc = orcm_octl_query_log(ORCM_GET_DB_QUERY_LOG_COMMAND,cmdlist);
+            break;
+        case 41://idle
+            rc = orcm_octl_query_idle(ORCM_GET_DB_QUERY_IDLE_COMMAND,cmdlist);
+            break;
+        case 42://node
+            rc = octl_command_to_int(cmdlist[2]);
+            switch(rc)
+            {
+            case 4://status
+                rc = orcm_octl_query_node(ORCM_GET_DB_QUERY_NODE_COMMAND,cmdlist);
+                break;
+            }
+            break;
         default:
             rc = ORCM_ERROR;
             break;

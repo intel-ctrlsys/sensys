@@ -34,7 +34,7 @@ USAGE: sensor get policy <nodelist>
 
 [octl:set:policy-usage]
 ERROR: %s
-USAGE: sensor set policy <nodelist> <sensor name> <threshold value> <threshold type> <max count> <time window> <severity> <action>
+USAGE: sensor set policy <nodelist>
 
 [octl:get:sample-rate-usage]
 ERROR: %s
@@ -62,3 +62,23 @@ Grouping Remove Failed!
 [octl:grouping:list-usage]
 ERROR: %s
 USAGE: grouping list <tag> <nodelist>
+
+[octl:query:history]
+ERROR: %s
+USAGE: query history [start-date start-time end-date end-time] <nodelist>
+
+[octl:query:sensor]
+ERROR: %s
+USAGE: query sensor <sensor-name> [start-date start-time end-date end-time [upper-bound lower-bound]] <nodelist>
+
+[octl:query:log]
+ERROR: %s
+USAGE: query log [event id] <nodelist>
+
+[octl:query:idle]
+ERROR: %s
+USAGE: query idle [timeout in seconds or HH:MM:SS format] <nodelist>
+
+[octl:query:node:status]
+ERROR: %s
+USAGE: query node status <nodelist>

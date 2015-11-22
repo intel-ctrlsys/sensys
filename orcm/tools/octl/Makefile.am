@@ -40,7 +40,8 @@ octl_SOURCES = \
         sensor.c \
         grouping.h \
         grouping.c \
-        analytics.c
+        analytics.c \
+        query.c
 
 # the following empty octl_LDFLAGS is used
 #  so that the octl can be compiled statically

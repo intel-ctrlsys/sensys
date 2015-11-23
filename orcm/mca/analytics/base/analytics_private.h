@@ -13,6 +13,8 @@
 #define MCA_ANALYTICS_PRIVATE_H
 
 #include "orcm/mca/analytics/base/base.h"
+#include "orcm/mca/evgen/evgen.h"
+#include "orcm/mca/evgen/base/base.h"
 
 BEGIN_C_DECLS
 
@@ -45,11 +47,56 @@ int orcm_analytics_base_store(opal_list_t *data_results);
 /* function to store data of type orcm_analytics_value_t*/
 ORCM_DECLSPEC int orcm_analytics_base_store_analytics(orcm_analytics_value_t *analytics_data);
 
+/* orcm_analytics_base_event_create
+ * Arguments: orcm_analytics_value_t *analytics_data, int type, int severity
+ * Description: function to create eventgen structure for analytics data of type orcm_analytics_value_t
+ * Returns: If failed function returns NULL and upon success it returns struct of type orcm_ras_event_t*
+ * */
+ORCM_DECLSPEC orcm_ras_event_t* orcm_analytics_base_event_create(orcm_analytics_value_t *analytics_data, int type, int severity);
+
+/* orcm_analytics_base_event_set_category
+ * Arguments: orcm_ras_event_t *analytics_event_data, unsigned int event_category
+ * Description: function to append event category into the event description list
+ * Returns: If success function returns ORCM_SUCCESS and if failed function returns Error(ORCM_ERR*)
+ * */
+ORCM_DECLSPEC int orcm_analytics_base_event_set_category(orcm_ras_event_t *analytics_event_data, unsigned int event_category);
+
+/* orcm_analytics_base_event_set_storage
+ * Arguments: orcm_ras_event_t *analytics_event_data, unsigned int storage_type
+ * Description: function to set storage type into the event description list
+ * Returns: If success function returns ORCM_SUCCESS and if failed function returns Error(ORCM_ERR*)
+ * */
+ORCM_DECLSPEC int orcm_analytics_base_event_set_storage(orcm_ras_event_t *analytics_event_data, unsigned int storage_type);
+
+/* orcm_analytics_base_event_set_description
+ * Arguments: orcm_ras_event_t *analytics_event_data, char *key, void *data, opal_data_type_t type, char *units
+ * Description: function to set data into the event description list
+ * Returns: If success function returns ORCM_SUCCESS and if failed function returns Error(ORCM_ERR*)
+ * */
+ORCM_DECLSPEC int orcm_analytics_base_event_set_description(orcm_ras_event_t *analytics_event_data, char *key,
+                                                            void *data, opal_data_type_t type, char *units);
+
+/* orcm_analytics_base_event_set_reporter
+ * Arguments: orcm_ras_event_t *analytics_event_data, char *key, void *data, opal_data_type_t type, char *units
+ * Description: function to set data into the event reporter list
+ * Returns: If success function returns ORCM_SUCCESS and if failed function returns Error(ORCM_ERR*)
+ * */
+ORCM_DECLSPEC int orcm_analytics_base_event_set_reporter(orcm_ras_event_t *analytics_event_data, char *key,
+                                                         void *data, opal_data_type_t type, char *units);
+
 /* function to assert that the input caddy data is valid */
 int assert_caddy_data(void *cbdata);
 
 #define ANALYTICS_COUNT_DEFAULT 1
 #define MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP 2
+
+/*enum to store Event Category types */
+
+typedef enum {
+    ORCM_ANALYTICS_EVENT_SOFT_FAULT = 0,
+    ORCM_ANALYTICS_EVENT_HARD_FAULT,
+    ORCM_ANALYTICS_EVENT_UNKOWN_FAULT
+}orcm_analytics_event_category_t;
 
 typedef struct {
     /* list of active workflows */

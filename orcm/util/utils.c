@@ -313,35 +313,6 @@ static int orcm_util_copy_opal_value_data(opal_value_t *dest, opal_value_t *src)
 
 }
 
-
-opal_value_t* orcm_util_copy_opal_value(opal_value_t* src)
-{
-    int rc = -1;
-    opal_value_t *dest;
-
-    if (NULL == src) {
-        return NULL;
-    }
-
-    dest = OBJ_NEW(opal_value_t);
-    if (NULL != dest) {
-        if (NULL != src->key) {
-            dest->key = strdup(src->key);
-            if (NULL == dest->key) {
-                return NULL;
-            }
-        }
-        dest->type = src->type;
-        rc = orcm_util_copy_opal_value_data(dest, src);
-        if (ORCM_SUCCESS != rc) {
-            OBJ_RELEASE(dest);
-            dest = NULL;
-        }
-    }
-
-    return dest;
-}
-
 orcm_value_t* orcm_util_copy_orcm_value(orcm_value_t* src)
 {
     int rc = -1;
@@ -522,35 +493,44 @@ static orcm_analytics_value_t *orcm_util_retain_key_noncompute(opal_list_t *key,
     return analytics_vals;
 }
 
+int orcm_util_copy_list_items(opal_list_t *src, opal_list_t *dest)
+{
+    orcm_value_t *list_item = NULL;
+    orcm_value_t *new_list_item = NULL;
+
+    if (NULL == src || NULL == dest) {
+        return ORCM_ERROR;
+    }
+
+    OPAL_LIST_FOREACH(list_item, src, orcm_value_t) {
+        if (NULL == list_item) {
+            return ORCM_ERROR;
+        }
+        new_list_item = orcm_util_copy_orcm_value(list_item);
+        if (NULL == new_list_item) {
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+        opal_list_append(dest, (opal_list_item_t *)new_list_item);
+    }
+    return ORCM_SUCCESS;
+}
+
 opal_list_t* orcm_util_copy_opal_list(opal_list_t *src)
 {
     opal_list_t *dest = NULL;
-    orcm_value_t *list_item = NULL;
-    orcm_value_t *new_list_item = NULL;
 
     if (NULL != src) {
         dest = OBJ_NEW(opal_list_t);
         if (NULL == dest) {
             goto cleanup;
         }
-        OPAL_LIST_FOREACH(list_item, src, orcm_value_t) {
-            if (NULL == list_item) {
-                goto cleanup;
-            }
-            new_list_item = orcm_util_load_orcm_value(list_item->value.key, &(list_item->value.data),
-                                                      list_item->value.type, list_item->units);
-            if (NULL == new_list_item) {
-                goto cleanup;
-            }
-            opal_list_append(dest, (opal_list_item_t *)new_list_item);
+        if (ORCM_SUCCESS != orcm_util_copy_list_items(src, dest)) {
+            goto cleanup;
         }
         return dest;
     }
 
 cleanup:
-    if (NULL != new_list_item) {
-        OBJ_RELEASE(new_list_item);
-    }
     if (NULL != dest) {
         OPAL_LIST_RELEASE(dest);
     }

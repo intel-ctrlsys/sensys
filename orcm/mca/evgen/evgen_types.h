@@ -236,6 +236,13 @@ OBJ_CLASS_DECLARATION(orcm_ras_event_t);
 #define ORCM_DESC_PRESSURE_HI       "orcm.desc.phi"     // high coolant pressure (air or liquid)
 #define ORCM_DESC_PRESSURE_LO       "orcm.desc.plo"     // low coolant pressure (air or liquid)
 
+/* Storage strategy - Provide the Ability to store events in different framework
+ * */
+#define ORCM_STORAGE_TYPE_DATABASE           0       //DATABASE FRAMEWORK
+#define ORCM_STORAGE_TYPE_NOTIFICATION       1       //Notification FRAMEWORK
+#define ORCM_STORAGE_TYPE_PUBSUB             2       //PubSub FRAMEWORK
+#define ORCM_STORAGE_TYPE_UNDEFINED          3       //Undefined FRAMEWORK
+
 END_C_DECLS
 
 #endif /* MCA_EVGEN_TYPES_H */

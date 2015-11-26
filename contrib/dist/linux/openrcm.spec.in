@@ -388,7 +388,8 @@ install -D -m 0644 contrib/database/setup_orcmdb.py %{buildroot}%{_sysconfdir}/s
 install -D -m 0644 contrib/database/schema_migration/env.py %{buildroot}%{_sysconfdir}/schema_migration/env.py
 install -D -m 0644 contrib/database/schema_migration/README %{buildroot}%{_sysconfdir}/schema_migration/README
 install -D -m 0644 contrib/database/schema_migration/script.py.mako %{buildroot}%{_sysconfdir}/schema_migration/script.py.mako
-install -D -m 0644 contrib/database/schema_migration/versions/* -t %{buildroot}%{_sysconfdir}/schema_migration/versions
+install -D -m 0644 contrib/database/schema_migration/versions/241f4694b528_initial_version.py %{buildroot}%{_sysconfdir}/schema_migration/versions/241f4694b528_initial_version.py
+install -D -m 0644 contrib/database/schema_migration/versions/*.py -t %{buildroot}%{_sysconfdir}/schema_migration/versions
 
 
 %clean

@@ -202,13 +202,19 @@ char *assemble_datetime(char *date_str, char *time_str)
     }
     if (NULL != (date_time_str = calloc(sizeof(char), date_time_length))) {
         if (false == replace_wildcard(&new_date_str, true)){
-            strcpy(date_time_str, new_date_str);
-            strcat(date_time_str, " ");
-            if (false == replace_wildcard(&new_time_str, true)){
-                strcat(date_time_str, new_time_str);
-            } else {
-                fprintf(stdout, "\nWARNING: time input was ignored due the presence of the * character\n");
-            }
+            if (NULL != new_date_str){
+                strcpy(date_time_str, new_date_str);
+                strcat(date_time_str, " ");
+                if (NULL != new_time_str){
+                    if (false == replace_wildcard(&new_time_str, true)){
+                        strcat(date_time_str, new_time_str);
+                    } else {
+                        fprintf(stdout, "\nWARNING: time input was ignored due the presence of the * character\n");
+                    }
+                }
+           } else {
+               fprintf(stderr, "\nERROR: could not allocate memory for datetime string\n");
+           }
         } else {
             SAFE_FREE(date_time_str);
         }
@@ -268,11 +274,14 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
         filter_item->value.type = OPAL_STRING;
         filter_item->value.key = strdup("log");
         /* Add 3 more chars including the end of the string '\0' */
-        filter_str = calloc(sizeof(char), strlen(argv[2])+3);
-        strcat(filter_str, "%");
-        strcat(filter_str, argv[2]);
-        strcat(filter_str, "%");
-        filter_item->value.data.string = filter_str;
+        if (NULL != (filter_str = calloc(sizeof(char), strlen(argv[2])+3))){
+            strcat(filter_str, "%");
+            strcat(filter_str, argv[2]);
+            strcat(filter_str, "%");
+            filter_item->value.data.string = filter_str;
+        } else {
+            fprintf(stderr, "\nERROR: could not allocate memory for filter string\n");
+        }
         filter_item->op = CONTAINS;
         opal_list_append(filters_list, &filter_item->value.super);
     } else {
@@ -511,30 +520,33 @@ orcm_db_filter_t *build_node_item(char **expanded_node_list)
     str_length = list_nodes_str_size(expanded_node_list, 3);
     /* Add one character for '\0' */
     str_length++;
-    hosts_filter = calloc(sizeof(char), str_length);
-    node_count = opal_argv_count(expanded_node_list);
-    for(int i=0; i < node_count; ++i){
-        strcat(hosts_filter, "'");
-        strcat(hosts_filter, expanded_node_list[i]);
-        strcat(hosts_filter, "'");
-        strcat(hosts_filter, ",");
-    }
-    /* Remove trailing comma */
-    hosts_filter[strlen(hosts_filter)-1]= '\0';
-    filter_item = OBJ_NEW(orcm_db_filter_t);
-    /* Operator for query depends on whether we find a wildcard in the hostname arg */
-    if (true == replace_wildcard(&hosts_filter, true)){
-        filter_item->value.type = OPAL_STRING;
-        filter_item->value.key = strdup("hostname");
-        filter_item->value.data.string = strdup("%");
-        filter_item->op = CONTAINS;
+    if (NULL != (hosts_filter = calloc(sizeof(char), str_length))){
+        node_count = opal_argv_count(expanded_node_list);
+        for(int i=0; i < node_count; ++i){
+            strcat(hosts_filter, "'");
+            strcat(hosts_filter, expanded_node_list[i]);
+            strcat(hosts_filter, "'");
+            strcat(hosts_filter, ",");
+        }
+        /* Remove trailing comma */
+        hosts_filter[strlen(hosts_filter)-1]= '\0';
+        filter_item = OBJ_NEW(orcm_db_filter_t);
+        /* Operator for query depends on whether we find a wildcard in the hostname arg */
+        if (true == replace_wildcard(&hosts_filter, true)){
+            filter_item->value.type = OPAL_STRING;
+            filter_item->value.key = strdup("hostname");
+            filter_item->value.data.string = strdup("%");
+            filter_item->op = CONTAINS;
+        } else {
+            filter_item->value.type = OPAL_STRING;
+            filter_item->value.key = strdup("hostname");
+            filter_item->value.data.string = strdup(hosts_filter);
+            filter_item->op = IN;
+        }
+        SAFE_FREE(hosts_filter);
     } else {
-        filter_item->value.type = OPAL_STRING;
-        filter_item->value.key = strdup("hostname");
-        filter_item->value.data.string = strdup(hosts_filter);
-        filter_item->op = IN;
+        fprintf(stderr, "\nERROR:: Unable to build node item\n");
     }
-    SAFE_FREE(hosts_filter);
     return filter_item;
 }
 

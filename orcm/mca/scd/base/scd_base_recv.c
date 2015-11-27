@@ -1175,7 +1175,6 @@ int assemble_response(opal_list_t *db_query_results, opal_buffer_t **response_bu
     if(ORCM_SUCCESS == rc && 0 == returned_status && NULL != db_query_results) {
         results_count = (uint16_t)opal_list_get_size(db_query_results);
         opal_output_verbose(4, "Results count to send back %d", results_count);
-
         if (OPAL_SUCCESS != (rc = opal_dss.pack(*response_buffer, &results_count, 1, OPAL_UINT16))) {
             rc = ORCM_ERR_PACK_FAILURE;
             ORTE_ERROR_LOG(rc);
@@ -1222,8 +1221,7 @@ int build_filter_list(opal_buffer_t* buffer,opal_list_t **filter_list)
         ORTE_ERROR_LOG(rc);
         return rc;
     }
-    opal_output(0, "Filters list count in buffer: %d", filters_list_count);
-
+    opal_output_verbose(4, "Filters list count in buffer: %d", filters_list_count);
     for(uint16_t i = 0; i < filters_list_count; ++i) {
         n = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &tmp_key, &n, OPAL_STRING))) {
@@ -1231,21 +1229,21 @@ int build_filter_list(opal_buffer_t* buffer,opal_list_t **filter_list)
             ORTE_ERROR_LOG(rc);
             return ORCM_ERROR;
         }
-        opal_output(0, "Retrieved key: %s", tmp_key);
+        opal_output_verbose(4, "Retrieved key: %s", tmp_key);
         n = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &operation, &n, OPAL_UINT8))) {
             opal_output(0, "Retrieved operation from unpack: %s", tmp_key);
             ORTE_ERROR_LOG(rc);
             return ORCM_ERROR;
         }
-        opal_output(0, "Retrieved operation from unpack: %d", operation);
+        opal_output_verbose(4, "Retrieved operation from unpack: %d", operation);
         n = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &tmp_str, &n, OPAL_STRING))) {
             opal_output(0, "Retrieved string from unpack: %s", tmp_str);
             ORTE_ERROR_LOG(rc);
             return ORCM_ERROR;
         }
-        opal_output(0, "Retrieved string from unpack: %s", tmp_str);
+        opal_output_verbose(4, "Retrieved string from unpack: %s", tmp_str);
         if (NULL == *filter_list) {
             *filter_list = OBJ_NEW(opal_list_t);
         }
@@ -1260,6 +1258,7 @@ int build_filter_list(opal_buffer_t* buffer,opal_list_t **filter_list)
 }
 #define SAFE_FREE(x) if(NULL!=x) { free(x); x = NULL; }
 #define SAFE_OPAL_LIST_RELEASE(x) if(NULL!=x) { OPAL_LIST_RELEASE(x); x = NULL; }
+#define TMP_STR_SIZE 1024
 
 int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_view)
 {
@@ -1269,10 +1268,12 @@ int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_vi
     opal_value_t *string_row = NULL;
     opal_value_t *item = NULL;
     opal_list_t *fetch_output = OBJ_NEW(opal_list_t);
-    char tmp_str[1024];
+    char tmp_str[TMP_STR_SIZE];
     char tmp_ts[20];
     int num_rows = 0;
     int row_index = 0;
+    size_t row_str_size = 0;
+    size_t data_str_size = 0;
     time_t time_secs;
     struct tm *human_time;
 
@@ -1327,8 +1328,13 @@ int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_vi
             OPAL_LIST_FOREACH(item, row, opal_value_t){
                 switch (item->type){
                     case OPAL_STRING:
-                        strcat(tmp_str, item->data.string);
-                        strcat(tmp_str, ",");
+                        data_str_size = strlen(item->data.string);
+                        if (sizeof(tmp_str) > strlen(tmp_str) + data_str_size + 1 ) {
+                            strncat(tmp_str, item->data.string, data_str_size);
+                        } else {
+                            opal_output(0, "Failed to add value to row!");
+                        }
+                        strncat(tmp_str, ",", 1);
                         break;
                     default:
                         continue;
@@ -1336,8 +1342,13 @@ int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_vi
             }
             string_row = OBJ_NEW(opal_value_t);
             string_row->type = OPAL_STRING;
+            row_str_size = strlen(tmp_str)-1;
             /*Trim trailing comma*/
-            tmp_str[strlen(tmp_str)-1]='\0';
+            if (0 < row_str_size){
+                tmp_str[row_str_size]='\0';
+            } else {
+                opal_output(0, "Failed to remove trailing comma from row");
+            }
             string_row->data.string = strdup(tmp_str);
             opal_list_append(*results, &string_row->super);
             SAFE_OPAL_LIST_RELEASE(row);

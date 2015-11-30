@@ -45,3 +45,4 @@ with_nodepower=yes
 with_syslog=yes
 with_componentpower=yes
 with_mcedata=yes
+with_errcounts=yes

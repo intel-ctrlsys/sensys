@@ -1,0 +1,22 @@
+# -*- text -*-
+#
+# Copyright (c) 2015     Intel, Inc.  All rights reserved.
+#
+# $COPYRIGHT$
+#
+# Additional copyrights may follow
+#
+# $HEADER$
+#
+# This is the US/English general help file
+#
+[no-edac]
+No EDAC driver generated sysfs entries were found on this system for ECC
+error counts. Is the driver enabled in the kernel? You need to following 2
+drivers, edac_core and sb_edac, loaded before you can collect this data.
+
+  Node: %s
+
+Please enable the EDAC Linux driver.
+#
+

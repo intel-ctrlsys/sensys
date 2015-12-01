@@ -42,6 +42,7 @@ static orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *
                                                                orcm_analytics_value_t *data);
 static int orcm_analytics_base_workflow_list_append_ids(opal_buffer_t *buffer, size_t size);
 
+
 static int workflow_id = 0;
 
 #ifdef ANALYTICS_TAP_INFO
@@ -421,11 +422,13 @@ int orcm_analytics_base_workflow_list(opal_buffer_t *buffer)
 void orcm_analytics_base_send_data(orcm_analytics_value_t *data)
 {
     orcm_workflow_t *wf = NULL;
-    int ret_db = ORCM_SUCCESS;
+    orcm_ras_event_t *analytics_event_data = NULL;
 
-    if (true == orcm_analytics_base.set_db_logging) {
-        ret_db = orcm_analytics_base_store_analytics(data);
-
+    if (true == orcm_analytics_base.store_raw_data) {
+        analytics_event_data = orcm_analytics_base_event_create(data, ORCM_RAS_EVENT_SENSOR, ORCM_RAS_SEVERITY_INFO);
+        if (NULL != analytics_event_data) {
+            ORCM_RAS_EVENT(analytics_event_data);
+        }
     }
 
     OPAL_LIST_FOREACH(wf, &orcm_analytics_base.workflows, orcm_workflow_t) {
@@ -433,11 +436,23 @@ void orcm_analytics_base_send_data(orcm_analytics_value_t *data)
         ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), 0, data);
     }
 
-    if (ORCM_SUCCESS != ret_db) {
-         OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                              "%s analytics:base:Data can't be written to DB",
-                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-     }
+}
+
+int orcm_analytics_base_log_to_database_event(orcm_analytics_value_t* value)
+{
+    int rc = ORCM_SUCCESS;
+    orcm_ras_event_t *event_data = NULL;
+    event_data = orcm_analytics_base_event_create(value,ORCM_RAS_EVENT_SENSOR, 0);
+    if(NULL == event_data){
+        rc = ORCM_ERROR;
+        return rc;
+    }
+    rc = orcm_analytics_base_event_set_storage(event_data, ORCM_STORAGE_TYPE_DATABASE);
+    if(ORCM_SUCCESS != rc){
+        return rc;
+    }
+    ORCM_RAS_EVENT(event_data);
+    return rc;
 }
 
 int orcm_analytics_base_assert_caddy_data(void *cbdata)

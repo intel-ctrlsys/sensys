@@ -122,6 +122,7 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
     orcm_value_t *current_value = NULL;
     orcm_value_t *analytics_orcm_value = NULL;
     opal_list_t *sample_data_list = NULL;
+    orcm_ras_event_t *threshold_event_data = NULL;
     int rc = ORCM_SUCCESS;
     double val = 0.0;
 
@@ -153,7 +154,26 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                 OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                                      "%s analytics:threshold:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg1));
                 if(0 != strcmp(action_hi,"none")) {
-                    ORTE_NOTIFIER_SYSTEM_EVENT(threshold_policy->hi_sev,msg1,action_hi);
+                    threshold_event_data = orcm_analytics_base_event_create(current_caddy->analytics_value,
+                                             ORCM_RAS_EVENT_SENSOR, threshold_policy->hi_sev);
+                    if(NULL == threshold_event_data){
+                        rc = ORCM_ERROR;
+                        goto done;
+                    }
+
+                    rc = orcm_analytics_base_event_set_storage(threshold_event_data, ORCM_STORAGE_TYPE_NOTIFICATION);
+                    if(ORCM_SUCCESS != rc){
+                        goto done;
+                    }
+                    rc = orcm_analytics_base_event_set_description(threshold_event_data, "notifier_msg", msg1, OPAL_STRING,NULL);
+                    if(ORCM_SUCCESS != rc){
+                       goto done;
+                    }
+                    rc = orcm_analytics_base_event_set_description(threshold_event_data, "notifier_action", action_hi, OPAL_STRING, NULL);
+                    if(ORCM_SUCCESS != rc){
+                       goto done;
+                    }
+                    ORCM_RAS_EVENT(threshold_event_data);
                 }
             }
             analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
@@ -167,7 +187,25 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                 OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                                      "%s analytics:threshold:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg2));
                 if(0 != strcmp(action_low, "none")) {
-                    ORTE_NOTIFIER_SYSTEM_EVENT(threshold_policy->low_sev,msg2,action_low);
+                    threshold_event_data = orcm_analytics_base_event_create(current_caddy->analytics_value,
+                                                                 ORCM_RAS_EVENT_SENSOR, threshold_policy->low_sev);
+                    if(NULL == threshold_event_data){
+                        rc = ORCM_ERROR;
+                        goto done;
+                    }
+                    rc = orcm_analytics_base_event_set_storage(threshold_event_data, ORCM_STORAGE_TYPE_NOTIFICATION);
+                    if(ORCM_SUCCESS != rc){
+                        goto done;
+                    }
+                    rc = orcm_analytics_base_event_set_description(threshold_event_data, "notifier_msg", msg2, OPAL_STRING,NULL);
+                    if(ORCM_SUCCESS != rc){
+                       goto done;
+                    }
+                    rc = orcm_analytics_base_event_set_description(threshold_event_data, "notifier_action", action_low, OPAL_STRING, NULL);
+                    if(ORCM_SUCCESS != rc){
+                       goto done;
+                    }
+                    ORCM_RAS_EVENT(threshold_event_data);
                 }
             }
             analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
@@ -324,6 +362,11 @@ static int analyze(int sd, short args, void *cbdata)
         analytics_value_to_next = orcm_util_load_orcm_analytics_value_compute(current_caddy->analytics_value->key,
                                           current_caddy->analytics_value->non_compute_data, threshold_list);
         if(NULL != analytics_value_to_next) {
+            rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
+            if(ORCM_SUCCESS != rc){
+                rc = ORCM_ERROR;
+                goto done;
+            }
             ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(current_caddy->wf,current_caddy->wf_step,
                                              current_caddy->hash_key, analytics_value_to_next);
         }

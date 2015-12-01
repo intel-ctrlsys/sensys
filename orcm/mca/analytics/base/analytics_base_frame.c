@@ -48,13 +48,13 @@ orcm_analytics_base_t orcm_analytics_base;
 
 static int orcm_analytics_base_register(mca_base_register_flag_t flags)
 {
-    orcm_analytics_base.set_db_logging = false;
-    (void)mca_base_var_register("orcm", "analytics", "base", "set_db_logging",
-                                "Enable DB logging",
+    orcm_analytics_base.store_raw_data = true;
+    (void)mca_base_var_register("orcm", "analytics", "base", "store_raw_data",
+                                "store raw data",
                                 MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                 OPAL_INFO_LVL_9,
                                 MCA_BASE_VAR_SCOPE_READONLY,
-                                &orcm_analytics_base.set_db_logging);
+                                &orcm_analytics_base.store_raw_data);
     return ORCM_SUCCESS;
 
 }

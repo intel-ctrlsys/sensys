@@ -244,6 +244,13 @@ OBJ_CLASS_DECLARATION(orcm_ras_event_t);
 #define ORCM_STORAGE_TYPE_PUBSUB             2       //PubSub FRAMEWORK
 #define ORCM_STORAGE_TYPE_UNDEFINED          3       //Undefined FRAMEWORK
 
+/* Event fault category - In case of a fault, provide the ability to categorize the faults
+ */
+#define ORCM_EVENT_SOFT_FAULT        0   // Recoverable error
+#define ORCM_EVENT_HARD_FAULT        1   // Non recoverable error
+#define ORCM_EVENT_UNKOWN_FAULT      2   // Not defined
+
+
 END_C_DECLS
 
 #endif /* MCA_EVGEN_TYPES_H */

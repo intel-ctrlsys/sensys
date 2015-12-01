@@ -669,45 +669,52 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
          *  value_real,
          *  value_str,
          *  units,
-         *  data_type_id) */
+         *  data_type_id
+         *  event_id) */
+
+
         switch (item.item_type) {
         case ORCM_DB_ITEM_STRING:
             if (NULL != units) {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',NULL,NULL,'%s','%s',%d)",
+                         "('%s','%s_%s','%s',NULL,NULL,'%s','%s',%d,%d,NULL)",
                          hostname, data_group, data_item, time_stamp,
-                         item.value.value_str, units, mv->value.type);
+                         item.value.value_str, units, mv->value.type,
+                         mv->value.type);
             } else {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',NULL,NULL,'%s',NULL,%d)",
+                         "('%s','%s_%s','%s',NULL,NULL,'%s',NULL,%d,%d,NULL)",
                          hostname, data_group, data_item, time_stamp,
-                         item.value.value_str, mv->value.type);
+                         item.value.value_str, mv->value.type,
+                         mv->value.type);
             }
             break;
         case ORCM_DB_ITEM_REAL:
             if (NULL != units) {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',NULL,%f,NULL,'%s',%d)",
+                         "('%s','%s_%s','%s',NULL,%f,NULL,'%s',%d,%d,NULL)",
                          hostname, data_group, data_item, time_stamp,
-                         item.value.value_real, units, mv->value.type);
+                         item.value.value_real, units, mv->value.type,
+                         mv->value.type);
             } else {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',NULL,%f,NULL,NULL,%d)",
+                         "('%s','%s_%s','%s',NULL,%f,NULL,NULL,%d,%d,NULL)",
                          hostname, data_group, data_item, time_stamp,
-                         item.value.value_real, mv->value.type);
+                         item.value.value_real, mv->value.type,
+                         mv->value.type);
             }
             break;
         default: /* ORCM_DB_ITEM_INTEGER */
             if (NULL != units) {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',%lld,NULL,NULL,'%s',%d)",
+                         "('%s','%s_%s','%s',%lld,NULL,NULL,'%s',%d,%d,NULL)",
                          hostname, data_group, data_item, time_stamp,
-                         item.value.value_int, units, mv->value.type);
+                         item.value.value_int, units, mv->value.type, mv->value.type);
             } else {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',%lld,NULL,NULL,NULL,%d)",
+                         "('%s','%s_%s','%s',%lld,NULL,NULL,NULL,%d,%d,NULL)",
                          hostname, data_group, data_item, time_stamp,
-                         item.value.value_int, mv->value.type);
+                         item.value.value_int, mv->value.type, mv->value.type);
             }
         }
         i++;
@@ -718,8 +725,17 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
     opal_argv_free(rows);
     rows = NULL;
 
-    asprintf(&insert_stmt, "insert into data_sample_raw(hostname,data_item,"
-             "time_stamp,value_int,value_real,value_str,units,data_type_id) "
+    asprintf(&insert_stmt, "INSERT INTO data_sample_raw("
+                            "hostname,"
+                            "data_item,"
+                            "time_stamp,"
+                            "value_int,"
+                            "value_real,"
+                            "value_str,"
+                            "units,"
+                            "data_type_id,"
+                            "app_value_type_id,"
+                            "event_id);"
              "values %s", values);
     free(values);
     values = NULL;

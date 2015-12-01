@@ -12,12 +12,12 @@ from alembic.config import Config
 from alembic import command
 import logging
 import sqlalchemy as sa
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker, backref
 from sqlalchemy import BigInteger, Column, create_engine, CheckConstraint
 from sqlalchemy import Date, DateTime
 from sqlalchemy import Float, ForeignKey, ForeignKeyConstraint, Integer, String
 from sqlalchemy import SmallInteger, Table, Text
-from sqlalchemy.ext import declarative
+from sqlalchemy.ext import declarative, compiler
 
 
 # Minimum required version of SQLAlchemy and Alembic for the Database
@@ -30,8 +30,35 @@ if StrictVersion(sa.__version__) < StrictVersion("0.9.2"):
     raise RuntimeError("The SQLAlchemy version need to be at least 0.9.2.  "
                        "The installed version is %s" % sa.__version__)
 
+
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
+
+
+# Define a generic current timestamp function to be execute on the database
+# server side
+class CurrentTimeStamp(sa.sql.expression.FunctionElement):
+    """Define a current timestamp function name that can be use to map to
+    different database dialect implementations.
+    """
+    # Too many ancestors (12/7)
+    # pylint: disable-msg=R0901
+    type = DateTime()
+
+
+@compiler.compiles(CurrentTimeStamp, 'postgresql')
+def postgres_current_timestamp(element, compiler, **kw):
+    """Return the Postgres or MySQL function call to get the current DB
+    server time
+
+    :param element:  The element being construct
+    :param compiler:  The compiler for postgresql
+    :param kw:  Any additional argument
+    :return: Postgres or MySQL function name for generating current timestamp
+    """
+    # Unused variable
+    # pylint: disable-msg=W0613
+    return "CURRENT_TIMESTAMP"
 
 
 Base = declarative.declarative_base()
@@ -83,20 +110,31 @@ class DataSample(Base):
     units = Column(String(50))
 
 
-data_sample_raw_table = Table('data_sample_raw',
-      Base.metadata,
-      Column('hostname', String(256), nullable=False),
-      Column('data_item', String(250), nullable=False),
-      Column('time_stamp', DateTime, nullable=False),
-      Column('value_int', BigInteger),
-      Column('value_real', Float(53)),
-      Column('value_str', String(500)),
-      Column('units', String(50)),
-      Column('data_type_id', Integer, nullable=False),
-      CheckConstraint('(value_int  IS NOT NULL OR '
-                      ' value_real IS NOT NULL OR '
-                      ' value_str  IS NOT NULL)',
-                      name='at_least_one_value'))
+class DataSampleRaw(Base):
+    __tablename__ = 'data_sample_raw'
+    __table_args__ = (tuple(CheckConstraint('(value_int  IS NOT NULL OR '
+                                            ' value_real IS NOT NULL OR '
+                                            ' value_str  IS NOT NULL)',
+                                            name='at_least_one_value')))
+    data_sample_id = Column(Integer, primary_key=True, autoincrement=True)
+    hostname = Column(String(256), nullable=False)
+    data_item = Column(String(250), nullable=False)
+    time_stamp = Column(DateTime, nullable=False)
+    value_int = Column(BigInteger)
+    value_real = Column(Float(53))
+    value_str = Column(String(500))
+    units = Column(String(50))
+    data_type_id = Column(Integer, nullable=False)
+    # The 'app_value_type_id' To be replacing the 'data_type_id' once the rest
+    # of the code has been refactored use this new column name
+    app_value_type_id = Column(Integer, nullable=False)
+    # Relationship: Many-To-One; parent: Event; child: EventData
+    # Many EventData associated to (One) Event
+    #   One Event has Many EventData
+    event_id = Column(Integer, ForeignKey("event.event_id"))
+    event = sa.orm.relationship("Event", lazy="joined",
+                                backref=backref("event_data",
+                                                order_by=data_sample_id))
 
 
 class DataType(Base):
@@ -185,25 +223,68 @@ class DiagType(Base):
 
 
 class Event(Base):
+    """The event table is to store required attributes of an event"""
     __tablename__ = 'event'
 
-    node_id = Column(Integer, ForeignKey('node.node_id'), primary_key=True,
-                     nullable=False)
-    event_type_id = Column(Integer, ForeignKey('event_type.event_type_id'),
-                           primary_key=True, nullable=False)
-    time_stamp = Column(DateTime, primary_key=True, nullable=False)
-    description = Column(Text, nullable=False)
+    event_id = Column(Integer, nullable=False, primary_key=True,
+                      autoincrement=True)
+    time_stamp = Column(DateTime, nullable=False, server_default=sa.func.now())
+    severity = Column(String(50), nullable=False, server_default='')
+    type = Column(String(50), nullable=False, server_default='')
+    version = Column(String(250), nullable=False, server_default='')
+    vendor = Column(String(250), nullable=False, server_default='')
+    description = Column(Text, nullable=False, server_default='')
 
-    event_type = relationship('EventType')
-    node = relationship('Node')
 
+class EventData(Base):
+    """The event_data table is to store all the key value pairs of a given
+    event.
+    """
 
-class EventType(Base):
-    __tablename__ = 'event_type'
+    __tablename__ = 'event_data'
 
-    event_type_id = Column(Integer, primary_key=True, autoincrement=True,
+    event_data_id = Column(Integer, primary_key=True, autoincrement=True,
                            nullable=False)
-    name = Column(String(250))
+    # Relationship: Many-To-One; parent: Event; child: EventData
+    # Many EventData associated to (One) Event
+    #   One Event has Many EventData
+    event_id = Column(Integer,
+                      ForeignKey('event.event_id'), nullable=False)
+    event = sa.orm.relationship('Event', lazy='joined',
+                                backref=backref('event_data',
+                                                order_by=event_data_id))
+    # Relationship: Many-To-One; parent: EventDataKey; child: EventData
+    #   Many EventData associated to (One) EventDataKey
+    #   One EventDataKey has Many EventData
+    event_data_key_id = Column(Integer,
+                               ForeignKey('event_data_key.event_data_key_id'),
+                               nullable=False)
+    event_data_key = sa.orm.relationship('EventDataKey', lazy='joined',
+                                         backref=backref('event_data',
+                                                         order_by=event_data_id)
+                                        )
+    value_int = Column(BigInteger)
+    value_real = Column(Float(53))
+    value_str = Column(String(500))
+    units = Column(String(50), nullable=False, server_default='')
+    CheckConstraint('(value_int  IS NOT NULL OR '
+                    ' value_real IS NOT NULL OR '
+                    ' value_str  IS NOT NULL)',
+                    name='at_least_one_value')
+
+
+class EventDataKey(Base):
+    """The event_data_key table is to store all the key names and the
+    application data type of that key
+    """
+    __tablename__ = 'event_data_key'
+
+    event_data_key_id = Column(Integer, primary_key=True, autoincrement=True,
+                               nullable=False)
+    name = Column(String(250), unique=True)
+    # The app_value_type_id is to store the ID of the value type provided by the
+    # application.
+    app_value_type_id = Column(Integer, nullable=False)
 
 
 class Feature(Base):
@@ -371,6 +452,6 @@ def setup(alembic_ini="schema_migration.ini"):
 if __name__ == "__main__":
     import pprint
     setup()
-    dummy_query = session.query(data_sample_raw_table).limit(10)
+    dummy_query = session.query(DataSampleRaw).limit(10)
     print("Sample list of  DataSampleRaw")
     print(pprint.pformat(dummy_query.all()))

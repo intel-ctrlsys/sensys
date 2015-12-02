@@ -56,7 +56,7 @@ const std::string errcounts_impl::plugin_name_ = "errcounts";
 using namespace std;
 
 errcounts_impl::errcounts_impl()
- : collector_(NULL), ev_paused_(false), ev_base_(NULL), errcounts_sampler_(NULL)
+ : collector_(NULL), ev_paused_(false), ev_base_(NULL), errcounts_sampler_(NULL), edac_missing_(false)
 {
 }
 
@@ -72,7 +72,8 @@ int errcounts_impl::init(void)
         mca_sensor_errcounts_component.sample_rate = orcm_sensor_base.sample_rate;
     }
     hostname_ = orte_process_info.nodename;
-    if(false == collector_->have_edac()) {
+    edac_missing_ = (collector_->have_edac())?false:true;
+    if(true == edac_missing_) {
         orte_show_help("help-orcm-sensor-errcounts.txt", "no-edac", true, (char*)hostname_.c_str());
         SAFE_DELETE(collector_);
         return ORCM_ERROR;
@@ -82,6 +83,9 @@ int errcounts_impl::init(void)
 
 void errcounts_impl::finalize(void)
 {
+    if(true == edac_missing_) {
+        return;
+    }
     stop(0);
     ev_destroy_thread();
 
@@ -93,7 +97,10 @@ void errcounts_impl::start(orte_jobid_t job)
     if(-999 == (int)job) {
         return; // NOOP ID; Succeed without actually starting...
     }
-    // start a separate coretemp progress thread for sampling
+    if(true == edac_missing_) {
+        return;
+    }
+    // start a separate errcounts progress thread for sampling
     if (true == mca_sensor_errcounts_component.use_progress_thread) {
         // setup errcounts sampler
         errcounts_sampler_ = OBJ_NEW(orcm_sensor_sampler_t);
@@ -113,6 +120,9 @@ void errcounts_impl::stop(orte_jobid_t job)
     if(-999 == (int)job) {
         return; // NOOP ID; Succeed without actually stopping...
     }
+    if(true == edac_missing_) {
+        return;
+    }
     ev_pause();
     if(NULL != errcounts_sampler_) {
         OBJ_RELEASE(errcounts_sampler_);
@@ -121,6 +131,9 @@ void errcounts_impl::stop(orte_jobid_t job)
 
 void errcounts_impl::sample(orcm_sensor_sampler_t* sampler)
 {
+    if(true == edac_missing_) {
+        return;
+    }
     if(NULL == sampler) {
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;
@@ -134,6 +147,9 @@ void errcounts_impl::sample(orcm_sensor_sampler_t* sampler)
 
 void errcounts_impl::log(opal_buffer_t* buf)
 {
+    if(true == edac_missing_) {
+        return;
+    }
     if(NULL == buf) {
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;
@@ -221,6 +237,9 @@ void errcounts_impl::log(opal_buffer_t* buf)
 
 void errcounts_impl::inventory_collect(opal_buffer_t* inventory_snapshot)
 {
+    if(true == edac_missing_) {
+        return;
+    }
     if(NULL == inventory_snapshot) {
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;
@@ -248,6 +267,9 @@ void errcounts_impl::my_inventory_log_cleanup(int dbhandle, int status, opal_lis
 
 void errcounts_impl::inventory_log(char* hostname, opal_buffer_t* inventory_snapshot)
 {
+    if(true == edac_missing_) {
+        return;
+    }
     if(NULL == hostname || NULL == inventory_snapshot) {
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;
@@ -290,6 +312,9 @@ void errcounts_impl::inventory_log(char* hostname, opal_buffer_t* inventory_snap
 
 void errcounts_impl::set_sample_rate(int sample_rate)
 {
+    if(true == edac_missing_) {
+        return;
+    }
     // set the errcounts sample rate if seperate thread is enabled
     if (true == mca_sensor_errcounts_component.use_progress_thread) {
         mca_sensor_errcounts_component.sample_rate = sample_rate;
@@ -302,6 +327,9 @@ void errcounts_impl::set_sample_rate(int sample_rate)
 
 void errcounts_impl::get_sample_rate(int* sample_rate)
 {
+    if(true == edac_missing_) {
+        return;
+    }
     if(NULL == sample_rate) {
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;

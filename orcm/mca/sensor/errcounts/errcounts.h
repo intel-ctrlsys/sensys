@@ -87,6 +87,7 @@ class errcounts_impl
         bool ev_paused_;
         opal_event_base_t* ev_base_;
         orcm_sensor_sampler_t* errcounts_sampler_;
+        bool edac_missing_;
         std::vector<std::string> data_samples_labels_;
         std::vector<int32_t> data_samples_values_;
         std::map<std::string,std::string> inv_samples_;

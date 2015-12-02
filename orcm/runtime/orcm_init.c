@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved. 
- * Copyright (c) 2013-2014 Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013-2015 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -17,6 +17,7 @@
 #endif
 
 #include "opal/util/error.h"
+#include "opal/util/opal_environ.h"
 #include "opal/util/output.h"
 #include "opal/util/show_help.h"
 #include "opal/runtime/opal.h"
@@ -55,7 +56,7 @@ const char orcm_version_string[] = ORCM_IDENT_STRING;
 int orcm_init(orcm_proc_type_t flags)
 {
     int ret;
-    char *error;
+    char *error, *envar;
     int spin;
     opal_output_stream_t lds;
 
@@ -76,13 +77,35 @@ int orcm_init(orcm_proc_type_t flags)
             };
         }
     }
-    
+
+    /* prior to initializing the OPAL layer, check to see
+     * if the OPAL (and friends) install location has been
+     * moved. In order to avoid conflicts with any other
+     * OPAL-using software, the relocation point will have
+     * been expressed as a set of "ORCM_foo" envars. We
+     * therefore check for the ORCM_foo values, and name-shift
+     * any we find to OPAL_foo so that OPAL will find them.
+     * Since all ORCM tools will have already copied their
+     * local environment, these name-shifted vars will not
+     * appear in the environment of any launched processes */
+    if (NULL != (envar = getenv("ORCM_PREFIX"))) {
+        opal_unsetenv("ORCM_PREFIX", &environ);
+        opal_setenv("OPAL_PREFIX", envar, true, &environ);
+    }
+    if (NULL != (envar = getenv("ORCM_LIBDIR"))) {
+        opal_unsetenv("ORCM_LIBDIR", &environ);
+        opal_setenv("OPAL_LIBDIR", envar, true, &environ);
+    }
+    if (NULL != (envar = getenv("ORCM_DATADIR"))) {
+        opal_unsetenv("ORCM_DATADIR", &environ);
+        opal_setenv("OPAL_DATADIR", envar, true, &environ);
+    }
     /* initialize the opal layer */
     if (ORTE_SUCCESS != (ret = opal_init(NULL, NULL))) {
         error = "opal_init";
         goto error;
     }
-    
+
     orcm_debug_verbosity = -1;
     (void) mca_base_var_register ("orcm", "orcm", NULL, "debug_verbose",
                                   "Verbosity level for ORCM debug messages (default: 1)",
@@ -107,7 +130,7 @@ int orcm_init(orcm_proc_type_t flags)
         error = "orte_locks_init";
         goto error;
     }
-    
+
     /* register handler for errnum -> string conversion */
     opal_error_register("ORTE", ORTE_ERR_BASE, ORTE_ERR_MAX, orte_err2str);
 
@@ -126,7 +149,7 @@ int orcm_init(orcm_proc_type_t flags)
         error = "register attr print";
         goto error;
     }
-    
+
     /* we don't need a progress thread as all our tools loop inside themselves,
      * so define orte_event_base to be the base opal_event_base
      */
@@ -179,7 +202,7 @@ int orcm_init(orcm_proc_type_t flags)
         error = "orte_init";
         goto error;
     }
-    
+
     /* setup the orte_show_help system - don't do this until the
      * end as otherwise show_help messages won't appear
      */
@@ -193,7 +216,7 @@ int orcm_init(orcm_proc_type_t flags)
         error = "orcm_dt_init";
         goto error;
     }
-    
+
     /* flag that orte is initialized so things can work */
     orte_initialized = true;
     orte_help_want_aggregate = false;
@@ -206,6 +229,6 @@ int orcm_init(orcm_proc_type_t flags)
                        "orcm_init:startup:internal-failure",
                        true, error, ORTE_ERROR_NAME(ret), ret);
     }
-    
+
     return ret;
 }

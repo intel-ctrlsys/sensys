@@ -726,17 +726,17 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
     rows = NULL;
 
     asprintf(&insert_stmt, "INSERT INTO data_sample_raw("
-                            "hostname,"
-                            "data_item,"
-                            "time_stamp,"
-                            "value_int,"
-                            "value_real,"
-                            "value_str,"
-                            "units,"
-                            "data_type_id,"
-                            "app_value_type_id,"
-                            "event_id);"
-             "values %s", values);
+                                "hostname,"
+                                "data_item,"
+                                "time_stamp,"
+                                "value_int,"
+                                "value_real,"
+                                "value_str,"
+                                "units,"
+                                "data_type_id,"
+                                "app_value_type_id,"
+                                "event_id) "
+                           "VALUES %s", values);
     free(values);
     values = NULL;
 

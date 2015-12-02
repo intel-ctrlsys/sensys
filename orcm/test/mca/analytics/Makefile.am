@@ -7,7 +7,7 @@
 # $HEADER$
 
 if HAVE_GTEST
-gtestSubdirs=window
+gtestSubdirs=window cott
 endif
 
 SUBDIRS=$(gtestSubdirs) aggregate

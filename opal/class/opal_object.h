@@ -243,9 +243,11 @@ static inline opal_object_t *opal_obj_new(opal_class_t * cls);
 static inline opal_object_t *opal_obj_new_debug(opal_class_t* type, const char* file, int line)
 {
     opal_object_t* object = opal_obj_new(type);
-    object->obj_magic_id = OPAL_OBJ_MAGIC_ID;
-    object->cls_init_file_name = file;
-    object->cls_init_lineno = line;
+    if(NULL != object) {
+        object->obj_magic_id = OPAL_OBJ_MAGIC_ID;
+        object->cls_init_file_name = file;
+        object->cls_init_lineno = line;
+    }
     return object;
 }
 #define OBJ_NEW(type)                                   \
@@ -313,8 +315,8 @@ static inline opal_object_t *opal_obj_new_debug(opal_class_t* type, const char* 
             opal_obj_run_destructors((opal_object_t *) (object));       \
             OBJ_REMEMBER_FILE_AND_LINENO( object, __FILE__, __LINE__ ); \
             free(object);                                               \
-            object = NULL;                                              \
         }                                                               \
+        object = NULL;                                                  \
     } while (0)
 #else
 #define OBJ_RELEASE(object)                                             \
@@ -322,8 +324,8 @@ static inline opal_object_t *opal_obj_new_debug(opal_class_t* type, const char* 
         if (0 == opal_obj_update((opal_object_t *) (object), -1)) {     \
             opal_obj_run_destructors((opal_object_t *) (object));       \
             free(object);                                               \
-            object = NULL;                                              \
         }                                                               \
+        object = NULL;                                                  \
     } while (0)
 #endif
 

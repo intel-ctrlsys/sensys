@@ -761,8 +761,8 @@ TEST(analytics_window, analyze_time_average_follow_outupperbound2)
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(win_statistics->sum_min_max, 37.5);
         ASSERT_EQ(win_statistics->num_sample_recv, 1);
-        ASSERT_EQ(win_statistics->win_left, 3100);
-        ASSERT_EQ(win_statistics->win_right, 4100);
+        ASSERT_EQ(win_statistics->win_left, 3000);
+        ASSERT_EQ(win_statistics->win_right, 4000);
         ASSERT_EQ(ORCM_SUCCESS, rc);
         orcm_analytics_window_module.api.finalize(mod);
     }

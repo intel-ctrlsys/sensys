@@ -200,7 +200,8 @@ char *assemble_datetime(char *date_str, char *time_str)
         date_time_length += strlen(time_str);
         new_time_str = strdup(time_str);
     }
-    if (NULL != (date_time_str = calloc(sizeof(char), date_time_length))) {
+    if (0 < date_time_length && NULL != (date_time_str = calloc(sizeof(char),
+                                                                date_time_length))) {
         if (false == replace_wildcard(&new_date_str, true)){
             if (NULL != new_date_str){
                 strcpy(date_time_str, new_date_str);
@@ -261,6 +262,7 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
 {
     opal_list_t *filters_list = NULL;
     orcm_db_filter_t *filter_item = NULL;
+    char *date_time_str = NULL;
     char *error = NULL;
     char error_code = 0;
     char *filter_str = NULL;
@@ -284,6 +286,58 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
         }
         filter_item->op = CONTAINS;
         opal_list_append(filters_list, &filter_item->value.super);
+    } else if (7 == argc){
+        /* Create filter for start time if necessary */
+        if (NULL != (date_time_str = assemble_datetime(argv[2], argv[3]))) {
+            filter_item = OBJ_NEW(orcm_db_filter_t);
+            filter_item->value.type = OPAL_STRING;
+            filter_item->value.key = strdup("time_stamp");
+            filter_item->value.data.string = date_time_str;
+            filter_item->op = GT;
+            opal_list_append(filters_list, &filter_item->value.super);
+        }
+        /* Create filter for end time if necessary */
+        if (NULL != (date_time_str = assemble_datetime(argv[4], argv[5]))) {
+            filter_item = OBJ_NEW(orcm_db_filter_t);
+            filter_item->value.type = OPAL_STRING;
+            filter_item->value.key = strdup("time_stamp");
+            filter_item->value.data.string = date_time_str;
+            filter_item->op = LT;
+            opal_list_append(filters_list, &filter_item->value.super);
+            }
+    } else if (8 == argc){
+        filter_item = OBJ_NEW(orcm_db_filter_t);
+        filter_item->value.type = OPAL_STRING;
+        filter_item->value.key = strdup("log");
+        /* Add 3 more chars including the end of the string '\0' */
+        if (NULL != (filter_str = calloc(sizeof(char), strlen(argv[2])+3))){
+            strcat(filter_str, "%");
+            strcat(filter_str, argv[2]);
+            strcat(filter_str, "%");
+            filter_item->value.data.string = filter_str;
+        } else {
+            fprintf(stderr, "\nERROR: could not allocate memory for filter string\n");
+        }
+        filter_item->op = CONTAINS;
+        opal_list_append(filters_list, &filter_item->value.super);
+        /* Create filter for start time if necessary */
+        if (NULL != (date_time_str = assemble_datetime(argv[3], argv[4]))) {
+            filter_item = OBJ_NEW(orcm_db_filter_t);
+            filter_item->value.type = OPAL_STRING;
+            filter_item->value.key = strdup("time_stamp");
+            filter_item->value.data.string = date_time_str;
+            filter_item->op = GT;
+            opal_list_append(filters_list, &filter_item->value.super);
+        }
+        /* Create filter for end time if necessary */
+        if (NULL != (date_time_str = assemble_datetime(argv[5], argv[6]))) {
+            filter_item = OBJ_NEW(orcm_db_filter_t);
+            filter_item->value.type = OPAL_STRING;
+            filter_item->value.key = strdup("time_stamp");
+            filter_item->value.data.string = date_time_str;
+            filter_item->op = LT;
+            opal_list_append(filters_list, &filter_item->value.super);
+            }
     } else {
         error = "incorrect arguments!";
         error_code = ORCM_ERR_BAD_PARAM;

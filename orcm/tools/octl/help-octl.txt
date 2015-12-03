@@ -73,7 +73,7 @@ USAGE: query sensor <sensor-name> [start-date start-time end-date end-time [uppe
 
 [octl:query:log]
 ERROR: %s
-USAGE: query log [event id] <nodelist>
+USAGE: query log [text-in-log] [start-date start-time end-date end-time] <nodelist>
 
 [octl:query:idle]
 ERROR: %s

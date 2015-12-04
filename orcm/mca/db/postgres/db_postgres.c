@@ -95,6 +95,9 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
 static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
                                     opal_list_t *input,
                                     opal_list_t *ret);
+static int postgres_store_event(mca_db_postgres_module_t *mod,
+                                opal_list_t *input,
+                                opal_list_t *out);
 
 static inline bool status_ok(PGresult *res);
 static inline bool is_fatal(PGresult *res);
@@ -275,6 +278,8 @@ static int postgres_store(struct orcm_db_base_module_t *imod,
     case ORCM_DB_DIAG_DATA:
         rc = postgres_store_diag_test(mod, input, ret);
         break;
+    case ORCM_DB_EVENT_DATA:
+        rc = postgres_store_event(mod, input, ret);
     default:
         return ORCM_ERR_NOT_IMPLEMENTED;
     }
@@ -1929,6 +1934,339 @@ cleanup_and_exit:
     }
 
     OBJ_DESTRUCT(&item_bm);
+    return rc;
+}
+
+#define ERR_MSG_SE(msg) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to store event: "); \
+    opal_output(0, msg); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_SE(msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:postgres: Unable to store event: "); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "***********************************************");
+
+static int postgres_store_event(mca_db_postgres_module_t *mod,
+                                    opal_list_t *input,
+                                    opal_list_t *out)
+{
+    int rc = ORCM_SUCCESS;
+
+    const int NUM_PARAMS = 6;
+    const char *params[] = {
+        "ctime",
+        "severity",
+        "type",
+        "version",
+        "vendor"
+        "description"
+    };
+    opal_value_t *param_items[] = {NULL, NULL, NULL, NULL, NULL, NULL};
+    opal_bitmap_t item_bm;
+    size_t num_items;
+
+    const int NUM_ADD_EVENT_PARAMS = 6;
+    const int NUM_ADD_EVENT_DATA_PARAMS = 10;
+
+    const char *add_event_params[NUM_ADD_EVENT_PARAMS];
+    const char *add_event_data_params[NUM_ADD_EVENT_DATA_PARAMS];
+
+    int  event_id_once_added = -1;
+    char event_str_timestamp[40];
+    char *severity = NULL;
+    char *event_type = NULL;
+    char *version = NULL;
+    char *vendor = NULL;
+    char *description = NULL;
+
+    opal_value_t *kv;
+    orcm_value_t *mv;
+    orcm_db_item_t item;
+    char *type_str = NULL;
+    char *value_str = NULL;
+
+    int i;
+
+    PGresult *res = NULL;
+
+    bool local_tran_started = false;
+
+    if (NULL == input) {
+        ERR_MSG_SE("No parameters provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    num_items = opal_list_get_size(input);
+    OBJ_CONSTRUCT(&item_bm, opal_bitmap_t);
+    opal_bitmap_init(&item_bm, (int)num_items);
+
+    /* Get the main parameters from the list */
+    orcm_util_find_items(params, NUM_PARAMS, input,
+                                            param_items, &item_bm);
+
+    /* Check parameters */
+    if (NULL == param_items[0]) {
+        ERR_MSG_SE("No time stamp provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+    if (NULL == param_items[1]) {
+        ERR_MSG_SE("No severity level provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+    if (NULL == param_items[2]) {
+        ERR_MSG_SE("No even type provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+
+    kv = param_items[0];
+    if (OPAL_TIMEVAL == kv->type) {
+        if (!tv_to_str_time_stamp(&kv->data.tv, event_str_timestamp,
+                                  sizeof(event_str_timestamp))) {
+            ERR_MSG_SE("Failed to convert time stamp value");
+            return ORCM_ERR_BAD_PARAM;
+        }
+    } else {
+        ERR_MSG_SE("Invalid value type specified for event timestamp");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+    kv = param_items[1];
+    if (OPAL_STRING == kv->type) {
+        severity = kv->data.string;
+    } else {
+        ERR_MSG_SE("Invalid value type specified for event severity level");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+    kv = param_items[2];
+    if (OPAL_STRING == kv->type) {
+        event_type = kv->data.string;
+    } else {
+        ERR_MSG_SE("Invalid value type specified for event type level");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+    kv = param_items[3];
+    if (OPAL_STRING == kv->type) {
+        version = kv->data.string;
+    } else {
+        version = "";
+    }
+    kv = param_items[4];
+    if (OPAL_STRING == kv->type) {
+        vendor = kv->data.string;
+    } else {
+        vendor = "";
+    }
+    kv = param_items[5];
+    if (OPAL_STRING == kv->type) {
+        description = kv->data.string;
+    } else {
+        description = "";
+    }
+
+    /* add_event parameters order
+     * $1: time_stamp
+     * $2: severity
+     * $3: type
+     * $4: version
+     * $5: vendor
+     * $6: description
+     */
+    add_event_params[0] = event_str_timestamp;
+    add_event_params[1] = severity;
+    add_event_params[2] = event_type;
+    add_event_params[3] = version;
+    add_event_params[4] = vendor;
+    add_event_params[5] = description;
+    /* Prepare the statement only if it hasn't already been prepared */
+    if (!mod->prepared[ORCM_DB_PG_STMT_ADD_EVENT]) {
+        res = PQprepare(mod->conn, "add_event",
+                        "SELECT add_event($1, $2, $3, $4, $5, $6)",
+                        0, NULL);
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_SE(PQresultErrorMessage(res));
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+
+        mod->prepared[ORCM_DB_PG_STMT_ADD_EVENT] = true;
+    }
+
+    res = PQexecPrepared(mod->conn, "add_event", NUM_ADD_EVENT_PARAMS,
+                         add_event_params, NULL, NULL, 0);
+    if (!status_ok(res)) {
+        rc = ORCM_ERROR;
+        ERR_MSG_SE(PQresultErrorMessage(res));
+        postgres_reconnect_if_needed(mod);
+        goto cleanup_and_exit;
+    }
+    // the add_event is expected to return only the event ID that just got added.
+    event_id_once_added = *((int*)PQgetvalue(res, 0, 0));
+    if (0 >= event_id_once_added) {
+        rc = ORCM_ERROR;
+        ERR_MSG_SE("Add event failed to return the new event ID");
+        goto cleanup_and_exit;
+    }
+    PQclear(res);
+    res = NULL;
+
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                        "postgres_add_event succeeded");
+
+    /* Prepare the statement only if it hasn't already been prepared */
+    if (!mod->prepared[ORCM_DB_PG_STMT_ADD_EVENT_DATA]) {
+        /* add_event_data parameters order
+         *
+         * $1: event_id,
+         * $2: key_name
+         * $3: app_value_type_id
+         * $4: value_int
+         * $5: value_real
+         * $6: value_str
+         * $7: units
+         */
+        res = PQprepare(mod->conn, "add_event_data",
+                        "SELECT add_event_data($1, $2, $3, $4, $5, $6, $7)",
+                        0, NULL);
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_SE(PQresultErrorMessage(res));
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+
+        mod->prepared[ORCM_DB_PG_STMT_ADD_EVENT_DATA] = true;
+    }
+
+    if (mod->autocommit || !mod->tran_started) {
+        res = PQexec(mod->conn, "BEGIN");
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_SE("Unable to begin transaction: %s",
+                            PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+
+        local_tran_started = true;
+    }
+
+    /* Build and execute the SQL commands to store the data in the list */
+    add_event_data_params[0] = &event_id_once_added;
+    i = 0;
+    OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
+        /* Ignore the items that have already been processed. */
+        if (opal_bitmap_is_set_bit(&item_bm, i)) {
+            i++;
+            continue;
+        }
+
+        if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
+            rc = ORCM_ERR_BAD_PARAM;
+            ERR_MSG_SE("Event data key not provided for value");
+            goto cleanup_and_exit;
+        }
+
+        if (ORCM_SUCCESS != opal_value_to_orcm_db_item(&mv->value, &item)) {
+            rc = ORCM_ERR_NOT_SUPPORTED;
+            ERR_MSG_FMT_SE("Unsupported data type: %s",
+                            opal_dss.lookup_data_type(mv->value.type));
+            goto cleanup_and_exit;
+        }
+
+        add_event_data_params[1] = mv->value.key;
+        asprintf(&type_str, "%d", item.opal_type);
+        add_event_data_params[2] = type_str;
+        switch (item.item_type) {
+        case ORCM_DB_ITEM_STRING:
+            add_event_data_params[3] = NULL;
+            add_event_data_params[4] = NULL;
+            add_event_data_params[5] = item.value.value_str;
+            break;
+        case ORCM_DB_ITEM_REAL:
+            add_event_data_params[3] = NULL;
+            asprintf(&value_str, "%f", item.value.value_real);
+            add_event_data_params[4] = value_str;
+            add_event_data_params[5] = NULL;
+            break;
+        default:
+            asprintf(&value_str, "%lld", item.value.value_int);
+            add_event_data_params[3] = value_str;
+            add_event_data_params[4] = NULL;
+            add_event_data_params[5] = NULL;
+        }
+        add_event_data_params[6] = mv->units;
+
+        res = PQexecPrepared(mod->conn, "add_event_data", NUM_ADD_EVENT_DATA_PARAMS,
+                             add_event_data_params, NULL, NULL, 0);
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_SE(PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+
+        free(type_str);
+        type_str = NULL;
+        if (NULL != value_str) {
+            free(value_str);
+            value_str = NULL;
+        }
+        i++;
+    }
+
+    if (mod->autocommit) {
+        res = PQexec(mod->conn, "COMMIT");
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_SE("Unable to commit transaction: %s",
+                            PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+    }
+
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                        "postgres_add_event succeeded");
+
+cleanup_and_exit:
+    /* If we're in auto commit mode, then make sure our local changes
+     * are either committed or canceled. */
+    if (ORCM_SUCCESS != rc && mod->autocommit && local_tran_started) {
+        res = PQexec(mod->conn, "ROLLBACK");
+        if (!status_ok(res)) {
+            postgres_reconnect_if_needed(mod);
+        }
+    }
+
+    if (NULL != res) {
+        PQclear(res);
+    }
+
+    if (NULL != type_str) {
+        free(type_str);
+    }
+
+    if (NULL != value_str) {
+        free(value_str);
+    }
+
     return rc;
 }
 

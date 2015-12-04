@@ -15,6 +15,7 @@
 #                         and Technology (RIST). All rights reserved.
 # Copyright (c) 2015      Los Alamos National Security, LLC. All rights
 #                         reserved.
+# Copyright (c) 2015      Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -43,12 +44,17 @@ fi
 repo_rev=$OMPI_REPO_REV
 if test -d .git ; then
     repo_rev=$(config/opal_get_version.sh VERSION --repo-rev)
+    greek=git.$(git describe --tags --always)
 fi
 
 #
 # Update VERSION:repo_rev with the best value we have.
 #
 perl -pi -e 's/^repo_rev=.*/repo_rev='$repo_rev'/' -- "${distdir}/VERSION"
+#
+# Update VERSION:greek with the value reported by git
+#
+perl -pi -e 's/^greek=.*/greek='$greek'/' -- "${distdir}/VERSION"
 # need to reset the timestamp to not annoy AM dependencies
 touch -r "${srcdir}/VERSION" "${distdir}/VERSION"
 

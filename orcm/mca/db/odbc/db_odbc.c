@@ -100,6 +100,9 @@ static int odbc_store_node_features(mca_db_odbc_module_t *mod,
 static int odbc_store_diag_test(mca_db_odbc_module_t *mod,
                                 opal_list_t *input,
                                 opal_list_t *out);
+static int odbc_store_event(mca_db_odbc_module_t *mod,
+                            opal_list_t *input,
+                            opal_list_t *out);
 
 static void odbc_error_info(SQLSMALLINT handle_type, SQLHANDLE handle);
 static void tm_to_sql_timestamp(SQL_TIMESTAMP_STRUCT *sql_timestamp,
@@ -282,6 +285,8 @@ static int odbc_store(struct orcm_db_base_module_t *imod,
     case ORCM_DB_DIAG_DATA:
         rc = odbc_store_diag_test(mod, input, ret);
         break;
+    case ORCM_DB_EVENT_DATA:
+        rc = odbc_store_event(mod, input, ret);
     default:
         return ORCM_ERR_NOT_IMPLEMENTED;
     }
@@ -3175,6 +3180,501 @@ cleanup_and_exit:
 
     if (SQL_NULL_HSTMT != stmt) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    }
+
+    OBJ_DESTRUCT(&item_bm);
+
+    return rc;
+}
+
+#define ERR_MSG_SE(msg) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:odbc: Unable to store event"); \
+    opal_output(0, msg); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_SE(msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:odbc: Unable to store event"); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_SQL_SE(handle_type, handle, msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:odbc: Unable to store event data"); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "ODBC error details:"); \
+    odbc_error_info(handle_type, handle); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_SED(msg) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:odbc: Unable to store event data"); \
+    opal_output(0, msg); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_SED(msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:odbc: Unable to store event data"); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "***********************************************");
+
+#define ERR_MSG_FMT_SQL_SED(handle_type, handle, msg, ...) \
+    opal_output(0, "***********************************************"); \
+    opal_output(0, "db:odbc: Unable to store event data"); \
+    opal_output(0, msg, ##__VA_ARGS__); \
+    opal_output(0, "ODBC error details:"); \
+    odbc_error_info(handle_type, handle); \
+    opal_output(0, "***********************************************");
+
+static int odbc_store_event(mca_db_odbc_module_t *mod,
+                                    opal_list_t *input,
+                                    opal_list_t *out)
+{
+    int rc = ORCM_SUCCESS;
+
+    const int NUM_PARAMS = 6;
+    const char *params[] = {
+        "ctime",
+        "severity",
+        "type",
+        "version",
+        "vendor"
+        "description"
+    };
+    opal_value_t *param_items[] = {NULL, NULL, NULL, NULL, NULL, NULL};
+    opal_bitmap_t item_bm;
+
+    SQL_TIMESTAMP_STRUCT event_sql_timestamp;
+
+    char *severity = NULL;
+    char *event_type = NULL;
+    char *version = NULL;
+    char *vendor = NULL;
+    char *description = NULL;
+    int  *event_id_once_added = NULL;
+
+    orcm_db_item_t item;
+    orcm_db_item_type_t prev_type = ORCM_DB_ITEM_INTEGER;
+    bool change_value_binding = true;
+
+    opal_value_t *kv;
+    orcm_value_t *mv;
+
+    SQLLEN null_len = SQL_NULL_DATA;
+    SQLRETURN ret;
+    SQLHSTMT add_event_hstmt = SQL_NULL_HSTMT;
+    SQLHSTMT add_event_data_hstmt = SQL_NULL_HSTMT;
+
+    size_t num_items;
+    int i;
+
+    bool local_tran_started = false;
+
+    if (NULL == input) {
+        ERR_MSG_SE("No parameters provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    num_items = opal_list_get_size(input);
+    OBJ_CONSTRUCT(&item_bm, opal_bitmap_t);
+    opal_bitmap_init(&item_bm, (int)num_items);
+
+    /* Get the main parameters from the list */
+    orcm_util_find_items(params, NUM_PARAMS, input, param_items, &item_bm);
+
+    /* Check parameters */
+    if (NULL == param_items[0]) {
+        ERR_MSG_SE("No time stamp provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+    if (NULL == param_items[1]) {
+        ERR_MSG_SE("No severity level provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+    if (NULL == param_items[2]) {
+        ERR_MSG_SE("No even type provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+
+    kv = param_items[0];
+    if (OPAL_TIMEVAL == kv->type) {
+        if (!tv_to_sql_timestamp(&event_sql_timestamp, &kv->data.tv)) {
+            ERR_MSG_STORE("Failed to convert time stamp value");
+            return ORCM_ERR_BAD_PARAM;
+        }
+    } else {
+        ERR_MSG_SE("Invalid value type specified for event timestamp");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+    kv = param_items[1];
+    if (OPAL_STRING == kv->type) {
+        severity = kv->data.string;
+    } else {
+        ERR_MSG_SE("Invalid value type specified for event severity level");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+    kv = param_items[2];
+    if (OPAL_STRING == kv->type) {
+        event_type = kv->data.string;
+    } else {
+        ERR_MSG_SE("Invalid value type specified for event type level");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+    kv = param_items[3];
+    if (OPAL_STRING == kv->type) {
+        version = kv->data.string;
+    } else {
+        version = "";
+    }
+    kv = param_items[4];
+    if (OPAL_STRING == kv->type) {
+        vendor = kv->data.string;
+    } else {
+        vendor = "";
+    }
+    kv = param_items[5];
+    if (OPAL_STRING == kv->type) {
+        description = kv->data.string;
+    } else {
+        description = "";
+    }
+
+    ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &add_event_hstmt);
+    if (!(SQL_SUCCEEDED(ret))) {
+        ERR_MSG_FMT_SE("SQLAllocHandle returned: %d", ret);
+        OBJ_DESTRUCT(&item_bm);
+        return ORCM_ERROR;
+    }
+
+
+    /* add_event parameters order
+     *
+     * $1: event_id once added
+     * $2: time_stamp
+     * $3: severity
+     * $4: type
+     * $5: version
+     * $6: vendor
+     * $7: description
+     */
+    ret = SQLPrepare(add_event_hstmt,
+                     (SQLCHAR *)"{? = call add_event(?, ?, ?, ?, ?, ?)}",
+                     SQL_NTS);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SE("SQLPrepare returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+
+    /* Bind the event_id expected to be returned from the call to add_event */
+    ret = SQLBindParameter(add_event_hstmt, 1, SQL_PARAM_OUTPUT, SQL_C_LONG, SQL_INTEGER,
+                           0, 0, (SQLPOINTER)event_id_once_added,
+                           sizeof(event_id_once_added), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SE("SQLBindParameter 1 returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+
+    /* Bind timestamp parameter. */
+    ret = SQLBindParameter(add_event_hstmt, 2, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
+                           SQL_TYPE_TIMESTAMP, 0, 0, (SQLPOINTER)&event_sql_timestamp,
+                           sizeof(event_sql_timestamp), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SE("SQLBindParameter 2 returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+    /* Bind severity parameter. */
+    ret = SQLBindParameter(add_event_hstmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)severity, strlen(severity), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SE("SQLBindParameter 3 returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+    /* Bind event_type parameter. */
+    ret = SQLBindParameter(add_event_hstmt, 4, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)event_type, strlen(event_type), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SE("SQLBindParameter 4 returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+    /* Bind version parameter. */
+    ret = SQLBindParameter(add_event_hstmt, 5, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)version, strlen(version), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SE("SQLBindParameter 5 returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+    /* Bind vendor parameter. */
+    ret = SQLBindParameter(add_event_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)vendor, strlen(vendor), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SE("SQLBindParameter 6 returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+    /* Bind description parameter. */
+    ret = SQLBindParameter(add_event_hstmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
+                           0, 0, (SQLPOINTER)description, strlen(description), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SE("SQLBindParameter 7 returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+
+    ret = SQLExecute(add_event_hstmt);
+    if (!(SQL_SUCCEEDED(ret))) {
+        ERR_MSG_FMT_SQL_SE(SQL_HANDLE_STMT, add_event_hstmt,
+                              "SQLExecute returned: %d", ret);
+        rc = ORCM_ERROR;
+        goto cleanup_and_exit;
+    }
+
+    SQLCloseCursor(add_event_hstmt);
+
+
+    /* add_event_data parameters order
+     *
+     * $1: event_id,
+     * $2: key_name
+     * $3: app_value_type_id
+     * $4: value_int
+     * $5: value_real
+     * $6: value_str
+     * $7: units
+     */
+    ret = SQLPrepare(add_event_data_hstmt,
+                     (SQLCHAR *)"{call add_event_data(?, ?, ?, ?, ?, ?, ?)}",
+                     SQL_NTS);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SED("SQLPrepare returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+
+    /* Bind the event_id parameter.  This will be the same value for all event data */
+    ret = SQLBindParameter(add_event_data_hstmt, 1, SQL_PARAM_INPUT, SQL_C_LONG,
+                           SQL_INTEGER, 0, 0, (SQLPOINTER)event_id_once_added,
+                           sizeof(event_id_once_added), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SED("SQLBindParameter 1 returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+
+    /* Store all the the remaining key values pair provided in the list as event data */
+    i = 0;
+    OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
+        /* Skip the items that have already been processed */
+        if (opal_bitmap_is_set_bit(&item_bm, i)) {
+            i++;
+            continue;
+        }
+
+        if (NULL == mv->value.key || 0 == strlen(mv->value.key)) {
+            rc = ORCM_ERR_BAD_PARAM;
+            ERR_MSG_SED("Event data key not provided for value");
+            goto cleanup_and_exit;
+        }
+
+        ret = opal_value_to_orcm_db_item(&mv->value, &item);
+        if (ORCM_SUCCESS != ret) {
+            rc = ORCM_ERR_NOT_SUPPORTED;
+            ERR_MSG_SED("Unsupported value type");
+            goto cleanup_and_exit;
+        }
+        change_value_binding = prev_type != item.item_type;
+        prev_type = item.item_type;
+        /* Bind the key_name parameter. */
+        ret = SQLBindParameter(add_event_data_hstmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR,
+                               SQL_VARCHAR, 0, 0, (SQLPOINTER)mv->value.key,
+                               strlen(mv->value.key), NULL);
+        if (!(SQL_SUCCEEDED(ret))) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_SED("SQLBindParameter 2 returned: %d", ret);
+            goto cleanup_and_exit;
+        }
+
+        if (change_value_binding) {
+            switch (item.item_type) {
+            case ORCM_DB_ITEM_INTEGER:
+                /* Value is integer, bind to the appropriate value. */
+                ret = SQLBindParameter(add_event_data_hstmt, 4, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                       SQL_BIGINT, 0, 0,
+                                       (SQLPOINTER)&item.value.value_int,
+                                       sizeof(item.value.value_int), NULL);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    rc = ORCM_ERROR;
+                    ERR_MSG_FMT_SED("SQLBindParameter 4 returned: %d", ret);
+                    goto cleanup_and_exit;
+                }
+                /* Pass NULL for the real value. */
+                ret = SQLBindParameter(add_event_data_hstmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                       SQL_DOUBLE, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    rc = ORCM_ERROR;
+                    ERR_MSG_FMT_SED("SQLBindParameter 5 returned: %d", ret);
+                    goto cleanup_and_exit;
+                }
+                /* Pass NULL for the string value. */
+                ret = SQLBindParameter(add_event_data_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                       SQL_VARCHAR, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    rc = ORCM_ERROR;
+                    ERR_MSG_FMT_SED("SQLBindParameter 6 returned: %d", ret);
+                    goto cleanup_and_exit;
+                }
+                break;
+            case ORCM_DB_ITEM_REAL:
+                /* Pass NULL for the integer value. */
+                ret = SQLBindParameter(add_event_data_hstmt, 4, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                       SQL_BIGINT, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    rc = ORCM_ERROR;
+                    ERR_MSG_FMT_SED("SQLBindParameter 4 returned: %d", ret);
+                    goto cleanup_and_exit;
+                }
+                /* Value is real, bind to the appropriate value. */
+                ret = SQLBindParameter(add_event_data_hstmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                       SQL_DOUBLE, 0, 0,
+                                       (SQLPOINTER)&item.value.value_real,
+                                       sizeof(item.value.value_real), NULL);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    rc = ORCM_ERROR;
+                    ERR_MSG_FMT_SED("SQLBindParameter 5 returned: %d", ret);
+                    goto cleanup_and_exit;
+                }
+                /* Pass NULL for the string value. */
+                ret = SQLBindParameter(add_event_data_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                       SQL_VARCHAR, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    rc = ORCM_ERROR;
+                    ERR_MSG_FMT_SED("SQLBindParameter 6 returned: %d", ret);
+                    goto cleanup_and_exit;
+                }
+                break;
+            case ORCM_DB_ITEM_STRING:
+                /* Pass NULL for the integer value. */
+                ret = SQLBindParameter(add_event_data_hstmt, 4, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                       SQL_BIGINT, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    rc = ORCM_ERROR;
+                    ERR_MSG_FMT_SED("SQLBindParameter 4 returned: %d", ret);
+                    goto cleanup_and_exit;
+                }
+                /* Pass NULL for the real value. */
+                ret = SQLBindParameter(add_event_data_hstmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                       SQL_DOUBLE, 0, 0, NULL,
+                                       0, &null_len);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    rc = ORCM_ERROR;
+                    ERR_MSG_FMT_SED("SQLBindParameter 5 returned: %d", ret);
+                    goto cleanup_and_exit;
+                }
+                /* Value is string, bind to the appropriate value. */
+                ret = SQLBindParameter(add_event_data_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                       SQL_VARCHAR, 0, 0,
+                                       (SQLPOINTER)item.value.value_str,
+                                       strlen(item.value.value_str), NULL);
+                if (!(SQL_SUCCEEDED(ret))) {
+                    rc = ORCM_ERROR;
+                    ERR_MSG_FMT_SED("SQLBindParameter 6 returned: %d", ret);
+                    goto cleanup_and_exit;
+                }
+                break;
+            default:
+                rc = ORCM_ERROR;
+                ERR_MSG_SED("An unexpected error has occurred while "
+                              "processing the values");
+                goto cleanup_and_exit;
+            }
+        } else if (ORCM_DB_ITEM_STRING == item.item_type) {
+            /* No need to change the binding for all the values, just update
+             * the string binding. */
+            ret = SQLBindParameter(add_event_data_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0,
+                                   (SQLPOINTER)item.value.value_str,
+                                   strlen(item.value.value_str), NULL);
+            if (!(SQL_SUCCEEDED(ret))) {
+                rc = ORCM_ERROR;
+                ERR_MSG_FMT_SED("SQLBindParameter 6 returned: %d", ret);
+                goto cleanup_and_exit;
+            }
+        }
+
+        if (NULL != mv->units) {
+            /* Bind the units parameter. */
+            ret = SQLBindParameter(add_event_data_hstmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0,
+                                   (SQLPOINTER)mv->units,
+                                   strlen(mv->units), NULL);
+        } else {
+            /* No units provided, bind NULL. */
+            ret = SQLBindParameter(add_event_data_hstmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0, NULL, 0, &null_len);
+        }
+        if (!(SQL_SUCCEEDED(ret))) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_SED("SQLBindParameter 7 returned: %d", ret);
+            goto cleanup_and_exit;
+        }
+
+        ret = SQLExecute(add_event_data_hstmt);
+        if (!(SQL_SUCCEEDED(ret))) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_SQL_SED(SQL_HANDLE_STMT, add_event_data_hstmt,
+                                "SQLExecute returned: %d", ret);
+            goto cleanup_and_exit;
+        }
+
+        local_tran_started = true;
+
+        SQLCloseCursor(add_event_data_hstmt);
+        i++;
+    }
+
+    if (mod->autocommit) {
+        ret = SQLEndTran(SQL_HANDLE_DBC, mod->dbhandle, SQL_COMMIT);
+        if (!(SQL_SUCCEEDED(ret))) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_SQL_SED(SQL_HANDLE_DBC, mod->dbhandle,
+                                "SQLEndTran returned: %d", ret);
+            goto cleanup_and_exit;
+        }
+    }
+
+    opal_output_verbose(2, orcm_db_base_framework.framework_output,
+                        "odbc_add_event succeeded");
+
+cleanup_and_exit:
+    /* If we're in auto commit mode, then make sure our local changes
+     * are either committed or canceled. */
+    if (ORCM_SUCCESS != rc && mod->autocommit && local_tran_started) {
+        SQLEndTran(SQL_HANDLE_DBC, mod->dbhandle, SQL_ROLLBACK);
+    }
+
+    if (SQL_NULL_HSTMT != add_event_hstmt) {
+        SQLFreeHandle(SQL_HANDLE_STMT, add_event_hstmt);
+    }
+
+    if (SQL_NULL_HSTMT != add_event_data_hstmt) {
+        SQLFreeHandle(SQL_HANDLE_STMT, add_event_data_hstmt);
     }
 
     OBJ_DESTRUCT(&item_bm);

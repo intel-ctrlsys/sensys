@@ -1961,7 +1961,7 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
         "severity",
         "type",
         "version",
-        "vendor"
+        "vendor",
         "description"
     };
     opal_value_t *param_items[] = {NULL, NULL, NULL, NULL, NULL, NULL};
@@ -2005,7 +2005,7 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
 
     /* Get the main parameters from the list */
     orcm_util_find_items(params, NUM_PARAMS, input,
-                                            param_items, &item_bm);
+            param_items, &item_bm);
 
     /* Check parameters */
     if (NULL == param_items[0]) {

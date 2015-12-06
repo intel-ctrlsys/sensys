@@ -4272,6 +4272,11 @@ static int odbc_get_next_row(struct orcm_db_base_module_t *imod,
             case OPAL_STRING:
                 {
                     char* buffer = malloc(len + 1);
+                    if (NULL == buffer) {
+                        rc = ORCM_ERR_OUT_OF_RESOURCE;
+                        ERR_MSG_STORE("Unable to allocate memory");
+                        goto next_cleanup;
+                    }
                     ret = SQLGetData(stmt, i, SQL_C_CHAR, buffer, len + 1, &result_len);
                     if(!(SQL_SUCCEEDED(ret))) {
                         ERR_MSG_FMT_FETCH("SQLGetData returned #1: %d", ret);

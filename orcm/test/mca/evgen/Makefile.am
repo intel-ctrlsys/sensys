@@ -1,6 +1,7 @@
 if HAVE_GTEST
-gtestSubdirs=sensor analytics evgen 
+gtestSubdirs=saeg
 endif
 
 SUBDIRS=$(gtestSubdirs)
+
 

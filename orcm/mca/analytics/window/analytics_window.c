@@ -356,11 +356,13 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
                               caddy->analytics_value->key,
                               caddy->analytics_value->non_compute_data, compute_list_to_next);
     if (NULL != analytics_value_to_next) {
+        if(ORCM_SUCCESS != orcm_analytics_base_log_to_database_event(analytics_value_to_next)){
+            return ORCM_ERROR;
+        }
         ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(caddy->wf, caddy->wf_step, caddy->hash_key,
                                          analytics_value_to_next);
         return ORCM_SUCCESS;
     }
-
     OPAL_LIST_RELEASE(compute_list_to_next);
     return ORCM_ERR_OUT_OF_RESOURCE;
 }

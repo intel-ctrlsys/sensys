@@ -16,7 +16,7 @@
 
 typedef struct {
     const char *cat_string;
-    orcm_analytics_event_category_t cat_int;
+    unsigned int cat_int;
 } orcm_analytics_event_cat_types_t;
 
 int orcm_analytics_base_event_set_reporter(orcm_ras_event_t *analytics_event_data, char *key,
@@ -49,11 +49,14 @@ int orcm_analytics_base_event_set_description(orcm_ras_event_t *analytics_event_
 
 static void orcm_analytics_base_event_cleanup(void *cbdata)
 {
-    orcm_ras_event_t *analytics_event_data = (orcm_ras_event_t *)cbdata;
+    orcm_ras_event_t *analytics_event_data;
 
-    if (NULL != analytics_event_data) {
-        OBJ_RELEASE(analytics_event_data);
+    if (NULL == cbdata) {
+        return;
     }
+
+    analytics_event_data = (orcm_ras_event_t *)cbdata;
+    OBJ_RELEASE(analytics_event_data);
 }
 
 static time_t orcm_analytics_base_event_set_time(opal_list_t *src_list)
@@ -111,9 +114,9 @@ int orcm_analytics_base_event_set_category(orcm_ras_event_t *analytics_event_dat
 {
     unsigned int index = 0;
     const orcm_analytics_event_cat_types_t types[] = {
-        {"SOFT_FAULT", ORCM_ANALYTICS_EVENT_SOFT_FAULT},
-        {"HARD_FAULT", ORCM_ANALYTICS_EVENT_HARD_FAULT},
-        {"UNKOWN_FAULT", ORCM_ANALYTICS_EVENT_UNKOWN_FAULT},
+        {"SOFT_FAULT", ORCM_EVENT_SOFT_FAULT},
+        {"HARD_FAULT", ORCM_EVENT_HARD_FAULT},
+        {"UNKOWN_FAULT", ORCM_EVENT_UNKOWN_FAULT},
     };
 
     if (NULL == analytics_event_data) {

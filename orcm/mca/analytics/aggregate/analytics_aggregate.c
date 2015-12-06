@@ -247,10 +247,16 @@ static int analyze(int sd, short args, void *cbdata)
         rc = ORCM_ERROR;
         goto cleanup;
     }
+
+    rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
+    if(ORCM_SUCCESS != rc){
+        rc = ORCM_ERROR;
+        goto cleanup;
+    }
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(current_caddy->wf, current_caddy->wf_step,
                                      current_caddy->hash_key, analytics_value_to_next);
 cleanup:
-    SAFEFREE(operation);	
+    SAFEFREE(operation);
     if (NULL != current_caddy) {
         OBJ_RELEASE(current_caddy);
     }

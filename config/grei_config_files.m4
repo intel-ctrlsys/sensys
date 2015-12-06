@@ -13,6 +13,8 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/Makefile
     orcm/test/gtest_example/Makefile
     orcm/test/mca/Makefile
+    orcm/test/mca/evgen/Makefile
+    orcm/test/mca/evgen/saeg/Makefile
     orcm/test/mca/sensor/Makefile
     orcm/test/mca/sensor/ipmi/Makefile
     orcm/test/mca/analytics/Makefile

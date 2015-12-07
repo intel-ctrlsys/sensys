@@ -2005,8 +2005,7 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
     opal_bitmap_init(&item_bm, (int)num_items);
 
     /* Get the main parameters from the list */
-    orcm_util_find_items(params, NUM_PARAMS, input,
-            param_items, &item_bm);
+    orcm_util_find_items(params, NUM_PARAMS, input, param_items, &item_bm);
 
     /* Check parameters */
     if (NULL == param_items[0]) {
@@ -2054,19 +2053,19 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
         goto cleanup_and_exit;
     }
     kv = param_items[3];
-    if (OPAL_STRING == kv->type) {
+    if (NULL != kv && OPAL_STRING == kv->type) {
         version = kv->data.string;
     } else {
         version = "";
     }
     kv = param_items[4];
-    if (OPAL_STRING == kv->type) {
+    if (NULL != kv && OPAL_STRING == kv->type) {
         vendor = kv->data.string;
     } else {
         vendor = "";
     }
     kv = param_items[5];
-    if (OPAL_STRING == kv->type) {
+    if (NULL != kv && OPAL_STRING == kv->type) {
         description = kv->data.string;
     } else {
         description = "";

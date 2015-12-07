@@ -3329,19 +3329,19 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
         goto cleanup_and_exit;
     }
     kv = param_items[3];
-    if (OPAL_STRING == kv->type) {
+    if (NULL != kv && OPAL_STRING == kv->type) {
         version = kv->data.string;
     } else {
         version = "";
     }
     kv = param_items[4];
-    if (OPAL_STRING == kv->type) {
+    if (NULL != kv && OPAL_STRING == kv->type) {
         vendor = kv->data.string;
     } else {
         vendor = "";
     }
     kv = param_items[5];
-    if (OPAL_STRING == kv->type) {
+    if (NULL != kv && OPAL_STRING == kv->type) {
         description = kv->data.string;
     } else {
         description = "";

@@ -56,6 +56,6 @@ static int component_query(mca_base_module_t **module, int *priority)
 {
     /* default, so low priority */
     *module = (mca_base_module_t*)&orcm_evgen_ohpc1_module;
-    *priority = 10;
+    *priority = 100;
     return ORCM_SUCCESS;
 }

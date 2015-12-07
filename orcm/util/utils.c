@@ -212,10 +212,11 @@ opal_value_t* orcm_util_load_opal_value(char *key, void *data, opal_data_type_t 
 
 static int orcm_util_copy_opal_value_data(opal_value_t *dest, opal_value_t *src)
 {
-
-    if (NULL == dest && OPAL_STRING != src->type && OPAL_BYTE_OBJECT != src->type) {
-        /* just set the fields to zero */
-        return ORCM_SUCCESS;
+    if (NULL == dest) {
+        if (OPAL_STRING != src->type && OPAL_BYTE_OBJECT != src->type) {
+            return ORCM_SUCCESS;
+        }
+        return ORCM_ERR_COPY_FAILURE;
     }
 
     switch (src->type) {

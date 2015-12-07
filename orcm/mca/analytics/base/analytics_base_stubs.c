@@ -432,6 +432,9 @@ void orcm_analytics_base_send_data(orcm_analytics_value_t *data)
     }
 
     OPAL_LIST_FOREACH(wf, &orcm_analytics_base.workflows, orcm_workflow_t) {
+        if (NULL == data) {
+            break;
+        }
         OBJ_RETAIN(data);
         ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), 0, data);
     }

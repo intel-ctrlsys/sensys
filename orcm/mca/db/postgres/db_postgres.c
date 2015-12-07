@@ -280,6 +280,7 @@ static int postgres_store(struct orcm_db_base_module_t *imod,
         break;
     case ORCM_DB_EVENT_DATA:
         rc = postgres_store_event(mod, input, ret);
+        break;
     default:
         return ORCM_ERR_NOT_IMPLEMENTED;
     }

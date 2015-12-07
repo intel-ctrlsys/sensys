@@ -445,7 +445,7 @@ int orcm_analytics_base_log_to_database_event(orcm_analytics_value_t* value)
 {
     int rc = ORCM_SUCCESS;
     orcm_ras_event_t *event_data = NULL;
-    event_data = orcm_analytics_base_event_create(value,ORCM_RAS_EVENT_SENSOR, 0);
+    event_data = orcm_analytics_base_event_create(value,ORCM_RAS_EVENT_SENSOR, ORCM_RAS_SEVERITY_INFO);
     if(NULL == event_data){
         rc = ORCM_ERROR;
         return rc;

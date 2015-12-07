@@ -203,11 +203,11 @@ static int analyze(int sd, short args, void *cbdata)
         rc = ORCM_ERR_OUT_OF_RESOURCE;
         goto cleanup;
     }
-
-    rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
-    if(ORCM_SUCCESS != rc){
-        rc = ORCM_ERROR;
-        goto cleanup;
+    if(true == orcm_analytics_base_db_check(filter_analyze_caddy->wf_step)){
+        rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
+        if(ORCM_SUCCESS != rc){
+            goto cleanup;
+        }
     }
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(filter_analyze_caddy->wf, filter_analyze_caddy->wf_step,
                                      unique_id, analytics_value_to_next);

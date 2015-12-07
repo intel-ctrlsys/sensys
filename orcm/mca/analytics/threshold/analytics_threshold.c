@@ -356,16 +356,16 @@ static int analyze(int sd, short args, void *cbdata)
     if(ORCM_SUCCESS != rc){
         goto done;
     }
-    analytics_value_to_next = OBJ_NEW(orcm_analytics_value_t);
     if(NULL != threshold_list)
     {
         analytics_value_to_next = orcm_util_load_orcm_analytics_value_compute(current_caddy->analytics_value->key,
                                           current_caddy->analytics_value->non_compute_data, threshold_list);
         if(NULL != analytics_value_to_next) {
-            rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
-            if(ORCM_SUCCESS != rc){
-                rc = ORCM_ERROR;
-                goto done;
+            if(true == orcm_analytics_base_db_check(current_caddy->wf_step)){
+                rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
+                if(ORCM_SUCCESS != rc){
+                    goto done;
+                }
             }
             ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(current_caddy->wf,current_caddy->wf_step,
                                              current_caddy->hash_key, analytics_value_to_next);

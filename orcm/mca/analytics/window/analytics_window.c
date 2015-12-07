@@ -331,6 +331,7 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
     orcm_value_t *compute_list_item_to_next = NULL;
     orcm_value_t *compute_list_item_current = NULL;
     double result = 0.0;
+    int rc = ORCM_SUCCESS;
 
     if (0 >= win_statistics->num_sample_recv) {
         return ORCM_SUCCESS;
@@ -356,8 +357,11 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
                               caddy->analytics_value->key,
                               caddy->analytics_value->non_compute_data, compute_list_to_next);
     if (NULL != analytics_value_to_next) {
-        if(ORCM_SUCCESS != orcm_analytics_base_log_to_database_event(analytics_value_to_next)){
-            return ORCM_ERROR;
+        if(true == orcm_analytics_base_db_check(caddy->wf_step)){
+            rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
+            if(ORCM_SUCCESS != rc){
+                return rc;
+            }
         }
         ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(caddy->wf, caddy->wf_step, caddy->hash_key,
                                          analytics_value_to_next);

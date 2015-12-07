@@ -1969,7 +1969,7 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
     size_t num_items;
 
     const int NUM_ADD_EVENT_PARAMS = 6;
-    const int NUM_ADD_EVENT_DATA_PARAMS = 10;
+    const int NUM_ADD_EVENT_DATA_PARAMS = 7;
 
     const char *add_event_params[NUM_ADD_EVENT_PARAMS];
     const char *add_event_data_params[NUM_ADD_EVENT_DATA_PARAMS];

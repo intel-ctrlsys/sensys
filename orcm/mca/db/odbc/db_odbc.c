@@ -3442,6 +3442,8 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
         goto cleanup_and_exit;
     }
 
+    local_tran_started = true;
+
     SQLCloseCursor(add_event_hstmt);
 
 
@@ -3643,8 +3645,6 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
                                 "SQLExecute returned: %d", ret);
             goto cleanup_and_exit;
         }
-
-        local_tran_started = true;
 
         SQLCloseCursor(add_event_data_hstmt);
         i++;

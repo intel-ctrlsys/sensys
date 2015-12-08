@@ -2101,6 +2101,21 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
         mod->prepared[ORCM_DB_PG_STMT_ADD_EVENT] = true;
     }
 
+    if (mod->autocommit || !mod->tran_started) {
+        res = PQexec(mod->conn, "BEGIN");
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_SE("Unable to begin transaction: %s",
+                            PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+
+        local_tran_started = true;
+    }
+
     res = PQexecPrepared(mod->conn, "add_event", NUM_ADD_EVENT_PARAMS,
                          add_event_params, NULL, NULL, 0);
     if (!status_ok(res)) {
@@ -2146,21 +2161,6 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
         res = NULL;
 
         mod->prepared[ORCM_DB_PG_STMT_ADD_EVENT_DATA] = true;
-    }
-
-    if (mod->autocommit || !mod->tran_started) {
-        res = PQexec(mod->conn, "BEGIN");
-        if (!status_ok(res)) {
-            rc = ORCM_ERROR;
-            ERR_MSG_FMT_SE("Unable to begin transaction: %s",
-                            PQresultErrorMessage(res));
-            postgres_reconnect_if_needed(mod);
-            goto cleanup_and_exit;
-        }
-        PQclear(res);
-        res = NULL;
-
-        local_tran_started = true;
     }
 
     /* Build and execute the SQL commands to store the data in the list */

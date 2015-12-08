@@ -121,10 +121,14 @@ static void fill_analytics_value(orcm_workflow_caddy_t *caddy,
 {
     int index = -1;
     orcm_value_t *orcm_value = NULL;
+    string hostname = "localhost";
+    char *c_hostname = cppstr_to_cstr(hostname);
     caddy->analytics_value = orcm_util_load_orcm_analytics_value(NULL, NULL, NULL);
 
     if (NULL != caddy->analytics_value) {
-        opal_list_append(caddy->analytics_value->key, (opal_list_item_t*)(OBJ_NEW(orcm_value_t)));
+        if (NULL != (orcm_value = load_orcm_value("hostname", c_hostname, OPAL_STRING, ""))) {
+            opal_list_append(caddy->analytics_value->key, (opal_list_item_t*)orcm_value);
+        }
         if (NULL != (orcm_value = load_orcm_value("ctime", time, OPAL_TIMEVAL, ""))) {
             opal_list_append(caddy->analytics_value->non_compute_data,
                              (opal_list_item_t*)orcm_value);

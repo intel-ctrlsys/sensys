@@ -96,7 +96,7 @@ orcm_ras_event_t* orcm_analytics_base_event_create(orcm_analytics_value_t *analy
         /*Don't copy the timestamp again */
         if (!(analytics_event_data->timestamp > 0 && analytics_data->non_compute_data->opal_list_length == 1)) {
             if (ORCM_SUCCESS != orcm_util_copy_list_items(analytics_data->non_compute_data,
-                                                          &(analytics_event_data->data))) {
+                                                          &(analytics_event_data->description))) {
                 OBJ_RELEASE(analytics_event_data);
                 return NULL;
             }

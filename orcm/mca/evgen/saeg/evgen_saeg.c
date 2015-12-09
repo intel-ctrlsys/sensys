@@ -249,9 +249,5 @@ static void saeg_generate(orcm_ras_event_t *ecd)
 
     saeg_generate_storage_events(ecd);
 
-    if (NULL != ecd->cbfunc) {
-        ecd->cbfunc(ecd);
-    }
-
     return;
 }

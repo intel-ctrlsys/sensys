@@ -94,6 +94,14 @@ static double computing(win_statistics_t *win_statistics);
 static void print_out_results(win_statistics_t *win_statistics,
                               orcm_workflow_caddy_t *caddy, double result);
 
+/* function to add the window descriptions to the ras event */
+static int set_window_description(win_statistics_t *win_statistics,
+                                  orcm_ras_event_t *event_data);
+
+/* function to send the event data to the evengen framework */
+static int send_data_to_evgen(win_statistics_t *win_statistics,
+                              orcm_analytics_value_t *analytics_value);
+
 /* function to handle the full window: do computation, send data to the next plugin */
 static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_caddy_t *caddy);
 
@@ -324,6 +332,72 @@ static void print_out_results(win_statistics_t *win_statistics,
     printf("Window results:\t%f\n\n\n", result);
 }
 
+static int set_window_description(win_statistics_t *win_statistics,
+                                  orcm_ras_event_t *event_data)
+{
+    int rc = ORCM_SUCCESS;
+
+    rc = orcm_analytics_base_event_set_description(event_data, "win_size",
+                                                   &win_statistics->win_size, OPAL_INT, NULL);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+
+    rc = orcm_analytics_base_event_set_description(event_data, "win_type",
+                                                   win_statistics->win_type, OPAL_STRING, NULL);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+
+    rc = orcm_analytics_base_event_set_description(event_data, "compute_type",
+                                                   win_statistics->compute_type, OPAL_STRING, NULL);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+
+    rc = orcm_analytics_base_event_set_description(event_data, "num_sample_recv",
+                                                   &win_statistics->num_sample_recv,
+                                                   OPAL_UINT64, NULL);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+
+    return rc;
+}
+
+static int send_data_to_evgen(win_statistics_t *win_statistics,
+                              orcm_analytics_value_t *analytics_value)
+{
+    int rc = ORCM_SUCCESS;
+    orcm_ras_event_t *event_data = NULL;
+
+    event_data = orcm_analytics_base_event_create(analytics_value, ORCM_RAS_EVENT_SENSOR,
+                                                  ORCM_RAS_SEVERITY_INFO);
+    if (NULL == event_data) {
+        rc = ORCM_ERROR;
+        goto cleanup;
+    }
+
+    rc = orcm_analytics_base_event_set_storage(event_data, ORCM_STORAGE_TYPE_DATABASE);
+    if(ORCM_SUCCESS != rc){
+        goto cleanup;
+    }
+
+    if (ORCM_SUCCESS != (rc = set_window_description(win_statistics, event_data))) {
+        goto cleanup;
+    }
+
+    ORCM_RAS_EVENT(event_data);
+    return rc;
+
+cleanup:
+    if (NULL != event_data) {
+        OBJ_RELEASE(event_data);
+    }
+
+    return rc;
+}
+
 static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_caddy_t *caddy)
 {
     orcm_analytics_value_t *analytics_value_to_next = NULL;
@@ -344,10 +418,12 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
     }
     result = computing(win_statistics);
 
+#if OPAL_ENABLE_DEBUG
     print_out_results(win_statistics, caddy, result);
+#endif
 
     compute_list_item_to_next = orcm_util_load_orcm_value(compute_list_item_current->value.key,
-              &result, compute_list_item_current->value.type, compute_list_item_current->units);
+              &result, OPAL_DOUBLE, compute_list_item_current->units);
     if (NULL == compute_list_item_to_next) {
         OPAL_LIST_RELEASE(compute_list_to_next);
         return ORCM_ERR_OUT_OF_RESOURCE;
@@ -358,8 +434,9 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
                               caddy->analytics_value->non_compute_data, compute_list_to_next);
     if (NULL != analytics_value_to_next) {
         if(true == orcm_analytics_base_db_check(caddy->wf_step)){
-            rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
+            rc = send_data_to_evgen(win_statistics, analytics_value_to_next);
             if(ORCM_SUCCESS != rc){
+                OPAL_LIST_RELEASE(compute_list_to_next);
                 return rc;
             }
         }

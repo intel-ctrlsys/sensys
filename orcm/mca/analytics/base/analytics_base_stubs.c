@@ -452,6 +452,9 @@ int orcm_analytics_base_log_to_database_event(orcm_analytics_value_t* value)
     }
     rc = orcm_analytics_base_event_set_storage(event_data, ORCM_STORAGE_TYPE_DATABASE);
     if(ORCM_SUCCESS != rc){
+        if (NULL != event_data) {
+            OBJ_RELEASE(event_data);
+        }
         return rc;
     }
     ORCM_RAS_EVENT(event_data);

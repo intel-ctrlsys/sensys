@@ -127,10 +127,14 @@ cleanup:
 static int analytics_filter_data( orcm_workflow_caddy_t *filter_analyze_caddy, char* hash_key)
 {
     orcm_value_t *attribute_value = NULL, *key_value = NULL;
-    int found = 0, rc = -1;
+    bool found = false;
+    int rc = ORCM_ERROR;
 
     OPAL_LIST_FOREACH(attribute_value, &filter_analyze_caddy->wf_step->attributes, orcm_value_t) {
-        found = 0;
+        if(0 == strcmp(attribute_value->value.key,"db")){
+            continue;
+        }
+        found = false;
         OPAL_LIST_FOREACH(key_value, filter_analyze_caddy->analytics_value->key, orcm_value_t) {
             if (0 == (strncmp(key_value->value.key, attribute_value->value.key,
                       strlen(key_value->value.key)))){
@@ -139,19 +143,18 @@ static int analytics_filter_data( orcm_workflow_caddy_t *filter_analyze_caddy, c
                 if(ORCM_SUCCESS != rc){
                     return rc;
                 }
-                found = 1;
+                found = true;
                 break;
             }
         }
-
-        if(0 == found) {
+        if(!found) {
             rc = filter_match_compute(attribute_value,
                                       filter_analyze_caddy->analytics_value->compute_data,
                                       hash_key);
             if (ORCM_SUCCESS != rc) {
                 return rc;
             }
-            found = 1;
+            found = true;
         }
     }
 

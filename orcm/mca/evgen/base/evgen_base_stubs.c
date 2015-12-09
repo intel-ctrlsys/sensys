@@ -45,9 +45,11 @@ void orcm_evgen_base_event(int sd, short args, void *cbdata)
     OPAL_LIST_FOREACH(active, &orcm_evgen_base.actives, orcm_evgen_active_module_t) {
         active->module->generate(cd);
     }
-    if (NULL != cd->cbfunc) {
-        cd->cbfunc(cd->cbdata);
-    } else {
+
+    if (NULL != cd) {
+        if (NULL != cd->cbfunc) {
+            cd->cbfunc(cd->cbdata);
+        }
         OBJ_RELEASE(cd);
     }
 }

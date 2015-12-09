@@ -3305,7 +3305,8 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
     if (OPAL_TIMEVAL == kv->type) {
         if (!tv_to_sql_timestamp(&event_sql_timestamp, &kv->data.tv)) {
             ERR_MSG_STORE("Failed to convert time stamp value");
-            return ORCM_ERR_BAD_PARAM;
+            rc = ORCM_ERR_BAD_PARAM;
+            goto cleanup_and_exit;
         }
     } else {
         ERR_MSG_SE("Invalid value type specified for event timestamp");

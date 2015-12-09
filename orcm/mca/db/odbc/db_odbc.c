@@ -3240,7 +3240,7 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
         "severity",
         "type",
         "version",
-        "vendor"
+        "vendor",
         "description"
     };
     opal_value_t *param_items[] = {NULL, NULL, NULL, NULL, NULL, NULL};
@@ -3353,7 +3353,6 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
         OBJ_DESTRUCT(&item_bm);
         return ORCM_ERROR;
     }
-
 
     /* add_event parameters order
      *

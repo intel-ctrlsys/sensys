@@ -3445,8 +3445,8 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
 
     SQLCloseCursor(add_event_hstmt);
 
-
-    /* add_event_data parameters order
+    /* Add each of the remaining key value pairs in the input list as event_data
+     * add_event_data parameters order
      *
      * $1: event_id,
      * $2: key_name
@@ -3456,6 +3456,12 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
      * $6: value_str
      * $7: units
      */
+    ret = SQLAllocHandle(SQL_HANDLE_STMT, mod->dbhandle, &add_event_data_hstmt);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_SE("SQLAllocHandle returned: %d", ret);
+        goto cleanup_and_exit;
+    }
     ret = SQLPrepare(add_event_data_hstmt,
                      (SQLCHAR *)"{call add_event_data(?, ?, ?, ?, ?, ?, ?)}",
                      SQL_NTS);

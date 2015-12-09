@@ -27,6 +27,8 @@
 #include "opal/mca/base/base.h"
 #include "opal/mca/event/event.h"
 
+#include "orte/mca/notifier/notifier.h"
+
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/evgen/evgen.h"
 
@@ -57,6 +59,8 @@ ORCM_DECLSPEC extern orcm_evgen_base_t orcm_evgen_base;
 ORCM_DECLSPEC void orcm_evgen_base_event(int sd, short args, void *cbdata);
 ORCM_DECLSPEC const char* orcm_evgen_base_print_type(int t);
 ORCM_DECLSPEC const char* orcm_evgen_base_print_severity(int s);
+
+ORCM_DECLSPEC orte_notifier_severity_t orcm_evgen_base_convert_ras_severity_to_orte_notifier(int severity);
 
 END_C_DECLS
 #endif

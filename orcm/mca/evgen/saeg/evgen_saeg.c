@@ -170,7 +170,6 @@ static void saeg_generate_database_event(opal_list_t *input_list)
         orcm_db.store_new(dbhandle, ORCM_DB_EVENT_DATA, input_list, NULL, saeg_data_cbfunc, NULL);
     }
 }
-
 static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
 {
     orcm_value_t *list_item = NULL;
@@ -189,11 +188,10 @@ static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
         }
     }
     if ((NULL != notifier_msg) && (NULL != notifier_action)) {
-       if ((ecd->severity >= ORTE_NOTIFIER_EMERG) && (ecd->severity <= ORTE_NOTIFIER_DEBUG)) {
-            ORTE_NOTIFIER_SYSTEM_EVENT((orte_notifier_severity_t)ecd->severity, notifier_msg, notifier_action);
+       if ((ecd->severity >= ORCM_RAS_SEVERITY_EMERG) && (ecd->severity < ORCM_RAS_SEVERITY_UNKNOWN)) {
+            ORTE_NOTIFIER_SYSTEM_EVENT(orcm_evgen_base_convert_ras_severity_to_orte_notifier(ecd->severity), notifier_msg, notifier_action);
         }
     }
-
 }
 
 static void saeg_generate_storage_events(orcm_ras_event_t *ecd)

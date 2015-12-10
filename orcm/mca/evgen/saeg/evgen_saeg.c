@@ -144,6 +144,7 @@ static opal_list_t* saeg_convert_event_data_to_list(orcm_ras_event_t *ecd)
     opal_list_append(input_list, (opal_list_item_t *)metric);
 
     eventtime.tv_sec = ecd->timestamp;
+    eventtime.tv_usec = 0.0;
 
     metric = orcm_util_load_orcm_value("ctime", &eventtime, OPAL_TIMEVAL, NULL);
     if (NULL == metric) {

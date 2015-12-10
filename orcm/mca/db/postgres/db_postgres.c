@@ -2029,7 +2029,8 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
         if (!tv_to_str_time_stamp(&kv->data.tv, event_str_timestamp,
                                   sizeof(event_str_timestamp))) {
             ERR_MSG_SE("Failed to convert time stamp value");
-            return ORCM_ERR_BAD_PARAM;
+            rc = ORCM_ERR_BAD_PARAM;
+            goto cleanup_and_exit;
         }
     } else {
         ERR_MSG_SE("Invalid value type specified for event timestamp");

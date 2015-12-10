@@ -223,7 +223,7 @@ TEST(evgen_saeg, generate_storage_notification_empty_action)
     if (NULL != ecd) {
         orcm_evgen_saeg_module.init();
         orcm_analytics_base_event_set_storage(ecd, ORCM_STORAGE_TYPE_NOTIFICATION);
-        orcm_analytics_base_event_set_description(ecd, "notifier_msg", (void *)"threshold is high", OPAL_STRING, NULL);
+        orcm_analytics_base_event_set_description(ecd, (char *)"notifier_msg", (void *)"threshold is high", OPAL_STRING, NULL);
         orcm_evgen_saeg_module.generate(ecd);
         orcm_evgen_saeg_module.finalize();
     }
@@ -235,8 +235,8 @@ TEST(evgen_saeg, generate_storage_notification_unknown_severity)
     if (NULL != ecd) {
         orcm_evgen_saeg_module.init();
         orcm_analytics_base_event_set_storage(ecd, ORCM_STORAGE_TYPE_NOTIFICATION);
-        orcm_analytics_base_event_set_description(ecd, "notifier_msg", (void *)"threshold is high", OPAL_STRING, NULL);
-        orcm_analytics_base_event_set_description(ecd, "notifier_action", (void *)"high", OPAL_STRING, NULL);
+        orcm_analytics_base_event_set_description(ecd, (char *)"notifier_msg", (void *)"threshold is high", OPAL_STRING, NULL);
+        orcm_analytics_base_event_set_description(ecd, (char *)"notifier_action", (void *)"high", OPAL_STRING, NULL);
         orcm_evgen_saeg_module.generate(ecd);
         orcm_evgen_saeg_module.finalize();
     }
@@ -249,8 +249,8 @@ TEST(evgen_saeg, generate_storage_notification_negative_severity)
         orcm_evgen_saeg_module.init();
         ecd->severity = -1;
         orcm_analytics_base_event_set_storage(ecd, ORCM_STORAGE_TYPE_NOTIFICATION);
-        orcm_analytics_base_event_set_description(ecd, "notifier_msg", (void *)"threshold is high", OPAL_STRING, NULL);
-        orcm_analytics_base_event_set_description(ecd, "notifier_action", (void *)"high", OPAL_STRING, NULL);
+        orcm_analytics_base_event_set_description(ecd, (char *)"notifier_msg", (void *)"threshold is high", OPAL_STRING, NULL);
+        orcm_analytics_base_event_set_description(ecd, (char *)"notifier_action", (void *)"high", OPAL_STRING, NULL);
         orcm_evgen_saeg_module.generate(ecd);
         orcm_evgen_saeg_module.finalize();
     }

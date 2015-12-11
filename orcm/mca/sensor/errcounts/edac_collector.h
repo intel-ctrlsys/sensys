@@ -18,9 +18,6 @@ extern "C" {
     typedef void (*edac_error_callback_fn_t)(const char* pathname, int error_number, void* user_data);
     typedef void (*edac_data_callback_fn_t)(const char* label, int error_count, void* user_data);
     typedef void (*edac_inventory_callback_fn_t)(const char* label, const char* name, void* user_data);
-
-    extern bool edac_collect_inventory(edac_inventory_callback_fn_t inv_cb, edac_error_callback_fn_t err_cb, void* user_data);
-    extern bool edac_collect_error_count_data(edac_data_callback_fn_t data_cb, edac_error_callback_fn_t err_cb, void* user_data);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
@@ -38,7 +35,7 @@ extern "C" {
 class edac_collector
 {
     public:
-        edac_collector(edac_error_callback_fn_t error_cb = NULL);
+        edac_collector(edac_error_callback_fn_t error_cb = NULL, const char* edac_path = NULL);
         ~edac_collector();
 
         bool collect_data(edac_data_callback_fn_t cb, void* user_data);
@@ -66,7 +63,7 @@ class edac_collector
         std::string& remove_newlines(std::string& str) const;
 
         // Fields...
-        const std::string base_edac_path;
+        std::string base_edac_path;
         edac_error_callback_fn_t error_callback;
         unsigned long long user_data_;
 };

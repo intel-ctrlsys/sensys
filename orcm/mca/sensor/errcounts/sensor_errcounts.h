@@ -26,12 +26,14 @@ typedef struct {
     orcm_sensor_base_component_t super;
     bool use_progress_thread;
     int sample_rate;
+    char* edac_mc_folder;
 } orcm_sensor_errcounts_component_t;
 
 typedef struct {
     opal_event_base_t *ev_base;
     bool ev_active;
     int sample_rate;
+    char* edac_mc_folder;
 } orcm_sensor_errcounts_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_errcounts_component_t mca_sensor_errcounts_component;

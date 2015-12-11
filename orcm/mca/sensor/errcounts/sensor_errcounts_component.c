@@ -96,5 +96,13 @@ int errcounts_component_register(void)
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_errcounts_component.sample_rate);
 
+    mca_sensor_errcounts_component.edac_mc_folder = "/sys/devices/system/edac/mc";
+    (void) mca_base_component_var_register(c, "edac_mc_folder_test",
+                                           "Testing location of the edac/mc folder. Used in integration testing only.",
+                                           MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sensor_errcounts_component.edac_mc_folder);
+
     return ORCM_SUCCESS;
 }

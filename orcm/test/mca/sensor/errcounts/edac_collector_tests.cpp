@@ -747,49 +747,6 @@ TEST_F(ut_edac_collector_tests, test_collect_inventory)
     ASSERT_FALSE(collector.collect_inventory(NULL, NULL));
 }
 
-TEST_F(ut_edac_collector_tests, test_c_inventory_collection)
-{
-    ResetTestEnvironment();
-
-    edac_mocking.stat_callback = Stat;
-    edac_mocking.fopen_callback = FOpen;
-    edac_mocking.getline_callback = GetLine;
-    edac_mocking.fclose_callback = FClose;
-
-    ASSERT_TRUE(edac_collect_inventory(InventorySink, NULL, (void*)0xa5a5a5a5a5a5a5a5));
-    ASSERT_EQ(0xa5a5a5a5a5a5a5a5, (unsigned long long)last_user_data_);
-    ASSERT_EQ(12, logged_inv_.size());
-
-    map<string,string>::iterator log_it = logged_inv_.begin();
-    for(map<string,string>::iterator it = golden_inv_.begin(); it != golden_inv_.end(); ++it) {
-        ASSERT_STREQ(it->first.c_str(), log_it->first.c_str()) << it->first << "==" << log_it->first;
-        ASSERT_STREQ(it->second.c_str(), log_it->second.c_str()) << it->second << "==" << log_it->second;
-        ++log_it;
-    }
-}
-
-TEST_F(ut_edac_collector_tests, test_c_data_collection)
-{
-    ResetTestEnvironment();
-
-    edac_mocking.stat_callback = Stat;
-    edac_mocking.fopen_callback = FOpen;
-    edac_mocking.getline_callback = GetLine;
-    edac_mocking.fclose_callback = FClose;
-
-    ASSERT_TRUE(edac_collect_error_count_data(DataSink, NULL, (void*)0xa5a5a5a5a5a5a5a5));
-    ASSERT_EQ(0xa5a5a5a5a5a5a5a5, (unsigned long long)last_user_data_);
-    ASSERT_EQ(12, logged_data_.size());
-    // Compare to golden...
-    //map<string,int>::iterator log_it = logged_data_.begin();
-    map<string,int>::iterator log_it = logged_data_.begin();
-    for(map<string,int>::iterator it = golden_data_.begin(); it != golden_data_.end(); ++it) {
-        ASSERT_STREQ(it->first.c_str(), log_it->first.c_str()) << it->first << "==" << log_it->first;
-        ASSERT_EQ(it->second, log_it->second) << it->second << "==" << log_it->second;
-        ++log_it;
-    }
-}
-
 // Testing plugin relay methods...
 TEST_F(ut_edac_collector_tests, test_init_finalize_relays)
 {

@@ -67,7 +67,7 @@ errcounts_impl::~errcounts_impl()
 
 int errcounts_impl::init(void)
 {
-    collector_ = new edac_collector(error_callback_relay);
+    collector_ = new edac_collector(error_callback_relay, mca_sensor_errcounts_component.edac_mc_folder);
     if(0 == mca_sensor_errcounts_component.sample_rate) {
         mca_sensor_errcounts_component.sample_rate = orcm_sensor_base.sample_rate;
     }
@@ -225,7 +225,9 @@ void errcounts_impl::log(opal_buffer_t* buf)
 
             opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)value);
             orcm_analytics.send_data(analytics_vals);
+            SAFE_OBJ_RELEASE(compute);
             SAFE_OBJ_RELEASE(analytics_vals);
+            compute = OBJ_NEW(opal_list_t);
         }
         break; // execute while() only once...
     }
@@ -375,7 +377,7 @@ void errcounts_impl::perthread_errcounts_sample_relay(int fd, short args, void *
 }
 
 
-// In object callbacs from relays...
+// In object callbacks from relays...
 void errcounts_impl::error_callback(const char* pathname, int error_number)
 {
     if(NULL == pathname) {

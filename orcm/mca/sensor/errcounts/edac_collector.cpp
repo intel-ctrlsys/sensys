@@ -23,23 +23,14 @@ extern "C" {
 
 using namespace std;
 
-extern "C" {
-    bool edac_collect_inventory(edac_inventory_callback_fn_t inv_cb, edac_error_callback_fn_t err_cb, void* user_data)
-    {
-        edac_collector collector(err_cb);
-        return collector.collect_inventory(inv_cb, user_data);
-    }
-
-    bool edac_collect_error_count_data(edac_data_callback_fn_t data_cb, edac_error_callback_fn_t err_cb, void* user_data)
-    {
-        edac_collector collector(err_cb);
-        return collector.collect_data(data_cb, user_data);
-    }
-}
-
-edac_collector::edac_collector(edac_error_callback_fn_t error_cb) :
-    base_edac_path("/sys/devices/system/edac/mc"), error_callback(error_cb), user_data_(0)
+edac_collector::edac_collector(edac_error_callback_fn_t error_cb, const char* edac_path) :
+    error_callback(error_cb), user_data_(0)
 {
+    if(NULL != edac_path) {
+        base_edac_path = string(edac_path);
+    } else {
+        base_edac_path = string("/sys/devices/system/edac/mc");
+    }
 }
 
 edac_collector::~edac_collector()

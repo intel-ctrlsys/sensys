@@ -2126,7 +2126,7 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
         goto cleanup_and_exit;
     }
     // the add_event is expected to return only the event ID that just got added.
-    event_id_once_added = *((int*)PQgetvalue(res, 0, 0));
+    event_id_once_added = atoi(PQgetvalue(res, 0, 0));
     if (0 >= event_id_once_added) {
         rc = ORCM_ERROR;
         ERR_MSG_SE("Add event failed to return the new event ID");
@@ -2134,9 +2134,6 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
     }
     PQclear(res);
     res = NULL;
-
-    opal_output_verbose(2, orcm_db_base_framework.framework_output,
-                        "postgres_add_event succeeded");
 
     /* Prepare the statement only if it hasn't already been prepared */
     if (!mod->prepared[ORCM_DB_PG_STMT_ADD_EVENT_DATA]) {
@@ -2165,7 +2162,8 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
     }
 
     /* Build and execute the SQL commands to store the data in the list */
-    add_event_data_params[0] = &event_id_once_added;
+    asprintf(&value_str, "%lld", event_id_once_added);
+    add_event_data_params[0] = value_str;
     i = 0;
     OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
         /* Ignore the items that have already been processed. */
@@ -2208,7 +2206,11 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
             add_event_data_params[4] = NULL;
             add_event_data_params[5] = NULL;
         }
-        add_event_data_params[6] = mv->units;
+        if (NULL != mv->units) {
+            add_event_data_params[6] = mv->units;
+        } else {
+            add_event_data_params[6] = "";
+        }
 
         res = PQexecPrepared(mod->conn, "add_event_data", NUM_ADD_EVENT_DATA_PARAMS,
                              add_event_data_params, NULL, NULL, 0);

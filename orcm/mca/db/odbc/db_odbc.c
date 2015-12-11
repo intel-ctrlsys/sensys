@@ -3254,6 +3254,7 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
     char *vendor = NULL;
     char *description = NULL;
     int  *event_id_once_added = NULL;
+    char *units = NULL;
 
     orcm_db_item_t item;
     orcm_db_item_type_t prev_type = ORCM_DB_ITEM_INTEGER;
@@ -3628,16 +3629,15 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
         }
 
         if (NULL != mv->units) {
-            /* Bind the units parameter. */
-            ret = SQLBindParameter(add_event_data_hstmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR,
-                                   SQL_VARCHAR, 0, 0,
-                                   (SQLPOINTER)mv->units,
-                                   strlen(mv->units), NULL);
+            units = mv->units;
         } else {
-            /* No units provided, bind NULL. */
-            ret = SQLBindParameter(add_event_data_hstmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR,
-                                   SQL_VARCHAR, 0, 0, NULL, 0, &null_len);
+            units = "";
         }
+        /* Bind the units parameter. */
+        ret = SQLBindParameter(add_event_data_hstmt, 7, SQL_PARAM_INPUT, SQL_C_CHAR,
+                               SQL_VARCHAR, 0, 0,
+                               (SQLPOINTER)units, strlen(units), NULL);
+
         if (!(SQL_SUCCEEDED(ret))) {
             rc = ORCM_ERROR;
             ERR_MSG_FMT_SED("SQLBindParameter 7 returned: %d", ret);

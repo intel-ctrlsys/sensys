@@ -1976,6 +1976,7 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
     const char *add_event_data_params[NUM_ADD_EVENT_DATA_PARAMS];
 
     int  event_id_once_added = -1;
+    char *event_id_once_added_str = NULL;
     char event_str_timestamp[40];
     char *severity = NULL;
     char *event_type = NULL;
@@ -2162,8 +2163,8 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
     }
 
     /* Build and execute the SQL commands to store the data in the list */
-    asprintf(&value_str, "%lld", event_id_once_added);
-    add_event_data_params[0] = value_str;
+    asprintf(&event_id_once_added_str, "%lld", event_id_once_added);
+    add_event_data_params[0] = event_id_once_added_str;
     i = 0;
     OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
         /* Ignore the items that have already been processed. */
@@ -2268,6 +2269,10 @@ cleanup_and_exit:
 
     if (NULL != value_str) {
         free(value_str);
+    }
+
+    if (NULL != event_id_once_added_str) {
+        free(event_id_once_added_str);
     }
 
     return rc;

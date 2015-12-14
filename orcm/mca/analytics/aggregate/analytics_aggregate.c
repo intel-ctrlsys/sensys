@@ -209,6 +209,9 @@ static int analyze(int sd, short args, void *cbdata)
     if (ORCM_SUCCESS != (rc = orcm_analytics_base_assert_caddy_data(cbdata))) {
         goto cleanup;
     }
+    if(0 == current_caddy->analytics_value->compute_data->opal_list_length) {
+        goto cleanup;
+    }
     mod = (mca_analytics_aggregate_module_t *)current_caddy->imod;
     operation = get_operation_name(&current_caddy->wf_step->attributes);
     if(NULL == operation) {

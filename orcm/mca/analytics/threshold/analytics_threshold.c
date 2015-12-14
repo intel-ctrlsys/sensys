@@ -155,7 +155,7 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                                      "%s analytics:threshold:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg1));
                 if(0 != strcmp(action_hi,"none")) {
                     threshold_event_data = orcm_analytics_base_event_create(current_caddy->analytics_value,
-                                             ORCM_RAS_EVENT_SENSOR, threshold_policy->hi_sev);
+                                                                            ORCM_RAS_EVENT_EXCEPTION, threshold_policy->hi_sev);
                     if(NULL == threshold_event_data){
                         rc = ORCM_ERROR;
                         goto done;
@@ -188,7 +188,7 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                                      "%s analytics:threshold:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg2));
                 if(0 != strcmp(action_low, "none")) {
                     threshold_event_data = orcm_analytics_base_event_create(current_caddy->analytics_value,
-                                                                 ORCM_RAS_EVENT_SENSOR, threshold_policy->low_sev);
+                                                                            ORCM_RAS_EVENT_EXCEPTION, threshold_policy->low_sev);
                     if(NULL == threshold_event_data){
                         rc = ORCM_ERROR;
                         goto done;

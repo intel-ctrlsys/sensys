@@ -164,11 +164,16 @@ static opal_list_t* saeg_convert_event_data_to_list(orcm_ras_event_t *ecd)
     return input_list;
 }
 
-static void saeg_generate_database_event(opal_list_t *input_list)
+static void saeg_generate_database_event(opal_list_t *input_list, int data_type)
 {
 
     if (0 <= dbhandle) {
-        orcm_db.store_new(dbhandle, ORCM_DB_EVENT_DATA, input_list, NULL, saeg_data_cbfunc, NULL);
+        if (ORCM_RAS_EVENT_SENSOR == data_type ) {
+            orcm_db.store_new(dbhandle, ORCM_DB_ENV_DATA, input_list, NULL, saeg_data_cbfunc, NULL);
+        }
+        else {
+            orcm_db.store_new(dbhandle, ORCM_DB_EVENT_DATA, input_list, NULL, saeg_data_cbfunc, NULL);
+        }
     }
 }
 static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
@@ -228,7 +233,7 @@ static void saeg_generate_storage_events(orcm_ras_event_t *ecd)
         return;
     }
 
-    saeg_generate_database_event(input_list);
+    saeg_generate_database_event(input_list, ecd->type);
 }
 
 

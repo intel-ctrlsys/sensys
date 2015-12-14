@@ -257,7 +257,9 @@ static void sample(orcm_sensor_sampler_t *sampler)
             return;
         }
     }
-    OBJ_RELEASE(stats);
+    if(NULL != stats) {
+        OBJ_RELEASE(stats);
+    }
     OBJ_RELEASE(nstats);
     OBJ_DESTRUCT(&buf);
 #if 0

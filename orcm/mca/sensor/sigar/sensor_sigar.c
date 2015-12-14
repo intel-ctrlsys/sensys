@@ -1273,7 +1273,7 @@ static void sigar_log_process_lvl_stats(opal_buffer_t *sample, struct timeval sa
             ORTE_ERROR_LOG(rc);
             goto cleanup;
         }
-        if (NULL == st) {
+        if (NULL != st) {
             OBJ_RELEASE(st);
         }
     }

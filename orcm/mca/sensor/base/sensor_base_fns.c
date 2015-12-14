@@ -858,7 +858,9 @@ ERROR:
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(ans);
+        if(NULL != ans) {
+            OBJ_RELEASE(ans);
+        }
         return;
     }
     if (NULL == error) {
@@ -867,7 +869,9 @@ ERROR:
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &error, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(ans);
+        if(NULL != ans) {
+            OBJ_RELEASE(ans);
+        }
         free(error);
         return;
     }
@@ -879,7 +883,9 @@ RESPONSE:
                                       ORCM_RML_TAG_SENSOR,
                                       orte_rml_send_callback, NULL))) {
         ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(ans);
+        if(NULL != ans) {
+            OBJ_RELEASE(ans);
+        }
         return;
     }
 }

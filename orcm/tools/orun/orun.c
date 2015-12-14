@@ -261,6 +261,7 @@ static void orun_recv(int status, orte_process_name_t *sender,
                                               OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buffer);
+        goto error;
     }
 
     switch (command) {
@@ -271,6 +272,7 @@ static void orun_recv(int status, orte_process_name_t *sender,
                                                       &count, ORTE_JOB))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(buffer);
+                break;
             }
             break;
 
@@ -281,29 +283,34 @@ static void orun_recv(int status, orte_process_name_t *sender,
                                                       &count, ORTE_JOB))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(buffer);
+                break;
             }
 
             if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &proc, 
                                                       &count, ORTE_PROC))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(buffer);
+                break;
             }
 
             if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &state, 
                                                       &count, ORTE_PROC_STATE))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(buffer);
+                break;
             }
 
             if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &proc_exit_code, 
                                                       &count, ORTE_EXIT_CODE))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(buffer);
+                break;
             }
             if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &nodename, 
                                                       &count, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(buffer);
+                break;
             }
             report_aborted_procs(jdata, proc, state, &proc_exit_code, nodename);
             rc = proc_exit_code;
@@ -317,6 +324,7 @@ static void orun_recv(int status, orte_process_name_t *sender,
             break;
     }
 
+error:
     /* ensure all local procs are dead */
     orte_odls.kill_local_procs(NULL);
 

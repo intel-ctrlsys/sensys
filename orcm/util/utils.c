@@ -442,7 +442,7 @@ int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
     OPAL_LIST_FOREACH(kv, list, opal_value_t) {
         for (j = 0; j < num_keys; j++) {
             if (NULL == kv || NULL == kv->key) {
-                break;
+                return num_found;
             }
             if (!found[j] && !strcmp(kv->key, keys[j])) {
                 num_found++;

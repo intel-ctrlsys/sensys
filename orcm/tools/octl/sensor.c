@@ -860,9 +860,10 @@ static int get_inventory_list(int cmd, opal_list_t *filterlist, opal_list_t** re
         *results = NULL;
     }
 inv_list_cleanup:
-    OBJ_RELEASE(xfer);
+    if (NULL != xfer) {
+        OBJ_RELEASE(xfer);
+    }
     OBJ_RELEASE(buffer);
-    OPAL_LIST_RELEASE(filterlist);
     return rc;
 }
 int orcm_octl_sensor_inventory_get(int cmd, char **argv)
@@ -948,6 +949,12 @@ int orcm_octl_sensor_inventory_get(int cmd, char **argv)
             length += strlen(node->data.string) + 2;
         }
         filter = malloc(length + 1);
+        if (NULL == filter) {
+            if(NULL != node_list) {
+                OPAL_LIST_RELEASE(node_list);
+            }
+            goto orcm_octl_sensor_inventory_get_cleanup;
+        }
         filter[0] = '\0';
         OPAL_LIST_FOREACH(node, node_list, opal_value_t) {
             strcat(filter, "'");
@@ -983,6 +990,9 @@ int orcm_octl_sensor_inventory_get(int cmd, char **argv)
 orcm_octl_sensor_inventory_get_cleanup:
     if(NULL != raw_node_list) {
         opal_argv_free(argv_node_list);
+    }
+    if(NULL != filter_list) {
+        OPAL_LIST_RELEASE(filter_list);
     }
     return ORCM_SUCCESS; /* Seems octl prints an bad error message if you don't return success...*/
 }

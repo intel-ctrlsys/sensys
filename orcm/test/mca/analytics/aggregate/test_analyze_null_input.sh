@@ -1,3 +1,7 @@
+#
+# Copyright (c) 2015      Intel, Inc. All rights reserved.
+# $COPYRIGHT$
+# 
 #!/bin/bash
 #
 # Return value of script is return value of test_analytics_aggregate

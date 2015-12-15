@@ -63,7 +63,6 @@ int analytics_aggregate_analyze_incorrect_attribute_test()
 
 int analytics_aggregate_analyze_null_data_test()
 {
-    int rc = ORCM_SUCCESS;
     orcm_workflow_caddy_t *caddy = OBJ_NEW(orcm_workflow_caddy_t);
     opal_value_t* temp = OBJ_NEW(opal_value_t);
     temp->key = strdup("operation");
@@ -79,13 +78,7 @@ int analytics_aggregate_analyze_null_data_test()
 
     caddy->analytics_value->compute_data = computelist;
 
-    rc = orcm_analytics_aggregate_module.api.analyze(0, 0, (void*)caddy);
-
-    if (ORCM_SUCCESS != rc) {
-        return ORCM_SUCCESS;
-    } else {
-        return ORCM_ERROR;
-    }
+    return orcm_analytics_aggregate_module.api.analyze(0, 0, (void*)caddy);
 }
 
 int analytics_aggregate_analyze_incorrect_operation_test()
@@ -93,6 +86,7 @@ int analytics_aggregate_analyze_incorrect_operation_test()
     int rc = ORCM_SUCCESS;
     orcm_workflow_caddy_t *caddy = OBJ_NEW(orcm_workflow_caddy_t);
     opal_value_t* temp = OBJ_NEW(opal_value_t);
+    orcm_value_t* compute_data = OBJ_NEW(orcm_value_t);
     temp->key = strdup("operation");
     temp->data.string = strdup("abcde");
 
@@ -100,9 +94,10 @@ int analytics_aggregate_analyze_incorrect_operation_test()
     caddy->wf = OBJ_NEW(orcm_workflow_t);
     caddy->wf->workflow_id = 0;
     caddy->analytics_value = OBJ_NEW(orcm_analytics_value_t);
+    caddy->analytics_value->compute_data = OBJ_NEW(opal_list_t);
     caddy->imod = (orcm_analytics_base_module_t*)malloc(sizeof(struct orcm_analytics_base_module));
     opal_list_append(&caddy->wf_step->attributes,(opal_list_item_t*)temp);
-
+    opal_list_append(caddy->analytics_value->compute_data,(opal_list_item_t*) compute_data);
     rc = orcm_analytics_aggregate_module.api.analyze(0, 0, (void*)caddy);
     if (ORCM_ERR_BAD_PARAM == rc) {
         return ORCM_SUCCESS;
@@ -136,18 +131,14 @@ int analytics_aggregate_analyze_test_average()
     opal_list_append(&caddy->wf_step->attributes,(opal_list_item_t*)temp);
     compute_data->units = strdup("Celcius");
     compute_data->value.data.dval = 35.0;
-
+    opal_list_append(computelist,(opal_list_item_t*) compute_data);
     caddy->analytics_value->compute_data = computelist;
 
     rc = orcm_analytics_aggregate_module.api.init(caddy->imod);
     if(rc == ORCM_SUCCESS){
         rc = orcm_analytics_aggregate_module.api.analyze(0, 0, (void*)caddy);
     }
-    if (ORCM_SUCCESS == rc) {
-        return ORCM_SUCCESS;
-    } else {
-        return ORCM_ERROR;
-    }
+    return rc;
 }
 
 int analytics_aggregate_analyze_test_min() {
@@ -168,18 +159,14 @@ int analytics_aggregate_analyze_test_min() {
     opal_list_append(&caddy->wf_step->attributes,(opal_list_item_t*)temp);
     compute_data->units = strdup("Celcuis");
     compute_data->value.data.dval = 35.0;
-
+    opal_list_append(computelist,(opal_list_item_t*) compute_data);
     caddy->analytics_value->compute_data = computelist;
 
     rc = orcm_analytics_aggregate_module.api.init(caddy->imod);
     if(rc == ORCM_SUCCESS){
         rc = orcm_analytics_aggregate_module.api.analyze(0, 0, (void*)caddy);
     }
-    if (ORCM_SUCCESS == rc) {
-        return ORCM_SUCCESS;
-    } else {
-        return ORCM_ERROR;
-    }
+    return rc;
 }
 
 int analytics_aggregate_analyze_test_max() {
@@ -200,22 +187,22 @@ int analytics_aggregate_analyze_test_max() {
     opal_list_append(&caddy->wf_step->attributes,(opal_list_item_t*)temp);
     compute_data->units = strdup("Celcius");
     compute_data->value.data.dval = 35.0;
-
+    opal_list_append(computelist,(opal_list_item_t*) compute_data);
     caddy->analytics_value->compute_data = computelist;
 
     rc = orcm_analytics_aggregate_module.api.init(caddy->imod);
     if(rc == ORCM_SUCCESS){
         rc = orcm_analytics_aggregate_module.api.analyze(0, 0, (void*)caddy);
     }
-    if (ORCM_SUCCESS == rc) {
-        return ORCM_SUCCESS;
-    } else {
-        return ORCM_ERROR;
-    }
+    return rc;
 }
 
 int main(int argc, char *argv[]) {
-    int rc;
+    int rc = ORCM_SUCCESS;
+
+    if(NULL == argv[1]){
+        return 1;
+    }
     if (0 == strcmp(argv[1], "init")) {
         rc = analytics_aggregate_init_null_input_test();
     }

@@ -111,113 +111,115 @@ static orte_notifier_severity_t get_severity(char* severity)
     return sev;
 }
 
+static int generate_notification_event(orcm_analytics_value_t* analytics_value,orte_notifier_severity_t sev, char *msg, char* action)
+{
+    int rc = ORCM_SUCCESS;
+    char* event_action = NULL;
+    orcm_ras_event_t *threshold_event_data = NULL;
+
+    if (NULL != msg) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                            "%s analytics:threshold:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg));
+    }
+    event_action = strdup(action);
+    if(NULL == event_action) {
+        return ORCM_ERROR;
+    }
+    threshold_event_data = orcm_analytics_base_event_create(analytics_value,
+                             ORCM_RAS_EVENT_SENSOR, sev);
+    if(NULL == threshold_event_data){
+        rc = ORCM_ERROR;
+        goto done;
+    }
+    if(0 != strcmp(event_action, "none")){
+        rc = orcm_analytics_base_event_set_storage(threshold_event_data, ORCM_STORAGE_TYPE_NOTIFICATION);
+        if(ORCM_SUCCESS != rc){
+            goto done;
+        }
+        rc = orcm_analytics_base_event_set_description(threshold_event_data, "notifier_msg", msg, OPAL_STRING,NULL);
+        if(ORCM_SUCCESS != rc){
+           goto done;
+        }
+        rc = orcm_analytics_base_event_set_description(threshold_event_data, "notifier_action", event_action, OPAL_STRING, NULL);
+        if(ORCM_SUCCESS != rc){
+           goto done;
+        }
+        ORCM_RAS_EVENT(threshold_event_data);
+    }
+done:
+    SAFEFREE(event_action);
+    return rc;
+}
+
 static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                              orcm_mca_analytics_threshold_policy_t *threshold_policy,
                              opal_list_t* threshold_list)
 {
     char* msg1 = NULL;
     char* msg2 = NULL;
-    char* action_hi = NULL;
-    char* action_low = NULL;
     orcm_value_t *current_value = NULL;
     orcm_value_t *analytics_orcm_value = NULL;
-    opal_list_t *sample_data_list = NULL;
-    orcm_ras_event_t *threshold_event_data = NULL;
+    bool copy = false;
     int rc = ORCM_SUCCESS;
     double val = 0.0;
 
-    if(NULL == current_caddy || NULL == threshold_policy || NULL == threshold_list) {
-        rc = ORCM_ERR_BAD_PARAM;
-        goto done;
+    if(NULL == current_caddy || NULL == current_caddy->analytics_value ||
+       NULL == current_caddy->analytics_value->compute_data || NULL == threshold_policy || NULL == threshold_list ) {
+        return ORCM_ERR_BAD_PARAM;
     }
-    sample_data_list = current_caddy->analytics_value->compute_data;
-    if (NULL == sample_data_list) {
-        rc = ORCM_ERROR;
-        goto done;
-    }
-    if(NULL != threshold_policy->hi_action) {
-        action_hi = strdup(threshold_policy->hi_action);
-    }
-    if(NULL != threshold_policy->low_action) {
-        action_low = strdup(threshold_policy->low_action);
-    }
-    OPAL_LIST_FOREACH(current_value, sample_data_list, orcm_value_t) {
+    OPAL_LIST_FOREACH(current_value, current_caddy->analytics_value->compute_data, orcm_value_t) {
         if(NULL == current_value){
-            rc = ORCM_ERROR;
-            goto done;
+            return ORCM_ERROR;
         }
         val = orcm_util_get_number_orcm_value(current_value);
-
-        if(val >= threshold_policy->hi && NULL != action_hi){
+        if(val >= threshold_policy->hi && NULL != threshold_policy->hi_action){
+            copy=true;
             if(0 < asprintf(&msg1, "%s value %.02f %s,greater than threshold %.02f %s",
                             current_value->value.key,val,current_value->units,threshold_policy->hi,current_value->units)){
-                OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                                     "%s analytics:threshold:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg1));
-                if(0 != strcmp(action_hi,"none")) {
-                    threshold_event_data = orcm_analytics_base_event_create(current_caddy->analytics_value,
-                                                                            ORCM_RAS_EVENT_EXCEPTION, threshold_policy->hi_sev);
-                    if(NULL == threshold_event_data){
-                        rc = ORCM_ERROR;
-                        goto done;
-                    }
+                rc = generate_notification_event(current_caddy->analytics_value, threshold_policy->hi_sev, msg1, threshold_policy->hi_action);
+                if(ORCM_SUCCESS != rc) {
+                    return rc;
 
-                    rc = orcm_analytics_base_event_set_storage(threshold_event_data, ORCM_STORAGE_TYPE_NOTIFICATION);
-                    if(ORCM_SUCCESS != rc){
-                        goto done;
-                    }
-                    rc = orcm_analytics_base_event_set_description(threshold_event_data, "notifier_msg", msg1, OPAL_STRING,NULL);
-                    if(ORCM_SUCCESS != rc){
-                       goto done;
-                    }
-                    rc = orcm_analytics_base_event_set_description(threshold_event_data, "notifier_action", action_hi, OPAL_STRING, NULL);
-                    if(ORCM_SUCCESS != rc){
-                       goto done;
-                    }
-                    ORCM_RAS_EVENT(threshold_event_data);
                 }
-            }
-            analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
-            if(NULL != analytics_orcm_value) {
-                opal_list_append(threshold_list, (opal_list_item_t *)analytics_orcm_value);
             }
         }
-        else if(val <= threshold_policy->low && NULL != action_low && threshold_policy->low != threshold_policy->hi) {
+        else if(val <= threshold_policy->low && NULL != threshold_policy->low_action && threshold_policy->low != threshold_policy->hi) {
+            copy=true;
             if(0 < asprintf(&msg2, "%s value %.02f %s, lower than threshold %.02f %s",
                             current_value->value.key,val,current_value->units,threshold_policy->low,current_value->units)) {
-                OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                                     "%s analytics:threshold:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg2));
-                if(0 != strcmp(action_low, "none")) {
-                    threshold_event_data = orcm_analytics_base_event_create(current_caddy->analytics_value,
-                                                                            ORCM_RAS_EVENT_EXCEPTION, threshold_policy->low_sev);
-                    if(NULL == threshold_event_data){
-                        rc = ORCM_ERROR;
-                        goto done;
-                    }
-                    rc = orcm_analytics_base_event_set_storage(threshold_event_data, ORCM_STORAGE_TYPE_NOTIFICATION);
-                    if(ORCM_SUCCESS != rc){
-                        goto done;
-                    }
-                    rc = orcm_analytics_base_event_set_description(threshold_event_data, "notifier_msg", msg2, OPAL_STRING,NULL);
-                    if(ORCM_SUCCESS != rc){
-                       goto done;
-                    }
-                    rc = orcm_analytics_base_event_set_description(threshold_event_data, "notifier_action", action_low, OPAL_STRING, NULL);
-                    if(ORCM_SUCCESS != rc){
-                       goto done;
-                    }
-                    ORCM_RAS_EVENT(threshold_event_data);
+                rc = generate_notification_event(current_caddy->analytics_value, threshold_policy->low_sev, msg2, threshold_policy->low_action);
+                if(ORCM_SUCCESS != rc) {
+                    return rc;
                 }
             }
+        }
+        if(true == copy) {
             analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
             if(NULL != analytics_orcm_value) {
                 opal_list_append(threshold_list, (opal_list_item_t *)analytics_orcm_value);
             }
         }
     }
-done:
-    SAFEFREE(action_hi);
-    SAFEFREE(action_low);
     return rc;
+}
+
+static int get_threshold_value(char *tval, double* val)
+{
+    int j=0;
+    if(NULL == tval) {
+        return ORCM_ERR_BAD_PARAM;
+    }
+    for (j=0; j < (int)strlen(tval); j++) {
+        if (!isdigit(tval[j]) && '-' != tval[j] && '+' != tval[j] && '.' != tval[j]) {
+            return ORCM_ERR_BAD_PARAM;
+        }
+    }
+    errno = 0;
+    *val = strtod(tval, NULL);
+    if(0 == val && 0 != errno) {
+        return ORCM_ERR_BAD_PARAM;
+    }
+    return ORCM_SUCCESS;
 }
 
 static int get_threshold_policy(void *cbdata,orcm_mca_analytics_threshold_policy_t* threshold_policy )
@@ -232,8 +234,8 @@ static int get_threshold_policy(void *cbdata,orcm_mca_analytics_threshold_policy
     orcm_workflow_caddy_t *current_caddy = NULL;
     char* label = strdup("policy");
     int rc = ORCM_SUCCESS;
-    double val;
-    int count=0, i=0, j=0;
+    double val = 0.0;
+    int count=0, i=0;
     char* tval = NULL;
 
     if(NULL == cbdata || NULL == threshold_policy) {
@@ -246,68 +248,50 @@ static int get_threshold_policy(void *cbdata,orcm_mca_analytics_threshold_policy
         rc = ORCM_ERR_NOT_FOUND;
         goto done;
     }
-
-    if (0 == strcmp(temp->key,label)) {
-        policy = opal_argv_split(temp->data.string,',');
-        count = opal_argv_count(policy);
-        if(0 == count || 2 < count) {
+    if (0 != strcmp(temp->key,label)) {
+        rc = ORCM_ERR_BAD_PARAM;
+        goto done;
+    }
+    policy = opal_argv_split(temp->data.string,',');
+    count = opal_argv_count(policy);
+    if(0 == count || 2 < count) {
+        rc = ORCM_ERR_BAD_PARAM;
+        goto done;
+    }
+    for(i=0; i<count; i++) {
+        token = opal_argv_split(policy[i], '|');
+        if(NULL == token || opal_argv_count(token) != 4) {
             rc = ORCM_ERR_BAD_PARAM;
             goto done;
         }
-        for(i=0; i<count; i++) {
-            token = opal_argv_split(policy[i], '|');
-            if(NULL == token || opal_argv_count(token) != 4) {
-                rc = ORCM_ERR_BAD_PARAM;
-                goto done;
-            }
-
-            tval = strdup(token[1]);
-            if(NULL == tval) {
-                rc = ORCM_ERR_BAD_PARAM;
-                goto done;
-            }
-            for (j=0; j < (int)strlen(tval); j++) {
-                if (!isdigit(tval[i]) && '-' != tval[i] && '+' != tval[i] && '.' != tval[i]) {
-                    rc = ORCM_ERR_BAD_PARAM;
-                    goto done;
-                }
-            }
-            errno = 0;
-            val = strtod(token[1], NULL);
-            if(0 == val && 0 != errno) {
-                rc = ORCM_ERR_BAD_PARAM;
-                goto done;
-            }
-
-            severity = strdup(token[2]);
-            if(NULL != severity) {
-            sev = get_severity(severity);
-            }
-
-            if(0 == strcmp(token[0],"hi")) {
-                threshold_policy->hi = val;
-                threshold_policy->hi_sev = sev;
-                action_hi = strdup(token[3]);
-                threshold_policy->hi_action = action_hi;
-            }
-            else if(0 == strcmp(token[0],"low")) {
-                threshold_policy->low = val;
-                threshold_policy->low_sev = sev;
-                action_low = strdup(token[3]);
-                threshold_policy->low_action = action_low;
-            }
-            else {
-                rc = ORCM_ERR_BAD_PARAM;
-                goto done;
-            }
-            SAFEFREE(tval);
-            SAFEFREE(severity);
-            opal_argv_free(token);
-            token = NULL;
+        rc = get_threshold_value(token[1], &val);
+        if(ORCM_SUCCESS != rc) {
+            goto done;
         }
-    }
-    else {
-        rc = ORCM_ERR_BAD_PARAM;
+        severity = strdup(token[2]);
+        if(NULL != severity) {
+        sev = get_severity(severity);
+        }
+        if(0 == strcmp(token[0],"hi")) {
+            threshold_policy->hi = val;
+            threshold_policy->hi_sev = sev;
+            action_hi = strdup(token[3]);
+            threshold_policy->hi_action = action_hi;
+        }
+        else if(0 == strcmp(token[0],"low")) {
+            threshold_policy->low = val;
+            threshold_policy->low_sev = sev;
+            action_low = strdup(token[3]);
+            threshold_policy->low_action = action_low;
+        }
+        else {
+            rc = ORCM_ERR_BAD_PARAM;
+            goto done;
+        }
+        SAFEFREE(tval);
+        SAFEFREE(severity);
+        opal_argv_free(token);
+        token = NULL;
     }
 done:
     SAFEFREE(label);

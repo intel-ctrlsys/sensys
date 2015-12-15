@@ -356,7 +356,7 @@ static int analyze(int sd, short args, void *cbdata)
     if(ORCM_SUCCESS != rc){
         goto done;
     }
-    if(NULL != threshold_list)
+    if(NULL != threshold_list && 0 != threshold_list->opal_list_length)
     {
         analytics_value_to_next = orcm_util_load_orcm_analytics_value_compute(current_caddy->analytics_value->key,
                                           current_caddy->analytics_value->non_compute_data, threshold_list);

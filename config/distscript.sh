@@ -52,9 +52,14 @@ fi
 #
 perl -pi -e 's/^repo_rev=.*/repo_rev='$repo_rev'/' -- "${distdir}/VERSION"
 #
-# Update VERSION:greek with the value reported by git
+# Update VERSION:greek with the value reported by git.  Only do this if the VERSION file indicates we should use the greek value.
+# We scan for this by checking if the greek line is set to something.  If not, it is an offical release VERSION file and requires 
+# no greek setting.
 #
-perl -pi -e 's/^greek=.*/greek='$greek'/' -- "${distdir}/VERSION"
+if eval "grep 'greek=git*' ${distdir}/VERSION"; then
+  perl -pi -e 's/^greek=.*/greek='$greek'/' -- "${distdir}/VERSION"
+fi
+
 # need to reset the timestamp to not annoy AM dependencies
 touch -r "${srcdir}/VERSION" "${distdir}/VERSION"
 

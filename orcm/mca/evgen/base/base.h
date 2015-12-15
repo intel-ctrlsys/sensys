@@ -40,6 +40,7 @@ BEGIN_C_DECLS
 
 typedef struct {
     opal_list_t actives;
+    int sensor_db_commit_rate;
 } orcm_evgen_base_t;
 
 typedef struct {

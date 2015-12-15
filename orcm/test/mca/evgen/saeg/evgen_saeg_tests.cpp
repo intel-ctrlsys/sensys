@@ -92,6 +92,15 @@ TEST(evgen_saeg, init_void)
     orcm_evgen_test_tear_down();
 }
 
+TEST(evgen_saeg, init_env_set_commit_void)
+{
+    orcm_evgen_test_setup();
+    orcm_evgen_base.sensor_db_commit_rate = 200;
+    orcm_evgen_saeg_module.init();
+    orcm_evgen_base.sensor_db_commit_rate = 1;
+    orcm_evgen_test_tear_down();
+}
+
 TEST(evgen_saeg, finalize_void)
 {
     orcm_evgen_test_setup();
@@ -169,12 +178,57 @@ TEST(evgen_saeg, generate_with_severity_type)
     }
 }
 
+TEST(evgen_saeg, generate_sensor_db_event_without_init)
+{
+    orcm_ras_event_t *ecd = OBJ_NEW(orcm_ras_event_t);
+    if (NULL != ecd) {
+        orcm_evgen_test_setup();
+        ecd->cbfunc = orcm_evgen_tests_cleanup;
+        ecd->type = ORCM_RAS_EVENT_SENSOR;
+        ecd->severity = ORCM_RAS_SEVERITY_INFO;
+        orcm_evgen_saeg_module.generate(ecd);
+        orcm_evgen_saeg_module.finalize();
+        orcm_evgen_test_tear_down();
+    }
+}
+
 TEST(evgen_saeg, generate_success_sensor_db_event)
 {
     orcm_ras_event_t *ecd = OBJ_NEW(orcm_ras_event_t);
     if (NULL != ecd) {
         orcm_evgen_test_setup();
         orcm_evgen_saeg_module.init();
+        ecd->cbfunc = orcm_evgen_tests_cleanup;
+        ecd->type = ORCM_RAS_EVENT_SENSOR;
+        ecd->severity = ORCM_RAS_SEVERITY_INFO;
+        orcm_evgen_saeg_module.generate(ecd);
+        orcm_evgen_saeg_module.finalize();
+        orcm_evgen_test_tear_down();
+    }
+}
+
+TEST(evgen_saeg, generate_success_sensor_db_event_with_commit_rate)
+{
+    orcm_ras_event_t *ecd = OBJ_NEW(orcm_ras_event_t);
+    if (NULL != ecd) {
+        orcm_evgen_test_setup();
+        orcm_evgen_base.sensor_db_commit_rate = 200;
+        orcm_evgen_saeg_module.init();
+        ecd->cbfunc = orcm_evgen_tests_cleanup;
+        ecd->type = ORCM_RAS_EVENT_SENSOR;
+        ecd->severity = ORCM_RAS_SEVERITY_INFO;
+        orcm_evgen_saeg_module.generate(ecd);
+        orcm_evgen_saeg_module.finalize();
+        orcm_evgen_base.sensor_db_commit_rate = 1;
+        orcm_evgen_test_tear_down();
+    }
+}
+
+TEST(evgen_saeg, generate_non_sensor_db_event_without_init)
+{
+    orcm_ras_event_t *ecd = OBJ_NEW(orcm_ras_event_t);
+    if (NULL != ecd) {
+        orcm_evgen_test_setup();
         ecd->cbfunc = orcm_evgen_tests_cleanup;
         ecd->type = ORCM_RAS_EVENT_SENSOR;
         ecd->severity = ORCM_RAS_SEVERITY_INFO;

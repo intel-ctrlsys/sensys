@@ -60,16 +60,35 @@ orcm_evgen_base_module_t orcm_evgen_saeg_module = {
 };
 
 /* local variables */
-static int dbhandle = -1;
+static int env_dbhandle = -1;
+static int event_dbhandle = -1;
+static int env_db_commit_count = 0;
 
-static void saeg_db_open_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
-                                void *cbdata)
+static void saeg_env_db_open_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
+                                    void *cbdata)
 {
     if (0 == status) {
-        dbhandle = dbh;
+        env_dbhandle = dbh;
     } else {
         OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
-                             "%s evgen:saeg DB open operation failed",
+                             "%s evgen:saeg DB env open operation failed",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+    }
+
+    if (NULL != input_list) {
+        OBJ_RELEASE(input_list);
+    }
+
+}
+
+static void saeg_event_db_open_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
+                                      void *cbdata)
+{
+    if (0 == status) {
+        event_dbhandle = dbh;
+    } else {
+        OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
+                             "%s evgen:saeg DB event open operation failed",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     }
 
@@ -88,14 +107,48 @@ static void saeg_data_cbfunc(int dbh, int status, opal_list_t *input_list, opal_
 
 }
 
+static opal_list_t* saeg_init_env_dbhandle_commit_rate(void)
+{
+    orcm_value_t *attribute;
+    opal_list_t *props = NULL; /* DB Attributes list */
+
+    props = OBJ_NEW(opal_list_t);
+
+    if (NULL != props) {
+        attribute = OBJ_NEW(orcm_value_t);
+        if (NULL != attribute) {
+            attribute->value.key = strdup("autocommit");
+            attribute->value.type = OPAL_BOOL;
+            if (orcm_evgen_base.sensor_db_commit_rate > 1) {
+                attribute->value.data.flag = false; /* Disable Auto commit/Enable grouped commits */
+            } else {
+                attribute->value.data.flag = true; /* Enable Auto commit/Disable grouped commits */
+            }
+            opal_list_append(props, (opal_list_item_t *)attribute);
+        }
+        else {
+            OBJ_RELEASE(props);
+        }
+    }
+    return props;
+}
+
 static void saeg_init(void)
 {
+    opal_list_t *props = NULL;
+
     OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
                          "%s evgen:saeg init",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    if (0 > dbhandle) {
-        /* get a db handle */
-        orcm_db.open("saeg", NULL, saeg_db_open_cbfunc, NULL);
+    if (0 > env_dbhandle) {
+        /* get a db handle for env data*/
+        props = saeg_init_env_dbhandle_commit_rate();
+        orcm_db.open("saeg_env", props, saeg_env_db_open_cbfunc, NULL);
+    }
+
+    if (0 > event_dbhandle) {
+        /* get a db handle for event data*/
+        orcm_db.open("saeg_event", NULL, saeg_event_db_open_cbfunc, NULL);
     }
 
     return;
@@ -108,9 +161,14 @@ static void saeg_finalize(void)
                          "%s evgen:saeg finalize",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
-    if (0 <= dbhandle) {
-        orcm_db.close(dbhandle, NULL, NULL);
-        dbhandle = -1;
+    if (0 <= env_dbhandle) {
+        orcm_db.close(env_dbhandle, NULL, NULL);
+        env_dbhandle = -1;
+    }
+
+    if (0 <= event_dbhandle) {
+        orcm_db.close(event_dbhandle, NULL, NULL);
+        event_dbhandle = -1;
     }
     return;
 }
@@ -164,15 +222,43 @@ static opal_list_t* saeg_convert_event_data_to_list(orcm_ras_event_t *ecd)
     return input_list;
 }
 
+static void saeg_env_data_commit_cb(int dbhandle, int status, opal_list_t *in,
+                                    opal_list_t *out, void *cbdata) {
+    if (ORCM_SUCCESS != status) {
+        ORTE_ERROR_LOG(status);
+        orcm_db.rollback(dbhandle, NULL, NULL);
+    }
+}
+
+
 static void saeg_generate_database_event(opal_list_t *input_list, int data_type)
 {
 
-    if (0 <= dbhandle) {
-        if (ORCM_RAS_EVENT_SENSOR == data_type ) {
-            orcm_db.store_new(dbhandle, ORCM_DB_ENV_DATA, input_list, NULL, saeg_data_cbfunc, NULL);
+    if (ORCM_RAS_EVENT_SENSOR == data_type ) {
+        if (0 <= env_dbhandle) {
+            orcm_db.store_new(env_dbhandle, ORCM_DB_ENV_DATA, input_list, NULL, saeg_data_cbfunc, NULL);
+            if (orcm_evgen_base.sensor_db_commit_rate > 1) {
+                env_db_commit_count++;
+                if (env_db_commit_count == orcm_evgen_base.sensor_db_commit_rate) {
+                    orcm_db.commit(env_dbhandle, saeg_env_data_commit_cb, NULL);
+                    env_db_commit_count = 0;
+                }
+            }
         }
         else {
-            orcm_db.store_new(dbhandle, ORCM_DB_EVENT_DATA, input_list, NULL, saeg_data_cbfunc, NULL);
+            OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
+                                 "%s evgen:saeg couldn't store env data as db handler isn't opened",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+        }
+    }
+    else {
+        if (0 <= event_dbhandle) {
+            orcm_db.store_new(event_dbhandle, ORCM_DB_EVENT_DATA, input_list, NULL, saeg_data_cbfunc, NULL);
+        }
+        else {
+            OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
+                                 "%s evgen:saeg couldn't store event data as db handler isn't opened",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         }
     }
 }
@@ -235,7 +321,6 @@ static void saeg_generate_storage_events(orcm_ras_event_t *ecd)
 
     saeg_generate_database_event(input_list, ecd->type);
 }
-
 
 static void saeg_generate(orcm_ras_event_t *ecd)
 {

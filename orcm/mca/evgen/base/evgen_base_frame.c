@@ -80,6 +80,14 @@ static int orcm_evgen_base_open(mca_base_open_flag_t flags)
     rc = mca_base_framework_components_open(&orcm_evgen_base_framework, flags);
     orcm_evgen_base_output = orcm_evgen_base_framework.framework_output;
 
+    orcm_evgen_base.sensor_db_commit_rate = 1;
+    (void)mca_base_var_register("orcm", "evgen", "base", "sensor_db_commit_rate",
+                                "commit rate for sensor data",
+                                MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                OPAL_INFO_LVL_9,
+                                MCA_BASE_VAR_SCOPE_READONLY,
+                                &orcm_evgen_base.sensor_db_commit_rate);
+
     return rc;
 }
 

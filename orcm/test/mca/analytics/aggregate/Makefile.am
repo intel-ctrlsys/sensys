@@ -1,4 +1,7 @@
-
+#
+# Copyright (c) 2015      Intel, Inc. All rights reserved.
+# $COPYRIGHT$
+# 
 #
 # For make V=1 verbosity
 #

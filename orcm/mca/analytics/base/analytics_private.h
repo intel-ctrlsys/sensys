@@ -103,6 +103,7 @@ typedef struct {
     /* list of active workflows */
     opal_list_t workflows;
     bool store_raw_data;
+    bool store_event_data;
 } orcm_analytics_base_t;
 ORCM_DECLSPEC extern orcm_analytics_base_t orcm_analytics_base;
 

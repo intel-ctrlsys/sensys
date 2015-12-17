@@ -79,7 +79,7 @@ static int filter_match_value(char* key_value, char* attribute_value, char* hash
     int rc = -1;
     char** source_value = NULL;
 
-    rc = orcm_logical_group_node_names(attribute_value, &source_value);
+    rc = orcm_logical_group_parse_array_string(attribute_value, &source_value);
     if(ORCM_SUCCESS != rc) {
         goto cleanup;
     }
@@ -101,7 +101,7 @@ static int filter_match_compute(orcm_value_t *attribute_value,
     orcm_value_t *compute_info = NULL;
     char** wf_attri_value = NULL;
 
-    rc = orcm_logical_group_node_names(attribute_value->value.data.string, &wf_attri_value);
+    rc = orcm_logical_group_parse_array_string(attribute_value->value.data.string, &wf_attri_value);
     if (ORCM_SUCCESS != rc) {
         goto cleanup;
     }

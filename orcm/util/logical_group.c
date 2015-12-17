@@ -6,72 +6,78 @@
  *
  * $HEADER$
  */
-#include "logical_group.h"
+#include "orcm/util/logical_group.h"
 #include "orcm/constants.h"
 #include "orte/util/regex.h"
 #include "opal/mca/installdirs/installdirs.h"
 
-/* add just the storage file path to the default location of installing ORCM */
-static int orcm_logical_group_adjust_path(char *install_dirs_prefix);
+/* Initialization the logical grouping */
+static int orcm_logical_group_init(char *config_file);
 
-/* whether the node to be added is already exist */
-static bool node_exist(opal_list_t *group_nodes, char *new_node);
+/* whether the member to be added is already exist */
+static bool member_exist(opal_list_t *group_members, char *new_member);
 
-/* fill the node structure which is a list item */
-static orcm_logical_group_node_t *orcm_logical_group_fill_group_node(char *node_regex);
-
-/* internal function to add ndoes to a group */
-static int orcm_logical_group_add_internal(char *tag, char **nodes,
-                                           opal_list_t *group_nodes,
+/* internal function to add members to a group */
+static int orcm_logical_group_add_internal(char *tag, char **new_members,
+                                           opal_list_t *group_members,
                                            opal_hash_table_t *io_groups);
 
-/* check if all the nodes do exist in a group */
-static int orcm_logical_group_all_nodes_exist_one_tag(opal_list_t *value, char **nodes);
+/* check if all the members do exist in a group */
+static int orcm_logical_group_all_members_exist_one_tag(opal_list_t *value, char **members);
 
-/* check if all the nodes do exist in all groups */
-static int orcm_logical_group_all_nodes_exist_all_tags(opal_hash_table_t *groups,
-                                                       char **nodes);
+/* check if all the members do exist in all groups */
+static int orcm_logical_group_all_members_exist_all_tags(opal_hash_table_t *groups,
+                                                         char **members);
 
-/* remove nodes of a group in the hash table */
-static int orcm_logical_group_hash_table_remove_nodes(char *tag,
-                                                      opal_list_t *value,
-                                                      char **nodes,
-                                                      opal_hash_table_t *io_groups);
+/* remove members of a group in the hash table */
+static int orcm_logical_group_hash_table_remove_members(char *tag,
+                                                        opal_list_t *value,
+                                                        char **members,
+                                                        opal_hash_table_t *io_groups);
 
-/* remove nodes of all groups */
-static int orcm_logical_group_remove_all_tags(char **nodes, int do_all_node,
+/* remove members of all groups */
+static int orcm_logical_group_remove_all_tags(char **members, int do_all_member,
                                               opal_hash_table_t *io_groups);
 
-/* remove nodes of a group */
-static int orcm_logical_group_remove_a_tag(char *tag, char **nodes, int do_all_node,
+/* remove members of a group */
+static int orcm_logical_group_remove_a_tag(char *tag, char **members, int do_all_member,
                                            opal_hash_table_t *io_groups);
 
-/* internal function to remove nodes from groups */
+/* internal function to remove members from groups */
 static int orcm_logical_group_remove_internal(char *tag, int do_all_tag,
-                                              char **nodes, int do_all_node,
+                                              char **members, int do_all_member,
                                               opal_hash_table_t *io_groups);
 
-/* find the specified nodes in the list of nodes */
-static opal_list_t *orcm_logical_group_list_specific_nodes(opal_list_t *value,
-                                                           char **nodes);
+/* find the specified members in the list of members */
+static opal_list_t *orcm_logical_group_list_specific_members(opal_list_t *value,
+                                                             char **members);
 
-/* append a list of nodes to the node list that is an opal list */
-static int orcm_logical_group_list_append(char *nodelist, opal_list_t *nodes_list);
+/* append a list of members to the member list that is an opal list */
+static int orcm_logical_group_list_append(char *memberlist, opal_list_t *members_list);
 
-/* list the nodes of all tags */
-static opal_hash_table_t* orcm_logical_group_list_all_tags(char **nodes, int do_all_nodes,
+/* list the members of all tags */
+static opal_hash_table_t* orcm_logical_group_list_all_tags(char **members, int do_all_member,
                                                            opal_hash_table_t *groups);
 
-/* list the nodes of a tag */
-static opal_hash_table_t *orcm_logical_group_list_a_tag(char *tag, char **nodes,
-                                                        int do_all_node,
+/* list the members of a tag */
+static opal_hash_table_t *orcm_logical_group_list_a_tag(char *tag, char **members,
+                                                        int do_all_member,
                                                         opal_hash_table_t *groups);
 
-/* internal function to list nodes of groups */
-static opal_hash_table_t *orcm_logical_group_list_nodes_internal(char *tag, int do_all_tag,
-                                                                 char **nodes,
-                                                                 int do_all_node,
-                                                                 opal_hash_table_t *groups);
+/* internal function to list members of groups */
+static opal_hash_table_t *orcm_logical_group_list_internal(char *tag, int do_all_tag,
+                                                           char **members,
+                                                           int do_all_member,
+                                                           opal_hash_table_t *groups);
+/* open the storage file with a specific mode */
+static FILE *orcm_logical_group_open_file(char *storage_filename,
+                                          char *mode, bool *o_file_missing);
+
+static int orcm_logical_group_close_file(void);
+
+/* load the content of the storage file to an in-memory hash table */
+static int orcm_logical_group_load_from_file(char *storage_filename,
+                                             opal_hash_table_t *io_groups);
 
 /* whether a line is a comment or not */
 static int orcm_logical_group_is_comment(char *line);
@@ -83,157 +89,103 @@ static int orcm_logical_group_split_line(char *line, char ***o_line_fields);
 static int orcm_logical_group_process_tag_line(char *tag);
 
 /* process a line */
-static int orcm_logical_group_process_line(char *tag, char *line,
-                                           opal_hash_table_t *io_groups);
+static int orcm_logical_group_process_line(char *line, opal_hash_table_t *io_groups);
 
 /* trim a line */
-static void orcm_logical_group_trim_line(char *line, char **o_line);
+static void orcm_logical_group_trim_string(char *string, char **o_string);
 
 /* get a new line from the storage file */
 static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
                                           int max_line_length, int *o_eof);
 
-/* load the line of a storage file into the hash table the way it is */
-static int orcm_logical_group_pass(char *tag, char *node_regex, opal_hash_table_t *io_groups);
-
-/* lock/unlock a file with different lock types */
-static int orcm_logical_group_lulock_file(short int file_lock_type, int fd);
-
 /* parsing a storage file */
-static int orcm_logical_group_parsing(char *tag, char *line_buf, opal_hash_table_t *io_groups);
+static int orcm_logical_group_parsing(char *line_buf, opal_hash_table_t *io_groups);
 
 /* pass the storage file */
-static int orcm_logical_group_parse_from_file(char *tag, opal_hash_table_t *io_groups);
+static int orcm_logical_group_parse_from_file(opal_hash_table_t *io_groups);
 
-/* same the value in the hash table the way it is to a storage file */
-static int orcm_logical_group_save_to_file_copy(char *tag, opal_list_t *nodes_list);
-
-/* combining multiple list item of nodes into one */
-static opal_list_t *orcm_logical_group_do_convertion(opal_list_t *nodes_list,
-                                                     char *nodelist,
+/* combining multiple list item of members into one */
+static opal_list_t *orcm_logical_group_do_convertion(opal_list_t *members_list,
+                                                     char *memberlist,
                                                      unsigned int reserved_size);
 
-/* concatenate multiple list item of nodes into one */
-static int orcm_logical_group_save_to_file_concat(char *tag, opal_list_t *nodes_list);
+/* concatenate multiple list item of members into one */
+static int orcm_logical_group_save_to_file_concat(char *tag, opal_list_t *members_list);
 
 /* internal function to save the in-memory content to a storage file */
-static int orcm_logical_group_save_to_file_internal(char *tag, opal_hash_table_t *groups);
+static int orcm_logical_group_save_to_file_internal(opal_hash_table_t *groups);
 
-/* open the storage file with a specific mode */
-static FILE *orcm_logical_group_open_file(char *storage_filename,
-                                          char *mode, int *o_file_missing);
+/* dereference a group name to an array of members */
+static int orcm_logical_group_tag_to_members_nested(char ***tag_array, char ***o_array_string);
 
-/* trim the node regex */
-static int orcm_logical_group_trim_noderegex(char *regex, char **o_regex);
+/* calculate the memory size of all the members in an array of string */
+static unsigned int orcm_logical_group_argv_addup_size(char **argv, int *count);
 
-/* whether a given group name is valid or not */
-static int orcm_logical_group_is_valid_tag(char *tag);
-
-/* check whether a group name exists in the hash table or not */
-static int orcm_logical_group_check_tag(char *tag, opal_list_t **value, int *count,
-                                        opal_hash_table_t **io_groups);
-
-/* convert the list of nodes to an array of nodes */
-static int orcm_logical_group_listval_to_nodes(opal_list_t *value,
-                                               char ***o_names, int count);
-
-/* dereference a group name to an array of nodes */
-static int orcm_logical_group_tag_to_nodes(char *tag, char ***o_names);
-
-/* calculate the memory size of all the nodes in the list */
-static unsigned int orcm_logical_group_list_addup_size(opal_list_t *value, int count);
-
-/* internal function to convert a list of nodes to a comma separated node list */
-static int orcm_logical_group_listval_to_nodelist_internal(opal_list_t *value,
-                                                           char **o_nodelist, int count);
-
-/* convert a list of nodes to a comma separated node list */
-static int orcm_logical_group_listval_to_nodelist(opal_list_t *value,
-                                                  char **o_nodelist, int count);
-
-/* dereference a group name to a comma separated node list */
-static int orcm_logical_group_tag_to_nodelist(char *tag, char **o_nodelist);
-
-void logical_group_node_construct(orcm_logical_group_node_t *node_item)
+void logical_group_member_construct(orcm_logical_group_member_t *member_item)
 {
-    node_item->node = NULL;
+    member_item->member = NULL;
 }
 
-void logical_group_node_destruct(orcm_logical_group_node_t *node_item)
+void logical_group_member_destruct(orcm_logical_group_member_t *member_item)
 {
-    SAFEFREE(node_item->node);
+    SAFEFREE(member_item->member);
 }
 
-OBJ_CLASS_INSTANCE(orcm_logical_group_node_t, opal_list_item_t,
-                   logical_group_node_construct, logical_group_node_destruct);
+OBJ_CLASS_INSTANCE(orcm_logical_group_member_t, opal_list_item_t,
+                   logical_group_member_construct, logical_group_member_destruct);
 
 orcm_logical_group_t LOGICAL_GROUP = {NULL, NULL};
 char *current_tag = NULL;
 
 file_with_lock_t logical_group_file_lock = {NULL, -1, {F_RDLCK, SEEK_SET, 0, 0, 0}};
 
-static int orcm_logical_group_adjust_path(char *install_dirs_prefix)
+static int orcm_logical_group_init(char *config_file)
 {
-    int check = -1;
-    char *new_file = NULL;
+    int erri = ORCM_SUCCESS;
 
-    /* Not much can be done without a user directory. So use default. */
-    if(NULL == install_dirs_prefix) {
-        return ORCM_SUCCESS;
-    }
-
-    check = asprintf(&new_file, "%s/etc/orcm-logical-grouping.txt", install_dirs_prefix);
-    if (-1 == check) {
+    if (NULL == config_file) {
+        if (-1 == (erri = asprintf(&(LOGICAL_GROUP.storage_filename),
+                   "%s/etc/orcm-logical-grouping.txt", opal_install_dirs.prefix))) {
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+    } else if (NULL == (LOGICAL_GROUP.storage_filename = strdup(config_file))) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
-    /* Nothing much more can be done.  So let everything as is. */
-    if (NULL == new_file) {
-        return ORCM_SUCCESS;
+    if (NULL == (LOGICAL_GROUP.groups = OBJ_NEW(opal_hash_table_t))) {
+            return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
-    SAFEFREE(LOGICAL_GROUP.storage_filename);
-    LOGICAL_GROUP.storage_filename = new_file;
-    new_file = NULL;
-
-    return ORCM_SUCCESS;
-}
-
-int orcm_logical_group_init(void)
-{
-    int erri = -1;
-
-    if (NULL == LOGICAL_GROUP.groups) {
-        SAFEFREE(LOGICAL_GROUP.storage_filename);
-        LOGICAL_GROUP.storage_filename = strdup("./orcm-logical-grouping.txt");
-        if (NULL == LOGICAL_GROUP.storage_filename) {
-            return ORCM_ERR_OUT_OF_RESOURCE;
-        }
-
-        erri = orcm_logical_group_adjust_path(opal_install_dirs.prefix);
-        if( ORCM_SUCCESS != erri) {
-            return erri;
-        }
-
-        LOGICAL_GROUP.groups = OBJ_NEW(opal_hash_table_t);
-        if (NULL == LOGICAL_GROUP.groups) {
-            return ORCM_ERR_OUT_OF_RESOURCE;
-        }
-        opal_hash_table_init(LOGICAL_GROUP.groups, HASH_SIZE);
+    if (ORCM_SUCCESS != (erri = opal_hash_table_init(LOGICAL_GROUP.groups, HASH_SIZE))) {
+        return erri;
     }
 
     logical_group_file_lock.file_lock.l_pid = getpid();
+
+    return erri;
+}
+
+int orcm_logical_group_finalize()
+{
+    if (NULL != LOGICAL_GROUP.groups) {
+        opal_hash_table_remove_all(LOGICAL_GROUP.groups);
+        OBJ_RELEASE(LOGICAL_GROUP.groups);
+    }
+
+    SAFEFREE(LOGICAL_GROUP.storage_filename);
+    SAFEFREE(current_tag);
 
     return ORCM_SUCCESS;
 }
 
 static int orcm_logical_group_hash_table_get(opal_hash_table_t *groups, char *tag,
-                                             opal_list_t **o_group_nodes)
+                                             opal_list_t **o_group_members)
 {
-    int erri = opal_hash_table_get_value_ptr(groups, tag, strlen(tag) + 1, (void**)o_group_nodes);
-    if (OPAL_ERR_NOT_FOUND == erri || NULL == *o_group_nodes) {
-        *o_group_nodes = OBJ_NEW(opal_list_t);
-        if (NULL == *o_group_nodes) {
+    int erri = opal_hash_table_get_value_ptr(groups, tag, strlen(tag) + 1,
+                                             (void**)o_group_members);
+    if (OPAL_ERR_NOT_FOUND == erri || NULL == *o_group_members) {
+        *o_group_members = OBJ_NEW(opal_list_t);
+        if (NULL == *o_group_members) {
             return ORCM_ERR_OUT_OF_RESOURCE;
         }
     }
@@ -241,16 +193,16 @@ static int orcm_logical_group_hash_table_get(opal_hash_table_t *groups, char *ta
     return ORCM_SUCCESS;
 }
 
-static bool node_exist(opal_list_t *group_nodes, char *new_node)
+static bool member_exist(opal_list_t *group_members, char *new_member)
 {
     bool exist = false;
-    orcm_logical_group_node_t *node_item = NULL;
+    orcm_logical_group_member_t *member_item = NULL;
 
-    OPAL_LIST_FOREACH(node_item, group_nodes, orcm_logical_group_node_t) {
-        if (NULL == node_item) {
+    OPAL_LIST_FOREACH(member_item, group_members, orcm_logical_group_member_t) {
+        if (NULL == member_item) {
             break;
         }
-        if (0 == strncmp(node_item->node, new_node, strlen(node_item->node) + 1)) {
+        if (0 == strncmp(member_item->member, new_member, strlen(member_item->member) + 1)) {
             exist = true;
             break;
         }
@@ -259,94 +211,97 @@ static bool node_exist(opal_list_t *group_nodes, char *new_node)
     return exist;
 }
 
-static orcm_logical_group_node_t *orcm_logical_group_fill_group_node(char *node_regex)
+static int orcm_logical_group_list_append(char *member, opal_list_t *member_list)
 {
-    orcm_logical_group_node_t *node_item = OBJ_NEW(orcm_logical_group_node_t);
-    if (NULL != node_item) {
-        node_item->node = strdup(node_regex);
+    int erri = ORCM_SUCCESS;
+
+    orcm_logical_group_member_t *member_item = OBJ_NEW(orcm_logical_group_member_t);
+    if (NULL == member_item) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+    if (NULL == (member_item->member = strdup(member))) {
+        OBJ_RELEASE(member_item);
+        return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
-    return node_item;
+    opal_list_append(member_list, &member_item->super);
+
+    return erri;
 }
 
-static int orcm_logical_group_add_internal(char *tag, char **nodes,
-                                           opal_list_t *group_nodes,
+static int orcm_logical_group_add_internal(char *tag, char **new_members,
+                                           opal_list_t *group_members,
                                            opal_hash_table_t *io_groups)
 {
-    int index = -1, count = -1, erri = ORCM_SUCCESS;
-    orcm_logical_group_node_t *node_item = NULL;
+    int index = -1;
+    int erri = ORCM_SUCCESS;
+    int count = opal_argv_count(new_members);
 
-    count = opal_argv_count(nodes);
     for (index = 0; index < count; index++) {
-        if (false == node_exist(group_nodes, nodes[index])) {
-            node_item = orcm_logical_group_fill_group_node(nodes[index]);
-            if (NULL == node_item) {
-                erri = ORCM_ERR_OUT_OF_RESOURCE;
+        if (false == member_exist(group_members, new_members[index])) {
+            erri = orcm_logical_group_list_append(new_members[index], group_members);
+            if (ORCM_SUCCESS != erri) {
                 break;
             }
-            opal_list_append(group_nodes, &node_item->super);
         }
     }
 
     if (erri == ORCM_SUCCESS) {
-        erri = opal_hash_table_set_value_ptr(io_groups, tag, strlen(tag) + 1, group_nodes);
+        erri = opal_hash_table_set_value_ptr(io_groups, tag, strlen(tag) + 1, group_members);
     }
 
     return erri;
 }
 
-int orcm_logical_group_add(char *tag, char *node_regex, opal_hash_table_t *io_groups)
+int orcm_logical_group_add(char *tag, char *regex, opal_hash_table_t *io_groups)
 {
     int erri = ORCM_SUCCESS;
-    char **nodes = NULL;
-    opal_list_t *group_nodes = NULL;
+    char **new_members = NULL;
+    opal_list_t *group_members = NULL;
 
-    erri = orcm_logical_group_hash_table_get(io_groups, tag, &group_nodes);
+    if (NULL == io_groups) {
+        erri = ORCM_ERR_BAD_PARAM;
+        return erri;
+    }
+    erri = orcm_logical_group_hash_table_get(io_groups, tag, &group_members);
     if (ORCM_SUCCESS != erri) {
         return erri;
     }
 
-    erri = orte_regex_extract_node_names(node_regex, &nodes);
+    erri = orte_regex_extract_node_names(regex, &new_members);
     if (ORTE_SUCCESS != erri) {
         goto cleanup;
     }
 
-    erri = orcm_logical_group_add_internal(tag, nodes, group_nodes, io_groups);
+    erri = orcm_logical_group_add_internal(tag, new_members, group_members, io_groups);
 
 cleanup:
-    opal_argv_free(nodes);
-    if (ORCM_SUCCESS != erri) {
-        OPAL_LIST_RELEASE(group_nodes);
+    opal_argv_free(new_members);
+    if (ORCM_SUCCESS != erri && NULL != group_members) {
+        OPAL_LIST_RELEASE(group_members);
     }
     return erri;
 }
 
-int is_do_all_wildcard(char *text)
+static bool is_do_all_wildcard(char *text)
 {
-    int answer = 0;
+    bool answer = false;
     if (NULL != text) {
         if(0 == strncmp(text, "*", strlen(text) + 1)) {
-            answer = 1;
+            answer = true;
         }
     }
     return answer;
 }
 
-static int orcm_logical_group_all_nodes_exist_one_tag(opal_list_t *value, char **nodes)
+static int orcm_logical_group_all_members_exist_one_tag(opal_list_t *value, char **members)
 {
-    int index = -1, count = opal_argv_count(nodes);
-    orcm_logical_group_node_t *node_item = NULL;
+    int index = -1;
     bool exist = false;
+    int count = opal_argv_count(members);
 
     for (index = 0; index < count; index++) {
-        exist = false;
-        OPAL_LIST_FOREACH(node_item, value, orcm_logical_group_node_t) {
-            if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]) + 1)) {
-                exist = true;
-                break;
-            }
-        }
-        if (!exist) {
+        if (false == (exist = member_exist(value, members[index]))) {
             return ORCM_ERR_NODE_NOT_EXIST;
         }
     }
@@ -354,41 +309,44 @@ static int orcm_logical_group_all_nodes_exist_one_tag(opal_list_t *value, char *
     return ORCM_SUCCESS;
 }
 
-static int orcm_logical_group_all_nodes_exist_all_tags(opal_hash_table_t *groups,
-                                                       char **nodes)
+static int orcm_logical_group_all_members_exist_all_tags(opal_hash_table_t *groups,
+                                                         char **members)
 {
     int erri = ORCM_SUCCESS;
     char *key = NULL;
     size_t key_size = 0;
     opal_list_t *value = NULL;
-    void *in_node = NULL, *out_node = NULL;
+    void *in_member = NULL;
+    void *out_member = NULL;
 
     while (OPAL_SUCCESS == opal_hash_table_get_next_key_ptr(groups, (void**)&key,
-                                         &key_size, (void**)&value, in_node, &out_node)) {
+                                         &key_size, (void**)&value, in_member, &out_member)) {
             if (ORCM_SUCCESS !=
-                (erri = orcm_logical_group_all_nodes_exist_one_tag(value, nodes))) {
+                (erri = orcm_logical_group_all_members_exist_one_tag(value, members))) {
                 return erri;
             }
-            in_node = out_node;
-            out_node = NULL;
+            in_member = out_member;
+            out_member = NULL;
     }
 
     return erri;
 }
 
-static int orcm_logical_group_hash_table_remove_nodes(char *tag,
-                                                      opal_list_t *value,
-                                                      char **nodes,
-                                                      opal_hash_table_t *io_groups)
+static int orcm_logical_group_hash_table_remove_members(char *tag,
+                                                        opal_list_t *value,
+                                                        char **members,
+                                                        opal_hash_table_t *io_groups)
 {
-    int index = -1, count = opal_argv_count(nodes);
-    orcm_logical_group_node_t *node_item = NULL, *next_node_item = NULL;
+    int index = -1;
+    orcm_logical_group_member_t *member_item = NULL;
+    orcm_logical_group_member_t *next_member_item = NULL;
+    int count = opal_argv_count(members);
 
     for (index = 0; index < count; index++) {
-        OPAL_LIST_FOREACH_SAFE(node_item, next_node_item, value, orcm_logical_group_node_t) {
-            if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]) + 1)) {
-                opal_list_remove_item(value, &node_item->super);
-                OBJ_RELEASE(node_item);
+        OPAL_LIST_FOREACH_SAFE(member_item, next_member_item, value, orcm_logical_group_member_t) {
+            if (0 == strncmp(members[index], member_item->member, strlen(members[index]) + 1)) {
+                opal_list_remove_item(value, &member_item->super);
+                OBJ_RELEASE(member_item);
                 break;
             }
         }
@@ -401,38 +359,39 @@ static int orcm_logical_group_hash_table_remove_nodes(char *tag,
     return opal_hash_table_set_value_ptr(io_groups, tag, strlen(tag) + 1, value);
 }
 
-static int orcm_logical_group_remove_all_tags(char **nodes, int do_all_node,
+static int orcm_logical_group_remove_all_tags(char **members, int do_all_member,
                                               opal_hash_table_t *io_groups)
 {
     int erri = ORCM_SUCCESS;
     char *key = NULL;
     size_t key_size = 0;
     opal_list_t *value = NULL;
-    void *in_node = NULL, *out_node = NULL;
+    void *in_member = NULL;
+    void *out_member = NULL;
 
-    if (do_all_node) {
+    if (do_all_member) {
         return opal_hash_table_remove_all(io_groups);
     }
 
     if (ORCM_SUCCESS !=
-        (erri = orcm_logical_group_all_nodes_exist_all_tags(io_groups, nodes))) {
+        (erri = orcm_logical_group_all_members_exist_all_tags(io_groups, members))) {
         return erri;
     }
 
     while (OPAL_SUCCESS == opal_hash_table_get_next_key_ptr(io_groups, (void**)&key,
-                                         &key_size, (void**)&value, in_node, &out_node)) {
-            erri = orcm_logical_group_hash_table_remove_nodes(key, value, nodes, io_groups);
+                                         &key_size, (void**)&value, in_member, &out_member)) {
+            erri = orcm_logical_group_hash_table_remove_members(key, value, members, io_groups);
             if (ORCM_SUCCESS != erri) {
                 return erri;
             }
-            in_node = out_node;
-            out_node = NULL;
+            in_member = out_member;
+            out_member = NULL;
     }
 
     return erri;
 }
 
-static int orcm_logical_group_remove_a_tag(char *tag, char **nodes, int do_all_node,
+static int orcm_logical_group_remove_a_tag(char *tag, char **members, int do_all_member,
                                            opal_hash_table_t *io_groups)
 {
     int erri = ORCM_SUCCESS;
@@ -440,13 +399,13 @@ static int orcm_logical_group_remove_a_tag(char *tag, char **nodes, int do_all_n
 
     if (OPAL_SUCCESS == (erri = opal_hash_table_get_value_ptr(io_groups, tag,
                                                       strlen(tag) + 1, (void**)&value))) {
-        if (do_all_node) {
+        if (do_all_member) {
             return opal_hash_table_remove_value_ptr(io_groups, tag, strlen(tag) + 1);
         }
-        if (ORCM_SUCCESS != (erri = orcm_logical_group_all_nodes_exist_one_tag(value, nodes))) {
+        if (ORCM_SUCCESS != (erri = orcm_logical_group_all_members_exist_one_tag(value, members))) {
             return erri;
         }
-        return orcm_logical_group_hash_table_remove_nodes(tag, value, nodes, io_groups);
+        return orcm_logical_group_hash_table_remove_members(tag, value, members, io_groups);
     }
 
     if (OPAL_ERR_NOT_FOUND == erri) {
@@ -457,61 +416,54 @@ static int orcm_logical_group_remove_a_tag(char *tag, char **nodes, int do_all_n
 }
 
 static int
-orcm_logical_group_remove_internal(char *tag, int do_all_tag, char **nodes,
-                                   int do_all_node, opal_hash_table_t *io_groups)
+orcm_logical_group_remove_internal(char *tag, int do_all_tag, char **members,
+                                   int do_all_member, opal_hash_table_t *io_groups)
 {
     if (do_all_tag) {
-        return orcm_logical_group_remove_all_tags(nodes, do_all_node, io_groups);
+        return orcm_logical_group_remove_all_tags(members, do_all_member, io_groups);
     }
 
-    return orcm_logical_group_remove_a_tag(tag, nodes, do_all_node, io_groups);
+    return orcm_logical_group_remove_a_tag(tag, members, do_all_member, io_groups);
 }
 
-int orcm_logical_group_remove(char *tag, char *node_regex, opal_hash_table_t *io_groups)
+int orcm_logical_group_remove(char *tag, char *regex, opal_hash_table_t *io_groups)
 {
-    int erri = ORCM_SUCCESS, do_all_tag = 0, do_all_node = 0;
-    char **nodes = NULL;
+    int erri = ORCM_SUCCESS;
+    int do_all_tag = 0;
+    int do_all_member = 0;
+    char **members = NULL;
+
+    if (NULL == io_groups) {
+        return ORCM_ERR_BAD_PARAM;
+    }
 
     if (0 == opal_hash_table_get_size(io_groups)) {
         return ORCM_ERR_NO_ANY_GROUP;
     }
 
     do_all_tag = is_do_all_wildcard(tag);
-    if (0 == (do_all_node = is_do_all_wildcard(node_regex))) {
-        erri = orte_regex_extract_node_names(node_regex, &nodes);
+    if (0 == (do_all_member = is_do_all_wildcard(regex))) {
+        erri = orte_regex_extract_node_names(regex, &members);
         if (ORTE_SUCCESS != erri) {
             goto cleanup;
         }
     }
 
-    erri = orcm_logical_group_remove_internal(tag, do_all_tag, nodes, do_all_node, io_groups);
+    erri = orcm_logical_group_remove_internal(tag, do_all_tag, members, do_all_member, io_groups);
 
 cleanup:
-    opal_argv_free(nodes);
-
-    return erri;
-}
-
-static int orcm_logical_group_list_append(char *nodelist, opal_list_t *nodes_list)
-{
-    int erri = ORCM_SUCCESS;
-
-    orcm_logical_group_node_t *new_node_item = orcm_logical_group_fill_group_node(nodelist);
-    if (NULL == new_node_item) {
-        return ORCM_ERR_BAD_PARAM;
-    }
-
-    opal_list_append(nodes_list, &new_node_item->super);
+    opal_argv_free(members);
 
     return erri;
 }
 
 static opal_list_t *
-orcm_logical_group_list_specific_nodes(opal_list_t *value, char **nodes)
+orcm_logical_group_list_specific_members(opal_list_t *value, char **members)
 {
-    int index = -1, count = opal_argv_count(nodes);
-    orcm_logical_group_node_t *node_item = NULL;
+    int index = -1;
+    orcm_logical_group_member_t *member_item = NULL;
     opal_list_t *new_value = NULL;
+    int count = opal_argv_count(members);
 
     if (0 == count) {
         return NULL;
@@ -520,12 +472,12 @@ orcm_logical_group_list_specific_nodes(opal_list_t *value, char **nodes)
     new_value = OBJ_NEW(opal_list_t);
     if (NULL != new_value) {
         for (index = 0; index < count; index++) {
-            OPAL_LIST_FOREACH(node_item, value, orcm_logical_group_node_t) {
-                if (NULL == node_item) {
+            OPAL_LIST_FOREACH(member_item, value, orcm_logical_group_member_t) {
+                if (NULL == member_item) {
                     return NULL;
                 }
-                if (0 == strncmp(nodes[index], node_item->node, strlen(nodes[index]) + 1)) {
-                    orcm_logical_group_list_append(node_item->node, new_value);
+                if (0 == strncmp(members[index], member_item->member, strlen(members[index]) + 1)) {
+                    orcm_logical_group_list_append(member_item->member, new_value);
                     break;
                 }
             }
@@ -540,15 +492,17 @@ orcm_logical_group_list_specific_nodes(opal_list_t *value, char **nodes)
 }
 
 static opal_hash_table_t*
-orcm_logical_group_list_all_tags(char **nodes, int do_all_nodes, opal_hash_table_t *groups)
+orcm_logical_group_list_all_tags(char **members, int do_all_member, opal_hash_table_t *groups)
 {
     opal_hash_table_t *o_groups = NULL;
     char *key = NULL;
     size_t key_size = 0;
-    opal_list_t *value = NULL, *new_value = NULL;
-    void *in_node = NULL, *o_node = NULL;
+    opal_list_t *value = NULL;
+    opal_list_t *new_value = NULL;
+    void *in_member = NULL;
+    void *o_member = NULL;
 
-    if (do_all_nodes) {
+    if (do_all_member) {
         return groups;
     }
 
@@ -556,13 +510,13 @@ orcm_logical_group_list_all_tags(char **nodes, int do_all_nodes, opal_hash_table
     if (NULL != o_groups) {
         opal_hash_table_init(o_groups, HASH_SIZE);
         while (OPAL_SUCCESS == opal_hash_table_get_next_key_ptr(groups, (void**)&key,
-                                           &key_size, (void**)&value, in_node, &o_node)) {
-            new_value = orcm_logical_group_list_specific_nodes(value, nodes);
+                                           &key_size, (void**)&value, in_member, &o_member)) {
+            new_value = orcm_logical_group_list_specific_members(value, members);
             if (NULL != new_value) {
                 opal_hash_table_set_value_ptr(o_groups, key, key_size, new_value);
             }
-            in_node = o_node;
-            o_node = NULL;
+            in_member = o_member;
+            o_member = NULL;
 
         }
     }
@@ -570,22 +524,23 @@ orcm_logical_group_list_all_tags(char **nodes, int do_all_nodes, opal_hash_table
     return o_groups;
 }
 
-static opal_hash_table_t *orcm_logical_group_list_a_tag(char *tag, char **nodes,
-                                                        int do_all_node,
+static opal_hash_table_t *orcm_logical_group_list_a_tag(char *tag, char **members,
+                                                        int do_all_member,
                                                         opal_hash_table_t *groups)
 {
     opal_hash_table_t *o_groups = NULL;
-    opal_list_t *value = NULL, *new_value = NULL;
+    opal_list_t *value = NULL;
+    opal_list_t *new_value = NULL;
 
     if (OPAL_SUCCESS == opal_hash_table_get_value_ptr(groups, tag,
                                                       strlen(tag) + 1, (void**)&value)) {
         o_groups = OBJ_NEW(opal_hash_table_t);
         if (NULL != o_groups) {
             opal_hash_table_init(o_groups, HASH_SIZE);
-            if (do_all_node) {
+            if (do_all_member) {
                 opal_hash_table_set_value_ptr(o_groups, tag, strlen(tag) + 1, value);
             } else {
-                new_value = orcm_logical_group_list_specific_nodes(value, nodes);
+                new_value = orcm_logical_group_list_specific_members(value, members);
                 if (NULL != new_value) {
                     opal_hash_table_set_value_ptr(o_groups, tag, strlen(tag) + 1, new_value);
                 }
@@ -597,49 +552,41 @@ static opal_hash_table_t *orcm_logical_group_list_a_tag(char *tag, char **nodes,
 }
 
 static opal_hash_table_t *
-orcm_logical_group_list_nodes_internal(char *tag, int do_all_tag, char **nodes,
-                                       int do_all_node, opal_hash_table_t *groups)
+orcm_logical_group_list_internal(char *tag, int do_all_tag, char **members,
+                                 int do_all_member, opal_hash_table_t *groups)
 {
     if (do_all_tag) {
-        return orcm_logical_group_list_all_tags(nodes, do_all_node, groups);
+        return orcm_logical_group_list_all_tags(members, do_all_member, groups);
     }
 
-    return orcm_logical_group_list_a_tag(tag, nodes, do_all_node, groups);
+    return orcm_logical_group_list_a_tag(tag, members, do_all_member, groups);
 }
 
-opal_hash_table_t *orcm_logical_group_list(char *tag, char *node_regex,
+opal_hash_table_t *orcm_logical_group_list(char *tag, char *regex,
                                            opal_hash_table_t *groups)
 {
-    int do_all_tag = 0, do_all_node = 0;
-    char **nodes = NULL;
+    int do_all_tag = 0;
+    int do_all_member = 0;
+    char **members = NULL;
     opal_hash_table_t *o_groups = NULL;
 
+    if (NULL == groups) {
+        return NULL;
+    }
+
     do_all_tag = is_do_all_wildcard(tag);
-    if (0 == (do_all_node = is_do_all_wildcard(node_regex))) {
-        if (ORTE_SUCCESS != orte_regex_extract_node_names(node_regex, &nodes)) {
+    if (0 == (do_all_member = is_do_all_wildcard(regex))) {
+        if (ORTE_SUCCESS != orte_regex_extract_node_names(regex, &members)) {
             goto cleanup;
         }
     }
 
-    o_groups = orcm_logical_group_list_nodes_internal(tag, do_all_tag,
-                                                      nodes, do_all_node, groups);
+    o_groups = orcm_logical_group_list_internal(tag, do_all_tag,
+                                                members, do_all_member, groups);
 
 cleanup:
-    opal_argv_free(nodes);
+    opal_argv_free(members);
     return o_groups;
-}
-
-int orcm_logical_group_finalize(void)
-{
-    if (NULL != LOGICAL_GROUP.groups) {
-        opal_hash_table_remove_all(LOGICAL_GROUP.groups);
-        OBJ_RELEASE(LOGICAL_GROUP.groups);
-    }
-
-    SAFEFREE(LOGICAL_GROUP.storage_filename);
-    SAFEFREE(current_tag);
-
-    return ORCM_SUCCESS;
 }
 
 static int orcm_logical_group_is_comment(char *line)
@@ -673,8 +620,7 @@ static int orcm_logical_group_process_tag_line(char *tag)
     return ORCM_SUCCESS;
 }
 
-static int orcm_logical_group_process_line(char *tag, char *line,
-                                           opal_hash_table_t *groups)
+static int orcm_logical_group_process_line(char *line, opal_hash_table_t *groups)
 {
     int erri = ORCM_SUCCESS;
     char **line_fields = NULL;
@@ -689,13 +635,8 @@ static int orcm_logical_group_process_line(char *tag, char *line,
 
     if (0 == strncmp(line_fields[0], "group name", strlen(line_fields[0]) + 1)) {
         erri = orcm_logical_group_process_tag_line(line_fields[1]);
-    } else if (0 == strncmp(line_fields[0], "nodelist", strlen(line_fields[0]) + 1)) {
-        if (tag == NULL || (1 != is_do_all_wildcard(tag) &&
-                            0 != strncmp(current_tag, tag, strlen(current_tag) + 1))) {
-            erri = orcm_logical_group_pass(current_tag, line_fields[1], groups);
-        } else {
-            erri = orcm_logical_group_add(current_tag, line_fields[1], groups);
-        }
+    } else if (0 == strncmp(line_fields[0], "member list", strlen(line_fields[0]) + 1)) {
+        erri = orcm_logical_group_add(current_tag, line_fields[1], groups);
     } else {
         ORCM_UTIL_ERROR_MSG_WITH_ARG("Not recognize the current line: %s", line);
         erri = ORCM_ERR_BAD_PARAM;
@@ -706,27 +647,27 @@ cleanup:
     return erri;
 }
 
-static void orcm_logical_group_trim_line(char *line, char **o_line)
+static void orcm_logical_group_trim_string(char *string, char **o_string)
 {
-    char *in_line_travesal = NULL;
+    char *in_string_travesal = NULL;
 
-    if (NULL == line || NULL == o_line) {
+    if (NULL == string || NULL == o_string) {
         return;
     }
 
     /* trim the beginning */
-    while(' ' == *line || '\t' == *line) {
-        line++;
+    while(' ' == *string || '\t' == *string) {
+        string++;
     }
-    *o_line = line;
+    *o_string = string;
 
     /* trim the end */
-    if ('\0' != *line) {
-        in_line_travesal = line + strlen(line) - 1;
-        while (in_line_travesal > line &&
-               (' ' == *in_line_travesal || '\t' == *in_line_travesal)) {
-            *in_line_travesal = '\0';
-            in_line_travesal--;
+    if ('\0' != *string) {
+        in_string_travesal = string + strlen(string) - 1;
+        while (in_string_travesal > string &&
+               (' ' == *in_string_travesal || '\t' == *in_string_travesal)) {
+            *in_string_travesal = '\0';
+            in_string_travesal--;
         }
     }
 }
@@ -734,7 +675,8 @@ static void orcm_logical_group_trim_line(char *line, char **o_line)
 static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
                                           int max_line_length, int *o_eof)
 {
-    char *ret = NULL, *line_break = NULL;
+    char *ret = NULL;
+    char *line_break = NULL;
 
     /* +2 means to include the last '\0' and the line break '\n' */
     ret = fgets(io_line, max_line_length + 2, storage_file);
@@ -754,44 +696,10 @@ static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
     return ORCM_SUCCESS;
 }
 
-static int orcm_logical_group_pass(char *tag, char *node_regex,
-                                   opal_hash_table_t *io_group)
+static int orcm_logical_group_parsing(char *line_buf, opal_hash_table_t *io_groups)
 {
-    int erri = ORCM_SUCCESS;
-    opal_list_t *group_nodes = NULL;
-    erri = orcm_logical_group_hash_table_get(io_group, tag, &group_nodes);
-    if (ORCM_SUCCESS != erri) {
-        return erri;
-    }
-
-    orcm_logical_group_node_t *node_item = orcm_logical_group_fill_group_node(node_regex);
-    if (NULL == node_item) {
-        return ORCM_ERR_OUT_OF_RESOURCE;
-    }
-    opal_list_append(group_nodes, &node_item->super);
-
-    return opal_hash_table_set_value_ptr(io_group, tag, strlen(tag) + 1, group_nodes);
-}
-
-static int orcm_logical_group_lulock_file(short int file_lock_type, int fd)
-{
-
-    logical_group_file_lock.file_lock.l_type = file_lock_type;
-    int mode = F_SETLKW;
-    if (F_UNLCK == file_lock_type) {
-        mode = F_SETLK;
-    }
-    if (-1 == fcntl(fd, mode, &(logical_group_file_lock.file_lock))) {
-        return ORCM_ERR_FILE_READ_FAILURE;
-    }
-
-    return ORCM_SUCCESS;
-}
-
-
-static int orcm_logical_group_parsing(char *tag, char *line_buf, opal_hash_table_t *io_groups)
-{
-    int eof = -1, erri = -1, err_lu_file = -1;
+    int eof = -1;
+    int erri = -1;
     char *line_buf_after_trim = NULL;
 
     if (-1 == fcntl(logical_group_file_lock.fd, F_SETLKW,
@@ -812,25 +720,17 @@ static int orcm_logical_group_parsing(char *tag, char *line_buf, opal_hash_table
             continue;
         }
 
-        orcm_logical_group_trim_line(line_buf, &line_buf_after_trim);
-        erri = orcm_logical_group_process_line(tag, line_buf_after_trim, io_groups);
+        orcm_logical_group_trim_string(line_buf, &line_buf_after_trim);
+        erri = orcm_logical_group_process_line(line_buf_after_trim, io_groups);
         if (ORCM_SUCCESS != erri) {
             break;
         }
-    }
-    fflush(logical_group_file_lock.file);
-    if (F_RDLCK == logical_group_file_lock.file_lock.l_type) {
-        err_lu_file = orcm_logical_group_lulock_file(F_UNLCK, logical_group_file_lock.fd);
-        if (ORCM_SUCCESS == erri) {
-            erri = err_lu_file;
-        }
-        fclose(logical_group_file_lock.file);
     }
 
     return erri;
 }
 
-static int orcm_logical_group_parse_from_file(char *tag, opal_hash_table_t *io_groups)
+static int orcm_logical_group_parse_from_file(opal_hash_table_t *io_groups)
 {
     char *line_buf = NULL;
     int erri = -1;
@@ -841,163 +741,20 @@ static int orcm_logical_group_parse_from_file(char *tag, opal_hash_table_t *io_g
     }
 
     /* +2 means adding '\0' in the end, and '\n' line break */
-    line_buf = (char*)malloc((MAX_LINE_LENGTH + 2) * sizeof(char));
-    if (NULL == line_buf) {
+    if (NULL == (line_buf = (char*)malloc((MAX_LINE_LENGTH + 2) * sizeof(char)))) {
         ORCM_UTIL_ERROR_MSG("Failed to allocate line buffer for logical groupings.");
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
-    erri = orcm_logical_group_parsing(tag, line_buf, io_groups);
+    erri = orcm_logical_group_parsing(line_buf, io_groups);
 
     SAFEFREE(line_buf);
 
     return erri;
 }
 
-static int orcm_logical_group_save_to_file_copy(char *tag, opal_list_t *nodes_list)
-{
-    orcm_logical_group_node_t *node_regex = NULL;
-    int ret = 0;
-
-    if (NULL == tag || NULL == nodes_list) {
-        return ORCM_SUCCESS;
-    }
-
-    ret = fprintf(logical_group_file_lock.file, "group name=%s\n", tag);
-    if (0 > ret) {
-        return ORCM_ERR_FILE_WRITE_FAILURE;
-    }
-
-    OPAL_LIST_FOREACH(node_regex, nodes_list, orcm_logical_group_node_t) {
-        if (NULL == node_regex) {
-            return ORCM_ERR_FILE_WRITE_FAILURE;
-        }
-        ret = fprintf(logical_group_file_lock.file, "nodelist=%s\n", node_regex->node);
-        if (0 > ret) {
-            return ORCM_ERR_FILE_WRITE_FAILURE;
-        }
-    }
-
-    return ORCM_SUCCESS;
-}
-
-static opal_list_t *orcm_logical_group_do_convertion(opal_list_t *nodes_list,
-                                                     char *nodelist,
-                                                     unsigned int reserved_size)
-{
-    orcm_logical_group_node_t *node_item = NULL;
-    unsigned int current_size = 0;
-    int index = 0, count = opal_list_get_size(nodes_list);
-    opal_list_t *new_nodes_list = OBJ_NEW(opal_list_t);
-    if (NULL == new_nodes_list) {
-        return NULL;
-    }
-
-    OPAL_LIST_FOREACH(node_item, nodes_list, orcm_logical_group_node_t) {
-        index++;
-        current_size = strlen(nodelist);
-        if (reserved_size < current_size + strlen(node_item->node) + 1) {
-            if (ORCM_SUCCESS != orcm_logical_group_list_append(nodelist, new_nodes_list)) {
-                goto clean;
-            }
-            memset(nodelist, '\0', strlen(nodelist));
-        }
-        if (0 < strlen(nodelist)) {
-            strncat(nodelist, ",", sizeof(char));
-        }
-        strncat(nodelist, node_item->node, strlen(node_item->node));
-
-        if (index == count && 0 < strlen(nodelist)) {
-            if (ORCM_SUCCESS != orcm_logical_group_list_append(nodelist, new_nodes_list)) {
-                goto clean;
-            }
-        }
-    }
-
-    return new_nodes_list;
-
-clean:
-    OPAL_LIST_RELEASE(new_nodes_list);
-    return NULL;
-}
-
-opal_list_t *orcm_logical_group_convert_nodes_list(opal_list_t *nodes_list,
-                                                   unsigned int max_size)
-{
-    char *nodelist = NULL;
-    opal_list_t *o_nodes_list = NULL;
-
-    if (NULL == nodes_list || opal_list_is_empty(nodes_list) || 0 >= max_size) {
-        return NULL;
-    }
-
-    nodelist = (char*)calloc(max_size, sizeof(char));
-    if (NULL == nodelist) {
-        return NULL;
-    }
-
-    o_nodes_list = orcm_logical_group_do_convertion(nodes_list, nodelist, max_size);
-    SAFEFREE(nodelist);
-    return o_nodes_list;
-}
-
-static int orcm_logical_group_save_to_file_concat(char *tag, opal_list_t *nodes_list)
-{
-    int erri = ORCM_SUCCESS;
-    opal_list_t *new_nodes_list = orcm_logical_group_convert_nodes_list(nodes_list,
-                                                  MAX_LINE_LENGTH - strlen("namelist="));
-    erri = orcm_logical_group_save_to_file_copy(tag, new_nodes_list);
-    if (NULL != new_nodes_list) {
-        OPAL_LIST_RELEASE(new_nodes_list);
-    }
-    return erri;
-}
-
-static int orcm_logical_group_save_to_file_internal(char *tag, opal_hash_table_t *groups)
-{
-    int erri = ORCM_SUCCESS, err_lu_file = 0, ret = 0;
-    char *key = NULL;
-    size_t key_size = 0;
-    opal_list_t *value = NULL;
-    void *in_node = NULL, *out_node = NULL;
-
-    if (0 == opal_hash_table_get_size(groups)) {
-        ret = fprintf(logical_group_file_lock.file, "# Empty logical grouping set\n");
-        if (0 > ret) {
-            erri = ORCM_ERR_FILE_WRITE_FAILURE;
-        }
-    } else {
-        while (ORCM_SUCCESS == opal_hash_table_get_next_key_ptr(groups, (void**)&key,
-                                        &key_size, (void**)&value, in_node, &out_node)) {
-            if (0 == strncmp(key, tag, strlen(key) + 1) ||
-                0 == strncmp(tag, "*", strlen(tag) + 1)) {
-                erri = orcm_logical_group_save_to_file_concat(key, value);
-                if (ORCM_SUCCESS != erri) {
-                    break;
-                }
-            } else {
-                erri = orcm_logical_group_save_to_file_copy(key, value);
-                if (ORCM_SUCCESS != erri) {
-                    break;
-                }
-            }
-            in_node = out_node;
-            out_node = NULL;
-        }
-    }
-
-    fflush(logical_group_file_lock.file);
-    err_lu_file = orcm_logical_group_lulock_file(F_UNLCK, logical_group_file_lock.fd);
-    if (ORCM_SUCCESS == erri) {
-        erri = err_lu_file;
-    }
-
-    fclose(logical_group_file_lock.file);
-    return erri;
-}
-
 static FILE *orcm_logical_group_open_file(char *storage_filename,
-                                          char *mode, int *o_file_missing)
+                                          char *mode, bool *o_file_missing)
 {
     FILE *storage_file = NULL;
 
@@ -1006,7 +763,7 @@ static FILE *orcm_logical_group_open_file(char *storage_filename,
     } else {
         if (NULL == (storage_file = fopen(storage_filename, mode))) {
             if (ENOENT == errno) {
-                *o_file_missing = 1;
+                *o_file_missing = true;
             } else {
                 ORCM_UTIL_ERROR_MSG("Failed to open file for logical groupings.");
             }
@@ -1016,308 +773,363 @@ static FILE *orcm_logical_group_open_file(char *storage_filename,
     return storage_file;
 }
 
-int orcm_logical_group_load_from_file(char *tag, char *storage_filename,
-                                      opal_hash_table_t *io_groups)
+static int orcm_logical_group_close_file(void)
 {
-    int file_missing = 0;
-    char *mod = NULL;
+    int erri = ORCM_SUCCESS;
+
+    fflush(logical_group_file_lock.file);
+    logical_group_file_lock.file_lock.l_type = F_UNLCK;
+    if (-1 == fcntl(logical_group_file_lock.fd, F_SETLK,
+                    &(logical_group_file_lock.file_lock))) {
+        erri = ORCM_ERR_FILE_READ_FAILURE;
+    }
+    fclose(logical_group_file_lock.file);
+
+    return erri;
+}
+
+static int orcm_logical_group_load_from_file(char *storage_filename,
+                                             opal_hash_table_t *io_groups)
+{
+    bool file_missing = false;
+    char *mod = "r";
+    int erri = ORCM_SUCCESS;
+    int ret = ORCM_SUCCESS;
 
     if (NULL == io_groups) {
         ORCM_UTIL_ERROR_MSG("Missing logical group.");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (F_RDLCK == logical_group_file_lock.file_lock.l_type) {
-        mod = "r";
-    } else {
-        mod = "a+";
-    }
-
+    logical_group_file_lock.file_lock.l_type = F_RDLCK;
     logical_group_file_lock.file = orcm_logical_group_open_file(storage_filename,
                                                                 mod, &file_missing);
     if (NULL == logical_group_file_lock.file) {
-        if (1 == file_missing) {
+        if (file_missing) {
             return ORCM_SUCCESS;
         }
         return ORCM_ERR_FILE_OPEN_FAILURE;
     }
     logical_group_file_lock.fd = fileno(logical_group_file_lock.file);
 
-    return orcm_logical_group_parse_from_file(tag, io_groups);
+    erri = orcm_logical_group_parse_from_file(io_groups);
+    ret = orcm_logical_group_close_file();
+    if (ORCM_SUCCESS == erri) {
+        return ret;
+    }
+
+    return erri;
 }
 
-int orcm_logical_group_save_to_file(char *tag, opal_hash_table_t *groups)
+static opal_list_t *orcm_logical_group_do_convertion(opal_list_t *members_list,
+                                                     char *memberlist,
+                                                     unsigned int reserved_size)
 {
+    orcm_logical_group_member_t *member_item = NULL;
+    unsigned int current_size = 0;
+    int index = 0;
+    int count = opal_list_get_size(members_list);
+    opal_list_t *new_members_list = OBJ_NEW(opal_list_t);
+    if (NULL == new_members_list) {
+        return NULL;
+    }
+
+    OPAL_LIST_FOREACH(member_item, members_list, orcm_logical_group_member_t) {
+        index++;
+        current_size = strlen(memberlist);
+        if (reserved_size < current_size + strlen(member_item->member) + 1) {
+            if (ORCM_SUCCESS != orcm_logical_group_list_append(memberlist, new_members_list)) {
+                goto clean;
+            }
+            memset(memberlist, '\0', strlen(memberlist));
+        }
+        if (0 < strlen(memberlist)) {
+            strncat(memberlist, ",", sizeof(char));
+        }
+        strncat(memberlist, member_item->member, strlen(member_item->member));
+
+        if (index == count && 0 < strlen(memberlist)) {
+            if (ORCM_SUCCESS != orcm_logical_group_list_append(memberlist, new_members_list)) {
+                goto clean;
+            }
+        }
+    }
+
+    return new_members_list;
+
+clean:
+    OPAL_LIST_RELEASE(new_members_list);
+    return NULL;
+}
+
+opal_list_t *orcm_logical_group_convert_members_list(opal_list_t *members_list,
+                                                     unsigned int max_size)
+{
+    char *memberlist = NULL;
+    opal_list_t *o_members_list = NULL;
+
+    if (NULL == members_list || opal_list_is_empty(members_list) || 0 >= max_size) {
+        return NULL;
+    }
+
+    memberlist = (char*)calloc(max_size, sizeof(char));
+    if (NULL == memberlist) {
+        return NULL;
+    }
+
+    o_members_list = orcm_logical_group_do_convertion(members_list, memberlist, max_size);
+    SAFEFREE(memberlist);
+    return o_members_list;
+}
+
+static int orcm_logical_group_save_to_file_concat(char *tag, opal_list_t *members_list)
+{
+    int erri = ORCM_SUCCESS;
+    orcm_logical_group_member_t *regex = NULL;
+    opal_list_t *new_members_list = orcm_logical_group_convert_members_list(members_list,
+                                                MAX_LINE_LENGTH - strlen("member list="));
+
+    if (NULL == tag || NULL == new_members_list) {
+        return erri;
+    }
+
+    if (0 > fprintf(logical_group_file_lock.file, "group name=%s\n", tag)) {
+        erri = ORCM_ERR_FILE_WRITE_FAILURE;
+        goto cleanup;
+    }
+
+    OPAL_LIST_FOREACH(regex, new_members_list, orcm_logical_group_member_t) {
+        if (NULL == regex) {
+            erri = ORCM_ERR_BAD_PARAM;
+            goto cleanup;
+        }
+        if (0 > fprintf(logical_group_file_lock.file, "member list=%s\n", regex->member)) {
+            erri = ORCM_ERR_FILE_WRITE_FAILURE;
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    if (NULL != new_members_list) {
+        OPAL_LIST_RELEASE(new_members_list);
+    }
+    return erri;
+}
+
+static int orcm_logical_group_save_to_file_internal(opal_hash_table_t *groups)
+{
+    int erri = ORCM_SUCCESS;
+    int ret = 0;
+    char *key = NULL;
+    size_t key_size = 0;
+    opal_list_t *value = NULL;
+    void *in_member = NULL;
+    void *out_member = NULL;
+
+    if (-1 == fcntl(logical_group_file_lock.fd, F_SETLKW,
+                    &(logical_group_file_lock.file_lock))) {
+        return ORCM_ERR_FILE_READ_FAILURE;
+    }
+    if (0 == opal_hash_table_get_size(groups)) {
+        ret = fprintf(logical_group_file_lock.file, "# Empty logical grouping set\n");
+        if (0 > ret) {
+            erri = ORCM_ERR_FILE_WRITE_FAILURE;
+        }
+    } else {
+        while (ORCM_SUCCESS == opal_hash_table_get_next_key_ptr(groups, (void**)&key,
+                                        &key_size, (void**)&value, in_member, &out_member)) {
+            erri = orcm_logical_group_save_to_file_concat(key, value);
+            if (ORCM_SUCCESS != erri) {
+                break;
+            }
+            in_member = out_member;
+            out_member = NULL;
+        }
+    }
+
+    return erri;
+}
+
+int orcm_logical_group_save_to_file(char *storage_filename, opal_hash_table_t *groups)
+{
+    bool file_missing = false;
+    char *mod = "w";
+    int erri = ORCM_SUCCESS;
+    int ret = ORCM_SUCCESS;
+
     if (NULL == groups) {
         ORCM_UTIL_ERROR_MSG("Missing logical group.");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (0 != ftruncate(logical_group_file_lock.fd, 0)) {
-        return ORCM_ERR_FILE_WRITE_FAILURE;
+    logical_group_file_lock.file_lock.l_type = F_WRLCK;
+    logical_group_file_lock.file = orcm_logical_group_open_file(storage_filename,
+                                                                mod, &file_missing);
+    if (NULL == logical_group_file_lock.file) {
+        return ORCM_ERR_FILE_OPEN_FAILURE;
+    }
+    logical_group_file_lock.fd = fileno(logical_group_file_lock.file);
+
+    erri = orcm_logical_group_save_to_file_internal(groups);
+    ret = orcm_logical_group_close_file();
+    if (ORCM_SUCCESS == erri) {
+        return ret;
     }
 
-    return orcm_logical_group_save_to_file_internal(tag, groups);
-}
-
-static int orcm_logical_group_trim_noderegex(char *regex, char **o_regex)
-{
-    char *regexp = regex;
-    int erri = ORCM_SUCCESS;
-
-    if (NULL != regexp) {
-        while('\0' != *regexp && (' ' == *regexp || '\t' == *regexp)) {
-            ++regexp;
-        }
-
-        if ('\0' == *regexp) {
-            fprintf(stderr, "\n  ERROR: Given node regex is empty.\n");
-            regexp = NULL;
-            erri = ORCM_ERR_BAD_PARAM;
-        }
-    }
-
-    *o_regex = regexp;
     return erri;
 }
 
-static int orcm_logical_group_is_valid_tag(char *tag)
+static int orcm_logical_group_tag_to_members_nested(char ***tag_array, char ***o_array_string)
 {
-    char *comma = NULL, *openb = NULL, *closeb = NULL;
+    int count = -1;
+    int erri = ORCM_SUCCESS;
+    orcm_logical_group_member_t *tag_member = NULL;
+    char *tag = NULL;
+    opal_list_t *value = NULL;
+    opal_list_t *nested_value = NULL;
 
-    if ('\0' == tag[0]) {
-        ORCM_UTIL_ERROR_MSG("ERROR: Given logical grouping tag is empty.");
-        return ORCM_ERR_BAD_PARAM;
+    count = opal_argv_count(*tag_array);
+    while (0 < count) {
+        tag = (*tag_array)[0];
+        if (ORCM_SUCCESS == (opal_hash_table_get_value_ptr(LOGICAL_GROUP.groups,
+                             (void*)tag, strlen(tag) + 1, (void**)&value))) {
+            if (NULL != value) {
+                OPAL_LIST_FOREACH(tag_member, value, orcm_logical_group_member_t) {
+                    if (NULL == tag_member) {
+                        continue;
+                    }
+                    if (ORCM_SUCCESS == (opal_hash_table_get_value_ptr(LOGICAL_GROUP.groups,
+                        (void*)tag_member->member, strlen(tag_member->member) + 1,
+                        (void**)&nested_value))) {
+                        erri = opal_argv_append_unique_nosize(tag_array,
+                                                              tag_member->member, false);
+                        if (OPAL_SUCCESS != erri) {
+                            return erri;
+                        }
+                        count++;
+                    } else {
+                        erri = opal_argv_append_unique_nosize(o_array_string,
+                                                              tag_member->member, false);
+                        if (OPAL_SUCCESS != erri) {
+                            return erri;
+                        }
+                    }
+                }
+            }
+        }
+        if (OPAL_SUCCESS != (erri = opal_argv_delete(&count, tag_array, 0, 1))) {
+            return erri;
+        }
     }
 
-    if (0 == strncmp(tag, "*", strlen(tag) + 1)) {
-        ORCM_UTIL_ERROR_MSG("Given logical grouping tag could not be *");
-        return ORCM_ERR_BAD_PARAM;
-    }
-    comma = strchr(tag, ',');
-    openb = strchr(tag, '[');
-    closeb= strchr(tag, ']');
-
-    /* the regular expression can not include comma, nor the openb bigger than the closeb*/
-    if (NULL != comma) {
-        ORCM_UTIL_ERROR_MSG("ERROR: Given logical grouping tag must not be a csv list.");
-        return ORCM_ERR_BAD_PARAM;
-    }
-    if (openb < closeb) {
-        ORCM_UTIL_ERROR_MSG("ERROR: Given logical grouping tag must not be a regex.");
-        return ORCM_ERR_BAD_PARAM;
-    }
-
-    return ORCM_SUCCESS;
+    return erri;
 }
 
-static int orcm_logical_group_check_tag(char *tag, opal_list_t **value, int *count,
-                                        opal_hash_table_t **io_groups)
+int orcm_logical_group_parse_array_string(char *regex, char ***o_array_string)
 {
-    int erri = orcm_logical_group_is_valid_tag(tag);
-    if (ORCM_SUCCESS != erri) {
+    int erri = ORCM_SUCCESS;
+    int size = 0;
+    int index = 0;
+    char *o_regex = NULL;
+    char **regex_array = NULL;
+    char **tag_array = NULL;
+
+    orcm_logical_group_trim_string(regex, &o_regex);
+    if (NULL == o_regex || '\0' == *o_regex) {
         return erri;
     }
 
-    *io_groups = orcm_logical_group_list(tag, "*", LOGICAL_GROUP.groups);
-    if (NULL == *io_groups || 0 == opal_hash_table_get_size(*io_groups) || ORCM_SUCCESS !=
-        opal_hash_table_get_value_ptr(*io_groups, tag, strlen(tag) + 1, (void**)value)) {
-        erri = ORCM_ERR_BAD_PARAM;
-    } else if (NULL == *value || 0 == (*count = opal_list_get_size(*value))) {
-        erri = ORCM_ERR_BAD_PARAM;
-    }
-
-    return erri;
-}
-
-static int
-orcm_logical_group_listval_to_nodes(opal_list_t *value, char ***o_names, int count)
-{
-    int index = 0;
-    orcm_logical_group_node_t *node_item = NULL;
-
-    *o_names = (char**)calloc(count, sizeof(char*));
-    if (NULL == *o_names) {
-        return ORCM_ERR_OUT_OF_RESOURCE;
-    }
-
-    OPAL_LIST_FOREACH(node_item, value, orcm_logical_group_node_t) {
-        if (NULL == node_item) {
-            opal_argv_free(*o_names);
-            return ORCM_ERR_BAD_PARAM;
-        }
-        (*o_names)[index++] = strdup(node_item->node);
-    }
-
-    return ORCM_SUCCESS;
-}
-
-static int orcm_logical_group_tag_to_nodes(char *tag, char ***o_names)
-{
-    int count = -1, erri = ORCM_SUCCESS;
-    opal_hash_table_t *io_groups = NULL;
-    opal_list_t *value = NULL;
-
-    erri = orcm_logical_group_check_tag(tag, &value, &count, &io_groups);
-    if (ORCM_SUCCESS != erri) {
+    if (ORCM_SUCCESS != (erri = (orte_regex_extract_node_names(o_regex, &regex_array)))) {
         goto cleanup;
     }
-
-    erri = orcm_logical_group_listval_to_nodes(value, o_names, count);
+    size = opal_argv_count(regex_array);
+    for (index = 0; index < size; index++) {
+        o_regex = regex_array[index];
+        if ('$' == *(regex_array[index])) {
+            o_regex++;
+            erri = opal_argv_append_unique_nosize(&tag_array, o_regex, false);
+            if (OPAL_SUCCESS != erri) {
+                goto cleanup;
+            }
+        } else {
+            erri = opal_argv_append_unique_nosize(o_array_string, o_regex, false);
+            if (OPAL_SUCCESS != erri) {
+                goto cleanup;
+            }
+        }
+    }
+    erri = orcm_logical_group_tag_to_members_nested(&tag_array, o_array_string);
 
 cleanup:
-    if (NULL != io_groups) {
-        opal_hash_table_remove_all(io_groups);
-        OBJ_RELEASE(io_groups);
-    }
-    return erri;
-}
-
-int orcm_logical_group_node_names(char *regex, char ***o_names)
-{
-    int erri = ORCM_SUCCESS;
-    char *o_regex = NULL;
-
-    erri = orcm_logical_group_trim_noderegex(regex, &o_regex);
+    opal_argv_free(regex_array);
+    opal_argv_free(tag_array);
     if (ORCM_SUCCESS != erri) {
-        goto finalize;
+        opal_argv_free(*o_array_string);
     }
-
-    /* If the node regex is a tag: starting with $ */
-    if ('$' == o_regex[0]) {
-        ++o_regex; //Omit the '$' character
-        erri = orcm_logical_group_init();
-        if (ORCM_SUCCESS != erri) {
-            goto finalize;
-        }
-        logical_group_file_lock.file_lock.l_type = F_RDLCK;
-        erri = orcm_logical_group_load_from_file(o_regex, LOGICAL_GROUP.storage_filename,
-                                                 LOGICAL_GROUP.groups);
-        if (ORCM_SUCCESS != erri) {
-            goto finalize;
-        }
-        erri = orcm_logical_group_tag_to_nodes(o_regex, o_names);
-    } else {
-        erri = orte_regex_extract_node_names(regex, o_names);
-    }
-
-finalize:
-    orcm_logical_group_finalize();
     return erri;
 }
 
-static unsigned int orcm_logical_group_list_addup_size(opal_list_t *value, int count)
+static unsigned int orcm_logical_group_argv_addup_size(char **argv, int *count)
 {
-    unsigned int size = 0;
     int index = 0;
-    orcm_logical_group_node_t *node_item = NULL;
+    unsigned int size = 0;
 
-    OPAL_LIST_FOREACH(node_item, value, orcm_logical_group_node_t) {
-        index++;
-        if (NULL == node_item) {
-            break;
-        }
-        size += (strlen(node_item->node) + 1);
+    *count = opal_argv_count(argv);
+    for (; index < *count; index++) {
+        size += (strlen(argv[index]) + 1);
     }
 
     return size;
 }
 
-static int orcm_logical_group_listval_to_nodelist_internal(opal_list_t *value,
-                                                           char **o_nodelist, int count)
-{
-    int index = 0, erri = ORCM_SUCCESS;
-    orcm_logical_group_node_t *node_item = NULL;
-
-    OPAL_LIST_FOREACH(node_item, value, orcm_logical_group_node_t) {
-        index++;
-        if (NULL == node_item) {
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        } else {
-            strncat(*o_nodelist, node_item->node, strlen(node_item->node));
-            if (index != count) {
-                strncat(*o_nodelist, ",", sizeof(char));
-            }
-        }
-    }
-
-    return erri;
-}
-
-static int orcm_logical_group_listval_to_nodelist(opal_list_t *value,
-                                                  char **o_nodelist, int count)
+static int orcm_logical_group_arraystring_to_string(char **array_string, char **string)
 {
     unsigned int size = 0;
     int erri = ORCM_SUCCESS;
+    int index = 0;
+    int count = 0;
 
-    size = orcm_logical_group_list_addup_size(value, count);
-    if (0 == size) {
+    if (0 == (size = orcm_logical_group_argv_addup_size(array_string, &count))) {
         return ORCM_ERR_BAD_PARAM;
     }
 
-    *o_nodelist = (char*)calloc(size, sizeof(char));
-    if (NULL == *o_nodelist) {
-        return ORCM_ERR_BAD_PARAM;
+    if (NULL == (*string = (char*)calloc(size, sizeof(char)))) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
-    erri = orcm_logical_group_listval_to_nodelist_internal(value, o_nodelist, count);
-    if (ORCM_SUCCESS != erri) {
-        SAFEFREE(*o_nodelist);
+    for (; index < count; index++) {
+        strncat(*string, array_string[index], strlen(array_string[index]));
+        if (index != (count - 1)) {
+            strncat(*string, ",", sizeof(char));
+        }
     }
 
     return erri;
 }
 
-static int orcm_logical_group_tag_to_nodelist(char *tag, char **o_nodelist)
-{
-    int count = -1, erri = ORCM_SUCCESS;
-    opal_hash_table_t *io_groups = NULL;
-    opal_list_t *value = NULL;
-
-    erri = orcm_logical_group_check_tag(tag, &value, &count, &io_groups);
-    if (ORCM_SUCCESS != erri) {
-        goto cleanup;
-    }
-
-    erri = orcm_logical_group_listval_to_nodelist(value, o_nodelist, count);
-
-cleanup:
-    if (NULL != io_groups) {
-        opal_hash_table_remove_all(io_groups);
-        OBJ_RELEASE(io_groups);
-    }
-    return erri;
-}
-
-int orcm_logical_group_node_names_list(char *regex, char **o_nodelist)
+int orcm_logical_group_parse_string(char *regex, char **o_string)
 {
     int erri = ORCM_SUCCESS;
-    char *o_regex = NULL;
+    char **o_string_array = NULL;
 
-    erri = orcm_logical_group_trim_noderegex(regex, &o_regex);
+    erri = orcm_logical_group_parse_array_string(regex, &o_string_array);
     if (ORCM_SUCCESS != erri) {
-        goto finalize;
+        return erri;
     }
 
-    if ('$' == o_regex[0]) {
-        ++o_regex;
-        erri = orcm_logical_group_init();
-        if (ORCM_SUCCESS != erri) {
-            goto finalize;
-        }
-        logical_group_file_lock.file_lock.l_type = F_RDLCK;
-        erri = orcm_logical_group_load_from_file(NULL, LOGICAL_GROUP.storage_filename,
-                                                 LOGICAL_GROUP.groups);
-        if (ORCM_SUCCESS != erri) {
-            goto finalize;
-        }
-        erri = orcm_logical_group_tag_to_nodelist(o_regex, o_nodelist);
-    } else {
-        *o_nodelist = regex;
-    }
+    erri = orcm_logical_group_arraystring_to_string(o_string_array, o_string);
+    opal_argv_free(o_string_array);
 
-finalize:
-    orcm_logical_group_finalize();
     return erri;
+}
+
+int orcm_logical_group_load_to_memory(char *config_file)
+{
+    int erri = ORCM_SUCCESS;
+    if (ORCM_SUCCESS != (erri = orcm_logical_group_init(config_file))) {
+        return erri;
+    }
+
+    return orcm_logical_group_load_from_file(LOGICAL_GROUP.storage_filename,
+                                             LOGICAL_GROUP.groups);
 }

@@ -104,6 +104,10 @@ static opal_cmd_line_init_t cmd_line_init[] = {
       NULL, OPAL_CMD_LINE_TYPE_BOOL,
       "Validate site file and exit" },
 
+    { "logical_group_config_file", 'l', "config-file", "config-file", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Logical group configuration file for this orcm chain" },
+
     /* End of list */
     { NULL, '\0', NULL, NULL, 0,
       NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
@@ -112,7 +116,7 @@ static opal_cmd_line_init_t cmd_line_init[] = {
 static void orcmd_recv(int status, orte_process_name_t* sender,
                        opal_buffer_t* buffer, orte_rml_tag_t tag,
                        void* cbdata);
-static int slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp, 
+static int slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp,
                        char *hnp_uri, orcm_alloc_t *alloc, int *stepd_pid);
 static int kill_local(pid_t pid, int signum);
 

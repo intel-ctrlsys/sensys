@@ -21,19 +21,19 @@
 
 BEGIN_C_DECLS
 
-/* structure definition of a node or a comma separated nodelist */
+/* structure definition of a group member */
 typedef struct {
     opal_list_item_t super;
-    char *node;
-} orcm_logical_group_node_t;
+    char *member;
+} orcm_logical_group_member_t;
 
-void logical_group_node_construct(orcm_logical_group_node_t *node_item);
-void logical_group_node_destruct(orcm_logical_group_node_t *node_item);
+void logical_group_member_construct(orcm_logical_group_member_t *member_item);
+void logical_group_member_destruct(orcm_logical_group_member_t *member_item);
 
 /* structure definition of the logical grouping */
 typedef struct {
     /* In-memory hash table: the key is the group name (tag), and the value is the list
-     * of orcm_logical_group_node_t.
+     * of orcm_logical_group_member_t.
      */
     opal_hash_table_t *groups;
 
@@ -53,49 +53,69 @@ extern char *current_tag;
 
 /* public APIs to be used by everywhere in ORCM */
 
-/* Give a node regex, if the regex is a tag of a group name, then return a
- * comma separated node list; otherwise stay unchanged */
-ORCM_DECLSPEC int orcm_logical_group_node_names_list(char *regex, char **o_nodelist);
+/* Give a regex (could be comma separated items), return an
+ * array of strings with each one representing an item
+ *
+ * params:
+ *   Input:
+ *     regex: A string. Could be a regex or a group name staring with a '$'. Multiple items
+ *            are separated with comma
+ *            Example: "node1", "node-[1:1-9]", "$group1", "node1,node2,node[3:1-100]"
+ *                     "node1,$group1", "$group1,$group2".
+ *   Output:
+ *     o_array_string: An array of strings with each string representing an item.
+ *
+ * */
+ORCM_DECLSPEC int orcm_logical_group_parse_array_string(char *regex, char ***o_array_string);
 
-/* Give a node regex (could be a group name of a collection of nodes),
- * return an array of nodes */
-ORCM_DECLSPEC int orcm_logical_group_node_names(char *regex, char ***o_names);
+/* Give a node regex (could be comma separated items), return a
+ * comma separated string containing all the items
+ *
+ * params:
+ *   Input:
+ *     regex: A string. Could be a regex or a group name staring with a '$'. Multiple items
+ *            are separated with comma
+ *            Example: "node1", "node-[1:1-9]", "$group1", "node1,node2,node[3:1-100]"
+ *                     "node1,$group1", "$group1,$group2".
+ *   Output:
+ *     o_string: A string of comma separated items.
+ *
+ * */
+ORCM_DECLSPEC int orcm_logical_group_parse_string(char *regex, char **o_string);
+
+/* Load the content of the logical group config file into an in-memory hash table, in which
+ * the key is the group name, the value is a list of the members in the group
+ *
+ * params:
+ *   Input:
+ *     config_file: The logical group configure file. If set to be NULL, the file is at the
+ *                  default location: orcm_install/etc/orcm-logical-grouping.txt.
+ *   Output:
+ *     The global data: the LOGICAL_GROUP is filled.
+ *
+ * */
+ORCM_DECLSPEC int orcm_logical_group_load_to_memory(char *config_file);
+
+/* cleanup the logical grouping */
+ORCM_DECLSPEC int orcm_logical_group_finalize(void);
 
 /* Internal APIs corresponding to the octl command line tools of logical grouping */
 
-/* initialize the logical grouping */
-int orcm_logical_group_init(void);
+/* add members to a group stored in hash table */
+int orcm_logical_group_add(char *tag, char *regex, opal_hash_table_t *io_groups);
 
-/* add nodes to a group */
-int orcm_logical_group_add(char *tag, char *node_regex, opal_hash_table_t *io_groups);
+/* remove members from a group stored in hash table */
+int orcm_logical_group_remove(char *tag, char *regex, opal_hash_table_t *io_groups);
 
-/* remove nodes from a group */
-int orcm_logical_group_remove(char *tag, char *node_regex, opal_hash_table_t *io_groups);
-
-/* list nodes from a group */
-opal_hash_table_t *orcm_logical_group_list(char *tag, char *node_regex,
-                                           opal_hash_table_t *groups);
-
-/* cleanup the logical grouping */
-int orcm_logical_group_finalize(void);
-
-/* Internal APIs for file operations */
-
-/* load the content of the storage file to an in-memory hash table */
-int orcm_logical_group_load_from_file(char *tag, char *storage_filename,
-                                      opal_hash_table_t *io_groups);
+/* list members from a group stored in hash table */
+opal_hash_table_t *orcm_logical_group_list(char *tag, char *regex, opal_hash_table_t *groups);
 
 /* save the content of an in-memory hash table to the storage file */
-int orcm_logical_group_save_to_file(char *tag, opal_hash_table_t *groups);
+int orcm_logical_group_save_to_file(char *storage_filename, opal_hash_table_t *groups);
 
-/* functions that may be used by others */
+opal_list_t *orcm_logical_group_convert_members_list(opal_list_t *members_list,
+                                                     unsigned int max_size);
 
-/* concatenate multiple items in a list to one */
-opal_list_t *orcm_logical_group_convert_nodes_list(opal_list_t *nodes_list,
-                                                   unsigned int max_size);
-
-/* check if the text is a star that stands for a wild card*/
-int is_do_all_wildcard(char *text);
 END_C_DECLS
 
-#endif //ORCM_UTIL_LOGICAL_GROUP_H
+#endif

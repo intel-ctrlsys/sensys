@@ -245,7 +245,7 @@ drain <nodelist>\"\n");
     }
 
     /* pack the nodelist */
-    if (ORCM_SUCCESS != (rc = orcm_logical_group_node_names_list(argv[2], &nodelist))) {
+    if (ORCM_SUCCESS != (rc = orcm_logical_group_parse_string(argv[2], &nodelist))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;
@@ -330,7 +330,7 @@ resume <nodelist>\"\n");
     }
 
     /* pack the nodelist */
-    if (ORCM_SUCCESS != (rc = orcm_logical_group_node_names_list(argv[2], &nodelist))) {
+    if (ORCM_SUCCESS != (rc = orcm_logical_group_parse_string(argv[2], &nodelist))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
         return rc;

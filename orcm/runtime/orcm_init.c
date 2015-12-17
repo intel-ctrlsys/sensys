@@ -38,6 +38,8 @@
 
 #include "orcm/util/attr.h"
 
+#include "orcm/util/logical_group.h"
+
 int orcm_initialized = 0;
 bool orcm_finalizing = false;
 int orcm_debug_output = -1;
@@ -166,6 +168,12 @@ int orcm_init(orcm_proc_type_t flags)
     }
     if (ORCM_SUCCESS != (ret = orcm_cfgi_base_select())) {
         error = "orcm_cfgi_select";
+        goto error;
+    }
+
+    envar = getenv("ORCM_MCA_logical_group_config_file");
+    if (ORCM_SUCCESS != (ret = orcm_logical_group_load_to_memory(envar))) {
+        error = "orcm_logical_group_load_to_memory";
         goto error;
     }
 

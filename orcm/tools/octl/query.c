@@ -155,7 +155,7 @@ int get_nodes_from_args(char **argv, char ***node_list)
         fprintf(stdout, "ERROR: An empty list of nodes was specified\n");
         return ORCM_ERR_BAD_PARAM;
     }
-    rc = orcm_logical_group_node_names(raw_node_list, &argv_node_list);
+    rc = orcm_logical_group_parse_array_string(raw_node_list, &argv_node_list);
     node_count = opal_argv_count(argv_node_list);
     if (0 == node_count) {
         fprintf(stdout, "ERROR: unable to extract nodelist or an empty list was specified\n");

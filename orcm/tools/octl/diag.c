@@ -28,7 +28,7 @@ cpu <node-list>\"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
-    orcm_logical_group_node_names(argv[2], &nodelist);
+    orcm_logical_group_parse_array_string(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
@@ -133,7 +133,7 @@ int orcm_octl_diag_eth(char **argv)
         return ORCM_ERR_BAD_PARAM;
     }
 
-    orcm_logical_group_node_names(argv[2], &nodelist);
+    orcm_logical_group_parse_array_string(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);
@@ -243,7 +243,7 @@ int orcm_octl_diag_mem(char **argv)
         return ORCM_ERR_BAD_PARAM;
     }
 
-    orcm_logical_group_node_names(argv[2], &nodelist);
+    orcm_logical_group_parse_array_string(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         fprintf(stdout, "\nERROR: unable to extract nodelist\n");
         opal_argv_free(nodelist);

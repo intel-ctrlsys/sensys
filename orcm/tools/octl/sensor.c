@@ -53,7 +53,7 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
     }
 
     /* setup the receiver nodelist */
-    orcm_logical_group_node_names(argv[3], &nodelist);
+    orcm_logical_group_parse_array_string(argv[3], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
         nodelist = NULL;
@@ -295,7 +295,7 @@ int orcm_octl_sensor_policy_set(int cmd, char **argv)
     }
 
     /* setup the receiver nodelist */
-    orcm_logical_group_node_names(argv[3], &nodelist);
+    orcm_logical_group_parse_array_string(argv[3], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
         nodelist = NULL;
@@ -516,7 +516,7 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
         goto done;
     }
 
-    orcm_logical_group_node_names(argv[5], &nodelist);
+    orcm_logical_group_parse_array_string(argv[5], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
         nodelist = NULL;
@@ -647,7 +647,7 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
     }
 
     /* setup the receiver nodelist */
-    orcm_logical_group_node_names(argv[4], &nodelist);
+    orcm_logical_group_parse_array_string(argv[4], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
         nodelist = NULL;
@@ -898,7 +898,7 @@ int orcm_octl_sensor_inventory_get(int cmd, char **argv)
     if(5 == argc) {
         filter = argv[4];
     }
-    orcm_logical_group_node_names(raw_node_list, &argv_node_list);
+    orcm_logical_group_parse_array_string(raw_node_list, &argv_node_list);
     node_count = opal_argv_count(argv_node_list);
 
     if (NULL == raw_node_list || 0 == node_count) {

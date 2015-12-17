@@ -23,6 +23,7 @@
 
 #include "orte/runtime/runtime.h"
 #include "runtime/runtime.h"
+#include "orcm/util/logical_group.h"
 
 int orcm_finalize(void)
 {
@@ -67,6 +68,8 @@ int orcm_finalize(void)
 
     /* finalize the opal utilities */
     opal_finalize();
+
+    orcm_logical_group_finalize();
 
     return ORCM_SUCCESS;
 }

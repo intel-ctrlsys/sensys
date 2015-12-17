@@ -108,7 +108,7 @@ static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *param
                  * Resetting the array index will help in storing only the work steps */
                 *params_array_length = 0;
                 set_nodelist = 1;
-                rc = orcm_logical_group_node_names(input_array[0].data.string, nodelist);
+                rc = orcm_logical_group_parse_array_string(input_array[0].data.string, nodelist);
                 if (ORCM_SUCCESS != rc) {
                     return ORCM_ERROR;
                 }
@@ -335,7 +335,7 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
     }
 
     if (NULL != value[3]) {
-        rc = orcm_logical_group_node_names(value[3], nodelist);
+        rc = orcm_logical_group_parse_array_string(value[3], nodelist);
         if (ORCM_SUCCESS != rc) {
             return ORCM_ERROR;
         }
@@ -474,7 +474,7 @@ static int orcm_octl_analytics_wf_list_parse_args(char **value, char ***nodelist
     }
 
     if (NULL != value[3]) {
-        rc = orcm_logical_group_node_names(value[3], nodelist);
+        rc = orcm_logical_group_parse_array_string(value[3], nodelist);
         if (ORCM_SUCCESS != rc) {
             return ORCM_ERROR;
         }

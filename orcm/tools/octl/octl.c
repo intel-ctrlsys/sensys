@@ -21,7 +21,6 @@ int orcm_octl_sensor_inventory_get(int command, char** argv);
  ******************/
 static int orcm_octl_work(int argc, char *argv[]);
 static int run_cmd(char *cmd);
-static int octl_facility_cleanup(void);
 static void octl_print_illegal_command(char *cmd);
 static void octl_print_error(int rc);
 
@@ -51,10 +50,14 @@ opal_cmd_line_init_t cmd_line_opts[] = {
       "Be Verbose" },
 
     { NULL,
-        'V', NULL, "version",
-        0,
-        &orcm_octl_globals.version, OPAL_CMD_LINE_TYPE_BOOL,
-        "Show version information" },
+      'V', NULL, "version",
+      0,
+      &orcm_octl_globals.version, OPAL_CMD_LINE_TYPE_BOOL,
+      "Show version information" },
+
+    { "logical_group_config_file", 'l', "config-file", "config-file", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Logical group configuration file for this orcm chain" },
 
     /* End of list */
     { NULL, '\0', NULL, NULL, 0, NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }
@@ -73,11 +76,6 @@ main(int argc, char *argv[])
 
         if (ORCM_SUCCESS != (erri = orcm_finalize())) {
             fprintf(stderr, "Failed orcm_finalize\n");
-            break;
-        }
-
-        if (ORCM_SUCCESS != (erri = octl_facility_cleanup())) {
-            fprintf(stderr, "Failed octl facility cleanup\n");
             break;
         }
 
@@ -682,12 +680,6 @@ static int run_cmd(char *cmd)
     }
     opal_argv_free(cmdlist);
     return rc;
-}
-
-static int octl_facility_cleanup(void)
-{
-    int erri = orcm_logical_group_finalize();
-    return erri;
 }
 
 static void octl_print_illegal_command(char *cmd)

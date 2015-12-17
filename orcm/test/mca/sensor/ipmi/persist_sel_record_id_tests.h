@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ *
+ * $COPYRIGHT$
+ *
+ * Additional copyrights may follow
+ *
+ * $HEADER$
+ */
+
 #ifndef PERSIST_SEL_RECORD_ID_TESTS_H
 #define PERSIST_SEL_RECORD_ID_TESTS_H
 

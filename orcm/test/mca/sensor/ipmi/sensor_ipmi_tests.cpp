@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ *
+ * $COPYRIGHT$
+ *
+ * Additional copyrights may follow
+ *
+ * $HEADER$
+ */
+
 #include "sensor_ipmi_tests.h"
 #include "sensor_ipmi_sel_mocked_functions.h"
 
@@ -35,6 +45,53 @@ void ut_sensor_ipmi_tests::populate_capsule(ipmi_capsule_t* cap)
     cap->prop.collected_sel_records = OBJ_NEW(opal_list_t);
 }
 
+bool ut_sensor_ipmi_tests::WildcardCompare(const char* actual_value, const char* pattern)
+{
+    string value = actual_value;
+    string patt = pattern;
+    vector<string> parts;
+    size_t pos = 0;
+    size_t next;
+
+    // Get parts to match from mask...
+    string part;
+    while(pos < patt.size() && string::npos != (next = patt.find('*', pos))) {
+        part = patt.substr(pos, next - pos);
+        if(false == part.empty()) {
+            parts.push_back(part);
+        }
+        pos = next + 1;
+    }
+    if(0 != pos) {
+        part = patt.substr(pos);
+        if(false == part.empty()) {
+            parts.push_back(part);
+        }
+    }
+
+    // Match value to pattern
+    if(string::npos == patt.find_first_not_of("*")) {
+        return true;
+    }
+
+    if(0 == parts.size()) {
+        // No wildcards, just compare...
+        return (value == patt);
+    } else {
+        // Scan value for parts...
+        size_t pos = 0;
+        size_t next;
+        for(size_t i = 0; i < parts.size(); ++i) {
+            next = value.find(parts[i], pos);
+            if(string::npos == next) {
+                return false;
+            }
+            pos = next + parts[i].size();
+        }
+        return true;
+    }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // MOCKED UNIT TESTS
@@ -60,9 +117,9 @@ TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_get_sel_events_positive)
         int count = 0;
         OPAL_LIST_FOREACH(item, cap.prop.collected_sel_records, opal_value_t) {
             if(count == 0) {
-                EXPECT_STREQ("0001 06/03/14 13:38:05 INF BMC  Event Log #07 Log Cleared 6f [02 ff ff]", item->data.string) << "First record was not as expected!";
+                EXPECT_TRUE(WildcardCompare(item->data.string, "0001 * INF BMC  Event Log #07 Log Cleared 6f [02 ff ff]")) << "First record was not as expected!";
             } else if(730 == count) {
-                EXPECT_STREQ("02db 08/11/15 06:33:29 CRT Bios Critical Interrupt #05 FP NMI   (on 00:03.0) 71 [a0 00 18]", item->data.string) << "Last record was not as expected!";
+                EXPECT_TRUE(WildcardCompare(item->data.string, "02db * CRT Bios Critical Interrupt #05 FP NMI   (on 00:03.0) 71 [a0 00 18]")) << "Last record was not as expected!";
             }
             ++count;
         }

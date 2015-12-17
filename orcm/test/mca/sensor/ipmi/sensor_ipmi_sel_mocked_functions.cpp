@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ *
+ * $COPYRIGHT$
+ *
+ * Additional copyrights may follow
+ *
+ * $HEADER$
+ */
+
 #include "sensor_ipmi_sel_mocked_functions.h"
 #include "orcm/mca/sensor/ipmi/sel_callback_defs.h"
 

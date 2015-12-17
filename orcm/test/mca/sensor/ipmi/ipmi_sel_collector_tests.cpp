@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ *
+ * $COPYRIGHT$
+ *
+ * Additional copyrights may follow
+ *
+ * $HEADER$
+ */
+
 // Project Includes
 #include "sensor_ipmi_sel_mocked_functions.h"
 #include "ipmi_sel_collector_tests.h"
@@ -41,6 +51,52 @@ void ut_ipmi_sel_collection::TearDownTestCase()
 }
 
 // Helper functions
+bool ut_ipmi_sel_collection::WildcardCompare(const char* actual_value, const char* pattern)
+{
+    string value = actual_value;
+    string patt = pattern;
+    vector<string> parts;
+    size_t pos = 0;
+    size_t next;
+
+    // Get parts to match from mask...
+    string part;
+    while(pos < patt.size() && string::npos != (next = patt.find('*', pos))) {
+        part = patt.substr(pos, next - pos);
+        if(false == part.empty()) {
+            parts.push_back(part);
+        }
+        pos = next + 1;
+    }
+    if(0 != pos) {
+        part = patt.substr(pos);
+        if(false == part.empty()) {
+            parts.push_back(part);
+        }
+    }
+
+    // Match value to pattern
+    if(string::npos == patt.find_first_not_of("*")) {
+        return true;
+    }
+
+    if(0 == parts.size()) {
+        // No wildcards, just compare...
+        return (value == patt);
+    } else {
+        // Scan value for parts...
+        size_t pos = 0;
+        size_t next;
+        for(size_t i = 0; i < parts.size(); ++i) {
+            next = value.find(parts[i], pos);
+            if(string::npos == next) {
+                return false;
+            }
+            pos = next + parts[i].size();
+        }
+        return true;
+    }
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -169,7 +225,7 @@ TEST_F(ut_ipmi_sel_collection, positive_test_of_events_4)
     ASSERT_EQ(collector.last_record_id_, 730);
     ASSERT_TRUE(collector.scan_new_records(test_ras_event_c));
     ASSERT_EQ(sel_mocking.get_ras_event_count(), 1); // of the data set starting at 730 there is 1 event
-    ASSERT_STREQ(sel_mocking.logged_events()[0].c_str(), "testaggregator=02db 08/11/15 06:33:29 CRT Bios Critical Interrupt #05 FP NMI   (on 00:03.0) 71 [a0 00 18]");
+    ASSERT_TRUE(WildcardCompare(sel_mocking.logged_events()[0].c_str(), "testaggregator=02db * CRT Bios Critical Interrupt #05 FP NMI   (on 00:03.0) 71 [a0 00 18]"));
 }
 
 TEST_F(ut_ipmi_sel_collection, negative_test_of_events)

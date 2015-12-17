@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ *
+ * $COPYRIGHT$
+ *
+ * Additional copyrights may follow
+ *
+ * $HEADER$
+ */
+
 // Project Includes
 #include "sensor_ipmi_sel_mocked_functions.h"
 #include "persist_sel_record_id_tests.h"

@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ *
+ * $COPYRIGHT$
+ *
+ * Additional copyrights may follow
+ *
+ * $HEADER$
+ */
+
 #ifndef SENSOR_IPMI_SEL_MOCKED_FUNCTIONS_H
 #define SENSOR_IPMI_SEL_MOCKED_FUNCTIONS_H
 

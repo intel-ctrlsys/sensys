@@ -444,7 +444,7 @@ int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
             if (NULL == kv || NULL == kv->key) {
                 return num_found;
             }
-            if (!found[j] && !strcmp(kv->key, keys[j])) {
+            if (!strcmp(kv->key, keys[j])) {
                 num_found++;
                 found[j] = true;
                 items[j] = kv;
@@ -452,9 +452,6 @@ int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
 
                 break;
             }
-        }
-        if (num_found >= num_keys) {
-            break;
         }
         i++;
     }

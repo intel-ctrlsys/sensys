@@ -22,5 +22,6 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/mca/sensor/errcounts/Makefile
     orcm/test/mca/analytics/aggregate/Makefile
     orcm/test/mca/analytics/cott/Makefile
+    orcm/test/mca/sensor/snmp/Makefile
     ])
 ])

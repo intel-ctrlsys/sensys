@@ -115,8 +115,12 @@ BuildRequires: sigar >= 1.6.4
 BuildRequires: sigar-devel >= 1.6.4
 BuildRequires: postgresql93
 BuildRequires: postgresql93-devel
+BuildRequires: net-snmp >= 5.7.2
+BuildRequires: net-snmp-devel >= 5.7.2
 Requires: ipmiutil-devel >= 2.9.5
 Requires: sigar >= 1.6.4
+Requires: net-snmp >= 5.7.2
+Requires: net-snmp-devel >= 5.7.2
 
 %description
 This part build and install the Open RCM source tree.
@@ -327,8 +331,12 @@ BuildRequires: sigar >= 1.6.4
 BuildRequires: sigar-devel >= 1.6.4
 BuildRequires: postgresql93
 BuildRequires: postgresql93-devel
+BuildRequires: net-snmp >= 5.7.2
+BuildRequires: net-snmp-devel >= 5.7.2
 Requires: ipmiutil-devel >= 2.9.5
 Requires: sigar >= 1.6.4
+Requires: net-snmp >= 5.7.2
+Requires: net-snmp-devel >= 5.7.2
 
 %description
 The Open Resilient Cluster Manager (ORCM)

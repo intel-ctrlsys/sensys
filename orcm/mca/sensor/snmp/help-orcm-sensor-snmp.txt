@@ -1,0 +1,25 @@
+# -*- text -*-
+#
+# Copyright (c) 2015     Intel, Inc.  All rights reserved.
+#
+# $COPYRIGHT$
+#
+# Additional copyrights may follow
+#
+# $HEADER$
+#
+# This is the US/English general help file
+#
+[no-snmp]
+SNMP plugin sensor is unable to connecto to the remote device.
+Please, provide the connection parameters in the following MCA variables:
+
+sensor_snmp_dev_hostname                Comma sep. list of SNMP device addresses
+sensor_snmp_username                    Community or user name for the SNMP device
+sensor_snmp_password                    Password for the SNMP device (v3)
+sensor_snmp_auth_type                   Authentication type (MD5, SHA1)
+sensor_snmp_sec_type                    Security type (NOAUTH, AUTHNOPRIV, AUTHPRIV)
+sensor_snmp_oid_list                    Comma sep. list of object identfiers (OIDs)
+
+#
+

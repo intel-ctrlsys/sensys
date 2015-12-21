@@ -492,10 +492,8 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
             }
         }
         i++;
-        if (NULL != data_item_parts){
-            opal_argv_free(data_item_parts);
-            data_item_parts = NULL;
-        }
+        opal_argv_free(data_item_parts);
+        data_item_parts = NULL;
     }
 
     values = opal_argv_join(rows, ',');
@@ -2275,6 +2273,8 @@ cleanup_and_exit:
         free(event_id_once_added_str);
     }
 
+    OBJ_DESTRUCT(&item_bm);
+
     return rc;
 }
 
@@ -2491,9 +2491,9 @@ static int postgres_fetch(struct orcm_db_base_module_t *imod,
 
     /* Add new results set handle */
     handle = opal_pointer_array_add(mod->results_sets, (void*)results);
-    if(-1 == handle) {
+    if(0 > handle) {
         rc = ORCM_ERROR;
-        ERR_MSG_FMT_FETCH("opal_pointer_array_add returned: %d", -1);
+        ERR_MSG_FMT_FETCH("opal_pointer_array_add returned: %d", handle);
         goto cleanup_and_exit;
     }
     mod->current_row = 0; /* Simulate 'get_next_row' functionality. */

@@ -73,7 +73,9 @@ static void orcm_analytics_stop_wokflow_step(orcm_workflow_step_t *wf_step)
     orcm_analytics_base_module_t *module = NULL;
 
     module = (orcm_analytics_base_module_t *)wf_step->mod;
-    module->finalize(wf_step->mod);
+    if(NULL != module) {
+        module->finalize(wf_step->mod);
+    }
 }
 
 static void orcm_analytics_stop_wokflow_thread(orcm_workflow_t *wf)

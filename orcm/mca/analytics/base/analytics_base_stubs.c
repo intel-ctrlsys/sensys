@@ -138,10 +138,11 @@ static void orcm_analytics_base_set_event_workflow_step(orcm_workflow_t *wf,
                                                         orcm_workflow_caddy_t *caddy)
 {
     orcm_analytics_base_module_t *module = (orcm_analytics_base_module_t *)wf_step->mod;
-
-    opal_event_set(wf->ev_base, &caddy->ev, -1,
-                   OPAL_EV_WRITE, module->analyze, caddy);
-    opal_event_active(&caddy->ev, OPAL_EV_WRITE, 1);
+    if(NULL != module) {
+        opal_event_set(wf->ev_base, &caddy->ev, -1,
+                       OPAL_EV_WRITE, module->analyze, caddy);
+        opal_event_active(&caddy->ev, OPAL_EV_WRITE, 1);
+    }
 }
 
 void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,

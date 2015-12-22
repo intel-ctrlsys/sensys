@@ -36,6 +36,7 @@
 
 extern "C" {
     #include "opal/runtime/opal_progress_threads.h"
+    #include "opal/runtime/opal.h"
 }
 
 #define NOOP_JOBID -999
@@ -96,6 +97,8 @@ extern "C" {
 void ut_snmp_collector_tests::SetUpTestCase()
 {
     opal_dss_register_vars();
+
+    opal_init_test();
 
     ResetTestEnvironment();
 }
@@ -247,7 +250,6 @@ int ut_snmp_collector_tests::SnmpSynchResponse(netsnmp_session *session,
     variable_list *t_int = new variable_list;
     variable_list *t_float = new variable_list;
     variable_list *t_double = new variable_list;
-    netsnmp_variable_list *vars = new netsnmp_variable_list;
 
     size_t dataLen = strlen(dataStr);
 
@@ -267,7 +269,6 @@ int ut_snmp_collector_tests::SnmpSynchResponse(netsnmp_session *session,
     t_int->type = ASN_INTEGER;
     t_int->val.integer = new long;
     *t_int->val.integer = dataInt;
-
     t_int->next_variable = t_float;
 
     t_float->name = (oid*)strdup("myFloat");
@@ -282,6 +283,7 @@ int ut_snmp_collector_tests::SnmpSynchResponse(netsnmp_session *session,
     t_double->type = ASN_OPAQUE_DOUBLE;
     t_double->val.doubleVal = new double;
     *t_double->val.doubleVal = dataDouble;
+    t_double->next_variable = NULL;
 
     (*response)->variables = t_str;
 
@@ -526,31 +528,31 @@ TEST_F(ut_snmp_collector_tests, test_ev_pause_and_resume)
 
 void ut_snmp_collector_tests::sample_check(opal_buffer_t *bucket)
 {
+   int32_t n = 1;
+   char *plugin_name = NULL;
+   opal_buffer_t *buf = NULL;
+
    ASSERT_FALSE(NULL == bucket);
 
-   vector<vardata> collected_samples = unpackDataFromBuffer(bucket);
+   ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(bucket, &buf, &n, OPAL_BUFFER));
+   ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(buf, &plugin_name, &n, OPAL_STRING));
+
+   vector<vardata> collected_samples = unpackDataFromBuffer(buf);
 
    ASSERT_FALSE(collected_samples.empty());
 
-   cout << "ctime: " << collected_samples[0].getValue<string>() << endl;
-   cout << "hostname: " << collected_samples[1].getValue<string>() << endl;
-   cout << "string: " << collected_samples[2].getValue<string>() << endl;
-
-   cout << "integer: " << collected_samples[3].getValue<int64_t>() << endl;
+   char *str = collected_samples[2].getValue<char*>();
+   ASSERT_STREQ(dataStr, str);
    ASSERT_EQ(collected_samples[3].getValue<int64_t>(), dataInt);
-
-   cout << "float: " << collected_samples[4].getValue<float>() << endl;
    ASSERT_FLOAT_EQ(collected_samples[4].getValue<float>(), dataFloat);
-
-   cout << "double: " << collected_samples[5].getValue<double>() << endl;
    ASSERT_DOUBLE_EQ(collected_samples[5].getValue<double>(), dataDouble);
+
+   OBJ_RELEASE(buf);
 }
 
 TEST_F(ut_snmp_collector_tests, test_sample)
 {
     snmp_impl dummy;
-
-    mca_sensor_snmp_component.use_progress_thread = false;
 
     dummy.init();
 
@@ -570,21 +572,24 @@ TEST_F(ut_snmp_collector_tests, test_sample)
 
 TEST_F(ut_snmp_collector_tests, test_log)
 {
+    int32_t n = 1;
     snmp_impl dummy;
-    opal_buffer_t buffer;
-    orcm_sensor_sampler_t sampler;
+    char *plugin_name = NULL;
+    opal_buffer_t *buf;
 
     dummy.init();
-    ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
-    last_orte_error_ = ORCM_SUCCESS;
+
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
 
     dummy.sample(&sampler);
-    ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
-    last_orte_error_ = ORCM_SUCCESS;
 
-    dummy.log(&buffer);
-    ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(&sampler.bucket, &buf, &n, OPAL_BUFFER));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(buf, &plugin_name, &n, OPAL_STRING));
 
+    dummy.log(buf);
+
+    OBJ_RELEASE(buf);
     dummy.finalize();
 }
 
@@ -611,44 +616,35 @@ TEST_F(ut_snmp_collector_tests, test_component_functions)
 
 TEST_F(ut_snmp_collector_tests, test_pack_collected_data_function)
 {
-    int status;
-    bool emptyResponse;
-    netsnmp_pdu *response = new netsnmp_pdu;
-    vector<vardata> collectedData;
-    string data1;
+    char *str;
     snmpCollector *collector;
+    vector<vardata> collectedData;
 
     collector = new snmpCollector("192.168.1.100", "public");
     collectedData = collector->collectData();
     ASSERT_EQ(collectedData[0].getDataType(),OPAL_STRING);
 
     for (int i = 0; i < collectedData.size(); ++i) {
-      switch (collectedData[i].getDataType()) {
-      case OPAL_STRING:
-        cout << collectedData[i].getKey() << " : " << collectedData[i].getValue<string>() << endl;
-        break;
-      case OPAL_INT32:
-        cout << collectedData[i].getKey() << " : " << collectedData[i].getValue<int>() << endl;
-        break;
-      case OPAL_FLOAT:
-        cout << collectedData[i].getKey() << " : " << collectedData[i].getValue<float>() << endl;
-        break;
-      case OPAL_DOUBLE:
-        cout << collectedData[i].getKey() << " : " << collectedData[i].getValue<double>() << endl;
-        break;
-      default:
-        break;
-      }
+        switch (collectedData[i].getDataType()) {
+            case OPAL_STRING:
+                str = collectedData[i].getValue<char*>();
+                ASSERT_STREQ(str, dataStr);
+                break;
+            case OPAL_INT32:
+                ASSERT_EQ(collectedData[i].getValue<int32_t>(), dataInt);
+                break;
+            case OPAL_INT64:
+                ASSERT_EQ(collectedData[i].getValue<int64_t>(), dataInt);
+                break;
+            case OPAL_FLOAT:
+                ASSERT_FLOAT_EQ(collectedData[i].getValue<float>(), dataFloat);
+                break;
+            case OPAL_DOUBLE:
+                ASSERT_DOUBLE_EQ(collectedData[i].getValue<double>(), dataDouble);
+                break;
+            default:
+                break;
+        }
     }
-
-    delete collector;
-}
-
-TEST_F(ut_snmp_collector_tests, test_set_and_get_OIDs) {
-    string strOID = ".1.3.6.1.2.1.43.14.1.1.4.1.11,.1.3.6.1.2.1.43.14.1.1.4.1.2";
-    collector = new snmpCollector("hostname","commuityname");
-    collector->setOIDs(strOID.c_str());
-    list<string> retValue = collector->getRequestedOIDs();
-    ASSERT_EQ(2, retValue.size());
     delete collector;
 }

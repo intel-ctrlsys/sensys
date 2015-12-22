@@ -1,5 +1,5 @@
 if HAVE_GTEST
-gtestSubdirs=ipmi errcounts
+gtestSubdirs=ipmi errcounts snmp
 endif
 
 # Removed ft_tester from production runs.

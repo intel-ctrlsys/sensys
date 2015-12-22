@@ -68,7 +68,7 @@ void vardata::packTo(opal_buffer_t* buffer) {
     }
     char* labelPtr = strdup(label.c_str());
 
-    if (OPAL_SUCCESS != opal_dss.pack(buffer, &labelPtr, 1, OPAL_STRING)) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &labelPtr, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         throw unableToPack();
     }
@@ -191,8 +191,6 @@ vector<vardata> unpackDataFromBuffer(opal_buffer_t *buffer) {
 }
 
 void packDataToOpalList(vector<vardata> inputData, opal_list_t* opalList) {
-    orcm_value_t* value = NULL;
-
     for(vector<vardata>::iterator it = inputData.begin(); it != inputData.end(); ++it) {
         opal_list_append(opalList, (opal_list_item_t*) it->loadToOrcmValue());
     }

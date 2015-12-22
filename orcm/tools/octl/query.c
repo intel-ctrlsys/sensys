@@ -159,6 +159,7 @@ int get_nodes_from_args(char **argv, char ***node_list)
     node_count = opal_argv_count(argv_node_list);
     if (0 == node_count) {
         fprintf(stdout, "ERROR: unable to extract nodelist or an empty list was specified\n");
+        opal_argv_free(argv_node_list);
         return ORCM_ERR_BAD_PARAM;
     }
     *node_list = argv_node_list;

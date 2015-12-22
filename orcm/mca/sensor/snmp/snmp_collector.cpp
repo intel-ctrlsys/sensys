@@ -16,6 +16,9 @@ snmpCollector::snmpCollector() {
 snmpCollector::snmpCollector(string host, string user) {
     hostname = string(host);
     username = string(user);
+    response = NULL;
+    pdu = NULL;
+    anOID_len = 0;
 
     snmp_sess_init( &session );
     session.peername = const_cast<char*>(hostname.c_str());
@@ -35,6 +38,9 @@ snmpCollector::snmpCollector(string host, string user, string pass, auth_type au
     hostname = string(host);
     username = string(user);
     password = string(pass);
+    response = NULL;
+    pdu = NULL;
+    anOID_len = 0;
 
     snmp_sess_init( &session );
     session.peername = const_cast<char*>(hostname.c_str());
@@ -58,26 +64,26 @@ snmpCollector::~snmpCollector() {
 
 void snmpCollector::dump_pdu(netsnmp_pdu *p) {
     printf("PDU I'm at: %p\n",p);
-    printf("Version id: %d\n",p->version);
+    printf("Version id: %ld\n",p->version);
     printf("Command id: %d\n",p->command);
-    printf("Req id: %d\n",p->reqid);
-    printf("Message id: %d\n",p->msgid);
-    printf("Transaction id: %d\n",p->transid);
-    printf("Session id: %d\n",p->sessid);
-    printf("Error stat: %d\n",p->errstat);
-    printf("Error index: %d\n",p->errindex);
-    printf("Time: %u\n",p->time);
-    printf("Flags: %u\n",p->flags);
+    printf("Req id: %ld\n",p->reqid);
+    printf("Message id: %ld\n",p->msgid);
+    printf("Transaction id: %ld\n",p->transid);
+    printf("Session id: %ld\n",p->sessid);
+    printf("Error stat: %ld\n",p->errstat);
+    printf("Error index: %ld\n",p->errindex);
+    printf("Time: %lu\n",p->time);
+    printf("Flags: %lu\n",p->flags);
     printf("Security model: %d\n",p->securityModel);
     printf("Security level: %d\n",p->securityLevel);
     printf("Msg parse: %d\n",p->msgParseModel);
     printf("Transport data: %p\n",p->transport_data);
     printf("Transport data length: %d\n",p->transport_data_length);
     printf("Domain: %p\n",p->tDomain);
-    printf("Domain len: %d\n",p->tDomainLen);
+    printf("Domain len: %ld\n",p->tDomainLen);
     printf("Variables: %p\n",p->variables);
     printf("Community: %p\n",p->community);
-    printf("Community len: %d\n",p->community_len);
+    printf("Community len: %ld\n",p->community_len);
     printf("Enterprise: %p\n",p->enterprise);
     printf("Enterprise length: %d\n",p->enterprise_length);
     printf("Trap: %d\n",p->trap_type);
@@ -90,10 +96,10 @@ void snmpCollector::dump_pdu(netsnmp_pdu *p) {
 
 void snmpCollector::dump_session(netsnmp_session *s) {
     printf("Session I'm at: %p\n",s);
-    printf("Version: %d\n",s->version);
+    printf("Version: %ld\n",s->version);
     printf("Retries: %d\n",s->retries);
-    printf("Timeout: %d\n",s->timeout);
-    printf("Flags: %u\n",s->flags);
+    printf("Timeout: %ld\n",s->timeout);
+    printf("Flags: %lu\n",s->flags);
     printf("Subsession: %p\n",s->subsession);
     printf("Next: %p\n",s->next);
     printf("Peername: %s\n",s->peername);
@@ -101,7 +107,7 @@ void snmpCollector::dump_session(netsnmp_session *s) {
     printf("Localname: %s\n",s->localname);
     printf("Errno: %d\n", s->s_errno);
     printf("Library Errno: %d\n", s->s_snmp_errno);
-    printf("Session id: %d\n", s->sessid);
+    printf("Session id: %ld\n", s->sessid);
 }
 
 
@@ -166,8 +172,8 @@ vector<vardata> snmpCollector::collectData() {
     } else if (status != STAT_SUCCESS) {
         throw dataCollectionError();
     }
-    retValue = packCollectedData(response);
-    if (response) {
+    if (NULL != response) {
+        retValue = packCollectedData(response);
         snmp_free_pdu(response);
     }
     snmp_close(ss);
@@ -208,10 +214,10 @@ vector<vardata> snmpCollector::packCollectedData(netsnmp_pdu *response) {
 
         char buffer[STRING_BUFFER_SIZE];
         snprint_objid(buffer, STRING_BUFFER_SIZE, vars->name, vars->name_length);
-        var->setKey(string(buffer));
 
-        retValue.push_back(*var);
         if (NULL != var) {
+            var->setKey(string(buffer));
+            retValue.push_back(*var);
             delete var;
         }
     }

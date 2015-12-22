@@ -72,10 +72,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
     int i;
     opal_buffer_t *inventory_snapshot;
     orcm_sensor_sampler_t *sampler;
-
     opal_value_t *kv;
-    opal_list_t *props; /* DB Attributes list */
-
     int limit = 0;
     int ptr_sample_rate = 0;
     char *env_limit = NULL;
@@ -108,20 +105,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
         if (!orcm_sensor_base.dbhandle_acquired && ORCM_PROC_IS_AGGREGATOR) {
-            /* Add a new attribute for disabling autocommit */
-            props = OBJ_NEW(opal_list_t);
-
-            // autocommit
-            kv = OBJ_NEW(opal_value_t);
-            kv->key = strdup("autocommit");
-            kv->type = OPAL_BOOL;
-            if(orcm_sensor_base.enable_group_commits ) {
-                kv->data.flag = false; /* Disable Auto commit/Enable grouped commits */
-            } else {
-                kv->data.flag = true; /* Enable Auto commit/Disable grouped commits */
-            }
-            opal_list_append(props, &kv->super);
-            orcm_db.open("sensor", props, db_open_cb, NULL);
+            orcm_db.open("sensor", NULL, db_open_cb, NULL);
         }
 
         /* create the event base and start the progress engine, if necessary */

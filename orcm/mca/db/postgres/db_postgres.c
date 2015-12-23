@@ -32,6 +32,7 @@
 #include "opal/util/argv.h"
 #include "opal/util/error.h"
 #include "opal/class/opal_bitmap.h"
+#include "orcm/util/utils.h"
 
 #include "orcm/runtime/orcm_globals.h"
 
@@ -51,6 +52,7 @@
 
 #define ORCM_PG_MAX_LINE_LENGTH 4096
 #define STRING_MAX_LEN 1024
+#define TIMESTAMP_STR_LENGTH 40
 
 extern bool is_supported_opal_int_type(opal_data_type_t type);
 extern bool tv_to_str_time_stamp(const struct timeval *time, char *tbuf,
@@ -95,6 +97,10 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
 static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
                                     opal_list_t *input,
                                     opal_list_t *ret);
+static int add_event(mca_db_postgres_module_t* mod,
+                     opal_list_t *input,
+                     opal_bitmap_t *item_bm,
+                     long long int* event_id_once_added);
 static int postgres_store_event(mca_db_postgres_module_t *mod,
                                 opal_list_t *input,
                                 opal_list_t *out);
@@ -215,9 +221,13 @@ static int postgres_init(struct orcm_db_base_module_t *imod)
 }
 
 static void postgres_reconnect_if_needed(mca_db_postgres_module_t* mod) {
+    int i = 0;
     if (CONNECTION_BAD == PQstatus(mod->conn)) {
         opal_output(0, "Attempt to reset the PostgreSQL connection.");
         PQreset(mod->conn);
+        for (i = 0; i < ORCM_DB_PG_STMT_NUM_STMTS; i++) {
+            mod->prepared[i] = false;
+        }
     }
 }
 
@@ -225,21 +235,11 @@ static void postgres_finalize(struct orcm_db_base_module_t *imod)
 {
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
 
-    if (NULL != mod->pguri) {
-        free(mod->pguri);
-    }
-    if (NULL != mod->dbname) {
-        free(mod->dbname);
-    }
-    if (NULL != mod->user) {
-        free(mod->user);
-    }
-    if (NULL != mod->pgoptions) {
-        free(mod->pgoptions);
-    }
-    if (NULL != mod->pgtty) {
-        free(mod->pgtty);
-    }
+    SAFEFREE(mod->pguri);
+    SAFEFREE(mod->dbname);
+    SAFEFREE(mod->user);
+    SAFEFREE(mod->pgoptions);
+    SAFEFREE(mod->pgtty);
     if (NULL != mod->conn) {
         PQfinish(mod->conn);
     }
@@ -329,7 +329,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
 
     char escaped_str[STRING_MAX_LEN];
     char hostname[256];
-    char time_stamp[40];
+    char time_stamp[TIMESTAMP_STR_LENGTH];
     char **data_item_parts=NULL;
     char *data_item;
     orcm_db_item_t item;
@@ -503,8 +503,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
     asprintf(&insert_stmt, "insert into data_sample_raw(hostname,data_item,"
              "time_stamp,value_int,value_real,value_str,units,data_type_id) "
              "values %s", values);
-    free(values);
-    values = NULL;
+    SAFEFREE(values);
 
     /* If we're not in auto commit mode, let's start a new transaction (if
      * one hasn't already been started) */
@@ -539,14 +538,10 @@ cleanup_and_exit:
     if (NULL != res) {
         PQclear(res);
     }
-
     if (NULL != rows) {
         opal_argv_free(rows);
     }
-
-    if (NULL != insert_stmt) {
-        free(insert_stmt);
-    }
+    SAFEFREE(insert_stmt);
     if (NULL != data_item_parts){
         opal_argv_free(data_item_parts);
     }
@@ -572,10 +567,11 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
     char escaped_str[STRING_MAX_LEN];
     char *hostname = NULL;
     char *data_group = NULL;
-    char time_stamp[40];
+    char time_stamp[TIMESTAMP_STR_LENGTH];
     char *data_item;
     orcm_db_item_t item;
     char *units;
+    long long int event_id_once_added = -1;
 
     size_t num_items;
     char **rows = NULL;
@@ -674,6 +670,28 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
         rows[i] = NULL;
     }
 
+    /* If we're not in auto commit mode, let's start a new transaction (if
+     * one hasn't already been started) */
+    if (!mod->tran_started && !mod->autocommit) {
+        res = PQexec(mod->conn, "begin");
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_STORE("Unable to start transaction: %s",
+                              PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+        mod->tran_started = true;
+    }
+
+    rc = add_event(mod, input, &item_bm, &event_id_once_added);
+    if (ORCM_SUCCESS != rc || 0 > event_id_once_added) {
+        ERR_MSG_STORE("Failed to store event");
+        goto cleanup_and_exit;
+    }
+
     /* Build the SQL command with the data provided in the list */
     i = 0;
     j = 0;
@@ -713,42 +731,46 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
             escape_string_apostrophe(item.value.value_str, escaped_str);
             if (NULL != units) {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',NULL,NULL,E'%s','%s',%d,%d,NULL)",
+                         "('%s','%s_%s','%s',NULL,NULL,E'%s','%s',%d,%d,%lld)",
                          hostname, data_group, data_item, time_stamp,
-                         escaped_str, units, mv->value.type, mv->value.type);
+                         escaped_str, units, mv->value.type, mv->value.type,
+                         event_id_once_added);
             } else {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',NULL,NULL,E'%s',NULL,%d,%d,NULL)",
+                         "('%s','%s_%s','%s',NULL,NULL,E'%s',NULL,%d,%d,%lld)",
                          hostname, data_group, data_item, time_stamp,
-                         escaped_str, mv->value.type, mv->value.type);
+                         escaped_str, mv->value.type, mv->value.type,
+                         event_id_once_added);
             }
             break;
         case ORCM_DB_ITEM_REAL:
             if (NULL != units) {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',NULL,%f,NULL,'%s',%d,%d,NULL)",
+                         "('%s','%s_%s','%s',NULL,%f,NULL,'%s',%d,%d,%lld)",
                          hostname, data_group, data_item, time_stamp,
                          item.value.value_real, units, mv->value.type,
-                         mv->value.type);
+                         mv->value.type, event_id_once_added);
             } else {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',NULL,%f,NULL,NULL,%d,%d,NULL)",
+                         "('%s','%s_%s','%s',NULL,%f,NULL,NULL,%d,%d,%lld)",
                          hostname, data_group, data_item, time_stamp,
                          item.value.value_real, mv->value.type,
-                         mv->value.type);
+                         mv->value.type, event_id_once_added);
             }
             break;
         default: /* ORCM_DB_ITEM_INTEGER */
             if (NULL != units) {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',%lld,NULL,NULL,'%s',%d,%d,NULL)",
+                         "('%s','%s_%s','%s',%lld,NULL,NULL,'%s',%d,%d,%lld)",
                          hostname, data_group, data_item, time_stamp,
-                         item.value.value_int, units, mv->value.type, mv->value.type);
+                         item.value.value_int, units, mv->value.type, mv->value.type,
+                         event_id_once_added);
             } else {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',%lld,NULL,NULL,NULL,%d,%d,NULL)",
+                         "('%s','%s_%s','%s',%lld,NULL,NULL,NULL,%d,%d,%lld)",
                          hostname, data_group, data_item, time_stamp,
-                         item.value.value_int, mv->value.type, mv->value.type);
+                         item.value.value_int, mv->value.type, mv->value.type,
+                         event_id_once_added);
             }
         }
         i++;
@@ -771,24 +793,7 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
                                 "app_value_type_id,"
                                 "event_id) "
                            "VALUES %s", values);
-    free(values);
-    values = NULL;
-
-    /* If we're not in auto commit mode, let's start a new transaction (if
-     * one hasn't already been started) */
-    if (!mod->tran_started && !mod->autocommit) {
-        res = PQexec(mod->conn, "begin");
-        if (!status_ok(res)) {
-            rc = ORCM_ERROR;
-            ERR_MSG_FMT_STORE("Unable to start transaction: %s",
-                              PQresultErrorMessage(res));
-            postgres_reconnect_if_needed(mod);
-            goto cleanup_and_exit;
-        }
-        PQclear(res);
-        res = NULL;
-        mod->tran_started = true;
-    }
+    SAFEFREE(values);
 
     res = PQexec(mod->conn, insert_stmt);
     if (!status_ok(res)) {
@@ -807,15 +812,10 @@ cleanup_and_exit:
     if (NULL != res) {
         PQclear(res);
     }
-
     if (NULL != rows) {
         opal_argv_free(rows);
     }
-
-    if (NULL != insert_stmt) {
-        free(insert_stmt);
-    }
-
+    SAFEFREE(insert_stmt);
     OBJ_DESTRUCT(&item_bm);
     return rc;
 }
@@ -951,13 +951,8 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
         }
         PQclear(res);
         res = NULL;
-
-        free(type_str);
-        type_str = NULL;
-        if (NULL != value_str) {
-            free(value_str);
-            value_str = NULL;
-        }
+        SAFEFREE(type_str);
+        SAFEFREE(value_str);
     }
 
     if (mod->autocommit) {
@@ -985,19 +980,11 @@ cleanup_and_exit:
             postgres_reconnect_if_needed(mod);
         }
     }
-
     if (NULL != res) {
         PQclear(res);
     }
-
-    if (NULL != type_str) {
-        free(type_str);
-    }
-
-    if (NULL != value_str) {
-        free(value_str);
-    }
-
+    SAFEFREE(type_str);
+    SAFEFREE(value_str);
     return rc;
 }
 
@@ -1160,13 +1147,8 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
         }
         PQclear(res);
         res = NULL;
-
-        free(type_str);
-        type_str = NULL;
-        if (NULL != value_str) {
-            free(value_str);
-            value_str = NULL;
-        }
+        SAFEFREE(type_str);
+        SAFEFREE(value_str);
         i++;
     }
 
@@ -1199,15 +1181,8 @@ cleanup_and_exit:
     if (NULL != res) {
         PQclear(res);
     }
-
-    if (NULL != type_str) {
-        free(type_str);
-    }
-
-    if (NULL != value_str) {
-        free(value_str);
-    }
-
+    SAFEFREE(type_str);
+    SAFEFREE(value_str);
     OBJ_DESTRUCT(&item_bm);
     return rc;
 }
@@ -1245,8 +1220,8 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
     char *index_str = NULL;
     char *type_str = NULL;
     char *value_str = NULL;
-    char start_time_str[40];
-    char end_time_str[40];
+    char start_time_str[TIMESTAMP_STR_LENGTH];
+    char end_time_str[TIMESTAMP_STR_LENGTH];
 
     orcm_value_t *mv;
     orcm_db_item_t item;
@@ -1353,9 +1328,7 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
     }
     PQclear(res);
     res = NULL;
-
-    free(index_str);
-    index_str = NULL;
+    SAFEFREE(index_str);
 
     if (NULL == test_params) {
         /* No test parameters provided, we're done! */
@@ -1459,13 +1432,8 @@ static int postgres_record_diag_test(struct orcm_db_base_module_t *imod,
         }
         PQclear(res);
         res = NULL;
-
-        free(type_str);
-        type_str = NULL;
-        if (NULL != value_str) {
-            free(value_str);
-            value_str = NULL;
-        }
+        SAFEFREE(type_str);
+        SAFEFREE(value_str);
     }
 
     if (mod->autocommit) {
@@ -1493,23 +1461,12 @@ cleanup_and_exit:
             postgres_reconnect_if_needed(mod);
         }
     }
-
     if (NULL != res) {
         PQclear(res);
     }
-
-    if (NULL != index_str) {
-        free(index_str);
-    }
-
-    if (NULL != type_str) {
-        free(type_str);
-    }
-
-    if (NULL != value_str) {
-        free(value_str);
-    }
-
+    SAFEFREE(index_str);
+    SAFEFREE(type_str);
+    SAFEFREE(value_str);
     return rc;
 }
 
@@ -1549,8 +1506,8 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
     char *index_str = NULL;
     char *type_str = NULL;
     char *value_str = NULL;
-    char start_time_str[40];
-    char end_time_str[40];
+    char start_time_str[TIMESTAMP_STR_LENGTH];
+    char end_time_str[TIMESTAMP_STR_LENGTH];
 
     orcm_value_t *mv;
     opal_value_t *kv;
@@ -1766,9 +1723,7 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
     }
     PQclear(res);
     res = NULL;
-
-    free(index_str);
-    index_str = NULL;
+    SAFEFREE(index_str);
 
     if (num_items <= num_params_found) {
         /* No test parameters provided, we're done! */
@@ -1880,13 +1835,8 @@ static int postgres_store_diag_test(mca_db_postgres_module_t *mod,
         }
         PQclear(res);
         res = NULL;
-
-        free(type_str);
-        type_str = NULL;
-        if (NULL != value_str) {
-            free(value_str);
-            value_str = NULL;
-        }
+        SAFEFREE(type_str);
+        SAFEFREE(value_str);
         i++;
     }
 
@@ -1915,23 +1865,12 @@ cleanup_and_exit:
             postgres_reconnect_if_needed(mod);
         }
     }
-
     if (NULL != res) {
         PQclear(res);
     }
-
-    if (NULL != index_str) {
-        free(index_str);
-    }
-
-    if (NULL != type_str) {
-        free(type_str);
-    }
-
-    if (NULL != value_str) {
-        free(value_str);
-    }
-
+    SAFEFREE(index_str);
+    SAFEFREE(type_str);
+    SAFEFREE(value_str);
     OBJ_DESTRUCT(&item_bm);
     return rc;
 }
@@ -1948,13 +1887,23 @@ cleanup_and_exit:
     opal_output(0, msg, ##__VA_ARGS__); \
     opal_output(0, "***********************************************");
 
-static int postgres_store_event(mca_db_postgres_module_t *mod,
-                                    opal_list_t *input,
-                                    opal_list_t *out)
-{
+
+static int add_event(mca_db_postgres_module_t* mod,
+        opal_list_t *input, opal_bitmap_t* item_bm,
+        long long int* event_id_once_added) {
     int rc = ORCM_SUCCESS;
 
     const int NUM_PARAMS = 6;
+    char event_str_timestamp[TIMESTAMP_STR_LENGTH];
+    char *severity = NULL;
+    char *event_type = NULL;
+    char *version = NULL;
+    char *vendor = NULL;
+    char *description = NULL;
+    opal_value_t *kv = NULL;
+    const int NUM_ADD_EVENT_PARAMS = 6;
+    const char *add_event_params[NUM_ADD_EVENT_PARAMS];
+
     const char *params[] = {
         "ctime",
         "severity",
@@ -1964,47 +1913,10 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
         "description"
     };
     opal_value_t *param_items[] = {NULL, NULL, NULL, NULL, NULL, NULL};
-    opal_bitmap_t item_bm;
-    size_t num_items;
-
-    const int NUM_ADD_EVENT_PARAMS = 6;
-    const int NUM_ADD_EVENT_DATA_PARAMS = 7;
-
-    const char *add_event_params[NUM_ADD_EVENT_PARAMS];
-    const char *add_event_data_params[NUM_ADD_EVENT_DATA_PARAMS];
-
-    int  event_id_once_added = -1;
-    char *event_id_once_added_str = NULL;
-    char event_str_timestamp[40];
-    char *severity = NULL;
-    char *event_type = NULL;
-    char *version = NULL;
-    char *vendor = NULL;
-    char *description = NULL;
-
-    opal_value_t *kv;
-    orcm_value_t *mv;
-    orcm_db_item_t item;
-    char *type_str = NULL;
-    char *value_str = NULL;
-
-    int i;
-
     PGresult *res = NULL;
 
-    bool local_tran_started = false;
-
-    if (NULL == input) {
-        ERR_MSG_SE("No parameters provided");
-        return ORCM_ERR_BAD_PARAM;
-    }
-
-    num_items = opal_list_get_size(input);
-    OBJ_CONSTRUCT(&item_bm, opal_bitmap_t);
-    opal_bitmap_init(&item_bm, (int)num_items);
-
     /* Get the main parameters from the list */
-    orcm_util_find_items(params, NUM_PARAMS, input, param_items, &item_bm);
+    orcm_util_find_items(params, NUM_PARAMS, input, param_items, item_bm);
 
     /* Check parameters */
     if (NULL == param_items[0]) {
@@ -2093,29 +2005,13 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
         if (!status_ok(res)) {
             rc = ORCM_ERROR;
             ERR_MSG_SE(PQresultErrorMessage(res));
-            goto cleanup_and_exit;
-        }
-        PQclear(res);
-        res = NULL;
-
-        mod->prepared[ORCM_DB_PG_STMT_ADD_EVENT] = true;
-    }
-
-    if (mod->autocommit || !mod->tran_started) {
-        res = PQexec(mod->conn, "BEGIN");
-        if (!status_ok(res)) {
-            rc = ORCM_ERROR;
-            ERR_MSG_FMT_SE("Unable to begin transaction: %s",
-                            PQresultErrorMessage(res));
             postgres_reconnect_if_needed(mod);
             goto cleanup_and_exit;
         }
         PQclear(res);
         res = NULL;
-
-        local_tran_started = true;
+        mod->prepared[ORCM_DB_PG_STMT_ADD_EVENT] = true;
     }
-
     res = PQexecPrepared(mod->conn, "add_event", NUM_ADD_EVENT_PARAMS,
                          add_event_params, NULL, NULL, 0);
     if (!status_ok(res)) {
@@ -2125,14 +2021,71 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
         goto cleanup_and_exit;
     }
     // the add_event is expected to return only the event ID that just got added.
-    event_id_once_added = atoi(PQgetvalue(res, 0, 0));
-    if (0 >= event_id_once_added) {
+    *event_id_once_added = atoi(PQgetvalue(res, 0, 0));
+    if (0 >= *event_id_once_added) {
         rc = ORCM_ERROR;
         ERR_MSG_SE("Add event failed to return the new event ID");
         goto cleanup_and_exit;
     }
-    PQclear(res);
-    res = NULL;
+
+cleanup_and_exit:
+    if (NULL != res) {
+        PQclear(res);
+        res = NULL;
+    }
+
+    return rc;
+}
+
+static int postgres_store_event(mca_db_postgres_module_t *mod,
+                                opal_list_t *input,
+                                opal_list_t *out)
+{
+    int rc = ORCM_SUCCESS;
+
+    opal_bitmap_t item_bm;
+    size_t num_items;
+    const int NUM_ADD_EVENT_DATA_PARAMS = 7;
+    const char *add_event_data_params[NUM_ADD_EVENT_DATA_PARAMS];
+    long long int event_id_once_added = -1;
+    orcm_value_t *mv = NULL;
+    orcm_db_item_t item;
+    char *type_str = NULL;
+    char *value_str = NULL;
+    char *event_id_once_added_str = NULL;
+    int i;
+
+    PGresult *res = NULL;
+
+    bool local_tran_started = false;
+
+    if (NULL == input) {
+        ERR_MSG_SE("No parameters provided");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (mod->autocommit || !mod->tran_started) {
+        res = PQexec(mod->conn, "BEGIN");
+        if (!status_ok(res)) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_SE("Unable to begin transaction: %s",
+                    PQresultErrorMessage(res));
+            postgres_reconnect_if_needed(mod);
+            goto cleanup_and_exit;
+        }
+        PQclear(res);
+        res = NULL;
+        local_tran_started = true;
+    }
+
+    num_items = opal_list_get_size(input);
+    OBJ_CONSTRUCT(&item_bm, opal_bitmap_t);
+    opal_bitmap_init(&item_bm, (int)num_items);
+    rc = add_event(mod, input, &item_bm, &event_id_once_added);
+    if (ORCM_SUCCESS != rc || 0 > event_id_once_added) {
+        ERR_MSG_SE("Failed to store event");
+        goto cleanup_and_exit;
+    }
 
     /* Prepare the statement only if it hasn't already been prepared */
     if (!mod->prepared[ORCM_DB_PG_STMT_ADD_EVENT_DATA]) {
@@ -2221,13 +2174,8 @@ static int postgres_store_event(mca_db_postgres_module_t *mod,
         }
         PQclear(res);
         res = NULL;
-
-        free(type_str);
-        type_str = NULL;
-        if (NULL != value_str) {
-            free(value_str);
-            value_str = NULL;
-        }
+        SAFEFREE(type_str);
+        SAFEFREE(value_str);
         i++;
     }
 
@@ -2256,25 +2204,14 @@ cleanup_and_exit:
             postgres_reconnect_if_needed(mod);
         }
     }
-
     if (NULL != res) {
         PQclear(res);
+        res = NULL;
     }
-
-    if (NULL != type_str) {
-        free(type_str);
-    }
-
-    if (NULL != value_str) {
-        free(value_str);
-    }
-
-    if (NULL != event_id_once_added_str) {
-        free(event_id_once_added_str);
-    }
-
+    SAFEFREE(type_str);
+    SAFEFREE(value_str);
+    SAFEFREE(event_id_once_added_str);
     OBJ_DESTRUCT(&item_bm);
-
     return rc;
 }
 
@@ -2505,7 +2442,7 @@ static int postgres_fetch(struct orcm_db_base_module_t *imod,
     opal_list_append(kvs, (void*)result); /* takes ownership */
 
 cleanup_and_exit:
-    free(query);
+    SAFEFREE(query);
     return rc;
 }
 

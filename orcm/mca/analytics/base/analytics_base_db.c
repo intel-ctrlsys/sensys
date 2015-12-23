@@ -31,7 +31,7 @@ void orcm_analytics_base_db_open_cb(int handle, int status, opal_list_t *props,
     }
 
     if (NULL != props) {
-        OPAL_LIST_RELEASE(props);
+        OBJ_RELEASE(props);
     }
 }
 
@@ -88,7 +88,7 @@ bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step)
 static void orcm_analytics_db_cleanup(int db_handle, int status, opal_list_t *list,
                                       opal_list_t *ret, void *cbdata)
 {
-    OPAL_LIST_RELEASE(list);
+    OBJ_RELEASE(list);
 }
 
 int orcm_analytics_base_store(opal_list_t *data_results)

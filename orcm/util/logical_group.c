@@ -278,7 +278,7 @@ int orcm_logical_group_add(char *tag, char *regex, opal_hash_table_t *io_groups)
 cleanup:
     opal_argv_free(new_members);
     if (ORCM_SUCCESS != erri && NULL != group_members) {
-        OPAL_LIST_RELEASE(group_members);
+        OBJ_RELEASE(group_members);
     }
     return erri;
 }
@@ -484,7 +484,7 @@ orcm_logical_group_list_specific_members(opal_list_t *value, char **members)
         }
 
         if (opal_list_is_empty(new_value)) {
-            OPAL_LIST_RELEASE(new_value);
+            OBJ_RELEASE(new_value);
         }
     }
 
@@ -858,7 +858,7 @@ static opal_list_t *orcm_logical_group_do_convertion(opal_list_t *members_list,
     return new_members_list;
 
 clean:
-    OPAL_LIST_RELEASE(new_members_list);
+    OBJ_RELEASE(new_members_list);
     return NULL;
 }
 
@@ -911,7 +911,7 @@ static int orcm_logical_group_save_to_file_concat(char *tag, opal_list_t *member
 
 cleanup:
     if (NULL != new_members_list) {
-        OPAL_LIST_RELEASE(new_members_list);
+        OBJ_RELEASE(new_members_list);
     }
     return erri;
 }

@@ -1104,10 +1104,10 @@ void fetch_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out,
         }
     }
     if(NULL != in) {
-        OPAL_LIST_RELEASE(in);
+        OBJ_RELEASE(in);
     }
     if(NULL != out) {
-        OPAL_LIST_RELEASE(out);
+        OBJ_RELEASE(out);
     }
     data->status = status;
     data->active = false;
@@ -1153,7 +1153,7 @@ char* get_plugin_from_sensor_name(const char* sensor_name)
 }
 
 #define SAFE_FREE(x) if(NULL!=x) { free(x); x = NULL; }
-#define SAFE_OPAL_LIST_RELEASE(x) if(NULL!=x) { OPAL_LIST_RELEASE(x); x = NULL; }
+#define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x = NULL; }
 
 int assemble_response(opal_list_t *db_query_results, opal_buffer_t **response_buffer)
 {
@@ -1257,7 +1257,7 @@ int build_filter_list(opal_buffer_t* buffer,opal_list_t **filter_list)
     return rc;
 }
 #define SAFE_FREE(x) if(NULL!=x) { free(x); x = NULL; }
-#define SAFE_OPAL_LIST_RELEASE(x) if(NULL!=x) { OPAL_LIST_RELEASE(x); x = NULL; }
+#define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x = NULL; }
 #define TMP_STR_SIZE 1024
 
 int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_view)
@@ -1286,7 +1286,7 @@ int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_vi
     if (ORCM_SUCCESS != data.status){
         opal_output(0, "Failed to open database to retrieve sensor");
         if(NULL != filters){
-            SAFE_OPAL_LIST_RELEASE(filters);
+            SAFE_OBJ_RELEASE(filters);
         }
         db_status = data.status;
         goto db_cleanup;
@@ -1295,7 +1295,7 @@ int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_vi
     orcm_db.fetch(data.dbhandle, db_view, filters, fetch_output, fetch_callback, &data);
     ORTE_WAIT_FOR_COMPLETION(data.active);
     /*Free filters list as we no longer need it*/
-    SAFE_OPAL_LIST_RELEASE(filters);
+    SAFE_OBJ_RELEASE(filters);
     if (ORCM_SUCCESS != data.status || -1 == data.session_handle) {
         opal_output(0, "Failed to fetch from the database");
         db_status = data.status;
@@ -1351,14 +1351,14 @@ int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_vi
             }
             string_row->data.string = strdup(tmp_str);
             opal_list_append(*results, &string_row->super);
-            SAFE_OPAL_LIST_RELEASE(row);
+            SAFE_OBJ_RELEASE(row);
         }
     }
 db_cleanup:
     data.status = orcm_db.close_result_set(data.dbhandle, data.session_handle);
     if (ORCM_SUCCESS != data.status){
         opal_output(0, "Failed to close the database results handle");
-        SAFE_OPAL_LIST_RELEASE(*results);
+        SAFE_OBJ_RELEASE(*results);
     }
     data.active = true;
     orcm_db.close(data.dbhandle, close_callback, &data);
@@ -1389,7 +1389,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
     if(ORCM_SUCCESS != data.status) {
         opal_output(0, "Failed to open database to retrieve inventory");
         if(NULL != filters) {
-            SAFE_OPAL_LIST_RELEASE(filters);
+            SAFE_OBJ_RELEASE(filters);
         }
         rv = data.status;
         goto clean_exit;
@@ -1489,23 +1489,23 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
             opal_list_append(*results, &string_row->super);
             first_item = false;
 
-            SAFE_OPAL_LIST_RELEASE(row);
+            SAFE_OBJ_RELEASE(row);
         }
     }
     goto clean_exit;
 
 error_exit:
     SAFE_FREE(tmp);
-    SAFE_OPAL_LIST_RELEASE(row);
+    SAFE_OBJ_RELEASE(row);
     OBJ_RELEASE(string_row);
-    SAFE_OPAL_LIST_RELEASE(*results);
+    SAFE_OBJ_RELEASE(*results);
 
 clean_exit:
     data.status = orcm_db.close_result_set(data.dbhandle, data.session_handle);
 
     if(ORCM_SUCCESS != data.status) {
         opal_output(0, "Failed to close the inventory database results handle");
-        SAFE_OPAL_LIST_RELEASE(*results);
+        SAFE_OBJ_RELEASE(*results);
     }
     data.active = true;
     orcm_db.close(data.dbhandle, close_callback, &data);
@@ -1516,7 +1516,7 @@ clean_exit:
 
     return rv;
 }
-#undef SAFE_OPAL_LIST_RELEASE
+#undef SAFE_OBJ_RELEASE
 #undef SAFE_FREE
 
 void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
@@ -1545,7 +1545,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
     switch(command) {
         case ORCM_GET_DB_QUERY_HISTORY_COMMAND:
             if (ORCM_ERROR == build_filter_list(buffer, &filter_list)){
-                OPAL_LIST_RELEASE(filter_list);
+                OBJ_RELEASE(filter_list);
             }
             query_db_view(filter_list, &results_list, "data_sensors_view");
             if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
@@ -1567,12 +1567,12 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 return;
             }
             if(NULL != results_list){
-                OPAL_LIST_RELEASE(results_list);
+                OBJ_RELEASE(results_list);
             }
             break;
         case ORCM_GET_DB_QUERY_SENSOR_COMMAND:
             if (ORCM_ERROR == build_filter_list(buffer, &filter_list)){
-                OPAL_LIST_RELEASE(filter_list);
+                OBJ_RELEASE(filter_list);
             }
             query_db_view(filter_list, &results_list, "data_sensors_view");
             if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
@@ -1592,12 +1592,12 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 return;
             }
             if(NULL != results_list){
-                OPAL_LIST_RELEASE(results_list);
+                OBJ_RELEASE(results_list);
             }
             break;
         case ORCM_GET_DB_QUERY_LOG_COMMAND:
             if (ORCM_ERROR == build_filter_list(buffer, &filter_list)){
-                OPAL_LIST_RELEASE(filter_list);
+                OBJ_RELEASE(filter_list);
             }
             query_db_view(filter_list, &results_list, "syslog_view");
             if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
@@ -1619,12 +1619,12 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 return;
             }
             if(NULL != results_list){
-                OPAL_LIST_RELEASE(results_list);
+                OBJ_RELEASE(results_list);
             }
             break;
         case ORCM_GET_DB_QUERY_IDLE_COMMAND:
             if (ORCM_ERROR == build_filter_list(buffer, &filter_list)){
-                OPAL_LIST_RELEASE(filter_list);
+                OBJ_RELEASE(filter_list);
             }
             query_db_view(filter_list, &results_list, "nodes_idle_time_view");
             if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
@@ -1646,12 +1646,12 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 return;
             }
             if(NULL != results_list){
-                OPAL_LIST_RELEASE(results_list);
+                OBJ_RELEASE(results_list);
             }
             break;
         case ORCM_GET_DB_QUERY_NODE_COMMAND:
             if (ORCM_ERROR == build_filter_list(buffer, &filter_list)){
-                OPAL_LIST_RELEASE(filter_list);
+                OBJ_RELEASE(filter_list);
             }
             query_db_view(filter_list, &results_list, "node");
             if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
@@ -1673,7 +1673,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 return;
             }
             if(NULL != results_list){
-                OPAL_LIST_RELEASE(results_list);
+                OBJ_RELEASE(results_list);
             }
             break;
         case ORCM_GET_DB_SENSOR_INVENTORY_COMMAND:
@@ -1688,7 +1688,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &tmp_key, &n, OPAL_STRING))) {
                     ORTE_ERROR_LOG(rc);
                     if(NULL != filter_list) {
-                        OPAL_LIST_RELEASE(filter_list);
+                        OBJ_RELEASE(filter_list);
                     }
                     return;
                 }
@@ -1696,7 +1696,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &operation, &n, OPAL_UINT8))) {
                     ORTE_ERROR_LOG(rc);
                     if(NULL != filter_list) {
-                        OPAL_LIST_RELEASE(filter_list);
+                        OBJ_RELEASE(filter_list);
                     }
                     return;
                 }
@@ -1704,7 +1704,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &tmp_str, &n, OPAL_STRING))) {
                     ORTE_ERROR_LOG(rc);
                     if(NULL != filter_list) {
-                        OPAL_LIST_RELEASE(filter_list);
+                        OBJ_RELEASE(filter_list);
                     }
                     return;
                 }
@@ -1747,7 +1747,7 @@ send_buffer:
                 return;
             }
             if(NULL != results_list) {
-                OPAL_LIST_RELEASE(results_list);
+                OBJ_RELEASE(results_list);
             }
             break;
         default:

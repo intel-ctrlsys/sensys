@@ -414,17 +414,13 @@ cleanup:
             OBJ_RELEASE(analytics_vals);
         }
     }
-    if (NULL != hostname) {
-        free(hostname);
-    }
-    if (NULL != log) {
-        free(log);
-    }
+    SAFEFREE(hostname);
+    SAFEFREE(log);
     if ( NULL != key) {
-        OPAL_LIST_RELEASE(key);
+        OBJ_RELEASE(key);
     }
     if ( NULL != non_compute_data) {
-       OPAL_LIST_RELEASE(non_compute_data);
+       OBJ_RELEASE(non_compute_data);
     }
 }
 

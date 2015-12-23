@@ -67,14 +67,14 @@ opal_list_t* orcm_diag_base_prepare_db_input(struct timeval start_time,
     return db_input;
 
 memtestcleanup:
-    OPAL_LIST_RELEASE(db_input);
+    OBJ_RELEASE(db_input);
     return NULL;
 }
 
 void orcm_diag_base_db_cleanup(int db_handle, int status, opal_list_t *list,
                                opal_list_t *ret, void *cbdata)
 {
-    OPAL_LIST_RELEASE(list);
+    OBJ_RELEASE(list);
 
     if (ORTE_SUCCESS != status) {
         ORTE_ERROR_LOG(status);

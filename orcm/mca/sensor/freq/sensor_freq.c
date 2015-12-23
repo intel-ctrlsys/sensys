@@ -919,10 +919,10 @@ static void freq_log_cleanup(char *label, char *hostname, opal_list_t *key,
     SAFEFREE(label);
     SAFEFREE(hostname);
     if ( NULL != key) {
-        OPAL_LIST_RELEASE(key);
+        OBJ_RELEASE(key);
     }
     if ( NULL != non_compute_data) {
-        OPAL_LIST_RELEASE(non_compute_data);
+        OBJ_RELEASE(non_compute_data);
     }
     if ( NULL != analytics_vals) {
         OBJ_RELEASE(analytics_vals);

@@ -1282,10 +1282,10 @@ cleanup:
     SAFEFREE(primary_key);
 
     if ( NULL != key) {
-        OPAL_LIST_RELEASE(key);
+        OBJ_RELEASE(key);
     }
     if ( NULL != non_compute_data) {
-        OPAL_LIST_RELEASE(non_compute_data);
+        OBJ_RELEASE(non_compute_data);
     }
     if (NULL != st) {
         OBJ_RELEASE(st);
@@ -1394,10 +1394,10 @@ static void sigar_log_process_stats(opal_buffer_t *sample, struct timeval sample
 
     cleanup:
         if (NULL != key) {
-            OPAL_LIST_RELEASE(key);
+            OBJ_RELEASE(key);
         }
         if (NULL != non_compute_data) {
-            OPAL_LIST_RELEASE(non_compute_data);
+            OBJ_RELEASE(non_compute_data);
         }
     }
 
@@ -1826,10 +1826,10 @@ static void sigar_log(opal_buffer_t *sample)
 
 cleanup:
     if ( NULL != non_compute_data) {
-        OPAL_LIST_RELEASE(non_compute_data);
+        OBJ_RELEASE(non_compute_data);
     }
     if ( NULL != key) {
-        OPAL_LIST_RELEASE(key);
+        OBJ_RELEASE(key);
     }
     SAFEFREE(hostname);
 }

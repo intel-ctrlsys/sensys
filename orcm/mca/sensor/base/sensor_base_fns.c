@@ -61,7 +61,7 @@ static void db_open_cb(int handle, int status, opal_list_t *props,
         orcm_sensor_base.dbhandle_acquired = false;
     }
     if (NULL != props) {
-        OPAL_LIST_RELEASE(props);
+        OBJ_RELEASE(props);
     }
 
 }
@@ -72,7 +72,6 @@ void orcm_sensor_base_start(orte_jobid_t job)
     int i;
     opal_buffer_t *inventory_snapshot;
     orcm_sensor_sampler_t *sampler;
-    opal_value_t *kv;
     int limit = 0;
     int ptr_sample_rate = 0;
     char *env_limit = NULL;

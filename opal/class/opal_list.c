@@ -102,6 +102,12 @@ static void opal_list_construct(opal_list_t *list)
  */
 static void opal_list_destruct(opal_list_t *list)
 {
+    opal_list_item_t *it;
+
+    while (NULL != (it = opal_list_remove_first(list))) {
+        OBJ_RELEASE(it);
+    }
+
     opal_list_construct(list);
 }
 

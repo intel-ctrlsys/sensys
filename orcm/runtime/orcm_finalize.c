@@ -44,10 +44,10 @@ int orcm_finalize(void)
 
     /* cleanup any globals */
     if (NULL != orcm_clusters) {
-        OPAL_LIST_RELEASE(orcm_clusters);
+        OBJ_RELEASE(orcm_clusters);
     }
     if (NULL != orcm_schedulers) {
-        OPAL_LIST_RELEASE(orcm_schedulers);
+        OBJ_RELEASE(orcm_schedulers);
     }
 
     (void)orte_ess.finalize();

@@ -98,7 +98,7 @@ static int orcm_octl_logical_group_print_list(opal_hash_table_t *groups)
             }
         }
         if (NULL != new_value) {
-            OPAL_LIST_RELEASE(new_value);
+            OBJ_RELEASE(new_value);
         }
         in_member = o_member;
         o_member = NULL;

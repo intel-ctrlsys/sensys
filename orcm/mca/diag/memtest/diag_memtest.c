@@ -236,7 +236,7 @@ static int memtest_log(opal_buffer_t *buf)
         return ORCM_SUCCESS;
     }
 
-    OPAL_LIST_RELEASE(db_input);
+    OBJ_RELEASE(db_input);
     return ORCM_ERR_NO_CONNECTION_ALLOWED;
 }
 

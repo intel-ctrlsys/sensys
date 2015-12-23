@@ -344,7 +344,7 @@ static void finalize(void)
 static void mycleanup(int dbhandle, int status, opal_list_t *kvs,
                       opal_list_t *ret, void *cbdata)
 {
-    OPAL_LIST_RELEASE(kvs);
+    OBJ_RELEASE(kvs);
 }
 
 /*** REMINDER: THIS CALLBACK IS EXECUTED IN THE SENSOR
@@ -476,7 +476,7 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
 	orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL); 
     } else {
         /* cleanup the xfr storage */
-        OPAL_LIST_RELEASE(vals);
+        OBJ_RELEASE(vals);
     }
 
  cleanup:

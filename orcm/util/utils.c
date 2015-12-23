@@ -533,7 +533,7 @@ opal_list_t* orcm_util_copy_opal_list(opal_list_t *src)
 
 cleanup:
     if (NULL != dest) {
-        OPAL_LIST_RELEASE(dest);
+        OBJ_RELEASE(dest);
     }
     return NULL;
 }

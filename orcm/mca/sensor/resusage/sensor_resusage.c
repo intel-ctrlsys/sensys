@@ -448,10 +448,10 @@ static void res_log_node_stats(opal_node_stats_t *nst, char *node, struct timeva
 
 cleanup:
     if ( NULL != key) {
-        OPAL_LIST_RELEASE(key);
+        OBJ_RELEASE(key);
     }
     if ( NULL != non_compute_data) {
-        OPAL_LIST_RELEASE(non_compute_data);
+        OBJ_RELEASE(non_compute_data);
     }
 
 }
@@ -529,10 +529,10 @@ static void res_log_process_stats(opal_pstats_t *st, char *node, struct timeval 
 cleanup:
     SAFEFREE(primary_key);
     if ( NULL != key) {
-        OPAL_LIST_RELEASE(key);
+        OBJ_RELEASE(key);
     }
     if ( NULL != non_compute_data) {
-        OPAL_LIST_RELEASE(non_compute_data);
+        OBJ_RELEASE(non_compute_data);
     }
 }
 

@@ -126,7 +126,7 @@ query_db_cleanup:
         OBJ_RELEASE(xfer);
     }
     if (NULL != filterlist){
-        OPAL_LIST_RELEASE(filterlist);
+        OBJ_RELEASE(filterlist);
     }
     return rc;
 }
@@ -652,7 +652,7 @@ int orcm_octl_query_sensor(int cmd, char **argv)
             OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
                 printf("%s\n", line->data.string);
             }
-            OPAL_LIST_RELEASE(returned_list);
+            OBJ_RELEASE(returned_list);
             printf("\n%u rows were found (%0.3f seconds)\n", rows_retrieved, stop_time-start_time);
         }
     }
@@ -707,7 +707,7 @@ int orcm_octl_query_log(int cmd, char **argv)
             OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
                 printf("%s\n", line->data.string);
             }
-            OPAL_LIST_RELEASE(returned_list);
+            OBJ_RELEASE(returned_list);
             printf("\n%u rows were found (%0.3f seconds)\n", rows_retrieved, stop_time-start_time);
         }
     }
@@ -762,7 +762,7 @@ int orcm_octl_query_idle(int cmd, char **argv)
             OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
                 printf("%s\n", line->data.string);
             }
-            OPAL_LIST_RELEASE(returned_list);
+            OBJ_RELEASE(returned_list);
             printf("\n%u rows were found (%0.3f seconds)\n", rows_retrieved, stop_time-start_time);
         }
     }
@@ -817,7 +817,7 @@ int orcm_octl_query_node(int cmd, char **argv)
             OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
                 printf("%s\n", line->data.string);
             }
-            OPAL_LIST_RELEASE(returned_list);
+            OBJ_RELEASE(returned_list);
             printf("\n%u rows were found (%0.3f seconds)\n", rows_retrieved, stop_time-start_time);
         }
     }

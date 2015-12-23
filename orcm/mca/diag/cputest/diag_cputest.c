@@ -101,7 +101,7 @@ static void finalize(void)
 static void mycleanup(int dbhandle, int status, opal_list_t *kvs,
                       opal_list_t *ret, void *cbdata)
 {
-    OPAL_LIST_RELEASE(kvs);
+    OBJ_RELEASE(kvs);
     if (ORCM_SUCCESS != status){
         ORTE_ERROR_LOG(status);
     }
@@ -241,9 +241,9 @@ static int cputest_log(opal_buffer_t *buf)
         }
         orcm_db.store_new(orcm_diag_base.dbhandle, ORCM_DB_DIAG_DATA, vals[2], NULL, mycleanup, NULL);
     } else {
-        OPAL_LIST_RELEASE(vals[0]);
-        OPAL_LIST_RELEASE(vals[1]);
-        OPAL_LIST_RELEASE(vals[2]);
+        OBJ_RELEASE(vals[0]);
+        OBJ_RELEASE(vals[1]);
+        OBJ_RELEASE(vals[2]);
     }
     return ORCM_SUCCESS;
 }

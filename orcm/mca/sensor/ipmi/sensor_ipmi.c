@@ -94,7 +94,7 @@ static void inv_des(ipmi_inventory_t *trk)
 {
     if(NULL != trk) {
         if(NULL != trk->records) {
-            OPAL_LIST_RELEASE(trk->records);
+            OBJ_RELEASE(trk->records);
         }
         if(NULL != trk->nodename) {
             free(trk->nodename);
@@ -433,10 +433,10 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
 
  cleanup:
     if ( NULL != key) {
-        OPAL_LIST_RELEASE(key);
+        OBJ_RELEASE(key);
     }
     if ( NULL != non_compute_data) {
-        OPAL_LIST_RELEASE(non_compute_data);
+        OBJ_RELEASE(non_compute_data);
     }
 
     return;
@@ -655,10 +655,10 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
     cleanup:
         SAFEFREE(hostname);
         if ( NULL != key) {
-            OPAL_LIST_RELEASE(key);
+            OBJ_RELEASE(key);
         }
         if ( NULL != non_compute_data) {
-            OPAL_LIST_RELEASE(non_compute_data);
+            OBJ_RELEASE(non_compute_data);
         }
     }
 }
@@ -1328,7 +1328,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         if(false == compare_ipmi_record(newhost, oldhost))
         {
             opal_output(0,"IPMI Compare failed; Notify User; Update List; Update Database");
-            OPAL_LIST_RELEASE(oldhost->records);
+            OBJ_RELEASE(oldhost->records);
             oldhost->records=OBJ_NEW(opal_list_t);
             OPAL_LIST_FOREACH(mkv, newhost->records, orcm_value_t) {
                 mkv_copy = OBJ_NEW(orcm_value_t);

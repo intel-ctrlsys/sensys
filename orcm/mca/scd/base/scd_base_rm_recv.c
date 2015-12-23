@@ -116,7 +116,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &state,
                                                   &cnt, OPAL_INT8))) {
             ORTE_ERROR_LOG(rc);
-            OPAL_LIST_RELEASE(nodelist);
+            OBJ_RELEASE(nodelist);
             return;
         }
         if (ORCM_NODE_STATE_UP == state) {
@@ -124,7 +124,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &node,
                                                       &cnt, ORTE_NAME))) {
                 ORTE_ERROR_LOG(rc);
-                OPAL_LIST_RELEASE(nodelist);
+                OBJ_RELEASE(nodelist);
                 return;
             }
 
@@ -132,7 +132,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &have_hwloc_topo,
                                                       &cnt, OPAL_BOOL))) {
                 ORTE_ERROR_LOG(rc);
-                OPAL_LIST_RELEASE(nodelist);
+                OBJ_RELEASE(nodelist);
                 return;
             }
             if (have_hwloc_topo) {
@@ -140,7 +140,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &topo,
                                                           &cnt, OPAL_HWLOC_TOPO))) {
                     ORTE_ERROR_LOG(rc);
-                    OPAL_LIST_RELEASE(nodelist);
+                    OBJ_RELEASE(nodelist);
                     return;
                 }
                 if(10 < opal_output_get_verbosity(orcm_scd_base_framework.framework_output)) {
@@ -190,7 +190,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &node,
                                                       &cnt, ORTE_NAME))) {
                 ORTE_ERROR_LOG(rc);
-                OPAL_LIST_RELEASE(nodelist);
+                OBJ_RELEASE(nodelist);
                 return;
             }
 
@@ -218,7 +218,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &regexp,
                                                       &cnt, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
-                OPAL_LIST_RELEASE(nodelist);
+                OBJ_RELEASE(nodelist);
                 return;
             }
 
@@ -254,7 +254,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &regexp,
                                                       &cnt, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
-                OPAL_LIST_RELEASE(nodelist);
+                OBJ_RELEASE(nodelist);
                 return;
             }
 
@@ -285,7 +285,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
             }
         }
 
-        OPAL_LIST_RELEASE(nodelist);
+        OBJ_RELEASE(nodelist);
     } else if (ORCM_STEPD_COMPLETE_COMMAND == command) {
         OPAL_OUTPUT_VERBOSE((5, orcm_scd_base_framework.framework_output,
                              "%s scd:base:rm:receive got ORCM_STEPD_COMPLETE_COMMAND",

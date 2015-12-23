@@ -156,7 +156,7 @@ void dmidata_inv_des(dmidata_inventory_t *trk)
 {
     if(NULL != trk) {
         if(NULL != trk->records) {
-            OPAL_LIST_RELEASE(trk->records);
+            OBJ_RELEASE(trk->records);
         }
         if (NULL != trk->nodename) {
             free(trk->nodename);
@@ -651,7 +651,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
 
             /* Delete existing host and update the host list with the freshly 
              * received inventory details*/
-            OPAL_LIST_RELEASE(newhost->records);
+            OBJ_RELEASE(newhost->records);
             free(newhost->freq_step_list);
             newhost->records=OBJ_NEW(opal_list_t);
         }

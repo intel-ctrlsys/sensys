@@ -1449,9 +1449,7 @@ static void mcedata_log(opal_buffer_t *sample)
     orcm_analytics.send_data(analytics_vals);
 
 cleanup:
-    if (NULL != hostname) {
-        free(hostname);
-    }
+    SAFEFREE(hostname);
     if (NULL != analytics_vals) {
         OBJ_RELEASE(analytics_vals);
     }

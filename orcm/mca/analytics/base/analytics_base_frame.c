@@ -204,15 +204,14 @@ static void analytics_value_des(orcm_analytics_value_t *p)
     if (NULL == p) {
         return;
     }
-
-    if ( NULL != p->key) {
-        OPAL_LIST_RELEASE(p->key);
+    if (NULL != p->key) {
+        OBJ_RELEASE(p->key);
     }
-    if ( NULL != p->non_compute_data) {
-        OPAL_LIST_RELEASE(p->non_compute_data);
+    if (NULL != p->non_compute_data) {
+        OBJ_RELEASE(p->non_compute_data);
     }
-    if ( NULL != p->non_compute_data) {
-        OPAL_LIST_RELEASE(p->compute_data);
+    if (NULL != p->compute_data) {
+        OBJ_RELEASE(p->compute_data);
     }
 }
 OBJ_CLASS_INSTANCE(orcm_analytics_value_t,

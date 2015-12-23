@@ -425,7 +425,7 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
     compute_list_item_to_next = orcm_util_load_orcm_value(compute_list_item_current->value.key,
               &result, OPAL_DOUBLE, compute_list_item_current->units);
     if (NULL == compute_list_item_to_next) {
-        OPAL_LIST_RELEASE(compute_list_to_next);
+        OBJ_RELEASE(compute_list_to_next);
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
     opal_list_append(compute_list_to_next, (opal_list_item_t *)compute_list_item_to_next);
@@ -436,7 +436,7 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
         if(true == orcm_analytics_base_db_check(caddy->wf_step)){
             rc = send_data_to_evgen(win_statistics, analytics_value_to_next);
             if(ORCM_SUCCESS != rc){
-                OPAL_LIST_RELEASE(compute_list_to_next);
+                OBJ_RELEASE(compute_list_to_next);
                 return rc;
             }
         }
@@ -444,7 +444,7 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
                                          analytics_value_to_next);
         return ORCM_SUCCESS;
     }
-    OPAL_LIST_RELEASE(compute_list_to_next);
+    OBJ_RELEASE(compute_list_to_next);
     return ORCM_ERR_OUT_OF_RESOURCE;
 }
 

@@ -951,7 +951,7 @@ int orcm_octl_sensor_inventory_get(int cmd, char **argv)
         filter = malloc(length + 1);
         if (NULL == filter) {
             if(NULL != node_list) {
-                OPAL_LIST_RELEASE(node_list);
+                OBJ_RELEASE(node_list);
             }
             goto orcm_octl_sensor_inventory_get_cleanup;
         }
@@ -970,7 +970,7 @@ int orcm_octl_sensor_inventory_get(int cmd, char **argv)
         opal_list_append(filter_list, &filter_item->value.super);
     }
     if(NULL != node_list) {
-        OPAL_LIST_RELEASE(node_list);
+        OBJ_RELEASE(node_list);
     }
     /* Get list of results from scheduler (or other management node) */
     rv = get_inventory_list(cmd, filter_list, &returned_list);
@@ -984,7 +984,7 @@ int orcm_octl_sensor_inventory_get(int cmd, char **argv)
         OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
             printf("%s\n", line->data.string);
         }
-        OPAL_LIST_RELEASE(returned_list);
+        OBJ_RELEASE(returned_list);
     }
 
 orcm_octl_sensor_inventory_get_cleanup:
@@ -992,7 +992,7 @@ orcm_octl_sensor_inventory_get_cleanup:
         opal_argv_free(argv_node_list);
     }
     if(NULL != filter_list) {
-        OPAL_LIST_RELEASE(filter_list);
+        OBJ_RELEASE(filter_list);
     }
     return ORCM_SUCCESS; /* Seems octl prints an bad error message if you don't return success...*/
 }

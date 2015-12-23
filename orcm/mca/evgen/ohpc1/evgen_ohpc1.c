@@ -73,7 +73,7 @@ static void cdcon(ohpc1_caddy_t *p)
 static void cddes(ohpc1_caddy_t *p)
 {
     if (NULL != p->list) {
-        OPAL_LIST_RELEASE(p->list);
+        OBJ_RELEASE(p->list);
     }
 }
 static OBJ_CLASS_INSTANCE(ohpc1_caddy_t,

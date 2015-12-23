@@ -3253,7 +3253,7 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
     char *version = NULL;
     char *vendor = NULL;
     char *description = NULL;
-    int  *event_id_once_added = NULL;
+    int  event_id_once_added = -1;
     char *units = NULL;
 
     orcm_db_item_t item;
@@ -3376,8 +3376,8 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
     }
 
     /* Bind the event_id expected to be returned from the call to add_event */
-    ret = SQLBindParameter(add_event_hstmt, 1, SQL_PARAM_OUTPUT, SQL_C_LONG, SQL_INTEGER,
-                           0, 0, (SQLPOINTER)event_id_once_added,
+    ret = SQLBindParameter(add_event_hstmt, 1, SQL_PARAM_OUTPUT, SQL_C_SBIGINT, SQL_BIGINT,
+                           0, 0, (SQLPOINTER)&event_id_once_added,
                            sizeof(event_id_once_added), NULL);
     if (!(SQL_SUCCEEDED(ret))) {
         rc = ORCM_ERROR;
@@ -3474,8 +3474,8 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
     }
 
     /* Bind the event_id parameter.  This will be the same value for all event data */
-    ret = SQLBindParameter(add_event_data_hstmt, 1, SQL_PARAM_INPUT, SQL_C_LONG,
-                           SQL_INTEGER, 0, 0, (SQLPOINTER)event_id_once_added,
+    ret = SQLBindParameter(add_event_data_hstmt, 1, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                           SQL_BIGINT, 0, 0, (SQLPOINTER)&event_id_once_added,
                            sizeof(event_id_once_added), NULL);
     if (!(SQL_SUCCEEDED(ret))) {
         rc = ORCM_ERROR;
@@ -3513,6 +3513,15 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
         if (!(SQL_SUCCEEDED(ret))) {
             rc = ORCM_ERROR;
             ERR_MSG_FMT_SED("SQLBindParameter 2 returned: %d", ret);
+            goto cleanup_and_exit;
+        }
+
+        ret = SQLBindParameter(add_event_data_hstmt, 3, SQL_PARAM_INPUT, SQL_C_LONG,
+                               SQL_INTEGER, 0, 0, (SQLPOINTER)&mv->value.type,
+                               sizeof(mv->value.type), NULL);
+        if (!(SQL_SUCCEEDED(ret))) {
+            rc = ORCM_ERROR;
+            ERR_MSG_FMT_STORE("SQLBindParameter 3 returned: %d", ret);
             goto cleanup_and_exit;
         }
 

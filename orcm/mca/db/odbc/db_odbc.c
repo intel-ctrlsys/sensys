@@ -3257,8 +3257,6 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
     char *units = NULL;
 
     orcm_db_item_t item;
-    orcm_db_item_type_t prev_type = ORCM_DB_ITEM_INTEGER;
-    bool change_value_binding = true;
 
     opal_value_t *kv;
     orcm_value_t *mv;
@@ -3504,8 +3502,7 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
             ERR_MSG_SED("Unsupported value type");
             goto cleanup_and_exit;
         }
-        change_value_binding = prev_type != item.item_type;
-        prev_type = item.item_type;
+
         /* Bind the key_name parameter. */
         ret = SQLBindParameter(add_event_data_hstmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR,
                                SQL_VARCHAR, 0, 0, (SQLPOINTER)mv->value.key,
@@ -3525,107 +3522,87 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
             goto cleanup_and_exit;
         }
 
-        if (change_value_binding) {
-            switch (item.item_type) {
-            case ORCM_DB_ITEM_INTEGER:
-                /* Value is integer, bind to the appropriate value. */
-                ret = SQLBindParameter(add_event_data_hstmt, 4, SQL_PARAM_INPUT, SQL_C_SBIGINT,
-                                       SQL_BIGINT, 0, 0,
-                                       (SQLPOINTER)&item.value.value_int,
-                                       sizeof(item.value.value_int), NULL);
-                if (!(SQL_SUCCEEDED(ret))) {
-                    rc = ORCM_ERROR;
-                    ERR_MSG_FMT_SED("SQLBindParameter 4 returned: %d", ret);
-                    goto cleanup_and_exit;
-                }
-                /* Pass NULL for the real value. */
-                ret = SQLBindParameter(add_event_data_hstmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
-                                       SQL_DOUBLE, 0, 0, NULL,
-                                       0, &null_len);
-                if (!(SQL_SUCCEEDED(ret))) {
-                    rc = ORCM_ERROR;
-                    ERR_MSG_FMT_SED("SQLBindParameter 5 returned: %d", ret);
-                    goto cleanup_and_exit;
-                }
-                /* Pass NULL for the string value. */
-                ret = SQLBindParameter(add_event_data_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
-                                       SQL_VARCHAR, 0, 0, NULL,
-                                       0, &null_len);
-                if (!(SQL_SUCCEEDED(ret))) {
-                    rc = ORCM_ERROR;
-                    ERR_MSG_FMT_SED("SQLBindParameter 6 returned: %d", ret);
-                    goto cleanup_and_exit;
-                }
-                break;
-            case ORCM_DB_ITEM_REAL:
-                /* Pass NULL for the integer value. */
-                ret = SQLBindParameter(add_event_data_hstmt, 4, SQL_PARAM_INPUT, SQL_C_SBIGINT,
-                                       SQL_BIGINT, 0, 0, NULL,
-                                       0, &null_len);
-                if (!(SQL_SUCCEEDED(ret))) {
-                    rc = ORCM_ERROR;
-                    ERR_MSG_FMT_SED("SQLBindParameter 4 returned: %d", ret);
-                    goto cleanup_and_exit;
-                }
-                /* Value is real, bind to the appropriate value. */
-                ret = SQLBindParameter(add_event_data_hstmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
-                                       SQL_DOUBLE, 0, 0,
-                                       (SQLPOINTER)&item.value.value_real,
-                                       sizeof(item.value.value_real), NULL);
-                if (!(SQL_SUCCEEDED(ret))) {
-                    rc = ORCM_ERROR;
-                    ERR_MSG_FMT_SED("SQLBindParameter 5 returned: %d", ret);
-                    goto cleanup_and_exit;
-                }
-                /* Pass NULL for the string value. */
-                ret = SQLBindParameter(add_event_data_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
-                                       SQL_VARCHAR, 0, 0, NULL,
-                                       0, &null_len);
-                if (!(SQL_SUCCEEDED(ret))) {
-                    rc = ORCM_ERROR;
-                    ERR_MSG_FMT_SED("SQLBindParameter 6 returned: %d", ret);
-                    goto cleanup_and_exit;
-                }
-                break;
-            case ORCM_DB_ITEM_STRING:
-                /* Pass NULL for the integer value. */
-                ret = SQLBindParameter(add_event_data_hstmt, 4, SQL_PARAM_INPUT, SQL_C_SBIGINT,
-                                       SQL_BIGINT, 0, 0, NULL,
-                                       0, &null_len);
-                if (!(SQL_SUCCEEDED(ret))) {
-                    rc = ORCM_ERROR;
-                    ERR_MSG_FMT_SED("SQLBindParameter 4 returned: %d", ret);
-                    goto cleanup_and_exit;
-                }
-                /* Pass NULL for the real value. */
-                ret = SQLBindParameter(add_event_data_hstmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
-                                       SQL_DOUBLE, 0, 0, NULL,
-                                       0, &null_len);
-                if (!(SQL_SUCCEEDED(ret))) {
-                    rc = ORCM_ERROR;
-                    ERR_MSG_FMT_SED("SQLBindParameter 5 returned: %d", ret);
-                    goto cleanup_and_exit;
-                }
-                /* Value is string, bind to the appropriate value. */
-                ret = SQLBindParameter(add_event_data_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
-                                       SQL_VARCHAR, 0, 0,
-                                       (SQLPOINTER)item.value.value_str,
-                                       strlen(item.value.value_str), NULL);
-                if (!(SQL_SUCCEEDED(ret))) {
-                    rc = ORCM_ERROR;
-                    ERR_MSG_FMT_SED("SQLBindParameter 6 returned: %d", ret);
-                    goto cleanup_and_exit;
-                }
-                break;
-            default:
+        switch (item.item_type) {
+        case ORCM_DB_ITEM_INTEGER:
+            /* Value is integer, bind to the appropriate value. */
+            ret = SQLBindParameter(add_event_data_hstmt, 4, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                   SQL_BIGINT, 0, 0,
+                                   (SQLPOINTER)&item.value.value_int,
+                                   sizeof(item.value.value_int), NULL);
+            if (!(SQL_SUCCEEDED(ret))) {
                 rc = ORCM_ERROR;
-                ERR_MSG_SED("An unexpected error has occurred while "
-                              "processing the values");
+                ERR_MSG_FMT_SED("SQLBindParameter 4 returned: %d", ret);
                 goto cleanup_and_exit;
             }
-        } else if (ORCM_DB_ITEM_STRING == item.item_type) {
-            /* No need to change the binding for all the values, just update
-             * the string binding. */
+            /* Pass NULL for the real value. */
+            ret = SQLBindParameter(add_event_data_hstmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                   SQL_DOUBLE, 0, 0, NULL,
+                                   0, &null_len);
+            if (!(SQL_SUCCEEDED(ret))) {
+                rc = ORCM_ERROR;
+                ERR_MSG_FMT_SED("SQLBindParameter 5 returned: %d", ret);
+                goto cleanup_and_exit;
+            }
+            /* Pass NULL for the string value. */
+            ret = SQLBindParameter(add_event_data_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0, NULL,
+                                   0, &null_len);
+            if (!(SQL_SUCCEEDED(ret))) {
+                rc = ORCM_ERROR;
+                ERR_MSG_FMT_SED("SQLBindParameter 6 returned: %d", ret);
+                goto cleanup_and_exit;
+            }
+            break;
+        case ORCM_DB_ITEM_REAL:
+            /* Pass NULL for the integer value. */
+            ret = SQLBindParameter(add_event_data_hstmt, 4, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                   SQL_BIGINT, 0, 0, NULL,
+                                   0, &null_len);
+            if (!(SQL_SUCCEEDED(ret))) {
+                rc = ORCM_ERROR;
+                ERR_MSG_FMT_SED("SQLBindParameter 4 returned: %d", ret);
+                goto cleanup_and_exit;
+            }
+            /* Value is real, bind to the appropriate value. */
+            ret = SQLBindParameter(add_event_data_hstmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                   SQL_DOUBLE, 0, 0,
+                                   (SQLPOINTER)&item.value.value_real,
+                                   sizeof(item.value.value_real), NULL);
+            if (!(SQL_SUCCEEDED(ret))) {
+                rc = ORCM_ERROR;
+                ERR_MSG_FMT_SED("SQLBindParameter 5 returned: %d", ret);
+                goto cleanup_and_exit;
+            }
+            /* Pass NULL for the string value. */
+            ret = SQLBindParameter(add_event_data_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
+                                   SQL_VARCHAR, 0, 0, NULL,
+                                   0, &null_len);
+            if (!(SQL_SUCCEEDED(ret))) {
+                rc = ORCM_ERROR;
+                ERR_MSG_FMT_SED("SQLBindParameter 6 returned: %d", ret);
+                goto cleanup_and_exit;
+            }
+            break;
+        case ORCM_DB_ITEM_STRING:
+            /* Pass NULL for the integer value. */
+            ret = SQLBindParameter(add_event_data_hstmt, 4, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                   SQL_BIGINT, 0, 0, NULL,
+                                   0, &null_len);
+            if (!(SQL_SUCCEEDED(ret))) {
+                rc = ORCM_ERROR;
+                ERR_MSG_FMT_SED("SQLBindParameter 4 returned: %d", ret);
+                goto cleanup_and_exit;
+            }
+            /* Pass NULL for the real value. */
+            ret = SQLBindParameter(add_event_data_hstmt, 5, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+                                   SQL_DOUBLE, 0, 0, NULL,
+                                   0, &null_len);
+            if (!(SQL_SUCCEEDED(ret))) {
+                rc = ORCM_ERROR;
+                ERR_MSG_FMT_SED("SQLBindParameter 5 returned: %d", ret);
+                goto cleanup_and_exit;
+            }
+            /* Value is string, bind to the appropriate value. */
             ret = SQLBindParameter(add_event_data_hstmt, 6, SQL_PARAM_INPUT, SQL_C_CHAR,
                                    SQL_VARCHAR, 0, 0,
                                    (SQLPOINTER)item.value.value_str,
@@ -3635,6 +3612,12 @@ static int odbc_store_event(mca_db_odbc_module_t *mod,
                 ERR_MSG_FMT_SED("SQLBindParameter 6 returned: %d", ret);
                 goto cleanup_and_exit;
             }
+            break;
+        default:
+            rc = ORCM_ERROR;
+            ERR_MSG_SED("An unexpected error has occurred while "
+                          "processing the values");
+            goto cleanup_and_exit;
         }
 
         if (NULL != mv->units) {

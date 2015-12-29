@@ -32,6 +32,29 @@ PY_LOG_COMPILER = /usr/bin/python
 #
 
 check_PROGRAMS = snmp_tests
+snmp_testsdir = $(top_builddir)/orcm/test/mca/sensor/snmp/test_files
+snmp_tests_DATA = test_files/authpriv_sec_value.conf \
+            test_files/base.conf \
+            test_files/default_auth_value.conf \
+            test_files/default_sec_value.conf \
+            test_files/empty.conf \
+            test_files/multiple_hosts_on_multiple_snmp_config_tag.conf \
+            test_files/multiple_hosts_on_snmp_config_tag.conf \
+            test_files/noauth_sec_value.conf \
+            test_files/no_node_information_for_this_host.conf \
+            test_files/no_nodes.conf \
+            test_files/no_snmp_config.conf \
+            test_files/no_snmp_config_for_monitored_nodes.conf \
+            test_files/no_tags.conf \
+            test_files/no_version_number.conf \
+            test_files/sha1_auth_value.conf \
+            test_files/snmp.conf \
+            test_files/successful.conf \
+            test_files/wrong_oids_v1.conf \
+            test_files/wrong_oids_v3.conf \
+            test_files/wrong_snmp_tag_entries.conf \
+            test_files/wrong_version_number_01.conf \
+            test_files/wrong_version_number_02.conf
 
 snmp_tests_SOURCES = \
     vardata_tests.cpp \

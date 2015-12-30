@@ -197,8 +197,9 @@ static int analytics_syslog_data(syslog_workflow_value_t *workflow_value,
                                            (int)(log_matches[4].rm_eo - log_matches[4].rm_so));
 
             regex_res=regexec(&regex_comp_wflow, syslog_value.message, 0, NULL, 0);
-            if(!regex_res && syslog_value.severity == atoi(workflow_value->severity) &&
-                syslog_value.facility == atoi(workflow_value->facility)) {
+            if( ( workflow_value->msg_regex == NULL || !regex_res ) &&
+	        ( workflow_value->severity == NULL || syslog_value.severity == atoi(workflow_value->severity) ) &&
+	        ( workflow_value->facility == NULL || syslog_value.facility == atoi(workflow_value->facility) )) {
                     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                                          "%s analytics:syslog: MATCHES USER PARAMS: \"%s\" ",
                                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), syslog_value.message));

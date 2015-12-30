@@ -54,8 +54,7 @@ static int component_close(void)
 
 static int component_query(mca_base_module_t **module, int *priority)
 {
-    /* default, so low priority */
     *module = (mca_base_module_t*)&orcm_evgen_saeg_module;
-    *priority = 10;
+    *priority = 20;
     return ORCM_SUCCESS;
 }

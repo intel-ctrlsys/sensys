@@ -41,6 +41,19 @@ static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
 static int print_completions(orcm_cli_t *cli, char **input);
 static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input);
 static void set_handler_default(int sig);
+static void scroll_up(int *scroll_indx, char *input);
+static void scroll_down(int *scroll_indx, char *input);
+static void save_cmd_history(char *input);
+
+#define CLI_HISTORY_SIZE 15
+
+typedef struct {
+    char hist[CLI_HISTORY_SIZE][ORCM_MAX_CLI_LENGTH];
+    int count;
+    int indx;
+} cli_cmd_hist_t;
+
+static cli_cmd_hist_t cmd_hist = {{"0"},0, 0};
 
 int orcm_cli_create(orcm_cli_t *cli,
                     orcm_cli_init_t *table)
@@ -159,6 +172,7 @@ int orcm_cli_get_cmd(char *prompt,
     char **inputlist = NULL;
     int rc = ORCM_SUCCESS;
     char *tmp = NULL;
+    int scroll_indx = cmd_hist.count;
 
     /* prep the stack */
     memset(input, 0, ORCM_MAX_CLI_LENGTH);
@@ -218,16 +232,16 @@ int orcm_cli_get_cmd(char *prompt,
                 } else if (1 == opal_argv_count(completions)) {
                     /* only 1 possible completion, go ahead and complete it */
                     inputlist = opal_argv_split(input, ' ');
-		    if (NULL == inputlist) {
-			BONK;
-			break;
-		    }
+                    if (NULL == inputlist) {
+                        BONK;
+                        break;
+                    }
                     if (' ' == input[j-1]) {
                         k = 0;
                     } else if (0 != strncmp(inputlist[(opal_argv_count(inputlist) - 1)],
                                             completions[0],
                                             strlen(inputlist[(opal_argv_count(inputlist) - 1)]))) {
-                        
+
                         putchar(' ');
                         input[j++] = ' ';
                         k = 0;
@@ -289,7 +303,7 @@ int orcm_cli_get_cmd(char *prompt,
                 space = true;
             }
             break;
-                
+
         case 0x1b:   // arrows
             /* this is to ignore the garbage that comes out when you type arrows */
             c = getchar();
@@ -299,8 +313,16 @@ int orcm_cli_get_cmd(char *prompt,
                 switch(c) {
                 case 'A':
                     /* up arrow */
+                    printf("\n%s> ", prompt);
+                    scroll_up(&scroll_indx, input);
+                    break;
+
                 case 'B':
                     /* down arrow */
+                    printf("\n%s> ", prompt);
+                    scroll_down(&scroll_indx, input);
+                    break;
+
                 case 'C':
                     /* right arrow */
                 case 'D':
@@ -353,7 +375,7 @@ int orcm_cli_get_cmd(char *prompt,
 
     /* return the assembled command */
     *cmd = strdup(input);
-
+    save_cmd_history(input);
     if (NULL != completions) {
         opal_argv_free(completions);
     }
@@ -577,6 +599,54 @@ static void set_handler_default(int sig)
     sigaction(sig, &act, (struct sigaction *)0);
 }
 
+static void scroll_up(int *scroll_indx, char *input)
+{
+    int indx = *scroll_indx;
+    if (!cmd_hist.count) {
+        return;
+    }
+    strcpy(input, cmd_hist.hist[indx]);
+    if (0  < indx) {
+        indx--;
+    } else {
+        indx = cmd_hist.count;
+    }
+    *scroll_indx = indx;
+    printf("%s", input);
+    return;
+}
+
+static void scroll_down(int *scroll_indx, char *input)
+{
+    int indx = *scroll_indx;
+    if (!cmd_hist.count) {
+        return;
+    }
+    strcpy(input, cmd_hist.hist[indx]);
+    if (cmd_hist.count  > *scroll_indx) {
+        indx++;
+    } else {
+        indx = 0;
+    }
+    *scroll_indx = indx;
+    printf("%s", input);
+    return;
+}
+
+static void save_cmd_history(char *input)
+{
+    if (0 < strlen(input)) {
+        strcpy (cmd_hist.hist[cmd_hist.indx], input);
+        if ((CLI_HISTORY_SIZE - 1) > cmd_hist.count) {
+            cmd_hist.count ++;
+        }
+        if ((CLI_HISTORY_SIZE -1) > cmd_hist.indx) {
+            cmd_hist.indx++;
+        } else {
+            cmd_hist.indx = 0;
+        }
+    }
+}
 
 /***   CLASS INSTANCES   ***/
 static void cmdcon(orcm_cli_cmd_t *p)

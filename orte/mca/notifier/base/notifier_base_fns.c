@@ -25,8 +25,12 @@
 #include "opal/util/argv.h"
 
 #include "orte/util/attr.h"
+#include "orte/mca/errmgr/errmgr.h"
+#include "orte/mca/rml/rml.h"
+
 #include "orte/mca/notifier/base/base.h"
 
+#define NOTIFIER_SAFE_FREE(x) if(NULL != x) free((void*)x); x=NULL
 
 static void orte_notifier_base_identify_modules(char ***modules,
                                                 orte_notifier_request_t *req);
@@ -190,4 +194,76 @@ static void orte_notifier_base_identify_modules(char ***modules,
         }
     }
     return;
+}
+
+int set_notifier_policy(orte_notifier_severity_t sev, char *action)
+{
+    switch (sev) {
+    case ORTE_NOTIFIER_EMERG:
+            NOTIFIER_SAFE_FREE(orte_notifier_base.emerg_actions);
+            orte_notifier_base.emerg_actions = action;
+            break;
+    case ORTE_NOTIFIER_ALERT:
+            NOTIFIER_SAFE_FREE(orte_notifier_base.alert_actions);
+            orte_notifier_base.alert_actions = action;
+            break;
+    case ORTE_NOTIFIER_CRIT:
+            NOTIFIER_SAFE_FREE(orte_notifier_base.crit_actions);
+            orte_notifier_base.crit_actions = action;
+            break;
+    case ORTE_NOTIFIER_WARN:
+            NOTIFIER_SAFE_FREE(orte_notifier_base.warn_actions);
+            orte_notifier_base.warn_actions = action;
+            break;
+    case ORTE_NOTIFIER_NOTICE:
+            NOTIFIER_SAFE_FREE(orte_notifier_base.notice_actions);
+            orte_notifier_base.notice_actions = action;
+            break;
+    case ORTE_NOTIFIER_INFO:
+            NOTIFIER_SAFE_FREE(orte_notifier_base.info_actions);
+            orte_notifier_base.info_actions = action;
+            break;
+    case ORTE_NOTIFIER_DEBUG:
+            NOTIFIER_SAFE_FREE(orte_notifier_base.debug_actions);
+            orte_notifier_base.debug_actions = action;
+            break;
+    case ORTE_NOTIFIER_ERROR:
+            NOTIFIER_SAFE_FREE(orte_notifier_base.error_actions);
+            orte_notifier_base.error_actions = action;
+            break;
+   default: 
+            NOTIFIER_SAFE_FREE(orte_notifier_base.default_actions);
+            orte_notifier_base.default_actions = action;
+            break;
+    }
+    return ORTE_SUCCESS;
+}
+
+const char *get_notifier_policy(orte_notifier_severity_t sev)
+{
+    const char *action = NULL;
+    if (ORTE_NOTIFIER_EMERG ==  sev) {
+        action = orte_notifier_base.emerg_actions; 
+    } else if (ORTE_NOTIFIER_ALERT ==  sev) {
+        action = orte_notifier_base.alert_actions; 
+    } else  if (ORTE_NOTIFIER_CRIT ==  sev) {
+        action = orte_notifier_base.crit_actions; 
+    } else if (ORTE_NOTIFIER_WARN ==  sev) {
+        action = orte_notifier_base.warn_actions; 
+    } else if (ORTE_NOTIFIER_NOTICE ==  sev) {
+        action = orte_notifier_base.notice_actions; 
+    } else if (ORTE_NOTIFIER_INFO ==  sev) {
+        action = orte_notifier_base.info_actions; 
+    } else if (ORTE_NOTIFIER_DEBUG ==  sev) {
+        action = orte_notifier_base.debug_actions; 
+    } else if (ORTE_NOTIFIER_ERROR ==  sev) {
+        action = orte_notifier_base.error_actions; 
+    } else {
+        action = orte_notifier_base.default_actions; 
+    } 
+    if (NULL == action) {
+        action = orte_notifier_base.default_actions; 
+    } 
+
+    return action;
 }

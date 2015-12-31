@@ -93,6 +93,7 @@
 
 #include "orcm/mca/sst/base/base.h"
 #include "orcm/mca/sst/orcmd/sst_orcmd.h"
+#include "orcm/runtime/orcm_cmd_server.h"
 
 /* API functions */
 
@@ -681,6 +682,13 @@ static int orcmd_init(void)
         goto error;
     }
 
+    /* setup the cmd server */
+    if (ORCM_SUCCESS != (ret = orcm_cmd_server_init())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_cmd_server";
+        goto error;
+    }
+
     return ORTE_SUCCESS;
     
  error:
@@ -714,6 +722,7 @@ static void orcmd_finalize(void)
     }
 
     /* close frameworks */
+    (void) orcm_cmd_server_finalize();
     (void) mca_base_framework_close(&orcm_diag_base_framework);
     (void) mca_base_framework_close(&orte_filem_base_framework);
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);

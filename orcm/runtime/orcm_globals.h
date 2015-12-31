@@ -135,6 +135,15 @@ typedef uint8_t orcm_sensor_cmd_flag_t;
 #define ORCM_RESET_SENSOR_SAMPLING_COMMAND    9
 
 
+/* define notifier commands */
+typedef uint8_t orcm_cmd_server_flag_t;
+#define ORCM_CMD_SERVER_T OPAL_UINT8
+
+#define ORCM_SET_NOTIFIER_COMMAND               1
+#define ORCM_GET_NOTIFIER_COMMAND               2
+#define ORCM_SET_NOTIFIER_POLICY_COMMAND        3
+#define ORCM_GET_NOTIFIER_POLICY_COMMAND        4
+
 /** version string of ORCM */
 ORCM_DECLSPEC extern const char openrcm_version_string[];
 
@@ -172,6 +181,9 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 #define ORCM_RML_TAG_SENSOR        (ORTE_RML_TAG_MAX + 11)
 /* db fetch */
 #define ORCM_RML_TAG_ORCMD_FETCH   (ORTE_RML_TAG_MAX + 12)
+/* cmd server */
+#define ORCM_RML_TAG_CMD_SERVER            (ORTE_RML_TAG_MAX + 13)
+
 
 /* define event base priorities */
 #define ORCM_SCHED_PRI OPAL_EV_MSG_HI_PRI

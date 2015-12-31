@@ -139,6 +139,16 @@ static orcm_cli_init_t cli_init[] = {
     { { "sensor", NULL }, "reset", 0, 2, "Reset sampling to service load defaults for the current "
     "datagroup or sensor for a node-list: reset <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
 
+    /****** notifier commands ******/
+    { { NULL }, "notifier", 0, 0, "notifier" },
+    // sensor set
+    { { "notifier", NULL }, "set", 0, 0, "Set Notifier Commands" },
+    // notifier set policy subcommand
+    { { "notifier", "set", NULL }, "policy", 0, 3, "notifier set policy <severity> <action> <nodelist>" },
+    { { "notifier", NULL }, "get", 0, 0, "Get Notifier Commands" },
+    // notifier get policy subcommand
+    { { "notifier", "get", NULL }, "policy", 0, 2, "notifier get policy <nodelist>" },
+
     /****** power command ******/
     { { NULL }, "power", 0, 0, "Global Power Policy" },
     { { "power", NULL }, "set", 0, 0, "Set Power Policy" },
@@ -290,6 +300,7 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "disable",           //45
                                      "reset",             //46
                                      "sampling",          //47
+                                     "notifier",          //48
                                      "\0" };
 
 END_C_DECLS

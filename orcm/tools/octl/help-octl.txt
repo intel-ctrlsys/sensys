@@ -102,3 +102,12 @@ USAGE: query node status <nodelist>
 [octl:query:event]
 ERROR: %s
 USAGE: query event start-date start-time end-date end-time <nodelist>
+
+[octl:get:notifier-usage]
+ERROR: %s
+USAGE: notifier get policy <nodelist>
+
+[octl:set:notifier-usage]
+ERROR: %s
+USAGE: notifier set policy <severity> <action> <nodelist>
+

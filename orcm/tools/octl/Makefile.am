@@ -41,6 +41,7 @@ octl_SOURCES = \
         grouping.h \
         grouping.c \
         analytics.c \
+        notifier.c \
         query.c
 
 # the following empty octl_LDFLAGS is used

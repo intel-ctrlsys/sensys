@@ -42,6 +42,10 @@
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/version.h"
 
+#define TAG  "octl:command-line:failure"
+#define PACKERR  "internal buffer pack error"
+#define UNPACKERR "internal buffer unpack error"
+
 BEGIN_C_DECLS
 
 int orcm_octl_resource_status(char **argv);
@@ -69,6 +73,7 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv);
 int orcm_octl_sensor_sample_rate_get(int cmd, char **argv);
 int orcm_octl_sensor_policy_set(int cmd, char **argv);
 int orcm_octl_sensor_policy_get(int cmd, char **argv);
+int orcm_octl_sensor_inventory_get(int command, char** argv);
 int orcm_octl_logical_group_add(int argc, char **argv);
 int orcm_octl_logical_group_remove(int argc, char **argv);
 int orcm_octl_logical_group_list(int argc, char **argv);
@@ -82,6 +87,8 @@ int orcm_octl_query_node(int cmd, char **argv);
 int orcm_octl_query_event(int cmd, char **argv);
 int orcm_octl_sensor_inventory_get(int command, char** argv);
 int orcm_octl_sensor_change_sampling(int command, char** cmdlist);
+int get_notifier_policy(int cmd, char **argv);
+int set_notifier_policy(int cmd, char **argv);
 
 END_C_DECLS
 

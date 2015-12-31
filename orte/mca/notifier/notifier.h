@@ -66,16 +66,16 @@ ORTE_DECLSPEC extern int orte_notifier_debug_output;
 #define ORTE_NOTIFIER_MAX_BUF	512
 
 /* Severities */
-typedef enum {
-    ORTE_NOTIFIER_EMERG = LOG_EMERG,
-    ORTE_NOTIFIER_ALERT = LOG_ALERT,
-    ORTE_NOTIFIER_CRIT = LOG_CRIT,
-    ORTE_NOTIFIER_ERROR = LOG_ERR,
-    ORTE_NOTIFIER_WARN = LOG_WARNING,
-    ORTE_NOTIFIER_NOTICE = LOG_NOTICE,
-    ORTE_NOTIFIER_INFO = LOG_INFO,
-    ORTE_NOTIFIER_DEBUG = LOG_DEBUG
-} orte_notifier_severity_t;
+typedef int8_t orte_notifier_severity_t;
+#define ORTE_NOTIFIER_SEVERITY_T OPAL_INT8
+#define ORTE_NOTIFIER_EMERG  LOG_EMERG
+#define ORTE_NOTIFIER_ALERT  LOG_ALERT
+#define ORTE_NOTIFIER_CRIT   LOG_CRIT
+#define ORTE_NOTIFIER_ERROR  LOG_ERR
+#define ORTE_NOTIFIER_WARN   LOG_WARNING
+#define ORTE_NOTIFIER_NOTICE LOG_NOTICE
+#define ORTE_NOTIFIER_INFO   LOG_INFO
+#define ORTE_NOTIFIER_DEBUG  LOG_DEBUG
 
 typedef struct {
     opal_object_t super;
@@ -90,6 +90,7 @@ typedef struct {
 } orte_notifier_request_t;
 OBJ_CLASS_DECLARATION(orte_notifier_request_t);
 
+/** version string of ORCM */
 /*
  * Component functions - all MUST be provided!
  */

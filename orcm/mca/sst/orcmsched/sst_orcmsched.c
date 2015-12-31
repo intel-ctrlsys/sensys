@@ -86,6 +86,7 @@
 
 #include "orcm/mca/sst/base/base.h"
 #include "orcm/mca/sst/orcmsched/sst_orcmsched.h"
+#include "orcm/runtime/orcm_cmd_server.h"
 
 /* API functions */
 
@@ -418,6 +419,13 @@ static int orcmsched_init(void)
         goto error;
     }
 
+    /* setup the cmd server */
+    if (ORCM_SUCCESS != (ret = orcm_cmd_server_init())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_cmd_server";
+        goto error;
+    }
+
     /* select and start the scheduler */
     if (ORTE_SUCCESS != (ret = orcm_scd_base_select())) {
         ORTE_ERROR_LOG(ret);
@@ -448,6 +456,7 @@ static void orcmsched_finalize(void)
     }
     
     /* close frameworks */
+    (void) orcm_cmd_server_finalize();
     (void) mca_base_framework_close(&orcm_scd_base_framework);
     (void) mca_base_framework_close(&orte_filem_base_framework);
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);

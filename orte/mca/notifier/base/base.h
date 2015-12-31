@@ -83,5 +83,7 @@ ORTE_DECLSPEC void orte_notifier_base_report(int sd, short args, void *cbdata);
 
 /* severity to string */
 ORTE_DECLSPEC const char* orte_notifier_base_sev2str(orte_notifier_severity_t severity);
+ORTE_DECLSPEC int set_notifier_policy(orte_notifier_severity_t sev, char *action);
+ORTE_DECLSPEC const char *get_notifier_policy(orte_notifier_severity_t sev);
 END_C_DECLS
 #endif

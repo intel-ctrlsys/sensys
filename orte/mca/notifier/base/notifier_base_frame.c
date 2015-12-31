@@ -33,6 +33,7 @@
 #include "opal/mca/base/base.h"
 #include "opal/class/opal_pointer_array.h"
 #include "opal/runtime/opal_progress_threads.h"
+#include "orte/mca/rml/rml.h"
 #include "orte/mca/notifier/base/base.h"
 
 /* default module to use for logging*/

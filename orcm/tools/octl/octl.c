@@ -583,6 +583,51 @@ static int run_cmd(char *cmd)
                 break;
         }
         break;
+    case 47: // notifier
+        rc = octl_command_to_int(cmdlist[1]);
+        if (-1 == rc) {
+            rc = ORCM_ERROR;
+            break;
+        }
+
+        switch (rc) {
+            case 16: //set
+                rc = octl_command_to_int(cmdlist[2]);
+                if (-1 == rc) {
+                    break;
+                }
+
+                switch(rc) {
+                case 8: //policy
+                    rc = set_notifier_policy(ORCM_SET_NOTIFIER_POLICY_COMMAND, cmdlist);
+                    break;
+                default:
+                    rc = ORCM_ERROR;
+                    break;
+                }
+                break;
+
+            case 17: //get
+                rc = octl_command_to_int(cmdlist[2]);
+                if (-1 == rc) {
+                    break;
+                }
+
+                switch(rc) {
+                case 8: //policy
+                    rc = get_notifier_policy(ORCM_GET_NOTIFIER_POLICY_COMMAND, cmdlist);
+                    break;
+                default:
+                    rc = ORCM_ERROR;
+                    break;
+                }
+                break;
+
+            default:
+                rc = ORCM_ERROR;
+                break;
+        }
+        break;
     case 32: //grouping
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {

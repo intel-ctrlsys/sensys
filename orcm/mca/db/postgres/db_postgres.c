@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -2021,11 +2021,10 @@ static int add_event(mca_db_postgres_module_t* mod,
         goto cleanup_and_exit;
     }
     // the add_event is expected to return only the event ID that just got added.
-    *event_id_once_added = atoi(PQgetvalue(res, 0, 0));
+    *event_id_once_added = atoll(PQgetvalue(res, 0, 0));
     if (0 >= *event_id_once_added) {
         rc = ORCM_ERROR;
         ERR_MSG_SE("Add event failed to return the new event ID");
-        goto cleanup_and_exit;
     }
 
 cleanup_and_exit:

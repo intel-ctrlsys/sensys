@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -1489,6 +1489,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
             opal_list_append(*results, &string_row->super);
             first_item = false;
 
+            SAFE_FREE(tmp);
             SAFE_OBJ_RELEASE(row);
         }
     }
@@ -1719,6 +1720,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 opal_list_append(filter_list, &tmp_filter->value.super);
             }
             returned_status = get_inventory_list(filter_list, &results_list);
+            OBJ_RELEASE(filter_list);
             response_buffer = OBJ_NEW(opal_buffer_t);
             if (OPAL_SUCCESS != (rc = opal_dss.pack(response_buffer, &returned_status, 1, OPAL_INT))) {
                 ORTE_ERROR_LOG(rc);

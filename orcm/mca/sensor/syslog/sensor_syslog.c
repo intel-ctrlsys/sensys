@@ -450,6 +450,7 @@ static int syslog_socket(void)
 
     len = strlen(sInfo.sun_path) + sizeof(sInfo.sun_family);
     if (-1 == bind(s, (struct sockaddr *)&sInfo, len)) {
+        close(s);
         s = -1;
         return s;
     }

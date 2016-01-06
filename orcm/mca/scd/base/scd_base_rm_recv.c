@@ -163,6 +163,7 @@ static void orcm_scd_base_rm_recv(int status, orte_process_name_t* sender,
                                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
                         found = true;
                         hwloc_topology_destroy(topo);
+                        topo = NULL;
                         break;
                     }
                 }

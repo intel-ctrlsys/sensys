@@ -357,10 +357,12 @@ int main(int argc, char *argv[])
      */
     if(orcmsd_globals.hnp) {
         if (ORCM_SUCCESS != (ret = orcm_init(ORCM_HNP))) {
+            OBJ_DESTRUCT(&cmd_line);
             return ret;
         }
     } else {
         if (ORCM_SUCCESS != (ret = orcm_init(ORCM_STEPD))) {
+            OBJ_DESTRUCT(&cmd_line);
             return ret;
         }
     }

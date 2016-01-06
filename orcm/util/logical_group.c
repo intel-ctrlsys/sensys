@@ -996,7 +996,7 @@ static int orcm_logical_group_tag_to_members_nested(char ***tag_array, char ***o
             if (NULL != value) {
                 OPAL_LIST_FOREACH(tag_member, value, orcm_logical_group_member_t) {
                     if (NULL == tag_member) {
-                        continue;
+                        break;
                     }
                     if (ORCM_SUCCESS == (opal_hash_table_get_value_ptr(LOGICAL_GROUP.groups,
                         (void*)tag_member->member, strlen(tag_member->member) + 1,

@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     /* Initialize the argv parsing handle */
     if (orcm_globals.help || orcm_globals.version) {
         if (ORCM_SUCCESS != (ret=opal_init_util(&argc, &argv))) {
-            return ret;
+            goto cleanup;
         }
     }
 
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
      * Initialize
      ***************/
     if (ORCM_SUCCESS != (ret = orcm_init(ORCM_DAEMON))) {
-        return ret;
+        goto cleanup;
     }
 
     /* print out a message alerting that we are alive */
@@ -245,17 +245,17 @@ int main(int argc, char *argv[])
         if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &command,1, ORCM_RM_CMD_T))) {
             ORTE_ERROR_LOG(ret);
             OBJ_RELEASE(buf);
-            return ret;
+            goto cleanup;
         }
         if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &state, 1, OPAL_INT8))) {
             ORTE_ERROR_LOG(ret);
             OBJ_RELEASE(buf);
-            return ret;
+            goto cleanup;
         }
         if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, ORTE_PROC_MY_NAME, 1, ORTE_NAME))) {
             ORTE_ERROR_LOG(ret);
             OBJ_RELEASE(buf);
-            return ret;
+            goto cleanup;
         }
 
         /* send hwloc topo to scheduler */
@@ -264,19 +264,19 @@ int main(int argc, char *argv[])
             if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &have_hwloc_topology, 1, OPAL_BOOL))) {
                 ORTE_ERROR_LOG(ret);
                 OBJ_RELEASE(buf);
-                return ret;
+                goto cleanup;
             }
             if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &opal_hwloc_topology, 1, OPAL_HWLOC_TOPO))) {
                 ORTE_ERROR_LOG(ret);
                 OBJ_RELEASE(buf);
-                return ret;
+                goto cleanup;
             }
         } else {
             have_hwloc_topology = false;
             if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &have_hwloc_topology, 1, OPAL_BOOL))) {
                 ORTE_ERROR_LOG(ret);
                 OBJ_RELEASE(buf);
-                return ret;
+                goto cleanup;
             }
         }
 
@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
                                                           orte_rml_send_callback, NULL))) {
             ORTE_ERROR_LOG(ret);
             OBJ_RELEASE(buf);
-            return ret;
+            goto cleanup;
         }
     }
 
@@ -317,6 +317,8 @@ int main(int argc, char *argv[])
      ***************/
     orcm_finalize();
 
+cleanup:
+    OBJ_DESTRUCT(&cmd_line);
     return ret;
 }
 

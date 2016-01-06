@@ -291,6 +291,7 @@ static int postgres_store(struct orcm_db_base_module_t *imod,
 static void escape_string_apostrophe(char *str_src, char *str_dst)
 {
     size_t i=0;
+    size_t copy_size = 0;
     int carry = 0;
     char msg1[STRING_MAX_LEN];
     char msg2[STRING_MAX_LEN];
@@ -298,20 +299,33 @@ static void escape_string_apostrophe(char *str_src, char *str_dst)
     memset(msg1,0,STRING_MAX_LEN);
     memset(msg2,0,STRING_MAX_LEN);
 
-    strcpy(msg1, str_src);
+    if (strlen(str_src) >= STRING_MAX_LEN) {
+        copy_size = STRING_MAX_LEN - 1;
+    } else {
+        copy_size = strlen(str_src);
+    }
+    strncpy(msg1, str_src, copy_size);
 
     for(i=0; i<=strlen(msg1); i++)
     {
-        msg2[carry+i] = msg1[i];
+        if (carry + i < STRING_MAX_LEN) {
+            msg2[carry+i] = msg1[i];
+        }
         if(msg1[i] == '\'')
         {
-            msg2[carry+i] = '\\';
-            msg2[carry+i+1] = '\'';
+            if (carry + i < STRING_MAX_LEN) {
+                msg2[carry+i] = '\\';
+            }
+            if (carry + i + 1 < STRING_MAX_LEN) {
+                msg2[carry+i+1] = '\'';
+            }
             carry++;
         }
     }
-    msg2[carry+i] = '\0';
-    strcpy(str_dst, msg2);
+    if (carry + i < STRING_MAX_LEN) {
+        msg2[carry+i] = '\0';
+    }
+    strncpy(str_dst, msg2, strlen(msg2));
 
     return;
 }

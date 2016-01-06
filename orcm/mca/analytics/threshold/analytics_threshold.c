@@ -169,7 +169,8 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
     }
     OPAL_LIST_FOREACH(current_value, current_caddy->analytics_value->compute_data, orcm_value_t) {
         if(NULL == current_value){
-            return ORCM_ERROR;
+            rc = ORCM_ERROR;
+            goto cleanup;
         }
         val = orcm_util_get_number_orcm_value(current_value);
         if(val >= threshold_policy->hi && NULL != threshold_policy->hi_action){
@@ -178,8 +179,7 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                             current_value->value.key,val,current_value->units,threshold_policy->hi,current_value->units)){
                 rc = generate_notification_event(current_caddy->analytics_value, threshold_policy->hi_sev, msg1, threshold_policy->hi_action);
                 if(ORCM_SUCCESS != rc) {
-                    return rc;
-
+                    goto cleanup;
                 }
             }
         }
@@ -189,7 +189,7 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                             current_value->value.key,val,current_value->units,threshold_policy->low,current_value->units)) {
                 rc = generate_notification_event(current_caddy->analytics_value, threshold_policy->low_sev, msg2, threshold_policy->low_action);
                 if(ORCM_SUCCESS != rc) {
-                    return rc;
+                    goto cleanup;
                 }
             }
         }
@@ -199,14 +199,22 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                 opal_list_append(threshold_list, (opal_list_item_t *)analytics_orcm_value);
             }
         }
+
+cleanup:
+        SAFEFREE(msg1);
+        SAFEFREE(msg2);
+        if (ORCM_SUCCESS != rc) {
+            break;
+        }
     }
+
     return rc;
 }
 
 static int get_threshold_value(char *tval, double* val)
 {
     int j=0;
-    if(NULL == tval) {
+    if(NULL == tval || NULL == val) {
         return ORCM_ERR_BAD_PARAM;
     }
     for (j=0; j < (int)strlen(tval); j++) {
@@ -216,7 +224,7 @@ static int get_threshold_value(char *tval, double* val)
     }
     errno = 0;
     *val = strtod(tval, NULL);
-    if(0 == val && 0 != errno) {
+    if(0 == *val && 0 != errno) {
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;

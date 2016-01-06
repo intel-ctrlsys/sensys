@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
             fprintf(stderr, "%s: command line error (%s)\n", argv[0],
                     opal_strerror(rc));
         }
-        return rc;
+        goto cleanup;
     }
 
     /**
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
 
     if (ORCM_SUCCESS != (rc = orcm_init(ORCM_TOOL))) {
         /* init will have printed out an error message */
-        return rc;
+        goto cleanup;
     }
 
     /* setup to send the cmd */
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
     /* pack the command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_RM_CMD_T))) {
         ORTE_ERROR_LOG(rc);
-        return rc;
+        goto cleanup;
     }
     /* send it to the daemon */
     daemon.jobid = 0;
@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
                                                       snd_callback, (void*)&active))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(buf);
-        return rc;
+        goto cleanup;
     }
     ORTE_WAIT_FOR_COMPLETION(active);
 
@@ -196,5 +196,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    return ORTE_SUCCESS;
+cleanup:
+    OBJ_DESTRUCT(&cmd_line);
+    return rc;
 }

@@ -269,13 +269,15 @@ static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
     char *notifier_action = NULL;
 
     OPAL_LIST_FOREACH(list_item, &ecd->description, orcm_value_t) {
-        if (NULL == list_item->value.key) {
-            return;
+        if (NULL == list_item || NULL == list_item->value.key) {
+            goto cleanup;
         }
-        if (0 == strcmp(list_item->value.key, "notifier_msg") && NULL != list_item->value.data.string) {
+        if (0 == strcmp(list_item->value.key, "notifier_msg") &&
+            NULL != list_item->value.data.string && NULL == notifier_msg) {
             notifier_msg = strdup(list_item->value.data.string);
         }
-        if (0 == strcmp(list_item->value.key, "notifier_action") && NULL != list_item->value.data.string) {
+        if (0 == strcmp(list_item->value.key, "notifier_action") &&
+            NULL != list_item->value.data.string && NULL == notifier_action) {
             notifier_action = strdup(list_item->value.data.string);
         }
     }
@@ -284,6 +286,10 @@ static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
             ORTE_NOTIFIER_SYSTEM_EVENT(orcm_evgen_base_convert_ras_severity_to_orte_notifier(ecd->severity), notifier_msg, notifier_action);
         }
     }
+
+cleanup:
+    SAFEFREE(notifier_msg);
+    SAFEFREE(notifier_action);
 }
 
 static void saeg_generate_storage_events(orcm_ras_event_t *ecd)

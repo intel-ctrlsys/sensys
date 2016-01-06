@@ -220,9 +220,9 @@ char *assemble_datetime(char *date_str, char *time_str)
         } else {
             SAFE_FREE(date_time_str);
         }
-        SAFE_FREE(new_date_str);
-        SAFE_FREE(new_time_str);
     }
+    SAFE_FREE(new_date_str);
+    SAFE_FREE(new_time_str);
     return date_time_str;
 }
 
@@ -658,6 +658,7 @@ int orcm_octl_query_sensor(int cmd, char **argv)
         }
     }
 orcm_octl_query_sensor_cleanup:
+    opal_argv_free(argv_node_list);
     return rc;
 }
 
@@ -713,6 +714,7 @@ int orcm_octl_query_log(int cmd, char **argv)
         }
     }
 orcm_octl_query_log_cleanup:
+    opal_argv_free(argv_node_list);
     return rc;
 }
 
@@ -768,6 +770,7 @@ int orcm_octl_query_idle(int cmd, char **argv)
         }
     }
 orcm_octl_query_idle_cleanup:
+    opal_argv_free(argv_node_list);
     return rc;
 }
 
@@ -823,5 +826,6 @@ int orcm_octl_query_node(int cmd, char **argv)
         }
     }
 orcm_octl_query_node_cleanup:
+    opal_argv_free(argv_node_list);
     return rc;
 }

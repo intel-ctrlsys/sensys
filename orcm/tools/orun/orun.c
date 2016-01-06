@@ -372,6 +372,7 @@ int orun(int argc, char *argv[])
             fprintf(stderr, "%s: command line error (%s)\n", argv[0],
                     opal_strerror(rc));
         }
+        OBJ_DESTRUCT(&cmd_line);
         return rc;
     }
 
@@ -415,7 +416,8 @@ int orun(int argc, char *argv[])
                /bin/<exec_name>" and leave just the prefix */
             orun_globals.path_to_mpirun = opal_dirname(argv[0]);
 	    if (NULL == orun_globals.path_to_mpirun) {
-		return ORTE_ERR_OUT_OF_RESOURCE;
+            OBJ_DESTRUCT(&cmd_line);
+            return ORTE_ERR_OUT_OF_RESOURCE;
 	    }
             /* Quick sanity check to ensure we got
                something/bin/<exec_name> and that the installation
@@ -487,6 +489,7 @@ int orun(int argc, char *argv[])
                     orte_show_help("help-orterun.txt", "orterun:empty-prefix",
                                    true, orte_basename, orte_basename);
                     free(param);
+                    OBJ_DESTRUCT(&cmd_line);
                     return ORTE_ERR_FATAL;
                 }
             }
@@ -1166,9 +1169,10 @@ static int create_app(int argc, char* argv[],
     if (NULL != orte_forwarded_envars) {
         char **vars;
         vars = opal_argv_split(*orte_forwarded_envars, ',');
-	if (NULL == vars) {
-	    return ORTE_ERR_OUT_OF_RESOURCE;
-	}
+	    if (NULL == vars) {
+	        OBJ_DESTRUCT(&cmd_line);
+	        return ORTE_ERR_OUT_OF_RESOURCE;
+	    }
         for (i=0; NULL != vars[i]; i++) {
             if (NULL != strchr(vars[i], '=')) {
                 /* user supplied a value */
@@ -1309,6 +1313,7 @@ static int create_app(int argc, char* argv[],
                         orte_show_help("help-orterun.txt", "orterun:empty-prefix",
                                        true, orte_basename, orte_basename);
                         free(param);
+                        OBJ_DESTRUCT(&cmd_line);
                         return ORTE_ERR_FATAL;
                     }
                 }
@@ -1327,6 +1332,7 @@ static int create_app(int argc, char* argv[],
         if(1 < j) {
             orte_show_help("help-orterun.txt", "orterun:multiple-hostfiles",
                            true, orte_basename, NULL);
+            OBJ_DESTRUCT(&cmd_line);
             return ORTE_ERR_FATAL;
         } else {
             value = opal_cmd_line_get_param(&cmd_line, "hostfile", 0, 0);
@@ -1337,6 +1343,7 @@ static int create_app(int argc, char* argv[],
         if(1 < j || orte_get_attribute(&app->attributes, ORTE_APP_HOSTFILE, NULL, OPAL_STRING)) {
             orte_show_help("help-orterun.txt", "orterun:multiple-hostfiles",
                            true, orte_basename, NULL);
+            OBJ_DESTRUCT(&cmd_line);
             return ORTE_ERR_FATAL;
         } else {
             value = opal_cmd_line_get_param(&cmd_line, "machinefile", 0, 0);
@@ -1362,6 +1369,7 @@ static int create_app(int argc, char* argv[],
         orte_show_help("help-orterun.txt", "orterun:negative-nprocs",
                        true, orte_basename, app->argv[0],
                        orun_globals.num_procs, NULL);
+        OBJ_DESTRUCT(&cmd_line);
         return ORTE_ERR_FATAL;
     }
 

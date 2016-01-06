@@ -26,6 +26,8 @@
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 
+#include "orcm/util/utils.h"
+
 static bool recv_issued=false;
 static bool mods_active = false;
 static void take_sample(int fd, short args, void *cbdata);
@@ -844,6 +846,7 @@ ERROR:
         if(NULL != ans) {
             OBJ_RELEASE(ans);
         }
+        SAFEFREE(error);
         return;
     }
     if (NULL == error) {
@@ -855,10 +858,10 @@ ERROR:
         if(NULL != ans) {
             OBJ_RELEASE(ans);
         }
-        free(error);
+        SAFEFREE(error);
         return;
     }
-    free(error);
+    SAFEFREE(error);
 
 RESPONSE:
     if (ORTE_SUCCESS !=

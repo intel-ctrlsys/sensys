@@ -32,6 +32,8 @@
 #include "orcm/mca/db/db.h"
 #include "orcm/mca/db/base/base.h"
 
+#include "orcm/util/utils.h"
+
 static bool recv_issued=false;
 
 static void orcm_scd_base_recv(int status, orte_process_name_t* sender,

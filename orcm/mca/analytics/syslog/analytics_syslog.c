@@ -103,15 +103,21 @@ static int syslog_parse_workflow(void *cbdata, syslog_workflow_value_t *workflow
     }
 
     OPAL_LIST_FOREACH(temp, &parse_workflow_caddy->wf_step->attributes, opal_value_t) {
-        if (NULL == temp) {
+        if (NULL == temp || NULL == temp->key || NULL == temp->data.string) {
             return ORCM_ERROR;
         }
         if (0 == strncmp(temp->key, workflow_value->msg_regex_label,strlen(temp->key))) {
-            workflow_value->msg_regex = strdup(temp->data.string);
+            if (NULL == workflow_value->msg_regex) {
+                workflow_value->msg_regex = strdup(temp->data.string);
+            }
         } else if (0 == strncmp(temp->key, workflow_value->severity_label,strlen(temp->key))) {
-            workflow_value->severity = strdup(temp->data.string);
+            if (NULL == workflow_value->severity) {
+                workflow_value->severity = strdup(temp->data.string);
+            }
         } else if (0 == strncmp(temp->key, workflow_value->facility_label,strlen(temp->key))) {
-            workflow_value->facility = strdup(temp->data.string);
+            if (NULL == workflow_value->facility) {
+                workflow_value->facility = strdup(temp->data.string);
+            }
         }
     }
 
@@ -152,6 +158,9 @@ static int analytics_syslog_data(syslog_workflow_value_t *workflow_value,
         "<([0-9]+)>[[:blank:]]*([A-Za-z]{3}[[:blank:]]+[0-9]+[[:blank:]]+([0-9]{2}:?){3})[[:blank:]]+(.*)",
         REG_EXTENDED);
 
+    if (NULL == workflow_value->msg_regex) {
+        return ORCM_ERROR;
+    }
     regex_res = regcomp(&regex_comp_wflow, workflow_value->msg_regex, REG_EXTENDED);
     if (regex_res) {
       OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
@@ -238,14 +247,13 @@ static int analyze(int sd, short args, void *cbdata)
     int rc = -1;
     orcm_workflow_caddy_t *syslog_analyze_caddy = NULL;
     orcm_analytics_value_t *analytics_value_to_next = NULL;
-
-    syslog_workflow_value_t *workflow_value = (syslog_workflow_value_t *)malloc(
-                                              sizeof(syslog_workflow_value_t));
+    syslog_workflow_value_t *workflow_value = NULL;
 
     if (ORCM_SUCCESS != (rc = orcm_analytics_base_assert_caddy_data(cbdata))) {
         return ORCM_ERROR;
     }
 
+    workflow_value = (syslog_workflow_value_t *)malloc(sizeof(syslog_workflow_value_t));
     if ( NULL == workflow_value) {
         OPAL_OUTPUT_VERBOSE((1, orcm_analytics_base_framework.framework_output,
                             "%s Insufficient data", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));

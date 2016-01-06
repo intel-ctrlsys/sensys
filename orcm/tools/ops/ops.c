@@ -78,6 +78,7 @@
 
 
 #include "orcm/runtime/runtime.h"
+#include "orcm/util/utils.h"
 
 struct orte_ps_mpirun_info_t {
     /** This is an object, so it must have a super */
@@ -284,6 +285,7 @@ static int parse_args(int argc, char *argv[]) {
             fprintf(stderr, "%s: command line error (%s)\n", argv[0],
                     opal_strerror(ret));
         }
+        OBJ_DESTRUCT(&cmd_line);
         return ret;
     }
 
@@ -309,6 +311,7 @@ static int parse_args(int argc, char *argv[]) {
      * process them.
      */
     mca_base_cmd_line_process_args(&cmd_line, &environ, &environ);
+    OBJ_DESTRUCT(&cmd_line);
 
     return ORTE_SUCCESS;
 }
@@ -371,6 +374,7 @@ static int pretty_print_nodes(orte_node_t **nodes, orte_std_cntr_t num_nodes) {
         len_slots_m = 0;
     orte_node_t *node;
     orte_std_cntr_t i;
+    char *node_state = NULL;
 
     /*
      * Caculate segment lengths
@@ -387,9 +391,11 @@ static int pretty_print_nodes(orte_node_t **nodes, orte_std_cntr_t num_nodes) {
         if( NULL != node->name &&
             (int)strlen(node->name) > len_name)
             len_name = (int) strlen(node->name);
-                
-        if( (int)strlen(pretty_node_state(node->state)) > len_state )
-            len_state = (int)strlen(pretty_node_state(node->state));
+
+        node_state = pretty_node_state(node->state);
+        if( (int)strlen(node_state) > len_state )
+            len_state = (int)strlen(node_state);
+        SAFEFREE(node_state);
     }
     
     line_len = (len_name    + 3 +
@@ -417,7 +423,9 @@ static int pretty_print_nodes(orte_node_t **nodes, orte_std_cntr_t num_nodes) {
         node = nodes[i];
         
         printf("%*s | ", len_name,    node->name);
-        printf("%*s | ", len_state,   pretty_node_state(node->state));
+        node_state = pretty_node_state(node->state);
+        printf("%*s | ", len_state,   node_state);
+        SAFEFREE(node_state);
         printf("%*d | ", len_slots,   (uint)node->slots);
         printf("%*d | ", len_slots_m, (uint)node->slots_max);
         printf("%*d | ", len_slots_i, (uint)node->slots_inuse);
@@ -830,6 +838,7 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
     char *appname;
     int i, j;
     char *nodename = NULL;
+    char *node_state = NULL;
 
     /* don't include the daemon job in the number of jobs reported */
     printf("mpirun:num nodes:%d:num jobs:%d\n",
@@ -838,9 +847,11 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
     if (orte_ps_globals.nodes) {
         nodes = hnpinfo->nodes;
         for (i=0; i < hnpinfo->num_nodes; i++) {
+            node_state = pretty_node_state(nodes[i]->state);
             printf("node:%s:state:%s:slots:%d:in use:%d\n",
-                   nodes[i]->name, pretty_node_state(nodes[i]->state),
+                   nodes[i]->name, node_state,
                    nodes[i]->slots, nodes[i]->slots_inuse);
+            SAFEFREE(node_state);
         }
     }
 
@@ -870,6 +881,7 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
                    (NULL == nodename) ? "unknown" : nodename,
                    orte_proc_state_to_str(proc->state));
             free(appname);
+            SAFEFREE(nodename);
         }
     }
 

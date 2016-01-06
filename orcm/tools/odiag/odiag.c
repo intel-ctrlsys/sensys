@@ -251,6 +251,7 @@ static int parse_args(int argc, char *argv[])
             fprintf(stderr, "%s: command line error (%s)\n", argv[0],
                     opal_strerror(ret));
         }
+        OBJ_DESTRUCT(&cmd_line);
         return ret;
     }
 

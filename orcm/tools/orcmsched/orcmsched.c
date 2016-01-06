@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
     /* Initialize the argv parsing handle for the help and version options */
     if (orcmsched_globals.help || orcmsched_globals.version) {
         if (ORCM_SUCCESS != (ret=opal_init_util(&argc, &argv))) {
-            return ret;
+            goto cleanup;
         }
     }
     /*
@@ -251,5 +251,8 @@ int main(int argc, char *argv[])
 
     /* Finalize and clean up ourselves */
     orcm_finalize();
+
+cleanup:
+    OBJ_DESTRUCT(&cmd_line);
     return ret;
 }

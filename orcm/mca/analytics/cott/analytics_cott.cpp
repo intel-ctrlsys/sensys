@@ -169,13 +169,6 @@ void cott_finalize(orcm_analytics_base_module_t *imod)
 void cott_event_fired_callback(const string& host, const string& label, uint32_t count, time_t elapsed,
                                const vector<uint32_t>& data, void* cb_data)
 {
-    char* message = NULL;
-    asprintf(&message, "%s analytics:cott:EVENT '%s=%d' count exceeding threshold of %d on host '%s'",
-             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), label.c_str(), count, counter_analyzer->get_threshold(),
-             host.c_str());
-    ON_NULL_RETURN(message);
-    OPAL_OUTPUT_VERBOSE((1, orcm_analytics_base_framework.framework_output, message));
-
     analyze_data_t* analyze_data = (analyze_data_t*)cb_data;
     ON_NULL_RETURN(analyze_data);
     orcm_workflow_caddy_t* caddy = analyze_data->caddy;
@@ -184,6 +177,13 @@ void cott_event_fired_callback(const string& host, const string& label, uint32_t
     ON_NULL_RETURN(threshold_list);
     step_data_t* step_data = (step_data_t*)counter_analyzer->get_user_data();
     ON_NULL_RETURN(step_data);
+
+    char* message = NULL;
+    asprintf(&message, "%s analytics:cott:EVENT '%s=%d' count exceeding threshold of %d on host '%s'",
+             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), label.c_str(), count, counter_analyzer->get_threshold(),
+             host.c_str());
+    ON_NULL_RETURN(message);
+    OPAL_OUTPUT_VERBOSE((1, orcm_analytics_base_framework.framework_output, message));
 
     orcm_ras_event_t* event = NULL;
     do {

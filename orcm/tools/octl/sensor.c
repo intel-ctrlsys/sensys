@@ -229,10 +229,10 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
                     printf("%-10s %8.3f %3s     %5s   %5d in %5d seconds     %6s    %10s \n", sensor_name,
                            threshold, "   ", threstype, max_count, time_window, sev, action);
                 }
+                SAFEFREE(threstype);
+                SAFEFREE(sev);
             }
         }
-
-
     }
 
 done:
@@ -245,18 +245,10 @@ done:
     if (nodelist) {
         opal_argv_free(nodelist);
     }
-    if (sev) {
-        free(sev);
-    }
-    if (threstype) {
-        free(threstype);
-    }
-    if (action) {
-        free(action);
-    }
-    if (sensor_name) {
-        free(sensor_name);
-    }
+    SAFEFREE(sev);
+    SAFEFREE(threstype);
+    SAFEFREE(action);
+    SAFEFREE(sensor_name);
 
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
 
@@ -988,9 +980,7 @@ int orcm_octl_sensor_inventory_get(int cmd, char **argv)
     }
 
 orcm_octl_sensor_inventory_get_cleanup:
-    if(NULL != raw_node_list) {
-        opal_argv_free(argv_node_list);
-    }
+    opal_argv_free(argv_node_list);
     if(NULL != filter_list) {
         OBJ_RELEASE(filter_list);
     }

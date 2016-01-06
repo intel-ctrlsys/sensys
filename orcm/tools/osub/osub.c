@@ -542,6 +542,7 @@ static int parse_args(int argc, char *argv[])
         exit(1);
     }
 
+    OBJ_DESTRUCT(&cmd_line);
     return ORTE_SUCCESS;
 }
 

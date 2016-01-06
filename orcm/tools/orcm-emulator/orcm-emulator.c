@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
         args = opal_cmd_line_get_usage_msg(&cmd_line);
         fprintf(stderr, "Usage: %s [OPTION]...\n%s\n", argv[0], args);
         free(args);
+        OBJ_DESTRUCT(&cmd_line);
         return ret;
     }
     
@@ -109,6 +110,7 @@ int main(int argc, char *argv[])
      * Initialize
      ***************/
     if (ORCM_SUCCESS != (ret = orcm_init(ORCM_EMULATOR))) {
+        OBJ_DESTRUCT(&cmd_line);
         return ret;
     }
 

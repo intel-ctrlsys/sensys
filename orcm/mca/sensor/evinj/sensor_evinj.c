@@ -136,25 +136,30 @@ static void sample(orcm_sensor_sampler_t *sampler)
             elements = opal_argv_split(vector, ';');
             free(vector);
             i=0;
+            if (NULL == elements) {
+                return;
+            }
             /* first field must contain a comma-delimited set of descriptors
              * of the location reporting this event, each descriptor given
              * as a colon-separated key:value pair (only string values are
              * supported when read from a file) */
             parts = opal_argv_split(elements[i], ',');
-            for (j=0; NULL != parts[j]; j++) {
-                pieces = opal_argv_split(parts[j], ':');
-                if (2 != opal_argv_count(pieces)) {
-                    ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
-                    opal_argv_free(elements);
-                    opal_argv_free(parts);
+            if (NULL != parts) {
+                for (j=0; NULL != parts[j]; j++) {
+                    pieces = opal_argv_split(parts[j], ':');
+                    if (2 != opal_argv_count(pieces)) {
+                        ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+                        opal_argv_free(elements);
+                        opal_argv_free(parts);
+                        opal_argv_free(pieces);
+                        OBJ_RELEASE(rev);
+                        return;
+                    }
+                    ORCM_RAS_REPORTER(rev, pieces[0], pieces[1], OPAL_STRING);
                     opal_argv_free(pieces);
-                    OBJ_RELEASE(rev);
-                    return;
                 }
-                ORCM_RAS_REPORTER(rev, pieces[0], pieces[1], OPAL_STRING);
-                opal_argv_free(pieces);
+                opal_argv_free(parts);
             }
-            opal_argv_free(parts);
             /* next field must be the event type */
             ++i;
             if (0 == strcmp("EXCEPTION", elements[i])) {
@@ -210,20 +215,22 @@ static void sample(orcm_sensor_sampler_t *sampler)
                 goto execute;
             }
             parts = opal_argv_split(elements[i], ',');
-            for (j=0; NULL != parts[j]; j++) {
-                pieces = opal_argv_split(parts[j], ':');
-                if (2 != opal_argv_count(pieces)) {
-                    ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
-                    opal_argv_free(elements);
-                    opal_argv_free(parts);
+            if (NULL != parts) {
+                for (j=0; NULL != parts[j]; j++) {
+                    pieces = opal_argv_split(parts[j], ':');
+                    if (2 != opal_argv_count(pieces)) {
+                        ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+                        opal_argv_free(elements);
+                        opal_argv_free(parts);
+                        opal_argv_free(pieces);
+                        OBJ_RELEASE(rev);
+                        return;
+                    }
+                    ORCM_RAS_DESCRIPTION(rev, pieces[0], pieces[1], OPAL_STRING);
                     opal_argv_free(pieces);
-                    OBJ_RELEASE(rev);
-                    return;
                 }
-                ORCM_RAS_DESCRIPTION(rev, pieces[0], pieces[1], OPAL_STRING);
-                opal_argv_free(pieces);
+                opal_argv_free(parts);
             }
-            opal_argv_free(parts);
              /* the final field is also optional - if provided it
              * will consist of a comma-delimited set of data elements for this
              * event, each given as a colon-separated key:value pair
@@ -235,20 +242,22 @@ static void sample(orcm_sensor_sampler_t *sampler)
                 goto execute;
             }
             parts = opal_argv_split(elements[i], ',');
-            for (j=0; NULL != parts[j]; j++) {
-                pieces = opal_argv_split(parts[j], ':');
-                if (3 != opal_argv_count(pieces)) {
-                    ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
-                    opal_argv_free(elements);
-                    opal_argv_free(parts);
+            if (NULL != parts) {
+                for (j=0; NULL != parts[j]; j++) {
+                    pieces = opal_argv_split(parts[j], ':');
+                    if (3 != opal_argv_count(pieces)) {
+                        ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+                        opal_argv_free(elements);
+                        opal_argv_free(parts);
+                        opal_argv_free(pieces);
+                        OBJ_RELEASE(rev);
+                        return;
+                    }
+                    ORCM_RAS_DATA(rev, pieces[0], pieces[1], OPAL_STRING);
                     opal_argv_free(pieces);
-                    OBJ_RELEASE(rev);
-                    return;
                 }
-                ORCM_RAS_DATA(rev, pieces[0], pieces[1], OPAL_STRING);
-                opal_argv_free(pieces);
+                opal_argv_free(parts);
             }
-            opal_argv_free(parts);
             opal_argv_free(elements);
         } else {
             /* just use some bogus location for test purposes */

@@ -205,6 +205,7 @@ static int orcm_octl_work(int argc, char *argv[])
         ret = run_cmd(mycmd);
         free(mycmd);
     }
+    OBJ_DESTRUCT(&cmd_line);
     opal_argv_free(tailv);
     return ret;
 }

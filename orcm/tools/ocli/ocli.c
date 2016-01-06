@@ -142,9 +142,8 @@ static int orcm_ocli_init(int argc, char *argv[])
     /* initialize orcm for use as a tool */
     if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL))) {
         fprintf(stderr, "Failed to initialize\n");
-        if (NULL != tailv) {
-            free(tailv);
-        }
+        OBJ_DESTRUCT(&cmd_line);
+        opal_argv_free(tailv);
         exit(ret);
     }
 
@@ -163,7 +162,8 @@ static int orcm_ocli_init(int argc, char *argv[])
         orcm_cli_get_cmd("ocli", &cli, &mycmd);
         if (!mycmd) {
             fprintf(stderr, "\nNo command specified\n");
-            return ORCM_ERROR;
+            ret = ORCM_ERROR;
+            goto cleanup;
         }
     } else {
         /* otherwise use the user specified command */
@@ -172,6 +172,9 @@ static int orcm_ocli_init(int argc, char *argv[])
 
     ret = run_cmd(mycmd);
     free(mycmd);
+
+cleanup:
+    OBJ_DESTRUCT(&cmd_line);
     opal_argv_free(tailv);
 
     return ret;

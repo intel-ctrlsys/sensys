@@ -13,6 +13,7 @@ import re
 import sys
 import subprocess
 import os.path
+from os import getenv
 from subprocess import Popen, PIPE, STDOUT
 
 cf_name="snmp.conf"
@@ -59,7 +60,11 @@ def prefix_search():
 
 def setup_tests():
     prefix = prefix_search()
-    cf_src="test_files/snmp.conf"
+    cf_src = getenv("srcdir")
+    if cf_src:
+        cf_src += "/test_files/snmp.conf"
+    else:
+        cf_src = "test_files/snmp.conf"
     cf_dst=prefix + "/etc/" + cf_name
     isThere = os.path.isfile(cf_dst)
     if isThere == False:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -33,16 +33,8 @@ ORCM_DECLSPEC void orcm_analytics_base_activate_analytics_workflow_step(orcm_wor
 
 ORCM_DECLSPEC void orcm_analytics_base_send_data(orcm_analytics_value_t *data);
 
-void orcm_analytics_base_db_open_cb(int handle, int status, opal_list_t *props,
-                                    opal_list_t *ret, void *cbdata);
-void orcm_analytics_base_open_db(void);
-void orcm_analytics_base_close_db(void);
-
 /*function to verify whether workflow step has attribute to store in db or not*/
 bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step);
-
-/* function to store the data results after each workflow step when required */
-int orcm_analytics_base_store(opal_list_t *data_results);
 
 /* function to store data of type orcm_analytics_value_t*/
 ORCM_DECLSPEC int orcm_analytics_base_store_analytics(orcm_analytics_value_t *analytics_data);
@@ -106,13 +98,6 @@ typedef struct {
     bool store_event_data;
 } orcm_analytics_base_t;
 ORCM_DECLSPEC extern orcm_analytics_base_t orcm_analytics_base;
-
-typedef struct {
-    int db_handle;
-    bool db_handle_acquired;
-} orcm_analytics_base_db_t;
-
-ORCM_DECLSPEC extern orcm_analytics_base_db_t orcm_analytics_base_db;
 
 /* executes the next workflow step in a workflow */
 #define ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf, prev_wf_step, hash_key, data)         \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -114,9 +114,6 @@ static int orcm_analytics_base_close(void)
     /* Destroy the base objects */
     OPAL_LIST_DESTRUCT(&orcm_analytics_base.workflows);
 
-    /* close the database handle */
-    orcm_analytics_base_close_db();
-
     return mca_base_framework_components_close(&orcm_analytics_base_framework,
                                                NULL);
 }
@@ -142,9 +139,6 @@ static int orcm_analytics_base_open(mca_base_open_flag_t flags)
         ORTE_ERROR_LOG(rc);
         return rc;
     }
-    
-    /* open the database handle */
-    orcm_analytics_base_open_db();
 
     return rc;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2015 -2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -91,37 +91,6 @@ orcm_sensor_base_module_t orcm_sensor_mcedata_module = {
     mcedata_get_sample_rate
 };
 
-typedef struct {
-    opal_list_item_t super;
-    char *file;
-    int socket;
-    int core;
-    char *label;
-    float critical_temp;
-    float max_temp;
-} mcedata_tracker_t;
-
-static void ctr_con(mcedata_tracker_t *trk)
-{
-    trk->file = NULL;
-    trk->label = NULL;
-    trk->socket = -1;
-    trk->core = -1;
-}
-static void ctr_des(mcedata_tracker_t *trk)
-{
-    if (NULL != trk->file) {
-        free(trk->file);
-    }
-    if (NULL != trk->label) {
-        free(trk->label);
-    }
-}
-OBJ_CLASS_INSTANCE(mcedata_tracker_t,
-                   opal_list_item_t,
-                   ctr_con, ctr_des);
-
-static opal_list_t tracking;
 static bool mcelog_avail = false;
 static bool mce_default = false;
 const char *mce_reg_name []  = {
@@ -284,14 +253,10 @@ static int init(void)
     char *dirname = NULL;
     char *skt;
 
-    /* always construct this so we don't segfault in finalize */
-    OBJ_CONSTRUCT(&tracking, opal_list_t);
-
     /*
      * Open up the base directory so we can get a listing
      */
     if (NULL == (cur_dirp = opendir("/dev"))) {
-        OBJ_DESTRUCT(&tracking);
         orte_show_help("help-orcm-sensor-mcedata.txt", "req-dir-not-found",
                        true, orte_process_info.nodename, "/dev");
         return ORTE_ERROR;
@@ -334,7 +299,6 @@ static int init(void)
 
 static void finalize(void)
 {
-    OPAL_LIST_DESTRUCT(&tracking);
     if(true == mce_default) {
         free(mca_sensor_mcedata_component.logfile);
         mca_sensor_mcedata_component.logfile = NULL;

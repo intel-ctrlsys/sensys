@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -59,33 +59,14 @@ orcm_sensor_base_module_t orcm_sensor_test_module = {
     NULL
 };
 
-static opal_list_t tracking;
-
 static int init(void)
 {
-    /* always construct this so we don't segfault in finalize */
-    OBJ_CONSTRUCT(&tracking, opal_list_t);
-
-
-    /*
-     * Normally this check is done at the end of init because an empty
-     * test metadata list indicates something went wrong in initialization.  
-     * That is not true of the test sensor, which you may want to run to 
-     * see how sensors work.  So we comment out this check.
-     *
-    if (0 == opal_list_get_size(&tracking)) {
-        orte_show_help("help-orcm-sensor-test.txt", "no-test-found",
-                       true, orte_process_info.nodename);
-        return ORTE_ERROR;
-    }
-    */
-
     return ORCM_SUCCESS;
 }
 
 static void finalize(void)
 {
-    OPAL_LIST_DESTRUCT(&tracking);
+    return;
 }
 
 static void start(orte_jobid_t jobid)
@@ -108,10 +89,6 @@ static void test_sample(orcm_sensor_sampler_t *sampler)
     char *temp;
     bool packed;
     struct tm *sample_time;
-
-    if (0 == opal_list_get_size(&tracking)) {
-        return;
-    }
 
     /* prep to store the results */
     OBJ_CONSTRUCT(&data, opal_buffer_t);

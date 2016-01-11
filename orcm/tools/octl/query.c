@@ -205,11 +205,11 @@ char *assemble_datetime(char *date_str, char *time_str)
                                                                 date_time_length))) {
         if (false == replace_wildcard(&new_date_str, true)){
             if (NULL != new_date_str){
-                strcpy(date_time_str, new_date_str);
-                strcat(date_time_str, " ");
+                strncpy(date_time_str, new_date_str, strlen(new_date_str));
+                strncat(date_time_str, " ", strlen(" "));
                 if (NULL != new_time_str){
                     if (false == replace_wildcard(&new_time_str, true)){
-                        strcat(date_time_str, new_time_str);
+                        strncat(date_time_str, new_time_str, strlen(new_time_str));
                     } else {
                         fprintf(stdout, "\nWARNING: time input was ignored due the presence of the * character\n");
                     }
@@ -278,9 +278,9 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
         filter_item->value.key = strdup("log");
         /* Add 3 more chars including the end of the string '\0' */
         if (NULL != (filter_str = calloc(sizeof(char), strlen(argv[2])+3))){
-            strcat(filter_str, "%");
-            strcat(filter_str, argv[2]);
-            strcat(filter_str, "%");
+            strncat(filter_str, "%", strlen("%"));
+            strncat(filter_str, argv[2], strlen(argv[2]));
+            strncat(filter_str, "%", strlen("%"));
             filter_item->value.data.string = filter_str;
         } else {
             fprintf(stderr, "\nERROR: could not allocate memory for filter string\n");
@@ -312,9 +312,9 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
         filter_item->value.key = strdup("log");
         /* Add 3 more chars including the end of the string '\0' */
         if (NULL != (filter_str = calloc(sizeof(char), strlen(argv[2])+3))){
-            strcat(filter_str, "%");
-            strcat(filter_str, argv[2]);
-            strcat(filter_str, "%");
+            strncat(filter_str, "%", strlen("%"));
+            strncat(filter_str, argv[2], strlen(argv[2]));
+            strncat(filter_str, "%", strlen("%"));
             filter_item->value.data.string = filter_str;
         } else {
             fprintf(stderr, "\nERROR: could not allocate memory for filter string\n");
@@ -578,10 +578,10 @@ orcm_db_filter_t *build_node_item(char **expanded_node_list)
     if (NULL != (hosts_filter = calloc(sizeof(char), str_length))){
         node_count = opal_argv_count(expanded_node_list);
         for(int i=0; i < node_count; ++i){
-            strcat(hosts_filter, "'");
-            strcat(hosts_filter, expanded_node_list[i]);
-            strcat(hosts_filter, "'");
-            strcat(hosts_filter, ",");
+            strncat(hosts_filter, "'", strlen("'"));
+            strncat(hosts_filter, expanded_node_list[i], strlen(expanded_node_list[i]));
+            strncat(hosts_filter, "'", strlen("'"));
+            strncat(hosts_filter, ",", strlen(","));
         }
         /* Remove trailing comma */
         hosts_filter[strlen(hosts_filter)-1]= '\0';

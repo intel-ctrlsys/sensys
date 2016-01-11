@@ -1722,7 +1722,9 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 opal_list_append(filter_list, &tmp_filter->value.super);
             }
             returned_status = get_inventory_list(filter_list, &results_list);
-            OBJ_RELEASE(filter_list);
+            if (NULL != filter_list) {
+                OBJ_RELEASE(filter_list);
+            }
             response_buffer = OBJ_NEW(opal_buffer_t);
             if (OPAL_SUCCESS != (rc = opal_dss.pack(response_buffer, &returned_status, 1, OPAL_INT))) {
                 ORTE_ERROR_LOG(rc);

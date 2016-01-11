@@ -92,125 +92,39 @@ static orcm_sensor_sampler_t *componentpower_sampler = NULL;
 static orcm_sensor_componentpower_t orcm_sensor_componentpower;
 
 static void generate_test_vector(opal_buffer_t *v);
+static int load_msr_file_descriptors_for_each_socket(void);
+static void setup_cpu_information(void);
+static int read_register_value(int register_name, unsigned long long *msr, int socket);
+static int rapl_register_lock_check(void);
+static int energy_unit_check(void);
+static int rapl_unit_register_check(void);
+static int rapl_cpu_energy_register_check(void);
+static int rapl_ddr_energy_register_check(void);
 
 static int init(void)
 {
-    int n_cpus, n_sockets, i, ret;
-    char path[STR_LEN];
-    unsigned long long msr, msr1, msr2;
-
-    /* we must be root to run */
     if (0 != geteuid()) {
-        return ORTE_ERROR;
+        opal_output(0, "ERROR: User has not rights to perform this operation");
+        return ORCM_ERR_PERM;
     }
 
-    _rapl.dev_msr_support=1;
-    _rapl.cpu_rapl_support=1;
-    _rapl.ddr_rapl_support=1;
-    _rapl.rapl_calls=0;
-
-    n_cpus=detect_num_cpus();
-
-    n_sockets=detect_num_sockets();
-    if (n_sockets > MAX_SOCKETS){
-        n_sockets=MAX_SOCKETS;
-    }
-
-    _rapl.n_cpus=n_cpus;
-    _rapl.n_sockets=n_sockets;
+    setup_cpu_information();
 
     detect_cpu_for_each_socket();
 
-    for (i=0; i<_rapl.n_sockets; i++){
-        _rapl.cpu_rapl[i]=_rapl.cpu_rapl_prev[i]=0;
-        _rapl.ddr_rapl[i]=_rapl.ddr_rapl_prev[i]=0;
-        snprintf(path, sizeof(path), "/dev/cpu/%d/msr", _rapl.cpu_idx[i]);
-        _rapl.fd_cpu[i]=open(path, O_RDWR);
-        if (_rapl.fd_cpu[i]<0){
-            opal_output(0, "ERROR: opening msr file\n");
-            _rapl.dev_msr_support=0;
-            _rapl.cpu_rapl_support=0;
-            _rapl.ddr_rapl_support=0;
-            return ORTE_ERROR;
-        }
+    if(0 != load_msr_file_descriptors_for_each_socket()) {
+        opal_output(0, "ERROR: opening msr file descriptors\n");
+        return ORCM_ERR_FILE_OPEN_FAILURE;
     }
 
-/* get lock bit*/
-    lseek(_rapl.fd_cpu[0], RAPL_POWER_LIMIT, 0);
-    ret=read(_rapl.fd_cpu[0], &msr, sizeof(unsigned long long));
-    if (ret!=sizeof(unsigned long long)){
-        opal_output(0, "ERROR: reading msr file\n");
-        return ORTE_ERROR;
-    }
-    msr=msr&0x80000000;
-    if (msr){
-        opal_output(0, "ERROR: RAPL locked\n");
-        _rapl.dev_msr_support=0;
-        _rapl.cpu_rapl_support=0;
-        _rapl.ddr_rapl_support=0;
-        return ORTE_ERROR;
+    if(0 != rapl_register_lock_check()) {
+        opal_output(0, "ERROR: RAPL is locked\n");
+        return ORCM_ERR_RESOURCE_BUSY;
     }
 
-/* get energy unit */
-    lseek(_rapl.fd_cpu[0], RAPL_UNIT, 0);
-    ret=read(_rapl.fd_cpu[0], &msr, sizeof(unsigned long long));
-    if (ret!=sizeof(unsigned long long)){
-        opal_output(0, "ERROR: reading msr file\n");
-        return ORTE_ERROR;
-    }
-
-    msr=(msr>>8)&0x1f;
-    if (!msr){
-        opal_output(0, "ERROR: RAPL UNIT register read error\n");
-        _rapl.cpu_rapl_support=0;
-        _rapl.ddr_rapl_support=0;
-        return ORTE_ERROR;
-    }
-    _rapl.rapl_esu=1<<msr;
-    if (_rapl.rapl_esu==0){
-        opal_output(0, "ERROR: RAPL UNIT register read error\n");
-        _rapl.rapl_esu=1<<16;
-        _rapl.cpu_rapl_support=0;
-        _rapl.ddr_rapl_support=0;
-        return ORTE_ERROR;
-    }
-
-    lseek(_rapl.fd_cpu[0], RAPL_CPU_ENERGY, 0);
-    ret=read(_rapl.fd_cpu[0], &msr1, sizeof(unsigned long long));
-    if (ret!=sizeof(unsigned long long)){
-        opal_output(0, "ERROR: reading msr file\n");
-        return ORTE_ERROR;
-    }
-    usleep(100000);
-    lseek(_rapl.fd_cpu[0], RAPL_CPU_ENERGY, 0);
-    ret=read(_rapl.fd_cpu[0], &msr2, sizeof(unsigned long long));
-    if (ret!=sizeof(unsigned long long)){
-        opal_output(0, "ERROR: reading msr file\n");
-        return ORTE_ERROR;
-    }
-    if (msr1==msr2){
-        opal_output(0, "ERROR: RAPL energy register read error\n");
-        _rapl.cpu_rapl_support=0;
-        return ORTE_ERROR;
-    }
-
-    lseek(_rapl.fd_cpu[0], RAPL_DDR_ENERGY, 0);
-    ret=read(_rapl.fd_cpu[0], &msr1, sizeof(unsigned long long));
-    if (ret!=sizeof(unsigned long long)){
-        opal_output(0, "ERROR: reading msr file\n");
-        return ORTE_ERROR;
-    }
-    usleep(100000);
-    lseek(_rapl.fd_cpu[0], RAPL_DDR_ENERGY, 0);
-    ret=read(_rapl.fd_cpu[0], &msr2, sizeof(unsigned long long));
-    if (ret!=sizeof(unsigned long long)){
-        opal_output(0, "ERROR: reading msr file\n");
-        return ORTE_ERROR;
-    }
-    if (msr1==msr2){
-        opal_output(0, "ERROR: RAPL energy register read error\n");
-        _rapl.ddr_rapl_support=0;
-        return ORTE_ERROR;
+    if(0 != energy_unit_check()) {
+        opal_output(0, "ERROR: energy unit check fails" );
+        return ORCM_ERROR;
     }
 
     gettimeofday(&(_tv.tv_curr), NULL);
@@ -342,6 +256,165 @@ static void detect_cpu_for_each_socket(void)
     fclose(fp);
 
     return;
+}
+
+static void setup_cpu_information(void)
+{
+    int n_cpus;
+    int n_sockets;
+    _rapl.dev_msr_support=1;
+    _rapl.cpu_rapl_support=1;
+    _rapl.ddr_rapl_support=1;
+    _rapl.rapl_calls=0;
+
+    n_cpus=detect_num_cpus();
+    n_sockets=detect_num_sockets();
+
+    if (n_sockets > MAX_SOCKETS){
+        n_sockets=MAX_SOCKETS;
+    }
+
+    _rapl.n_cpus=n_cpus;
+    _rapl.n_sockets=n_sockets;
+}
+
+static int load_msr_file_descriptors_for_each_socket(void) {
+    int i;
+    char base_path[] = "/dev/cpu/%d/msr";
+    char path[STR_LEN];
+    for (i=0; i<_rapl.n_sockets; i++){
+        _rapl.cpu_rapl[i]=_rapl.cpu_rapl_prev[i]=0;
+        _rapl.ddr_rapl[i]=_rapl.ddr_rapl_prev[i]=0;
+        snprintf(path, sizeof(path), base_path, _rapl.cpu_idx[i]);
+        _rapl.fd_cpu[i]=open(path, O_RDWR);
+        if (_rapl.fd_cpu[i]<0){
+            _rapl.dev_msr_support=0;
+            _rapl.cpu_rapl_support=0;
+            _rapl.ddr_rapl_support=0;
+            return ORCM_ERR_FILE_OPEN_FAILURE;
+        }
+    }
+    return 0;
+}
+
+static int read_register_value(int register_name, unsigned long long *msr, int socket)
+{
+    int ret;
+    int msr_size=sizeof(unsigned long long);
+    lseek(_rapl.fd_cpu[socket], register_name, 0);
+    ret=read(_rapl.fd_cpu[socket], msr, msr_size);
+    if (ret!=msr_size) {
+        return ORCM_ERROR;
+    }
+    return 0;
+}
+
+static int rapl_register_lock_check(void)
+{
+    unsigned long long msr;
+    const int zero_socket=0;
+    if (0 != read_register_value(RAPL_POWER_LIMIT, &msr, zero_socket)){
+        opal_output(0, "ERROR: reading RAPL_POWER_LIMIT register from msr\n");
+        return ORCM_ERR_FILE_READ_FAILURE;
+    }
+    msr=msr&0x80000000;
+    if (msr){
+        _rapl.dev_msr_support=0;
+        _rapl.cpu_rapl_support=0;
+        _rapl.ddr_rapl_support=0;
+        opal_output(0, "WARNING: rapl register is locked, msr support disabled\n");
+        return ORCM_ERROR;
+    }
+    return 0;
+}
+
+static int rapl_unit_register_check(void)
+{
+    unsigned long long msr;
+    const int zero_socket=0;
+    if (0 != read_register_value(RAPL_UNIT, &msr, zero_socket)){
+        opal_output(0, "ERROR: reading RAPL_UNIT register from msr\n");
+        return ORCM_ERR_FILE_READ_FAILURE;
+    }
+    msr=(msr>>8)&0x1f;
+    if (!msr){
+        opal_output(0, "WARNING: RAPL_UNIT register read error, rapl support disabled\n");
+        _rapl.cpu_rapl_support=0;
+        _rapl.ddr_rapl_support=0;
+        return ORCM_ERROR;
+    }
+    _rapl.rapl_esu=1<<msr;
+    if (_rapl.rapl_esu==0){
+        opal_output(0, "WARNING: RAPL_UNIT register read error, rapl support disabled\n");
+        _rapl.rapl_esu=1<<16;
+        _rapl.cpu_rapl_support=0;
+        _rapl.ddr_rapl_support=0;
+        return ORCM_ERROR;
+    }
+    return 0;
+}
+
+static int rapl_cpu_energy_register_check(void)
+{
+    unsigned long long msr1, msr2;
+    const int zero_socket=0;
+    if (0 != read_register_value(RAPL_CPU_ENERGY, &msr1, zero_socket)){
+        opal_output(0, "ERROR: reading RAPL_CPU_ENERGY register from msr\n");
+        return ORCM_ERR_FILE_READ_FAILURE;
+    }
+    usleep(100000);
+    if (0 != read_register_value(RAPL_CPU_ENERGY, &msr2, zero_socket)){
+        opal_output(0, "ERROR: reading RAPL_CPU_ENERGY register from msr\n");
+        return ORCM_ERR_FILE_READ_FAILURE;
+    }
+    if (msr1==msr2){
+        opal_output(0, "WARNING: RAPL_CPU_ENERGY register has an unexpected value, cpu support disabled\n");
+        _rapl.cpu_rapl_support=0;
+        return ORCM_ERROR;
+    }
+    return 0;
+}
+
+static int rapl_ddr_energy_register_check(void)
+{
+    unsigned long long msr1, msr2;
+    const int zero_socket=0;
+    if (0 != read_register_value(RAPL_DDR_ENERGY, &msr1, zero_socket)){
+        opal_output(0, "ERROR: reading RAPL_DDR_ENERGY register from msr\n");
+        return ORCM_ERR_FILE_READ_FAILURE;
+    }
+    usleep(100000);
+    if (0 != read_register_value(RAPL_DDR_ENERGY, &msr2, zero_socket)){
+        opal_output(0, "ERROR: reading RAPL_DDR_ENERGY register from msr\n");
+        return ORCM_ERR_FILE_READ_FAILURE;
+    }
+    if (msr1==msr2){
+        opal_output(0, "WARNING: RAPL_DDR_ENERGY register has an unexpected value, ddr support disabled\n");
+        _rapl.ddr_rapl_support=0;
+        return ORCM_ERROR;
+    }
+    return 0;
+}
+
+static int energy_unit_check(void)
+{
+
+    if (0 != rapl_unit_register_check()){
+        opal_output(0, "ERROR: RAPL_UNIT register check fail\n");
+        return ORCM_ERROR;
+    }
+
+    if (0 != rapl_cpu_energy_register_check()){
+        opal_output(0, "WARNING: RAPL_CPU_ENERGY check fail\n");
+        return ORCM_ERROR;
+    }
+
+    if (0 != rapl_ddr_energy_register_check()){
+        opal_output(0, "WARNING: RAPL_DDR_ENERGY check fail\n");
+        return ORCM_ERROR;
+    }
+
+    return 0;
 }
 
 /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -93,6 +93,10 @@ TEST_F(ut_vardata_tests, test_vardata_packto) {
     OBJ_DESTRUCT(&buffer);
 }
 
+TEST_F(ut_vardata_tests, test_vardata_getDataPtr) {
+    ASSERT_TRUE( NULL != testData->getDataPtr() );
+}
+
 /*
  * vardataList tests
  */
@@ -123,4 +127,8 @@ TEST_F(ut_vardataList_tests, test_pack_unpack) {
             }
         }
     }
+}
+
+TEST_F(ut_vardata_negative, packTo) {
+    ASSERT_THROW( (new vardata((int) 1))->packTo(NULL), unableToPack );
 }

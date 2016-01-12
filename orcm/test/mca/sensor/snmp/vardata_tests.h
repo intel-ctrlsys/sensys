@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -66,6 +66,9 @@ class ut_vardataList_tests: public testing::Test {
     virtual void TearDown() {
         OBJ_DESTRUCT(&buffer);
     }
+};
+
+class ut_vardata_negative: public testing::Test {
 };
 
 #endif

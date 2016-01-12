@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -10,6 +10,7 @@
 
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
+#include <net-snmp/mib_api.h>
 #include "net-snmp/library/transform_oids.h"
 
 #include <iostream>
@@ -28,24 +29,21 @@ enum auth_type {MD5, SHA1};
 enum sec_type {NOAUTH, AUTHNOPRIV, AUTHPRIV};
 
 using std::runtime_error;
-using namespace std;
 
 class snmpCollector {
     public:
         snmpCollector();
-        snmpCollector(string hostname, string username);
-        snmpCollector(string hostname, string username, string password);
-        snmpCollector(string hostname, string username, string password, auth_type auth);
-        snmpCollector(string hostname, string username, string password, auth_type auth, sec_type sec);
+        snmpCollector(std::string hostname, std::string username);
+        snmpCollector(std::string hostname, std::string username, std::string password);
+        snmpCollector(std::string hostname, std::string username, std::string password, auth_type auth);
+        snmpCollector(std::string hostname, std::string username, std::string password, auth_type auth, sec_type sec);
         ~snmpCollector();
 
-        void dump_session(netsnmp_session *s);
         void dump_pdu(netsnmp_pdu *p);
-        void setOIDs(string strOIDs);
+        void setOIDs(std::string strOIDs);
         void updateOIDs();
-        void setLocation(string location);
-        list<string> getRequestedOIDs();
-        vector<vardata> collectData();
+        void setLocation(std::string location);
+        std::vector<vardata> collectData();
 
     private:
         struct snmp_session session;
@@ -54,27 +52,28 @@ class snmpCollector {
         oid anOID[MAX_OID_LEN];
         size_t anOID_len;
 
-        string hostname, username, password, location;
-        list<string> oidList;
+        std::string hostname, username, password, location;
+        std::list<std::string> oidList;
 
         void setSecurityLevel(sec_type sec);
-        void setMD5Authentication(string password);
-        void setSHA1Authentication(string password);
-        void storeCharsAndLength(string s, char **c_str, size_t *len);
-        list<string> splitString(string input, char delimiter);
-        vector<vardata> packCollectedData(netsnmp_pdu *response);
+        void setMD5Authentication(std::string password);
+        void setSHA1Authentication(std::string password);
+        void storeCharsAndLength(std::string s, char **c_str, size_t *len);
+        void setAuthentication(std::string password);
+        std::list<std::string> splitString(std::string input, char delimiter);
+        std::vector<vardata> packCollectedData(netsnmp_pdu *response);
 
-        static inline string &ltrim(string &s) {
-            s.erase(s.begin(), find_if(s.begin(), s.end(), not1(ptr_fun<int, int>(isspace))));
+        static inline std::string &ltrim(std::string &s) {
+            s.erase(s.begin(), find_if(s.begin(), s.end(), not1(std::ptr_fun<int, int>(isspace))));
             return s;
         }
 
-        static inline string &rtrim(string &s) {
-            s.erase(find_if(s.rbegin(), s.rend(), not1(ptr_fun<int, int>(isspace))).base(), s.end());
+        static inline std::string &rtrim(std::string &s) {
+            s.erase(find_if(s.rbegin(), s.rend(), not1(std::ptr_fun<int, int>(isspace))).base(), s.end());
             return s;
         }
 
-        static inline string &trim(string &s) {
+        static inline std::string &trim(std::string &s) {
             return ltrim(rtrim(s));
         }
 };

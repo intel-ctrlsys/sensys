@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -8,6 +8,7 @@
  */
 
 #include "snmp_parser.h"
+using namespace std;
 
 /**
  * @brief Function that removes the white spaces from the beginning and the end

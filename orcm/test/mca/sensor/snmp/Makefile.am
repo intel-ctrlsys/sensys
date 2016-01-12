@@ -54,7 +54,7 @@ MOCKING=\
     -Wl,--wrap=snmp_synch_response \
     -Wl,--wrap=snmp_free_pdu \
     -Wl,--wrap=snmp_pdu_create \
-    -Wl,--wrap=read_objid \
+    -Wl,--wrap=snmp_parse_oid \
     -Wl,--wrap=snmp_add_null_var \
     -Wl,--wrap=snprint_objid
 

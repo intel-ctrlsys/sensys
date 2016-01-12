@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -20,13 +20,13 @@ extern "C"{
 
 class ut_snmp_parser_tests: public testing::Test {
     protected:
-        string test_files_dir;
+        std::string test_files_dir;
         ut_snmp_parser_tests(){
             // 'make check' will provide $(srcdir) with the path to
             // test source folder.
             char* srcdir = getenv("srcdir");
             if (NULL != srcdir)
-                test_files_dir = string(srcdir) + "/test_files/";
+                test_files_dir = std::string(srcdir) + "/test_files/";
             else
                 test_files_dir = "test_files/";
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -39,13 +39,16 @@ class ut_snmp_collector_tests: public testing::Test
                                  opal_list_t *ret, orcm_db_callback_fn_t cbfunc, void *cbdata);
         static struct snmp_session* SnmpOpen(struct snmp_session* ss);
         static int SnmpSynchResponse(netsnmp_session *session, netsnmp_pdu *pdu, netsnmp_pdu **response);
+        static int SnmpSynchResponse_error(netsnmp_session *session, netsnmp_pdu *pdu, netsnmp_pdu **response);
+        static int SnmpSynchResponse_timeout(netsnmp_session *session, netsnmp_pdu *pdu, netsnmp_pdu **response);
+        static int SnmpSynchResponse_packeterror(netsnmp_session *session, netsnmp_pdu *pdu, netsnmp_pdu **response);
         static void SnmpFreePdu(netsnmp_pdu *pdu);
         static void sample_check(opal_buffer_t *bucket);
         static struct snmp_pdu *SnmpPDUCreate(int command);
-        static int ReadObjid(const char *input, oid *objid, size_t *objidlen);
+        static oid* ReadObjid(const char *input, oid *objid, size_t *objidlen);
         static int PrintObjid(char *buf, size_t len,  oid *objid, size_t *objidlen);
         static netsnmp_variable_list *SnmpAddNullVar(netsnmp_pdu *pdu, const oid *objid, size_t objidlen);
-        static vector<snmpCollector> init(void);
+        static std::vector<snmpCollector> init(void);
 
         static snmpCollector *collector;
         static const char* hostname_;

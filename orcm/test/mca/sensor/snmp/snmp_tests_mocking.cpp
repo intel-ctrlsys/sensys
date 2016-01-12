@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -54,12 +54,12 @@ extern "C" { // Mocking must use correct "C" linkages
         }
     }
 
-    void __wrap_read_objid(const char *input, oid *objid, size_t *objidlen)
+    void __wrap_snmp_parse_oid(const char *input, oid *objid, size_t *objidlen)
     {
-        if(NULL == snmp_mocking.read_objid_callback) {
-            __real_read_objid(input, objid, objidlen);
+        if(NULL == snmp_mocking.snmp_parse_oid_callback) {
+            __real_snmp_parse_oid(input, objid, objidlen);
         } else {
-            snmp_mocking.read_objid_callback(input, objid, objidlen);
+            snmp_mocking.snmp_parse_oid_callback(input, objid, objidlen);
         }
     }
 
@@ -144,7 +144,7 @@ snmp_tests_mocking::snmp_tests_mocking() :
     orte_util_print_name_args_callback(NULL), orcm_analytics_base_send_data_callback(NULL),
     opal_progress_thread_init_callback(NULL), opal_progress_thread_finalize_callback(NULL),
     snmp_open_callback(NULL), snmp_synch_response_callback(NULL), snmp_free_pdu_callback(NULL),
-    snmp_pdu_create_callback(NULL), read_objid_callback(NULL), snmp_add_null_var_callback(NULL),
+    snmp_pdu_create_callback(NULL), snmp_parse_oid_callback(NULL), snmp_add_null_var_callback(NULL),
     snprint_objid_callback(NULL)
 {
 }

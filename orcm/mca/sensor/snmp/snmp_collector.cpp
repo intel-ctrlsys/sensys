@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -8,6 +8,7 @@
  */
 
 #include "snmp_collector.h"
+using namespace std;
 
 snmpCollector::snmpCollector() {
     snmpCollector("","");
@@ -94,23 +95,6 @@ void snmpCollector::dump_pdu(netsnmp_pdu *p) {
     printf("Agent address[3]: %u\n",p->agent_addr[3]);
 }
 
-void snmpCollector::dump_session(netsnmp_session *s) {
-    printf("Session I'm at: %p\n",s);
-    printf("Version: %ld\n",s->version);
-    printf("Retries: %d\n",s->retries);
-    printf("Timeout: %ld\n",s->timeout);
-    printf("Flags: %lu\n",s->flags);
-    printf("Subsession: %p\n",s->subsession);
-    printf("Next: %p\n",s->next);
-    printf("Peername: %s\n",s->peername);
-    printf("Remote port: %u\n",s->local_port);
-    printf("Localname: %s\n",s->localname);
-    printf("Errno: %d\n", s->s_errno);
-    printf("Library Errno: %d\n", s->s_snmp_errno);
-    printf("Session id: %ld\n", s->sessid);
-}
-
-
 void snmpCollector::setOIDs(string strOIDs) {
     pdu = snmp_pdu_create(SNMP_MSG_GET);
 
@@ -118,7 +102,7 @@ void snmpCollector::setOIDs(string strOIDs) {
 
     anOID_len = MAX_OID_LEN;
     for (list<string>::const_iterator it = oidList.begin(); it != oidList.end(); ++it) {
-        if (1 != read_objid(it->c_str(), anOID, &anOID_len)) {
+        if (NULL == snmp_parse_oid(it->c_str(), anOID, &anOID_len)) {
            throw invalidOIDParsing();
         }
         snmp_add_null_var(pdu, anOID, anOID_len);
@@ -130,7 +114,7 @@ void snmpCollector::updateOIDs() {
 
     anOID_len = MAX_OID_LEN;
     for (list<string>::const_iterator it = oidList.begin(); it != oidList.end(); ++it) {
-        if (1 != read_objid(it->c_str(), anOID, &anOID_len)) {
+        if (NULL == snmp_parse_oid(it->c_str(), anOID, &anOID_len)) {
             throw invalidOIDParsing();
         }
         snmp_add_null_var(pdu, anOID, anOID_len);
@@ -139,20 +123,6 @@ void snmpCollector::updateOIDs() {
 
 void snmpCollector::setLocation(string location){
     this->location = location;
-}
-
-list<string> snmpCollector::getRequestedOIDs() {
-    list<string> retValue;
-
-    if (NULL == pdu) {
-        throw invalidOIDParsing();
-    }
-    for(netsnmp_variable_list* vars = pdu->variables; vars; vars = vars->next_variable) {
-        char buffer[STRING_BUFFER_SIZE];
-        snprint_objid(buffer, STRING_BUFFER_SIZE, vars->name, vars->name_length);
-        retValue.push_back(string(buffer));
-    }
-    return retValue;
 }
 
 vector<vardata> snmpCollector::collectData() {
@@ -242,8 +212,17 @@ void snmpCollector::setSecurityLevel(sec_type sec) {
 void snmpCollector::setMD5Authentication(string password) {
     session.securityAuthProto = usmHMACMD5AuthProtocol;
     session.securityAuthProtoLen = sizeof(usmHMACMD5AuthProtocol)/sizeof(oid);
-    session.securityAuthKeyLen = USM_AUTH_KU_LEN;
+    (void) setAuthentication(password);
+}
 
+void snmpCollector::setSHA1Authentication(string password) {
+    session.securityAuthProto = usmHMACSHA1AuthProtocol;
+    session.securityAuthProtoLen = sizeof(usmHMACSHA1AuthProtocol)/sizeof(oid);
+    (void) setAuthentication(password);
+}
+
+void snmpCollector::setAuthentication(string password) {
+    session.securityAuthKeyLen = USM_AUTH_KU_LEN;
     if (generate_Ku(session.securityAuthProto,
                     session.securityAuthProtoLen,
                     (u_char *) password.c_str(), password.size(),
@@ -251,10 +230,6 @@ void snmpCollector::setMD5Authentication(string password) {
                     &session.securityAuthKeyLen) != SNMPERR_SUCCESS) {
         throw invalidPassword();
     }
-}
-
-void snmpCollector::setSHA1Authentication(string password) {
-    setMD5Authentication(password); // Pending implementation
 }
 
 void snmpCollector::storeCharsAndLength(string s, char **c_str, size_t *len) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -52,17 +52,6 @@ extern "C" {
     ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE); \
     throw unableToAllocateObj(); }
 
-inline static void LOAD_STRING_FROM_MCA_PARAMETER(string &s, string x) {
-    char* varValue;
-    string var = string(OPAL_MCA_PREFIX).append(string("sensor_snmp_")).append(x);
-
-    if (NULL == (varValue = getenv(var.c_str()))) {
-        s = string("");
-    } else {
-        s = string(varValue);
-    }
-}
-
 // For Testing only illegal as job_id...
 #define NOOP_JOBID -999
 
@@ -83,13 +72,9 @@ snmp_impl::~snmp_impl()
 
 int snmp_impl::init(void)
 {
-    if(0 == mca_sensor_snmp_component.sample_rate) {
-        mca_sensor_snmp_component.sample_rate = orcm_sensor_base.sample_rate;
-    }
-    hostname_ = orte_process_info.nodename;
-
     try {
-        snmpParser sp(""); // It will take the default snmp configuration file.
+        (void) load_mca_variables();
+        snmpParser sp(config_file_);
         collectorObj_ = sp.parse();
     } catch (exception &e) {
         opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
@@ -103,6 +88,18 @@ int snmp_impl::init(void)
     }
 
     return ORCM_SUCCESS;
+}
+
+void snmp_impl::load_mca_variables(void) 
+{
+    if (NULL != mca_sensor_snmp_component.config_file) {
+        config_file_ = string(mca_sensor_snmp_component.config_file);
+    }
+
+    if(0 == mca_sensor_snmp_component.sample_rate) {
+        mca_sensor_snmp_component.sample_rate = orcm_sensor_base.sample_rate;
+    }
+    hostname_ = orte_process_info.nodename;
 }
 
 void snmp_impl::finalize(void)

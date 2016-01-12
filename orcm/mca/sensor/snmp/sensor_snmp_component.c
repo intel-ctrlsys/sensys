@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc. All rights reserved.
  * Additional copyrights may follow
  *
  * $HEADER$
@@ -93,5 +93,14 @@ int snmp_component_register(void)
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_snmp_component.sample_rate);
+
+    mca_sensor_snmp_component.config_file = NULL;
+    (void) mca_base_component_var_register (c, "config_file",
+                                            "Full path to the SNMP configuration file",
+                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_snmp_component.config_file);
+
     return ORCM_SUCCESS;
 }

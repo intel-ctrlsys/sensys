@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -21,6 +21,7 @@ extern "C" {
     #include <net-snmp/net-snmp-config.h>
     #include <net-snmp/net-snmp-includes.h>
     #include <net-snmp/library/transform_oids.h>
+    #include <net-snmp/mib_api.h>
 
     extern void __real_orte_errmgr_base_log(int err, char* file, int lineno);
     extern void __real_opal_output_verbose(int level, int output_id, const char* format, ...);
@@ -32,7 +33,7 @@ extern "C" {
     extern int __real_snmp_synch_response(netsnmp_session *session, netsnmp_pdu *pdu, netsnmp_pdu **response);
     extern void __real_snmp_free_pdu(netsnmp_pdu *pdu);
     extern struct snmp_pdu* __real_snmp_pdu_create(int command);
-    extern int __real_read_objid(const char *input, oid *objid, size_t *objidlen);
+    extern int __real_snmp_parse_oid(const char *input, oid *objid, size_t *objidlen);
     extern int __real_snprint_objid(char *buf, size_t len, oid *objid, size_t *objidlen);
     extern netsnmp_variable_list* __real_snmp_add_null_var(netsnmp_pdu *pdu, const oid *objid, size_t objidlen);
 
@@ -50,7 +51,7 @@ typedef struct snmp_session* (*snmp_open_callback_fn_t)(struct snmp_session* ss)
 typedef int (*snmp_synch_response_callback_ft_t)(netsnmp_session *session, netsnmp_pdu *pdu, netsnmp_pdu **response);
 typedef void (*snmp_free_pdu_callback_ft_t)(netsnmp_pdu* pdu);
 typedef struct snmp_pdu* (*snmp_pdu_create_callback_ft_t)(int command);
-typedef int (*read_objid_callback_ft_t)(const char *input, oid *objid, size_t *objidlen);
+typedef oid* (*snmp_parse_oid_callback_ft_t)(const char *input, oid *objid, size_t *objidlen);
 typedef int (*snprint_objid_callback_ft_t)(char *buf, size_t len, oid *objid, size_t *objidlen);
 typedef netsnmp_variable_list* (*snmp_add_null_var_callback_ft_t)(netsnmp_pdu *pdu, const oid *objid, size_t objidlen);
 
@@ -71,7 +72,7 @@ class snmp_tests_mocking
         snmp_synch_response_callback_ft_t snmp_synch_response_callback;
         snmp_free_pdu_callback_ft_t snmp_free_pdu_callback;
         snmp_pdu_create_callback_ft_t snmp_pdu_create_callback;
-        read_objid_callback_ft_t read_objid_callback;
+        snmp_parse_oid_callback_ft_t snmp_parse_oid_callback;
         snmp_add_null_var_callback_ft_t snmp_add_null_var_callback;
         snprint_objid_callback_ft_t snprint_objid_callback;
 };

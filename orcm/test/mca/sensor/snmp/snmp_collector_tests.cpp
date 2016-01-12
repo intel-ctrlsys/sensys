@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -51,6 +51,8 @@ extern "C" {
 #define EXPECT_PTRNE(x,y)  EXPECT_NE((void*)x,(void*)y)
 #define EXPECT_NULL(x)     EXPECT_PTREQ(NULL,x)
 #define EXPECT_NOT_NULL(x) EXPECT_PTRNE(NULL,x)
+
+#define SNMP_ERR_BADVALUE               (3)
 
 /* Fixture */
 using namespace std;
@@ -117,7 +119,7 @@ void ut_snmp_collector_tests::TearDownTestCase()
     snmp_mocking.snmp_synch_response_callback = NULL;
     snmp_mocking.snmp_free_pdu_callback = NULL;
     snmp_mocking.snmp_pdu_create_callback = NULL;
-    snmp_mocking.read_objid_callback = NULL;
+    snmp_mocking.snmp_parse_oid_callback = NULL;
     snmp_mocking.snmp_add_null_var_callback = NULL;
     snmp_mocking.snprint_objid_callback = NULL;
 }
@@ -152,7 +154,7 @@ void ut_snmp_collector_tests::ResetTestEnvironment()
     snmp_mocking.snmp_synch_response_callback = SnmpSynchResponse;
     snmp_mocking.snmp_free_pdu_callback = SnmpFreePdu;
     snmp_mocking.snmp_pdu_create_callback = SnmpPDUCreate;
-    snmp_mocking.read_objid_callback = ReadObjid;
+    snmp_mocking.snmp_parse_oid_callback = ReadObjid;
     snmp_mocking.snmp_add_null_var_callback = SnmpAddNullVar;
     snmp_mocking.snprint_objid_callback = PrintObjid;
 
@@ -224,9 +226,9 @@ struct snmp_pdu *ut_snmp_collector_tests::SnmpPDUCreate(int command)
     return new snmp_pdu;
 }
 
-int ut_snmp_collector_tests::ReadObjid(const char *input, oid *objid, size_t *objidlen)
+oid* ut_snmp_collector_tests::ReadObjid(const char *input, oid *objid, size_t *objidlen)
 {
-    return 1;
+    return (oid*) malloc(sizeof(oid));
 }
 
 int ut_snmp_collector_tests::PrintObjid(char *buf, size_t len,
@@ -287,6 +289,33 @@ int ut_snmp_collector_tests::SnmpSynchResponse(netsnmp_session *session,
 
     (*response)->variables = t_str;
 
+    return STAT_SUCCESS;
+}
+
+
+int ut_snmp_collector_tests::SnmpSynchResponse_timeout(netsnmp_session *session,
+                                               netsnmp_pdu *pdu,
+                                               netsnmp_pdu **response)
+{
+    return STAT_TIMEOUT;
+}
+
+
+int ut_snmp_collector_tests::SnmpSynchResponse_error(netsnmp_session *session,
+                                               netsnmp_pdu *pdu,
+                                               netsnmp_pdu **response)
+{
+    return STAT_ERROR;
+}
+
+int ut_snmp_collector_tests::SnmpSynchResponse_packeterror(netsnmp_session *session,
+                                               netsnmp_pdu *pdu,
+                                               netsnmp_pdu **response)
+{
+    SnmpSynchResponse(session, pdu, response);
+    if (response != NULL) {
+        (*response)->errstat = SNMP_ERR_BADVALUE;
+    }
     return STAT_SUCCESS;
 }
 
@@ -646,5 +675,35 @@ TEST_F(ut_snmp_collector_tests, test_pack_collected_data_function)
                 break;
         }
     }
+    delete collector;
+}
+
+TEST_F(ut_snmp_collector_tests, test_v3_constructors)
+{
+    snmpCollector *collector;
+
+    collector = new snmpCollector("192.168.1.100", "username", "password");
+    ASSERT_NOT_NULL(collector);
+    delete collector;
+}
+
+TEST_F(ut_snmp_collector_tests, test_negative_collectData)
+{
+    snmpCollector *collector;
+    collector = new snmpCollector("192.168.1.100", "public");
+    collector->setOIDs(".1.3.6.1.2.1.1.7.0");
+
+    // Timeout
+    snmp_mocking.snmp_synch_response_callback = SnmpSynchResponse_timeout;
+    ASSERT_THROW(collector->collectData(), snmpTimeout);
+
+    // Data collection error
+    snmp_mocking.snmp_synch_response_callback = SnmpSynchResponse_error;
+    ASSERT_THROW(collector->collectData(), dataCollectionError);
+
+    // Data packet collection error
+    snmp_mocking.snmp_synch_response_callback = SnmpSynchResponse_packeterror;
+    ASSERT_THROW(collector->collectData(), packetError);
+
     delete collector;
 }

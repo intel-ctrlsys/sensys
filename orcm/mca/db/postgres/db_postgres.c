@@ -466,6 +466,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
          *  data_type_id) */
         switch (item.item_type) {
         case ORCM_DB_ITEM_STRING:
+            memset(escaped_str, '\0', strlen(escaped_str));
             escape_string_apostrophe(item.value.value_str, escaped_str);
             if (NULL != units) {
                 asprintf(rows + i,
@@ -742,6 +743,7 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
          *  event_id) */
         switch (item.item_type) {
         case ORCM_DB_ITEM_STRING:
+            memset(escaped_str, '\0', strlen(escaped_str));
             escape_string_apostrophe(item.value.value_str, escaped_str);
             if (NULL != units) {
                 asprintf(rows + j,

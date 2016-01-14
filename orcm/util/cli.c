@@ -41,8 +41,8 @@ static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
 static int print_completions(orcm_cli_t *cli, char **input);
 static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input);
 static void set_handler_default(int sig);
-static void scroll_up(int *scroll_indx, char *input);
-static void scroll_down(int *scroll_indx, char *input);
+static void scroll_up(int *scroll_indx, char *input, int *len);
+static void scroll_down(int *scroll_indx, char *input, int *len);
 static void save_cmd_history(char *input);
 
 #define CLI_HISTORY_SIZE 15
@@ -314,13 +314,13 @@ int orcm_cli_get_cmd(char *prompt,
                 case 'A':
                     /* up arrow */
                     printf("\n%s> ", prompt);
-                    scroll_up(&scroll_indx, input);
+                    scroll_up(&scroll_indx, input, &j);
                     break;
 
                 case 'B':
                     /* down arrow */
                     printf("\n%s> ", prompt);
-                    scroll_down(&scroll_indx, input);
+                    scroll_down(&scroll_indx, input, &j);
                     break;
 
                 case 'C':
@@ -599,13 +599,14 @@ static void set_handler_default(int sig)
     sigaction(sig, &act, (struct sigaction *)0);
 }
 
-static void scroll_up(int *scroll_indx, char *input)
+static void scroll_up(int *scroll_indx, char *input, int *len)
 {
     int indx = *scroll_indx;
     if (!cmd_hist.count) {
         return;
     }
     strcpy(input, cmd_hist.hist[indx]);
+    *len = strlen(input);
     if (0  < indx) {
         indx--;
     } else {
@@ -616,13 +617,14 @@ static void scroll_up(int *scroll_indx, char *input)
     return;
 }
 
-static void scroll_down(int *scroll_indx, char *input)
+static void scroll_down(int *scroll_indx, char *input, int *len)
 {
     int indx = *scroll_indx;
     if (!cmd_hist.count) {
         return;
     }
     strcpy(input, cmd_hist.hist[indx]);
+    *len = strlen(input);
     if (cmd_hist.count  > *scroll_indx) {
         indx++;
     } else {

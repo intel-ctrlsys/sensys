@@ -159,6 +159,8 @@ static void start(orte_jobid_t jobid)
         opal_event_evtimer_set(orcm_sensor_syslog.ev_base, &syslog_sampler->ev,
                                perthread_syslog_sample, syslog_sampler);
         opal_event_evtimer_add(&syslog_sampler->ev, &syslog_sampler->rate);
+    } else {
+        mca_sensor_syslog_component.sample_rate = orcm_sensor_base.sample_rate;
     }
     return;
 }
@@ -497,10 +499,8 @@ static void syslog_set_sample_rate(int sample_rate)
 static void syslog_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {
-      /* check if syslog sample rate is provided for this*/
-      if (mca_sensor_syslog_component.use_progress_thread) {
-          *sample_rate = mca_sensor_syslog_component.sample_rate;
-      }
+        /* check if syslog sample rate is provided for this*/
+        *sample_rate = mca_sensor_syslog_component.sample_rate;
     }
     return;
 }

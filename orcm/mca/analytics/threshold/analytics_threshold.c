@@ -126,7 +126,7 @@ static int generate_notification_event(orcm_analytics_value_t* analytics_value,o
         return ORCM_ERROR;
     }
     threshold_event_data = orcm_analytics_base_event_create(analytics_value,
-                             ORCM_RAS_EVENT_SENSOR, sev);
+                             ORCM_RAS_EVENT_EXCEPTION, sev);
     if(NULL == threshold_event_data){
         rc = ORCM_ERROR;
         goto done;

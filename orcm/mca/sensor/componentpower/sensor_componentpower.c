@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc. All rights reserved.
  *
  * Additional copyrights may follow
  *
@@ -94,7 +94,7 @@ static orcm_sensor_componentpower_t orcm_sensor_componentpower;
 static void generate_test_vector(opal_buffer_t *v);
 static int load_msr_file_descriptors_for_each_socket(void);
 static void setup_cpu_information(void);
-static int read_register_value(int register_name, unsigned long long *msr, int socket);
+static int read_register_value(int register_name, int socket, unsigned long long *msr);
 static int rapl_register_lock_check(void);
 static int energy_unit_check(void);
 static int rapl_unit_register_check(void);
@@ -103,7 +103,7 @@ static int rapl_ddr_energy_register_check(void);
 
 static int init(void)
 {
-    if (0 != geteuid()) {
+    if (ORCM_SUCCESS != geteuid()) {
         opal_output(0, "ERROR: User has not rights to perform this operation");
         return ORCM_ERR_PERM;
     }
@@ -112,19 +112,18 @@ static int init(void)
 
     detect_cpu_for_each_socket();
 
-    if(0 != load_msr_file_descriptors_for_each_socket()) {
+    if (ORCM_SUCCESS != load_msr_file_descriptors_for_each_socket()) {
         opal_output(0, "ERROR: opening msr file descriptors\n");
         return ORCM_ERR_FILE_OPEN_FAILURE;
     }
 
-    if(0 != rapl_register_lock_check()) {
+    if (ORCM_SUCCESS != rapl_register_lock_check()) {
         opal_output(0, "ERROR: RAPL is locked\n");
         return ORCM_ERR_RESOURCE_BUSY;
     }
 
-    if(0 != energy_unit_check()) {
-        opal_output(0, "ERROR: energy unit check fails" );
-        return ORCM_ERROR;
+    if (ORCM_SUCCESS != energy_unit_check()) {
+        opal_output(0, "WARNING: energy unit check fails" );
     }
 
     gettimeofday(&(_tv.tv_curr), NULL);
@@ -294,10 +293,11 @@ static int load_msr_file_descriptors_for_each_socket(void) {
             return ORCM_ERR_FILE_OPEN_FAILURE;
         }
     }
-    return 0;
+    return ORCM_SUCCESS;
 }
 
-static int read_register_value(int register_name, unsigned long long *msr, int socket)
+static int read_register_value(int register_name, int socket,
+    unsigned long long *msr)
 {
     int ret;
     int msr_size=sizeof(unsigned long long);
@@ -306,14 +306,17 @@ static int read_register_value(int register_name, unsigned long long *msr, int s
     if (ret!=msr_size) {
         return ORCM_ERROR;
     }
-    return 0;
+    return ORCM_SUCCESS;
 }
 
 static int rapl_register_lock_check(void)
 {
     unsigned long long msr;
-    const int zero_socket=0;
-    if (0 != read_register_value(RAPL_POWER_LIMIT, &msr, zero_socket)){
+    const int socket=0;
+    if (ORCM_SUCCESS != read_register_value(RAPL_POWER_LIMIT, socket, &msr)){
+        _rapl.dev_msr_support=0;
+        _rapl.cpu_rapl_support=0;
+        _rapl.ddr_rapl_support=0;
         opal_output(0, "ERROR: reading RAPL_POWER_LIMIT register from msr\n");
         return ORCM_ERR_FILE_READ_FAILURE;
     }
@@ -323,98 +326,103 @@ static int rapl_register_lock_check(void)
         _rapl.cpu_rapl_support=0;
         _rapl.ddr_rapl_support=0;
         opal_output(0, "WARNING: rapl register is locked, msr support disabled\n");
-        return ORCM_ERROR;
     }
-    return 0;
+    return ORCM_SUCCESS;
 }
 
 static int rapl_unit_register_check(void)
 {
     unsigned long long msr;
-    const int zero_socket=0;
-    if (0 != read_register_value(RAPL_UNIT, &msr, zero_socket)){
+    const int socket=0;
+    if (ORCM_SUCCESS != read_register_value(RAPL_UNIT, socket, &msr)){
+        _rapl.cpu_rapl_support=0;
+        _rapl.ddr_rapl_support=0;
         opal_output(0, "ERROR: reading RAPL_UNIT register from msr\n");
         return ORCM_ERR_FILE_READ_FAILURE;
     }
     msr=(msr>>8)&0x1f;
     if (!msr){
-        opal_output(0, "WARNING: RAPL_UNIT register read error, rapl support disabled\n");
         _rapl.cpu_rapl_support=0;
         _rapl.ddr_rapl_support=0;
-        return ORCM_ERROR;
+        opal_output(0, "WARNING: rapl support was disabled\n");
     }
     _rapl.rapl_esu=1<<msr;
     if (_rapl.rapl_esu==0){
-        opal_output(0, "WARNING: RAPL_UNIT register read error, rapl support disabled\n");
         _rapl.rapl_esu=1<<16;
         _rapl.cpu_rapl_support=0;
         _rapl.ddr_rapl_support=0;
-        return ORCM_ERROR;
+        opal_output(0, "WARNING: rapl support was disabled\n");
     }
-    return 0;
+    return ORCM_SUCCESS;
 }
+
+static int sample_register(int register_name, int socket, int us_delay,
+    unsigned long long * msr1, unsigned long long * msr2)
+{
+    if (ORCM_SUCCESS != read_register_value(register_name, socket, msr1)){
+        opal_output(0, "ERROR: sampling register from msr\n");
+        return ORCM_ERR_FILE_READ_FAILURE;
+    }
+    usleep(us_delay);
+    if (ORCM_SUCCESS != read_register_value(register_name, socket, msr2)){
+        opal_output(0, "ERROR: sampling register from msr\n");
+        return ORCM_ERR_FILE_READ_FAILURE;
+    }
+    return ORCM_SUCCESS;
+ }
 
 static int rapl_cpu_energy_register_check(void)
 {
     unsigned long long msr1, msr2;
-    const int zero_socket=0;
-    if (0 != read_register_value(RAPL_CPU_ENERGY, &msr1, zero_socket)){
-        opal_output(0, "ERROR: reading RAPL_CPU_ENERGY register from msr\n");
-        return ORCM_ERR_FILE_READ_FAILURE;
-    }
-    usleep(100000);
-    if (0 != read_register_value(RAPL_CPU_ENERGY, &msr2, zero_socket)){
-        opal_output(0, "ERROR: reading RAPL_CPU_ENERGY register from msr\n");
+    const int us_delay=100000;
+    const int socket=0;
+    if (ORCM_SUCCESS != sample_register(RAPL_CPU_ENERGY, socket, us_delay, &msr1, &msr2)){
+        _rapl.cpu_rapl_support=0;
+        opal_output(0, "ERROR: sampling RAPL_CPU_ENERGY from msr\n");
         return ORCM_ERR_FILE_READ_FAILURE;
     }
     if (msr1==msr2){
-        opal_output(0, "WARNING: RAPL_CPU_ENERGY register has an unexpected value, cpu support disabled\n");
         _rapl.cpu_rapl_support=0;
-        return ORCM_ERROR;
+        opal_output(0, "WARNING: cpu rapl support disabled\n");
     }
-    return 0;
+    return ORCM_SUCCESS;
 }
 
 static int rapl_ddr_energy_register_check(void)
 {
     unsigned long long msr1, msr2;
-    const int zero_socket=0;
-    if (0 != read_register_value(RAPL_DDR_ENERGY, &msr1, zero_socket)){
-        opal_output(0, "ERROR: reading RAPL_DDR_ENERGY register from msr\n");
-        return ORCM_ERR_FILE_READ_FAILURE;
-    }
-    usleep(100000);
-    if (0 != read_register_value(RAPL_DDR_ENERGY, &msr2, zero_socket)){
-        opal_output(0, "ERROR: reading RAPL_DDR_ENERGY register from msr\n");
+    const int us_delay=100000;
+    const int socket=0;
+    if (ORCM_SUCCESS != sample_register(RAPL_DDR_ENERGY, socket, us_delay, &msr1, &msr2)){
+        _rapl.ddr_rapl_support=0;
+        opal_output(0, "ERROR: sampling RAPL_DDR_ENERGY from msr\n");
         return ORCM_ERR_FILE_READ_FAILURE;
     }
     if (msr1==msr2){
-        opal_output(0, "WARNING: RAPL_DDR_ENERGY register has an unexpected value, ddr support disabled\n");
         _rapl.ddr_rapl_support=0;
-        return ORCM_ERROR;
+        opal_output(0, "WARNING: ddr support disabled\n");
     }
-    return 0;
+    return ORCM_SUCCESS;
 }
 
 static int energy_unit_check(void)
 {
-
-    if (0 != rapl_unit_register_check()){
-        opal_output(0, "ERROR: RAPL_UNIT register check fail\n");
-        return ORCM_ERROR;
+    int ret=ORCM_SUCCESS;
+    if (ORCM_SUCCESS != rapl_unit_register_check()){
+        opal_output(0, "ERROR: RAPL_UNIT register check fails\n");
+        ret=ORCM_ERROR;
     }
-
-    if (0 != rapl_cpu_energy_register_check()){
-        opal_output(0, "WARNING: RAPL_CPU_ENERGY check fail\n");
-        return ORCM_ERROR;
+    else {
+        if (ORCM_SUCCESS != rapl_cpu_energy_register_check()){
+            opal_output(0, "ERROR: RAPL_CPU_ENERGY register check fails\n");
+            ret=ORCM_ERROR;
+        }
+        if (ORCM_SUCCESS != rapl_ddr_energy_register_check()){
+            opal_output(0, "ERROR: RAPL_DDR_ENERGY register check fails\n");
+            ret=ORCM_ERROR;
+        }
     }
-
-    if (0 != rapl_ddr_energy_register_check()){
-        opal_output(0, "WARNING: RAPL_DDR_ENERGY check fail\n");
-        return ORCM_ERROR;
-    }
-
-    return 0;
+    return ret;
 }
 
 /*

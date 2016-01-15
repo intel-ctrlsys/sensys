@@ -194,7 +194,7 @@ void cott_event_fired_callback(const string& host, const string& label, uint32_t
 
         // Handle store type here...
         if(true == step_data->store_event) {
-            event = orcm_analytics_base_event_create(caddy->analytics_value, ORCM_RAS_EVENT_SENSOR, step_data->severity);
+            event = orcm_analytics_base_event_create(caddy->analytics_value, ORCM_RAS_EVENT_COUNTER, step_data->severity);
             ON_NULL_BREAK(event);
             ON_FAILURE_BREAK(orcm_analytics_base_event_set_category(event, step_data->fault_type));
             ON_FAILURE_BREAK(orcm_analytics_base_event_set_storage(event, ORCM_STORAGE_TYPE_DATABASE));

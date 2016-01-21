@@ -205,7 +205,8 @@ char *assemble_datetime(char *date_str, char *time_str)
                                                                 date_time_length))) {
         if (false == replace_wildcard(&new_date_str, true)){
             if (NULL != new_date_str){
-                strncpy(date_time_str, new_date_str, strlen(new_date_str));
+                strncpy(date_time_str, new_date_str, date_time_length - 1);
+                date_time_str[date_time_length - 1] = '\0';
                 strncat(date_time_str, " ", strlen(" "));
                 if (NULL != new_time_str){
                     if (false == replace_wildcard(&new_time_str, true)){

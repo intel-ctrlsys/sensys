@@ -22,9 +22,10 @@ int snmp_init_relay(void)
     } else {
         impl = new snmp_impl();
         if (NULL == impl) {
-	    ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-	}
-	return impl->init();
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            return ORCM_ERROR;
+        }
+        return impl->init();
     }
 }
 

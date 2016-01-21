@@ -27,9 +27,16 @@
 static int init(orcm_analytics_base_module_t *imod);
 static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
-static orcm_value_t *compute_min(opal_list_t *compute_data, orcm_analytics_aggregate *aggregate);
-static orcm_value_t *compute_max(opal_list_t *compute_data, orcm_analytics_aggregate *aggregate);
-static orcm_value_t *compute_average(opal_list_t *compute_data, orcm_analytics_aggregate *aggregate);
+static char *generate_data_key(char *operation, int workflow_id);
+static orcm_value_t *compute_min(opal_list_t *compute_data,
+                                 orcm_analytics_aggregate *aggregate,
+                                 int workflow_id);
+static orcm_value_t *compute_max(opal_list_t *compute_data,
+                                 orcm_analytics_aggregate *aggregate,
+                                 int workflow_id);
+static orcm_value_t *compute_average(opal_list_t *compute_data,
+                                     orcm_analytics_aggregate *aggregate,
+                                     int workflow_id);
 static char* get_operation_name(opal_list_t* attributes);
 
 static void orcm_analytics_aggregate_con(orcm_analytics_aggregate *value)
@@ -101,26 +108,40 @@ static char* get_operation_name(opal_list_t* attributes)
     }
 }
 
-static orcm_value_t *compute_average(opal_list_t *compute_data, orcm_analytics_aggregate* aggregate)
+static char *generate_data_key(char *operation, int workflow_id)
+{
+    char *data_key = NULL;
+    asprintf(&data_key, "Aggregate:%s_Workflow %d", operation, workflow_id);
+    return data_key;
+}
+
+static orcm_value_t *compute_average(opal_list_t *compute_data,
+                                     orcm_analytics_aggregate* aggregate,
+                                     int workflow_id)
 {
     double sum = 0.0;
     orcm_value_t *temp = NULL;
     orcm_value_t *aggregate_value = NULL;
     orcm_value_t *list_item = NULL;
-
+    char *data_key = NULL;
     if (NULL == compute_data || NULL == aggregate) {
             return NULL;
     }
     size_t size = opal_list_get_size(compute_data);
     temp = (orcm_value_t*)opal_list_get_first(compute_data);
     if(NULL != temp) {
-        aggregate_value = orcm_util_load_orcm_value("Aggregate:average", &temp->value.data,OPAL_DOUBLE,temp->units);
+        if (NULL == (data_key = generate_data_key("average", workflow_id))) {
+            return NULL;
+        }
+        aggregate_value = orcm_util_load_orcm_value(data_key, &temp->value.data,OPAL_DOUBLE,temp->units);
     }
     if(NULL == aggregate_value) {
+        SAFEFREE(data_key);
         return NULL;
     }
     OPAL_LIST_FOREACH(list_item, compute_data, orcm_value_t) {
         if (NULL == list_item) {
+            SAFEFREE(data_key);
             return NULL;
         }
         sum += orcm_util_get_number_orcm_value(list_item);
@@ -133,23 +154,31 @@ static orcm_value_t *compute_average(opal_list_t *compute_data, orcm_analytics_a
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                          "%s analytics:aggregate:AVERAGE is: %f, and the number of sample is:%u",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), aggregate->average,aggregate->num_sample));
+    SAFEFREE(data_key);
     return aggregate_value;
 }
 
-static orcm_value_t* compute_min(opal_list_t* compute, orcm_analytics_aggregate* aggregate)
+static orcm_value_t* compute_min(opal_list_t* compute,
+                                 orcm_analytics_aggregate* aggregate,
+                                 int workflow_id)
 {
     orcm_value_t *current_value = NULL;
     orcm_value_t *temp = NULL;
     orcm_value_t *min_value = NULL;
+    char *data_key = NULL;
     double val;
     if(NULL == compute || NULL == aggregate) {
         return NULL;
     }
     temp = (orcm_value_t*)opal_list_get_first(compute);
     if(NULL != temp) {
-        min_value = orcm_util_load_orcm_value("Aggregate:MIN", &temp->value.data,OPAL_DOUBLE,temp->units);
+        if (NULL == (data_key = generate_data_key("MIN", workflow_id))) {
+            return NULL;
+        }
+        min_value = orcm_util_load_orcm_value(data_key, &temp->value.data,OPAL_DOUBLE,temp->units);
     }
     if(NULL == min_value){
+        SAFEFREE(data_key);
         return NULL;
     }
     min_value->value.data.dval = aggregate->min;
@@ -163,23 +192,31 @@ static orcm_value_t* compute_min(opal_list_t* compute, orcm_analytics_aggregate*
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
             "%s analytics:aggregate:MIN is: %f %s",
             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), min_value->value.data.dval,min_value->units));
+    SAFEFREE(data_key);
     return min_value;
 }
 
-static orcm_value_t* compute_max(opal_list_t* compute, orcm_analytics_aggregate* aggregate)
+static orcm_value_t* compute_max(opal_list_t* compute,
+                                 orcm_analytics_aggregate* aggregate,
+                                 int workflow_id)
 {
     orcm_value_t *current_value = NULL;
     orcm_value_t *temp = NULL;
     orcm_value_t *max_value = NULL;
+    char *data_key = NULL;
     double val;
     if(NULL == compute || NULL == aggregate) {
         return NULL;
     }
     temp = (orcm_value_t*)opal_list_get_first(compute);
     if(NULL != temp) {
-        max_value = orcm_util_load_orcm_value("Aggregate:MAX", &temp->value.data,OPAL_DOUBLE,temp->units);
+        if (NULL == (data_key = generate_data_key("MAX", workflow_id))) {
+            return NULL;
+        }
+        max_value = orcm_util_load_orcm_value(data_key, &temp->value.data,OPAL_DOUBLE,temp->units);
     }
     if(NULL == max_value){
+        SAFEFREE(data_key);
         return NULL;
     }
     max_value->value.data.dval = aggregate->max;
@@ -193,6 +230,7 @@ static orcm_value_t* compute_max(opal_list_t* compute, orcm_analytics_aggregate*
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
             "%s analytics:aggregate:MAX is: %f %s",
             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), max_value->value.data.dval,max_value->units));
+    SAFEFREE(data_key);
     return max_value;
 }
 
@@ -220,15 +258,18 @@ static int analyze(int sd, short args, void *cbdata)
     }
     if(0 == strcmp(operation,"average")) {
         aggregate_value = compute_average(current_caddy->analytics_value->compute_data,
-                                       (orcm_analytics_aggregate *)mod->api.orcm_mca_analytics_data_store);
+                                       (orcm_analytics_aggregate *)mod->api.orcm_mca_analytics_data_store,
+                                       current_caddy->wf->workflow_id);
     }
     else if (0 == strcmp(operation, "min")){
         aggregate_value = compute_min(current_caddy->analytics_value->compute_data,
-                              (orcm_analytics_aggregate*)mod->api.orcm_mca_analytics_data_store);
+                              (orcm_analytics_aggregate*)mod->api.orcm_mca_analytics_data_store,
+                              current_caddy->wf->workflow_id);
     }
     else if (0 == strcmp(operation,"max")){
         aggregate_value = compute_max(current_caddy->analytics_value->compute_data,
-                              (orcm_analytics_aggregate*)mod->api.orcm_mca_analytics_data_store);
+                              (orcm_analytics_aggregate*)mod->api.orcm_mca_analytics_data_store,
+                              current_caddy->wf->workflow_id);
     }
     else {
         rc = ORCM_ERR_BAD_PARAM;

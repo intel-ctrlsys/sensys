@@ -404,6 +404,7 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
     opal_list_t *compute_list_to_next = NULL;
     orcm_value_t *compute_list_item_to_next = NULL;
     orcm_value_t *compute_list_item_current = NULL;
+    char *data_key = NULL;
     double result = 0.0;
     int rc = ORCM_SUCCESS;
 
@@ -422,11 +423,16 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
     print_out_results(win_statistics, caddy, result);
 #endif
 
-    compute_list_item_to_next = orcm_util_load_orcm_value(compute_list_item_current->value.key,
+    rc = asprintf(&data_key, "%s_Workflow %d", "Window_Result", caddy->wf->workflow_id);
+    if (NULL == data_key) {
+        rc = ORCM_ERR_OUT_OF_RESOURCE;
+        goto cleanup;
+    }
+    compute_list_item_to_next = orcm_util_load_orcm_value(data_key,
               &result, OPAL_DOUBLE, compute_list_item_current->units);
     if (NULL == compute_list_item_to_next) {
-        OBJ_RELEASE(compute_list_to_next);
-        return ORCM_ERR_OUT_OF_RESOURCE;
+        rc = ORCM_ERR_OUT_OF_RESOURCE;
+        goto cleanup;
     }
     opal_list_append(compute_list_to_next, (opal_list_item_t *)compute_list_item_to_next);
     analytics_value_to_next = orcm_util_load_orcm_analytics_value_compute(
@@ -436,16 +442,19 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
         if(true == orcm_analytics_base_db_check(caddy->wf_step)){
             rc = send_data_to_evgen(win_statistics, analytics_value_to_next);
             if(ORCM_SUCCESS != rc){
-                OBJ_RELEASE(compute_list_to_next);
-                return rc;
+                goto cleanup;
             }
         }
         ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(caddy->wf, caddy->wf_step, caddy->hash_key,
                                          analytics_value_to_next);
+        SAFEFREE(data_key);
         return ORCM_SUCCESS;
     }
+
+cleanup:
     OBJ_RELEASE(compute_list_to_next);
-    return ORCM_ERR_OUT_OF_RESOURCE;
+    SAFEFREE(data_key);
+    return rc;
 }
 
 static int do_compute_time_window(win_statistics_t *win_statistics,

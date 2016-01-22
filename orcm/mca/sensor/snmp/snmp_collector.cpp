@@ -21,6 +21,7 @@ snmpCollector::snmpCollector(string host, string user) {
     pdu = NULL;
     anOID_len = 0;
 
+    init_snmp("orcm");
     snmp_sess_init( &session );
     session.peername = const_cast<char*>(hostname.c_str());
     session.version = SNMP_VERSION_1;
@@ -43,6 +44,7 @@ snmpCollector::snmpCollector(string host, string user, string pass, auth_type au
     pdu = NULL;
     anOID_len = 0;
 
+    init_snmp("orcm");
     snmp_sess_init( &session );
     session.peername = const_cast<char*>(hostname.c_str());
     session.version=SNMP_VERSION_3;
@@ -250,6 +252,6 @@ list<string> snmpCollector::splitString(string input, char delimiter) {
         }
     }
     if (!item.empty())
-         retValue.push_back(item);
+         retValue.push_back(trim(item));
     return retValue;
 }

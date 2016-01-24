@@ -29,6 +29,7 @@ typedef struct {
     uint64_t win_left;
     uint64_t win_right;
     uint64_t num_sample_recv;
+    uint64_t num_data_point;
     double sum_min_max;
     double sum_square;
     char *compute_type;

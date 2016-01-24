@@ -32,6 +32,7 @@ static void win_statistics_con(win_statistics_t *win_stat)
     win_stat->win_left = 0;
     win_stat->win_right = 0;
     win_stat->num_sample_recv = 0;
+    win_stat->num_data_point = 0;
     win_stat->sum_min_max = 0.0;
     win_stat->sum_square = 0.0;
     win_stat->compute_type = NULL;
@@ -84,8 +85,7 @@ static void accumulate_data_max(win_statistics_t *win_statistics, double num);
 static void accumulate_data_sd(win_statistics_t *win_statistics, double num);
 
 /* function to accumulate the data samples from a list to do computation */
-static int accumulate_data(win_statistics_t *win_statistics,
-                           opal_list_t *data_list, int start, int end);
+static int accumulate_data(win_statistics_t *win_statistics, opal_list_t *data_list);
 
 /* function to compute the results based on the compute type */
 static double computing(win_statistics_t *win_statistics);
@@ -154,6 +154,7 @@ static void reset_window(win_statistics_t *win_statistics, uint64_t left, uint64
     win_statistics->win_left = left;
     win_statistics->win_right = left + incre;
     win_statistics->num_sample_recv = 0;
+    win_statistics->num_data_point = 0;
 
     if (0 == strncmp(win_statistics->compute_type, "min", strlen("min"))) {
         win_statistics->sum_min_max = DBL_MAX;
@@ -266,25 +267,14 @@ static void accumulate_data_sd(win_statistics_t *win_statistics, double num)
     win_statistics->sum_square += pow(num, 2);
 }
 
-static int accumulate_data(win_statistics_t *win_statistics,
-                           opal_list_t *data_list, int start, int end)
+static int accumulate_data(win_statistics_t *win_statistics, opal_list_t *data_list)
 {
-    int index = -1;
     double num = 0.0;
     orcm_value_t *data_item = NULL;
 
+    win_statistics->num_sample_recv++;
+    win_statistics->num_data_point += data_list->opal_list_length;
     OPAL_LIST_FOREACH(data_item, data_list, orcm_value_t) {
-        if (NULL == data_item) {
-            return ORCM_ERR_BAD_PARAM;
-        }
-        index++;
-        if (index < start) {
-            continue;
-        }
-        if (index > end) {
-            break;
-        }
-        win_statistics->num_sample_recv++;
         num = orcm_util_get_number_orcm_value(data_item);
         if (0 == strncmp(win_statistics->compute_type, "average", strlen("average"))) {
             accumulate_data_average(win_statistics, num);
@@ -305,16 +295,16 @@ static double computing(win_statistics_t *win_statistics)
     double result = 0.0, temp = 0.0;
 
     if (0 == strncmp(win_statistics->compute_type, "average", strlen("average"))) {
-        result = win_statistics->sum_min_max / win_statistics->num_sample_recv;
+        result = win_statistics->sum_min_max / win_statistics->num_data_point;
     } else if (0 == strncmp(win_statistics->compute_type, "min", strlen("min")) ||
                0 == strncmp(win_statistics->compute_type, "max", strlen("max"))) {
         result = win_statistics->sum_min_max;
-    } else if (1 < win_statistics->num_sample_recv) {
-        temp = win_statistics->num_sample_recv * win_statistics->sum_square -
+    } else if (1 < win_statistics->num_data_point) {
+        temp = win_statistics->num_data_point * win_statistics->sum_square -
                pow(win_statistics->sum_min_max, 2);
         if (0 <= temp) {
-            result = sqrt(temp / (win_statistics->num_sample_recv *
-                          (win_statistics->num_sample_recv - 1)));
+            result = sqrt(temp / (win_statistics->num_data_point *
+                          (win_statistics->num_data_point - 1)));
         }
     }
 
@@ -357,6 +347,13 @@ static int set_window_description(win_statistics_t *win_statistics,
 
     rc = orcm_analytics_base_event_set_description(event_data, "num_sample_recv",
                                                    &win_statistics->num_sample_recv,
+                                                   OPAL_UINT64, NULL);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+
+    rc = orcm_analytics_base_event_set_description(event_data, "num_data_point",
+                                                   &win_statistics->num_data_point,
                                                    OPAL_UINT64, NULL);
     if (ORCM_SUCCESS != rc) {
         return rc;
@@ -486,34 +483,22 @@ static int do_compute_time_window(win_statistics_t *win_statistics,
         }
     }
 
-    return accumulate_data(win_statistics, compute_data, 0, opal_list_get_size(compute_data) - 1);
+    return accumulate_data(win_statistics, compute_data);
 }
 
 static int do_compute_counter_window(win_statistics_t *win_statistics,
                                      orcm_workflow_caddy_t *caddy)
 {
-    int rc = -1, start = 0, end = 0, count = 0, more = 0;
-    opal_list_t *compute_data = caddy->analytics_value->compute_data;
-    count = opal_list_get_size(compute_data);
+    int rc = accumulate_data(win_statistics, caddy->analytics_value->compute_data);
 
-    while (end < count) {
-        more = win_statistics->win_right - win_statistics->num_sample_recv;
-        start = end;
-        if (more >= count - end) {
-            end = count;
-        } else {
-            end += more;
-        }
-        rc = accumulate_data(win_statistics, compute_data, start, end - 1);
-        if (ORCM_SUCCESS != rc) {
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+    if (win_statistics->num_sample_recv >= win_statistics->win_right) {
+        if (ORCM_SUCCESS != (rc = handle_full_window(win_statistics, caddy))) {
             return rc;
         }
-        if (win_statistics->num_sample_recv >= win_statistics->win_right) {
-            if (ORCM_SUCCESS != (rc = handle_full_window(win_statistics, caddy))) {
-                return rc;
-            }
-            reset_window(win_statistics, 0, win_statistics->win_size);
-        }
+        reset_window(win_statistics, 0, win_statistics->win_size);
     }
 
     return ORCM_SUCCESS;

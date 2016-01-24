@@ -98,7 +98,8 @@ orcm_workflow_caddy_t *create_caddy_with_valid_attribute(orcm_analytics_base_mod
 }
 
 static void fill_win_statistics(win_statistics_t *win_statistics, string compute_type,
-                                string win_type, uint64_t num_sample_recv, double sum_min_max,
+                                string win_type, uint64_t num_sample_recv,
+                                uint64_t num_data_point, double sum_min_max,
                                 uint64_t win_left, uint64_t win_right, int win_size)
 {
     char *c_compute_type = NULL;
@@ -110,6 +111,7 @@ static void fill_win_statistics(win_statistics_t *win_statistics, string compute
         win_statistics->win_type = strdup(c_win_type);
     }
     win_statistics->num_sample_recv = num_sample_recv;
+    win_statistics->num_data_point = num_data_point;
     win_statistics->sum_min_max = sum_min_max;
     win_statistics->win_left = win_left;
     win_statistics->win_right = win_right;
@@ -669,13 +671,14 @@ TEST(analytics_window, analyze_time_average_follow_inbound)
         if (NULL != caddy->imod && NULL != (win_statistics = (win_statistics_t*)
             (caddy->imod->orcm_mca_analytics_data_store))) {
             fill_win_statistics(win_statistics, "average", "time",
-                                1000, 123456.7, 1000, 2000, 1000);
+                                1000, 1000, 123456.7, 1000, 2000, 1000);
             mod = caddy->imod;
         }
         fill_analytics_value(caddy, &time, &value, 1);
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(win_statistics->sum_min_max, 123494.2);
         ASSERT_EQ(win_statistics->num_sample_recv, 1001);
+        ASSERT_EQ(win_statistics->num_data_point, 1001);
         ASSERT_EQ(ORCM_SUCCESS, rc);
         orcm_analytics_window_module.api.finalize(mod);
     }
@@ -698,13 +701,14 @@ TEST(analytics_window, analyze_time_average_follow_outlowerbound)
         if (NULL != caddy->imod && NULL != (win_statistics = (win_statistics_t*)
             (caddy->imod->orcm_mca_analytics_data_store))) {
             fill_win_statistics(win_statistics, "average", "time",
-                                1000, 123456.7, 1000, 2000, 1000);
+                                1000, 1000, 123456.7, 1000, 2000, 1000);
             mod = caddy->imod;
         }
         fill_analytics_value(caddy, &time, &value, 1);
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(win_statistics->sum_min_max, 123456.7);
         ASSERT_EQ(win_statistics->num_sample_recv, 1000);
+        ASSERT_EQ(win_statistics->num_data_point, 1000);
         ASSERT_EQ(ORCM_ERR_RECV_MORE_THAN_POSTED, rc);
         orcm_analytics_window_module.api.finalize(mod);
     }
@@ -727,13 +731,14 @@ TEST(analytics_window, analyze_time_average_follow_outupperbound1)
         if (NULL != caddy->imod && NULL != (win_statistics = (win_statistics_t*)
             (caddy->imod->orcm_mca_analytics_data_store))) {
             fill_win_statistics(win_statistics, "average", "time",
-                                1000, 123456.7, 1000, 2000, 1000);
+                                1000, 1000, 123456.7, 1000, 2000, 1000);
             mod = caddy->imod;
         }
         fill_analytics_value(caddy, &time, &value, 1);
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(win_statistics->sum_min_max, 37.5);
         ASSERT_EQ(win_statistics->num_sample_recv, 1);
+        ASSERT_EQ(win_statistics->num_data_point, 1);
         ASSERT_EQ(win_statistics->win_left, 2000);
         ASSERT_EQ(win_statistics->win_right, 3000);
         ASSERT_EQ(ORCM_SUCCESS, rc);
@@ -758,13 +763,14 @@ TEST(analytics_window, analyze_time_average_follow_outupperbound2)
         if (NULL != caddy->imod && NULL != (win_statistics = (win_statistics_t*)
             (caddy->imod->orcm_mca_analytics_data_store))) {
             fill_win_statistics(win_statistics, "average", "time",
-                                1000, 123456.7, 1000, 2000, 1000);
+                                1000, 1000, 123456.7, 1000, 2000, 1000);
             mod = caddy->imod;
         }
         fill_analytics_value(caddy, &time, &value, 1);
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(win_statistics->sum_min_max, 37.5);
         ASSERT_EQ(win_statistics->num_sample_recv, 1);
+        ASSERT_EQ(win_statistics->num_data_point, 1);
         ASSERT_EQ(win_statistics->win_left, 3000);
         ASSERT_EQ(win_statistics->win_right, 4000);
         ASSERT_EQ(ORCM_SUCCESS, rc);
@@ -789,13 +795,14 @@ TEST(analytics_window, analyze_counter_average_follow_allinbound)
         if (NULL != caddy->imod && NULL != (win_statistics = (win_statistics_t*)
             (caddy->imod->orcm_mca_analytics_data_store))) {
             fill_win_statistics(win_statistics, "average", "counter",
-                                1000, 123456.7, 0, 2000, 2000);
+                                1000, 1000, 123456.7, 0, 2000, 2000);
             mod = caddy->imod;
         }
         fill_analytics_value(caddy, &time, &value, 1000);
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
-        ASSERT_EQ(win_statistics->sum_min_max, 0);
-        ASSERT_EQ(win_statistics->num_sample_recv, 0);
+        ASSERT_EQ(win_statistics->sum_min_max, 160956.7);
+        ASSERT_EQ(win_statistics->num_sample_recv, 1001);
+        ASSERT_EQ(win_statistics->num_data_point, 2000);
         ASSERT_EQ(win_statistics->win_left, 0);
         ASSERT_EQ(win_statistics->win_right, 2000);
         ASSERT_EQ(ORCM_SUCCESS, rc);
@@ -820,13 +827,14 @@ TEST(analytics_window, analyze_counter_average_follow_someoutbound)
         if (NULL != caddy->imod && NULL != (win_statistics = (win_statistics_t*)
             (caddy->imod->orcm_mca_analytics_data_store))) {
             fill_win_statistics(win_statistics, "average", "counter",
-                                1000, 123456.7, 0, 2000, 2000);
+                                1999, 1999, 123456.7, 0, 2000, 2000);
             mod = caddy->imod;
         }
         fill_analytics_value(caddy, &time, &value, 1500);
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
-        ASSERT_EQ(win_statistics->sum_min_max, 18750);
-        ASSERT_EQ(win_statistics->num_sample_recv, 500);
+        ASSERT_EQ(win_statistics->sum_min_max, 0);
+        ASSERT_EQ(win_statistics->num_sample_recv, 0);
+        ASSERT_EQ(win_statistics->num_data_point, 0);
         ASSERT_EQ(win_statistics->win_left, 0);
         ASSERT_EQ(win_statistics->win_right, 2000);
         ASSERT_EQ(ORCM_SUCCESS, rc);
@@ -834,32 +842,3 @@ TEST(analytics_window, analyze_counter_average_follow_someoutbound)
     }
 }
 
-TEST(analytics_window, analyze_counter_std_follow_alloutbound)
-{
-    int rc = -1, index = 0;
-    opal_value_t *attribute = NULL;
-    orcm_analytics_base_module_t *mod = NULL;
-    orcm_workflow_caddy_t *caddy = create_caddy((orcm_analytics_base_module_t*)malloc(
-                          sizeof(orcm_analytics_base_module_t)), OBJ_NEW(orcm_workflow_t),
-                          OBJ_NEW(orcm_workflow_step_t), NULL, OBJ_NEW(win_statistics_t));
-    win_statistics_t *win_statistics = NULL;
-    orcm_value_t *orcm_value = NULL;
-    double value = 37.5;
-    struct timeval time = {3100, 0};
-
-   if (NULL != caddy) {
-        if (NULL != caddy->imod && NULL != (win_statistics = (win_statistics_t*)
-            (caddy->imod->orcm_mca_analytics_data_store))) {
-            fill_win_statistics(win_statistics, "std", "counter", 1, 10.0, 0, 2, 2);
-            mod = caddy->imod;
-        }
-        fill_analytics_value(caddy, &time, &value, 10);
-        rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
-        ASSERT_EQ(win_statistics->sum_min_max, 37.5);
-        ASSERT_EQ(win_statistics->num_sample_recv, 1);
-        ASSERT_EQ(win_statistics->win_left, 0);
-        ASSERT_EQ(win_statistics->win_right, 2);
-        ASSERT_EQ(ORCM_SUCCESS, rc);
-        orcm_analytics_window_module.api.finalize(mod);
-    }
-}

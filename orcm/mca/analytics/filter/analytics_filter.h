@@ -33,6 +33,10 @@ typedef struct {
 } mca_analytics_filter_module_t;
 ORCM_DECLSPEC extern mca_analytics_filter_module_t orcm_analytics_filter_module;
 
+typedef struct {
+    uint64_t unique_id;
+    bool unique_id_generated;
+} filter_key_t;
 END_C_DECLS
 
 #endif /* MCA_analytics_threshold_EXPORT_H */

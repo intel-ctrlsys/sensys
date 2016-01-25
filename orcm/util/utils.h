@@ -20,6 +20,7 @@
 #include "orcm/mca/analytics/analytics.h"
 
 #define SAFEFREE(p) if(NULL!=p) {free(p); p=NULL;}
+#define SAFE_RELEASE(p) if(NULL != p) OBJ_RELEASE(p);
 #define MSG_HEADER ""
 #define MSG_ERR_HEADER "\n"
 #define MSG_FOOTER "\n"

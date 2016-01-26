@@ -228,12 +228,14 @@ char *assemble_datetime(char *date_str, char *time_str)
 orcm_db_filter_t *create_string_filter(char *field, char *string,
                                     orcm_db_comparison_op_t op){
     orcm_db_filter_t *filter = NULL;
-    filter = OBJ_NEW(orcm_db_filter_t);
-    if (NULL != filter) {
-        filter->value.type = OPAL_STRING;
-        filter->value.key = strdup(field);
-        filter->value.data.string = strdup(string);
-        filter->op = op;
+    if (NULL != field && NULL != string) {
+        filter = OBJ_NEW(orcm_db_filter_t);
+        if (NULL != filter) {
+            filter->value.type = OPAL_STRING;
+            filter->value.key = strdup(field);
+            filter->value.data.string = strdup(string);
+            filter->op = op;
+        }
     }
     return filter;
 }

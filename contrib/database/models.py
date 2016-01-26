@@ -1,10 +1,11 @@
 #
-# Copyright (c) 2015 Intel Inc. All rights reserved
+# Copyright (c) 2015-2016 Intel Inc. All rights reserved
 #
 """This module contains a set of classes that used by SQLAlchemy for
 Object Relational Mapper (ORM)
 
 """
+from __future__ import print_function
 from distutils.version import StrictVersion
 import os
 import alembic
@@ -19,6 +20,17 @@ from sqlalchemy import Float, ForeignKey, ForeignKeyConstraint, Integer, String
 from sqlalchemy import SmallInteger, Table, Text
 from sqlalchemy.ext import declarative, compiler
 
+# disabling Pylint error messages on SQLAlchemy classes and convention
+# Invalid constant name.
+# pylint: disable=C0103
+# Too few public methods.
+# pylint: disable=R0903
+# Too many public methods.
+# pylint: disable=R0904
+# Class has no __init__ method.
+# pylint: disable=W0232
+# Redefining name '<name>' from outer scope.
+# pylint: disable=W0621
 
 # Minimum required version of SQLAlchemy and Alembic for the Database
 # migration code to work correctly.  Specifically the naming convention feature
@@ -42,7 +54,7 @@ class CurrentTimeStamp(sa.sql.expression.FunctionElement):
     different database dialect implementations.
     """
     # Too many ancestors (12/7)
-    # pylint: disable-msg=R0901
+    # pylint: disable=R0901
     type = DateTime()
 
 
@@ -57,7 +69,7 @@ def postgres_current_timestamp(element, compiler, **kw):
     :return: Postgres or MySQL function name for generating current timestamp
     """
     # Unused variable
-    # pylint: disable-msg=W0613
+    # pylint: disable=W0613
     return "CURRENT_TIMESTAMP"
 
 
@@ -80,6 +92,7 @@ session = sessionmaker()()
 
 
 class DataItem(Base):
+    """data_item table"""
     __tablename__ = 'data_item'
 
     data_item_id = Column(Integer, primary_key=True, autoincrement=True,
@@ -91,6 +104,7 @@ class DataItem(Base):
 
 
 class DataSample(Base):
+    """data_sample table"""
     __tablename__ = 'data_sample'
     __table_args__ = (tuple(CheckConstraint('(value_int  IS NOT NULL OR '
                                             ' value_real IS NOT NULL OR '
@@ -111,6 +125,7 @@ class DataSample(Base):
 
 
 class DataSampleRaw(Base):
+    """data_sample_raw table"""
     __tablename__ = 'data_sample_raw'
     __table_args__ = (tuple(CheckConstraint('(value_int  IS NOT NULL OR '
                                             ' value_real IS NOT NULL OR '
@@ -138,6 +153,7 @@ class DataSampleRaw(Base):
 
 
 class DataType(Base):
+    """data_type table"""
     __tablename__ = 'data_type'
 
     data_type_id = Column(Integer, primary_key=True)
@@ -145,6 +161,7 @@ class DataType(Base):
 
 
 class DiagSubtype(Base):
+    """diag_subtype table"""
     __tablename__ = 'diag_subtype'
 
     diag_subtype_id = Column(Integer, primary_key=True, autoincrement=True,
@@ -154,6 +171,7 @@ class DiagSubtype(Base):
 
 
 class Diag(Base):
+    """diag table"""
     __tablename__ = 'diag'
 
     diag_type_id = Column(Integer, ForeignKey('diag_type.diag_type_id'),
@@ -166,6 +184,7 @@ class Diag(Base):
 
 
 class DiagTest(Base):
+    """diag_test table"""
     __tablename__ = 'diag_test'
 
     node_id = Column(Integer, ForeignKey('node.node_id'),
@@ -186,6 +205,7 @@ class DiagTest(Base):
 
 
 class DiagTestConfig(Base):
+    """diag_test_config table"""
     __tablename__ = 'diag_test_config'
     __table_args__ = ((ForeignKeyConstraint(
                            ['node_id', 'diag_type_id', 'diag_subtype_id',
@@ -215,6 +235,7 @@ class DiagTestConfig(Base):
 
 
 class DiagType(Base):
+    """diag_type table"""
     __tablename__ = 'diag_type'
 
     diag_type_id = Column(Integer, primary_key=True, autoincrement=True,
@@ -288,6 +309,7 @@ class EventDataKey(Base):
 
 
 class Feature(Base):
+    """feature table"""
     __tablename__ = 'feature'
 
     feature_id = Column(Integer, primary_key=True, autoincrement=True,
@@ -300,6 +322,7 @@ class Feature(Base):
 
 
 class Fru(Base):
+    """fru table"""
     __tablename__ = 'fru'
 
     node_id = Column(Integer, ForeignKey('node.node_id'), primary_key=True,
@@ -316,6 +339,7 @@ class Fru(Base):
 
 
 class FruType(Base):
+    """fru_type table"""
     __tablename__ = 'fru_type'
 
     fru_type_id = Column(Integer, primary_key=True, autoincrement=True,
@@ -324,6 +348,7 @@ class FruType(Base):
 
 
 class Job(Base):
+    """job table"""
     __tablename__ = 'job'
 
     job_id = Column(Integer, primary_key=True, autoincrement=True,
@@ -346,6 +371,7 @@ Table('job_node',
 
 
 class MaintenanceRecord(Base):
+    """maintenance_record table"""
     __tablename__ = 'maintenance_record'
     __table_args__ = (tuple(ForeignKeyConstraint(
         ['node_id', 'fru_type_id', 'fru_id'],
@@ -360,6 +386,7 @@ class MaintenanceRecord(Base):
 
 
 class Node(Base):
+    """node table"""
     __tablename__ = 'node'
 
     node_id = Column(Integer, primary_key=True, autoincrement=True,
@@ -375,23 +402,25 @@ class Node(Base):
 
 
 class NodeFeature(Base):
+    """node_feature table"""
     __tablename__ = 'node_feature'
 
     node_id = Column(Integer, ForeignKey('node.node_id'), primary_key=True,
                      nullable=False)
     feature_id = Column(Integer, ForeignKey('feature.feature_id'),
-                        primary_key=True,
-                        nullable=False)
+                        primary_key=True, nullable=False)
     value_real = Column(Float(53))
     value_str = Column(String(100))
     units = Column(String(50))
     value_int = Column(BigInteger)
+    time_stamp = Column(DateTime, nullable=False)
 
     feature = relationship('Feature')
     node = relationship('Node')
 
 
 class TestParam(Base):
+    """test_param table"""
     __tablename__ = 'test_param'
 
     test_param_id = Column(Integer, primary_key=True, autoincrement=True,
@@ -404,6 +433,7 @@ class TestParam(Base):
 
 
 class TestResult(Base):
+    """test result table"""
     __tablename__ = 'test_result'
 
     test_result_id = Column(Integer, primary_key=True, autoincrement=True,

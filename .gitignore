@@ -48,6 +48,12 @@ vc70.pdb
 .hgignore
 .hg
 .hgignore_local
+.pydevproject
+.kdev_include_paths
+.cproject
+*.patch
+.gitignore
+
 config.lt
 config/ylwrap
 config/config.guess

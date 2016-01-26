@@ -1,8 +1,10 @@
 #
 # Copyright (c) 2016 Intel Inc. All rights reserved
 #
-"""(CSS-2027 fix) Basic fix for segfault on sensor get inventory command, due to bad
-   data type handling on no string types. A better fix will be needed in the near future.
+"""Updated 'node_features_view' column to return string instead of original data type
+
+Basic fix for segfault on sensor get inventory command, due to bad data type
+handling on no string types. A better fix will be needed in the near future.
 
 Revision ID: 6ff60a50de68
 Revises: 6dccea132086

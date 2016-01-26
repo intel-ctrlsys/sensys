@@ -1,7 +1,8 @@
 #
-# Copyright (c) 2015 Intel Inc. All rights reserved
+# Copyright (c) 2015-2016 Intel Inc. All rights reserved
 #
 from __future__ import with_statement
+import logging
 from alembic import context
 from sqlalchemy import create_engine, pool
 import sys
@@ -10,6 +11,8 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import models
 
+
+logging.basicConfig(level=logging.INFO)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

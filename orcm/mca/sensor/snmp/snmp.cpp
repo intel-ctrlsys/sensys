@@ -285,9 +285,12 @@ void snmp_impl::inventory_log(char *hostname,
             throw corruptedInventoryBuffer();
         }
 
-        for(int h=0; h<tot_hostnames.getValue<int64_t>();h++){
+        for(int h=0; h<tot_hostnames.getValue<int64_t>(); h++){
             records = OBJ_NEW(opal_list_t);
             ON_NULL_THROW(records);
+            struct timeval timestamp;
+            gettimeofday(&timestamp, NULL);
+            vardata(timestamp).setKey("ctime").appendToOpalList(records);
 
             vardata tot_items = fromOpalBuffer(inventory_snapshot);
             if (TOT_ITEMS_STR != tot_items.getKey()){
@@ -314,7 +317,7 @@ void snmp_impl::inventory_log(char *hostname,
 
 void snmp_impl::set_sample_rate(int sample_rate)
 {
-    // set the errcounts sample rate if seperate thread is enabled
+    // set the snmp sample rate if separate thread is enabled
     if (true == mca_sensor_snmp_component.use_progress_thread) {
         mca_sensor_snmp_component.sample_rate = sample_rate;
     } else {

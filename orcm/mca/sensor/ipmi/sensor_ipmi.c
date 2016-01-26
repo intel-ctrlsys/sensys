@@ -1205,10 +1205,19 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     ipmi_inventory_t *newhost, *oldhost;
     orcm_value_t *mkv, *mkv_copy;
     opal_value_t *kv;
+    orcm_value_t *time_stamp;
+    struct timeval current_time;
 
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &tot_items, &n, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    gettimeofday(&current_time, NULL);
+    time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
+    if (NULL == time_stamp) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         return;
     }
 
@@ -1274,6 +1283,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                 return;
             }
             opal_list_prepend(oldhost->records, &kv->super);
+            opal_list_prepend(oldhost->records, (opal_list_item_t*)time_stamp);
 
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {
@@ -1297,6 +1307,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             return;
         }
         opal_list_prepend(newhost->records, &kv->super);
+        opal_list_prepend(newhost->records, (opal_list_item_t*)time_stamp);
 
         /* Send the collected inventory details to the database for storage */
         if (0 <= orcm_sensor_base.dbhandle) {

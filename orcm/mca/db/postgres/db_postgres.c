@@ -887,10 +887,11 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
          * $4: p_value_int bigint,
          * $5: p_value_real double precision,
          * $6: p_value_str character varying,
-         * $7: p_units character varying
+         * $7: p_units character varying.
+         * $8: p_time_stamp timestamp (NULL will default to current timestamp)
          * */
         res = PQprepare(mod->conn, "set_node_feature",
-                        "select set_node_feature($1, $2, $3, $4, $5, $6, $7)",
+                        "select set_node_feature($1, $2, $3, $4, $5, $6, $7, NULL)",
                         0, NULL);
         if (!status_ok(res)) {
             rc = ORCM_ERROR;
@@ -1010,19 +1011,21 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
 {
     int rc = ORCM_SUCCESS;
 
-    const int NUM_PARAMS = 1;
+    const int NUM_PARAMS = 2;
     const char *params[] = {
-        "hostname"
+        "hostname",
+        "ctime"
     };
-    opal_value_t *param_items[] = {NULL};
+    opal_value_t *param_items[] = {NULL, NULL};
     opal_bitmap_t item_bm;
 
     char *hostname = NULL;
 
-    const int SP_NUM_PARAMS = 7;
+    const int SP_NUM_PARAMS = 8;
     const char *sp_params[SP_NUM_PARAMS];
     char *type_str = NULL;
     char *value_str = NULL;
+    char inventory_str_timestamp[TIMESTAMP_STR_LENGTH];
     orcm_db_item_t item;
     size_t num_items;
 
@@ -1053,11 +1056,31 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
         goto cleanup_and_exit;
     }
 
+    if (NULL == param_items[1]) {
+        ERR_MSG_UNF("No time stamp provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+
     kv = param_items[0];
     if (OPAL_STRING == kv->type) {
         hostname = kv->data.string;
     } else {
         ERR_MSG_UNF("Invalid value type specified for hostname");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+
+    kv = param_items[1];
+    if (OPAL_TIMEVAL == kv->type) {
+        if (!tv_to_str_time_stamp(&kv->data.tv, inventory_str_timestamp,
+                                  sizeof(inventory_str_timestamp))) {
+            ERR_MSG_UNF("Failed to convert time stamp value");
+            rc = ORCM_ERR_BAD_PARAM;
+            goto cleanup_and_exit;
+        }
+    } else {
+        ERR_MSG_UNF("Invalid value type specified for inventory time stamp");
         rc = ORCM_ERR_BAD_PARAM;
         goto cleanup_and_exit;
     }
@@ -1076,10 +1099,11 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
          * $4: p_value_int bigint,
          * $5: p_value_real double precision,
          * $6: p_value_str character varying,
-         * $7: p_units character varying
+         * $7: p_units character varying,
+         * $8: p_time_stamp timestamp
          * */
         res = PQprepare(mod->conn, "set_node_feature",
-                        "select set_node_feature($1, $2, $3, $4, $5, $6, $7)",
+                        "select set_node_feature($1, $2, $3, $4, $5, $6, $7, $8)",
                         0, NULL);
         if (!status_ok(res)) {
             rc = ORCM_ERROR;
@@ -1109,6 +1133,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
 
     /* Build and execute the SQL commands to store the data in the list */
     sp_params[0] = hostname;
+    sp_params[7] = inventory_str_timestamp;
     i = 0;
     OPAL_LIST_FOREACH(mv, input, orcm_value_t) {
         /* Ignore the items that have already been processed. */

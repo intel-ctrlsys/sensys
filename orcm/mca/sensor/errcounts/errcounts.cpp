@@ -268,10 +268,16 @@ void errcounts_impl::inventory_log(char* hostname, opal_buffer_t* inventory_snap
     while(true) {
         ON_NULL_BREAK(records);
         string phostname;
+        struct timeval timestamp;
+        gettimeofday(&timestamp, NULL);
         if(false == unpack_string(inventory_snapshot, phostname)) {
             break;
         }
         orcm_value_t* item = make_orcm_value_string("hostname", phostname.c_str());
+        ON_NULL_BREAK(item);
+        opal_list_append(records, (opal_list_item_t*)item);
+
+        item = orcm_util_load_orcm_value((char*)"ctime", (void*)&timestamp, OPAL_TIMEVAL, NULL);
         ON_NULL_BREAK(item);
         opal_list_append(records, (opal_list_item_t*)item);
 

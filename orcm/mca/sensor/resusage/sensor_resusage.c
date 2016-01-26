@@ -682,12 +682,22 @@ static void res_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
     int n = 1;
     opal_list_t *records = NULL;
     int rc = OPAL_SUCCESS;
+    orcm_value_t *time_stamp;
+    struct timeval current_time;
 
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &tot_items, &n, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
+
+    gettimeofday(&current_time, NULL);
+    time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
+    if (NULL == time_stamp) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        return;
+    }
     records = OBJ_NEW(opal_list_t);
+    opal_list_append(records, (opal_list_item_t*)time_stamp);
     while(tot_items > 0) {
         char *inv = NULL;
         char *inv_val = NULL;

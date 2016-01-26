@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -84,7 +84,7 @@ OBJ_CLASS_INSTANCE(dmidata_inventory_t,
  * The column 4 contains the key word for enabling an ignore case
  * The column 5 contains a key word under which the corresponding inventory data is logged.
  * The column 6 contains an alternative TEST_VECTOR for that particular inventory item for test purpose
- */ 
+ */
 static char inv_keywords[MAX_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWORDS][MAX_INVENTORY_KEYWORD_SIZE] =
     {
      {"bios","version","","","bios_version","TV_BiVer"},
@@ -125,10 +125,10 @@ static char misc_keywords[MAX_MISC_INVENTORY_KEYWORDS][MAX_INVENTORY_SUB_KEYWORD
 };
 
 enum inv_item_req
-    { 
-        INVENTORY_KEY, 
-        INVENTORY_TEST_VECTOR 
-    };  
+    {
+        INVENTORY_KEY,
+        INVENTORY_TEST_VECTOR
+    };
 /* Contains list of hosts that have collected and upstreamed their inventory data
  * Each link is of the type 'dmidata_inventory_t' */
 opal_list_t dmidata_host_list;
@@ -346,7 +346,7 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
     orcm_value_t *mkv;
     char *inv_key;
     char *key_str;
-    
+
     if(false == mca_sensor_dmidata_component.blk_dev) {
         return;
     }
@@ -488,7 +488,7 @@ static void extract_memory_inventory(hwloc_topology_t topo, char *hostname, dmid
         if (NULL == value || 0 != strcmp(value, "MemoryModule")) {
           continue;
         }
-      
+
         mem_count++;
 
         for (k=0; k < memobj->infos_count; k++) {
@@ -501,7 +501,7 @@ static void extract_memory_inventory(hwloc_topology_t topo, char *hostname, dmid
                 c_end = (0 < len) ? (c_start + len - 1) : c_start;
                 while ((c_end != c_start) && isspace((int)(*c_end))) c_end--;
                 len = c_end - c_start + 1;
-              
+
                 addStringRecord(key_str, strndup(c_start, len));
             }
         }
@@ -620,6 +620,8 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     dmidata_inventory_t *newhost;
     char *freq_step_list;
     opal_value_t *kv;
+    orcm_value_t *time_stamp;
+    struct timeval current_time;
 
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &topo, &n, OPAL_HWLOC_TOPO))) {
@@ -633,10 +635,17 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         return;
     }
 
+    gettimeofday(&current_time, NULL);
+    time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
+    if (NULL == time_stamp) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        return;
+    }
+
     if (NULL != (newhost = found_inventory_host(hostname))) {
         /* Check and Verify Node Inventory record and update db/notify user accordingly */
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "dmidata HOST found!!");
-        if((opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) & 
+        if((opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) &
            (strncmp(freq_step_list,newhost->freq_step_list, strlen(freq_step_list)) == 0) ) {
 
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -647,7 +656,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
                 "Value mismatch : hwloc; Notify User; Update List; Update Database");
             opal_dss.copy((void**)&newhost->hwloc_topo,topo,OPAL_HWLOC_TOPO);
 
-            /* Delete existing host and update the host list with the freshly 
+            /* Delete existing host and update the host list with the freshly
              * received inventory details*/
             OBJ_RELEASE(newhost->records);
             free(newhost->freq_step_list);
@@ -672,6 +681,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
                             "Unable to allocate data");
         return;
     }
+    opal_list_append(newhost->records, (opal_list_item_t*)time_stamp);
     opal_list_append(newhost->records, &kv->super);
 
     /*Extract all required inventory items here */

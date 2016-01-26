@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -1477,10 +1477,11 @@ static int odbc_update_node_features(struct orcm_db_base_module_t *imod,
      * 4 p_value_int bigint,
      * 5 p_value_real double precision,
      * 6 p_value_str character varying,
-     * 7 p_units character varying
+     * 7 p_units character varying,
+     * 8 p_time_stamp timestamp (NULL will default to current timestamp)
      * */
     ret = SQLPrepare(stmt,
-                     (SQLCHAR *)"{call set_node_feature(?, ?, ?, ?, ?, ?, ?)}",
+                     (SQLCHAR *)"{call set_node_feature(?, ?, ?, ?, ?, ?, ?, NULL)}",
                      SQL_NTS);
     if (!(SQL_SUCCEEDED(ret))) {
         rc = ORCM_ERROR;
@@ -1735,11 +1736,12 @@ static int odbc_store_node_features(mca_db_odbc_module_t *mod,
 {
     int rc = ORCM_SUCCESS;
 
-    const int NUM_PARAMS = 1;
+    const int NUM_PARAMS = 2;
     const char *params[] = {
-        "hostname"
+        "hostname",
+        "ctime"
     };
-    opal_value_t *param_items[] = {NULL};
+    opal_value_t *param_items[] = {NULL, NULL};
     opal_bitmap_t item_bm;
 
     char *hostname = NULL;
@@ -1754,6 +1756,7 @@ static int odbc_store_node_features(mca_db_odbc_module_t *mod,
     SQLLEN null_len = SQL_NULL_DATA;
     SQLRETURN ret;
     SQLHSTMT stmt = SQL_NULL_HSTMT;
+    SQL_TIMESTAMP_STRUCT inventory_timestamp_sql;
 
     size_t num_items;
     int i;
@@ -1779,11 +1782,30 @@ static int odbc_store_node_features(mca_db_odbc_module_t *mod,
         goto cleanup_and_exit;
     }
 
+    if (NULL == param_items[1]) {
+        ERR_MSG_STORE("No time stamp provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+
     kv = param_items[0];
     if (OPAL_STRING == kv->type) {
         hostname = kv->data.string;
     } else {
         ERR_MSG_UNF("Invalid value type specified for hostname");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto cleanup_and_exit;
+    }
+
+    kv = param_items[1];
+    if (OPAL_TIMEVAL == kv->type) {
+        if (!tv_to_sql_timestamp(&inventory_timestamp_sql, &kv->data.tv)) {
+            ERR_MSG_UNF("Failed to convert inventory time stamp value");
+            rc = ORCM_ERR_BAD_PARAM;
+            goto cleanup_and_exit;
+        }
+    } else {
+        ERR_MSG_UNF("Invalid value type specified for inventory time stamp");
         rc = ORCM_ERR_BAD_PARAM;
         goto cleanup_and_exit;
     }
@@ -1808,9 +1830,10 @@ static int odbc_store_node_features(mca_db_odbc_module_t *mod,
      * 5 p_value_real double precision,
      * 6 p_value_str character varying,
      * 7 p_units character varying
+     * 8 p_time_stamp timestamp
      * */
     ret = SQLPrepare(stmt,
-                     (SQLCHAR *)"{call set_node_feature(?, ?, ?, ?, ?, ?, ?)}",
+                     (SQLCHAR *)"{call set_node_feature(?, ?, ?, ?, ?, ?, ?, ?)}",
                      SQL_NTS);
     if (!(SQL_SUCCEEDED(ret))) {
         rc = ORCM_ERROR;
@@ -1820,10 +1843,20 @@ static int odbc_store_node_features(mca_db_odbc_module_t *mod,
 
     /* Bind hostname parameter. */
     ret = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR,
-                          0, 0, (SQLPOINTER)hostname, strlen(hostname), NULL);
+                           0, 0, (SQLPOINTER)hostname, strlen(hostname), NULL);
     if (!(SQL_SUCCEEDED(ret))) {
         rc = ORCM_ERROR;
         ERR_MSG_FMT_UNF("SQLBindParameter 1 returned: %d", ret);
+        goto cleanup_and_exit;
+    }
+    /* Bind timestamp parameter. */
+    ret = SQLBindParameter(stmt, 8, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
+                           SQL_TYPE_TIMESTAMP, 0, 0,
+                           (SQLPOINTER)&inventory_timestamp_sql,
+                           sizeof(inventory_timestamp_sql), NULL);
+    if (!(SQL_SUCCEEDED(ret))) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_UNF("SQLBindParameter 8 returned: %d", ret);
         goto cleanup_and_exit;
     }
 

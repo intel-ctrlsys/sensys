@@ -47,6 +47,11 @@ ORCM_DECLSPEC opal_value_t* orcm_util_load_opal_value(char *key, void *data,
 ORCM_DECLSPEC orcm_value_t* orcm_util_load_orcm_value(char *key, void *data,
                                                opal_data_type_t type, char *units);
 
+/* create an orcm value and append it to a list,
+ * the caller must make sure that the list is valid */
+ORCM_DECLSPEC int orcm_util_append_orcm_value(opal_list_t *list, char *key, void *data,
+                                              opal_data_type_t type, char *units);
+
 ORCM_DECLSPEC opal_value_t* orcm_util_copy_opal_value(opal_value_t* src);
 ORCM_DECLSPEC orcm_value_t* orcm_util_copy_orcm_value(orcm_value_t* src);
 

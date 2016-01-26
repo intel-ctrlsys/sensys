@@ -878,51 +878,47 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 }
 
 static void coretemp_log_cleanup(char *core_label, char *hostname, opal_list_t *key,
-                                 opal_list_t *non_compute_data, orcm_analytics_value_t *analytics_vals)
+                                 opal_list_t *non_compute_data,
+                                 orcm_analytics_value_t *analytics_vals)
 {
     SAFEFREE(core_label);
     SAFEFREE(hostname);
-    if ( NULL != key) {
-        OBJ_RELEASE(key);
-    }
-    if ( NULL != non_compute_data) {
-        OBJ_RELEASE(non_compute_data);
-    }
-    if ( NULL != analytics_vals) {
-        OBJ_RELEASE(analytics_vals);
-    }
+    SAFE_RELEASE(key);
+    SAFE_RELEASE(non_compute_data);
+    SAFE_RELEASE(analytics_vals);
 }
 
 static void coretemp_log(opal_buffer_t *sample)
 {
-    char *hostname=NULL;
+    char *hostname = NULL;
     struct timeval sampletime;
-    int rc;
-    int32_t n, ncores;
+    int rc = ORCM_SUCCESS;
+    int32_t n = 0;
+    int32_t ncores = 0;
     orcm_analytics_value_t *analytics_vals = NULL;
     opal_list_t *key = NULL;
     opal_list_t *non_compute_data = NULL;
-    float fval;
-    int i;
+    float fval = 0.0;
+    int idx = 0;
     char *core_label = NULL;
-    orcm_value_t *sensor_metric = NULL;
 
-    /* unpack the host this came from */
-    n=1;
+    /* unpack the hostname from where the data sample came */
+    n = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
+        coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
         return;
     }
-    /* and the number of cores on that host */
-    n=1;
+    /* unpack the number of cores on that host */
+    n = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &ncores, &n, OPAL_INT32))) {
         ORTE_ERROR_LOG(rc);
         coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
         return;
     }
 
-    /* sample time */
-    n=1;
+    /* unpack the sample time when the data was sampled */
+    n = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
@@ -934,91 +930,72 @@ static void coretemp_log(opal_buffer_t *sample)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname, ncores);
 
-    key = OBJ_NEW(opal_list_t);
-    if (NULL == key) {
-        coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
-        return;
-    }
-
-    non_compute_data = OBJ_NEW(opal_list_t);
-    if (NULL == non_compute_data) {
-        coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
-        return;
-    }
-
-    sensor_metric = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, NULL);
-    if (NULL == sensor_metric) {
+    /* fill the key list with hostname and data_group */
+    if (NULL == (key = OBJ_NEW(opal_list_t))) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
         return;
     }
-    opal_list_append(non_compute_data, (opal_list_item_t *)sensor_metric);
-
-    /* load the hostname */
-    if (NULL == hostname) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
+    rc = orcm_util_append_orcm_value(key, "hostname", hostname, OPAL_STRING, NULL);
+    if (ORCM_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
         coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
         return;
     }
-    sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
-    if (NULL == sensor_metric) {
+    rc = orcm_util_append_orcm_value(key, "data_group", "coretemp", OPAL_STRING, NULL);
+    if (ORCM_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
+        coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+        return;
+    }
+
+    /* fill non compute data list with time stamp */
+    if (NULL == (non_compute_data = OBJ_NEW(opal_list_t))) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
         return;
     }
-    opal_list_append(key, (opal_list_item_t *)sensor_metric);
+    rc = orcm_util_append_orcm_value(non_compute_data, "ctime", &sampletime, OPAL_TIMEVAL, NULL);
+    if (ORCM_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
+        coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
+        return;
+    }
 
-    sensor_metric = orcm_util_load_orcm_value("data_group", "coretemp", OPAL_STRING, NULL);
-    if (NULL == sensor_metric) {
+    /* fill the compute data with the coretemp of all cores */
+    analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
+    if (NULL == analytics_vals || NULL == analytics_vals->key ||
+        NULL == analytics_vals->non_compute_data || NULL == analytics_vals->compute_data) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
         return;
     }
-    opal_list_append(key, (opal_list_item_t *)sensor_metric);
-
-    for (i=0; i < ncores; i++) {
-        /* xfr to storage */
-        analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
-        if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
-             (NULL == analytics_vals->non_compute_data) ||(NULL == analytics_vals->compute_data)) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
-            return;
-        }
-
-        n=1;
+    for (idx = 0; idx < ncores; idx++) {
+        n = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &core_label, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
             return;
         }
-
-        n=1;
+        n = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
             ORTE_ERROR_LOG(rc);
             coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
             return;
         }
-
-        sensor_metric = orcm_util_load_orcm_value(core_label, &fval, OPAL_FLOAT, "degrees C");
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        if(ORCM_SUCCESS != (rc = orcm_util_append_orcm_value(analytics_vals->compute_data,
+                            core_label, &fval, OPAL_FLOAT, "degrees C"))) {
+            ORTE_ERROR_LOG(rc);
             coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
             return;
         }
         SAFEFREE(core_label);
         /* check coretemp event policy */
-        coretemp_policy_filter(hostname, i, fval, sampletime.tv_sec);
-
-        opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
-        orcm_analytics.send_data(analytics_vals);
-        if ( NULL != analytics_vals) {
-            OBJ_RELEASE(analytics_vals);
-        }
+        coretemp_policy_filter(hostname, idx, fval, sampletime.tv_sec);
     }
-    /* Don't release analytics_vals. It's retain(ed) and being used in the workflows at this point
-     * This doesn't cause any memory leak*/
-    coretemp_log_cleanup(core_label, hostname, key, non_compute_data, NULL);
+
+    orcm_analytics.send_data(analytics_vals);
+    coretemp_log_cleanup(core_label, hostname, key, non_compute_data, analytics_vals);
 }
 
 static void coretemp_set_sample_rate(int sample_rate)

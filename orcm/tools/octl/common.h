@@ -79,6 +79,7 @@ int orcm_octl_query_sensor(int cmd, char **argv);
 int orcm_octl_query_log(int cmd, char **argv);
 int orcm_octl_query_idle(int cmd, char **argv);
 int orcm_octl_query_node(int cmd, char **argv);
+int orcm_octl_query_event(int cmd, char **argv);
 
 END_C_DECLS
 

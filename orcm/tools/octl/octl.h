@@ -191,6 +191,7 @@ static orcm_cli_init_t cli_init[] = {
     { { "query", NULL}, "idle", 0, 1, "query idle hosts" },
     { { "query", NULL}, "node", 0, 1, "query ras information of the given nodes" },
     { { "query", "node", NULL}, "status", 0, 1, "query status of given nodes" },
+    { { "query", NULL}, "event", 0, 1, "query events from database" },
 
 
     /* quit command */
@@ -248,6 +249,7 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "log",               //40
                                      "idle",              //41
                                      "node",              //42
+                                     "event",             //43
                                      "\0" };
 
 END_C_DECLS

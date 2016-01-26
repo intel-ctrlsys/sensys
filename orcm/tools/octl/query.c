@@ -24,6 +24,7 @@ opal_list_t *create_query_idle_filter(int argc, char **argv);
 opal_list_t *create_query_log_filter(int argc,char **argv);
 opal_list_t *create_query_history_filter(int argc, char **argv);
 opal_list_t *create_query_node_filter(int argc, char **argv);
+opal_list_t *create_query_event_filter(int argc, char **argv);
 orcm_db_filter_t *create_string_filter(char *field, char *string,
                                        orcm_db_comparison_op_t op);
 
@@ -442,6 +443,37 @@ opal_list_t *create_query_sensor_filter(int argc, char **argv)
     return filters_list;
 }
 
+opal_list_t *create_query_event_filter(int argc, char **argv)
+{
+    opal_list_t *filters_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+    char *filter_str = NULL;
+
+    filters_list = OBJ_NEW(opal_list_t);
+    if (7 == argc) {
+        /* Doing nothing here, we want to retrieve all the DB data */
+        filter_str = assemble_datetime(argv[2], argv[3]);
+        filter_item = create_string_filter("time_stamp", filter_str, GT);
+        SAFEFREE(filter_str);
+        opal_list_append(filters_list, &filter_item->value.super);
+
+        filter_str = assemble_datetime(argv[4], argv[5]);
+        filter_item = create_string_filter("time_stamp", filter_str, LT);
+        SAFEFREE(filter_str);
+        opal_list_append(filters_list, &filter_item->value.super);
+        /* We create a fixed filter to get only the ALERT events
+         * we don't care for info at this point.
+         */
+        filter_item = create_string_filter("severity", "ALERT", CONTAINS);
+        opal_list_append(filters_list, &filter_item->value.super);
+
+    } else {
+        show_query_error_message("octl:query:event");
+        return NULL;
+    }
+    return filters_list;
+}
+
 opal_list_t *build_filters_list(int cmd, char **argv)
 {
     opal_list_t *filters_list = NULL;
@@ -463,6 +495,10 @@ opal_list_t *build_filters_list(int cmd, char **argv)
             break;
         case ORCM_GET_DB_QUERY_SENSOR_COMMAND:
             filters_list = create_query_sensor_filter(argc, argv);
+            break;
+        case ORCM_GET_DB_QUERY_EVENT_COMMAND:
+            filters_list = create_query_event_filter(argc, argv);
+            break;
         default:
             break;
     }
@@ -739,6 +775,67 @@ int orcm_octl_query_node(int cmd, char **argv)
     }
     SAFE_RELEASE(filter_list);
 orcm_octl_query_node_cleanup:
+    opal_argv_free(argv_node_list);
+    return rc;
+}
+
+int orcm_octl_query_event(int cmd, char **argv)
+{
+    int rc = ORCM_SUCCESS;
+    uint16_t rows_retrieved = 0;
+    double start_time = 0.0;
+    double stop_time = 0.0;
+    char **argv_node_list = NULL;
+    opal_list_t *filter_list = NULL;
+    opal_list_t *returned_list = NULL;
+    opal_value_t *node_list = NULL;
+    opal_value_t *line = NULL;
+
+    if (ORCM_GET_DB_QUERY_EVENT_COMMAND != cmd) {
+        fprintf(stderr, "\nERROR: incorrect command argument: %d", cmd);
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+    rc = get_nodes_from_args(argv, &argv_node_list);
+    if (ORCM_SUCCESS != rc) {
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+
+    filter_list = build_filters_list(cmd, argv);
+    if (NULL == filter_list) {
+        fprintf(stderr, "\nERROR: unable to generate a filter list from command provided\n");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+    node_list = (opal_list_item_t*)build_node_item(argv_node_list);
+    if (NULL != node_list) {
+        opal_list_append(filter_list, &node_list->super);
+    }
+
+    start_time = stopwatch();
+    rc = query_db(cmd, filter_list, &returned_list);
+    stop_time = stopwatch();
+    if (ORCM_SUCCESS != rc) {
+        fprintf(stdout, "\nNo results found!\n");
+    } else {
+        if (NULL != returned_list) {
+            rows_retrieved = (uint16_t)opal_list_get_size(returned_list);
+            rows_retrieved--;
+            printf("\n");
+            OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
+                printf("%s\n", line->data.string);
+            }
+            OBJ_RELEASE(returned_list);
+        }
+    }
+    fprintf(stdout,
+            "\n%u rows were found (%0.3f seconds)\n",
+            rows_retrieved,
+            stop_time - start_time);
+
+    SAFE_RELEASE(filter_list);
+orcm_octl_query_event_exit:
     opal_argv_free(argv_node_list);
     return rc;
 }

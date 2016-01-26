@@ -1204,6 +1204,8 @@ char *query_header(const char* db_view)
          return "NODE,STATUS";
      } else if (0 == strcmp("syslog_view", db_view)) {
          return "NODE,SENSOR_LOG,DATE_TIME,MESSAGE";
+     } else if (0 == strcmp("event_view", db_view)) {
+         return "EVENT_ID,DATE_TIME,SEVERITY,TYPE,VENDOR,VERSION,DESCRIPTION,HOSTNAME";
      } else {
          return "NODE,SENSOR,DATE_TIME,VALUE,UNITS";
      }
@@ -1549,6 +1551,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
         case ORCM_GET_DB_QUERY_HISTORY_COMMAND:
             if (ORCM_ERROR == build_filter_list(buffer, &filter_list)){
                 OBJ_RELEASE(filter_list);
+                return;
             }
             query_db_view(filter_list, &results_list, "data_sensors_view");
             if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
@@ -1576,6 +1579,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
         case ORCM_GET_DB_QUERY_SENSOR_COMMAND:
             if (ORCM_ERROR == build_filter_list(buffer, &filter_list)){
                 OBJ_RELEASE(filter_list);
+                return;
             }
             query_db_view(filter_list, &results_list, "data_sensors_view");
             if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
@@ -1601,6 +1605,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
         case ORCM_GET_DB_QUERY_LOG_COMMAND:
             if (ORCM_ERROR == build_filter_list(buffer, &filter_list)){
                 OBJ_RELEASE(filter_list);
+                return;
             }
             query_db_view(filter_list, &results_list, "syslog_view");
             if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
@@ -1628,6 +1633,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
         case ORCM_GET_DB_QUERY_IDLE_COMMAND:
             if (ORCM_ERROR == build_filter_list(buffer, &filter_list)){
                 OBJ_RELEASE(filter_list);
+                return;
             }
             query_db_view(filter_list, &results_list, "nodes_idle_time_view");
             if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
@@ -1649,6 +1655,36 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 return;
             }
             if(NULL != results_list){
+                OBJ_RELEASE(results_list);
+            }
+            break;
+        case ORCM_GET_DB_QUERY_EVENT_COMMAND:
+            if (ORCM_ERROR == build_filter_list(buffer, &filter_list)) {
+                OBJ_RELEASE(filter_list);
+                return;
+            }
+            query_db_view(filter_list, &results_list, "event_view");
+            rc = assemble_response(results_list, &response_buffer);
+            if (ORCM_SUCCESS != rc) {
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            if (NULL == response_buffer) {
+                rc = ORCM_ERR_BAD_PARAM;
+                ORTE_ERROR_LOG(rc);
+                return;
+            }
+            rc = orte_rml.send_buffer_nb(sender,
+                                         response_buffer,
+                                         ORCM_RML_TAG_ORCMD_FETCH,
+                                         orte_rml_send_callback,
+                                         cbdata);
+            if (ORTE_SUCCESS != rc) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(response_buffer);
+                return;
+            }
+            if (NULL != results_list) {
                 OBJ_RELEASE(results_list);
             }
             break;

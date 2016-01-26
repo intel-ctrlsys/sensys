@@ -82,3 +82,7 @@ USAGE: query idle [timeout in seconds or HH:MM:SS format] <nodelist>
 [octl:query:node:status]
 ERROR: %s
 USAGE: query node status <nodelist>
+
+[octl:query:event]
+ERROR: %s
+USAGE: query event start-date start-time end-date end-time <nodelist>

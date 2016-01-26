@@ -111,6 +111,7 @@ typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_GET_DB_QUERY_LOG_COMMAND        33
 #define ORCM_GET_DB_QUERY_IDLE_COMMAND       34
 #define ORCM_GET_DB_QUERY_NODE_COMMAND       35
+#define ORCM_GET_DB_QUERY_EVENT_COMMAND      36
 
 /* define diagnostic commands */
 typedef uint8_t orcm_diag_cmd_flag_t;

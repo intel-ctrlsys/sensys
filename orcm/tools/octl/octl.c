@@ -664,6 +664,9 @@ static int run_cmd(char *cmd)
                 break;
             }
             break;
+        case 43://event
+            rc = orcm_octl_query_event(ORCM_GET_DB_QUERY_EVENT_COMMAND,cmdlist);
+            break;
         default:
             rc = ORCM_ERROR;
             break;

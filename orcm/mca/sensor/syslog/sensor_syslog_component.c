@@ -92,5 +92,14 @@ static int syslog_component_register(void)
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_syslog_component.sample_rate);
+
+    mca_sensor_syslog_component.collect_metrics = true;
+    (void) mca_base_component_var_register(c, "collect_metrics",
+                                           "Enable metric collection for the syslog plugin",
+                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sensor_syslog_component.collect_metrics);
+
     return ORCM_SUCCESS;
 }

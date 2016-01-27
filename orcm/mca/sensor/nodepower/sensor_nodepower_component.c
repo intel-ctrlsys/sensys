@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -31,7 +31,7 @@ orcm_sensor_nodepower_component_t mca_sensor_nodepower_component = {
             .mca_component_name = "nodepower",
             MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
                                   ORCM_RELEASE_VERSION),
-        
+
             /* Component open and close functions */
             .mca_open_component = orcm_sensor_nodepower_open,
             .mca_close_component = orcm_sensor_nodepower_close,
@@ -103,6 +103,14 @@ static int nodepower_component_register(void)
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_nodepower_component.sample_rate);
-  
+
+    mca_sensor_nodepower_component.collect_metrics = true;
+    (void) mca_base_component_var_register(c, "collect_metrics",
+                                           "Enable metric collection for the nodepower plugin",
+                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sensor_nodepower_component.collect_metrics);
+
     return ORCM_SUCCESS;
 }

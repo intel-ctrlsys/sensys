@@ -17,6 +17,7 @@
 #endif
 
 #include "orcm/mca/sensor/base/base.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "orcm/mca/sensor/snmp/sensor_snmp.h"
 
 #include <time.h>
@@ -67,7 +68,8 @@ class snmp_impl
         bool ev_paused_;
         opal_event_base_t* ev_base_;
         orcm_sensor_sampler_t* snmp_sampler_;
-
+        RuntimeMetrics* runtime_metrics_;
+        int64_t diagnostics_;
         static const std::string plugin_name_;
 };
 

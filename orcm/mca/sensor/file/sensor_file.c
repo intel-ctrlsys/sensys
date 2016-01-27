@@ -5,7 +5,7 @@
  *                         reserved.
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -60,7 +60,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void file_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_file_sample(int fd, short args, void *cbdata);
-static void collect_sample(orcm_sensor_sampler_t *sampler);
+void collect_file_sample(orcm_sensor_sampler_t *sampler);
 static void file_log(opal_buffer_t *sample);
 
 /* instantiate the module */
@@ -118,6 +118,11 @@ static orcm_sensor_file_t orcm_sensor_file;
 
 static int init(void)
 {
+    mca_sensor_file_component.diagnostics = 0;
+    mca_sensor_file_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+                                                mca_sensor_file_component.collect_metrics);
+
     OBJ_CONSTRUCT(&jobs, opal_list_t);
     return ORCM_SUCCESS;
 }
@@ -130,6 +135,9 @@ static void finalize(void)
         OBJ_RELEASE(item);
     }
     OBJ_DESTRUCT(&jobs);
+
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_file_component.runtime_metrics);
+    mca_sensor_file_component.runtime_metrics = NULL;
 
     return;
 }
@@ -322,7 +330,7 @@ static void file_sample(orcm_sensor_sampler_t *sampler)
                             "%s sensor file : file_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     if (!mca_sensor_file_component.use_progress_thread) {
-       collect_sample(sampler);
+       collect_file_sample(sampler);
     }
 
 }
@@ -339,7 +347,7 @@ static void perthread_file_sample(int fd, short args, void *cbdata)
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
      * calling this component */
-    collect_sample(sampler);
+    collect_file_sample(sampler);
     /* we now need to push the results into the base event thread
      * so it can add the data to the base bucket */
     ORCM_SENSOR_XFER(&sampler->bucket);
@@ -350,12 +358,21 @@ static void perthread_file_sample(int fd, short args, void *cbdata)
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
-static void collect_sample(orcm_sensor_sampler_t *sampler)
+void collect_file_sample(orcm_sensor_sampler_t *sampler)
 {
     struct stat buf;
     opal_list_item_t *item;
     file_tracker_t *ft;
     orte_job_t *jdata;
+    void* metrics_obj = mca_sensor_file_component.runtime_metrics;
+
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor file : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_file_component.diagnostics |= 0x1;
 
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "%s sampling files",

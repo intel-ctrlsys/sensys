@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc. All rights reserved.
  * Additional copyrights may follow
  *
  * $HEADER$
@@ -59,7 +59,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void nodepower_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_nodepower_sample(int fd, short args, void *cbdata);
-static void collect_sample(orcm_sensor_sampler_t *sampler);
+void collect_nodepower_sample(orcm_sensor_sampler_t *sampler);
 static void nodepower_log(opal_buffer_t *buf);
 static int call_readein(node_power_data *, int, unsigned char);
 static void nodepower_set_sample_rate(int sample_rate);
@@ -180,6 +180,11 @@ static int call_readein(node_power_data *data, int to_print, unsigned char psu)
 
 static int init(void)
 {
+    mca_sensor_nodepower_component.diagnostics = 0;
+    mca_sensor_nodepower_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+                                                mca_sensor_nodepower_component.collect_metrics);
+
     /* we must be root to run */
     if (0 != geteuid()) {
         return ORTE_ERROR;
@@ -190,6 +195,8 @@ static int init(void)
 
 static void finalize(void)
 {
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_nodepower_component.runtime_metrics);
+    mca_sensor_nodepower_component.runtime_metrics = NULL;
 }
 
 /*
@@ -286,7 +293,7 @@ static void nodepower_sample(orcm_sensor_sampler_t *sampler)
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
     if (!mca_sensor_nodepower_component.use_progress_thread) {
-       collect_sample(sampler);
+       collect_nodepower_sample(sampler);
     }
 
 }
@@ -303,7 +310,7 @@ static void perthread_nodepower_sample(int fd, short args, void *cbdata)
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
      * calling this component */
-    collect_sample(sampler);
+    collect_nodepower_sample(sampler);
     /* we now need to push the results into the base event thread
      * so it can add the data to the base bucket */
     ORCM_SENSOR_XFER(&sampler->bucket);
@@ -318,7 +325,7 @@ static void perthread_nodepower_sample(int fd, short args, void *cbdata)
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
-static void collect_sample(orcm_sensor_sampler_t *sampler)
+void collect_nodepower_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     char *freq;
@@ -329,6 +336,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
 
     unsigned long long val1 = 0, val2 = 0;
     float node_power_cur;
+    void* metrics_obj = mca_sensor_nodepower_component.runtime_metrics;
+
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor nodepower : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_nodepower_component.diagnostics |= 0x1;
 
     _readein.ipmi_calls=0;
 

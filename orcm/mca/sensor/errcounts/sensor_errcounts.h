@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -27,6 +27,7 @@ typedef struct {
     bool use_progress_thread;
     int sample_rate;
     char* edac_mc_folder;
+    bool collect_metrics;
 } orcm_sensor_errcounts_component_t;
 
 typedef struct {

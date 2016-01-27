@@ -1,16 +1,16 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
  * @file
  *
- * SIGAR resource manager sensor 
+ * SIGAR resource manager sensor
  */
 #ifndef ORCM_SENSOR_SIGAR_H
 #define ORCM_SENSOR_SIGAR_H
@@ -34,6 +34,9 @@ typedef struct {
     bool proc;
     bool use_progress_thread;
     int sample_rate;
+    bool collect_metrics;
+    void* runtime_metrics;
+    int64_t diagnostics;
 } orcm_sensor_sigar_component_t;
 
 typedef struct {

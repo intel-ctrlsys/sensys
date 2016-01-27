@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2010-2011 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012      Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -77,6 +77,13 @@ static int orcm_sensor_evinj_register (void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             &mca_sensor_evinj_component.vector_file);
 
+    mca_sensor_evinj_component.collect_metrics = true;
+    (void) mca_base_component_var_register(c, "collect_metrics",
+                                           "Enable metric collection for the evinj plugin",
+                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sensor_evinj_component.collect_metrics);
 
     return ORCM_SUCCESS;
 }

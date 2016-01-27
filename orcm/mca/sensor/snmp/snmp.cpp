@@ -61,7 +61,8 @@ const std::string snmp_impl::plugin_name_ = "snmp";
 // Class Implementation
 using namespace std;
 
-snmp_impl::snmp_impl(): ev_paused_(false), ev_base_(NULL), snmp_sampler_(NULL)
+snmp_impl::snmp_impl(): ev_paused_(false), ev_base_(NULL), snmp_sampler_(NULL),
+                        runtime_metrics_(NULL), diagnostics_(0)
 {
 }
 
@@ -72,6 +73,8 @@ snmp_impl::~snmp_impl()
 
 int snmp_impl::init(void)
 {
+    runtime_metrics_ = new RuntimeMetrics(orcm_sensor_base.collect_metrics,
+                                          mca_sensor_snmp_component.collect_metrics);
     try {
         (void) load_mca_variables();
         snmpParser sp(config_file_);
@@ -90,7 +93,7 @@ int snmp_impl::init(void)
     return ORCM_SUCCESS;
 }
 
-void snmp_impl::load_mca_variables(void) 
+void snmp_impl::load_mca_variables(void)
 {
     if (NULL != mca_sensor_snmp_component.config_file) {
         config_file_ = string(mca_sensor_snmp_component.config_file);
@@ -106,6 +109,7 @@ void snmp_impl::finalize(void)
 {
     stop(0);
     ev_destroy_thread();
+    SAFE_DELETE(runtime_metrics_);
 }
 
 void snmp_impl::start(orte_jobid_t job)
@@ -269,6 +273,14 @@ void snmp_impl::perthread_snmp_sample()
 // Common data collection...
 void snmp_impl::collect_sample(bool perthread /* = false*/)
 {
+    if(!runtime_metrics_->DoCollectMetrics()) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor snmp : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    diagnostics_ |= 0x1;
+
     if(true == perthread) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor snmp : perthread_snmp_sample: called",

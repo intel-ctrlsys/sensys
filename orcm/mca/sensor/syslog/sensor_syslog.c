@@ -57,7 +57,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void syslog_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_syslog_sample(int fd, short args, void *cbdata);
-static void collect_sample(orcm_sensor_sampler_t *sampler);
+void collect_syslog_sample(orcm_sensor_sampler_t *sampler);
 static void syslog_log(opal_buffer_t *buf);
 static void syslog_set_sample_rate(int sample_rate);
 static void syslog_get_sample_rate(int *sample_rate);
@@ -106,6 +106,11 @@ static orcm_sensor_syslog_t orcm_sensor_syslog;
 
 static int init(void)
 {
+    mca_sensor_syslog_component.diagnostics = 0;
+    mca_sensor_syslog_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+                                                mca_sensor_syslog_component.collect_metrics);
+
     /* we must be root to run */
     if (0 != geteuid()) {
         return ORTE_ERROR;
@@ -115,6 +120,8 @@ static int init(void)
 
 static void finalize(void)
 {
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_syslog_component.runtime_metrics);
+    mca_sensor_syslog_component.runtime_metrics = NULL;
     return;
 }
 
@@ -192,7 +199,7 @@ static void syslog_sample(orcm_sensor_sampler_t *sampler)
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
     if (!mca_sensor_syslog_component.use_progress_thread) {
-       collect_sample(sampler);
+       collect_syslog_sample(sampler);
     }
 }
 
@@ -208,7 +215,7 @@ static void perthread_syslog_sample(int fd, short args, void *cbdata)
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
      * calling this component */
-    collect_sample(sampler);
+    collect_syslog_sample(sampler);
     /* we now need to push the results into the base event thread
      * so it can add the data to the base bucket */
     ORCM_SENSOR_XFER(&sampler->bucket);
@@ -223,7 +230,7 @@ static void perthread_syslog_sample(int fd, short args, void *cbdata)
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
-static void collect_sample(orcm_sensor_sampler_t *sampler)
+void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     int nmsg;
@@ -232,6 +239,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     syslog_msg *trk,*nxt;
     opal_buffer_t data, *bptr;
     struct timeval current_time;
+    void* metrics_obj = mca_sensor_syslog_component.runtime_metrics;
+
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor syslog : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_syslog_component.diagnostics |= 0x1;
 
     nmsg = opal_list_get_size(&msgQueue);
     if (0 == nmsg) {
@@ -386,7 +402,7 @@ static void syslog_log(opal_buffer_t *sample)
             ORTE_ERROR_LOG(rc);
             error = true;
             goto cleanup;
-        } 
+        }
 
         if (0 > snprintf(tmp_log, sizeof(tmp_log), "log_message_%d", i)) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);

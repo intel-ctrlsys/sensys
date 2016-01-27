@@ -61,7 +61,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void componentpower_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_componentpower_sample(int fd, short args, void *cbdata);
-static void collect_sample(orcm_sensor_sampler_t *sampler);
+void collect_componentpower_sample(orcm_sensor_sampler_t *sampler);
 static void componentpower_log(opal_buffer_t *buf);
 static int detect_num_sockets(void);
 static int detect_num_cpus(void);
@@ -103,6 +103,11 @@ static int rapl_ddr_energy_register_check(void);
 
 static int init(void)
 {
+    mca_sensor_componentpower_component.diagnostics = 0;
+    mca_sensor_componentpower_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+                                                mca_sensor_componentpower_component.collect_metrics);
+
     if (ORCM_SUCCESS != geteuid()) {
         opal_output(0, "ERROR: User has not rights to perform this operation");
         return ORCM_ERR_PERM;
@@ -135,6 +140,9 @@ static int init(void)
 
 static void finalize(void)
 {
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_componentpower_component.runtime_metrics);
+    mca_sensor_componentpower_component.runtime_metrics = NULL;
+
     return;
 }
 
@@ -486,7 +494,7 @@ static void componentpower_sample(orcm_sensor_sampler_t *sampler)
                             "%s sensor componentpower : componentpower_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     if (!mca_sensor_componentpower_component.use_progress_thread) {
-       collect_sample(sampler);
+       collect_componentpower_sample(sampler);
     }
 
 }
@@ -503,7 +511,7 @@ static void perthread_componentpower_sample(int fd, short args, void *cbdata)
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
      * calling this component */
-    collect_sample(sampler);
+    collect_componentpower_sample(sampler);
     /* we now need to push the results into the base event thread
      * so it can add the data to the base bucket */
     ORCM_SENSOR_XFER(&sampler->bucket);
@@ -518,7 +526,7 @@ static void perthread_componentpower_sample(int fd, short args, void *cbdata)
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
-static void collect_sample(orcm_sensor_sampler_t *sampler)
+void collect_componentpower_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     char *freq;
@@ -529,6 +537,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     float power_cur;
     int i;
     unsigned long long interval, msr, rapl_delta;
+    void* metrics_obj = mca_sensor_componentpower_component.runtime_metrics;
+
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor componentpower : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_componentpower_component.diagnostics |= 0x1;
 
      /* we must be root to run */
     if (0 != geteuid()) {
@@ -847,7 +864,7 @@ static void componentpower_log(opal_buffer_t *sample)
             componentpower_log_cleanup(hostname, key, non_compute_data, analytics_vals);
             return;
         }
-        
+
         if (cpu_power_temp[i]<=(float)(0.0)){
             sensor_not_avail=1;
             if (_rapl.rapl_calls>3){
@@ -883,7 +900,7 @@ static void componentpower_log(opal_buffer_t *sample)
             componentpower_log_cleanup(hostname, key, non_compute_data, analytics_vals);
             return;
         }
-        
+
         if (ddr_power_temp[i]<=(float)(0.0)){
             sensor_not_avail=1;
             if (_rapl.rapl_calls>3){

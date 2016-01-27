@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2014-2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc. All rights reserved.
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
  * @file
  *
- * componentpower resource manager sensor 
+ * componentpower resource manager sensor
  */
 #ifndef ORCM_SENSOR_COMPONENTPOWER_H
 #define ORCM_SENSOR_COMPONENTPOWER_H
@@ -23,6 +23,9 @@ typedef struct {
     bool test;
     bool use_progress_thread;
     int sample_rate;
+    bool collect_metrics;
+    void* runtime_metrics;
+    int64_t diagnostics;
 } orcm_sensor_componentpower_component_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_componentpower_component_t mca_sensor_componentpower_component;
@@ -38,7 +41,7 @@ typedef struct _stats_value{
 
 typedef struct _capabilities{
     unsigned char node_accuracy;    //in steps of 1 %
-    double node_resolution;      // 
+    double node_resolution;      //
     unsigned int node_min_avg_time; //in milliseconds e.g. min = 100 msec
     unsigned int node_max_avg_time; //in milliseconds e.g. max = 10 min
 }componentpower_capabilities;

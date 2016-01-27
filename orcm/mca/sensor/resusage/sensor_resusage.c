@@ -2,7 +2,7 @@
  * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.  All rights
  *                         reserved.
- * Copyright (c) 2014-2015  Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc.  All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -53,8 +53,8 @@
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void sample(orcm_sensor_sampler_t *sampler);
-static void res_log(opal_buffer_t *sample);
+void collect_resusage_sample(orcm_sensor_sampler_t *sampler);
+static void res_log(opal_buffer_t *collect_resusage_sample);
 static void res_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void res_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 
@@ -64,7 +64,7 @@ orcm_sensor_base_module_t orcm_sensor_resusage_module = {
     finalize,
     NULL,
     NULL,
-    sample,
+    collect_resusage_sample,
     res_log,
     res_inventory_collect,
     res_inventory_log
@@ -78,6 +78,11 @@ static void generate_test_vector(opal_buffer_t *v);
 static int init(void)
 {
     orte_job_t *jdata;
+
+    mca_sensor_resusage_component.diagnostics = 0;
+    mca_sensor_resusage_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+                                                mca_sensor_resusage_component.collect_metrics);
 
     /* ensure my_proc and my_node are available on the global arrays */
     if (NULL == (jdata = orte_get_job_data_object(ORTE_PROC_MY_NAME->jobid))) {
@@ -108,10 +113,13 @@ static void finalize(void)
     if (NULL != my_node) {
         OBJ_RELEASE(my_node);
     }
+
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_resusage_component.runtime_metrics);
+    mca_sensor_resusage_component.runtime_metrics = NULL;
     return;
 }
 
-static void sample(orcm_sensor_sampler_t *sampler)
+void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
 {
     opal_pstats_t *stats;
     opal_node_stats_t *nstats;
@@ -120,6 +128,15 @@ static void sample(orcm_sensor_sampler_t *sampler)
     opal_buffer_t buf, *bptr;
     char *comp;
     struct timeval current_time;
+    void* metrics_obj = mca_sensor_resusage_component.runtime_metrics;
+
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor resusage : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_resusage_component.diagnostics |= 0x1;
 
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "sample:resusage sampling resource usage"));
@@ -536,7 +553,7 @@ cleanup:
     }
 }
 
-static void res_log(opal_buffer_t *sample)
+static void res_log(opal_buffer_t *collect_resusage_sample)
 {
     opal_pstats_t *st=NULL;
     opal_node_stats_t *nst=NULL;
@@ -547,21 +564,21 @@ static void res_log(opal_buffer_t *sample)
 
     /* unpack the node name */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &node, &n, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(collect_resusage_sample, &node, &n, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         goto cleanup;
     }
 
     /* sample time */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(collect_resusage_sample, &sampletime, &n, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         goto cleanup;
     }
 
     /* unpack the node stats */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &nst, &n, OPAL_NODE_STAT))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(collect_resusage_sample, &nst, &n, OPAL_NODE_STAT))) {
         ORTE_ERROR_LOG(rc);
         goto cleanup;
     }
@@ -575,7 +592,7 @@ static void res_log(opal_buffer_t *sample)
     if (mca_sensor_resusage_component.log_process_stats) {
         /* unpack all process stats */
         n=1;
-        while (OPAL_SUCCESS == (rc = opal_dss.unpack(sample, &st, &n, OPAL_PSTAT))) {
+        while (OPAL_SUCCESS == (rc = opal_dss.unpack(collect_resusage_sample, &st, &n, OPAL_PSTAT))) {
             if (NULL != st) {
                 res_log_process_stats(st, node, sampletime);
                 OBJ_RELEASE(st);

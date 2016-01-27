@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -27,6 +27,7 @@ extern "C" {
     extern orcm_sensor_base_t orcm_sensor_base;
     extern orte_proc_info_t orte_process_info;
 }
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 
 // Plugin Includes...
 #include "sensor_errcounts.h"
@@ -56,7 +57,8 @@ const std::string errcounts_impl::plugin_name_ = "errcounts";
 using namespace std;
 
 errcounts_impl::errcounts_impl()
- : collector_(NULL), ev_paused_(false), ev_base_(NULL), errcounts_sampler_(NULL), edac_missing_(false)
+ : collector_(NULL), ev_paused_(false), ev_base_(NULL), errcounts_sampler_(NULL),
+   edac_missing_(false), collect_metrics_(NULL), diagnostics_(0)
 {
 }
 
@@ -67,6 +69,8 @@ errcounts_impl::~errcounts_impl()
 
 int errcounts_impl::init(void)
 {
+    collect_metrics_ = new RuntimeMetrics(orcm_sensor_base.collect_metrics,
+                                          mca_sensor_errcounts_component.collect_metrics);
     collector_ = new edac_collector(error_callback_relay, mca_sensor_errcounts_component.edac_mc_folder);
     if(0 == mca_sensor_errcounts_component.sample_rate) {
         mca_sensor_errcounts_component.sample_rate = orcm_sensor_base.sample_rate;
@@ -90,6 +94,7 @@ void errcounts_impl::finalize(void)
     ev_destroy_thread();
 
     SAFE_DELETE(collector_);
+    SAFE_DELETE(collect_metrics_);
 }
 
 void errcounts_impl::start(orte_jobid_t job)
@@ -432,6 +437,14 @@ void errcounts_impl::perthread_errcounts_sample()
 // Common data collection...
 void errcounts_impl::collect_sample(bool perthread /* = false*/)
 {
+    if(!collect_metrics_->DoCollectMetrics()) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor errcounts : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    diagnostics_ |= 0x1;
+
     if(true == perthread) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor errcounts : perthread_errcounts_sample: called",

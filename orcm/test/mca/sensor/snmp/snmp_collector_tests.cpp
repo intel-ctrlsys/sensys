@@ -37,6 +37,8 @@
 extern "C" {
     #include "opal/runtime/opal_progress_threads.h"
     #include "opal/runtime/opal.h"
+
+    extern void collect_snmp_sample(orcm_sensor_sampler_t *sampler);
 }
 
 #define NOOP_JOBID -999
@@ -706,4 +708,53 @@ TEST_F(ut_snmp_collector_tests, test_negative_collectData)
     ASSERT_THROW(collector->collectData(), packetError);
 
     delete collector;
+}
+
+TEST_F(ut_snmp_collector_tests, snmp_sensor_sample_tests)
+{
+    {
+        orcm_sensor_sampler_t sampler;
+        OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+        snmp_impl snmp;
+        orcm_sensor_base.collect_metrics = false;
+        mca_sensor_snmp_component.collect_metrics = false;
+        snmp.init();
+        snmp.start(0);
+        snmp.sample(&sampler);
+        EXPECT_EQ(0, (snmp.diagnostics_ & 0x1));
+        snmp.stop(0);
+        snmp.finalize();
+        OBJ_DESTRUCT(&sampler);
+    }
+    {
+        orcm_sensor_sampler_t sampler;
+        OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+        snmp_impl snmp;
+        orcm_sensor_base.collect_metrics = true;
+        mca_sensor_snmp_component.collect_metrics = false;
+        snmp.init();
+        snmp.start(0);
+        snmp.sample(&sampler);
+        snmp.start(0);
+        EXPECT_EQ(0, (snmp.diagnostics_ & 0x1));
+        snmp.stop(0);
+        snmp.finalize();
+        OBJ_DESTRUCT(&sampler);
+    }
+    {
+        orcm_sensor_sampler_t sampler;
+        OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+        snmp_impl snmp;
+        orcm_sensor_base.collect_metrics = true;
+        mca_sensor_snmp_component.collect_metrics = true;
+        snmp.init();
+        snmp.start(0);
+        snmp.sample(&sampler);
+        EXPECT_EQ(1, (snmp.diagnostics_ & 0x1));
+        snmp.stop(0);
+        snmp.finalize();
+        OBJ_DESTRUCT(&sampler);
+    }
+    orcm_sensor_base.collect_metrics = true;
+    mca_sensor_snmp_component.collect_metrics = true;
 }

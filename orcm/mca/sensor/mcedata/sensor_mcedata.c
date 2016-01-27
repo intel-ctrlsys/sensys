@@ -70,7 +70,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void get_log_lines(FILE *fp);
 static void perthread_mcedata_sample(int fd, short args, void *cbdata);
-static void collect_sample(orcm_sensor_sampler_t *sampler);
+void collect_mcedata_sample(orcm_sensor_sampler_t *sampler);
 static void mcedata_set_sample_rate(int sample_rate);
 static void mcedata_get_sample_rate(int *sample_rate);
 static void mcedata_inventory_collect(opal_buffer_t *inventory_snapshot);
@@ -253,6 +253,11 @@ static int init(void)
     char *dirname = NULL;
     char *skt;
 
+    mca_sensor_mcedata_component.diagnostics = 0;
+    mca_sensor_mcedata_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+                                                mca_sensor_mcedata_component.collect_metrics);
+
     /*
      * Open up the base directory so we can get a listing
      */
@@ -303,6 +308,9 @@ static void finalize(void)
         free(mca_sensor_mcedata_component.logfile);
         mca_sensor_mcedata_component.logfile = NULL;
     }
+
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_mcedata_component.runtime_metrics);
+    mca_sensor_mcedata_component.runtime_metrics = NULL;
 }
 
 /*
@@ -366,7 +374,7 @@ static void perthread_mcedata_sample(int fd, short args, void *cbdata)
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
      * calling this component */
-    collect_sample(sampler);
+    collect_mcedata_sample(sampler);
     /* we now need to push the results into the base event thread
      * so it can add the data to the base bucket */
     ORCM_SENSOR_XFER(&sampler->bucket);
@@ -1090,7 +1098,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
                             "%s sensor mcedata : mcedata_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     if (!mca_sensor_mcedata_component.use_progress_thread) {
-       collect_sample(sampler);
+       collect_mcedata_sample(sampler);
     }
 
 }
@@ -1115,7 +1123,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
  * This lines may be interspersed with other different log messages.
  */
 
-static void collect_sample(orcm_sensor_sampler_t *sampler)
+void collect_mcedata_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     char *temp;
@@ -1129,6 +1137,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     char *loc = NULL;
     struct timeval current_time;
     FILE *fp;
+    void* metrics_obj = mca_sensor_mcedata_component.runtime_metrics;
+
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor mcedata : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_mcedata_component.diagnostics |= 0x1;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "Logfile used: %s", mca_sensor_mcedata_component.logfile);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -46,7 +46,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void ipmi_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_ipmi_sample(int fd, short args, void *cbdata);
-static void collect_sample(orcm_sensor_sampler_t *sampler);
+void collect_ipmi_sample(orcm_sensor_sampler_t *sampler);
 static void ipmi_log(opal_buffer_t *buf);
 static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
@@ -144,6 +144,11 @@ static int init(void)
     disable_ipmi = 0;
     char user[16];
 
+    mca_sensor_ipmi_component.diagnostics = 0;
+    mca_sensor_ipmi_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+                                                mca_sensor_ipmi_component.collect_metrics);
+
     OBJ_CONSTRUCT(&sensor_inventory, opal_list_t);
     OBJ_CONSTRUCT(&sensor_active_hosts, opal_list_t);
     OBJ_CONSTRUCT(&ipmi_inventory_hosts, opal_list_t);
@@ -183,6 +188,9 @@ static void finalize(void)
     OPAL_LIST_DESTRUCT(&ipmi_inventory_hosts);
     OPAL_LIST_DESTRUCT(&sensor_inventory);
     OBJ_RELEASE(cur_host);
+
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_ipmi_component.runtime_metrics);
+    mca_sensor_ipmi_component.runtime_metrics = NULL;
 }
 
 /*Start monitoring of local processes */
@@ -251,7 +259,7 @@ static void ipmi_sample(orcm_sensor_sampler_t *sampler)
                             "%s sensor ipmi : ipmi_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     if (!mca_sensor_ipmi_component.use_progress_thread) {
-       collect_sample(sampler);
+       collect_ipmi_sample(sampler);
     }
 
 }
@@ -1413,7 +1421,7 @@ static void perthread_ipmi_sample(int fd, short args, void *cbdata)
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
      * calling this component */
-    collect_sample(sampler);
+    collect_ipmi_sample(sampler);
     /* we now need to push the results into the base event thread
      * so it can add the data to the base bucket */
     ORCM_SENSOR_XFER(&sampler->bucket);
@@ -1428,7 +1436,7 @@ static void perthread_ipmi_sample(int fd, short args, void *cbdata)
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
-static void collect_sample(orcm_sensor_sampler_t *sampler)
+void collect_ipmi_sample(orcm_sensor_sampler_t *sampler)
 {
     int rc;
     opal_buffer_t data, *bptr;
@@ -1441,6 +1449,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     struct timeval current_time;
     uint32_t sel_count;
     opal_value_t* sel_iterator;
+    void* metrics_obj = mca_sensor_ipmi_component.runtime_metrics;
+
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor ipmi : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_ipmi_component.diagnostics |= 0x1;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor ipmi : collect_sample: called",

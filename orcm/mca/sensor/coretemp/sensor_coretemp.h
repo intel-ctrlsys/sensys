@@ -1,16 +1,16 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
  * @file
  *
- * CORETEMP resource manager sensor 
+ * CORETEMP resource manager sensor
  */
 #ifndef ORCM_SENSOR_CORETEMP_H
 #define ORCM_SENSOR_CORETEMP_H
@@ -28,6 +28,9 @@ typedef struct {
     char *policy;
     bool use_progress_thread;
     int sample_rate;
+    bool collect_metrics;
+    void* runtime_metrics;
+    int64_t diagnostics;
 } orcm_sensor_coretemp_component_t;
 
 typedef struct {

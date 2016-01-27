@@ -1,16 +1,18 @@
 /*
- * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
+ *
+ * Copyright (c) 2016      Intel, Inc.  All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
  * @file
  *
- * Process Resource Utilization sensor 
+ * Process Resource Utilization sensor
  */
 #ifndef ORCM_SENSOR_RESUSAGE_H
 #define ORCM_SENSOR_RESUSAGE_H
@@ -29,6 +31,9 @@ struct orcm_sensor_resusage_component_t {
     float proc_memory_limit;
     bool log_node_stats;
     bool log_process_stats;
+    bool collect_metrics;
+    void* runtime_metrics;
+    int64_t diagnostics;
 };
 typedef struct orcm_sensor_resusage_component_t orcm_sensor_resusage_component_t;
 

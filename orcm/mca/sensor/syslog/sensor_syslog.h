@@ -20,6 +20,9 @@ typedef struct {
     orcm_sensor_base_component_t super;
     bool use_progress_thread;
     int sample_rate;
+    bool collect_metrics;
+    void* runtime_metrics;
+    int64_t diagnostics;
 } orcm_sensor_syslog_component_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_syslog_component_t mca_sensor_syslog_component;

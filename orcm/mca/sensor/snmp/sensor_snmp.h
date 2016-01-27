@@ -26,6 +26,7 @@ typedef struct {
     bool use_progress_thread;
     int sample_rate;
     char* config_file;
+    bool collect_metrics;
 } orcm_sensor_snmp_component_t;
 
 typedef struct {

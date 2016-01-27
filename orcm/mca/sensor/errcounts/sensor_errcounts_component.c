@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc. All rights reserved.
  * Additional copyrights may follow
  *
  * $HEADER$
@@ -103,6 +103,14 @@ int errcounts_component_register(void)
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_errcounts_component.edac_mc_folder);
+
+    mca_sensor_errcounts_component.collect_metrics = true;
+    (void) mca_base_component_var_register(c, "collect_metrics",
+                                           "Enable metric collection for the errcounts plugin",
+                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sensor_errcounts_component.collect_metrics);
 
     return ORCM_SUCCESS;
 }

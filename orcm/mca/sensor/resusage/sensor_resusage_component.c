@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2010-2011 Cisco Systems, Inc.  All rights reserved. 
- * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2010-2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -32,7 +32,7 @@ orcm_sensor_resusage_component_t mca_sensor_resusage_component = {
             .mca_component_name = "resusage",
             MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
                                   ORCM_RELEASE_VERSION),
-        
+
             /* Component open and close functions */
             .mca_open_component = orcm_sensor_resusage_open,
             .mca_close_component = orcm_sensor_resusage_close,
@@ -85,7 +85,7 @@ static int orcm_sensor_resusage_register (void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             &proc_memory_limit);
     mca_sensor_resusage_component.proc_memory_limit = (float) proc_memory_limit;
-    
+
     mca_sensor_resusage_component.log_node_stats = false;
     (void) mca_base_component_var_register (c, "log_node_stats", "Log the node stats",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
@@ -108,6 +108,14 @@ static int orcm_sensor_resusage_register (void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_resusage_component.test);
 
+    mca_sensor_resusage_component.collect_metrics = true;
+    (void) mca_base_component_var_register(c, "collect_metrics",
+                                           "Enable metric collection for the resusage plugin",
+                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sensor_resusage_component.collect_metrics);
+
     return ORCM_SUCCESS;
 }
 
@@ -126,10 +134,10 @@ static int orcm_sensor_resusage_open(void)
 
 
 static int orcm_sensor_resusage_query(mca_base_module_t **module, int *priority)
-{    
+{
     *priority = 100;  /* ahead of heartbeat */
     *module = (mca_base_module_t *)&orcm_sensor_resusage_module;
-    
+
     return ORCM_SUCCESS;
 }
 

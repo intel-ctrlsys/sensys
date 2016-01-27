@@ -2,7 +2,7 @@
  * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -45,7 +45,7 @@
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
-static void sample(orcm_sensor_sampler_t *sampler);
+void collect_evinj_sample(orcm_sensor_sampler_t *sampler);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_evinj_module = {
@@ -53,7 +53,7 @@ orcm_sensor_base_module_t orcm_sensor_evinj_module = {
     finalize,
     NULL,
     NULL,
-    sample,
+    collect_evinj_sample,
     NULL,
     NULL,
     NULL,
@@ -84,6 +84,11 @@ static char *orcm_getline(void)
 
 static int init(void)
 {
+    mca_sensor_evinj_component.diagnostics = 0;
+    mca_sensor_evinj_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+                                                mca_sensor_evinj_component.collect_metrics);
+
     /* if we were given one, open the vector file */
     if (NULL != mca_sensor_evinj_component.vector_file) {
         fp = fopen(mca_sensor_evinj_component.vector_file, "r");
@@ -98,14 +103,26 @@ static void finalize(void)
     if (NULL != fp) {
         fclose(fp);
     }
+
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_evinj_component.runtime_metrics);
+    mca_sensor_evinj_component.runtime_metrics = NULL;
 }
 
-static void sample(orcm_sensor_sampler_t *sampler)
+void collect_evinj_sample(orcm_sensor_sampler_t *sampler)
 {
     float prob, division, check;
     char *vector, **elements, **parts, **pieces;
     orcm_ras_event_t *rev;
     int i, j;
+    void* metrics_obj = mca_sensor_evinj_component.runtime_metrics;
+
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor evinj : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_evinj_component.diagnostics |= 0x1;
 
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "%s sample:evinj considering injecting something",

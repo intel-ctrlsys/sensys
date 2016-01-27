@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2015      Intel, Inc. All rights reserved
+ * Copyright (c) 2015-2016 Intel, Inc. All rights reserved
  *
  * $COPYRIGHT$
  *
@@ -28,6 +28,9 @@ struct orcm_sensor_evinj_component_t {
     float prob;
     opal_rng_buff_t rng_buff;
     char *vector_file;
+    bool collect_metrics;
+    void* runtime_metrics;
+    int64_t diagnostics;
 };
 typedef struct orcm_sensor_evinj_component_t orcm_sensor_evinj_component_t;
 

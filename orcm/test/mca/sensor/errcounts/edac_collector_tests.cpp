@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -237,6 +237,8 @@ void ut_edac_collector_tests::ResetTestEnvironment()
 
     mca_sensor_errcounts_component.use_progress_thread = false;
     mca_sensor_errcounts_component.sample_rate = 0;
+    orcm_sensor_base.collect_metrics = true;
+    mca_sensor_errcounts_component.collect_metrics = true;
 
     for(int i = 0; i < current_analytics_values_.size(); ++i) {
         SAFE_OBJ_RELEASE(current_analytics_values_[i]);
@@ -1389,4 +1391,36 @@ TEST_F(ut_edac_collector_tests, test_init_negative)
     edac_mocking.stat_callback = StatFail;
 
     ASSERT_EQ(ORCM_ERROR, dummy.init());
+}
+
+// Testing the data collection class
+TEST_F(ut_edac_collector_tests, errcounts_sensor_sample_tests)
+{
+    {
+        errcounts_impl errcounts;
+        orcm_sensor_base.collect_metrics = false;
+        mca_sensor_errcounts_component.collect_metrics = false;
+        errcounts.init();
+        errcounts.collect_sample();
+        EXPECT_EQ(0, (errcounts.diagnostics_ & 0x1));
+        errcounts.finalize();
+    }
+    {
+        errcounts_impl errcounts;
+        orcm_sensor_base.collect_metrics = true;
+        mca_sensor_errcounts_component.collect_metrics = false;
+        errcounts.init();
+        errcounts.collect_sample();
+        EXPECT_EQ(0, (errcounts.diagnostics_ & 0x1));
+        errcounts.finalize();
+    }
+    {
+        errcounts_impl errcounts;
+        orcm_sensor_base.collect_metrics = true;
+        mca_sensor_errcounts_component.collect_metrics = true;
+        errcounts.init();
+        errcounts.collect_sample();
+        EXPECT_EQ(1, (errcounts.diagnostics_ & 0x1));
+        errcounts.finalize();
+    }
 }

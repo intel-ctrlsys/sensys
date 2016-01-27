@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012      Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -156,7 +156,7 @@ void orcm_sensor_base_start(orte_jobid_t job)
             }
         }
 
-        if (mods_active && 0 < orcm_sensor_base.sample_rate && orcm_sensor_base.collect_metrics) {
+        if (mods_active && 0 < orcm_sensor_base.sample_rate) {
             /* startup a timer to wake us up periodically
              * for a data sample, and pass in the sampler
              */

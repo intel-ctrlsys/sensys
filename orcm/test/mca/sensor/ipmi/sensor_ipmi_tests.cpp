@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016      Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -11,10 +11,21 @@
 #include "sensor_ipmi_tests.h"
 #include "sensor_ipmi_sel_mocked_functions.h"
 
+// ORTE
+#include "orte/runtime/orte_globals.h"
+
+// ORCM
+#include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
+#include "orcm/mca/sensor/freq/sensor_freq.h"
+
 extern sensor_ipmi_sel_mocked_functions sel_mocking;
 
 // mocking variables and "C" callback functions
 extern "C" {
+    ORCM_DECLSPEC extern orcm_sensor_base_t orcm_sensor_base;
+    extern void collect_ipmi_sample(orcm_sensor_sampler_t *sampler);
+
     extern void test_error_sink_c(int level, const char* msg);
     extern void test_ras_event_c(const char* decoded_msg, const char* hostname, void* user_object);
 
@@ -29,10 +40,15 @@ using namespace std;
 // Fixture methods
 void ut_sensor_ipmi_tests::SetUpTestCase()
 {
+    // Configure/Create OPAL level resources
+    opal_dss_register_vars();
+    opal_dss_open();
 }
 
 void ut_sensor_ipmi_tests::TearDownTestCase()
 {
+    // Release OPAL level resources
+    opal_dss_close();
 }
 
 // Helper functions
@@ -156,4 +172,27 @@ TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_get_sel_events_negative)
     }
 
     sel_mocking.get_opal_output_lines().clear();
+}
+
+TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_sample_tests)
+{
+    // Setup
+    void* object = orcm_sensor_base_runtime_metrics_create(false, false);
+    mca_sensor_ipmi_component.runtime_metrics = object;
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+
+    // Tests
+    collect_ipmi_sample(sampler);
+    EXPECT_EQ(0, (mca_sensor_ipmi_component.diagnostics & 0x1));
+
+    orcm_sensor_base_runtime_metrics_set(object, true);
+    mca_sensor_ipmi_component.test = true;
+    collect_ipmi_sample(sampler);
+    mca_sensor_ipmi_component.test = false;
+    EXPECT_EQ(1, (mca_sensor_ipmi_component.diagnostics & 0x1));
+
+    // Cleanup
+    OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_ipmi_component.runtime_metrics = NULL;
 }

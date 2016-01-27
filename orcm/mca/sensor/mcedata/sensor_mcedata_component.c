@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -26,7 +26,7 @@ orcm_sensor_mcedata_component_t mca_sensor_mcedata_component = {
     {
         {
             ORCM_SENSOR_BASE_VERSION_1_0_0,
-            
+
             "mcedata", /* MCA component name */
             ORCM_MAJOR_VERSION,  /* MCA component major version */
             ORCM_MINOR_VERSION,  /* MCA component minor version */
@@ -110,7 +110,7 @@ static int mcedata_component_register(void)
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_mcedata_component.sample_rate);
-  
+
     mca_sensor_mcedata_component.historical_collection = 0;
     (void) mca_base_component_var_register(c, "historical_collection",
                                            "Enables MCE collection prior to orcm start",
@@ -118,5 +118,14 @@ static int mcedata_component_register(void)
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_mcedata_component.historical_collection);
+
+    mca_sensor_mcedata_component.collect_metrics = true;
+    (void) mca_base_component_var_register(c, "collect_metrics",
+                                           "Enable metric collection for the mcedata plugin",
+                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_sensor_mcedata_component.collect_metrics);
+
     return ORCM_SUCCESS;
 }

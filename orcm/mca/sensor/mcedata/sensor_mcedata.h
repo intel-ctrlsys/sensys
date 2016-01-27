@@ -1,16 +1,16 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
  * @file
  *
- * MCEDATA resource manager sensor 
+ * MCEDATA resource manager sensor
  */
 #ifndef ORCM_SENSOR_MCEDATA_H
 #define ORCM_SENSOR_MCEDATA_H
@@ -85,6 +85,9 @@ typedef struct {
     opal_event_base_t *ev_base;
     bool ev_active;
     bool historical_collection;
+    bool collect_metrics;
+    void* runtime_metrics;
+    int64_t diagnostics;
 } orcm_sensor_mcedata_component_t;
 
 

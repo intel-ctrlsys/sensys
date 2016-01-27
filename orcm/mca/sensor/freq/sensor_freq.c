@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -59,7 +59,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void freq_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_freq_sample(int fd, short args, void *cbdata);
-static void collect_sample(orcm_sensor_sampler_t *sampler);
+void collect_freq_sample(orcm_sensor_sampler_t *sampler);
 static void freq_log(opal_buffer_t *buf);
 static void freq_set_sample_rate(int sample_rate);
 static void freq_get_sample_rate(int *sample_rate);
@@ -445,6 +445,11 @@ static int init(void)
     int i = 0;
     int ret = 0;
 
+    mca_sensor_freq_component.diagnostics = 0;
+    mca_sensor_freq_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+                                                mca_sensor_freq_component.collect_metrics);
+
     /* always construct this so we don't segfault in finalize */
     OBJ_CONSTRUCT(&tracking, opal_list_t);
     OBJ_CONSTRUCT(&pstate_list, opal_list_t);
@@ -648,6 +653,9 @@ static void finalize(void)
     OPAL_LIST_DESTRUCT(&tracking);
     OPAL_LIST_DESTRUCT(&pstate_list);
     OPAL_LIST_DESTRUCT(&event_history);
+
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_freq_component.runtime_metrics);
+    mca_sensor_freq_component.runtime_metrics = NULL;
 }
 
 /*
@@ -703,7 +711,7 @@ static void freq_sample(orcm_sensor_sampler_t *sampler)
                             "%s sensor freq : freq_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     if (!mca_sensor_freq_component.use_progress_thread) {
-       collect_sample(sampler);
+       collect_freq_sample(sampler);
     }
 
 }
@@ -720,7 +728,7 @@ static void perthread_freq_sample(int fd, short args, void *cbdata)
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
      * calling this component */
-    collect_sample(sampler);
+    collect_freq_sample(sampler);
     /* we now need to push the results into the base event thread
      * so it can add the data to the base bucket */
     ORCM_SENSOR_XFER(&sampler->bucket);
@@ -735,7 +743,7 @@ static void perthread_freq_sample(int fd, short args, void *cbdata)
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
-static void collect_sample(orcm_sensor_sampler_t *sampler)
+void collect_freq_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     corefreq_tracker_t *trk, *nxt;
@@ -749,6 +757,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     bool packed;
     unsigned int item_count = 0;
     struct timeval current_time;
+    void* metrics_obj = mca_sensor_freq_component.runtime_metrics;
+
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor freq : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_freq_component.diagnostics |= 0x1;
 
     if (0 == opal_list_get_size(&tracking)) {
         return;

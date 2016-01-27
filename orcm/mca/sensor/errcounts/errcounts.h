@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -30,8 +30,10 @@
 extern "C" {
     // ORCM
     #include "orcm/runtime/orcm_globals.h"
-}
+};
+
 class edac_collector;
+class RuntimeMetrics;
 
 class errcounts_impl
 {
@@ -94,6 +96,8 @@ class errcounts_impl
         std::vector<std::string> log_samples_labels_;
         std::vector<int32_t> log_samples_values_;
         std::map<std::string,std::string> inv_log_samples_;
+        RuntimeMetrics* collect_metrics_;
+        int64_t diagnostics_;
 
         static const std::string plugin_name_;
 };

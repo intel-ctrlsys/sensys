@@ -1,17 +1,17 @@
 /*
- * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
  * @file
  *
- * File movement sensor 
+ * File movement sensor
  */
 #ifndef ORCM_SENSOR_FILE_H
 #define ORCM_SENSOR_FILE_H
@@ -31,6 +31,9 @@ struct orcm_sensor_file_component_t {
     bool check_mod;
     int limit;
     bool use_progress_thread;
+    bool collect_metrics;
+    void* runtime_metrics;
+    int64_t diagnostics;
 };
 
 typedef struct {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -50,6 +50,7 @@
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "sensor_coretemp.h"
 
 /* declare the API functions */
@@ -59,7 +60,7 @@ static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
 static void coretemp_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_coretemp_sample(int fd, short args, void *cbdata);
-static void collect_sample(orcm_sensor_sampler_t *sampler);
+void collect_coretemp_sample(orcm_sensor_sampler_t *sampler);
 static void coretemp_log(opal_buffer_t *buf);
 static void coretemp_set_sample_rate(int sample_rate);
 static void coretemp_get_sample_rate(int *sample_rate);
@@ -433,6 +434,11 @@ static int init(void)
     int ret = 0;
     char *skt;
 
+    mca_sensor_coretemp_component.diagnostics = 0;
+    mca_sensor_coretemp_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+                                                mca_sensor_coretemp_component.collect_metrics);
+
     /* always construct this so we don't segfault in finalize */
     OBJ_CONSTRUCT(&tracking, opal_list_t);
     OBJ_CONSTRUCT(&event_history, opal_list_t);
@@ -663,6 +669,9 @@ static void finalize(void)
 {
     OPAL_LIST_DESTRUCT(&tracking);
     OPAL_LIST_DESTRUCT(&event_history);
+
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_coretemp_component.runtime_metrics);
+    mca_sensor_coretemp_component.runtime_metrics = NULL;
 }
 
 /*
@@ -719,7 +728,7 @@ static void coretemp_sample(orcm_sensor_sampler_t *sampler)
                             "%s sensor coretemp : coretemp_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     if (!mca_sensor_coretemp_component.use_progress_thread) {
-       collect_sample(sampler);
+       collect_coretemp_sample(sampler);
     }
 
 }
@@ -736,7 +745,7 @@ static void perthread_coretemp_sample(int fd, short args, void *cbdata)
      * just go ahead and sample since we do NOT allow both the
      * base thread and the component thread to both be actively
      * calling this component */
-    collect_sample(sampler);
+    collect_coretemp_sample(sampler);
     /* we now need to push the results into the base event thread
      * so it can add the data to the base bucket */
     ORCM_SENSOR_XFER(&sampler->bucket);
@@ -751,7 +760,7 @@ static void perthread_coretemp_sample(int fd, short args, void *cbdata)
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
-static void collect_sample(orcm_sensor_sampler_t *sampler)
+void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     coretemp_tracker_t *trk, *nxt;
@@ -762,6 +771,15 @@ static void collect_sample(orcm_sensor_sampler_t *sampler)
     int32_t ncores;
     bool packed;
     struct timeval current_time;
+    void* metrics_obj = mca_sensor_coretemp_component.runtime_metrics;
+
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor coretemp : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_coretemp_component.diagnostics |= 0x1;
 
     if (mca_sensor_coretemp_component.test) {
         /* generate and send the test vector */

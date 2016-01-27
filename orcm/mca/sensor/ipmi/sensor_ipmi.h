@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -35,6 +35,9 @@ typedef struct {
     char *sensor_group;
     bool use_progress_thread;
     int sample_rate;
+    bool collect_metrics;
+    void* runtime_metrics;
+    int64_t diagnostics;
 } orcm_sensor_ipmi_component_t;
 
 struct ipmi_properties *first_node;

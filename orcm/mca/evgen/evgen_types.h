@@ -42,16 +42,14 @@ BEGIN_C_DECLS
  * at will. Thus, evgen plugins must be prepared to deal
  * with unrecognized severity levels */
 #define ORCM_RAS_SEVERITY_EMERG       0
-#define ORCM_RAS_SEVERITY_FATAL       1
-#define ORCM_RAS_SEVERITY_ALERT       2
-#define ORCM_RAS_SEVERITY_CRIT        3
-#define ORCM_RAS_SEVERITY_ERROR       4
-#define ORCM_RAS_SEVERITY_WARNING     5
-#define ORCM_RAS_SEVERITY_NOTICE      6
-#define ORCM_RAS_SEVERITY_INFO        7
-#define ORCM_RAS_SEVERITY_TRACE       8
-#define ORCM_RAS_SEVERITY_DEBUG       9
-#define ORCM_RAS_SEVERITY_UNKNOWN    10
+#define ORCM_RAS_SEVERITY_ALERT       1
+#define ORCM_RAS_SEVERITY_CRIT        2
+#define ORCM_RAS_SEVERITY_ERROR       3
+#define ORCM_RAS_SEVERITY_WARNING     4
+#define ORCM_RAS_SEVERITY_NOTICE      5
+#define ORCM_RAS_SEVERITY_INFO        6
+#define ORCM_RAS_SEVERITY_DEBUG       7
+#define ORCM_RAS_SEVERITY_UNKNOWN     8
 
 
 /* define the RAS event types. Note that these are the

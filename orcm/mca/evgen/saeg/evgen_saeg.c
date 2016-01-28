@@ -270,7 +270,8 @@ static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
 
     OPAL_LIST_FOREACH(list_item, &ecd->description, orcm_value_t) {
         if (NULL == list_item || NULL == list_item->value.key) {
-            goto cleanup;
+            SAFEFREE(notifier_msg);
+            SAFEFREE(notifier_action);
         }
         if (0 == strcmp(list_item->value.key, "notifier_msg") &&
             NULL != list_item->value.data.string && NULL == notifier_msg) {
@@ -283,13 +284,13 @@ static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
     }
     if ((NULL != notifier_msg) && (NULL != notifier_action)) {
        if ((ecd->severity >= ORCM_RAS_SEVERITY_EMERG) && (ecd->severity < ORCM_RAS_SEVERITY_UNKNOWN)) {
-            ORTE_NOTIFIER_SYSTEM_EVENT(orcm_evgen_base_convert_ras_severity_to_orte_notifier(ecd->severity), notifier_msg, notifier_action);
+           OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
+                                "%s evgen:saeg generating notifier with severity %d "
+                                "and notifier action as %s",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ecd->severity, notifier_action));
+            ORTE_NOTIFIER_SYSTEM_EVENT(ecd->severity, notifier_msg, notifier_action);
         }
     }
-
-cleanup:
-    SAFEFREE(notifier_msg);
-    SAFEFREE(notifier_action);
 }
 
 static void saeg_generate_storage_events(orcm_ras_event_t *ecd)

@@ -117,8 +117,6 @@ const char* orcm_evgen_base_print_severity(int s)
     switch(s) {
         case ORCM_RAS_SEVERITY_EMERG:
             return "EMERGENCY";
-        case ORCM_RAS_SEVERITY_FATAL:
-            return "FATAL";
         case ORCM_RAS_SEVERITY_ALERT:
             return "ALERT";
         case ORCM_RAS_SEVERITY_CRIT:
@@ -131,8 +129,6 @@ const char* orcm_evgen_base_print_severity(int s)
             return "NOTICE";
         case ORCM_RAS_SEVERITY_INFO:
             return "INFO";
-        case ORCM_RAS_SEVERITY_TRACE:
-            return "TRACE";
         case ORCM_RAS_SEVERITY_DEBUG:
             return "DEBUG";
         case ORCM_RAS_SEVERITY_UNKNOWN:

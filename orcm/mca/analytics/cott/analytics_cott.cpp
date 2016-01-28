@@ -123,14 +123,12 @@ int cott_init(orcm_analytics_base_module_t *imod)
     }
     if(0 == lookup_severity.size()) {
         lookup_severity["emerg"]  = ORCM_RAS_SEVERITY_EMERG;
-        lookup_severity["fatal"]  = ORCM_RAS_SEVERITY_FATAL;
         lookup_severity["alert"]  = ORCM_RAS_SEVERITY_ALERT;
         lookup_severity["crit"]   = ORCM_RAS_SEVERITY_CRIT;
         lookup_severity["error"]  = ORCM_RAS_SEVERITY_ERROR;
         lookup_severity["warn"]   = ORCM_RAS_SEVERITY_WARNING;
         lookup_severity["notice"] = ORCM_RAS_SEVERITY_NOTICE;
         lookup_severity["info"]   = ORCM_RAS_SEVERITY_INFO;
-        lookup_severity["trace"]  = ORCM_RAS_SEVERITY_TRACE;
         lookup_severity["debug"]  = ORCM_RAS_SEVERITY_DEBUG;
     }
     int rv;

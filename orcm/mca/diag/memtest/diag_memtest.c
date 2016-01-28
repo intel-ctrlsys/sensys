@@ -285,6 +285,7 @@ static void memtest_run(int sd, short args, void *cbdata)
 
     /* use maximum free memory  */
     size = info.freeram - (128UL << 20);
+    size = size / 2;
 
     /* Save ulimit for virtual address space */
     if ( 0 != getrlimit(RLIMIT_AS, &org_limit) ) {
@@ -337,7 +338,7 @@ static void memtest_run(int sd, short args, void *cbdata)
     } while (addr == (void *)-1);
 
     opal_output(0, "%s Diagnostic checking memory: %ld MB is used for test\n",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), info.freeram >> 20);
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), (info.freeram >> 20) / 2);
     p    = (char *)addr;
     rest = size;
 

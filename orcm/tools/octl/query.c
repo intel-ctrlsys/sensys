@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015  Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -334,7 +334,6 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
 opal_list_t *create_query_node_filter(int argc, char **argv)
 {
     opal_list_t *filters_list = NULL;
-    orcm_db_filter_t *filter_item = NULL;
 
     filters_list = OBJ_NEW(opal_list_t);
 
@@ -353,8 +352,6 @@ opal_list_t *create_query_history_filter(int argc, char **argv)
     opal_list_t *filters_list = NULL;
     orcm_db_filter_t *filter_item = NULL;
     char *date_time_str = NULL;
-    char *error = NULL;
-    char error_code = 0;
 
     filters_list = OBJ_NEW(opal_list_t);
     if (3 == argc) {
@@ -560,7 +557,7 @@ int orcm_octl_query_sensor(int cmd, char **argv)
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
     opal_value_t *line = NULL;
-    opal_value_t *nodes_list = NULL;
+    orcm_db_filter_t *nodes_list = NULL;
 
     if(ORCM_GET_DB_QUERY_SENSOR_COMMAND != cmd &&
        ORCM_GET_DB_QUERY_HISTORY_COMMAND !=cmd) {
@@ -579,8 +576,8 @@ int orcm_octl_query_sensor(int cmd, char **argv)
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_sensor_cleanup;
     }
-    if (NULL != (nodes_list = (opal_list_item_t*)build_node_item(argv_node_list))){
-        opal_list_append(filter_list, &nodes_list->super);
+    if (NULL != (nodes_list = build_node_item(argv_node_list))){
+        opal_list_append(filter_list, &nodes_list->value.super);
     }
     /* Get list of results from scheduler (or other management node) */
     start_time = stopwatch();
@@ -618,7 +615,7 @@ int orcm_octl_query_log(int cmd, char **argv)
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
     opal_value_t *line = NULL;
-    opal_value_t *nodes_list = NULL;
+    orcm_db_filter_t *nodes_list = NULL;
 
     if(ORCM_GET_DB_QUERY_LOG_COMMAND != cmd ) {
         fprintf(stdout, "\nERROR: incorrect command argument: %d", cmd);
@@ -636,8 +633,8 @@ int orcm_octl_query_log(int cmd, char **argv)
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_log_cleanup;
     }
-    if (NULL != (nodes_list = (opal_list_item_t*)build_node_item(argv_node_list))){
-        opal_list_append(filter_list, &nodes_list->super);
+    if (NULL != (nodes_list = build_node_item(argv_node_list))){
+        opal_list_append(filter_list, &nodes_list->value.super);
     }
     /* Get list of results from scheduler (or other management node) */
     start_time = stopwatch();
@@ -675,7 +672,7 @@ int orcm_octl_query_idle(int cmd, char **argv)
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
     opal_value_t *line = NULL;
-    opal_value_t *nodes_list = NULL;
+    orcm_db_filter_t *nodes_list = NULL;
 
     if(ORCM_GET_DB_QUERY_IDLE_COMMAND != cmd ) {
         fprintf(stdout, "\nERROR: incorrect command argument: %d", cmd);
@@ -693,8 +690,8 @@ int orcm_octl_query_idle(int cmd, char **argv)
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_idle_cleanup;
     }
-    if (NULL != (nodes_list = (opal_list_item_t*)build_node_item(argv_node_list))){
-        opal_list_append(filter_list, &nodes_list->super);
+    if (NULL != (nodes_list = build_node_item(argv_node_list))){
+        opal_list_append(filter_list, &nodes_list->value.super);
     }
     /* Get list of results from scheduler (or other management node) */
     start_time = stopwatch();
@@ -732,7 +729,7 @@ int orcm_octl_query_node(int cmd, char **argv)
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
     opal_value_t *line = NULL;
-    opal_value_t *nodes_list = NULL;
+    orcm_db_filter_t *nodes_list = NULL;
 
     if(ORCM_GET_DB_QUERY_NODE_COMMAND != cmd ) {
         fprintf(stdout, "\nERROR: incorrect command argument: %d", cmd);
@@ -750,8 +747,8 @@ int orcm_octl_query_node(int cmd, char **argv)
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_node_cleanup;
     }
-    if (NULL != (nodes_list = (opal_list_item_t*)build_node_item(argv_node_list))){
-        opal_list_append(filter_list, &nodes_list->super);
+    if (NULL != (nodes_list = build_node_item(argv_node_list))){
+        opal_list_append(filter_list, &nodes_list->value.super);
     }
     /* Get list of results from scheduler (or other management node) */
     start_time = stopwatch();
@@ -788,7 +785,7 @@ int orcm_octl_query_event(int cmd, char **argv)
     char **argv_node_list = NULL;
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
-    opal_value_t *node_list = NULL;
+    orcm_db_filter_t *node_list = NULL;
     opal_value_t *line = NULL;
 
     if (ORCM_GET_DB_QUERY_EVENT_COMMAND != cmd) {
@@ -808,9 +805,9 @@ int orcm_octl_query_event(int cmd, char **argv)
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_event_exit;
     }
-    node_list = (opal_list_item_t*)build_node_item(argv_node_list);
+    node_list = build_node_item(argv_node_list);
     if (NULL != node_list) {
-        opal_list_append(filter_list, &node_list->super);
+        opal_list_append(filter_list, &node_list->value.super);
     }
 
     start_time = stopwatch();

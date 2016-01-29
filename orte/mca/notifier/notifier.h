@@ -13,7 +13,7 @@
  * Copyright (c) 2009      Cisco Systems, Inc.  All Rights Reserved.
  * Copyright (c) 2012-2015 Los Alamos National Security, LLC. All rights
  *                         reserved.
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -173,7 +173,7 @@ typedef void (*orte_notifier_base_module_report_fn_t)(orte_notifier_request_t *r
                             orte_notifier_base_sev2str(s));             \
         _n = OBJ_NEW(orte_notifier_request_t);                          \
         _n->jdata = (NULL);                                             \
-        _n->state = (NULL);                                             \
+        _n->state = ORTE_JOB_STATE_UNDEF;                               \
         _n->jdata = NULL;                                               \
         _n->msg = (m);                                                  \
         _n->t = time(NULL);                                             \

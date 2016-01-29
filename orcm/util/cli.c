@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015  Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -41,8 +41,8 @@ static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
 static int print_completions(orcm_cli_t *cli, char **input);
 static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input);
 static void set_handler_default(int sig);
-static void scroll_up(int *scroll_indx, char *input, int *len);
-static void scroll_down(int *scroll_indx, char *input, int *len);
+static void scroll_up(int *scroll_indx, char *input, size_t *len);
+static void scroll_down(int *scroll_indx, char *input, size_t *len);
 static void save_cmd_history(char *input);
 
 #define CLI_HISTORY_SIZE 15
@@ -599,7 +599,7 @@ static void set_handler_default(int sig)
     sigaction(sig, &act, (struct sigaction *)0);
 }
 
-static void scroll_up(int *scroll_indx, char *input, int *len)
+static void scroll_up(int *scroll_indx, char *input, size_t *len)
 {
     int indx = *scroll_indx;
     if (!cmd_hist.count) {
@@ -617,7 +617,7 @@ static void scroll_up(int *scroll_indx, char *input, int *len)
     return;
 }
 
-static void scroll_down(int *scroll_indx, char *input, int *len)
+static void scroll_down(int *scroll_indx, char *input, size_t *len)
 {
     int indx = *scroll_indx;
     if (!cmd_hist.count) {

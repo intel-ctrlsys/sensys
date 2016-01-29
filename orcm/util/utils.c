@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -449,12 +449,7 @@ int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
     int i = 0;
     int j = 0;
     int num_found = 0;
-    bool found[num_keys];
 
-    for (j=0;j<num_keys;j++)
-    {
-        found[j]= false;
-    }
     OPAL_LIST_FOREACH(kv, list, opal_value_t) {
         for (j = 0; j < num_keys; j++) {
             if (NULL == kv || NULL == kv->key) {
@@ -462,7 +457,6 @@ int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
             }
             if (!strcmp(kv->key, keys[j])) {
                 num_found++;
-                found[j] = true;
                 items[j] = kv;
                 opal_bitmap_set_bit(map, i);
 

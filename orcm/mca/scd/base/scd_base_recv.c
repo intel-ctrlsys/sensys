@@ -1176,7 +1176,7 @@ int assemble_response(opal_list_t *db_query_results, opal_buffer_t **response_bu
     /*Add results*/
     if(ORCM_SUCCESS == rc && 0 == returned_status && NULL != db_query_results) {
         results_count = (uint16_t)opal_list_get_size(db_query_results);
-        opal_output_verbose(4, "Results count to send back %d", results_count);
+        OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output, "Results count to send back %d", results_count));
         if (OPAL_SUCCESS != (rc = opal_dss.pack(*response_buffer, &results_count, 1, OPAL_UINT16))) {
             rc = ORCM_ERR_PACK_FAILURE;
             ORTE_ERROR_LOG(rc);
@@ -1225,7 +1225,7 @@ int build_filter_list(opal_buffer_t* buffer,opal_list_t **filter_list)
         ORTE_ERROR_LOG(rc);
         return rc;
     }
-    opal_output_verbose(4, "Filters list count in buffer: %d", filters_list_count);
+    OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output, "Filters list count in buffer: %d", filters_list_count));
     for(uint16_t i = 0; i < filters_list_count; ++i) {
         n = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &tmp_key, &n, OPAL_STRING))) {
@@ -1233,21 +1233,21 @@ int build_filter_list(opal_buffer_t* buffer,opal_list_t **filter_list)
             ORTE_ERROR_LOG(rc);
             return ORCM_ERROR;
         }
-        opal_output_verbose(4, "Retrieved key: %s", tmp_key);
+        OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output,  "Retrieved key: %s", tmp_key));
         n = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &operation, &n, OPAL_UINT8))) {
             opal_output(0, "Retrieved operation from unpack: %s", tmp_key);
             ORTE_ERROR_LOG(rc);
             return ORCM_ERROR;
         }
-        opal_output_verbose(4, "Retrieved operation from unpack: %d", operation);
+        OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output, "Retrieved operation from unpack: %d", operation));
         n = 1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &tmp_str, &n, OPAL_STRING))) {
             opal_output(0, "Retrieved string from unpack: %s", tmp_str);
             ORTE_ERROR_LOG(rc);
             return ORCM_ERROR;
         }
-        opal_output_verbose(4, "Retrieved string from unpack: %s", tmp_str);
+        OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output, "Retrieved string from unpack: %s", tmp_str));
         if (NULL == *filter_list) {
             *filter_list = OBJ_NEW(opal_list_t);
         }
@@ -1273,13 +1273,10 @@ int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_vi
     opal_value_t *item = NULL;
     opal_list_t *fetch_output = OBJ_NEW(opal_list_t);
     char tmp_str[TMP_STR_SIZE];
-    char tmp_ts[20];
     int num_rows = 0;
     int row_index = 0;
     size_t row_str_size = 0;
     size_t data_str_size = 0;
-    time_t time_secs;
-    struct tm *human_time;
 
     /*Setup fetch callback data*/
     data.dbhandle = -1;
@@ -1311,7 +1308,7 @@ int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_vi
         db_status = data.status;
         goto db_cleanup;
     }
-    opal_output_verbose(4, "The amount of rows obtained by query is: %d", num_rows);
+    OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output,  "The amount of rows obtained by query is: %d", num_rows));
     if(0 <  num_rows){
         *results = OBJ_NEW(opal_list_t);
         /*Create first item of results*/
@@ -1766,7 +1763,7 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 ORTE_ERROR_LOG(rc);
                 goto send_buffer;
             }
-            opal_output(0, "rc: %d returned_status: %d results_list %p", rc, returned_status,results_list);
+            opal_output(0, "rc: %d returned_status: %d results_list %p", rc, returned_status, (void *)results_list);
             if(ORCM_SUCCESS == rc && 0 == returned_status && NULL != results_list) {
                 results_count = (uint16_t)opal_list_get_size(results_list);
                 if (OPAL_SUCCESS != (rc = opal_dss.pack(response_buffer, &results_count, 1, OPAL_UINT16))) {

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014      Intel, Inc. All rights reserved.
+* Copyright (c) 2016      Intel, Inc. All rights reserved.
 * $COPYRIGHT$
 *
 * Additional copyrights may follow
@@ -230,6 +230,7 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
             if(NULL != analytics_orcm_value) {
                 opal_list_append(threshold_list, (opal_list_item_t *)analytics_orcm_value);
             }
+            copy = false;
         }
 cleanup:
         SAFEFREE(msg1);

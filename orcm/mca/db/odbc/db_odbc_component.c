@@ -62,7 +62,6 @@ orcm_db_base_component_t mca_db_odbc_component = {
 static char *table;
 static char *user;
 static char *odbcdsn;
-static bool autocommit;
 
 static int component_register(void) {
     mca_base_component_t *c = &mca_db_odbc_component.base_version;
@@ -94,15 +93,6 @@ static int component_register(void) {
                                           MCA_BASE_VAR_SCOPE_READONLY,
                                           &user);
 
-    /* retrieve the auto commit setting */
-    autocommit = true;
-    (void)mca_base_component_var_register(c, "autocommit",
-                                          "Auto commit",
-                                          MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
-                                          OPAL_INFO_LVL_9,
-                                          MCA_BASE_VAR_SCOPE_READONLY,
-                                          &autocommit);
-
     return ORCM_SUCCESS;
 }
 
@@ -128,7 +118,7 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
     memcpy(mod, &mca_db_odbc_module.api, sizeof(orcm_db_base_module_t));
 
     /* assume default value first, then check for provided properties */
-    mod->autocommit = autocommit;
+    mod->autocommit = true;
 
     /* if props are provided and include db info, then use it */
     if (NULL != props) {
@@ -139,8 +129,6 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
                 mod->table = strdup(kv->data.string);
             } else if (0 == strcmp(kv->key, "user")) {
                 mod->user = strdup(kv->data.string);
-            } else if (0 == strcmp(kv->key, "autocommit")) {
-                mod->autocommit = kv->data.flag;
             }
         }
     }

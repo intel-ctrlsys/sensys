@@ -64,7 +64,6 @@ static char *pgoptions;
 static char *pgtty;
 static char *dbname;
 static char *user;
-static bool autocommit;
 
 static int component_register(void) {
     mca_base_component_t *c = &mca_db_postgres_component.base_version;
@@ -114,15 +113,6 @@ static int component_register(void) {
                                           MCA_BASE_VAR_SCOPE_READONLY,
                                           &user);
 
-    /* retrieve the auto commit setting */
-    autocommit = true;
-    (void)mca_base_component_var_register(c, "autocommit",
-                                          "Auto commit",
-                                          MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
-                                          OPAL_INFO_LVL_9,
-                                          MCA_BASE_VAR_SCOPE_READONLY,
-                                          &autocommit);
-
     return ORCM_SUCCESS;
 }
 
@@ -148,7 +138,7 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
     memcpy(mod, &mca_db_postgres_module.api, sizeof(orcm_db_base_module_t));
 
     /* assume default value first, then check for provided properties */
-    mod->autocommit = autocommit;
+    mod->autocommit = true;
     mod->tran_started = false;
 
     /* if the props include db info, then use it */
@@ -164,8 +154,6 @@ static orcm_db_base_module_t *component_create(opal_list_t *props)
                 mod->dbname = strdup(kv->data.string);
             } else if (0 == strcmp(kv->key, "user")) {
                 mod->user = strdup(kv->data.string);
-            } else if (0 == strcmp(kv->key, "autocommit")) {
-                mod->autocommit = kv->data.flag;
             }
         }
     }

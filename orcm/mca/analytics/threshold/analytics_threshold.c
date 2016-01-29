@@ -40,7 +40,7 @@
 static int init(orcm_analytics_base_module_t *imod);
 static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
-
+orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value, opal_list_t* key, opal_list_t* non_compute);
 
 static void threshold_policy_t_con(orcm_mca_analytics_threshold_policy_t *policy)
 {
@@ -111,6 +111,23 @@ static orte_notifier_severity_t get_severity(char* severity)
     return sev;
 }
 
+orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value, opal_list_t* key, opal_list_t* non_compute)
+{
+    orcm_analytics_value_t* threshold_value = NULL;
+    opal_list_t* compute_data = OBJ_NEW(opal_list_t);
+    orcm_value_t* analytics_orcm_value = NULL;
+    if(NULL == compute_data) {
+        return NULL;
+    }
+    analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
+    if(NULL != analytics_orcm_value) {
+        opal_list_append(compute_data, (opal_list_item_t *)analytics_orcm_value);
+    }
+    threshold_value = orcm_util_load_orcm_analytics_value_compute(key,non_compute, compute_data);
+    return threshold_value;
+}
+
+
 static int generate_notification_event(orcm_analytics_value_t* analytics_value,orte_notifier_severity_t sev, char *msg, char* action)
 {
     int rc = ORCM_SUCCESS;
@@ -159,6 +176,7 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
     char* msg2 = NULL;
     orcm_value_t *current_value = NULL;
     orcm_value_t *analytics_orcm_value = NULL;
+    orcm_analytics_value_t* threshold_analytics_value = NULL;
     bool copy = false;
     int rc = ORCM_SUCCESS;
     double val = 0.0;
@@ -177,8 +195,15 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
             copy=true;
             if(0 < asprintf(&msg1, "%s value %.02f %s,greater than threshold %.02f %s",
                             current_value->value.key,val,current_value->units,threshold_policy->hi,current_value->units)){
-                rc = generate_notification_event(current_caddy->analytics_value, threshold_policy->hi_sev, msg1, threshold_policy->hi_action);
+                threshold_analytics_value = get_analytics_value(current_value, current_caddy->analytics_value->key,
+                                            current_caddy->analytics_value->non_compute_data);
+                if(NULL == threshold_analytics_value){
+                    rc = ORCM_ERR_OUT_OF_RESOURCE;
+                    goto cleanup;
+                }
+                rc = generate_notification_event(threshold_analytics_value, threshold_policy->hi_sev, msg1, threshold_policy->hi_action);
                 if(ORCM_SUCCESS != rc) {
+                    SAFEFREE(threshold_analytics_value);
                     goto cleanup;
                 }
             }
@@ -187,8 +212,15 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
             copy=true;
             if(0 < asprintf(&msg2, "%s value %.02f %s, lower than threshold %.02f %s",
                             current_value->value.key,val,current_value->units,threshold_policy->low,current_value->units)) {
-                rc = generate_notification_event(current_caddy->analytics_value, threshold_policy->low_sev, msg2, threshold_policy->low_action);
+                threshold_analytics_value = get_analytics_value(current_value, current_caddy->analytics_value->key,
+                                            current_caddy->analytics_value->non_compute_data);
+                if(NULL == threshold_analytics_value){
+                    rc = ORCM_ERR_OUT_OF_RESOURCE;
+                    goto cleanup;
+                }
+                rc = generate_notification_event(threshold_analytics_value, threshold_policy->low_sev, msg2, threshold_policy->low_action);
                 if(ORCM_SUCCESS != rc) {
+                    SAFEFREE(threshold_analytics_value);
                     goto cleanup;
                 }
             }
@@ -199,7 +231,6 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                 opal_list_append(threshold_list, (opal_list_item_t *)analytics_orcm_value);
             }
         }
-
 cleanup:
         SAFEFREE(msg1);
         SAFEFREE(msg2);
@@ -207,7 +238,6 @@ cleanup:
             break;
         }
     }
-
     return rc;
 }
 

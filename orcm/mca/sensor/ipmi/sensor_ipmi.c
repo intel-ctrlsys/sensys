@@ -19,6 +19,7 @@
 #define HAVE_HWLOC_DIFF  // protect the hwloc diff.h file from ipmicmd.h conflict
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "orcm/mca/db/db.h"
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/util/utils.h"
@@ -56,6 +57,9 @@ bool does_sensor_group_match_sensor_name(char* sensor_group, char* sensor_name);
 void orcm_sensor_ipmi_get_sel_events(ipmi_capsule_t* capsule);
 void orcm_sensor_sel_ras_event_callback(const char* event, const char* hostname, void* user_object);
 void orcm_sensor_sel_error_callback(int level, const char* msg);
+int ipmi_enable_sampling(const char* sensor_specification);
+int ipmi_disable_sampling(const char* sensor_specification);
+int ipmi_reset_sampling(const char* sensor_specification);
 
 int first_sample = 0;
 
@@ -117,7 +121,10 @@ orcm_sensor_base_module_t orcm_sensor_ipmi_module = {
     ipmi_inventory_collect,
     ipmi_inventory_log,
     ipmi_set_sample_rate,
-    ipmi_get_sample_rate
+    ipmi_get_sample_rate,
+    ipmi_enable_sampling,
+    ipmi_disable_sampling,
+    ipmi_reset_sampling
 };
 
 /* local variables */
@@ -146,7 +153,7 @@ static int init(void)
 
     mca_sensor_ipmi_component.diagnostics = 0;
     mca_sensor_ipmi_component.runtime_metrics =
-        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+        orcm_sensor_base_runtime_metrics_create("ipmi", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_ipmi_component.collect_metrics);
 
     OBJ_CONSTRUCT(&sensor_inventory, opal_list_t);
@@ -1451,7 +1458,7 @@ void collect_ipmi_sample(orcm_sensor_sampler_t *sampler)
     opal_value_t* sel_iterator;
     void* metrics_obj = mca_sensor_ipmi_component.runtime_metrics;
 
-    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor ipmi : skipping actual sample collection",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -2188,4 +2195,23 @@ void orcm_sensor_ipmi_get_sel_events(ipmi_capsule_t* capsule)
                           (const char*)capsule->node.user, (const char*)capsule->node.pasw,
                           mca_sensor_ipmi_component.sel_state_filename, orcm_sensor_sel_error_callback,
                           orcm_sensor_sel_ras_event_callback, (void*)capsule->prop.collected_sel_records);
+}
+
+
+int ipmi_enable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_ipmi_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, true, sensor_specification);
+}
+
+int ipmi_disable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_ipmi_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, false, sensor_specification);
+}
+
+int ipmi_reset_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_ipmi_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_reset(metrics, sensor_specification);
 }

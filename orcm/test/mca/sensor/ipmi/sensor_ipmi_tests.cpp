@@ -33,6 +33,9 @@ extern "C" {
     #include "orcm/mca/sensor/ipmi/sensor_ipmi_decls.h"
     #include "orcm/mca/sensor/ipmi/sensor_ipmi.h"
     extern void orcm_sensor_ipmi_get_sel_events(ipmi_capsule_t* capsule);
+    extern int ipmi_enable_sampling(const char* sensor_specification);
+    extern int ipmi_disable_sampling(const char* sensor_specification);
+    extern int ipmi_reset_sampling(const char* sensor_specification);
 } // extern "C"
 
 using namespace std;
@@ -177,7 +180,7 @@ TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_get_sel_events_negative)
 TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_sample_tests)
 {
     // Setup
-    void* object = orcm_sensor_base_runtime_metrics_create(false, false);
+    void* object = orcm_sensor_base_runtime_metrics_create("ipmi", false, false);
     mca_sensor_ipmi_component.runtime_metrics = object;
     orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
 
@@ -185,7 +188,7 @@ TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_sample_tests)
     collect_ipmi_sample(sampler);
     EXPECT_EQ(0, (mca_sensor_ipmi_component.diagnostics & 0x1));
 
-    orcm_sensor_base_runtime_metrics_set(object, true);
+    orcm_sensor_base_runtime_metrics_set(object, true, "ipmi");
     mca_sensor_ipmi_component.test = true;
     collect_ipmi_sample(sampler);
     mca_sensor_ipmi_component.test = false;
@@ -193,6 +196,31 @@ TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_sample_tests)
 
     // Cleanup
     OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_ipmi_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_api_tests)
+{
+    // Setup
+    void* object = orcm_sensor_base_runtime_metrics_create("ipmi", false, false);
+    mca_sensor_ipmi_component.runtime_metrics = object;
+
+    // Tests
+    ipmi_enable_sampling("ipmi");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+    ipmi_disable_sampling("ipmi");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+    ipmi_enable_sampling("ipmi");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+    ipmi_reset_sampling("ipmi");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+    ipmi_enable_sampling("not_the_right_datagroup");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+    ipmi_enable_sampling("all");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+
+    // Cleanup
     orcm_sensor_base_runtime_metrics_destroy(object);
     mca_sensor_ipmi_component.runtime_metrics = NULL;
 }

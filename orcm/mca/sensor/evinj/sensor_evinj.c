@@ -40,12 +40,16 @@
 #include "orcm/mca/evgen/base/base.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "sensor_evinj.h"
 
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
 void collect_evinj_sample(orcm_sensor_sampler_t *sampler);
+int evinj_enable_sampling(const char* sensor_specification);
+int evinj_disable_sampling(const char* sensor_specification);
+int evinj_reset_sampling(const char* sensor_specification);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_evinj_module = {
@@ -58,7 +62,10 @@ orcm_sensor_base_module_t orcm_sensor_evinj_module = {
     NULL,
     NULL,
     NULL,
-    NULL
+    NULL,
+    evinj_enable_sampling,
+    evinj_disable_sampling,
+    evinj_reset_sampling
 };
 
 FILE *fp = NULL;
@@ -86,7 +93,7 @@ static int init(void)
 {
     mca_sensor_evinj_component.diagnostics = 0;
     mca_sensor_evinj_component.runtime_metrics =
-        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+        orcm_sensor_base_runtime_metrics_create("evinj", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_evinj_component.collect_metrics);
 
     /* if we were given one, open the vector file */
@@ -116,7 +123,7 @@ void collect_evinj_sample(orcm_sensor_sampler_t *sampler)
     int i, j;
     void* metrics_obj = mca_sensor_evinj_component.runtime_metrics;
 
-    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor evinj : skipping actual sample collection",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -312,4 +319,22 @@ void collect_evinj_sample(orcm_sensor_sampler_t *sampler)
         /* inject it into the event generator thread */
         ORCM_RAS_EVENT(rev);
     }
+}
+
+int evinj_enable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_evinj_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, true, sensor_specification);
+}
+
+int evinj_disable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_evinj_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, false, sensor_specification);
+}
+
+int evinj_reset_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_evinj_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_reset(metrics, sensor_specification);
 }

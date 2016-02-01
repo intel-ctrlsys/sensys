@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012      Los Alamos National Security, Inc. All rights reserved.
  * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  *
@@ -65,7 +65,7 @@ typedef orcm_sensor_base_API_module_1_0_0_t orcm_sensor_base_API_module_t;
 
 /* initialize the module */
 typedef int (*orcm_sensor_base_module_init_fn_t)(void);
-    
+
 /* finalize the module */
 typedef void (*orcm_sensor_base_module_finalize_fn_t)(void);
 
@@ -89,6 +89,14 @@ typedef void (*orcm_sensor_base_module_set_sample_rate_fn_t)(int sample_rate);
 /* get sample rate in the module */
 typedef void (*orcm_sensor_base_module_get_sample_rate_fn_t)(int *sample_rate);
 
+/* Turn on sensor sampling */
+typedef int (*orcm_sensor_base_module_enable_sensor_sampling_fn_t)(const char* sensor_specification);
+/* Turn off sensor sampling */
+typedef int (*orcm_sensor_base_module_disable_sensor_sampling_fn_t)(const char* sensor_specification);
+/* Reset sensor sampling to initial state */
+typedef int (*orcm_sensor_base_module_reset_sensor_sampling_fn_t)(const char* sensor_specification);
+
+
 /*
  * Component modules Ver 1.0
  */
@@ -103,6 +111,9 @@ struct orcm_sensor_base_module_1_0_0_t {
     orcm_sensor_base_module_inventory_log_fn_t      inventory_log;
     orcm_sensor_base_module_set_sample_rate_fn_t    set_sample_rate;
     orcm_sensor_base_module_get_sample_rate_fn_t    get_sample_rate;
+    orcm_sensor_base_module_enable_sensor_sampling_fn_t     enable_sampling;
+    orcm_sensor_base_module_disable_sensor_sampling_fn_t    disable_sampling;
+    orcm_sensor_base_module_reset_sensor_sampling_fn_t      reset_sampling;
 };
 
 typedef struct orcm_sensor_base_module_1_0_0_t orcm_sensor_base_module_1_0_0_t;

@@ -46,6 +46,9 @@ class snmp_impl
         void log(opal_buffer_t *buf);
         void set_sample_rate(int sample_rate);
         void get_sample_rate(int *sample_rate);
+        int enable_sampling(const char* sensor_spec);
+        int disable_sampling(const char* sensor_spec);
+        int reset_sampling(const char* sensor_spec);
 
     PRIVATE: // Static Callback Relays
         static void perthread_snmp_sample_relay(int fd, short args, void *cbdata);

@@ -35,6 +35,7 @@
 
 // ORCM
 #include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 
 extern "C" {
     #include "opal/runtime/opal_progress_threads.h"
@@ -1423,4 +1424,28 @@ TEST_F(ut_edac_collector_tests, errcounts_sensor_sample_tests)
         EXPECT_EQ(1, (errcounts.diagnostics_ & 0x1));
         errcounts.finalize();
     }
+}
+
+TEST_F(ut_edac_collector_tests, errcounts_api_tests)
+{
+    // Setup
+    errcounts_impl errcounts;
+    orcm_sensor_base.collect_metrics = false;
+    mca_sensor_errcounts_component.collect_metrics = false;
+    errcounts.init();
+
+    // Tests
+    errcounts.enable_sampling("errcounts");
+    EXPECT_TRUE(errcounts.collect_metrics_->DoCollectMetrics(NULL));
+    errcounts.disable_sampling("errcounts");
+    EXPECT_FALSE(errcounts.collect_metrics_->DoCollectMetrics(NULL));
+    errcounts.enable_sampling("all");
+    EXPECT_TRUE(errcounts.collect_metrics_->DoCollectMetrics(NULL));
+    errcounts.enable_sampling("not_the_right_datagroup");
+    EXPECT_TRUE(errcounts.collect_metrics_->DoCollectMetrics(NULL));
+    errcounts.reset_sampling("errcounts");
+    EXPECT_FALSE(errcounts.collect_metrics_->DoCollectMetrics(NULL));
+
+    // Cleanup
+    errcounts.finalize();
 }

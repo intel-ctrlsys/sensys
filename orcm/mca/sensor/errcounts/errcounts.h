@@ -51,6 +51,9 @@ class errcounts_impl
         void inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
         void set_sample_rate(int sample_rate);
         void get_sample_rate(int *sample_rate);
+        int enable_sampling(const char* sensor_spec);
+        int disable_sampling(const char* sensor_spec);
+        int reset_sampling(const char* sensor_spec);
 
     PRIVATE: // Static Callback Relays
         static void error_callback_relay(const char* pathname, int error_number, void* user_data);

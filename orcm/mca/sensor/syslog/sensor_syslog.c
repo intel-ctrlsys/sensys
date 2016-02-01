@@ -42,6 +42,7 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "orcm/mca/analytics/analytics.h"
 #include "orcm/util/utils.h"
 #include "sensor_syslog.h"
@@ -62,6 +63,9 @@ static void syslog_log(opal_buffer_t *buf);
 static void syslog_set_sample_rate(int sample_rate);
 static void syslog_get_sample_rate(int *sample_rate);
 static void *syslog_listener(void *arg);
+int syslog_enable_sampling(const char* sensor_specification);
+int syslog_disable_sampling(const char* sensor_specification);
+int syslog_reset_sampling(const char* sensor_specification);
 
 static opal_list_t msgQueue;
 
@@ -95,7 +99,10 @@ orcm_sensor_base_module_t orcm_sensor_syslog_module = {
     NULL,
     NULL,
     syslog_set_sample_rate,
-    syslog_get_sample_rate
+    syslog_get_sample_rate,
+    syslog_enable_sampling,
+    syslog_disable_sampling,
+    syslog_reset_sampling
 };
 
 pthread_t listener;
@@ -108,7 +115,7 @@ static int init(void)
 {
     mca_sensor_syslog_component.diagnostics = 0;
     mca_sensor_syslog_component.runtime_metrics =
-        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+        orcm_sensor_base_runtime_metrics_create("syslog", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_syslog_component.collect_metrics);
 
     /* we must be root to run */
@@ -241,7 +248,7 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
     struct timeval current_time;
     void* metrics_obj = mca_sensor_syslog_component.runtime_metrics;
 
-    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor syslog : skipping actual sample collection",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -519,4 +526,22 @@ static void syslog_get_sample_rate(int *sample_rate)
         *sample_rate = mca_sensor_syslog_component.sample_rate;
     }
     return;
+}
+
+int syslog_enable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_syslog_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, true, sensor_specification);
+}
+
+int syslog_disable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_syslog_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, false, sensor_specification);
+}
+
+int syslog_reset_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_syslog_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_reset(metrics, sensor_specification);
 }

@@ -47,6 +47,7 @@
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "sensor_nodepower.h"
 
 #include <ipmicmd.h>
@@ -66,6 +67,9 @@ static void nodepower_set_sample_rate(int sample_rate);
 static void nodepower_get_sample_rate(int *sample_rate);
 static void nodepower_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
+int nodepower_enable_sampling(const char* sensor_specification);
+int nodepower_disable_sampling(const char* sensor_specification);
+int nodepower_reset_sampling(const char* sensor_specification);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_nodepower_module = {
@@ -78,7 +82,10 @@ orcm_sensor_base_module_t orcm_sensor_nodepower_module = {
     nodepower_inventory_collect,
     nodepower_inventory_log,
     nodepower_set_sample_rate,
-    nodepower_get_sample_rate
+    nodepower_get_sample_rate,
+    nodepower_enable_sampling,
+    nodepower_disable_sampling,
+    nodepower_reset_sampling
 };
 
 static __readein _readein;
@@ -182,7 +189,7 @@ static int init(void)
 {
     mca_sensor_nodepower_component.diagnostics = 0;
     mca_sensor_nodepower_component.runtime_metrics =
-        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+        orcm_sensor_base_runtime_metrics_create("nodepower", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_nodepower_component.collect_metrics);
 
     /* we must be root to run */
@@ -338,7 +345,7 @@ void collect_nodepower_sample(orcm_sensor_sampler_t *sampler)
     float node_power_cur;
     void* metrics_obj = mca_sensor_nodepower_component.runtime_metrics;
 
-    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor nodepower : skipping actual sample collection",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -794,4 +801,22 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
     } else {
         my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
     }
+}
+
+int nodepower_enable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_nodepower_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, true, sensor_specification);
+}
+
+int nodepower_disable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_nodepower_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, false, sensor_specification);
+}
+
+int nodepower_reset_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_nodepower_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_reset(metrics, sensor_specification);
 }

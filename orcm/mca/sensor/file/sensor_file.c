@@ -51,6 +51,7 @@
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "sensor_file.h"
 
 /* declare the API functions */
@@ -62,6 +63,9 @@ static void file_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_file_sample(int fd, short args, void *cbdata);
 void collect_file_sample(orcm_sensor_sampler_t *sampler);
 static void file_log(opal_buffer_t *sample);
+int file_enable_sampling(const char* sensor_specification);
+int file_disable_sampling(const char* sensor_specification);
+int file_reset_sampling(const char* sensor_specification);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_file_module = {
@@ -74,7 +78,10 @@ orcm_sensor_base_module_t orcm_sensor_file_module = {
     NULL,
     NULL,
     NULL,
-    NULL
+    NULL,
+    file_enable_sampling,
+    file_disable_sampling,
+    file_reset_sampling
 };
 
 /* define a tracking object */
@@ -120,7 +127,7 @@ static int init(void)
 {
     mca_sensor_file_component.diagnostics = 0;
     mca_sensor_file_component.runtime_metrics =
-        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+        orcm_sensor_base_runtime_metrics_create("file", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_file_component.collect_metrics);
 
     OBJ_CONSTRUCT(&jobs, opal_list_t);
@@ -366,7 +373,7 @@ void collect_file_sample(orcm_sensor_sampler_t *sampler)
     orte_job_t *jdata;
     void* metrics_obj = mca_sensor_file_component.runtime_metrics;
 
-    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor file : skipping actual sample collection",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -442,4 +449,22 @@ void collect_file_sample(orcm_sensor_sampler_t *sampler)
 
 static void file_log(opal_buffer_t *sample)
 {
+}
+
+int file_enable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_file_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, true, sensor_specification);
+}
+
+int file_disable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_file_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, false, sensor_specification);
+}
+
+int file_reset_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_file_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_reset(metrics, sensor_specification);
 }

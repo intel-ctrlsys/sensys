@@ -23,6 +23,9 @@ using namespace std;
 extern "C" {
     ORCM_DECLSPEC extern orcm_sensor_base_t orcm_sensor_base;
     extern void collect_coretemp_sample(orcm_sensor_sampler_t *sampler);
+    extern int coretemp_enable_sampling(const char* sensor_specification);
+    extern int coretemp_disable_sampling(const char* sensor_specification);
+    extern int coretemp_reset_sampling(const char* sensor_specification);
 };
 
 void ut_coretemp_tests::SetUpTestCase()
@@ -43,7 +46,7 @@ void ut_coretemp_tests::TearDownTestCase()
 TEST_F(ut_coretemp_tests, coretemp_sensor_sample_tests)
 {
     // Setup
-    void* object = orcm_sensor_base_runtime_metrics_create(false, false);
+    void* object = orcm_sensor_base_runtime_metrics_create("coretemp", false, false);
     mca_sensor_coretemp_component.runtime_metrics = object;
     orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
 
@@ -51,12 +54,37 @@ TEST_F(ut_coretemp_tests, coretemp_sensor_sample_tests)
     collect_coretemp_sample(sampler);
     EXPECT_EQ(0, (mca_sensor_coretemp_component.diagnostics & 0x1));
 
-    orcm_sensor_base_runtime_metrics_set(object, true);
+    orcm_sensor_base_runtime_metrics_set(object, true, "coretemp");
     collect_coretemp_sample(sampler);
     EXPECT_EQ(1, (mca_sensor_coretemp_component.diagnostics & 0x1));
 
     // Cleanup
     OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_coretemp_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_coretemp_tests, coretemp_api_tests)
+{
+    // Setup
+    void* object = orcm_sensor_base_runtime_metrics_create("coretemp", false, false);
+    mca_sensor_coretemp_component.runtime_metrics = object;
+
+    // Tests
+    coretemp_enable_sampling("coretemp");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+    coretemp_disable_sampling("coretemp");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+    coretemp_enable_sampling("coretemp");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+    coretemp_reset_sampling("coretemp");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+    coretemp_enable_sampling("not_the_right_datagroup");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+    coretemp_enable_sampling("all");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, NULL));
+
+    // Cleanup
     orcm_sensor_base_runtime_metrics_destroy(object);
     mca_sensor_coretemp_component.runtime_metrics = NULL;
 }

@@ -31,7 +31,6 @@
 #include "orte/runtime/orte_globals.h"
 #include "orte/mca/notifier/notifier.h"
 #include "orcm/mca/sensor/sensor.h"
-#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 
 
 /*

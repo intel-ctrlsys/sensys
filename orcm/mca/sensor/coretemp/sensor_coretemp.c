@@ -66,6 +66,9 @@ static void coretemp_set_sample_rate(int sample_rate);
 static void coretemp_get_sample_rate(int *sample_rate);
 static void coretemp_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
+int coretemp_enable_sampling(const char* sensor_specification);
+int coretemp_disable_sampling(const char* sensor_specification);
+int coretemp_reset_sampling(const char* sensor_specification);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_coretemp_module = {
@@ -78,7 +81,10 @@ orcm_sensor_base_module_t orcm_sensor_coretemp_module = {
     coretemp_inventory_collect,
     coretemp_inventory_log,
     coretemp_set_sample_rate,
-    coretemp_get_sample_rate
+    coretemp_get_sample_rate,
+    coretemp_enable_sampling,
+    coretemp_disable_sampling,
+    coretemp_reset_sampling
 };
 
 /****    CORETEMP EVENT HISTORY TYPE    ****/
@@ -436,7 +442,7 @@ static int init(void)
 
     mca_sensor_coretemp_component.diagnostics = 0;
     mca_sensor_coretemp_component.runtime_metrics =
-        orcm_sensor_base_runtime_metrics_create(orcm_sensor_base.collect_metrics,
+        orcm_sensor_base_runtime_metrics_create("coretemp", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_coretemp_component.collect_metrics);
 
     /* always construct this so we don't segfault in finalize */
@@ -773,7 +779,7 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
     struct timeval current_time;
     void* metrics_obj = mca_sensor_coretemp_component.runtime_metrics;
 
-    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj)) {
+    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor coretemp : skipping actual sample collection",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -1265,4 +1271,22 @@ static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snap
     } else {
         my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
     }
+}
+
+int coretemp_enable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_coretemp_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, true, sensor_specification);
+}
+
+int coretemp_disable_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_coretemp_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_set(metrics, false, sensor_specification);
+}
+
+int coretemp_reset_sampling(const char* sensor_specification)
+{
+    void* metrics = mca_sensor_coretemp_component.runtime_metrics;
+    return orcm_sensor_base_runtime_metrics_reset(metrics, sensor_specification);
 }

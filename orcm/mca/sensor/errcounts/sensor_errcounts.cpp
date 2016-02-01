@@ -106,4 +106,31 @@ void errcounts_inventory_log_relay(char *hostname, opal_buffer_t *inventory_snap
     }
 }
 
+int errcounts_enable_sampling_relay(const char* sensor_specification)
+{
+    if(NULL != implementation) {
+        return implementation->enable_sampling(sensor_specification);
+    } else {
+        ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+    }
+}
+
+int errcounts_disable_sampling_relay(const char* sensor_specification)
+{
+    if(NULL != implementation) {
+        return implementation->disable_sampling(sensor_specification);
+    } else {
+        ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+    }
+}
+
+int errcounts_reset_sampling_relay(const char* sensor_specification)
+{
+    if(NULL != implementation) {
+        return implementation->reset_sampling(sensor_specification);
+    } else {
+        ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+    }
+}
+
 END_C_DECLS

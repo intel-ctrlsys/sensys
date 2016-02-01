@@ -46,6 +46,9 @@ extern void snmp_sample_relay(orcm_sensor_sampler_t *sampler);
 extern void snmp_log_relay(opal_buffer_t *sample);
 extern void snmp_set_sample_rate_relay(int sample_rate);
 extern void snmp_get_sample_rate_relay(int *sample_rate);
+extern int snmp_enable_sampling_relay(const char* sensor_specification);
+extern int snmp_disable_sampling_relay(const char* sensor_specification);
+extern int snmp_reset_sampling_relay(const char* sensor_specification);
 END_C_DECLS
 
 #endif

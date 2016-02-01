@@ -69,7 +69,7 @@ errcounts_impl::~errcounts_impl()
 
 int errcounts_impl::init(void)
 {
-    collect_metrics_ = new RuntimeMetrics(orcm_sensor_base.collect_metrics,
+    collect_metrics_ = new RuntimeMetrics("errcounts", orcm_sensor_base.collect_metrics,
                                           mca_sensor_errcounts_component.collect_metrics);
     collector_ = new edac_collector(error_callback_relay, mca_sensor_errcounts_component.edac_mc_folder);
     if(0 == mca_sensor_errcounts_component.sample_rate) {
@@ -347,6 +347,21 @@ void errcounts_impl::get_sample_rate(int* sample_rate)
                             "%s sensor errcounts : get_sample_rate: called but not using per-thread sampling",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     }
+}
+
+int errcounts_impl::enable_sampling(const char* sensor_spec)
+{
+    return collect_metrics_->SetCollectionState(true, sensor_spec);
+}
+
+int errcounts_impl::disable_sampling(const char* sensor_spec)
+{
+    return collect_metrics_->SetCollectionState(false, sensor_spec);
+}
+
+int errcounts_impl::reset_sampling(const char* sensor_spec)
+{
+    return collect_metrics_->ResetCollectionState(sensor_spec);
 }
 
 

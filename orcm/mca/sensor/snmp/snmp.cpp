@@ -73,7 +73,7 @@ snmp_impl::~snmp_impl()
 
 int snmp_impl::init(void)
 {
-    runtime_metrics_ = new RuntimeMetrics(orcm_sensor_base.collect_metrics,
+    runtime_metrics_ = new RuntimeMetrics("snmp", orcm_sensor_base.collect_metrics,
                                           mca_sensor_snmp_component.collect_metrics);
     try {
         (void) load_mca_variables();
@@ -239,6 +239,21 @@ void snmp_impl::get_sample_rate(int* sample_rate)
                             "%s sensor snmp : get_sample_rate: called but not using"
                             "per-thread sampling", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     }
+}
+
+int snmp_impl::enable_sampling(const char* sensor_spec)
+{
+    return runtime_metrics_->SetCollectionState(true, sensor_spec);
+}
+
+int snmp_impl::disable_sampling(const char* sensor_spec)
+{
+    return runtime_metrics_->SetCollectionState(false, sensor_spec);
+}
+
+int snmp_impl::reset_sampling(const char* sensor_spec)
+{
+    return runtime_metrics_->ResetCollectionState(sensor_spec);
 }
 
 

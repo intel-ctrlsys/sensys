@@ -50,6 +50,9 @@ extern void errcounts_set_sample_rate_relay(int sample_rate);
 extern void errcounts_get_sample_rate_relay(int *sample_rate);
 extern void errcounts_inventory_collect_relay(opal_buffer_t *inventory_snapshot);
 extern void errcounts_inventory_log_relay(char *hostname, opal_buffer_t *inventory_snapshot);
+extern int errcounts_enable_sampling_relay(const char* sensor_specification);
+extern int errcounts_disable_sampling_relay(const char* sensor_specification);
+extern int errcounts_reset_sampling_relay(const char* sensor_specification);
 END_C_DECLS
 
 #endif

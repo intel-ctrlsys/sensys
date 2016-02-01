@@ -758,3 +758,29 @@ TEST_F(ut_snmp_collector_tests, snmp_sensor_sample_tests)
     orcm_sensor_base.collect_metrics = true;
     mca_sensor_snmp_component.collect_metrics = true;
 }
+
+TEST_F(ut_snmp_collector_tests, snmp_api_tests)
+{
+    // Setup
+    snmp_impl snmp;
+    orcm_sensor_base.collect_metrics = false;
+    mca_sensor_snmp_component.collect_metrics = false;
+    snmp.init();
+    snmp.start(0);
+
+    // Tests
+    snmp.enable_sampling("snmp");
+    EXPECT_TRUE(snmp.runtime_metrics_->DoCollectMetrics(NULL));
+    snmp.reset_sampling("snmp");
+    EXPECT_FALSE(snmp.runtime_metrics_->DoCollectMetrics(NULL));
+    snmp.enable_sampling("all");
+    EXPECT_TRUE(snmp.runtime_metrics_->DoCollectMetrics(NULL));
+    snmp.disable_sampling("not_the_right_datagroup");
+    EXPECT_TRUE(snmp.runtime_metrics_->DoCollectMetrics(NULL));
+    snmp.disable_sampling("snmp");
+    EXPECT_FALSE(snmp.runtime_metrics_->DoCollectMetrics(NULL));
+
+    // Cleanup
+    snmp.stop(0);
+    snmp.finalize();
+}

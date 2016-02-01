@@ -20,5 +20,8 @@ orcm_sensor_base_module_t orcm_sensor_snmp_module = {
     NULL,
     NULL,
     snmp_set_sample_rate_relay,
-    snmp_get_sample_rate_relay
+    snmp_get_sample_rate_relay,
+    snmp_enable_sampling_relay,
+    snmp_disable_sampling_relay,
+    snmp_reset_sampling_relay
 };

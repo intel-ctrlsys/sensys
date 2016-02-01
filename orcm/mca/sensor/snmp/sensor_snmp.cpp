@@ -92,4 +92,34 @@ void snmp_get_sample_rate_relay(int *sample_rate)
     }
 }
 
+int snmp_enable_sampling_relay(const char* sensor_specification)
+{
+    if(NULL != impl) {
+        return impl->enable_sampling(sensor_specification);
+    } else {
+        ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+        return ORCM_ERR_NOT_AVAILABLE;
+    }
+}
+
+int snmp_disable_sampling_relay(const char* sensor_specification)
+{
+    if(NULL != impl) {
+        return impl->disable_sampling(sensor_specification);
+    } else {
+        ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+        return ORCM_ERR_NOT_AVAILABLE;
+    }
+}
+
+int snmp_reset_sampling_relay(const char* sensor_specification)
+{
+    if(NULL != impl) {
+        return impl->disable_sampling(sensor_specification);
+    } else {
+        ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+        return ORCM_ERR_NOT_AVAILABLE;
+    }
+}
+
 END_C_DECLS

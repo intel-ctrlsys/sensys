@@ -270,8 +270,7 @@ static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
 
     OPAL_LIST_FOREACH(list_item, &ecd->description, orcm_value_t) {
         if (NULL == list_item || NULL == list_item->value.key) {
-            SAFEFREE(notifier_msg);
-            SAFEFREE(notifier_action);
+            return;
         }
         if (0 == strcmp(list_item->value.key, "notifier_msg") &&
             NULL != list_item->value.data.string && NULL == notifier_msg) {

@@ -1,0 +1,6 @@
+[gerrit]
+host=sid-gerrit.devtools.intel.com
+port=29418
+project=css/grei
+defaultremote=origin
+defaultrebase=0

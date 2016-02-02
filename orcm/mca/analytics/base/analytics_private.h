@@ -88,6 +88,12 @@ uint64_t orcm_analytics_base_timeval_to_uint64(struct timeval time);
 /* function to get the time in uint64_t for a list of coming data samples */
 int orcm_analytics_base_get_sample_time(opal_list_t *list, uint64_t *sample_time);
 
+/* function to convert the compute type to integer representation */
+int orcm_analytics_base_get_compute_type(char* compute_type);
+
+/* function to obtain the string representation of a compute type */
+char* orcm_analytics_base_set_compute_type(int compute_type_id);
+
 #define ANALYTICS_COUNT_DEFAULT 1
 #define MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP 2
 

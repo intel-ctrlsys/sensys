@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2014-2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -615,5 +615,13 @@ double orcm_util_get_number_orcm_value(orcm_value_t *source_value)
     }
 
     return ret;
+}
+
+double orcm_util_time_diff(struct timeval* time1, struct timeval* time2)
+{
+    double time1_d = (double)(time1->tv_sec) + (double)(time1->tv_usec) / 1E6;
+    double time2_d = (double)(time2->tv_sec) + (double)(time2->tv_usec) / 1E6;
+
+    return time2_d - time1_d;
 }
 

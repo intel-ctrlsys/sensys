@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -24,6 +24,18 @@
 #include "orcm/runtime/orcm_globals.h"
 
 BEGIN_C_DECLS
+
+#define ORCM_ANALYTICS_COMPUTE_UNKNOWN    -1
+#define ORCM_ANALYTICS_COMPUTE_AVE         0
+#define ORCM_ANALYTICS_COMPUTE_MIN         1
+#define ORCM_ANALYTICS_COMPUTE_MAX         2
+#define ORCM_ANALYTICS_COMPUTE_SD          3
+
+#define ORCM_ANALYTICS_COMPUTE_UNKNOW_STR  "unknow"
+#define ORCM_ANALYTICS_COMPUTE_AVE_STR     "average"
+#define ORCM_ANALYTICS_COMPUTE_MIN_STR     "min"
+#define ORCM_ANALYTICS_COMPUTE_MAX_STR     "max"
+#define ORCM_ANALYTICS_COMPUTE_SD_STR      "sd"
 
 struct orcm_analytics_base_module;
 

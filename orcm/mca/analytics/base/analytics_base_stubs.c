@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -509,4 +509,50 @@ int orcm_analytics_base_get_sample_time(opal_list_t *list, uint64_t *sample_time
     }
 
     return ORCM_ERR_BAD_PARAM;
+}
+
+int orcm_analytics_base_get_compute_type(char* compute_type)
+{
+    int compute_type_id = ORCM_ANALYTICS_COMPUTE_UNKNOWN;
+    if (NULL != compute_type) {
+        if (0 == strncmp(compute_type, ORCM_ANALYTICS_COMPUTE_AVE_STR,
+                 strlen(ORCM_ANALYTICS_COMPUTE_AVE_STR) + 1)) {
+            compute_type_id = ORCM_ANALYTICS_COMPUTE_AVE;
+        } else if (0 == strncmp(compute_type, ORCM_ANALYTICS_COMPUTE_MIN_STR,
+                   strlen(ORCM_ANALYTICS_COMPUTE_MIN_STR) + 1)) {
+            compute_type_id = ORCM_ANALYTICS_COMPUTE_MIN;
+        } else if (0 == strncmp(compute_type, ORCM_ANALYTICS_COMPUTE_MAX_STR,
+                   strlen(ORCM_ANALYTICS_COMPUTE_MAX_STR) + 1)) {
+            compute_type_id = ORCM_ANALYTICS_COMPUTE_MAX;
+        } else if (0 == strncmp(compute_type, ORCM_ANALYTICS_COMPUTE_SD_STR,
+                   strlen(ORCM_ANALYTICS_COMPUTE_SD_STR) + 1)) {
+            compute_type_id = ORCM_ANALYTICS_COMPUTE_SD;
+        }
+    }
+    return compute_type_id;
+}
+
+char* orcm_analytics_base_set_compute_type(int compute_type_id)
+{
+    char* compute_type = NULL;
+
+    switch (compute_type_id) {
+        case ORCM_ANALYTICS_COMPUTE_AVE:
+            compute_type = ORCM_ANALYTICS_COMPUTE_AVE_STR;
+            break;
+        case ORCM_ANALYTICS_COMPUTE_MIN:
+            compute_type = ORCM_ANALYTICS_COMPUTE_MIN_STR;
+            break;
+        case ORCM_ANALYTICS_COMPUTE_MAX:
+            compute_type = ORCM_ANALYTICS_COMPUTE_MAX_STR;
+            break;
+        case ORCM_ANALYTICS_COMPUTE_SD:
+            compute_type = ORCM_ANALYTICS_COMPUTE_SD_STR;
+            break;
+        default:
+            compute_type = ORCM_ANALYTICS_COMPUTE_UNKNOW_STR;
+            break;
+    }
+
+    return compute_type;
 }

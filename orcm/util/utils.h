@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -78,4 +78,9 @@ ORCM_DECLSPEC int orcm_util_find_items(const char *keys[], int num_keys, opal_li
                              opal_value_t *items[], opal_bitmap_t *map);
 
 ORCM_DECLSPEC uint64_t orcm_util_create_hash_key(void *key, size_t key_size);
+
+/* calculate the time difference in seconds between time2 and time1. The result could be negative
+ * if time2 is earlier than time1. The caller needs to check and take actions accordingly*/
+ORCM_DECLSPEC double orcm_util_time_diff(struct timeval* time1, struct timeval* time2);
+
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * Additional copyrights may follow
  *
  * $HEADER$
@@ -11,6 +11,7 @@
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif  /* HAVE_STRING_H */
+#define _GNU_SOURCE
 #include <stdio.h>
 #ifdef HAVE_TIME_H
 #include <time.h>
@@ -23,6 +24,7 @@
 #include <sys/un.h>
 #include <errno.h>
 #include <ctype.h>
+#include <regex.h>
 #include <sys/types.h>
 #include "orcm_config.h"
 #include "orcm/constants.h"
@@ -44,6 +46,7 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "orcm/mca/analytics/analytics.h"
+#include "orcm/mca/evgen/evgen_types.h"
 #include "orcm/util/utils.h"
 #include "sensor_syslog.h"
 
@@ -73,6 +76,45 @@ typedef struct{
     opal_list_item_t super;
     char *log;
 }syslog_msg;
+
+int severity_simbol[8] = {
+	ORCM_RAS_SEVERITY_EMERG,
+	ORCM_RAS_SEVERITY_ALERT,
+	ORCM_RAS_SEVERITY_CRIT,
+	ORCM_RAS_SEVERITY_ERROR,
+	ORCM_RAS_SEVERITY_WARNING,
+	ORCM_RAS_SEVERITY_NOTICE,
+	ORCM_RAS_SEVERITY_INFO,
+	ORCM_RAS_SEVERITY_DEBUG
+};
+
+
+char  *facility_msg[24] = {
+	"KERNEL MESSAGES",
+	"USER-LEVEL MESSAGES",
+	"MAIL SYSTEM",
+	"SYSTEM DAEMONS",
+	"SECURITY/AUTHORIZATION MESSAGES",
+	"MESSAGES GENERATED INTERNALLY BY SYSLOGD",
+	"LINE PRINTER SUBSYSTEM",
+	"NETWORK NEWS SUBSYSTEM",
+	"UUCP SUBSYSTEM",
+	"CLOCK DAEMON",
+	"SECURITY/AUTHORIZATION MESSAGES",
+	"FTP DAEMON",
+	"NTP SUBSYSTEM",
+	"LOG AUDIT",
+	"LOG ALERT",
+	"CLOCK DAEMON",
+	"LOCAL USE 0",
+	"LOCAL USE 1",
+	"LOCAL USE 2",
+	"LOCAL USE 3",
+	"LOCAL USE 4",
+	"LOCAL USE 5",
+	"LOCAL USE 6",
+	"LOCAL USE 7"
+};
 
 static void msg_con(syslog_msg *msg){
     msg->log = NULL;
@@ -237,7 +279,23 @@ static void perthread_syslog_sample(int fd, short args, void *cbdata)
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
-void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
+static int get_severity(int  prival)
+{
+     int severity;
+     severity = prival%8;
+     return severity_simbol[severity];
+}
+
+static char *get_facility(int prival)
+{
+    int facility_code;
+    char *facility;
+    facility_code = prival/8;
+    facility = strdup(facility_msg[facility_code]);
+    return facility;
+}
+
+static void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     int nmsg;
@@ -246,6 +304,17 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
     syslog_msg *trk,*nxt;
     opal_buffer_t data, *bptr;
     struct timeval current_time;
+    int severity = -1;
+    char *facility = NULL;
+    char *message = NULL;
+    char *log_msg = NULL;
+
+    regex_t regex_comp_log;
+    size_t log_parts = 5;
+    regmatch_t log_matches[log_parts];
+    char *prival = NULL;
+    int regex_res;
+
     void* metrics_obj = mca_sensor_syslog_component.runtime_metrics;
 
     if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
@@ -298,14 +367,39 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
         return;
     }
 
-    OPAL_LIST_FOREACH_SAFE(trk, nxt, &msgQueue, syslog_msg) {
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &trk->log, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&data);
-        return;
+    /* Split log message into severity, facility and message */
+     regcomp(&regex_comp_log, "<([0-9]+)>(.*)", REG_EXTENDED);
+
+     OPAL_LIST_FOREACH_SAFE(trk, nxt, &msgQueue, syslog_msg) {
+       regex_res = regexec(&regex_comp_log, trk->log, log_parts, log_matches,0);
+       if (!regex_res) {
+           prival = strndup(&trk->log[log_matches[1].rm_so],
+                           (int)(log_matches[1].rm_eo - log_matches[1].rm_so));
+
+           severity = get_severity(atoi (prival));
+           facility=  get_facility(atoi (prival));
+           free(prival);
+
+           message =  strndup(&trk->log[log_matches[2].rm_so],
+                             (int)(log_matches[2].rm_eo - log_matches[2].rm_so));
+
+           asprintf(&log_msg, "%s: %s", facility, message);
+
+
+           if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &severity, 1, OPAL_INT32))) {
+           ORTE_ERROR_LOG(ret);
+           OBJ_DESTRUCT(&data);
+           return;
+          }
+
+           if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &log_msg, 1, OPAL_STRING))) {
+           ORTE_ERROR_LOG(ret);
+           OBJ_DESTRUCT(&data);
+           return;
+         }
+         packed=true;
+        opal_list_remove_item(&msgQueue, &trk->super);
      }
-     packed=true;
-     opal_list_remove_item(&msgQueue, &trk->super);
     }
 
     /* xfer the data for transmission */
@@ -326,6 +420,7 @@ static void syslog_log(opal_buffer_t *sample)
     int32_t nmsg;
     char tmp_log[32];
     char *log=NULL;
+    int  severity = -1;
     char *hostname=NULL;
     bool error = false;
     struct timeval sampletime;
@@ -405,6 +500,13 @@ static void syslog_log(opal_buffer_t *sample)
         }
 
         n=1;
+
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &severity, &n, OPAL_INT32))) {
+            ORTE_ERROR_LOG(rc);
+            error = true;
+            goto cleanup;
+        }
+
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &log, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             error = true;

@@ -2,4 +2,4 @@ if HAVE_GTEST
 gtestSubdirs=gtest_example
 endif
 
-SUBDIRS=mca $(gtestSubdirs)
+SUBDIRS=mca tools $(gtestSubdirs)

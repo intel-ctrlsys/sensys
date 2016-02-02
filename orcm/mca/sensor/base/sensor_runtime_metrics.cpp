@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) 2016      Intel, Inc. All rights reserved.
+ *
+ * $COPYRIGHT$
+ *
+ * Additional copyrights may follow
+ *
+ * $HEADER$
+ */
+/** @file:
+ */
 #include "sensor_runtime_metrics.h"
 
 using namespace std;

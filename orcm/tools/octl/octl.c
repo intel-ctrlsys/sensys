@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -10,11 +10,6 @@
 #include "orcm/tools/octl/common.h"
 #include "orcm/tools/octl/octl.h"
 #include "orcm/util/logical_group.h"
-
-/***
-Remove 'implicit' warnings...
-****/
-int orcm_octl_sensor_inventory_get(int command, char** argv);
 
 /******************
  * Local Functions
@@ -575,9 +570,16 @@ static int run_cmd(char *cmd)
                     break;
                 }
                 break;
+            case 44: // enable
+            case 45: // disable
+            case 46: // reset
+                // (rc - 44) = 0,1,2 (enable,disable,reset respectively)
+                rc = orcm_octl_sensor_change_sampling(rc - 44, cmdlist);
+                break;
 
             default:
                 rc = ORCM_ERROR;
+                // TODO:
                 break;
         }
         break;

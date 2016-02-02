@@ -112,6 +112,7 @@ int errcounts_enable_sampling_relay(const char* sensor_specification)
         return implementation->enable_sampling(sensor_specification);
     } else {
         ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+        return ORCM_ERR_NOT_AVAILABLE;
     }
 }
 
@@ -121,6 +122,7 @@ int errcounts_disable_sampling_relay(const char* sensor_specification)
         return implementation->disable_sampling(sensor_specification);
     } else {
         ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+        return ORCM_ERR_NOT_AVAILABLE;
     }
 }
 
@@ -130,6 +132,7 @@ int errcounts_reset_sampling_relay(const char* sensor_specification)
         return implementation->reset_sampling(sensor_specification);
     } else {
         ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+        return ORCM_ERR_NOT_AVAILABLE;
     }
 }
 

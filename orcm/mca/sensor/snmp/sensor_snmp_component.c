@@ -7,9 +7,12 @@
 
 #include "orcm_config.h"
 #include "orcm/constants.h"
+#include "orcm/mca/sensor/base/sensor_private.h"
 #include "opal/mca/base/base.h"
 #include "opal/mca/base/mca_base_var.h"
 #include "sensor_snmp.h"
+
+extern orcm_sensor_base_t orcm_sensor_base;
 
 /*
  * Local functions
@@ -102,7 +105,7 @@ int snmp_component_register(void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_snmp_component.config_file);
 
-    mca_sensor_snmp_component.collect_metrics = true;
+    mca_sensor_snmp_component.collect_metrics = orcm_sensor_base.collect_metrics;
     (void) mca_base_component_var_register(c, "collect_metrics",
                                            "Enable metric collection for the snmp plugin",
                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,

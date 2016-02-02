@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2016      Intel, Inc. All rights reserved.
+ *
+ * $COPYRIGHT$
+ *
+ * Additional copyrights may follow
+ *
+ * $HEADER$
+ */
 #ifndef BASE_SENSOR_RUNTIME_METRICS_H
 #define BASE_SENSOR_RUNTIME_METRICS_H
 

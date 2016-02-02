@@ -1,11 +1,11 @@
 # -*- text -*-
 #
-# Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved. 
-# Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+# Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 # This is the US/English help file for Open Resilient Cluster Manager Tool
@@ -43,6 +43,22 @@ USAGE: sensor get sample-rate <sensor-name> <nodelist>
 [octl:set:sample-rate-usage]
 ERROR: %s
 USAGE: sensor set sample-rate <sensor-name> <sample-rate>  <nodelist>
+
+[octl:sensor]
+ERROR: %s
+USAGE: sensor set|get|enable|disable|reset [specific-arguments]
+
+[octl:enable]
+ERROR: %s
+USAGE: sensor enable <nodelist> <{datagroup|"all"}[:{sensor_label|"all"}]>
+
+[octl:disable]
+ERROR: %s
+USAGE: sensor disable <nodelist> <{datagroup|"all"}[:{sensor_label|"all"}]>
+
+[octl:reset]
+ERROR: %s
+USAGE: sensor reset <nodelist> <{datagroup|"all"}[:{sensor_label|"all"}]>
 
 [octl:grouping:add-usage]
 ERROR: %s

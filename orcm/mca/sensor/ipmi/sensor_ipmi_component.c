@@ -14,6 +14,8 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "sensor_ipmi.h"
 
+extern orcm_sensor_base_t orcm_sensor_base;
+
 /*
  * Local functions
  */
@@ -142,7 +144,7 @@ static int ipmi_component_register(void)
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_ipmi_component.sample_rate);
 
-    mca_sensor_ipmi_component.collect_metrics = true;
+    mca_sensor_ipmi_component.collect_metrics = orcm_sensor_base.collect_metrics;
     (void) mca_base_component_var_register(c, "collect_metrics",
                                            "Enable metric collection for the ipmi plugin",
                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,

@@ -34,5 +34,7 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/mca/analytics/window/Makefile
     orcm/test/mca/analytics/aggregate/Makefile
     orcm/test/mca/analytics/cott/Makefile
+    orcm/test/tools/Makefile
+    orcm/test/tools/octl/Makefile
     ])
 ])

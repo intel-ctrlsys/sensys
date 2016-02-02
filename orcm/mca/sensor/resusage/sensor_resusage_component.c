@@ -10,11 +10,14 @@
 
 #include "orcm_config.h"
 #include "orcm/constants.h"
+#include "orcm/mca/sensor/base/sensor_private.h"
 
 #include "opal/mca/base/base.h"
 #include "opal/util/output.h"
 
 #include "sensor_resusage.h"
+
+extern orcm_sensor_base_t orcm_sensor_base;
 
 /*
  * Local functions
@@ -108,7 +111,7 @@ static int orcm_sensor_resusage_register (void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_resusage_component.test);
 
-    mca_sensor_resusage_component.collect_metrics = true;
+    mca_sensor_resusage_component.collect_metrics = orcm_sensor_base.collect_metrics;
     (void) mca_base_component_var_register(c, "collect_metrics",
                                            "Enable metric collection for the resusage plugin",
                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,

@@ -28,9 +28,12 @@
 
 #include "orcm/util/utils.h"
 
+#define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x=NULL; }
+
 static bool recv_issued=false;
 static bool mods_active = false;
 static void take_sample(int fd, short args, void *cbdata);
+int manage_sensor_sampling(int command, const char* sensor_spec);
 
 /* This function will eventually be called as part of an even loop when
  * dynamic inventory collection is requested */
@@ -836,7 +839,23 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
             asprintf(&error,"sensor get command %d not found", sub_command);
             goto ERROR;
         }
-
+    } else if(ORCM_ENABLE_SENSOR_SAMPLING_COMMAND == command ||
+              ORCM_DISABLE_SENSOR_SAMPLING_COMMAND == command ||
+              ORCM_RESET_SENSOR_SAMPLING_COMMAND == command) {
+        char* spec;
+        int cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &spec, &cnt, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            goto ERROR;
+        }
+        int response = manage_sensor_sampling(command, (const char*)spec);
+        SAFEFREE(spec);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            SAFE_OBJ_RELEASE(ans);
+            goto ERROR;
+        }
+        goto RESPONSE;
     }
 
 ERROR:
@@ -899,5 +918,59 @@ void orcm_sensor_base_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {
         *sample_rate = orcm_sensor_base.sample_rate;
+    }
+}
+
+static bool valid_data_group(const char* sensor_spec)
+{
+    if(NULL == sensor_spec || 0 == strlen(sensor_spec)) {
+        return false;
+    }
+    char* datagroup = strdup(sensor_spec);
+    char* colon_pos = strchr(datagroup, ':');
+    if(NULL != colon_pos) {
+        *colon_pos = '\0';
+    }
+    if(3 == strlen(datagroup) && 0 == strncmp(datagroup, "all", 3)) {
+        return true;
+    }
+    bool rv = false;
+    for(int index = 0; index < orcm_sensor_base.modules.size; ++index) {
+        orcm_sensor_active_module_t* i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, index);
+        if(NULL == i_module || NULL == i_module->component) {
+            continue;
+        }
+        const char* plugin_name = i_module->component->base_version.mca_component_name;
+        if(0 == strncmp(plugin_name, datagroup, strlen(plugin_name))) {
+            rv = true;
+            break;
+        }
+    }
+    return rv;
+}
+
+int manage_sensor_sampling(int command, const char* sensor_spec)
+{
+    if(true == valid_data_group(sensor_spec)) {
+        int rv = ORCM_SUCCESS;
+        for(int index = 0; index < orcm_sensor_base.modules.size; ++index) {
+            orcm_sensor_active_module_t* i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, index);
+            if(NULL == i_module || NULL == i_module->module) {
+                continue;
+            }
+            if(ORCM_ENABLE_SENSOR_SAMPLING_COMMAND == command &&
+               NULL != i_module->module->enable_sampling) {
+                i_module->module->enable_sampling(sensor_spec);
+            } else if(ORCM_DISABLE_SENSOR_SAMPLING_COMMAND == command &&
+                      NULL != i_module->module->disable_sampling) {
+                i_module->module->disable_sampling(sensor_spec);
+            } else if(ORCM_RESET_SENSOR_SAMPLING_COMMAND == command &&
+                      NULL != i_module->module->reset_sampling) {
+                i_module->module->reset_sampling(sensor_spec);
+            }
+        }
+        return rv;
+    } else {
+        return ORCM_ERROR;
     }
 }

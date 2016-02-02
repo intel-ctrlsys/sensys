@@ -9,9 +9,12 @@
 #include "orcm/constants.h"
 
 #include "opal/mca/base/base.h"
+#include "orcm/mca/sensor/base/sensor_private.h"
 #include "opal/mca/base/mca_base_var.h"
 
 #include "sensor_coretemp.h"
+
+extern orcm_sensor_base_t orcm_sensor_base;
 
 /*
  * Local functions
@@ -119,7 +122,7 @@ static int coretemp_component_register(void)
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_coretemp_component.sample_rate);
 
-    mca_sensor_coretemp_component.collect_metrics = true;
+    mca_sensor_coretemp_component.collect_metrics = orcm_sensor_base.collect_metrics;
     (void) mca_base_component_var_register(c, "collect_metrics",
                                            "Enable metric collection for the coretemp plugin",
                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -80,6 +80,8 @@ int orcm_octl_query_log(int cmd, char **argv);
 int orcm_octl_query_idle(int cmd, char **argv);
 int orcm_octl_query_node(int cmd, char **argv);
 int orcm_octl_query_event(int cmd, char **argv);
+int orcm_octl_sensor_inventory_get(int command, char** argv);
+int orcm_octl_sensor_change_sampling(int command, char** cmdlist);
 
 END_C_DECLS
 

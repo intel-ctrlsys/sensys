@@ -13,14 +13,11 @@
 #include "orcm/mca/db/base/base.h"
 #include "orcm/mca/db/db.h"
 
-/***
-Remove 'implicit' warnings...
-****/
-int orcm_octl_sensor_inventory_get(int command, char** argv);
-
 #define TAG  "octl:command-line:failure"
 #define PACKERR  "internal buffer pack error"
 #define UNPACKERR "internal buffer unpack error"
+
+#define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x = NULL; }
 
 int orcm_octl_sensor_policy_get(int cmd, char **argv)
 {
@@ -858,6 +855,7 @@ inv_list_cleanup:
     OBJ_RELEASE(buffer);
     return rc;
 }
+
 int orcm_octl_sensor_inventory_get(int cmd, char **argv)
 {
     char* default_filter="%"; /* SQL default filter */
@@ -985,4 +983,130 @@ orcm_octl_sensor_inventory_get_cleanup:
         OBJ_RELEASE(filter_list);
     }
     return ORCM_SUCCESS; /* Seems octl prints an bad error message if you don't return success...*/
+}
+
+static void octl_help(int error, const char* selection, const char* error_msg)
+{
+    char* str = NULL;
+    asprintf(&str, "octl:%s", selection);
+    if(NULL != str) {
+        orte_show_help("help-octl.txt", str, true, error_msg,
+                       ORTE_ERROR_NAME(error), error);
+        SAFEFREE(str);
+    }
+}
+
+int orcm_octl_sensor_change_sampling(int command, char** cmdlist)
+{
+    int rv = ORCM_SUCCESS;
+    int argc = opal_argv_count(cmdlist);
+    char **nodelist = NULL;
+    int cmd = command + ORCM_ENABLE_SENSOR_SAMPLING_COMMAND;
+    char* cmd_names[3] = {
+        "enable",
+        "disable",
+        "reset"
+    };
+    char* build_str = NULL;
+    opal_buffer_t* buf = NULL;
+    orte_rml_recv_cb_t* xfer = NULL;
+    orte_process_name_t tgt;
+    int result = ORCM_SUCCESS;
+    int cnt = 0;
+
+    if(2 < command || 0 > command) {
+        rv = ORCM_ERR_BAD_PARAM;
+        octl_help(rv, "sensor", "unknown sensor command");
+        goto change_sampling_cleanup;
+    }
+
+    if (4 != argc) {
+        rv = ORCM_ERR_BAD_PARAM;
+        octl_help(rv, cmd_names[command], "wrong number of arguments");
+        goto change_sampling_cleanup;
+    }
+
+    orcm_logical_group_parse_array_string(cmdlist[2], &nodelist);
+    if (0 == opal_argv_count(nodelist)) {
+        opal_argv_free(nodelist);
+        nodelist = NULL;
+        SAFEFREE(build_str);
+        rv = ORCM_ERR_BAD_PARAM;
+        octl_help(rv, cmd_names[command], "nodelist not found");
+        goto change_sampling_cleanup;
+    }
+
+    buf = OBJ_NEW(opal_buffer_t);
+    if(NULL == buf) {
+        rv = ORCM_ERR_OUT_OF_RESOURCE;
+        octl_help(rv, "command-line:failure", "out of resources");
+        goto change_sampling_cleanup;
+    }
+
+    if (ORCM_SUCCESS != (rv = opal_dss.pack(buf, &cmd, 1, ORCM_SENSOR_CMD_T))) {
+        octl_help(rv, "command-line:failure", "failed to pack command");
+        goto change_sampling_cleanup;
+    }
+
+    if (OPAL_SUCCESS != (rv = opal_dss.pack(buf, &cmdlist[3], 1, OPAL_STRING))) {
+        octl_help(rv, "command-line:failure", "failed to pack argument");
+        goto change_sampling_cleanup;
+    }
+
+    xfer = OBJ_NEW(orte_rml_recv_cb_t);
+    if(NULL == xfer) {
+        rv = ORCM_ERR_OUT_OF_RESOURCE;
+        octl_help(rv, "command-line:failure", "out of resources");
+        goto change_sampling_cleanup;
+    }
+
+    for (int i = 0; i < opal_argv_count(nodelist); ++i) {
+        OBJ_RETAIN(xfer);
+        /* setup to receive the result */
+        xfer->active = true;
+        orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                                ORCM_RML_TAG_SENSOR,
+                                ORTE_RML_NON_PERSISTENT,
+                                orte_rml_recv_callback, xfer);
+
+        if (ORCM_SUCCESS != (rv = orcm_cfgi_base_get_hostname_proc(nodelist[i], &tgt))) {
+            octl_help(rv, "command-line:failure", "incorrect node name");
+            goto change_sampling_cleanup;
+        }
+
+        /* send command to node daemon */
+        OBJ_RETAIN(buf);
+        if (ORCM_SUCCESS !=
+            (rv = orte_rml.send_buffer_nb(&tgt, buf,
+                                          ORCM_RML_TAG_SENSOR,
+                                          orte_rml_send_callback, NULL))) {
+            opal_buffer_t* tmp = buf;
+            OBJ_RELEASE(tmp); // There are 2 ref counts here; dispose of one.
+            octl_help(rv, "command-line:failure", "daemon contact failed");
+            goto change_sampling_cleanup;
+        }
+
+        /* wait for status message */
+        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+
+        cnt=1;
+        if (ORCM_SUCCESS != (rv = opal_dss.unpack(&xfer->data, &result,
+                                                  &cnt, OPAL_INT))) {
+            octl_help(rv, "command-line:failure", UNPACKERR);
+            goto change_sampling_cleanup;
+        }
+        if (ORCM_SUCCESS == result) {
+            printf("*** Success changing sensor sampling on node '%s'\n", nodelist[i]);
+        } else {
+            printf("*** Failure changing sensor sampling on node '%s'\n", nodelist[i]);
+            printf("    Is the datagroup and/or sensor label correct (%s)?\n", cmdlist[3]);
+            printf("    Is the datagroup plugin actively running on the node?\n");
+        }
+    }
+
+change_sampling_cleanup:
+    SAFEFREE(build_str);
+    SAFE_OBJ_RELEASE(xfer);
+    SAFE_OBJ_RELEASE(buf);
+    return rv;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -125,6 +125,12 @@ static orcm_cli_init_t cli_init[] = {
     { { "sensor", "get", NULL }, "policy", 0, 1, "Get Sensor Event Policy" },
     // sensor inventory subcommand
     { { "sensor", "get", NULL }, "inventory", 0, 2, "Get the current sensor inventory for a specified node: get inventory <node-name> [<filter>]" },
+    // sensor enable sampling subcommand
+    { { "sensor", NULL }, "enable", 0, 2, "Enable sampling for the current datagroup or sensor for a node-list: enable <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
+    // sensor disable sampling subcommand
+    { { "sensor", NULL }, "disable", 0, 2, "Disable sampling for the current datagroup or sensor for a node-list: disable <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
+    // sensor reset sampling subcommand
+    { { "sensor", NULL }, "reset", 0, 2, "Reset sampling to service load defaults for the current datagroup or sensor for a node-list: reset <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
 
     /****** power command ******/
     { { NULL }, "power", 0, 0, "Global Power Policy" },
@@ -250,6 +256,10 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "idle",              //41
                                      "node",              //42
                                      "event",             //43
+                                     "enable",            //44
+                                     "disable",           //45
+                                     "reset",             //46
+                                     "sampling",          //47
                                      "\0" };
 
 END_C_DECLS

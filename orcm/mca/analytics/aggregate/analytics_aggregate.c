@@ -291,7 +291,7 @@ static int analyze(int sd, short args, void *cbdata)
         rc = ORCM_ERROR;
         goto cleanup;
     }
-    if(true == orcm_analytics_base_db_check(current_caddy->wf_step)){
+    if(true == orcm_analytics_base_db_check(current_caddy->wf_step, false)){
         rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
         if(ORCM_SUCCESS != rc){
             goto cleanup;

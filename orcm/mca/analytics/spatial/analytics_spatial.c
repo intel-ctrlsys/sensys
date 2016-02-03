@@ -362,7 +362,7 @@ static orcm_analytics_value_t* handle_full_bucket(spatial_statistics_t* spatial_
     opal_list_append(next_list, (opal_list_item_t*)next_list_item);
     data_to_next = orcm_util_load_orcm_analytics_value_compute(caddy->analytics_value->key,
                              caddy->analytics_value->non_compute_data, next_list);
-    if (NULL != data_to_next && true == orcm_analytics_base_db_check(caddy->wf_step)) {
+    if (NULL != data_to_next && true == orcm_analytics_base_db_check(caddy->wf_step, false)) {
         if (ORCM_SUCCESS != (*rc = send_data_to_evgen(spatial_statistics, data_to_next))) {
             SAFEFREE(data_key);
             SAFE_RELEASE(data_to_next);

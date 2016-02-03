@@ -9,7 +9,7 @@
 
 #include "orcm/mca/analytics/base/analytics_private.h"
 
-bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step)
+bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step, bool is_event_data)
 {
     bool load_to_db = false;
     bool db_exist = false;
@@ -34,9 +34,10 @@ bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step)
     }
 
     if (!db_exist) {
-        if (true == orcm_analytics_base.store_event_data) {
+        if (true == orcm_analytics_base.store_event_data && is_event_data) {
             load_to_db = true;
-        } else {
+        }
+        else {
             load_to_db = false;
         }
     }

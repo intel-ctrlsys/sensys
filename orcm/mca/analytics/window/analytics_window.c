@@ -436,7 +436,7 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
                               caddy->analytics_value->key,
                               caddy->analytics_value->non_compute_data, compute_list_to_next);
     if (NULL != analytics_value_to_next) {
-        if(true == orcm_analytics_base_db_check(caddy->wf_step)){
+        if(true == orcm_analytics_base_db_check(caddy->wf_step, false)){
             rc = send_data_to_evgen(win_statistics, analytics_value_to_next);
             if(ORCM_SUCCESS != rc){
                 goto cleanup;

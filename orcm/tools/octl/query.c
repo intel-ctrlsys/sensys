@@ -447,7 +447,18 @@ opal_list_t *create_query_event_filter(int argc, char **argv)
     char *filter_str = NULL;
 
     filters_list = OBJ_NEW(opal_list_t);
-    if (7 == argc) {
+    if (3 == argc) {
+        time_t current_time;
+        struct tm *localdate;
+        char current_date[12];
+        time(&current_time);
+        localdate = localtime(&current_time);
+        strftime(current_date, sizeof(current_date), "%Y-%m-%d", localdate);
+        filter_item = create_string_filter("time_stamp", current_date, GT);
+        opal_list_append(filters_list, &filter_item->value.super);
+        filter_item = create_string_filter("severity", "INFO", NE);
+        opal_list_append(filters_list, &filter_item->value.super);
+    }  else if (7 == argc) {
         /* Doing nothing here, we want to retrieve all the DB data */
         filter_str = assemble_datetime(argv[2], argv[3]);
         filter_item = create_string_filter("time_stamp", filter_str, GT);
@@ -458,12 +469,11 @@ opal_list_t *create_query_event_filter(int argc, char **argv)
         filter_item = create_string_filter("time_stamp", filter_str, LT);
         SAFEFREE(filter_str);
         opal_list_append(filters_list, &filter_item->value.super);
-        /* We create a fixed filter to get only the ALERT events
-         * we don't care for info at this point.
+        /* We create a fixed filter to get all events different from INFO
+         * which are less important for the user.
          */
-        filter_item = create_string_filter("severity", "ALERT", CONTAINS);
+        filter_item = create_string_filter("severity", "INFO", NE);
         opal_list_append(filters_list, &filter_item->value.super);
-
     } else {
         show_query_error_message("octl:query:event");
         return NULL;

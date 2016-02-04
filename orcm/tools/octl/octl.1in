@@ -67,15 +67,15 @@ or enter an empty subcommand.
 .
 .SH Subcommands
 The subcommands of the command line interface are organized in a hierarchy.  All
-commands within the heirarchy specify the final full command.
+commands within the hierarchy specify the final full command.
 .SS resource
 .
 .
 The \fIresource\fR command set is used to display information about the resources
-configured in the system.
+(nodes) configured in the system.
 .TP
 .SS status
-\fIstatus\fR lists connection state (either up or down) and the job state
+\fIstatus\fR lists connection state (either up, down or unknown) and the job state
 (allocated or unallocated). The node specification is an ORCM node regex.
 .PP
 For example:
@@ -145,7 +145,7 @@ octl diag mem node[2:1-3]
 The \fIpower\fR command set allows admin to modify power settings.
 .TP
 .SS set <Watts>
-\fIset\fR global power budget to specifed wattage.
+\fIset\fR global power budget to specified wattage.
 .PP
 For example:
 .
@@ -159,6 +159,165 @@ For example:
 .
 .TP 4
 octl power get
+.PP
+.SS analytics
+.
+The \fIanalytics\fR command allows the user to add/remove/get
+workflows from any management node on a cluster.
+.PP
+For example:
+.
+.TP 4
+octl analytics workflow add workflow.txt
+.B after using the command, user will be able to see the workflow_id on
+the console.
+.PP
+For example:
+.
+.TP 4
+octl analytics workflow get
+.PP
+For example:
+.
+.TP 4
+octl analytics workflow remove
+.PP
+.SS sensor inventory listing
+.
+This command is designed to retrieve from the inventory database the list of
+sensors for given node(s) that can be used in the analytics plugins.
+.PP
+.TP 4
+The command and interactive shell is:
+.B octl sensor get inventory <node-regex|logical-group> [sensor_search_string]
+.PP
+For example:
+.
+.TP 4
+octl sensor get inventory node01 ip
+.PP
+.SS query
+.
+This component is used to query the database in order to obtain basic information
+of the nodes and its sensors.
+.
+In order to get the query component working you need to meet this environment:
+.
+.TP 10
+.B *Set the following mca parameters for the scheduler on the orcm-site.xml
+xml <mca-params> <value>db_postgres_user=orcmuser:orcmpassword,db_postgres_database=orcmdb,
+</mca-params>
+.
+.
+.TP
+.B *Launch an orcmsched service:
+$ bin/orcmsched
+.
+.
+.TP
+.B *Launch an octl console to call the service:
+$ bin/octl
+.
+.
+.PP
+\fIquery commands:\fR
+.PP
+.TP
+.SS *history:
+.RS
+- syntax: octl query history [start-date start-time end-date end-time]
+<nodelist>
+.RE
+.RS
+- use: returns all the data logged by the provided nodes during
+the specified time.
+.RE
+.RS
+- example: octl query history 2015-11-13 15:00:00 2015-11-13 16:00:00
+master4
+.RE
+.RS
+- output: NODE,SENSOR,DATE_TIME,VALUE master4,procstat_orcmd_pid,2015-10-21
+          15:31:47.217703,11960, master4,procstat_running_processes,2015-10-21
+          15:31:48.219033,0, master4,procstat_zombie_processes,2015-10-21
+          15:31:48.219033,0, 3 rows were found (0.091 seconds)
+.RE
+.PP
+.TP
+.SS *sensor:
+.RS
+- syntax: octl query sensor <sensor-name> [start-date start-time end-date end-time
+[upper-bound lower-bound]] <nodelist>
+.RE
+.RS
+- use: returns the logged data corresponding to the given sensor, time and node list.
+.RE
+.RS
+- example: octl query sensor coretemp* 2015-11-13 14:00:00 2015-11-13 16:00:00 0.1 1
+master4
+.RE
+.RS
+- output: NODE,SENSOR,DATE_TIME,VALUE master4,coretemp_core
+          0,2015-10-21 15:31:38.212171,35,degrees C master4,coretemp_core
+          1,2015-10-21 15:31:38.212171,35,degrees C master4,coretemp_core
+          2,2015-10-21 15:31:38.212171,35,degrees C master4,coretemp_core
+          3,2015-10-21 15:31:38.212171,35,degrees C ... 10 rows
+          were found (0.141 seconds)
+.RE
+.PP
+.TP
+.SS *log:
+.RS
+- syntax: octl query log [search word] <nodelist>
+.RE
+.RS
+- use: returns the logged data coming from the syslog of the given nodes
+  and search word.
+.RE
+.RS
+- example: octl query log *access* master4,c01
+.RE
+.RS
+- output: NODE,SENSOR_LOG,MESSAGE master4,syslog_log_message_0,<86>Oct
+          28 08:30:29 c01: access granted for user root (uid=0)
+          c01,syslog_log_message_0,<86>Oct 28 08:30:33 master4:
+          access granted for user root (uid=0) 2 rows were found
+          (0.056 seconds)
+.RE
+.PP
+.TP
+.SS *idle:
+.RS
+- syntax: octl query idle [minimum idle time in seconds or HH:MM:SS
+format] <nodelist>
+.RE
+.RS
+- use: returns the logged data coming from the syslog of the given nodes and
+search word.
+.RE
+.RS
+- example: octl query idle 60 master4
+.RE
+.RS
+- output: NODE,IDLE_TIME master4,03:13:59.024666 1 rows were
+          found (0.016 seconds)
+.RE
+.PP
+.TP
+.SS *status:
+.RS
+- syntax: octl query node status <nodelist>
+.RE
+.RS
+- use: Returns the status logged in the data base for the nodes in.
+.RE
+.RS
+- example: octl query node status master4
+.RE
+.RS
+- output: There is no output for now as this query returns the field “status” on
+the “node” table and this field is not being populated yet.
+.RE
 .PP
 .
 .\" **************************
@@ -250,7 +409,7 @@ node001,node002,node003,abc001,abc002 : node[3:1-3],abc[3:1-2]
 .\" **************************
 .SH EXAMPLES
 Interactive mode takes the same commands and options as the one-shot.  The
-excpetion is that you need to pass MCA options to the octl command as the
+exception is that you need to pass MCA options to the octl command as the
 interactive shell will not parse the MCA options.
 .
 .TP 4

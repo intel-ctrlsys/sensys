@@ -36,10 +36,6 @@ static void orcm_analytics_base_append_attributes(char **subtokens, opal_list_t 
 static void orcm_analytics_base_set_event_workflow_step(orcm_workflow_t *wf,
                                                         orcm_workflow_step_t *wf_step,
                                                         orcm_workflow_caddy_t *caddy);
-static orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *wf,
-                                                               orcm_workflow_step_t *wf_step,
-                                                               uint64_t hash_key,
-                                                               orcm_analytics_value_t *data);
 static int orcm_analytics_base_workflow_list_append_ids(opal_buffer_t *buffer, size_t size);
 
 
@@ -106,10 +102,10 @@ static void orcm_analytics_base_tapinfo(orcm_workflow_step_t *wf_step,
 }
 #endif
 
-static orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *wf,
-                                                               orcm_workflow_step_t *wf_step,
-                                                               uint64_t hash_key,
-                                                               orcm_analytics_value_t *data)
+orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *wf,
+                                                        orcm_workflow_step_t *wf_step,
+                                                        uint64_t hash_key,
+                                                        orcm_analytics_value_t *data)
 {
     orcm_workflow_caddy_t *caddy = NULL;
 

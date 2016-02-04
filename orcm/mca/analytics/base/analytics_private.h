@@ -30,6 +30,10 @@ ORCM_DECLSPEC void orcm_analytics_base_activate_analytics_workflow_step(orcm_wor
                                                                         orcm_workflow_step_t *wf_step,
                                                                         uint64_t hash_key,
                                                                         orcm_analytics_value_t *data);
+ORCM_DECLSPEC orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workflow_t *wf,
+                                                                      orcm_workflow_step_t *wf_step,
+                                                                      uint64_t hash_key,
+                                                                      orcm_analytics_value_t *data);
 
 ORCM_DECLSPEC void orcm_analytics_base_send_data(orcm_analytics_value_t *data);
 

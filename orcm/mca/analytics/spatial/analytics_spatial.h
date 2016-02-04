@@ -32,6 +32,8 @@ typedef struct {
     opal_hash_table_t* buckets;
     double result;
     uint64_t num_data_point;
+    opal_event_t* timeout_event;
+    int timeout;
 } spatial_statistics_t;
 OBJ_CLASS_DECLARATION(spatial_statistics_t);
 

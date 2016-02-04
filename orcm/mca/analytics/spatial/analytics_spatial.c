@@ -37,6 +37,8 @@ static void spatial_statistics_con(spatial_statistics_t* spatial_stat)
     spatial_stat->buckets = NULL;
     spatial_stat->result = 0.0;
     spatial_stat->num_data_point = 0;
+    spatial_stat->timeout_event = NULL;
+    spatial_stat->timeout = 0;
 }
 
 /* destructor of the spatial_statistics_t data structure */
@@ -48,6 +50,10 @@ static void spatial_statistics_des(spatial_statistics_t* spatial_stat)
     if (NULL != spatial_stat->buckets) {
         opal_hash_table_remove_all(spatial_stat->buckets);
         OBJ_RELEASE(spatial_stat->buckets);
+    }
+    if (NULL != spatial_stat->timeout_event) {
+        opal_event_free(spatial_stat->timeout_event);
+        spatial_stat->timeout_event = NULL;
     }
 }
 
@@ -84,6 +90,10 @@ static int do_compute(spatial_statistics_t* spatial_statistics, char** units);
 /* function to handle the full buckets: do computation, send data to the next plugin */
 static orcm_analytics_value_t* handle_full_bucket(spatial_statistics_t* spatial_statistics,
                                                   orcm_workflow_caddy_t* caddy, int* rc);
+
+/* function to insert a timeout event in the event queue */
+static int insert_timeout_event(spatial_statistics_t* spatial_statistics,
+                                orcm_workflow_caddy_t* caddy);
 
 /* function to fill the bucket when a new data sample is coming */
 static orcm_analytics_value_t* fill_bucket(spatial_statistics_t* spatial_statistics,
@@ -138,6 +148,10 @@ static void reset_statistics(spatial_statistics_t* spatial_statistics, struct ti
         spatial_statistics->last_round_time->tv_sec = current_time->tv_sec;
         spatial_statistics->last_round_time->tv_usec = current_time->tv_usec;
     }
+    if (NULL != spatial_statistics->timeout_event) {
+        opal_event_free(spatial_statistics->timeout_event);
+        spatial_statistics->timeout_event = NULL;
+    }
 }
 
 static int fill_spatial_statistics(spatial_statistics_t* spatial_statistics)
@@ -155,6 +169,12 @@ static int fill_spatial_statistics(spatial_statistics_t* spatial_statistics)
         return ORCM_ERR_BAD_PARAM;
     } else if (0 == spatial_statistics->interval) {
         spatial_statistics->interval = 60;
+    }
+
+    if (0 > spatial_statistics->timeout) {
+        return ORCM_ERR_BAD_PARAM;
+    } else if (0 == spatial_statistics->timeout) {
+        spatial_statistics->timeout = 60;
     }
 
     if (NULL == (spatial_statistics->buckets = OBJ_NEW(opal_hash_table_t))) {
@@ -189,6 +209,8 @@ static int init_spatial_statistics(spatial_statistics_t* spatial_statistics, opa
                                                                    attribute->data.string);
         } else if (0 == strncmp(attribute->key, "interval", strlen(attribute->key) + 1)) {
             spatial_statistics->interval = (int)strtol(attribute->data.string, NULL, 10);
+        } else if (0 == strncmp(attribute->key, "timeout", strlen(attribute->key) + 1)) {
+            spatial_statistics->timeout = (int)strtol(attribute->data.string, NULL, 10);
         }
     }
 
@@ -200,6 +222,12 @@ static int set_event_description(spatial_statistics_t* spatial_statistics,
 {
     int rc = orcm_analytics_base_event_set_description(event_data, "interval",
                                             &spatial_statistics->interval, OPAL_INT, NULL);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+
+    rc = orcm_analytics_base_event_set_description(event_data, "timeout",
+                                            &spatial_statistics->timeout, OPAL_INT, NULL);
     if (ORCM_SUCCESS != rc) {
         return rc;
     }
@@ -260,7 +288,7 @@ static int do_compute(spatial_statistics_t* spatial_statistics, char** units)
         if (OPAL_SUCCESS != (rc = opal_hash_table_get_value_ptr(spatial_statistics->buckets,
             spatial_statistics->nodelist[idx], strlen(spatial_statistics->nodelist[idx]) + 1,
             (void**)&bucket_item_value))) {
-            return rc;
+            continue;
         }
         spatial_statistics->num_data_point += bucket_item_value->opal_list_length;
         OPAL_LIST_FOREACH(list_item, bucket_item_value, orcm_value_t) {
@@ -343,6 +371,35 @@ static orcm_analytics_value_t* handle_full_bucket(spatial_statistics_t* spatial_
     return data_to_next;
 }
 
+static int insert_timeout_event(spatial_statistics_t* spatial_statistics,
+                                orcm_workflow_caddy_t* caddy)
+{
+    orcm_analytics_value_t* analytics_value = caddy->analytics_value;
+    orcm_analytics_value_t* timeout_data = NULL;
+    orcm_workflow_caddy_t* timeout_caddy = NULL;
+    struct timeval time;
+
+    if (NULL == (timeout_data = orcm_util_load_orcm_analytics_value_compute(analytics_value->key,
+                 analytics_value->non_compute_data, NULL))) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+    if (NULL == (timeout_caddy = orcm_analytics_base_create_caddy(caddy->wf,
+                 caddy->wf_step, caddy->hash_key, timeout_data))) {
+        SAFE_RELEASE(timeout_data);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+    if (NULL == (spatial_statistics->timeout_event = opal_event_new(caddy->wf->ev_base, -1,
+                 OPAL_EV_WRITE, caddy->imod->analyze, timeout_caddy))) {
+        SAFE_RELEASE(timeout_caddy);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    time.tv_sec = spatial_statistics->timeout;
+    time.tv_usec = 0;
+
+    return opal_event_add(spatial_statistics->timeout_event, &time);
+}
+
 static orcm_analytics_value_t* fill_bucket(spatial_statistics_t* spatial_statistics,
                                            orcm_workflow_caddy_t* caddy, int* rc)
 {
@@ -384,7 +441,14 @@ static orcm_analytics_value_t* fill_bucket(spatial_statistics_t* spatial_statist
                     if (spatial_statistics->size == (int)(spatial_statistics->buckets->ht_size)) {
                         return handle_full_bucket(spatial_statistics, caddy, rc);
                     } else {
-                        *rc = ORCM_ERR_RECV_MORE_THAN_POSTED;
+                        /* first sample comes, then set a timeout event */
+                        if (1 == spatial_statistics->buckets->ht_size &&
+                            NULL == spatial_statistics->timeout_event) {
+                            *rc = insert_timeout_event(spatial_statistics, caddy);
+                        }
+                        if (ORCM_SUCCESS == *rc) {
+                            *rc = ORCM_ERR_RECV_MORE_THAN_POSTED;
+                        }
                         return NULL;
                     }
                 } else {
@@ -432,6 +496,7 @@ static int analyze(int sd, short args, void* cbdata)
     mca_analytics_spatial_module_t* mod = NULL;
     spatial_statistics_t* spatial_statistics = NULL;
     orcm_analytics_value_t* data_to_next = NULL;
+    struct timeval current_time;
 
     if (ORCM_SUCCESS != (rc = orcm_analytics_base_assert_caddy_data(cbdata))) {
         SAFE_RELEASE(caddy);
@@ -453,8 +518,17 @@ static int analyze(int sd, short args, void* cbdata)
         }
     }
 
-    if (ORCM_SUCCESS == rc &&
-        NULL != (data_to_next = collect_sample(spatial_statistics, caddy, &rc))) {
+    /* no compute data meaning it is a timeout event, we are going to do the computation anyway */
+    if (NULL == caddy->analytics_value->compute_data) {
+        if (NULL != (data_to_next = handle_full_bucket(spatial_statistics, caddy, &rc)) &&
+            ORCM_SUCCESS == rc) {
+            gettimeofday(&current_time, NULL);
+            reset_statistics(spatial_statistics, &current_time);
+            ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(caddy->wf, caddy->wf_step,
+                                             caddy->hash_key, data_to_next);
+        }
+    } else if (NULL != (data_to_next = collect_sample(spatial_statistics, caddy, &rc)) &&
+               ORCM_SUCCESS == rc) {
         ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(caddy->wf, caddy->wf_step, caddy->hash_key, data_to_next);
     }
 

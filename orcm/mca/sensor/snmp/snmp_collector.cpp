@@ -193,7 +193,6 @@ vector<vardata> snmpCollector::packCollectedData(netsnmp_pdu *response) {
             delete var;
         }
     }
-
     return retValue;
 }
 

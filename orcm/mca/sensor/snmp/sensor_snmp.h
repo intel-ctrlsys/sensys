@@ -49,6 +49,9 @@ extern void snmp_get_sample_rate_relay(int *sample_rate);
 extern int snmp_enable_sampling_relay(const char* sensor_specification);
 extern int snmp_disable_sampling_relay(const char* sensor_specification);
 extern int snmp_reset_sampling_relay(const char* sensor_specification);
+extern void snmp_inventory_collect(opal_buffer_t *inventory_snapshot);
+extern void snmp_inventory_log(char *hostname,
+                               opal_buffer_t *inventory_snapshot);
 END_C_DECLS
 
 #endif

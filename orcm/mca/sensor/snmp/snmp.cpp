@@ -214,6 +214,72 @@ void snmp_impl::log(opal_buffer_t* buf)
     SAFE_OBJ_RELEASE(analytics_vals);
 }
 
+void snmp_impl::inventory_collect(opal_buffer_t *inventory_snapshot)
+{
+    if (NULL == inventory_snapshot){
+        ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
+        return;
+    }
+
+    packPluginName(inventory_snapshot);
+
+    for(vector<snmpCollector>::iterator it=collectorObj_.begin();
+        it!=collectorObj_.end();++it)
+    {
+        vardata(it->getHostname()).setKey("hostname").packTo \
+                                                      (inventory_snapshot);
+        packDataToBuffer(it->collectData(),inventory_snapshot);
+    }
+}
+
+void snmp_impl::my_inventory_log_cleanup(int dbhandl, int status,
+                                         opal_list_t *kvs,
+                                         opal_list_t *output, void *cbdata)
+{
+    SAFE_OBJ_RELEASE(kvs);
+}
+
+void snmp_impl::inventory_log(char *hostname,
+                              opal_buffer_t *inventory_snapshot)
+{
+    int sensor_number = 1;
+    stringstream sensor_name;
+    opal_list_t *records = NULL;
+
+    records = OBJ_NEW(opal_list_t);
+    ON_NULL_THROW(records);
+
+    vector<vardata> allItems = unpackDataFromBuffer(inventory_snapshot);
+    for(vector<vardata>::iterator it=allItems.begin();it!=allItems.end();++it)
+    {
+        if("hostname" != it->getKey()){
+            sensor_name.str("");
+            sensor_name << "sensor_snmp_" << (int) it->getDataType() << "_" <<
+                           sensor_number++;
+            it->setKey(sensor_name.str());
+        } else {
+            if (0 != records->opal_list_length){
+                if (0 <= orcm_sensor_base.dbhandle){
+                    orcm_db.store_new(orcm_sensor_base.dbhandle,
+                                      ORCM_DB_INVENTORY_DATA, records, NULL,
+                                      my_inventory_log_cleanup, NULL);
+                } else {
+                    my_inventory_log_cleanup(-1,-1,records,NULL,NULL);
+                }
+                records = OBJ_NEW(opal_list_t);
+                ON_NULL_THROW(records);
+            }
+        }
+        it->appendToOpalList(records);
+    }
+
+    if (0 <= orcm_sensor_base.dbhandle && 0 != records->opal_list_length){
+        orcm_db.store_new(orcm_sensor_base.dbhandle,ORCM_DB_INVENTORY_DATA,
+                          records, NULL, my_inventory_log_cleanup, NULL);
+    } else {
+        my_inventory_log_cleanup(-1,-1,records,NULL,NULL);
+    }
+}
 
 void snmp_impl::set_sample_rate(int sample_rate)
 {

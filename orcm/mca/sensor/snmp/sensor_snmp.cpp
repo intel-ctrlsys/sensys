@@ -122,4 +122,22 @@ int snmp_reset_sampling_relay(const char* sensor_specification)
     }
 }
 
+void snmp_inventory_collect(opal_buffer_t *inventory_snapshot)
+{
+    if(NULL != impl){
+        impl->inventory_collect(inventory_snapshot);
+    } else {
+        ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+    }
+}
+
+void snmp_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
+{
+    if(NULL != impl){
+        impl->inventory_log(hostname, inventory_snapshot);
+    } else {
+        ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
+    }
+}
+
 END_C_DECLS

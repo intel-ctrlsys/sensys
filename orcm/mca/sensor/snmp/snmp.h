@@ -49,9 +49,13 @@ class snmp_impl
         int enable_sampling(const char* sensor_spec);
         int disable_sampling(const char* sensor_spec);
         int reset_sampling(const char* sensor_spec);
+        void inventory_collect(opal_buffer_t *inventory_snapshot);
+        void inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 
     PRIVATE: // Static Callback Relays
         static void perthread_snmp_sample_relay(int fd, short args, void *cbdata);
+        static void my_inventory_log_cleanup(int dbhandle, int status,
+                        opal_list_t *kvs, opal_list_t *output, void *cbdata);
 
     PRIVATE: // In-Object Callback Methods
         void perthread_snmp_sample();

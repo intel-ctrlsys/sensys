@@ -323,8 +323,16 @@ static int do_compute(spatial_statistics_t* spatial_statistics, char** units)
     }
 
     if (ORCM_ANALYTICS_COMPUTE_SD == spatial_statistics->compute_type) {
-        OPAL_LIST_FOREACH(list_item, bucket_item_value, orcm_value_t) {
-            sum += pow((orcm_util_get_number_orcm_value(list_item) - spatial_statistics->result), 2);
+        for(idx = 0; idx < spatial_statistics->size; idx++) {
+            if (OPAL_SUCCESS != (rc = opal_hash_table_get_value_ptr(spatial_statistics->buckets,
+                spatial_statistics->nodelist[idx], strlen(spatial_statistics->nodelist[idx]) + 1,
+                (void**)&bucket_item_value))) {
+                continue;
+            }
+            OPAL_LIST_FOREACH(list_item, bucket_item_value, orcm_value_t) {
+                sum += pow((orcm_util_get_number_orcm_value(list_item) -
+                            spatial_statistics->result), 2);
+            }
         }
         spatial_statistics->result = sqrt(sum / spatial_statistics->num_data_point);
     }

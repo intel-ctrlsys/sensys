@@ -1205,7 +1205,7 @@ char *query_header(const char* db_view)
      } else if (0 == strcmp("syslog_view", db_view)) {
          return "NODE,SENSOR_LOG,DATE_TIME,MESSAGE";
      } else if (0 == strcmp("event_view", db_view)) {
-         return "EVENT_ID,DATE_TIME,SEVERITY,TYPE,VENDOR,VERSION,DESCRIPTION,HOSTNAME";
+         return "EVENT_ID,DATE_TIME,SEVERITY,TYPE,HOSTNAME,EVENT_MESSAGE";
      } else {
          return "NODE,SENSOR,DATE_TIME,VALUE,UNITS";
      }

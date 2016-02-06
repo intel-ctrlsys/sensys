@@ -453,6 +453,10 @@ opal_list_t *create_query_event_filter(int argc, char **argv)
         char current_date[12];
         time(&current_time);
         localdate = localtime(&current_time);
+        if (NULL == localdate) {
+            fprintf(stderr, "\nERROR: could not allocate memory for datetime string\n");
+            return NULL;
+        }
         strftime(current_date, sizeof(current_date), "%Y-%m-%d", localdate);
         filter_item = create_string_filter("time_stamp", current_date, GT);
         opal_list_append(filters_list, &filter_item->value.super);

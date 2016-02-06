@@ -19,53 +19,66 @@ import sqlalchemy as sa
 import textwrap
 
 
-sql_create_view_clauses = dict()
+sql_create_item_clauses = dict()
 
-sql_create_view_clauses['postgresql'] = {
+sql_create_item_clauses['postgresql'] = {
     'event_view' : textwrap.dedent("""
     CREATE OR REPLACE VIEW event_view AS
     SELECT CONCAT(event.event_id) as event_id,
            CONCAT(event.time_stamp) as time_stamp,
            event.severity,
            event.type,
-           event.vendor,
-           event.version,
-           event.description,
-           (SELECT event_data.value_str FROM event_data WHERE event_data_id = 1) as hostname
-   FROM event, event_data
-   WHERE event.event_id = event_data.event_id AND event_data.event_data_key_id = 1;
+           event_data.value_str as hostname,
+           get_event_msg(event.event_id) as event_message
+   FROM event
+   JOIN event_data ON event.event_id = event_data.event_id AND event_data.event_data_key_id = 1;
+    """),
+    'get_event_msg_function' : textwrap.dedent("""
+    CREATE OR REPLACE FUNCTION get_event_msg(key INTEGER) RETURNS VARCHAR as $$
+    DECLARE
+        message VARCHAR;
+    BEGIN
+        SELECT value_str INTO message
+        FROM event_data
+        WHERE event_id = key AND event_data_key_id = 4;
+        RETURN message;
+    END; $$
+    LANGUAGE plpgsql;
     """),
 }
 
-sql_drop_view_clauses = dict()
+sql_drop_item_clauses = dict()
 
-sql_drop_view_clauses['postgresql'] = {
-    'event_view' : "DROP VIEW IF EXISTS event_view;"
+sql_drop_item_clauses['postgresql'] = {
+    'event_view' : "DROP VIEW IF EXISTS event_view;",
+    'get_event_msg_function' : "DROP FUNCTION IF EXISTS get_event_msg(INTEGER);"
 }
 
-def _create_view(view):
+def _create_item(item):
     dialect = op.get_context().dialect.name
-    if dialect in sql_create_view_clauses and view in sql_create_view_clauses[dialect]:
-        op.execute(sql_create_view_clauses[dialect][view])
+    if dialect in sql_create_item_clauses and item in sql_create_item_clauses[dialect]:
+        op.execute(sql_create_item_clauses[dialect][item])
         return True
     else:
-        err_msg = ("View '{str_view}' not created. '{str_dialect}' "
+        err_msg = ("Item '{str_item}' not created. '{str_dialect}' "
                    "is not a supported database dialect")
-        print(err_msg.format(str_view=view, str_dialect=dialect))
+        print(err_msg.format(str_item=item, str_dialect=dialect))
 
-def _drop_view(view):
+def _drop_item(item):
     dialect = op.get_context().dialect.name
-    if dialect in sql_drop_view_clauses and view in sql_drop_view_clauses[dialect]:
-        op.execute(sql_drop_view_clauses[dialect][view])
+    if dialect in sql_drop_item_clauses and item in sql_drop_item_clauses[dialect]:
+        op.execute(sql_drop_item_clauses[dialect][item])
         return True
     else:
-        err_msg = ("Unable to drop View '{str_view}' "
+        err_msg = ("Unable to drop item '{str_item}' "
                    "is not a supported database dialect")
-        print(err_msg.format(str_view=view, str_dialect=dialect))
+        print(err_msg.format(str_item=item, str_dialect=dialect))
         return False
 
 def upgrade():
-    _create_view('event_view')
+    _create_item('get_event_msg_function')
+    _create_item('event_view')
 
 def downgrade():
-    _drop_view('event_view')
+    _drop_item('event_view')
+    _drop_item('get_event_msg_function')

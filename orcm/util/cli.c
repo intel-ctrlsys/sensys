@@ -41,8 +41,8 @@ static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
 static int print_completions(orcm_cli_t *cli, char **input);
 static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input);
 static void set_handler_default(int sig);
-static void scroll_up(int *scroll_indx, char *input, size_t *len);
-static void scroll_down(int *scroll_indx, char *input, size_t *len);
+static void scroll_up(int *scroll_indx, char *input, size_t *len, char *prompt);
+static void scroll_down(int *scroll_indx, char *input, size_t *len, char *prompt);
 static void save_cmd_history(char *input);
 
 #define CLI_HISTORY_SIZE 15
@@ -313,14 +313,12 @@ int orcm_cli_get_cmd(char *prompt,
                 switch(c) {
                 case 'A':
                     /* up arrow */
-                    printf("\n%s> ", prompt);
-                    scroll_up(&scroll_indx, input, &j);
+                    scroll_up(&scroll_indx, input, &j, prompt);
                     break;
 
                 case 'B':
                     /* down arrow */
-                    printf("\n%s> ", prompt);
-                    scroll_down(&scroll_indx, input, &j);
+                    scroll_down(&scroll_indx, input, &j, prompt);
                     break;
 
                 case 'C':
@@ -599,38 +597,31 @@ static void set_handler_default(int sig)
     sigaction(sig, &act, (struct sigaction *)0);
 }
 
-static void scroll_up(int *scroll_indx, char *input, size_t *len)
+static void scroll_up(int *scroll_indx, char *input, size_t *len, char *prompt)
 {
-    int indx = *scroll_indx;
-    if (!cmd_hist.count) {
+    if (!cmd_hist.count || *scroll_indx < 1) {
+        BONK;
         return;
     }
-    strcpy(input, cmd_hist.hist[indx]);
+
+    *scroll_indx = *scroll_indx - 1;
+    strcpy(input, cmd_hist.hist[*scroll_indx]);
     *len = strlen(input);
-    if (0  < indx) {
-        indx--;
-    } else {
-        indx = cmd_hist.count;
-    }
-    *scroll_indx = indx;
+    printf("\033[1K \r%s> ", prompt);
     printf("%s", input);
     return;
 }
 
-static void scroll_down(int *scroll_indx, char *input, size_t *len)
+static void scroll_down(int *scroll_indx, char *input, size_t *len, char *prompt)
 {
-    int indx = *scroll_indx;
-    if (!cmd_hist.count) {
+    printf("\033[1K \r%s> ", prompt);
+    if (!cmd_hist.count || cmd_hist.count <= *scroll_indx ) {
+        BONK;
         return;
     }
-    strcpy(input, cmd_hist.hist[indx]);
+    *scroll_indx = *scroll_indx + 1;
+    strcpy(input, cmd_hist.hist[*scroll_indx]);
     *len = strlen(input);
-    if (cmd_hist.count  > *scroll_indx) {
-        indx++;
-    } else {
-        indx = 0;
-    }
-    *scroll_indx = indx;
     printf("%s", input);
     return;
 }

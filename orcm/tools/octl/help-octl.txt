@@ -50,15 +50,15 @@ USAGE: sensor set|get|enable|disable|reset [specific-arguments]
 
 [octl:enable]
 ERROR: %s
-USAGE: sensor enable <nodelist> <{datagroup|"all"}[:{sensor_label|"all"}]>
+USAGE: sensor enable <nodelist> <{datagroup|"all"}>
 
 [octl:disable]
 ERROR: %s
-USAGE: sensor disable <nodelist> <{datagroup|"all"}[:{sensor_label|"all"}]>
+USAGE: sensor disable <nodelist> <{datagroup|"all"}>
 
 [octl:reset]
 ERROR: %s
-USAGE: sensor reset <nodelist> <{datagroup|"all"}[:{sensor_label|"all"}]>
+USAGE: sensor reset <nodelist> <{datagroup|"all"}>
 
 [octl:grouping:add-usage]
 ERROR: %s

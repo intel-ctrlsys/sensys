@@ -196,6 +196,38 @@ For example:
 .TP 4
 octl sensor get inventory node01 ip
 .PP
+.SS sensor enable|disable|reset datagroups
+.
+This command is designed to enable, disable, or reset to sensor sampling for
+datagroups (plugin names).  The orcmd service startup state of the sensor data sampling
+is controlled by the following set of MCA paramaters:
+.PP
+.B sensor_<sensor_name|"base">_collect_metrics = <"true"|"false">
+.PP
+Using "base" turns on ("true") or off ("false") all sensors loaded using the "sensor"
+MCA parameter (Only loaded sensors can be controlled not plugins excluded from being
+loaded).  Using the sensor_name instead of "base" overrides the sensor_base_collect_metrics
+MCA parameter.  The default values of individual datagroup (plugin) is inherited from
+sensor_base_collect_metrics at orcmd service load time.  This command requires the
+orcmsched be running in the cluster.
+.PP
+The commands and interactive shell is:
+.PP
+.B octl sensor <enable|disable|reset> <node-regex|logical-group> <datagroup|"all">
+.PP
+For example:
+.PP
+.B $ octl sensor disable node01 all
+.br
+.B $ octl sensor enable node01 errcounts
+.PP
+After these commands node01 will only be logging data from the errcounts datagroup (plugin).
+Then:
+.PP
+.B $ octl sensor reset node01 all
+.PP
+restores node01 to its original sampling state (defined by MCA parameters and orcmd load time).
+.PP
 .SS query
 .
 This component is used to query the database in order to obtain basic information

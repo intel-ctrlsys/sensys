@@ -116,21 +116,28 @@ static orcm_cli_init_t cli_init[] = {
     // sensor set
     { { "sensor", NULL }, "set", 0, 0, "Set Sensor Commands" },
     // sensor policy subcommand
-    { { "sensor", "set", NULL }, "sample-rate", 0, 3, "Set Sensor Sample Rate: set sample-rate <sensor-name> <sample-rate> <node-name>" },
-    { { "sensor", "set", NULL }, "policy", 0, 8, "Set Sensor Event Policy, sensor set policy node sensor_name threshold hi/lo max_count time_window severity action" },
+    { { "sensor", "set", NULL }, "sample-rate", 0, 3, "Set Sensor Sample Rate: set sample-rate "
+    "<sensor-name> <sample-rate> <node-name>" },
+    { { "sensor", "set", NULL }, "policy", 0, 8, "Set Sensor Event Policy, sensor set policy node "
+    "sensor_name threshold hi/lo max_count time_window severity action" },
     { { "sensor", NULL }, "get", 0, 0, "Get Sensor Commands" },
     // sensor policy subcommand
-    { { "sensor", "get", NULL }, "sample-rate", 0, 2, "Get Sensor Sample Rate: get sample-rate <sensor-name> <node-name>" },
+    { { "sensor", "get", NULL }, "sample-rate", 0, 2, "Get Sensor Sample Rate: get sample-rate "
+    "<sensor-name> <node-name>" },
     // sensor policy subcommand
     { { "sensor", "get", NULL }, "policy", 0, 1, "Get Sensor Event Policy" },
     // sensor inventory subcommand
-    { { "sensor", "get", NULL }, "inventory", 0, 2, "Get the current sensor inventory for a specified node: get inventory <node-name> [<filter>]" },
+    { { "sensor", "get", NULL }, "inventory", 0, 2, "Get the current sensor inventory for a specified "
+    "node: get inventory <node-name> [<filter>]" },
     // sensor enable sampling subcommand
-    { { "sensor", NULL }, "enable", 0, 2, "Enable sampling for the current datagroup or sensor for a node-list: enable <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
+    { { "sensor", NULL }, "enable", 0, 2, "Enable sampling for the current datagroup or sensor for "
+    "a node-list: enable <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
     // sensor disable sampling subcommand
-    { { "sensor", NULL }, "disable", 0, 2, "Disable sampling for the current datagroup or sensor for a node-list: disable <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
+    { { "sensor", NULL }, "disable", 0, 2, "Disable sampling for the current datagroup or sensor "
+    "for a node-list: disable <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
     // sensor reset sampling subcommand
-    { { "sensor", NULL }, "reset", 0, 2, "Reset sampling to service load defaults for the current datagroup or sensor for a node-list: reset <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
+    { { "sensor", NULL }, "reset", 0, 2, "Reset sampling to service load defaults for the current "
+    "datagroup or sensor for a node-list: reset <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
 
     /****** power command ******/
     { { NULL }, "power", 0, 0, "Global Power Policy" },
@@ -178,27 +185,50 @@ static orcm_cli_init_t cli_init[] = {
 
     /****** logical group command ******/
     { { NULL }, "grouping", 0, 0, "Logical Grouping Information" },
-    { { "grouping", NULL }, "add", 0, 2, "Add a tag-value pair to the groupings: add <tag> <node-regex>" },
-    { { "grouping", NULL }, "remove", 0, 2, "Remove a tag-value pair to the groupings: remove <tag> <node-regex>" },
-    { { "grouping", NULL }, "list", 0, 2, "List tag-value pair. Use * for either tag or node: list <tag> <node-regex>" },
+    { { "grouping", NULL }, "add", 0, 2, "Add a tag-value pair to the groupings: add <tag> "
+    "<node-regex>" },
+    { { "grouping", NULL }, "remove", 0, 2, "Remove a tag-value pair to the groupings: "
+    "remove <tag> <node-regex>" },
+    { { "grouping", NULL }, "list", 0, 2, "List tag-value pair. Use * for either tag or "
+    "node: list <tag> <node-regex>" },
 
     /****** Analytics workflow commands ******/
     { { NULL }, "analytics", 0, 0, "Analytics information" },
     { { "analytics", NULL }, "workflow", 0, 0, "workflow manipulation commands" },
     { { "analytics", "workflow", NULL }, "add", 0, 1, "add workflow: add file..txt" },
-    { { "analytics", "workflow", NULL }, "remove", 0, 2, "remove workflow: remove nodelist workflow_id" },
+    { { "analytics", "workflow", NULL }, "remove", 0, 2, "remove workflow: remove nodelist "
+    "workflow_id" },
     { { "analytics", "workflow", NULL }, "get", 0, 0, "list workflow: get nodelist" },
 
     /****** Query commands ******/
     { { NULL}, "query", 0, 0, "Query data from DB" },
-    { { "query", NULL}, "history", 0, 4, "query RAS history of the given nodes" },
-    { { "query", NULL}, "sensor", 0, 6, "query sensor values within given limits" },
-    { { "query", NULL}, "log", 0, 2, "query log of events" },
-    { { "query", NULL}, "idle", 0, 1, "query idle hosts" },
-    { { "query", NULL}, "node", 0, 1, "query ras information of the given nodes" },
-    { { "query", "node", NULL}, "status", 0, 1, "query status of given nodes" },
+    { { "query", NULL}, "history", 0, 0, "query history returns all the data logged by the "
+    "provided nodes during specified time" },
+    { { "query", "history", NULL}, "syntax", 0, 0, "query history [start-date start-time "
+    "end-date end-time] <nodelist>" },
+    { { "query", "history", NULL}, "example", 0, 0, "query history 2015-11-13 15:00:00 "
+    "2015-11-13 16:00:00 <node name>" },
+    { { "query", NULL}, "sensor", 0, 0, "query sensor returns the logged data corresponding to "
+    "the given sensor, time and node list" },
+    { { "query", "sensor", NULL}, "syntax", 0, 0, "query sensor <sensor-name> [start-date "
+    "start-time end-date end-time [upper-bound lower-bound]] <nodelist>"},
+    { { "query", "sensor", NULL}, "example", 0, 0, "query sensor coretemp* 2015-11-13 14:00:00 "
+    "2015-11-13 16:00:00 0.1 1 <node name>" },
+    { { "query", NULL}, "log", 0, 0, "query log returns the logged data coming from the syslog "
+    "to the given nodes and search word" },
+    { { "query", "log", NULL}, "syntax", 0, 0, "query log [search word] <nodelist>" },
+    { { "query", "log", NULL}, "example", 0, 0, "query log *access* <node name>,c01" },
+    { { "query", NULL}, "idle", 0, 0, "query idle returns the nodes in those that has been idle "
+    "for the given time or more" },
+    { { "query", "idle", NULL}, "syntax", 0, 0, "query idle [minimum idle time in seconds or "
+    "HH:MM:SS format] <nodelist>" },
+    { { "query", "idle", NULL}, "example", 0, 0, "query idle 60 <node name>" },
+    { { "query", NULL}, "node", 0, 0, "query ras information of the given nodes" },
+    { { "query", "node", NULL}, "status", 0, 0, "query node status returns the status logged in "
+    "the data base for the nodes in the database" },
+    { { "query", "node","status", NULL}, "syntax", 0, 0, "query node status <nodelist>" },
+    { { "query", "node","status", NULL}, "example", 0, 0, "query node status <node name>" },
     { { "query", NULL}, "event", 0, 1, "query events from database" },
-
 
     /* quit command */
     { { NULL }, "quit", 0, 0, "Exit the shell" },

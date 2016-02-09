@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2014-2016  Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "orcm_config.h"
@@ -87,7 +87,7 @@ int orcm_cli_create(orcm_cli_t *cli,
             return rc;
         }
     }
-    
+
     return ORCM_SUCCESS;
 
 }
@@ -123,7 +123,7 @@ static int make_opt(orcm_cli_t *cli, orcm_cli_init_t *e)
 static int make_opt_subtree(orcm_cli_cmd_t *cmd, orcm_cli_init_t *e, int level) {
     orcm_cli_cmd_t *newcmd, *parent;
     opal_value_t *kv;
-    
+
     /* we will keep descending down the subtree until we have nothing
      * more on the parent list to compare to */
     if (NULL == e->parent[level]) {
@@ -338,7 +338,9 @@ int orcm_cli_get_cmd(char *prompt,
             options = NULL;
             inputlist = opal_argv_split(input, ' ');
             printf("\nPossible commands:\n");
-            print_completions(cli, inputlist);
+            if(ORCM_ERR_NOT_FOUND == print_completions(cli, inputlist)){
+                printf("%s: command not found...\n", input);
+            }
             printf("\n%s> %s", prompt, input);
             break;
 
@@ -360,7 +362,7 @@ int orcm_cli_get_cmd(char *prompt,
             opal_argv_free(completions);
             completions = NULL;
         }
-        if ((NULL != inputlist) && 
+        if ((NULL != inputlist) &&
             (opal_argv_count(inputlist))) {
             opal_argv_free(inputlist);
             inputlist = NULL;
@@ -377,7 +379,7 @@ int orcm_cli_get_cmd(char *prompt,
     if (NULL != completions) {
         opal_argv_free(completions);
     }
-    if ((NULL != inputlist) && 
+    if ((NULL != inputlist) &&
         (opal_argv_count(inputlist))) {
         opal_argv_free(inputlist);
     }
@@ -390,7 +392,7 @@ static int get_completions(orcm_cli_t *cli, char **input,
     orcm_cli_cmd_t *sub_command;
     int i;
     bool found = false;
-    
+
     i = opal_argv_count(input);
     /* no input, must be at top level
      * add all top level commands to compeltion list */
@@ -400,7 +402,7 @@ static int get_completions(orcm_cli_t *cli, char **input,
         }
         return ORCM_SUCCESS;
     }
-    
+
     /* look for top level command to descend into subtree with */
     OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
         if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
@@ -430,7 +432,7 @@ static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
     orcm_cli_cmd_t *sub_command;
     int i;
     bool found = false;
-    
+
     i = opal_argv_count(input);
     /* nothing on the input line passed to us
      * append all commands at this level */
@@ -447,7 +449,7 @@ static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
         }
         return ORCM_SUCCESS;
     }
-    
+
     /* look for commands to match input with */
     OPAL_LIST_FOREACH(sub_command, &cmd->subcmds, orcm_cli_cmd_t) {
         if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
@@ -475,7 +477,7 @@ static int print_completions(orcm_cli_t *cli, char **input)
     orcm_cli_cmd_t *sub_command;
     int i;
     bool found = false;
-    
+
     i = opal_argv_count(input);
     /* if no input, print help for all commands at top level */
     if (0 == opal_argv_count(input)) {
@@ -484,7 +486,7 @@ static int print_completions(orcm_cli_t *cli, char **input)
         }
         return ORCM_SUCCESS;
     }
-    
+
     /* search for matching commands */
     OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
         if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
@@ -512,7 +514,7 @@ static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input)
     orcm_cli_cmd_t *sub_command;
     int i;
     bool found = false;
-    
+
     i = opal_argv_count(input);
     /* if no input, print help for all commands at this level */
     if (0 == i) {
@@ -521,7 +523,7 @@ static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input)
         }
         return ORCM_SUCCESS;
     }
-    
+
     OPAL_LIST_FOREACH(sub_command, &cmd->subcmds, orcm_cli_cmd_t) {
         if (0 == strncmp(sub_command->cmd, input[0], strlen(input[0]))) {
             /* if we match our input so far with a command... */
@@ -557,9 +559,9 @@ void orcm_cli_print_cmd(orcm_cli_cmd_t *cmd, char *prefix)
 void orcm_cli_print_tree(orcm_cli_t *cli)
 {
     orcm_cli_cmd_t *sub_command;
-    
+
     /* recursive set of functions to print the whole command tree */
-    
+
     OPAL_LIST_FOREACH(sub_command, &cli->cmds, orcm_cli_cmd_t) {
         printf("%s\n",
                (NULL == sub_command->cmd) ? "NULL" : sub_command->cmd);
@@ -571,7 +573,7 @@ static void print_subtree(orcm_cli_cmd_t *command, int level)
 {
     orcm_cli_cmd_t *sub_command;
     int i;
-    
+
     OPAL_LIST_FOREACH(sub_command, &command->subcmds, orcm_cli_cmd_t) {
         for (i = 0; i < level; i++) {
             printf("  ");
@@ -583,7 +585,7 @@ static void print_subtree(orcm_cli_cmd_t *command, int level)
     }
 }
 
-int orcm_cli_print_cmd_help(orcm_cli_t *cli, char **input) 
+int orcm_cli_print_cmd_help(orcm_cli_t *cli, char **input)
 {
     return print_completions(cli, input);
 }

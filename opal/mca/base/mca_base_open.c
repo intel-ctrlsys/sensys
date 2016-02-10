@@ -141,7 +141,12 @@ int mca_base_open(void)
     asprintf(&lds.lds_prefix, "[%s:%05d] ", hostname, getpid());
     opal_output_reopen(0, &lds);
     opal_output_verbose (MCA_BASE_VERBOSE_COMPONENT, 0, "mca: base: opening components");
-    free(lds.lds_prefix);
+    if (NULL != lds.lds_prefix) {
+        free(lds.lds_prefix);
+    }
+    if (NULL != lds.lds_file_suffix) {
+        free(lds.lds_file_suffix);
+    }
 
     /* Open up the component repository */
 
@@ -219,7 +224,7 @@ static void parse_verbose(char *e, opal_output_stream_t *lds)
             have_output = true;
         } else if (strncasecmp(ptr, "file:", 5) == 0) {
             lds->lds_want_file = true;
-            lds->lds_file_suffix = ptr + 5;
+            lds->lds_file_suffix = strdup(ptr + 5);
             have_output = true;
         } else if (strcasecmp(ptr, "fileappend") == 0) {
             lds->lds_want_file = true;

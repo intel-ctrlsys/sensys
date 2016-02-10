@@ -48,6 +48,19 @@
 
 #define ORCM_MAX_LINE_LENGTH  512
 
+static int get_port_number(char* port_string){
+    int port = atoi(port_string);
+    if (0 > port || USHRT_MAX < port){
+        int overflow = 0xFFFF&port;
+        int new_port = overflow<1024 ? overflow+1024 : overflow;
+
+        opal_output(0, "ERROR: The port number %d is not in an acceptable "
+                    "range [0 - 65535]. The application will use port %d "
+                    "instead.", port, new_port);
+        return new_port;
+    }
+    return port;
+}
 
 void orcm_util_construct_uri(opal_buffer_t *buf, orcm_node_t *node)
 {
@@ -73,8 +86,9 @@ void orcm_util_construct_uri(opal_buffer_t *buf, orcm_node_t *node)
         }
         addr = inet_ntoa(*(struct in_addr*)h->h_addr_list[0]);
     }
+    int port = get_port_number(node->config.port);
     orte_util_convert_process_name_to_string(&proc_name, &node->daemon);
-    asprintf(&uri, "%s;tcp://%s:%s", proc_name, addr, node->config.port);
+    asprintf(&uri, "%s;tcp://%s:%d", proc_name, addr, port);
     opal_output_verbose(2, orcm_debug_output,
                         "%s orcm:util: node %s addr %s uri %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),

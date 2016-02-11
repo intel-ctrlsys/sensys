@@ -123,7 +123,7 @@ static void finalize(orcm_analytics_base_module_t* imod)
     if (NULL != mod) {
         spatial_data_store = (spatial_statistics_t*)(mod->api.orcm_mca_analytics_data_store);
         SAFE_RELEASE(spatial_data_store);
-        SAFEFREE(mod);
+        free(mod);
     }
 }
 
@@ -156,8 +156,7 @@ static void reset_statistics(spatial_statistics_t* spatial_statistics, struct ti
 
 static int fill_spatial_statistics(spatial_statistics_t* spatial_statistics)
 {
-    if (ORCM_ANALYTICS_COMPUTE_AVE > spatial_statistics->compute_type ||
-        ORCM_ANALYTICS_COMPUTE_SD < spatial_statistics->compute_type) {
+    if (ORCM_ANALYTICS_COMPUTE_AVE > spatial_statistics->compute_type) {
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -478,7 +477,7 @@ static orcm_analytics_value_t* collect_sample(spatial_statistics_t* spatial_stat
     struct timeval current_time;
 
     if (NULL == analytics_value->key || NULL == analytics_value->non_compute_data ||
-        NULL == analytics_value->compute_data || 0 == opal_list_get_size(analytics_value->key) ||
+        0 == opal_list_get_size(analytics_value->key) ||
         0 == opal_list_get_size(analytics_value->compute_data)) {
         *rc = ORCM_ERR_BAD_PARAM;
         return NULL;

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2014-2016      Intel, Inc. All rights reserved.
+# Copyright (c) 2016      Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -20,27 +20,27 @@ include $(top_srcdir)/Makefile.ompi-rules
 # other non-zero: fail
 #
 
-TESTS = window_tests
+TESTS = spatial_tests
 
 #
 # Executables to be built for "make check"
 #
 
-check_PROGRAMS = window_tests
+check_PROGRAMS = spatial_tests
 
-window_tests_SOURCES = \
-    analytics_window_test.cpp \
-    analytics_window_test.h
+spatial_tests_SOURCES = \
+    analytics_spatial_test.cpp \
+    analytics_spatial_test.h
 
-WINDOW_BUILD_DIR=$(top_builddir)/orcm/mca/analytics/window
+SPATIAL_BUILD_DIR=$(top_builddir)/orcm/mca/analytics/spatial
 
-if MCA_BUILD_orcm_analytics_window_DSO
+if MCA_BUILD_orcm_analytics_spatial_DSO
 
-WINDOW_LIB=$(WINDOW_BUILD_DIR)/mca_analytics_window.la
+SPATIAL_LIB=$(SPATIAL_BUILD_DIR)/mca_analytics_spatial.la
 
 else
 
-WINDOW_LIB=$(WINDOW_BUILD_DIR)/libmca_analytics_window.la
+SPATIAL_LIB=$(SPATIAL_BUILD_DIR)/libmca_analytics_spatial.la
 
 endif
 
@@ -51,7 +51,7 @@ ANALYTICS_UTIL_LIB_DIR=$(top_builddir)/orcm/test/mca/analytics/util
 
 LDADD = \
     @GTEST_LIBRARY_DIR@/libgtest_main.a \
-    $(WINDOW_LIB) \
+    $(SPATIAL_LIB) \
     $(ANALYTICS_UTIL_LIB_DIR)/analytics_util.o
 
 AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto -lipmiutil
@@ -60,6 +60,6 @@ AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto -lipmiutil
 # Preprocessor flags
 #
 
-WINDOW_DIR=$(top_srcdir)/orcm/mca/analytics/window
+SPATIAL_DIR=$(top_srcdir)/orcm/mca/analytics/spatial
 ANALYTICS_UTIL_DIR=$(top_srcdir)/orcm/test/mca/analytics/util
-AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_srcdir) -I$(WINDOW_DIR) -I$(ANALYTICS_UTIL_DIR)
+AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_srcdir) -I$(SPATIAL_DIR) -I$(ANALYTICS_UTIL_DIR)

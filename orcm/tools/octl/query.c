@@ -214,9 +214,9 @@ char *assemble_datetime(char *date_str, char *time_str)
                         fprintf(stdout, "\nWARNING: time input was ignored due the presence of the * character\n");
                     }
                 }
-           } else {
+            } else {
                fprintf(stderr, "\nERROR: could not allocate memory for datetime string\n");
-           }
+            }
         } else {
             SAFE_FREE(date_time_str);
         }
@@ -464,15 +464,16 @@ opal_list_t *create_query_event_filter(int argc, char **argv)
         opal_list_append(filters_list, &filter_item->value.super);
     }  else if (7 == argc) {
         /* Doing nothing here, we want to retrieve all the DB data */
-        filter_str = assemble_datetime(argv[2], argv[3]);
-        filter_item = create_string_filter("time_stamp", filter_str, GT);
-        SAFEFREE(filter_str);
-        opal_list_append(filters_list, &filter_item->value.super);
-
-        filter_str = assemble_datetime(argv[4], argv[5]);
-        filter_item = create_string_filter("time_stamp", filter_str, LT);
-        SAFEFREE(filter_str);
-        opal_list_append(filters_list, &filter_item->value.super);
+        if (NULL != (filter_str = assemble_datetime(argv[2], argv[3]))){
+            filter_item = create_string_filter("time_stamp", filter_str, GT);
+            SAFEFREE(filter_str);
+            opal_list_append(filters_list, &filter_item->value.super);
+        }
+        if (NULL != (filter_str = assemble_datetime(argv[4], argv[5]))){
+            filter_item = create_string_filter("time_stamp", filter_str, LT);
+            SAFEFREE(filter_str);
+            opal_list_append(filters_list, &filter_item->value.super);
+        }
         /* We create a fixed filter to get all events different from INFO
          * which are less important for the user.
          */

@@ -25,6 +25,7 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
+#include "orcm/mca/sensor/base/sensor_measurement.h"
 
 #include "orcm/util/utils.h"
 
@@ -337,6 +338,7 @@ static void take_sample(int fd, short args, void *cbdata)
 {
     orcm_sensor_active_module_t *i_module;
     orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*)cbdata;
+    time_measure measure;
     int i;
 
     if (!mods_active) {
@@ -378,7 +380,11 @@ static void take_sample(int fd, short args, void *cbdata)
                                 "%s sensor:base: sampling component %s",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 i_module->component->base_version.mca_component_name);
+
+            start_time_measurement(&measure);
             i_module->module->sample(sampler);
+            stop_time_measurement(&measure);
+            print_time_measurement(&measure, i_module->component->base_version.mca_component_name);
         }
     }
 

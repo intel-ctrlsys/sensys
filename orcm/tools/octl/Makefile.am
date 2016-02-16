@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+# Copyright (c) 2014-2016      Intel, Inc.  All rights reserved.
 #
 # $COPYRIGHT$
 # 
@@ -46,10 +46,10 @@ octl_SOURCES = \
 
 # the following empty octl_LDFLAGS is used
 #  so that the octl can be compiled statically
-#  by simply changing the value of this from 
+#  by simply changing the value of this from
 #  nothing to -all-static in the Makefile.in
-#  nice for systems that don't have all the shared 
-#  libraries on the computes 
+#  nice for systems that don't have all the shared
+#  libraries on the computes
 octl_LDFLAGS =
 octl_LDADD = $(top_builddir)/orcm/liborcm.la \
              $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \

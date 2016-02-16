@@ -32,18 +32,6 @@ ORCM_DECLSPEC void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
                                     opal_buffer_t* buffer, orte_rml_tag_t tag,
                                     void* cbdata);
 
-/* define a type and some values for the commands
- * to be used with the server
- */
-/*
-typedef uint8_t orcm_cmd_server_t;
-#define ORCM_CMD_SERVER_CMD OPAL_UINT8
-
-#define ORCM_CMD_SERVER_PUBLISH     0x01
-#define ORCM_CMD_SERVER_UNPUBLISH   0x02
-#define ORCM_CMD_SERVER_LOOKUP      0x04
-*/
-
 
 END_C_DECLS
 

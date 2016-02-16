@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015  Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -11,9 +11,6 @@
 
 #include "orcm/tools/octl/common.h"
 
-/***
-Remove 'implicit' warnings...
-****/
 static int severity_string_to_enum(char *sevstr);
 static char* severity_enum_to_string(orte_notifier_severity_t sev);
 static int action_string_to_enum(char *action);

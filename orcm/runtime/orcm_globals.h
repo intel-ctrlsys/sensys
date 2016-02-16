@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2009-2010 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -182,7 +182,7 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 /* db fetch */
 #define ORCM_RML_TAG_ORCMD_FETCH   (ORTE_RML_TAG_MAX + 12)
 /* cmd server */
-#define ORCM_RML_TAG_CMD_SERVER            (ORTE_RML_TAG_MAX + 13)
+#define ORCM_RML_TAG_CMD_SERVER    (ORTE_RML_TAG_MAX + 13)
 
 
 /* define event base priorities */

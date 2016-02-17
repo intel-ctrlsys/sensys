@@ -210,33 +210,25 @@ static orcm_cli_init_t cli_init[] = {
 
     /****** Query commands ******/
     { { NULL}, "query", 0, 0, "Query data from DB" },
-    { { "query", NULL}, "history", 0, 0, "query history returns all the data logged by the "
-    "provided nodes during specified time" },
-    { { "query", "history", NULL}, "syntax", 0, 0, "query history [start-date start-time "
-    "end-date end-time] <nodelist>" },
-    { { "query", "history", NULL}, "example", 0, 0, "query history 2015-11-13 15:00:00 "
-    "2015-11-13 16:00:00 <node name>" },
-    { { "query", NULL}, "sensor", 0, 0, "query sensor returns the logged data corresponding to "
-    "the given sensor, time and node list" },
-    { { "query", "sensor", NULL}, "syntax", 0, 0, "query sensor <sensor-name> [start-date "
-    "start-time end-date end-time [upper-bound lower-bound]] <nodelist>"},
-    { { "query", "sensor", NULL}, "example", 0, 0, "query sensor coretemp* 2015-11-13 14:00:00 "
-    "2015-11-13 16:00:00 0.1 1 <node name>" },
-    { { "query", NULL}, "log", 0, 0, "query log returns the logged data coming from the syslog "
-    "to the given nodes and search word" },
-    { { "query", "log", NULL}, "syntax", 0, 0, "query log [search word] <nodelist>" },
-    { { "query", "log", NULL}, "example", 0, 0, "query log *access* <node name>,c01" },
-    { { "query", NULL}, "idle", 0, 0, "query idle returns the nodes in those that has been idle "
-    "for the given time or more" },
-    { { "query", "idle", NULL}, "syntax", 0, 0, "query idle [minimum idle time in seconds or "
-    "HH:MM:SS format] <nodelist>" },
-    { { "query", "idle", NULL}, "example", 0, 0, "query idle 60 <node name>" },
-    { { "query", NULL}, "node", 0, 0, "query ras information of the given nodes" },
-    { { "query", "node", NULL}, "status", 0, 0, "query node status returns the status logged in "
-    "the data base for the nodes in the database" },
-    { { "query", "node","status", NULL}, "syntax", 0, 0, "query node status <nodelist>" },
-    { { "query", "node","status", NULL}, "example", 0, 0, "query node status <node name>" },
-    { { "query", NULL}, "event", 0, 1, "query events from database" },
+    { { "query", NULL}, "history", 0, 0, "Returns all the data logged by the provided nodes during "
+    "specified time:" },
+    { { "query", NULL}, "", 0, 0, "query history [start-date start-time end-date end-time] <nodelist>" },
+    { { "query", NULL}, "sensor", 0, 0, "Returns the logged data corresponding to the given sensor, "
+    "time and node list:" },
+    { { "query", NULL}, "", 0, 0, "query sensor <sensor-name> [start-date start-time end-date end-time "
+    "[upper-bound lower-bound]] <nodelist>" },
+    { { "query", NULL}, "log", 0, 0, "Returns the logged data coming from the syslog to the given "
+    "nodes and search word:" },
+    { { "query", NULL}, "", 0, 0, "query log [search word] [start-date start-time end-date end-time] "
+    "<nodelist>" },
+    { { "query", NULL}, "idle", 0, 0, "Returns the nodes in those that has been idle for the given "
+    "time or more:" },
+    { { "query", NULL}, "", 0, 0, "query idle [minimum idle time in seconds or HH:MM:SS format] <nodelist>" },
+    { { "query", NULL}, "event", 0, 1, "query events from database:" },
+    { { "query", NULL}, "", 0, 0, "query event [start-date start-time end-date end-time] <nodelist>" },
+    { { "query", NULL}, "node", 0, 0, "Node status command" },
+    { { "query", "node", NULL}, "status", 0, 0, "Returns the status logged in the data base for the "
+    "nodes in the database: query node status <nodelist>" },
 
     /* quit command */
     { { NULL }, "quit", 0, 0, "Exit the shell" },

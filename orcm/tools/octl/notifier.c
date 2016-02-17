@@ -14,7 +14,6 @@
 static int severity_string_to_enum(char *sevstr);
 static char* severity_enum_to_string(orte_notifier_severity_t sev);
 static int action_string_to_enum(char *action);
-static char* action_enum_to_string(int act);
 
 int get_notifier_policy(int cmd, char **argv)
 {
@@ -403,21 +402,4 @@ static int action_string_to_enum(char *action)
         return -1;
     }
     return act;
-}
-
-static char* action_enum_to_string(int act)
-{
-    char* action = NULL;
-    switch ( act ) {
-    case 1:
-        action = strdup("SYSLOG");
-        break;
-    case 2:
-        action = strdup("SMTP");
-        break;
-    default:
-        action = strdup("UNKNOWN");
-        break;
-    }
-    return action;
 }

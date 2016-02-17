@@ -597,7 +597,7 @@ static int run_cmd(char *cmd)
 
                 switch(rc) {
                 case 8: //policy
-                    rc = set_notifier_policy(ORCM_SET_NOTIFIER_POLICY_COMMAND, cmdlist);
+                    rc = orcm_octl_set_notifier_policy(ORCM_SET_NOTIFIER_POLICY_COMMAND, cmdlist);
                     break;
                 default:
                     rc = ORCM_ERROR;
@@ -613,7 +613,7 @@ static int run_cmd(char *cmd)
 
                 switch(rc) {
                 case 8: //policy
-                    rc = get_notifier_policy(ORCM_GET_NOTIFIER_POLICY_COMMAND, cmdlist);
+                    rc = orcm_octl_get_notifier_policy(ORCM_GET_NOTIFIER_POLICY_COMMAND, cmdlist);
                     break;
                 default:
                     rc = ORCM_ERROR;

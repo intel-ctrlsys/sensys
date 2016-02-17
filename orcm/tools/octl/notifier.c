@@ -15,7 +15,7 @@ static int severity_string_to_enum(char *sevstr);
 static char* severity_enum_to_string(orte_notifier_severity_t sev);
 static int action_string_to_enum(char *action);
 
-int get_notifier_policy(int cmd, char **argv)
+int orcm_octl_get_notifier_policy(int cmd, char **argv)
 {
     orcm_cmd_server_flag_t command;
     opal_buffer_t *buf = NULL;
@@ -182,7 +182,7 @@ done:
 }
 
 
-int set_notifier_policy(int cmd, char **argv)
+int orcm_octl_set_notifier_policy(int cmd, char **argv)
 {
     orcm_cmd_server_flag_t command;
     opal_buffer_t *buf = NULL;

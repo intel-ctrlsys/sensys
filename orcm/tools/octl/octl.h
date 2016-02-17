@@ -118,8 +118,6 @@ static orcm_cli_init_t cli_init[] = {
     // sensor policy subcommand
     { { "sensor", "set", NULL }, "sample-rate", 0, 3, "Set Sensor Sample Rate: set sample-rate "
     "<sensor-name> <sample-rate> <node-name>" },
-    { { "sensor", "set", NULL }, "policy", 0, 8, "Set Sensor Event Policy, sensor set policy node "
-    "sensor_name threshold hi/lo max_count time_window severity action" },
     { { "sensor", NULL }, "get", 0, 0, "Get Sensor Commands" },
     // sensor policy subcommand
     { { "sensor", "get", NULL }, "sample-rate", 0, 2, "Get Sensor Sample Rate: get sample-rate "

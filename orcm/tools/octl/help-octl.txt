@@ -32,10 +32,6 @@ ERROR: %s
 ERROR: %s
 USAGE: sensor get policy <nodelist>
 
-[octl:set:policy-usage]
-ERROR: %s
-USAGE: sensor set policy <nodelist>
-
 [octl:get:sample-rate-usage]
 ERROR: %s
 USAGE: sensor get sample-rate <sensor-name> <nodelist>

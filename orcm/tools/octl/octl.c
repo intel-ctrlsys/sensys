@@ -537,9 +537,7 @@ static int run_cmd(char *cmd)
                 }
 
                 switch(rc) {
-                case 8: //policy
-                    rc = orcm_octl_sensor_policy_set(ORCM_SET_SENSOR_POLICY_COMMAND, cmdlist);
-                    break;
+
                 case 31: //sample-rate
                     rc = orcm_octl_sensor_sample_rate_set(ORCM_SET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
                     break;

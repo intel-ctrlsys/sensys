@@ -583,7 +583,7 @@ static int run_cmd(char *cmd)
                 break;
         }
         break;
-    case 47: // notifier
+    case 48: // notifier
         rc = octl_command_to_int(cmdlist[1]);
         if (-1 == rc) {
             rc = ORCM_ERROR;

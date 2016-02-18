@@ -68,6 +68,33 @@ static int orcm_analytics_base_register(mca_base_register_flag_t flags)
 
 }
 
+int orcm_analytics_base_control_storage(uint8_t storage_command)
+{
+    int ret = ORCM_SUCCESS;
+
+    switch (storage_command)
+    {
+    case ORCM_SENSOR_STORAGE_NONE:
+        orcm_analytics_base.store_raw_data = false;
+        orcm_analytics_base.store_event_data = false;
+        break;
+    case ORCM_SENSOR_STORAGE_ENVIRONMENT_ONLY:
+        orcm_analytics_base.store_raw_data = true;
+        break;
+    case ORCM_SENSOR_STORAGE_EXCEPTION_ONLY:
+        orcm_analytics_base.store_event_data = true;
+        break;
+    case ORCM_SENSOR_STORAGE_BOTH:
+        orcm_analytics_base.store_raw_data = true;
+        orcm_analytics_base.store_event_data = true;
+        break;
+    default:
+        ret = ORCM_ERROR;
+        break;
+    }
+    return ret;
+}
+
 static void orcm_analytics_stop_wokflow_step(orcm_workflow_step_t *wf_step)
 {
     orcm_analytics_base_module_t *module = NULL;

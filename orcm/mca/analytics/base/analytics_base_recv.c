@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -33,9 +33,7 @@ static bool recv_issued=false;
 static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
                                      opal_buffer_t* buffer, orte_rml_tag_t tag,
                                      void* cbdata);
-static int orcm_analytics_base_recv_unpack_int(opal_buffer_t* buffer, int count);
-static orcm_analytics_cmd_flag_t orcm_analytics_base_recv_unpack_command(opal_buffer_t* buffer,
-                                                                    int count);
+static int orcm_analytics_base_recv_unpack_int(opal_buffer_t* buffer);
 static void orcm_analytics_base_recv_send_answer(orte_process_name_t* sender,
                                                  opal_buffer_t *ans, int rc);
 
@@ -91,10 +89,11 @@ int orcm_analytics_base_recv_pack_int(opal_buffer_t* buffer, int *value, int cou
 }
 
 
-static int orcm_analytics_base_recv_unpack_int(opal_buffer_t* buffer, int count)
+static int orcm_analytics_base_recv_unpack_int(opal_buffer_t* buffer)
 {
     int ret;
     int value;
+    int count = ANALYTICS_COUNT_DEFAULT;
 
     /* unpack the command */
     ret = opal_dss.unpack(buffer, &value, &count, OPAL_INT);
@@ -106,17 +105,17 @@ static int orcm_analytics_base_recv_unpack_int(opal_buffer_t* buffer, int count)
 }
 
 
-static orcm_analytics_cmd_flag_t orcm_analytics_base_recv_unpack_command(opal_buffer_t* buffer,
-                                                                    int count)
+static uint8_t orcm_analytics_base_recv_unpack_uint8_t(opal_buffer_t* buffer)
 {
     int ret;
-    orcm_analytics_cmd_flag_t value;
+    uint8_t value;
+    int count = ANALYTICS_COUNT_DEFAULT;
 
     /* unpack the command */
-    ret = opal_dss.unpack(buffer, &value, &count, ORCM_ANALYTICS_CMD_T);
+    ret = opal_dss.unpack(buffer, &value, &count, OPAL_UINT8);
     if (OPAL_SUCCESS != ret ) {
         ORTE_ERROR_LOG(ret);
-        return ORCM_ANALYTICS_WORFLOW_ERROR;
+        return ORCM_ERROR;
     }
     return value;
 }
@@ -146,6 +145,7 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
     int id;
     opal_buffer_t *ans = NULL;
     orcm_analytics_cmd_flag_t command;
+    uint8_t storage_command;
 
 
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
@@ -154,8 +154,11 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
                          ORTE_NAME_PRINT(sender)));
 
     ans = OBJ_NEW(opal_buffer_t);
+    if (NULL == ans) {
+        return;
+    }
 
-    command = orcm_analytics_base_recv_unpack_command(buffer, ANALYTICS_COUNT_DEFAULT);
+    command = orcm_analytics_base_recv_unpack_uint8_t(buffer);
 
     switch (command) {
         case ORCM_ANALYTICS_WORKFLOW_CREATE:
@@ -166,13 +169,17 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
             break;
         case ORCM_ANALYTICS_WORKFLOW_DELETE:
             /* unpack the id */
-            id = orcm_analytics_base_recv_unpack_int(buffer, ANALYTICS_COUNT_DEFAULT);
+            id = orcm_analytics_base_recv_unpack_int(buffer);
             if (ORCM_ERROR != id) {
                 ret = orcm_analytics_base_workflow_delete(id);
             }
             break;
         case ORCM_ANALYTICS_WORKFLOW_LIST:
             ret = orcm_analytics_base_workflow_list(ans);
+            break;
+        case ORCM_ANALYTICS_SENSOR_STORAGE_POLICY:
+            storage_command = orcm_analytics_base_recv_unpack_uint8_t(buffer);
+            ret = orcm_analytics_base_control_storage(storage_command);
             break;
         default:
             OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,

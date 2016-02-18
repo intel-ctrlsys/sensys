@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015  Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -12,6 +12,7 @@
 #include "orcm/util/logical_group.h"
 #include "orcm/mca/db/base/base.h"
 #include "orcm/mca/db/db.h"
+#include "orcm/mca/analytics/analytics_types.h"
 
 #define TAG  "octl:command-line:failure"
 #define PACKERR  "internal buffer pack error"
@@ -892,4 +893,168 @@ change_sampling_cleanup:
     SAFE_OBJ_RELEASE(xfer);
     SAFE_OBJ_RELEASE(buf);
     return rv;
+}
+
+
+static void orcm_octl_sensor_store_process_error(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer, char **list)
+{
+
+    SAFE_OBJ_RELEASE(buf);
+    SAFE_OBJ_RELEASE(xfer);
+    SAFEFREE (list);
+
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
+}
+
+static void orcm_octl_sensor_analytics_output_setup(orte_rml_recv_cb_t *xfer)
+{
+    /* setup to receive the result */
+    xfer->active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
+                            ORCM_RML_TAG_ANALYTICS,
+                            ORTE_RML_NON_PERSISTENT,
+                            orte_rml_recv_callback, xfer);
+
+}
+
+static int orcm_octl_sensor_parse_nodelist(char **value, char ***nodelist)
+{
+    int rc;
+
+    if (strcmp(value[3], "")) {
+        rc = orcm_logical_group_parse_array_string(value[3], nodelist);
+        if (ORCM_SUCCESS != rc) {
+            return ORCM_ERROR;
+        }
+
+    }
+    else {
+        fprintf(stderr, "\nincorrect argument nodelist!\n \"%s\" is NULL \n", value[3]);
+        return ORCM_ERR_BAD_PARAM;
+    }
+    return ORCM_SUCCESS;
+}
+
+static int orcm_octl_sensor_store_pack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer, int storage_command)
+{
+    int rc;
+    orcm_analytics_cmd_flag_t command;
+
+    command = ORCM_ANALYTICS_SENSOR_STORAGE_POLICY;
+    /* pack the  command flag */
+    if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
+
+        return rc;
+    }
+
+    if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &storage_command, 1, OPAL_UINT8))) {
+
+        return rc;
+    }
+    return ORCM_SUCCESS;
+}
+
+static int orcm_octl_sensor_store_send_buffer(orte_process_name_t *wf_agg,
+                                              opal_buffer_t *buf, orte_rml_recv_cb_t *xfer)
+{
+    int rc;
+
+    /* send it to the aggregator */
+    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(wf_agg, buf,
+                                                      ORCM_RML_TAG_ANALYTICS,
+                                                      orte_rml_send_callback, NULL))) {
+        return ORCM_ERROR;
+    }
+    return ORCM_SUCCESS;
+}
+
+static int orcm_octl_sensor_store_unpack_buffer(orte_rml_recv_cb_t *xfer)
+{
+    int n;
+    int rc;
+    int response;
+
+    n=1;
+    if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &response, &n, OPAL_INT))) {
+        return ORCM_ERROR;
+    }
+    fprintf(stdout, "\n sensor storage response is: %i\n", response);
+    return ORCM_SUCCESS;
+
+}
+
+int orcm_octl_sensor_store(int storage_command, char** cmdlist)
+{
+    orte_rml_recv_cb_t *xfer = NULL;
+    opal_buffer_t *buf;
+    orte_process_name_t wf_agg;
+    char **nodelist=NULL;
+    int node_index;
+    int rc;
+
+    if (4 != opal_argv_count(cmdlist)) {
+        fprintf(stderr, "\nincorrect arguments! \n usage: \"sensor store environment_only/exception_only/all/none nodelist \"\n");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (storage_command < 0) {
+        fprintf(stderr, "\nincorrect arguments! \n usage: \"sensor store environment_only/exception_only/all/none nodelist \"\n");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    rc = orcm_octl_sensor_parse_nodelist(cmdlist, &nodelist);
+    if (ORCM_SUCCESS != rc) {
+        SAFEFREE(nodelist);
+        return rc;
+    }
+
+    buf = OBJ_NEW(opal_buffer_t);
+    if (NULL == buf) {
+        SAFEFREE (nodelist);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    for (node_index = 0; node_index < opal_argv_count(nodelist); node_index++) {
+        xfer = OBJ_NEW(orte_rml_recv_cb_t);
+        if (NULL == xfer) {
+            SAFEFREE (nodelist);
+            OBJ_RELEASE(buf);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+        orcm_octl_sensor_analytics_output_setup(xfer);
+
+        if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[node_index],
+                                                                   &wf_agg))) {
+            orcm_octl_sensor_store_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        OBJ_RETAIN(buf);
+
+        rc = orcm_octl_sensor_store_pack_buffer(buf, xfer, storage_command);
+        if (ORCM_SUCCESS != rc) {
+            SAFE_OBJ_RELEASE(buf);
+            orcm_octl_sensor_store_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        rc = orcm_octl_sensor_store_send_buffer(&wf_agg, buf, xfer);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_sensor_store_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+
+        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+
+        rc = orcm_octl_sensor_store_unpack_buffer(xfer);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_sensor_store_process_error(buf, xfer, nodelist);
+            return rc;
+        }
+        SAFE_OBJ_RELEASE(xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
+    }
+    SAFE_OBJ_RELEASE(buf);
+    SAFEFREE (nodelist);
+    return ORCM_SUCCESS;
 }

@@ -136,6 +136,12 @@ static orcm_cli_init_t cli_init[] = {
     // sensor reset sampling subcommand
     { { "sensor", NULL }, "reset", 0, 2, "Reset sampling to service load defaults for the current "
     "datagroup or sensor for a node-list: reset <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
+    // sensor storage policy commands
+    { { "sensor", NULL }, "store", 0, 0, "Sensor store Commands" },
+    { { "sensor", "store", NULL }, "environment_only", 0, 1, "store environment_only nodelist" },
+    { { "sensor", "store", NULL }, "exception_only", 0, 1, "store exception_only nodelist" },
+    { { "sensor", "store", NULL }, "all", 0, 1, "store all nodelist" },
+    { { "sensor", "store", NULL }, "none", 0, 1, "store none nodelist" },
 
     /****** notifier commands ******/
     { { NULL }, "notifier", 0, 0, "notifier" },
@@ -295,7 +301,12 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "sampling",          //47
                                      "notifier",          //48
                                      "data",              //49
-                                     "sensor-data"        //50
+                                     "sensor-data",       //50
+                                     "store",             //51
+                                     "none",              //52
+                                     "environment_only",  //53
+                                     "exception_only",    //54
+                                     "all",               //55
                                      "\0" };
 
 END_C_DECLS

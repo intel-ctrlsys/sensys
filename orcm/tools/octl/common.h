@@ -90,6 +90,7 @@ int orcm_octl_sensor_change_sampling(int command, char** cmdlist);
 int orcm_octl_get_notifier_policy(int cmd, char **argv);
 int orcm_octl_set_notifier_policy(int cmd, char **argv);
 char *get_orcm_octl_query_event_date(int cmd, char **argv);
+int orcm_octl_sensor_store(int command, char** cmdlist);
 
 END_C_DECLS
 

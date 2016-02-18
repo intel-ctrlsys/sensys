@@ -575,6 +575,25 @@ static int run_cmd(char *cmd)
                 rc = orcm_octl_sensor_change_sampling(rc - 44, cmdlist);
                 break;
 
+            case 51: //store
+                rc = octl_command_to_int(cmdlist[2]);
+                if (-1 == rc) {
+                    break;
+                }
+                switch(rc) {
+                case 52: // none
+                case 53: // environment_only
+                case 54: // exception_only
+                case 55: // all
+                    rc = orcm_octl_sensor_store(rc - 52, cmdlist);
+                    break;
+
+                default:
+                    rc = ORCM_ERROR;
+                    break;
+                }
+                break;
+
             default:
                 rc = ORCM_ERROR;
                 // TODO:

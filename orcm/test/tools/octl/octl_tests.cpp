@@ -25,6 +25,8 @@ extern "C" {
     int orcm_octl_sensor_change_sampling(int command, char** cmdlist);
     int orcm_octl_set_notifier_policy(int command, char** cmdlist);
     int orcm_octl_get_notifier_policy(int command, char** cmdlist);
+    int orcm_octl_sensor_store(int command, char** cmdlist);
+
 };
 
 orte_rml_module_send_buffer_nb_fn_t ut_octl_tests::saved_send_buffer = NULL;
@@ -47,6 +49,9 @@ void ut_octl_tests::SetUpTestCase()
     saved_recv_cancel = orte_rml.recv_cancel;
     orte_rml.recv_cancel = RecvCancel;
 
+    saved_recv_cancel = orte_rml.recv_cancel;
+    orte_rml.recv_cancel = /*(orte_rml_module_recv_cancel_fn_t)*/RecvCancel;
+
     octl_mocking.orcm_cfgi_base_get_hostname_proc_callback = GetHostnameProc;
 }
 
@@ -59,6 +64,9 @@ void ut_octl_tests::TearDownTestCase()
 
     orte_rml.send_buffer_nb = saved_send_buffer;
     saved_send_buffer = NULL;
+
+    orte_rml.recv_cancel = saved_recv_cancel;
+    saved_recv_cancel = NULL;
 
     // Release OPAL level resources
     opal_dss_close();
@@ -80,7 +88,6 @@ void ut_octl_tests::RecvBuffer(orte_process_name_t* peer,
     opal_dss.pack(&xfer->data, &rv, 1, OPAL_INT);
     opal_dss.pack(&xfer->data, &count, 1, OPAL_INT);
     xfer->active = false;
-    OBJ_RELEASE(xfer);
 }
 
 int ut_octl_tests::SendBuffer(orte_process_name_t* peer,
@@ -98,9 +105,11 @@ int ut_octl_tests::SendBuffer(orte_process_name_t* peer,
     return rv;
 }
 
+
 void ut_octl_tests::RecvCancel(orte_process_name_t* peer,
                               orte_rml_tag_t tag)
 {
+
 }
 
 int ut_octl_tests::GetHostnameProc(char* hostname, orte_process_name_t* proc)
@@ -334,4 +343,111 @@ TEST_F(ut_octl_tests, notifier_get_policy_negative_test_3)
     next_send_result = ORTE_ERROR;
     int rv = orcm_octl_get_notifier_policy(1, (char**)cmdlist);
     EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, negative_test_sensor_storage_1)
+{
+    const char* cmdlist[] = {
+        "sensor",
+        "store",
+        "all",
+        "dummy",
+        "tn01",
+        NULL
+    };
+    int rv = orcm_octl_sensor_store(2, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, negative_test_sensor_storage_2)
+{
+    const char* cmdlist[] = {
+        "sensor",
+        "store",
+        "all",
+        "tn01",
+        NULL
+    };
+    int rv = orcm_octl_sensor_store(-1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, negative_test_sensor_storage_3)
+{
+    const char* cmdlist[] = {
+        "sensor",
+        "store",
+        "all",
+        "",
+        NULL
+    };
+    int rv = orcm_octl_sensor_store(0, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, negative_test_sensor_storage_4)
+{
+    const char* cmdlist[] = {
+        "sensor",
+        "store",
+        "",
+        "",
+        NULL
+    };
+    int rv = orcm_octl_sensor_store(0, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, negative_test_sensor_storage_5)
+{
+    const char* cmdlist[] = {
+        "sensor",
+        "store",
+        "all",
+        "tn01,tn02",
+        NULL
+    };
+    next_proc_result = ORTE_ERROR;
+    int rv = orcm_octl_sensor_store(2, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, negative_test_sensor_storage_6)
+{
+    const char* cmdlist[] = {
+        "sensor",
+        "store",
+        "all",
+        "tn01,tn02",
+        NULL
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_sensor_store(2, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, positive_test_sensor_storage_1)
+{
+    const char* cmdlist[] = {
+        "sensor",
+        "store",
+        "all",
+        "tn01",
+        NULL
+    };
+    int rv = orcm_octl_sensor_store(2, (char**)cmdlist);
+    EXPECT_EQ(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, positive_test_sensor_storage_2)
+{
+    const char* cmdlist[] = {
+        "sensor",
+        "store",
+        "all",
+        "tn01,tn02",
+        NULL
+    };
+    int rv = orcm_octl_sensor_store(2, (char**)cmdlist);
+    EXPECT_EQ(ORTE_SUCCESS, rv);
 }

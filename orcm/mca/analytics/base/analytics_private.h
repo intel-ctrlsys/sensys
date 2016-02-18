@@ -37,6 +37,13 @@ ORCM_DECLSPEC orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workf
 
 ORCM_DECLSPEC void orcm_analytics_base_send_data(orcm_analytics_value_t *data);
 
+/* orcm_analytics_base_control_storage
+ * Arguments: uint8_t storage_command - Command to change storage policy
+ * Description: function to control the storage of Raw sensor data and exception event MCA parameters
+ * Returns: If failed function returns ORCM_ERROR and upon success it returns ORCM_SUCCESS
+ * */
+int orcm_analytics_base_control_storage(uint8_t storage_command);
+
 /*function to verify whether workflow step has attribute to store in db or not*/
 bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step, bool is_event_data);
 

@@ -7,7 +7,7 @@
 # $HEADER$
 
 if HAVE_GTEST
-gtestSubdirs=window cott spatial
+gtestSubdirs=window cott spatial base
 endif
 
 SUBDIRS=util $(gtestSubdirs) aggregate

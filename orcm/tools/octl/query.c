@@ -12,6 +12,7 @@
 #include "orcm/util/logical_group.h"
 #include "orcm/mca/db/base/base.h"
 #include "orcm/mca/db/db.h"
+#include <regex.h>
 
 #define SAFE_FREE(x) if(NULL!=x) { free(x); x = NULL; }
 /* Default idle time in seconds */
@@ -24,7 +25,12 @@ opal_list_t *create_query_idle_filter(int argc, char **argv);
 opal_list_t *create_query_log_filter(int argc,char **argv);
 opal_list_t *create_query_history_filter(int argc, char **argv);
 opal_list_t *create_query_node_filter(int argc, char **argv);
-opal_list_t *create_query_event_filter(int argc, char **argv);
+opal_list_t *create_query_event_data_filter(int argc, char **argv);
+opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv);
+opal_list_t *create_query_event_date_filter(int argc, char **argv);
+int split_db_results(char *db_res, char ***db_results);
+int free_db_results(int num_elements, char ***db_res_array);
+char *add_to_str_date(char *date, int seconds);
 orcm_db_filter_t *create_string_filter(char *field, char *string,
                                        orcm_db_comparison_op_t op);
 
@@ -440,14 +446,14 @@ opal_list_t *create_query_sensor_filter(int argc, char **argv)
     return filters_list;
 }
 
-opal_list_t *create_query_event_filter(int argc, char **argv)
+opal_list_t *create_query_event_data_filter(int argc, char **argv)
 {
     opal_list_t *filters_list = NULL;
     orcm_db_filter_t *filter_item = NULL;
     char *filter_str = NULL;
 
     filters_list = OBJ_NEW(opal_list_t);
-    if (3 == argc) {
+    if (4 == argc) {
         time_t current_time;
         struct tm *localdate;
         char current_date[12];
@@ -462,14 +468,14 @@ opal_list_t *create_query_event_filter(int argc, char **argv)
         opal_list_append(filters_list, &filter_item->value.super);
         filter_item = create_string_filter("severity", "INFO", NE);
         opal_list_append(filters_list, &filter_item->value.super);
-    }  else if (7 == argc) {
+    } else if (8 == argc) {
         /* Doing nothing here, we want to retrieve all the DB data */
-        if (NULL != (filter_str = assemble_datetime(argv[2], argv[3]))){
+        if (NULL != (filter_str = assemble_datetime(argv[3], argv[4]))){
             filter_item = create_string_filter("time_stamp", filter_str, GT);
             SAFEFREE(filter_str);
             opal_list_append(filters_list, &filter_item->value.super);
         }
-        if (NULL != (filter_str = assemble_datetime(argv[4], argv[5]))){
+        if (NULL != (filter_str = assemble_datetime(argv[5], argv[6]))){
             filter_item = create_string_filter("time_stamp", filter_str, LT);
             SAFEFREE(filter_str);
             opal_list_append(filters_list, &filter_item->value.super);
@@ -483,6 +489,100 @@ opal_list_t *create_query_event_filter(int argc, char **argv)
         show_query_error_message("octl:query:event");
         return NULL;
     }
+    return filters_list;
+}
+
+/**
+ * @brief Function that creates the data filters (WHERE clause on
+ *        normal SQL queries) for the following report:
+ *        "Sensor data around N minutes before/after an event".
+ *        Each filter is equivalent to a single comparison on the
+ *        WHERE clause.
+ *
+ * @param argc Number of arguments that are present in the command.
+ *             The command words are also counted as arguments. e.g.
+ *             > query event sensor-data 1 after 1 coretemp* node_x
+ *             Has 8 arguments (from 0 to 7).
+ *
+ * @param argv Array of strings. Each array position contains an
+ *             argument of the command as a string.
+ */
+opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv)
+{
+    opal_list_t *filters_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+    char *filter_str = NULL;
+    char *end_date;
+
+    if (8 == argc) {
+        filters_list = OBJ_NEW(opal_list_t);
+
+        if ( strcmp("before", argv[4]) == 0 ){
+            filter_item = create_string_filter("time_stamp", argv[3], LE);
+            opal_list_append(filters_list, &filter_item->value.super);
+
+            end_date = add_to_str_date(argv[3], 0 - (atoi(argv[5]) * 60) );
+            filter_item = create_string_filter("time_stamp", end_date, GE);
+            opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(end_date);
+        } else if ( strcmp("after", argv[4]) == 0 ){
+            filter_item = create_string_filter("time_stamp", argv[3], GE);
+            opal_list_append(filters_list, &filter_item->value.super);
+
+            end_date = add_to_str_date(argv[3], (atoi(argv[5]) * 60) );
+            filter_item = create_string_filter("time_stamp", end_date, LE);
+            opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(end_date);
+        } else {
+            filters_list = NULL;
+        }
+
+        if( NULL != filters_list ){
+            filter_str = strdup(argv[6]);
+            replace_wildcard(&filter_str, false);
+            filter_item = create_string_filter("data_item", filter_str, CONTAINS);
+            opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(filter_str);
+        }
+    } else {
+        show_query_error_message("octl:query:event:sensor-data");
+    }
+
+    return filters_list;
+}
+
+/**
+ * @brief Function that creates the data filters (WHERE clause on
+ *        normal SQL queries) for the following report:
+ *        "Obtain date of an event".
+ *        This is not a formal report, instead it's used as a support
+ *        report to be able to query the "Sensor data around N minutes
+ *        before/after an event" report.
+ *        Each filter is equivalent to a single comparison on the
+ *        WHERE clause.
+ *
+ * @param argc Number of arguments that are present in the command.
+ *             The command words are also counted as arguments. e.g.
+ *             > query event sensor-data 1 after 1 coretemp* node_x
+ *             Has 8 arguments (from 0 to 7).
+ *
+ * @param argv Array of strings. Each array position contains an
+ *             argument of the command as a string.
+ */
+opal_list_t *create_query_event_date_filter(int argc, char **argv)
+{
+    opal_list_t *filters_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+    char *filter_str = NULL;
+
+    if( argc > 2){
+        filters_list = OBJ_NEW(opal_list_t);
+        filter_item = create_string_filter("event_id", argv[3], EQ);
+        opal_list_append(filters_list, &filter_item->value.super);
+    } else {
+        show_query_error_message("octl:query:event:date");
+    }
+
     return filters_list;
 }
 
@@ -508,8 +608,14 @@ opal_list_t *build_filters_list(int cmd, char **argv)
         case ORCM_GET_DB_QUERY_SENSOR_COMMAND:
             filters_list = create_query_sensor_filter(argc, argv);
             break;
-        case ORCM_GET_DB_QUERY_EVENT_COMMAND:
-            filters_list = create_query_event_filter(argc, argv);
+        case ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND:
+            filters_list = create_query_event_data_filter(argc, argv);
+            break;
+        case ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND:
+            filters_list = create_query_event_date_filter(argc, argv);
+            break;
+        case ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND:
+            filters_list = create_query_event_snsr_data_filter(argc, argv);
             break;
         default:
             break;
@@ -791,7 +897,7 @@ orcm_octl_query_node_cleanup:
     return rc;
 }
 
-int orcm_octl_query_event(int cmd, char **argv)
+int orcm_octl_query_event_data(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
     uint16_t rows_retrieved = 0;
@@ -803,7 +909,7 @@ int orcm_octl_query_event(int cmd, char **argv)
     orcm_db_filter_t *node_list = NULL;
     opal_value_t *line = NULL;
 
-    if (ORCM_GET_DB_QUERY_EVENT_COMMAND != cmd) {
+    if (ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND != cmd) {
         fprintf(stderr, "\nERROR: incorrect command argument: %d", cmd);
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_event_exit;
@@ -850,4 +956,258 @@ int orcm_octl_query_event(int cmd, char **argv)
 orcm_octl_query_event_exit:
     opal_argv_free(argv_node_list);
     return rc;
+}
+
+/**
+ * @brief Function that interprets the command making the
+ *        query and sending it to the orcm scheduler to be
+ *        performed.
+ *        Finally it prints the result on the screen.
+ *        The report is:
+ *        "Sensor data around N minutes before/after an event"
+ *
+ * @param cmd Command to be run. For this command it must be:
+ *            ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND
+ *
+ * @param argv Array of strings. Each array position contains an
+ *             argument of the command as a string.
+ */
+int orcm_octl_query_event_snsr_data(int cmd, char **argv)
+{
+    int rc = ORCM_SUCCESS;
+    uint16_t rows_retrieved = 0;
+    double start_time = 0.0;
+    double stop_time = 0.0;
+    char **argv_node_list = NULL;
+    opal_list_t *filter_list = NULL;
+    opal_list_t *returned_list = NULL;
+    orcm_db_filter_t *node_list = NULL;
+    opal_value_t *line = NULL;
+    char *date;
+
+    date = get_orcm_octl_query_event_date(ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND, argv);
+
+    if (NULL == date) {
+        fprintf(stderr, "\nERROR: Unable to obtain event date\n");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    } else {
+        SAFE_FREE(argv[3]);
+        argv[3] = date;
+    }
+
+    if (ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND != cmd) {
+        fprintf(stderr, "\nERROR: incorrect command argument: %d", cmd);
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+
+    filter_list = build_filters_list(cmd, argv);
+    if (NULL == filter_list) {
+        fprintf(stderr, "\nERROR: unable to generate a filter list from command provided\n");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+
+    rc = get_nodes_from_args(argv, &argv_node_list);
+    if (ORCM_SUCCESS != rc) {
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+
+    node_list = build_node_item(argv_node_list);
+    if (NULL != node_list) {
+        opal_list_append(filter_list, &node_list->value.super);
+    }
+
+    start_time = stopwatch();
+    rc = query_db(cmd, filter_list, &returned_list);
+    stop_time = stopwatch();
+    if (ORCM_SUCCESS != rc) {
+        fprintf(stdout, "\nNo results found!\n");
+    } else {
+        if (NULL != returned_list) {
+            rows_retrieved = (uint16_t)opal_list_get_size(returned_list);
+            rows_retrieved--;
+            printf("\n");
+            OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
+                printf("%s\n", line->data.string);
+            }
+            OBJ_RELEASE(returned_list);
+        }
+    }
+    fprintf(stdout,
+            "\n%u rows were found (%0.3f seconds)\n",
+            rows_retrieved,
+            stop_time - start_time);
+
+    SAFE_RELEASE(filter_list);
+orcm_octl_query_event_exit:
+    opal_argv_free(argv_node_list);
+    return rc;
+}
+
+/**
+ * @brief Function that interprets the command making the
+ *        query and sending it to the orcm scheduler to be
+ *        performed.
+ *        The report is:
+ *        "Obtain date of an event"
+ *        As this is not a formal report it doesn't outputs
+ *        to the screen, instead it returns the event date.
+ *
+ * @param cmd Command to be run. For this command it must be:
+ *            ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND
+ *
+ * @param argv Array of strings. Each array position contains an
+ *             argument of the command as a string.
+ *
+ * @return char* Date of the event. DON'T FORGET TO FREE!.
+ */
+char* get_orcm_octl_query_event_date(int cmd, char **argv){
+    int rc = ORCM_SUCCESS;
+    uint16_t rows_retrieved = 0;
+    opal_list_t *filter_list = NULL;
+    opal_list_t *returned_list = NULL;
+    opal_value_t *line = NULL;
+    char *date = NULL;
+    char **db_results = NULL;
+    int num_db_results = 0;
+
+    if (ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND != cmd) {
+        fprintf(stderr, "\nERROR: incorrect command argument: %d", cmd);
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+
+    filter_list = build_filters_list(cmd, argv);
+    if (NULL == filter_list) {
+        fprintf(stderr, "\nERROR: unable to generate a filter list from command provided\n");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+
+    rc = query_db(cmd, filter_list, &returned_list);
+    if (ORCM_SUCCESS != rc) {
+        fprintf(stdout, "\nNo results found!\n");
+    } else {
+        if (NULL != returned_list) {
+            rows_retrieved = (uint16_t)opal_list_get_size(returned_list);
+            if (1 < rows_retrieved){
+                line = opal_list_get_last(returned_list);
+                num_db_results = split_db_results(line->data.string, &db_results);
+                date = strndup(db_results[1], strlen(db_results[1]));
+                free_db_results(num_db_results, &db_results);
+            }
+            OBJ_RELEASE(returned_list);
+        }
+    }
+
+    SAFE_RELEASE(filter_list);
+orcm_octl_query_event_exit:
+
+    return date;
+}
+
+/**
+ * @brief Currently, the query results that are returned from
+ *        the DB through the ORCM Scheduler are in a comma
+ *        separated string.
+ *        This function allows to split them again into an array
+ *        of results, something that consumes some valuable
+ *        processing time but for now it's necessary.
+ *        Be careful with this function because values are not
+ *        being enclosed into quotation marks ("value,1" like in
+ *        CSV format) so, if you have a comma in your value
+ *        (value,1) you will end with an unexpected result for
+ *        sure.
+ *
+ * @param db_res Comma separated string that contains the query
+ *               results.
+ *
+ * @param db_results Pointer to an array of strings in which the
+ *                   array of results will be stored.
+ *
+ * @return int Size of the array of results.
+ */
+int split_db_results(char *db_res, char ***db_results){
+    regex_t regex_comp_db_res;
+    int regex_res;
+    regmatch_t db_res_matches[2];
+    char *str_aux = NULL;
+    int str_pos = 0;
+    int db_res_length = strlen(db_res);
+    int res_size=0;
+
+    *db_results = (char **)malloc(res_size * sizeof(char *));
+
+    regcomp(&regex_comp_db_res,"([^,]+)",REG_EXTENDED);
+    while(str_pos < db_res_length){
+        str_aux = strndup(&db_res[str_pos], db_res_length - str_pos);
+        regex_res = regexec(&regex_comp_db_res, str_aux, 2, db_res_matches,0);
+        if (!regex_res){
+            res_size++;
+            *db_results = (char **)realloc( *db_results, res_size * sizeof(char *) );
+            (*db_results)[res_size - 1] = strndup(&str_aux[db_res_matches[1].rm_so],
+                                          (int)(db_res_matches[1].rm_eo - db_res_matches[1].rm_so));
+            str_pos += db_res_matches[1].rm_eo;
+            SAFEFREE(str_aux);
+        }else{
+            str_pos++;
+        }
+    }
+
+    return res_size;
+}
+
+/**
+ * @brief Function that frees the memory used to split a
+ *        query-comma-separated-string of results.
+ *
+ * @param num_elements Size of the array to free.
+ *
+ * @param db_results Pointer to an array of strings that
+ *                   contains the query results to free.
+ */
+int free_db_results(int num_elements, char ***db_res_array)
+{
+    int rc = ORCM_SUCCESS;
+
+    for(int act_elem=0; act_elem < num_elements; act_elem++){
+        SAFEFREE( (*db_res_array)[act_elem] );
+    }
+
+    SAFEFREE(*db_res_array);
+
+    return rc;
+}
+
+/**
+ * @brief Currently, all the data retrieved from the DB
+ *        through the ORCM Scheduler for queries is in
+ *        a comma separated string format.
+ *        This function enables you to add time to a date
+ *        in string format and retrieve it again as an
+ *        string.
+ *
+ * @param date Date in string format "%Y-%m-%d %H:%M:%S"
+ *             to which the time will be added.
+ *
+ * @param seconds Time to add to the date in seconds.
+ *
+ * @return char* Date after the time is added in string
+ *               format. DON'T FORGET TO FREE!.
+ */
+char *add_to_str_date(char *date, int seconds){
+    struct tm tm_date;
+    time_t t_res_date;
+    struct tm *tm_res_date;
+    char *res_date = (char *)malloc(20);
+
+    strptime(date, "%Y-%m-%d %H:%M:%S", &tm_date);
+    t_res_date = mktime(&tm_date) + seconds;
+    tm_res_date = localtime(&t_res_date);
+    strftime(res_date, 20, "%Y-%m-%d %H:%M:%S", tm_res_date);
+
+    return res_date;
 }

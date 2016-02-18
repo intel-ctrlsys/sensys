@@ -103,6 +103,10 @@ USAGE: query event data [start-date start-time end-date end-time] <nodelist>
 ERROR: %s
 USAGE: query event sensor-data <event-id> before/after <minutes> <sensor> <nodelist>
 
+[octl:query:event:date]
+ERROR: %s
+USAGE: query event date <event-id>
+
 [octl:get:notifier-usage]
 ERROR: %s
 USAGE: notifier get policy <nodelist>

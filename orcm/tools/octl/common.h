@@ -83,11 +83,13 @@ int orcm_octl_query_sensor(int cmd, char **argv);
 int orcm_octl_query_log(int cmd, char **argv);
 int orcm_octl_query_idle(int cmd, char **argv);
 int orcm_octl_query_node(int cmd, char **argv);
-int orcm_octl_query_event(int cmd, char **argv);
+int orcm_octl_query_event_data(int cmd, char **argv);
+int orcm_octl_query_event_snsr_data(int cmd, char **argv);
 int orcm_octl_sensor_inventory_get(int command, char** argv);
 int orcm_octl_sensor_change_sampling(int command, char** cmdlist);
 int orcm_octl_get_notifier_policy(int cmd, char **argv);
 int orcm_octl_set_notifier_policy(int cmd, char **argv);
+char *get_orcm_octl_query_event_date(int cmd, char **argv);
 
 END_C_DECLS
 

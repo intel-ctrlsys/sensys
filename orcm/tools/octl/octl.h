@@ -294,6 +294,8 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "reset",             //46
                                      "sampling",          //47
                                      "notifier",          //48
+                                     "data",              //49
+                                     "sensor-data"        //50
                                      "\0" };
 
 END_C_DECLS

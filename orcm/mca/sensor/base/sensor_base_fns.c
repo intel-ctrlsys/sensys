@@ -932,7 +932,8 @@ static bool valid_data_group(const char* sensor_spec)
         *colon_pos = '\0';
     }
     if(3 == strlen(datagroup) && 0 == strncmp(datagroup, "all", 3)) {
-        return true;
+        rv = true;
+        goto cleanup;
     }
     bool rv = false;
     for(int index = 0; index < orcm_sensor_base.modules.size; ++index) {
@@ -946,6 +947,8 @@ static bool valid_data_group(const char* sensor_spec)
             break;
         }
     }
+cleanup:
+    SAFEFREE(datagroup);
     return rv;
 }
 

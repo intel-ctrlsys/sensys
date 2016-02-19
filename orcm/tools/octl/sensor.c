@@ -887,6 +887,7 @@ int orcm_octl_sensor_change_sampling(int command, char** cmdlist)
     }
 
 change_sampling_cleanup:
+    opal_argv_free(nodelist);
     SAFEFREE(build_str);
     SAFE_OBJ_RELEASE(xfer);
     SAFE_OBJ_RELEASE(buf);

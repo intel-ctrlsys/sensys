@@ -31,7 +31,7 @@ static int init(orcm_analytics_base_module_t *imod);
 static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
 
-mca_analytics_filter_module_t orcm_analytics_filter_module = {{init, finalize, analyze, NULL}};
+mca_analytics_filter_module_t orcm_analytics_filter_module = {{init, finalize, analyze, NULL, NULL}};
 
 /* given a target, find it in the source candidate */
 static int find_match(char *target, char ** candidate);
@@ -281,7 +281,7 @@ static int analyze(int sd, short args, void *cbdata)
         }
     }
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(filter_caddy->wf, filter_caddy->wf_step,
-                                     filter_key->unique_id, data_to_next);
+                                     filter_key->unique_id, data_to_next, NULL);
 cleanup:
     if (NULL != filter_caddy) {
         OBJ_RELEASE(filter_caddy);

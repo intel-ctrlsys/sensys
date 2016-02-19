@@ -32,6 +32,12 @@ BEGIN_C_DECLS
  */
 ORCM_DECLSPEC extern mca_base_framework_t orcm_analytics_base_framework;
 
+typedef struct {
+    opal_object_t super;
+    int severity;
+    char* category;
+    int time;
+}event_filter;
 
 END_C_DECLS
 #endif

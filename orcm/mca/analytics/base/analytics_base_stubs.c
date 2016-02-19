@@ -433,7 +433,7 @@ void orcm_analytics_base_send_data(orcm_analytics_value_t *data)
             break;
         }
         OBJ_RETAIN(data);
-        ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(&(wf->steps.opal_list_sentinel)), 0, data);
+        ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf,(void*)(&(wf->steps.opal_list_sentinel)), 0, data, NULL);
     }
 
 }

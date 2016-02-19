@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
+#include <time.h>
 #include "opal/util/output.h"
 
 #include "orte/util/name_fns.h"
@@ -35,7 +36,6 @@
 #endif
 
 #include "orcm/util/utils.h"
-
 
 static int init(orcm_analytics_base_module_t *imod);
 static void finalize(orcm_analytics_base_module_t *imod);
@@ -68,6 +68,7 @@ mca_analytics_threshold_module_t orcm_analytics_threshold_module = {
         finalize,
         analyze,
         NULL,
+        NULL
     }
 };
 
@@ -76,12 +77,30 @@ static int init(orcm_analytics_base_module_t *imod)
     if(NULL == imod) {
         return ORCM_ERROR;
     }
+    mca_analytics_threshold_module_t* mod = (mca_analytics_threshold_module_t *)imod;
+    mod->api.orcm_mca_analytics_event_store = OBJ_NEW(opal_hash_table_t);
+    if (NULL == mod->api.orcm_mca_analytics_event_store){
+        return ORCM_ERROR;
+    }
+    opal_hash_table_t* table = (opal_hash_table_t*)mod->api.orcm_mca_analytics_event_store;
+    if(ORCM_SUCCESS != opal_hash_table_init(table, HASH_TABLE_SIZE)) {
+        return ORCM_ERROR;
+    }
     return ORCM_SUCCESS;
 }
 
 static void finalize(orcm_analytics_base_module_t *imod)
 {
-OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+    if (NULL != imod) {
+        mca_analytics_threshold_module_t* mod = (mca_analytics_threshold_module_t *)imod;
+        opal_hash_table_t* table = (opal_hash_table_t*)mod->api.orcm_mca_analytics_event_store;
+        if (NULL != table) {
+            opal_hash_table_remove_all(table);
+            OBJ_RELEASE(table);
+        }
+        SAFEFREE(mod);
+    }
+    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                      "%s analytics:threshold:finalize",
                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 }
@@ -127,8 +146,8 @@ orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value, opal_li
     return threshold_value;
 }
 
-
-static int generate_notification_event(orcm_analytics_value_t* analytics_value,orte_notifier_severity_t sev, char *msg, char* action)
+static int generate_notification_event(orcm_analytics_value_t* analytics_value,orte_notifier_severity_t sev, char *msg,
+                                       char* action, opal_list_t* event_list)
 {
     int rc = ORCM_SUCCESS;
     char* event_action = NULL;
@@ -143,7 +162,7 @@ static int generate_notification_event(orcm_analytics_value_t* analytics_value,o
         return ORCM_ERROR;
     }
     threshold_event_data = orcm_analytics_base_event_create(analytics_value,
-                             ORCM_RAS_EVENT_EXCEPTION, sev);
+                                 ORCM_RAS_EVENT_EXCEPTION, sev);
     if(NULL == threshold_event_data){
         rc = ORCM_ERROR;
         goto done;
@@ -161,7 +180,7 @@ static int generate_notification_event(orcm_analytics_value_t* analytics_value,o
         if(ORCM_SUCCESS != rc){
            goto done;
         }
-        ORCM_RAS_EVENT(threshold_event_data);
+        rc = event_list_append(event_list, threshold_event_data);
     }
 done:
     SAFEFREE(event_action);
@@ -170,7 +189,7 @@ done:
 
 static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                              orcm_mca_analytics_threshold_policy_t *threshold_policy,
-                             opal_list_t* threshold_list)
+                             opal_list_t* threshold_list, opal_list_t* event_list)
 {
     char* msg1 = NULL;
     char* msg2 = NULL;
@@ -201,7 +220,7 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                     rc = ORCM_ERR_OUT_OF_RESOURCE;
                     goto cleanup;
                 }
-                rc = generate_notification_event(threshold_analytics_value, threshold_policy->hi_sev, msg1, threshold_policy->hi_action);
+                rc = generate_notification_event(threshold_analytics_value, threshold_policy->hi_sev, msg1, threshold_policy->hi_action, event_list);
                 if(ORCM_SUCCESS != rc) {
                     SAFEFREE(threshold_analytics_value);
                     goto cleanup;
@@ -218,7 +237,7 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
                     rc = ORCM_ERR_OUT_OF_RESOURCE;
                     goto cleanup;
                 }
-                rc = generate_notification_event(threshold_analytics_value, threshold_policy->low_sev, msg2, threshold_policy->low_action);
+                rc = generate_notification_event(threshold_analytics_value, threshold_policy->low_sev, msg2, threshold_policy->low_action, event_list);
                 if(ORCM_SUCCESS != rc) {
                     SAFEFREE(threshold_analytics_value);
                     goto cleanup;
@@ -350,6 +369,7 @@ static int analyze(int sd, short args, void *cbdata)
     orcm_mca_analytics_threshold_policy_t *threshold_policy = NULL;
     orcm_analytics_value_t *analytics_value_to_next = NULL;
     orcm_workflow_caddy_t *current_caddy = NULL;
+    opal_list_t* event_list = NULL;
 
     if (ORCM_SUCCESS != orcm_analytics_base_assert_caddy_data(cbdata)) {
         return ORCM_ERROR;
@@ -369,13 +389,13 @@ static int analyze(int sd, short args, void *cbdata)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         goto done;
     }
-
     threshold_list = OBJ_NEW(opal_list_t);
-    if(NULL == threshold_list || NULL == threshold_policy){
+    event_list = OBJ_NEW(opal_list_t);
+    if(NULL == threshold_list || NULL == event_list || NULL == threshold_policy){
         rc = ORCM_ERR_OUT_OF_RESOURCE;
         goto done;
     }
-    rc = monitor_threshold(current_caddy, threshold_policy, threshold_list);
+    rc = monitor_threshold(current_caddy, threshold_policy, threshold_list, event_list);
     if(ORCM_SUCCESS != rc){
         goto done;
     }
@@ -390,16 +410,19 @@ static int analyze(int sd, short args, void *cbdata)
                     goto done;
                 }
             }
+            if(0 == event_list->opal_list_length){
+                SAFE_RELEASE(event_list);
+            }
             ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(current_caddy->wf,current_caddy->wf_step,
-                                             current_caddy->hash_key, analytics_value_to_next);
+                                             current_caddy->hash_key, analytics_value_to_next, event_list);
         }
     }
 done:
     if(NULL != current_caddy) {
-        OBJ_RELEASE(current_caddy);
+        SAFE_RELEASE(current_caddy);
     }
     if(NULL != threshold_policy){
-        OBJ_RELEASE(threshold_policy);
+        SAFE_RELEASE(threshold_policy);
     }
     return rc;
 }

@@ -61,6 +61,7 @@ mca_analytics_aggregate_module_t orcm_analytics_aggregate_module = {
         finalize,
         analyze,
         NULL,
+        NULL
     },
 };
 
@@ -298,7 +299,7 @@ static int analyze(int sd, short args, void *cbdata)
         }
     }
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(current_caddy->wf, current_caddy->wf_step,
-                                     current_caddy->hash_key, analytics_value_to_next);
+                                     current_caddy->hash_key, analytics_value_to_next, NULL);
 cleanup:
     SAFEFREE(operation);
     if (NULL != current_caddy) {

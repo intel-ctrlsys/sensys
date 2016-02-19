@@ -59,6 +59,7 @@ mca_analytics_window_module_t orcm_analytics_window_module = {
         init,
         finalize,
         analyze,
+        NULL,
         NULL
     }
 };
@@ -443,7 +444,7 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
             }
         }
         ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(caddy->wf, caddy->wf_step, caddy->hash_key,
-                                         analytics_value_to_next);
+                                         analytics_value_to_next, NULL);
         SAFEFREE(data_key);
         return ORCM_SUCCESS;
     }

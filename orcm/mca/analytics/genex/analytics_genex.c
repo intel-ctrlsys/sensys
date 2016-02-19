@@ -47,6 +47,7 @@ mca_analytics_genex_module_t orcm_analytics_genex_module = {{
     init,
     finalize,
     analyze,
+    NULL,
     NULL
 }};
 
@@ -395,7 +396,7 @@ static int analyze(int sd, short args, void *cbdata)
     }
 
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(genex_analyze_caddy->wf,genex_analyze_caddy->wf_step,
-                                     genex_analyze_caddy->hash_key, analytics_value_to_next);
+                                     genex_analyze_caddy->hash_key, analytics_value_to_next, NULL);
 
     dest_genex_workflow_value(workflow_value, genex_analyze_caddy);
 

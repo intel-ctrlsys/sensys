@@ -64,7 +64,7 @@ static int init(orcm_analytics_base_module_t* imod);
 static void finalize(orcm_analytics_base_module_t* imod);
 static int analyze(int sd, short args, void* cbdata);
 
-mca_analytics_spatial_module_t orcm_analytics_spatial_module = { {init ,finalize, analyze, NULL} };
+mca_analytics_spatial_module_t orcm_analytics_spatial_module = { {init ,finalize, analyze, NULL, NULL} };
 
 /* function to reset the spatial statistics */
 static void reset_statistics(spatial_statistics_t* spatial_statistics, struct timeval* current_time);
@@ -532,11 +532,11 @@ static int analyze(int sd, short args, void* cbdata)
             gettimeofday(&current_time, NULL);
             reset_statistics(spatial_statistics, &current_time);
             ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(caddy->wf, caddy->wf_step,
-                                             caddy->hash_key, data_to_next);
+                                             caddy->hash_key, data_to_next, NULL);
         }
     } else if (NULL != (data_to_next = collect_sample(spatial_statistics, caddy, &rc)) &&
                ORCM_SUCCESS == rc) {
-        ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(caddy->wf, caddy->wf_step, caddy->hash_key, data_to_next);
+        ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(caddy->wf, caddy->wf_step, caddy->hash_key, data_to_next, NULL);
     }
 
     SAFE_RELEASE(caddy);

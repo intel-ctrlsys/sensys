@@ -105,20 +105,31 @@ int orcm_analytics_base_get_compute_type(char* compute_type);
 /* function to obtain the string representation of a compute type */
 char* orcm_analytics_base_set_compute_type(int compute_type_id);
 
+/* functions to suppress repeats and filter events */
+void orcm_analytics_base_filter_events (void* event_list, orcm_workflow_step_t *wf_step);
+
+/*function to append an event to the event list*/
+int event_list_append(opal_list_t* event_list, orcm_ras_event_t* ev);
+
 #define ANALYTICS_COUNT_DEFAULT 1
 #define MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP 2
+#define HASH_TABLE_SIZE 10000
 
 typedef struct {
     /* list of active workflows */
     opal_list_t workflows;
     bool store_raw_data;
     bool store_event_data;
+    unsigned int suppress_repeat;
 } orcm_analytics_base_t;
 ORCM_DECLSPEC extern orcm_analytics_base_t orcm_analytics_base;
 
 /* executes the next workflow step in a workflow */
-#define ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf, prev_wf_step, hash_key, data)         \
+#define ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(wf, prev_wf_step, hash_key, data, ev_data)\
     do {                                                                           \
+        if(NULL != ev_data){                                                       \
+            orcm_analytics_base_filter_events(ev_data, prev_wf_step);              \
+        }                                                                          \
         opal_list_item_t *list_item = opal_list_get_next(prev_wf_step);            \
         if (NULL == list_item){                                                    \
             opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \

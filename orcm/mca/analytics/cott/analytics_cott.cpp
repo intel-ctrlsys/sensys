@@ -66,6 +66,7 @@ extern "C" {
             cott_finalize,
             cott_analyze,
             NULL,
+            NULL
         },
     };
 
@@ -372,7 +373,7 @@ int cott_analyze(int sd, short args, void *cbdata)
         current_caddy->analytics_value->compute_data = threshold_list;
         OBJ_RETAIN(current_caddy->analytics_value);
         ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(current_caddy->wf, current_caddy->wf_step,
-                                         current_caddy->hash_key, current_caddy->analytics_value);
+                                         current_caddy->hash_key, current_caddy->analytics_value, NULL);
     } while(false);
     SAFE_OBJ_RELEASE(current_caddy);
     return rc;

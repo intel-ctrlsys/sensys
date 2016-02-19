@@ -41,6 +41,7 @@ struct orcm_analytics_base_module {
     orcm_analytics_base_module_finalize_fn_t    finalize;
     orcm_analytics_base_module_analyze_fn_t     analyze;
     void*                                       orcm_mca_analytics_data_store;
+    void*                                       orcm_mca_analytics_event_store;
 };
 
 

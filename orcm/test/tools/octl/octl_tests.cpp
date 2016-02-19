@@ -102,11 +102,12 @@ int ut_octl_tests::GetHostnameProc(char* hostname, orte_process_name_t* proc)
 // Testing the data collection class
 TEST_F(ut_octl_tests, positive_test)
 {
-    const char* cmdlist[4] = {
+    const char* cmdlist[5] = {
         "sensor",
         "dummy",
         "tn01,tn02",
-        "sensor_plugin:sensor_label"
+        "sensor_plugin:sensor_label",
+        NULL
     };
     int rv = orcm_octl_sensor_change_sampling(0, (char**)cmdlist);
     EXPECT_EQ(ORTE_SUCCESS, rv);
@@ -114,11 +115,12 @@ TEST_F(ut_octl_tests, positive_test)
 
 TEST_F(ut_octl_tests, negative_test_1)
 {
-    const char* cmdlist[4] = {
+    const char* cmdlist[5] = {
         "sensor",
         "dummy",
         "tn01,tn02",
-        "sensor_plugin:sensor_label"
+        "sensor_plugin:sensor_label",
+        NULL
     };
     next_send_result = ORTE_ERROR;
     int rv = orcm_octl_sensor_change_sampling(1, (char**)cmdlist);
@@ -127,11 +129,12 @@ TEST_F(ut_octl_tests, negative_test_1)
 
 TEST_F(ut_octl_tests, negative_test_2)
 {
-    const char* cmdlist[4] = {
+    const char* cmdlist[5] = {
         "sensor",
         "dummy",
         "tn01,tn02",
-        "sensor_plugin:sensor_label"
+        "sensor_plugin:sensor_label",
+        NULL
     };
     next_proc_result = ORTE_ERROR;
     int rv = orcm_octl_sensor_change_sampling(1, (char**)cmdlist);
@@ -140,11 +143,12 @@ TEST_F(ut_octl_tests, negative_test_2)
 
 TEST_F(ut_octl_tests, negative_test_3)
 {
-    const char* cmdlist[4] = {
+    const char* cmdlist[5] = {
         "sensor",
         "dummy",
         "",
-        "sensor_plugin:sensor_label"
+        "sensor_plugin:sensor_label",
+        NULL
     };
     int rv = orcm_octl_sensor_change_sampling(1, (char**)cmdlist);
     EXPECT_NE(ORTE_SUCCESS, rv);
@@ -152,17 +156,19 @@ TEST_F(ut_octl_tests, negative_test_3)
 
 TEST_F(ut_octl_tests, negative_test_4)
 {
-    const char* cmdlist[3] = {
+    const char* cmdlist[4] = {
         "sensor",
         "dummy",
-        "sensor_plugin:sensor_label"
+        "sensor_plugin:sensor_label",
+        NULL
     };
-    const char* cmdlist2[5] = {
+    const char* cmdlist2[6] = {
         "sensor",
         "dummy",
         "tn01,tn02",
         "sensor_plugin:sensor_label",
-        "extra"
+        "extra",
+        NULL
     };
     int rv = orcm_octl_sensor_change_sampling(1, (char**)cmdlist);
     EXPECT_NE(ORTE_SUCCESS, rv);
@@ -172,11 +178,12 @@ TEST_F(ut_octl_tests, negative_test_4)
 
 TEST_F(ut_octl_tests, negative_test_5)
 {
-    const char* cmdlist[4] = {
+    const char* cmdlist[5] = {
         "sensor",
         "dummy",
         "tn01,tn02",
-        "sensor_plugin:sensor_label"
+        "sensor_plugin:sensor_label",
+        NULL
     };
     int rv = orcm_octl_sensor_change_sampling(3, (char**)cmdlist);
     EXPECT_NE(ORTE_SUCCESS, rv);

@@ -931,11 +931,11 @@ static bool valid_data_group(const char* sensor_spec)
     if(NULL != colon_pos) {
         *colon_pos = '\0';
     }
+    bool rv = false;
     if(3 == strlen(datagroup) && 0 == strncmp(datagroup, "all", 3)) {
         rv = true;
         goto cleanup;
     }
-    bool rv = false;
     for(int index = 0; index < orcm_sensor_base.modules.size; ++index) {
         orcm_sensor_active_module_t* i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, index);
         if(NULL == i_module || NULL == i_module->component) {

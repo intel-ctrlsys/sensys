@@ -88,7 +88,7 @@ struct test_step_data
 {
     int fault_type;
     bool store_event;
-    orte_notifier_severity_t severity;
+    int severity;
     bool use_notifier;
     string notifier_action;
 };

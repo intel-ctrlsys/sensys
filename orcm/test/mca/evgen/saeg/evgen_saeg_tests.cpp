@@ -246,7 +246,7 @@ TEST(evgen_saeg, generate_success_non_sensor_db_event)
         orcm_evgen_saeg_module.init();
         ecd->cbfunc = orcm_evgen_tests_cleanup;
         ecd->type = ORCM_RAS_EVENT_EXCEPTION;
-        ecd->severity = ORCM_RAS_SEVERITY_FATAL;
+        ecd->severity = ORCM_RAS_SEVERITY_CRIT;
         orcm_evgen_saeg_module.generate(ecd);
         orcm_evgen_saeg_module.finalize();
         orcm_evgen_test_tear_down();

@@ -351,6 +351,69 @@ search word.
 the “node” table and this field is not being populated yet.
 .RE
 .PP
+.TP
+.SS *event:
+.RS
+1.-data:
+.RE
+.RS
+.RS
+- sintax: octl query event data [start-date start-time end-date end-time] <nodelist>
+.RE
+.RE
+.RS
+.RS
+- use: Returns events from database.
+.RE
+.RE
+.RS
+.RS
+- example: octl query event data 2016-02-16 08:22:00 2016-02-16 08:22:14 master4
+.RE
+.RE
+.RS
+.RS
+- output: EVENT_ID,DATE_TIME,SEVERITY,TY:PE,HOSTNAME,EVENT_MESSAGE
+          66846,2016-02-16 08:22:04,CRITICAL,EXCEPTION,master4,core 0 value 44.00 degrees C,greater than threshold 25.00 degrees C
+          66847,2016-02-16 08:22:04,CRITICAL,EXCEPTION,master4,core 1 value 42.00 degrees C,greater than threshold 25.00 degrees C
+          66865,2016-02-16 08:22:09,CRITICAL,EXCEPTION,master4,core 2 value 44.00 degrees C,greater than threshold 25.00 degrees C
+          66866,2016-02-16 08:22:09,CRITICAL,EXCEPTION,master4,core 3 value 41.00 degrees C,greater than threshold 25.00 degrees C
+          66881,2016-02-16 08:22:09,CRITICAL,EXCEPTION,master4,core 4 value 45.00 degrees C,greater than threshold 25.00 degrees C
+          66882,2016-02-16 08:22:09,CRITICAL,EXCEPTION,master4,core 5 value 46.00 degrees C,greater than threshold 25.00 degrees C
+          6 rows were found (0.396 seconds)
+.RE
+.RE
+.RS
+2.-sensor-data:
+.RE
+.RS
+.RS
+- sintax: octl query event sensor-data <event-id> before/after <minutes> <sensor> <nodelist>
+.RE
+.RE
+.RS
+.RS
+- use: Returns the sensor data around an event.
+.RE
+.RE
+.RS
+.RS
+- example: octl query event sensor-data 1 after 10 coretemp* master4
+.RE
+.RE
+.RS
+.RS
+- output: DATE_TIME,HOSTNAME,DATA_ITEM,VALUE,UNITS
+          2016-02-09 13:53:52,master4,coretemp_core 0,23,degrees C
+          2016-02-09 13:53:52,master4,coretemp_core 1,23,degrees C
+          2016-02-09 13:53:52,master4,coretemp_core 2,23,degrees C
+          3 rows were found (0.396 seconds)
+.RE
+.RE
+
+
+
+.PP
 .
 .\" **************************
 .\"    Description Section

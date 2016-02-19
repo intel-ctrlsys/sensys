@@ -95,9 +95,13 @@ USAGE: query idle [timeout in seconds or HH:MM:SS format] <nodelist>
 ERROR: %s
 USAGE: query node status <nodelist>
 
-[octl:query:event]
+[octl:query:event:data]
 ERROR: %s
-USAGE: query event start-date start-time end-date end-time <nodelist>
+USAGE: query event data [start-date start-time end-date end-time] <nodelist>
+
+[octl:query:event:sensor-data]
+ERROR: %s
+USAGE: query event sensor-data <event-id> before/after <minutes> <sensor> <nodelist>
 
 [octl:get:notifier-usage]
 ERROR: %s

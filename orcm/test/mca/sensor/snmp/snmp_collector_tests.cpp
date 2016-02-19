@@ -39,6 +39,7 @@ extern "C" {
     #include "opal/runtime/opal.h"
 
     extern void collect_snmp_sample(orcm_sensor_sampler_t *sampler);
+    extern orcm_sensor_snmp_component_t mca_sensor_snmp_component;
 }
 
 #define NOOP_JOBID -999
@@ -179,6 +180,8 @@ void ut_snmp_collector_tests::ResetTestEnvironment()
         SAFE_OBJ_RELEASE(current_analytics_values_[i]);
     }
     current_analytics_values_.clear();
+
+    mca_sensor_snmp_component.collect_metrics = true;
 }
 
 /* Mocking methods */

@@ -36,7 +36,7 @@ static bool recv_issued=false;
 static int unpack_command_subcommand(opal_buffer_t* buffer, orcm_cmd_server_flag_t *command,
                                      orcm_cmd_server_flag_t *sub_command);
 static int orcm_cmd_server_set_policy(opal_buffer_t* buffer);
-static int orcm_cmd_server_get_policy(opal_buffer_t* buffer, opal_buffer_t **pack_buffer);
+static int orcm_cmd_server_get_policy(opal_buffer_t* buffer, opal_buffer_t **pack_buffer, int *count);
 static int pack_severity_action(opal_buffer_t **result_buff, orte_notifier_severity_t *sev,
                                 char **action);
 static int unpack_severity_action(opal_buffer_t *buffer, orte_notifier_severity_t *sev,
@@ -74,6 +74,7 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
     int rc = ORCM_SUCCESS;
     int response = ORCM_SUCCESS;
     int cnt = 1;
+    int count = 0;
 
     rc = unpack_command_subcommand(buffer, &command, &sub_command);
     if (ORCM_SUCCESS != rc) {
@@ -103,11 +104,15 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
         case ORCM_GET_NOTIFIER_POLICY_COMMAND:
             pack_buff = OBJ_NEW(opal_buffer_t);
             NULL_CHECK(pack_buff);
-            response = orcm_cmd_server_get_policy(buffer, &result_buff);
+            response = orcm_cmd_server_get_policy(buffer, &result_buff, &count);
             if (ORCM_SUCCESS != response) {
                 goto ERROR;
             }
             rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT);
+            if (OPAL_SUCCESS != rc) {
+                goto ERROR;
+            }
+            rc = opal_dss.pack(pack_buff, &count, 1, OPAL_INT);
             if (OPAL_SUCCESS != rc) {
                 goto ERROR;
             }
@@ -195,11 +200,12 @@ static int orcm_cmd_server_set_policy(opal_buffer_t* buffer)
     return set_notifier_policy(sev, action);
 }
 
-static int orcm_cmd_server_get_policy(opal_buffer_t* buffer, opal_buffer_t **result_buff)
+static int orcm_cmd_server_get_policy(opal_buffer_t* buffer, opal_buffer_t **result_buff, int *count)
 {
     int rc = ORCM_SUCCESS;
     orte_notifier_severity_t sev;
     char *action = NULL;
+    int pack_count = 0;
 
     *result_buff = OBJ_NEW(opal_buffer_t);
     if(NULL == *result_buff) {
@@ -207,6 +213,7 @@ static int orcm_cmd_server_get_policy(opal_buffer_t* buffer, opal_buffer_t **res
     }
     for(sev = ORTE_NOTIFIER_EMERG; sev <= ORTE_NOTIFIER_DEBUG; sev++) {
         action = (char *) get_notifier_policy(sev);
+        pack_count++;
         rc = pack_severity_action(result_buff, &sev, &action);
         if (ORCM_SUCCESS != rc) {
             OBJ_RELEASE(*result_buff);
@@ -214,6 +221,7 @@ static int orcm_cmd_server_get_policy(opal_buffer_t* buffer, opal_buffer_t **res
             return rc;
         }
     }
+    *count = pack_count;
     return rc;
 }
 

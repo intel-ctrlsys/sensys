@@ -44,10 +44,13 @@ class ut_octl_tests: public testing::Test
                                bool persistent,
                                orte_rml_buffer_callback_fn_t cbfunc,
                                void* cbdata);
+        static void RecvCancel(orte_process_name_t* peer,
+                               orte_rml_tag_t tag);
         static int GetHostnameProc(char* hostname, orte_process_name_t* proc);
 
         static orte_rml_module_send_buffer_nb_fn_t saved_send_buffer;
         static orte_rml_module_recv_buffer_nb_fn_t saved_recv_buffer;
+        static orte_rml_module_recv_cancel_fn_t saved_recv_cancel;
         static int next_send_result;
         static int next_proc_result;
 }; // class

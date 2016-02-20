@@ -20,7 +20,7 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
     orcm_cmd_server_flag_t command;
     opal_buffer_t *buf = NULL;
     int rc = ORCM_SUCCESS;
-    int i = 0, cnt = 0;
+    int i = 0, cnt = 0, count = 0;
     int response = ORCM_SUCCESS;
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
@@ -110,16 +110,29 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
         }
 
         if ( ORCM_SUCCESS != response ) {
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &error,
-                                                  &cnt, OPAL_STRING))) {
-                printf("\nError: node %s\n", nodelist[i]);
-                error = UNPACKERR;
-                goto done;
-            }
-            printf("\nNode %s failed to get notifier policy!\n", nodelist[i]);
-            goto done;
+             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &error,
+                                                   &cnt, OPAL_STRING))) {
+                 printf("\nError: node %s\n", nodelist[i]);
+                 error = UNPACKERR;
+                 goto done;
+             }
+             printf("\nNode %s failed to get notifier policy!\n", nodelist[i]);
+             goto done;
         } else {
              cnt = 1;
+             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &count,
+                                                      &cnt, OPAL_INT))) {
+                 printf("\nError: node %s\n", nodelist[i]);
+                 error = UNPACKERR;
+                 goto done;
+             }
+
+             if (0 == count) {
+                 printf("\n\nNode          Severity      Action\n");
+                 printf("-----------------------------------\n");
+                 printf("%-10s    %6s    %10s \n", nodelist[i], "n/a", "n/a");
+                 goto done;
+             }
              opal_buffer_t *result_buf = NULL;
              if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data,  &result_buf,
                                                &cnt, OPAL_BUFFER))) {

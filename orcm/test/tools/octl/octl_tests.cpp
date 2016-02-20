@@ -23,10 +23,13 @@ using namespace std;
 
 extern "C" {
     int orcm_octl_sensor_change_sampling(int command, char** cmdlist);
+    int orcm_octl_set_notifier_policy(int command, char** cmdlist);
+    int orcm_octl_get_notifier_policy(int command, char** cmdlist);
 };
 
 orte_rml_module_send_buffer_nb_fn_t ut_octl_tests::saved_send_buffer = NULL;
 orte_rml_module_recv_buffer_nb_fn_t ut_octl_tests::saved_recv_buffer = NULL;
+orte_rml_module_recv_cancel_fn_t ut_octl_tests::saved_recv_cancel = NULL;
 int ut_octl_tests::next_send_result = ORTE_SUCCESS;
 int ut_octl_tests::next_proc_result = ORTE_SUCCESS;
 
@@ -41,6 +44,8 @@ void ut_octl_tests::SetUpTestCase()
 
     saved_recv_buffer = orte_rml.recv_buffer_nb;
     orte_rml.recv_buffer_nb = /*(orte_rml_module_recv_buffer_nb_fn_t)*/RecvBuffer;
+    saved_recv_cancel = orte_rml.recv_cancel;
+    orte_rml.recv_cancel = RecvCancel;
 
     octl_mocking.orcm_cfgi_base_get_hostname_proc_callback = GetHostnameProc;
 }
@@ -71,7 +76,9 @@ void ut_octl_tests::RecvBuffer(orte_process_name_t* peer,
     OBJ_DESTRUCT(&xfer->data);
     OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
     int rv = ORTE_SUCCESS;
+    int count = 0;
     opal_dss.pack(&xfer->data, &rv, 1, OPAL_INT);
+    opal_dss.pack(&xfer->data, &count, 1, OPAL_INT);
     xfer->active = false;
     OBJ_RELEASE(xfer);
 }
@@ -91,6 +98,11 @@ int ut_octl_tests::SendBuffer(orte_process_name_t* peer,
     return rv;
 }
 
+void ut_octl_tests::RecvCancel(orte_process_name_t* peer,
+                              orte_rml_tag_t tag)
+{
+}
+
 int ut_octl_tests::GetHostnameProc(char* hostname, orte_process_name_t* proc)
 {
     int rv = next_proc_result;
@@ -100,7 +112,7 @@ int ut_octl_tests::GetHostnameProc(char* hostname, orte_process_name_t* proc)
 
 
 // Testing the data collection class
-TEST_F(ut_octl_tests, positive_test)
+TEST_F(ut_octl_tests, sensor_sampling_positive_test)
 {
     const char* cmdlist[5] = {
         "sensor",
@@ -113,7 +125,7 @@ TEST_F(ut_octl_tests, positive_test)
     EXPECT_EQ(ORTE_SUCCESS, rv);
 }
 
-TEST_F(ut_octl_tests, negative_test_1)
+TEST_F(ut_octl_tests, sensor_sampling_negative_test_1)
 {
     const char* cmdlist[5] = {
         "sensor",
@@ -127,7 +139,7 @@ TEST_F(ut_octl_tests, negative_test_1)
     EXPECT_NE(ORTE_SUCCESS, rv);
 }
 
-TEST_F(ut_octl_tests, negative_test_2)
+TEST_F(ut_octl_tests, sensor_sampling_negative_test_2)
 {
     const char* cmdlist[5] = {
         "sensor",
@@ -141,7 +153,7 @@ TEST_F(ut_octl_tests, negative_test_2)
     EXPECT_NE(ORTE_SUCCESS, rv);
 }
 
-TEST_F(ut_octl_tests, negative_test_3)
+TEST_F(ut_octl_tests, sensor_sampling_negative_test_3)
 {
     const char* cmdlist[5] = {
         "sensor",
@@ -154,7 +166,7 @@ TEST_F(ut_octl_tests, negative_test_3)
     EXPECT_NE(ORTE_SUCCESS, rv);
 }
 
-TEST_F(ut_octl_tests, negative_test_4)
+TEST_F(ut_octl_tests, sensor_sampling_negative_test_4)
 {
     const char* cmdlist[4] = {
         "sensor",
@@ -176,7 +188,7 @@ TEST_F(ut_octl_tests, negative_test_4)
     EXPECT_NE(ORTE_SUCCESS, rv);
 }
 
-TEST_F(ut_octl_tests, negative_test_5)
+TEST_F(ut_octl_tests, sensor_sampling_negative_test_5)
 {
     const char* cmdlist[5] = {
         "sensor",
@@ -188,5 +200,138 @@ TEST_F(ut_octl_tests, negative_test_5)
     int rv = orcm_octl_sensor_change_sampling(3, (char**)cmdlist);
     EXPECT_NE(ORTE_SUCCESS, rv);
     rv = orcm_octl_sensor_change_sampling(-1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+// Testing the notifier set policy
+TEST_F(ut_octl_tests, notifier_set_policy_test)
+{
+    const char* cmdlist[7] = {
+        "notifier",
+        "set",
+        "policy",
+        "emerg",
+        "smtp",
+        "tn01,tn02",
+        NULL
+    };
+    next_proc_result = ORTE_SUCCESS;
+    next_send_result = ORTE_SUCCESS;
+    int rv = orcm_octl_set_notifier_policy(0, (char**)cmdlist);
+    EXPECT_EQ(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_policy_negative_test_1)
+{
+    const char* cmdlist[6] = {
+        "notifier",
+        "set",
+        "policy",
+        "emerg",
+        "smtp",
+        ""
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_set_notifier_policy(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_policy_negative_test_2)
+{
+    const char* cmdlist[6] = {
+        "notifier",
+        "set",
+        "policy",
+        "emerg",
+        "sntp",
+        "tn01,tn02"
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_set_notifier_policy(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_policy_negative_test_3)
+{
+    const char* cmdlist[6] = {
+        "notifier",
+        "set",
+        "policy",
+        "emeg",
+        "smtp",
+        "tn01,tn02"
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_set_notifier_policy(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_policy_negative_test_4)
+{
+    const char* cmdlist[6] = {
+        "notifier",
+        "set",
+        "icy",
+        "emerg",
+        "smtp",
+        "tn01,tn02"
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_set_notifier_policy(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+// Testing the notifier get policy
+TEST_F(ut_octl_tests, notifier_get_policy_test)
+{
+    const char* cmdlist[5] = {
+        "notifier",
+        "get",
+        "policy",
+        "tn01,tn02",
+        NULL
+    };
+    next_proc_result = ORTE_SUCCESS;
+    next_send_result = ORTE_SUCCESS;
+    int rv = orcm_octl_get_notifier_policy(0, (char**)cmdlist);
+    EXPECT_EQ(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_get_policy_negative_test_1)
+{
+    const char* cmdlist[4] = {
+        "notifier",
+        "get",
+        "policy",
+        ""
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_get_notifier_policy(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_get_policy_negative_test_2)
+{
+    const char* cmdlist[4] = {
+        "notifier",
+        "get",
+        "",
+        "tn01,tn02"
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_get_notifier_policy(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_get_policy_negative_test_3)
+{
+    const char* cmdlist[4] = {
+        "notifer",
+        "get",
+        "policy",
+        "tn01,tn02"
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_get_notifier_policy(1, (char**)cmdlist);
     EXPECT_NE(ORTE_SUCCESS, rv);
 }

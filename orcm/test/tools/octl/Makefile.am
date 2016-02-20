@@ -44,7 +44,7 @@ MOCKING = \
 # Libraries we depend on
 #
 
-LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a $(top_builddir)/orcm/tools/octl/sensor.o
+LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a $(top_builddir)/orcm/tools/octl/sensor.o $(top_builddir)/orcm/tools/octl/notifier.o
 
 AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 

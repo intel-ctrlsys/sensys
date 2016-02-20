@@ -61,7 +61,7 @@ int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
     opal_buffer_t *buffer = OBJ_NEW(opal_buffer_t);
     orte_rml_recv_cb_t *xfer = NULL;
     uint16_t filterlist_count = 0;
-    uint16_t results_count = 0;
+    uint32_t results_count = 0;
     int returned_status = 0;
 
     if (NULL == filterlist || NULL == results){
@@ -110,11 +110,11 @@ int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
         goto query_db_cleanup;
     }
     if(0 == returned_status) {
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &results_count, &n, OPAL_UINT16))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &results_count, &n, OPAL_UINT32))) {
             goto query_db_cleanup;
         }
         (*results) = OBJ_NEW(opal_list_t);
-        for(uint16_t i = 0; i < results_count; ++i) {
+        for(uint32_t i = 0; i < results_count; ++i) {
             char* tmp_str = NULL;
             opal_value_t *tmp_value = NULL;
             n = 1;
@@ -671,7 +671,7 @@ orcm_db_filter_t *build_node_item(char **expanded_node_list)
 int orcm_octl_query_sensor(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint16_t rows_retrieved = 0;
+    uint32_t rows_retrieved = 0;
     char **argv_node_list = NULL;
     double start_time = 0.0;
     double stop_time = 0.0;
@@ -709,7 +709,7 @@ int orcm_octl_query_sensor(int cmd, char **argv)
     } else {
         /* Raw CSV output for now... */
         if(NULL != returned_list) {
-            rows_retrieved = (uint16_t)opal_list_get_size(returned_list);
+            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
             /* Actual number includes the header so we remove it*/
             rows_retrieved--;
             printf("\n");
@@ -729,7 +729,7 @@ orcm_octl_query_sensor_cleanup:
 int orcm_octl_query_log(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint16_t rows_retrieved = 0;
+    uint32_t rows_retrieved = 0;
     char **argv_node_list = NULL;
     double start_time = 0.0;
     double stop_time = 0.0;
@@ -766,7 +766,7 @@ int orcm_octl_query_log(int cmd, char **argv)
     } else {
         /* Raw CSV output for now... */
         if(NULL != returned_list) {
-            rows_retrieved = (uint16_t)opal_list_get_size(returned_list);
+            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
             /* Actual number includes the header so we remove it*/
             rows_retrieved--;
             printf("\n");
@@ -786,7 +786,7 @@ orcm_octl_query_log_cleanup:
 int orcm_octl_query_idle(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint16_t rows_retrieved = 0;
+    uint32_t rows_retrieved = 0;
     char **argv_node_list = NULL;
     double start_time = 0.0;
     double stop_time = 0.0;
@@ -823,7 +823,7 @@ int orcm_octl_query_idle(int cmd, char **argv)
     } else {
         /* Raw CSV output for now... */
         if(NULL != returned_list) {
-            rows_retrieved = (uint16_t)opal_list_get_size(returned_list);
+            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
             /* Actual number includes the header so we remove it*/
             rows_retrieved--;
             printf("\n");
@@ -843,7 +843,7 @@ orcm_octl_query_idle_cleanup:
 int orcm_octl_query_node(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint16_t rows_retrieved = 0;
+    uint32_t rows_retrieved = 0;
     char **argv_node_list = NULL;
     double start_time = 0.0;
     double stop_time = 0.0;
@@ -880,7 +880,7 @@ int orcm_octl_query_node(int cmd, char **argv)
     } else {
         /* Raw CSV output for now... */
         if(NULL != returned_list) {
-            rows_retrieved = (uint16_t)opal_list_get_size(returned_list);
+            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
             /* Actual number includes the header so we remove it*/
             rows_retrieved--;
             printf("\n");
@@ -900,7 +900,7 @@ orcm_octl_query_node_cleanup:
 int orcm_octl_query_event_data(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint16_t rows_retrieved = 0;
+    uint32_t rows_retrieved = 0;
     double start_time = 0.0;
     double stop_time = 0.0;
     char **argv_node_list = NULL;
@@ -938,7 +938,7 @@ int orcm_octl_query_event_data(int cmd, char **argv)
         fprintf(stdout, "\nNo results found!\n");
     } else {
         if (NULL != returned_list) {
-            rows_retrieved = (uint16_t)opal_list_get_size(returned_list);
+            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
             rows_retrieved--;
             printf("\n");
             OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
@@ -975,7 +975,7 @@ orcm_octl_query_event_exit:
 int orcm_octl_query_event_snsr_data(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint16_t rows_retrieved = 0;
+    uint32_t rows_retrieved = 0;
     double start_time = 0.0;
     double stop_time = 0.0;
     char **argv_node_list = NULL;
@@ -1027,7 +1027,7 @@ int orcm_octl_query_event_snsr_data(int cmd, char **argv)
         fprintf(stdout, "\nNo results found!\n");
     } else {
         if (NULL != returned_list) {
-            rows_retrieved = (uint16_t)opal_list_get_size(returned_list);
+            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
             rows_retrieved--;
             printf("\n");
             OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
@@ -1066,7 +1066,7 @@ orcm_octl_query_event_exit:
  */
 char* get_orcm_octl_query_event_date(int cmd, char **argv){
     int rc = ORCM_SUCCESS;
-    uint16_t rows_retrieved = 0;
+    uint32_t rows_retrieved = 0;
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
     opal_value_t *line = NULL;
@@ -1092,7 +1092,7 @@ char* get_orcm_octl_query_event_date(int cmd, char **argv){
         fprintf(stdout, "\nNo results found!\n");
     } else {
         if (NULL != returned_list) {
-            rows_retrieved = (uint16_t)opal_list_get_size(returned_list);
+            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
             if (1 < rows_retrieved){
                 line = opal_list_get_last(returned_list);
                 num_db_results = split_db_results(line->data.string, &db_results);

@@ -506,7 +506,7 @@ opal_list_t *create_query_event_data_filter(int argc, char **argv)
         filter_item = create_string_filter("severity", "INFO", NE);
         opal_list_append(filters_list, &filter_item->value.super);
     } else {
-        show_query_error_message("octl:query:event");
+        show_query_error_message("octl:query:event:data");
         SAFEFREE(filters_list);
         return NULL;
     }
@@ -711,14 +711,14 @@ int orcm_octl_query_sensor(int cmd, char **argv)
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_sensor_cleanup;
     }
-    if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_sensor_cleanup;
-    }
     /* Build input node list */
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list){
         fprintf(stderr, "\nERROR: unable to generate a filter list from command provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_sensor_cleanup;
+    }
+    if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_sensor_cleanup;
     }
@@ -768,14 +768,14 @@ int orcm_octl_query_log(int cmd, char **argv)
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_log_cleanup;
     }
-    if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_log_cleanup;
-    }
     /* Build input node list */
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list){
         fprintf(stderr, "\nERROR: unable to generate a filter list from command provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_log_cleanup;
+    }
+    if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_log_cleanup;
     }
@@ -825,14 +825,14 @@ int orcm_octl_query_idle(int cmd, char **argv)
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_idle_cleanup;
     }
-    if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_idle_cleanup;
-    }
     /* Build input node list */
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list){
         fprintf(stderr, "\nERROR: unable to generate a filter list from command provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_idle_cleanup;
+    }
+    if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_idle_cleanup;
     }
@@ -882,14 +882,14 @@ int orcm_octl_query_node(int cmd, char **argv)
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_node_cleanup;
     }
-    if (ORCM_SUCCESS != (rc = get_nodes_from_args(argv, &argv_node_list))){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_node_cleanup;
-    }
     /* Build input node list */
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list){
         fprintf(stderr, "\nERROR: unable to generate a filter list from command provided");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_node_cleanup;
+    }
+    if (ORCM_SUCCESS != (rc = get_nodes_from_args(argv, &argv_node_list))){
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_node_cleanup;
     }
@@ -944,15 +944,14 @@ int orcm_octl_query_event_data(int cmd, char **argv)
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_event_exit;
     }
-    rc = get_nodes_from_args(argv, &argv_node_list);
-    if (ORCM_SUCCESS != rc) {
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_event_exit;
-    }
-
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list) {
         fprintf(stderr, "\nERROR: unable to generate a filter list from command provided\n");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+    rc = get_nodes_from_args(argv, &argv_node_list);
+    if (ORCM_SUCCESS != rc) {
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_event_exit;
     }

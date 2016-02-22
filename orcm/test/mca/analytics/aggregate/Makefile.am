@@ -62,3 +62,4 @@ test_analytics_aggregate_LDADD = \
 ANALYTICS_AGGREGATE_DIR=$(top_srcdir)/orcm/mca/analytics/aggregate
 
 test_analytics_aggregate_CPPFLAGS=-I$(ANALYTICS_AGGREGATE_DIR)
+test_analytics_aggregate_LDFLAGS=-lstdc++

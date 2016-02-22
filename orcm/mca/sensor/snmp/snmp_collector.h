@@ -16,7 +16,7 @@
 #include <iostream>
 #include <list>
 #include <map>
-#include "vardata.h"
+#include "orcm/util/vardata.h"
 #include <stdexcept>
 
 #ifndef SNMP_COLLECTOR_H

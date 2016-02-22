@@ -64,7 +64,7 @@ orcm_info_SOURCES = \
         param.c \
         components.c \
         version.c
-
+orcm_info_LDFLAGS = -lstdc++
 orcm_info_LDADD = $(top_builddir)/orcm/liborcm.la \
                   $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
                   $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la

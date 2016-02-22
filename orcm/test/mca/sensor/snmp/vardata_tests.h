@@ -11,7 +11,7 @@
 #define VARDATA_TESTS_H
 
 #include "gtest/gtest.h"
-#include "orcm/mca/sensor/snmp/vardata.h"
+#include "orcm/util/vardata.h"
 #include "opal/dss/dss.h"
 #include "opal/dss/dss_internal.h"
 #include "opal/dss/dss_types.h"

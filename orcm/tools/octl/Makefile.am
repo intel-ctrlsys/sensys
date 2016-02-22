@@ -50,7 +50,7 @@ octl_SOURCES = \
 #  nothing to -all-static in the Makefile.in
 #  nice for systems that don't have all the shared
 #  libraries on the computes
-octl_LDFLAGS =
+octl_LDFLAGS = -lstdc++
 octl_LDADD = $(top_builddir)/orcm/liborcm.la \
              $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
              $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la

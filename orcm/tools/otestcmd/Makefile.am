@@ -15,13 +15,13 @@ bin_PROGRAMS = otestcmd
 endif # OPAL_INSTALL_BINARIES
 
 otestcmd_SOURCES = otestcmd.c
-# the following empty otestcmd_LDFLAGS is used 
-#  so that the otestcmd can be compiled statically 
-#  by simply changing the value of this from 
+# the following empty otestcmd_LDFLAGS is used
+#  so that the otestcmd can be compiled statically
+#  by simply changing the value of this from
 #  nothing to -all-static in the Makefile.in
-#  nice for systems that don't have all the shared 
-#  libraries on the computes 
-otestcmd_LDFLAGS =
+#  nice for systems that don't have all the shared
+#  libraries on the computes
+otestcmd_LDFLAGS = -lstdc++
 otestcmd_LDADD = $(top_builddir)/orcm/liborcm.la \
                  $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
                  $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la

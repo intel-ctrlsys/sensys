@@ -20,9 +20,7 @@ sources = \
     snmp.h \
     snmp.cpp \
     snmp_parser.h \
-    snmp_parser.cpp \
-    vardata.h \
-    vardata.cpp
+    snmp_parser.cpp
 
 # Make the output library in this directory, and name it either
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la

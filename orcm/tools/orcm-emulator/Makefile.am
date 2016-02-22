@@ -19,7 +19,7 @@ endif # OPAL_INSTALL_BINARIES
 orcm_emulator_SOURCES = \
         orcm-emulator.c
 
-orcm_emulator_LDFLAGS =
+orcm_emulator_LDFLAGS = -lstdc++
 orcm_emulator_LDADD = $(top_builddir)/orcm/liborcm.la \
                       $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
                       $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la

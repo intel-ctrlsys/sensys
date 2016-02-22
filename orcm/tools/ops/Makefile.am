@@ -29,13 +29,13 @@ $(nodist_man_MANS): $(top_builddir)/orcm/include/orcm_config.h
 endif # OPAL_INSTALL_BINARIES
 
 ops_SOURCES = ops.c
-# the following empty ops_LDFLAGS is used 
-#  so that the ops can be compiled statically 
-#  by simply changing the value of this from 
+# the following empty ops_LDFLAGS is used
+#  so that the ops can be compiled statically
+#  by simply changing the value of this from
 #  nothing to -all-static in the Makefile.in
-#  nice for systems that don't have all the shared 
-#  libraries on the computes 
-ops_LDFLAGS =
+#  nice for systems that don't have all the shared
+#  libraries on the computes
+ops_LDFLAGS = -lstdc++
 ops_LDADD = $(top_builddir)/orcm/liborcm.la \
             $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
             $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la

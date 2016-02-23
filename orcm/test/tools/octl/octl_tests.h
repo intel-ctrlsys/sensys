@@ -55,4 +55,26 @@ class ut_octl_tests: public testing::Test
         static int next_proc_result;
 }; // class
 
+class ut_octl_query: public testing::Test
+{
+  protected:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+
+    static int ReplaceWildcard(const char *input_string,
+                               const char *expected_string,
+                               bool stop_on_first);
+
+    static int AssembleDatetime(const char *date,
+                                const char *time,
+                                const char *expected_datetime);
+    static int EventDataFilter(int argc,
+                               const char **args);
+    static int EventSensorDataFilter(int argc,
+                                     const char **args);
+    static int AddToStrDate(const char *date,
+                            const char *expected_date,
+                            int seconds);
+};
+
 #endif // OCTL_TESTS_H

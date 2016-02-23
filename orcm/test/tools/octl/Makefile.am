@@ -35,6 +35,7 @@ check_PROGRAMS = octl_tests
 
 octl_tests_SOURCES = \
     octl_tests.cpp \
+    octl_query.cpp \
     octl_mocking.cpp
 
 MOCKING = \
@@ -44,7 +45,12 @@ MOCKING = \
 # Libraries we depend on
 #
 
-LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a $(top_builddir)/orcm/tools/octl/sensor.o $(top_builddir)/orcm/tools/octl/notifier.o $(top_builddir)/orcm/tools/octl/smtp.o
+LDADD = \
+        @GTEST_LIBRARY_DIR@/libgtest_main.a \
+    $(top_builddir)/orcm/tools/octl/sensor.o \
+    $(top_builddir)/orcm/tools/octl/query.o \
+    $(top_builddir)/orcm/tools/octl/notifier.o \
+    $(top_builddir)/orcm/tools/octl/smtp.o
 
 AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 

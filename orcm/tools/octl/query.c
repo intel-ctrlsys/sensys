@@ -177,6 +177,11 @@ bool replace_wildcard(char **filter_me, bool quit_on_first)
     /* In-place replacement of first or all wildcards found in the filter_me string */
     char *temp_filter = NULL;
     bool found_wildcard = false;
+
+    if (filter_me == NULL || *filter_me == NULL) {
+        return false;
+    }
+
     temp_filter = *filter_me;
     for(size_t i = 0; i < strlen(temp_filter); ++i) {
         if('*' == temp_filter[i]) {
@@ -198,6 +203,10 @@ char *assemble_datetime(char *date_str, char *time_str)
     char *new_date_str = NULL;
     char *new_time_str = NULL;
     size_t date_time_length = 0;
+
+    if (NULL == date_str || NULL == time_str) {
+        return NULL;
+    }
 
     if (NULL != date_str){
         date_time_length = strlen(date_str);
@@ -453,6 +462,10 @@ opal_list_t *create_query_event_data_filter(int argc, char **argv)
     orcm_db_filter_t *filter_item = NULL;
     char *filter_str = NULL;
 
+    if (NULL == argv) {
+        return NULL;
+    }
+
     filters_list = OBJ_NEW(opal_list_t);
     if (4 == argc) {
         time_t current_time;
@@ -488,6 +501,7 @@ opal_list_t *create_query_event_data_filter(int argc, char **argv)
         opal_list_append(filters_list, &filter_item->value.super);
     } else {
         show_query_error_message("octl:query:event");
+        SAFEFREE(filters_list);
         return NULL;
     }
     return filters_list;
@@ -514,6 +528,10 @@ opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv)
     orcm_db_filter_t *filter_item = NULL;
     char *filter_str = NULL;
     char *end_date;
+
+    if (argv == NULL) {
+        return NULL;
+    }
 
     if (8 == argc) {
         filters_list = OBJ_NEW(opal_list_t);
@@ -575,9 +593,8 @@ opal_list_t *create_query_event_date_filter(int argc, char **argv)
 {
     opal_list_t *filters_list = NULL;
     orcm_db_filter_t *filter_item = NULL;
-    char *filter_str = NULL;
 
-    if( 2 < argc ){
+    if( 2 < argc && NULL != argv){
         filters_list = OBJ_NEW(opal_list_t);
         filter_item = create_string_filter("event_id", argv[3], EQ);
         opal_list_append(filters_list, &filter_item->value.super);
@@ -912,7 +929,12 @@ int orcm_octl_query_event_data(int cmd, char **argv)
     opal_value_t *line = NULL;
 
     if (ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND != cmd) {
-        fprintf(stderr, "\nERROR: incorrect command argument: %d", cmd);
+        fprintf(stderr, "\nERROR: incorrect command argument: %d\n", cmd);
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+    if (NULL == argv) {
+        fprintf(stderr, "\nERROR: null argument list\n");
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_event_exit;
     }
@@ -1096,7 +1118,7 @@ char* get_orcm_octl_query_event_date(int cmd, char **argv){
         if (NULL != returned_list) {
             rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
             if (1 < rows_retrieved){
-                line = opal_list_get_last(returned_list);
+                line = (opal_value_t*)opal_list_get_last(returned_list);
                 num_db_results = split_db_results(line->data.string, &db_results);
                 date = strndup(db_results[1], strlen(db_results[1]));
                 free_db_results(num_db_results, &db_results);
@@ -1138,23 +1160,28 @@ int split_db_results(char *db_res, char ***db_results){
     regmatch_t db_res_matches[2];
     char *str_aux = NULL;
     int str_pos = 0;
-    int db_res_length = strlen(db_res);
+    int db_res_length;
     int res_size=0;
 
+    if (NULL == db_res || NULL == db_results) {
+        return 0;
+    }
+
+    db_res_length = strlen(db_res);
     *db_results = (char **)malloc(res_size * sizeof(char *));
 
-    regcomp(&regex_comp_db_res,"([^,]+)",REG_EXTENDED);
-    while(str_pos < db_res_length){
+    regcomp(&regex_comp_db_res, "([^,]+)", REG_EXTENDED);
+    while(str_pos < db_res_length) {
         str_aux = strndup(&db_res[str_pos], db_res_length - str_pos);
         regex_res = regexec(&regex_comp_db_res, str_aux, 2, db_res_matches,0);
-        if (!regex_res){
+        if (!regex_res) {
             res_size++;
             *db_results = (char **)realloc( *db_results, res_size * sizeof(char *) );
             (*db_results)[res_size - 1] = strndup(&str_aux[db_res_matches[1].rm_so],
                                           (int)(db_res_matches[1].rm_eo - db_res_matches[1].rm_so));
             str_pos += db_res_matches[1].rm_eo;
             SAFEFREE(str_aux);
-        }else{
+        } else {
             str_pos++;
         }
     }
@@ -1200,11 +1227,17 @@ char *add_to_str_date(char *date, int seconds){
     struct tm tm_date;
     time_t t_res_date;
     struct tm *tm_res_date;
+
+    if (NULL == date) {
+        return NULL;
+    }
+
     char *res_date = (char *)malloc(20);
 
-    if( NULL != res_date ){
+    if( NULL != res_date ) {
         setlocale(LC_TIME, "UTC");
         strptime(date, "%Y-%m-%d %H:%M:%S", &tm_date);
+        tm_date.tm_isdst = 0;
         t_res_date = mktime(&tm_date) + seconds;
         tm_res_date = localtime(&t_res_date);
         strftime(res_date, 20, "%Y-%m-%d %H:%M:%S", tm_res_date);

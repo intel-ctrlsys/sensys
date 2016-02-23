@@ -729,17 +729,17 @@ static int run_cmd(char *cmd)
             }
             break;
         case 43://event
-	    rc = octl_command_to_int(cmdlist[2]);
-	    switch(rc)
+            rc = octl_command_to_int(cmdlist[2]);
+            switch(rc)
             {
-	    case 49://data
-	        rc = orcm_octl_query_event_data(ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND,cmdlist);
-	        break;
+            case 49://data
+                rc = orcm_octl_query_event_data(ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND,cmdlist);
+                break;
             case 50://sensor-data
-	        rc = orcm_octl_query_event_snsr_data(ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND,cmdlist);
-	        break;
+                rc = orcm_octl_query_event_snsr_data(ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND,cmdlist);
+                break;
             }
-	    break;
+            break;
         default:
             rc = ORCM_ERROR;
             break;

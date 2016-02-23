@@ -13,6 +13,7 @@
 #include "orcm/mca/db/base/base.h"
 #include "orcm/mca/db/db.h"
 #include <regex.h>
+#include <locale.h>
 
 #define SAFE_FREE(x) if(NULL!=x) { free(x); x = NULL; }
 /* Default idle time in seconds */
@@ -29,7 +30,7 @@ opal_list_t *create_query_event_data_filter(int argc, char **argv);
 opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv);
 opal_list_t *create_query_event_date_filter(int argc, char **argv);
 int split_db_results(char *db_res, char ***db_results);
-int free_db_results(int num_elements, char ***db_res_array);
+void free_db_results(int num_elements, char ***db_res_array);
 char *add_to_str_date(char *date, int seconds);
 orcm_db_filter_t *create_string_filter(char *field, char *string,
                                        orcm_db_comparison_op_t op);
@@ -517,7 +518,7 @@ opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv)
     if (8 == argc) {
         filters_list = OBJ_NEW(opal_list_t);
 
-        if ( strcmp("before", argv[4]) == 0 ){
+        if ( 0 == strcmp("before", argv[4]) ){
             filter_item = create_string_filter("time_stamp", argv[3], LE);
             opal_list_append(filters_list, &filter_item->value.super);
 
@@ -525,7 +526,7 @@ opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv)
             filter_item = create_string_filter("time_stamp", end_date, GE);
             opal_list_append(filters_list, &filter_item->value.super);
             SAFE_FREE(end_date);
-        } else if ( strcmp("after", argv[4]) == 0 ){
+        } else if ( 0 == strcmp("after", argv[4]) ){
             filter_item = create_string_filter("time_stamp", argv[3], GE);
             opal_list_append(filters_list, &filter_item->value.super);
 
@@ -534,6 +535,7 @@ opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv)
             opal_list_append(filters_list, &filter_item->value.super);
             SAFE_FREE(end_date);
         } else {
+            SAFE_RELEASE(filters_list);
             filters_list = NULL;
         }
 
@@ -575,7 +577,7 @@ opal_list_t *create_query_event_date_filter(int argc, char **argv)
     orcm_db_filter_t *filter_item = NULL;
     char *filter_str = NULL;
 
-    if( argc > 2){
+    if( 2 < argc ){
         filters_list = OBJ_NEW(opal_list_t);
         filter_item = create_string_filter("event_id", argv[3], EQ);
         opal_list_append(filters_list, &filter_item->value.super);
@@ -1169,17 +1171,13 @@ int split_db_results(char *db_res, char ***db_results){
  * @param db_results Pointer to an array of strings that
  *                   contains the query results to free.
  */
-int free_db_results(int num_elements, char ***db_res_array)
+void free_db_results(int num_elements, char ***db_res_array)
 {
-    int rc = ORCM_SUCCESS;
-
     for(int act_elem=0; act_elem < num_elements; act_elem++){
         SAFEFREE( (*db_res_array)[act_elem] );
     }
 
     SAFEFREE(*db_res_array);
-
-    return rc;
 }
 
 /**
@@ -1204,10 +1202,13 @@ char *add_to_str_date(char *date, int seconds){
     struct tm *tm_res_date;
     char *res_date = (char *)malloc(20);
 
-    strptime(date, "%Y-%m-%d %H:%M:%S", &tm_date);
-    t_res_date = mktime(&tm_date) + seconds;
-    tm_res_date = localtime(&t_res_date);
-    strftime(res_date, 20, "%Y-%m-%d %H:%M:%S", tm_res_date);
+    if( NULL != res_date ){
+        setlocale(LC_TIME, "UTC");
+        strptime(date, "%Y-%m-%d %H:%M:%S", &tm_date);
+        t_res_date = mktime(&tm_date) + seconds;
+        tm_res_date = localtime(&t_res_date);
+        strftime(res_date, 20, "%Y-%m-%d %H:%M:%S", tm_res_date);
+    }
 
     return res_date;
 }

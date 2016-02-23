@@ -993,12 +993,12 @@ int orcm_octl_sensor_store(int storage_command, char** cmdlist)
     int rc;
 
     if (4 != opal_argv_count(cmdlist)) {
-        fprintf(stderr, "\nincorrect arguments! \n usage: \"sensor store environment_only/exception_only/all/none nodelist \"\n");
+        fprintf(stderr, "\nincorrect arguments! \n usage: \"sensor store environment_only/event_only/all/none nodelist \"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (storage_command < 0) {
-        fprintf(stderr, "\nincorrect arguments! \n usage: \"sensor store environment_only/exception_only/all/none nodelist \"\n");
+        fprintf(stderr, "\nincorrect arguments! \n usage: \"sensor store environment_only/event_only/all/none nodelist \"\n");
         return ORCM_ERR_BAD_PARAM;
     }
 

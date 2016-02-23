@@ -274,15 +274,15 @@ Then:
 .PP
 restores node01 to its original sampling state (defined by MCA parameters and orcmd load time).
 .PP
-.SS sensor store environment_only|exception_only|all|none nodelist
+.SS sensor store environment_only|event_only|all|none nodelist
 .
-This command is designed to control the storage of environment (raw) and exception (event) data
+This command is designed to control the storage of environment (raw) and event (event) data
 .PP
 For Example, when you want to enable storage of environment data in Database, use the following command
 .B $ octl sensor store environment_only node001
 .PP
 .PP
-When you want to disable storage of exception and environment data in Database, use the following command
+When you want to disable storage of event and environment data in Database, use the following command
 .B $ octl sensor store none node001
 .PP
 .SS query

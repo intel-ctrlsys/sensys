@@ -81,7 +81,7 @@ int orcm_analytics_base_control_storage(uint8_t storage_command)
     case ORCM_SENSOR_STORAGE_ENVIRONMENT_ONLY:
         orcm_analytics_base.store_raw_data = true;
         break;
-    case ORCM_SENSOR_STORAGE_EXCEPTION_ONLY:
+    case ORCM_SENSOR_STORAGE_EVENT_ONLY:
         orcm_analytics_base.store_event_data = true;
         break;
     case ORCM_SENSOR_STORAGE_BOTH:

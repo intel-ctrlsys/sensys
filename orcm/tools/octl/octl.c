@@ -583,7 +583,7 @@ static int run_cmd(char *cmd)
                 switch(rc) {
                 case 52: // none
                 case 53: // environment_only
-                case 54: // exception_only
+                case 54: // event_only
                 case 55: // all
                     rc = orcm_octl_sensor_store(rc - 52, cmdlist);
                     break;

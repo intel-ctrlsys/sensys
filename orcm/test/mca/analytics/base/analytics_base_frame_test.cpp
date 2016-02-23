@@ -34,7 +34,7 @@ TEST(analytics_base, control_storage_positive_test_2)
 {
     int rc;
 
-    rc = orcm_analytics_base_control_storage(ORCM_SENSOR_STORAGE_EXCEPTION_ONLY);
+    rc = orcm_analytics_base_control_storage(ORCM_SENSOR_STORAGE_EVENT_ONLY);
 
     ASSERT_EQ(ORCM_SUCCESS, rc);
     ASSERT_EQ(orcm_analytics_base.store_event_data, true);

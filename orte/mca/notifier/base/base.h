@@ -77,6 +77,8 @@ ORTE_DECLSPEC extern orte_notifier_base_t orte_notifier_base;
 ORTE_DECLSPEC int orte_notifier_base_select(void);
 
 /* base functions */
+ORTE_DECLSPEC int  orte_notifier_base_set_config(char *action, opal_value_t *kv);
+ORTE_DECLSPEC int  orte_notifier_base_get_config(char *action, opal_list_t **list);
 ORTE_DECLSPEC void orte_notifier_base_log(int sd, short args, void *cbdata);
 ORTE_DECLSPEC void orte_notifier_base_event(int sd, short args, void *cbdata);
 ORTE_DECLSPEC void orte_notifier_base_report(int sd, short args, void *cbdata);

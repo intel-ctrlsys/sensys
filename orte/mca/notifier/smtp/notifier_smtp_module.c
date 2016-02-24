@@ -46,10 +46,14 @@
 
 #include "notifier_smtp.h"
 
+#define SAFEFREE(x) if(NULL != x) free((void*)x); x=NULL
+#define SAFENULLCHECK(x) if(NULL == x) return ORTE_ERROR;
 
 /* Static API's */
 static int init(void);
 static void finalize(void);
+static int  set_config(opal_value_t *kv);
+static int  get_config(opal_list_t **list);
 static void mylog(orte_notifier_request_t *req);
 static void myevent(orte_notifier_request_t *req);
 static void myreport(orte_notifier_request_t *req);
@@ -58,6 +62,8 @@ static void myreport(orte_notifier_request_t *req);
 orte_notifier_base_module_t orte_notifier_smtp_module = {
     init,
     finalize,
+    set_config,
+    get_config,
     mylog,
     myevent,
     myreport
@@ -316,6 +322,112 @@ static int send_email(char *msg)
                        errmsg, em, e, msg);
     }
     return err;
+}
+
+static int set_config(opal_value_t *kv)
+{
+    orte_notifier_smtp_component_t *c = &mca_notifier_smtp_component;
+
+    if (NULL == kv) {
+        return ORTE_ERROR;
+    }
+    if (!strcmp(kv->key, "server_name")) {
+        SAFEFREE(c->server);
+        c->server = strdup(kv->data.string);
+    } else if (!strcmp(kv->key, "server_port")) {
+        c->port = kv->data.integer;
+    } else if (!strcmp(kv->key, "to_addr")) {
+        SAFEFREE(c->to);
+        SAFEFREE(c->to_argv);
+        c->to = strdup(kv->data.string);
+        c->to_argv = opal_argv_split(c->to, ',');
+    } else if (!strcmp(kv->key, "from_addr")) {
+        SAFEFREE(c->from_addr);
+        c->from_addr = strdup(kv->data.string);
+    } else if (!strcmp(kv->key, "from_name")) {
+        SAFEFREE(c->from_name);
+        c->from_name = strdup(kv->data.string);
+    } else if (!strcmp(kv->key, "subject")) {
+        SAFEFREE(c->subject);
+        c->subject = strdup(kv->data.string);
+    } else if (!strcmp(kv->key, "body_prefix")) {
+        SAFEFREE(c->body_prefix);
+        c->body_prefix = strdup(kv->data.string);
+    } else if (!strcmp(kv->key, "body_suffix")) {
+        SAFEFREE(c->body_suffix);
+        c->body_suffix = strdup(kv->data.string);
+    } else if (!strcmp(kv->key, "priority")) {
+        c->priority = kv->data.integer;
+    }
+    return ORTE_SUCCESS;
+}
+
+#define SAFE_ALLOC_OPAL_VALUE(x) x = OBJ_NEW(opal_val_t); if(NULL == x) return ORTE_ERROR;
+static int get_config(opal_list_t **list)
+{
+    opal_value_t *kv = NULL;
+    int port = 0;
+    int priority = 0;
+    orte_notifier_smtp_component_t *c = &mca_notifier_smtp_component;
+    kv = OBJ_NEW(opal_value_t);
+    SAFENULLCHECK(kv);
+    kv->key = strdup("server_name");
+    opal_value_load(kv, c->server, OPAL_STRING);
+    opal_list_append(*list, (opal_list_item_t *)kv);
+
+    kv = OBJ_NEW(opal_value_t);
+    SAFENULLCHECK(kv);
+    kv->key = strdup("server_port");
+    port = c->port;
+    kv->data.integer = port; 
+    kv->type=OPAL_INT;
+    opal_list_append(*list, (opal_list_item_t *)kv);
+    
+    kv = OBJ_NEW(opal_value_t);
+    SAFENULLCHECK(kv);
+    kv->key = strdup("to_addr");
+    opal_value_load(kv, c->to, OPAL_STRING);
+    opal_list_append(*list, (opal_list_item_t *)kv);
+
+    kv = OBJ_NEW(opal_value_t);
+    SAFENULLCHECK(kv);
+    kv->key = strdup("from_addr");
+    opal_value_load(kv, c->from_addr, OPAL_STRING);
+    opal_list_append(*list, (opal_list_item_t *)kv);
+
+    kv = OBJ_NEW(opal_value_t);
+    SAFENULLCHECK(kv);
+    kv->key = strdup("from_name");
+    opal_value_load(kv, c->from_name, OPAL_STRING);
+    opal_list_append(*list, (opal_list_item_t *)kv);
+
+    kv = OBJ_NEW(opal_value_t);
+    SAFENULLCHECK(kv);
+    kv->key = strdup("subject");
+    opal_value_load(kv, c->subject, OPAL_STRING);
+    opal_list_append(*list, (opal_list_item_t *)kv);
+
+    kv = OBJ_NEW(opal_value_t);
+    SAFENULLCHECK(kv);
+    kv->key = strdup("body_prefix");
+    opal_value_load(kv, c->body_prefix, OPAL_STRING);
+    opal_list_append(*list, (opal_list_item_t *)kv);
+
+    kv = OBJ_NEW(opal_value_t);
+    SAFENULLCHECK(kv);
+    kv->key = strdup("body_suffix");
+    opal_value_load(kv, c->body_suffix, OPAL_STRING);
+    opal_list_append(*list, (opal_list_item_t *)kv);
+
+    kv = OBJ_NEW(opal_value_t);
+    SAFENULLCHECK(kv);
+    kv->key = strdup("priority");
+    priority = c->priority;
+    kv->data.integer = priority;
+    kv->type=OPAL_INT;
+    opal_list_append(*list, (opal_list_item_t *)kv);
+
+    return ORTE_SUCCESS;
 }
 
 static void mylog(orte_notifier_request_t *req)

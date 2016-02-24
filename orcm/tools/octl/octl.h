@@ -149,9 +149,13 @@ static orcm_cli_init_t cli_init[] = {
     { { "notifier", NULL }, "set", 0, 0, "Set Notifier Commands" },
     // notifier set policy subcommand
     { { "notifier", "set", NULL }, "policy", 0, 3, "notifier set policy <severity> <action> <nodelist>" },
+    // notifier set smtp subcommand
+    { { "notifier", "set", NULL }, "smtp-policy", 0, 3, "notifier set smtp-policy <key> <value> <nodelist>" },
     { { "notifier", NULL }, "get", 0, 0, "Get Notifier Commands" },
     // notifier get policy subcommand
     { { "notifier", "get", NULL }, "policy", 0, 2, "notifier get policy <nodelist>" },
+    // notifier get smtp subcommand
+    { { "notifier", "get", NULL }, "smtp-policy", 0, 2, "notifier get smtp-policy <nodelist>" },
 
     /****** power command ******/
     { { NULL }, "power", 0, 0, "Global Power Policy" },
@@ -307,6 +311,7 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "environment_only",  //53
                                      "exception_only",    //54
                                      "all",               //55
+                                     "smtp-policy"        //56
                                      "\0" };
 
 END_C_DECLS

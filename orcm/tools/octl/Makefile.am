@@ -42,6 +42,7 @@ octl_SOURCES = \
         grouping.c \
         analytics.c \
         notifier.c \
+        smtp.c \
         query.c
 
 # the following empty octl_LDFLAGS is used

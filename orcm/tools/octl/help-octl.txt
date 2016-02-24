@@ -114,4 +114,29 @@ USAGE: notifier get policy <nodelist>
 [octl:set:notifier-usage]
 ERROR: %s
 USAGE: notifier set policy <severity> <action> <nodelist>
+EXAMPLE:
+       notifier set policy emerg  smtp   rack[2:1-8]
+       notifier set policy alert  smtp   rack[2:1-8]
+       notifier set policy crit   smtp   rack[2:1-8]
+       notifier set policy error  syslog rack[2:1-8]
+       notifier set policy warn   syslog rack[2:1-8]
+       notifier set policy notice syslog rack[2:1-8]
+       notifier set policy debug  syslog rack[2:1-8]
 
+[octl:get:notifier-smtp-usage]
+ERROR: %s
+USAGE: notifier get smtp-policy <nodelist>
+
+[octl:set:notifier-smtp-usage]
+ERROR: %s
+USAGE: notifier set smtp-policy <key> <value> <nodelist>
+EXAMPLE: 
+       notifier set smtp-policy server_name <email-server>  rack[2:1-8]
+       notifier set smtp-policy server_port <portno>  rack[2:1-8]
+       notifier set smtp-policy to_addr <email-addr>  rack[2:1-8]
+       notifier set smtp-policy from_addr <email-addr>  rack[2:1-8]
+       notifier set smtp-policy from_name <name>  rack[2:1-8]
+       notifier set smtp-policy subject <email-subject>  rack[2:1-8]
+       notifier set smtp-policy body_preffix <email-body-preffix>  rack[2:1-8]
+       notifier set smtp-policy body_suffix <email-body-suffix>  rack[2:1-8]
+       notifier set smtp-policy priority <1-high,2-medium,3-low>  rack[2:1-8]

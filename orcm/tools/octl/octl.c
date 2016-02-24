@@ -618,6 +618,9 @@ static int run_cmd(char *cmd)
                 case 8: //policy
                     rc = orcm_octl_set_notifier_policy(ORCM_SET_NOTIFIER_POLICY_COMMAND, cmdlist);
                     break;
+                case 56: //smtp-policy
+                    rc = orcm_octl_set_notifier_smtp(ORCM_SET_NOTIFIER_SMTP_COMMAND, cmdlist);
+                break;
                 default:
                     rc = ORCM_ERROR;
                     break;
@@ -633,6 +636,9 @@ static int run_cmd(char *cmd)
                 switch(rc) {
                 case 8: //policy
                     rc = orcm_octl_get_notifier_policy(ORCM_GET_NOTIFIER_POLICY_COMMAND, cmdlist);
+                    break;
+                case 56: //smtp-policy
+                    rc = orcm_octl_get_notifier_smtp(ORCM_GET_NOTIFIER_SMTP_COMMAND, cmdlist);
                     break;
                 default:
                     rc = ORCM_ERROR;

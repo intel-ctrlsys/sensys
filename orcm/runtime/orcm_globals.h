@@ -145,6 +145,8 @@ typedef uint8_t orcm_cmd_server_flag_t;
 #define ORCM_GET_NOTIFIER_COMMAND               2
 #define ORCM_SET_NOTIFIER_POLICY_COMMAND        3
 #define ORCM_GET_NOTIFIER_POLICY_COMMAND        4
+#define ORCM_SET_NOTIFIER_SMTP_COMMAND          5
+#define ORCM_GET_NOTIFIER_SMTP_COMMAND          6
 
 /** version string of ORCM */
 ORCM_DECLSPEC extern const char openrcm_version_string[];

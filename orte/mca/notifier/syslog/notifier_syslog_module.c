@@ -42,6 +42,8 @@
 /* Static API's */
 static int init(void);
 static void finalize(void);
+static int set_config(opal_value_t *kv);
+static int get_config(opal_list_t **list);
 static void mylog(orte_notifier_request_t *req);
 static void myevent(orte_notifier_request_t *req);
 static void myreport(orte_notifier_request_t *req);
@@ -50,6 +52,8 @@ static void myreport(orte_notifier_request_t *req);
 orte_notifier_base_module_t orte_notifier_syslog_module = {
     init,
     finalize,
+    set_config,
+    get_config,
     mylog,
     myevent,
     myreport
@@ -69,6 +73,16 @@ static int init(void)
 static void finalize(void)
 {
     closelog();
+}
+
+static int set_config(opal_value_t *kv)
+{
+    return ORTE_SUCCESS;
+}
+
+static int get_config(opal_list_t **list)
+{
+    return ORTE_SUCCESS;
 }
 
 static void mylog(orte_notifier_request_t *req)

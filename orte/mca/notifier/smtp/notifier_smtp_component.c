@@ -121,7 +121,7 @@ static int smtp_register(void)
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_notifier_smtp_component.body_prefix);
     mca_notifier_smtp_component.body_suffix = strdup("\n\nSincerely,\nOscar the ORTE Owl");
-    (void) mca_base_component_var_register(&mca_notifier_smtp_component.super.base_version, "body_prefix",
+    (void) mca_base_component_var_register(&mca_notifier_smtp_component.super.base_version, "body_suffix",
                                            "Text to put at the end of the mail message",
                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
                                            OPAL_INFO_LVL_9,

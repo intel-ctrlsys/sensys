@@ -35,6 +35,76 @@
 static void orte_notifier_base_identify_modules(char ***modules,
                                                 orte_notifier_request_t *req);
 
+int orte_notifier_base_set_config(char *action, opal_value_t *kv)
+{
+    char **modules = NULL;
+    orte_notifier_active_module_t *imod;
+    int i = 0;
+
+    /* if no modules are active, then there is nothing to do */
+    if (0 == opal_list_get_size(&orte_notifier_base.modules)) {
+        return ORTE_ERROR;
+    }
+
+    if (NULL == action || NULL == kv) {
+        return ORTE_ERROR;
+    }
+
+    modules = opal_argv_split(action, ',');
+
+    /* no modules selected then nothing to do */
+    if (NULL == modules) {
+        return ORTE_ERROR;
+    }
+
+    for (i=0; NULL != modules[i]; i++) {
+        OPAL_LIST_FOREACH(imod, &orte_notifier_base.modules, orte_notifier_active_module_t) {
+            if (NULL != imod->module->log &&
+                0 == strcmp(imod->component->base_version.mca_component_name, modules[i])) {
+                imod->module->set_config(kv);
+            }
+        }
+    }
+    opal_argv_free(modules);
+
+    return ORTE_SUCCESS;
+}
+
+int orte_notifier_base_get_config(char *action, opal_list_t **list)
+{
+    char **modules = NULL;
+    orte_notifier_active_module_t *imod;
+    int i = 0;
+
+    /* if no modules are active, then there is nothing to do */
+    if (0 == opal_list_get_size(&orte_notifier_base.modules)) {
+        return ORTE_ERROR;
+    }
+
+    if (NULL == action || NULL == list) {
+        return ORTE_ERROR;
+    }
+
+    modules = opal_argv_split(action, ',');
+
+    /* no modules selected then nothing to do */
+    if (NULL == modules) {
+        return ORTE_ERROR;
+    }
+
+    for (i=0; NULL != modules[i]; i++) {
+        OPAL_LIST_FOREACH(imod, &orte_notifier_base.modules, orte_notifier_active_module_t) {
+            if (NULL != imod->module->log &&
+                0 == strcmp(imod->component->base_version.mca_component_name, modules[i])) {
+                imod->module->get_config(list);
+            }
+        }
+    }
+    opal_argv_free(modules);
+
+    return ORTE_SUCCESS;
+}
+
 void orte_notifier_base_log(int sd, short args, void *cbdata)
 {
     orte_notifier_request_t *req = (orte_notifier_request_t*)cbdata;

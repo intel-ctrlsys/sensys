@@ -101,6 +101,12 @@ typedef int (*orte_notifier_base_module_init_fn_t)(void);
 /* finalize the selected module */
 typedef void (*orte_notifier_base_module_finalize_fn_t)(void);
 
+/* configure the selected module */
+typedef int (*orte_notifier_base_module_set_config_fn_t)(opal_value_t *kv);
+
+/* retrieve configuration of the selected module */
+typedef int (*orte_notifier_base_module_get_config_fn_t)(opal_list_t **list);
+
 /* Log an internal error - this will include the job that caused the
  * error to occur */
 typedef void (*orte_notifier_base_module_log_fn_t)(orte_notifier_request_t *req);
@@ -193,6 +199,8 @@ typedef void (*orte_notifier_base_module_report_fn_t)(orte_notifier_request_t *r
 typedef struct {
     orte_notifier_base_module_init_fn_t             init;
     orte_notifier_base_module_finalize_fn_t         finalize;
+    orte_notifier_base_module_set_config_fn_t       set_config;
+    orte_notifier_base_module_get_config_fn_t       get_config;
     orte_notifier_base_module_log_fn_t              log;
     orte_notifier_base_module_event_fn_t            event;
     orte_notifier_base_module_report_fn_t           report;

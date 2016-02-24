@@ -25,8 +25,9 @@ extern "C" {
     int orcm_octl_sensor_change_sampling(int command, char** cmdlist);
     int orcm_octl_set_notifier_policy(int command, char** cmdlist);
     int orcm_octl_get_notifier_policy(int command, char** cmdlist);
+    int orcm_octl_set_notifier_smtp(int command, char** cmdlist);
+    int orcm_octl_get_notifier_smtp(int command, char** cmdlist);
     int orcm_octl_sensor_store(int command, char** cmdlist);
-
 };
 
 orte_rml_module_send_buffer_nb_fn_t ut_octl_tests::saved_send_buffer = NULL;
@@ -450,4 +451,178 @@ TEST_F(ut_octl_tests, positive_test_sensor_storage_2)
     };
     int rv = orcm_octl_sensor_store(2, (char**)cmdlist);
     EXPECT_EQ(ORTE_SUCCESS, rv);
+}
+
+// Testing the notifier set smtp policy
+TEST_F(ut_octl_tests, notifier_set_smtp_policy_test1)
+{
+    const char* cmdlist[7] = {
+        "notifier",
+        "set",
+        "smtp-policy",
+        "server_name",
+        "OutlookOR.intel.com",
+        "tn01,tn02",
+        NULL
+    };
+    next_proc_result = ORTE_SUCCESS;
+    next_send_result = ORTE_SUCCESS;
+    int rv = orcm_octl_set_notifier_smtp(0, (char**)cmdlist);
+    EXPECT_EQ(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_smtp_policy_test2)
+{
+    const char* cmdlist[7] = {
+        "notifier",
+        "set",
+        "smtp-policy",
+        "server_port",
+        "40",
+        "tn01,tn02",
+        NULL
+    };
+    next_proc_result = ORTE_SUCCESS;
+    next_send_result = ORTE_SUCCESS;
+    int rv = orcm_octl_set_notifier_smtp(0, (char**)cmdlist);
+    EXPECT_EQ(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_smtp_policy_test3)
+{
+    const char* cmdlist[7] = {
+        "notifier",
+        "set",
+        "smtp-policy",
+        "priority",
+        "1",
+        "tn01,tn02",
+        NULL
+    };
+    next_proc_result = ORTE_SUCCESS;
+    next_send_result = ORTE_SUCCESS;
+    int rv = orcm_octl_set_notifier_smtp(0, (char**)cmdlist);
+    EXPECT_EQ(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_smtp_policy_negative_test_1)
+{
+    const char* cmdlist[7] = {
+        "notifier",
+        "set",
+        "smtp-policy",
+        "server_name",
+        "OutlookOR.intel.com",
+        "",
+         NULL
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_set_notifier_smtp(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_smtp_policy_negative_test_2)
+{
+    const char* cmdlist[7] = {
+        "notifier",
+        "set",
+        "smtp-policy",
+        "server",
+        "OutlookOR.intel.com",
+        "tn01,tn02",
+         NULL
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_set_notifier_smtp(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_smtp_policy_negative_test_3)
+{
+    const char* cmdlist[7] = {
+        "notifier",
+        "set",
+        "smtp-policy",
+        "port",
+        "smtp",
+        "tn01,tn02",
+         NULL
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_set_notifier_smtp(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_smtp_policy_negative_test_4)
+{
+    const char* cmdlist[7] = {
+        "notifier",
+        "set",
+        "smtp-policy",
+        "priority",
+        "xxxx",
+        "tn01,tn02",
+         NULL
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_set_notifier_smtp(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+// Testing the notifier get smtp policy
+TEST_F(ut_octl_tests, notifier_get_smtp_policy_test)
+{
+    const char* cmdlist[5] = {
+        "notifier",
+        "get",
+        "smtp-policy",
+        "tn01,tn02",
+        NULL
+    };
+    next_proc_result = ORTE_SUCCESS;
+    next_send_result = ORTE_SUCCESS;
+    int rv = orcm_octl_get_notifier_smtp(0, (char**)cmdlist);
+    EXPECT_EQ(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_get_smtp_policy_negative_test_1)
+{
+    const char* cmdlist[5] = {
+        "notifier",
+        "get",
+        "smtp-policy",
+        "",
+        NULL
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_get_notifier_smtp(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_get_smtp_policy_negative_test_2)
+{
+    const char* cmdlist[5] = {
+        "notifier",
+        "get",
+        "",
+        "tn01,tn02",
+        NULL
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_get_notifier_smtp(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_get_smtp_policy_negative_test_3)
+{
+    const char* cmdlist[5] = {
+        "notifer",
+        "get",
+        "smtp-policy",
+        "tntn02",
+        NULL
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_get_notifier_smtp(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
 }

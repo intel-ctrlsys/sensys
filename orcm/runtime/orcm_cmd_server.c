@@ -41,6 +41,10 @@ static int pack_severity_action(opal_buffer_t **result_buff, orte_notifier_sever
                                 char **action);
 static int unpack_severity_action(opal_buffer_t *buffer, orte_notifier_severity_t *sev,
                                 char **action);
+static int orcm_cmd_server_set_smtp(opal_buffer_t* buffer);
+static int pack_opal_value(opal_buffer_t **buffer, opal_value_t **kv);
+static int unpack_opal_value(opal_buffer_t *buffer, opal_value_t **kv);
+static int orcm_cmd_server_get_smtp(opal_buffer_t* buffer, opal_buffer_t **result_buff, int *count);
 
 int orcm_cmd_server_init(void)
 {
@@ -73,7 +77,6 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
     char *error = NULL;
     int rc = ORCM_SUCCESS;
     int response = ORCM_SUCCESS;
-    int cnt = 1;
     int count = 0;
 
     rc = unpack_command_subcommand(buffer, &command, &sub_command);
@@ -81,48 +84,55 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
         goto ERROR;
     }
     if (ORCM_SET_NOTIFIER_COMMAND == command) {
+        pack_buff = OBJ_NEW(opal_buffer_t);
+        NULL_CHECK(pack_buff);
         switch(sub_command) {
         case ORCM_SET_NOTIFIER_POLICY_COMMAND:
-            pack_buff = OBJ_NEW(opal_buffer_t);
-            NULL_CHECK(pack_buff);
             response = orcm_cmd_server_set_policy(buffer);
-            if (ORCM_SUCCESS != response) {
-                goto ERROR;
-            }
-            if (OPAL_SUCCESS != 
-                (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))) {
-                goto ERROR;
-            }
-            goto RESPONSE;
-
+            break;
+        case ORCM_SET_NOTIFIER_SMTP_COMMAND:
+            response = orcm_cmd_server_set_smtp(buffer);
+            break;
         default:
             asprintf(&error,"invalid notifier set command");
             goto ERROR;
         }
+        if (ORCM_SUCCESS != response) {
+            goto ERROR;
+        }
+        if (OPAL_SUCCESS != 
+            (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))) {
+             goto ERROR;
+        }
+        goto RESPONSE;
+
     } else if (ORCM_GET_NOTIFIER_COMMAND == command) {
+        pack_buff = OBJ_NEW(opal_buffer_t);
+        NULL_CHECK(pack_buff);
         switch(sub_command) {
         case ORCM_GET_NOTIFIER_POLICY_COMMAND:
-            pack_buff = OBJ_NEW(opal_buffer_t);
-            NULL_CHECK(pack_buff);
             response = orcm_cmd_server_get_policy(buffer, &result_buff, &count);
-            if (ORCM_SUCCESS != response) {
-                goto ERROR;
-            }
-            rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT);
-            if (OPAL_SUCCESS != rc) {
-                goto ERROR;
-            }
-            rc = opal_dss.pack(pack_buff, &count, 1, OPAL_INT);
-            if (OPAL_SUCCESS != rc) {
-                goto ERROR;
-            }
-            rc = opal_dss.pack(pack_buff, &result_buff, 1, OPAL_BUFFER);
-            goto RESPONSE;
-
+            break;
+        case ORCM_GET_NOTIFIER_SMTP_COMMAND:
+            response = orcm_cmd_server_get_smtp(buffer, &result_buff, &count);
+            break;
         default:
             asprintf(&error,"invalid notifier get command");
             goto ERROR;
         }
+        if (ORCM_SUCCESS != response) {
+            goto ERROR;
+        }
+        rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT);
+        if (OPAL_SUCCESS != rc) {
+            goto ERROR;
+        }
+        rc = opal_dss.pack(pack_buff, &count, 1, OPAL_INT);
+        if (OPAL_SUCCESS != rc) {
+            goto ERROR;
+        }
+        rc = opal_dss.pack(pack_buff, &result_buff, 1, OPAL_BUFFER);
+        goto RESPONSE;
     }
 
 ERROR:
@@ -132,9 +142,7 @@ ERROR:
     }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
-        if(NULL != pack_buff) {
-            OBJ_RELEASE(pack_buff);
-        }
+        SAFE_RELEASE(pack_buff);
         return;
     }
     if (NULL == error) {
@@ -143,9 +151,7 @@ ERROR:
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &error, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        if(NULL != pack_buff) {
-            OBJ_RELEASE(pack_buff);
-        }
+        SAFE_RELEASE(pack_buff);
         free(error);
         return;
     }
@@ -157,9 +163,7 @@ RESPONSE:
                                       ORCM_RML_TAG_CMD_SERVER,
                                       orte_rml_send_callback, NULL))) {
         ORTE_ERROR_LOG(rc);
-        if(NULL != pack_buff) {
-            OBJ_RELEASE(pack_buff);
-        }
+        SAFE_RELEASE(pack_buff);
         return;
     }
     if (NULL != error) {
@@ -209,14 +213,14 @@ static int orcm_cmd_server_get_policy(opal_buffer_t* buffer, opal_buffer_t **res
 
     *result_buff = OBJ_NEW(opal_buffer_t);
     if(NULL == *result_buff) {
-        return ORCM_ERROR;
+        return ORCM_ERR_OUT_OF_RESOURCE;
     }
     for(sev = ORTE_NOTIFIER_EMERG; sev <= ORTE_NOTIFIER_DEBUG; sev++) {
         action = (char *) get_notifier_policy(sev);
         pack_count++;
         rc = pack_severity_action(result_buff, &sev, &action);
         if (ORCM_SUCCESS != rc) {
-            OBJ_RELEASE(*result_buff);
+            SAFE_RELEASE(*result_buff);
             *result_buff = NULL;
             return rc;
         }
@@ -257,5 +261,69 @@ static int unpack_severity_action(opal_buffer_t *buffer, orte_notifier_severity_
                                               &cnt, OPAL_STRING))) {
         return rc;
     }
+    return rc;
+}
+
+static int orcm_cmd_server_set_smtp(opal_buffer_t* buffer)
+{
+    int rc = ORCM_SUCCESS;
+    opal_value_t *kv = NULL;
+
+    rc = unpack_opal_value(buffer, &kv);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+    return orte_notifier_base_set_config("smtp",kv);
+}
+
+static int pack_opal_value(opal_buffer_t **buffer, opal_value_t **kv)
+{
+    return opal_dss.pack(*buffer, kv, 1, OPAL_VALUE);
+}
+
+static int unpack_opal_value(opal_buffer_t *buffer, opal_value_t **kv)
+{
+    int cnt = 1;
+    /*unpack the opal_value_t*/
+    return opal_dss.unpack(buffer, kv,
+                           &cnt, OPAL_VALUE);
+}
+
+static int orcm_cmd_server_get_smtp(opal_buffer_t* buffer, opal_buffer_t **result_buff, int *count)
+{
+    int rc = ORCM_SUCCESS;
+    opal_list_t *list = NULL;
+    opal_value_t *kv = NULL;
+    int pack_count = 0;
+
+    *result_buff = OBJ_NEW(opal_buffer_t);
+    if(NULL == *result_buff) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+    list = OBJ_NEW(opal_list_t);
+    if(NULL == list) {
+        OBJ_RELEASE(*result_buff);
+        *result_buff = NULL;
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+    rc = orte_notifier_base_get_config("smtp", &list);
+    if (ORCM_SUCCESS != rc) {
+        OBJ_RELEASE(*result_buff);
+        OBJ_RELEASE(list);
+        *result_buff = NULL;
+        return rc;
+    }
+    OPAL_LIST_FOREACH(kv, list, opal_value_t) {
+        pack_count++;
+        rc = pack_opal_value(result_buff, &kv);
+        if (ORCM_SUCCESS != rc) {
+            OBJ_RELEASE(*result_buff);
+            OBJ_RELEASE(list);
+            *result_buff = NULL;
+            return rc;
+        }
+    }
+    *count = pack_count;
+    OBJ_RELEASE(list);
     return rc;
 }

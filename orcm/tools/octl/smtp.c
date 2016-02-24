@@ -73,11 +73,6 @@ int orcm_octl_get_notifier_smtp(int cmd, char **argv)
         rc = ORCM_ERROR;
         goto done;
     }
-    if (NULL == xfer) {
-        error = "memory allocation error";
-        rc = ORCM_ERROR;
-        goto done;
-    }
     for (i = 0; i < opal_argv_count(nodelist); i++) {
         OBJ_RETAIN(buf);
         OBJ_RETAIN(xfer);

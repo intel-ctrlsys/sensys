@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2016  Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 #
@@ -8,7 +7,7 @@
 #
 
 if HAVE_GTEST
-gtestSubdirs=gtest_example
+gtestSubdirs=parser
 endif
 
-SUBDIRS=mca tools util $(gtestSubdirs)
+SUBDIRS=$(gtestSubdirs)

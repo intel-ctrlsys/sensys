@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<root>
+    <group name="group_name1" >
+        <tagnoname>
+            <tagname name="tag_name1" >
+                tagname_value
+            </tagname>
+            <tagname name="tag_name2" >
+                <anothertag name="anothertag_name1"/>
+                <anothertag name="anothertag_name2"/>
+            </tagname>
+        </tagnoname>
+    </group>
+
+    <group name="group_name2">
+        groupname2_value
+    </group>
+
+    <group name="group_name3">
+       <tagnoname>
+            tagnoname_value
+       </tagnoname>
+       <tagnoname>
+            tagnoname2_value
+       </tagnoname>
+    </group>
+
+    <group>
+      Invalid group
+    </group>
+</root>

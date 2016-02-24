@@ -1,6 +1,6 @@
 # -*- makefile -*-
 #
-# Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+# Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
 ## $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -15,7 +15,11 @@ headers += \
         util/cli.h \
         util/attr.h \
         util/logical_group.h \
-        util/vardata.h
+        util/vardata.h \
+        util/parser.h \
+        util/parser_api.h \
+        util/xmlparser.h \
+        util/pugixml/pugixml.hpp
 
 liborcm_la_SOURCES += \
         util/error_strings.c \
@@ -23,4 +27,7 @@ liborcm_la_SOURCES += \
         util/cli.c \
         util/attr.c \
         util/logical_group.c \
-        util/vardata.cpp
+        util/vardata.cpp \
+        util/parser_api.cpp \
+        util/xmlparser.cpp \
+        util/pugixml/pugixml.cpp

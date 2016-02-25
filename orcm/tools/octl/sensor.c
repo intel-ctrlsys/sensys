@@ -627,7 +627,7 @@ static int get_inventory_list(int cmd, opal_list_t *filterlist, opal_list_t** re
             opal_list_append(*results, &tmp_value->super);
         }
     } else {
-        printf("* No Results Returned *\n");
+        printf("\n* No Results Returned *\n");
         rc = ORCM_SUCCESS;
         *results = NULL;
     }
@@ -754,6 +754,7 @@ int orcm_octl_sensor_inventory_get(int cmd, char **argv)
 
     /* Raw CSV output for now... */
     if(NULL != returned_list) {
+        printf("\n");
         OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
             printf("%s\n", line->data.string);
         }

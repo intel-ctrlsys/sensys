@@ -1173,16 +1173,21 @@ int assemble_response(opal_list_t *db_query_results, opal_buffer_t **response_bu
         return rc;
     }
 
-    /*Add results*/
-    if(ORCM_SUCCESS == rc && 0 == returned_status && NULL != db_query_results) {
-        results_count = (uint32_t)opal_list_get_size(db_query_results);
+    /*Add results count*/
+    if (0 == returned_status) {
+        if (NULL != db_query_results) {
+            results_count = (uint32_t)opal_list_get_size(db_query_results);
+        }
         OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output, "Results count to send back %ld", results_count));
         if (OPAL_SUCCESS != (rc = opal_dss.pack(*response_buffer, &results_count, 1, OPAL_UINT32))) {
             rc = ORCM_ERR_PACK_FAILURE;
             ORTE_ERROR_LOG(rc);
             return rc;
         }
-        /*Pack the results list */
+     }
+
+    /*Add results*/
+    if(ORCM_SUCCESS == rc && 0 == returned_status && NULL != db_query_results) {
         OPAL_LIST_FOREACH(tmp_value, db_query_results, opal_value_t){
             if (OPAL_SUCCESS != (rc = opal_dss.pack(*response_buffer,
                                                     &tmp_value->data.string,

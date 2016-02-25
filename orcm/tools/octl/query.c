@@ -114,6 +114,7 @@ int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &results_count, &n, OPAL_UINT32))) {
             goto query_db_cleanup;
         }
+        if (0 < results_count) {
         (*results) = OBJ_NEW(opal_list_t);
         for(uint32_t i = 0; i < results_count; ++i) {
             char* tmp_str = NULL;
@@ -127,9 +128,14 @@ int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
             tmp_value->data.string = tmp_str;
             opal_list_append(*results, &tmp_value->super);
             }
-    } else {
-        printf("* No Results Returned *\n");
+       } else {
+        printf("\nNo results found!\n");
         rc = ORCM_SUCCESS;
+        *results = NULL;
+     }
+    } else {
+        printf("\nUnable to get results via ORCM scheduler\n");
+        rc = ORCM_ERROR;
         *results = NULL;
     }
 query_db_cleanup:

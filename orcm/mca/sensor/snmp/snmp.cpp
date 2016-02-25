@@ -226,9 +226,13 @@ void snmp_impl::inventory_collect(opal_buffer_t *inventory_snapshot)
     for(vector<snmpCollector>::iterator it=collectorObj_.begin();
         it!=collectorObj_.end();++it)
     {
-        vardata(it->getHostname()).setKey("hostname").packTo \
-                                                      (inventory_snapshot);
-        packDataToBuffer(it->collectData(),inventory_snapshot);
+	try {
+            vardata(it->getHostname()).setKey("hostname").packTo \
+       	                                                  (inventory_snapshot);
+            packDataToBuffer(it->collectData(),inventory_snapshot);
+        } catch (exception &e) {
+            opal_output(0, "ERROR: %s (%s)\n", e.what(), it->getHostname().c_str());
+        }
     }
 }
 
@@ -246,31 +250,38 @@ void snmp_impl::inventory_log(char *hostname,
     stringstream sensor_name;
     opal_list_t *records = NULL;
 
-    records = OBJ_NEW(opal_list_t);
-    ON_NULL_THROW(records);
+    struct timeval timestamp;
+    gettimeofday(&timestamp, NULL);
 
-    vector<vardata> allItems = unpackDataFromBuffer(inventory_snapshot);
-    for(vector<vardata>::iterator it=allItems.begin();it!=allItems.end();++it)
-    {
-        if("hostname" != it->getKey()){
-            sensor_name.str("");
-            sensor_name << "sensor_snmp_" << (int) it->getDataType() << "_" <<
-                           sensor_number++;
-            it->setKey(sensor_name.str());
-        } else {
-            if (0 != records->opal_list_length){
-                if (0 <= orcm_sensor_base.dbhandle){
-                    orcm_db.store_new(orcm_sensor_base.dbhandle,
-                                      ORCM_DB_INVENTORY_DATA, records, NULL,
-                                      my_inventory_log_cleanup, NULL);
-                } else {
-                    my_inventory_log_cleanup(-1,-1,records,NULL,NULL);
+    try {
+        records = OBJ_NEW(opal_list_t);
+        ON_NULL_THROW(records);
+
+        vector<vardata> allItems = unpackDataFromBuffer(inventory_snapshot);
+        for(vector<vardata>::iterator it=allItems.begin();it!=allItems.end();++it) {
+            if("hostname" != it->getKey()) {
+                sensor_name.str("");
+                sensor_name << "sensor_snmp_" << (int) it->getDataType() << "_" <<
+                               sensor_number++;
+                it->setKey(sensor_name.str());
+            } else {
+                if (0 != records->opal_list_length) {
+                    if (0 <= orcm_sensor_base.dbhandle) {
+                        orcm_db.store_new(orcm_sensor_base.dbhandle,
+                                          ORCM_DB_INVENTORY_DATA, records, NULL,
+                                          my_inventory_log_cleanup, NULL);
+                    } else {
+                        my_inventory_log_cleanup(-1,-1,records,NULL,NULL);
+                    }
+                    records = OBJ_NEW(opal_list_t);
+                    ON_NULL_THROW(records);
                 }
-                records = OBJ_NEW(opal_list_t);
-                ON_NULL_THROW(records);
             }
+            it->appendToOpalList(records);
+            vardata(timestamp).setKey(string("ctime")).appendToOpalList(records);
         }
-        it->appendToOpalList(records);
+    } catch (exception &e) {
+        opal_output(0, "ERROR: %s\n", e.what());
     }
 
     if (0 <= orcm_sensor_base.dbhandle && 0 != records->opal_list_length){

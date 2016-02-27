@@ -286,7 +286,7 @@ static int analyze(int sd, short args, void *cbdata)
         goto cleanup;
     }
     opal_list_append(aggregate_list, (opal_list_item_t *)aggregate_value);
-    analytics_value_to_next = orcm_util_load_orcm_analytics_value_compute(current_caddy->analytics_value->key,
+    analytics_value_to_next = orcm_util_load_analytics_time_compute(current_caddy->analytics_value->key,
                                               current_caddy->analytics_value->non_compute_data, aggregate_list);
     if (NULL == analytics_value_to_next) {
         rc = ORCM_ERROR;

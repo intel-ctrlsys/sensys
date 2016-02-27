@@ -433,8 +433,7 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
         goto cleanup;
     }
     opal_list_append(compute_list_to_next, (opal_list_item_t *)compute_list_item_to_next);
-    analytics_value_to_next = orcm_util_load_orcm_analytics_value_compute(
-                              caddy->analytics_value->key,
+    analytics_value_to_next = orcm_util_load_analytics_time_compute(caddy->analytics_value->key,
                               caddy->analytics_value->non_compute_data, compute_list_to_next);
     if (NULL != analytics_value_to_next) {
         if(true == orcm_analytics_base_db_check(caddy->wf_step, false)){

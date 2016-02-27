@@ -579,6 +579,66 @@ orcm_analytics_value_t* orcm_util_load_orcm_analytics_value_compute(opal_list_t 
     return analytics_vals;
 }
 
+static opal_list_t* orcm_util_update_analytics_time(opal_list_t* non_compute)
+{
+    opal_list_t* new_non_compute = OBJ_NEW(opal_list_t);
+    orcm_value_t* list_item = NULL;
+    orcm_value_t* new_list_item = NULL;
+    struct timeval current_time;
+    char* time_key = "ctime";
+
+    gettimeofday(&current_time, NULL);
+
+    if (NULL != new_non_compute) {
+        if (NULL != non_compute) {
+            OPAL_LIST_FOREACH(list_item, non_compute, orcm_value_t) {
+                if (NULL == list_item) {
+                    SAFE_RELEASE(new_non_compute);
+                    return new_non_compute;
+                }
+                if (NULL == list_item->value.key ||
+                    strncmp(list_item->value.key, time_key, strlen(time_key))) {
+                    if (NULL != (new_list_item = orcm_util_copy_orcm_value(list_item))) {
+                        opal_list_append(new_non_compute, (opal_list_item_t*)new_list_item);
+                    } else {
+                        SAFE_RELEASE(new_non_compute);
+                        return new_non_compute;
+                    }
+                }
+            }
+        }
+
+        if (ORCM_SUCCESS != (orcm_util_append_orcm_value(new_non_compute, time_key,
+                                                         &current_time, OPAL_TIMEVAL, NULL))) {
+            SAFE_RELEASE(new_non_compute);
+        }
+    }
+
+    return new_non_compute;
+}
+
+/* create an orcm_analytics_value that retains the key, update the time in non_compute data to the
+ * current time, and assign the compute data to it. This function is not supposed to be used as a
+ * general function that creates an orcm_analytics_value. It is used to update the sample time to
+ * the current time and pass the new compute data */
+orcm_analytics_value_t* orcm_util_load_analytics_time_compute(opal_list_t* key,
+                                                              opal_list_t* non_compute,
+                                                              opal_list_t* compute)
+{
+    orcm_analytics_value_t* analytics_vals = OBJ_NEW(orcm_analytics_value_t);
+
+    if (NULL != analytics_vals) {
+        if (NULL != key) {
+            OBJ_RETAIN(key);
+            analytics_vals->key = key;
+        }
+        analytics_vals->non_compute_data = orcm_util_update_analytics_time(non_compute);
+        analytics_vals->compute_data = compute;
+    }
+
+    return analytics_vals;
+}
+
 double orcm_util_get_number_orcm_value(orcm_value_t *source_value)
 {
     double ret;

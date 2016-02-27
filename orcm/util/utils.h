@@ -74,6 +74,13 @@ ORCM_DECLSPEC orcm_analytics_value_t* orcm_util_load_orcm_analytics_value_comput
                                                             opal_list_t *non_compute,
                                                             opal_list_t *compute);
 
+/* create an orcm_analytics_value that retains the key, update the time in non_compute data to the
+ * current time, and assign the compute data to it */
+ORCM_DECLSPEC orcm_analytics_value_t* orcm_util_load_analytics_time_compute(opal_list_t* key,
+                                                                        opal_list_t* non_compute,
+                                                                        opal_list_t* compute);
+
+
 ORCM_DECLSPEC int orcm_util_find_items(const char *keys[], int num_keys, opal_list_t *list,
                              opal_value_t *items[], opal_bitmap_t *map);
 

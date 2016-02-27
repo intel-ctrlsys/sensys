@@ -12,6 +12,7 @@
 #include "analytics_spatial_test.h"
 #include "analytics_util.h"
 #include <sstream>
+#include <cfloat>
 
 static void fill_caddy_with_attributes(orcm_workflow_caddy_t* caddy,
                                        string nodelist, string compute,

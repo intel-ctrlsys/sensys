@@ -751,6 +751,27 @@ static int run_cmd(char *cmd)
             break;
         }
         break;
+    case 57: // Chassis ID LED
+        rc = octl_command_to_int(cmdlist[1]);
+        if (-1 == rc) {
+            rc = ORCM_ERROR;
+            break;
+        }
+        switch (rc){
+            case 44: // enable
+                rc = orcm_octl_chassis_id_on(cmdlist);
+                break;
+            case 45: // disable
+                rc = orcm_octl_chassis_id_off(cmdlist);
+                break;
+            case 58: // state
+                rc = orcm_octl_chassis_id_state(cmdlist);
+                break;
+            default:
+                rc = ORCM_ERROR;
+                break;
+        }
+        break;
     default:
         rc = ORCM_ERROR;
         break;

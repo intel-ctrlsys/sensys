@@ -28,6 +28,7 @@
 #include "orte/mca/notifier/base/base.h"
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/runtime/orcm_cmd_server.h"
+#include "orcm/runtime/led_control_interface.h"
 
 #define  NULL_CHECK(p) if(NULL==p) {goto ERROR;}
 #define SAFE_RELEASE(p) if(NULL != p) OBJ_RELEASE(p);
@@ -132,6 +133,67 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
             goto ERROR;
         }
         rc = opal_dss.pack(pack_buff, &result_buff, 1, OPAL_BUFFER);
+        goto RESPONSE;
+    } else if (ORCM_GET_CHASSIS_ID == command || ORCM_SET_CHASSIS_ID == command){
+        // unpack BMC login information..
+        // LedControl lc(hostname, user, pass);
+        init_led_control();
+        int state;
+        int seconds = 0;
+        int cnt = 1;
+        pack_buff = OBJ_NEW(opal_buffer_t);
+        switch (sub_command){
+            case ORCM_GET_CHASSIS_ID_STATE:
+                state = get_chassis_id_state();
+                response = ORCM_SUCCESS;
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
+                    fini_led_control();
+                    goto ERROR;
+                }
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &state, 1, OPAL_INT))){
+                    fini_led_control();
+                    goto ERROR;
+                }
+                break;
+            case ORCM_SET_CHASSIS_ID_OFF:
+                response = ORCM_ERROR;
+                if (!disable_chassis_id())
+                    response = ORCM_SUCCESS;
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
+                    fini_led_control();
+                    goto ERROR;
+                }
+                break;
+            case ORCM_SET_CHASSIS_ID_ON:
+                response = ORCM_ERROR;
+                if (!enable_chassis_id())
+                    response = ORCM_SUCCESS;
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
+                    fini_led_control();
+                    goto ERROR;
+                }
+                break;
+            case ORCM_SET_CHASSIS_ID_TEMPORARY_ON:
+                cnt = 1;
+                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &seconds,
+                                                         &cnt, OPAL_INT))){
+                    fini_led_control();
+                    goto ERROR;
+                }
+                response = ORCM_ERROR;
+                if (!enable_chassis_id_with_timeout(seconds))
+                    response = ORCM_SUCCESS;
+                if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
+                    fini_led_control();
+                    goto ERROR;
+                }
+                break;
+            default:
+                asprintf(&error,"invalid chassis-id command");
+                fini_led_control();
+                goto ERROR;
+        }
+        fini_led_control();
         goto RESPONSE;
     }
 

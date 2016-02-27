@@ -1,6 +1,6 @@
 # -*- makefile -*-
 #
-# Copyright (c) 2013      Intel, Inc. All rights reserved.
+# Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
@@ -38,7 +38,7 @@ liborcm_la_LIBADD = \
 	$(MCA_orcm_FRAMEWORK_LIBS) \
 	$(ORTE_TOP_BUILDDIR)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
 liborcm_la_DEPENDENCIES = $(lib@ORTE_LIB_PREFIX@open_rte_la_LIBADD)
-liborcm_la_LDFLAGS = -lstdc++ \
+liborcm_la_LDFLAGS = -lstdc++ $(ipmiutil_LIBS)\
         -version-info $(liborcm_so_version) \
         $(ORCM_LIBORCM_EXTRA_LDFLAGS)
 

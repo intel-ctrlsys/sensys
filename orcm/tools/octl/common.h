@@ -91,6 +91,9 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv);
 int orcm_octl_set_notifier_policy(int cmd, char **argv);
 int orcm_octl_get_notifier_smtp(int cmd, char **argv);
 int orcm_octl_set_notifier_smtp(int cmd, char **argv);
+int orcm_octl_chassis_id_off(char **argv);
+int orcm_octl_chassis_id_on(char **argv);
+int orcm_octl_chassis_id_state(char **argv);
 char *get_orcm_octl_query_event_date(int cmd, char **argv);
 int orcm_octl_sensor_store(int command, char** cmdlist);
 

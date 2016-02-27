@@ -243,6 +243,16 @@ static orcm_cli_init_t cli_init[] = {
     { { "query", "node", NULL}, "status", 0, 0, "Returns the status logged in the data base for the "
     "nodes in the database: query node status <nodelist>" },
 
+    /****** Chassis ID commands ******/
+    { { NULL}, "chassis-id", 0, 0, "Enable/Disable chassis identify LED." },
+    { { "chassis-id", NULL}, "state", 0, 0, "Shows the state of the chassis identify LED." },
+    { { "chassis-id", NULL}, "", 0, 0, "chassis-id disable <node>." },
+    { { "chassis-id", NULL}, "enable", 0, 0, "Turn chassis identify LED ON for <seconds> seconds on the specified <node>. "
+    "If no <seconds> are specified, the chassis will turn ON indefinitely." },
+    { { "chassis-id", NULL}, "", 0, 0, "chassis-id enable <seconds> <node>." },
+    { { "chassis-id", NULL}, "disable", 0, 0, "Turn chassis identify LED OFF." },
+    { { "chassis-id", NULL}, "", 0, 0, "chassis-id disable <node>." },
+
     /* quit command */
     { { NULL }, "quit", 0, 0, "Exit the shell" },
 
@@ -311,7 +321,9 @@ const char *orcm_octl_commands[] = { "resource",          //0
                                      "environment_only",  //53
                                      "event_only",        //54
                                      "all",               //55
-                                     "smtp-policy"        //56
+                                     "smtp-policy",       //56
+                                     "chassis-id",        //57
+                                     "state",             //58
                                      "\0" };
 
 END_C_DECLS

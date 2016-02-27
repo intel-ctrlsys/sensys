@@ -140,3 +140,15 @@ EXAMPLE:
        notifier set smtp-policy body_preffix <email-body-preffix>  rack[2:1-8]
        notifier set smtp-policy body_suffix <email-body-suffix>  rack[2:1-8]
        notifier set smtp-policy priority <1-high,2-medium,3-low>  rack[2:1-8]
+
+[octl:chassis-id:state-usage]
+ERROR: %s
+USAGE: chassis-id state <nodelist>
+
+[octl:chassis-id:disable-usage]
+ERROR: %s
+USAGE: chassis-id disable <nodelist>
+
+[octl:chassis-id:enable-usage]
+ERROR: %s
+USAGE: chassis-id enable [seconds] <nodelist>

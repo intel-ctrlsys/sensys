@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015  Intel, Inc. All rights reserved.
+# Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -36,7 +36,8 @@ check_PROGRAMS = octl_tests
 octl_tests_SOURCES = \
     octl_tests.cpp \
     octl_query.cpp \
-    octl_mocking.cpp
+    octl_mocking.cpp \
+    octl_led_tests.cpp
 
 MOCKING = \
     -Wl,--wrap=orcm_cfgi_base_get_hostname_proc

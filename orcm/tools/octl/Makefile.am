@@ -43,7 +43,8 @@ octl_SOURCES = \
         analytics.c \
         notifier.c \
         smtp.c \
-        query.c
+        query.c \
+        chassis-id.c
 
 # the following empty octl_LDFLAGS is used
 #  so that the octl can be compiled statically

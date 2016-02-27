@@ -327,7 +327,7 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
     int nmsg;
-    char *name;
+    const char *name = "syslog";
     bool packed;
     int pripart;
     syslog_msg *trk,*nxt;
@@ -365,14 +365,11 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
     packed = false;
 
     /* pack our name */
-    name = strdup("syslog");
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &name, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
-        free(name);
         return;
     }
-    free(name);
 
     /* store our hostname */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {

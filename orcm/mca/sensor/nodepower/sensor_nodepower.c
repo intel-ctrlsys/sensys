@@ -335,7 +335,7 @@ static void perthread_nodepower_sample(int fd, short args, void *cbdata)
 void collect_nodepower_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
-    char *freq;
+    const char *npwr = "nodepower";
     opal_buffer_t data, *bptr;
     bool packed;
     bool a_error = false;
@@ -483,13 +483,11 @@ retry_b:
     packed = false;
 
     /* pack our name */
-    freq = strdup("nodepower");
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &freq, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &npwr, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
         return;
     }
-    free(freq);
 
     /* store our hostname */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
@@ -566,7 +564,7 @@ static void nodepower_log(opal_buffer_t *sample)
     }
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
-                        "%s Received freq log from host %s",
+                        "%s Received nodepower log from host %s",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname);
 
@@ -659,7 +657,7 @@ static void nodepower_get_sample_rate(int *sample_rate)
 static void generate_test_vector(opal_buffer_t *v)
 {
     int ret;
-    char *ctmp;
+    const char *npwr = "nodepower";
     float test_power;
     struct timeval tv_test;
 
@@ -667,14 +665,11 @@ static void generate_test_vector(opal_buffer_t *v)
     test_power = 100;
 
 /* pack the plugin name */
-    ctmp = strdup("nodepower");
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &npwr, 1, OPAL_STRING))){
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
-        free(ctmp);
         return;
     }
-    free(ctmp);
 
 /* pack the hostname */
     if (OPAL_SUCCESS != (ret =
@@ -710,15 +705,13 @@ static void generate_test_vector(opal_buffer_t *v)
 static void nodepower_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
     unsigned int tot_items = 2;
-    char *comp = strdup("nodepower");
+    const char *comp = "nodepower";
     int rc = OPAL_SUCCESS;
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
@@ -726,31 +719,25 @@ static void nodepower_inventory_collect(opal_buffer_t *inventory_snapshot)
     }
 
     /* store our hostname */
-    comp = strdup("hostname");
+    comp = "hostname";
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    comp = strdup("sensor_nodepower_1");
+    comp = "sensor_nodepower_1";
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
-    comp = strdup("nodepower");
+    comp = "nodepower";
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
 }
 
 static void my_inventory_log_cleanup(int dbhandle, int status, opal_list_t *kvs, opal_list_t *output, void *cbdata)

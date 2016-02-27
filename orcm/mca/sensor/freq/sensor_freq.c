@@ -203,7 +203,7 @@ static int corefreq_load_policy(char *policy)
     int array_length = 0;
     orcm_sensor_policy_t *plc, *newplc;
     bool found_me;
-    char *sensor_name = NULL;
+    const char *sensor_name = "corefreq";
     char *action = NULL;
     float threshold;
     bool hi_thres;
@@ -215,7 +215,6 @@ static int corefreq_load_policy(char *policy)
     tokens = opal_argv_split(policy, ':');
     array_length = opal_argv_count(tokens);
 
-    sensor_name = strdup("corefreq");
     if ( 6 == array_length ) {
         threshold = (float)strtof(tokens[0], NULL);
         if ( 0 == strcmp(tokens[1], "hi") ) {
@@ -258,7 +257,7 @@ static int corefreq_load_policy(char *policy)
             goto done;
         }
 
-        action = strdup(tokens[5]);
+        action = tokens[5];
 
         /* look for sensor event policy; update with new setting or create new policy if not existing */
         found_me = false;
@@ -299,13 +298,6 @@ static int corefreq_load_policy(char *policy)
     }
 
 done:
-    if ( NULL != sensor_name ) {
-        free(sensor_name);
-    }
-
-    if ( NULL != action ) {
-        free(action);
-    }
 
     opal_argv_free(tokens);
     return ret;
@@ -316,7 +308,7 @@ static int corefreq_policy_filter(char *hostname, int core_no, float cf, time_t 
     orcm_sensor_policy_t *plc;
     corefreq_history_t *hst, *newhst;
     bool found_me;
-    char *sev;
+    const char *sev;
     char *msg;
 
     /* Check if this sample may be filtered
@@ -334,36 +326,7 @@ static int corefreq_policy_filter(char *hostname, int core_no, float cf, time_t 
             continue;
         }
 
-        switch ( plc->severity ) {
-        case ORTE_NOTIFIER_EMERG:
-            sev = strdup("EMERG");
-            break;
-        case ORTE_NOTIFIER_ALERT:
-            sev = strdup("ALERT");
-            break;
-        case ORTE_NOTIFIER_CRIT:
-            sev = strdup("CRIT");
-            break;
-        case ORTE_NOTIFIER_ERROR:
-            sev = strdup("ERROR");
-            break;
-        case ORTE_NOTIFIER_WARN:
-            sev = strdup("WARN");
-            break;
-        case ORTE_NOTIFIER_NOTICE:
-            sev = strdup("NOTICE");
-            break;
-        case ORTE_NOTIFIER_INFO:
-            sev = strdup("INFO");
-            break;
-        case ORTE_NOTIFIER_DEBUG:
-            sev = strdup("DEBUG");
-            break;
-        default:
-            sev = strdup("UNKNOWN");
-            break;
-        }
-
+        sev = orte_notifier_base_sev2str(plc->severity);
         /* this sample should be accounted for this policy
          * we have a candidate, let's check there is similar sample accounted in history or not
          */
@@ -428,7 +391,6 @@ static int corefreq_policy_filter(char *hostname, int core_no, float cf, time_t 
                 opal_list_append(&event_history, &newhst->super);
             }
         }
-        free(sev);
     }
 
 
@@ -757,7 +719,8 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     pstate_tracker_t *ptrk, *pnxt;
 
     FILE *fp;
-    char *freq;
+    const char *cfreq = "freq";
+    char *freq_data = NULL;
     float ghz;
     opal_buffer_t data, *bptr;
     int32_t ncores;
@@ -796,14 +759,11 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     packed = false;
 
     /* pack our name */
-    freq = strdup("freq");
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &freq, 1, OPAL_STRING))) {
-        free(freq);
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &cfreq, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
         return;
     }
-    free(freq);
 
     /* store our hostname */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
@@ -846,21 +806,21 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
             OBJ_RELEASE(trk);
             continue;
         }
-        while (NULL != (freq = orte_getline(fp))) {
-            ghz = strtoul(freq, NULL, 10) / 1000000.0;
+        while (NULL != (freq_data = orte_getline(fp))) {
+            ghz = strtoul(freq_data, NULL, 10) / 1000000.0;
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "%s sensor:freq: Core %d freq %f max %f min %f",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 trk->core, ghz, trk->max_freq, trk->min_freq);
             if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ghz, 1, OPAL_FLOAT))) {
                 ORTE_ERROR_LOG(ret);
-                free(freq);
+                free(freq_data);
                 fclose(fp);
                 OBJ_DESTRUCT(&data);
                 return;
             }
             packed = true;
-            free(freq);
+            free(freq_data);
         }
         fclose(fp);
     }
@@ -895,21 +855,21 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
                     OBJ_DESTRUCT(&data);
                     return;
             }
-            while (NULL != (freq = orte_getline(fp))) {
-                ptrk->value = strtoul(freq, NULL, 10);
+            while (NULL != (freq_data = orte_getline(fp))) {
+                ptrk->value = strtoul(freq_data, NULL, 10);
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                     "%s sensor:pstate: file %s : %d",
                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                     ptrk->file, ptrk->value);
                 if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ptrk->value, 1, OPAL_UINT))) {
                     ORTE_ERROR_LOG(ret);
-                    free(freq);
+                    free(freq_data);
                     fclose(fp);
                     OBJ_DESTRUCT(&data);
                     return;
                 }
                 packed = true;
-                free(freq);
+                free(freq_data);
             }
             fclose(fp);
         }
@@ -1171,7 +1131,7 @@ static void generate_test_vector(opal_buffer_t *v)
 {
     int ret;
     time_t now;
-    char *ctmp, *timestamp_str;
+    const char *ctmp  = "freq";
     char time_str[40];
     struct tm *sample_time;
     int32_t ncores;
@@ -1187,14 +1147,11 @@ static void generate_test_vector(opal_buffer_t *v)
     test_freq = min_freq;
 
 /* pack the plugin name */
-    ctmp = strdup("freq");
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
-        free(ctmp);
     return;
     }
-    free(ctmp);
 
 /* pack the hostname */
     if (OPAL_SUCCESS != (ret =
@@ -1220,14 +1177,11 @@ static void generate_test_vector(opal_buffer_t *v)
         return;
     }
     strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-    asprintf(&timestamp_str, "%s", time_str);
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &timestamp_str, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &time_str, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
-        free(timestamp_str);
         return;
     }
-    free(timestamp_str);
 
 /* Pack test core freqs */
     for (i=0; i < ncores; i++) {
@@ -1250,15 +1204,14 @@ static void generate_test_inv_data(opal_buffer_t *inventory_snapshot)
 {
     unsigned int tot_items = 20;
     unsigned int i = 0;
-    char *comp = strdup("freq");
+    const char *key = "freq";
+    char *comp = NULL;
     int rc = OPAL_SUCCESS;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &key, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
         return;
@@ -1289,15 +1242,14 @@ static void freq_inventory_collect(opal_buffer_t *inventory_snapshot)
     } else {
         unsigned int tot_items = (unsigned int)opal_list_get_size(&tracking) + 1; /* include "hostname"/nodename pair */
         unsigned int i = 0;
-        char *comp = strdup("freq");
+        const char *ccomp = "freq";
+        char *comp = NULL;
         int rc = OPAL_SUCCESS;
 
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &ccomp, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
             return;
         }
-        free(comp);
 
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
             ORTE_ERROR_LOG(rc);
@@ -1306,13 +1258,11 @@ static void freq_inventory_collect(opal_buffer_t *inventory_snapshot)
         --tot_items; /* adjust back for extra "hostname"/nodename pair */
 
         /* store our hostname */
-        comp = strdup("hostname");
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        ccomp = "hostname";
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &ccomp, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
             return;
         }
-        free(comp);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             return;

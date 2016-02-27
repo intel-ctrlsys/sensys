@@ -710,13 +710,12 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
     int rc;
     unsigned int tot_items = 0;
-    char *comp = strdup("ipmi");
+    const char *comp = "ipmi";
     opal_value_t* inv_item = NULL;
 
     if (mca_sensor_ipmi_component.test) {
         /* generate test vector */
         generate_test_vector_inv(inventory_snapshot);
-        free(comp);
         return;
     }
 
@@ -724,10 +723,8 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
         return;
@@ -1447,7 +1444,7 @@ void collect_ipmi_sample(orcm_sensor_sampler_t *sampler)
 {
     int rc;
     opal_buffer_t data, *bptr;
-    char *ipmi;
+    const char *ipmi = "ipmi";
     char *sample_str;
     int int_count=0;
     size_t host_count=0;
@@ -1483,13 +1480,11 @@ void collect_ipmi_sample(orcm_sensor_sampler_t *sampler)
     /* prep the buffer to collect the data */
     OBJ_CONSTRUCT(&data, opal_buffer_t);
     /* pack our component name - 1*/
-    ipmi = strdup("ipmi");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &ipmi, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
         return;
     }
-    free(ipmi);
 
     if(first_sample == 0 && timeout < 3)  /* The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it. */
     {
@@ -1837,18 +1832,16 @@ static void generate_test_vector(opal_buffer_t *v)
 
 static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot)
 {
-    char *comp;
+    const char *comp = "ipmi";
     unsigned int tot_items = 10;
     int rc;
     if(NULL != inventory_snapshot)
     {
 
-        comp = strdup("ipmi");
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
-        free(comp);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
             ORTE_ERROR_LOG(rc);
             return;

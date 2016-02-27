@@ -551,7 +551,7 @@ static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
     int32_t rc;
-    char *comp;
+    const char *comp = "dmidata";
     FILE *fptr;
     char *freq_list;
     int size = 0;
@@ -560,12 +560,10 @@ static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
         generate_test_vector(inventory_snapshot);
         return;
     }
-    comp = strdup("dmidata");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &dmidata_hwloc_topology, 1, OPAL_HWLOC_TOPO))) {
         ORTE_ERROR_LOG(rc);
         return;
@@ -693,14 +691,13 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
 static void generate_test_vector(opal_buffer_t *v)
 {
     int rc;
-    char *ctmp;
+    const char *ctmp = "dmidata";
     hwloc_obj_t obj;
-    char *inv_key, *inv_tv, *freq_list;
+    char *inv_key, *inv_tv;
+    const char *freq_list;
     uint32_t k;
 
-    ctmp = strdup("dmidata");
     opal_dss.pack(v, &ctmp, 1, OPAL_STRING);
-    free(ctmp);
 
     /* MACHINE Level Stats*/
     if (NULL == (obj = hwloc_get_obj_by_type(dmidata_hwloc_topology, HWLOC_OBJ_MACHINE, 0))) {
@@ -746,10 +743,9 @@ static void generate_test_vector(opal_buffer_t *v)
         return;
     }
 
-    freq_list = strdup("2102100 2000000 3453534 \n");
+    freq_list = "2102100 2000000 3453534\n";
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(v, &freq_list, 1, OPAL_STRING))) {
-        free(freq_list);
         ORTE_ERROR_LOG(rc);
         return;
     }

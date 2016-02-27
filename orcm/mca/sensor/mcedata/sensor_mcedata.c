@@ -1133,7 +1133,7 @@ static void mcedata_sample(orcm_sensor_sampler_t *sampler)
 void collect_mcedata_sample(orcm_sensor_sampler_t *sampler)
 {
     int ret;
-    char *temp;
+    const char *temp = "mcedata";
     opal_buffer_t data, *bptr;
     time_t now;
     bool packed;
@@ -1243,15 +1243,12 @@ void collect_mcedata_sample(orcm_sensor_sampler_t *sampler)
         packed = true;
 
         /* pack our name */
-        temp = strdup("mcedata");
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &temp, 1, OPAL_STRING))) {
-            free(temp);
             fclose(fp);
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
             return;
         }
-        free(temp);
 
         /* store our hostname */
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
@@ -1482,15 +1479,14 @@ static void mcedata_inventory_collect(opal_buffer_t *inventory_snapshot)
     };
     unsigned int tot_items = 15; /* count of strings above + "hostname" pair */
     unsigned int i = 0;
-    char *comp = strdup("mcedata");
+    const char *comp ="mcedata";
+    char *comp_name = NULL;
     int rc = OPAL_SUCCESS;
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
         return;
@@ -1498,33 +1494,29 @@ static void mcedata_inventory_collect(opal_buffer_t *inventory_snapshot)
     --tot_items; /* don't count "hostname"/nodename pair */
 
     /* store our hostname */
-    comp = strdup("hostname");
+    comp = "hostname";
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
 
     for(i = 0; i < tot_items; ++i) {
-        asprintf(&comp, "sensor_mcedata_%d", i+1);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        asprintf(&comp_name, "sensor_mcedata_%d", i+1);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp_name, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
+            free(comp_name);
             return;
         }
-        free(comp);
-        comp = strdup(sensor_names[i]);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        free(comp_name);
+        comp_name = sensor_names[i];
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp_name, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
             return;
         }
-        free(comp);
     }
 }
 

@@ -921,7 +921,7 @@ void collect_sigar_sample(orcm_sensor_sampler_t *sampler)
     int rc;
     time_t now;
     double tdiff;
-    char *ctmp;
+    const char *ctmp = "sigar";
     bool log_group=false;
     struct timeval current_time;
     void* metrics_obj = mca_sensor_sigar_component.runtime_metrics;
@@ -944,13 +944,11 @@ void collect_sigar_sample(orcm_sensor_sampler_t *sampler)
     /* prep the buffer to collect the data */
     OBJ_CONSTRUCT(&data, opal_buffer_t);
     /* pack our name */
-    ctmp = strdup("sigar");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &ctmp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
         return;
     }
-    free(ctmp);
     /* include our node name */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
@@ -1882,16 +1880,14 @@ static uint64_t metric_diff_calc(sigar_uint64_t newval, uint64_t oldval,
 
 static void generate_test_vector(opal_buffer_t *v)
 {
-    char *ctmp;
+    const char *ctmp = "sigar";
     uint64_t ui64;
     float ft = 0.0;
     double d = 0.0;
     struct timeval current_time;
     bool log_group = true;
 
-    ctmp = strdup("sigar");
     opal_dss.pack(v, &ctmp, 1, OPAL_STRING);
-    free(ctmp);
     opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING);
     /* get the time so it will be unique each time */
     gettimeofday(&current_time, NULL);
@@ -2145,15 +2141,14 @@ static void sigar_inventory_collect(opal_buffer_t *inventory_snapshot)
     };
     unsigned int tot_items = 58;
     unsigned int i = 0;
-    char *comp = strdup("sigar");
+    const char *comp = "sigar";
+    char *comp_name = NULL;
     int rc = OPAL_SUCCESS;
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
         return;
@@ -2161,33 +2156,29 @@ static void sigar_inventory_collect(opal_buffer_t *inventory_snapshot)
     --tot_items; /* adjust out "hostname"/nodename pair */
 
     /* store our hostname */
-    comp = strdup("hostname");
+    comp = "hostname";
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
 
     for(i = 0; i < tot_items; ++i) {
-        asprintf(&comp, "sensor_sigar_%d", i+1);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        asprintf(&comp_name, "sensor_sigar_%d", i+1);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp_name, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
+            free(comp_name);
             return;
         }
-        free(comp);
-        comp = strdup(sensor_names[i]);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        free(comp_name);
+        comp_name = sensor_names[i];
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp_name, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
             return;
         }
-        free(comp);
     }
 }
 

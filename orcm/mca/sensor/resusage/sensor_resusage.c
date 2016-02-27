@@ -135,7 +135,7 @@ void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
     int rc, i;
     orte_proc_t *child;
     opal_buffer_t buf, *bptr;
-    char *comp;
+    const char *comp = "resusage";
     struct timeval current_time;
     void* metrics_obj = mca_sensor_resusage_component.runtime_metrics;
 
@@ -163,13 +163,11 @@ void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
     /* setup a buffer for our stats */
     OBJ_CONSTRUCT(&buf, opal_buffer_t);
     /* pack our name */
-    comp = strdup("resusage");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&buf);
         return;
     }
-    free(comp);
 
     /* update stats on ourself and the node */
     stats = OBJ_NEW(opal_pstats_t);
@@ -627,21 +625,18 @@ static void generate_test_vector(opal_buffer_t *v)
 {
     int ret;
     time_t now;
-    char *ctmp, *timestamp_str;
+    const char *ctmp = "resusage";
     char time_str[40];
     struct tm *sample_time;
     opal_pstats_t *stats;
     opal_node_stats_t *nstats;
 
     /* pack the plugin name */
-    ctmp = strdup("resusage");
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
     ORTE_ERROR_LOG(ret);
     OBJ_DESTRUCT(&v);
-    free(ctmp);
     return;
     }
-    free(ctmp);
 
     /* pack the hostname */
     if (OPAL_SUCCESS != (ret =
@@ -660,14 +655,11 @@ static void generate_test_vector(opal_buffer_t *v)
         return;
     }
     strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-    asprintf(&timestamp_str, "%s", time_str);
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &timestamp_str, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &time_str, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
-        free(timestamp_str);
         return;
     }
-    free(timestamp_str);
 
     /* update stats on ourself and the node */
     stats = OBJ_NEW(opal_pstats_t);
@@ -756,15 +748,14 @@ static void res_inventory_collect(opal_buffer_t *inventory_snapshot)
     };
     unsigned int tot_items = 23;
     unsigned int i = 0;
-    char *comp = strdup("resusage");
+    const char *comp = "resusage";
+    char *comp_data = NULL;
     int rc = OPAL_SUCCESS;
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
         return;
@@ -772,33 +763,29 @@ static void res_inventory_collect(opal_buffer_t *inventory_snapshot)
     --tot_items; /* adjust out "hostname"/nodename pair */
 
     /* store our hostname */
-    comp = strdup("hostname");
+    comp = "hostname";
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
 
     for(i = 0; i < tot_items; ++i) {
-        asprintf(&comp, "sensor_resusage_%d", i+1);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        asprintf(&comp_data, "sensor_resusage_%d", i+1);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp_data, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
+            free(comp_data);
             return;
         }
-        free(comp);
-        comp = strdup(sensor_names[i]);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        free(comp_data);
+        comp_data = sensor_names[i];
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp_data, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
             return;
         }
-        free(comp);
     }
 }
 

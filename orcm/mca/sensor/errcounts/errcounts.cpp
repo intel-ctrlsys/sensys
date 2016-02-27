@@ -560,13 +560,11 @@ void errcounts_impl::ev_destroy_thread()
 bool errcounts_impl::pack_string(opal_buffer_t* buffer, const std::string& str) const
 {
     int rc;
-    char* str_ptr = strdup(str.c_str());
+    const char* str_ptr = str.c_str();
     if(OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &str_ptr, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        SAFE_FREE(str_ptr);
         return false;
     }
-    SAFE_FREE(str_ptr);
     return true;
 }
 

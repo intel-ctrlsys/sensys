@@ -411,16 +411,10 @@ void snmp_impl::collect_sample(bool perthread /* = false*/)
 
 void snmp_impl::packPluginName(opal_buffer_t* buffer) {
     int rc;
-    char* str_ptr = strdup(plugin_name_.c_str());
+    const char *str_ptr = plugin_name_.c_str();
     if(OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &str_ptr, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        if (NULL != str_ptr) {
-            free(str_ptr);
-        }
         return;
-    }
-    if (NULL != str_ptr) {
-        free(str_ptr);
     }
     return;
 }

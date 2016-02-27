@@ -186,8 +186,8 @@ static int coretemp_load_policy(char *policy)
     int array_length = 0;
     orcm_sensor_policy_t *plc, *newplc;
     bool found_me;
-    char *sensor_name = NULL;
-    char *action = NULL;
+    const char *sensor_name = "coretemp";
+    const char *action = NULL;
     float threshold;
     bool hi_thres;
     int max_count, time_window;
@@ -198,7 +198,6 @@ static int coretemp_load_policy(char *policy)
     tokens = opal_argv_split(policy, ':');
     array_length = opal_argv_count(tokens);
 
-    sensor_name = strdup("coretemp");
     if ( 6 == array_length ) {
         threshold = (float)strtof(tokens[0], NULL);
         if ( 0 == strcmp(tokens[1], "hi") ) {
@@ -241,7 +240,7 @@ static int coretemp_load_policy(char *policy)
             goto done;
         }
 
-        action = strdup(tokens[5]);
+        action = tokens[5];
 
         /* look for sensor event policy; update with new setting or create new policy if not existing */
         found_me = false;
@@ -282,14 +281,6 @@ static int coretemp_load_policy(char *policy)
     }
 
 done:
-    if ( NULL != sensor_name ) {
-        free(sensor_name);
-    }
-
-    if ( NULL != action ) {
-        free(action);
-    }
-
     opal_argv_free(tokens);
     return ret;
 }
@@ -299,7 +290,7 @@ static int coretemp_policy_filter(char *hostname, int core_no, float ct, time_t 
     orcm_sensor_policy_t *plc;
     coretemp_history_t *hst, *newhst;
     bool found_me;
-    char *sev;
+    const char *sev = NULL;
     char *msg;
 
     /* Check if this sample may be filtered
@@ -317,35 +308,7 @@ static int coretemp_policy_filter(char *hostname, int core_no, float ct, time_t 
             continue;
         }
 
-        switch ( plc->severity ) {
-        case ORTE_NOTIFIER_EMERG:
-            sev = strdup("EMERG");
-            break;
-        case ORTE_NOTIFIER_ALERT:
-            sev = strdup("ALERT");
-            break;
-        case ORTE_NOTIFIER_CRIT:
-            sev = strdup("CRIT");
-            break;
-        case ORTE_NOTIFIER_ERROR:
-            sev = strdup("ERROR");
-            break;
-        case ORTE_NOTIFIER_WARN:
-            sev = strdup("WARN");
-            break;
-        case ORTE_NOTIFIER_NOTICE:
-            sev = strdup("NOTICE");
-            break;
-        case ORTE_NOTIFIER_INFO:
-            sev = strdup("INFO");
-            break;
-        case ORTE_NOTIFIER_DEBUG:
-            sev = strdup("DEBUG");
-            break;
-        default:
-            sev = strdup("UNKNOWN");
-            break;
-        }
+        sev = orte_notifier_base_sev2str(plc->severity);
 
         /* this sample should be accounted for this policy
          * we have a candidate, let's check there is similar sample accounted in history or not
@@ -411,7 +374,6 @@ static int coretemp_policy_filter(char *hostname, int core_no, float ct, time_t 
                 opal_list_append(&event_history, &newhst->super);
             }
         }
-        free(sev);
     }
 
 
@@ -771,7 +733,8 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
     int ret;
     coretemp_tracker_t *trk, *nxt;
     FILE *fp;
-    char *temp;
+    const char *data_group = "coretemp";
+    char *temp = NULL;
     float degc;
     opal_buffer_t data, *bptr;
     int32_t ncores;
@@ -806,13 +769,11 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
     packed = false;
 
     /* pack our name */
-    temp = strdup("coretemp");
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &temp, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &data_group, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&data);
         return;
     }
-    free(temp);
 
     /* store our hostname */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
@@ -1044,8 +1005,7 @@ static void generate_test_vector(opal_buffer_t *v)
 {
     int ret;
     time_t now;
-    char *ctmp;
-    char *timestamp_str;
+    const char *ctmp = "coretemp";
     char time_str[40];
     struct tm *sample_time;
     char *corelabel = NULL;
@@ -1057,13 +1017,10 @@ static void generate_test_vector(opal_buffer_t *v)
     degc = 23.0;
 
 /* pack the plugin name */
-    ctmp = strdup("coretemp");
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
         ORTE_ERROR_LOG(ret);
-        free(ctmp);
         return;
     }
-    free(ctmp);
 
 /* pack the hostname */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))) {
@@ -1085,13 +1042,10 @@ static void generate_test_vector(opal_buffer_t *v)
         return;
     }
     strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-    asprintf(&timestamp_str, "%s", time_str);
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &timestamp_str, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &time_str, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
-        free(timestamp_str);
         return;
     }
-    free(timestamp_str);
 
 /* Pack test core readings */
     for (i=0; i < ncores; i++) {
@@ -1129,16 +1083,15 @@ static void generate_test_vector(opal_buffer_t *v)
 static void generate_test_inv_data(opal_buffer_t *inventory_snapshot)
 { /* 1 Package 4 cores */
     unsigned int tot_items = 5;
-    char *comp = strdup("coretemp");
+    const char *ctemp = "coretemp";
+    char *comp = NULL;
     int rc = OPAL_SUCCESS;
     int i = 0;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &ctemp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        free(comp);
         return;
     }
-    free(comp);
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
         return;
@@ -1172,17 +1125,18 @@ static void coretemp_inventory_collect(opal_buffer_t *inventory_snapshot)
         generate_test_inv_data(inventory_snapshot);
     } else {
         unsigned int tot_items = 0;
-        char *comp = strdup("coretemp");
+        const char *ctemp = "coretemp";
+        const char *chost_n = "hostname";
+        char *comp = NULL;
+        char *label = NULL;
         coretemp_tracker_t* trk = NULL;
         int sensor_number = 1;
         int rc = OPAL_SUCCESS;
 
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &ctemp, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
             return;
         }
-        free(comp);
         tot_items = (unsigned int)opal_list_get_size(&tracking) + 1; /* include "hostname"/nodename pair */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
             ORTE_ERROR_LOG(rc);
@@ -1190,13 +1144,10 @@ static void coretemp_inventory_collect(opal_buffer_t *inventory_snapshot)
         }
 
         /* store our hostname */
-        comp = strdup("hostname");
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &chost_n, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
             return;
         }
-        free(comp);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
             return;
@@ -1210,13 +1161,11 @@ static void coretemp_inventory_collect(opal_buffer_t *inventory_snapshot)
                 return;
             }
             free(comp);
-            comp = strdup(trk->label);
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+            label = trk->label;
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &label, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
-                free(comp);
                 return;
             }
-            free(comp);
 
             ++sensor_number;
         }

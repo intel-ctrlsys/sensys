@@ -11,6 +11,7 @@
 #define ORCM_OCTL_H
 
 #include "orcm/util/cli.h"
+#include <wordexp.h>
 
 BEGIN_C_DECLS
 

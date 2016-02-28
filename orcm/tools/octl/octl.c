@@ -15,9 +15,10 @@
  * Local Functions
  ******************/
 static int orcm_octl_work(int argc, char *argv[]);
-static int run_cmd(char *cmd);
+static int run_cmd(int argc, char *cmdlist[]);
 static void octl_print_illegal_command(char *cmd);
 static void octl_print_error(int rc);
+static void octl_print_error_with_command(char **cmdlist);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -187,18 +188,23 @@ static int orcm_octl_work(int argc, char *argv[])
                 free(mycmd);
                 continue;
             }
-            ret = run_cmd(mycmd);
+            wordexp_t words;
+            ret = wordexp(mycmd, &words, 0);
+            if (ORCM_SUCCESS != ret) {
+                fprintf(stderr, "\nNo command specified\n");
+                continue;
+            }
+            ret = run_cmd(words.we_wordc, words.we_wordv);
             if (ORCM_ERROR == ret) {
                 printf("\nUse \'%s<tab>\' or \'%s<?>\' for help.\n", mycmd, mycmd);
             }
             free(mycmd);
+            wordfree(&words);
         }
         OBJ_DESTRUCT(&cli);
     } else {
         /* otherwise use the user specified command */
-        mycmd = (opal_argv_join(tailv, ' '));
-        ret = run_cmd(mycmd);
-        free(mycmd);
+        ret = run_cmd(tailc, tailv);
     }
     OBJ_DESTRUCT(&cmd_line);
     opal_argv_free(tailv);
@@ -672,20 +678,17 @@ static int run_cmd_chasis_id(char** cmdlist, int sub_cmd)
     return rc;
 }
 
-static int run_cmd(char* cmd)
+static int run_cmd(int argc, char *cmdlist[])
 {
-    char** cmdlist = opal_argv_split(cmd, ' ');
-    int sz_cmdlist = opal_argv_count(cmdlist);
     int rc = ORCM_SUCCESS;
     int sub_cmd = NUM_TOKENS;
 
-    if (2 > sz_cmdlist) {
-        if (0 == sz_cmdlist) {
+    if (2 > argc) {
+        if (0 == argc) {
             ORCM_UTIL_ERROR_MSG("No command parsed!");
         } else {
-            octl_print_illegal_command(cmd);
+            octl_print_error_with_command(cmdlist);
         }
-        opal_argv_free(cmdlist);
         return ORCM_ERROR;
     }
 
@@ -716,7 +719,7 @@ static int run_cmd(char* cmd)
             rc = run_cmd_notifier(cmdlist, sub_cmd);
             break;
         case cmd_grouping:
-            rc = run_cmd_grouping(sz_cmdlist, cmdlist, sub_cmd);
+            rc = run_cmd_grouping(argc, cmdlist, sub_cmd);
             break;
         case cmd_analytics:
             rc = run_cmd_analytics(cmdlist, sub_cmd);
@@ -732,8 +735,11 @@ static int run_cmd(char* cmd)
             break;
     }
 
-    opal_argv_free(cmdlist);
-    ORCM_ERROR == rc ? octl_print_illegal_command(cmd) : octl_print_error(rc);
+    if (ORCM_ERROR == rc) {
+        octl_print_error_with_command(cmdlist);
+    } else {
+        octl_print_error(rc);
+    }
 
     return rc;
 }
@@ -754,6 +760,18 @@ static void octl_print_error(int rc)
             fprintf(stdout, "\nERROR: %s\n", errmsg);
         } else {
             fprintf(stdout, "\nERROR: Internal\n");
+        }
+    }
+}
+
+static void octl_print_error_with_command(char **cmdlist)
+{
+    char *cmd = NULL;
+    if (NULL != cmdlist) {
+        cmd = opal_argv_join(cmdlist, ' ');
+        if (NULL != cmd) {
+            octl_print_illegal_command(cmd);
+            free(cmd);
         }
     }
 }

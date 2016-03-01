@@ -41,18 +41,9 @@ static int get_completions_subtree(orcm_cli_cmd_t *cmd, char **input,
 static int print_completions(orcm_cli_t *cli, char **input);
 static int print_completions_subtree(orcm_cli_cmd_t *cmd, char **input);
 static void set_handler_default(int sig);
-static int orcm_cli_handle_auto_completion(orcm_cli_t *cli, char *input, size_t *len,
-                                           bool *space, char *prompt);
-static void orcm_cli_handle_space(char c, char *input, size_t *len, bool *space);
-static void orcm_cli_handle_backspace(size_t *len, char *input, bool *space);
-static void orcm_cli_handle_help_key(orcm_cli_t *cli, char *input, char *prompt);
-static void orcm_cli_handle_arrows(int *scroll_indx, char *input, size_t *len, char *prompt);
-static void orcm_cli_handle_all_other_keys(char c, char *input, size_t *len, bool *space);
 static void scroll_up(int *scroll_indx, char *input, size_t *len, char *prompt);
 static void scroll_down(int *scroll_indx, char *input, size_t *len, char *prompt);
 static void save_cmd_history(char *input);
-static struct termios get_initial_settings(void);
-static void set_term_settings(struct termios settings);
 
 #define CLI_HISTORY_SIZE 15
 
@@ -166,232 +157,21 @@ static int make_opt_subtree(orcm_cli_cmd_t *cmd, orcm_cli_init_t *e, int level) 
     }
 }
 
-struct termios get_initial_settings(void)
-{
-    struct termios initial_settings;
-    tcgetattr(STDIN_FILENO, &initial_settings);
-    return initial_settings;
-}
-
-void set_term_settings(struct termios settings)
-{
-    set_handler_default(SIGTERM);
-    set_handler_default(SIGINT);
-    set_handler_default(SIGHUP);
-    set_handler_default(SIGPIPE);
-    set_handler_default(SIGCHLD);
-
-    /* Set the console mode to no-echo, raw input. */
-    settings.c_cc[VTIME] = 1;
-    settings.c_cc[VMIN] = 1;
-    settings.c_iflag &= ~(IXOFF);
-    settings.c_lflag &= ~(ECHO | ICANON);
-    tcsetattr(STDIN_FILENO, TCSANOW, &settings);
-}
-
-int orcm_cli_handle_auto_completion(orcm_cli_t *cli,
-                                    char *input,
-                                    size_t *len,
-                                    bool *space,
-                                    char *prompt)
-{
-    char **inputlist = NULL;
-    char **completions = NULL;
-    opal_value_t *kv;
-    opal_list_t *options = NULL;
-    int rc = ORCM_SUCCESS;
-    size_t k;
-    char *tmp = NULL;
-    /* break command line so far into array of strings */
-    inputlist = opal_argv_split(input, ' ');
-    /* get possible completions for the commandline so far */
-    rc = get_completions(cli, inputlist, &completions, options);
-    if (ORCM_ERR_NOT_FOUND == rc) {
-        /* Bad command not in tree, Bonk */
-        BONK;
-        rc = ORCM_SUCCESS;
-        return rc;
-    } else if (ORCM_SUCCESS == rc) {
-        if (NULL == completions) {
-            if (NULL == options || opal_list_is_empty(options)) {
-                /* no completions and no options, Bonk */
-                BONK;
-                return ORCM_ERR_NOT_FOUND;
-            } else {
-                /* no completions, list options */
-                printf("\nOPTIONS: ");
-                OPAL_LIST_FOREACH(kv, options, opal_value_t) {
-                    printf("%s  ", kv->key);
-                }
-                printf("\n%s> %s", prompt, input);
-            }
-        } else if (1 == opal_argv_count(completions)) {
-            /* only 1 possible completion, go ahead and complete it */
-            inputlist = opal_argv_split(input, ' ');
-            if (NULL == inputlist) {
-                BONK;
-                return ORCM_ERR_NOT_FOUND;
-            }
-            if (' ' == *(input + *len -1)) {
-                k = 0;
-            } else if (0 != strncmp(inputlist[(opal_argv_count(inputlist) - 1)],
-                                    completions[0],
-                                    strlen(inputlist[(opal_argv_count(inputlist) - 1)]))) {
-
-                putchar(' ');
-                (*len)++;
-                *(input + *len) = ' ';
-                k = 0;
-            } else {
-                k = strlen(inputlist[(opal_argv_count(inputlist) - 1)]);
-            }
-            for (; k < strlen(completions[0]); k++) {
-                putchar(completions[0][k]);
-                (*len)++;
-                *(input + *len) = completions[0][k];
-            }
-            putchar(' ');
-            (*len)++;
-            *(input + *len) = ' ';
-            *space = true;
-        } else {
-            /* multiple completions, list possibilities */
-            if (*len != 0 && ' ' != *(input + *len -1)) {
-                putchar(' ');
-                *(input + *len) = ' ';
-                *space = true;
-            }
-            tmp = opal_argv_join(completions, ' ');
-            printf("\n\t%s", tmp);
-            free(tmp);
-            printf("\n%s> %s", prompt, input);
-        }
-    }
-    if (NULL != completions) {
-        opal_argv_free(completions);
-    }
-    if ((NULL != inputlist) &&
-        (opal_argv_count(inputlist))) {
-        opal_argv_free(inputlist);
-    }
-    return rc;
-}
-
-void orcm_cli_handle_space(char c,
-                           char *input,
-                           size_t *len,
-                           bool *space)
-{
-    if (0 == *len || *space) {
-        /* if there is already a space on the input line, Bonk */
-        BONK;
-        return;
-    }
-    putchar(c);
-    (*len)++;
-    *(input + *len) = c;
-    *space = true;
-}
-
-void orcm_cli_handle_backspace(size_t *len,
-                               char *input,
-                               bool *space)
-{
-    if (0 == *len) {
-        /* error - bonk */
-        BONK;
-        *space = false;
-        return;
-    }
-    /* echo the erase sequence */
-    putchar('\b'); putchar(' '); putchar('\b');
-    /* remove the last character from input */
-    (*len)--;
-    *(input + *len) = '\0';
-    /* check to see if we already have a space */
-    if (0 < *len && ' ' == *(input + *len - 1)) {
-        *space = true;
-    } else {
-        *space = false;
-    }
-}
-
-void orcm_cli_handle_arrows(int *scroll_indx,
-                            char *input,
-                            size_t *len,
-                            char *prompt)
-{
-    char c;
-    c = getchar();
-    switch(c) {
-    case '[':
-        c = getchar();
-        switch(c) {
-        case 'A':
-            /* up arrow */
-            scroll_up(scroll_indx, input, len, prompt);
-            break;
-        case 'B':
-            /* down arrow */
-            scroll_down(scroll_indx, input, len, prompt);
-            break;
-        case 'C':
-            /* right arrow */
-        case 'D':
-            /* left arrow */
-        default:
-            break;
-        }
-    default:
-        break;
-    }
-}
-
-void orcm_cli_handle_help_key(orcm_cli_t *cli,
-                              char *input,
-                              char *prompt)
-{
-    char **inputlist = NULL;
-    inputlist = opal_argv_split(input, ' ');
-    printf("\nPossible commands:\n");
-    if(ORCM_ERR_NOT_FOUND == print_completions(cli, inputlist)) {
-        printf("%s: command not found...\n", input);
-    }
-    printf("\n%s> %s", prompt, input);
-
-    if (NULL != inputlist) {
-        opal_argv_free(inputlist);
-    }
-}
-
-void orcm_cli_handle_all_other_keys(char c,
-                                    char *input,
-                                    size_t *len,
-                                    bool *space)
-{
-    *space = false;
-    if (ORCM_MAX_CLI_LENGTH == *len) {
-        /* can't go that far - bonk */
-        BONK;
-        return;
-    }
-    /* echo it */
-    putchar(c);
-    /* add it to our array */
-    (*len)++;
-    *(input + *len) = c;
-}
-
 int orcm_cli_get_cmd(char *prompt,
                      orcm_cli_t *cli,
                      char **cmd)
 {
     char c;
-    struct termios initial_settings;
+    opal_value_t *kv;
+    opal_list_t *options;
+    struct termios settings, initial_settings;
     char input[ORCM_MAX_CLI_LENGTH];
     bool space;
-    size_t j;
+    size_t j, k;
+    char **completions = NULL;
+    char **inputlist = NULL;
     int rc = ORCM_SUCCESS;
+    char *tmp = NULL;
     int scroll_indx = cmd_hist.count;
 
     /* prep the stack */
@@ -399,9 +179,23 @@ int orcm_cli_get_cmd(char *prompt,
     j = 0;
     space = false;
 
-    /* Set term settings */
-    initial_settings = get_initial_settings();
-    set_term_settings(initial_settings);
+    set_handler_default(SIGTERM);
+    set_handler_default(SIGINT);
+    set_handler_default(SIGHUP);
+    set_handler_default(SIGPIPE);
+    set_handler_default(SIGCHLD);
+
+    /* prep the console */
+    tcgetattr(STDIN_FILENO, &initial_settings);
+
+    settings = initial_settings;
+
+    /* Set the console mode to no-echo, raw input. */
+    settings.c_cc[VTIME] = 1;
+    settings.c_cc[VMIN] = 1;
+    settings.c_iflag &= ~(IXOFF);
+    settings.c_lflag &= ~(ECHO | ICANON);
+    tcsetattr(STDIN_FILENO, TCSANOW, &settings);
 
     /* output the prompt */
     fprintf(stdout, "%s> ", prompt);
@@ -409,33 +203,169 @@ int orcm_cli_get_cmd(char *prompt,
     while ('\n' != (c = getchar())) {
         switch (c) {
         case '\t':   // auto-completion
-            rc = orcm_cli_handle_auto_completion(cli, input, &j, &space, prompt);
-            if (ORCM_SUCCESS != rc) {
+            space = false;
+            options = NULL;
+            completions = NULL;
+            /* break command line so far into array of strings */
+            inputlist = opal_argv_split(input, ' ');
+            /* get possible completions for the commandline so far */
+            rc = get_completions(cli, inputlist, &completions, options);
+            if (ORCM_ERR_NOT_FOUND == rc) {
+                /* Bad command not in tree, Bonk */
+                BONK;
+                rc = ORCM_SUCCESS;
+                break;
+            } else if (ORCM_SUCCESS == rc) {
+                if (NULL == completions) {
+                    if (NULL == options || opal_list_is_empty(options)) {
+                        /* no completions and no options, Bonk */
+                        BONK;
+                        break;
+                    } else {
+                        /* no completions, list options */
+                        printf("\nOPTIONS: ");
+                        OPAL_LIST_FOREACH(kv, options, opal_value_t) {
+                            printf("%s  ", kv->key);
+                        }
+                        printf("\n%s> %s", prompt, input);
+                    }
+                } else if (1 == opal_argv_count(completions)) {
+                    /* only 1 possible completion, go ahead and complete it */
+                    inputlist = opal_argv_split(input, ' ');
+                    if (NULL == inputlist) {
+                        BONK;
+                        break;
+                    }
+                    if (' ' == input[j-1]) {
+                        k = 0;
+                    } else if (0 != strncmp(inputlist[(opal_argv_count(inputlist) - 1)],
+                                            completions[0],
+                                            strlen(inputlist[(opal_argv_count(inputlist) - 1)]))) {
+
+                        putchar(' ');
+                        input[j++] = ' ';
+                        k = 0;
+                    } else {
+                        k = strlen(inputlist[(opal_argv_count(inputlist) - 1)]);
+                    }
+                    for (; k < strlen(completions[0]); k++) {
+                        putchar(completions[0][k]);
+                        input[j++] = completions[0][k];
+                    }
+                    putchar(' ');
+                    input[j++] = ' ';
+                    space = true;
+                } else {
+                    /* multiple completions, list possibilities */
+                    if (j != 0 && ' ' != input[j-1]) {
+                        putchar(' ');
+                        input[j++] = ' ';
+                        space = true;
+                    }
+                    tmp = opal_argv_join(completions, ' ');
+                    printf("\n\t%s", tmp);
+                    free(tmp);
+                    printf("\n%s> %s", prompt, input);
+                }
+                break;
+            } else {
                 goto process;
+            }
+
+        case ' ':    // space
+            if (0 == j || space) {
+                /* if there is already a space on the input line, Bonk */
+                BONK;
+                break;
+            }
+            putchar(c);
+            input[j++] = c;
+            space = true;
+            /* check for validity of the last input since it wasn't
+             * entered via auto-completion */
+            break;
+
+        case '\b':   // backspace
+        case 0x7f:   // backspace
+            space = false;
+            if (0 == j) {
+                /* error - bonk */
+                BONK;
+                break;
+            }
+            /* echo the erase sequence */
+            putchar('\b'); putchar(' '); putchar('\b');
+            /* remove the last character from input */
+            j--;
+            input[j] = '\0';
+            /* check to see if we already have a space */
+            if (0 < j && ' ' == input[j-1]) {
+                space = true;
             }
             break;
 
-        case ' ':
-            orcm_cli_handle_space(c, input, &j, &space);
+        case 0x1b:   // arrows
+            /* this is to ignore the garbage that comes out when you type arrows */
+            c = getchar();
+            switch(c) {
+            case '[':
+                c = getchar();
+                switch(c) {
+                case 'A':
+                    /* up arrow */
+                    scroll_up(&scroll_indx, input, &j, prompt);
+                    break;
+
+                case 'B':
+                    /* down arrow */
+                    scroll_down(&scroll_indx, input, &j, prompt);
+                    break;
+
+                case 'C':
+                    /* right arrow */
+                case 'D':
+                    /* left arrow */
+                default:
+                    break;
+                }
+            default:
+                break;
+            }
             break;
 
-        case '\b': // backspace
-        case 0x7f:
-            orcm_cli_handle_backspace(&j, input, &space);
+        case '?':   // help special char
+            /* list help message of possible completions */
+            options = NULL;
+            inputlist = opal_argv_split(input, ' ');
+            printf("\nPossible commands:\n");
+            if(ORCM_ERR_NOT_FOUND == print_completions(cli, inputlist)){
+                printf("%s: command not found...\n", input);
+            }
+            printf("\n%s> %s", prompt, input);
             break;
 
-        case 0x1b: // arrows
-            orcm_cli_handle_arrows(&scroll_indx, input, &j, prompt);
-            break;
-
-        case '?':
-            orcm_cli_handle_help_key(cli, input, prompt);
-            break;
-
-        default: // everything else
-            orcm_cli_handle_all_other_keys(c, input, &j, &space);
+        default:   // everything else
             rc = ORCM_SUCCESS;
+            space = false;
+            if (ORCM_MAX_CLI_LENGTH == j) {
+                /* can't go that far - bonk */
+                BONK;
+                break;
+            }
+            /* echo it */
+            putchar(c);
+            /* add it to our array */
+            input[j++] = c;
             break;
+        }
+        if (NULL != completions) {
+            opal_argv_free(completions);
+            completions = NULL;
+        }
+        if ((NULL != inputlist) &&
+            (opal_argv_count(inputlist))) {
+            opal_argv_free(inputlist);
+            inputlist = NULL;
         }
     }
 
@@ -446,6 +376,13 @@ int orcm_cli_get_cmd(char *prompt,
     /* return the assembled command */
     *cmd = strdup(input);
     save_cmd_history(input);
+    if (NULL != completions) {
+        opal_argv_free(completions);
+    }
+    if ((NULL != inputlist) &&
+        (opal_argv_count(inputlist))) {
+        opal_argv_free(inputlist);
+    }
     return rc;
 }
 

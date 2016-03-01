@@ -161,8 +161,8 @@ static int orcm_oct_analytics_wf_add_store(int params_array_length, opal_value_t
             return ORCM_ERR_BAD_PARAM;
         }
 
-        ORCM_UTIL_MSG_WITH_ARG("KEY: %s", input_array[oflow_line_item].key);
-        ORCM_UTIL_MSG_WITH_ARG("VALUE: %s", input_array[oflow_line_item].data.string );
+        ORCM_UTIL_MSG("KEY: %s", input_array[oflow_line_item].key);
+        ORCM_UTIL_MSG("VALUE: %s", input_array[oflow_line_item].data.string );
         workflow_params_array[oflow_line_item] = (opal_value_t *)(input_array + oflow_line_item);
    }
    return ORCM_SUCCESS;
@@ -220,7 +220,7 @@ static int orcm_octl_analytics_wf_add_unpack_buffer(orte_rml_recv_cb_t *xfer)
         rc = workflow_id;
         return rc;
     }
-    ORCM_UTIL_MSG_WITH_ARG("Workflow created with id: %i", workflow_id);
+    ORCM_UTIL_MSG("Workflow created with id: %i", workflow_id);
     return ORCM_SUCCESS;
 
 }
@@ -538,7 +538,7 @@ static int orcm_octl_analytics_wf_list_unpack_buffer(orte_rml_recv_cb_t *xfer)
             return ORCM_ERROR;
         }
         for (temp = 0; temp < cnt; temp++) {
-            ORCM_UTIL_MSG_WITH_ARG("workflow id is: %d", workflow_ids[temp]);
+            ORCM_UTIL_MSG("workflow id is: %d", workflow_ids[temp]);
         }
         free(workflow_ids);
     }

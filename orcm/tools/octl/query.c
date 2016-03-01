@@ -32,6 +32,7 @@ opal_list_t *create_query_event_date_filter(int argc, char **argv);
 int split_db_results(char *db_res, char ***db_results);
 void free_db_results(int num_elements, char ***db_res_array);
 char *add_to_str_date(char *date, int seconds);
+void print_results(opal_list_t *results, double start_time, double stop_time);
 orcm_db_filter_t *create_string_filter(char *field, char *string,
                                        orcm_db_comparison_op_t op);
 
@@ -129,12 +130,12 @@ int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
             opal_list_append(*results, &tmp_value->super);
             }
        } else {
-        printf("\nNo results found!\n");
+        ORCM_UTIL_MSG("No results found!");
         rc = ORCM_SUCCESS;
         *results = NULL;
      }
     } else {
-        printf("\nUnable to get results via ORCM scheduler\n");
+        orte_show_help("help-octl.txt","octl:query:orcmsched-fail", true);
         rc = ORCM_ERROR;
         *results = NULL;
     }
@@ -152,25 +153,25 @@ int get_nodes_from_args(char **argv, char ***node_list)
     char **argv_node_list = NULL;
 
     if (NULL == *argv){
-        fprintf(stdout, "ERROR: an array without arguments was received\n");
+        orte_show_help("help-octl.txt","octl:no-args", true);
         return ORCM_ERR_BAD_PARAM;
     }
     arg_index = opal_argv_count(argv);
     /* Convert argv count to index */
     arg_index--;
     if (2 > arg_index){
-        fprintf(stdout, "\nIt is necessary to provide a host or group to perform a query!\n");
+        orte_show_help("help-octl.txt","octl:nodelist-null", true);
         return ORCM_ERR_BAD_PARAM;
     }
     raw_node_list = argv[arg_index];
     if (NULL == raw_node_list ) {
-        fprintf(stdout, "ERROR: An empty list of nodes was specified\n");
+        orte_show_help("help-octl.txt","octl:nodelist-null", true);
         return ORCM_ERR_BAD_PARAM;
     }
     rc = orcm_logical_group_parse_array_string(raw_node_list, &argv_node_list);
     node_count = opal_argv_count(argv_node_list);
     if (0 == node_count) {
-        fprintf(stdout, "ERROR: unable to extract nodelist or an empty list was specified\n");
+        orte_show_help("help-octl.txt","octl:nodelist-extract", true, raw_node_list);
         opal_argv_free(argv_node_list);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -233,11 +234,12 @@ char *assemble_datetime(char *date_str, char *time_str)
                     if (false == replace_wildcard(&new_time_str, true)){
                         strncat(date_time_str, new_time_str, strlen(new_time_str));
                     } else {
-                        fprintf(stdout, "\nWARNING: time input was ignored due the presence of the * character\n");
+                        ORCM_UTIL_MSG("WARNING: time input was ignored due the presence of the * character");
                     }
                 }
             } else {
-               fprintf(stderr, "\nERROR: could not allocate memory for datetime string\n");
+               orte_show_help("help-octl.txt","octl:allocate-memory",
+                             true, "datetime string");
             }
         } else {
             SAFE_FREE(date_time_str);
@@ -310,7 +312,8 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
             strncat(filter_str, argv[2], strlen(argv[2]));
             strncat(filter_str, "%", strlen("%"));
         } else {
-            fprintf(stderr, "\nERROR: could not allocate memory for filter string\n");
+            orte_show_help("help-octl.txt","octl:allocate-memory",
+                           true, "filter string");
             return NULL;
         }
         filter_item = create_string_filter("log", filter_str, CONTAINS);
@@ -336,7 +339,8 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
             strncat(filter_str, argv[2], strlen(argv[2]));
             strncat(filter_str, "%", strlen("%"));
         } else {
-            fprintf(stderr, "\nERROR: could not allocate memory for filter string\n");
+            orte_show_help("help-octl.txt","octl:allocate-memory",
+                           true, "filter string");
             return NULL;
         }
         filter_item = create_string_filter("log", filter_str, CONTAINS);
@@ -499,7 +503,8 @@ opal_list_t *create_query_event_data_filter(int argc, char **argv)
         time(&current_time);
         localdate = localtime(&current_time);
         if (NULL == localdate) {
-            fprintf(stderr, "\nERROR: could not allocate memory for datetime string\n");
+            orte_show_help("help-octl.txt","octl:allocate-memory",
+                          true, "datetime string");
             return NULL;
         }
         strftime(current_date, sizeof(current_date), "%Y-%m-%d", localdate);
@@ -707,7 +712,7 @@ orcm_db_filter_t *build_node_item(char **expanded_node_list)
         }
         SAFE_FREE(hosts_filter);
     } else {
-        fprintf(stderr, "\nERROR:: Unable to build node item\n");
+        orte_show_help("help-octl.txt","octl:allocate-memory", true,"node item");
     }
     return filter_item;
 }
@@ -715,25 +720,16 @@ orcm_db_filter_t *build_node_item(char **expanded_node_list)
 int orcm_octl_query_sensor(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint32_t rows_retrieved = 0;
     char **argv_node_list = NULL;
     double start_time = 0.0;
     double stop_time = 0.0;
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
-    opal_value_t *line = NULL;
     orcm_db_filter_t *nodes_list = NULL;
 
-    if(ORCM_GET_DB_QUERY_SENSOR_COMMAND != cmd &&
-       ORCM_GET_DB_QUERY_HISTORY_COMMAND !=cmd) {
-        fprintf(stdout, "\nERROR: incorrect command argument: %d", cmd);
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_sensor_cleanup;
-    }
     /* Build input node list */
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list){
-        fprintf(stderr, "\nERROR: unable to generate a filter list from command provided");
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_sensor_cleanup;
     }
@@ -749,21 +745,11 @@ int orcm_octl_query_sensor(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if(rc != ORCM_SUCCESS) {
-        fprintf(stdout, "\nNo results found!\n");
+        ORCM_UTIL_MSG("No results found!");
     } else {
-        /* Raw CSV output for now... */
-        if(NULL != returned_list) {
-            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
-            /* Actual number includes the header so we remove it*/
-            rows_retrieved--;
-            printf("\n");
-            OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
-                printf("%s\n", line->data.string);
-            }
-            OBJ_RELEASE(returned_list);
-            printf("\n%u rows were found (%0.3f seconds)\n", rows_retrieved, stop_time-start_time);
-        }
+        print_results(returned_list, start_time, stop_time);
     }
+    SAFE_RELEASE(returned_list);
     SAFE_RELEASE(filter_list);
 orcm_octl_query_sensor_cleanup:
     opal_argv_free(argv_node_list);
@@ -773,24 +759,16 @@ orcm_octl_query_sensor_cleanup:
 int orcm_octl_query_log(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint32_t rows_retrieved = 0;
     char **argv_node_list = NULL;
     double start_time = 0.0;
     double stop_time = 0.0;
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
-    opal_value_t *line = NULL;
     orcm_db_filter_t *nodes_list = NULL;
 
-    if(ORCM_GET_DB_QUERY_LOG_COMMAND != cmd ) {
-        fprintf(stdout, "\nERROR: incorrect command argument: %d", cmd);
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_log_cleanup;
-    }
     /* Build input node list */
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list){
-        fprintf(stderr, "\nERROR: unable to generate a filter list from command provided");
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_log_cleanup;
     }
@@ -806,21 +784,11 @@ int orcm_octl_query_log(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if(rc != ORCM_SUCCESS) {
-        fprintf(stdout, "\nNo results found!\n");
+        ORCM_UTIL_MSG("No results found!");
     } else {
-        /* Raw CSV output for now... */
-        if(NULL != returned_list) {
-            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
-            /* Actual number includes the header so we remove it*/
-            rows_retrieved--;
-            printf("\n");
-            OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
-                printf("%s\n", line->data.string);
-            }
-            OBJ_RELEASE(returned_list);
-            printf("\n%u rows were found (%0.3f seconds)\n", rows_retrieved, stop_time-start_time);
-        }
+        print_results(returned_list, start_time, stop_time);
     }
+    SAFE_RELEASE(returned_list);
     SAFE_RELEASE(filter_list);
 orcm_octl_query_log_cleanup:
     opal_argv_free(argv_node_list);
@@ -830,24 +798,16 @@ orcm_octl_query_log_cleanup:
 int orcm_octl_query_idle(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint32_t rows_retrieved = 0;
     char **argv_node_list = NULL;
     double start_time = 0.0;
     double stop_time = 0.0;
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
-    opal_value_t *line = NULL;
     orcm_db_filter_t *nodes_list = NULL;
 
-    if(ORCM_GET_DB_QUERY_IDLE_COMMAND != cmd ) {
-        fprintf(stdout, "\nERROR: incorrect command argument: %d", cmd);
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_idle_cleanup;
-    }
     /* Build input node list */
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list){
-        fprintf(stderr, "\nERROR: unable to generate a filter list from command provided");
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_idle_cleanup;
     }
@@ -863,21 +823,11 @@ int orcm_octl_query_idle(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if(rc != ORCM_SUCCESS) {
-        fprintf(stdout, "\nNo results found!\n");
+        ORCM_UTIL_MSG("No results found!");
     } else {
-        /* Raw CSV output for now... */
-        if(NULL != returned_list) {
-            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
-            /* Actual number includes the header so we remove it*/
-            rows_retrieved--;
-            printf("\n");
-            OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
-                printf("%s\n", line->data.string);
-            }
-            OBJ_RELEASE(returned_list);
-            printf("\n%u rows were found (%0.3f seconds)\n", rows_retrieved, stop_time-start_time);
-        }
+        print_results(returned_list, start_time, stop_time);
     }
+    SAFE_RELEASE(returned_list);
     SAFE_RELEASE(filter_list);
 orcm_octl_query_idle_cleanup:
     opal_argv_free(argv_node_list);
@@ -887,24 +837,16 @@ orcm_octl_query_idle_cleanup:
 int orcm_octl_query_node(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint32_t rows_retrieved = 0;
     char **argv_node_list = NULL;
     double start_time = 0.0;
     double stop_time = 0.0;
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
-    opal_value_t *line = NULL;
     orcm_db_filter_t *nodes_list = NULL;
 
-    if(ORCM_GET_DB_QUERY_NODE_COMMAND != cmd ) {
-        fprintf(stdout, "\nERROR: incorrect command argument: %d", cmd);
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_node_cleanup;
-    }
     /* Build input node list */
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list){
-        fprintf(stderr, "\nERROR: unable to generate a filter list from command provided");
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_node_cleanup;
     }
@@ -920,21 +862,11 @@ int orcm_octl_query_node(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if(rc != ORCM_SUCCESS) {
-        fprintf(stdout, "\nNo results found!\n");
+        ORCM_UTIL_MSG("No results found!");
     } else {
-        /* Raw CSV output for now... */
-        if(NULL != returned_list) {
-            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
-            /* Actual number includes the header so we remove it*/
-            rows_retrieved--;
-            printf("\n");
-            OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
-                printf("%s\n", line->data.string);
-            }
-            OBJ_RELEASE(returned_list);
-            printf("\n%u rows were found (%0.3f seconds)\n", rows_retrieved, stop_time-start_time);
-        }
+        print_results(returned_list, start_time, stop_time);
     }
+    SAFE_RELEASE(returned_list);
     SAFE_RELEASE(filter_list);
 orcm_octl_query_node_cleanup:
     opal_argv_free(argv_node_list);
@@ -944,28 +876,15 @@ orcm_octl_query_node_cleanup:
 int orcm_octl_query_event_data(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint32_t rows_retrieved = 0;
     double start_time = 0.0;
     double stop_time = 0.0;
     char **argv_node_list = NULL;
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
     orcm_db_filter_t *node_list = NULL;
-    opal_value_t *line = NULL;
 
-    if (ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND != cmd) {
-        fprintf(stderr, "\nERROR: incorrect command argument: %d\n", cmd);
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_event_exit;
-    }
-    if (NULL == argv) {
-        fprintf(stderr, "\nERROR: null argument list\n");
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_event_exit;
-    }
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list) {
-        fprintf(stderr, "\nERROR: unable to generate a filter list from command provided\n");
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_event_exit;
     }
@@ -983,23 +902,11 @@ int orcm_octl_query_event_data(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if (ORCM_SUCCESS != rc) {
-        fprintf(stdout, "\nNo results found!\n");
+        ORCM_UTIL_MSG("No results found!");
     } else {
-        if (NULL != returned_list) {
-            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
-            rows_retrieved--;
-            printf("\n");
-            OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
-                printf("%s\n", line->data.string);
-            }
-            OBJ_RELEASE(returned_list);
-        }
+        print_results(returned_list, start_time, stop_time);
     }
-    fprintf(stdout,
-            "\n%u rows were found (%0.3f seconds)\n",
-            rows_retrieved,
-            stop_time - start_time);
-
+    SAFE_RELEASE(filter_list);
     SAFE_RELEASE(filter_list);
 orcm_octl_query_event_exit:
     opal_argv_free(argv_node_list);
@@ -1044,15 +951,8 @@ int orcm_octl_query_event_snsr_data(int cmd, char **argv)
         argv[3] = date;
     }
 
-    if (ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND != cmd) {
-        fprintf(stderr, "\nERROR: incorrect command argument: %d", cmd);
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_event_exit;
-    }
-
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list) {
-        fprintf(stderr, "\nERROR: unable to generate a filter list from command provided\n");
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_event_exit;
     }
@@ -1072,23 +972,11 @@ int orcm_octl_query_event_snsr_data(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if (ORCM_SUCCESS != rc) {
-        fprintf(stdout, "\nNo results found!\n");
+        ORCM_UTIL_MSG("No results found!");
     } else {
-        if (NULL != returned_list) {
-            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
-            rows_retrieved--;
-            printf("\n");
-            OPAL_LIST_FOREACH(line, returned_list, opal_value_t) {
-                printf("%s\n", line->data.string);
-            }
-            OBJ_RELEASE(returned_list);
-        }
+        print_results(returned_list, start_time, stop_time);
     }
-    fprintf(stdout,
-            "\n%u rows were found (%0.3f seconds)\n",
-            rows_retrieved,
-            stop_time - start_time);
-
+    SAFE_RELEASE(returned_list);
     SAFE_RELEASE(filter_list);
 orcm_octl_query_event_exit:
     opal_argv_free(argv_node_list);
@@ -1121,12 +1009,6 @@ char* get_orcm_octl_query_event_date(int cmd, char **argv){
     char *date = NULL;
     char **db_results = NULL;
     int num_db_results = 0;
-
-    if (ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND != cmd) {
-        fprintf(stderr, "\nERROR: incorrect command argument: %d", cmd);
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_event_exit;
-    }
 
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list) {
@@ -1271,4 +1153,20 @@ char *add_to_str_date(char *date, int seconds){
     }
 
     return res_date;
+}
+
+
+void print_results(opal_list_t *results, double start_time, double stop_time) {
+    uint32_t rows = 0;
+    opal_value_t *line = NULL;
+
+    if (NULL != results) {
+            rows = (uint32_t)opal_list_get_size(results);
+            rows--;
+            OPAL_LIST_FOREACH(line, results, opal_value_t) {
+                ORCM_UTIL_MSG("%s", line->data.string);
+            }
+        }
+    ORCM_UTIL_MSG("\n%u rows were found (%0.3f seconds)", rows,
+                  stop_time - start_time);
 }

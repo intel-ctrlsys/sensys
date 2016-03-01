@@ -25,8 +25,7 @@
 #define MSG_ERR_HEADER "\n"
 #define MSG_FOOTER "\n"
 
-#define ORCM_UTIL_MSG(txt) fprintf(stdout, MSG_HEADER txt MSG_FOOTER);
-#define ORCM_UTIL_MSG_WITH_ARG(txt, arg) fprintf(stdout, MSG_HEADER txt MSG_FOOTER, arg);
+#define ORCM_UTIL_MSG(txt, ...) fprintf(stdout, MSG_HEADER txt MSG_FOOTER, ##__VA_ARGS__)
 #define ORCM_UTIL_ERROR_MSG(txt) fprintf(stderr, MSG_ERR_HEADER"ERROR: "txt MSG_FOOTER)
 #define ORCM_UTIL_ERROR_MSG_WITH_ARG(txt, arg) \
             fprintf(stderr, MSG_ERR_HEADER"ERROR: "txt MSG_FOOTER, arg)

@@ -8,6 +8,7 @@
  */
 
 #include "orcm/tools/octl/common.h"
+#include "orcm/util/utils.h"
 #include "orcm/util/logical_group.h"
 
 int orcm_octl_diag_cpu(char **argv)
@@ -76,7 +77,7 @@ int orcm_octl_diag_cpu(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        ORCM_UTIL_MSG_WITH_ARG("ORCM Executing Diag:cpu on Node: %s",
+        ORCM_UTIL_MSG("ORCM Executing Diag:cpu on Node: %s",
                                nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
@@ -185,7 +186,7 @@ int orcm_octl_diag_eth(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        ORCM_UTIL_MSG_WITH_ARG("ORCM Executing Diag:eth on Node: %s",
+        ORCM_UTIL_MSG("ORCM Executing Diag:eth on Node: %s",
                                nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
@@ -300,7 +301,7 @@ int orcm_octl_diag_mem(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        ORCM_UTIL_MSG_WITH_ARG("ORCM Executing Diag:mem on Node: %s",
+        ORCM_UTIL_MSG("ORCM Executing Diag:mem on Node: %s",
                                nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {

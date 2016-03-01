@@ -1,13 +1,14 @@
 /*
  * Copyright (c) 2014      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
 #include "orcm/tools/octl/common.h"
+#include "orcm/util/utils.h"
 
 #include "orcm/mca/scd/base/base.h"
 
@@ -57,7 +58,7 @@ int orcm_octl_queue_status(char **argv)
         return rc;
     }
 
-    printf("********\nQUEUES\n********\n");
+    ORCM_UTIL_MSG("********\nQUEUES\n********\n");
 
     /* for each queue */
     for (i = 0; i < num_queues; i++) {
@@ -76,8 +77,8 @@ int orcm_octl_queue_status(char **argv)
             return rc;
         }
 
-        printf("%s (%i sessions)\n----------\n", name, num_sessions);
-        
+        ORCM_UTIL_MSG("%s (%i sessions)\n----------\n", name, num_sessions);
+
         if (0 < num_sessions) {
             allocs = (orcm_alloc_t**)malloc(num_sessions * sizeof(orcm_alloc_t*));
             if (NULL == allocs) {
@@ -92,7 +93,7 @@ int orcm_octl_queue_status(char **argv)
             }
             /* loop through sessions, and print them */
             for (j = 0; j < num_sessions; j++) {
-                printf("%d\t%u|%u\t%i\t%s\t%s\t\"%s\"\n",
+                ORCM_UTIL_MSG("%d\t%u|%u\t%i\t%s\t%s\t\"%s\"\n",
                        (int)allocs[j]->id,
                        allocs[j]->caller_uid,
                        allocs[j]->caller_gid,

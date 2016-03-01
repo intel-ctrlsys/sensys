@@ -92,9 +92,9 @@ static int orcm_octl_logical_group_print_list(opal_hash_table_t *groups)
                                          &key_size, (void**)&value, in_member, &o_member)) {
         new_value = orcm_logical_group_convert_members_list(value, MAX_LINE_LENGTH);
         if (NULL != new_value && !opal_list_is_empty(new_value)) {
-            ORCM_UTIL_MSG_WITH_ARG("\ngroup name=%s", key);
+            ORCM_UTIL_MSG("\ngroup name=%s", key);
             OPAL_LIST_FOREACH(member_item, new_value, orcm_logical_group_member_t) {
-                ORCM_UTIL_MSG_WITH_ARG("member list=%s", member_item->member);
+                ORCM_UTIL_MSG("member list=%s", member_item->member);
             }
         }
         if (NULL != new_value) {

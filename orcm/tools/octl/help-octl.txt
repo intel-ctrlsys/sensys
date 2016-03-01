@@ -106,6 +106,9 @@ USAGE: query event sensor-data <event-id> before/after <minutes> <sensor> <nodel
 ERROR: %s
 USAGE: query event date <event-id>
 
+[octl:query:orcmsched-fail]
+ERROR: Unable to get results via ORCM scheduler
+
 [octl:get:notifier-usage]
 ERROR: %s
 USAGE: notifier get policy <nodelist>
@@ -206,11 +209,42 @@ ERROR: Error in Memory allocation
 [octl:analytics:workflow-notfound]
 ERROR: Workflow not found
 
+[octl:session:cancel-usage]
+ERROR: %s
+USAGE: session cancel <session-id>
+
+[octl:session:set-usage]
+ERROR: %s
+USAGE: session set <command> <session-id> <value>
+
+[octl:session:get-usage]
+ERROR: %s
+USAGE: session get <command> <session-id>
+
+[octl:session:set-mode]
+ERROR: Illegal Power Management mode, use 'session get modes' to see possible modes.
+USAGE: session set mode <value>
+
+[octl:session:session-id]
+ERROR: Invalid SESSION ID
+
+[octl:session:cancel-fail]
+Session cancel Failed!
+
 [octl:nodelist-null]
-ERROR: incorrect argument, nodelist is NULL!
+ERROR: An empty list of nodes was specified.
+It is necessary to provide a host or group.
 
 [octl:nodelist-extract]
-ERROR: Unable to extract nodelist "%s"
+ERROR: Unable to extract nodelist "%s" or an empty list was specified.
 
 [octl:hostname-notfound]
 ERROR: Hostname "%s" not found!
+
+[octl:allocate-memory]
+ERROR: Could not allocate memory for %s
+
+[octl:allocate-memory]
+
+[octl:no-args]
+ERROR: An array without arguments was received.

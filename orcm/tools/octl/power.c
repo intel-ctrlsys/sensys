@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -11,6 +11,7 @@
 
 #include "orcm/tools/octl/common.h"
 #include "orcm/util/attr.h"
+#include "orcm/util/utils.h"
 #include "orcm/mca/scd/base/base.h"
 #include "orcm/mca/pwrmgmt/pwrmgmt.h"
 
@@ -26,8 +27,8 @@ int orcm_octl_power_set(int cmd, char **argv)
     bool per_session = false;
     
     if (4 != opal_argv_count(argv)) {
-        fprintf(stderr, "\n  incorrect arguments! \n\n usage: \"power set\
-<command>  <value>\"\n");
+        orte_show_help("help-octl.txt",
+                       "octl:power:set-usage", true, "invalid arguments!");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -93,7 +94,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         }
         
         if (0 > int_param || ORCM_PWRMGMT_NUM_MODES <= int_param ) {
-            printf("\nIllegal Power Management Mode\n");
+            orte_show_help("help-octl.txt", "octl:power:set-mode", true);
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return ORCM_ERR_BAD_PARAM;
         }
@@ -250,9 +251,9 @@ int orcm_octl_power_set(int cmd, char **argv)
         return rc;
     }
     if (0 == result) {
-        printf("\nSuccess\n");
+        ORCM_UTIL_MSG("Success!\n");
     } else {
-        printf("\nFailure\n");
+        ORCM_UTIL_MSG("Failure\n");
     }
     
     return ORCM_SUCCESS;
@@ -270,17 +271,18 @@ int orcm_octl_power_get(int cmd, char **argv)
     bool per_session = false;
     
     if (3 != opal_argv_count(argv)) {
-        fprintf(stderr, "\n  incorrect arguments! \n\n usage: \"power get\
-<command> \"\n");
+        orte_show_help("help-octl.txt",
+                       "octl:power:get-usage", true, "invalid arguments!");
+
         return ORCM_ERR_BAD_PARAM;
     }
   
     if (ORCM_GET_POWER_MODES_COMMAND == cmd) {
-        printf("\nPossible Modes: {%s", orcm_pwrmgmt_get_mode_string(0));
+        ORCM_UTIL_MSG_WITH_ARG("Possible Modes: {\n%s", orcm_pwrmgmt_get_mode_string(0));
         for(i = 1; i < ORCM_PWRMGMT_NUM_MODES; i++) {
-            printf(", %s",orcm_pwrmgmt_get_mode_string(i));
+            ORCM_UTIL_MSG_WITH_ARG("%s",orcm_pwrmgmt_get_mode_string(i));
         }
-        printf("}\n");
+        ORCM_UTIL_MSG("}");
         return ORCM_SUCCESS;
     }
           
@@ -360,7 +362,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        printf("\nCurrent cluster power budget: %d watts\n", int_param);
+        ORCM_UTIL_MSG_WITH_ARG("Current cluster power budget: %d watts", int_param);
     break;
     case ORCM_GET_POWER_MODE_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -369,7 +371,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        printf("\nCurrent default power mode: %s\n", orcm_pwrmgmt_get_mode_string(int_param));
+        ORCM_UTIL_MSG_WITH_ARG("Current default power mode: %s", orcm_pwrmgmt_get_mode_string(int_param));
     break;
     case ORCM_GET_POWER_WINDOW_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -378,7 +380,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        printf("\nCurrent default power window: %d ms\n", int_param);
+        ORCM_UTIL_MSG_WITH_ARG("Current default power window: %d ms", int_param);
     break;
     case ORCM_GET_POWER_OVERAGE_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -387,7 +389,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        printf("\nCurrent default power budget overage limit: %d watts\n", int_param);
+        ORCM_UTIL_MSG_WITH_ARG("Current default power budget overage limit: %d watts", int_param);
     break;
     case ORCM_GET_POWER_UNDERAGE_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -396,7 +398,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        printf("\nCurrent default power budget underage limit: %d watts\n", int_param);
+        ORCM_UTIL_MSG_WITH_ARG("Current default power budget underage limit: %d watts", int_param);
     break;
     case ORCM_GET_POWER_OVERAGE_TIME_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -405,7 +407,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        printf("\nCurrent default power overage time limit: %d ms\n", int_param);
+        ORCM_UTIL_MSG_WITH_ARG("Current default power overage time limit: %d ms", int_param);
     break;
     case ORCM_GET_POWER_UNDERAGE_TIME_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -414,7 +416,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        printf("\nCurrent default power underage time limit: %d ms\n", int_param);
+        ORCM_UTIL_MSG_WITH_ARG("Current default power underage time limit: %d ms", int_param);
     break;
     case ORCM_GET_POWER_FREQUENCY_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &float_param,
@@ -424,13 +426,13 @@ int orcm_octl_power_get(int cmd, char **argv)
             return rc;
         }
         if(fabsf((float)(float_param - (float)ORCM_PWRMGMT_MIN_FREQ)) < 0.0001) {
-            printf("\nCurrent default power frequency: MAX_FREQ");
+            ORCM_UTIL_MSG("Current default power frequency: MAX_FREQ");
         }
         else if(fabsf((float)(float_param - (float)ORCM_PWRMGMT_MIN_FREQ)) < 0.0001) {
-            printf("\nCurrent default power frequency: MIN_FREQ");
+            ORCM_UTIL_MSG("Current default power frequency: MIN_FREQ");
         }
         else {
-            printf("\nCurrent default power frequency: %f GHz\n", float_param);
+            ORCM_UTIL_MSG_WITH_ARG("Current default power frequency: %f GHz", float_param);
         }
     break;
     case ORCM_GET_POWER_STRICT_COMMAND:
@@ -440,7 +442,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        printf("\nCurrent default frequency strict setting: %s\n", bool_param ? "true" : "false");
+        ORCM_UTIL_MSG_WITH_ARG("Current default frequency strict setting: %s", bool_param ? "true" : "false");
     break;
     default:
         OBJ_RELEASE(buf);

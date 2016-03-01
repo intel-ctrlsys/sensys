@@ -370,6 +370,7 @@ int orcm_cli_get_cmd(char *prompt,
     }
 
  process:
+    printf("\n");
     /* restore the initial settings */
     tcsetattr(STDIN_FILENO, TCSANOW, &initial_settings);
 

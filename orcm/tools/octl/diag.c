@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016  Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -21,16 +21,18 @@ int orcm_octl_diag_cpu(char **argv)
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
+    char *err_str = NULL;
+
 
     if (3 != opal_argv_count(argv)) {
-        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"diag \
-cpu <node-list>\"\n");
+        orte_show_help("help-octl.txt",
+                       "octl:diag:usage", true, "invalid arguments!");
         return ORCM_ERR_BAD_PARAM;
     }
 
     orcm_logical_group_parse_array_string(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        fprintf(stdout, "\nERROR: unable to extract nodelist\n");
+        orte_show_help("help-octl.txt","octl:nodelist-extract", true, argv[2]);
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -74,7 +76,8 @@ cpu <node-list>\"\n");
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        fprintf(stdout, "\nORCM Executing Diag:cpu on Node:%s\n", nodelist[i]);
+        ORCM_UTIL_MSG_WITH_ARG("ORCM Executing Diag:cpu on Node: %s",
+                               nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
             goto finish;
@@ -100,9 +103,10 @@ cpu <node-list>\"\n");
                 goto finish;
             }
             if (ORCM_SUCCESS == result) {
-                fprintf(stdout, "\nSuccess\n");
+                ORCM_UTIL_MSG("Success");
             } else {
-                fprintf(stdout, "\nFailure\n");
+                orcm_err2str(rc, (const char**)(&err_str));
+                orte_show_help("help-octl.txt", "octl:command-line:failure", true, err_str);
             }
         }
     }
@@ -127,15 +131,17 @@ int orcm_octl_diag_eth(char **argv)
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
+    char *err_str = NULL;
 
     if (3 != opal_argv_count(argv)) {
-        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"diag eth <nodelist>\n");
+        orte_show_help("help-octl.txt",
+                       "octl:diag:usage", true, "invalid arguments!");
         return ORCM_ERR_BAD_PARAM;
     }
 
     orcm_logical_group_parse_array_string(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        fprintf(stdout, "\nERROR: unable to extract nodelist\n");
+        orte_show_help("help-octl.txt","octl:nodelist-extract", true, argv[2]);
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -179,7 +185,8 @@ int orcm_octl_diag_eth(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        fprintf(stdout, "\nORCM Executing Diag:eth on Node:%s\n", nodelist[i]);
+        ORCM_UTIL_MSG_WITH_ARG("ORCM Executing Diag:eth on Node: %s",
+                               nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
             goto finish;
@@ -205,9 +212,10 @@ int orcm_octl_diag_eth(char **argv)
                 goto finish;
             }
             if (ORCM_SUCCESS == result) {
-                fprintf(stdout, "\nSuccess\n");
+                ORCM_UTIL_MSG("Success");
             } else {
-                fprintf(stdout, "\nFailure\n");
+                orcm_err2str(rc, (const char**)(&err_str));
+                orte_show_help("help-octl.txt", "octl:command-line:failure", true, err_str);
             }
         }
     }
@@ -237,15 +245,18 @@ int orcm_octl_diag_mem(char **argv)
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
+    char *err_str = NULL;
+
 
     if (3 != opal_argv_count(argv)) {
-        fprintf(stderr, "\n  incorrect arguments! \n\n  usage:\"diag mem <nodelist>\n");
+        orte_show_help("help-octl.txt",
+                       "octl:diag:usage", true, "invalid arguments!");
         return ORCM_ERR_BAD_PARAM;
     }
 
     orcm_logical_group_parse_array_string(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        fprintf(stdout, "\nERROR: unable to extract nodelist\n");
+        orte_show_help("help-octl.txt","octl:nodelist-extract", true, argv[2]);
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -289,7 +300,8 @@ int orcm_octl_diag_mem(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        fprintf(stdout, "\nORCM Executing Diag:mem on Node:%s\n", nodelist[i]);
+        ORCM_UTIL_MSG_WITH_ARG("ORCM Executing Diag:mem on Node: %s",
+                               nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
             goto finish;
@@ -315,9 +327,10 @@ int orcm_octl_diag_mem(char **argv)
                 goto finish;
             }
             if (ORCM_SUCCESS == result) {
-                fprintf(stdout, "\nSuccess\n");
+                ORCM_UTIL_MSG("Success");
             } else {
-                fprintf(stdout, "\nFailure\n");
+                orcm_err2str(rc, (const char**)(&err_str));
+                orte_show_help("help-octl.txt", "octl:command-line:failure", true, err_str);
             }
         }
     }

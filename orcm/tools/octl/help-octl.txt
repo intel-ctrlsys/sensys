@@ -152,3 +152,66 @@ USAGE: chassis-id disable <nodelist>
 [octl:chassis-id:enable-usage]
 ERROR: %s
 USAGE: chassis-id enable [seconds] <nodelist>
+
+[octl:power:set-usage]
+ERROR: %s
+USAGE: power set <command> <value>
+
+[octl:power:get-usage]
+ERROR: %s
+USAGE: power get <command>
+
+[octl:power:set-mode]
+ERROR: Illegal Power Management mode, use 'power get modes' to see possible modes
+USAGE: power set mode <value>
+
+[octl:diag:usage]
+ERROR: %s
+USAGE: diag <command> <node-list>
+
+[octl:analytics:add-usage]
+ERROR: %s
+USAGE: analytics workflow add <file>
+
+[octl:analytics:remove-usage]
+ERROR: %s
+USAGE: analytics workflow remove <nodelist> <workflow-id>
+
+[octl:analytics:get-usage]
+ERROR: %s
+USAGE: analytics workflow get <nodelist>
+
+[octl:analytics:workflow-failure]
+ERROR: Workflow not added.
+Possible bad file, please verify if the syntax is correct and try again.
+
+[octl:analytics:workflow-id]
+ERROR: Incorrect argument workflow id!"%s" is not an interger
+
+[octl:analytics:nodelist]
+ERROR: Nodelist isn't present in the workflow file
+
+[octl:analytics:filter]
+ERROR: Filter plugin isn't present in the start of workflow file
+
+[octl:analytics:big-file]
+ERROR: File is too big to parse
+
+[octl:analytics:many-params]
+ERROR: Too many params %d in the OFLOW file are being sent
+OFLOW exiting
+
+[octl:analytics:memory]
+ERROR: Error in Memory allocation
+
+[octl:analytics:workflow-notfound]
+ERROR: Workflow not found
+
+[octl:nodelist-null]
+ERROR: incorrect argument, nodelist is NULL!
+
+[octl:nodelist-extract]
+ERROR: Unable to extract nodelist "%s"
+
+[octl:hostname-notfound]
+ERROR: Hostname "%s" not found!

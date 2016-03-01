@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2015-2016   Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -98,7 +98,7 @@ static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *param
                              params_array_length, input_array + *params_array_length) ) {
 
         if (NULL == input_array[0].key) {
-            fprintf(stderr, "\n nodelist isn't present in the workflow file \n");
+            orte_show_help("help-octl.txt", "octl:analytics:nodelist", true);
             return ORCM_ERROR;
         }
 
@@ -115,7 +115,7 @@ static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *param
                 continue;
             }
             else {
-                fprintf(stderr, "\n nodelist isn't present in the workflow file \n");
+                orte_show_help("help-octl.txt", "octl:analytics:nodelist", true);
                 return ORCM_ERROR;
             }
         }
@@ -126,12 +126,12 @@ static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *param
                     (*step_size)++;
                 }
                 else {
-                    fprintf(stderr, "\n filter plugin isn't present in the start of workflow file \n");
+                    orte_show_help("help-octl.txt", "octl:analytics:filter", true);
                     return ORCM_ERROR;
                 }
             }
             else {
-                fprintf(stderr, "\n filter plugin isn't present in the start of workflow file \n");
+                orte_show_help("help-octl.txt", "octl:analytics:filter", true);
                 return ORCM_ERROR;
             }
         }
@@ -140,7 +140,7 @@ static int orcm_octl_analytics_wf_add_parse(FILE *fp, int *step_size, int *param
         }
 
         if (*params_array_length >= OFLOW_MAX_ARRAY_SIZE) {
-            fprintf(stderr, "\n file is too big to parse \n");
+            orte_show_help("help-octl.txt", "octl:analytics:big-file", true);
             return ORCM_ERROR;
         }
     }
@@ -156,13 +156,13 @@ static int orcm_oct_analytics_wf_add_store(int params_array_length, opal_value_t
     for (oflow_line_item=0; oflow_line_item < params_array_length ; oflow_line_item++) {
 
         if (params_array_length > OFLOW_MAX_ARRAY_SIZE) {
-            fprintf(stderr, "\nToo many params %d in the OFLOW file are being sent, OFLOW exiting",
-                    params_array_length);
+            orte_show_help("help-octl.txt", "octl:analytics:many-params",
+                           true,  params_array_length);
             return ORCM_ERR_BAD_PARAM;
         }
 
-        fprintf(stdout, "KEY: %s \n\tVALUE: %s\n", input_array[oflow_line_item].key,
-                input_array[oflow_line_item].data.string );
+        ORCM_UTIL_MSG_WITH_ARG("KEY: %s", input_array[oflow_line_item].key);
+        ORCM_UTIL_MSG_WITH_ARG("VALUE: %s", input_array[oflow_line_item].data.string );
         workflow_params_array[oflow_line_item] = (opal_value_t *)(input_array + oflow_line_item);
    }
    return ORCM_SUCCESS;
@@ -213,7 +213,14 @@ static int orcm_octl_analytics_wf_add_unpack_buffer(orte_rml_recv_cb_t *xfer)
     if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_id, &n, OPAL_INT))) {
         return ORCM_ERROR;
     }
-    fprintf(stdout, "\nWorkflow created with id: %i\n", workflow_id);
+
+    if (0 > workflow_id) {
+        orte_show_help("help-octl.txt", "octl:analytics:workflow-failure",
+                       true);
+        rc = workflow_id;
+        return rc;
+    }
+    ORCM_UTIL_MSG_WITH_ARG("Workflow created with id: %i", workflow_id);
     return ORCM_SUCCESS;
 
 }
@@ -235,15 +242,15 @@ int orcm_octl_analytics_workflow_add(char *file)
 
 
     if (NULL == (fp = fopen(file, "r"))) {
-        fprintf(stderr, "\nCan't open workflow file");
-        fprintf(stderr, "\n usage: \"analytics workflow add workflow.txt\"\n");
+        orte_show_help("help-octl.txt",
+                       "octl:analytics:add-usage", true, "Can't open workflow file");
         return ORCM_ERR_BAD_PARAM;
     }
 
     oflow_input_file_array = (opal_value_t *)malloc(OFLOW_MAX_ARRAY_SIZE * sizeof(opal_value_t));
 
     if (NULL == oflow_input_file_array) {
-        fprintf(stderr, "\n Error in Memory allocation\n");
+        orte_show_help("help-octl.txt","octl:analytics:memory", true);
         fclose(fp);
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
@@ -292,6 +299,8 @@ int orcm_octl_analytics_workflow_add(char *file)
 
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[node_index],
                                                                    &wf_agg))) {
+            orte_show_help("help-octl.txt","octl:hostname-notfound",
+                           true, nodelist[node_index]);
             orcm_octl_analytics_wf_add_error(buf, xfer,oflow_input_file_array, nodelist);
             return rc;
         }
@@ -330,7 +339,8 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
     int rc;
 
     if (5 != opal_argv_count(value)) {
-        fprintf(stderr, "\nincorrect arguments! \n usage: \"analytics workflow remove nodelist workflow_id\"\n");
+        orte_show_help("help-octl.txt",
+                       "octl:analytics:remove-usage", true, "invalid arguments!");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -342,7 +352,7 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
 
     }
     else {
-        fprintf(stderr, "\nincorrect argument nodelist!\n \"%s\" is NULL \n", value[3]);
+        orte_show_help("help-octl.txt","octl:nodelist-null", true);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -350,7 +360,8 @@ static int orcm_octl_analytics_wf_remove_parse_args(char **value, int *workflow_
         *workflow_id = (int)strtol(value[4], NULL, 10);
     }
     else {
-        fprintf(stderr, "\nincorrect argument workflow id!\n \"%s\" is not an integer \n", value[4]);
+        orte_show_help("help-octl.txt",
+                       "octl:analytics:workflow-id", true, value[4]);
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
@@ -387,10 +398,10 @@ static int orcm_octl_analytics_wf_remove_unpack_buffer(orte_rml_recv_cb_t *xfer)
         return ORCM_ERROR;
     }
     if (ORCM_ERROR != workflow_id) {
-        fprintf(stdout, "\nWorkflow deleted %d\n", workflow_id);
+        ORCM_UTIL_MSG("Workflow deleted");
     }
     else {
-        fprintf(stdout, "\nworkflow not found\n");
+        orte_show_help("help-octl.txt","octl:analytics:workflow-notfound", true);
     }
     return ORCM_SUCCESS;
 
@@ -469,7 +480,8 @@ static int orcm_octl_analytics_wf_list_parse_args(char **value, char ***nodelist
     int rc;
 
     if (4 != opal_argv_count(value)) {
-        fprintf(stderr, "\nincorrect arguments! \n usage: \"analytics workflow get nodelist \"\n");
+        orte_show_help("help-octl.txt",
+                       "octl:analytics:get-usage", true, "invalid arguments!");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -481,7 +493,8 @@ static int orcm_octl_analytics_wf_list_parse_args(char **value, char ***nodelist
 
     }
     else {
-        fprintf(stderr, "\nincorrect argument nodelist!\n \"%s\" is NULL \n", value[3]);
+        orte_show_help("help-octl.txt",
+                       "octl:nodelist-null", true, "invalid arguments!");
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
@@ -525,12 +538,12 @@ static int orcm_octl_analytics_wf_list_unpack_buffer(orte_rml_recv_cb_t *xfer)
             return ORCM_ERROR;
         }
         for (temp = 0; temp < cnt; temp++) {
-            fprintf(stdout, "workflow id is: %d\n", workflow_ids[temp] );
+            ORCM_UTIL_MSG_WITH_ARG("workflow id is: %d", workflow_ids[temp]);
         }
         free(workflow_ids);
     }
     else {
-        fprintf(stdout, "\nNo workflow ids\n");
+        ORCM_UTIL_MSG("No workflow ids");
     }
     return ORCM_SUCCESS;
 }

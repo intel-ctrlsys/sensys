@@ -52,6 +52,12 @@ extern "C" {
     ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE); \
     throw unableToAllocateObj(); }
 
+#define HOSTNAME_STR "hostname"
+#define TOT_HOSTNAMES_STR "tot_hostnames"
+#define TOT_ITEMS_STR "tot_items"
+#define SENSOR_SNMP_STR "sensor_snmp_"
+#define CTIME_STR "ctime"
+
 // For Testing only illegal as job_id...
 #define NOOP_JOBID -999
 
@@ -214,22 +220,41 @@ void snmp_impl::log(opal_buffer_t* buf)
     SAFE_OBJ_RELEASE(analytics_vals);
 }
 
+vector<vardata> snmp_impl::getOIDsVardataVector(snmpCollector sc){
+    int n=0;
+    stringstream ss;
+    vector<vardata> v;
+    list<string> oids = sc.getOIDsList();
+    for(list<string>::iterator it=oids.begin(); it!=oids.end(); it++){
+        ss.str("");
+        ss << SENSOR_SNMP_STR << ++n;
+        v.push_back(vardata(*it).setKey(ss.str()));
+    }
+    return v;
+}
+
 void snmp_impl::inventory_collect(opal_buffer_t *inventory_snapshot)
 {
+    int64_t tot_items=0;
+    const int64_t hostnameItem=1;
+    vector<vardata> oids;
+
     if (NULL == inventory_snapshot){
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;
     }
 
     packPluginName(inventory_snapshot);
-
+    vardata((int64_t)collectorObj_.size()).setKey(TOT_HOSTNAMES_STR).packTo(inventory_snapshot);
     for(vector<snmpCollector>::iterator it=collectorObj_.begin();
         it!=collectorObj_.end();++it)
     {
-	try {
-            vardata(it->getHostname()).setKey("hostname").packTo \
-       	                                                  (inventory_snapshot);
-            packDataToBuffer(it->collectData(),inventory_snapshot);
+        try {
+            oids = getOIDsVardataVector(*it);
+            tot_items = oids.size() + hostnameItem;
+            vardata(tot_items).setKey(TOT_ITEMS_STR).packTo(inventory_snapshot);
+            vardata(it->getHostname()).setKey(HOSTNAME_STR).packTo(inventory_snapshot);
+            packDataToBuffer(oids,inventory_snapshot);
         } catch (exception &e) {
             opal_output(0, "ERROR: %s (%s)\n", e.what(), it->getHostname().c_str());
         }
@@ -246,49 +271,39 @@ void snmp_impl::my_inventory_log_cleanup(int dbhandl, int status,
 void snmp_impl::inventory_log(char *hostname,
                               opal_buffer_t *inventory_snapshot)
 {
-    int sensor_number = 1;
-    stringstream sensor_name;
     opal_list_t *records = NULL;
 
-    struct timeval timestamp;
-    gettimeofday(&timestamp, NULL);
-
     try {
-        records = OBJ_NEW(opal_list_t);
-        ON_NULL_THROW(records);
+        vardata tot_hostnames = fromOpalBuffer(inventory_snapshot);
+        if (TOT_HOSTNAMES_STR != tot_hostnames.getKey()){
+            ORTE_ERROR_LOG(ORCM_ERR_BUFFER);
+            throw corruptedInventoryBuffer();
+        }
 
-        vector<vardata> allItems = unpackDataFromBuffer(inventory_snapshot);
-        for(vector<vardata>::iterator it=allItems.begin();it!=allItems.end();++it) {
-            if("hostname" != it->getKey()) {
-                sensor_name.str("");
-                sensor_name << "sensor_snmp_" << (int) it->getDataType() << "_" <<
-                               sensor_number++;
-                it->setKey(sensor_name.str());
-            } else {
-                if (0 != records->opal_list_length) {
-                    if (0 <= orcm_sensor_base.dbhandle) {
-                        orcm_db.store_new(orcm_sensor_base.dbhandle,
-                                          ORCM_DB_INVENTORY_DATA, records, NULL,
-                                          my_inventory_log_cleanup, NULL);
-                    } else {
-                        my_inventory_log_cleanup(-1,-1,records,NULL,NULL);
-                    }
-                    records = OBJ_NEW(opal_list_t);
-                    ON_NULL_THROW(records);
-                }
+        for(int h=0; h<tot_hostnames.getValue<int64_t>();h++){
+            records = OBJ_NEW(opal_list_t);
+            ON_NULL_THROW(records);
+
+            vardata tot_items = fromOpalBuffer(inventory_snapshot);
+            if (TOT_ITEMS_STR != tot_items.getKey()){
+                ORTE_ERROR_LOG(ORCM_ERR_BUFFER);
+                throw corruptedInventoryBuffer();
             }
-            it->appendToOpalList(records);
-            vardata(timestamp).setKey(string("ctime")).appendToOpalList(records);
+
+            for (int i=0; i<tot_items.getValue<int64_t>(); i++){
+                fromOpalBuffer(inventory_snapshot).appendToOpalList(records);
+            }
+
+            if (0 <= orcm_sensor_base.dbhandle) {
+                orcm_db.store_new(orcm_sensor_base.dbhandle,
+                                  ORCM_DB_INVENTORY_DATA, records, NULL,
+                                  my_inventory_log_cleanup, NULL);
+            } else {
+                my_inventory_log_cleanup(-1,-1,records,NULL,NULL);
+            }
         }
     } catch (exception &e) {
         opal_output(0, "ERROR: %s\n", e.what());
-    }
-
-    if (0 <= orcm_sensor_base.dbhandle && 0 != records->opal_list_length){
-        orcm_db.store_new(orcm_sensor_base.dbhandle,ORCM_DB_INVENTORY_DATA,
-                          records, NULL, my_inventory_log_cleanup, NULL);
-    } else {
-        my_inventory_log_cleanup(-1,-1,records,NULL,NULL);
     }
 }
 
@@ -393,8 +408,8 @@ void snmp_impl::collect_sample(bool perthread /* = false*/)
 
         packPluginName(&buffer);
 
-        vardata(current_time).setKey(string("ctime")).packTo(&buffer);
-        vardata(hostname_).setKey(string("hostname")).packTo(&buffer);
+        vardata(current_time).setKey(string(CTIME_STR)).packTo(&buffer);
+        vardata(hostname_).setKey(string(HOSTNAME_STR)).packTo(&buffer);
         collectAndPackDataSamples(&buffer);
 
         opal_buffer_t* bptr = &buffer;

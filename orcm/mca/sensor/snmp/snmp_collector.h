@@ -45,6 +45,7 @@ class snmpCollector {
         void setLocation(std::string location);
         std::vector<vardata> collectData();
         std::string getHostname() { return hostname; };
+        std::list<std::string> getOIDsList() { return oidList; };
 
     private:
         struct snmp_session session;

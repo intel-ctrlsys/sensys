@@ -19,6 +19,7 @@
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "orcm/mca/sensor/snmp/sensor_snmp.h"
+#include "orcm/util/vardata.h"
 
 #include <time.h>
 #include <string>
@@ -67,6 +68,7 @@ class snmp_impl
         void ev_create_thread();
         void ev_destroy_thread();
         void load_mca_variables();
+        std::vector<vardata> getOIDsVardataVector(snmpCollector sc);
 
     PRIVATE: // Fields (i.e. state)
         std::vector<snmpCollector> collectorObj_;
@@ -88,6 +90,11 @@ class unableToAllocateObj : public std::runtime_error {
 class incorrectConfig : public std::runtime_error {
     public:
     incorrectConfig() : std::runtime_error( "Incorrect configuration parameter" ) {}
+};
+
+class corruptedInventoryBuffer : public std::runtime_error {
+    public:
+    corruptedInventoryBuffer() : std::runtime_error( "Inventory buffer is corrupted") {}
 };
 
 #endif /* SNMP_H */

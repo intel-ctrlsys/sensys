@@ -188,8 +188,10 @@ static orcm_ras_event_t* get_next_event(opal_list_t* event_list)
     ev_val = (opal_value_t*) opal_list_remove_first(event_list);
     if(NULL != ev_val && NULL != ev_val->data.ptr){
         event_ptr = (orcm_ras_event_t**)ev_val->data.ptr;
+        if(NULL != event_ptr){
+            ras_event = *event_ptr;
+        }
     }
-    ras_event = *event_ptr;
     SAFE_RELEASE(ev_val);
     return ras_event;
 }
@@ -324,6 +326,8 @@ int event_list_append(opal_list_t* event_list, orcm_ras_event_t* ev)
     opal_ev = OBJ_NEW(opal_value_t);
     event_ptr = malloc(sizeof(orcm_ras_event_t *));
     if(NULL == event_ptr || NULL == opal_ev){
+        SAFEFREE(event_ptr);
+        SAFEFREE(opal_ev);
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
     *event_ptr = ev;

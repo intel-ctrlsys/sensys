@@ -31,8 +31,7 @@ static uint64_t generate_event_hashkey(int ev_type, int severity,
                                        opal_list_t* reporter, opal_list_t* compute_list);
 /*function to check if event matches the user defined filter criteria and return the suppress interval*/
 static unsigned int filter_max_rate(orcm_ras_event_t* ev, event_filter* filter);
-/*function to get event severity*/
-static int orcm_analytics_event_get_severity(char* severity);
+
 /*function to get filter values from user policies*/
 static int assign_filter_value(char* key, char* value, event_filter* filter);
 
@@ -220,7 +219,7 @@ done:
      SAFE_RELEASE(event_list);
 }
 
-static int orcm_analytics_event_get_severity(char* severity)
+int orcm_analytics_event_get_severity(char* severity)
 {
     int sev;
     if ( 0 == strcmp(severity, "emerg") ) {

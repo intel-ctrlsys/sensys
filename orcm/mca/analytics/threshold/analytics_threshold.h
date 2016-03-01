@@ -31,10 +31,10 @@ typedef struct
 {
     opal_object_t super;
     double hi;
-    orte_notifier_severity_t hi_sev;
+    int hi_sev;
     char* hi_action;
     double low;
-    orte_notifier_severity_t low_sev;
+    int low_sev;
     char* low_action;
 } orcm_mca_analytics_threshold_policy_t;
 

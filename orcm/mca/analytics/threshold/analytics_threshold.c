@@ -26,7 +26,6 @@
 #include "orcm/mca/analytics/threshold/analytics_threshold.h"
 
 #include "orcm/runtime/orcm_globals.h"
-#include "orte/mca/notifier/notifier.h"
 #include "opal/class/opal_list.h"
 
 #include <stdarg.h>
@@ -46,10 +45,10 @@ static void threshold_policy_t_con(orcm_mca_analytics_threshold_policy_t *policy
 {
     policy->hi = 0.0;
     policy->hi_action = NULL;
-    policy->hi_sev = ORTE_NOTIFIER_INFO;
+    policy->hi_sev = ORCM_RAS_SEVERITY_INFO;
     policy->low = 0.0;
     policy->low_action = NULL;
-    policy->low_sev = ORTE_NOTIFIER_INFO;
+    policy->low_sev = ORCM_RAS_SEVERITY_INFO;
 }
 
 static void threshold_policy_t_des(orcm_mca_analytics_threshold_policy_t *policy)
@@ -105,31 +104,6 @@ static void finalize(orcm_analytics_base_module_t *imod)
                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 }
 
-static orte_notifier_severity_t get_severity(char* severity)
-{
-    orte_notifier_severity_t sev;
-    if ( 0 == strcmp(severity, "emerg") ) {
-        sev = ORTE_NOTIFIER_EMERG;
-    } else if ( 0 == strcmp(severity, "alert") ) {
-        sev = ORTE_NOTIFIER_ALERT;
-    } else if ( 0 == strcmp(severity, "crit") ) {
-        sev = ORTE_NOTIFIER_CRIT;
-    } else if ( 0 == strcmp(severity, "error") ) {
-        sev = ORTE_NOTIFIER_ERROR;
-    } else if ( 0 == strcmp(severity, "warn") ) {
-        sev = ORTE_NOTIFIER_WARN;
-    } else if ( 0 == strcmp(severity, "notice") ) {
-        sev = ORTE_NOTIFIER_NOTICE;
-    } else if ( 0 == strcmp(severity, "info") ) {
-        sev = ORTE_NOTIFIER_INFO;
-    } else if ( 0 == strcmp(severity, "debug") ) {
-        sev = ORTE_NOTIFIER_DEBUG;
-    } else {
-        sev = ORTE_NOTIFIER_INFO;
-    }
-    return sev;
-}
-
 orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value, opal_list_t* key, opal_list_t* non_compute)
 {
     orcm_analytics_value_t* threshold_value = NULL;
@@ -146,7 +120,7 @@ orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value, opal_li
     return threshold_value;
 }
 
-static int generate_notification_event(orcm_analytics_value_t* analytics_value,orte_notifier_severity_t sev, char *msg,
+static int generate_notification_event(orcm_analytics_value_t* analytics_value, int sev, char *msg,
                                        char* action, opal_list_t* event_list)
 {
     int rc = ORCM_SUCCESS;
@@ -288,7 +262,7 @@ static int get_threshold_policy(void *cbdata,orcm_mca_analytics_threshold_policy
     char* action_hi = NULL;
     char* severity = NULL;
     char* action_low = NULL;
-    orte_notifier_severity_t sev = ORTE_NOTIFIER_ERROR;
+    int sev = ORCM_RAS_SEVERITY_ERROR;
     orcm_workflow_caddy_t *current_caddy = NULL;
     char* label = strdup("policy");
     int rc = ORCM_SUCCESS;
@@ -328,7 +302,7 @@ static int get_threshold_policy(void *cbdata,orcm_mca_analytics_threshold_policy
         }
         severity = strdup(token[2]);
         if(NULL != severity) {
-        sev = get_severity(severity);
+        sev = orcm_analytics_event_get_severity(severity);
         }
         if(0 == strcmp(token[0],"hi")) {
             threshold_policy->hi = val;

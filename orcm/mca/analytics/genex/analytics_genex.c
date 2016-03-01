@@ -27,7 +27,6 @@
 #include "orcm/util/utils.h"
 
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/notifier/notifier.h"
 #include "orte/mca/notifier/base/base.h"
 
 #define IF_NULL(x) if(NULL==x) { ORTE_ERROR_LOG(ORCM_ERROR); return ORCM_ERROR; }
@@ -37,7 +36,7 @@ static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
 static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata);
 static int generate_notification_event(orcm_analytics_value_t* analytics_value,
-                                       orte_notifier_severity_t sev, char *msg,
+                                       int sev, char *msg,
                                        char *action);
 static orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value,
                                                    opal_list_t* key,
@@ -77,31 +76,6 @@ static void finalize(orcm_analytics_base_module_t *imod)
 {
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
         "%s analytics:genex:finalize", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-}
-
-static orte_notifier_severity_t get_severity(char* severity)
-{
-  orte_notifier_severity_t sev;
-  if ( 0 == strcmp(severity, "emerg") ) {
-    sev = ORTE_NOTIFIER_EMERG;
-  } else if ( 0 == strcmp(severity, "alert") ) {
-    sev = ORTE_NOTIFIER_ALERT;
-  } else if ( 0 == strcmp(severity, "crit") ) {
-    sev = ORTE_NOTIFIER_CRIT;
-  } else if ( 0 == strcmp(severity, "error") ) {
-    sev = ORTE_NOTIFIER_ERROR;
-  } else if ( 0 == strcmp(severity, "warn") ) {
-    sev = ORTE_NOTIFIER_WARN;
-  } else if ( 0 == strcmp(severity, "notice") ) {
-    sev = ORTE_NOTIFIER_NOTICE;
-  } else if ( 0 == strcmp(severity, "info") ) {
-    sev = ORTE_NOTIFIER_INFO;
-  } else if ( 0 == strcmp(severity, "debug") ) {
-    sev = ORTE_NOTIFIER_DEBUG;
-  } else {
-    sev = ORTE_NOTIFIER_INFO;
-  }
-  return sev;
 }
 
 /**
@@ -190,7 +164,7 @@ static orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value,
 }
 
 static int generate_notification_event(orcm_analytics_value_t* analytics_value,
-                                       orte_notifier_severity_t sev, char *msg,
+                                       int sev, char *msg,
                                        char *action)
 {
     int rc = ORCM_SUCCESS;
@@ -304,7 +278,7 @@ static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata)
                 }
 
                 rc = generate_notification_event(genex_analytics_value,
-                                                 get_severity(workflow_value->severity),
+                                                 orcm_analytics_event_get_severity(workflow_value->severity),
                                                  genex_value.message,
                                                  workflow_value->notifier);
                 if ( ORCM_SUCCESS != rc ) {

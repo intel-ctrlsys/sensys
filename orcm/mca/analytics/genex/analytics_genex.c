@@ -235,11 +235,6 @@ done:
     return rc;
 }
 
-static void cleanup_genex_value(genex_value_t *genex_value) {
-    SAFEFREE(genex_value->message);
-    SAFEFREE(genex_value->severity);
-}
-
 static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata)
 {
     int rc = ORCM_SUCCESS;
@@ -280,16 +275,15 @@ static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata)
 
     OPAL_LIST_FOREACH(analytics_value, sample_data_list, orcm_value_t) {
         if (NULL == analytics_value) {
-            cleanup_genex_value(&genex_value);
             return ORCM_ERROR;
         }
 
         if (0 == strcmp("severity", analytics_value->value.key)) {
-            genex_value.severity = strdup(analytics_value->value.data.string);
+            genex_value.severity = analytics_value->value.data.string;
         }
 
         if( NULL != strstr(analytics_value->value.key, "message")) {
-            genex_value.message = strdup(analytics_value->value.data.string);
+            genex_value.message = analytics_value->value.data.string;
         }
 
         if (NULL != genex_value.message && NULL != genex_value.severity) {
@@ -306,7 +300,6 @@ static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata)
                                         caddy->analytics_value->non_compute_data);
 
                 if(NULL == genex_analytics_value) {
-                    cleanup_genex_value(&genex_value);
                     return ORCM_ERR_OUT_OF_RESOURCE;
                 }
 
@@ -316,13 +309,11 @@ static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata)
                                                  workflow_value->notifier);
                 if ( ORCM_SUCCESS != rc ) {
                     SAFEFREE(genex_analytics_value);
-                    cleanup_genex_value(&genex_value);
                     return ORCM_ERROR;
                 }
              } else if(regex_res && regex_res != REG_NOMATCH) {
                 error_buffer = malloc(100);
                 if (NULL == error_buffer) {
-                    cleanup_genex_value(&genex_value);
                     return ORCM_ERR_OUT_OF_RESOURCE;
                 }
 
@@ -332,12 +323,10 @@ static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata)
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), error_buffer));
                 regfree(&regex_comp_wflow);
                 SAFEFREE(error_buffer);
-                cleanup_genex_value(&genex_value);
                 return ORCM_ERROR;
             }
         }
     }
-    cleanup_genex_value(&genex_value);
     return ORCM_SUCCESS;
 }
 

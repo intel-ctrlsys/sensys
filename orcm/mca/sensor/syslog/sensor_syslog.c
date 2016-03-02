@@ -52,6 +52,7 @@
 
 #define MAXLEN 1024
 #define INPUT_SOCKET "/dev/orcm_log"
+#define IF_NULL_ERROR(x) if(NULL == x) { ORTE_ERROR_LOG(ORCM_ERROR); return; }
 
 /* declare the API functions */
 static int  init(void);
@@ -76,18 +77,6 @@ typedef struct{
     opal_list_item_t super;
     char *log;
 }syslog_msg;
-
-#define NUM_PRIORITIES 8
-int severity_simbol[NUM_PRIORITIES] = {
-    ORCM_RAS_SEVERITY_EMERG,
-    ORCM_RAS_SEVERITY_ALERT,
-    ORCM_RAS_SEVERITY_CRIT,
-    ORCM_RAS_SEVERITY_ERROR,
-    ORCM_RAS_SEVERITY_WARNING,
-    ORCM_RAS_SEVERITY_NOTICE,
-    ORCM_RAS_SEVERITY_INFO,
-    ORCM_RAS_SEVERITY_DEBUG
-};
 
 #define NUM_FACILITIES 24
 char *facility_msg[NUM_FACILITIES] = {
@@ -117,25 +106,15 @@ char *facility_msg[NUM_FACILITIES] = {
     "LOCAL USE 7"
 };
 
+#define NUM_PRIORITIES 8
 char *priority_names[NUM_PRIORITIES] = {
     "emerg", "alert", "crit", "error",
     "warn", "notice", "info", "debug"
 };
 
-static char *get_severity_string(int severity)
-{
-    char *sev;
-    if (0 > severity || NUM_PRIORITIES <= severity) {
-        severity = ORCM_RAS_SEVERITY_INFO;
-    }
-    sev = strdup(priority_names[severity]);
-    return sev;
-}
-
-static void var_des(char *fclt, char *msg, char *sev) {
-    SAFEFREE(fclt);
+static void var_des(char *msg, char *log) {
     SAFEFREE(msg);
-    SAFEFREE(sev);
+    SAFEFREE(log);
 }
 
 static void msg_con(syslog_msg *msg){
@@ -301,24 +280,24 @@ static void perthread_syslog_sample(int fd, short args, void *cbdata)
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
-static int get_severity(int  prival)
+static const char *get_severity(int  prival)
 {
-     int severity;
-     severity = prival%8;
-     if (0 <= severity && NUM_PRIORITIES > severity) {
-         return severity_simbol[severity];
+     int severity_code;
+     const char *severity = NULL;
+     severity_code = prival%8;
+     if (0 <= severity_code && NUM_PRIORITIES > severity_code) {
+         severity = priority_names[severity_code];
      }
-     return -1;
+     return severity;
 }
 
-static char *get_facility(int prival)
+static const char *get_facility(int prival)
 {
     int facility_code;
-    char *facility = NULL;
+    const char *facility = NULL;
     facility_code = prival/8;
     if (0 <= facility_code && NUM_FACILITIES > facility_code) {
-        facility = strdup(facility_msg[facility_code]);
-        return facility;
+        facility = facility_msg[facility_code];
     }
     return facility;
 }
@@ -329,20 +308,19 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
     int nmsg;
     const char *name = "syslog";
     bool packed;
-    int pripart;
     syslog_msg *trk,*nxt;
     opal_buffer_t data, *bptr;
     struct timeval current_time;
-    int severity = -1;
-    char *facility = NULL;
+    const char *severity = NULL;
+    const char *facility = NULL;
     char *message = NULL;
     char *log_msg = NULL;
-    char *sev = NULL;
     char *tmp = NULL;
     regex_t regex_comp_log;
     size_t log_parts = 5;
     regmatch_t log_matches[log_parts];
-    char *prival = NULL;
+    int prival_int;
+    char *prival_str = NULL;
     int regex_res;
 
     void* metrics_obj = mca_sensor_syslog_component.runtime_metrics;
@@ -399,48 +377,39 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
     OPAL_LIST_FOREACH_SAFE(trk, nxt, &msgQueue, syslog_msg) {
         regex_res = regexec(&regex_comp_log, trk->log, log_parts, log_matches,0);
         if (!regex_res) {
-            prival = strndup(&trk->log[log_matches[1].rm_so],
-                            (int)(log_matches[1].rm_eo - log_matches[1].rm_so));
+            prival_str = strndup(&trk->log[log_matches[1].rm_so],
+                                 (int)(log_matches[1].rm_eo - log_matches[1].rm_so));
 
-            pripart = strtol(prival, &tmp, 10);
-            free(prival);
-            if(NULL == tmp) {
-                ORTE_ERROR_LOG(ORCM_ERROR);
-                return;
-            }
+            prival_int = strtol(prival_str, &tmp, 10);
+	    free(prival_str);
+            IF_NULL_ERROR(tmp);
 
-            severity = get_severity(pripart);
-            if(-1 == severity) {
-                ORTE_ERROR_LOG(ORCM_ERROR);
-                return;
-            }
+            severity = get_severity(prival_int);
+            IF_NULL_ERROR(severity);
 
-            facility = get_facility(pripart);
-            if(NULL == facility) {
-                ORTE_ERROR_LOG(ORCM_ERROR);
-                return;
-            }
+            facility = get_facility(prival_int);
+            IF_NULL_ERROR(facility);
 
             message = strndup(&trk->log[log_matches[2].rm_so],
                               (int)(log_matches[2].rm_eo - log_matches[2].rm_so));
 
             asprintf(&log_msg, "%s: %s", facility, message);
-            asprintf(&sev, "%s", get_severity_string(severity));
 
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &sev, 1, OPAL_STRING))) {
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &severity, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(ret);
                 OBJ_DESTRUCT(&data);
-                var_des(facility, message, sev);
+                var_des(message, log_msg);
                 return;
             }
 
             if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &log_msg, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(ret);
                 OBJ_DESTRUCT(&data);
-                var_des(facility, message, sev);
+                var_des(message, log_msg);
                 return;
             }
             packed=true;
+            var_des(message, log_msg);
             opal_list_remove_item(&msgQueue, &trk->super);
         }
     }
@@ -451,11 +420,9 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
-            var_des(facility, message, sev);
             return;
         }
     }
-    var_des(facility, message, sev);
     OBJ_DESTRUCT(&data);
 }
 

@@ -40,8 +40,8 @@ typedef struct {
 } genex_workflow_value_t;
 
 typedef struct {
-    char* severity;
-    char* message;
+    const char* severity;
+    const char* message;
 } genex_value_t;
 
 typedef struct {

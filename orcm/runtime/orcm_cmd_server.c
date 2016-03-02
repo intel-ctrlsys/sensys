@@ -205,6 +205,9 @@ ERROR:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
         SAFE_RELEASE(pack_buff);
+        if (NULL != error) {
+            free(error);
+        }
         return;
     }
     if (NULL == error) {
@@ -220,6 +223,9 @@ ERROR:
 
 
 RESPONSE:
+    if (NULL != error) {
+        free(error);
+    }
     if (ORTE_SUCCESS !=
         (rc = orte_rml.send_buffer_nb(sender, pack_buff,
                                       ORCM_RML_TAG_CMD_SERVER,
@@ -227,9 +233,6 @@ RESPONSE:
         ORTE_ERROR_LOG(rc);
         SAFE_RELEASE(pack_buff);
         return;
-    }
-    if (NULL != error) {
-        free(error);
     }
 }
 
@@ -297,7 +300,7 @@ static int pack_severity_action(opal_buffer_t **buffer, orte_notifier_severity_t
     int rc = ORCM_SUCCESS;
 
     if (NULL == *action) {
-        *action = strdup(orte_notifier_base.default_actions);
+        *action = orte_notifier_base.default_actions;
     }
     rc = opal_dss.pack(*buffer, sev, 1, ORTE_NOTIFIER_SEVERITY_T);
     if (OPAL_SUCCESS != rc) {

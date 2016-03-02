@@ -163,6 +163,7 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
 
                 sev = (char *)  severity_enum_to_string(severity);
                 printf("%-10s    %6s    %10s \n", nodelist[i], sev, action);
+                free(sev);
             }
         }
     }

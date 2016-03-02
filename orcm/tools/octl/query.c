@@ -600,7 +600,7 @@ opal_list_t *create_query_event_date_filter(int argc, char **argv)
     opal_list_t *filters_list = NULL;
     orcm_db_filter_t *filter_item = NULL;
 
-    if( 2 < argc && NULL != argv){
+    if( 3 < argc && NULL != argv){
         filters_list = OBJ_NEW(opal_list_t);
         filter_item = create_string_filter("event_id", argv[3], EQ);
         opal_list_append(filters_list, &filter_item->value.super);
@@ -1017,7 +1017,7 @@ int orcm_octl_query_event_snsr_data(int cmd, char **argv)
     date = get_orcm_octl_query_event_date(ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND, argv);
 
     if (NULL == date) {
-        fprintf(stderr, "\nERROR: Unable to obtain event date\n");
+        show_query_error_message("octl:query:event:sensor-data");
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_event_exit;
     } else {
@@ -1111,15 +1111,12 @@ char* get_orcm_octl_query_event_date(int cmd, char **argv){
 
     filter_list = build_filters_list(cmd, argv);
     if (NULL == filter_list) {
-        fprintf(stderr, "\nERROR: unable to generate a filter list from command provided\n");
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_event_exit;
     }
 
     rc = query_db(cmd, filter_list, &returned_list);
-    if (ORCM_SUCCESS != rc) {
-        fprintf(stdout, "\nNo results found!\n");
-    } else {
+    if (ORCM_SUCCESS == rc) {
         if (NULL != returned_list) {
             rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
             if (1 < rows_retrieved){

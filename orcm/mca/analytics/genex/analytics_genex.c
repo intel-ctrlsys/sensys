@@ -34,10 +34,10 @@
 static int init(orcm_analytics_base_module_t *imod);
 static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
-static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata);
+static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, opal_list_t* event_list);
 static int generate_notification_event(orcm_analytics_value_t* analytics_value,
                                        int sev, char *msg,
-                                       char *action);
+                                       char *action, opal_list_t* event_list);
 static orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value,
                                                    opal_list_t* key,
                                                    opal_list_t* non_compute);
@@ -69,11 +69,32 @@ static void dest_genex_workflow_value(genex_workflow_value_t *workflow_value,
 
 static int init(orcm_analytics_base_module_t *imod)
 {
+    if(NULL == imod) {
+        return ORCM_ERROR;
+    }
+    mca_analytics_genex_module_t* mod = (mca_analytics_genex_module_t *)imod;
+    mod->api.orcm_mca_analytics_event_store = OBJ_NEW(opal_hash_table_t);
+    if (NULL == mod->api.orcm_mca_analytics_event_store){
+        return ORCM_ERROR;
+    }
+    opal_hash_table_t* table = (opal_hash_table_t*)mod->api.orcm_mca_analytics_event_store;
+    if(ORCM_SUCCESS != opal_hash_table_init(table, HASH_TABLE_SIZE)) {
+        return ORCM_ERROR;
+    }
     return ORCM_SUCCESS;
 }
 
 static void finalize(orcm_analytics_base_module_t *imod)
 {
+    if (NULL != imod) {
+        mca_analytics_genex_module_t* mod = (mca_analytics_genex_module_t *)imod;
+        opal_hash_table_t* table = (opal_hash_table_t*)mod->api.orcm_mca_analytics_event_store;
+        if (NULL != table) {
+            opal_hash_table_remove_all(table);
+            OBJ_RELEASE(table);
+        }
+        SAFEFREE(mod);
+    }
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
         "%s analytics:genex:finalize", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 }
@@ -165,7 +186,7 @@ static orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value,
 
 static int generate_notification_event(orcm_analytics_value_t* analytics_value,
                                        int sev, char *msg,
-                                       char *action)
+                                       char *action, opal_list_t* event_list)
 {
     int rc = ORCM_SUCCESS;
     char *event_action = NULL;
@@ -202,14 +223,14 @@ static int generate_notification_event(orcm_analytics_value_t* analytics_value,
         if (ORCM_SUCCESS != rc) {
             goto done;
         }
-        ORCM_RAS_EVENT(event_data);
+        rc = event_list_append(event_list, event_data);
     }
 done:
     SAFEFREE(event_action);
     return rc;
 }
 
-static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata)
+static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, opal_list_t* event_list)
 {
     int rc = ORCM_SUCCESS;
     orcm_workflow_caddy_t *caddy = NULL;
@@ -280,7 +301,8 @@ static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata)
                 rc = generate_notification_event(genex_analytics_value,
                                                  orcm_analytics_event_get_severity(workflow_value->severity),
                                                  genex_value.message,
-                                                 workflow_value->notifier);
+                                                 workflow_value->notifier,
+                                                 event_list);
                 if ( ORCM_SUCCESS != rc ) {
                     SAFEFREE(genex_analytics_value);
                     return ORCM_ERROR;
@@ -310,6 +332,7 @@ static int analyze(int sd, short args, void *cbdata)
     orcm_workflow_caddy_t *genex_analyze_caddy = NULL;
     orcm_analytics_value_t *analytics_value_to_next = NULL;
     genex_workflow_value_t *workflow_value = NULL;
+    opal_list_t* event_list = NULL;
 
     if (ORCM_SUCCESS != (rc = orcm_analytics_base_assert_caddy_data(cbdata))) {
         return ORCM_ERROR;
@@ -333,8 +356,9 @@ static int analyze(int sd, short args, void *cbdata)
         dest_genex_workflow_value(workflow_value, genex_analyze_caddy);
         return ORCM_ERROR;
     }
-
-    rc = monitor_genex(workflow_value, cbdata);
+    event_list = OBJ_NEW(opal_list_t);
+    IF_NULL(event_list);
+    rc = monitor_genex(workflow_value, cbdata, event_list);
     if (ORCM_SUCCESS != rc) {
         dest_genex_workflow_value(workflow_value, genex_analyze_caddy);
         return ORCM_ERROR;
@@ -357,7 +381,9 @@ static int analyze(int sd, short args, void *cbdata)
             return ORCM_ERROR;
         }
     }
-
+    if(0 == event_list->opal_list_length){
+        SAFE_RELEASE(event_list);
+    }
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(genex_analyze_caddy->wf,genex_analyze_caddy->wf_step,
                                      genex_analyze_caddy->hash_key, analytics_value_to_next, NULL);
 

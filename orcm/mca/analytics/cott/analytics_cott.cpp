@@ -103,6 +103,7 @@ struct step_data_t global_step_data = {
 typedef struct {
     orcm_workflow_caddy_t* caddy;
     opal_list_t* threshold_data;
+    opal_list_t* event_list;
 } analyze_data_t;
 
 int cott_init(orcm_analytics_base_module_t *imod)
@@ -134,14 +135,20 @@ int cott_init(orcm_analytics_base_module_t *imod)
     }
     int rv;
     opal_hash_table_t* table = NULL;
+    opal_hash_table_t* event_table = NULL;
     mca_analytics_cott_module_t *mod = (mca_analytics_cott_module_t *)imod;
     do {
         mod->api.orcm_mca_analytics_data_store = OBJ_NEW(opal_hash_table_t);
         ON_NULL_ALLOC_BREAK(mod->api.orcm_mca_analytics_data_store, rv);
-
         table = (opal_hash_table_t*)mod->api.orcm_mca_analytics_data_store;
-
         if(ORCM_SUCCESS != (rv = opal_hash_table_init(table, HASH_TABLE_SIZE))) {
+            break;
+        }
+
+        mod->api.orcm_mca_analytics_event_store = OBJ_NEW(opal_hash_table_t);
+        ON_NULL_ALLOC_BREAK(mod->api.orcm_mca_analytics_event_store, rv);
+        event_table = (opal_hash_table_t*)mod->api.orcm_mca_analytics_event_store;
+        if(ORCM_SUCCESS != (rv = opal_hash_table_init(event_table, HASH_TABLE_SIZE))) {
             break;
         }
 
@@ -150,7 +157,9 @@ int cott_init(orcm_analytics_base_module_t *imod)
         return ORCM_SUCCESS;
     } while(false);
     SAFE_OBJ_RELEASE(table);
+    SAFE_OBJ_RELEASE(event_table);
     mod->api.orcm_mca_analytics_data_store = NULL;
+    mod->api.orcm_mca_analytics_event_store = NULL;
     return rv;
 }
 
@@ -159,7 +168,9 @@ void cott_finalize(orcm_analytics_base_module_t *imod)
     if (NULL != imod) {
         mca_analytics_cott_module_t* mod = (mca_analytics_cott_module_t *)imod;
         opal_hash_table_t* table = (opal_hash_table_t*)mod->api.orcm_mca_analytics_data_store;
+        opal_hash_table_t* event_table = (opal_hash_table_t*)mod->api.orcm_mca_analytics_event_store;
         SAFE_OBJ_RELEASE(table);
+        SAFE_OBJ_RELEASE(event_table);
         SAFE_FREE(mod);
     }
     SAFE_DELETE(counter_analyzer);
@@ -174,6 +185,8 @@ void cott_event_fired_callback(const string& host, const string& label, uint32_t
     ON_NULL_RETURN(caddy);
     opal_list_t* threshold_list = analyze_data->threshold_data;
     ON_NULL_RETURN(threshold_list);
+    opal_list_t* event_list = analyze_data->event_list;
+    ON_NULL_RETURN(event_list);
     step_data_t* step_data = (step_data_t*)counter_analyzer->get_user_data();
     ON_NULL_RETURN(step_data);
 
@@ -202,7 +215,7 @@ void cott_event_fired_callback(const string& host, const string& label, uint32_t
 
         // Handle notification type here...
         if(true == step_data->use_notifier) {
-            event = orcm_analytics_base_event_create(caddy->analytics_value, ORCM_RAS_EVENT_SENSOR, step_data->severity);
+            event = orcm_analytics_base_event_create(caddy->analytics_value, ORCM_RAS_EVENT_COUNTER, step_data->severity);
             ON_NULL_BREAK(event);
             ON_FAILURE_BREAK(orcm_analytics_base_event_set_category(event, step_data->fault_type));
             ON_FAILURE_BREAK(orcm_analytics_base_event_set_storage(event, ORCM_STORAGE_TYPE_NOTIFICATION));
@@ -211,7 +224,7 @@ void cott_event_fired_callback(const string& host, const string& label, uint32_t
             ON_FAILURE_BREAK(orcm_analytics_base_event_set_description(event, (char*)"notifier_action",
                                                                        (void*)step_data->notifier_action.c_str(),
                                                                        OPAL_STRING, NULL));
-            ORCM_RAS_EVENT(event);
+            ON_FAILURE_BREAK(event_list_append(event_list, event));
         }
 
         SAFE_FREE(message);
@@ -249,11 +262,13 @@ time_t get_timeval_from_caddy(orcm_workflow_caddy_t* caddy)
     return tv;
 }
 
-void add_data_values(const string& hostname, time_t tv, orcm_workflow_caddy_t* caddy, opal_list_t* threshold_list)
+void add_data_values(const string& hostname, time_t tv, orcm_workflow_caddy_t* caddy,
+                     opal_list_t* threshold_list, opal_list_t* event_list)
 {
     analyze_data_t data;
     data.caddy = caddy;
     data.threshold_data = threshold_list;
+    data.event_list = event_list;
     orcm_value_t* item = NULL;
     OPAL_LIST_FOREACH(item, caddy->analytics_value->compute_data, orcm_value_t) {
         if(true == counter_analyzer->is_wanted_label(item->value.key)) {
@@ -365,15 +380,19 @@ int cott_analyze(int sd, short args, void *cbdata)
             rc = ORCM_ERROR;
             break;
         }
-
+        opal_list_t* event_list = OBJ_NEW(opal_list_t);
+        ON_NULL_ALLOC_BREAK(event_list, rc);
         opal_list_t* threshold_list = OBJ_NEW(opal_list_t);
         ON_NULL_ALLOC_BREAK(threshold_list, rc);
-        add_data_values(hostname, tv, current_caddy, threshold_list);
+        add_data_values(hostname, tv, current_caddy, threshold_list, event_list);
         OBJ_RELEASE(current_caddy->analytics_value->compute_data);
         current_caddy->analytics_value->compute_data = threshold_list;
         OBJ_RETAIN(current_caddy->analytics_value);
+        if(0 == event_list->opal_list_length){
+            SAFE_OBJ_RELEASE(event_list);
+        }
         ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(current_caddy->wf, current_caddy->wf_step,
-                                         current_caddy->hash_key, current_caddy->analytics_value, NULL);
+                                         current_caddy->hash_key, current_caddy->analytics_value, event_list);
     } while(false);
     SAFE_OBJ_RELEASE(current_caddy);
     return rc;

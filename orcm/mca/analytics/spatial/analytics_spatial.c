@@ -375,6 +375,7 @@ static orcm_analytics_value_t* handle_full_bucket(spatial_statistics_t* spatial_
             SAFE_RELEASE(data_to_next);
         }
     }
+    SAFEFREE(data_key);
     return data_to_next;
 }
 

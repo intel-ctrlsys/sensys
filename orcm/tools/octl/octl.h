@@ -260,71 +260,24 @@ static orcm_cli_init_t cli_init[] = {
     { { NULL }, NULL, 0, 0, NULL }
 };
 
-/* list of unique command names from above
- * if you add a command above make sure to append any new strings to this list
- * this is used for ease of conversion of commands to array offset for
- * switch statement
- * NB: Order matters here, so add new ones to the end before the NULL! */
-const char *orcm_octl_commands[] = { "resource",          //0
-                                     "queue",             //1
-                                     "session",           //2
-                                     "diag",              //3
-                                     "status",            //4
-                                     "add",               //5
-                                     "remove",            //6
-                                     "drain",             //7
-                                     "policy",            //8
-                                     "define",            //9
-                                     "acl",               //10
-                                     "priority",          //11
-                                     "cancel",            //12
-                                     "cpu",               //13
-                                     "mem",               //14
-                                     "power",             //15
-                                     "set",               //16
-                                     "get",               //17
-                                     "resume",            //18
-                                     "eth",               //19
-                                     "budget",            //20
-                                     "mode",              //21
-                                     "window",            //22
-                                     "overage",           //23
-                                     "underage",          //24
-                                     "overage_time",      //25
-                                     "underage_time",     //26
-                                     "frequency",         //27
-                                     "modes",             //28
-                                     "strict",            //29
-                                     "sensor",            //30
-                                     "sample-rate",       //31
-                                     "grouping",          //32
-                                     "list",              //33
-                                     "quit",              //34
-                                     "analytics",         //35
-                                     "workflow",          //36
-                                     "inventory",         //37
-                                     "query",             //38
-                                     "history",           //39
-                                     "log",               //40
-                                     "idle",              //41
-                                     "node",              //42
-                                     "event",             //43
-                                     "enable",            //44
-                                     "disable",           //45
-                                     "reset",             //46
-                                     "sampling",          //47
-                                     "notifier",          //48
-                                     "data",              //49
-                                     "sensor-data",       //50
-                                     "store",             //51
-                                     "none",              //52
-                                     "environment_only",  //53
-                                     "event_only",        //54
-                                     "all",               //55
-                                     "smtp-policy",       //56
-                                     "chassis-id",        //57
-                                     "state",             //58
-                                     "\0" };
+/* The enumerated numbers of the command tokens
+ * that are defined in the octl_tokens.def file.
+ * The enums have the format of "cmd_token" */
+typedef enum {
+#define TOK(X) cmd_##X,
+#define TOK_CONCAT(X, Y) cmd_##X##_##Y,
+#include "octl_tokens.def"
+    NUM_TOKENS
+} orcm_octl_cmd_enums;
+
+/* list of unique command strings from the tokens
+ * defined in the octl_tokens.def file */
+const char* orcm_octl_cmds[] = {
+#define TOK(X) #X,
+#define TOK_CONCAT(X, Y) #X"-"#Y,
+#include "octl_tokens.def"
+    "\0"
+};
 
 END_C_DECLS
 

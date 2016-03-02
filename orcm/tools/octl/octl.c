@@ -205,584 +205,536 @@ static int orcm_octl_work(int argc, char *argv[])
     return ret;
 }
 
-static int octl_command_to_int(char *command)
+static int octl_cmd_to_enum(char* command)
 {
-    /* this is used for nicer looking switch statements
-     * just convert a string to the location of the string
-     * in the pre-defined array found in octl.h*/
-    int i;
+    int cmd_enum = NUM_TOKENS;
+    int idx = 0;
 
-    if (!command) {
-        return -1;
-    }
-
-    for (i = 0; i < opal_argv_count((char **)orcm_octl_commands); i++) {
-        if (0 == strcmp(command, orcm_octl_commands[i])) {
-            return i;
+    if (NULL != command) {
+        for (; idx < NUM_TOKENS; idx++) {
+            if (0 == strncmp(command, orcm_octl_cmds[idx], strlen(command))) {
+                cmd_enum = idx;
+                break;
+            }
         }
     }
-    return -1;
+
+    return cmd_enum;
 }
 
-static int run_cmd(char *cmd)
+static int run_cmd_resource(char** cmdlist, int sub_cmd)
 {
-    char **cmdlist = NULL;
-    int rc;
-    int sz_cmdlist = 0;
-
-    cmdlist = opal_argv_split(cmd, ' ');
-    sz_cmdlist = opal_argv_count(cmdlist);
-    if (0 == sz_cmdlist) {
-        fprintf(stderr, "No command parsed\n");
-        opal_argv_free(cmdlist);
-        return ORCM_ERROR;
-    }
-
-    rc = octl_command_to_int(cmdlist[0]);
-    if (-1 == rc) {
-        octl_print_illegal_command(cmd);
-        opal_argv_free(cmdlist);
-        return ORCM_ERROR;
-    }
-
-    /* call corresponding function to passed command */
-    switch (rc) {
-    case 0: //resource
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
-            rc = ORCM_ERROR;
-            break;
-        }
-
-        switch (rc) {
-        case 4: //status
+    int rc = ORCM_SUCCESS;
+    switch (sub_cmd) {
+        case cmd_status:
             rc = orcm_octl_resource_status(cmdlist);
             break;
-        case 5: //add
+        case cmd_add:
             rc = orcm_octl_resource_add(cmdlist);
             break;
-        case 6: //remove
+        case cmd_remove:
             rc = orcm_octl_resource_remove(cmdlist);
             break;
-        case 7: //drain
+        case cmd_drain:
             rc = orcm_octl_resource_drain(cmdlist);
             break;
-        case 18: //resume
+        case cmd_resume:
             rc = orcm_octl_resource_resume(cmdlist);
             break;
         default:
             rc = ORCM_ERROR;
             break;
-        }
-        break;
-    case 1: // queue
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
-            rc = ORCM_ERROR;
-            break;
-        }
+    }
+    return rc;
+}
 
-        switch (rc) {
-        case 4: //status
+static int run_cmd_queue(char** cmdlist, int sub_cmd)
+{
+    int rc = ORCM_SUCCESS;
+    switch (sub_cmd) {
+        case cmd_status:
             rc = orcm_octl_queue_status(cmdlist);
             break;
-        case 8: //policy
+        case cmd_policy:
             rc = orcm_octl_queue_policy(cmdlist);
             break;
-        case 9: //define
+        case cmd_define:
             rc = orcm_octl_queue_define(cmdlist);
             break;
-        case 5: //add
+        case cmd_add:
             rc = orcm_octl_queue_add(cmdlist);
             break;
-        case 6: //remove
+        case cmd_remove:
             rc = orcm_octl_queue_remove(cmdlist);
             break;
-        case 10: //acl
+        case cmd_acl:
             rc = orcm_octl_queue_acl(cmdlist);
             break;
-        case 11: //priority
+        case cmd_priority:
             rc = orcm_octl_queue_priority(cmdlist);
             break;
         default:
             rc = ORCM_ERROR;
+    }
+    return rc;
+}
+
+static int session_power_next_cmd(char* next_cmd, int cmd)
+{
+    int rc = octl_cmd_to_enum(next_cmd);
+    switch (rc) {
+        case cmd_budget:
+            rc = (cmd_set == cmd ? ORCM_SET_POWER_BUDGET_COMMAND : ORCM_GET_POWER_BUDGET_COMMAND);
             break;
-        }
-        break;
-    case 2: // session
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
+        case cmd_mode:
+            rc = (cmd_set == cmd ? ORCM_SET_POWER_MODE_COMMAND : ORCM_GET_POWER_MODE_COMMAND);
+            break;
+        case cmd_window:
+            rc = (cmd_set == cmd ? ORCM_SET_POWER_WINDOW_COMMAND : ORCM_GET_POWER_WINDOW_COMMAND);
+            break;
+        case cmd_overage:
+            rc = (cmd_set == cmd ? ORCM_SET_POWER_OVERAGE_COMMAND : ORCM_GET_POWER_OVERAGE_COMMAND);
+            break;
+        case cmd_underage:
+            rc = (cmd_set == cmd ? ORCM_SET_POWER_UNDERAGE_COMMAND :
+                                   ORCM_GET_POWER_UNDERAGE_COMMAND);
+            break;
+        case cmd_overage_time:
+            rc = (cmd_set == cmd ? ORCM_SET_POWER_OVERAGE_TIME_COMMAND :
+                                   ORCM_GET_POWER_OVERAGE_TIME_COMMAND);
+            break;
+        case cmd_underage_time:
+            rc = (cmd_set == cmd ? ORCM_SET_POWER_UNDERAGE_TIME_COMMAND :
+                                   ORCM_GET_POWER_UNDERAGE_TIME_COMMAND);
+            break;
+        case cmd_frequency:
+            rc = (cmd_set == cmd ? ORCM_SET_POWER_FREQUENCY_COMMAND :
+                                   ORCM_GET_POWER_FREQUENCY_COMMAND);
+            break;
+        case cmd_strict:
+            rc = (cmd_set == cmd ? ORCM_SET_POWER_STRICT_COMMAND : ORCM_GET_POWER_STRICT_COMMAND);
+            break;
+        default:
             rc = ORCM_ERROR;
             break;
-        }
+    }
+    return rc;
+}
 
-        switch (rc) {
-        case 4: //status
+static int run_cmd_session(char** cmdlist, int sub_command)
+{
+    int rc = ORCM_SUCCESS;
+    switch (sub_command) {
+        case cmd_status:
             rc = orcm_octl_session_status(cmdlist);
             break;
-        case 12: //cancel
+        case cmd_cancel:
             rc = orcm_octl_session_cancel(cmdlist);
             break;
-        case 16: //set
-            rc = octl_command_to_int(cmdlist[2]);
-            if (-1 == rc) {
-                break;
+        case cmd_set:
+        case cmd_get:
+            if (3 > opal_argv_count(cmdlist)) {
+                return ORCM_ERROR;
             }
-
-            switch(rc) {
-            case 20: //budget
-                rc = orcm_octl_session_set(ORCM_SET_POWER_BUDGET_COMMAND, cmdlist);
-                break;
-            case 21: //mode
-                rc = orcm_octl_session_set(ORCM_SET_POWER_MODE_COMMAND, cmdlist);
-                break;
-            case 22: //window
-                rc = orcm_octl_session_set(ORCM_SET_POWER_WINDOW_COMMAND, cmdlist);
-                break;
-            case 23: //overage
-                rc = orcm_octl_session_set(ORCM_SET_POWER_OVERAGE_COMMAND, cmdlist);
-                break;
-            case 24: //underage
-                rc = orcm_octl_session_set(ORCM_SET_POWER_UNDERAGE_COMMAND, cmdlist);
-                break;
-            case 25: //overage_time
-                rc = orcm_octl_session_set(ORCM_SET_POWER_OVERAGE_TIME_COMMAND, cmdlist);
-                break;
-            case 26: //underage_time
-                rc = orcm_octl_session_set(ORCM_SET_POWER_UNDERAGE_TIME_COMMAND, cmdlist);
-                break;
-            case 27: //frequency
-                rc = orcm_octl_session_set(ORCM_SET_POWER_FREQUENCY_COMMAND, cmdlist);
-                break;
-            case 29: //strict
-                rc = orcm_octl_session_set(ORCM_SET_POWER_STRICT_COMMAND, cmdlist);
-                break;
-            default:
-                rc = ORCM_ERROR;
-                break;
+            if (ORCM_ERROR != (rc = session_power_next_cmd(cmdlist[2], sub_command))) {
+                if (cmd_set == sub_command) {
+                    rc = orcm_octl_session_set(rc, cmdlist);
+                } else {
+                    rc = orcm_octl_session_get(rc, cmdlist);
+                }
             }
-            break;
-        case 17: //get
-            rc = octl_command_to_int(cmdlist[2]);
-            if (-1 == rc) {
-                break;
-            }
-
-            switch(rc) {
-            case 20: //budget
-                rc = orcm_octl_session_get(ORCM_GET_POWER_BUDGET_COMMAND, cmdlist);
-                break;
-            case 21: //mode
-                rc = orcm_octl_session_get(ORCM_GET_POWER_MODE_COMMAND, cmdlist);
-                break;
-            case 22: //window
-                rc = orcm_octl_session_get(ORCM_GET_POWER_WINDOW_COMMAND, cmdlist);
-                break;
-            case 23: //overage
-                rc = orcm_octl_session_get(ORCM_GET_POWER_OVERAGE_COMMAND, cmdlist);
-                break;
-            case 24: //underage
-                rc = orcm_octl_session_get(ORCM_GET_POWER_UNDERAGE_COMMAND, cmdlist);
-                break;
-            case 25: //overage_time
-                rc = orcm_octl_session_get(ORCM_GET_POWER_OVERAGE_TIME_COMMAND, cmdlist);
-                break;
-            case 26: //underage_time
-                rc = orcm_octl_session_get(ORCM_GET_POWER_UNDERAGE_TIME_COMMAND, cmdlist);
-                break;
-            case 27: //frequency
-                rc = orcm_octl_session_get(ORCM_GET_POWER_FREQUENCY_COMMAND, cmdlist);
-                break;
-            case 28: //modes
-                rc = orcm_octl_power_get(ORCM_GET_POWER_MODES_COMMAND, cmdlist);
-                break;
-            case 29: //strict
-                rc = orcm_octl_session_get(ORCM_GET_POWER_STRICT_COMMAND, cmdlist);
-                break;
-            default:
-                rc = ORCM_ERROR;
-                break;
-            }
-        break;
-        default:
-            rc = ORCM_ERROR;
-            break;
-        }
-        break;
-    case 3: // diag
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
-            rc = ORCM_ERROR;
-            break;
-        }
-
-        switch (rc) {
-            case 13: //cpu
-                rc = orcm_octl_diag_cpu(cmdlist);
-                break;
-            case 19: //eth
-                rc = orcm_octl_diag_eth(cmdlist);
-                break;
-            case 14: //mem
-                rc = orcm_octl_diag_mem(cmdlist);
-                break;
-            default:
-                rc = ORCM_ERROR;
-                break;
-        }
-        break;
-    case 15: // power
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
-            rc = ORCM_ERROR;
-            break;
-        }
-
-        switch (rc) {
-        case 16: //set
-            rc = octl_command_to_int(cmdlist[2]);
-            if (-1 == rc) {
-                break;
-            }
-
-            switch(rc) {
-            case 20: //budget
-                rc = orcm_octl_power_set(ORCM_SET_POWER_BUDGET_COMMAND, cmdlist);
-                break;
-            case 21: //mode
-                rc = orcm_octl_power_set(ORCM_SET_POWER_MODE_COMMAND, cmdlist);
-                break;
-            case 22: //window
-                rc = orcm_octl_power_set(ORCM_SET_POWER_WINDOW_COMMAND, cmdlist);
-                break;
-            case 23: //overage
-                rc = orcm_octl_power_set(ORCM_SET_POWER_OVERAGE_COMMAND, cmdlist);
-                break;
-            case 24: //underage
-                rc = orcm_octl_power_set(ORCM_SET_POWER_UNDERAGE_COMMAND, cmdlist);
-                break;
-            case 25: //overage_time
-                rc = orcm_octl_power_set(ORCM_SET_POWER_OVERAGE_TIME_COMMAND, cmdlist);
-                break;
-            case 26: //underage_time
-                rc = orcm_octl_power_set(ORCM_SET_POWER_UNDERAGE_TIME_COMMAND, cmdlist);
-                break;
-            case 27: //frequency
-                rc = orcm_octl_power_set(ORCM_SET_POWER_FREQUENCY_COMMAND, cmdlist);
-                break;
-            case 29: //strict
-                rc = orcm_octl_power_set(ORCM_SET_POWER_STRICT_COMMAND, cmdlist);
-                break;
-            default:
-                rc = ORCM_ERROR;
-                break;
-            }
-            break;
-        case 17: //get
-            rc = octl_command_to_int(cmdlist[2]);
-            if (-1 == rc) {
-                break;
-            }
-
-            switch(rc) {
-            case 20: //budget
-                rc = orcm_octl_power_get(ORCM_GET_POWER_BUDGET_COMMAND, cmdlist);
-                break;
-            case 21: //mode
-                rc = orcm_octl_power_get(ORCM_GET_POWER_MODE_COMMAND, cmdlist);
-                break;
-            case 22: //window
-                rc = orcm_octl_power_get(ORCM_GET_POWER_WINDOW_COMMAND, cmdlist);
-                break;
-            case 23: //overage
-                rc = orcm_octl_power_get(ORCM_GET_POWER_OVERAGE_COMMAND, cmdlist);
-                break;
-            case 24: //underage
-                rc = orcm_octl_power_get(ORCM_GET_POWER_UNDERAGE_COMMAND, cmdlist);
-                break;
-            case 25: //overage_time
-                rc = orcm_octl_power_get(ORCM_GET_POWER_OVERAGE_TIME_COMMAND, cmdlist);
-                break;
-            case 26: //underage_time
-                rc = orcm_octl_power_get(ORCM_GET_POWER_UNDERAGE_TIME_COMMAND, cmdlist);
-                break;
-            case 27: //frequency
-                rc = orcm_octl_power_get(ORCM_GET_POWER_FREQUENCY_COMMAND, cmdlist);
-                break;
-            case 28: //modes
-                rc = orcm_octl_power_get(ORCM_GET_POWER_MODES_COMMAND, cmdlist);
-                break;
-            case 29: //strict
-                rc = orcm_octl_power_get(ORCM_GET_POWER_STRICT_COMMAND, cmdlist);
-                break;
-            default:
-                rc = ORCM_ERROR;
-                break;
-            }
-            break;
-        }
-        break;
-    case 30: // sensor
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
-            rc = ORCM_ERROR;
-            break;
-        }
-
-        switch (rc) {
-            case 16: //set
-                rc = octl_command_to_int(cmdlist[2]);
-                if (-1 == rc) {
-                    break;
-                }
-
-                switch(rc) {
-
-                case 31: //sample-rate
-                    rc = orcm_octl_sensor_sample_rate_set(ORCM_SET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
-                    break;
-                default:
-                    rc = ORCM_ERROR;
-                    break;
-                }
-                break;
-
-            case 17: //get
-                rc = octl_command_to_int(cmdlist[2]);
-                if (-1 == rc) {
-                    break;
-                }
-
-                switch(rc) {
-                case 8: //policy
-                    rc = orcm_octl_sensor_policy_get(ORCM_GET_SENSOR_POLICY_COMMAND, cmdlist);
-                    break;
-                case 31: //sample-rate
-                    rc = orcm_octl_sensor_sample_rate_get(ORCM_GET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
-                    break;
-                case 37: //inventory
-                    rc = orcm_octl_sensor_inventory_get(ORCM_GET_DB_SENSOR_INVENTORY_COMMAND, cmdlist);
-                    break;
-                default:
-                    rc = ORCM_ERROR;
-                    break;
-                }
-                break;
-            case 44: // enable
-            case 45: // disable
-            case 46: // reset
-                // (rc - 44) = 0,1,2 (enable,disable,reset respectively)
-                rc = orcm_octl_sensor_change_sampling(rc - 44, cmdlist);
-                break;
-
-            case 51: //store
-                rc = octl_command_to_int(cmdlist[2]);
-                if (-1 == rc) {
-                    break;
-                }
-                switch(rc) {
-                case 52: // none
-                case 53: // environment_only
-                case 54: // event_only
-                case 55: // all
-                    rc = orcm_octl_sensor_store(rc - 52, cmdlist);
-                    break;
-
-                default:
-                    rc = ORCM_ERROR;
-                    break;
-                }
-                break;
-
-            default:
-                rc = ORCM_ERROR;
-                // TODO:
-                break;
-        }
-        break;
-    case 48: // notifier
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
-            rc = ORCM_ERROR;
-            break;
-        }
-
-        switch (rc) {
-            case 16: //set
-                rc = octl_command_to_int(cmdlist[2]);
-                if (-1 == rc) {
-                    break;
-                }
-
-                switch(rc) {
-                case 8: //policy
-                    rc = orcm_octl_set_notifier_policy(ORCM_SET_NOTIFIER_POLICY_COMMAND, cmdlist);
-                    break;
-                case 56: //smtp-policy
-                    rc = orcm_octl_set_notifier_smtp(ORCM_SET_NOTIFIER_SMTP_COMMAND, cmdlist);
-                break;
-                default:
-                    rc = ORCM_ERROR;
-                    break;
-                }
-                break;
-
-            case 17: //get
-                rc = octl_command_to_int(cmdlist[2]);
-                if (-1 == rc) {
-                    break;
-                }
-
-                switch(rc) {
-                case 8: //policy
-                    rc = orcm_octl_get_notifier_policy(ORCM_GET_NOTIFIER_POLICY_COMMAND, cmdlist);
-                    break;
-                case 56: //smtp-policy
-                    rc = orcm_octl_get_notifier_smtp(ORCM_GET_NOTIFIER_SMTP_COMMAND, cmdlist);
-                    break;
-                default:
-                    rc = ORCM_ERROR;
-                    break;
-                }
-                break;
-
-            default:
-                rc = ORCM_ERROR;
-                break;
-        }
-        break;
-    case 32: //grouping
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
-            rc = ORCM_ERROR;
-            break;
-        }
-        switch (rc)
-        {
-        case 5: //add
-            rc = orcm_octl_logical_group_add(sz_cmdlist, cmdlist);
-            break;
-        case 6: //remove
-            rc = orcm_octl_logical_group_remove(sz_cmdlist, cmdlist);
-            break;
-        case 33: //list
-            rc = orcm_octl_logical_group_list(sz_cmdlist, cmdlist);
             break;
         default:
             rc = ORCM_ERROR;
             break;
-        }
-        break;
-    case 35: //Analytics
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
+    }
+    return rc;
+}
+
+static int run_cmd_diag(char** cmdlist, int sub_cmd)
+{
+    int rc = ORCM_SUCCESS;
+    switch (sub_cmd) {
+        case cmd_cpu:
+            rc = orcm_octl_diag_cpu(cmdlist);
+            break;
+        case cmd_eth:
+            rc = orcm_octl_diag_eth(cmdlist);
+            break;
+        case cmd_mem:
+            rc = orcm_octl_diag_mem(cmdlist);
+            break;
+        default:
             rc = ORCM_ERROR;
             break;
-        }
-        switch (rc)
-        {
-        case 36: //workflow
-            rc = octl_command_to_int(cmdlist[2]);
-            if (-1 == rc) {
-                rc = ORCM_ERROR;
-                break;
-            }
-            switch(rc)
-            {
-            case 5://add
-                rc = orcm_octl_analytics_workflow_add(cmdlist[3]);
-                break;
-            case 6://remove
-                rc = orcm_octl_analytics_workflow_remove(cmdlist);
-                break;
-            case 17://get
-                rc = orcm_octl_analytics_workflow_list(cmdlist);
-                break;
-            default:
-                rc = ORCM_ERROR;
-                break;
-            }
+    }
+    return rc;
+}
+
+static int run_cmd_power(char** cmdlist, int sub_cmd)
+{
+    int rc = ORCM_SUCCESS;
+
+    if (3 > opal_argv_count(cmdlist)) {
+        return ORCM_ERROR;
+    }
+
+    if (cmd_set != sub_cmd && cmd_get != sub_cmd) {
+        return ORCM_ERROR;
+    }
+
+    if (ORCM_ERROR == (rc = session_power_next_cmd(cmdlist[2], sub_cmd))) {
+        return ORCM_ERROR;
+    }
+
+    if (cmd_set == sub_cmd) {
+        return orcm_octl_power_set(rc, cmdlist);
+    }
+
+    return orcm_octl_power_get(rc, cmdlist);
+}
+
+static int run_cmd_sensor_set(char** cmdlist)
+{
+    int rc = octl_cmd_to_enum(cmdlist[2]);
+    if (cmd_sample_rate == rc) {
+        rc = orcm_octl_sensor_sample_rate_set(ORCM_SET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
+    } else {
+        rc = ORCM_ERROR;
+    }
+    return rc;
+}
+
+static int run_cmd_sensor_get(char** cmdlist)
+{
+    int rc = octl_cmd_to_enum(cmdlist[2]);
+    switch (rc) {
+        case cmd_policy:
+            rc = orcm_octl_sensor_policy_get(ORCM_GET_SENSOR_POLICY_COMMAND, cmdlist);
             break;
-        }
-        break;
-    case 38: //Query
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
+        case cmd_sample_rate:
+            rc = orcm_octl_sensor_sample_rate_set(ORCM_SET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
+            break;
+        case cmd_inventory:
+            rc = orcm_octl_sensor_inventory_get(ORCM_GET_DB_SENSOR_INVENTORY_COMMAND, cmdlist);
+            break;
+        default:
             rc = ORCM_ERROR;
             break;
-        }
-        switch(rc)
-        {
-        case 30://sensor
+    }
+    return rc;
+}
+
+static int run_cmd_sensor_store(char** cmdlist)
+{
+    int rc = octl_cmd_to_enum(cmdlist[2]);
+    switch (rc) {
+        case cmd_none:
+            rc = orcm_octl_sensor_store(0, cmdlist);
+            break;
+        case cmd_environment_only:
+            rc = orcm_octl_sensor_store(1, cmdlist);
+            break;
+        case cmd_event_only:
+            rc = orcm_octl_sensor_store(2, cmdlist);
+            break;
+        case cmd_all:
+            rc = orcm_octl_sensor_store(3, cmdlist);
+            break;
+        default:
+            rc = ORCM_ERROR;
+            break;
+    }
+    return rc;
+}
+
+static int run_cmd_sensor(char** cmdlist, int sub_cmd)
+{
+    int rc = ORCM_SUCCESS;
+    if ((cmd_set == sub_cmd || cmd_get == sub_cmd || cmd_store == sub_cmd)
+        && 3 > opal_argv_count(cmdlist)) {
+        return ORCM_ERROR;
+    }
+    switch (sub_cmd) {
+        case cmd_set:
+            rc = run_cmd_sensor_set(cmdlist);
+            break;
+        case cmd_get:
+            rc = run_cmd_sensor_get(cmdlist);
+            break;
+        case cmd_enable:
+            rc = orcm_octl_sensor_change_sampling(0, cmdlist);
+            break;
+        case cmd_disable:
+            rc = orcm_octl_sensor_change_sampling(1, cmdlist);
+            break;
+        case cmd_reset:
+            rc = orcm_octl_sensor_change_sampling(2, cmdlist);
+            break;
+        case cmd_store:
+            rc = run_cmd_sensor_store(cmdlist);
+            break;
+        default:
+            rc = ORCM_ERROR;
+            break;
+    }
+    return rc;
+}
+
+static int run_cmd_notifier_set(int sub_cmd, char** cmdlist)
+{
+    int rc = ORCM_SUCCESS;
+    switch (sub_cmd) {
+        case cmd_policy:
+            rc = orcm_octl_set_notifier_policy(ORCM_SET_NOTIFIER_POLICY_COMMAND, cmdlist);
+            break;
+        case cmd_smtp_policy:
+            rc = orcm_octl_set_notifier_smtp(ORCM_SET_NOTIFIER_SMTP_COMMAND, cmdlist);
+            break;
+        default:
+            rc = ORCM_ERROR;
+            break;
+    }
+    return rc;
+}
+
+static int run_cmd_notifier_get(int sub_cmd, char** cmdlist)
+{
+    int rc = ORCM_SUCCESS;
+    switch(sub_cmd) {
+        case cmd_policy:
+            rc = orcm_octl_get_notifier_policy(ORCM_GET_NOTIFIER_POLICY_COMMAND, cmdlist);
+            break;
+        case cmd_smtp_policy:
+            rc = orcm_octl_get_notifier_smtp(ORCM_GET_NOTIFIER_SMTP_COMMAND, cmdlist);
+            break;
+        default:
+            rc = ORCM_ERROR;
+            break;
+    }
+    return rc;
+}
+
+static int run_cmd_notifier(char** cmdlist, int sub_cmd)
+{
+    int rc = ORCM_SUCCESS;
+    int next_cmd = NUM_TOKENS;
+
+    if (3 > opal_argv_count(cmdlist)) {
+        return ORCM_ERROR;
+    }
+    next_cmd = octl_cmd_to_enum(cmdlist[2]);
+
+    switch (sub_cmd) {
+        case cmd_set:
+            rc = run_cmd_notifier_set(next_cmd, cmdlist);
+            break;
+        case cmd_get:
+            rc = run_cmd_notifier_get(next_cmd, cmdlist);
+            break;
+        default:
+            rc = ORCM_ERROR;
+            break;
+    }
+    return rc;
+}
+
+static int run_cmd_grouping(int argc, char** cmdlist, int sub_cmd)
+{
+    int rc = ORCM_SUCCESS;
+    switch (sub_cmd) {
+        case cmd_add:
+            rc = orcm_octl_logical_group_add(argc, cmdlist);
+            break;
+        case cmd_remove:
+            rc = orcm_octl_logical_group_remove(argc, cmdlist);
+            break;
+        case cmd_list:
+            rc = orcm_octl_logical_group_list(argc, cmdlist);
+            break;
+        default:
+            rc = ORCM_ERROR;
+            break;
+    }
+    return rc;
+}
+
+static int run_cmd_analytics(char** cmdlist, int sub_cmd)
+{
+    int rc = ORCM_SUCCESS;
+    int count = opal_argv_count(cmdlist);
+
+    if (3 > count || cmd_workflow != sub_cmd) {
+        return ORCM_ERROR;
+    }
+
+    rc = octl_cmd_to_enum(cmdlist[2]);
+    switch (rc) {
+        case cmd_add:
+            rc = (4 > count ? ORCM_ERROR : orcm_octl_analytics_workflow_add(cmdlist[3]));
+            break;
+        case cmd_remove:
+            rc = orcm_octl_analytics_workflow_remove(cmdlist);
+            break;
+        case cmd_get:
+            rc = orcm_octl_analytics_workflow_list(cmdlist);
+            break;
+        default:
+            rc = ORCM_ERROR;
+            break;
+    }
+    return rc;
+}
+
+static int run_cmd_query_node(char** cmdlist)
+{
+    int rc = ORCM_SUCCESS;
+
+    if (3 > opal_argv_count(cmdlist)) {
+        return ORCM_ERROR;
+    }
+
+    rc = octl_cmd_to_enum(cmdlist[2]);
+    rc = (cmd_status != rc ? ORCM_ERROR :
+          orcm_octl_query_node(ORCM_GET_DB_QUERY_NODE_COMMAND,cmdlist));
+    return rc;
+}
+
+static int run_cmd_query_event(char** cmdlist)
+{
+    int rc = ORCM_SUCCESS;
+
+    if (3 > opal_argv_count(cmdlist)) {
+        return ORCM_ERROR;
+    }
+
+    rc = octl_cmd_to_enum(cmdlist[2]);
+    switch (rc) {
+        case cmd_data:
+            rc = orcm_octl_query_event_data(ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND,cmdlist);
+            break;
+        case cmd_sensor_data:
+            rc = orcm_octl_query_event_snsr_data(ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND,cmdlist);
+            break;
+        default:
+            rc = ORCM_ERROR;
+            break;
+    }
+    return rc;
+}
+
+static int run_cmd_query(char** cmdlist, int sub_cmd)
+{
+    int rc = ORCM_SUCCESS;
+    switch (sub_cmd) {
+        case cmd_sensor:
             rc = orcm_octl_query_sensor(ORCM_GET_DB_QUERY_SENSOR_COMMAND,cmdlist);
             break;
-        case 39://history
+        case cmd_history:
             rc = orcm_octl_query_sensor(ORCM_GET_DB_QUERY_HISTORY_COMMAND,cmdlist);
             break;
-        case 40://log
+        case cmd_log:
             rc = orcm_octl_query_log(ORCM_GET_DB_QUERY_LOG_COMMAND,cmdlist);
             break;
-        case 41://idle
+        case cmd_idle:
             rc = orcm_octl_query_idle(ORCM_GET_DB_QUERY_IDLE_COMMAND,cmdlist);
             break;
-        case 42://node
-            rc = octl_command_to_int(cmdlist[2]);
-            switch(rc)
-            {
-            case 4://status
-                rc = orcm_octl_query_node(ORCM_GET_DB_QUERY_NODE_COMMAND,cmdlist);
-                break;
-            }
+        case cmd_node:
+            rc = run_cmd_query_node(cmdlist);
             break;
-        case 43://event
-            rc = octl_command_to_int(cmdlist[2]);
-            switch(rc)
-            {
-            case 49://data
-                rc = orcm_octl_query_event_data(ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND,cmdlist);
-                break;
-            case 50://sensor-data
-                rc = orcm_octl_query_event_snsr_data(ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND,cmdlist);
-                break;
-            }
+        case cmd_event:
+            rc = run_cmd_query_event(cmdlist);
             break;
         default:
             rc = ORCM_ERROR;
             break;
-        }
-        break;
-    case 57: // Chassis ID LED
-        rc = octl_command_to_int(cmdlist[1]);
-        if (-1 == rc) {
+    }
+    return rc;
+}
+
+static int run_cmd_chasis_id(char** cmdlist, int sub_cmd)
+{
+    int rc = ORCM_SUCCESS;
+    switch (sub_cmd) {
+        case cmd_enable:
+            rc = orcm_octl_chassis_id_on(cmdlist);
+            break;
+        case cmd_disable:
+            rc = orcm_octl_chassis_id_off(cmdlist);
+            break;
+        case cmd_state:
+            rc = orcm_octl_chassis_id_state(cmdlist);
+            break;
+        default:
             rc = ORCM_ERROR;
             break;
+    }
+    return rc;
+}
+
+static int run_cmd(char* cmd)
+{
+    char** cmdlist = opal_argv_split(cmd, ' ');
+    int sz_cmdlist = opal_argv_count(cmdlist);
+    int rc = ORCM_SUCCESS;
+    int sub_cmd = NUM_TOKENS;
+
+    if (2 > sz_cmdlist) {
+        if (0 == sz_cmdlist) {
+            ORCM_UTIL_ERROR_MSG("No command parsed!");
+        } else {
+            octl_print_illegal_command(cmd);
         }
-        switch (rc){
-            case 44: // enable
-                rc = orcm_octl_chassis_id_on(cmdlist);
-                break;
-            case 45: // disable
-                rc = orcm_octl_chassis_id_off(cmdlist);
-                break;
-            case 58: // state
-                rc = orcm_octl_chassis_id_state(cmdlist);
-                break;
-            default:
-                rc = ORCM_ERROR;
-                break;
-        }
-        break;
-    default:
-        rc = ORCM_ERROR;
-        break;
+        opal_argv_free(cmdlist);
+        return ORCM_ERROR;
     }
 
-    if (ORCM_ERROR == rc) {
-        octl_print_illegal_command(cmd);
-    } else if (ORCM_SUCCESS != rc) {
-        octl_print_error(rc);
+    rc = octl_cmd_to_enum(cmdlist[0]);
+    sub_cmd = octl_cmd_to_enum(cmdlist[1]);
+
+    /* call corresponding function to passed command */
+    switch (rc) {
+        case cmd_resource:
+            rc = run_cmd_resource(cmdlist, sub_cmd);
+            break;
+        case cmd_queue:
+            rc = run_cmd_queue(cmdlist, sub_cmd);
+            break;
+        case cmd_session:
+            rc = run_cmd_session(cmdlist, sub_cmd);
+            break;
+        case cmd_diag:
+            rc = run_cmd_diag(cmdlist, sub_cmd);
+            break;
+        case cmd_power:
+            rc = run_cmd_power(cmdlist, sub_cmd);
+            break;
+        case cmd_sensor:
+            rc = run_cmd_sensor(cmdlist, sub_cmd);
+            break;
+        case cmd_notifier:
+            rc = run_cmd_notifier(cmdlist, sub_cmd);
+            break;
+        case cmd_grouping:
+            rc = run_cmd_grouping(sz_cmdlist, cmdlist, sub_cmd);
+            break;
+        case cmd_analytics:
+            rc = run_cmd_analytics(cmdlist, sub_cmd);
+            break;
+        case cmd_query:
+            rc = run_cmd_query(cmdlist, sub_cmd);
+            break;
+        case cmd_chassis_id:
+            rc = run_cmd_chasis_id(cmdlist, sub_cmd);
+            break;
+        default:
+            rc = ORCM_ERROR;
+            break;
     }
+
     opal_argv_free(cmdlist);
+    ORCM_ERROR == rc ? octl_print_illegal_command(cmd) : octl_print_error(rc);
+
     return rc;
 }
 

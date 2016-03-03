@@ -25,4 +25,4 @@ Note: To get the list of MCA parameters
 [version]
 orcmd %s
 
-Report bugs to %s
+#Report bugs to %s

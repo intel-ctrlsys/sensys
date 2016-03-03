@@ -23,8 +23,7 @@ Use '<tab>' or '<?>' for help
 [version]
 octl %s
 
-Report bugs to %s
-
+#Report bugs to %s
 [octl:command-line:failure]
 ERROR: %s
 

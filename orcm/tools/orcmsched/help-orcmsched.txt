@@ -17,4 +17,4 @@ Usage: orcmsched [OPTIONS]
 [version]
 orcmsched %s
 
-Report bugs to %s
+#Report bugs to %s

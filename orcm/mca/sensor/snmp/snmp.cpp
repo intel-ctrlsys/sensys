@@ -20,6 +20,8 @@
 #include "snmp_collector.h"
 #include "snmp_parser.h"
 
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
+
 extern "C" {
     #include "opal/runtime/opal_progress_threads.h"
     #include "opal/class/opal_list.h"
@@ -85,6 +87,9 @@ int snmp_impl::init(void)
         (void) load_mca_variables();
         snmpParser sp(config_file_);
         collectorObj_ = sp.parse();
+        for(vector<snmpCollector>::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
+            it->setRuntimeMetrics(runtime_metrics_);
+        }
     } catch (exception &e) {
         opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                             "ERROR: %s sensor SNMP : init: '%s'",

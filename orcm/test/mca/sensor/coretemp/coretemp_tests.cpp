@@ -88,3 +88,36 @@ TEST_F(ut_coretemp_tests, coretemp_api_tests)
     orcm_sensor_base_runtime_metrics_destroy(object);
     mca_sensor_coretemp_component.runtime_metrics = NULL;
 }
+
+TEST_F(ut_coretemp_tests, coretemp_api_tests_2)
+{
+    // Setup
+    void* object = orcm_sensor_base_runtime_metrics_create("coretemp", false, false);
+    mca_sensor_coretemp_component.runtime_metrics = object;
+    orcm_sensor_base_runtime_metrics_track(object, "core 0");
+    orcm_sensor_base_runtime_metrics_track(object, "core 1");
+    orcm_sensor_base_runtime_metrics_track(object, "core 2");
+    orcm_sensor_base_runtime_metrics_track(object, "core 3");
+
+    // Tests
+    coretemp_enable_sampling("coretemp:core 3");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "core 1"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "core 3"));
+    EXPECT_EQ(1,orcm_sensor_base_runtime_metrics_active_label_count(object));
+    coretemp_disable_sampling("coretemp:core 3");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "core 3"));
+    coretemp_enable_sampling("coretemp:core 2");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "core 2"));
+    coretemp_reset_sampling("coretemp:core 2");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "core 2"));
+    coretemp_enable_sampling("coretemp:core no_core");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "core 2"));
+    coretemp_enable_sampling("coretemp:all");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "core 0"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "core 3"));
+    EXPECT_EQ(4,orcm_sensor_base_runtime_metrics_active_label_count(object));
+
+    // Cleanup
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_coretemp_component.runtime_metrics = NULL;
+}

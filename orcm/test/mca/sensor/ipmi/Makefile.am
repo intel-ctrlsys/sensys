@@ -46,7 +46,9 @@ MOCKING=\
 	-Wl,--wrap=set_lan_options \
 	-Wl,--wrap=ipmi_cmd \
 	-Wl,--wrap=ipmi_close \
-	-Wl,--wrap=opal_output_verbose
+	-Wl,--wrap=opal_output_verbose \
+	-Wl,--wrap=getlogin_r \
+	-Wl,--wrap=geteuid
 
 #
 # Libraries we depend on

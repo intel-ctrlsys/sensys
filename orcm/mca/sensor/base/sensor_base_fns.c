@@ -983,3 +983,203 @@ int manage_sensor_sampling(int command, const char* sensor_spec)
         return ORCM_ERROR;
     }
 }
+
+#define ON_NULL_RETURN(x) if(NULL==x) return ORCM_ERR_OUT_OF_RESOURCE
+#define ON_NULL_PARAM_RETURN(x) if(NULL==x) return ORCM_ERR_BAD_PARAM
+int orcm_sensor_pack_data_header(opal_buffer_t* bucket, const char* primary_key, const char* hostname, const struct timeval* current_time)
+{
+    ON_NULL_PARAM_RETURN(bucket);
+    ON_NULL_PARAM_RETURN(primary_key);
+    ON_NULL_PARAM_RETURN(hostname);
+    ON_NULL_PARAM_RETURN(current_time);
+    char* tmp = strdup(primary_key);
+    int rc;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &tmp, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        SAFEFREE(tmp);
+        return rc;
+    }
+    SAFEFREE(tmp);
+    tmp = strdup(hostname);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &tmp, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        SAFEFREE(tmp);
+        return rc;
+    }
+    SAFEFREE(tmp);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, current_time, 1, OPAL_TIMEVAL))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    return ORCM_SUCCESS;
+}
+
+int orcm_sensor_unpack_data_header_from_plugin(opal_buffer_t* bucket, char** hostname, struct timeval* current_time)
+{
+    ON_NULL_PARAM_RETURN(bucket);
+    ON_NULL_PARAM_RETURN(hostname);
+    ON_NULL_PARAM_RETURN(current_time);
+    if(NULL != *hostname) { /* Make sure this is not pointing to memory already */
+        ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+        return ORCM_ERR_BAD_PARAM;
+    }
+    char* host = NULL;
+    int rc;
+    int n = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, &host, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    n = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, current_time, &n, OPAL_TIMEVAL))) {
+        ORTE_ERROR_LOG(rc);
+        SAFEFREE(host);
+        return rc;
+    }
+    *hostname = host;
+    return ORCM_SUCCESS;
+}
+
+int orcm_sensor_pack_orcm_value(opal_buffer_t* bucket, const orcm_value_t* item)
+{
+    ON_NULL_PARAM_RETURN(bucket);
+    ON_NULL_PARAM_RETURN(item);
+    int rc;
+    char* units = item->units;
+    bool do_free = false;
+    /* local units incase of NULL */
+    if(NULL == units) {
+        units = strdup("");
+        ON_NULL_RETURN(units);
+        do_free = true;
+    }
+
+    /* Pack label */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &item->value.key, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    /* Pack type */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &item->value.type, 1, OPAL_UINT8))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    /* Pack value */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &item->value.data, 1, item->value.type))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    /* Pack units */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &units, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    if(do_free) {
+        SAFEFREE(units);
+    }
+    return ORCM_SUCCESS;
+}
+
+int orcm_sensor_unpack_orcm_value(opal_buffer_t* bucket, orcm_value_t** result)
+{
+    ON_NULL_PARAM_RETURN(bucket);
+    ON_NULL_PARAM_RETURN(result);
+    if(NULL != *result) { /* Make sure this is not pointing to memory already */
+        ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+        return ORCM_ERR_BAD_PARAM;
+    }
+    orcm_value_t* item = OBJ_NEW(orcm_value_t);
+    ON_NULL_RETURN(item);
+    /* Unpack label */
+    int n = 1;
+    int rc;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, &item->value.key, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        SAFE_RELEASE(item);
+        return rc;
+    }
+    /* Unpack type */
+    n = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, &item->value.type, &n, OPAL_UINT8))) {
+        ORTE_ERROR_LOG(rc);
+        SAFE_RELEASE(item);
+        return rc;
+    }
+    /* Unpack value */
+    n = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, &item->value.data, &n, item->value.type))) {
+        ORTE_ERROR_LOG(rc);
+        SAFE_RELEASE(item);
+        return rc;
+    }
+    /* Unpack units */
+    n = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, &item->units, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        SAFE_RELEASE(item);
+        return rc;
+    }
+    *result = item;
+    return ORCM_SUCCESS;
+}
+
+int orcm_sensor_pack_orcm_value_list(opal_buffer_t* bucket, const opal_list_t* list)
+{
+    ON_NULL_PARAM_RETURN(bucket);
+    ON_NULL_PARAM_RETURN(list);
+
+    int rc;
+    orcm_value_t* item = NULL;
+    uint16_t size = (uint16_t)opal_list_get_size((opal_list_t*)list);
+    rc = opal_dss.pack(bucket, &size, 1, OPAL_UINT16);
+    if(ORCM_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    OPAL_LIST_FOREACH(item, (opal_list_t*)list, orcm_value_t) {
+        rc = orcm_sensor_pack_orcm_value(bucket, item);
+        if(ORCM_SUCCESS != rc) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+    }
+    return ORCM_SUCCESS;
+}
+
+int orcm_sensor_unpack_orcm_value_list(opal_buffer_t* bucket, opal_list_t** list)
+{
+    ON_NULL_PARAM_RETURN(bucket);
+    ON_NULL_PARAM_RETURN(list);
+    if(NULL != *list) { /* Make sure this is not pointing to memory already */
+        ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    int rc;
+    orcm_value_t* item = NULL;
+    uint16_t size;
+    int n = 1;
+
+    rc = opal_dss.unpack(bucket, &size, &n, OPAL_UINT16);
+    if(ORCM_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    *list = OBJ_NEW(opal_list_t);
+    if(NULL == *list) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+    if(0 != size) {
+        for(int16_t i = 0; i < size; ++i) {
+            rc = orcm_sensor_unpack_orcm_value(bucket, &item);
+            if(ORCM_SUCCESS != rc) {
+                ORTE_ERROR_LOG(rc);
+                return rc;
+            }
+            opal_list_append(*list, item);
+            item = NULL;
+        }
+    }
+    return ORCM_SUCCESS;
+}

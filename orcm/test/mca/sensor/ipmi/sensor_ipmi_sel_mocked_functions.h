@@ -28,6 +28,11 @@ class sensor_ipmi_sel_mocked_functions
         bool capture_opal_output_verbose_flag;
 
     public:
+        std::string username;
+        int get_sdr_cache_result;
+        int find_sdr_next_result;
+
+    public:
         sensor_ipmi_sel_mocked_functions();
         virtual ~sensor_ipmi_sel_mocked_functions();
 
@@ -52,6 +57,8 @@ class sensor_ipmi_sel_mocked_functions
         virtual int mock_ipmi_cmd(unsigned short cmd, unsigned char* request, int request_size, unsigned char* reponse, int* response_size, unsigned char* condition, char debug);
         virtual int mock_ipmi_close();
         virtual void mock_opal_output_verbose(int level, int output_id, const char* message);
+        virtual int mock_getlogin_r(char* user, size_t user_size);
+        virtual __uid_t mock_geteuid();
 };
 
 #endif // SENSOR_IPMI_SEL_MOCKED_FUNCTIONS_H

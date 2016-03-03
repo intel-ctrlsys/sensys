@@ -88,3 +88,36 @@ TEST_F(ut_freq_tests, freq_api_tests)
     orcm_sensor_base_runtime_metrics_destroy(object);
     mca_sensor_freq_component.runtime_metrics = NULL;
 }
+
+TEST_F(ut_freq_tests, freq_api_tests_2)
+{
+    // Setup
+    void* object = orcm_sensor_base_runtime_metrics_create("freq", false, false);
+    mca_sensor_freq_component.runtime_metrics = object;
+    orcm_sensor_base_runtime_metrics_track(object, "core0");
+    orcm_sensor_base_runtime_metrics_track(object, "core1");
+    orcm_sensor_base_runtime_metrics_track(object, "core2");
+    orcm_sensor_base_runtime_metrics_track(object, "core3");
+
+    // Tests
+    freq_enable_sampling("freq:core3");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "core1"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "core3"));
+    EXPECT_EQ(1,orcm_sensor_base_runtime_metrics_active_label_count(object));
+    freq_disable_sampling("freq:core3");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "core3"));
+    freq_enable_sampling("freq:core2");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "core2"));
+    freq_reset_sampling("freq:core2");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "core2"));
+    freq_enable_sampling("freq:core no_core");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "core2"));
+    freq_enable_sampling("freq:all");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "core0"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "core3"));
+    EXPECT_EQ(4,orcm_sensor_base_runtime_metrics_active_label_count(object));
+
+    // Cleanup
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_freq_component.runtime_metrics = NULL;
+}

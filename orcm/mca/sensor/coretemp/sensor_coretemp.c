@@ -615,7 +615,7 @@ static int init(void)
         while (NULL != (t2 = (coretemp_tracker_t*)opal_list_remove_first(&foobar))) {
             if(NULL != strcasestr(t2->label,"core")) {
                 t2->core = corecount++;
-                sprintf(t2->label, "core %d", t2->core);
+                sprintf(t2->label, "core%d", t2->core);
             }
             opal_list_append(&tracking, &t2->super);
         }
@@ -742,7 +742,8 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
     struct timeval current_time;
     void* metrics_obj = mca_sensor_coretemp_component.runtime_metrics;
 
-    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
+    if(0 == orcm_sensor_base_runtime_metrics_active_label_count(metrics_obj) &&
+      !orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor coretemp : skipping actual sample collection",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -767,27 +768,25 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
     /* prep to store the results */
     OBJ_CONSTRUCT(&data, opal_buffer_t);
     packed = false;
+    orcm_sensor_base_runtime_metrics_begin(mca_sensor_coretemp_component.runtime_metrics);
 
     /* pack our name */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &data_group, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&data);
-        return;
+        goto ct_sample_exit;
     }
 
     /* store our hostname */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&data);
-        return;
+        goto ct_sample_exit;
     }
 
-    /* store the number of cores */
-    ncores = (int32_t)opal_list_get_size(&tracking);
+    /* Store number of labels to collect */
+    ncores = (int32_t)orcm_sensor_base_runtime_metrics_active_label_count(mca_sensor_coretemp_component.runtime_metrics);
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ncores, 1, OPAL_INT32))) {
         ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&data);
-        return;
+        goto ct_sample_exit;
     }
 
     /* get the sample time */
@@ -795,8 +794,7 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
 
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&data);
-        return;
+        goto ct_sample_exit;
     }
 
     OPAL_LIST_FOREACH_SAFE(trk, nxt, &tracking, coretemp_tracker_t) {
@@ -811,11 +809,12 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
             OBJ_RELEASE(trk);
             continue;
         }
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &trk->label, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(ret);
-            fclose(fp);
-            OBJ_DESTRUCT(&data);
-            return;
+        if (orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_coretemp_component.runtime_metrics, trk->label)) {
+            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &trk->label, 1, OPAL_STRING))) {
+                ORTE_ERROR_LOG(ret);
+                fclose(fp);
+                goto ct_sample_exit;
+            }
         }
         while (NULL != (temp = orte_getline(fp))) {
             degc = strtoul(temp, NULL, 10) / 1000.0;
@@ -823,15 +822,16 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
                                 "%s sensor:coretemp: Core %d in Socket %d temp %f max %f critical %f",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                 trk->core, trk->socket, degc, trk->max_temp, trk->critical_temp);
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &degc, 1, OPAL_FLOAT))) {
-                ORTE_ERROR_LOG(ret);
-                free(temp);
-                fclose(fp);
-                OBJ_DESTRUCT(&data);
-                return;
+            if (orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_coretemp_component.runtime_metrics, trk->label)) {
+                if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &degc, 1, OPAL_FLOAT))) {
+                    ORTE_ERROR_LOG(ret);
+                    free(temp);
+                    fclose(fp);
+                    goto ct_sample_exit;
+                }
+                packed = true;
             }
             free(temp);
-            packed = true;
             /* check for exceed critical temp */
             if (trk->critical_temp < degc) {
                 /* alert the errmgr - this is a critical problem */
@@ -855,10 +855,11 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
         bptr = &data;
         if (OPAL_SUCCESS != (ret = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&data);
-            return;
         }
     }
+
+ct_sample_exit:
+    orcm_sensor_base_runtime_metrics_end(mca_sensor_coretemp_component.runtime_metrics);
     OBJ_DESTRUCT(&data);
 }
 
@@ -1006,12 +1007,11 @@ static void generate_test_vector(opal_buffer_t *v)
     int ret;
     time_t now;
     const char *ctmp = "coretemp";
-    char time_str[40];
-    struct tm *sample_time;
     char *corelabel = NULL;
     int32_t ncores;
     int i;
     float degc;
+    struct timeval sample_time;
 
     ncores = 2048 ;
     degc = 23.0;
@@ -1034,15 +1034,9 @@ static void generate_test_vector(opal_buffer_t *v)
         return;
     }
 /* get the sample time */
-    now = time(NULL);
-/* pass the time along as a simple string */
-    sample_time = localtime(&now);
-    if (NULL == sample_time) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
-    }
-    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &time_str, 1, OPAL_STRING))) {
+    gettimeofday(&sample_time, NULL);
+
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &sample_time, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(ret);
         return;
     }
@@ -1128,7 +1122,6 @@ static void coretemp_inventory_collect(opal_buffer_t *inventory_snapshot)
         const char *ctemp = "coretemp";
         const char *chost_n = "hostname";
         char *comp = NULL;
-        char *label = NULL;
         coretemp_tracker_t* trk = NULL;
         int sensor_number = 1;
         int rc = OPAL_SUCCESS;
@@ -1161,8 +1154,8 @@ static void coretemp_inventory_collect(opal_buffer_t *inventory_snapshot)
                 return;
             }
             free(comp);
-            label = trk->label;
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &label, 1, OPAL_STRING))) {
+            orcm_sensor_base_runtime_metrics_track(mca_sensor_coretemp_component.runtime_metrics, trk->label);
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &trk->label, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
                 return;
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -24,13 +24,13 @@ extern "C" {
 
 #ifdef __cplusplus
 
+#include <string>
+
 #ifdef GTEST_MOCK_TESTING
 #define PRIVATE public
 #else
 #define PRIVATE private
 #endif
-
-#include <string>
 
 class edac_collector
 {
@@ -68,6 +68,7 @@ class edac_collector
         unsigned long long user_data_;
 };
 
+#undef PRIVATE
 #endif /* __cplusplus */
 
 #endif /* EDAC_COLLECTOR_H */

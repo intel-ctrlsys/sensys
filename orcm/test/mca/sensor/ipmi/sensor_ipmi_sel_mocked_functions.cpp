@@ -60,6 +60,16 @@ extern "C" { // Mocking must use correct "C" linkages
         va_end(args);
         sel_mocking.mock_opal_output_verbose(level, output_id, (const char*)buffer);
     }
+    extern int __real_getlogin_r(char* user, size_t user_size);
+    int __wrap_getlogin_r(char* user, size_t user_size)
+    {
+        return sel_mocking.mock_getlogin_r(user, user_size);
+    }
+    extern __uid_t __real_geteuid();
+    __uid_t __wrap_geteuid()
+    {
+        return sel_mocking.mock_geteuid();
+    }
 } // extern "C"
 
 // "C" callback functions
@@ -82,8 +92,10 @@ using namespace std;
 sensor_ipmi_sel_mocked_functions::sensor_ipmi_sel_mocked_functions() :
     rename_fail_pattern_index(0), enable_rename_fail_pattern(false),
     fail_set_lan_options_once_flag(false), fail_ipmi_cmd_once_flag(false),
-    capture_opal_output_verbose_flag(false)
+    capture_opal_output_verbose_flag(false), get_sdr_cache_result(0),
+    find_sdr_next_result(0)
 {
+    username = "root";
     for(size_t i = 0; i < (int)sizeof(rename_fail_pattern); ++i) {
         rename_fail_pattern[i] = false;
     }
@@ -261,5 +273,20 @@ void sensor_ipmi_sel_mocked_functions::mock_opal_output_verbose(int level, int o
         opal_output_lines.push_back(string(message));
     } else {
         return __real_opal_output_verbose(level, output_id, message);
+    }
+}
+
+int sensor_ipmi_sel_mocked_functions::mock_getlogin_r(char* user, size_t user_size)
+{
+    strncpy(user, username.c_str(), user_size);
+    return 0;
+}
+
+__uid_t sensor_ipmi_sel_mocked_functions::mock_geteuid()
+{
+    if("root" == username) {
+        return 0;
+    } else {
+        return 1000;
     }
 }

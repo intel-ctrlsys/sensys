@@ -88,3 +88,36 @@ TEST_F(ut_componentpower_tests, componentpower_api_tests)
     orcm_sensor_base_runtime_metrics_destroy(object);
     mca_sensor_componentpower_component.runtime_metrics = NULL;
 }
+
+TEST_F(ut_componentpower_tests, componentpower_api_tests_2)
+{
+    // Setup
+    void* object = orcm_sensor_base_runtime_metrics_create("componentpower", false, false);
+    mca_sensor_componentpower_component.runtime_metrics = object;
+    orcm_sensor_base_runtime_metrics_track(object, "CPU 0");
+    orcm_sensor_base_runtime_metrics_track(object, "DIMM 0");
+    orcm_sensor_base_runtime_metrics_track(object, "CPU 1");
+    orcm_sensor_base_runtime_metrics_track(object, "DIMM 1");
+
+    // Tests
+    componentpower_enable_sampling("componentpower:DIMM 1");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "CPU 0"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "DIMM 1"));
+    EXPECT_EQ(1,orcm_sensor_base_runtime_metrics_active_label_count(object));
+    componentpower_disable_sampling("componentpower:DIMM 1");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "DIMM 1"));
+    componentpower_enable_sampling("componentpower:CPU 0");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "CPU 0"));
+    componentpower_reset_sampling("componentpower:CPU 0");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "core 2"));
+    componentpower_enable_sampling("componentpower:DIMM 99");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "DIMM 99"));
+    componentpower_enable_sampling("componentpower:all");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "CPU 1"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "DIMM 0"));
+    EXPECT_EQ(4,orcm_sensor_base_runtime_metrics_active_label_count(object));
+
+    // Cleanup
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_componentpower_component.runtime_metrics = NULL;
+}

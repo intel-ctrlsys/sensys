@@ -417,8 +417,10 @@ void errcounts_impl::data_callback(const char* label, int error_count)
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;
     }
-    data_samples_labels_.push_back(string(label));
-    data_samples_values_.push_back((int32_t)error_count);
+    if(NULL == collect_metrics_ || collect_metrics_->DoCollectMetrics(label)) {
+        data_samples_labels_.push_back(string(label));
+        data_samples_values_.push_back((int32_t)error_count);
+    }
 }
 
 void errcounts_impl::inventory_callback(const char* label, const char* name)
@@ -428,6 +430,9 @@ void errcounts_impl::inventory_callback(const char* label, const char* name)
         return;
     }
     inv_samples_[string(label)] = string(name);
+    if(NULL != collect_metrics_) {
+        collect_metrics_->TrackSensorLabel(name);
+    }
 }
 
 void errcounts_impl::perthread_errcounts_sample()
@@ -452,7 +457,7 @@ void errcounts_impl::perthread_errcounts_sample()
 // Common data collection...
 void errcounts_impl::collect_sample(bool perthread /* = false*/)
 {
-    if(!collect_metrics_->DoCollectMetrics()) {
+    if(0 == collect_metrics_->CountOfCollectedLabels() && !collect_metrics_->DoCollectMetrics()) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor errcounts : skipping actual sample collection",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));

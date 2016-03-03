@@ -183,16 +183,6 @@ void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
     /* the stats framework can't know nodename or rank */
     strncpy(stats->node, orte_process_info.nodename, (OPAL_PSTAT_MAX_STRING_LEN - 1));
     stats->rank = ORTE_PROC_MY_NAME->vpid;
-#if 0
-    /* locally save the stats */
-    if (NULL != (st = (opal_pstats_t*)opal_ring_buffer_push(&my_proc->stats, stats))) {
-        OBJ_RELEASE(st);
-    }
-    if (NULL != (nst = (opal_node_stats_t*)opal_ring_buffer_push(&my_node->stats, nstats))) {
-        /* release the popped value */
-        OBJ_RELEASE(nst);
-    }
-#endif
 
     /* pack them */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &orte_process_info.nodename, 1, OPAL_STRING))) {
@@ -253,12 +243,6 @@ void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
             /* the stats framework can't know nodename or rank */
             strncpy(stats->node, orte_process_info.nodename, (OPAL_PSTAT_MAX_STRING_LEN - 1));
             stats->rank = child->name.vpid;
-#if 0
-            /* store it */
-            if (NULL != (st = (opal_pstats_t*)opal_ring_buffer_push(&child->stats, stats))) {
-                OBJ_RELEASE(st);
-            }
-#endif
             /* pack them */
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &stats, 1, OPAL_PSTAT))) {
                 ORTE_ERROR_LOG(rc);
@@ -286,100 +270,6 @@ void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
     }
     OBJ_RELEASE(nstats);
     OBJ_DESTRUCT(&buf);
-#if 0
-    /* are there any issues with node-level usage? */
-    nst = (opal_node_stats_t*)opal_ring_buffer_poke(&my_node->stats, -1);
-    if (NULL != nst && 0.0 < mca_sensor_resusage_component.node_memory_limit) {
-        OPAL_OUTPUT_VERBOSE((2, orcm_sensor_base_framework.framework_output,
-                             "%s CHECKING NODE MEM",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        /* compute the percentage of node memory in-use */
-        in_use = 1.0 - (nst->free_mem / nst->total_mem);
-        OPAL_OUTPUT_VERBOSE((2, orcm_sensor_base_framework.framework_output,
-                             "%s PERCENT USED: %f LIMIT: %f",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                             in_use, mca_sensor_resusage_component.node_memory_limit));
-        if (mca_sensor_resusage_component.node_memory_limit <= in_use) {
-            /* loop through our children and find the biggest hog */
-            hog = NULL;
-            max_mem = 0.0;
-            for (i=0; i < orte_local_children->size; i++) {
-                if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
-                    continue;
-                }
-                if (!ORTE_FLAG_TEST(child, ORTE_PROC_IS_ALIVE)) {
-                    continue;
-                }
-                if (0 == child->pid) {
-                    /* race condition */
-                    continue;
-                }
-                if (NULL == (st = (opal_pstats_t*)opal_ring_buffer_poke(&child->stats, -1))) {
-                    continue;
-                }
-                OPAL_OUTPUT_VERBOSE((5, orcm_sensor_base_framework.framework_output,
-                                     "%s PROC %s AT VSIZE %f",
-                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                     ORTE_NAME_PRINT(&child->name), st->vsize));
-                if (max_mem < st->vsize) {
-                    hog = child;
-                    max_mem = st->vsize;
-                }
-            }
-            if (NULL == hog) {
-                /* if all children dead and we are still too big,
-                 * then we must be the culprit - abort
-                 */
-                OPAL_OUTPUT_VERBOSE((2, orcm_sensor_base_framework.framework_output,
-                                     "%s NO CHILD: COMMITTING SUICIDE",
-                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-                orte_errmgr.abort(ORCM_ERR_MEM_LIMIT_EXCEEDED, NULL);
-            } else {
-                /* report the problem */
-                OPAL_OUTPUT_VERBOSE((2, orcm_sensor_base_framework.framework_output,
-                                     "%s REPORTING %s TO ERRMGR FOR EXCEEDING LIMITS",
-                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                     ORTE_NAME_PRINT(&hog->name)));
-                ORTE_ACTIVATE_PROC_STATE(&hog->name, ORTE_PROC_STATE_SENSOR_BOUND_EXCEEDED);
-            }
-            /* since we have ordered someone to die, we've done enough for this
-             * time around - don't check proc limits as well
-             */
-            return;
-        }
-    }
-
-    /* check proc limits */
-    if (0.0 < mca_sensor_resusage_component.proc_memory_limit) {
-        OPAL_OUTPUT_VERBOSE((2, orcm_sensor_base_framework.framework_output,
-                             "%s CHECKING PROC MEM",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        /* check my children first */
-        for (i=0; i < orte_local_children->size; i++) {
-            if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
-                continue;
-            }
-            if (!ORTE_FLAG_TEST(child, ORTE_PROC_IS_ALIVE)) {
-                continue;
-            }
-            if (0 == child->pid) {
-                /* race condition */
-                continue;
-            }
-            if (NULL == (st = (opal_pstats_t*)opal_ring_buffer_poke(&child->stats, -1))) {
-                continue;
-            }
-            OPAL_OUTPUT_VERBOSE((5, orcm_sensor_base_framework.framework_output,
-                                 "%s PROC %s AT VSIZE %f",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                 ORTE_NAME_PRINT(&child->name), st->vsize));
-            if (mca_sensor_resusage_component.proc_memory_limit <= st->vsize) {
-                /* report the problem */
-                ORTE_ACTIVATE_PROC_STATE(&child->name, ORTE_PROC_STATE_SENSOR_BOUND_EXCEEDED);
-            }
-        }
-    }
-#endif
 }
 
 static void res_log_sample_item(opal_list_t *key, opal_list_t *non_compute_data, char *sample_key,
@@ -624,10 +514,8 @@ cleanup:
 static void generate_test_vector(opal_buffer_t *v)
 {
     int ret;
-    time_t now;
     const char *ctmp = "resusage";
-    char time_str[40];
-    struct tm *sample_time;
+    struct timeval current_time;
     opal_pstats_t *stats;
     opal_node_stats_t *nstats;
 
@@ -647,16 +535,12 @@ static void generate_test_vector(opal_buffer_t *v)
     }
 
     /* get the sample time */
-    now = time(NULL);
-    /* pass the time along as a simple string */
-    sample_time = localtime(&now);
-    if (NULL == sample_time) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        return;
-    }
-    strftime(time_str, sizeof(time_str), "%F %T%z", sample_time);
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &time_str, 1, OPAL_STRING))) {
+    gettimeofday(&current_time, NULL);
+
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &current_time, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(ret);
+        OBJ_RELEASE(stats);
+        OBJ_RELEASE(nstats);
         OBJ_DESTRUCT(&v);
         return;
     }

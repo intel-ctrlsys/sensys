@@ -12,6 +12,7 @@
 #include "orcm/mca/sensor/snmp/snmp.h"
 #include "orcm/mca/sensor/snmp/snmp_collector.h"
 #include "orcm/mca/sensor/snmp/snmp_parser.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #undef GTEST_MOCK_TESTING
 
 #include <net-snmp/net-snmp-config.h>
@@ -782,6 +783,44 @@ TEST_F(ut_snmp_collector_tests, snmp_api_tests)
     EXPECT_TRUE(snmp.runtime_metrics_->DoCollectMetrics(NULL));
     snmp.disable_sampling("snmp");
     EXPECT_FALSE(snmp.runtime_metrics_->DoCollectMetrics(NULL));
+
+    // Cleanup
+    snmp.stop(0);
+    snmp.finalize();
+}
+
+
+TEST_F(ut_snmp_collector_tests, snmp_api_tests_2)
+{
+    // Setup
+    snmp_impl snmp;
+    orcm_sensor_base.collect_metrics = false;
+    mca_sensor_snmp_component.collect_metrics = false;
+    snmp.init();
+    snmp.start(0);
+
+    snmp.runtime_metrics_->TrackSensorLabel("PDU Temp 1");
+    snmp.runtime_metrics_->TrackSensorLabel("PDU Temp 2");
+    snmp.runtime_metrics_->TrackSensorLabel("PDU Temp 3");
+    snmp.runtime_metrics_->TrackSensorLabel("PDU Temp 4");
+
+    // Tests
+    snmp.enable_sampling("snmp:PDU Temp 3");
+    EXPECT_FALSE(snmp.runtime_metrics_->DoCollectMetrics("PDU Temp 1"));
+    EXPECT_TRUE(snmp.runtime_metrics_->DoCollectMetrics("PDU Temp 3"));
+    EXPECT_EQ(1,snmp.runtime_metrics_->CountOfCollectedLabels());
+    snmp.disable_sampling("snmp:PDU Temp 3");
+    EXPECT_FALSE(snmp.runtime_metrics_->DoCollectMetrics("PDU Temp 3"));
+    snmp.enable_sampling("snmp:PDU Temp 2");
+    EXPECT_TRUE(snmp.runtime_metrics_->DoCollectMetrics("PDU Temp 2"));
+    snmp.reset_sampling("snmp:PDU Temp 2");
+    EXPECT_FALSE(snmp.runtime_metrics_->DoCollectMetrics("PDU Temp 2"));
+    snmp.enable_sampling("snmp:no_PDU");
+    EXPECT_FALSE(snmp.runtime_metrics_->DoCollectMetrics("PDU Temp 2"));
+    snmp.enable_sampling("snmp:all");
+    EXPECT_TRUE(snmp.runtime_metrics_->DoCollectMetrics("PDU Temp 0"));
+    EXPECT_TRUE(snmp.runtime_metrics_->DoCollectMetrics("PDU Temp 3"));
+    EXPECT_EQ(4,snmp.runtime_metrics_->CountOfCollectedLabels());
 
     // Cleanup
     snmp.stop(0);

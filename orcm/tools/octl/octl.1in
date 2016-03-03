@@ -242,6 +242,9 @@ For example:
 .TP 4
 octl sensor get inventory node01 ip
 .PP
+
+."================================================================================
+
 .SS sensor enable|disable|reset datagroups
 .
 This command is designed to enable, disable, or reset to sensor sampling for
@@ -258,8 +261,9 @@ sensor_base_collect_metrics at orcmd service load time.  This command requires t
 orcmsched be running in the cluster.
 .PP
 The commands and interactive shell is:
-.PP
-.B octl sensor <enable|disable|reset> <node-regex|logical-group> <datagroup|"all">
+.TP
+.B octl sensor {enable|disable|reset} {node-regex|logical-group}
+.B {datagroup|"all"}
 .PP
 For example:
 .PP
@@ -274,6 +278,42 @@ Then:
 .PP
 restores node01 to its original sampling state (defined by MCA parameters and orcmd load time).
 .PP
+For finer control the following syntax can be used
+.TP
+.B octl sensor {enable|disable|reset} {node-regex|logical-group}
+.B {datagroup|"all"}:{sensor-label-name}
+.PP
+where sensor-label-name is and individual label from the datagroup.  This effectively gives control over individual sensor data items.  For example in the _coretemp_ _datagroup_ the sensor labels use the naming convention "coreN" where N is the zero based core number.  So the following steps will have orcmd sample only "core3" from the "coretemp" datagroup on "node01".
+.PP
+.B $ octl sensor disable node01 all
+.br
+.B $ octl sensor enable node01 errcounts:core3
+.PP
+The string "all" can also be used for labels except when the datagroup is specified as "all".  Using "all:all" is not legal, instead just use "all".  Also using "all:{sensor-label-name}" is not legal since there is no commonality of sensor-label-name between datagroups.
+.PP
+Not all current sensor datagroups respond to sensor sampling control.  Notable exceptions are
+.TP
+.B    heartbeat -
+This is not a real senor datagroup.
+.TP
+.B dmidata   -
+No control possible as this doesn't collect periodic data.
+.TP
+.B resusage  -
+Only datagroup control.  No sensor level control possible.
+.TP
+.B nodepower -
+Only datagroup control.  Only one sensor label is returned.
+.TP
+.B mcedata   -
+Only datagroup control.  Only one sensor label is returned.
+.TP
+.B syslog    -
+Only datagroup control.  Only one sensor label is returned.
+.PP
+
+."================================================================================
+
 .SS sensor store environment_only|event_only|all|none nodelist
 .
 This command is designed to control the storage of environment (raw) and event (event) data

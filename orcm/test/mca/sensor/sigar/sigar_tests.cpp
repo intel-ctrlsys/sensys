@@ -88,3 +88,37 @@ TEST_F(ut_sigar_tests, sigar_api_tests)
     orcm_sensor_base_runtime_metrics_destroy(object);
     mca_sensor_sigar_component.runtime_metrics = NULL;
 }
+
+
+TEST_F(ut_sigar_tests, sigar_api_tests_2)
+{
+    // Setup
+    void* object = orcm_sensor_base_runtime_metrics_create("sigar", false, false);
+    mca_sensor_sigar_component.runtime_metrics = object;
+    orcm_sensor_base_runtime_metrics_track(object, "memory");
+    orcm_sensor_base_runtime_metrics_track(object, "cpu_load");
+    orcm_sensor_base_runtime_metrics_track(object, "io_ops");
+    orcm_sensor_base_runtime_metrics_track(object, "procstat");
+
+    // Tests
+    sigar_enable_sampling("sigar:procstat");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "cpu_load"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "procstat"));
+    EXPECT_EQ(1,orcm_sensor_base_runtime_metrics_active_label_count(object));
+    sigar_disable_sampling("sigar:procstat");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "procstat"));
+    sigar_enable_sampling("sigar:io_ops");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "io_ops"));
+    sigar_reset_sampling("sigar:io_ops");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "io_ops"));
+    sigar_enable_sampling("sigar:core no_core");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "io_ops"));
+    sigar_enable_sampling("sigar:all");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "memory"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "procstat"));
+    EXPECT_EQ(4,orcm_sensor_base_runtime_metrics_active_label_count(object));
+
+    // Cleanup
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_sigar_component.runtime_metrics = NULL;
+}

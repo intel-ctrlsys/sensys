@@ -1449,3 +1449,37 @@ TEST_F(ut_edac_collector_tests, errcounts_api_tests)
     // Cleanup
     errcounts.finalize();
 }
+
+TEST_F(ut_edac_collector_tests, errcounts_api_tests_2)
+{
+    // Setup
+    orcm_sensor_base.collect_metrics = false;
+    mca_sensor_errcounts_component.collect_metrics = false;
+    errcounts_impl errcounts;
+    errcounts.init();
+    errcounts.collect_metrics_->TrackSensorLabel("DIMM0");
+    errcounts.collect_metrics_->TrackSensorLabel("DIMM1");
+    errcounts.collect_metrics_->TrackSensorLabel("DIMM2");
+    errcounts.collect_metrics_->TrackSensorLabel("DIMM3");
+
+    // Tests
+    errcounts.enable_sampling("errcounts:DIMM3");
+    EXPECT_FALSE(errcounts.collect_metrics_->DoCollectMetrics("DIMM1"));
+    EXPECT_TRUE(errcounts.collect_metrics_->DoCollectMetrics("DIMM3"));
+    EXPECT_EQ(1,errcounts.collect_metrics_->CountOfCollectedLabels());
+    errcounts.disable_sampling("errcounts:DIMM3");
+    EXPECT_FALSE(errcounts.collect_metrics_->DoCollectMetrics("DIMM3"));
+    errcounts.enable_sampling("errcounts:DIMM2");
+    EXPECT_TRUE(errcounts.collect_metrics_->DoCollectMetrics("DIMM2"));
+    errcounts.reset_sampling("errcounts:DIMM2");
+    EXPECT_FALSE(errcounts.collect_metrics_->DoCollectMetrics("DIMM2"));
+    errcounts.enable_sampling("errcounts:no_DIMM");
+    EXPECT_FALSE(errcounts.collect_metrics_->DoCollectMetrics("DIMM2"));
+    errcounts.enable_sampling("errcounts:all");
+    EXPECT_TRUE(errcounts.collect_metrics_->DoCollectMetrics("DIMM0"));
+    EXPECT_TRUE(errcounts.collect_metrics_->DoCollectMetrics("DIMM3"));
+    EXPECT_EQ(4,errcounts.collect_metrics_->CountOfCollectedLabels());
+
+    // Cleanup
+    errcounts.finalize();
+}

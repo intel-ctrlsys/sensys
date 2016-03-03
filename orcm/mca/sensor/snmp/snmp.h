@@ -10,11 +10,13 @@
 #ifndef SNMP_H
 #define SNMP_H
 
-#ifdef GTEST_MOCK_TESTING
-    #define PRIVATE public
-#else
-    #define PRIVATE private
-#endif
+#include "orcm/mca/sensor/base/base.h"
+#include "orcm/mca/sensor/snmp/sensor_snmp.h"
+
+#include "orcm/mca/sensor/base/base.h"
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
+#include "orcm/mca/sensor/snmp/sensor_snmp.h"
+#include "orcm/util/vardata.h"
 
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
@@ -32,6 +34,13 @@ extern "C" {
 }
 
 class snmpCollector;
+class RuntimeMetrics;
+
+#ifdef GTEST_MOCK_TESTING
+    #define PRIVATE public
+#else
+    #define PRIVATE private
+#endif
 
 class snmp_impl
 {
@@ -81,6 +90,7 @@ class snmp_impl
         int64_t diagnostics_;
         static const std::string plugin_name_;
 };
+#undef PRIVATE
 
 class unableToAllocateObj : public std::runtime_error {
     public:

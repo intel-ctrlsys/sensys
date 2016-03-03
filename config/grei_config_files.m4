@@ -22,7 +22,6 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/mca/sensor/freq/Makefile
     orcm/test/mca/sensor/sigar/Makefile
     orcm/test/mca/sensor/componentpower/Makefile
-    orcm/test/mca/sensor/evinj/Makefile
     orcm/test/mca/sensor/mcedata/Makefile
     orcm/test/mca/sensor/nodepower/Makefile
     orcm/test/mca/sensor/resusage/Makefile

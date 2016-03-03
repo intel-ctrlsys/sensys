@@ -20,10 +20,10 @@ extern orcm_sensor_base_t orcm_sensor_base;
  * Local functions
  */
 
-static int orcm_sensor_ipmi_open(void);
-static int orcm_sensor_ipmi_close(void);
-static int orcm_sensor_ipmi_query(mca_base_module_t **module, int *priority);
-static int ipmi_component_register(void);
+int orcm_sensor_ipmi_open(void);
+int orcm_sensor_ipmi_close(void);
+int orcm_sensor_ipmi_query(mca_base_module_t **module, int *priority);
+int ipmi_component_register(void);
 
 orcm_sensor_ipmi_component_t mca_sensor_ipmi_component = {
     {
@@ -51,12 +51,12 @@ orcm_sensor_ipmi_component_t mca_sensor_ipmi_component = {
 /**
   * component open/close/init function
   */
-static int orcm_sensor_ipmi_open(void)
+int orcm_sensor_ipmi_open(void)
 {
     return ORCM_SUCCESS;
 }
 
-static int orcm_sensor_ipmi_query(mca_base_module_t **module, int *priority)
+int orcm_sensor_ipmi_query(mca_base_module_t **module, int *priority)
 {
     /* if we can build, then we definitely want to be used
      * even if we aren't going to sample as we have to be
@@ -71,12 +71,12 @@ static int orcm_sensor_ipmi_query(mca_base_module_t **module, int *priority)
  *  Close all subsystems.
  */
 
-static int orcm_sensor_ipmi_close(void)
+int orcm_sensor_ipmi_close(void)
 {
     return ORCM_SUCCESS;
 }
 
-static int ipmi_component_register(void)
+int ipmi_component_register(void)
 {
     mca_base_component_t *c = &mca_sensor_ipmi_component.super.base_version;
 

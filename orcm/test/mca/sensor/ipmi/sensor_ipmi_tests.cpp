@@ -11,6 +11,9 @@
 #include "sensor_ipmi_tests.h"
 #include "sensor_ipmi_sel_mocked_functions.h"
 
+// OPAL
+#include "opal/dss/dss.h"
+
 // ORTE
 #include "orte/runtime/orte_globals.h"
 
@@ -24,6 +27,9 @@ extern sensor_ipmi_sel_mocked_functions sel_mocking;
 // mocking variables and "C" callback functions
 extern "C" {
     ORCM_DECLSPEC extern orcm_sensor_base_t orcm_sensor_base;
+    extern orcm_sensor_base_module_t orcm_sensor_ipmi_module;
+    extern int first_sample;
+
     extern void collect_ipmi_sample(orcm_sensor_sampler_t *sampler);
 
     extern void test_error_sink_c(int level, const char* msg);
@@ -36,6 +42,10 @@ extern "C" {
     extern int ipmi_enable_sampling(const char* sensor_specification);
     extern int ipmi_disable_sampling(const char* sensor_specification);
     extern int ipmi_reset_sampling(const char* sensor_specification);
+    extern int orcm_sensor_ipmi_open(void);
+    extern int orcm_sensor_ipmi_close(void);
+    extern int ipmi_component_register(void);
+    extern int orcm_sensor_ipmi_query(mca_base_module_t **module, int *priority);
 } // extern "C"
 
 using namespace std;
@@ -46,6 +56,8 @@ void ut_sensor_ipmi_tests::SetUpTestCase()
     // Configure/Create OPAL level resources
     opal_dss_register_vars();
     opal_dss_open();
+
+    mca_sensor_ipmi_component.collect_metrics = true;
 }
 
 void ut_sensor_ipmi_tests::TearDownTestCase()
@@ -185,7 +197,9 @@ TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_sample_tests)
     orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
 
     // Tests
+    mca_sensor_ipmi_component.test = true;
     collect_ipmi_sample(sampler);
+    mca_sensor_ipmi_component.test = false;
     EXPECT_EQ(0, (mca_sensor_ipmi_component.diagnostics & 0x1));
 
     orcm_sensor_base_runtime_metrics_set(object, true, "ipmi");
@@ -223,4 +237,88 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_api_tests)
     // Cleanup
     orcm_sensor_base_runtime_metrics_destroy(object);
     mca_sensor_ipmi_component.runtime_metrics = NULL;
+}
+
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_api_tests_2)
+{
+    // Setup
+    void* object = orcm_sensor_base_runtime_metrics_create("ipmi", false, false);
+    mca_sensor_ipmi_component.runtime_metrics = object;
+    orcm_sensor_base_runtime_metrics_track(object, "bmcfwrev");
+    orcm_sensor_base_runtime_metrics_track(object, "ipmiver");
+    orcm_sensor_base_runtime_metrics_track(object, "manufacturer_id");
+    orcm_sensor_base_runtime_metrics_track(object, "sys_power_state");
+
+    // Tests
+    mca_sensor_ipmi_component.test = true;
+    ipmi_enable_sampling("ipmi:sys_power_state");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "ipmiver"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "sys_power_state"));
+    EXPECT_EQ(1,orcm_sensor_base_runtime_metrics_active_label_count(object));
+    ipmi_disable_sampling("ipmi:sys_power_state");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "sys_power_state"));
+    ipmi_enable_sampling("ipmi:manufacturer_id");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "manufacturer_id"));
+    ipmi_reset_sampling("ipmi:manufacturer_id");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "manufacturer_id"));
+    ipmi_enable_sampling("ipmi:other_sensor");
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(object, "manufacturer_id"));
+    ipmi_enable_sampling("ipmi:all");
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "bmcfwrev"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(object, "sys_power_state"));
+    EXPECT_EQ(4,orcm_sensor_base_runtime_metrics_active_label_count(object));
+    mca_sensor_ipmi_component.test = false;
+
+    // Cleanup
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_ipmi_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_open_close_register_test)
+{
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_open());
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_close());
+    EXPECT_EQ(ORCM_SUCCESS, ipmi_component_register());
+    EXPECT_FALSE(mca_sensor_ipmi_component.test);
+    EXPECT_STREQ("*", mca_sensor_ipmi_component.sensor_group);
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_query_test)
+{
+    mca_base_module_t* module = NULL;
+    int priority = 0;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_query(&module, &priority));
+    EXPECT_EQ(50, priority);
+    EXPECT_NE(0, (uint64_t)module);
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_init_finalize_test)
+{
+    mca_sensor_ipmi_component.test = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.finalize();
+    mca_sensor_ipmi_component.test = false;
+    sel_mocking.username = "random";
+    EXPECT_EQ(ORCM_ERROR, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.finalize();
+    sel_mocking.username = "root";
+    EXPECT_EQ(ORCM_ERROR, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.finalize();
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_start_stop_test)
+{
+    mca_sensor_ipmi_component.test = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+    mca_sensor_ipmi_component.use_progress_thread = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+    mca_sensor_ipmi_component.use_progress_thread = false;
+    mca_sensor_ipmi_component.test = false;
 }

@@ -60,6 +60,9 @@ void orcm_sensor_sel_error_callback(int level, const char* msg);
 int ipmi_enable_sampling(const char* sensor_specification);
 int ipmi_disable_sampling(const char* sensor_specification);
 int ipmi_reset_sampling(const char* sensor_specification);
+void collect_ipmi_subsequent_data(orcm_sensor_sampler_t* sampler);
+void collect_ipmi_first_time_data(orcm_sensor_sampler_t* sampler, int* timeout);
+int collect_ipmi_subsequent_data_for_host(opal_buffer_t* sampler, orcm_sensor_hosts_t* host);
 
 int first_sample = 0;
 
@@ -144,6 +147,9 @@ char ipmi_inv_tv[10][2][30] = {
 {"sensor_ipmi_3","Processor 1 Fan"},
 {"sensor_ipmi_4","Processor 2 Fan"},
 {"sensor_ipmi_5","Exit Air Temp"}};
+
+#define ON_NULL_GOTO(OBJ,LABEL) if(NULL==OBJ) { ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE); goto LABEL; }
+#define ON_FAILURE_GOTO(RV,LABEL) if(ORCM_SUCCESS!=RV) { ORTE_ERROR_LOG(RV); goto LABEL; }
 
 static int init(void)
 {
@@ -308,7 +314,6 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
     ipmi_log_extract_create_string(sample, nodename, sizeof(nodename));
     opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
                         "IPMI_LOG -> Node %s not found; Logging credentials", nodename);
-
     /* Unpack the host_ip - 3a */
     ipmi_log_extract_create_string(sample, hostip, sizeof(hostip));
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -489,21 +494,16 @@ static void ipmi_log_sample_item(opal_list_t *key, opal_list_t *non_compute_data
 static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_count)
 {
     char *hostname = NULL;
-    char *sample_item = NULL;
-    char *sample_name = NULL;
-    char *sample_unit = NULL;
-    float float_item;
-    unsigned uint_item;
     int rc;
     int32_t n;
     struct timeval sampletime;
     orcm_value_t *sensor_metric = NULL;
     opal_list_t *key = NULL;
     opal_list_t *non_compute_data = NULL;
+    opal_list_t* data_list = NULL;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Total Samples to be unpacked: %d", host_count);
-
     /* START UNPACKING THE DATA and Store it in a opal_list_t item. */
     for(int count = 0; count < host_count; count++)
     {
@@ -555,116 +555,25 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
         }
         opal_list_append(key, (opal_list_item_t *)sensor_metric);
 
-        /* BMC FW REV - 4 */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "UnPacked bmcfwrev: %s", sample_item);
-
-        ipmi_log_sample_item(key, non_compute_data, "bmcfwrev", sample_item, OPAL_STRING, NULL);
-        SAFEFREE(sample_item);
-
-        /* IPMI VER - 5 */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "UnPacked ipmiver: %s", sample_item);
-
-        ipmi_log_sample_item(key, non_compute_data, "ipmiver", sample_item, OPAL_STRING, NULL);
-        SAFEFREE(sample_item);
-
-        /* Manufacturer ID - 6 */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "UnPacked MANUF-ID: %s", sample_item);
-
-        ipmi_log_sample_item(key, non_compute_data, "manufacturer_id", sample_item, OPAL_STRING, NULL);
-        SAFEFREE(sample_item);
-
-        /* System Power State - 7 */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-
-        ipmi_log_sample_item(key, non_compute_data, "sys_power_state", sample_item, OPAL_STRING, NULL);
-        SAFEFREE(sample_item);
-
-        /* Device Power State - 8 */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_item, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "UnPacked DEV_PSTATE: %s", sample_item);
-
-        ipmi_log_sample_item(key, non_compute_data, "dev_power_state", sample_item, OPAL_STRING, NULL);
-        SAFEFREE(sample_item);
-
-        /* Total BMC sensor Metrics sampled - 9 (Not necessary for db_store) */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint_item, &n, OPAL_UINT))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
-
-        /* Log All non-string metrics here */
-        for(unsigned int count_metrics=0;count_metrics<uint_item;count_metrics++)
-        {
-            /* Metric Name */
-            n=1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_name, &n, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                goto cleanup;
+        orcm_sensor_unpack_orcm_value_list(sample, &data_list);
+        OPAL_LIST_FOREACH(sensor_metric, data_list, orcm_value_t) {
+            char* units = NULL;
+            void* val = NULL;
+            if(NULL != sensor_metric->units && 0 != strlen(sensor_metric->units)) {
+                units = sensor_metric->units;
             }
-
-            /* Metric Value*/
-            n=1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &float_item, &n, OPAL_FLOAT))) {
-                ORTE_ERROR_LOG(rc);
-                goto cleanup;
+            if(OPAL_STRING == sensor_metric->value.type) {
+                val = (void*)sensor_metric->value.data.string;
+            } else {
+                val = (void*)&sensor_metric->value.data;
             }
+            // Wrong when a string is used....
+            ipmi_log_sample_item(key, non_compute_data, sensor_metric->value.key,
+                                 val, sensor_metric->value.type,
+                                 units);
 
-            /* Metric Units */
-            n=1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sample_unit, &n, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                goto cleanup;
-            }
-            ipmi_log_sample_item(key, non_compute_data, sample_name, &float_item, OPAL_FLOAT, sample_unit);
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "UnPacked %s: %f", sample_name, float_item);
-            SAFEFREE(sample_name);
-            SAFEFREE(sample_unit);
-        }
-
-        /* IPMI SEL Records Storage into the opal_list_t 'vals' */
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uint_item, &n, OPAL_UINT))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        for(unsigned int count_metrics=0;count_metrics<uint_item;count_metrics++) {
-            char* record_string = NULL;
-
-            n=1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &record_string, &n, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                return;
-            }
-            ipmi_log_sample_item(key, non_compute_data, "sel_event_record", record_string, OPAL_STRING, NULL);
+                "UnPacked Label %s: Type: %d", sensor_metric->value.key, sensor_metric->value.type);
         }
 
     cleanup:
@@ -1440,33 +1349,15 @@ static void perthread_ipmi_sample(int fd, short args, void *cbdata)
     opal_event_evtimer_add(&sampler->ev, &sampler->rate);
 }
 
-void collect_ipmi_sample(orcm_sensor_sampler_t *sampler)
+void collect_ipmi_first_time_data(orcm_sensor_sampler_t* sampler, int* timeout)
 {
     int rc;
-    opal_buffer_t data, *bptr;
-    const char *ipmi = "ipmi";
-    char *sample_str;
-    int int_count=0;
-    size_t host_count=0;
-    static int timeout = 0;
-    orcm_sensor_hosts_t *host, *nxt;
+    opal_buffer_t data;
+    opal_buffer_t* bptr = NULL;
+    size_t host_count = 0;
     struct timeval current_time;
-    uint32_t sel_count;
-    opal_value_t* sel_iterator;
-    void* metrics_obj = mca_sensor_ipmi_component.runtime_metrics;
-
-    if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                            "%s sensor ipmi : skipping actual sample collection",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        return;
-    }
-    mca_sensor_ipmi_component.diagnostics |= 0x1;
-
-    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                            "%s sensor ipmi : collect_sample: called",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-
+    char *sample_str = NULL;
+    const char* ipmi = "ipmi";
 
     if (mca_sensor_ipmi_component.test) {
         /* just send the test vector */
@@ -1474,8 +1365,8 @@ void collect_ipmi_sample(orcm_sensor_sampler_t *sampler)
         opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
         return;
     }
-    if(disable_ipmi == 1)
-        return;
+
+    ++(*timeout);
 
     /* prep the buffer to collect the data */
     OBJ_CONSTRUCT(&data, opal_buffer_t);
@@ -1486,154 +1377,9 @@ void collect_ipmi_sample(orcm_sensor_sampler_t *sampler)
         return;
     }
 
-    if(first_sample == 0 && timeout < 3)  /* The first time Sample is called, it shall retrieve/sample just the LAN credentials and pack it. */
-    {
-        timeout++;
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "First Sample: Packing Credentials");
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+        "First Sample: Packing Credentials");
 
-        /* pack the numerical identifier for number of nodes*/
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &host_count, 1, OPAL_INT))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        gettimeofday(&current_time, NULL);
-
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* Pack our node name - 2a*/
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        if(ORCM_SUCCESS != rc)
-        {
-            opal_output(0, "Lan Details Collection - Retry : %d", timeout);
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* Pack the host's IP Address - 3a*/
-        sample_str = (char *)&cur_host->capsule.node.host_ip;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* Pack the BMC IP Address - 4a*/
-        sample_str = (char *)&cur_host->capsule.node.bmc_ip;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "Packing BMC IP: %s",sample_str);
-
-        /* Pack the Baseboard Manufacture Date - 5a*/
-        if (NULL == cur_host->capsule.prop.baseboard_manuf_date) {
-            sample_str = "Board Manuf Date n/a";
-        }
-        else {
-            sample_str = (char *)&cur_host->capsule.prop.baseboard_manuf_date;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* Pack the Baseboard Manufacturer Name - 6a*/
-        if (NULL == cur_host->capsule.prop.baseboard_manufacturer) {
-            sample_str = "Board Manuf n/a";
-        }
-        else {
-            sample_str = (char *)&cur_host->capsule.prop.baseboard_manufacturer;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* Pack the Baseboard Product Name - 7a*/
-        if (NULL == cur_host->capsule.prop.baseboard_name) {
-            sample_str = "Board Name n/a";
-        }
-        else {
-            sample_str = (char *)&cur_host->capsule.prop.baseboard_name;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* Pack the Baseboard Serial Number - 8a*/
-        if (NULL == cur_host->capsule.prop.baseboard_serial) {
-            sample_str = "Board Serial n/a";
-        }
-        else {
-            sample_str = (char *)&cur_host->capsule.prop.baseboard_serial;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* Pack the Baseboard Part Number - 9a*/
-        if (NULL == cur_host->capsule.prop.baseboard_part) {
-            sample_str = "Board Part n/a";
-        }
-        else {
-            sample_str = (char *)&cur_host->capsule.prop.baseboard_part;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-
-        /* Pack the buffer, to pass to heartbeat - FINAL */
-        bptr = &data;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            return;
-        }
-        if(!ORTE_PROC_IS_AGGREGATOR)
-        {
-            opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
-                                "PROC_IS_COMPUTE_DAEMON");
-            disable_ipmi = 1;
-        } else {
-            opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
-                                "PROC_IS_AGGREGATOR");
-        }
-        first_sample = 1;
-
-        return;
-    } /* End packing BMC credentials*/
-
-    /* Begin sampling known nodes from here */
-    host_count = opal_list_get_size(&sensor_active_hosts);
-    if (0 == host_count) {
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "No IPMI Device available for sampling");
-        OBJ_DESTRUCT(&data);
-        return;
-    }
     /* pack the numerical identifier for number of nodes*/
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &host_count, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
@@ -1641,173 +1387,129 @@ void collect_ipmi_sample(orcm_sensor_sampler_t *sampler)
         return;
     }
 
-    /* Loop through each host from the host list*/
-    OPAL_LIST_FOREACH_SAFE(host, nxt, &sensor_active_hosts, orcm_sensor_hosts_t) {
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "Scanning metrics from node: %s",host->capsule.node.name);
-        /* Clear all memory for the ipmi_capsule */
-        memset(&(host->capsule.prop), '\0', sizeof(host->capsule.prop));
+    gettimeofday(&current_time, NULL);
 
-        /* If the bmc username was passed as an mca parameter, set it. */
-        if (NULL != mca_sensor_ipmi_component.bmc_username) {
-            strncpy(host->capsule.node.user, mca_sensor_ipmi_component.bmc_username, sizeof(host->capsule.node.user)-1);
-            host->capsule.node.user[sizeof(host->capsule.node.user)-1] = '\0';
-        } else {
-            strncpy(host->capsule.node.user, "root", sizeof(host->capsule.node.user)-1);
-            host->capsule.node.user[sizeof(host->capsule.node.user)-1] = '\0';
-        }
-
-        /*
-        If the bmc password was passed as an mca parameter, set it.
-        Otherwise, leave it as null.
-        */
-        if (NULL != mca_sensor_ipmi_component.bmc_password) {
-            strncpy(host->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password, sizeof(host->capsule.node.pasw)-1);
-            host->capsule.node.pasw[sizeof(host->capsule.node.pasw)-1] = '\0';
-        }
-
-        host->capsule.node.auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
-        host->capsule.node.priv = IPMI_PRIV_LEVEL_USER;
-        host->capsule.node.ciph = 3; /* Cipher suite No. 3 */
-
-        /* Running a sample for a Node */
-        orcm_sensor_ipmi_get_device_id(&host->capsule);
-        orcm_sensor_ipmi_get_power_states(&host->capsule);
-        orcm_sensor_ipmi_get_sensor_reading(&host->capsule);
-
-        host->capsule.prop.collected_sel_records = OBJ_NEW(opal_list_t);
-        orcm_sensor_ipmi_get_sel_events(&host->capsule);
-
-        gettimeofday(&current_time, NULL);
-
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-            return;
-        }
-
-        /* Pack the nodeName - 3 */
-        sample_str = (char *)&host->capsule.node.name;
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "***** NodeName: %s",sample_str);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-            return;
-        }
-
-        /*  Pack the BMC FW Rev  - 4 */
-        sample_str = (char *)&host->capsule.prop.bmc_rev;
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "***** bmcrev: %s",sample_str);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-            return;
-        }
-
-        /*  Pack the IPMI VER - 5 */
-        sample_str = (char *)&host->capsule.prop.ipmi_ver;
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "***** IPMIVER: %s",sample_str);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-            return;
-        }
-
-        /*  Pack the Manufacturer ID - 6 */
-        sample_str = (char *)&host->capsule.prop.man_id;
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "***** MANUF-ID: %s",sample_str);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-            return;
-        }
-
-        /*  Pack the System Power State - 7 */
-        sample_str = (char *)&host->capsule.prop.sys_power_state;
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "***** SYS_PSTATE: %s",sample_str);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-            return;
-        }
-
-        /*  Pack the Device Power State - 8 */
-        sample_str = (char *)&host->capsule.prop.dev_power_state;
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-            "***** DEV_PSTATE: %s",sample_str);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-            return;
-        }
-
-        /* Pack the total Number of Metrics Sampled */
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &host->capsule.prop.total_metrics, 1, OPAL_UINT))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-            return;
-        }
-
-        /*  Pack the non-string metrics and their units - 11-> END */
-        for(int count_metrics=0;count_metrics<host->capsule.prop.total_metrics;count_metrics++) {
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "***** %s: %f",host->capsule.prop.metric_label[count_metrics], host->capsule.prop.collection_metrics[count_metrics]);
-
-            sample_str = (char *)&host->capsule.prop.metric_label[count_metrics];
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_DESTRUCT(&data);
-                OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-                return;
-            }
-
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &host->capsule.prop.collection_metrics[count_metrics], 1, OPAL_FLOAT))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_DESTRUCT(&data);
-                OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-                return;
-            }
-
-            sample_str = (char *)&host->capsule.prop.collection_metrics_units[count_metrics];
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_DESTRUCT(&data);
-                OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-                return;
-            }
-        }
-
-        /* Pack the total Number of SEL records */
-        sel_count = opal_list_get_size(host->capsule.prop.collected_sel_records);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sel_count, 1, OPAL_UINT))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_DESTRUCT(&data);
-            OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-            return;
-        }
-        OPAL_LIST_FOREACH(sel_iterator, host->capsule.prop.collected_sel_records, opal_value_t) {
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sel_iterator->data.string, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_DESTRUCT(&data);
-                OBJ_RELEASE(host->capsule.prop.collected_sel_records);
-                return;
-            }
-        }
-        OBJ_RELEASE(host->capsule.prop.collected_sel_records);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
     }
+
+    /* Pack our node name - 2a*/
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    if(ORCM_SUCCESS != rc)
+    {
+        opal_output(0, "Lan Details Collection - Retry : %d", *timeout);
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack the host's IP Address - 3a*/
+    sample_str = (char *)&cur_host->capsule.node.host_ip;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack the BMC IP Address - 4a*/
+    sample_str = (char *)&cur_host->capsule.node.bmc_ip;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+        "Packing BMC IP: %s",sample_str);
+
+    /* Pack the Baseboard Manufacture Date - 5a*/
+    if (NULL == cur_host->capsule.prop.baseboard_manuf_date) {
+        sample_str = "Board Manuf Date n/a";
+    }
+    else {
+        sample_str = (char *)&cur_host->capsule.prop.baseboard_manuf_date;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack the Baseboard Manufacturer Name - 6a*/
+    if (NULL == cur_host->capsule.prop.baseboard_manufacturer) {
+        sample_str = "Board Manuf n/a";
+    }
+    else {
+        sample_str = (char *)&cur_host->capsule.prop.baseboard_manufacturer;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack the Baseboard Product Name - 7a*/
+    if (NULL == cur_host->capsule.prop.baseboard_name) {
+        sample_str = "Board Name n/a";
+    }
+    else {
+        sample_str = (char *)&cur_host->capsule.prop.baseboard_name;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack the Baseboard Serial Number - 8a*/
+    if (NULL == cur_host->capsule.prop.baseboard_serial) {
+        sample_str = "Board Serial n/a";
+    }
+    else {
+        sample_str = (char *)&cur_host->capsule.prop.baseboard_serial;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack the Baseboard Part Number - 9a*/
+    if (NULL == cur_host->capsule.prop.baseboard_part) {
+        sample_str = "Board Part n/a";
+    }
+    else {
+        sample_str = (char *)&cur_host->capsule.prop.baseboard_part;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &sample_str, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* Pack the buffer, to pass to heartbeat - FINAL */
+    bptr = &data;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+    if(!ORTE_PROC_IS_AGGREGATOR)
+    {
+        opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+                            "PROC_IS_COMPUTE_DAEMON");
+        disable_ipmi = 1;
+    } else {
+        opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
+                            "PROC_IS_AGGREGATOR");
+    }
+
     /* Pack the list into a buffer and pass it onto heartbeat */
     bptr = &data;
     if (OPAL_SUCCESS != (rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
@@ -1818,16 +1520,226 @@ void collect_ipmi_sample(orcm_sensor_sampler_t *sampler)
 
     OBJ_DESTRUCT(&data);
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-        "Total nodes sampled: %d",int_count);
+        "Total nodes sampled: 0");
     /* this is currently a no-op */
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "IPMI sensors just got implemented! ----------- ;)");
+
+    first_sample = 1;
+
+    return;
 }
 
+int collect_ipmi_subsequent_data_for_host(opal_buffer_t* data, orcm_sensor_hosts_t* host)
+{
+    int rc;
+    char* sample_str = NULL;
+    struct timeval current_time;
+    opal_list_t* data_list = NULL;
+    orcm_value_t* item = NULL;
+    void* metrics_obj = mca_sensor_ipmi_component.runtime_metrics;
+
+    host->capsule.node.auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
+    host->capsule.node.priv = IPMI_PRIV_LEVEL_USER;
+    host->capsule.node.ciph = 3; /* Cipher suite No. 3 */
+
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+        "Scanning metrics from node: %s",host->capsule.node.name);
+    /* Clear all memory for the ipmi_capsule */
+    memset(&(host->capsule.prop), '\0', sizeof(host->capsule.prop));
+
+    /* If the bmc username was passed as an mca parameter, set it. */
+    if (NULL != mca_sensor_ipmi_component.bmc_username) {
+        strncpy(host->capsule.node.user, mca_sensor_ipmi_component.bmc_username, sizeof(host->capsule.node.user)-1);
+        host->capsule.node.user[sizeof(host->capsule.node.user)-1] = '\0';
+    } else {
+        strncpy(host->capsule.node.user, "root", sizeof(host->capsule.node.user)-1);
+        host->capsule.node.user[sizeof(host->capsule.node.user)-1] = '\0';
+    }
+
+    /*
+    If the bmc password was passed as an mca parameter, set it.
+    Otherwise, leave it as null.
+    */
+    if (NULL != mca_sensor_ipmi_component.bmc_password) {
+        strncpy(host->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password, sizeof(host->capsule.node.pasw)-1);
+        host->capsule.node.pasw[sizeof(host->capsule.node.pasw)-1] = '\0';
+    }
+
+    /* Running a sample for a Node */
+    orcm_sensor_ipmi_get_device_id(&host->capsule);
+    orcm_sensor_ipmi_get_power_states(&host->capsule);
+    orcm_sensor_ipmi_get_sensor_reading(&host->capsule);
+
+    gettimeofday(&current_time, NULL);
+
+    /* Pack ctime */
+    rc = opal_dss.pack(data, &current_time, 1, OPAL_TIMEVAL);
+    ON_FAILURE_GOTO(rc, cleanup);
+
+    /* Pack hostname */
+    sample_str = (char*)&host->capsule.node.name;
+    rc = opal_dss.pack(data, &sample_str, 1, OPAL_STRING);
+    ON_FAILURE_GOTO(rc, cleanup);
+
+    data_list = OBJ_NEW(opal_list_t);
+    ON_NULL_GOTO(data_list, cleanup);
+
+    if(orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, "bmcfwrev")) {
+        sample_str = (char *)&(host->capsule.prop.bmc_rev[0]);
+        item = orcm_util_load_orcm_value("bmcfwrev", sample_str, OPAL_STRING, "");
+        ON_NULL_GOTO(item, cleanup);
+        opal_list_append(data_list, (opal_list_item_t*)item);
+    }
+
+    if(orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, "ipmiver")) {
+        sample_str = (char *)&(host->capsule.prop.ipmi_ver[0]);
+        item = orcm_util_load_orcm_value("ipmiver", sample_str, OPAL_STRING, "");
+        ON_NULL_GOTO(item, cleanup);
+        opal_list_append(data_list, (opal_list_item_t*)item);
+    }
+
+    if(orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, "manufacturer_id")) {
+        sample_str = (char *)&(host->capsule.prop.man_id[0]);
+        item = orcm_util_load_orcm_value("manufacturer_id", sample_str, OPAL_STRING, "");
+        ON_NULL_GOTO(item, cleanup);
+        opal_list_append(data_list, (opal_list_item_t*)item);
+    }
+
+    if(orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, "sys_power_state")) {
+        sample_str = (char *)&(host->capsule.prop.sys_power_state[0]);
+        item = orcm_util_load_orcm_value("sys_power_state", sample_str, OPAL_STRING, "");
+        ON_NULL_GOTO(item, cleanup);
+        opal_list_append(data_list, (opal_list_item_t*)item);
+    }
+
+    if(orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, "dev_power_state")) {
+        sample_str = (char *)&(host->capsule.prop.dev_power_state[0]);
+        item = orcm_util_load_orcm_value("dev_power_state", sample_str, OPAL_STRING, "");
+        ON_NULL_GOTO(item, cleanup);
+        opal_list_append(data_list, (opal_list_item_t*)item);
+    }
+
+    /*  Pack the non-string metrics and their units */
+    for(int count_metrics=0;count_metrics<host->capsule.prop.total_metrics;count_metrics++) {
+        char* units = (char *)&host->capsule.prop.collection_metrics_units[count_metrics];
+        sample_str = (char *)&host->capsule.prop.metric_label[count_metrics];
+        if(orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, sample_str)) {
+            units = (char *)&host->capsule.prop.collection_metrics_units[count_metrics];
+            item = orcm_util_load_orcm_value(sample_str, &host->capsule.prop.collection_metrics[count_metrics], OPAL_FLOAT, units);
+            ON_NULL_GOTO(item, cleanup);
+            opal_list_append(data_list, (opal_list_item_t*)item);
+        }
+    }
+
+    /* collect SEL events */
+    if(orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, "sel_event_record")) {
+        host->capsule.prop.collected_sel_records = data_list;
+        orcm_sensor_ipmi_get_sel_events(&host->capsule);
+        host->capsule.prop.collected_sel_records = NULL;
+    }
+
+    /* Pack all data at once */
+    rc = orcm_sensor_pack_orcm_value_list(data, data_list);
+    ON_FAILURE_GOTO(rc, cleanup);
+
+cleanup:
+    SAFE_RELEASE(data_list);
+    return rc;
+}
+
+void collect_ipmi_subsequent_data(orcm_sensor_sampler_t* sampler)
+{
+    int rc;
+    opal_buffer_t data;
+    opal_buffer_t* bptr = NULL;
+    size_t host_count = 0;
+    char* ipmi = NULL;
+    orcm_sensor_hosts_t* host;
+    orcm_sensor_hosts_t* nxt;
+    void* metrics_obj = mca_sensor_ipmi_component.runtime_metrics;
+
+    if(0 == orcm_sensor_base_runtime_metrics_active_label_count(metrics_obj) &&
+       !orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor ipmi : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_ipmi_component.diagnostics |= 0x1;
+
+    /* prep the buffer to collect the data */
+    OBJ_CONSTRUCT(&data, opal_buffer_t);
+    /* pack our component name - 1*/
+    ipmi = strdup("ipmi");
+    if(NULL == ipmi) {
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        return;
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &ipmi, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+    free(ipmi);
+
+    /* Begin sampling known nodes from here */
+    host_count = opal_list_get_size(&sensor_active_hosts);
+    if (0 == host_count) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                "No IPMI Device available for sampling");
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    /* pack the numerical identifier for number of nodes */
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&data, &host_count, 1, OPAL_INT))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    OPAL_LIST_FOREACH_SAFE(host, nxt, &sensor_active_hosts, orcm_sensor_hosts_t) {
+        if(ORCM_SUCCESS != (rc = collect_ipmi_subsequent_data_for_host(&data, host))) {
+            OBJ_DESTRUCT(&data);
+            return;
+        }
+    }
+
+    /* Pack the list into a buffer and pass it onto heartbeat */
+    bptr = &data;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
+        ORTE_ERROR_LOG(rc);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
+    OBJ_DESTRUCT(&data);
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+        "Total nodes sampled: 0");
+    /* this is currently a no-op */
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                        "IPMI sensors just got implemented! ----------- ;)");
+    return;
+}
+
+void collect_ipmi_sample(orcm_sensor_sampler_t* sampler)
+{
+    static int timeout = 0;
+
+    if(1 == disable_ipmi) {
+        return;
+    }
+
+    if(0 == first_sample && 3 > timeout && false == mca_sensor_ipmi_component.test) {
+        collect_ipmi_first_time_data(sampler, &timeout);
+    } else {
+        collect_ipmi_subsequent_data(sampler);
+    }
+}
 
 static void generate_test_vector(opal_buffer_t *v)
 {
-
 }
 
 static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot)
@@ -2136,7 +2048,6 @@ static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *inventory_lis
                 strncpy(val, (char*)&sdrbuf[48], sizeof(val)-1);
                 name_size = (int)(((SDR01REC*)sdrbuf)->id_strlen & 0x1f);
                 val[MIN(name_size,sizeof(val)-1)] = '\0'; /* IPMI structure caps copy to 16 characters */
-
                 asprintf(&key, "sensor_ipmi_%d", sensor_num);
 
                 /* Store Inventory Key */
@@ -2150,6 +2061,7 @@ static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *inventory_lis
                 kv->type = OPAL_STRING;
                 kv->data.string = strdup(val); /* kv takes memory ownership */
                 opal_list_append(inventory_list, &kv->super); /* List owns kv*/
+                orcm_sensor_base_runtime_metrics_track(mca_sensor_ipmi_component.runtime_metrics, val);
 
                 ++sensor_num; /* increment sensor number for key */
             }
@@ -2175,11 +2087,9 @@ void orcm_sensor_sel_error_callback(int level, const char* msg)
 void orcm_sensor_sel_ras_event_callback(const char* event, const char* hostname, void* user_object)
 {
     opal_list_t* record_list = (opal_list_t*)user_object;
-    opal_value_t* record = OBJ_NEW(opal_value_t);
-    record->type = OPAL_STRING;
-    record->data.string = strdup(event);
-    opal_list_append(record_list, &record->super);
-    opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "SEL Record Read: %s: %s", hostname, event);
+    orcm_value_t* record = orcm_util_load_orcm_value("sel_event_record", (void*)event, OPAL_STRING, "");
+    opal_list_append(record_list, (opal_list_item_t*)record);
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "SEL Record Read: %s: %s", (char*)hostname, (char*)event);
 }
 
 void orcm_sensor_ipmi_get_sel_events(ipmi_capsule_t* capsule)

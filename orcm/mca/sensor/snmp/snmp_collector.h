@@ -28,6 +28,8 @@
 enum auth_type {MD5, SHA1};
 enum sec_type {NOAUTH, AUTHNOPRIV, AUTHPRIV};
 
+class RuntimeMetrics;
+
 using std::runtime_error;
 
 class snmpCollector {
@@ -46,6 +48,7 @@ class snmpCollector {
         std::vector<vardata> collectData();
         std::string getHostname() { return hostname; };
         std::list<std::string> getOIDsList() { return oidList; };
+        void setRuntimeMetrics(RuntimeMetrics* metrics);
 
     private:
         struct snmp_session session;
@@ -53,6 +56,7 @@ class snmpCollector {
         netsnmp_pdu *response;
         oid anOID[MAX_OID_LEN];
         size_t anOID_len;
+        RuntimeMetrics* runtime_metrics_;
 
         std::string hostname, username, password, location;
         std::list<std::string> oidList;

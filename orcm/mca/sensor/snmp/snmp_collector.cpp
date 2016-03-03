@@ -8,9 +8,12 @@
  */
 
 #include "snmp_collector.h"
+
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
+
 using namespace std;
 
-snmpCollector::snmpCollector() {
+snmpCollector::snmpCollector() : runtime_metrics_(NULL) {
     snmpCollector("","");
 }
 
@@ -95,6 +98,10 @@ void snmpCollector::dump_pdu(netsnmp_pdu *p) {
     printf("Agent address[1]: %u\n",p->agent_addr[1]);
     printf("Agent address[2]: %u\n",p->agent_addr[2]);
     printf("Agent address[3]: %u\n",p->agent_addr[3]);
+}
+
+void snmpCollector::setRuntimeMetrics(RuntimeMetrics* metrics) {
+    runtime_metrics_ = metrics;
 }
 
 void snmpCollector::setOIDs(string strOIDs) {
@@ -186,10 +193,15 @@ vector<vardata> snmpCollector::packCollectedData(netsnmp_pdu *response) {
 
         char buffer[STRING_BUFFER_SIZE];
         snprint_objid(buffer, STRING_BUFFER_SIZE, vars->name, vars->name_length);
-
+        if(NULL != runtime_metrics_ && false == runtime_metrics_->IsTrackingLabel(static_cast<const char*>(buffer))) {
+            runtime_metrics_->TrackSensorLabel(static_cast<const char*>(buffer));
+        }
         if (NULL != var) {
-            var->setKey(string(buffer));
-            retValue.push_back(*var);
+            if(NULL == runtime_metrics_ ||
+               runtime_metrics_->DoCollectMetrics(static_cast<const char*>(buffer))) {
+                var->setKey(string(buffer));
+                retValue.push_back(*var);
+            }
             delete var;
         }
     }

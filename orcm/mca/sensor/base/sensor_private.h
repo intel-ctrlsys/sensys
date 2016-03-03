@@ -19,6 +19,7 @@
  * includes
  */
 #include "orcm_config.h"
+#include "orcm/util/utils.h"
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -121,6 +122,13 @@ ORCM_DECLSPEC void orcm_sensor_base_manually_sample(char *sensors,
 ORCM_DECLSPEC void orcm_sensor_base_collect(int fd, short args, void *cbdata);
 ORCM_DECLSPEC void orcm_sensor_base_set_sample_rate(int sample_rate);
 ORCM_DECLSPEC void orcm_sensor_base_get_sample_rate(int *sample_rate);
+
+ORCM_DECLSPEC int orcm_sensor_pack_data_header(opal_buffer_t* bucket, const char* primary_key, const char* hostname, const struct timeval* current_time);
+ORCM_DECLSPEC int orcm_sensor_pack_orcm_value(opal_buffer_t* bucket, const orcm_value_t* item);
+ORCM_DECLSPEC int orcm_sensor_pack_orcm_value_list(opal_buffer_t* bucket, const opal_list_t* list);
+ORCM_DECLSPEC int orcm_sensor_unpack_data_header_from_plugin(opal_buffer_t* bucket, char** hostname, struct timeval* current_time);
+ORCM_DECLSPEC int orcm_sensor_unpack_orcm_value(opal_buffer_t* bucket, orcm_value_t** result);
+ORCM_DECLSPEC int orcm_sensor_unpack_orcm_value_list(opal_buffer_t* bucket, opal_list_t** list);
 
 END_C_DECLS
 #endif

@@ -18,12 +18,13 @@ extern "C" {
 
     // ORCM
     #include "orcm/runtime/orcm_globals.h"
-    #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
+    #include "orcm/include/orcm/constants.h"
 
     extern int manage_sensor_sampling(int command, const char* sensor_spec);
 };
-
-#define MY_ORCM_SUCCESS 0
+#define GTEST_MOCK_TESTING
+#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
+#undef GTEST_MOCK_TESTING
 
 // Fixture
 using namespace std;
@@ -85,15 +86,15 @@ TEST_F(ut_base_tests, base_sensor_runtime_metrics)
     orcm_sensor_base_runtime_metrics_destroy(obj);
 
     obj = orcm_sensor_base_runtime_metrics_create("base", true, true);
-    EXPECT_EQ(MY_ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_set(obj, false, "base"));
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_set(obj, false, "base"));
     EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(obj, NULL));
-    EXPECT_EQ(MY_ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_reset(obj, "base"));
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_reset(obj, "base"));
     EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(obj, NULL));
-    EXPECT_EQ(MY_ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_set(obj, false, "not_base"));
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_set(obj, false, "not_base"));
     EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(obj, NULL));
-    EXPECT_EQ(MY_ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_set(obj, false, "base"));
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_set(obj, false, "base"));
     EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(obj, NULL));
-    EXPECT_EQ(MY_ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_reset(obj, "not_base"));
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_reset(obj, "not_base"));
     EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(obj, NULL));
     orcm_sensor_base_runtime_metrics_destroy(obj);
 }
@@ -134,4 +135,59 @@ TEST_F(ut_base_tests, base_manage_sensor_sampling_tests)
     test_module.enable_sampling = NULL;
     test_module.disable_sampling = NULL;
     test_module.reset_sampling = NULL;
+}
+
+TEST_F(ut_base_tests, base_manage_sensor_tracking_tests)
+{
+    void* obj = orcm_sensor_base_runtime_metrics_create("base", true, true);
+    RuntimeMetrics* rt_metrics = (RuntimeMetrics*)obj;
+
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(obj, NULL));
+    orcm_sensor_base_runtime_metrics_track(obj, "label_1");
+    orcm_sensor_base_runtime_metrics_track(obj, "label_2");
+    EXPECT_EQ(2, rt_metrics->sensorLabelMap_.size()) << "map size was not 2";
+    EXPECT_FALSE(rt_metrics->sensorLabelMap_.end() == rt_metrics->sensorLabelMap_.find("label_1"));
+    EXPECT_FALSE(rt_metrics->sensorLabelMap_.end() == rt_metrics->sensorLabelMap_.find("label_2"));
+    EXPECT_TRUE(rt_metrics->sensorLabelMap_.end() == rt_metrics->sensorLabelMap_.find("label_3"));
+    orcm_sensor_base_runtime_metrics_track(obj, "label_1");
+    EXPECT_EQ(2, rt_metrics->sensorLabelMap_.size()) << "map size was not 2; after inserting same element again.";
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(obj, "label_1"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(obj, "label_2"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(obj, "label_3")) << "unknown labels default to datagroup and this failed.";
+
+    orcm_sensor_base_runtime_metrics_destroy(obj);
+}
+
+
+TEST_F(ut_base_tests, base_manage_sensor_set_labels)
+{
+    void* obj = orcm_sensor_base_runtime_metrics_create("base", true, true);
+    RuntimeMetrics* rt_metrics = (RuntimeMetrics*)obj;
+    orcm_sensor_base_runtime_metrics_track(obj, "label_1");
+    orcm_sensor_base_runtime_metrics_track(obj, "label_2");
+
+    EXPECT_EQ(2, rt_metrics->sensorLabelMap_.size());
+    EXPECT_EQ(2, orcm_sensor_base_runtime_metrics_active_label_count(obj));
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_set(obj, false, "base:label_2"));
+    EXPECT_EQ(1, orcm_sensor_base_runtime_metrics_active_label_count(obj));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(obj, "label_1"));
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(obj, "label_2"));
+
+    orcm_sensor_base_runtime_metrics_begin(obj);
+    orcm_sensor_base_runtime_metrics_begin(obj);
+    int result = orcm_sensor_base_runtime_metrics_set(obj, false, "base:label_2");
+    EXPECT_EQ(ORCM_ERR_TIMEOUT, result) << "ERROR: " << result;
+    orcm_sensor_base_runtime_metrics_end(obj);
+    orcm_sensor_base_runtime_metrics_end(obj);
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(obj, "label_2"));
+    EXPECT_EQ(ORCM_ERR_NOT_FOUND, orcm_sensor_base_runtime_metrics_set(obj, false, "base:label_3"));
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_set(obj, false, "all"));
+    EXPECT_FALSE(orcm_sensor_base_runtime_metrics_do_collect(obj, "label_1"));
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_base_runtime_metrics_reset(obj, "base:all"));
+    EXPECT_TRUE(orcm_sensor_base_runtime_metrics_do_collect(obj, "label_2"));
+    EXPECT_EQ(2, orcm_sensor_base_runtime_metrics_active_label_count(obj));
+
+    orcm_sensor_base_runtime_metrics_destroy(obj);
 }

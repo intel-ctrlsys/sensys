@@ -1178,7 +1178,7 @@ int assemble_response(opal_list_t *db_query_results, opal_buffer_t **response_bu
         if (NULL != db_query_results) {
             results_count = (uint32_t)opal_list_get_size(db_query_results);
         }
-        OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output, "Results count to send back %ld", results_count));
+        OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output, "Results count to send back %d", results_count));
         if (OPAL_SUCCESS != (rc = opal_dss.pack(*response_buffer, &results_count, 1, OPAL_UINT32))) {
             rc = ORCM_ERR_PACK_FAILURE;
             ORTE_ERROR_LOG(rc);

@@ -10,12 +10,6 @@
 #ifndef ERRCOUNTS_H
 #define ERRCOUNTS_H
 
-#ifdef GTEST_MOCK_TESTING
-    #define PRIVATE public
-#else
-    #define PRIVATE private
-#endif
-
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/errcounts/sensor_errcounts.h"
 
@@ -34,6 +28,12 @@ extern "C" {
 
 class edac_collector;
 class RuntimeMetrics;
+
+#ifdef GTEST_MOCK_TESTING
+    #define PRIVATE public
+#else
+    #define PRIVATE private
+#endif
 
 class errcounts_impl
 {
@@ -104,5 +104,7 @@ class errcounts_impl
 
         static const std::string plugin_name_;
 };
+
+#undef PRIVATE
 
 #endif /* ERRCOUNTS_H */

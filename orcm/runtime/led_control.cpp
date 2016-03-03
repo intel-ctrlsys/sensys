@@ -10,9 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef HAVE_IPMICMD_H
-    #include <ipmicmd.h>
-#endif
+#include <ipmicmd.h>
 
 #include "led_control.h"
 
@@ -46,7 +44,6 @@ LedControl::~LedControl(){
 int LedControl::ipmiCmdOperation(unsigned short cmd, unsigned char *buff_in,
         int in_size, unsigned char *buff_out, int *out_size,
         unsigned char *ccode){
-#ifdef HAVE_IPMICMD_H
     int ret = 0;
     if (this->remote_node){
         ret = set_lan_options(hostname, user, pass, IPMI_SESSION_AUTHTYPE_PASSWORD,
@@ -57,9 +54,6 @@ int LedControl::ipmiCmdOperation(unsigned short cmd, unsigned char *buff_in,
     ret = ipmi_cmd(cmd, buff_in, in_size, buff_out, out_size, ccode, 0);
     ipmi_close();
     return ret;
-#else
-    return -1;
-#endif
 }
 
 int LedControl::getChassisIDState(){
@@ -67,13 +61,9 @@ int LedControl::getChassisIDState(){
     int out_size = sizeof(buff_out);
     unsigned char c_code;
 
-#ifdef HAVE_IPMICMD_H
     ipmiCmdOperation(CHASSIS_STATUS, NULL, 0, buff_out, &out_size, &c_code);
 
     return (buff_out[MISC_CHASSIS] >> 4) & 3;
-#else
-    return -1;
-#endif
 }
 
 int LedControl::setChassisID(unsigned char value){
@@ -86,11 +76,7 @@ int LedControl::setChassisID(unsigned char value){
     buff_in[1] = 1;
     in_size = (value == LED_INDEFINITE_ON) ? 2 : 1;
 
-#ifdef HAVE_IPMICMD_H
     return ipmiCmdOperation(CHASSIS_IDENTIFY, buff_in, in_size, NULL, &out_size, &c_code);
-#else
-    return -1;
-#endif
 }
 
 int LedControl::disableChassisID(){

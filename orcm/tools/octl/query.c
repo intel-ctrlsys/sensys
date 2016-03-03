@@ -1122,8 +1122,10 @@ char* get_orcm_octl_query_event_date(int cmd, char **argv){
             if (1 < rows_retrieved){
                 line = (opal_value_t*)opal_list_get_last(returned_list);
                 num_db_results = split_db_results(line->data.string, &db_results);
-                date = strndup(db_results[1], strlen(db_results[1]));
-                free_db_results(num_db_results, &db_results);
+                if ( NULL != db_results ) {
+                    date = strndup(db_results[1], strlen(db_results[1]));
+                    free_db_results(num_db_results, &db_results);
+                }
             }
             OBJ_RELEASE(returned_list);
         }
@@ -1179,9 +1181,11 @@ int split_db_results(char *db_res, char ***db_results){
         if (!regex_res) {
             res_size++;
             *db_results = (char **)realloc( *db_results, res_size * sizeof(char *) );
-            (*db_results)[res_size - 1] = strndup(&str_aux[db_res_matches[1].rm_so],
-                                          (int)(db_res_matches[1].rm_eo - db_res_matches[1].rm_so));
-            str_pos += db_res_matches[1].rm_eo;
+            if ( NULL != *db_results ) {
+                (*db_results)[res_size - 1] = strndup(&str_aux[db_res_matches[1].rm_so],
+                                              (int)(db_res_matches[1].rm_eo - db_res_matches[1].rm_so));
+                str_pos += db_res_matches[1].rm_eo;
+            }
             SAFEFREE(str_aux);
         } else {
             str_pos++;
@@ -1242,7 +1246,9 @@ char *add_to_str_date(char *date, int seconds){
         tm_date.tm_isdst = 0;
         t_res_date = mktime(&tm_date) + seconds;
         tm_res_date = localtime(&t_res_date);
-        strftime(res_date, 20, "%Y-%m-%d %H:%M:%S", tm_res_date);
+        if ( NULL != tm_res_date ) {
+            strftime(res_date, 20, "%Y-%m-%d %H:%M:%S", tm_res_date);
+        }
     }
 
     return res_date;

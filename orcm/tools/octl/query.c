@@ -311,20 +311,24 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
             strncat(filter_str, "%", strlen("%"));
         } else {
             fprintf(stderr, "\nERROR: could not allocate memory for filter string\n");
+            return NULL;
         }
         filter_item = create_string_filter("log", filter_str, CONTAINS);
         opal_list_append(filters_list, &filter_item->value.super);
+        SAFE_FREE(filter_str);
     } else if (7 == argc){
         /* Create filter for start time if necessary */
         if (NULL != (date_time_str = assemble_datetime(argv[2], argv[3]))) {
             filter_item = create_string_filter("time_stamp", date_time_str, GT);
             opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(date_time_str);
         }
         /* Create filter for end time if necessary */
         if (NULL != (date_time_str = assemble_datetime(argv[4], argv[5]))) {
             filter_item = create_string_filter("time_stamp", date_time_str, LT);
             opal_list_append(filters_list, &filter_item->value.super);
-            }
+            SAFE_FREE(date_time_str);
+        }
     } else if (8 == argc){
         /* Add 3 more chars including the end of the string '\0' */
         if (NULL != (filter_str = calloc(sizeof(char), strlen(argv[2])+3))){
@@ -333,18 +337,22 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
             strncat(filter_str, "%", strlen("%"));
         } else {
             fprintf(stderr, "\nERROR: could not allocate memory for filter string\n");
+            return NULL;
         }
         filter_item = create_string_filter("log", filter_str, CONTAINS);
         opal_list_append(filters_list, &filter_item->value.super);
+        SAFE_FREE(filter_str);
         /* Create filter for start time if necessary */
         if (NULL != (date_time_str = assemble_datetime(argv[3], argv[4]))) {
             filter_item = create_string_filter("time_stamp", date_time_str, GT);
             opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(date_time_str);
         }
         /* Create filter for end time if necessary */
         if (NULL != (date_time_str = assemble_datetime(argv[5], argv[6]))) {
             filter_item = create_string_filter("time_stamp", date_time_str, LT);
             opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(date_time_str);
         }
     } else {
         show_query_error_message("octl:query:log");
@@ -384,11 +392,13 @@ opal_list_t *create_query_history_filter(int argc, char **argv)
         if (NULL != (date_time_str = assemble_datetime(argv[2],argv[3]))) {
             filter_item = create_string_filter("time_stamp", date_time_str, GT);
             opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(date_time_str);
         }
         /* Create filter for end time if necessary */
         if (NULL != (date_time_str = assemble_datetime(argv[4], argv[5]))) {
             filter_item = create_string_filter("time_stamp", date_time_str, LT);
             opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(date_time_str);
         }
     } else {
         show_query_error_message("octl:query:history");
@@ -411,21 +421,25 @@ opal_list_t *create_query_sensor_filter(int argc, char **argv)
             replace_wildcard(&filter_str, false);
             filter_item = create_string_filter("data_item", filter_str, CONTAINS);
             opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(filter_str);
     } else if (8 == argc){
             /* Create a filter for a sensor */
             filter_str = strdup(argv[2]);
             replace_wildcard(&filter_str, false);
             filter_item = create_string_filter("data_item", filter_str, CONTAINS);
             opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(filter_str);
             /* Create filter for start time if necessary */
             if (NULL != (date_time_str = assemble_datetime(argv[3], argv[4]))) {
                 filter_item = create_string_filter("time_stamp", date_time_str, GT);
                 opal_list_append(filters_list, &filter_item->value.super);
+                SAFE_FREE(date_time_str);
             }
             /* Create filter for end time if necessary */
             if (NULL != (date_time_str = assemble_datetime(argv[5], argv[6]))) {
                 filter_item = create_string_filter("time_stamp", date_time_str, LT);
                 opal_list_append(filters_list, &filter_item->value.super);
+                SAFE_FREE(date_time_str);
             }
     } else if (10 == argc){
             /* Create a filter for a sensor */
@@ -433,27 +447,32 @@ opal_list_t *create_query_sensor_filter(int argc, char **argv)
             replace_wildcard(&filter_str, false);
             filter_item = create_string_filter("data_item", filter_str, CONTAINS);
             opal_list_append(filters_list, &filter_item->value.super);
+            SAFE_FREE(filter_str);
             /* Create filter for start time if necessary */
             if (NULL != (date_time_str = assemble_datetime(argv[3], argv[4]))) {
                 filter_item = create_string_filter("time_stamp", date_time_str, GT);
                 opal_list_append(filters_list, &filter_item->value.super);
+                SAFE_FREE(date_time_str);
             }
             /* Create filter for end time if necessary */
             if (NULL != (date_time_str = assemble_datetime(argv[5], argv[6]))) {
                 filter_item = create_string_filter("time_stamp", date_time_str, LT);
                 opal_list_append(filters_list, &filter_item->value.super);
+                SAFE_FREE(date_time_str);
             }
             filter_str = strdup(argv[7]);
             /* Create filter for upper bound necessary */
             if (false == replace_wildcard(&filter_str, true)){
                 filter_item = create_string_filter("value_str", filter_str, GT);
                 opal_list_append(filters_list, &filter_item->value.super);
+                SAFE_FREE(filter_str);
             }
             filter_str = strdup(argv[8]);
             /* Create filter for upper bound necessary */
             if (false == replace_wildcard(&filter_str, true)){
                 filter_item = create_string_filter("value_str", filter_str, LT);
                 opal_list_append(filters_list, &filter_item->value.super);
+                SAFE_FREE(filter_str);
             }
     } else {
         show_query_error_message("octl:query:sensor");
@@ -492,13 +511,13 @@ opal_list_t *create_query_event_data_filter(int argc, char **argv)
         /* Doing nothing here, we want to retrieve all the DB data */
         if (NULL != (filter_str = assemble_datetime(argv[3], argv[4]))){
             filter_item = create_string_filter("time_stamp", filter_str, GT);
-            SAFEFREE(filter_str);
             opal_list_append(filters_list, &filter_item->value.super);
+            SAFEFREE(filter_str);
         }
         if (NULL != (filter_str = assemble_datetime(argv[5], argv[6]))){
             filter_item = create_string_filter("time_stamp", filter_str, LT);
-            SAFEFREE(filter_str);
             opal_list_append(filters_list, &filter_item->value.super);
+            SAFEFREE(filter_str);
         }
         /* We create a fixed filter to get all events different from INFO
          * which are less important for the user.

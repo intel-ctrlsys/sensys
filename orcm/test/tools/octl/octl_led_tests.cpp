@@ -118,45 +118,45 @@ int ut_octl_led_tests::GetHostnameProc(char* hostname, orte_process_name_t* proc
 }
 
 TEST_F(ut_octl_led_tests, state_expected_tag){
-    char* cmdlist[4] = {"chassis-id", "state", "node[2:1-10]", NULL};
+    const char* cmdlist[4] = {"chassis-id", "state", "node[2:1-10]", NULL};
     next_state = -1;
-    ASSERT_EQ(ORCM_SUCCESS, orcm_octl_chassis_id_state(cmdlist));
+    ASSERT_EQ(ORCM_SUCCESS, orcm_octl_chassis_id_state((char**)cmdlist));
     ASSERT_EQ(ORCM_GET_CHASSIS_ID, ut_octl_led_tests::command);
     ASSERT_EQ(ORCM_GET_CHASSIS_ID_STATE, ut_octl_led_tests::subcommand);
 }
 
 TEST_F(ut_octl_led_tests, disable_expected_tag){
-    char* cmdlist[4] = {"chassis-id", "disable", "node[2:1-10]", NULL};
+    const char* cmdlist[4] = {"chassis-id", "disable", "node[2:1-10]", NULL};
     next_state = LED_OFF;
-    ASSERT_EQ(ORCM_SUCCESS, orcm_octl_chassis_id_off(cmdlist));
+    ASSERT_EQ(ORCM_SUCCESS, orcm_octl_chassis_id_off((char**)cmdlist));
     ASSERT_EQ(ORCM_SET_CHASSIS_ID, ut_octl_led_tests::command);
     ASSERT_EQ(ORCM_SET_CHASSIS_ID_OFF, ut_octl_led_tests::subcommand);
 }
 
 TEST_F(ut_octl_led_tests, enable_expected_tag_01){
-    char* cmdlist[5] = {"chassis-id", "enable", "10", "node[2:1-10]", NULL};
+    const char* cmdlist[5] = {"chassis-id", "enable", "10", "node[2:1-10]", NULL};
     next_state = LED_TEMPORARY_ON;
-    ASSERT_EQ(ORCM_SUCCESS, orcm_octl_chassis_id_on(cmdlist));
+    ASSERT_EQ(ORCM_SUCCESS, orcm_octl_chassis_id_on((char**)cmdlist));
     ASSERT_EQ(ORCM_SET_CHASSIS_ID, ut_octl_led_tests::command);
     ASSERT_EQ(ORCM_SET_CHASSIS_ID_TEMPORARY_ON, ut_octl_led_tests::subcommand);
 }
 
 TEST_F(ut_octl_led_tests, enable_expected_tag_02){
-    char* cmdlist[4] = {"chassis-id", "enable", "node[2:1-10]", NULL};
+    const char* cmdlist[4] = {"chassis-id", "enable", "node[2:1-10]", NULL};
     next_state = LED_INDEFINITE_ON;
-    ASSERT_EQ(ORCM_SUCCESS, orcm_octl_chassis_id_on(cmdlist));
+    ASSERT_EQ(ORCM_SUCCESS, orcm_octl_chassis_id_on((char**)cmdlist));
     ASSERT_EQ(ORCM_SET_CHASSIS_ID, ut_octl_led_tests::command);
     ASSERT_EQ(ORCM_SET_CHASSIS_ID_ON, ut_octl_led_tests::subcommand);
 }
 
 TEST_F(ut_octl_led_tests, get_chassis_id_state_more_arguments_than_expected){
-    char* cmdlist[5] = {"chassis-id", "state", "node", "extra_arg", NULL};
-    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_state(cmdlist));
+    const char* cmdlist[5] = {"chassis-id", "state", "node", "extra_arg", NULL};
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_state((char**)cmdlist));
 }
 
 TEST_F(ut_octl_led_tests, get_chassis_id_state_less_arguments_than_expected){
-    char* cmdlist[3] = {"chassis-id", "state", NULL};
-    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_state(cmdlist));
+    const char* cmdlist[3] = {"chassis-id", "state", NULL};
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_state((char**)cmdlist));
 }
 
 TEST_F(ut_octl_led_tests, get_chassis_id_state_null_arguments){
@@ -164,13 +164,13 @@ TEST_F(ut_octl_led_tests, get_chassis_id_state_null_arguments){
 }
 
 TEST_F(ut_octl_led_tests, set_chassis_id_off_more_arguments_than_expected){
-    char* cmdlist[5] = {"chassis-id", "disable", "node", "extra_arg", NULL};
-    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_off(cmdlist));
+    const char* cmdlist[5] = {"chassis-id", "disable", "node", "extra_arg", NULL};
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_off((char**)cmdlist));
 }
 
 TEST_F(ut_octl_led_tests, set_chassis_id_off_less_arguments_than_expected){
-    char* cmdlist[3] = {"chassis-id", "disable", NULL};
-    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_off(cmdlist));
+    const char* cmdlist[3] = {"chassis-id", "disable", NULL};
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_off((char**)cmdlist));
 }
 
 TEST_F(ut_octl_led_tests, set_chassis_id_off_null_arguments){
@@ -178,13 +178,13 @@ TEST_F(ut_octl_led_tests, set_chassis_id_off_null_arguments){
 }
 
 TEST_F(ut_octl_led_tests, set_chassis_id_on_more_arguments_than_expected){
-    char* cmdlist[6] = {"chassis-id", "enable", "10", "node", "extra_arg", NULL};
-    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_on(cmdlist));
+    const char* cmdlist[6] = {"chassis-id", "enable", "10", "node", "extra_arg", NULL};
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_on((char**)cmdlist));
 }
 
 TEST_F(ut_octl_led_tests, set_chassis_id_on_less_arguments_than_expected){
-    char* cmdlist[3] = {"chassis-id", "enable", NULL};
-    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_on(cmdlist));
+    const char* cmdlist[3] = {"chassis-id", "enable", NULL};
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, orcm_octl_chassis_id_on((char**)cmdlist));
 }
 
 TEST_F(ut_octl_led_tests, set_chassis_id_on_null_arguments){

@@ -1667,7 +1667,7 @@ void collect_ipmi_sample(orcm_sensor_sampler_t *sampler)
         }
 
         host->capsule.node.auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
-        host->capsule.node.priv = IPMI_PRIV_LEVEL_ADMIN;
+        host->capsule.node.priv = IPMI_PRIV_LEVEL_USER;
         host->capsule.node.ciph = 3; /* Cipher suite No. 3 */
 
         /* Running a sample for a Node */

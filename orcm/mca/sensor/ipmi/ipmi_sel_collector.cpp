@@ -42,7 +42,7 @@ ipmi_sel_collector::ipmi_sel_collector(const char* hostname, const ipmi_credenti
 {
     char addr[16];
     int rv = set_lan_options((char*)credentials.get_bmc_ip(), (char*)credentials.get_username(), (char*)credentials.get_password(),
-                             IPMI_SESSION_AUTHTYPE_PASSWORD, IPMI_PRIV_LEVEL_ADMIN, 3, &addr, 16);
+                             IPMI_SESSION_AUTHTYPE_PASSWORD, IPMI_PRIV_LEVEL_USER, 3, &addr, 16);
     if(0 != rv) {
         stringstream ss;
         ss << "Failed to connect to the BMC on host '" << hostname_ << "'";

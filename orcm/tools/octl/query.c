@@ -465,15 +465,15 @@ opal_list_t *create_query_sensor_filter(int argc, char **argv)
             if (false == replace_wildcard(&filter_str, true)){
                 filter_item = create_string_filter("value_str", filter_str, GT);
                 opal_list_append(filters_list, &filter_item->value.super);
-                SAFE_FREE(filter_str);
             }
+            SAFE_FREE(filter_str);
             filter_str = strdup(argv[8]);
             /* Create filter for upper bound necessary */
             if (false == replace_wildcard(&filter_str, true)){
                 filter_item = create_string_filter("value_str", filter_str, LT);
                 opal_list_append(filters_list, &filter_item->value.super);
-                SAFE_FREE(filter_str);
             }
+            SAFE_FREE(filter_str);
     } else {
         show_query_error_message("octl:query:sensor");
         return NULL;

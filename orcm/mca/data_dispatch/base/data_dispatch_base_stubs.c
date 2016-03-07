@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -16,19 +16,19 @@
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orte/mca/errmgr/errmgr.h"
-#include "orcm/mca/evgen/base/base.h"
+#include "orcm/mca/data_dispatch/base/base.h"
 
 
-void orcm_evgen_base_event(int sd, short args, void *cbdata)
+void orcm_data_dispatch_base_event(int sd, short args, void *cbdata)
 {
-    opal_output_verbose(5, orcm_evgen_base_framework.framework_output,
-                        "%s evgen:base: evgen event called",
+    opal_output_verbose(5, orcm_data_dispatch_base_framework.framework_output,
+                        "%s data_dispatch:base: data_dispatch event called",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
-    orcm_evgen_active_module_t* active;
+    orcm_data_dispatch_active_module_t* active;
     orcm_ras_event_t *cd = (orcm_ras_event_t*)cbdata;
 
-    OPAL_LIST_FOREACH(active, &orcm_evgen_base.actives, orcm_evgen_active_module_t) {
+    OPAL_LIST_FOREACH(active, &orcm_data_dispatch_base.actives, orcm_data_dispatch_active_module_t) {
         active->module->generate(cd);
     }
 

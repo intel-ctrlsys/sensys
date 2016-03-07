@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015      Intel, Inc.  All rights reserved.
+# Copyright (c) 2015-2016      Intel, Inc.  All rights reserved.
 #
 # $COPYRIGHT$
 #
@@ -9,14 +9,14 @@
 #
 
 # main library setup
-noinst_LTLIBRARIES = libmca_evgen.la
-libmca_evgen_la_SOURCES =
+noinst_LTLIBRARIES = libmca_data_dispatch.la
+libmca_data_dispatch_la_SOURCES =
 
 # local files
-headers = evgen.h \
-          evgen_types.h
+headers = data_dispatch.h \
+          data_dispatch_types.h
 
-libmca_evgen_la_SOURCES += $(headers)
+libmca_data_dispatch_la_SOURCES += $(headers)
 
 # Conditionally install the header files
 if WANT_INSTALL_HEADERS

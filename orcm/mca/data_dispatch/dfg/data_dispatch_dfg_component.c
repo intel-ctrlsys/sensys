@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -15,18 +15,18 @@
 
 #include "orte/runtime/orte_globals.h"
 
-#include "orcm/mca/evgen/evgen.h"
-#include "orcm/mca/evgen/saeg/evgen_saeg.h"
+#include "orcm/mca/data_dispatch/data_dispatch.h"
+#include "orcm/mca/data_dispatch/dfg/data_dispatch_dfg.h"
 
 static int component_open(void);
 static int component_close(void);
 static int component_query(mca_base_module_t **module, int *priority);
 
-orcm_evgen_base_component_t mca_evgen_saeg_component = {
+orcm_data_dispatch_base_component_t mca_data_dispatch_dfg_component = {
     {
-        ORCM_EVGEN_BASE_VERSION_1_0_0,
+        ORCM_DATA_DISPATCH_BASE_VERSION_1_0_0,
         /* Component name and version */
-        .mca_component_name = "saeg",
+        .mca_component_name = "dfg",
         MCA_BASE_MAKE_VERSION(component, ORCM_MAJOR_VERSION, ORCM_MINOR_VERSION,
                               ORCM_RELEASE_VERSION),
 
@@ -54,7 +54,7 @@ static int component_close(void)
 
 static int component_query(mca_base_module_t **module, int *priority)
 {
-    *module = (mca_base_module_t*)&orcm_evgen_saeg_module;
+    *module = (mca_base_module_t*)&orcm_data_dispatch_dfg_module;
     *priority = 20;
     return ORCM_SUCCESS;
 }

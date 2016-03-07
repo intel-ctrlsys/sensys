@@ -10,7 +10,7 @@ extern "C" {
     #include "orcm/mca/db/base/base.h"
     #include "opal/class/opal_list.h"
     #include "opal/mca/event/external/external.h"
-    #include "orcm/mca/evgen/saeg/evgen_saeg.h"
+    #include "orcm/mca/data_dispatch/dfg/data_dispatch_dfg.h"
     #include "opal/mca/event/event.h"
 };
 

@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016      Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -31,7 +31,7 @@
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/base/base.h"
-#include "orcm/mca/evgen/base/base.h"
+#include "orcm/mca/data_dispatch/base/base.h"
 
 /*
  * The following file was created by configure.  It contains extern
@@ -39,64 +39,64 @@
  * component's public mca_base_component_t struct.
  */
 
-#include "orcm/mca/evgen/base/static-components.h"
+#include "orcm/mca/data_dispatch/base/static-components.h"
 
 /*
  * Global variables
  */
-orcm_evgen_base_t orcm_evgen_base;
-int orcm_evgen_base_output = -1;
-opal_event_base_t *orcm_evgen_evbase = NULL;
+orcm_data_dispatch_base_t orcm_data_dispatch_base;
+int orcm_data_dispatch_base_output = -1;
+opal_event_base_t *orcm_data_dispatch_evbase = NULL;
 
-static int orcm_evgen_base_close(void)
+static int orcm_data_dispatch_base_close(void)
 {
-    if (NULL != orcm_evgen_evbase) {
-        opal_progress_thread_finalize("evgen");
+    if (NULL != orcm_data_dispatch_evbase) {
+        opal_progress_thread_finalize("data_dispatch");
     }
 
-    OPAL_LIST_DESTRUCT(&orcm_evgen_base.actives);
+    OPAL_LIST_DESTRUCT(&orcm_data_dispatch_base.actives);
 
     /* Close all remaining available components */
-    return mca_base_framework_components_close(&orcm_evgen_base_framework, NULL);
+    return mca_base_framework_components_close(&orcm_data_dispatch_base_framework, NULL);
 }
 
 /**
  * Function for finding and opening either all MCA components, or the one
  * that was specifically requested via a MCA parameter.
  */
-static int orcm_evgen_base_open(mca_base_open_flag_t flags)
+static int orcm_data_dispatch_base_open(mca_base_open_flag_t flags)
 {
     int rc;
 
     /* construct the array of active modules */
-    OBJ_CONSTRUCT(&orcm_evgen_base.actives, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_data_dispatch_base.actives, opal_list_t);
 
     /* start the progress thread */
-      if (NULL == (orcm_evgen_evbase = opal_progress_thread_init("evgen"))) {
+      if (NULL == (orcm_data_dispatch_evbase = opal_progress_thread_init("data_dispatch"))) {
         return ORCM_ERROR;
     }
 
     /* Open up all available components */
-    rc = mca_base_framework_components_open(&orcm_evgen_base_framework, flags);
-    orcm_evgen_base_output = orcm_evgen_base_framework.framework_output;
+    rc = mca_base_framework_components_open(&orcm_data_dispatch_base_framework, flags);
+    orcm_data_dispatch_base_output = orcm_data_dispatch_base_framework.framework_output;
 
-    orcm_evgen_base.sensor_db_commit_rate = 1;
-    (void)mca_base_var_register("orcm", "evgen", "base", "sensor_db_commit_rate",
+    orcm_data_dispatch_base.sensor_db_commit_rate = 1;
+    (void)mca_base_var_register("orcm", "data_dispatch", "base", "sensor_db_commit_rate",
                                 "commit rate for sensor data",
                                 MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                 OPAL_INFO_LVL_9,
                                 MCA_BASE_VAR_SCOPE_READONLY,
-                                &orcm_evgen_base.sensor_db_commit_rate);
+                                &orcm_data_dispatch_base.sensor_db_commit_rate);
 
     return rc;
 }
 
-MCA_BASE_FRAMEWORK_DECLARE(orcm, evgen, "ORCM Event generation", NULL,
-                           orcm_evgen_base_open, orcm_evgen_base_close,
-                           mca_evgen_base_static_components, 0);
+MCA_BASE_FRAMEWORK_DECLARE(orcm, data_dispatch, "ORCM Data Dispatcher", NULL,
+                           orcm_data_dispatch_base_open, orcm_data_dispatch_base_close,
+                           mca_data_dispatch_base_static_components, 0);
 
 
-const char* orcm_evgen_base_print_type(int t)
+const char* orcm_data_dispatch_base_print_type(int t)
 {
     switch(t) {
         case ORCM_RAS_EVENT_SENSOR:
@@ -112,7 +112,7 @@ const char* orcm_evgen_base_print_type(int t)
     }
 }
 
-const char* orcm_evgen_base_print_severity(int s)
+const char* orcm_data_dispatch_base_print_severity(int s)
 {
     switch(s) {
         case ORCM_RAS_SEVERITY_EMERG:
@@ -139,7 +139,7 @@ const char* orcm_evgen_base_print_severity(int s)
 }
 
 /* framework class instanstiations */
-OBJ_CLASS_INSTANCE(orcm_evgen_active_module_t,
+OBJ_CLASS_INSTANCE(orcm_data_dispatch_active_module_t,
                    opal_list_item_t,
                    NULL, NULL);
 

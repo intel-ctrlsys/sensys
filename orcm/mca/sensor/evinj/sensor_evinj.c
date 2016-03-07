@@ -37,7 +37,7 @@
 #include "orte/util/name_fns.h"
 #include "orte/runtime/orte_globals.h"
 
-#include "orcm/mca/evgen/base/base.h"
+#include "orcm/mca/data_dispatch/base/base.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"

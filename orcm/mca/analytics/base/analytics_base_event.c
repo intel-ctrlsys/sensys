@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -10,7 +10,7 @@
 #include "orcm/mca/analytics/base/analytics_private.h"
 #include "orcm/util/utils.h"
 #include "orcm/runtime/orcm_globals.h"
-#include "orcm/mca/evgen/evgen.h"
+#include "orcm/mca/data_dispatch/data_dispatch.h"
 
 #include <ctype.h>
 

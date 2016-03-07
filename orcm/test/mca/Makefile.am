@@ -1,5 +1,5 @@
 if HAVE_GTEST
-gtestSubdirs=sensor analytics evgen 
+gtestSubdirs=sensor analytics data_dispatch 
 endif
 
 SUBDIRS=$(gtestSubdirs)

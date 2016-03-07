@@ -1,5 +1,5 @@
 if HAVE_GTEST
-gtestSubdirs=saeg
+gtestSubdirs=dfg
 endif
 
 SUBDIRS=$(gtestSubdirs)

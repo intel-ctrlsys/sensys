@@ -14,28 +14,24 @@ include $(top_srcdir)/Makefile.ompi-rules
 # other non-zero: fail
 #
 
-TESTS = saeg_tests
+TESTS = dfg_tests
 
 #
 # Executables to be built for "make check"
 #
 
-check_PROGRAMS = saeg_tests
+check_PROGRAMS = dfg_tests
 
-saeg_tests_SOURCES = \
-       evgen_saeg_tests.cpp \
-       evgen_saeg_tests.h   
-	
-SAEG_BUILD_DIR=$(top_builddir)/orcm/mca/evgen/saeg
+dfg_tests_SOURCES = \
+       data_dispatch_dfg_tests.cpp \
+       data_dispatch_dfg_tests.h
 
-if MCA_BUILD_orcm_evgen_saeg_DSO
+DFG_BUILD_DIR=$(top_builddir)/orcm/mca/data_dispatch/dfg
 
-SAEG_LIB=$(SAEG_BUILD_DIR)/mca_evgen_saeg.la 
-
+if MCA_BUILD_orcm_data_dispatch_dfg_DSO
+DFG_LIB=$(DFG_BUILD_DIR)/mca_data_dispatch_dfg.la 
 else
-
-SAEG_LIB=$(SAEG_BUILD_DIR)/libmca_evgen_saeg.la 
-
+DFG_LIB=$(DFG_BUILD_DIR)/libmca_data_dispatch_dfg.la 
 endif	
 
 #
@@ -44,12 +40,12 @@ endif
 
 LDADD = \
         @GTEST_LIBRARY_DIR@/libgtest_main.a \
-        $(SAEG_LIB)
+        $(DFG_LIB)
 
 AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto
 
 #
 # Preprocessor flags
 #
-SAEG_DIR=$(top_srcdir)/orcm/mca/evgen/saeg
-AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_srcdir) -I$(SAEG_DIR)
+DFG_DIR=$(top_srcdir)/orcm/mca/data_dispatch/dfg
+AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_srcdir) -I$(DFG_DIR)

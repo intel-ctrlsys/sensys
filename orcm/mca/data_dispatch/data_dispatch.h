@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016      Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -12,8 +12,8 @@
  *
  */
 
-#ifndef MCA_EVGEN_H
-#define MCA_EVGEN_H
+#ifndef MCA_DATA_DISPATCH_H
+#define MCA_DATA_DISPATCH_H
 
 /*
  * includes
@@ -26,33 +26,33 @@
 
 #include "orte/types.h"
 
-#include "orcm/mca/evgen/evgen_types.h"
+#include "orcm/mca/data_dispatch/data_dispatch_types.h"
 
 BEGIN_C_DECLS
 
 /* expose the base verbose output for use in macros */
-extern int orcm_evgen_base_output;
+extern int orcm_data_dispatch_base_output;
 
 /* expose the event base for this framework */
-extern opal_event_base_t *orcm_evgen_evbase;
+extern opal_event_base_t *orcm_data_dispatch_evbase;
 
 /* expose the base function that will process the
  * event declarations */
-extern void orcm_evgen_base_event(int sd, short args, void *cbdata);
+extern void orcm_data_dispatch_base_event(int sd, short args, void *cbdata);
 
 /* define a macro to be used for declaring a RAS event */
-#define ORCM_RAS_EVENT(a)                                                    \
-    do {                                                                     \
-        opal_output_verbose(1, orcm_evgen_base_output,                       \
-                            "%s[%s:%d] RAS EVENT: %s:%s",                    \
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),              \
-                            __FILE__, __LINE__,                              \
-                            orcm_evgen_base_print_type((a)->type),           \
-                            orcm_evgen_base_print_severity((a)->severity));  \
-        opal_event_set(orcm_evgen_evbase, &((a)->ev), -1,                    \
-                       OPAL_EV_WRITE,                                        \
-                       orcm_evgen_base_event, (a));                          \
-        opal_event_active((&(a)->ev), OPAL_EV_WRITE, 1);                     \
+#define ORCM_RAS_EVENT(a)                                                            \
+    do {                                                                             \
+        opal_output_verbose(1, orcm_data_dispatch_base_output,                       \
+                            "%s[%s:%d] RAS EVENT: %s:%s",                            \
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                      \
+                            __FILE__, __LINE__,                                      \
+                            orcm_data_dispatch_base_print_type((a)->type),           \
+                            orcm_data_dispatch_base_print_severity((a)->severity));  \
+        opal_event_set(orcm_data_dispatch_evbase, &((a)->ev), -1,                    \
+                       OPAL_EV_WRITE,                                                \
+                       orcm_data_dispatch_base_event, (a));                          \
+        opal_event_active((&(a)->ev), OPAL_EV_WRITE, 1);                             \
     } while(0);
 
 /* provide a convenience macro for adding reporter info
@@ -113,47 +113,47 @@ extern void orcm_evgen_base_event(int sd, short args, void *cbdata);
  */
 
 /* initialize the module */
-typedef void (*orcm_evgen_module_init_fn_t)(void);
+typedef void (*orcm_data_dispatch_module_init_fn_t)(void);
 
 /* finalize the module */
-typedef void (*orcm_evgen_module_fini_fn_t)(void);
+typedef void (*orcm_data_dispatch_module_fini_fn_t)(void);
 
 /* generate a RAS event in the module's format - the module
  * is allowed to ignore the event if the incoming alert
  * is not supported in this module */
-typedef void (*orcm_evgen_module_generate_fn_t)(orcm_ras_event_t *cd);
+typedef void (*orcm_data_dispatch_module_generate_fn_t)(orcm_ras_event_t *cd);
 
 /*
  * Ver 1.0
  */
-struct orcm_evgen_base_module_1_0_0_t {
-    orcm_evgen_module_init_fn_t      init;
-    orcm_evgen_module_fini_fn_t      finalize;
-    orcm_evgen_module_generate_fn_t  generate;
+struct orcm_data_dispatch_base_module_1_0_0_t {
+    orcm_data_dispatch_module_init_fn_t      init;
+    orcm_data_dispatch_module_fini_fn_t      finalize;
+    orcm_data_dispatch_module_generate_fn_t  generate;
 };
 
-typedef struct orcm_evgen_base_module_1_0_0_t orcm_evgen_base_module_1_0_0_t;
-typedef orcm_evgen_base_module_1_0_0_t orcm_evgen_base_module_t;
+typedef struct orcm_data_dispatch_base_module_1_0_0_t orcm_data_dispatch_base_module_1_0_0_t;
+typedef orcm_data_dispatch_base_module_1_0_0_t orcm_data_dispatch_base_module_t;
 
 /*
  * the standard component data structure
  */
-struct orcm_evgen_base_component_1_0_0_t {
+struct orcm_data_dispatch_base_component_1_0_0_t {
     mca_base_component_t base_version;
     mca_base_component_data_t base_data;
     char *data_measured;
 };
-typedef struct orcm_evgen_base_component_1_0_0_t orcm_evgen_base_component_1_0_0_t;
-typedef orcm_evgen_base_component_1_0_0_t orcm_evgen_base_component_t;
+typedef struct orcm_data_dispatch_base_component_1_0_0_t orcm_data_dispatch_base_component_1_0_0_t;
+typedef orcm_data_dispatch_base_component_1_0_0_t orcm_data_dispatch_base_component_t;
 
 /*
- * Macro for use in components that are of type evgen v1.0.0
+ * Macro for use in components that are of type data_dispatch v1.0.0
  */
-#define ORCM_EVGEN_BASE_VERSION_1_0_0 \
+#define ORCM_DATA_DISPATCH_BASE_VERSION_1_0_0 \
   /* evgen v1.0 is chained to MCA v2.0 */ \
-    ORCM_MCA_BASE_VERSION_2_1_0("evgen", 1, 0, 0)
+    ORCM_MCA_BASE_VERSION_2_1_0("data_dispatch", 1, 0, 0)
 
 
 END_C_DECLS
 
-#endif /* MCA_EVGEN_H */
+#endif /* MCA_DATA_DISPATCH_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -42,21 +42,21 @@
 #include "orcm/mca/db/db.h"
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/util/utils.h"
-#include "orcm/mca/evgen/base/base.h"
-#include "orcm/mca/evgen/saeg/evgen_saeg.h"
+#include "orcm/mca/data_dispatch/base/base.h"
+#include "orcm/mca/data_dispatch/dfg/data_dispatch_dfg.h"
 
 /* API functions */
 
-static void saeg_init(void);
-static void saeg_finalize(void);
-static void saeg_generate(orcm_ras_event_t *cd);
+static void dfg_init(void);
+static void dfg_finalize(void);
+static void dfg_generate(orcm_ras_event_t *cd);
 
 /* The module struct */
 
-orcm_evgen_base_module_t orcm_evgen_saeg_module = {
-    saeg_init,
-    saeg_finalize,
-    saeg_generate
+orcm_data_dispatch_base_module_t orcm_data_dispatch_dfg_module = {
+    dfg_init,
+    dfg_finalize,
+    dfg_generate
 };
 
 /* local variables */
@@ -64,14 +64,14 @@ static int env_dbhandle = -1;
 static int event_dbhandle = -1;
 static int env_db_commit_count = 0;
 
-static void saeg_env_db_open_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
+static void dfg_env_db_open_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
                                     void *cbdata)
 {
     if (0 == status) {
         env_dbhandle = dbh;
     } else {
-        OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
-                             "%s evgen:saeg DB env open operation failed",
+        OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
+                             "%s data_dispatch:dfg DB env open operation failed",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     }
 
@@ -81,14 +81,14 @@ static void saeg_env_db_open_cbfunc(int dbh, int status, opal_list_t *input_list
 
 }
 
-static void saeg_event_db_open_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
+static void dfg_event_db_open_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
                                       void *cbdata)
 {
     if (0 == status) {
         event_dbhandle = dbh;
     } else {
-        OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
-                             "%s evgen:saeg DB event open operation failed",
+        OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
+                             "%s data_dispatch:dfg DB event open operation failed",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     }
 
@@ -98,7 +98,7 @@ static void saeg_event_db_open_cbfunc(int dbh, int status, opal_list_t *input_li
 
 }
 
-static void saeg_data_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
+static void dfg_data_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
                              void *cbdata)
 {
     if (NULL != input_list) {
@@ -107,7 +107,7 @@ static void saeg_data_cbfunc(int dbh, int status, opal_list_t *input_list, opal_
 
 }
 
-static opal_list_t* saeg_init_env_dbhandle_commit_rate(void)
+static opal_list_t* dfg_init_env_dbhandle_commit_rate(void)
 {
     orcm_value_t *attribute;
     opal_list_t *props = NULL; /* DB Attributes list */
@@ -119,7 +119,7 @@ static opal_list_t* saeg_init_env_dbhandle_commit_rate(void)
         if (NULL != attribute) {
             attribute->value.key = strdup("autocommit");
             attribute->value.type = OPAL_BOOL;
-            if (orcm_evgen_base.sensor_db_commit_rate > 1) {
+            if (orcm_data_dispatch_base.sensor_db_commit_rate > 1) {
                 attribute->value.data.flag = false; /* Disable Auto commit/Enable grouped commits */
             } else {
                 attribute->value.data.flag = true; /* Enable Auto commit/Disable grouped commits */
@@ -133,32 +133,32 @@ static opal_list_t* saeg_init_env_dbhandle_commit_rate(void)
     return props;
 }
 
-static void saeg_init(void)
+static void dfg_init(void)
 {
     opal_list_t *props = NULL;
 
-    OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
-                         "%s evgen:saeg init",
+    OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
+                         "%s data_dispatch:dfg init",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     if (0 > env_dbhandle) {
         /* get a db handle for env data*/
-        props = saeg_init_env_dbhandle_commit_rate();
-        orcm_db.open("saeg_env", props, saeg_env_db_open_cbfunc, NULL);
+        props = dfg_init_env_dbhandle_commit_rate();
+        orcm_db.open("dfg_env", props, dfg_env_db_open_cbfunc, NULL);
     }
 
     if (0 > event_dbhandle) {
         /* get a db handle for event data*/
-        orcm_db.open("saeg_event", NULL, saeg_event_db_open_cbfunc, NULL);
+        orcm_db.open("dfg_event", NULL, dfg_event_db_open_cbfunc, NULL);
     }
 
     return;
 }
 
-static void saeg_finalize(void)
+static void dfg_finalize(void)
 {
 
-    OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
-                         "%s evgen:saeg finalize",
+    OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
+                         "%s data_dispatch:dfg finalize",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
     if (0 <= env_dbhandle) {
@@ -173,7 +173,7 @@ static void saeg_finalize(void)
     return;
 }
 
-static opal_list_t* saeg_convert_event_data_to_list(orcm_ras_event_t *ecd)
+static opal_list_t* dfg_convert_event_data_to_list(orcm_ras_event_t *ecd)
 {
     orcm_value_t *metric = NULL;
     struct timeval eventtime;
@@ -185,7 +185,7 @@ static opal_list_t* saeg_convert_event_data_to_list(orcm_ras_event_t *ecd)
         return NULL;
     }
 
-    metric = orcm_util_load_orcm_value("type", (void *) orcm_evgen_base_print_type(ecd->type), OPAL_STRING, NULL);
+    metric = orcm_util_load_orcm_value("type", (void *) orcm_data_dispatch_base_print_type(ecd->type), OPAL_STRING, NULL);
     if (NULL == metric) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         OBJ_RELEASE(input_list);
@@ -193,7 +193,7 @@ static opal_list_t* saeg_convert_event_data_to_list(orcm_ras_event_t *ecd)
     }
     opal_list_append(input_list, (opal_list_item_t *)metric);
 
-    metric = orcm_util_load_orcm_value("severity", (void *) orcm_evgen_base_print_severity(ecd->severity), OPAL_STRING, NULL);
+    metric = orcm_util_load_orcm_value("severity", (void *) orcm_data_dispatch_base_print_severity(ecd->severity), OPAL_STRING, NULL);
     if (NULL == metric) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         OBJ_RELEASE(input_list);
@@ -222,7 +222,7 @@ static opal_list_t* saeg_convert_event_data_to_list(orcm_ras_event_t *ecd)
     return input_list;
 }
 
-static void saeg_env_data_commit_cb(int dbhandle, int status, opal_list_t *in,
+static void dfg_env_data_commit_cb(int dbhandle, int status, opal_list_t *in,
                                     opal_list_t *out, void *cbdata) {
     if (ORCM_SUCCESS != status) {
         ORTE_ERROR_LOG(status);
@@ -231,38 +231,38 @@ static void saeg_env_data_commit_cb(int dbhandle, int status, opal_list_t *in,
 }
 
 
-static void saeg_generate_database_event(opal_list_t *input_list, int data_type)
+static void dfg_generate_database_event(opal_list_t *input_list, int data_type)
 {
 
     if (ORCM_RAS_EVENT_SENSOR == data_type ) {
         if (0 <= env_dbhandle) {
-            orcm_db.store_new(env_dbhandle, ORCM_DB_ENV_DATA, input_list, NULL, saeg_data_cbfunc, NULL);
-            if (orcm_evgen_base.sensor_db_commit_rate > 1) {
+            orcm_db.store_new(env_dbhandle, ORCM_DB_ENV_DATA, input_list, NULL, dfg_data_cbfunc, NULL);
+            if (orcm_data_dispatch_base.sensor_db_commit_rate > 1) {
                 env_db_commit_count++;
-                if (env_db_commit_count == orcm_evgen_base.sensor_db_commit_rate) {
-                    orcm_db.commit(env_dbhandle, saeg_env_data_commit_cb, NULL);
+                if (env_db_commit_count == orcm_data_dispatch_base.sensor_db_commit_rate) {
+                    orcm_db.commit(env_dbhandle, dfg_env_data_commit_cb, NULL);
                     env_db_commit_count = 0;
                 }
             }
         }
         else {
-            OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
-                                 "%s evgen:saeg couldn't store env data as db handler isn't opened",
+            OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
+                                 "%s data_dispatch:dfg couldn't store env data as db handler isn't opened",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         }
     }
     else {
         if (0 <= event_dbhandle) {
-            orcm_db.store_new(event_dbhandle, ORCM_DB_EVENT_DATA, input_list, NULL, saeg_data_cbfunc, NULL);
+            orcm_db.store_new(event_dbhandle, ORCM_DB_EVENT_DATA, input_list, NULL, dfg_data_cbfunc, NULL);
         }
         else {
-            OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
-                                 "%s evgen:saeg couldn't store event data as db handler isn't opened",
+            OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
+                                 "%s data_dispatch:dfg couldn't store event data as db handler isn't opened",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         }
     }
 }
-static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
+static void dfg_generate_notifier_event(orcm_ras_event_t *ecd)
 {
     orcm_value_t *list_item = NULL;
     char *notifier_msg = NULL;
@@ -283,8 +283,8 @@ static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
     }
     if ((NULL != notifier_msg) && (NULL != notifier_action)) {
        if ((ecd->severity >= ORCM_RAS_SEVERITY_EMERG) && (ecd->severity < ORCM_RAS_SEVERITY_UNKNOWN)) {
-           OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
-                                "%s evgen:saeg generating notifier with severity %d "
+           OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
+                                "%s data_dispatch:dfg generating notifier with severity %d "
                                 "and notifier action as %s",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ecd->severity, notifier_action));
             ORTE_NOTIFIER_SYSTEM_EVENT(ecd->severity, notifier_msg, notifier_action);
@@ -292,7 +292,7 @@ static void saeg_generate_notifier_event(orcm_ras_event_t *ecd)
     }
 }
 
-static void saeg_generate_storage_events(orcm_ras_event_t *ecd)
+static void dfg_generate_storage_events(orcm_ras_event_t *ecd)
 {
     opal_list_t *input_list = NULL;
     orcm_value_t *list_item = NULL;
@@ -304,7 +304,7 @@ static void saeg_generate_storage_events(orcm_ras_event_t *ecd)
         if (0 == strcmp(list_item->value.key, "storage_type")) {
             switch (list_item->value.data.uint) {
             case ORCM_STORAGE_TYPE_NOTIFICATION: //Need implementation
-                saeg_generate_notifier_event(ecd);
+                dfg_generate_notifier_event(ecd);
                 break;
 
             case ORCM_STORAGE_TYPE_PUBSUB: //Need implementation
@@ -319,30 +319,30 @@ static void saeg_generate_storage_events(orcm_ras_event_t *ecd)
     }
 
     //Send event to DB regardless of storage_type key in event
-    input_list = saeg_convert_event_data_to_list(ecd);
+    input_list = dfg_convert_event_data_to_list(ecd);
 
     if (NULL == input_list) {
         return;
     }
 
-    saeg_generate_database_event(input_list, ecd->type);
+    dfg_generate_database_event(input_list, ecd->type);
 }
 
-static void saeg_generate(orcm_ras_event_t *ecd)
+static void dfg_generate(orcm_ras_event_t *ecd)
 {
 
-    OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
-                         "%s evgen:saeg record event",
+    OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
+                         "%s data_dispatch:dfg record event",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
     if (NULL == ecd) {
-        OPAL_OUTPUT_VERBOSE((1, orcm_evgen_base_framework.framework_output,
-                             "%s evgen:saeg NULL event data",
+        OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
+                             "%s data_dispatch:dfg NULL event data",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         return;
     }
 
-    saeg_generate_storage_events(ecd);
+    dfg_generate_storage_events(ecd);
 
     return;
 }

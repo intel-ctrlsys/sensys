@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ * Copyright (c) 2015 -2016     Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -19,7 +19,7 @@
 #include "orte/runtime/orte_globals.h"
 #include "orte/mca/notifier/notifier.h"
 
-#include "orcm/mca/evgen/evgen.h"
+#include "orcm/mca/data_dispatch/data_dispatch.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
 #include "analytics_cott.h"
 #include "host_analyze_counters.h"

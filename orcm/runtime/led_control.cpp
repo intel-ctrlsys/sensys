@@ -47,7 +47,7 @@ int LedControl::ipmiCmdOperation(unsigned short cmd, unsigned char *buff_in,
     int ret = 0;
     if (this->remote_node){
         ret = set_lan_options(hostname, user, pass, IPMI_SESSION_AUTHTYPE_PASSWORD,
-            IPMI_PRIV_LEVEL_ADMIN, 3, NULL, 0);
+            IPMI_PRIV_LEVEL_USER, 3, NULL, 0);
         if (ret)
             return ret;
     }

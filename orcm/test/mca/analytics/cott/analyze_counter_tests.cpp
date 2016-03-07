@@ -76,7 +76,7 @@ extern "C" {
 extern string get_hostname_from_caddy(orcm_workflow_caddy_t* caddy);
 extern time_t get_timeval_from_caddy(orcm_workflow_caddy_t* caddy);
 extern void add_data_values(const string& hostname, time_t tv, orcm_workflow_caddy_t* caddy,
-                            opal_list_t* threshold_list);
+                            opal_list_t* threshold_list, opal_list_t* event_list);
 extern int assert_caddy_data(void *cbdata);
 
 
@@ -648,7 +648,7 @@ TEST_F(analyze_counter_tests, test_add_data_values)
     ASSERT_NE(0, tv);
 
     opal_list_t* threshold_list = OBJ_NEW(opal_list_t);
-    add_data_values(hostname, tv, caddy, threshold_list);
+    add_data_values(hostname, tv, caddy, threshold_list, NULL);
     string label = COMPLEX_LABEL(0,0,0);
     ASSERT_EQ(3, counter_analyzer->data_db_[hostname][label]->past_data_.size());
     ASSERT_EQ(0, counter_analyzer->data_db_[hostname][label]->past_data_[0].first);

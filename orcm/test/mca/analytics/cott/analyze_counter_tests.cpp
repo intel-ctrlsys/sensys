@@ -835,6 +835,7 @@ TEST_F(analyze_counter_tests, test_analyze_7)
 
     orcm_workflow_caddy_t* caddy = MakeCaddy(true, true, true, "-1", "false", "email");
     caddy->imod = (orcm_analytics_base_module_t*)mod;
+    caddy->wf_step->mod = (orcm_analytics_base_module_t*)mod;
 
     ASSERT_EQ(ORCM_SUCCESS, cott_analyze(0, 0, (void*)caddy));
 
@@ -867,6 +868,7 @@ TEST_F(analyze_counter_tests, test_analyze_8)
 
     orcm_workflow_caddy_t* caddy = MakeCaddy(true, true, true, "-1", "1", "syslog");
     caddy->imod = (orcm_analytics_base_module_t*)mod;
+    caddy->wf_step->mod = (orcm_analytics_base_module_t*)mod;
 
     ASSERT_EQ(ORCM_SUCCESS, cott_analyze(0, 0, (void*)caddy));
 
@@ -899,6 +901,7 @@ TEST_F(analyze_counter_tests, test_analyze_9)
 
     orcm_workflow_caddy_t* caddy = MakeCaddy(true, true, true, "-1", "dummy", "dummy");
     caddy->imod = (orcm_analytics_base_module_t*)mod;
+    caddy->wf_step->mod = (orcm_analytics_base_module_t*)mod;
 
     ASSERT_EQ(ORCM_SUCCESS, cott_analyze(0, 0, (void*)caddy));
 
@@ -931,6 +934,7 @@ TEST_F(analyze_counter_tests, test_analyze_10)
 
     orcm_workflow_caddy_t* caddy = MakeCaddy(true, true, true, "-1", "yes", "email", "emerg");
     caddy->imod = (orcm_analytics_base_module_t*)mod;
+    caddy->wf_step->mod = (orcm_analytics_base_module_t*)mod;
 
     ASSERT_EQ(ORCM_SUCCESS, cott_analyze(0, 0, (void*)caddy));
 
@@ -963,6 +967,7 @@ TEST_F(analyze_counter_tests, test_analyze_11)
 
     orcm_workflow_caddy_t* caddy = MakeCaddy(true, true, true, "-1", "yes", "email", "dummy", "soft");
     caddy->imod = (orcm_analytics_base_module_t*)mod;
+    caddy->wf_step->mod = (orcm_analytics_base_module_t*)mod;
 
     ASSERT_EQ(ORCM_SUCCESS, cott_analyze(0, 0, (void*)caddy));
 
@@ -995,6 +1000,7 @@ TEST_F(analyze_counter_tests, test_analyze_12)
 
     orcm_workflow_caddy_t* caddy = MakeCaddy(true, true, true, "-1", "yes", "email", "dummy", "dummy");
     caddy->imod = (orcm_analytics_base_module_t*)mod;
+    caddy->wf_step->mod = (orcm_analytics_base_module_t*)mod;
 
     ASSERT_EQ(ORCM_SUCCESS, cott_analyze(0, 0, (void*)caddy));
 

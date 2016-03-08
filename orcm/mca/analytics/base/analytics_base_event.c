@@ -285,6 +285,9 @@ void orcm_analytics_base_filter_events (void* event_list, orcm_workflow_step_t *
     opal_value_t* attribute = NULL;
     event_filter* filter = NULL;
 
+    if(NULL == list_attributes){
+        goto done;
+    }
     OPAL_LIST_FOREACH(attribute, list_attributes, opal_value_t) {
         if (NULL == attribute || NULL == attribute->key) {
             break;
@@ -309,6 +312,7 @@ void orcm_analytics_base_filter_events (void* event_list, orcm_workflow_step_t *
             }
         }
     }
+done:
     generate_events(wf_step->mod->orcm_mca_analytics_event_store, (opal_list_t*)event_list, filter, suppress);
     SAFE_RELEASE(filter);
 }

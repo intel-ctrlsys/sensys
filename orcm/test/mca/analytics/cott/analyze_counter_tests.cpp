@@ -648,7 +648,8 @@ TEST_F(analyze_counter_tests, test_add_data_values)
     ASSERT_NE(0, tv);
 
     opal_list_t* threshold_list = OBJ_NEW(opal_list_t);
-    add_data_values(hostname, tv, caddy, threshold_list, NULL);
+    opal_list_t* event_list = OBJ_NEW(opal_list_t);
+    add_data_values(hostname, tv, caddy, threshold_list, event_list);
     string label = COMPLEX_LABEL(0,0,0);
     ASSERT_EQ(3, counter_analyzer->data_db_[hostname][label]->past_data_.size());
     ASSERT_EQ(0, counter_analyzer->data_db_[hostname][label]->past_data_[0].first);

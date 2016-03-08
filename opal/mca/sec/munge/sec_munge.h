@@ -17,6 +17,7 @@ BEGIN_C_DECLS
 
 OPAL_MODULE_DECLSPEC extern opal_sec_base_component_t mca_sec_munge_component;
 OPAL_DECLSPEC extern opal_sec_base_module_t opal_sec_munge_module;
+extern char* authorize_grp;
 
 END_C_DECLS
 

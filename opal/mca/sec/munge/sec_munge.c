@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ * Copyright (c) 2015 - 2016     Intel, Inc. All rights reserved.
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
@@ -22,9 +22,11 @@
 #include "opal/util/output.h"
 #include "opal/util/show_help.h"
 #include "opal/mca/dstore/dstore.h"
-
 #include "opal/mca/sec/base/base.h"
-#include "sec_munge.h"
+#include "opal/mca/sec/munge/sec_munge.h"
+#include <grp.h>
+#include <pwd.h>
+
 
 static int init(void);
 static void finalize(void);
@@ -44,9 +46,10 @@ static opal_sec_cred_t my_cred;
 static bool initialized = false;
 static bool refresh = false;
 
+
 static int init(void)
 {
-    int rc;
+    int rc = OPAL_ERROR;
 
     opal_output_verbose(2, opal_sec_base_framework.framework_output,
                         "sec: munge init");
@@ -79,7 +82,7 @@ static int get_my_cred(int dstorehandle,
                        opal_process_name_t *my_id,
                        opal_sec_cred_t *cred)
 {
-    int rc;
+    int rc = OPAL_ERROR;
 
     if (initialized) {
         if (!refresh) {
@@ -106,23 +109,114 @@ static int get_my_cred(int dstorehandle,
     return OPAL_SUCCESS;
 }
 
-static int authenticate(opal_sec_cred_t *cred)
+static int group_authorize(uid_t uid_remote) 
 {
-    munge_err_t rc;
-
-    opal_output_verbose(2, opal_sec_base_framework.framework_output,
-                        "sec: munge validate_cred %s", cred->credential);
-
-    /* parse the inbound string */
-    if (EMUNGE_SUCCESS != (rc = munge_decode(cred->credential, NULL, NULL, NULL, NULL, NULL))) {
-        opal_output_verbose(2, opal_sec_base_framework.framework_output,
-                            "sec: munge failed to decode credential: %s",
-                            munge_strerror(rc));
+    struct group* grp = NULL;
+    grp = getgrgid(uid_remote);
+    if (NULL == authorize_grp) {
+        opal_output_verbose(100, opal_sec_base_framework.framework_output,
+                            "sec: munge: set opal_sec_munge_authorize_group" 
+                            "MCA parameter not defined\n");
         return OPAL_ERR_AUTHENTICATION_FAILED;
     }
+    if (strlen(authorize_grp) != strlen(grp->gr_name)){
+        return OPAL_ERR_AUTHENTICATION_FAILED;
+    }
+    if (0 == strncmp(authorize_grp,grp->gr_name,strlen(authorize_grp))) {
 
-    opal_output_verbose(2, opal_sec_base_framework.framework_output,
-                        "sec: munge credential valid");
+        opal_output_verbose(100, opal_sec_base_framework.framework_output,
+                            "sec: munge: Authorization passed:received group"
+                            "name: %s\n",grp->gr_name);
+        return OPAL_SUCCESS;
+    }
+    return OPAL_ERROR;
+}
+
+static int get_grouplist(uid_t uid_remote, gid_t** groups, int* ngroups) 
+{
+    struct passwd* pwd = NULL;
+    pwd = getpwuid(uid_remote);
+    if (NULL == pwd) {
+        opal_output_verbose(100, opal_sec_base_framework.framework_output,
+                            "sec: munge: getpwuid error\n");
+        return OPAL_ERR_AUTHENTICATION_FAILED;
+    }
+    *groups = malloc(*ngroups * sizeof(gid_t));
+    if (NULL == *groups) {
+        opal_output_verbose(100, opal_sec_base_framework.framework_output,
+                            "sec: munge: Malloc Failed to allocate memory");
+        return OPAL_ERR_OUT_OF_RESOURCE;
+    }
+    if (-1 == getgrouplist(pwd->pw_name, pwd->pw_gid, *groups, ngroups)) {
+        opal_output_verbose(100, opal_sec_base_framework.framework_output,
+                            "sec: munge: getgrouplist() returned -1 for "
+                            " first time; ngroups = %d\n",*ngroups);
+        *groups = realloc(*groups, (*ngroups) * sizeof(gid_t));
+        if (-1 == getgrouplist(pwd->pw_name, pwd->pw_gid, *groups, ngroups)) {
+            opal_output_verbose(100, opal_sec_base_framework.framework_output,
+                                "sec: munge: getgrouplist() returned -1 for "
+                                "2nd time; ngroups = %d\n",*ngroups);
+            if (NULL != *groups) {
+                free(*groups);
+            }
+            return OPAL_ERR_OUT_OF_RESOURCE;
+        }
+    }
     return OPAL_SUCCESS;
 }
 
+static int grouplist_authorize(int ngroups, gid_t* groups)
+{
+    int indexgrp;
+    struct group* grp = NULL;
+    opal_output_verbose(100, opal_sec_base_framework.framework_output,
+                        "sec: munge: ngroups = %d\n", ngroups);
+    for (indexgrp = 0; indexgrp < ngroups; indexgrp++) {
+        grp = getgrgid(groups[indexgrp]);
+        if (NULL == grp) {
+            continue;
+        }
+        if(strlen(authorize_grp) != strlen(grp->gr_name)){
+            continue;
+        }
+        if (0 == strncmp(authorize_grp,grp->gr_name,strlen(authorize_grp))) {
+            opal_output_verbose(100, opal_sec_base_framework.framework_output,
+                                "sec: munge: Authorization passed(2nd PASS):"
+                                " received group name:%s\n",grp->gr_name);
+            free(groups);
+            return OPAL_SUCCESS;
+        }
+    }
+    free(groups);
+    return OPAL_ERR_AUTHENTICATION_FAILED;
+}
+
+static int authenticate(opal_sec_cred_t *cred)
+{
+    int rc = OPAL_ERR_AUTHENTICATION_FAILED;
+    static uid_t uid_remote = -1;
+    static gid_t gid_remote = -1;
+    gid_t *groups = NULL;
+    int ngroups = 1;
+
+    opal_output_verbose(2, opal_sec_base_framework.framework_output,
+                        "sec: munge validate_cred %s", cred->credential);
+    /* parse the inbound string */
+    if (EMUNGE_SUCCESS != (rc = munge_decode(cred->credential, NULL, NULL,NULL,
+                                             &uid_remote, &gid_remote))) {
+        opal_output_verbose(100, opal_sec_base_framework.framework_output,
+                            "sec: munge Cred decode failed.Received uid:%d and "
+                            "gid: %d\n", uid_remote, gid_remote);
+        opal_output_verbose(100, opal_sec_base_framework.framework_output,"sec:"
+                            "munge cred decode error: %s",munge_strerror(rc));
+        return OPAL_ERR_AUTHENTICATION_FAILED;
+    }
+    if (OPAL_SUCCESS == (rc = group_authorize(uid_remote))){
+        return rc;
+    }
+    if (OPAL_SUCCESS != (rc = get_grouplist(uid_remote, &groups, &ngroups))){
+        return rc;
+    }
+    rc = grouplist_authorize(ngroups, groups);
+    return rc;
+}

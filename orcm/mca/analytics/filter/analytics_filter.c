@@ -237,6 +237,21 @@ static orcm_analytics_value_t *generate_data_to_next(orcm_analytics_value_t *fil
     return analytics_value_to_next;
 }
 
+char* get_hostname_from_attributes(opal_list_t* attributes)
+{
+    char* hostname = NULL;
+    orcm_value_t* attribute = NULL;
+    OPAL_LIST_FOREACH(attribute, attributes, orcm_value_t) {
+        if(0 == strcmp(attribute->value.key,"hostname")){
+            hostname = strdup(attribute->value.data.string);
+        }
+    }
+    if(NULL == hostname){
+    	hostname = strdup("All");
+    }
+    return hostname;
+}
+
 static int analyze(int sd, short args, void *cbdata)
 {
     orcm_workflow_caddy_t *filter_caddy = (orcm_workflow_caddy_t *) cbdata;
@@ -280,6 +295,7 @@ static int analyze(int sd, short args, void *cbdata)
             goto cleanup;
         }
     }
+    filter_caddy->wf->hostname_regex = get_hostname_from_attributes(&filter_caddy->wf_step->attributes);
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(filter_caddy->wf, filter_caddy->wf_step,
                                      filter_key->unique_id, data_to_next, NULL);
 cleanup:

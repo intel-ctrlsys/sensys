@@ -23,6 +23,7 @@
 
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
+#include "orcm/util/utils.h"
 
 /*
  * The following file was created by configure.  It contains extern
@@ -201,6 +202,7 @@ OBJ_CLASS_INSTANCE(orcm_workflow_step_t,
 static void wk_con(orcm_workflow_t *p)
 {
     p->name = NULL;
+    p->hostname_regex = NULL;
     OBJ_CONSTRUCT(&p->steps, opal_list_t);
     p->ev_base = NULL;
 }
@@ -212,7 +214,8 @@ static void wk_des(orcm_workflow_t *p)
     if (NULL != p->ev_base) {
         orcm_analytics_stop_wokflow_thread(p);
     }
-    free(p->name);
+    SAFEFREE(p->name);
+    SAFEFREE(p->hostname_regex);
     OPAL_LIST_DESTRUCT(&p->steps);
 }
 OBJ_CLASS_INSTANCE(orcm_workflow_t,

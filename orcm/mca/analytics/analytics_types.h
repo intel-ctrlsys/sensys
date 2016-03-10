@@ -56,6 +56,7 @@ OBJ_CLASS_DECLARATION(orcm_workflow_step_t);
 typedef struct {
     opal_list_item_t super;
     char *name;
+    char *hostname_regex;
     int workflow_id;
     opal_list_t steps;
     opal_event_base_t *ev_base;

@@ -352,7 +352,7 @@ static orcm_analytics_value_t* handle_full_bucket(spatial_statistics_t* spatial_
         return NULL;
     }
 
-    asprintf(&data_key, "%s_Workflow %d", "Spatial_Result", caddy->wf->workflow_id);
+    asprintf(&data_key, "%s_%s_Workflow %d", "Spatial_Result", caddy->wf->hostname_regex, caddy->wf->workflow_id);
     if (NULL == data_key) {
         return NULL;
     }

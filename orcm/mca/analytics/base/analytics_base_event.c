@@ -41,7 +41,7 @@ static void event_filter_con(event_filter *filter)
 {
     filter->category = NULL;
     filter->severity = ORCM_RAS_SEVERITY_UNKNOWN;
-    filter->time = 0;
+    filter->time = orcm_analytics_base.suppress_repeat;
 }
 
 static void event_filter_des(event_filter *filter)
@@ -145,7 +145,7 @@ static unsigned int filter_max_rate(orcm_ras_event_t* ev, event_filter* filter)
             }
         }
     }
-    if(ORCM_RAS_SEVERITY_UNKNOWN != ev->severity && ev->severity >= filter->severity){
+    if(ORCM_RAS_SEVERITY_UNKNOWN != ev->severity && ev->severity > filter->severity){
         match_severity = false;
     }
     if(match_category && match_severity){

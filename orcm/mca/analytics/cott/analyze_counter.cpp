@@ -75,24 +75,29 @@ void analyze_counter::add_value(uint32_t val, time_t tval, analyze_counter_event
         }
     }
 
-    // Do I fire the event?
-    uint32_t error_count = 0;
-    if(0 != past_data_.size()) {
-        error_count = val - past_data_.front().first;
-    }
-    if(error_count >= threshold_) {
-        // Yes, fire the callback
-        vector<uint32_t> raw_data;
-        for(size_t i = 0; i < past_data_.size(); ++i) {
-            raw_data.push_back(past_data_[i].first);
-        }
-        raw_data.push_back(val);
-        event_cb(error_count, tval - past_data_.front().second, raw_data, cb_data);
-
-        // Clear all old events
+    // Is the new value less than the previous values (degenerate case)?
+    if(0 != past_data_.size() && (val < past_data_.front().first || val < past_data_.back().first)) {
+        // Set 'val' as the new starting point.
         past_data_.clear();
-    }
+    } else {
+        // Do I fire the event?
+        uint32_t error_count = 0;
+        if(0 != past_data_.size()) {
+            error_count = val - past_data_.front().first;
+        }
+        if(error_count >= threshold_) {
+            // Yes, fire the callback
+            vector<uint32_t> raw_data;
+            for(size_t i = 0; i < past_data_.size(); ++i) {
+                raw_data.push_back(past_data_[i].first);
+            }
+            raw_data.push_back(val);
+            event_cb(error_count, tval - past_data_.front().second, raw_data, cb_data);
 
+            // Clear all old events
+            past_data_.clear();
+        }
+    }
     // Add new entry.
     pair<uint32_t,time_t> new_val(val, tval);
     past_data_.push_back(new_val);

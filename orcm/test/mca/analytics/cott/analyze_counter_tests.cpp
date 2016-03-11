@@ -1018,3 +1018,29 @@ TEST_F(analyze_counter_tests, test_analyze_12)
 
     cott_finalize(mod);
 }
+
+TEST_F(analyze_counter_tests, testing_moving_counter_backwards)
+{
+    ResetTestCase();
+    host_analyze_counters counter;
+
+    counter.set_window_size("5s");
+    counter.set_threshold(10);
+    counter.set_value_label_mask("label**");
+
+    counter.set_window_size("5s");
+    counter.set_threshold(10);
+    counter.add_value("test_host_1", "label0", 0, 0, RasHostEventFired, NULL);
+    counter.add_value("test_host_1", "label0", 11, 1, RasHostEventFired, NULL);
+    counter.add_value("test_host_1", "label0", 0, 2, RasHostEventFired, NULL);
+
+    ASSERT_EQ(11, last_event_count_);
+    ASSERT_EQ(1, last_event_elapsed_);
+    ASSERT_EQ(2, last_event_raw_data_.size());
+
+    counter.add_value("test_host_1", "label0", 14, 3, RasHostEventFired, NULL);
+
+    ASSERT_EQ(14, last_event_count_);
+    ASSERT_EQ(1, last_event_elapsed_);
+    ASSERT_EQ(2, last_event_raw_data_.size());
+}

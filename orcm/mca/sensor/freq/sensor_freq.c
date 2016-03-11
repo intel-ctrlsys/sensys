@@ -1038,9 +1038,14 @@ static void freq_log(opal_buffer_t *sample)
                 freq_log_cleanup(label, hostname, key, non_compute_data, analytics_vals);
                 return;
             }
-
+            char* units = "%";
+            if((11 == strlen(label) && 0 == strncmp(label, "num_pstates", 11)) ||
+                (8 == strlen(label) && 0 == strncmp(label, "no_turbo", 8)) ||
+                (11 == strlen(label) && 0 == strncmp(label, "allow_turbo", 11))) {
+                units = "";
+            }
             if (ORCM_SUCCESS != (rc = orcm_util_append_orcm_value(analytics_vals->compute_data,
-                                 label, &uival, OPAL_UINT, NULL))) {
+                                 label, &uival, OPAL_UINT, units))) {
                 ORTE_ERROR_LOG(rc);
                 freq_log_cleanup(label, hostname, key, non_compute_data, analytics_vals);
                 return;

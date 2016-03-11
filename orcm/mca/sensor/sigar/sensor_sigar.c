@@ -463,19 +463,19 @@ static int sigar_collect_load(opal_list_t* data)
     tmp = (float)loadavg.loadavg[0];
     orcm_value_t* item = NULL;
     if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "load0")) {
-        item = orcm_util_load_orcm_value("load0", &tmp, OPAL_FLOAT, "");
+        item = orcm_util_load_orcm_value("load0", &tmp, OPAL_FLOAT, "%/100");
         ON_NULL_RETURN(item);
         opal_list_append(data, (opal_list_item_t*)item);
     }
     tmp = (float)loadavg.loadavg[1];
     if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "load1")) {
-        item = orcm_util_load_orcm_value("load1", &tmp, OPAL_FLOAT, "");
+        item = orcm_util_load_orcm_value("load1", &tmp, OPAL_FLOAT, "%/100");
         ON_NULL_RETURN(item);
         opal_list_append(data, (opal_list_item_t*)item);
     }
     tmp = (float)loadavg.loadavg[2];
     if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "load2")) {
-        item = orcm_util_load_orcm_value("load2", &tmp, OPAL_FLOAT, "");
+        item = orcm_util_load_orcm_value("load2", &tmp, OPAL_FLOAT, "%/100");
         ON_NULL_RETURN(item);
         opal_list_append(data, (opal_list_item_t*)item);
     }
@@ -942,7 +942,7 @@ static int sigar_collect_procstat(opal_list_t* data)
         }
 
         if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "percent_cpu")) {
-            item = orcm_util_load_orcm_value("percent_cpu", &stats->percent_cpu, OPAL_FLOAT, "");
+            item = orcm_util_load_orcm_value("percent_cpu", &stats->percent_cpu, OPAL_FLOAT, "%");
             if(NULL == item) {
                 ORCM_RELEASE(stats);
                 return ORCM_ERR_OUT_OF_RESOURCE;
@@ -998,7 +998,7 @@ static int sigar_collect_procstat(opal_list_t* data)
         ORCM_RELEASE(stats);
 
         if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "shared_memory")) {
-            item = orcm_util_load_orcm_value("shared_memory", &proc_mem_info.share, OPAL_INT64, "");
+            item = orcm_util_load_orcm_value("shared_memory", &proc_mem_info.share, OPAL_INT64, "bytes");
             if(NULL == item) {
                 ORCM_RELEASE(stats);
                 return ORCM_ERR_OUT_OF_RESOURCE;

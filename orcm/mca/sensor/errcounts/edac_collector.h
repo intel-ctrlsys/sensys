@@ -25,6 +25,9 @@ extern "C" {
 #ifdef __cplusplus
 
 #include <string>
+#include <map>
+typedef std::map<std::string,int> SampleMap;
+typedef std::map<std::string,int>* SampleMapPtr;
 
 #ifdef GTEST_MOCK_TESTING
 #define PRIVATE public
@@ -44,7 +47,6 @@ class edac_collector
         bool have_edac() const;
 
     PRIVATE:
-
         int get_mc_folder_count() const;
         int get_csrow_folder_count(int mc) const;
         int get_channel_folder_count(int mc, int csrow) const;
@@ -66,6 +68,7 @@ class edac_collector
         std::string base_edac_path;
         edac_error_callback_fn_t error_callback;
         unsigned long long user_data_;
+        SampleMapPtr previous_sample_;
 };
 
 #undef PRIVATE

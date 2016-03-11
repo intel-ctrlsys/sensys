@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016  Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -24,17 +24,19 @@ extern "C" {
 using namespace std;
 
 edac_collector::edac_collector(edac_error_callback_fn_t error_cb, const char* edac_path) :
-    error_callback(error_cb), user_data_(0)
+    error_callback(error_cb), user_data_(0), previous_sample_(NULL)
 {
     if(NULL != edac_path) {
         base_edac_path = string(edac_path);
     } else {
         base_edac_path = string("/sys/devices/system/edac/mc");
     }
+    previous_sample_ = new SampleMap;
 }
 
 edac_collector::~edac_collector()
 {
+    delete previous_sample_;
 }
 
 bool edac_collector::collect_data(edac_data_callback_fn_t cb, void* user_data)
@@ -177,7 +179,15 @@ int edac_collector::get_channel_folder_count(int mc, int csrow) const
 
 void edac_collector::log_data(const char* label, int count, edac_data_callback_fn_t cb) const
 {
-    cb(label, count, (void*)user_data_);
+    int old_sample = -1;
+    string l(label);
+    if(previous_sample_->end() != previous_sample_->find(l)) {
+        old_sample = (*previous_sample_)[l];
+    }
+    if(count != old_sample || -1 == old_sample) {
+        (*previous_sample_)[l] = count;
+        cb(label, count, (void*)user_data_);
+    }
 }
 
 void edac_collector::log_inventory(const char* label, const char* name, edac_inventory_callback_fn_t cb) const

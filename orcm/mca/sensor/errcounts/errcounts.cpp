@@ -35,15 +35,12 @@ extern "C" {
 #include "edac_collector.h"
 
 // Conveniences...
-#define SAFE_DELETE(x) if(NULL != x) delete x; x=NULL
-#define SAFE_FREE(x) if(NULL != x) free((void*)x); x=NULL
+#define SAFE_DELETE(x) if(NULL != x) { delete x; x=NULL; }
+#define SAFE_FREE(x) if(NULL != x) { free((void*)x); x=NULL; }
 #define ON_NULL_BREAK(x) if(NULL==x) { ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE); break; }
 #define NOT_NULL ((void*)0xffffffffffffffff)
 // OBJ_RELEASE only conditially sets the pointer to NULL
-#define SAFE_OBJ_RELEASE(x) if(NULL!=x) OBJ_RELEASE(x); x=NULL
-
-// For Testing only illegal as job_id...
-#define NOOP_JOBID -999
+#define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x=NULL; }
 
 // Static constants...
 const std::string errcounts_impl::plugin_name_ = "errcounts";
@@ -52,6 +49,7 @@ const std::string errcounts_impl::plugin_name_ = "errcounts";
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <new>
 
 // Class Implementation
 using namespace std;
@@ -69,9 +67,13 @@ errcounts_impl::~errcounts_impl()
 
 int errcounts_impl::init(void)
 {
-    collect_metrics_ = new RuntimeMetrics("errcounts", orcm_sensor_base.collect_metrics,
-                                          mca_sensor_errcounts_component.collect_metrics);
-    collector_ = new edac_collector(error_callback_relay, mca_sensor_errcounts_component.edac_mc_folder);
+    try {
+        collect_metrics_ = new RuntimeMetrics("errcounts", orcm_sensor_base.collect_metrics,
+                                              mca_sensor_errcounts_component.collect_metrics);
+        collector_ = new edac_collector(error_callback_relay, mca_sensor_errcounts_component.edac_mc_folder);
+    } catch(bad_alloc&) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
     if(0 == mca_sensor_errcounts_component.sample_rate) {
         mca_sensor_errcounts_component.sample_rate = orcm_sensor_base.sample_rate;
     }
@@ -159,7 +161,6 @@ void errcounts_impl::log(opal_buffer_t* buf)
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;
     }
-    opal_list_t* compute = NULL;
     opal_list_t* non_compute = NULL;
     opal_list_t* key = NULL;
     orcm_analytics_value_t* analytics_vals = NULL;
@@ -184,9 +185,6 @@ void errcounts_impl::log(opal_buffer_t* buf)
         key = OBJ_NEW(opal_list_t);
         ON_NULL_BREAK(key);
 
-        compute = OBJ_NEW(opal_list_t);
-        ON_NULL_BREAK(compute);
-
         non_compute = OBJ_NEW(opal_list_t);
         ON_NULL_BREAK(non_compute);
 
@@ -208,35 +206,21 @@ void errcounts_impl::log(opal_buffer_t* buf)
         ON_NULL_BREAK(value);
         opal_list_append(key, (opal_list_item_t*)value);
 
-        // load the component
-        value = orcm_util_load_orcm_value((char*)"component", (void*)ORCM_COMPONENT_MON, OPAL_STRING, NULL);
-        ON_NULL_BREAK(value);
-        opal_list_append(key, (opal_list_item_t *)value);
-
-        // load the sub-component
-        value = orcm_util_load_orcm_value((char*)"sub_component", (void*)ORCM_SUBCOMPONENT_MEM, OPAL_STRING, NULL);
-        ON_NULL_BREAK(value);
-        opal_list_append(key, (opal_list_item_t *)value);
-
+        analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute, NULL);
+        ON_NULL_BREAK(analytics_vals);
+        ON_NULL_BREAK(analytics_vals->key);
+        ON_NULL_BREAK(analytics_vals->non_compute_data);
+        ON_NULL_BREAK(analytics_vals->compute_data);
         for(size_t i = 0; i < log_samples_labels_.size(); ++i) {
-            analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute, compute);
-            ON_NULL_BREAK(analytics_vals);
-            ON_NULL_BREAK(analytics_vals->key);
-            ON_NULL_BREAK(analytics_vals->non_compute_data);
-            ON_NULL_BREAK(analytics_vals->compute_data);
-
             value = orcm_util_load_orcm_value((char*)log_samples_labels_[i].c_str(), (void*)&log_samples_values_[i], OPAL_INT32, NULL);
             ON_NULL_BREAK(value);
 
             opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)value);
-            orcm_analytics.send_data(analytics_vals);
-            SAFE_OBJ_RELEASE(compute);
-            SAFE_OBJ_RELEASE(analytics_vals);
-            compute = OBJ_NEW(opal_list_t);
         }
+        orcm_analytics.send_data(analytics_vals);
         break; // execute while() only once...
     }
-    SAFE_OBJ_RELEASE(compute);
+    SAFE_OBJ_RELEASE(key);
     SAFE_OBJ_RELEASE(non_compute);
     SAFE_OBJ_RELEASE(analytics_vals);
 }

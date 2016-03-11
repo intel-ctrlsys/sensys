@@ -41,7 +41,7 @@ extern "C" {
     #include "opal/runtime/opal_progress_threads.h"
 }
 
-#define SAFE_OBJ_RELEASE(x) if(NULL!=x) OBJ_RELEASE(x); x=NULL
+#define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x=NULL; }
 
 #define NOOP_JOBID -999
 
@@ -1226,7 +1226,7 @@ TEST_F(ut_edac_collector_tests, test_log)
     dummy.data_samples_labels_.clear();
     dummy.data_samples_values_.clear();
 
-    ASSERT_EQ(12, current_analytics_values_.size());
+    ASSERT_EQ(1, current_analytics_values_.size());
 
     for(int i = 0; i < current_analytics_values_.size(); ++i) {
         SAFE_OBJ_RELEASE(current_analytics_values_[i]);
@@ -1240,6 +1240,10 @@ TEST_F(ut_edac_collector_tests, test_log)
 
     for(int i = 0; i < 4; ++i) {
         last_orte_error_ = ORCM_SUCCESS;
+
+        // we need to get fresh samples, not filtered samples
+        dummy.collector_->previous_sample_->clear();
+
         dummy.sample(&sampler);
         ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
 

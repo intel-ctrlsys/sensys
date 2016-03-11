@@ -287,8 +287,9 @@ static void ipmi_log_extract_create_string(opal_buffer_t *sample, char *dest_str
         ORTE_ERROR_LOG(rc);
         return;
     }
-    strncpy(dest_string, extract_item, dest_str_size-1);
-    dest_string[dest_str_size-1] = '\0';
+    size_t max_len = MIN(strlen(extract_item), dest_str_size - 1);
+    strncpy(dest_string, extract_item, max_len);
+    dest_string[max_len] = '\0';
     SAFEFREE(extract_item);
 }
 

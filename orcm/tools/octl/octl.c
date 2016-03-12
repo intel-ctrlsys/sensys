@@ -19,6 +19,8 @@ static int run_cmd(int argc, char *cmdlist[]);
 static void octl_print_illegal_command(char *cmd);
 static void octl_print_error(int rc);
 static void octl_print_error_with_command(char **cmdlist);
+static int octl_interactive_cli(void);
+static void octl_init_cli(orcm_cli_t *cli);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -84,7 +86,6 @@ main(int argc, char *argv[])
 static int orcm_octl_work(int argc, char *argv[])
 {
     opal_cmd_line_t cmd_line;
-    bool interactive = false;
     orcm_octl_globals_t tmp = { false,    /* help */
         false,    /* version */
         false,    /* verbose */
@@ -93,11 +94,10 @@ static int orcm_octl_work(int argc, char *argv[])
     orcm_octl_globals = tmp;
     char *args = NULL;
     char *str = NULL;
-    orcm_cli_t cli;
-    int tailc;
+    int tailc = 0;
     char **tailv = NULL;
-    int ret;
-    char *mycmd;
+    int ret = 0;
+
 
     /* Make sure to init util before parse_args
      * to ensure installdirs is setup properly
@@ -158,50 +158,7 @@ static int orcm_octl_work(int argc, char *argv[])
     }
 
     if (0 == tailc) {
-        /* if the user hasn't specified any commands,
-         * run interactive cli to help build it */
-        interactive = true;
-        OBJ_CONSTRUCT(&cli, orcm_cli_t);
-        orcm_cli_create(&cli, cli_init);
-        /* give help on top level commands */
-        printf("*** WELCOME TO OCTL ***\n Possible commands:\n");
-        orcm_cli_print_cmd_help(&cli, NULL);
-
-        while (true == interactive) {
-            mycmd = NULL;
-            /* run interactive cli */
-            ret = orcm_cli_get_cmd("octl", &cli, &mycmd);
-            if (ORCM_SUCCESS != ret) {
-                octl_print_illegal_command(mycmd);
-                if (NULL != mycmd) {
-                    free(mycmd);
-                }
-                continue;
-            }
-            if (!mycmd) {
-                fprintf(stderr, "\nNo command specified\n");
-                continue;
-            }
-            if (0 == strcmp(mycmd,"quit")) {
-                printf("\nExiting...\n");
-                interactive = false;
-                free(mycmd);
-                continue;
-            }
-            wordexp_t words;
-            ret = wordexp(mycmd, &words, 0);
-            if (ORCM_SUCCESS != ret) {
-                fprintf(stderr, "\nNo command specified\n");
-                continue;
-            }
-            ret = run_cmd(words.we_wordc, words.we_wordv);
-            if (ORCM_ERROR == ret) {
-                printf("\nUse \'%s<tab>\' or \'%s<?>\' for help.\n", mycmd, mycmd);
-            }
-            free(mycmd);
-            wordfree(&words);
-        }
-        OBJ_DESTRUCT(&cli);
+        ret = octl_interactive_cli();
     } else {
         /* otherwise use the user specified command */
         ret = run_cmd(tailc, tailv);
@@ -209,6 +166,68 @@ static int orcm_octl_work(int argc, char *argv[])
     OBJ_DESTRUCT(&cmd_line);
     opal_argv_free(tailv);
     return ret;
+}
+
+static int octl_interactive_cli(void)
+{
+    bool interactive = true;
+    orcm_cli_t cli;
+    char *mycmd = NULL;
+    int ret = 0;
+    wordexp_t words;
+
+    octl_init_cli(&cli);
+
+    while (true == interactive) {
+        mycmd = NULL;
+        /* run interactive cli */
+        ret = orcm_cli_get_cmd("octl", &cli, &mycmd);
+        if (ORCM_SUCCESS != ret) {
+            octl_print_illegal_command(mycmd);
+            if (NULL != mycmd) {
+                free(mycmd);
+            }
+            continue;
+        }
+
+        if (NULL == mycmd) {
+            fprintf(stderr, "\nNo command specified\n");
+            continue;
+        }
+
+        if (0 == strcmp(mycmd, "quit")) {
+            printf("\nExiting...\n");
+            interactive = false;
+            free(mycmd);
+            continue;
+        }
+
+        ret = wordexp(mycmd, &words, 0);
+        if (ORCM_SUCCESS != ret) {
+            fprintf(stderr, "\nNo command specified\n");
+            continue;
+        }
+
+        ret = run_cmd(words.we_wordc, words.we_wordv);
+        if (ORCM_ERROR == ret) {
+            printf("\nUse \'%s<tab>\' or \'%s<?>\' for help.\n", mycmd, mycmd);
+        }
+
+        free(mycmd);
+        wordfree(&words);
+    }
+
+    OBJ_DESTRUCT(&cli);
+    return ret;
+}
+
+static void octl_init_cli(orcm_cli_t *cli)
+{
+    OBJ_CONSTRUCT(cli, orcm_cli_t);
+    orcm_cli_create(cli, cli_init);
+    /* give help on top level commands */
+    printf("*** WELCOME TO OCTL ***\n Possible commands:\n");
+    orcm_cli_print_cmd_help(cli, NULL);
 }
 
 static int octl_cmd_to_enum(char* command)

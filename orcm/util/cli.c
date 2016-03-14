@@ -53,8 +53,9 @@ static void add_char_to_input_array(char c, char *input, size_t *len);
 static void scroll_up(int *scroll_indx, char *input, size_t *len, char *prompt);
 static void scroll_down(int *scroll_indx, char *input, size_t *len, char *prompt);
 static void save_cmd_history(char *input);
-static struct termios get_initial_settings(void);
+static struct termios get_initial_term_settings(void);
 static void set_term_settings(struct termios settings);
+static void restore_term_settings(struct termios initial_settings);
 
 #define CLI_HISTORY_SIZE 15
 
@@ -186,7 +187,7 @@ int orcm_cli_get_cmd(char *prompt,
     space = false;
 
     /* Set term settings */
-    initial_settings = get_initial_settings();
+    initial_settings = get_initial_term_settings();
     set_term_settings(initial_settings);
 
     /* output the prompt */
@@ -222,8 +223,7 @@ int orcm_cli_get_cmd(char *prompt,
 
  process:
     printf("\n");
-    /* restore the initial settings */
-    tcsetattr(STDIN_FILENO, TCSANOW, &initial_settings);
+    restore_term_settings(initial_settings);
 
     /* return the assembled command */
     *cmd = strdup(input);
@@ -231,16 +231,25 @@ int orcm_cli_get_cmd(char *prompt,
     return rc;
 }
 
-struct termios get_initial_settings(void)
+struct termios get_initial_term_settings(void)
 {
     struct termios initial_settings;
     int rc;
-    rc = tcgetattr(STDIN_FILENO, &initial_settings);
-    if (0 != rc) {
-        fprintf(stderr, "Cannot read attributes from stdin\n");
-        exit(errno);
+    if (isatty(STDIN_FILENO)) {
+        rc = tcgetattr(STDIN_FILENO, &initial_settings);
+        if (0 != rc) {
+            fprintf(stderr, "Cannot read attributes from stdin\n");
+            exit(errno);
+        }
     }
     return initial_settings;
+}
+
+void restore_term_settings(struct termios initial_settings)
+{
+    if (isatty(STDIN_FILENO)) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &initial_settings);
+    }
 }
 
 void set_term_settings(struct termios settings)

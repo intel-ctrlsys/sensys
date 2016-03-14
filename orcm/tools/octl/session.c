@@ -97,7 +97,7 @@ int orcm_octl_session_cancel(char **argv)
             return rc;
         }
         if (0 == result) {
-            ORCM_UTIL_MSG("\nThere are no records!");
+            ORCM_UTIL_MSG("\nSuccess!" );
         } else {
             orte_show_help("help-octl.txt","octl:session:cancel-fail", true);
             return result;

@@ -39,8 +39,8 @@ install-data-local:
         echo "**FOUND $(orcm_config_files) **"; \
         if test "$(orcm_config_file_found)" = "yes"; then \
 	    if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-	    echo " $(INSTALL_DATA) $$d$$p $(DESTDIR)$(sysconfdir)/orcm-site.xml"; \
-	    $(INSTALL_DATA) $$d$$p $(DESTDIR)$(sysconfdir)/orcm-site.xml; \
+	    echo " $(INSTALL) -m 600 $$d$$p $(DESTDIR)$(sysconfdir)/orcm-site.xml"; \
+	    $(INSTALL) -m 600 $$d$$p $(DESTDIR)$(sysconfdir)/orcm-site.xml; \
         else \
             for file in $$p; do \
 	            if test -f $(DESTDIR)$(sysconfdir)/orcm-site.xml; then \

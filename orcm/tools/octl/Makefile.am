@@ -44,7 +44,8 @@ octl_SOURCES = \
         notifier.c \
         smtp.c \
         query.c \
-        chassis-id.c
+        chassis-id.c \
+        octl_tokens.def
 
 # the following empty octl_LDFLAGS is used
 #  so that the octl can be compiled statically

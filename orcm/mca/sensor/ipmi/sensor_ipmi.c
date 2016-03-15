@@ -2089,8 +2089,13 @@ void orcm_sensor_sel_ras_event_callback(const char* event, const char* hostname,
 {
     opal_list_t* record_list = (opal_list_t*)user_object;
     orcm_value_t* record = orcm_util_load_orcm_value("sel_event_record", (void*)event, OPAL_STRING, "");
-    opal_list_append(record_list, (opal_list_item_t*)record);
-    opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "SEL Record Read: %s: %s", (char*)hostname, (char*)event);
+    if(NULL != record) {
+        opal_list_append(record_list, (opal_list_item_t*)record);
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "SEL Record Read: %s: %s", (char*)hostname, (char*)event);
+    } else {
+        ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE);
+        opal_output(0, "Failed to get SEL sensor inventory record; out of memory!");
+    }
 }
 
 void orcm_sensor_ipmi_get_sel_events(ipmi_capsule_t* capsule)

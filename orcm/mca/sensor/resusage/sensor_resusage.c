@@ -521,9 +521,9 @@ static void generate_test_vector(opal_buffer_t *v)
 
     /* pack the plugin name */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
-    ORTE_ERROR_LOG(ret);
-    OBJ_DESTRUCT(&v);
-    return;
+        ORTE_ERROR_LOG(ret);
+        OBJ_DESTRUCT(&v);
+        return;
     }
 
     /* pack the hostname */
@@ -539,8 +539,6 @@ static void generate_test_vector(opal_buffer_t *v)
 
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &current_time, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(ret);
-        OBJ_RELEASE(stats);
-        OBJ_RELEASE(nstats);
         OBJ_DESTRUCT(&v);
         return;
     }

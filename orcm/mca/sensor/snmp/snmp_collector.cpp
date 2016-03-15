@@ -17,7 +17,7 @@ snmpCollector::snmpCollector() : runtime_metrics_(NULL) {
     snmpCollector("","");
 }
 
-snmpCollector::snmpCollector(string host, string user) {
+snmpCollector::snmpCollector(string host, string user) : runtime_metrics_(NULL) {
     hostname = string(host);
     username = string(user);
     response = NULL;
@@ -31,15 +31,15 @@ snmpCollector::snmpCollector(string host, string user) {
     storeCharsAndLength(username, (char**) &session.community, &session.community_len);
 }
 
-snmpCollector::snmpCollector(string host, string user, string pass) {
+snmpCollector::snmpCollector(string host, string user, string pass) : runtime_metrics_(NULL) {
     snmpCollector(host, user, pass, MD5);
 }
 
-snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth) {
+snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth) : runtime_metrics_(NULL) {
     snmpCollector(host, user, pass, auth, AUTHNOPRIV);
 }
 
-snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth, sec_type sec) {
+snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth, sec_type sec) : runtime_metrics_(NULL) {
     hostname = string(host);
     username = string(user);
     password = string(pass);

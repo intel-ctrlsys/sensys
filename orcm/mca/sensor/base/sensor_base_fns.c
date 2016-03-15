@@ -1044,7 +1044,7 @@ int orcm_sensor_pack_orcm_value(opal_buffer_t* bucket, const orcm_value_t* item)
 {
     ON_NULL_PARAM_RETURN(bucket);
     ON_NULL_PARAM_RETURN(item);
-    int rc;
+    int rc = ORCM_SUCCESS;
     char* units = item->units;
     bool do_free = false;
     /* local units incase of NULL */
@@ -1057,27 +1057,29 @@ int orcm_sensor_pack_orcm_value(opal_buffer_t* bucket, const orcm_value_t* item)
     /* Pack label */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &item->value.key, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        return rc;
+        goto cleanup;
     }
     /* Pack type */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &item->value.type, 1, OPAL_UINT8))) {
         ORTE_ERROR_LOG(rc);
-        return rc;
+        goto cleanup;
     }
     /* Pack value */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &item->value.data, 1, item->value.type))) {
         ORTE_ERROR_LOG(rc);
-        return rc;
+        goto cleanup;
     }
     /* Pack units */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &units, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
-        return rc;
+        goto cleanup;
     }
+
+cleanup:
     if(do_free) {
         SAFEFREE(units);
     }
-    return ORCM_SUCCESS;
+    return rc;
 }
 
 int orcm_sensor_unpack_orcm_value(opal_buffer_t* bucket, orcm_value_t** result)

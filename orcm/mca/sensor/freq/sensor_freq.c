@@ -1014,7 +1014,6 @@ static void freq_log(opal_buffer_t *sample)
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &type, &n, OPAL_UINT8))) {
             ORTE_ERROR_LOG(rc);
             freq_log_cleanup(label, hostname, key, non_compute_data, analytics_vals);
-            SAFEFREE(label);
             return;
         }
         n = 1;

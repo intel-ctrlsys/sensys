@@ -36,7 +36,12 @@ check_PROGRAMS = syslog_tests
 syslog_tests_SOURCES = \
 	syslog_tests.cpp
 
-MOCKING =
+MOCKING = \
+    -Wl,--wrap=geteuid \
+    -Wl,--wrap=close \
+    -Wl,--wrap=socket \
+    -Wl,--wrap=recv \
+    -Wl,--wrap=bind
 
 #
 # Libraries we depend on

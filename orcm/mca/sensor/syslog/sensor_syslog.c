@@ -72,6 +72,7 @@ int syslog_disable_sampling(const char* sensor_specification);
 int syslog_reset_sampling(const char* sensor_specification);
 
 static opal_list_t msgQueue;
+static bool stop_thread = true;
 
 typedef struct{
     opal_list_item_t super;
@@ -156,15 +157,19 @@ static orcm_sensor_syslog_t orcm_sensor_syslog;
 
 static int init(void)
 {
-    mca_sensor_syslog_component.diagnostics = 0;
-    mca_sensor_syslog_component.runtime_metrics =
-        orcm_sensor_base_runtime_metrics_create("syslog", orcm_sensor_base.collect_metrics,
-                                                mca_sensor_syslog_component.collect_metrics);
-
     /* we must be root to run */
     if (0 != geteuid()) {
         return ORTE_ERROR;
     }
+
+    mca_sensor_syslog_component.diagnostics = 0;
+    mca_sensor_syslog_component.runtime_metrics =
+        orcm_sensor_base_runtime_metrics_create("syslog", orcm_sensor_base.collect_metrics,
+                                                mca_sensor_syslog_component.collect_metrics);
+    if(NULL == mca_sensor_syslog_component.runtime_metrics) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
     return ORCM_SUCCESS;
 }
 
@@ -227,6 +232,7 @@ static void start(orte_jobid_t jobid)
  */
 static void stop(orte_jobid_t jobid)
 {
+    stop_thread = true;
     if (orcm_sensor_syslog.ev_active) {
         orcm_sensor_syslog.ev_active = false;
         /* stop the thread without releasing the event base */
@@ -381,7 +387,7 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
                                  (int)(log_matches[1].rm_eo - log_matches[1].rm_so));
 
             prival_int = strtol(prival_str, &tmp, 10);
-	    free(prival_str);
+            free(prival_str);
             IF_NULL_ERROR(tmp);
 
             severity = get_severity(prival_int);
@@ -615,20 +621,22 @@ static void *syslog_listener(void *arg)
     syslog_msg *log;
     char msg[MAXLEN];
 
-    while(1) {
+    stop_thread = false;
+    while(!stop_thread) {
         if (syslog_socket() < 0) {
             opal_output(0, "SYSLOG ERROR: Unable to open socket, sensor won't collect data\n");
             return (void*) -1;
-     }
+        }
 
-     n = recv(syslog_socket(), msg, MAXLEN, 0);
-     if (n > 0) {
-         log = OBJ_NEW(syslog_msg);
-         log->log = strdup(msg);
-         opal_list_append(&msgQueue,&log->super);
-         memset(msg, 0, MAXLEN);
-     }
+        n = recv(syslog_socket(), msg, MAXLEN, 0);
+        if (n > 0) {
+            log = OBJ_NEW(syslog_msg);
+            log->log = strdup(msg);
+            opal_list_append(&msgQueue,&log->super);
+            memset(msg, 0, MAXLEN);
+        }
     }
+    close(syslog_socket());
     return 0;
 }
 

@@ -21,6 +21,7 @@ static void octl_print_error(int rc);
 static void octl_print_error_with_command(char **cmdlist);
 static int octl_interactive_cli(void);
 static void octl_init_cli(orcm_cli_t *cli);
+static int run_cmd_from_cli(char *cmd);
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -174,7 +175,6 @@ static int octl_interactive_cli(void)
     orcm_cli_t cli;
     char *mycmd = NULL;
     int ret = 0;
-    wordexp_t words;
 
     octl_init_cli(&cli);
 
@@ -202,23 +202,26 @@ static int octl_interactive_cli(void)
             continue;
         }
 
-        ret = wordexp(mycmd, &words, 0);
-        if (ORCM_SUCCESS != ret) {
-            fprintf(stderr, "\nNo command specified\n");
-            continue;
-        }
-
-        ret = run_cmd(words.we_wordc, words.we_wordv);
+        ret = run_cmd_from_cli(mycmd);
         if (ORCM_ERROR == ret) {
             printf("\nUse \'%s<tab>\' or \'%s<?>\' for help.\n", mycmd, mycmd);
         }
 
         free(mycmd);
-        wordfree(&words);
     }
 
     OBJ_DESTRUCT(&cli);
     return ret;
+}
+
+static int run_cmd_from_cli(char *cmd)
+{
+    int argc;
+    char **cmdlist = NULL;
+
+    cmdlist = opal_argv_split(cmd, ' ');
+    argc = opal_argv_count(cmdlist);
+    return run_cmd(argc, cmdlist);
 }
 
 static void octl_init_cli(orcm_cli_t *cli)

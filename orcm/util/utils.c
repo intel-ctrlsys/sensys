@@ -406,6 +406,22 @@ int orcm_util_append_orcm_value(opal_list_t *list, char *key, void *data,
     return ORCM_SUCCESS;
 }
 
+int orcm_util_prepend_orcm_value(opal_list_t *list, char *key, void *data,
+                                opal_data_type_t type, char *units)
+{
+    orcm_value_t *list_item = NULL;
+
+    if (NULL == key || NULL == data) {
+        return ORCM_ERR_BAD_PARAM;
+    }
+    if (NULL == (list_item = orcm_util_load_orcm_value(key, data, type, units))) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+    opal_list_prepend(list, (opal_list_item_t *)list_item);
+
+    return ORCM_SUCCESS;
+}
+
 orcm_analytics_value_t* orcm_util_load_orcm_analytics_value(opal_list_t *key,
                                                             opal_list_t *non_compute,
                                                             opal_list_t *compute)

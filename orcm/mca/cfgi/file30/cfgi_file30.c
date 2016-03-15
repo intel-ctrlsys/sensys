@@ -1405,42 +1405,32 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
 static bool check_me(orcm_config_t *config, char *node,
                      orte_vpid_t vpid, char *my_ip)
 {
-    char *uri;
+    char *uri = NULL;
+    bool node_itself = false;
 
-    if (NULL == node) {
-        return false;
+    if (NULL != node && 0 == strcmp(node, "localhost")) {
+        free(node);
+        node = strdup(orte_process_info.nodename);
     }
 
-    if (opal_net_isaddr(node)) {
-        if (0 == strcmp(node, my_ip)) {
-            ORTE_PROC_MY_NAME->vpid = vpid;
-            setup_environ(config->mca_params);
-            if (config->aggregator) {
-                orte_process_info.proc_type = ORCM_AGGREGATOR;
-            }
-            /* load our port */
-            asprintf(&uri, OPAL_MCA_PREFIX"oob_tcp_static_ipv4_ports=%s", config->port);
+    if (NULL != node &&
+            ((opal_net_isaddr(node) && 0 == strcmp(node, my_ip)) ||
+            0 == strcmp(node, orte_process_info.nodename))) {
+        ORTE_PROC_MY_NAME->vpid = vpid;
+        setup_environ(config->mca_params);
+        if (config->aggregator) {
+            orte_process_info.proc_type = ORCM_AGGREGATOR;
+        }
+        /* load our port */
+        if(-1 != asprintf(&uri, OPAL_MCA_PREFIX"oob_tcp_static_ipv4_ports=%s", config->port)) {
             putenv(uri);  // cannot free this value
             opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
                                 "push our port %s", uri);
-           return true;
-        }
-    } else {
-        if (0 == strcmp(node, orte_process_info.nodename)) {
-            ORTE_PROC_MY_NAME->vpid = vpid;
-            if (config->aggregator) {
-                orte_process_info.proc_type = ORCM_AGGREGATOR;
-            }
-            setup_environ(config->mca_params);
-            /* load our port */
-            asprintf(&uri, OPAL_MCA_PREFIX"oob_tcp_static_ipv4_ports=%s", config->port);
-            putenv(uri);  // cannot free this value
-            opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
-                                "push our port %s", uri);
-            return true;
+            node_itself = true;
         }
     }
-    return false;
+
+    return node_itself;
 }
 
 

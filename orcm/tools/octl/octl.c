@@ -444,7 +444,7 @@ static int run_cmd_sensor_get(char** cmdlist)
             rc = orcm_octl_sensor_policy_get(ORCM_GET_SENSOR_POLICY_COMMAND, cmdlist);
             break;
         case cmd_sample_rate:
-            rc = orcm_octl_sensor_sample_rate_get(ORCM_SET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
+            rc = orcm_octl_sensor_sample_rate_get(ORCM_GET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
             break;
         case cmd_inventory:
             rc = orcm_octl_sensor_inventory_get(ORCM_GET_DB_SENSOR_INVENTORY_COMMAND, cmdlist);

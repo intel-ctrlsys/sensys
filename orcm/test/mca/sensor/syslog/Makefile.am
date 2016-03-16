@@ -41,7 +41,9 @@ MOCKING = \
     -Wl,--wrap=close \
     -Wl,--wrap=socket \
     -Wl,--wrap=recv \
-    -Wl,--wrap=bind
+    -Wl,--wrap=bind \
+    -Wl,--wrap=opal_progress_thread_init \
+    -Wl,--wrap=opal_progress_thread_finalize
 
 #
 # Libraries we depend on

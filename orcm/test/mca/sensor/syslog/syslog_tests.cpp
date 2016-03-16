@@ -36,6 +36,13 @@ extern "C" {
     extern int syslog_enable_sampling(const char* sensor_specification);
     extern int syslog_disable_sampling(const char* sensor_specification);
     extern int syslog_reset_sampling(const char* sensor_specification);
+    extern int orcm_sensor_syslog_open(void);
+    extern int orcm_sensor_syslog_close(void);
+    extern int orcm_sensor_syslog_query(mca_base_module_t **module, int *priority);
+    extern int syslog_component_register(void);
+    extern void perthread_syslog_sample(int fd, short args, void *cbdata);
+    extern const char *syslog_get_severity(int  prival);
+    extern const char *syslog_get_facility(int prival);
 
     extern __uid_t __real_geteuid();
     __uid_t __wrap_geteuid()
@@ -68,9 +75,7 @@ extern "C" {
         if(SOCKET_FD != a) {
             return -1;
         } else {
-            if(SOCKET_FD == a) {
-                ut_syslog_tests::flags_ |= 0x0002;
-            }
+            ut_syslog_tests::flags_ |= 0x0002;
             return ut_syslog_tests::GetSyslogEntry((char*)b, c);
         }
     }
@@ -81,10 +86,28 @@ extern "C" {
         if(SOCKET_FD != a) {
             return -1;
         } else {
-            if(SOCKET_FD == a) {
-                ut_syslog_tests::flags_ |= 0x0004;
-            }
+            ut_syslog_tests::flags_ |= 0x0004;
             return 0;
+        }
+    }
+
+    extern opal_event_base_t* __real_opal_progress_thread_init(const char* name);
+    opal_event_base_t* __wrap_opal_progress_thread_init(const char* name)
+    {
+        if(ut_syslog_tests::use_pt_) {
+            return __real_opal_progress_thread_init(name);
+        } else {
+            return NULL;
+        }
+    }
+
+    extern int __real_opal_progress_thread_finalize(const char* name);
+    int __wrap_opal_progress_thread_finalize(const char* name)
+    {
+        if(ut_syslog_tests::use_pt_) {
+            return __real_opal_progress_thread_finalize(name);
+        } else {
+            return ORCM_ERROR;
         }
     }
 };
@@ -94,20 +117,19 @@ int ut_syslog_tests::syslog_socket_ = SOCKET_FD;
 unsigned short ut_syslog_tests::flags_ = 0;
 std::vector<std::string> ut_syslog_tests::sysLog_;
 size_t ut_syslog_tests::sysLogIndex_ = 0;
+bool ut_syslog_tests::use_pt_ = true;
+bool ut_syslog_tests::bad_syslog_entry_ = false;
 
 void ut_syslog_tests::SetUpTestCase()
 {
-    mca_sensor_syslog_component.collect_metrics = true;
     // Configure/Create OPAL level resources
     opal_dss_register_vars();
     opal_dss_open();
 
-    euid_ = 0;
-    syslog_socket_ = SOCKET_FD;
-    flags_ = 0;
     sysLog_.clear();
-    sysLogIndex_ = 0;
     sysLog_.push_back("<30>1 2014-07-31T13:47:30.957146+02:00 host1 snmpd 23611 - - Connection from UDP: [127.0.0.1]:58374->[127.0.0.1]");
+
+    ResetTestCase();
 }
 
 void ut_syslog_tests::TearDownTestCase()
@@ -115,23 +137,40 @@ void ut_syslog_tests::TearDownTestCase()
     // Release OPAL level resources
     opal_dss_close();
 
+    sysLog_.clear();
+}
+
+void ut_syslog_tests::ResetTestCase()
+{
     euid_ = 0;
     syslog_socket_ = SOCKET_FD;
     flags_ = 0;
-    sysLog_.clear();
     sysLogIndex_ = 0;
+    use_pt_ = true;
+    bad_syslog_entry_ = false;
+
+    mca_sensor_syslog_component.collect_metrics = true;
+    mca_sensor_syslog_component.use_progress_thread = false;
+    mca_sensor_syslog_component.sample_rate = 1;
+    mca_sensor_syslog_component.diagnostics = 0;
 }
 
 ssize_t ut_syslog_tests::GetSyslogEntry(char* buffer, size_t max_size)
 {
-    if(sysLog_.size() == sysLogIndex_ || NULL == buffer || 0 == max_size) {
-        return 0;
+    if(!bad_syslog_entry_) {
+        if(sysLog_.size() == sysLogIndex_ || NULL == buffer || 0 == max_size) {
+            return 0;
+        } else {
+            string msg = sysLog_[sysLogIndex_++];
+            size_t max_len = MIN(max_size-1, msg.size()+1);
+            strncpy(buffer, msg.c_str(), max_len);
+            buffer[max_len] = '\0';
+            return max_len;
+        }
     } else {
-        string msg = sysLog_[sysLogIndex_++];
-        size_t max_len = MIN(max_size-1, msg.size()+1);
-        strncpy(buffer, msg.c_str(), max_len);
-        buffer[max_len] = '\0';
-        return max_len;
+        strncpy(buffer, "Hello World!", max_size);
+        bad_syslog_entry_ = false;
+
     }
 }
 bool ut_syslog_tests::ValidateSyslogData(opal_buffer_t* buffer)
@@ -198,31 +237,81 @@ bool ut_syslog_tests::ValidateSyslogData(opal_buffer_t* buffer)
     return test_result;
 }
 
+void ut_syslog_tests::Cleanup(void* sampler, void* logBuffer, int jobid)
+{
+    orcm_sensor_sampler_t* psampler = (orcm_sensor_sampler_t*)sampler;
+    opal_buffer_t** plogBuffer = (opal_buffer_t**)logBuffer;
+    if(NULL != psampler) {
+        OBJ_DESTRUCT(psampler);
+    }
+    if(NULL != plogBuffer) {
+        SAFE_OBJ_RELEASE(*plogBuffer);
+    }
+    orcm_sensor_syslog_module.stop(jobid);
+    orcm_sensor_syslog_module.finalize();
+}
+
+void ut_syslog_tests::ExpectCorrectSeverityAndFacility(int val, const char* expected_sev, const char* expected_fac)
+{
+    const char* sev = syslog_get_severity(val);
+    const char* fac = syslog_get_facility(val);
+    if(NULL == expected_sev) {
+        EXPECT_EQ(0, (uint64_t)sev);
+    } else {
+        EXPECT_STREQ(expected_sev, sev);
+    }
+    if(NULL == expected_fac) {
+        EXPECT_EQ(0, (uint64_t)fac);
+    } else {
+        EXPECT_STREQ(expected_fac, fac);
+    }
+}
+
+void ut_syslog_tests::AssertCorrectPerThreadStartup(bool use_pt)
+{
+    ResetTestCase();
+
+    use_pt_ = use_pt;
+
+    mca_sensor_syslog_component.use_progress_thread = true;
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(6);
+    sleep(1);
+    Cleanup(NULL, NULL, 6);
+}
+
 
 // Testing the data collection class
 TEST_F(ut_syslog_tests, syslog_sensor_sample_tests)
 {
+    ResetTestCase();
+
     // Setup
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(5);
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_syslog_component.runtime_metrics);
     void* object = orcm_sensor_base_runtime_metrics_create("syslog", false, false);
     mca_sensor_syslog_component.runtime_metrics = object;
     orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
 
     // Tests
-    collect_syslog_sample(sampler);
+    orcm_sensor_syslog_module.sample(sampler);
     EXPECT_EQ(0, (mca_sensor_syslog_component.diagnostics & 0x1));
 
     orcm_sensor_base_runtime_metrics_set(object, true, "syslog");
-    collect_syslog_sample(sampler);
+    orcm_sensor_syslog_module.sample(sampler);
     EXPECT_EQ(1, (mca_sensor_syslog_component.diagnostics & 0x1));
 
     // Cleanup
-    OBJ_RELEASE(sampler);
-    orcm_sensor_base_runtime_metrics_destroy(object);
-    mca_sensor_syslog_component.runtime_metrics = NULL;
+    SAFE_OBJ_RELEASE(sampler);
+    orcm_sensor_syslog_module.stop(5);
+    orcm_sensor_syslog_module.finalize();
 }
 
 TEST_F(ut_syslog_tests, syslog_api_tests)
 {
+    ResetTestCase();
+
     // Setup
     void* object = orcm_sensor_base_runtime_metrics_create("syslog", false, false);
     mca_sensor_syslog_component.runtime_metrics = object;
@@ -248,6 +337,8 @@ TEST_F(ut_syslog_tests, syslog_api_tests)
 
 TEST_F(ut_syslog_tests, syslog_init_finalize_positive)
 {
+    ResetTestCase();
+
     int rv = orcm_sensor_syslog_module.init();
     EXPECT_EQ(ORCM_SUCCESS, rv);
     EXPECT_NE(0, (uint64_t)(mca_sensor_syslog_component.runtime_metrics));
@@ -256,61 +347,115 @@ TEST_F(ut_syslog_tests, syslog_init_finalize_positive)
 
 TEST_F(ut_syslog_tests, syslog_init_finalize_negative)
 {
-    euid_ = 1000;
+    ResetTestCase();
+
+    euid_ = 1000; // Not Root
+
     int rv = orcm_sensor_syslog_module.init();
     EXPECT_NE(ORCM_SUCCESS, rv);
     EXPECT_EQ(0, (uint64_t)(mca_sensor_syslog_component.runtime_metrics));
     orcm_sensor_syslog_module.finalize();
-    euid_ = 0;
 }
 
 TEST_F(ut_syslog_tests, syslog_start_stop)
 {
-    syslog_socket_ = SOCKET_FD;
+    ResetTestCase();
+
+    mca_sensor_syslog_component.sample_rate = 0;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(5);
+    sleep(1);
+    orcm_sensor_syslog_module.stop(5);
+    orcm_sensor_syslog_module.finalize();
+}
+
+TEST_F(ut_syslog_tests, syslog_start_stop_negative1)
+{
+    ResetTestCase();
+
+    syslog_socket_ = -1; // Invalid socket
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(5);
+    orcm_sensor_syslog_module.stop(5);
+    orcm_sensor_syslog_module.finalize();
+}
+
+TEST_F(ut_syslog_tests, syslog_start_stop_negative2)
+{
+    ResetTestCase();
+
+    mca_sensor_syslog_component.use_progress_thread = true;
+    use_pt_ = false;
 
     orcm_sensor_syslog_module.start(5);
     sleep(1);
     orcm_sensor_syslog_module.stop(5);
-    EXPECT_EQ(15, flags_);
-    flags_ = 0;
-}
-
-TEST_F(ut_syslog_tests, syslog_start_stop_negative)
-{
-    syslog_socket_ = -1;
-
-    orcm_sensor_syslog_module.start(5);
-    EXPECT_EQ(0, flags_);
-    orcm_sensor_syslog_module.stop(5);
-
-    flags_ = 0;
-    syslog_socket_ = SOCKET_FD;
 }
 
 TEST_F(ut_syslog_tests, syslog_sample_rate_tests)
 {
-    mca_sensor_syslog_component.use_progress_thread = false;
-    mca_sensor_syslog_component.sample_rate = 0;
+    ResetTestCase();
+
     orcm_sensor_syslog_module.set_sample_rate(5);
-    EXPECT_EQ(0, mca_sensor_syslog_component.sample_rate);
+    EXPECT_EQ(1, mca_sensor_syslog_component.sample_rate);
     mca_sensor_syslog_component.use_progress_thread = true;
     orcm_sensor_syslog_module.set_sample_rate(5);
     EXPECT_EQ(5, mca_sensor_syslog_component.sample_rate);
     int rate = 0;
     orcm_sensor_syslog_module.get_sample_rate(&rate);
     EXPECT_EQ(5, rate);
-    mca_sensor_syslog_component.use_progress_thread = false;
 }
 
 TEST_F(ut_syslog_tests, syslog_inventory_sample_log_test)
 {
+    ResetTestCase();
+
     mca_sensor_syslog_component.use_progress_thread = false;
     // It appears this feature is not implemented in syslog sensor plugin!
 }
 
 TEST_F(ut_syslog_tests, syslog_sample_log_test)
 {
-    mca_sensor_syslog_component.use_progress_thread = false;
+    ResetTestCase();
+
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(6);
+    sysLogIndex_ = 0;
+    while(0 == sysLogIndex_);
+    sleep(2);
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_syslog_module.sample(&sampler);
+    opal_buffer_t* buffer = &sampler.bucket;
+
+    int n = 1;
+    opal_buffer_t* logBuffer = NULL;
+    int rv = opal_dss.unpack(buffer, &logBuffer, &n, OPAL_BUFFER);
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+    EXPECT_NE(0, (uint64_t)logBuffer);
+    bool failed = (ORCM_SUCCESS != rv || NULL == buffer);
+    if(!failed)
+    {
+        char* plugin = NULL;
+        n = 1;
+        rv = opal_dss.unpack(logBuffer, &plugin, &n, OPAL_STRING);
+        failed = (ORCM_SUCCESS != rv || NULL == buffer);
+        EXPECT_STREQ("syslog", plugin);
+        SAFEFREE(plugin);
+        EXPECT_TRUE(ValidateSyslogData(logBuffer));
+        orcm_sensor_syslog_module.log(logBuffer);
+    }
+
+    Cleanup(&sampler, &logBuffer, 6);
+}
+
+TEST_F(ut_syslog_tests, syslog_sample_log_test2)
+{
+    ResetTestCase();
+
+    bad_syslog_entry_ = true;
+
     ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
     orcm_sensor_syslog_module.start(6);
     sleep(1);
@@ -320,11 +465,11 @@ TEST_F(ut_syslog_tests, syslog_sample_log_test)
     opal_buffer_t* buffer = &sampler.bucket;
 
     int n = 1;
-    opal_buffer_t* logBuffer = NULL; //OBJ_NEW(opal_buffer_t);
+    opal_buffer_t* logBuffer = NULL;
     int rv = opal_dss.unpack(buffer, &logBuffer, &n, OPAL_BUFFER);
+    EXPECT_EQ(ORCM_SUCCESS, rv);
     EXPECT_NE(0, (uint64_t)logBuffer);
     bool failed = (ORCM_SUCCESS != rv || NULL == buffer);
-    EXPECT_EQ(OPAL_SUCCESS, rv);
     if(!failed)
     {
         char* plugin = NULL;
@@ -333,18 +478,89 @@ TEST_F(ut_syslog_tests, syslog_sample_log_test)
         failed = (ORCM_SUCCESS != rv || NULL == buffer);
         EXPECT_STREQ("syslog", plugin);
         SAFEFREE(plugin);
-    } else {
-        SAFE_OBJ_RELEASE(logBuffer);
-    }
-
-    if(!failed) {
         EXPECT_TRUE(ValidateSyslogData(logBuffer));
         orcm_sensor_syslog_module.log(logBuffer);
-        SAFE_OBJ_RELEASE(logBuffer);
     }
 
-    OBJ_DESTRUCT(&sampler);
-    SAFE_OBJ_RELEASE(logBuffer);
-    orcm_sensor_syslog_module.stop(6);
-    orcm_sensor_syslog_module.finalize();
+    Cleanup(&sampler, &logBuffer, 6);
+}
+
+TEST_F(ut_syslog_tests, syslog_sample_log_test3)
+{
+    ResetTestCase();
+
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(6);
+    sleep(1);
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    mca_sensor_syslog_component.use_progress_thread = true;
+    orcm_sensor_syslog_module.sample(&sampler);
+    mca_sensor_syslog_component.use_progress_thread = false;
+    opal_buffer_t* buffer = &sampler.bucket;
+
+    int n = 1;
+    opal_buffer_t* logBuffer = NULL;
+    int rv = opal_dss.unpack(buffer, &logBuffer, &n, OPAL_BUFFER);
+    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER, rv);
+
+    Cleanup(&sampler, &logBuffer, 6);
+}
+
+TEST_F(ut_syslog_tests, syslog_sample_log_test4)
+{
+    ResetTestCase();
+
+    sysLogIndex_ = 1;
+
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(6);
+    sleep(1);
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_syslog_module.sample(&sampler);
+    opal_buffer_t* buffer = &sampler.bucket;
+
+    int n = 1;
+    opal_buffer_t* logBuffer = NULL;
+    int rv = opal_dss.unpack(buffer, &logBuffer, &n, OPAL_BUFFER);
+    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER, rv);
+
+    Cleanup(&sampler, &logBuffer, 6);
+}
+
+TEST_F(ut_syslog_tests, syslog_component_test)
+{
+    ResetTestCase();
+
+    int priority;
+    mca_base_module_t* module = NULL;
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_open());
+
+    EXPECT_EQ(ORCM_SUCCESS, syslog_component_register());
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_query(&module, &priority));
+    EXPECT_EQ(50, priority);
+    EXPECT_NE(0, (uint64_t)module);
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_close());
+}
+
+TEST_F(ut_syslog_tests, syslog_start_stop_with_per_thread_test_positive)
+{
+    AssertCorrectPerThreadStartup(true);
+}
+
+TEST_F(ut_syslog_tests, syslog_start_stop_with_per_thread_test_negative)
+{
+    AssertCorrectPerThreadStartup(false);
+}
+
+TEST_F(ut_syslog_tests, syslog_get_severity_facility_test)
+{
+    ExpectCorrectSeverityAndFacility(0, "emerg", "KERNEL MESSAGES");
+    ExpectCorrectSeverityAndFacility(-1, NULL, NULL);
+    ExpectCorrectSeverityAndFacility(3 + (3 * 8), "error", "SYSTEM DAEMONS");
+    ExpectCorrectSeverityAndFacility(3 + (24 * 8), "error", NULL);
 }

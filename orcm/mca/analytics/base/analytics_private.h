@@ -13,8 +13,8 @@
 #define MCA_ANALYTICS_PRIVATE_H
 
 #include "orcm/mca/analytics/base/base.h"
-#include "orcm/mca/data_dispatch/data_dispatch.h"
-#include "orcm/mca/data_dispatch/base/base.h"
+#include "orcm/mca/dispatch/dispatch.h"
+#include "orcm/mca/dispatch/base/base.h"
 
 BEGIN_C_DECLS
 

@@ -42,8 +42,8 @@
 #include "orcm/mca/db/db.h"
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/util/utils.h"
-#include "orcm/mca/data_dispatch/base/base.h"
-#include "orcm/mca/data_dispatch/dfg/data_dispatch_dfg.h"
+#include "orcm/mca/dispatch/base/base.h"
+#include "orcm/mca/dispatch/dfg/dispatch_dfg.h"
 
 /* API functions */
 
@@ -53,7 +53,7 @@ static void dfg_generate(orcm_ras_event_t *cd);
 
 /* The module struct */
 
-orcm_data_dispatch_base_module_t orcm_data_dispatch_dfg_module = {
+orcm_dispatch_base_module_t orcm_dispatch_dfg_module = {
     dfg_init,
     dfg_finalize,
     dfg_generate
@@ -70,8 +70,8 @@ static void dfg_env_db_open_cbfunc(int dbh, int status, opal_list_t *input_list,
     if (0 == status) {
         env_dbhandle = dbh;
     } else {
-        OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
-                             "%s data_dispatch:dfg DB env open operation failed",
+        OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                             "%s dispatch:dfg DB env open operation failed",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     }
 
@@ -87,8 +87,8 @@ static void dfg_event_db_open_cbfunc(int dbh, int status, opal_list_t *input_lis
     if (0 == status) {
         event_dbhandle = dbh;
     } else {
-        OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
-                             "%s data_dispatch:dfg DB event open operation failed",
+        OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                             "%s dispatch:dfg DB event open operation failed",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     }
 
@@ -119,7 +119,7 @@ static opal_list_t* dfg_init_env_dbhandle_commit_rate(void)
         if (NULL != attribute) {
             attribute->value.key = strdup("autocommit");
             attribute->value.type = OPAL_BOOL;
-            if (orcm_data_dispatch_base.sensor_db_commit_rate > 1) {
+            if (orcm_dispatch_base.sensor_db_commit_rate > 1) {
                 attribute->value.data.flag = false; /* Disable Auto commit/Enable grouped commits */
             } else {
                 attribute->value.data.flag = true; /* Enable Auto commit/Disable grouped commits */
@@ -137,8 +137,8 @@ static void dfg_init(void)
 {
     opal_list_t *props = NULL;
 
-    OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
-                         "%s data_dispatch:dfg init",
+    OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                         "%s dispatch:dfg init",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     if (0 > env_dbhandle) {
         /* get a db handle for env data*/
@@ -157,8 +157,8 @@ static void dfg_init(void)
 static void dfg_finalize(void)
 {
 
-    OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
-                         "%s data_dispatch:dfg finalize",
+    OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                         "%s dispatch:dfg finalize",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
     if (0 <= env_dbhandle) {
@@ -185,7 +185,7 @@ static opal_list_t* dfg_convert_event_data_to_list(orcm_ras_event_t *ecd)
         return NULL;
     }
 
-    metric = orcm_util_load_orcm_value("type", (void *) orcm_data_dispatch_base_print_type(ecd->type), OPAL_STRING, NULL);
+    metric = orcm_util_load_orcm_value("type", (void *) orcm_dispatch_base_print_type(ecd->type), OPAL_STRING, NULL);
     if (NULL == metric) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         OBJ_RELEASE(input_list);
@@ -193,7 +193,7 @@ static opal_list_t* dfg_convert_event_data_to_list(orcm_ras_event_t *ecd)
     }
     opal_list_append(input_list, (opal_list_item_t *)metric);
 
-    metric = orcm_util_load_orcm_value("severity", (void *) orcm_data_dispatch_base_print_severity(ecd->severity), OPAL_STRING, NULL);
+    metric = orcm_util_load_orcm_value("severity", (void *) orcm_dispatch_base_print_severity(ecd->severity), OPAL_STRING, NULL);
     if (NULL == metric) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         OBJ_RELEASE(input_list);
@@ -237,17 +237,17 @@ static void dfg_generate_database_event(opal_list_t *input_list, int data_type)
     if (ORCM_RAS_EVENT_SENSOR == data_type ) {
         if (0 <= env_dbhandle) {
             orcm_db.store_new(env_dbhandle, ORCM_DB_ENV_DATA, input_list, NULL, dfg_data_cbfunc, NULL);
-            if (orcm_data_dispatch_base.sensor_db_commit_rate > 1) {
+            if (orcm_dispatch_base.sensor_db_commit_rate > 1) {
                 env_db_commit_count++;
-                if (env_db_commit_count == orcm_data_dispatch_base.sensor_db_commit_rate) {
+                if (env_db_commit_count == orcm_dispatch_base.sensor_db_commit_rate) {
                     orcm_db.commit(env_dbhandle, dfg_env_data_commit_cb, NULL);
                     env_db_commit_count = 0;
                 }
             }
         }
         else {
-            OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
-                                 "%s data_dispatch:dfg couldn't store env data as db handler isn't opened",
+            OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                                 "%s dispatch:dfg couldn't store env data as db handler isn't opened",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         }
     }
@@ -256,8 +256,8 @@ static void dfg_generate_database_event(opal_list_t *input_list, int data_type)
             orcm_db.store_new(event_dbhandle, ORCM_DB_EVENT_DATA, input_list, NULL, dfg_data_cbfunc, NULL);
         }
         else {
-            OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
-                                 "%s data_dispatch:dfg couldn't store event data as db handler isn't opened",
+            OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                                 "%s dispatch:dfg couldn't store event data as db handler isn't opened",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         }
     }
@@ -283,8 +283,8 @@ static void dfg_generate_notifier_event(orcm_ras_event_t *ecd)
     }
     if ((NULL != notifier_msg) && (NULL != notifier_action)) {
        if ((ecd->severity >= ORCM_RAS_SEVERITY_EMERG) && (ecd->severity < ORCM_RAS_SEVERITY_UNKNOWN)) {
-           OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
-                                "%s data_dispatch:dfg generating notifier with severity %d "
+           OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                                "%s dispatch:dfg generating notifier with severity %d "
                                 "and notifier action as %s",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ecd->severity, notifier_action));
             ORTE_NOTIFIER_SYSTEM_EVENT(ecd->severity, notifier_msg, notifier_action);
@@ -331,13 +331,13 @@ static void dfg_generate_storage_events(orcm_ras_event_t *ecd)
 static void dfg_generate(orcm_ras_event_t *ecd)
 {
 
-    OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
-                         "%s data_dispatch:dfg record event",
+    OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                         "%s dispatch:dfg record event",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 
     if (NULL == ecd) {
-        OPAL_OUTPUT_VERBOSE((1, orcm_data_dispatch_base_framework.framework_output,
-                             "%s data_dispatch:dfg NULL event data",
+        OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                             "%s dispatch:dfg NULL event data",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         return;
     }

@@ -10,7 +10,7 @@
 #include "orcm/mca/analytics/base/analytics_private.h"
 #include "orcm/util/utils.h"
 #include "orcm/runtime/orcm_globals.h"
-#include "orcm/mca/data_dispatch/data_dispatch.h"
+#include "orcm/mca/dispatch/dispatch.h"
 
 #include <ctype.h>
 

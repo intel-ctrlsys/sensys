@@ -46,7 +46,6 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "orcm/mca/analytics/analytics.h"
-#include "orcm/mca/data_dispatch/data_dispatch_types.h"
 #include "orcm/util/utils.h"
 #include "sensor_syslog.h"
 

@@ -19,7 +19,6 @@ extern "C" {
     #include "orcm/mca/analytics/analytics.h"
     #include "orcm/mca/sensor/base/sensor_private.h"
     #include "orcm/mca/db/db.h"
-    #include "orcm/mca/data_dispatch/data_dispatch_types.h"
 
     extern orcm_value_t* orcm_util_load_orcm_value(char *key, void *data, opal_data_type_t type, char* units);
     extern orcm_analytics_value_t* orcm_util_load_orcm_analytics_value(opal_list_t *key, opal_list_t *non_compute, opal_list_t *compute);

@@ -80,8 +80,8 @@ static int init_spatial_statistics(spatial_statistics_t* spatial_statistics, opa
 static int set_event_description(spatial_statistics_t* spatial_statistics,
                                  orcm_ras_event_t* event_data);
 
-/* function to send the event data to the data_dispatch framework */
-static int send_data_to_data_dispatch(spatial_statistics_t* spatial_statistics,
+/* function to send the event data to the dispatch framework */
+static int send_data_to_dispatch(spatial_statistics_t* spatial_statistics,
                               orcm_analytics_value_t* analytics_value);
 
 /* function do the computation when the buckets are full */
@@ -248,7 +248,7 @@ static int set_event_description(spatial_statistics_t* spatial_statistics,
     return rc;
 }
 
-static int send_data_to_data_dispatch(spatial_statistics_t* spatial_statistics,
+static int send_data_to_dispatch(spatial_statistics_t* spatial_statistics,
                               orcm_analytics_value_t* analytics_value)
 {
     int rc = ORCM_SUCCESS;
@@ -370,7 +370,7 @@ static orcm_analytics_value_t* handle_full_bucket(spatial_statistics_t* spatial_
     data_to_next = orcm_util_load_analytics_time_compute(caddy->analytics_value->key,
                              caddy->analytics_value->non_compute_data, next_list);
     if (NULL != data_to_next && true == orcm_analytics_base_db_check(caddy->wf_step, false)) {
-        if (ORCM_SUCCESS != (*rc = send_data_to_data_dispatch(spatial_statistics, data_to_next))) {
+        if (ORCM_SUCCESS != (*rc = send_data_to_dispatch(spatial_statistics, data_to_next))) {
             SAFEFREE(data_key);
             SAFE_RELEASE(data_to_next);
         }

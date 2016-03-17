@@ -12,8 +12,8 @@
  *
  */
 
-#ifndef MCA_DATA_DISPATCH_TYPES_H
-#define MCA_DATA_DISPATCH_TYPES_H
+#ifndef MCA_DISPATCH_TYPES_H
+#define MCA_DISPATCH_TYPES_H
 
 /*
  * includes
@@ -67,7 +67,7 @@ BEGIN_C_DECLS
 /* define a callback function that will be executed
  * once the event generator has finished with the
  * provided orcm_ras_event_t */
-typedef void (*orcm_ras_data_dispatch_cbfunc_t)(void *cbdata);
+typedef void (*orcm_ras_dispatch_cbfunc_t)(void *cbdata);
 
 /* define a RAS event structure - note that this is an
  * abstracted form that is intended to support multiple
@@ -124,7 +124,7 @@ typedef struct {
     opal_list_t data;
 
     /* the callback function, if once was given */
-    orcm_ras_data_dispatch_cbfunc_t cbfunc;
+    orcm_ras_dispatch_cbfunc_t cbfunc;
     void *cbdata;
 
 } orcm_ras_event_t;
@@ -251,4 +251,4 @@ OBJ_CLASS_DECLARATION(orcm_ras_event_t);
 
 END_C_DECLS
 
-#endif /* MCA_DATA_DISPATCH_TYPES_H */
+#endif /* MCA_DISPATCH_TYPES_H */

@@ -19,7 +19,7 @@
 #include "orte/runtime/orte_globals.h"
 #include "orte/mca/notifier/notifier.h"
 
-#include "orcm/mca/data_dispatch/data_dispatch.h"
+#include "orcm/mca/dispatch/dispatch.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
 #include "analytics_cott.h"
 #include "host_analyze_counters.h"

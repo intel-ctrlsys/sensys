@@ -23,15 +23,15 @@ TESTS = dfg_tests
 check_PROGRAMS = dfg_tests
 
 dfg_tests_SOURCES = \
-       data_dispatch_dfg_tests.cpp \
-       data_dispatch_dfg_tests.h
+       dispatch_dfg_tests.cpp \
+       dispatch_dfg_tests.h
 
-DFG_BUILD_DIR=$(top_builddir)/orcm/mca/data_dispatch/dfg
+DFG_BUILD_DIR=$(top_builddir)/orcm/mca/dispatch/dfg
 
-if MCA_BUILD_orcm_data_dispatch_dfg_DSO
-DFG_LIB=$(DFG_BUILD_DIR)/mca_data_dispatch_dfg.la 
+if MCA_BUILD_orcm_dispatch_dfg_DSO
+DFG_LIB=$(DFG_BUILD_DIR)/mca_dispatch_dfg.la 
 else
-DFG_LIB=$(DFG_BUILD_DIR)/libmca_data_dispatch_dfg.la 
+DFG_LIB=$(DFG_BUILD_DIR)/libmca_dispatch_dfg.la 
 endif	
 
 #
@@ -47,5 +47,5 @@ AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto
 #
 # Preprocessor flags
 #
-DFG_DIR=$(top_srcdir)/orcm/mca/data_dispatch/dfg
+DFG_DIR=$(top_srcdir)/orcm/mca/dispatch/dfg
 AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_srcdir) -I$(DFG_DIR)

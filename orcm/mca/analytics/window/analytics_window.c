@@ -99,8 +99,8 @@ static void print_out_results(win_statistics_t *win_statistics,
 static int set_window_description(win_statistics_t *win_statistics,
                                   orcm_ras_event_t *event_data);
 
-/* function to send the event data to the data_dispatch framework */
-static int send_data_to_data_dispatch(win_statistics_t *win_statistics,
+/* function to send the event data to the dispatch framework */
+static int send_data_to_dispatch(win_statistics_t *win_statistics,
                               orcm_analytics_value_t *analytics_value);
 
 /* function to handle the full window: do computation, send data to the next plugin */
@@ -364,7 +364,7 @@ static int set_window_description(win_statistics_t *win_statistics,
     return rc;
 }
 
-static int send_data_to_data_dispatch(win_statistics_t *win_statistics,
+static int send_data_to_dispatch(win_statistics_t *win_statistics,
                               orcm_analytics_value_t *analytics_value)
 {
     int rc = ORCM_SUCCESS;
@@ -438,7 +438,7 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
                               caddy->analytics_value->non_compute_data, compute_list_to_next);
     if (NULL != analytics_value_to_next) {
         if(true == orcm_analytics_base_db_check(caddy->wf_step, false)){
-            rc = send_data_to_data_dispatch(win_statistics, analytics_value_to_next);
+            rc = send_data_to_dispatch(win_statistics, analytics_value_to_next);
             if(ORCM_SUCCESS != rc){
                 goto cleanup;
             }

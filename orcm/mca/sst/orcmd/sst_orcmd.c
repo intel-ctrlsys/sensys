@@ -85,7 +85,7 @@
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/db/base/base.h"
 #include "orcm/mca/diag/base/base.h"
-#include "orcm/mca/data_dispatch/base/base.h"
+#include "orcm/mca/dispatch/base/base.h"
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/sensor.h"
 #include "orcm/mca/pwrmgmt/base/base.h"
@@ -632,15 +632,15 @@ static int orcmd_init(void)
         goto error;
     }
 
-    /* setup the data_dispatch framework */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_data_dispatch_base_framework, 0))) {
+    /* setup the dispatch framework */
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_dispatch_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
-        error = "orcm_data_dispatch_base_open";
+        error = "orcm_dispatch_base_open";
         goto error;
     }
-    if (ORTE_SUCCESS != (ret = orcm_data_dispatch_base_select())) {
+    if (ORTE_SUCCESS != (ret = orcm_dispatch_base_select())) {
         ORTE_ERROR_LOG(ret);
-        error = "orcm_data_dispatch_select";
+        error = "orcm_dispatch_select";
         goto error;
     }
 
@@ -757,7 +757,7 @@ static void orcmd_finalize(void)
 
     (void) mca_base_framework_close(&orcm_db_base_framework);
     (void) mca_base_framework_close(&opal_dstore_base_framework);
-    (void) mca_base_framework_close(&orcm_data_dispatch_base_framework);
+    (void) mca_base_framework_close(&orcm_dispatch_base_framework);
 
     /* cleanup any lingering session directories */
     orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);

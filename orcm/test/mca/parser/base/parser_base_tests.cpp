@@ -27,6 +27,8 @@ extern "C" {
 
 #define MY_ORCM_SUCCESS 0
 #define MY_MODULE_PRIORITY 20
+#define RANDOM_VALUE_TO_TEST_API 1
+#define RANDOM_FILE_NAME_TO_TEST_API "sample.xml"
 
 // Fixture
 using namespace std;
@@ -35,7 +37,11 @@ static void comp_init(void);
 static void comp_finalize(void);
 static int comp_open(char const *file);
 static int comp_close(int file_id);
-static opal_list_t* comp_retrieve_section(int file_id, opal_list_item_t *start,
+static opal_list_t* comp_retrieve_document(int file_id);
+static opal_list_t* comp_retrieve_section(int file_id, char const* key,
+                                          char const* name);
+static opal_list_t* comp_retrieve_section_from_list(int file_id,
+                                          opal_list_item_t *start,
                                           char const* key, char const* name);
 static void comp_write_section(opal_list_t *result, int file_id, char const *key);
 
@@ -44,11 +50,15 @@ orcm_parser_base_module_t orcm_parser_sample_module = {
     comp_finalize,
     comp_open,
     comp_close,
+    comp_retrieve_document,
     comp_retrieve_section,
+    comp_retrieve_section_from_list,
     comp_write_section
 };
 
 orcm_parser_base_module_t orcm_parser_sample_null_api_module = {
+    NULL,
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -78,7 +88,19 @@ static int comp_close(int file_id)
     return MY_ORCM_SUCCESS;
 }
 
-static opal_list_t* comp_retrieve_section(int file_id, opal_list_item_t *start,
+static opal_list_t* comp_retrieve_document(int file_id)
+{
+    return NULL;
+}
+
+static opal_list_t* comp_retrieve_section(int file_id, char const* key,
+                                          char const* name)
+{
+    return NULL;
+}
+
+static opal_list_t* comp_retrieve_section_from_list(int file_id,
+                                           opal_list_item_t *start,
                                            char const* key, char const* name)
 {
     return NULL;
@@ -222,8 +244,7 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_open_file)
 {
     int ret;
 
-    //This file need not exist. I am testing framework API. Not the plugin level
-    ret = orcm_parser.open("sample.xml");
+    ret = orcm_parser.open(RANDOM_FILE_NAME_TO_TEST_API);
     ASSERT_NE(MY_ORCM_SUCCESS, ret);
 }
 
@@ -240,8 +261,7 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_open_file)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    //This file need not exist. I am testing framework API. Not the plugin level
-    ret = orcm_parser.open("sample.xml");
+    ret = orcm_parser.open(RANDOM_FILE_NAME_TO_TEST_API);
     ASSERT_EQ(MY_ORCM_SUCCESS, ret);
 }
 
@@ -249,8 +269,7 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_close_file)
 {
     int ret;
 
-    //Random number to test. I am testing framework API. Not the plugin level
-    ret = orcm_parser.close(1);
+    ret = orcm_parser.close(RANDOM_VALUE_TO_TEST_API);
     ASSERT_NE(MY_ORCM_SUCCESS, ret);
 }
 
@@ -267,15 +286,32 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_close_file)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    //Random number to test. I am testing framework API. Not the plugin level
-    ret = orcm_parser.close(1);
+    ret = orcm_parser.close(RANDOM_VALUE_TO_TEST_API);
     ASSERT_EQ(MY_ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_retrieve_document)
+{
+    orcm_parser.retrieve_document(RANDOM_VALUE_TO_TEST_API);
+}
+
+TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_document)
+{
+    orcm_parser_active_module_t *act_module;
+
+    act_module = OBJ_NEW(orcm_parser_active_module_t);
+
+    act_module->priority = MY_MODULE_PRIORITY;
+    act_module->module = &orcm_parser_sample_module;
+
+    opal_list_append(&orcm_parser_base.actives, &act_module->super);
+
+    orcm_parser.retrieve_document(RANDOM_VALUE_TO_TEST_API);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_retrieve_section)
 {
-    //Random values to test. I am testing framework API. Not the plugin level
-    orcm_parser.retrieve_section(1, NULL, "", "");
+    orcm_parser.retrieve_section(RANDOM_VALUE_TO_TEST_API, "", "");
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section)
@@ -289,14 +325,34 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    //Random values to test. I am testing framework API. Not the plugin level
-    orcm_parser.retrieve_section(1, NULL, "", "");
+    orcm_parser.retrieve_section(RANDOM_VALUE_TO_TEST_API, "", "");
+}
+
+
+
+TEST_F(ut_parser_base_tests,
+       parser_base_stubs_no_active_module_retrieve_section_from_list)
+{
+    orcm_parser.retrieve_section_from_list(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+}
+
+TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section_from_list)
+{
+    orcm_parser_active_module_t *act_module;
+
+    act_module = OBJ_NEW(orcm_parser_active_module_t);
+
+    act_module->priority = MY_MODULE_PRIORITY;
+    act_module->module = &orcm_parser_sample_module;
+
+    opal_list_append(&orcm_parser_base.actives, &act_module->super);
+
+    orcm_parser.retrieve_section_from_list(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_write_section)
 {
-    //Random values to test. I am testing framework API. Not the plugin level
-    orcm_parser.write_section(NULL, 1, "");
+    orcm_parser.write_section(NULL, RANDOM_VALUE_TO_TEST_API, "");
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_write_section)
@@ -310,6 +366,5 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_write_section)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    //Random values to test. I am testing framework API. Not the plugin level
-    orcm_parser.write_section(NULL, 1, "");
+    orcm_parser.write_section(NULL, RANDOM_VALUE_TO_TEST_API, "");
 }

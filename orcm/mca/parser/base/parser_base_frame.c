@@ -43,7 +43,9 @@
 orcm_parser_API_module_t orcm_parser = {
         orcm_parser_base_open_file,
         orcm_parser_base_close_file,
+        orcm_parser_base_retrieve_document,
         orcm_parser_base_retrieve_section,
+        orcm_parser_base_retrieve_section_from_list,
         orcm_parser_base_write_section
 };
 

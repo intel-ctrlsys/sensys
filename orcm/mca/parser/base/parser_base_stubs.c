@@ -36,20 +36,41 @@ int orcm_parser_base_close_file (int file_id)
     return ORCM_ERROR;
 }
 
-
-opal_list_t* orcm_parser_base_retrieve_section (int file_id, opal_list_item_t *start,
-                                                        char const* key, char const* name)
+opal_list_t* orcm_parser_base_retrieve_document (int file_id)
 {
     orcm_parser_active_module_t *active_module = NULL;
-
     OPAL_LIST_FOREACH(active_module, &orcm_parser_base.actives, orcm_parser_active_module_t) {
-        if (NULL != active_module->module->retrieve_section) {
-            return active_module->module->retrieve_section(file_id, start, key, name);
+        if (NULL != active_module->module->retrieve_document){
+            return active_module->module->retrieve_document(file_id);
         }
     }
     return NULL;
 }
 
+opal_list_t* orcm_parser_base_retrieve_section (int file_id, char const* key, char const* name)
+{
+    orcm_parser_active_module_t *active_module = NULL;
+
+    OPAL_LIST_FOREACH(active_module, &orcm_parser_base.actives, orcm_parser_active_module_t) {
+        if (NULL != active_module->module->retrieve_section) {
+            return active_module->module->retrieve_section(file_id, key, name);
+        }
+    }
+    return NULL;
+}
+
+opal_list_t* orcm_parser_base_retrieve_section_from_list (int file_id, opal_list_item_t *start,
+                                                        char const* key, char const* name)
+{
+    orcm_parser_active_module_t *active_module = NULL;
+
+    OPAL_LIST_FOREACH(active_module, &orcm_parser_base.actives, orcm_parser_active_module_t) {
+        if (NULL != active_module->module->retrieve_section_from_list) {
+            return active_module->module->retrieve_section_from_list(file_id, start, key, name);
+        }
+    }
+    return NULL;
+}
 
 void orcm_parser_base_write_section (opal_list_t *result, int file_id, char const *key)
 {

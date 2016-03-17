@@ -37,7 +37,12 @@ typedef int (*orcm_parser_module_open_fn_t)(char const *file);
 
 typedef int (*orcm_parser_module_close_fn_t)(int file_id);
 
-typedef opal_list_t* (*orcm_parser_module_retrieve_section_fn_t)(int file_id,
+typedef opal_list_t* (*orcm_parser_module_retrieve_document_fn_t)(int file_id);
+
+typedef opal_list_t* (*orcm_parser_module_retrieve_section_fn_t) (int file_id,
+                                                         char const* key, char const* name);
+
+typedef opal_list_t* (*orcm_parser_module_retrieve_section_from_list_fn_t)(int file_id,
                                 opal_list_item_t *start, char const* key, char const* name);
 
 typedef void (*orcm_parser_module_write_section_fn_t)(opal_list_t *result,
@@ -47,12 +52,14 @@ typedef void (*orcm_parser_module_write_section_fn_t)(opal_list_t *result,
  * Ver 1.0
  */
 struct orcm_parser_base_module_1_0_0_t {
-    orcm_parser_module_init_fn_t              init;
-    orcm_parser_module_fini_fn_t              finalize;
-    orcm_parser_module_open_fn_t              open;
-    orcm_parser_module_close_fn_t             close;
-    orcm_parser_module_retrieve_section_fn_t  retrieve_section;
-    orcm_parser_module_write_section_fn_t     write_section;
+    orcm_parser_module_init_fn_t                        init;
+    orcm_parser_module_fini_fn_t                        finalize;
+    orcm_parser_module_open_fn_t                        open;
+    orcm_parser_module_close_fn_t                       close;
+    orcm_parser_module_retrieve_document_fn_t           retrieve_document;
+    orcm_parser_module_retrieve_section_fn_t            retrieve_section;
+    orcm_parser_module_retrieve_section_from_list_fn_t  retrieve_section_from_list;
+    orcm_parser_module_write_section_fn_t               write_section;
 };
 
 typedef struct orcm_parser_base_module_1_0_0_t orcm_parser_base_module_1_0_0_t;
@@ -63,17 +70,24 @@ typedef int (*orcm_parser_base_API_open_file_fn_t) (char const *file);
 
 typedef int (*orcm_parser_base_API_close_file_fn_t) (int file_id);
 
+typedef opal_list_t* (*orcm_parser_base_API_retrieve_document_fn_t) (int file_id);
+
 typedef opal_list_t* (*orcm_parser_base_API_retrieve_section_fn_t) (int file_id,
+                                                         char const* key, char const* name);
+
+typedef opal_list_t* (*orcm_parser_base_API_retrieve_section_from_list_fn_t) (int file_id,
                                 opal_list_item_t *start, char const* key, char const* name);
 
 typedef void (*orcm_parser_base_API_write_section_fn_t) (opal_list_t *result,
                                                       int file_id, char const *key);
 
 struct orcm_parser_API_module_1_0_0_t {
-    orcm_parser_base_API_open_file_fn_t         open;
-    orcm_parser_base_API_close_file_fn_t        close;
-    orcm_parser_base_API_retrieve_section_fn_t  retrieve_section;
-    orcm_parser_base_API_write_section_fn_t     write_section;
+    orcm_parser_base_API_open_file_fn_t                   open;
+    orcm_parser_base_API_close_file_fn_t                  close;
+    orcm_parser_base_API_retrieve_document_fn_t           retrieve_document;
+    orcm_parser_base_API_retrieve_section_fn_t            retrieve_section;
+    orcm_parser_base_API_retrieve_section_from_list_fn_t  retrieve_section_from_list;
+    orcm_parser_base_API_write_section_fn_t               write_section;
 };
 
 typedef struct orcm_parser_API_module_1_0_0_t orcm_parser_API_module_1_0_0_t;

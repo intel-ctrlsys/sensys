@@ -32,14 +32,16 @@ BEGIN_C_DECLS
 void pugi_write_section(opal_list_t *result,
                         int file_id, char const *key);
 
-    orcm_parser_base_module_t orcm_parser_pugi_module = {
-        NULL,
-        NULL,
-        pugi_open,
-        pugi_close,
-        pugi_retrieve_section,
-        pugi_write_section
-    };
+orcm_parser_base_module_t orcm_parser_pugi_module = {
+    NULL,
+    NULL,
+    pugi_open,
+    pugi_close,
+    pugi_retrieve_document,
+    pugi_retrieve_section,
+    pugi_retrieve_section_from_list,
+    pugi_write_section
+};
 
 static map<int,parser_t*> file_id_table;
 static int current_file_id=0;
@@ -79,14 +81,40 @@ int pugi_close(int file_id)
     return ORCM_SUCCESS;
 }
 
-opal_list_t* pugi_retrieve_section(int file_id, opal_list_item_t *start,
-                                   char const* key, char const* name)
+parser_t* get_parser_object(int file_id)
 {
-    if (!is_file_id_valid(file_id)){
+    if (is_file_id_valid(file_id)){
+        return file_id_table[file_id];
+    }
+    return NULL;
+}
+
+opal_list_t* pugi_retrieve_document(int file_id)
+{
+    parser_t *p = get_parser_object(file_id);
+    if (NULL == p){
         return NULL;
     }
-    parser_t *p = file_id_table[file_id];
-    return p->retrieveSection(start,key,name);
+    return p->retrieveDocument();
+}
+
+opal_list_t* pugi_retrieve_section(int file_id, char const* key, char const* name)
+{
+    parser_t *p = get_parser_object(file_id);
+    if (NULL == p){
+        return NULL;
+    }
+    return p->retrieveSection(key,name);
+}
+
+opal_list_t* pugi_retrieve_section_from_list(int file_id, opal_list_item_t *start,
+                                             char const* key, char const* name)
+{
+    parser_t *p = get_parser_object(file_id);
+    if (NULL == p){
+        return NULL;
+    }
+    return p->retrieveSectionFromList(start,key,name);
 }
 
 void pugi_write_section(opal_list_t *result,

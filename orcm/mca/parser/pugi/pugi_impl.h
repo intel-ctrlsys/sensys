@@ -30,8 +30,10 @@ class pugi_impl {
         ~pugi_impl() { unloadFile(); freeRoot(); };
 
         int loadFile();
-        opal_list_t* retrieveSection(opal_list_item_t *start,
+        opal_list_t* retrieveSection(char const*key, char const*name);
+        opal_list_t* retrieveSectionFromList(opal_list_item_t *start,
                                      char const*key, char const*name);
+        opal_list_t* retrieveDocument();
 
     protected:
 
@@ -41,21 +43,24 @@ class pugi_impl {
 
         void unloadFile();
         void freeRoot();
-        bool isLeafNode(pugi::xml_node node);
         void addLeafNodeToList(pugi::xml_node node, opal_list_t *list);
         void addNodeAttributesToList(pugi::xml_node node, opal_list_t *list);
         void addNodeChildrenToList(pugi::xml_node node, opal_list_t *list);
         void addNodeToList(pugi::xml_node node, opal_list_t *list);
+        void addValuesToList(opal_list_t *list, char const *key, char const* value);
         int  convertXmlNodeToOpalList(pugi::xml_node node, opal_list_t *list);
         int  extractFromEmptyKeyList(opal_list_t *list);
         bool itemListHasChildren(orcm_value_t *item);
+        bool isLeafNode(pugi::xml_node node);
+        bool itemMatchesKeyAndName(orcm_value_t *item, char const *key, char const* name);
+        void joinLists(opal_list_t **list, opal_list_t **otherList);
+        opal_list_t* duplicateList(opal_list_t *src);
         opal_list_t* searchKeyInList(opal_list_t *srcList, char const *key);
         opal_list_t* searchKeyAndNameInList(opal_list_t *srcList, char const *key, char const* name);
         opal_list_t* searchInList(opal_list_t *list, char const *key,char const* name);
-        opal_list_t* duplicateList(opal_list_t *src);
-        bool isFullDocumentListRequested(opal_list_item_t *start, char const *key, char const* name);
-        bool isKeySearchedFromGivenStart(opal_list_item_t *start, char const *key);
-        bool isKeySearchedFromDocumentStart(opal_list_item_t *start, char const *key);
+        opal_list_t* searchKeyInTree(opal_list_t *tree, char const *key);
+        opal_list_t* searchKeyAndNameInTree(opal_list_t *tree, char const *key, char const* name);
+        opal_list_t* searchInTree(opal_list_t *tree, char const *key,char const* name);
 };
 
 #endif

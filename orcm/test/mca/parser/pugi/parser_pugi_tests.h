@@ -26,17 +26,24 @@ extern "C" {
 
 class ut_parser_pugi_tests: public testing::Test {
     protected:
-        char const* validFile;
-        char const* invalidFile;
-        std::string srcFiledir;
+        std::string validFile;
+        char const *invalidFile;
+        char const *rootKey, *validKey, *invalidKey;
+        char const *invalidName, *validName, *validNameTag;
+        int numOfValidKey;
         virtual void SetUp(){
             char* srcdir = getenv("srcdir");
             if (NULL != srcdir)
-                srcFiledir=std::string(srcdir) + "/example.xml";
+                validFile=std::string(srcdir) + "/example.xml";
             else
-                srcFiledir="example.xml";
-            validFile = srcFiledir.c_str();
+                validFile="example.xml";
             invalidFile = "myfile";
+            validKey = "group";
+            numOfValidKey = 4;
+            invalidName = invalidKey = "groupA";
+            validName = "group_name1";
+            validNameTag = "group_name3";
+            rootKey = "root";
             opal_init_test();
         }
         virtual void TearDown() {

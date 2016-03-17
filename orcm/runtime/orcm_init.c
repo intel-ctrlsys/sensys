@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2013-2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -39,6 +39,7 @@
 #include "orcm/util/attr.h"
 
 #include "orcm/util/logical_group.h"
+#include "opal/mca/installdirs/installdirs.h"
 
 int orcm_initialized = 0;
 bool orcm_finalizing = false;
@@ -54,6 +55,8 @@ opal_list_t *orcm_schedulers = NULL;
 #ident ORCM_IDENT_STRING
 #endif
 const char orcm_version_string[] = ORCM_IDENT_STRING;
+
+char *orcm_event_exec_path = NULL;
 
 int orcm_init(orcm_proc_type_t flags)
 {
@@ -175,6 +178,18 @@ int orcm_init(orcm_proc_type_t flags)
     if (ORCM_SUCCESS != (ret = orcm_logical_group_load_to_memory(envar))) {
         error = "orcm_logical_group_load_to_memory";
         goto error;
+    }
+
+    if (ORCM_SCHED == flags) {
+        if (NULL == (envar = getenv("ORCM_MCA_event_exec_path"))) {
+            asprintf(&orcm_event_exec_path, "%s/bin", opal_install_dirs.prefix);
+        } else {
+            orcm_event_exec_path = strdup(envar);
+        }
+        if (NULL == orcm_event_exec_path) {
+            error = "orcm_event_exec_path";
+            goto error;
+        }
     }
 
     /* everyone must open the sst framework */

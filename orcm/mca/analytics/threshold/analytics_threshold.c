@@ -39,8 +39,6 @@
 static int init(orcm_analytics_base_module_t *imod);
 static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
-static orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value,
-                                                   orcm_workflow_caddy_t* caddy);
 bool check_threshold(orcm_value_t* current_value,
                      orcm_mca_analytics_threshold_policy_t* threshold_policy,
                      char** msg, char* hostname, int* sev, char** action);
@@ -111,60 +109,6 @@ static void finalize(orcm_analytics_base_module_t *imod)
                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 }
 
-
-static orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value, orcm_workflow_caddy_t* caddy)
-{
-    orcm_analytics_value_t* threshold_value = NULL;
-    opal_list_t* compute_data = OBJ_NEW(opal_list_t);
-    orcm_value_t* analytics_orcm_value = NULL;
-
-    ON_NULL_RETURN(compute_data, NULL);
-    analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
-    if(NULL != analytics_orcm_value) {
-        opal_list_append(compute_data, (opal_list_item_t *)analytics_orcm_value);
-    }
-    threshold_value = orcm_util_load_orcm_analytics_value_compute(caddy->analytics_value->key,
-                      caddy->analytics_value->non_compute_data, compute_data);
-    return threshold_value;
-}
-
-static int orcm_analytics_set_notification_params(orcm_ras_event_t* data, char* msg, char* action, opal_list_t* event_list)
-{
-    int rc = ORCM_SUCCESS;
-    if(ORCM_SUCCESS != (rc = orcm_analytics_base_event_set_storage(data, ORCM_STORAGE_TYPE_NOTIFICATION))){
-        return rc;
-    }
-    if(ORCM_SUCCESS != (rc = orcm_analytics_base_event_set_description(data, "notifier_msg", msg, OPAL_STRING, NULL))){
-        return rc;
-    }
-    if(ORCM_SUCCESS != (rc = orcm_analytics_base_event_set_description(data, "notifier_action", action, OPAL_STRING, NULL))){
-        return rc;
-    }
-    return event_list_append(event_list, data);
-}
-
-static int generate_notification_event(orcm_value_t* current_value, orcm_workflow_caddy_t* caddy,
-                                       int sev, char *msg, char* action, opal_list_t* event_list)
-{
-    int rc = ORCM_SUCCESS;
-    orcm_ras_event_t *threshold_event_data = NULL;
-    orcm_analytics_value_t* threshold_analytics_value = NULL;
-    if (NULL != msg) {
-        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                            "%s analytics:threshold:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg));
-    }
-    threshold_analytics_value = get_analytics_value(current_value, caddy);
-    CHECK_NULL_ALLOC(threshold_analytics_value, rc, done);
-    threshold_event_data = orcm_analytics_base_event_create(threshold_analytics_value, ORCM_RAS_EVENT_EXCEPTION, sev);
-    CHECK_NULL_ALLOC(threshold_event_data, rc, done);
-    rc = orcm_analytics_set_notification_params(threshold_event_data, msg, action, event_list);
-done:
-    if(ORCM_SUCCESS != rc){
-        SAFE_RELEASE(threshold_analytics_value);
-    }
-    return rc;
-}
-
 bool check_threshold(orcm_value_t* current_value, orcm_mca_analytics_threshold_policy_t* threshold_policy,
                      char** msg, char* hostname, int* sev, char** action)
 {
@@ -190,7 +134,8 @@ bool check_threshold(orcm_value_t* current_value, orcm_mca_analytics_threshold_p
     return copy;
 }
 
-static int monitor_threshold(orcm_workflow_caddy_t *current_caddy, orcm_mca_analytics_threshold_policy_t *threshold_policy,
+static int monitor_threshold(orcm_workflow_caddy_t *current_caddy,
+                             orcm_mca_analytics_threshold_policy_t *threshold_policy,
                              opal_list_t* threshold_list, opal_list_t* event_list)
 {
     char* msg = NULL;
@@ -208,9 +153,9 @@ static int monitor_threshold(orcm_workflow_caddy_t *current_caddy, orcm_mca_anal
     hostname = orcm_analytics_get_hostname_from_attributes(current_caddy->analytics_value->key);
     OPAL_LIST_FOREACH(current_value, current_caddy->analytics_value->compute_data, orcm_value_t) {
         if(check_threshold(current_value, threshold_policy, &msg, hostname, &sev, &action)) {
-            rc = generate_notification_event(current_value, current_caddy, sev, msg, action, event_list);
-            analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
-            if(NULL != analytics_orcm_value) {
+            rc = orcm_analytics_base_gen_notifier_event(current_value, current_caddy, sev, msg,
+                                                        action, event_list);
+            if (NULL != (analytics_orcm_value = orcm_util_copy_orcm_value(current_value))) {
                 opal_list_append(threshold_list, (opal_list_item_t *)analytics_orcm_value);
             }
         }

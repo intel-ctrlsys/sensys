@@ -17,6 +17,8 @@
 #define ARRAY_SIZE(a) sizeof(a)/sizeof(*a)
 #define KEY_SIZE 1000
 
+#define ON_NULL_RETURN(x, e)  if(NULL==x) { return e; }
+
 /*function to generate event based on user policies*/
 static void generate_events(opal_hash_table_t* ts_table, opal_list_t* event_list,
                             event_filter* filter, bool suppress);
@@ -451,4 +453,136 @@ int orcm_analytics_base_event_set_storage(orcm_ras_event_t *analytics_event_data
 
     return orcm_analytics_base_event_set_description(analytics_event_data, "storage_type",
                                                      &storage_type, OPAL_UINT, NULL);
+}
+
+static int orcm_analytics_base_set_event_attr(orcm_ras_event_t *ras_event,
+                                              opal_value_t *attr_item, char *key)
+{
+    int rc = ORCM_SUCCESS;
+
+    if (NULL == attr_item->data.string) {
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    rc = orcm_analytics_base_event_set_description(ras_event, key,
+                                                   attr_item->data.string, OPAL_STRING, NULL);
+
+    return rc;
+}
+
+static int orcm_analytics_base_event_set_exec_attr(opal_list_t *wf_step_attr,
+                                                   orcm_ras_event_t *ras_event)
+{
+    int rc = ORCM_SUCCESS;
+    opal_value_t *attr_item = NULL;
+    bool exec_name_set = false;
+    bool exec_argv_set = false;
+    char *exec_name_key = "exec_name";
+    char *exec_argv_key = "exec_argv";
+
+    OPAL_LIST_FOREACH(attr_item, wf_step_attr, opal_value_t) {
+        if (NULL == attr_item || NULL == attr_item->key) {
+            return ORCM_ERR_BAD_PARAM;
+        }
+        if (0 == strncmp(attr_item->key, exec_name_key, strlen(attr_item->key))) {
+            rc = orcm_analytics_base_set_event_attr(ras_event, attr_item, exec_name_key);
+            exec_name_set = true;
+        } else if (0 == strncmp(attr_item->key, exec_argv_key, strlen(attr_item->key))) {
+            rc = orcm_analytics_base_set_event_attr(ras_event, attr_item, exec_argv_key);
+            exec_argv_set = true;
+        }
+        if (ORCM_SUCCESS != rc) {
+            return rc;
+        }
+        if (exec_name_set && exec_argv_set) {
+            break;
+        }
+    }
+
+    if (!exec_name_set) {
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    return rc;
+}
+
+static int orcm_analytics_base_event_set_notifier_attr(opal_list_t *wf_step_attr,
+                                                       orcm_ras_event_t *ras_event,
+                                                       char *msg, char *action)
+{
+    int rc = orcm_analytics_base_event_set_storage(ras_event, ORCM_STORAGE_TYPE_NOTIFICATION);
+    if(ORCM_SUCCESS != rc){
+        return rc;
+    }
+
+    if (ORCM_SUCCESS != (rc = orcm_analytics_base_event_set_description(ras_event,
+                                  "notifier_msg", msg, OPAL_STRING,NULL))) {
+       return rc;
+    }
+    if (ORCM_SUCCESS != (rc = orcm_analytics_base_event_set_description(ras_event,
+                                  "notifier_action", action, OPAL_STRING, NULL))) {
+        return rc;
+    }
+
+    if (0 == strncmp(action, "exec", strlen(action))) {
+        return orcm_analytics_base_event_set_exec_attr(wf_step_attr, ras_event);
+    }
+
+    return ORCM_SUCCESS;
+}
+
+static orcm_analytics_value_t* orcm_analytics_base_get_analytics_value(orcm_value_t *current_value,
+                                                                       orcm_workflow_caddy_t *caddy)
+{
+    orcm_analytics_value_t *analytics_value = NULL;
+    opal_list_t* compute_data = OBJ_NEW(opal_list_t);
+    orcm_value_t* analytics_orcm_value = NULL;
+
+    ON_NULL_RETURN(compute_data, NULL);
+    analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
+    if(NULL != analytics_orcm_value) {
+        opal_list_append(compute_data, (opal_list_item_t *)analytics_orcm_value);
+    }
+    analytics_value = orcm_util_load_orcm_analytics_value_compute(caddy->analytics_value->key,
+                      caddy->analytics_value->non_compute_data, compute_data);
+    return analytics_value;
+}
+
+int orcm_analytics_base_gen_notifier_event(orcm_value_t* current_value,
+                                           orcm_workflow_caddy_t* caddy,
+                                           int severity, char *msg, char *action,
+                                           opal_list_t *event_list)
+{
+    int rc = ORCM_SUCCESS;
+    orcm_ras_event_t *ras_event = NULL;
+    orcm_analytics_value_t* analytics_value = NULL;
+
+    if (NULL != msg) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+            "%s analytics:event message:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg));
+    }
+
+    ON_NULL_RETURN(action, ORCM_ERROR);
+    if (0 == strncmp(action, "none", strlen(action))) {
+        return ORCM_SUCCESS;
+    }
+
+    analytics_value = orcm_analytics_base_get_analytics_value(current_value, caddy);
+    ON_NULL_RETURN(analytics_value, ORCM_ERR_OUT_OF_RESOURCE);
+    if (NULL == (ras_event = orcm_analytics_base_event_create(analytics_value,
+                                 ORCM_RAS_EVENT_EXCEPTION, severity))) {
+        SAFE_RELEASE(analytics_value);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    rc = orcm_analytics_base_event_set_notifier_attr(&caddy->wf_step->attributes,
+                                                     ras_event, msg, action);
+    if (ORCM_SUCCESS != rc) {
+        SAFE_RELEASE(analytics_value);
+        SAFE_RELEASE(ras_event);
+    } else {
+        rc = event_list_append(event_list, ras_event);
+    }
+
+    return rc;
 }

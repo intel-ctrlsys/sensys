@@ -33,6 +33,10 @@
 #include "orcm/mca/db/base/base.h"
 
 #include "orcm/util/utils.h"
+#include "orcm/util/logical_group.h"
+#include "opal/mca/installdirs/installdirs.h"
+
+#include <sys/wait.h>
 
 static bool recv_issued=false;
 
@@ -95,6 +99,164 @@ int orcm_scd_base_comm_stop(void)
     return ORTE_SUCCESS;
 }
 
+/* set the default action for a given signal */
+static void set_handler_default(int sig)
+{
+    struct sigaction act;
+    act.sa_handler = SIG_DFL;
+    act.sa_flags = 0;
+    sigemptyset(&act.sa_mask);
+    sigaction(sig, &act, (struct sigaction *)0);
+}
+
+static int orcm_scd_base_fork_to_launch(char *exec, char **argv)
+{
+    sigset_t sigs;
+    int s_pid = fork();
+
+    if (s_pid < 0) {
+        ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_CHILDREN);
+        return ORTE_ERR_SYS_LIMITS_CHILDREN;
+    } else if (s_pid == 0) {
+        /* I am the child - I am going to exec the executable */
+
+        /* Set signal handlers back to the default.  Do this close
+           to the execve() because the event library may (and likely
+           will) reset them.  If we don't do this, the event
+           library may have left some set that, at least on some
+           OS's, don't get reset via fork() or exec().  Hence, the
+           orted could be unkillable (for example). */
+        set_handler_default(SIGTERM);
+        set_handler_default(SIGINT);
+        set_handler_default(SIGHUP);
+        set_handler_default(SIGPIPE);
+        set_handler_default(SIGCHLD);
+
+        /* Unblock all signals, for many of the same reasons that
+           we set the default handlers, above.  This is noticable
+           on Linux where the event library blocks SIGTERM, but we
+           don't want that blocked by the orted (or, more
+           specifically, we don't want it to be blocked by the
+           orted and then inherited by the ORTE processes that it
+           forks, making them unkillable by SIGTERM). */
+        sigprocmask(0, 0, &sigs);
+        sigprocmask(SIG_UNBLOCK, &sigs, 0);
+
+        execve(exec, argv, orte_launch_environ);
+
+        /* if I get here, the execve must be failed! */
+        ORTE_ERROR_LOG(errno);
+        fprintf(stderr, "orcmsched fails when launching an executable:%s\n", strerror(errno));
+        exit(1);
+    } else {
+
+        /* I am the parent - No need to wait for the child to terminate.
+         * If the launching failed, the child process will log the error
+         * into syslog
+         */
+        return ORCM_SUCCESS;
+    }
+}
+
+static int orcm_scd_base_unpack_exec_buffer(opal_buffer_t *buf, char **exec_name, char **exec_argv)
+{
+    int rc = ORCM_SUCCESS;
+    int num_element = 1;
+    bool exec_argv_set = false;
+
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, exec_name, &num_element, OPAL_STRING))) {
+        SAFEFREE(*exec_name);
+        return rc;
+    }
+    num_element = 1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buf, &exec_argv_set, &num_element, OPAL_BOOL))) {
+        SAFEFREE(*exec_name);
+        return rc;
+    }
+    num_element = 1;
+    if (exec_argv_set &&
+        OPAL_SUCCESS != (rc = opal_dss.unpack(buf, exec_argv, &num_element, OPAL_STRING))) {
+        SAFEFREE(*exec_name);
+        SAFEFREE(*exec_argv);
+        return rc;
+    }
+
+    return ORCM_SUCCESS;
+}
+
+static int orcm_scd_base_get_full_exec_name(char *exec_name, char **exec_full_name)
+{
+    int rc = ORCM_SUCCESS;
+    char *actual_exec_name = NULL;
+    char *ptr = NULL;
+
+    if (NULL == orcm_event_exec_path || '0' == *orcm_event_exec_path) {
+        return ORCM_ERROR;
+    }
+
+    if (ORCM_SUCCESS != (rc = orcm_logical_group_parse_string(exec_name, &actual_exec_name))) {
+        SAFEFREE(actual_exec_name);
+        return rc;
+    }
+    if (NULL == actual_exec_name) {
+        return ORCM_ERROR;
+    }
+
+    ptr = strrchr(orcm_event_exec_path, '/');
+    /* last character is '/' */
+    if (NULL != ptr && 1 == strlen(ptr)) {
+        asprintf(exec_full_name, "%s%s", orcm_event_exec_path, actual_exec_name);
+    } else {
+        asprintf(exec_full_name, "%s/%s", orcm_event_exec_path, actual_exec_name);
+    }
+
+    if (NULL == *exec_full_name) {
+        SAFEFREE(actual_exec_name);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    SAFEFREE(actual_exec_name);
+    return ORCM_SUCCESS;
+}
+
+static int orcm_scd_base_free_exec(char *exec_name, char *exec_argv,
+                                   char *exec_full_name, char **exec_argv_list, int rc)
+{
+    SAFEFREE(exec_name);
+    SAFEFREE(exec_argv);
+    SAFEFREE(exec_full_name);
+    opal_argv_free(exec_argv_list);
+    return rc;
+}
+
+static int orcm_scd_base_launch_exec(opal_buffer_t *buf)
+{
+    int rc = ORCM_SUCCESS;
+    char *exec_name = NULL;
+    char *exec_argv = NULL;
+    char *exec_full_name = NULL;
+    char **exec_argv_list = NULL;
+
+    if (ORCM_SUCCESS != (rc = orcm_scd_base_unpack_exec_buffer(buf, &exec_name, &exec_argv))) {
+        return rc;
+    }
+
+    if (NULL != exec_argv && NULL == (exec_argv_list = opal_argv_split(exec_argv, ','))) {
+        return orcm_scd_base_free_exec(exec_name, exec_argv, NULL, NULL, ORCM_ERR_BAD_PARAM);
+    }
+
+    if (ORCM_SUCCESS != (rc = orcm_scd_base_get_full_exec_name(exec_name, &exec_full_name))) {
+        return orcm_scd_base_free_exec(exec_name, exec_argv, NULL, exec_argv_list, rc);
+    }
+
+    if (NULL != exec_argv_list &&
+        OPAL_SUCCESS != (rc = opal_argv_insert_element(&exec_argv_list, 0, exec_full_name))) {
+        return orcm_scd_base_free_exec(exec_name, exec_argv, exec_full_name, exec_argv_list, rc);
+    }
+
+    rc = orcm_scd_base_fork_to_launch(exec_full_name, exec_argv_list);
+    return orcm_scd_base_free_exec(exec_name, exec_argv, exec_full_name, exec_argv_list, rc);
+}
 
 /* process incoming messages in order of receipt */
 static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
@@ -1050,6 +1212,19 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
             ORTE_ERROR_LOG(rc);
             OBJ_RELEASE(ans);
             return;
+        }
+        return;
+    } else if (ORCM_DISPATCH_LAUNCH_EXEC_COMMAND == command) {
+        if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, ans,
+                                                          ORCM_RML_TAG_SCD,
+                                                          orte_rml_send_callback,
+                                                          NULL))) {
+            ORTE_ERROR_LOG(rc);
+            OBJ_RELEASE(ans);
+            return;
+        }
+        if (ORCM_SUCCESS != (rc = orcm_scd_base_launch_exec(buffer))) {
+            ORTE_ERROR_LOG(rc);
         }
         return;
     }

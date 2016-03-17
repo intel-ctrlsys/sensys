@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved. 
- * Copyright (c) 2013-2014 Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -49,6 +49,7 @@ int orcm_finalize(void)
     if (NULL != orcm_schedulers) {
         OBJ_RELEASE(orcm_schedulers);
     }
+    SAFEFREE(orcm_event_exec_path);
 
     (void)orte_ess.finalize();
 

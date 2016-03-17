@@ -35,12 +35,6 @@ static int init(orcm_analytics_base_module_t *imod);
 static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
 static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, opal_list_t* event_list);
-static int generate_notification_event(orcm_analytics_value_t* analytics_value,
-                                       int sev, char *msg,
-                                       char *action, opal_list_t* event_list);
-static orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value,
-                                                   opal_list_t* key,
-                                                   opal_list_t* non_compute);
 
 mca_analytics_genex_module_t orcm_analytics_genex_module = {{
     init,
@@ -162,74 +156,6 @@ static int get_genex_policy(void *cbdata, genex_workflow_value_t *workflow_value
     return ORCM_SUCCESS;
 }
 
-static orcm_analytics_value_t* get_analytics_value(orcm_value_t* current_value,
-                                                   opal_list_t* key,
-                                                   opal_list_t* non_compute)
-{
-    orcm_value_t* analytics_orcm_value = NULL;
-    orcm_analytics_value_t* genex_value = NULL;
-    opal_list_t* compute_data = OBJ_NEW(opal_list_t);
-
-    if(NULL == compute_data) {
-        return NULL;
-    }
-
-    analytics_orcm_value = orcm_util_copy_orcm_value(current_value);
-    if(NULL != analytics_orcm_value) {
-        opal_list_append(compute_data, (opal_list_item_t *)analytics_orcm_value);
-    }
-
-    genex_value = orcm_util_load_orcm_analytics_value_compute(key, non_compute,
-                                                              compute_data);
-    return genex_value;
-}
-
-static int generate_notification_event(orcm_analytics_value_t* analytics_value,
-                                       int sev, char *msg,
-                                       char *action, opal_list_t* event_list)
-{
-    int rc = ORCM_SUCCESS;
-    char *event_action = NULL;
-    orcm_ras_event_t *event_data = NULL;
-
-    if (NULL != msg) {
-        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                             "%s analytics:genex: %s",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg));
-    }
-
-    IF_NULL(action);
-    event_action = strdup(action);
-    event_data = orcm_analytics_base_event_create(analytics_value,
-                                                  ORCM_RAS_EVENT_EXCEPTION, sev);
-    if (NULL == event_data) {
-       goto done;
-    }
-
-    if (0 != strcmp(event_action, "none")) {
-        rc = orcm_analytics_base_event_set_storage(event_data,
-                                                   ORCM_STORAGE_TYPE_NOTIFICATION);
-        if (ORCM_SUCCESS != rc) {
-            goto done;
-        }
-        rc = orcm_analytics_base_event_set_description(event_data, "notifier_msg",
-                                                       msg, OPAL_STRING, NULL);
-        if (ORCM_SUCCESS != rc) {
-            goto done;
-        }
-        rc = orcm_analytics_base_event_set_description(event_data, "notifier_action",
-                                                       event_action, OPAL_STRING,
-                                                       NULL);
-        if (ORCM_SUCCESS != rc) {
-            goto done;
-        }
-        rc = event_list_append(event_list, event_data);
-    }
-done:
-    SAFEFREE(event_action);
-    return rc;
-}
-
 static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, opal_list_t* event_list)
 {
     int rc = ORCM_SUCCESS;
@@ -240,7 +166,6 @@ static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, o
     regex_t regex_comp_wflow;
     char *error_buffer;
     int regex_res;
-    orcm_analytics_value_t* genex_analytics_value = NULL;
 
     IF_NULL(workflow_value);
     IF_NULL(workflow_value->severity);
@@ -289,23 +214,11 @@ static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, o
                     "%s analytics:genex: MATCHES USER PARAMS: \"%s\" ",
                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), genex_value.message));
 
-                genex_analytics_value =
-                    get_analytics_value(analytics_value,
-                                        caddy->analytics_value->key,
-                                        caddy->analytics_value->non_compute_data);
-
-                if(NULL == genex_analytics_value) {
-                    return ORCM_ERR_OUT_OF_RESOURCE;
-                }
-
-                rc = generate_notification_event(genex_analytics_value,
-                                                 orcm_analytics_event_get_severity(workflow_value->severity),
-                                                 genex_value.message,
-                                                 workflow_value->notifier,
-                                                 event_list);
+                rc = orcm_analytics_base_gen_notifier_event(analytics_value, caddy,
+                           orcm_analytics_event_get_severity(workflow_value->severity),
+                           (char*)genex_value.message, workflow_value->notifier, event_list);
                 if ( ORCM_SUCCESS != rc ) {
-                    SAFEFREE(genex_analytics_value);
-                    return ORCM_ERROR;
+                    return rc;
                 }
              } else if(regex_res && regex_res != REG_NOMATCH) {
                 error_buffer = malloc(100);

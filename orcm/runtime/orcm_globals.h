@@ -120,6 +120,7 @@ typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_SET_CHASSIS_ID_OFF                   42
 #define ORCM_SET_CHASSIS_ID_ON                    43
 #define ORCM_SET_CHASSIS_ID_TEMPORARY_ON          44
+#define ORCM_DISPATCH_LAUNCH_EXEC_COMMAND         45
 
 /* define diagnostic commands */
 typedef uint8_t orcm_diag_cmd_flag_t;
@@ -154,6 +155,7 @@ typedef uint8_t orcm_cmd_server_flag_t;
 #define ORCM_SET_NOTIFIER_SMTP_COMMAND          5
 #define ORCM_GET_NOTIFIER_SMTP_COMMAND          6
 
+
 /** version string of ORCM */
 ORCM_DECLSPEC extern const char openrcm_version_string[];
 
@@ -167,6 +169,7 @@ ORCM_DECLSPEC extern bool orcm_finalizing;
 ORCM_DECLSPEC extern int orcm_debug_output;
 ORCM_DECLSPEC extern int orcm_debug_verbosity;
 
+ORCM_DECLSPEC extern char *orcm_event_exec_path;
 
 /* extend the ORTE RML tags to add ORCM DAEMONS tags */
 /* scheduler */

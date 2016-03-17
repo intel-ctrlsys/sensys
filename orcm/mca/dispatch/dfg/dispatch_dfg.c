@@ -45,6 +45,9 @@
 #include "orcm/mca/dispatch/base/base.h"
 #include "orcm/mca/dispatch/dfg/dispatch_dfg.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
+#include "orcm/mca/scd/base/base.h"
+#include "orte/mca/rml/rml.h"
+#include "orcm/tools/octl/common.h"
 
 /* API functions */
 
@@ -263,34 +266,141 @@ static void dfg_generate_database_event(opal_list_t *input_list, int data_type)
         }
     }
 }
-static void dfg_generate_notifier_event(orcm_ras_event_t *ecd)
+
+static opal_buffer_t* dfg_pack_exec_early_ret(opal_buffer_t *buf, int rc)
+{
+    SAFE_RELEASE(buf);
+    ORTE_ERROR_LOG(rc);
+    return NULL;
+}
+
+static opal_buffer_t* dfg_pack_exec(char *exec_name, char *exec_argv)
+{
+    int rc = ORCM_SUCCESS;
+    opal_buffer_t *buf = NULL;
+    orcm_scd_cmd_flag_t command = ORCM_DISPATCH_LAUNCH_EXEC_COMMAND;
+    bool exec_argv_set = (NULL != exec_argv ? true : false);
+
+    if (NULL == (buf = OBJ_NEW(opal_buffer_t))) {
+        return dfg_pack_exec_early_ret(buf, ORCM_ERR_OUT_OF_RESOURCE);
+    }
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_SCD_CMD_T))) {
+        return dfg_pack_exec_early_ret(buf, rc);
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &exec_name, 1, OPAL_STRING))) {
+        return dfg_pack_exec_early_ret(buf, rc);
+    }
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &exec_argv_set, 1, OPAL_BOOL))) {
+        return dfg_pack_exec_early_ret(buf, rc);
+    }
+    if (exec_argv_set && OPAL_SUCCESS != (rc = opal_dss.pack(buf, &exec_argv, 1, OPAL_STRING))) {
+        return dfg_pack_exec_early_ret(buf, rc);
+    }
+
+    return buf;
+}
+
+static int dfg_send_buffer(orte_rml_recv_cb_t* xfer, opal_buffer_t* buf)
+{
+    int rc = ORCM_SUCCESS;
+
+    xfer->active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD,
+                            ORTE_RML_NON_PERSISTENT, orte_rml_recv_callback, xfer);
+    if (ORTE_SUCCESS == (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,
+                         ORCM_RML_TAG_SCD, orte_rml_send_callback, NULL))) {
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+    } else {
+        SAFE_RELEASE(buf);
+    }
+    SAFE_RELEASE(xfer);
+
+    orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
+
+    return rc;
+}
+
+static void dfg_send_exec(char *exec_name, char *exec_argv)
+{
+    int rc = ORCM_SUCCESS;
+    opal_buffer_t *buf = NULL;
+    orte_rml_recv_cb_t *xfer = NULL;
+
+    if (NULL == exec_name || NULL == (buf = dfg_pack_exec(exec_name, exec_argv))) {
+        return;
+    }
+
+    if (NULL == (xfer = OBJ_NEW(orte_rml_recv_cb_t))) {
+        SAFE_RELEASE(buf);
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        return;
+    }
+
+    if (ORTE_SUCCESS != (rc = dfg_send_buffer(xfer, buf))) {
+        ORTE_ERROR_LOG(rc);
+    }
+}
+
+static int dfg_iterate_ras_desc(orcm_ras_event_t *ecd, char **notifier_msg,
+                                char **notifier_action, char **exec_name, char** exec_argv)
 {
     orcm_value_t *list_item = NULL;
-    char *notifier_msg = NULL;
-    char *notifier_action = NULL;
 
     OPAL_LIST_FOREACH(list_item, &ecd->description, orcm_value_t) {
         if (NULL == list_item || NULL == list_item->value.key) {
-            return;
+            return ORCM_ERR_BAD_PARAM;
         }
         if (0 == strcmp(list_item->value.key, "notifier_msg") &&
-            NULL != list_item->value.data.string && NULL == notifier_msg) {
-            notifier_msg = strdup(list_item->value.data.string);
-        }
-        if (0 == strcmp(list_item->value.key, "notifier_action") &&
-            NULL != list_item->value.data.string && NULL == notifier_action) {
-            notifier_action = strdup(list_item->value.data.string);
+            NULL != list_item->value.data.string && NULL == *notifier_msg) {
+            *notifier_msg = strdup(list_item->value.data.string);
+        } else if (0 == strcmp(list_item->value.key, "notifier_action") &&
+                   NULL != list_item->value.data.string && NULL == *notifier_action) {
+            *notifier_action = strdup(list_item->value.data.string);
+        } else if (0 == strcmp(list_item->value.key, "exec_name") &&
+                   NULL != list_item->value.data.string && NULL == *exec_name) {
+            *exec_name = strdup(list_item->value.data.string);
+        } else if (0 == strcmp(list_item->value.key, "exec_argv") &&
+                   NULL != list_item->value.data.string && NULL == *exec_argv) {
+            *exec_argv = strdup(list_item->value.data.string);
         }
     }
-    if ((NULL != notifier_msg) && (NULL != notifier_action)) {
-       if ((ecd->severity >= ORCM_RAS_SEVERITY_EMERG) && (ecd->severity < ORCM_RAS_SEVERITY_UNKNOWN)) {
+
+    return ((NULL == *notifier_msg || NULL == *notifier_action) ? ORCM_ERROR : ORCM_SUCCESS);
+}
+
+static void dfg_generate_notifier_event(orcm_ras_event_t *ecd)
+{
+    int rc = ORCM_SUCCESS;
+    char *notifier_msg = NULL;
+    char *notifier_action = NULL;
+    char *exec_name = NULL;
+    char *exec_argv = NULL;
+
+    rc = dfg_iterate_ras_desc(ecd, &notifier_msg, &notifier_action, &exec_name, &exec_argv);
+    if (ORCM_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
+        SAFEFREE(notifier_msg);
+        SAFEFREE(notifier_action);
+        SAFEFREE(exec_name);
+        SAFEFREE(exec_argv);
+        return;
+    }
+
+    if (ORCM_RAS_SEVERITY_EMERG <= ecd->severity && ORCM_RAS_SEVERITY_UNKNOWN > ecd->severity) {
            OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
                                 "%s dispatch:dfg generating notifier with severity %d "
-                                "and notifier action as %s",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), ecd->severity, notifier_action));
-            ORTE_NOTIFIER_SYSTEM_EVENT(ecd->severity, notifier_msg, notifier_action);
-        }
+                                "and notifier action as %s", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                ecd->severity, notifier_action));
+            if (0 != strncmp(notifier_action, "exec", strlen(notifier_action))) {
+                 ORTE_NOTIFIER_SYSTEM_EVENT(ecd->severity, notifier_msg, notifier_action);
+            } else {
+                dfg_send_exec(exec_name, exec_argv);
+            }
     }
+
+    SAFEFREE(exec_name);
+    SAFEFREE(exec_argv);
 }
 
 static void dfg_convert_and_log_data_to_db(orcm_ras_event_t* ecd)

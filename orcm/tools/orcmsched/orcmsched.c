@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2009-2010 Cisco Systems, Inc.  All rights reserved. 
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved
+ * Copyright (c) 2009-2010 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -112,6 +112,15 @@ static opal_cmd_line_init_t cmd_line_opts[] = {
     { NULL, '\0', NULL, "daemonize", 0,
       &orcmsched_globals.daemonize, OPAL_CMD_LINE_TYPE_BOOL,
       "Daemonize the scheduler into the background" },
+
+    { "logical_group_config_file", 'l', "config-file", "config-file", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "Logical group configuration file for this orcm chain" },
+
+    { "event_exec_path", 'e', "exec-path", "exec-path", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "The path of the given executables to be launched through scheduler"
+    },
 
     /* End of list */
     { NULL, '\0', NULL, NULL, 0,

@@ -343,7 +343,7 @@ static int session_power_next_cmd(char* next_cmd, int cmd)
             rc = (cmd_set == cmd ? ORCM_SET_POWER_STRICT_COMMAND : ORCM_GET_POWER_STRICT_COMMAND);
             break;
         case cmd_modes:
-            rc = ORCM_GET_POWER_MODES_COMMAND;
+            rc = (cmd_get == cmd ? ORCM_GET_POWER_MODES_COMMAND : ORCM_ERROR);
             break;
         default:
             rc = ORCM_ERROR;

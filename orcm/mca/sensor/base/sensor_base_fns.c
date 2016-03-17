@@ -375,7 +375,7 @@ static void take_sample(int fd, short args, void *cbdata)
             NULL == strcasestr(sampler->sensors, i_module->component->base_version.mca_component_name)) {
             continue;
         }
-        if (NULL != i_module->module->sample) {
+        if (NULL != i_module->module->sample && i_module->sampling) {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "%s sensor:base: sampling component %s",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),

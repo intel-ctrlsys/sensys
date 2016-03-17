@@ -59,6 +59,7 @@ int pugi_open(char const *file)
             file_id_table[++current_file_id] = p;
             return current_file_id;
         }
+        delete p;
     }
     return ORCM_ERR_FILE_OPEN_FAILURE;
 }

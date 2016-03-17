@@ -8,7 +8,6 @@
  */
 
 #include "pugi_impl.h"
-#define SAFE_OBJ_RELEASE(x) if(NULL != x){ OBJ_RELEASE(x); x = NULL;}
 
 using namespace pugi;
 using namespace std;
@@ -23,25 +22,31 @@ bool pugi_impl::isLeafNode(xml_node node)
 
 void pugi_impl::addLeafNodeToList(xml_node node, opal_list_t *list)
 {
-    if (0 == strcmp("name",node.name())){
-        orcm_util_prepend_orcm_value(list, strdup(node.name()),
-                                     strdup(node.child_value()), OPAL_STRING, NULL);
+    char *name = strdup(node.name());
+    char *value = strdup(node.child_value());
+
+    if (0 == strcmp("name", name)){
+        orcm_util_prepend_orcm_value(list, name, value, OPAL_STRING, NULL);
     } else {
-        orcm_util_append_orcm_value(list, strdup(node.name()),
-                                    strdup(node.child_value()), OPAL_STRING, NULL);
+        orcm_util_append_orcm_value(list, name, value, OPAL_STRING, NULL);
     }
+    SAFEFREE(name);
+    SAFEFREE(value);
 }
 
 void pugi_impl::addNodeAttributesToList(xml_node node, opal_list_t *list)
 {
+   char *name, *value;
    for(xml_attribute_iterator ait = node.attributes_begin(); ait != node.attributes_end(); ++ait){
-        if (0 == strcmp("name",ait->name())){
-            orcm_util_prepend_orcm_value(list, strdup(ait->name()),
-                                         strdup(ait->value()), OPAL_STRING, NULL);
+        name = strdup(ait->name());
+        value = strdup(ait->value());
+        if (0 == strcmp("name", name)){
+            orcm_util_prepend_orcm_value(list, name, value, OPAL_STRING, NULL);
         } else {
-            orcm_util_append_orcm_value(list, strdup(ait->name()),
-                                        strdup(ait->value()), OPAL_STRING, NULL);
+            orcm_util_append_orcm_value(list, name, value, OPAL_STRING, NULL);
         }
+        SAFEFREE(name);
+        SAFEFREE(value);
     }
 }
 
@@ -64,20 +69,22 @@ void pugi_impl::addNodeToList(xml_node node, opal_list_t *list)
     opal_list_t *children = OBJ_NEW(opal_list_t);
     addNodeAttributesToList(node,children);
     addNodeChildrenToList(node,children);
-    orcm_util_append_orcm_value(list, strdup(node.name()), children, OPAL_PTR, NULL);
+    char *name = strdup(node.name());
+    orcm_util_append_orcm_value(list, name, children, OPAL_PTR, NULL);
+    SAFEFREE(name);
 }
 
 int pugi_impl::extractFromEmptyKeyList(opal_list_t *list)
 {
     orcm_value_t *tmp = (orcm_value_t*) opal_list_remove_first(list);
-    if (opal_list_is_empty(list) && tmp->value.type == OPAL_PTR){
+    if (opal_list_is_empty(list) && itemListHasChildren(tmp)){
         opal_list_join(list, opal_list_get_first(list),
                              (opal_list_t *)tmp->value.data.ptr);
         tmp->value.data.ptr = NULL;
-        SAFE_OBJ_RELEASE(tmp);
+        SAFE_RELEASE(tmp);
         return ORCM_SUCCESS;
     }
-    SAFE_OBJ_RELEASE(tmp);
+    SAFE_RELEASE(tmp);
     return ORCM_ERROR;
 }
 
@@ -114,10 +121,12 @@ opal_list_t* pugi_impl::duplicateList(opal_list_t *src)
         return NULL;
     }
     opal_list_t *dest = orcm_util_copy_opal_list(src);
-    orcm_value_t *item;
-    OPAL_LIST_FOREACH(item,dest,orcm_value_t){
-        if (OPAL_PTR == item->value.type){
-            item->value.data.ptr = duplicateList((opal_list_t*)item->value.data.ptr);
+    if (NULL != dest){
+        orcm_value_t *item;
+        OPAL_LIST_FOREACH(item,dest,orcm_value_t){
+            if (itemListHasChildren(item)){
+                item->value.data.ptr = duplicateList((opal_list_t*)item->value.data.ptr);
+            }
         }
     }
     return dest;
@@ -133,11 +142,11 @@ opal_list_t* pugi_impl::searchKeyInList(opal_list_t *srcList, char const *key)
     OPAL_LIST_FOREACH_SAFE(item, next, list, orcm_value_t){
         if (0 != strcmp(key,item->value.key)){
             opal_list_remove_item(list,(opal_list_item_t*)item);
-            SAFE_OBJ_RELEASE(item);
+            SAFE_RELEASE(item);
         }
     }
     if (opal_list_is_empty(list)){
-        SAFE_OBJ_RELEASE(list);
+        SAFE_RELEASE(list);
         return NULL;
     }
     return list;
@@ -166,11 +175,11 @@ opal_list_t* pugi_impl::searchKeyAndNameInList(opal_list_t *srcList, char const 
         }
         if (!found){
             opal_list_remove_item(list,(opal_list_item_t*)item);
-            SAFE_OBJ_RELEASE(item);
+            SAFE_RELEASE(item);
         }
     }
     if (opal_list_is_empty(list)){
-        SAFE_OBJ_RELEASE(list);
+        SAFE_RELEASE(list);
         return NULL;
     }
     return list;
@@ -204,7 +213,7 @@ bool pugi_impl::isKeySearchedFromDocumentStart(opal_list_item_t *start, char con
 
 bool pugi_impl::itemListHasChildren(orcm_value_t *item)
 {
-    if (OPAL_PTR == item->value.type){
+    if (NULL != item && OPAL_PTR == item->value.type){
         return true;
     }
     return false;
@@ -239,5 +248,5 @@ opal_list_t* pugi_impl::retrieveSection(opal_list_item_t *start, char const *key
 
 void pugi_impl::freeRoot()
 {
-    SAFE_OBJ_RELEASE(root);
+    SAFE_RELEASE(root);
 }

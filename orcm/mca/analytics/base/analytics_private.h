@@ -18,8 +18,8 @@
 
 BEGIN_C_DECLS
 
-ORCM_DECLSPEC int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid);
-ORCM_DECLSPEC int orcm_analytics_base_workflow_delete(int workflow_id);
+ORCM_DECLSPEC int orcm_analytics_base_workflow_add(opal_buffer_t* buffer, int *wfid);
+ORCM_DECLSPEC int orcm_analytics_base_workflow_remove(opal_buffer_t *buffer);
 ORCM_DECLSPEC int orcm_analytics_base_workflow_list(opal_buffer_t *buffer);
 ORCM_DECLSPEC int orcm_analytics_base_comm_start(void);
 ORCM_DECLSPEC int orcm_analytics_base_comm_stop(void);

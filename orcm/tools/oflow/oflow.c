@@ -173,7 +173,7 @@ main(int argc, char *argv[])
 
     buf = OBJ_NEW(opal_buffer_t);
 
-    command = ORCM_ANALYTICS_WORKFLOW_CREATE;
+    command = ORCM_ANALYTICS_WORKFLOW_ADD;
     /* pack the alloc command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
         goto ERROR;

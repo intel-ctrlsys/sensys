@@ -24,6 +24,7 @@
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
 #include "orcm/util/utils.h"
+#include "opal/mca/installdirs/installdirs.h"
 
 /*
  * The following file was created by configure.  It contains extern
@@ -121,7 +122,7 @@ static void orcm_analytics_stop_wokflow_thread(orcm_workflow_t *wf)
         asprintf(&threadname, "wfid%i", wf->workflow_id);
         opal_progress_thread_finalize(threadname);
     }
-    free(threadname);
+    SAFEFREE(threadname);
 }
 
 void orcm_analytics_stop_wokflow(orcm_workflow_t *wf)
@@ -151,6 +152,104 @@ static int orcm_analytics_base_close(void)
                                                NULL);
 }
 
+
+static int workflow_add_process_single_workflow(opal_list_t *result_list, char *list_head_key)
+{
+    opal_buffer_t *buf = NULL;
+    int rc = ORCM_SUCCESS;
+    bool is_filter_first_step = false;
+    int wfid;
+
+    buf = OBJ_NEW(opal_buffer_t);
+    if (NULL == buf) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+    rc = orcm_util_workflow_add_extract_workflow_info(result_list, buf, list_head_key, &is_filter_first_step);
+    if ((ORCM_SUCCESS != rc) || (false == is_filter_first_step) ) {
+        SAFE_RELEASE(buf);
+        return rc;
+    }
+
+    rc = orcm_analytics_base_workflow_add(buf, &wfid);
+    if (ORCM_SUCCESS == rc) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                             "%s analytics:base:frame workflow id is %d",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), wfid));
+    }
+
+    SAFE_RELEASE(buf);
+    return rc;
+}
+
+static int workflow_add_process_workflows (opal_list_t *result_list)
+{
+    orcm_value_t *list_item = NULL;
+    int rc = ORCM_SUCCESS;
+
+
+    if (NULL == result_list){
+        return ORCM_ERROR;
+    }
+
+    OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                             "%s analytics:base:frame key is %s, Type is %d",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             list_item->value.key, list_item->value.type));
+
+        if (list_item->value.type == OPAL_STRING) {
+            OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                                 "%s analytics:base:frame value is %s",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                 list_item->value.data.string));
+        }
+        else if (list_item->value.type == OPAL_PTR) {
+            if (0 == strcmp(list_item->value.key, "workflow")) {
+                rc = workflow_add_process_single_workflow((opal_list_t*)list_item->value.data.ptr, list_item->value.key);
+            }
+        }
+        else {
+            OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                                 "%s analytics:base: Unexpected data type from parser framework",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+            return ORCM_ERROR;
+        }
+    }
+    return rc;
+}
+
+static void orcm_analytics_base_load_default_workflows(void)
+{
+    opal_list_t *result_list = NULL;
+    orcm_value_t *list_item = NULL;
+    char *file = NULL;
+
+    if (0 > asprintf(&file, "%s/etc/orcm-default-config.xml", opal_install_dirs.prefix)) {
+        return;
+    }
+
+    result_list = orcm_util_workflow_add_retrieve_workflows_section(file);
+    if (NULL == result_list) {
+        return;
+    }
+
+    OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
+        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                             "%s analytics:base:frame key is %s, Type is %d",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             list_item->value.key, list_item->value.type));
+        if (list_item->value.type == OPAL_PTR) {
+            if (0 == strcmp(list_item->value.key, "workflows")) {
+                workflow_add_process_workflows((opal_list_t*)list_item->value.data.ptr);
+            }
+        }
+    }
+
+    SAFE_RELEASE(result_list);
+    return;
+}
+
+
 /*
  * Function for finding and opening either all MCA components, or the one
  * that was specifically requested via a MCA parameter.
@@ -173,6 +272,9 @@ static int orcm_analytics_base_open(mca_base_open_flag_t flags)
         return rc;
     }
 
+    /* Check for default workflow file and load it*/
+    orcm_analytics_base_load_default_workflows();
+
     return rc;
 }
 
@@ -193,7 +295,7 @@ static void wkstep_des(orcm_workflow_step_t *p)
        return;
     }
     OPAL_LIST_DESTRUCT(&p->attributes);
-    free(p->analytic);
+    SAFEFREE(p->analytic);
 }
 OBJ_CLASS_INSTANCE(orcm_workflow_step_t,
                    opal_list_item_t,

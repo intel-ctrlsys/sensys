@@ -33,7 +33,6 @@ static bool recv_issued=false;
 static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
                                      opal_buffer_t* buffer, orte_rml_tag_t tag,
                                      void* cbdata);
-static int orcm_analytics_base_recv_unpack_int(opal_buffer_t* buffer);
 static void orcm_analytics_base_recv_send_answer(orte_process_name_t* sender,
                                                  opal_buffer_t *ans, int rc);
 
@@ -87,23 +86,6 @@ int orcm_analytics_base_recv_pack_int(opal_buffer_t* buffer, int *value, int cou
     }
     return ORCM_SUCCESS;
 }
-
-
-static int orcm_analytics_base_recv_unpack_int(opal_buffer_t* buffer)
-{
-    int ret;
-    int value;
-    int count = ANALYTICS_COUNT_DEFAULT;
-
-    /* unpack the command */
-    ret = opal_dss.unpack(buffer, &value, &count, OPAL_INT);
-    if (OPAL_SUCCESS != ret) {
-        ORTE_ERROR_LOG(ret);
-        return ORCM_ERROR;
-    }
-    return value;
-}
-
 
 static uint8_t orcm_analytics_base_recv_unpack_uint8_t(opal_buffer_t* buffer)
 {
@@ -161,18 +143,14 @@ static void orcm_analytics_base_recv(int status, orte_process_name_t* sender,
     command = orcm_analytics_base_recv_unpack_uint8_t(buffer);
 
     switch (command) {
-        case ORCM_ANALYTICS_WORKFLOW_CREATE:
-            ret = orcm_analytics_base_workflow_create(buffer, &id);
+        case ORCM_ANALYTICS_WORKFLOW_ADD:
+            ret = orcm_analytics_base_workflow_add(buffer, &id);
             if (ORCM_SUCCESS == ret) {
                 ret = orcm_analytics_base_recv_pack_int(ans, &id, ANALYTICS_COUNT_DEFAULT);
             }
             break;
-        case ORCM_ANALYTICS_WORKFLOW_DELETE:
-            /* unpack the id */
-            id = orcm_analytics_base_recv_unpack_int(buffer);
-            if (ORCM_ERROR != id) {
-                ret = orcm_analytics_base_workflow_delete(id);
-            }
+        case ORCM_ANALYTICS_WORKFLOW_REMOVE:
+            ret = orcm_analytics_base_workflow_remove(buffer);
             break;
         case ORCM_ANALYTICS_WORKFLOW_LIST:
             ret = orcm_analytics_base_workflow_list(ans);

@@ -211,13 +211,11 @@ static orcm_cli_init_t cli_init[] = {
     { { "grouping", NULL }, "list", 0, 2, "List tag-value pair. Use * for either tag or "
     "node: list <tag> <node-regex>" },
 
-    /****** Analytics workflow commands ******/
-    { { NULL }, "analytics", 0, 0, "Analytics information" },
-    { { "analytics", NULL }, "workflow", 0, 0, "workflow manipulation commands" },
-    { { "analytics", "workflow", NULL }, "add", 0, 1, "add workflow: add file..txt" },
-    { { "analytics", "workflow", NULL }, "remove", 0, 2, "remove workflow: remove nodelist "
-    "workflow_id" },
-    { { "analytics", "workflow", NULL }, "get", 0, 0, "list workflow: get nodelist" },
+    /****** workflow commands ******/
+    { { NULL }, "workflow", 0, 0, "Workflow information" },
+    { { "workflow", NULL }, "add", 0, 1, "workflow add file.txt [aggregator]" },
+    { { "workflow", NULL }, "remove", 0, 2, "workflow remove aggregator workflow_name workflow_id" },
+    { { "workflow", NULL }, "list", 0, 0, "workflow list aggregator" },
 
     /****** Query commands ******/
     { { NULL}, "query", 0, 0, "Query data from DB" },

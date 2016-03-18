@@ -40,7 +40,7 @@ octl_SOURCES = \
         sensor.c \
         grouping.h \
         grouping.c \
-        analytics.c \
+        workflow.c \
         notifier.c \
         smtp.c \
         query.c \

@@ -168,19 +168,22 @@ workflows from any management node on a cluster.
 For example:
 .
 .TP 4
-octl analytics workflow add workflow.txt
+octl workflow add workflow.xml [aggregator]
 .B after using the command, user will be able to see the workflow_id on
-the console.
+the console. Here aggregator is an optional field
 .PP
-For example:
 .
 .TP 4
-octl analytics workflow get
+octl workflow list aggregator
+.B lists the workflow name and workflow id of all workflows in the
+specified aggregator
 .PP
-For example:
 .
 .TP 4
-octl analytics workflow remove
+octl workflow remove aggregator workflow_id workflow_num
+.B Removes workflow with specified workflow_id and workflow_num from
+aggregator. "*" is used as wild characted in workflow id and workflow number
+to remove multiple workflows at a time
 .PP
 .SS notifier
 .

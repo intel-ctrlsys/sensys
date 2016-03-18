@@ -23,4 +23,5 @@ liborcm_la_SOURCES += \
         util/cli.c \
         util/attr.c \
         util/logical_group.c \
+        util/workflow_util.c \
         util/vardata.cpp

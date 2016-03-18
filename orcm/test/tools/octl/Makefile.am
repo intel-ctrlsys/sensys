@@ -37,8 +37,8 @@ octl_tests_SOURCES = \
     octl_tests.cpp \
     octl_query.cpp \
     octl_mocking.cpp \
-    octl_led_tests.cpp
-
+    octl_led_tests.cpp \
+    workflow_tests.cpp
 MOCKING = \
     -Wl,--wrap=orcm_cfgi_base_get_hostname_proc
 
@@ -51,6 +51,7 @@ LDADD = \
     $(top_builddir)/orcm/tools/octl/sensor.o \
     $(top_builddir)/orcm/tools/octl/query.o \
     $(top_builddir)/orcm/tools/octl/notifier.o \
+    $(top_builddir)/orcm/tools/octl/workflow.o \
     $(top_builddir)/orcm/tools/octl/smtp.o
 
 AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread $(MOCKING)

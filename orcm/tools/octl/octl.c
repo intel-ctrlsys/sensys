@@ -590,25 +590,25 @@ static int run_cmd_grouping(int argc, char** cmdlist, int sub_cmd)
     return rc;
 }
 
-static int run_cmd_analytics(char** cmdlist, int sub_cmd)
+static int run_cmd_workflow(char** cmdlist, int sub_cmd)
 {
     int rc = ORCM_SUCCESS;
     int count = opal_argv_count(cmdlist);
 
-    if (3 > count || cmd_workflow != sub_cmd) {
+    if (3 > count) {
         return ORCM_ERROR;
     }
 
-    rc = octl_cmd_to_enum(cmdlist[2]);
+    rc = octl_cmd_to_enum(cmdlist[1]);
     switch (rc) {
         case cmd_add:
-            rc = (4 > count ? ORCM_ERROR : orcm_octl_analytics_workflow_add(cmdlist[3]));
+            rc = orcm_octl_workflow_add(cmdlist);
             break;
         case cmd_remove:
-            rc = orcm_octl_analytics_workflow_remove(cmdlist);
+            rc = orcm_octl_workflow_remove(cmdlist);
             break;
-        case cmd_get:
-            rc = orcm_octl_analytics_workflow_list(cmdlist);
+        case cmd_list:
+            rc = orcm_octl_workflow_list(cmdlist);
             break;
         default:
             rc = ORCM_ERROR;
@@ -746,8 +746,8 @@ static int run_cmd(int argc, char *cmdlist[])
         case cmd_grouping:
             rc = run_cmd_grouping(argc, cmdlist, sub_cmd);
             break;
-        case cmd_analytics:
-            rc = run_cmd_analytics(cmdlist, sub_cmd);
+        case cmd_workflow:
+            rc = run_cmd_workflow(cmdlist, sub_cmd);
             break;
         case cmd_query:
             rc = run_cmd_query(cmdlist, sub_cmd);

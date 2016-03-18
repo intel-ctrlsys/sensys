@@ -171,42 +171,38 @@ USAGE: power set mode <value>
 ERROR: %s
 USAGE: diag <command> <node-list>
 
-[octl:analytics:add-usage]
+[octl:workflow:add-usage]
 ERROR: %s
-USAGE: analytics workflow add <file>
+USAGE: workflow add <file> [aggregator]
 
-[octl:analytics:remove-usage]
+[octl:workflow:remove-usage]
 ERROR: %s
-USAGE: analytics workflow remove <nodelist> <workflow-id>
+USAGE: workflow remove <aggregator> <workflow-name> <workflow-id>
 
-[octl:analytics:get-usage]
+[octl:workflow:list-usage]
 ERROR: %s
-USAGE: analytics workflow get <nodelist>
+USAGE: workflow list <aggregator>
 
-[octl:analytics:workflow-failure]
+[octl:workflow:workflow-failure]
 ERROR: Workflow not added.
 Possible bad file, please verify if the syntax is correct and try again.
 
-[octl:analytics:workflow-id]
-ERROR: Incorrect argument workflow id!"%s" is not an interger
+[octl:workflow:workflow-id]
+ERROR: Incorrect argument workflow id!workflow id is NULL
 
-[octl:analytics:nodelist]
-ERROR: Nodelist isn't present in the workflow file
+[octl:workflow:workflow-name]
+ERROR: Incorrect argument workflow name!workflowflow name is NULL
 
-[octl:analytics:filter]
+[octl:workflow:aggregator]
+ERROR: aggregator isn't present in the workflow file
+
+[octl:workflow:filter]
 ERROR: Filter plugin isn't present in the start of workflow file
 
-[octl:analytics:big-file]
-ERROR: File is too big to parse
-
-[octl:analytics:many-params]
-ERROR: Too many params %d in the OFLOW file are being sent
-OFLOW exiting
-
-[octl:analytics:memory]
+[octl:workflow:memory]
 ERROR: Error in Memory allocation
 
-[octl:analytics:workflow-notfound]
+[octl:workflow:workflow-notfound]
 ERROR: Workflow not found
 
 [octl:session:cancel-usage]

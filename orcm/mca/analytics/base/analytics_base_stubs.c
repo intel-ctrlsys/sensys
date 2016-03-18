@@ -7,6 +7,8 @@
  * $HEADER$
  */
 
+#define _GNU_SOURCE
+#include <ctype.h>
 
 #include "orcm_config.h"
 #include "orcm/constants.h"
@@ -24,19 +26,21 @@
 
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
+#include "orcm/util/utils.h"
 
-static orcm_workflow_t* orcm_analytics_base_workflow_object_init(int *wfid);
-static int orcm_analytics_base_workflow_step_create(orcm_workflow_t *wf,
-                                                    opal_value_t **values, int i);
-static int orcm_analytics_base_create_new_workflow_event_base(orcm_workflow_t *wf);
-static int orcm_analytics_base_create_event_base(orcm_workflow_t *wf, char *threadname);
-static int orcm_analytics_base_parse_attributes(opal_list_t *attr_list, char *attr_string);
-static int orcm_analytics_base_subtokenize_attributes(char **tokens, opal_list_t *attr_list);
-static void orcm_analytics_base_append_attributes(char **subtokens, opal_list_t *attr_list);
+#define WORKFLOW_WILD_CHARACTER "*"
+
+static orcm_workflow_t* orcm_analytics_base_workflow_object_init(int *wfid, char *wf_name);
+static int orcm_analytics_base_workflow_step_add(orcm_workflow_t *wf, opal_buffer_t* buffer, int step);
+static int orcm_analytics_base_add_new_workflow_event_base(orcm_workflow_t *wf);
+static int orcm_analytics_base_add_event_base(orcm_workflow_t *wf, char *threadname);
+static int orcm_analytics_base_parse_attributes(opal_list_t *attr_list, opal_buffer_t* buffer, int num_attributes);
+static int orcm_analytics_base_append_attributes(opal_list_t *attr_list, char *attribute_key, char *attribute_value);
 static void orcm_analytics_base_set_event_workflow_step(orcm_workflow_t *wf,
                                                         orcm_workflow_step_t *wf_step,
                                                         orcm_workflow_caddy_t *caddy);
-static int orcm_analytics_base_workflow_list_append_ids(opal_buffer_t *buffer, size_t size);
+static int orcm_analytics_base_workflow_list_append_info(opal_buffer_t *buffer);
+static void orcm_analytics_base_workflow_step_error(int rc, orcm_workflow_step_t *wf_step, char *step_name);
 
 
 static int workflow_id = 0;
@@ -92,7 +96,7 @@ static void orcm_analytics_base_tapinfo(orcm_workflow_step_t *wf_step,
                 ORTE_ERROR_LOG(rc);
             }
         }
-        OBJ_RELEASE(buf);
+        SAFE_RELEASE(buf);
         free(taphost);
     } else {
         if (taphost) {
@@ -165,68 +169,54 @@ void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
 }
 
 
-static void orcm_analytics_base_append_attributes(char **subtokens, opal_list_t *attr_list)
+static int orcm_analytics_base_append_attributes(opal_list_t *attr_list, char *attribute_key, char *attribute_value)
 {
     opal_value_t *wf_attribute = NULL;
-    char *output = NULL;
 
     wf_attribute = OBJ_NEW(opal_value_t);
-    wf_attribute->type = OPAL_STRING;
-    wf_attribute->key = strdup( subtokens[0] );
-    wf_attribute->data.string = strdup ( subtokens[1] );
-    opal_list_append(attr_list, &wf_attribute->super);
-    opal_dss.print(&output, "", wf_attribute, OPAL_VALUE);
-    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                         "%s analytics:base:stubs parse_attributes got attr %s",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                         output));
-    free(output);
-}
-
-
-static int orcm_analytics_base_subtokenize_attributes(char **tokens, opal_list_t *attr_list)
-{
-    char **subtokens = NULL;
-    int i;
-    int array_length;
-    int subarray_length = 0;
-
-
-    array_length = opal_argv_count(tokens);
-
-    for (i = 0; i < array_length; i++) {
-        subtokens = opal_argv_split(tokens[i], '=');
-        subarray_length = opal_argv_count(subtokens);
-
-        if (subarray_length == MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP) {
-            orcm_analytics_base_append_attributes(subtokens, attr_list );
-
-        } else {
-            opal_argv_free(subtokens);
-            return ORCM_ERR_BAD_PARAM;
-        }
+    if (NULL == wf_attribute) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
     }
-    opal_argv_free(subtokens);
+    wf_attribute->type = OPAL_STRING;
+    wf_attribute->key = attribute_key;
+    wf_attribute->data.string = attribute_value;
+    opal_list_append(attr_list, &wf_attribute->super);
+
+    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
+                         "%s analytics:base:stubs parse_attributes got attr with key:%s and value:%s",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                         attribute_key, attribute_value));
     return ORCM_SUCCESS;
 }
 
-static int orcm_analytics_base_parse_attributes(opal_list_t *attr_list, char *attr_string)
+static int orcm_analytics_base_parse_attributes(opal_list_t *attr_list, opal_buffer_t* buffer, int num_attributes)
 {
-    char **tokens = NULL;
-    int ret = ORCM_SUCCESS;
+    int rc;
+    int temp = 0;
+    char *attribute_key = NULL;
+    char *attribute_value = NULL;
+    int cnt = ANALYTICS_COUNT_DEFAULT;
 
-    if (NULL == attr_string){
-        return ORCM_SUCCESS;
+    for (temp = 0; temp < num_attributes; temp++ ) {
+
+        rc = opal_dss.unpack(buffer, &attribute_key, &cnt, OPAL_STRING);
+        if (OPAL_SUCCESS != rc) {
+            return ORCM_ERROR;
+        }
+
+        rc = opal_dss.unpack(buffer, &attribute_value, &cnt, OPAL_STRING);
+        if (OPAL_SUCCESS != rc) {
+            return ORCM_ERROR;
+        }
+        rc = orcm_analytics_base_append_attributes(attr_list, attribute_key, attribute_value);
+        if (ORCM_SUCCESS != rc) {
+            return rc;
+        }
     }
-    tokens = opal_argv_split(attr_string, ';');
-
-    ret = orcm_analytics_base_subtokenize_attributes(tokens, attr_list);
-
-    opal_argv_free(tokens);
-    return ret;
+    return ORCM_SUCCESS;
 }
 
-static int orcm_analytics_base_create_event_base(orcm_workflow_t *wf, char *threadname)
+static int orcm_analytics_base_add_event_base(orcm_workflow_t *wf, char *threadname)
 {
 
     wf->ev_active = true;
@@ -237,57 +227,73 @@ static int orcm_analytics_base_create_event_base(orcm_workflow_t *wf, char *thre
     return ORCM_SUCCESS;
 }
 
-static int orcm_analytics_base_create_new_workflow_event_base(orcm_workflow_t *wf)
+static int orcm_analytics_base_add_new_workflow_event_base(orcm_workflow_t *wf)
 {
     int rc;
     char *threadname = NULL;
 
     asprintf(&threadname, "wfid%i", wf->workflow_id);
-    rc = orcm_analytics_base_create_event_base(wf, threadname);
-    free(threadname);
+    rc = orcm_analytics_base_add_event_base(wf, threadname);
+    SAFEFREE(threadname);
 
     return rc;
 }
 
-static int orcm_analytics_base_workflow_step_create(orcm_workflow_t *wf,
-                                                    opal_value_t **values, int i)
+static void orcm_analytics_base_workflow_step_error(int rc, orcm_workflow_step_t *wf_step, char *step_name)
+{
+    ORTE_ERROR_LOG(rc);
+    SAFE_RELEASE(wf_step);
+    SAFEFREE(step_name);
+}
+
+static int orcm_analytics_base_workflow_step_add(orcm_workflow_t *wf, opal_buffer_t* buffer, int step)
 {
     orcm_workflow_step_t *wf_step = NULL;
     int rc;
+    char *step_name = NULL;
+    int cnt = ANALYTICS_COUNT_DEFAULT;
+    int num_attributes;
 
     wf_step = OBJ_NEW(orcm_workflow_step_t);
-
     if (NULL == wf_step) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
-    wf_step->step_id = i;
-    wf_step->analytic = strdup(values[i]->data.string);
+    wf_step->step_id = step;
 
-    if (NULL != values[i+1]) {
-        rc = orcm_analytics_base_parse_attributes(&wf_step->attributes, values[i+1]->data.string);
-        if (ORCM_SUCCESS != rc ) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_RELEASE(wf_step);
-            return rc;
-        }
+    rc = opal_dss.unpack(buffer, &num_attributes, &cnt, OPAL_INT);
+    if (OPAL_SUCCESS != rc) {
+        orcm_analytics_base_workflow_step_error(rc, wf_step, step_name);
+        return rc;
+    }
+
+    rc = opal_dss.unpack(buffer, &step_name, &cnt, OPAL_STRING);
+    if (OPAL_SUCCESS != rc) {
+        orcm_analytics_base_workflow_step_error(rc, wf_step, step_name);
+        return rc;
+    }
+    wf_step->analytic = step_name;
+
+    rc = orcm_analytics_base_parse_attributes(&wf_step->attributes, buffer, num_attributes);
+    if (ORCM_SUCCESS != rc ) {
+        orcm_analytics_base_workflow_step_error(rc, wf_step, step_name);
+        return rc;
     }
 
     rc = orcm_analytics_base_select_workflow_step(wf_step);
     if (ORCM_SUCCESS != rc) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(wf_step);
+        orcm_analytics_base_workflow_step_error(rc, wf_step, step_name);
         OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                              "%s analytics:base:workflow step can't be created",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        return ORCM_SUCCESS;
+        return ORCM_ERROR;
     }
     opal_list_append(&wf->steps, &wf_step->super);
     return ORCM_SUCCESS;
 }
 
 
-static orcm_workflow_t* orcm_analytics_base_workflow_object_init(int *wfid)
+static orcm_workflow_t* orcm_analytics_base_workflow_object_init(int *wfid, char *wf_name)
 {
     orcm_workflow_t *wf = NULL;
 
@@ -295,7 +301,9 @@ static orcm_workflow_t* orcm_analytics_base_workflow_object_init(int *wfid)
     if (NULL == wf) {
         return NULL;
     }
+
     wf->workflow_id = workflow_id;
+    wf->name = wf_name;
     workflow_id++;
     *wfid = wf->workflow_id;
 
@@ -303,14 +311,14 @@ static orcm_workflow_t* orcm_analytics_base_workflow_object_init(int *wfid)
 }
 
 
-int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
+int orcm_analytics_base_workflow_add(opal_buffer_t* buffer, int *wfid)
 {
     int num_steps;
     int step;
     int cnt;
     int rc = ORCM_SUCCESS;
     orcm_workflow_t *wf = NULL;
-    opal_value_t **values;
+    char *wf_name = NULL;
 
     /* unpack the number of workflow steps */
     cnt = ANALYTICS_COUNT_DEFAULT;
@@ -319,84 +327,112 @@ int orcm_analytics_base_workflow_create(opal_buffer_t* buffer, int *wfid)
         goto error;
     }
 
-    if (NULL == (wf = orcm_analytics_base_workflow_object_init(wfid))) {
+    rc = opal_dss.unpack(buffer, &wf_name, &cnt, OPAL_STRING);
+    if (OPAL_SUCCESS != rc) {
         goto error;
     }
 
-    rc = orcm_analytics_base_create_new_workflow_event_base(wf);
+    if (NULL == (wf = orcm_analytics_base_workflow_object_init(wfid, wf_name))) {
+        goto error;
+    }
+
+    rc = orcm_analytics_base_add_new_workflow_event_base(wf);
     if (ORCM_SUCCESS != rc) {
         ORTE_ERROR_LOG(rc);
         goto error;
     }
 
-
-    cnt = MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP * num_steps;
-    values = (opal_value_t**)malloc(cnt * sizeof(opal_value_t *));
-
-    /* unpack the requested module name and attributes stored in opal_values */
-    rc = opal_dss.unpack(buffer, values, &cnt, OPAL_VALUE);
-    if (OPAL_SUCCESS != rc) {
-        ORTE_ERROR_LOG(rc);
-        goto error;
-    }
-
-
     /* create each step (module) of the workflow */
-    for (step = 0; step < cnt; step = step + MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP) {
-        rc = orcm_analytics_base_workflow_step_create(wf, values, step);
+    for (step = 0; step < num_steps; step = step + 1) {
+        rc = orcm_analytics_base_workflow_step_add(wf, buffer, step);
         if (OPAL_SUCCESS != rc) {
             goto error;
         }
-
     }
-
-    free(values);
 
     /* add workflow to the master list of workflows */
     opal_list_append(&orcm_analytics_base.workflows, &wf->super);
     return ORCM_SUCCESS;
 
 error:
-    if (NULL != wf) {
-        OBJ_RELEASE(wf);
-    }
+    SAFE_RELEASE(wf);
+    SAFEFREE(wf_name);
     return rc;
 }
 
-int orcm_analytics_base_workflow_delete(int workflow_id)
+int orcm_analytics_base_workflow_remove(opal_buffer_t *buffer)
 {
     orcm_workflow_t *wf = NULL;
     orcm_workflow_t *next = NULL;
+    char *workflow_id = NULL;
+    char *workflow_name = NULL;
+    int cnt = ANALYTICS_COUNT_DEFAULT;
+    int workflow_num_id;
+    int rc;
+    bool is_workflow_deleted = false;
+
+    rc = opal_dss.unpack(buffer, &workflow_name, &cnt, OPAL_STRING);
+    if (OPAL_SUCCESS != rc) {
+        return rc;
+    }
+
+    rc = opal_dss.unpack(buffer, &workflow_id, &cnt, OPAL_STRING);
+    if (OPAL_SUCCESS != rc) {
+        return rc;
+    }
+
+    if (0 != strcmp(workflow_id, WORKFLOW_WILD_CHARACTER)) {
+        if (0 != isdigit(workflow_id[strlen(workflow_id)-1])) {
+            workflow_num_id = (int)strtol(workflow_id, NULL, 10);
+        }
+    }
 
     OPAL_LIST_FOREACH_SAFE(wf, next, &orcm_analytics_base.workflows, orcm_workflow_t) {
-        if (workflow_id == wf->workflow_id) {
+        if ( (0 == strcmp(workflow_name, WORKFLOW_WILD_CHARACTER)) ||
+                ( (0 == strcmp(workflow_name, wf->name)) &&
+                ((workflow_num_id == wf->workflow_id) ||
+                        (0 == strcmp(workflow_id, WORKFLOW_WILD_CHARACTER))) ) ) {
             /* stop the event thread */
             orcm_analytics_stop_wokflow(wf);
 
             /* remove workflow from the master list */
             opal_list_remove_item(&orcm_analytics_base.workflows, &wf->super);
-            OBJ_RELEASE(wf);
-            return workflow_id;
+            SAFE_RELEASE(wf);
+            is_workflow_deleted = true;
         }
     }
-    return ORCM_ERROR;
+    if (true == is_workflow_deleted) {
+        return ORCM_SUCCESS;
+    }
+    else {
+        return ORCM_ERROR;
+    }
 }
 
-static int orcm_analytics_base_workflow_list_append_ids(opal_buffer_t *buffer, size_t size)
+static int orcm_analytics_base_workflow_list_append_info(opal_buffer_t *buffer)
 {
-    int workflow_ids[size];
     orcm_workflow_t *wf = NULL;
-    unsigned int temp = 0;
     int rc;
+    char *wf_name = NULL;
 
     OPAL_LIST_FOREACH(wf, &orcm_analytics_base.workflows, orcm_workflow_t) {
-        if (temp < size) {
-            workflow_ids[temp] = wf->workflow_id;
-            temp++;
+        rc = orcm_analytics_base_recv_pack_int(buffer, (int *)&wf->workflow_id, ANALYTICS_COUNT_DEFAULT);
+        if (ORCM_SUCCESS != rc) {
+            return rc;
         }
+
+        wf_name = strdup(wf->name);
+        if (NULL == wf_name) {
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+        rc = opal_dss.pack(buffer, &wf_name, 1, OPAL_STRING);
+        if (ORCM_SUCCESS != rc) {
+            SAFEFREE(wf_name);
+            return rc;
+        }
+        SAFEFREE(wf_name);
     }
-    rc = orcm_analytics_base_recv_pack_int(buffer, workflow_ids, size);
-    return rc;
+    return ORCM_SUCCESS;
 }
 
 int orcm_analytics_base_workflow_list(opal_buffer_t *buffer)
@@ -410,7 +446,7 @@ int orcm_analytics_base_workflow_list(opal_buffer_t *buffer)
         return rc;
     }
     if (0 < workflow_list_size) {
-        rc = orcm_analytics_base_workflow_list_append_ids(buffer, workflow_list_size);
+        rc = orcm_analytics_base_workflow_list_append_info(buffer);
     }
 
     return rc;
@@ -451,7 +487,7 @@ int orcm_analytics_base_log_to_database_event(orcm_analytics_value_t* value)
     rc = orcm_analytics_base_event_set_storage(event_data, ORCM_STORAGE_TYPE_DATABASE);
     if(ORCM_SUCCESS != rc){
         if (NULL != event_data) {
-            OBJ_RELEASE(event_data);
+            SAFE_RELEASE(event_data);
         }
         return rc;
     }

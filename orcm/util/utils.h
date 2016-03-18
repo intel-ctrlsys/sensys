@@ -130,4 +130,10 @@ ORCM_DECLSPEC double orcm_util_time_diff(struct timeval* time1, struct timeval* 
 /* Convert time from d/h/m/s format to seconds*/
 ORCM_DECLSPEC unsigned long orcm_util_get_time_in_sec (char* time);
 
+/*Retrieve all workflows from XML file */
+ORCM_DECLSPEC opal_list_t* orcm_util_workflow_add_retrieve_workflows_section(const char *file);
+
+/*Extract one block of workflow info from XML file */
+ORCM_DECLSPEC int orcm_util_workflow_add_extract_workflow_info(opal_list_t *result_list, opal_buffer_t *buf, char *list_head_key, bool *is_filter_first_step);
+
 #endif

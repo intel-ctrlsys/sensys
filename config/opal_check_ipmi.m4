@@ -1,6 +1,6 @@
 # -*- shell-script -*-
 #
-# Copyright (c) 2014      Intel, Inc. All rights reserved.
+# Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -15,6 +15,7 @@
 
 AC_DEFUN([OPAL_CHECK_IPMIUTIL], [
     AC_MSG_CHECKING([for IPMIUTIL support])
+    ipmiutil_flag=0
     AC_ARG_WITH([ipmiutil],
                 [AC_HELP_STRING([--with-ipmiutil(=DIR)],
                                 [Build IPMI support, optionally adding DIR to the search path])],
@@ -36,7 +37,8 @@ AC_DEFUN([OPAL_CHECK_IPMIUTIL], [
                                      [$ipmiutil_prefix_dir],
                                      [],
                                      [AC_MSG_RESULT([found libs at $ipmiutil_prefix_dir])
-                                     ipmiutil_check_happy=yes],
+                                     ipmiutil_check_happy=yes
+                                     ipmiutil_flag=1],
                                      [AC_MSG_WARN([IPMI sensor support requested])
                                       AC_MSG_ERROR([But the required dependent Library or Header files weren't found])
                                       ipmiutil_check_happy=no])])],
@@ -48,10 +50,16 @@ AC_DEFUN([OPAL_CHECK_IPMIUTIL], [
                              [-lcrypto],
                              [$ipmiutil_prefix_dir],
                              [],
-                             [ipmiutil_check_happy=yes],
+                             [ipmiutil_check_happy=yes
+                              ipmiutil_flag=1],
                              [AC_MSG_RESULT([IPMI library not found])
                               AC_MSG_RESULT([building without IPMI support])
-                              ipmiutil_check_happy=no])])
+                              ipmiutil_check_happy=no
+                              ipmiutil_flag=0])])
+
+    AM_CONDITIONAL([HAVE_IPMI], [test "$ipmiutil_check_happy" = "yes"])
+    AC_DEFINE_UNQUOTED(HAVE_IPMI, $ipmiutil_flag, [Whether or not we have IPMI support])
+
     AC_SUBST(ipmiutil_CPPFLAGS)
     AC_SUBST(ipmiutil_LDFLAGS)
     AC_SUBST(ipmiutil_LIBS)

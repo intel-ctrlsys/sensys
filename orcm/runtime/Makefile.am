@@ -28,3 +28,8 @@ liborcm_la_SOURCES += \
         runtime/orcm_info_support.c \
         runtime/led_control.cpp \
         runtime/led_control_interface.cpp
+
+if HAVE_IPMI
+liborcm_la_LDFLAGS += -lipmiutil -lcrypto
+CPPFLAGS += -DHAVE_LED_CONTROL_SUPPORT
+endif

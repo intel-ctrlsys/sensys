@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef HAVE_IPMICMD_H
+#ifdef HAVE_LED_CONTROL_SUPPORT
     #include <ipmicmd.h>
 #endif
 
@@ -46,7 +46,7 @@ LedControl::~LedControl(){
 int LedControl::ipmiCmdOperation(unsigned short cmd, unsigned char *buff_in,
         int in_size, unsigned char *buff_out, int *out_size,
         unsigned char *ccode){
-#ifdef HAVE_IPMICMD_H
+#ifdef HAVE_LED_CONTROL_SUPPORT
     int ret = 0;
     if (this->remote_node){
         ret = set_lan_options(hostname, user, pass, IPMI_SESSION_AUTHTYPE_PASSWORD,
@@ -67,7 +67,7 @@ int LedControl::getChassisIDState(){
     int out_size = sizeof(buff_out);
     unsigned char c_code;
 
-#ifdef HAVE_IPMICMD_H
+#ifdef HAVE_LED_CONTROL_SUPPORT
     ipmiCmdOperation(CHASSIS_STATUS, NULL, 0, buff_out, &out_size, &c_code);
 
     return (buff_out[MISC_CHASSIS] >> 4) & 3;
@@ -86,7 +86,7 @@ int LedControl::setChassisID(unsigned char value){
     buff_in[1] = 1;
     in_size = (value == LED_INDEFINITE_ON) ? 2 : 1;
 
-#ifdef HAVE_IPMICMD_H
+#ifdef HAVE_LED_CONTROL_SUPPORT
     return ipmiCmdOperation(CHASSIS_IDENTIFY, buff_in, in_size, NULL, &out_size, &c_code);
 #else
     return -1;

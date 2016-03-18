@@ -207,9 +207,9 @@ static int init_spatial_statistics(spatial_statistics_t* spatial_statistics, opa
             spatial_statistics->compute_type = orcm_analytics_base_get_compute_type(
                                                                    attribute->data.string);
         } else if (0 == strncmp(attribute->key, "interval", strlen(attribute->key) + 1)) {
-            spatial_statistics->interval = (int)strtol(attribute->data.string, NULL, 10);
+            spatial_statistics->interval = orcm_util_get_time_in_sec(attribute->data.string);
         } else if (0 == strncmp(attribute->key, "timeout", strlen(attribute->key) + 1)) {
-            spatial_statistics->timeout = (int)strtol(attribute->data.string, NULL, 10);
+            spatial_statistics->timeout = orcm_util_get_time_in_sec(attribute->data.string);
         }
     }
 

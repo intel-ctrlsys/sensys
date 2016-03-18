@@ -28,7 +28,6 @@
 static void win_statistics_con(win_statistics_t *win_stat)
 {
     win_stat->win_size = 0;
-    win_stat->win_unit = NULL;
     win_stat->win_left = 0;
     win_stat->win_right = 0;
     win_stat->num_sample_recv = 0;
@@ -42,7 +41,6 @@ static void win_statistics_con(win_statistics_t *win_stat)
 /* destructor of the win_statistics_t data structure */
 static void win_statistics_des(win_statistics_t *win_stat)
 {
-    SAFEFREE(win_stat->win_unit);
     SAFEFREE(win_stat->compute_type);
     SAFEFREE(win_stat->win_type);
 }
@@ -189,17 +187,6 @@ static int fill_win_statistics(win_statistics_t *win_statistics)
     }
 
     if (0 == strncmp(win_statistics->win_type, "time", strlen("time"))) {
-        if (NULL != win_statistics->win_unit) {
-            if (0 == strncmp(win_statistics->win_unit, "min", strlen("min"))) {
-                win_statistics->win_size *= 60;
-            } else if (0 == strncmp(win_statistics->win_unit, "hour", strlen("hour"))) {
-                win_statistics->win_size *= 3600;
-            } else if (0 == strncmp(win_statistics->win_unit, "day", strlen("day"))) {
-                win_statistics->win_size *= 86400;
-            } else if (0 != strncmp(win_statistics->win_unit, "sec", strlen("sec"))){
-                return ORCM_ERR_BAD_PARAM;
-            }
-        }
         reset_window(win_statistics, 0, 0);
     } else {
         reset_window(win_statistics, 0, win_statistics->win_size);
@@ -222,11 +209,7 @@ static int fill_attributes(win_statistics_t *win_statistics, opal_list_t *attrib
             NULL == one_attribute->data.string) {
             return ORCM_ERR_BAD_PARAM;
         } else if (0 == strncmp(one_attribute->key, "win_size", strlen(one_attribute->key) + 1)) {
-            win_statistics->win_size = (int)strtol(one_attribute->data.string, NULL, 10);
-        } else if (0 == strncmp(one_attribute->key, "unit", strlen(one_attribute->key) + 1)) {
-            if (NULL == win_statistics->win_unit) {
-                win_statistics->win_unit = strdup(one_attribute->data.string);
-            }
+            win_statistics->win_size = orcm_util_get_time_in_sec(one_attribute->data.string);
         } else if (0 == strncmp(one_attribute->key, "compute", strlen(one_attribute->key) + 1)) {
             if (NULL == win_statistics->compute_type) {
                 win_statistics->compute_type = strdup(one_attribute->data.string);
@@ -318,7 +301,7 @@ static void print_out_results(win_statistics_t *win_statistics,
     printf("\n\nThe window is full, below are the statistics:\n");
     printf("Workflow id:\tworkflow %d\n", caddy->wf->workflow_id);
     printf("Workflow hostnames:\t%s\n", caddy->wf->hostname_regex);
-    printf("Window size:\t%d\n", win_statistics->win_size);
+    printf("Window size:\t%lu\n", win_statistics->win_size);
     printf("Window type:\t%s\n", win_statistics->win_type);
     printf("Window compute type:\t%s\n", win_statistics->compute_type);
     printf("Window results:\t%f\n\n\n", result);
@@ -330,7 +313,7 @@ static int set_window_description(win_statistics_t *win_statistics,
     int rc = ORCM_SUCCESS;
 
     rc = orcm_analytics_base_event_set_description(event_data, "win_size",
-                                                   &win_statistics->win_size, OPAL_INT, NULL);
+                                                   &win_statistics->win_size, OPAL_UINT64, NULL);
     if (ORCM_SUCCESS != rc) {
         return rc;
     }

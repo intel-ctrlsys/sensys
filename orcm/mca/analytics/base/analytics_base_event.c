@@ -41,7 +41,7 @@ static void event_filter_con(event_filter *filter)
 {
     filter->category = NULL;
     filter->severity = ORCM_RAS_SEVERITY_UNKNOWN;
-    filter->time = orcm_analytics_base.suppress_repeat;
+    filter->time = orcm_util_get_time_in_sec(orcm_analytics_base.suppress_repeat);
 }
 
 static void event_filter_des(event_filter *filter)
@@ -152,7 +152,7 @@ static unsigned int filter_max_rate(orcm_ras_event_t* ev, event_filter* filter)
         return filter->time;
     }
 done:
-    return orcm_analytics_base.suppress_repeat;
+    return orcm_util_get_time_in_sec(orcm_analytics_base.suppress_repeat);
 }
 
 
@@ -244,16 +244,6 @@ int orcm_analytics_event_get_severity(char* severity)
     return sev;
 }
 
-static int checktimeval(char* value){
-    int j;
-    for (j = 0; j < (int)strlen(value); j++) {
-        if (!isdigit(value[j])) {
-            return ORCM_ERR_BAD_PARAM;
-        }
-    }
-    return ORCM_SUCCESS;
-}
-
 static int assign_filter_value(char* key, char* value, event_filter* filter)
 {
     int rc = ORCM_SUCCESS;
@@ -267,10 +257,8 @@ static int assign_filter_value(char* key, char* value, event_filter* filter)
         filter->severity = orcm_analytics_event_get_severity(value);
     }
     else if (0 == strncmp(key, "time", strlen(key))){
-        if(ORCM_SUCCESS == checktimeval(value)){
-            filter->time = atoi(value);
-        } else {
-            return rc;
+        if(0 == (filter->time = orcm_util_get_time_in_sec(value))){
+            filter->time = orcm_util_get_time_in_sec(orcm_analytics_base.suppress_repeat);
         }
     } else {
         rc = ORCM_ERROR;
@@ -422,7 +410,6 @@ orcm_ras_event_t* orcm_analytics_base_event_create(orcm_analytics_value_t *analy
                 return NULL;
             }
         }
-
         analytics_event_data->type = type;
         analytics_event_data->severity = severity;
         analytics_event_data->cbfunc = orcm_analytics_base_event_cleanup;

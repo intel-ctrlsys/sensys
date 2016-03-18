@@ -24,8 +24,7 @@ BEGIN_C_DECLS
 
 typedef struct {
     opal_object_t super;
-    int win_size;
-    char *win_unit;
+    uint64_t win_size;
     uint64_t win_left;
     uint64_t win_right;
     uint64_t num_sample_recv;

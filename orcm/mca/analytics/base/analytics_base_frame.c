@@ -66,7 +66,7 @@ static int orcm_analytics_base_register(mca_base_register_flag_t flags)
                                 &orcm_analytics_base.store_event_data);
     (void)mca_base_var_register("orcm", "analytics", "base", "suppress_repeat",
                                 "suppress repeat interval",
-                                MCA_BASE_VAR_TYPE_UNSIGNED_INT, NULL, 0, 0,
+                                MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
                                 OPAL_INFO_LVL_9,
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &orcm_analytics_base.suppress_repeat);

@@ -12,13 +12,11 @@
 #include "analytics_util.h"
 
 static void fill_caddy_with_attributes(orcm_workflow_caddy_t *caddy,
-                                       string win_size, string compute,
-                                       string unit, string type)
+                                       string win_size, string compute, string type)
 {
     if (NULL != caddy->wf_step) {
         analytics_util::fill_attribute(&(caddy->wf_step->attributes), "win_size", win_size);
         analytics_util::fill_attribute(&(caddy->wf_step->attributes), "compute", compute);
-        analytics_util::fill_attribute(&(caddy->wf_step->attributes), "unit", unit);
         analytics_util::fill_attribute(&(caddy->wf_step->attributes), "type", type);
     }
 }
@@ -33,7 +31,7 @@ orcm_workflow_caddy_t *create_caddy_with_valid_attribute(orcm_analytics_base_mod
     orcm_workflow_caddy_t *caddy = analytics_util::create_caddy(mod, workflow, workflow_step,
                                                                 analytics_value, data_store);
     if (NULL != caddy) {
-        fill_caddy_with_attributes(caddy, "10", "average", "", "");
+        fill_caddy_with_attributes(caddy, "10", "average", "");
     }
 
     return caddy;
@@ -253,7 +251,7 @@ TEST(analytics_window, analyze_zero_win_size)
         OBJ_NEW(orcm_workflow_step_t), OBJ_NEW(orcm_analytics_value_t), OBJ_NEW(win_statistics_t));
     if (NULL != caddy) {
         mod = caddy->imod;
-        fill_caddy_with_attributes(caddy, "0", "", "", "");
+        fill_caddy_with_attributes(caddy, "0", "", "");
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
         orcm_analytics_window_module.api.finalize(mod);
@@ -269,7 +267,7 @@ TEST(analytics_window, analyze_null_compute_type)
         OBJ_NEW(orcm_workflow_step_t), OBJ_NEW(orcm_analytics_value_t), OBJ_NEW(win_statistics_t));
     if (NULL != caddy) {
         mod = caddy->imod;
-        fill_caddy_with_attributes(caddy, "10", "", "", "");
+        fill_caddy_with_attributes(caddy, "10", "", "");
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
         orcm_analytics_window_module.api.finalize(mod);
@@ -285,7 +283,7 @@ TEST(analytics_window, analyze_unknown_compute_type)
         OBJ_NEW(orcm_workflow_step_t), OBJ_NEW(orcm_analytics_value_t), OBJ_NEW(win_statistics_t));
     if (NULL != caddy) {
         mod = caddy->imod;
-        fill_caddy_with_attributes(caddy, "10", "unknown", "", "");
+        fill_caddy_with_attributes(caddy, "10", "unknown", "");
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
         orcm_analytics_window_module.api.finalize(mod);
@@ -301,7 +299,7 @@ TEST(analytics_window, analyze_unknown_win_type)
         OBJ_NEW(orcm_workflow_step_t), OBJ_NEW(orcm_analytics_value_t), OBJ_NEW(win_statistics_t));
     if (NULL != caddy) {
         mod = caddy->imod;
-        fill_caddy_with_attributes(caddy, "10", "", "", "unknown");
+        fill_caddy_with_attributes(caddy, "10", "", "unknown");
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
         orcm_analytics_window_module.api.finalize(mod);
@@ -317,7 +315,7 @@ TEST(analytics_window, analyze_unknown_win_unit)
         OBJ_NEW(orcm_workflow_step_t), OBJ_NEW(orcm_analytics_value_t), OBJ_NEW(win_statistics_t));
     if (NULL != caddy) {
         mod = caddy->imod;
-        fill_caddy_with_attributes(caddy, "10", "", "weeks", "");
+        fill_caddy_with_attributes(caddy, "10w", "", "");
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
         orcm_analytics_window_module.api.finalize(mod);
@@ -451,7 +449,7 @@ TEST(analytics_window, analyze_time_average_first)
             win_statistics = (win_statistics_t*)(caddy->imod->orcm_mca_analytics_data_store);
             mod = caddy->imod;
         }
-        fill_caddy_with_attributes(caddy, "10", "average", "min", "");
+        fill_caddy_with_attributes(caddy, "10m", "average", "");
         analytics_util::fill_analytics_value(caddy, "localhost", &time, &value, 1);
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(win_statistics->sum_min_max, 37.5);
@@ -479,7 +477,7 @@ TEST(analytics_window, analyze_time_min_first)
             win_statistics = (win_statistics_t*)(caddy->imod->orcm_mca_analytics_data_store);
             mod = caddy->imod;
         }
-        fill_caddy_with_attributes(caddy, "10", "min", "hour", "");
+        fill_caddy_with_attributes(caddy, "10h", "min", "");
         analytics_util::fill_analytics_value(caddy, "localhost", &time, &value, 1);
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(win_statistics->sum_min_max, 37.5);
@@ -507,7 +505,7 @@ TEST(analytics_window, analyze_time_max_first)
             win_statistics = (win_statistics_t*)(caddy->imod->orcm_mca_analytics_data_store);
             mod = caddy->imod;
         }
-        fill_caddy_with_attributes(caddy, "10", "max", "day", "");
+        fill_caddy_with_attributes(caddy, "10d", "max", "");
         analytics_util::fill_analytics_value(caddy, "localhost", &time, &value, 1);
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(win_statistics->sum_min_max, 37.5);
@@ -535,7 +533,7 @@ TEST(analytics_window, analyze_time_sd_first)
             win_statistics = (win_statistics_t*)(caddy->imod->orcm_mca_analytics_data_store);
             mod = caddy->imod;
         }
-        fill_caddy_with_attributes(caddy, "10", "sd", "", "");
+        fill_caddy_with_attributes(caddy, "10", "sd", "");
         analytics_util::fill_analytics_value(caddy, "localhost", &time, &value, 1);
         rc = orcm_analytics_window_module.api.analyze(0, 0, caddy);
         ASSERT_EQ(win_statistics->sum_min_max, 37.5);

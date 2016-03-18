@@ -123,7 +123,7 @@ typedef struct {
     opal_list_t workflows;
     bool store_raw_data;
     bool store_event_data;
-    unsigned int suppress_repeat;
+    char* suppress_repeat;
 } orcm_analytics_base_t;
 ORCM_DECLSPEC extern orcm_analytics_base_t orcm_analytics_base;
 

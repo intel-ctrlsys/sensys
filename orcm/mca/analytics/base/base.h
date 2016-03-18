@@ -36,7 +36,7 @@ typedef struct {
     opal_object_t super;
     int severity;
     char* category;
-    int time;
+    uint64_t time;
 }event_filter;
 
 END_C_DECLS

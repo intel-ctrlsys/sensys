@@ -715,3 +715,54 @@ double orcm_util_time_diff(struct timeval* time1, struct timeval* time2)
     return time2_d - time1_d;
 }
 
+static int get_seconds_multiplier(char type)
+{
+    switch(type)
+    {
+    case 'd':
+        return 86400;
+    case 'h':
+        return 3600;
+    case 'm':
+        return 60;
+    }
+    return 1;
+}
+
+static int check_numeric(char* value) {
+    int j = 0;
+    while (j != '\0') {
+        if (!isdigit(value[j])) {
+            return ORCM_ERR_BAD_PARAM;
+        }
+        j++;
+    }
+    return ORCM_SUCCESS;
+}
+
+uint64_t orcm_util_get_time_in_sec(char* time)
+{
+    char type;
+    char* timeval = NULL;
+    uint64_t seconds = 0;
+    int multiplier = 1;
+    int str_len = 0;
+    if(NULL != time) {
+        str_len = strlen(time);
+        type = time[str_len - 1];
+        if(isdigit(type)){
+            timeval = strdup(time);
+        } else {
+            timeval = (char*)malloc(str_len);
+            strncpy(timeval, time, str_len - 1);
+            timeval[str_len] = '\0';
+        }
+        multiplier = get_seconds_multiplier(type);
+        if(ORCM_SUCCESS == check_numeric(timeval)){
+            seconds = strtol(timeval, NULL, 0) * multiplier;
+        }
+    }
+    SAFEFREE(timeval);
+    return seconds;
+}
+

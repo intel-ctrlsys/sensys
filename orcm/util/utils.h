@@ -94,4 +94,8 @@ ORCM_DECLSPEC uint64_t orcm_util_create_hash_key(void *key, size_t key_size);
  * if time2 is earlier than time1. The caller needs to check and take actions accordingly*/
 ORCM_DECLSPEC double orcm_util_time_diff(struct timeval* time1, struct timeval* time2);
 
+
+/* Convert time from d/h/m/s format to seconds*/
+ORCM_DECLSPEC unsigned long orcm_util_get_time_in_sec (char* time);
+
 #endif

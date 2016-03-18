@@ -24,7 +24,7 @@ BEGIN_C_DECLS
 
 typedef struct {
     opal_object_t super;
-    int interval;
+    uint64_t interval;
     int size;
     char** nodelist;
     int compute_type;
@@ -33,7 +33,7 @@ typedef struct {
     double result;
     uint64_t num_data_point;
     opal_event_t* timeout_event;
-    int timeout;
+    uint64_t timeout;
 } spatial_statistics_t;
 OBJ_CLASS_DECLARATION(spatial_statistics_t);
 

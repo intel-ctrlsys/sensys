@@ -463,7 +463,7 @@ void errcounts_impl::collect_sample(bool perthread /* = false*/)
 
     opal_buffer_t buffer;
     OBJ_CONSTRUCT(&buffer, opal_buffer_t);
-    while(true) {
+    while(data_samples_values_.size() > 0) {
         if(false == pack_string(&buffer, plugin_name_)) {
             break;
         }

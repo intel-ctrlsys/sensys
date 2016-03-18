@@ -1135,7 +1135,6 @@ TEST_F(ut_edac_collector_tests, test_sample)
     dummy.data_samples_values_.clear();
 
     for(size_t i = 0; i < dummy.log_samples_labels_.size(); ++i) {
-    //for(map<string,int32_t>::iterator it = dummy.log_samples_.begin(); it != dummy.log_samples_.end(); ++it) {
         EXPECT_EQ(golden_data_[dummy.log_samples_labels_[i]], dummy.log_samples_values_[i]);
     }
     dummy.log_samples_labels_.clear();
@@ -1144,6 +1143,7 @@ TEST_F(ut_edac_collector_tests, test_sample)
     for(int i = 0; i < 4; ++i) {
         dummy.data_samples_labels_.clear();
         dummy.data_samples_values_.clear();
+        dummy.collector_->previous_sample_->clear();
         last_orte_error_ = ORCM_SUCCESS;
         fail_pack_on_ = i + 1;
         fail_pack_count_ = 0;
@@ -1156,6 +1156,7 @@ TEST_F(ut_edac_collector_tests, test_sample)
     last_orte_error_ = ORCM_SUCCESS;
     fail_pack_on_ = -1;
     fail_pack_buffer_ = true;
+    dummy.collector_->previous_sample_->clear();
     dummy.sample(&sampler);
     ASSERT_NE(OPAL_SUCCESS, last_orte_error_);
 }

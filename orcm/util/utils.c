@@ -731,6 +731,9 @@ static int get_seconds_multiplier(char type)
 
 static int check_numeric(char* value) {
     int j = 0;
+    if(NULL == value){
+        return ORCM_ERROR;
+    }
     while (j != '\0') {
         if (!isdigit(value[j])) {
             return ORCM_ERR_BAD_PARAM;
@@ -754,8 +757,10 @@ uint64_t orcm_util_get_time_in_sec(char* time)
             timeval = strdup(time);
         } else {
             timeval = (char*)malloc(str_len);
-            strncpy(timeval, time, str_len - 1);
-            timeval[str_len] = '\0';
+            if(NULL != timeval){
+                strncpy(timeval, time, str_len - 1);
+                timeval[strlen(timeval)] = '\0';
+            }
         }
         multiplier = get_seconds_multiplier(type);
         if(ORCM_SUCCESS == check_numeric(timeval)){

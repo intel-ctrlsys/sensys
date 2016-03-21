@@ -29,7 +29,7 @@
 /* constructor of the spatial_statistics_t data structure */
 static void spatial_statistics_con(spatial_statistics_t* spatial_stat)
 {
-    spatial_stat->interval = 0;
+    spatial_stat->interval = 60;
     spatial_stat->size = 0;
     spatial_stat->nodelist = NULL;
     spatial_stat->compute_type = ORCM_ANALYTICS_COMPUTE_UNKNOWN;
@@ -38,7 +38,7 @@ static void spatial_statistics_con(spatial_statistics_t* spatial_stat)
     spatial_stat->result = 0.0;
     spatial_stat->num_data_point = 0;
     spatial_stat->timeout_event = NULL;
-    spatial_stat->timeout = 0;
+    spatial_stat->timeout = 60;
 }
 
 /* destructor of the spatial_statistics_t data structure */
@@ -164,18 +164,12 @@ static int fill_spatial_statistics(spatial_statistics_t* spatial_statistics)
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (0 > spatial_statistics->interval) {
+    if (0 == spatial_statistics->interval) {
         return ORCM_ERR_BAD_PARAM;
-    } else if (0 == spatial_statistics->interval) {
-        spatial_statistics->interval = 60;
     }
-
-    if (0 > spatial_statistics->timeout) {
+    if (0 == spatial_statistics->timeout) {
         return ORCM_ERR_BAD_PARAM;
-    } else if (0 == spatial_statistics->timeout) {
-        spatial_statistics->timeout = 60;
     }
-
     if (NULL == (spatial_statistics->buckets = OBJ_NEW(opal_hash_table_t))) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }

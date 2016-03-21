@@ -231,10 +231,26 @@ int orcm_cli_get_cmd(char *prompt,
     return rc;
 }
 
+static void initialize_term_settings(struct termios *initial_settings)
+{
+    int idx = 0;
+    initial_settings->c_iflag = 0;
+    initial_settings->c_oflag = 0;
+    initial_settings->c_cflag = 0;
+    initial_settings->c_lflag = 0;
+    initial_settings->c_line = '0';
+    for (; idx < NCCS; idx++) {
+        initial_settings->c_cc[idx] = '0';
+    }
+    initial_settings->c_ispeed = 0;
+    initial_settings->c_ospeed = 0;
+}
+
 struct termios get_initial_term_settings(void)
 {
     struct termios initial_settings;
-    int rc;
+    initialize_term_settings(&initial_settings);
+    int rc = 0;
     if (isatty(STDIN_FILENO)) {
         rc = tcgetattr(STDIN_FILENO, &initial_settings);
         if (0 != rc) {
@@ -387,13 +403,15 @@ int orcm_cli_handle_auto_completion(orcm_cli_t *cli,
     if (ORCM_ERR_NOT_FOUND == rc) {
         /* Bad command not in tree, Bonk */
         BONK;
-        rc = ORCM_SUCCESS;
-        return rc;
+        opal_argv_free(inputlist);
+        opal_argv_free(completions);
+        return ORCM_SUCCESS;
     } else if (ORCM_SUCCESS == rc) {
         if (NULL == completions) {
             if (NULL == options || opal_list_is_empty(options)) {
                 /* no completions and no options, Bonk */
                 BONK;
+                opal_argv_free(inputlist);
                 return ORCM_SUCCESS;
             } else {
                 /* no completions, list options */
@@ -405,9 +423,11 @@ int orcm_cli_handle_auto_completion(orcm_cli_t *cli,
             }
         } else if (1 == opal_argv_count(completions)) {
             /* only 1 possible completion, go ahead and complete it */
+            opal_argv_free(inputlist);
             inputlist = opal_argv_split(input, ' ');
             if (NULL == inputlist) {
                 BONK;
+                opal_argv_free(completions);
                 return ORCM_ERR_NOT_FOUND;
             }
             if (' ' == *(input + *len -1)) {
@@ -436,13 +456,10 @@ int orcm_cli_handle_auto_completion(orcm_cli_t *cli,
             printf("\n%s> %s", prompt, input);
         }
     }
-    if (NULL != completions) {
-        opal_argv_free(completions);
-    }
-    if ((NULL != inputlist) &&
-        (opal_argv_count(inputlist))) {
-        opal_argv_free(inputlist);
-    }
+
+    opal_argv_free(completions);
+    opal_argv_free(inputlist);
+
     return rc;
 }
 

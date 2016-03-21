@@ -150,6 +150,7 @@ char ipmi_inv_tv[10][2][30] = {
 
 #define ON_NULL_GOTO(OBJ,LABEL) if(NULL==OBJ) { ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE); goto LABEL; }
 #define ON_FAILURE_GOTO(RV,LABEL) if(ORCM_SUCCESS!=RV) { ORTE_ERROR_LOG(RV); goto LABEL; }
+#define ORCM_RELEASE(x) if(NULL!=x){OBJ_RELEASE(x); x=NULL;}
 
 static int init(void)
 {
@@ -494,97 +495,83 @@ static void ipmi_log_sample_item(opal_list_t *key, opal_list_t *non_compute_data
 
 static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_count)
 {
-    char *hostname = NULL;
-    int rc;
-    int32_t n;
-    struct timeval sampletime;
-    orcm_value_t *sensor_metric = NULL;
-    opal_list_t *key = NULL;
-    opal_list_t *non_compute_data = NULL;
-    opal_list_t* data_list = NULL;
-
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Total Samples to be unpacked: %d", host_count);
     /* START UNPACKING THE DATA and Store it in a opal_list_t item. */
     for(int count = 0; count < host_count; count++)
     {
+        char *hostname = NULL;
+        int rc;
+        int32_t n;
+        struct timeval sampletime;
+        orcm_value_t *sensor_metric = NULL;
+        opal_list_t *key = NULL;
+        opal_list_t *non_compute_data = NULL;
+        opal_list_t* data_list = NULL;
+
         key = OBJ_NEW(opal_list_t);
-        if (NULL == key) {
-            return;
-        }
+        ON_NULL_GOTO(key, cleanup);
 
         non_compute_data = OBJ_NEW(opal_list_t);
-        if (NULL == non_compute_data) {
-            return;
-        }
+        ON_NULL_GOTO(non_compute_data, cleanup);
 
         /* sample time - 2 */
         n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
+        rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL);
+        ON_FAILURE_GOTO(rc, cleanup);
 
         sensor_metric = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, NULL);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
+        ON_NULL_GOTO(sensor_metric, cleanup);
         opal_list_append(non_compute_data, (opal_list_item_t *)sensor_metric);
 
         /* Unpack the node_name - 3 */
         n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
+        rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING);
+        ON_FAILURE_GOTO(rc, cleanup);
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
             "UnPacked NodeName: %s", hostname);
 
         sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
+        ON_NULL_GOTO(sensor_metric, cleanup);
         opal_list_append(key, (opal_list_item_t *)sensor_metric);
 
         /* Pack sensor name */
         sensor_metric = orcm_util_load_orcm_value("data_group", "ipmi", OPAL_STRING, NULL);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
+        ON_NULL_GOTO(sensor_metric, cleanup);
         opal_list_append(key, (opal_list_item_t *)sensor_metric);
 
         orcm_sensor_unpack_orcm_value_list(sample, &data_list);
-        OPAL_LIST_FOREACH(sensor_metric, data_list, orcm_value_t) {
-            char* units = NULL;
-            void* val = NULL;
-            if(NULL != sensor_metric->units && 0 != strlen(sensor_metric->units)) {
-                units = sensor_metric->units;
-            }
-            if(OPAL_STRING == sensor_metric->value.type) {
-                val = (void*)sensor_metric->value.data.string;
-            } else {
-                val = (void*)&sensor_metric->value.data;
-            }
-            // Wrong when a string is used....
-            ipmi_log_sample_item(key, non_compute_data, sensor_metric->value.key,
-                                 val, sensor_metric->value.type,
-                                 units);
+        if(NULL != data_list) {
+            OPAL_LIST_FOREACH(sensor_metric, data_list, orcm_value_t) {
+                char* units = NULL;
+                void* val = NULL;
+                if(NULL != sensor_metric->units && 0 != strlen(sensor_metric->units)) {
+                    units = sensor_metric->units;
+                }
+                if(OPAL_STRING == sensor_metric->value.type) {
+                    val = (void*)sensor_metric->value.data.string;
+                } else {
+                    val = (void*)&sensor_metric->value.data;
+                }
+                // Wrong when a string is used....
+                ipmi_log_sample_item(key, non_compute_data, sensor_metric->value.key,
+                                     val, sensor_metric->value.type,
+                                     units);
 
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                "UnPacked Label %s: Type: %d", sensor_metric->value.key, sensor_metric->value.type);
+                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                    "UnPacked Label %s: Type: %d", sensor_metric->value.key, sensor_metric->value.type);
+            }
+        } else {
+            opal_output_verbose(0, orcm_sensor_base_framework.framework_output,
+                                "Possible Error: Failed to collect ipmi data from node : '%s'",
+                                hostname);
         }
 
     cleanup:
+        ORCM_RELEASE(data_list);
         SAFEFREE(hostname);
-        if ( NULL != key) {
-            OBJ_RELEASE(key);
-        }
-        if ( NULL != non_compute_data) {
-            OBJ_RELEASE(non_compute_data);
-        }
+        ORCM_RELEASE(key);
+        ORCM_RELEASE(non_compute_data);
     }
 }
 

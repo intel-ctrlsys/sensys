@@ -243,7 +243,12 @@ int orcm_octl_power_set(int cmd, char **argv)
     }
     /* get result */
     n=1;
-    ORTE_WAIT_FOR_COMPLETION(xfer.active);
+    ORCM_WAIT_FOR_COMPLETION(xfer.active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+    if (ORCM_SUCCESS != rc) {
+        OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
+        return rc;
+    }
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
                                               &n, OPAL_INT))) {
         OBJ_DESTRUCT(&xfer);
@@ -339,7 +344,12 @@ int orcm_octl_power_get(int cmd, char **argv)
     }
     /* get result */
     n=1;
-    ORTE_WAIT_FOR_COMPLETION(xfer.active);
+    ORCM_WAIT_FOR_COMPLETION(xfer.active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+    if (ORCM_SUCCESS != rc) {
+        OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
+        return rc;
+    }
 
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &success,
                                               &n, OPAL_INT))) {

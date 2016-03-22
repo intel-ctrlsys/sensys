@@ -106,7 +106,10 @@ int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
         goto query_db_cleanup;
     }
     /* wait for status message */
-    ORTE_WAIT_FOR_COMPLETION(xfer->active);
+    ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+    if (ORCM_SUCCESS != rc) {
+        goto query_db_cleanup;
+    }
 
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &returned_status, &n, OPAL_INT))) {
         goto query_db_cleanup;

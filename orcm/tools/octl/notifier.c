@@ -99,7 +99,12 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
         }
 
         /* wait for status message */
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            printf("\nError: node %s\n", nodelist[i]);
+            error = "daemon contact failed";
+            goto done;
+        }
 
         cnt=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &response,
@@ -303,7 +308,11 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
         }
 
         /* wait for status message */
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            error = "daemon contact failed";
+            goto done;
+        }
 
         cnt=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,

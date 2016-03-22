@@ -46,6 +46,10 @@
 #define PACKERR  "internal buffer pack error"
 #define UNPACKERR "internal buffer unpack error"
 
+/* A timeout length when blocking
+ * until something happens */
+#define ORCM_OCTL_WAIT_TIMEOUT 10
+
 BEGIN_C_DECLS
 
 int orcm_octl_resource_status(char **argv);

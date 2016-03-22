@@ -108,7 +108,11 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
         }
 
         /* wait for status message */
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            error = "daemon contact failed";
+            goto done;
+        }
 
         cnt=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &num,
@@ -356,7 +360,11 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
         }
 
         /* wait for status message */
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            error = "daemon contact failed";
+            goto done;
+        }
 
         cnt=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,
@@ -484,7 +492,11 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
         }
 
         /* wait for status message */
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            error = "daemon contact failed";
+            goto done;
+        }
 
         cnt=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,
@@ -603,7 +615,11 @@ static int get_inventory_list(int cmd, opal_list_t *filterlist, opal_list_t** re
     }
 
     /* wait for status message */
-    ORTE_WAIT_FOR_COMPLETION(xfer->active);
+    ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+    if (ORCM_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
+        goto inv_list_cleanup;
+    }
 
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &returned_status, &n, OPAL_INT))) {
         goto inv_list_cleanup;
@@ -871,7 +887,11 @@ int orcm_octl_sensor_change_sampling(int command, char** cmdlist)
         }
 
         /* wait for status message */
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rv);
+        if (ORCM_SUCCESS != rv) {
+            octl_help(rv, "command-line:failure", "daemon contact failed");
+            goto change_sampling_cleanup;
+        }
 
         cnt=1;
         if (ORCM_SUCCESS != (rv = opal_dss.unpack(&xfer->data, &result,
@@ -1045,7 +1065,11 @@ int orcm_octl_sensor_store(int storage_command, char** cmdlist)
             return rc;
         }
 
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_sensor_store_process_error(buf, xfer, nodelist);
+            return rc;
+        }
 
         rc = orcm_octl_sensor_store_unpack_buffer(xfer);
         if (ORCM_SUCCESS != rc) {

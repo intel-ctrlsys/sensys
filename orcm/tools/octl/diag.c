@@ -93,7 +93,10 @@ int orcm_octl_diag_cpu(char **argv)
         }
 
         /* wait for status message */
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            goto finish;
+        }
 
         if (want_result) {
             /* unpack results */
@@ -202,7 +205,10 @@ int orcm_octl_diag_eth(char **argv)
         }
 
         /* wait for status message */
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            goto finish;
+        }
 
         if (want_result) {
             /* unpack results */
@@ -317,7 +323,10 @@ int orcm_octl_diag_mem(char **argv)
         }
 
         /* wait for status message */
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            goto finish;
+        }
 
         if (want_result) {
             /* unpack results */

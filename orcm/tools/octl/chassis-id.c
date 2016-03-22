@@ -171,7 +171,11 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command, orcm_cmd_server_flag
             continue;
         }
 
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
+            continue;
+        }
 
         if (ORCM_SUCCESS != unpack_response(nodelist[i], xfer)){
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);

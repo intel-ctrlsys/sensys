@@ -320,7 +320,11 @@ int orcm_octl_analytics_workflow_add(char *file)
         }
 
         /* unpack workflow id */
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_wf_add_error(buf, xfer,oflow_input_file_array, nodelist);
+            return rc;
+        }
 
         rc = orcm_octl_analytics_wf_add_unpack_buffer(xfer);
         if (ORCM_SUCCESS != rc) {
@@ -460,7 +464,11 @@ int orcm_octl_analytics_workflow_remove(char **value)
             return rc;
         }
 
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_process_error(buf, xfer, nodelist);
+            return rc;
+        }
 
         rc = orcm_octl_analytics_wf_remove_unpack_buffer(xfer);
         if (ORCM_SUCCESS != rc) {
@@ -600,7 +608,11 @@ int orcm_octl_analytics_workflow_list(char **value)
             return rc;
         }
 
-        ORTE_WAIT_FOR_COMPLETION(xfer->active);
+        ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            orcm_octl_analytics_process_error(buf, xfer, nodelist);
+            return rc;
+        }
 
         rc = orcm_octl_analytics_wf_list_unpack_buffer(xfer);
         if (ORCM_SUCCESS != rc) {

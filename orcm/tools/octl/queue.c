@@ -50,7 +50,12 @@ int orcm_octl_queue_status(char **argv)
     }
 
     /* unpack number of queues */
-    ORTE_WAIT_FOR_COMPLETION(xfer.active);
+    ORCM_WAIT_FOR_COMPLETION(xfer.active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+    if (ORCM_SUCCESS != rc) {
+        OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
+        return rc;
+    }
     n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &num_queues, &n, OPAL_INT))) {
         OBJ_DESTRUCT(&xfer);

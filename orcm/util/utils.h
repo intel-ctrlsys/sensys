@@ -30,6 +30,36 @@
 #define ORCM_UTIL_ERROR_MSG_WITH_ARG(txt, arg) \
             fprintf(stderr, MSG_ERR_HEADER"ERROR: "txt MSG_FOOTER, arg)
 
+/* In a few places, we need to barrier until something happens
+ * that changes a flag to indicate we can release - e.g., waiting
+ * for a specific message to arrive. If no progress thread is running,
+ * we cycle across opal_progress - however, if a progress thread
+ * is active, then we need to just nanosleep to avoid cross-thread
+ * confusion. In addition, we set a timeout to avoid endless blocking.
+ */
+#define ORCM_WAIT_FOR_COMPLETION(flg, timeout, rc)                            \
+    do {                                                                      \
+        struct timeval start_time;                                            \
+        struct timeval current_time;                                          \
+        opal_output_verbose(1, orte_progress_thread_debug,                    \
+                            "%s waiting on progress thread at %s:%d",         \
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),               \
+                            __FILE__, __LINE__);                              \
+        gettimeofday(&start_time, NULL);                                      \
+        while ((flg)) {                                                       \
+            gettimeofday(&current_time, NULL);                                \
+            if (timeout <= orcm_util_time_diff(&start_time, &current_time)) { \
+                break;                                                        \
+            }                                                                 \
+            /* provide a short quiet period so we                             \
+             * don't hammer the cpu while waiting                             \
+             */                                                               \
+            struct timespec tp = {0, 100000};                                 \
+            nanosleep(&tp, NULL);                                             \
+        }                                                                     \
+        *rc = ((flg) ? ORCM_ERROR : ORCM_SUCCESS);                            \
+    }while(0);
+
 #define ORCM_UTIL_HASH_MULTIPLIER 31
 
 ORCM_DECLSPEC void orcm_util_construct_uri(opal_buffer_t *buf,

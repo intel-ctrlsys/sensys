@@ -90,7 +90,11 @@ int orcm_octl_session_cancel(char **argv)
         }
         /* get result */
         n=1;
-        ORTE_WAIT_FOR_COMPLETION(xfer.active);
+        ORCM_WAIT_FOR_COMPLETION(xfer.active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+        if (ORCM_SUCCESS != rc) {
+            OBJ_DESTRUCT(&xfer);
+            return rc;
+        }
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
                                                   &n, OPAL_INT))) {
             OBJ_DESTRUCT(&xfer);
@@ -335,7 +339,11 @@ int orcm_octl_session_set(int cmd, char **argv)
     }
     /* get result */
     n=1;
-    ORTE_WAIT_FOR_COMPLETION(xfer.active);
+    ORCM_WAIT_FOR_COMPLETION(xfer.active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+    if (ORCM_SUCCESS != rc) {
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
                                               &n, OPAL_INT))) {
         OBJ_DESTRUCT(&xfer);
@@ -429,7 +437,11 @@ int orcm_octl_session_get(int cmd, char **argv)
 
     /* get result */
     n=1;
-    ORTE_WAIT_FOR_COMPLETION(xfer.active);
+    ORCM_WAIT_FOR_COMPLETION(xfer.active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+    if (ORCM_SUCCESS != rc) {
+        OBJ_DESTRUCT(&xfer);
+        return rc;
+    }
 
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &success,
                                               &n, OPAL_INT))) {

@@ -465,9 +465,12 @@ int orcm_cli_handle_auto_completion(orcm_cli_t *cli,
 
 void add_char_to_input_array(char c, char *input, size_t *len)
 {
-    putchar(c);
-    *(input + *len) = c;
-    (*len)++;
+    if (ORCM_MAX_CLI_LENGTH > *len + 1) {
+        putchar(c);
+        *(input + *len) = c;
+        *(input + *len + 1) = '\0';
+        (*len)++;
+    }
 }
 
 static int get_completions(orcm_cli_t *cli, char **input,

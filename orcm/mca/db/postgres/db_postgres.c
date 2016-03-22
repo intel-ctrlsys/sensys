@@ -879,7 +879,7 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
     }
 
     /* Prepare the statement only if it hasn't already been prepared */
-    if (!mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE]) {
+    if (!mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE_UPDATE]) {
         /*
          * $1: p_hostname character varying,
          * $2: p_feature character varying,
@@ -890,7 +890,7 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
          * $7: p_units character varying.
          * $8: p_time_stamp timestamp (NULL will default to current timestamp)
          * */
-        res = PQprepare(mod->conn, "set_node_feature",
+        res = PQprepare(mod->conn, "set_node_feature_update",
                         "select set_node_feature($1, $2, $3, $4, $5, $6, $7, NULL)",
                         0, NULL);
         if (!status_ok(res)) {
@@ -901,7 +901,7 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
         PQclear(res);
         res = NULL;
 
-        mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE] = true;
+        mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE_UPDATE] = true;
     }
 
     if (mod->autocommit || !mod->tran_started) {
@@ -958,7 +958,7 @@ static int postgres_update_node_features(struct orcm_db_base_module_t *imod,
         }
         params[6] = mv->units;
 
-        res = PQexecPrepared(mod->conn, "set_node_feature", NUM_PARAMS,
+        res = PQexecPrepared(mod->conn, "set_node_feature_update", NUM_PARAMS,
                              params, NULL, NULL, 0);
         if (!status_ok(res)) {
             rc = ORCM_ERROR;
@@ -1091,7 +1091,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
     }
 
     /* Prepare the statement only if it hasn't already been prepared */
-    if (!mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE]) {
+    if (!mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE_STORE]) {
         /*
          * $1: p_hostname character varying,
          * $2: p_feature character varying,
@@ -1102,7 +1102,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
          * $7: p_units character varying,
          * $8: p_time_stamp timestamp
          * */
-        res = PQprepare(mod->conn, "set_node_feature",
+        res = PQprepare(mod->conn, "set_node_feature_store",
                         "select set_node_feature($1, $2, $3, $4, $5, $6, $7, $8)",
                         0, NULL);
         if (!status_ok(res)) {
@@ -1113,7 +1113,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
         PQclear(res);
         res = NULL;
 
-        mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE] = true;
+        mod->prepared[ORCM_DB_PG_STMT_SET_NODE_FEATURE_STORE] = true;
     }
 
     if (mod->autocommit || !mod->tran_started) {
@@ -1178,7 +1178,7 @@ static int postgres_store_node_features(mca_db_postgres_module_t *mod,
         }
         sp_params[6] = mv->units;
 
-        res = PQexecPrepared(mod->conn, "set_node_feature", SP_NUM_PARAMS,
+        res = PQexecPrepared(mod->conn, "set_node_feature_store", SP_NUM_PARAMS,
                              sp_params, NULL, NULL, 0);
         if (!status_ok(res)) {
             rc = ORCM_ERROR;

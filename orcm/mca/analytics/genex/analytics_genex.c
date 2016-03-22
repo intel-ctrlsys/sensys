@@ -348,8 +348,8 @@ static int analyze(int sd, short args, void *cbdata)
     genex_analyze_caddy = (orcm_workflow_caddy_t *) cbdata;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                        "%s analytics:%s:analyze ", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        genex_analyze_caddy->wf_step->analytic));
+                        "%s analytics:%s(step %d):analyze ", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                        genex_analyze_caddy->wf_step->analytic, genex_analyze_caddy->wf_step->step_id));
 
     rc = get_genex_policy(cbdata, workflow_value);
     if (ORCM_SUCCESS != rc) {

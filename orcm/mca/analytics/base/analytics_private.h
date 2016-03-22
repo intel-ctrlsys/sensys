@@ -36,6 +36,7 @@ ORCM_DECLSPEC orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workf
                                                                       orcm_analytics_value_t *data);
 
 ORCM_DECLSPEC void orcm_analytics_base_send_data(orcm_analytics_value_t *data);
+ORCM_DECLSPEC int  orcm_analytics_base_data_key(char* data_key, char *wf_name, int wf_id, char *wf_step_name, int wf_step_id);
 
 /* orcm_analytics_base_control_storage
  * Arguments: uint8_t storage_command - Command to change storage policy
@@ -153,9 +154,11 @@ ORCM_DECLSPEC extern orcm_analytics_base_t orcm_analytics_base;
             OBJ_RELEASE(data);                                                     \
         } else {                                                                   \
             opal_output_verbose(1, orcm_analytics_base_framework.framework_output, \
-                                "%s ACTIVATE NEXT WORKFLOW %d MODULE %s AT %s:%d", \
+                                "%s ACTIVATE NEXT WORKFLOW %d STEP %d              \
+                                MODULE %s AT %s:%d",                               \
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),                \
-                                (wf)->workflow_id, wf_step_item->analytic,         \
+                                (wf)->workflow_id, wf_step_item->step_id,          \
+                                wf_step_item->analytic,                            \
                                 __FILE__, __LINE__);                               \
             orcm_analytics_base_activate_analytics_workflow_step((wf),             \
                                                                  wf_step_item,     \

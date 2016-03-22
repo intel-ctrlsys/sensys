@@ -300,6 +300,7 @@ static void print_out_results(win_statistics_t *win_statistics,
 {
     printf("\n\nThe window is full, below are the statistics:\n");
     printf("Workflow id:\tworkflow %d\n", caddy->wf->workflow_id);
+    printf("Workflow step:\tstep %d\t%s\n", caddy->wf_step->step_id, caddy->wf_step->analytic);
     printf("Workflow hostnames:\t%s\n", caddy->wf->hostname_regex);
     printf("Window size:\t%lu\n", win_statistics->win_size);
     printf("Window type:\t%s\n", win_statistics->win_type);
@@ -405,7 +406,11 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
     print_out_results(win_statistics, caddy, result);
 #endif
 
-    rc = asprintf(&data_key, "%s_%s_Workflow %d", "Window_Result", caddy->wf->hostname_regex, caddy->wf->workflow_id);
+    orcm_analytics_base_data_key(&data_key,
+                                 caddy->wf->workflow_id,
+                                 caddy->wf->name,
+                                 caddy->wf_step->analytic,
+                                 caddy->wf_step->step_id);
     if (NULL == data_key) {
         rc = ORCM_ERR_OUT_OF_RESOURCE;
         goto cleanup;

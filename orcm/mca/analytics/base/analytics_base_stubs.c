@@ -261,6 +261,7 @@ static int orcm_analytics_base_workflow_step_create(orcm_workflow_t *wf,
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
+    wf_step->step_id = i;
     wf_step->analytic = strdup(values[i]->data.string);
 
     if (NULL != values[i+1]) {
@@ -551,4 +552,12 @@ char* orcm_analytics_base_set_compute_type(int compute_type_id)
     }
 
     return compute_type;
+}
+
+/**
+ * Generate a data key identified by a given workflow and workflow step.
+ */
+int orcm_analytics_base_data_key(char* data_key, char *wf_name, int wf_id, char *wf_step_name, int wf_step_id)
+{
+    return asprintf(data_key, "workflow step result: %s_%d_%s_%d", wf_name, wf_id, wf_step_name, wf_step_id);
 }

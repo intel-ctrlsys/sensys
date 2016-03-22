@@ -48,6 +48,7 @@ typedef struct {
     opal_list_item_t super;
     opal_list_t attributes;
     char *analytic;
+    int step_id = 0;
     orcm_analytics_base_module_t *mod;
 } orcm_workflow_step_t;
 OBJ_CLASS_DECLARATION(orcm_workflow_step_t);

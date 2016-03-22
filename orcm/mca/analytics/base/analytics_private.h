@@ -115,6 +115,9 @@ int event_list_append(opal_list_t* event_list, orcm_ras_event_t* ev);
 /*function to get severity of type ORCM_RAS_SEVERITY from input string */
 int orcm_analytics_event_get_severity(char* severity);
 
+/*function to retrive hostname from attribute list*/
+char* orcm_analytics_get_hostname_from_attributes(opal_list_t* attributes);
+
 #define ANALYTICS_COUNT_DEFAULT 1
 #define MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP 2
 #define HASH_TABLE_SIZE 10000

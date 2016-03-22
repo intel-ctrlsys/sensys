@@ -596,6 +596,24 @@ char* orcm_analytics_base_set_compute_type(int compute_type_id)
     return compute_type;
 }
 
+char* orcm_analytics_get_hostname_from_attributes(opal_list_t* attributes)
+{
+    char* hostname = NULL;
+    orcm_value_t* attribute = NULL;
+    OPAL_LIST_FOREACH(attribute, attributes, orcm_value_t) {
+        if(NULL != attribute->value.key){
+            if(0 == strcmp(attribute->value.key,"hostname")){
+                hostname = strdup(attribute->value.data.string);
+                break;
+            }
+        }
+    }
+    if(NULL == hostname){
+        hostname = strdup("All");
+    }
+    return hostname;
+}
+
 /**
  * Generate a data key identified by a given workflow and workflow step.
  */

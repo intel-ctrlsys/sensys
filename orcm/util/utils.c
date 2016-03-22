@@ -759,7 +759,7 @@ uint64_t orcm_util_get_time_in_sec(char* time)
             timeval = (char*)malloc(str_len);
             if(NULL != timeval){
                 strncpy(timeval, time, str_len - 1);
-                timeval[strlen(timeval)] = '\0';
+                timeval[str_len-1] = '\0';
             }
         }
         multiplier = get_seconds_multiplier(type);

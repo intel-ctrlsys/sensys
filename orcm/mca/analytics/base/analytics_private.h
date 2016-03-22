@@ -46,7 +46,7 @@ ORCM_DECLSPEC int  orcm_analytics_base_data_key(char* data_key, char *wf_name, i
 int orcm_analytics_base_control_storage(uint8_t storage_command);
 
 /*function to verify whether workflow step has attribute to store in db or not*/
-bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step, bool is_event_data);
+bool orcm_analytics_base_db_check(orcm_workflow_step_t *wf_step);
 
 /* function to store data of type orcm_analytics_value_t*/
 ORCM_DECLSPEC int orcm_analytics_base_store_analytics(orcm_analytics_value_t *analytics_data);

@@ -221,7 +221,7 @@ static int analyze(int sd, short args, void *cbdata)
     analytics_value_to_next = orcm_util_load_analytics_time_compute(current_caddy->analytics_value->key,
                                               current_caddy->analytics_value->non_compute_data, aggregate_list);
     CHECK_NULL(analytics_value_to_next, rc, cleanup);
-    if(true == orcm_analytics_base_db_check(current_caddy->wf_step, false)){
+    if(true == orcm_analytics_base_db_check(current_caddy->wf_step)){
         rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
         if(ORCM_SUCCESS != rc){
             goto cleanup;

@@ -44,6 +44,7 @@
 #include "orcm/util/utils.h"
 #include "orcm/mca/dispatch/base/base.h"
 #include "orcm/mca/dispatch/dfg/dispatch_dfg.h"
+#include "orcm/mca/analytics/base/analytics_private.h"
 
 /* API functions */
 
@@ -292,10 +293,23 @@ static void dfg_generate_notifier_event(orcm_ras_event_t *ecd)
     }
 }
 
-static void dfg_generate_storage_events(orcm_ras_event_t *ecd)
+static void dfg_convert_and_log_data_to_db(orcm_ras_event_t* ecd)
 {
     opal_list_t *input_list = NULL;
+
+    input_list = dfg_convert_event_data_to_list(ecd);
+
+    if (NULL == input_list) {
+        return;
+    }
+
+    dfg_generate_database_event(input_list, ecd->type);
+}
+
+static void dfg_generate_storage_events(orcm_ras_event_t *ecd)
+{
     orcm_value_t *list_item = NULL;
+    bool raw_db = false;
 
     OPAL_LIST_FOREACH(list_item, &ecd->description, orcm_value_t) {
         if (NULL == list_item->value.key) {
@@ -303,11 +317,16 @@ static void dfg_generate_storage_events(orcm_ras_event_t *ecd)
         }
         if (0 == strcmp(list_item->value.key, "storage_type")) {
             switch (list_item->value.data.uint) {
-            case ORCM_STORAGE_TYPE_NOTIFICATION: //Need implementation
+            case ORCM_STORAGE_TYPE_NOTIFICATION:
                 dfg_generate_notifier_event(ecd);
                 break;
 
-            case ORCM_STORAGE_TYPE_PUBSUB: //Need implementation
+            //Send raw data to DB
+            case ORCM_STORAGE_TYPE_DATABASE:
+                raw_db = true;
+                break;
+
+            case ORCM_STORAGE_TYPE_PUBSUB:
                 break;
 
             default:
@@ -317,15 +336,15 @@ static void dfg_generate_storage_events(orcm_ras_event_t *ecd)
         }
 
     }
+    if(true == raw_db)
+        dfg_convert_and_log_data_to_db(ecd);
 
-    //Send event to DB regardless of storage_type key in event
-    input_list = dfg_convert_event_data_to_list(ecd);
-
-    if (NULL == input_list) {
-        return;
+    //Store the event data into event table based on the MCA param.
+    if (ORCM_DB_EVENT_DATA == ecd->type && true == orcm_analytics_base.store_event_data) {
+        dfg_convert_and_log_data_to_db(ecd);
     }
 
-    dfg_generate_database_event(input_list, ecd->type);
+    return;
 }
 
 static void dfg_generate(orcm_ras_event_t *ecd)

@@ -374,7 +374,7 @@ static int analyze(int sd, short args, void *cbdata)
             return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
-    if( true == orcm_analytics_base_db_check(genex_analyze_caddy->wf_step, true)) {
+    if( true == orcm_analytics_base_db_check(genex_analyze_caddy->wf_step)) {
         rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
         if ( ORCM_SUCCESS != rc ) {
             dest_genex_workflow_value(workflow_value, genex_analyze_caddy);

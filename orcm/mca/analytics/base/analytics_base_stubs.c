@@ -455,12 +455,18 @@ int orcm_analytics_base_workflow_list(opal_buffer_t *buffer)
 
 void orcm_analytics_base_send_data(orcm_analytics_value_t *data)
 {
+    int rc = ORCM_SUCCESS;
     orcm_workflow_t *wf = NULL;
     orcm_ras_event_t *analytics_event_data = NULL;
 
     if (true == orcm_analytics_base.store_raw_data) {
         analytics_event_data = orcm_analytics_base_event_create(data, ORCM_RAS_EVENT_SENSOR, ORCM_RAS_SEVERITY_INFO);
         if (NULL != analytics_event_data) {
+            rc = orcm_analytics_base_event_set_storage(analytics_event_data, ORCM_STORAGE_TYPE_DATABASE);
+            if(ORCM_SUCCESS != rc){
+                OBJ_RELEASE(analytics_event_data);
+                return;
+            }
             ORCM_RAS_EVENT(analytics_event_data);
         }
     }

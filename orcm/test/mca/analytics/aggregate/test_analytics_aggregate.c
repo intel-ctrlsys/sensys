@@ -99,7 +99,7 @@ int analytics_aggregate_analyze_incorrect_operation_test()
     opal_list_append(&caddy->wf_step->attributes,(opal_list_item_t*)temp);
     opal_list_append(caddy->analytics_value->compute_data,(opal_list_item_t*) compute_data);
     rc = orcm_analytics_aggregate_module.api.analyze(0, 0, (void*)caddy);
-    if (ORCM_ERR_BAD_PARAM == rc) {
+    if (ORCM_SUCCESS != rc) {
         return ORCM_SUCCESS;
     } else {
         return ORCM_ERROR;

@@ -21,6 +21,8 @@
 
 #define SAFEFREE(p) if(NULL!=p) {free(p); p=NULL;}
 #define SAFE_RELEASE(p) if(NULL != p) OBJ_RELEASE(p);
+#define CHECK_NULL_ALLOC(x, e, label)  if(NULL==x) { e=ORCM_ERR_OUT_OF_RESOURCE; goto label; }
+
 #define MSG_HEADER ""
 #define MSG_ERR_HEADER "\n"
 #define MSG_FOOTER "\n"

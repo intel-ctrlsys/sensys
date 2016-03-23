@@ -28,16 +28,14 @@ static int init(orcm_analytics_base_module_t *imod);
 static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
 static char *generate_data_key(char *operation, int workflow_id, char* hostname);
-static orcm_value_t *compute_min(opal_list_t *compute_data,
-                                 orcm_analytics_aggregate *aggregate,
-                                 int workflow_id, char* hostname);
-static orcm_value_t *compute_max(opal_list_t *compute_data,
-                                 orcm_analytics_aggregate *aggregate,
-                                 int workflow_id, char* hostname);
-static orcm_value_t *compute_average(opal_list_t *compute_data,
-                                     orcm_analytics_aggregate *aggregate,
-                                     int workflow_id, char* hostname);
+static void compute_min(orcm_value_t* agg_value, orcm_analytics_aggregate* aggregate, opal_list_t* compute);
+static void compute_max(orcm_value_t* agg_value, orcm_analytics_aggregate* aggregate, opal_list_t* compute);
+static void compute_average(orcm_value_t* agg_value, orcm_analytics_aggregate* aggregate, opal_list_t* compute);
+static orcm_value_t* compute_agg(char* op, char* data_key, opal_list_t* compute, orcm_analytics_aggregate* aggregate);
 static char* get_operation_name(opal_list_t* attributes);
+
+#define CHECK_NULL(x, e, label)  if(NULL==x) { e=ORCM_ERR_BAD_PARAM; goto label; }
+#define ON_NULL_RETURN(x) if(NULL==x) { return NULL; }
 
 static void orcm_analytics_aggregate_con(orcm_analytics_aggregate *value)
 {
@@ -83,7 +81,7 @@ static void finalize(orcm_analytics_base_module_t *imod)
     if (NULL != imod) {
         mca_analytics_aggregate_module_t *mod = (mca_analytics_aggregate_module_t *)imod;
         OBJ_RELEASE(mod->api.orcm_mca_analytics_data_store);
-        free(mod);
+        SAFEFREE(mod);
     }
 }
 
@@ -91,13 +89,10 @@ static char* get_operation_name(opal_list_t* attributes)
 {
     opal_value_t* temp = NULL;
     char* op = NULL;
-    if(NULL == attributes) {
-        return NULL;
-    }
+
+    ON_NULL_RETURN(attributes);
     temp = (opal_value_t*)opal_list_get_first(attributes);
-    if(NULL == temp) {
-        return NULL;
-    }
+    ON_NULL_RETURN(temp);
     if (0 == strcmp(temp->key,"operation")) {
         if(NULL != temp->data.string) {
             op = strdup(temp->data.string);
@@ -116,123 +111,80 @@ static char *generate_data_key(char *operation, int workflow_id, char* hostname)
     return data_key;
 }
 
-static orcm_value_t *compute_average(opal_list_t *compute_data,
-                                     orcm_analytics_aggregate* aggregate,
-                                     int workflow_id, char* hostname)
+static orcm_value_t* compute_agg(char* op, char* data_key, opal_list_t* compute, orcm_analytics_aggregate* aggregate)
+{
+    orcm_value_t *temp = NULL;
+    orcm_value_t *agg_value = NULL;
+    if(NULL == compute || NULL == aggregate || NULL == data_key) {
+        return NULL;
+    }
+    temp = (orcm_value_t*)opal_list_get_first(compute);
+    ON_NULL_RETURN(temp);
+    agg_value = orcm_util_load_orcm_value(data_key, &temp->value.data,OPAL_DOUBLE,temp->units);
+    ON_NULL_RETURN(agg_value);
+    if(0 == strncmp(op,"average", strlen(op))) {
+        compute_average(agg_value, aggregate, compute);
+    }
+    else if (0 == strncmp(op, "min", strlen(op))){
+        compute_min(agg_value, aggregate, compute);
+    }
+    else if (0 == strncmp(op,"max", strlen(op))){
+        compute_max(agg_value, aggregate, compute);
+    } else {
+        SAFEFREE(agg_value);
+    }
+    return agg_value;
+}
+
+static void compute_average(orcm_value_t* agg_value, orcm_analytics_aggregate* aggregate, opal_list_t* compute)
 {
     double sum = 0.0;
-    orcm_value_t *temp = NULL;
-    orcm_value_t *aggregate_value = NULL;
     orcm_value_t *list_item = NULL;
-    char *data_key = NULL;
-    if (NULL == compute_data || NULL == aggregate) {
-            return NULL;
-    }
-    size_t size = opal_list_get_size(compute_data);
-    temp = (orcm_value_t*)opal_list_get_first(compute_data);
-    if(NULL != temp) {
-        if (NULL == (data_key = generate_data_key("average", workflow_id, hostname))) {
-            return NULL;
-        }
-        aggregate_value = orcm_util_load_orcm_value(data_key, &temp->value.data,OPAL_DOUBLE,temp->units);
-    }
-    if(NULL == aggregate_value) {
-        SAFEFREE(data_key);
-        return NULL;
-    }
-    OPAL_LIST_FOREACH(list_item, compute_data, orcm_value_t) {
-        if (NULL == list_item) {
-            SAFEFREE(data_key);
-            return NULL;
-        }
+    size_t size = opal_list_get_size(compute);
+
+    OPAL_LIST_FOREACH(list_item, compute, orcm_value_t) {
         sum += orcm_util_get_number_orcm_value(list_item);
     }
-    aggregate_value->value.data.dval = (aggregate->average * aggregate->num_sample + sum) /
+    agg_value->value.data.dval = (aggregate->average * aggregate->num_sample + sum) /
                                      (aggregate->num_sample + size);
-    aggregate->average = aggregate_value->value.data.dval;
+    aggregate->average = agg_value->value.data.dval;
     aggregate->num_sample += size;
 
-    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                         "%s %s is: %f, and the number of sample is:%u",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), aggregate_value->value.key, aggregate->average,aggregate->num_sample));
-    SAFEFREE(data_key);
-    return aggregate_value;
+    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output, "%s %s is: %f, and the number of sample is:%u",
+        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), agg_value->value.key, aggregate->average,aggregate->num_sample));
 }
 
-static orcm_value_t* compute_min(opal_list_t* compute,
-                                 orcm_analytics_aggregate* aggregate,
-                                 int workflow_id, char* hostname)
+static void compute_min(orcm_value_t* agg_value, orcm_analytics_aggregate* aggregate, opal_list_t* compute)
 {
+    double val = 0.0;
     orcm_value_t *current_value = NULL;
-    orcm_value_t *temp = NULL;
-    orcm_value_t *min_value = NULL;
-    char *data_key = NULL;
-    double val;
-    if(NULL == compute || NULL == aggregate) {
-        return NULL;
-    }
-    temp = (orcm_value_t*)opal_list_get_first(compute);
-    if(NULL != temp) {
-        if (NULL == (data_key = generate_data_key("MIN", workflow_id, hostname))) {
-            return NULL;
-        }
-        min_value = orcm_util_load_orcm_value(data_key, &temp->value.data,OPAL_DOUBLE,temp->units);
-    }
-    if(NULL == min_value){
-        SAFEFREE(data_key);
-        return NULL;
-    }
-    min_value->value.data.dval = aggregate->min;
-    OPAL_LIST_FOREACH(current_value, compute, orcm_value_t) {
+    agg_value->value.data.dval = aggregate->min;
+    OPAL_LIST_FOREACH(current_value, compute, orcm_value_t)
+    {
         val = orcm_util_get_number_orcm_value(current_value);
-        if(val < aggregate->min) {
+        if (val < aggregate->min) {
             aggregate->min = val;
-            min_value->value.data.dval = aggregate->min;
+            agg_value->value.data.dval = aggregate->min;
         }
     }
-    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-            "%s %s is: %f %s",
-            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), min_value->value.key, min_value->value.data.dval,min_value->units));
-    SAFEFREE(data_key);
-    return min_value;
+    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output, "%s %s is: %f %s",
+        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), agg_value->value.key, agg_value->value.data.dval,agg_value->units));
 }
 
-static orcm_value_t* compute_max(opal_list_t* compute,
-                                 orcm_analytics_aggregate* aggregate,
-                                 int workflow_id, char* hostname)
+static void compute_max(orcm_value_t* agg_value, orcm_analytics_aggregate* aggregate, opal_list_t* compute)
 {
     orcm_value_t *current_value = NULL;
-    orcm_value_t *temp = NULL;
-    orcm_value_t *max_value = NULL;
-    char *data_key = NULL;
-    double val;
-    if(NULL == compute || NULL == aggregate) {
-        return NULL;
-    }
-    temp = (orcm_value_t*)opal_list_get_first(compute);
-    if(NULL != temp) {
-        if (NULL == (data_key = generate_data_key("MAX", workflow_id, hostname))) {
-            return NULL;
-        }
-        max_value = orcm_util_load_orcm_value(data_key, &temp->value.data,OPAL_DOUBLE,temp->units);
-    }
-    if(NULL == max_value){
-        SAFEFREE(data_key);
-        return NULL;
-    }
-    max_value->value.data.dval = aggregate->max;
+    double val = 0.0;
+    agg_value->value.data.dval = aggregate->max;
     OPAL_LIST_FOREACH(current_value, compute, orcm_value_t) {
         val = orcm_util_get_number_orcm_value(current_value);
         if(val > aggregate->max) {
             aggregate->max = val;
-            max_value->value.data.dval = aggregate->max;
+            agg_value->value.data.dval = aggregate->max;
         }
     }
-    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-            "%s %s is: %f %s",
-            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), max_value->value.key, max_value->value.data.dval,max_value->units));
-    SAFEFREE(data_key);
-    return max_value;
+    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output, "%s %s is: %f %s",
+        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), agg_value->value.key, agg_value->value.data.dval,agg_value->units));
 }
 
 static int analyze(int sd, short args, void *cbdata)
@@ -242,6 +194,7 @@ static int analyze(int sd, short args, void *cbdata)
     orcm_analytics_value_t *analytics_value_to_next = NULL;
     mca_analytics_aggregate_module_t *mod = NULL;
     opal_list_t* aggregate_list = NULL;
+    char* data_key = NULL;
     char* operation = NULL;
     int rc = ORCM_SUCCESS;
 
@@ -252,47 +205,22 @@ static int analyze(int sd, short args, void *cbdata)
         goto cleanup;
     }
     mod = (mca_analytics_aggregate_module_t *)current_caddy->imod;
-    operation = get_operation_name(&current_caddy->wf_step->attributes);
-    if(NULL == operation) {
-        rc = ORCM_ERR_BAD_PARAM;
-        goto cleanup;
-    }
 
-    if(0 == strcmp(operation,"average")) {
-        aggregate_value = compute_average(current_caddy->analytics_value->compute_data,
-                                       (orcm_analytics_aggregate *)mod->api.orcm_mca_analytics_data_store,
-                                       current_caddy->wf->workflow_id, current_caddy->wf->hostname_regex);
-    }
-    else if (0 == strcmp(operation, "min")){
-        aggregate_value = compute_min(current_caddy->analytics_value->compute_data,
-                              (orcm_analytics_aggregate*)mod->api.orcm_mca_analytics_data_store,
-                              current_caddy->wf->workflow_id, current_caddy->wf->hostname_regex);
-    }
-    else if (0 == strcmp(operation,"max")){
-        aggregate_value = compute_max(current_caddy->analytics_value->compute_data,
-                              (orcm_analytics_aggregate*)mod->api.orcm_mca_analytics_data_store,
-                              current_caddy->wf->workflow_id, current_caddy->wf->hostname_regex);
-    }
-    else {
-        rc = ORCM_ERR_BAD_PARAM;
-        goto cleanup;
-    }
-    if(NULL == aggregate_value) {
-        rc = ORCM_ERROR;
-        goto cleanup;
-    }
+    operation = get_operation_name(&current_caddy->wf_step->attributes);
+    CHECK_NULL(operation, rc, cleanup);
+    data_key = generate_data_key(operation, current_caddy->wf->workflow_id, current_caddy->wf->hostname_regex);
+    CHECK_NULL_ALLOC(data_key, rc, cleanup);
+
+    aggregate_value = compute_agg(operation, data_key, current_caddy->analytics_value->compute_data,
+                                 (orcm_analytics_aggregate *)mod->api.orcm_mca_analytics_data_store);
+    CHECK_NULL(aggregate_value, rc, cleanup);
     aggregate_list = OBJ_NEW(opal_list_t);
-    if(NULL == aggregate_list) {
-        rc = ORCM_ERR_OUT_OF_RESOURCE;
-        goto cleanup;
-    }
+    CHECK_NULL_ALLOC(aggregate_list, rc, cleanup);
+
     opal_list_append(aggregate_list, (opal_list_item_t *)aggregate_value);
     analytics_value_to_next = orcm_util_load_analytics_time_compute(current_caddy->analytics_value->key,
                                               current_caddy->analytics_value->non_compute_data, aggregate_list);
-    if (NULL == analytics_value_to_next) {
-        rc = ORCM_ERROR;
-        goto cleanup;
-    }
+    CHECK_NULL(analytics_value_to_next, rc, cleanup);
     if(true == orcm_analytics_base_db_check(current_caddy->wf_step, false)){
         rc = orcm_analytics_base_log_to_database_event(analytics_value_to_next);
         if(ORCM_SUCCESS != rc){
@@ -303,8 +231,12 @@ static int analyze(int sd, short args, void *cbdata)
                                      current_caddy->hash_key, analytics_value_to_next, NULL);
 cleanup:
     SAFEFREE(operation);
-    if (NULL != current_caddy) {
-        OBJ_RELEASE(current_caddy);
+    SAFEFREE(data_key);
+    if(ORCM_SUCCESS != rc){
+        SAFE_RELEASE(aggregate_value);
+        SAFE_RELEASE(aggregate_list);
+        SAFE_RELEASE(analytics_value_to_next);
     }
+    SAFE_RELEASE(current_caddy);
     return rc;
 }

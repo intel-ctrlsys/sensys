@@ -100,6 +100,8 @@ int orcm_octl_chassis_id_on(char **argv);
 int orcm_octl_chassis_id_state(char **argv);
 char *get_orcm_octl_query_event_date(int cmd, char **argv);
 int orcm_octl_sensor_store(int command, char** cmdlist);
+void orcm_octl_error(char *label, ...);
+void orcm_octl_info(char *label, ...);
 
 END_C_DECLS
 

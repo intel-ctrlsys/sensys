@@ -2,13 +2,16 @@
 # Copyright (c) 2014-2016      Intel, Inc.  All rights reserved.
 #
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
 dist_orcmdata_DATA = help-octl.txt
+
+octldata_DATA = messages.txt
+octldatadir = ${datadir}/octl
 
 include $(top_srcdir)/Makefile.ompi-rules
 
@@ -45,7 +48,8 @@ octl_SOURCES = \
         smtp.c \
         query.c \
         chassis-id.c \
-        octl_tokens.def
+        octl_tokens.def \
+        output_handler.c
 
 # the following empty octl_LDFLAGS is used
 #  so that the octl can be compiled statically
@@ -57,6 +61,8 @@ octl_LDFLAGS = -lstdc++
 octl_LDADD = $(top_builddir)/orcm/liborcm.la \
              $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
              $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
+
+octl_CFLAGS = -DOCTL_DATA_DIR='"$(octldatadir)"'
 
 distclean-local:
 	rm -f $(man_pages)

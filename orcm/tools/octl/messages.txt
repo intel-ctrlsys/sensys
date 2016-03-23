@@ -1,0 +1,19 @@
+#
+# Copyright (c) 2016     Intel, Inc.  All rights reserved.
+# $COPYRIGHT$
+#
+#Additional copyrights may follow
+#
+# $HEADER$
+#
+# This is the US/English help file for OCTL
+#
+
+[info:success]
+Success!
+
+[error:unknown]
+Unknown error
+
+[error:generate-msg]
+Unable to generate message.

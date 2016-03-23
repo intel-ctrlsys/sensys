@@ -1,8 +1,8 @@
 /* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -60,7 +60,7 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
                                 OPAL_INFO_LVL_9,
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &orcm_sensor_base.sample_rate);
-  
+
     /* see if we want samples logged */
     orcm_sensor_base.log_samples = false;
     (void)mca_base_var_register("orcm", "sensor", "base", "log_samples",
@@ -78,7 +78,7 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &orcm_sensor_base.collect_metrics);
 
-    orcm_sensor_base.collect_inventory = false;
+    orcm_sensor_base.collect_inventory = true;
     (void)mca_base_var_register("orcm", "sensor", "base", "collect_inventory",
                                 "Enable inventory details collection",
                                 MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
@@ -101,7 +101,7 @@ static int orcm_sensor_base_close(void)
 {
     orcm_sensor_active_module_t *i_module;
     int i;
-    
+
     if (orcm_sensor_base.ev_active) {
         orcm_sensor_base.ev_active = false;
         /* stop the thread */
@@ -121,7 +121,7 @@ static int orcm_sensor_base_close(void)
 
     /* clear the per-component-thread collection cache */
     OBJ_DESTRUCT(&orcm_sensor_base.cache);
-    
+
     /* Close all remaining available components */
     return mca_base_framework_components_close(&orcm_sensor_base_framework, NULL);
 }
@@ -143,7 +143,7 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
     /* construct the array of modules */
     OBJ_CONSTRUCT(&orcm_sensor_base.modules, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_sensor_base.modules, 3, INT_MAX, 1);
-    
+
     /* Open up all available components */
     if (OPAL_SUCCESS != (rc = mca_base_framework_components_open(&orcm_sensor_base_framework, flags))) {
         return rc;

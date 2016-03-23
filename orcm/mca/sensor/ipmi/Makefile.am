@@ -25,7 +25,9 @@ sources = \
         sel_record.cpp \
         sel_record.h \
         sensor_ipmi_sel.cpp \
-        sensor_ipmi_sel.h
+        sensor_ipmi_sel.h \
+        ipmi_collector.cpp \
+        ipmi_collector.h
 
 # Make the output library in this directory, and name it either
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la

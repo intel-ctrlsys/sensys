@@ -39,7 +39,9 @@ ipmi_tests_SOURCES = \
 	sensor_ipmi_sel_mocked_functions.cpp \
 	sensor_ipmi_sel_mocked_functions.h \
 	sensor_ipmi_tests.cpp \
-	sensor_ipmi_tests.h
+	sensor_ipmi_tests.h \
+	ipmi_collector_tests.cpp \
+	ipmi_collector_tests.h
 
 MOCKING=\
 	-Wl,--wrap=rename \

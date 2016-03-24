@@ -10,15 +10,15 @@
             <name>default_row</name>
             <junction>
                 <type>rack</type>
-                <name>default_rack</name>
+                <name>localhost</name>
+                <controller>
+                    <host>localhost</host>
+                    <port>55805</port>
+                    <aggregator>yes</aggregator>
+                </controller>
                 <junction>
                     <type>node</type>
                     <name>localhost</name>
-                    <controller>
-                        <host>localhost</host>
-                        <port>55805</port>
-                        <aggregator>yes</aggregator>
-                    </controller>
                 </junction>
             </junction>
         </junction>

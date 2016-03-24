@@ -210,4 +210,11 @@ extern "C" {
         RuntimeMetrics* collection = static_cast<RuntimeMetrics*>(runtime_metrics);
         return collection->CountOfCollectedLabels();
     }
+
+    bool orcm_sensor_base_runtime_inventory_available(void* runtime_metrics)
+    {
+        RuntimeMetrics* collection = static_cast<RuntimeMetrics*>(runtime_metrics);
+        return collection->IsInventoryAvailable();
+    }
+
 } // extern "C"

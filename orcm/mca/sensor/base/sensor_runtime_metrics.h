@@ -25,6 +25,7 @@ void orcm_sensor_base_runtime_metrics_track(void* runtime_metrics, const char* s
 void orcm_sensor_base_runtime_metrics_begin(void* runtime_metrics);
 void orcm_sensor_base_runtime_metrics_end(void* runtime_metrics);
 int orcm_sensor_base_runtime_metrics_active_label_count(void* runtime_metrics);
+bool orcm_sensor_base_runtime_inventory_available(void* runtime_metrics);
 #ifdef __cplusplus
 }; // extern "C"
 
@@ -59,6 +60,7 @@ class RuntimeMetrics
         void EndDataCollection();
 
         bool IsTrackingLabel(const char* label) const;
+        bool IsInventoryAvailable() const { return (0 != sensorLabelMap_.size()); };
 
     PRIVATE:
         bool IsForMyDatagroup(const char* sensor_spec) const;

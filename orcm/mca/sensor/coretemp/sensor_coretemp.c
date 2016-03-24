@@ -783,7 +783,11 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* Store number of labels to collect */
-    ncores = (int32_t)orcm_sensor_base_runtime_metrics_active_label_count(mca_sensor_coretemp_component.runtime_metrics);
+    if(orcm_sensor_base_runtime_inventory_available(mca_sensor_coretemp_component.runtime_metrics)) {
+        ncores = (int32_t)orcm_sensor_base_runtime_metrics_active_label_count(mca_sensor_coretemp_component.runtime_metrics);
+    } else {
+        ncores = (int32_t)opal_list_get_size(&tracking);
+    }
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ncores, 1, OPAL_INT32))) {
         ORTE_ERROR_LOG(ret);
         goto ct_sample_exit;

@@ -268,11 +268,48 @@ static int send_data_to_dispatch(spatial_statistics_t* spatial_statistics,
     return rc;
 }
 
-static int do_compute(spatial_statistics_t* spatial_statistics, char** units)
+static void do_operation(double num, spatial_statistics_t* spatial_statistics)
+{
+    if (ORCM_ANALYTICS_COMPUTE_AVE == spatial_statistics->compute_type
+            || ORCM_ANALYTICS_COMPUTE_SD == spatial_statistics->compute_type) {
+        spatial_statistics->result += num;
+    } else if (ORCM_ANALYTICS_COMPUTE_MIN == spatial_statistics->compute_type) {
+        if (spatial_statistics->result > num) {
+            spatial_statistics->result = num;
+        }
+    } else if (spatial_statistics->result < num) {
+        spatial_statistics->result = num;
+    }
+}
+
+static void find_sd(spatial_statistics_t* spatial_statistics,
+        opal_list_t* bucket_item_value, orcm_value_t* list_item)
 {
     int rc = ORCM_SUCCESS;
     int idx = 0;
     double sum = 0.0;
+
+    if (ORCM_ANALYTICS_COMPUTE_SD == spatial_statistics->compute_type) {
+        for (idx = 0; idx < spatial_statistics->size; idx++) {
+            if (OPAL_SUCCESS != (rc = opal_hash_table_get_value_ptr(spatial_statistics->buckets,
+                            spatial_statistics->nodelist[idx],
+                            strlen(spatial_statistics->nodelist[idx]) + 1,
+                            (void**) &bucket_item_value))) {
+                continue;
+            }
+            OPAL_LIST_FOREACH(list_item, bucket_item_value, orcm_value_t) {
+                sum += pow((orcm_util_get_number_orcm_value(list_item)
+                                - spatial_statistics->result), 2);
+            }
+        }
+        spatial_statistics->result = sqrt(sum / spatial_statistics->num_data_point);
+    }
+}
+
+static int do_compute(spatial_statistics_t* spatial_statistics, char** units)
+{
+    int rc = ORCM_SUCCESS;
+    int idx = 0;
     opal_list_t* bucket_item_value = NULL;
     orcm_value_t* list_item = NULL;
     double num = 0.0;
@@ -292,17 +329,7 @@ static int do_compute(spatial_statistics_t* spatial_statistics, char** units)
             if (NULL == *units) {
                 *units = list_item->units;
             }
-            num = orcm_util_get_number_orcm_value(list_item);
-            if (ORCM_ANALYTICS_COMPUTE_AVE == spatial_statistics->compute_type ||
-                ORCM_ANALYTICS_COMPUTE_SD == spatial_statistics->compute_type) {
-                spatial_statistics->result += num;
-            } else if (ORCM_ANALYTICS_COMPUTE_MIN == spatial_statistics->compute_type) {
-                if (spatial_statistics->result > num) {
-                    spatial_statistics->result = num;
-                }
-            } else if (spatial_statistics->result < num) {
-                spatial_statistics->result = num;
-            }
+            do_operation(orcm_util_get_number_orcm_value(list_item), spatial_statistics);
         }
     }
 
@@ -310,26 +337,16 @@ static int do_compute(spatial_statistics_t* spatial_statistics, char** units)
         rc = ORCM_ERR_BAD_PARAM;
         return rc;
     }
+
     if (ORCM_ANALYTICS_COMPUTE_AVE == spatial_statistics->compute_type ||
         ORCM_ANALYTICS_COMPUTE_SD == spatial_statistics->compute_type) {
         spatial_statistics->result /= spatial_statistics->num_data_point;
     }
 
-    if (ORCM_ANALYTICS_COMPUTE_SD == spatial_statistics->compute_type) {
-        for(idx = 0; idx < spatial_statistics->size; idx++) {
-            if (OPAL_SUCCESS != (rc = opal_hash_table_get_value_ptr(spatial_statistics->buckets,
-                spatial_statistics->nodelist[idx], strlen(spatial_statistics->nodelist[idx]) + 1,
-                (void**)&bucket_item_value))) {
-                continue;
-            }
-            OPAL_LIST_FOREACH(list_item, bucket_item_value, orcm_value_t) {
-                sum += pow((orcm_util_get_number_orcm_value(list_item) -
-                            spatial_statistics->result), 2);
-            }
-        }
-        spatial_statistics->result = sqrt(sum / spatial_statistics->num_data_point);
-    }
+    find_sd(spatial_statistics, bucket_item_value, list_item);
+
     rc = ORCM_SUCCESS;
+
     return rc;
 }
 

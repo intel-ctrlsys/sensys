@@ -367,7 +367,7 @@ int orcm_analytics_base_workflow_remove(opal_buffer_t *buffer)
     char *workflow_id = NULL;
     char *workflow_name = NULL;
     int cnt = ANALYTICS_COUNT_DEFAULT;
-    int workflow_num_id;
+    int workflow_num_id = -1;
     int rc;
     bool is_workflow_deleted = false;
 

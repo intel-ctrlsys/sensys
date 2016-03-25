@@ -22,21 +22,28 @@
 
 extern "C" {
     #include "opal/runtime/opal.h"
+    #include "opal/dss/dss_types.h"
+    #include "orcm/util/utils.h"
 }
 
 class ut_parser_pugi_tests: public testing::Test {
     protected:
         std::string validFile;
+        std::string writeFile;
         char const *invalidFile;
         char const *rootKey, *validKey, *invalidKey;
         char const *invalidName, *validName, *validNameTag;
         int numOfValidKey;
         virtual void SetUp(){
             char* srcdir = getenv("srcdir");
-            if (NULL != srcdir)
+            if (NULL != srcdir) {
                 validFile=std::string(srcdir) + "/example.xml";
-            else
+                writeFile=std::string(srcdir) + "/write_ex.xml";
+            }
+            else {
                 validFile="example.xml";
+                writeFile="write_ex.xml";
+            }
             invalidFile = "myfile";
             validKey = "group";
             numOfValidKey = 4;

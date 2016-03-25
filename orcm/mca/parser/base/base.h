@@ -59,7 +59,8 @@ ORCM_DECLSPEC opal_list_t* orcm_parser_base_retrieve_section (int file_id,
                                           char const* key, char const* name);
 ORCM_DECLSPEC opal_list_t* orcm_parser_base_retrieve_section_from_list (int file_id,
                                           opal_list_item_t *start, char const* key, char const* name);
-ORCM_DECLSPEC void orcm_parser_base_write_section (opal_list_t *result, int file_id, char const *key);
+ORCM_DECLSPEC int orcm_parser_base_write_section (int file_id, opal_list_t *input, char const *key,
+                                                  char const* name, bool overwrite);
 
 END_C_DECLS
 #endif

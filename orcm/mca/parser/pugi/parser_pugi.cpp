@@ -29,9 +29,6 @@ typedef pugi_impl parser_t;
 BEGIN_C_DECLS
 
 
-void pugi_write_section(opal_list_t *result,
-                        int file_id, char const *key);
-
 orcm_parser_base_module_t orcm_parser_pugi_module = {
     NULL,
     NULL,
@@ -117,9 +114,13 @@ opal_list_t* pugi_retrieve_section_from_list(int file_id, opal_list_item_t *star
     return p->retrieveSectionFromList(start,key,name);
 }
 
-void pugi_write_section(opal_list_t *result,
-                        int file_id, char const *key)
+int pugi_write_section(int file_id, opal_list_t *input,
+                       char const *key, char const* name, bool overwrite)
 {
-
+    parser_t *p = get_parser_object(file_id);
+    if (NULL == p){
+        return ORCM_ERR_FILE_OPEN_FAILURE;
+    }
+    return p->writeSection(input, key, name, overwrite);
 }
 END_C_DECLS

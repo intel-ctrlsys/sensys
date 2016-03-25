@@ -45,7 +45,7 @@ parser_pugi_tests_SOURCES = \
 
 LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a
 
-AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -g $(MOCKING)
+AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -ggdb $(MOCKING)
 
 #
 # Preprocessor flags

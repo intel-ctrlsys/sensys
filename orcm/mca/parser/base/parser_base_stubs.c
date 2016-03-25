@@ -72,14 +72,15 @@ opal_list_t* orcm_parser_base_retrieve_section_from_list (int file_id, opal_list
     return NULL;
 }
 
-void orcm_parser_base_write_section (opal_list_t *result, int file_id, char const *key)
+int orcm_parser_base_write_section (int file_id, opal_list_t *input, char const *key,
+                                    char const* name, bool overwrite)
 {
     orcm_parser_active_module_t *active_module = NULL;
 
     OPAL_LIST_FOREACH(active_module, &orcm_parser_base.actives, orcm_parser_active_module_t) {
         if (NULL != active_module->module->write_section) {
-            active_module->module->write_section(result, file_id, key);
+            return active_module->module->write_section(file_id, input, key, name, overwrite);
         }
     }
-    return;
+    return ORCM_ERROR;
 }

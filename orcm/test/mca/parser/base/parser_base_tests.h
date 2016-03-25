@@ -24,6 +24,7 @@ class ut_parser_base_tests: public testing::Test
         // gtest fixture required methods
         static void SetUpTestCase();
         static void TearDownTestCase();
+        static void reset_module_list();
 
         static orcm_parser_base_module_t test_module;
         static orcm_parser_active_module_t* active_module;

@@ -43,7 +43,7 @@ static opal_list_t* comp_retrieve_section(int file_id, char const* key,
 static opal_list_t* comp_retrieve_section_from_list(int file_id,
                                           opal_list_item_t *start,
                                           char const* key, char const* name);
-static void comp_write_section(opal_list_t *result, int file_id, char const *key);
+static int comp_write_section(int file_id, opal_list_t *input, char const *key, char const *name);
 
 orcm_parser_base_module_t orcm_parser_sample_module = {
     comp_init,
@@ -106,9 +106,9 @@ static opal_list_t* comp_retrieve_section_from_list(int file_id,
     return NULL;
 }
 
-static void comp_write_section(opal_list_t *result, int file_id, char const *key)
+static int comp_write_section(int file_id, opal_list_t *input, char const *key, char const *name)
 {
-    return;
+    return MY_ORCM_SUCCESS;
 }
 
 int component_query_null_module(mca_base_module_t **module, int *priority)
@@ -130,6 +130,12 @@ int component_query_with_module(mca_base_module_t **module, int *priority)
     *module = (mca_base_module_t*)&orcm_parser_sample_module;
     *priority = MY_MODULE_PRIORITY;
     return MY_ORCM_SUCCESS;
+}
+
+void ut_parser_base_tests::reset_module_list()
+{
+    OPAL_LIST_DESTRUCT(&orcm_parser_base.actives);
+    OBJ_CONSTRUCT(&orcm_parser_base.actives, opal_list_t);
 }
 
 void ut_parser_base_tests::SetUpTestCase()
@@ -244,6 +250,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_open_file)
 {
     int ret;
 
+    ut_parser_base_tests::reset_module_list();
+
     ret = orcm_parser.open(RANDOM_FILE_NAME_TO_TEST_API);
     ASSERT_NE(MY_ORCM_SUCCESS, ret);
 }
@@ -253,6 +261,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_open_file)
     int ret;
 
     orcm_parser_active_module_t *act_module;
+
+    ut_parser_base_tests::reset_module_list();
 
     act_module = OBJ_NEW(orcm_parser_active_module_t);
 
@@ -269,6 +279,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_close_file)
 {
     int ret;
 
+    ut_parser_base_tests::reset_module_list();
+
     ret = orcm_parser.close(RANDOM_VALUE_TO_TEST_API);
     ASSERT_NE(MY_ORCM_SUCCESS, ret);
 }
@@ -281,6 +293,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_close_file)
 
     act_module = OBJ_NEW(orcm_parser_active_module_t);
 
+    ut_parser_base_tests::reset_module_list();
+
     act_module->priority = MY_MODULE_PRIORITY;
     act_module->module = &orcm_parser_sample_module;
 
@@ -292,6 +306,7 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_close_file)
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_retrieve_document)
 {
+    ut_parser_base_tests::reset_module_list();
     orcm_parser.retrieve_document(RANDOM_VALUE_TO_TEST_API);
 }
 
@@ -300,6 +315,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_document)
     orcm_parser_active_module_t *act_module;
 
     act_module = OBJ_NEW(orcm_parser_active_module_t);
+
+    ut_parser_base_tests::reset_module_list();
 
     act_module->priority = MY_MODULE_PRIORITY;
     act_module->module = &orcm_parser_sample_module;
@@ -311,12 +328,15 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_document)
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_retrieve_section)
 {
+    ut_parser_base_tests::reset_module_list();
     orcm_parser.retrieve_section(RANDOM_VALUE_TO_TEST_API, "", "");
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section)
 {
     orcm_parser_active_module_t *act_module;
+
+    ut_parser_base_tests::reset_module_list();
 
     act_module = OBJ_NEW(orcm_parser_active_module_t);
 
@@ -333,12 +353,16 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section)
 TEST_F(ut_parser_base_tests,
        parser_base_stubs_no_active_module_retrieve_section_from_list)
 {
+    ut_parser_base_tests::reset_module_list();
+
     orcm_parser.retrieve_section_from_list(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section_from_list)
 {
     orcm_parser_active_module_t *act_module;
+
+    ut_parser_base_tests::reset_module_list();
 
     act_module = OBJ_NEW(orcm_parser_active_module_t);
 
@@ -352,12 +376,20 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section_from_list)
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_write_section)
 {
-    orcm_parser.write_section(NULL, RANDOM_VALUE_TO_TEST_API, "");
+    int rc;
+
+    ut_parser_base_tests::reset_module_list();
+
+    rc = orcm_parser.write_section(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+    ASSERT_NE(MY_ORCM_SUCCESS, rc);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_write_section)
 {
+    int rc;
     orcm_parser_active_module_t *act_module;
+
+    ut_parser_base_tests::reset_module_list();
 
     act_module = OBJ_NEW(orcm_parser_active_module_t);
 
@@ -366,5 +398,6 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_write_section)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    orcm_parser.write_section(NULL, RANDOM_VALUE_TO_TEST_API, "");
+    rc = orcm_parser.write_section(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+    ASSERT_EQ(MY_ORCM_SUCCESS, rc);
 }

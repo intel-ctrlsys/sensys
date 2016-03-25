@@ -34,6 +34,7 @@ class pugi_impl {
         opal_list_t* retrieveSectionFromList(opal_list_item_t *start,
                                      char const*key, char const*name);
         opal_list_t* retrieveDocument();
+        int writeSection(opal_list_t *input, char const*key, char const*name, bool overwrite);
 
     protected:
 
@@ -43,6 +44,16 @@ class pugi_impl {
 
         void unloadFile();
         void freeRoot();
+        int  saveSection();
+
+        int  convertOpalListToXmlNodes(opal_list_t *list, pugi::xml_node& key_node);
+        int  convertOpalPtrToXmlNodes(pugi::xml_node& key_node, orcm_value_t *list_item);
+        int  createNodeFromList(orcm_value_t *list_item, pugi::xml_node& key_node);
+        int  writeToTree(opal_list_t *srcList, opal_list_t *input, char const* key,
+                         char const*name, bool overwrite);
+        int  checkOpalPtrToWrite(orcm_value_t *item, opal_list_t *input, char const* key,
+                                 char const* name, bool overwrite);
+        void appendToList(opal_list_t *srcList, opal_list_t *input, bool overwrite);
         void addLeafNodeToList(pugi::xml_node node, opal_list_t *list);
         void addNodeAttributesToList(pugi::xml_node node, opal_list_t *list);
         void addNodeChildrenToList(pugi::xml_node node, opal_list_t *list);

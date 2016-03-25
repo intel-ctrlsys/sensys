@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<root>
+   <wrongloop />
+   <node name="dummy" />
+   <node>value</node>
+   <innerloop />
+    <innerloop>
+        <innerinnerloop>
+            <namedloop />
+            <namedloop name="dummy" />
+        </innerinnerloop>
+    </innerloop>
+    <innerloop />
+    <innerinnerloop />
+    <overwriteloop>
+        <members>dummy</members>
+    </overwriteloop>
+    <nullgroup />
+</root>
+<root />

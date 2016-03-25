@@ -22,7 +22,7 @@ typedef pugi_impl parser_t;
 
 void print_opal_list(opal_list_t* list);
 bool allItemsInListHaveGivenKey(opal_list_t *list, char const *key);
-
+void parser_pugi_load_orcm_value (opal_list_t *input, char *key, void *data, opal_data_type_t type);
 
 /* Pugi_Impl Tests */
 
@@ -343,6 +343,302 @@ TEST_F(ut_parser_pugi_tests,
     SAFE_OBJ_RELEASE(groupList);
 }
 
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_invalidFile)
+{
+    int ret = pugi_write_section(-1, NULL, NULL, NULL, false);
+    ASSERT_EQ(ORCM_ERR_FILE_OPEN_FAILURE, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_nullInput)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    int ret = pugi_write_section(file_id, NULL, NULL, NULL, false);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeAtRoot)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("root");
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeAtNonRoot)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("nonroot");
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_NE(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_twoNodeHirearchyAtRoot)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("root");
+
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+    opal_list_t *inner_list = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_twoNodeHirearchyWithNameAttrAtRoot)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("root");
+
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+    opal_list_t *inner_list = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_twoNodeHirearchyWithIntAtRoot)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("root");
+
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+    opal_list_t *inner_list = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    int int_value = 20;
+
+    parser_pugi_load_orcm_value (inner_list, strdup("int_value"), &int_value, OPAL_INT);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_NE(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAttrAtRoot)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("root");
+
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+    opal_list_t *inner_list = OBJ_NEW(opal_list_t);
+    opal_list_t *third_inner_list = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("thirdgroup"), third_inner_list, OPAL_PTR);
+
+
+    parser_pugi_load_orcm_value (inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAttrAtNULL)
+{
+    int file_id = pugi_open(writeFile.c_str());
+
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+    opal_list_t *inner_list = OBJ_NEW(opal_list_t);
+    opal_list_t *third_inner_list = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("thirdgroup"), third_inner_list, OPAL_PTR);
+
+
+    parser_pugi_load_orcm_value (inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
+
+    int ret = pugi_write_section(file_id, input, NULL, NULL, false);
+    SAFE_OBJ_RELEASE(input);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeWithNameAttrAtNULL)
+{
+    int file_id = pugi_open(writeFile.c_str());
+
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), NULL, OPAL_PTR);
+
+    int ret = pugi_write_section(file_id, input, NULL, NULL, false);
+    SAFE_OBJ_RELEASE(input);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAttrAtInnerLoop)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("innerloop");
+
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+    opal_list_t *inner_list = OBJ_NEW(opal_list_t);
+    opal_list_t *third_inner_list = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("thirdgroup"), third_inner_list, OPAL_PTR);
+
+
+    parser_pugi_load_orcm_value (inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAttrAtInnerInnerLoop)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("innerinnerloop");
+
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+    opal_list_t *inner_list = OBJ_NEW(opal_list_t);
+    opal_list_t *third_inner_list = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("thirdgroup"), third_inner_list, OPAL_PTR);
+
+
+    parser_pugi_load_orcm_value (inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAttrAtInnerInnerNamedLoop)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("namedloop");
+    char *name = strdup("dummy");
+
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+    opal_list_t *inner_list = OBJ_NEW(opal_list_t);
+    opal_list_t *third_inner_list = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("thirdgroup"), third_inner_list, OPAL_PTR);
+
+
+    parser_pugi_load_orcm_value (inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
+
+    int ret = pugi_write_section(file_id, input, key, name, false);
+    SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    SAFEFREE(name);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAttrOverWriteSetAtRoot)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("overwriteloop");
+
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+    opal_list_t *inner_list = OBJ_NEW(opal_list_t);
+    opal_list_t *third_inner_list = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (third_inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("thirdgroup"), third_inner_list, OPAL_PTR);
+
+
+    parser_pugi_load_orcm_value (inner_list, strdup("members"), strdup("master"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (inner_list, strdup("name"), strdup("aggregators"), OPAL_STRING);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, true);
+    SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
 
 /* Utilities */
 
@@ -376,4 +672,40 @@ bool allItemsInListHaveGivenKey(opal_list_t *list, char const *key){
         }
     }
     return true;
+}
+
+void parser_pugi_load_orcm_value (opal_list_t *input, char *key, void *data, opal_data_type_t type)
+{
+
+    orcm_value_t *group = OBJ_NEW(orcm_value_t);
+    group = orcm_util_load_orcm_value(key, data, type, NULL);
+    opal_list_append(input, (opal_list_item_t *)group);
+}
+
+orcm_value_t* orcm_util_load_orcm_value(char *key, void *data, opal_data_type_t type, char *units)
+{
+    int rc = -1;
+    orcm_value_t *kv = OBJ_NEW(orcm_value_t);
+
+    if (NULL != kv) {
+        if (NULL != key) {
+            kv->value.key = strdup(key);
+            if (NULL == kv->value.key) {
+                return NULL;
+            }
+        }
+        rc = opal_value_load(&kv->value, data, type);
+        if (ORCM_SUCCESS != rc) {
+            OBJ_RELEASE(kv);
+            kv = NULL;
+            return kv;
+        }
+        if ( NULL != units ) {
+            kv->units = strdup(units);
+            if (NULL == kv->units) {
+                return NULL;
+            }
+        }
+    }
+    return kv;
 }

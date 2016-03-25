@@ -46,6 +46,150 @@ opal_list_t* pugi_impl::retrieveDocument(void)
     return duplicateList(root);
 }
 
+int pugi_impl::writeSection(opal_list_t *input, char const*key,
+                            char const* name, bool overwrite)
+{
+    int rc;
+    if (input == NULL) {
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    rc = writeToTree(root, input, key, name, overwrite);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+    return saveSection();
+}
+
+int pugi_impl::saveSection()
+{
+    unloadFile();
+
+    int rc = convertOpalListToXmlNodes(root, doc);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
+
+    if (0 == doc.save_file(file.c_str())) {
+        return ORCM_ERR_FILE_WRITE_FAILURE;
+    }
+    return ORCM_SUCCESS;
+}
+
+int pugi_impl::convertOpalListToXmlNodes(opal_list_t *list, xml_node& key_node)
+{
+    orcm_value_t *list_item = NULL;
+    int rc;
+
+    OPAL_LIST_FOREACH(list_item, list, orcm_value_t) {
+        if (list_item->value.type == OPAL_STRING) {
+           rc = createNodeFromList(list_item, key_node);
+            if (ORCM_SUCCESS != rc) {
+                return rc;
+            }
+        } else if (list_item->value.type == OPAL_PTR) {
+            rc = convertOpalPtrToXmlNodes(key_node, list_item);
+            if (ORCM_SUCCESS != rc) {
+                return rc;
+            }
+        } else if (list_item->value.type == OPAL_INT) {
+            return ORCM_ERR_NOT_IMPLEMENTED;
+        }
+    }
+    return ORCM_SUCCESS;
+}
+
+int pugi_impl::convertOpalPtrToXmlNodes(xml_node& key_node, orcm_value_t *list_item)
+{
+    xml_node node = key_node.append_child();
+    if (NULL == node) {
+        return ORCM_ERROR;
+    }
+    node.set_name(list_item->value.key);
+    if (NULL != list_item->value.data.ptr) {
+        return convertOpalListToXmlNodes((opal_list_t*)list_item->value.data.ptr, node);
+    }
+    else {
+        return ORCM_SUCCESS;
+    }
+
+}
+
+int pugi_impl::createNodeFromList(orcm_value_t *list_item, xml_node& key_node)
+{
+    xml_node node;
+
+    if (0 == strcmp("name", list_item->value.key)) {
+        key_node.append_attribute(list_item->value.key) = list_item->value.data.string;
+    }
+    else {
+        node = key_node.append_child();
+        if (NULL == node) {
+            return ORCM_ERROR;
+        }
+        node.set_name(list_item->value.key);
+        node.append_child(node_pcdata).set_value(list_item->value.data.string);
+    }
+    return ORCM_SUCCESS;
+}
+
+int pugi_impl::writeToTree(opal_list_t *srcList, opal_list_t *input, char const* key,
+                           char const* name, bool overwrite)
+{
+    int rc;
+
+    if (NULL == srcList){
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if ((NULL == key) || (0 == strcmp("", key))) {
+        appendToList(srcList, input, overwrite);
+        return ORCM_SUCCESS;
+    }
+    orcm_value_t *item = NULL;
+    OPAL_LIST_FOREACH(item, srcList, orcm_value_t){
+
+        if (true == itemListHasChildren(item)) {
+            rc = checkOpalPtrToWrite(item, input, key, name, overwrite);
+            if (ORCM_SUCCESS == rc) {
+                return rc;
+            }
+            rc = writeToTree((opal_list_t*)item->value.data.ptr, input, key,
+                                 name, overwrite);
+            if (ORCM_SUCCESS == rc) {
+                return rc;
+            }
+        }
+    }
+    return ORCM_ERROR;
+}
+
+int pugi_impl::checkOpalPtrToWrite(orcm_value_t *item, opal_list_t *input, char const* key,
+                                   char const* name, bool overwrite)
+{
+    if (true == itemMatchesKeyAndName(item, key, name)) {
+        appendToList((opal_list_t*)item->value.data.ptr, input, overwrite);
+        return ORCM_SUCCESS;
+    }
+
+    return ORCM_ERROR;
+}
+
+void pugi_impl::appendToList(opal_list_t *srcList, opal_list_t *input, bool overwrite)
+{
+    if((NULL == srcList) || (NULL == input)) {
+        return;
+    }
+
+    if (true == overwrite) {
+        SAFE_RELEASE(srcList);
+        srcList = duplicateList(input);
+    }
+    else {
+        opal_list_join( srcList, opal_list_get_end(srcList), input);
+    }
+}
+
 int pugi_impl::convertXmlNodeToOpalList(xml_node node, opal_list_t *list)
 {
     if (!node || NULL == list){
@@ -280,10 +424,16 @@ bool pugi_impl::itemMatchesKeyAndName(orcm_value_t* item, char const* key, char 
     if (0 == strcmp(key,item->value.key) && itemListHasChildren(item)){
         OPAL_LIST_FOREACH(child, (opal_list_t*)item->value.data.ptr,orcm_value_t){
             if (0 == strcmp("name",child->value.key) && OPAL_STRING == child->value.type){
+                if (NULL == name || 0 == strcmp("", name)) {
+                    return false;
+                }
                 if (0 == strcmp(name, child->value.data.string)){
                     return true;
                 }
             }
+        }
+        if (NULL == name || 0 == strcmp("", name)) {
+            return true;
         }
     }
     return false;

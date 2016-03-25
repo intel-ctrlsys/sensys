@@ -110,6 +110,27 @@ extern opal_list_t* pugi_retrieve_section(int file_id, char const* key,
 extern opal_list_t* pugi_retrieve_section_from_list(int file_id,
                                           opal_list_item_t *start, char const* key,
                                           char const* name);
+
+/**
+ * Writes a list to an xml file at the element node that matches the
+ * key (key/name) provided.
+ *
+ * @param[in] file_id: file id returned by pugi_open.
+ * @param[in] key:     xml tag that will be searched across the xml document.
+ * @param[in] name:    it can be null, or empty string if it needs to be
+ *                     ignored; otherwise, the result items need to match their
+ *                     name attribute with the value of this param.
+ *
+ * @returns ORCM_SUCCESS- when operation is success or an appropriate failure.
+ *
+ * This function will go throw all the document tree and will look for the
+ * given tag(key). If name is provided (different than null or empty string),
+ * it will look for the given tag that has the given name as "name" attribute
+ * in the xml file. Then, it will append the input list at the specified location
+ * If key is NULL or empty, then the list is added at end of the XML
+ */
+extern int pugi_write_section(int file_id, opal_list_t *input,
+                              char const *key, char const* name, bool overwrite);
 END_C_DECLS
 
 #endif /* PARSER_PUGI_H */

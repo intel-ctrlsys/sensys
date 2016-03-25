@@ -55,6 +55,8 @@
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "sensor_componentpower.h"
 
+#define TEST_SOCKETS (MAX_SOCKETS)
+
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
@@ -108,17 +110,15 @@ static int rapl_unit_register_check(void);
 static int rapl_cpu_energy_register_check(void);
 static int rapl_ddr_energy_register_check(void);
 
+#define ON_NULL_RETURN(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
+#define ON_FAILURE_RETURN(x) if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);return;}
+
 static int init(void)
 {
     mca_sensor_componentpower_component.diagnostics = 0;
     mca_sensor_componentpower_component.runtime_metrics =
         orcm_sensor_base_runtime_metrics_create("componentpower", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_componentpower_component.collect_metrics);
-
-    if (ORCM_SUCCESS != geteuid()) {
-        opal_output(0, "ERROR: User has not rights to perform this operation");
-        return ORCM_ERR_PERM;
-    }
 
     setup_cpu_information();
 
@@ -445,12 +445,6 @@ static int energy_unit_check(void)
  */
 static void start(orte_jobid_t jobid)
 {
-
-    /* we must be root to run */
-    if (0 != geteuid()) {
-        return;
-    }
-
     /* start a separate componentpower progress thread for sampling */
     if (mca_sensor_componentpower_component.use_progress_thread) {
         if (!orcm_sensor_componentpower.ev_active) {
@@ -546,20 +540,6 @@ void collect_componentpower_sample(orcm_sensor_sampler_t *sampler)
     unsigned long long interval, msr, rapl_delta;
     void* metrics_obj = mca_sensor_componentpower_component.runtime_metrics;
 
-    if(0 == orcm_sensor_base_runtime_metrics_active_label_count(metrics_obj) &&
-       !orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
-        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                            "%s sensor componentpower : skipping actual sample collection",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        return;
-    }
-    mca_sensor_componentpower_component.diagnostics |= 0x1;
-
-     /* we must be root to run */
-    if (0 != geteuid()) {
-        return;
-    }
-
     if (mca_sensor_componentpower_component.test) {
         /* generate and send a test vector */
         OBJ_CONSTRUCT(&data, opal_buffer_t);
@@ -569,6 +549,16 @@ void collect_componentpower_sample(orcm_sensor_sampler_t *sampler)
         OBJ_DESTRUCT(&data);
         return;
     }
+
+    if(0 == orcm_sensor_base_runtime_metrics_active_label_count(metrics_obj) &&
+       !orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
+        opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                            "%s sensor componentpower : skipping actual sample collection",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
+    }
+    mca_sensor_componentpower_component.diagnostics |= 0x1;
+
     gettimeofday(&(_tv.tv_curr), NULL);
     if (_tv.tv_curr.tv_usec>=_tv.tv_prev.tv_usec){
         _tv.interval=(unsigned long long)(_tv.tv_curr.tv_sec-_tv.tv_prev.tv_sec)*1000000
@@ -661,7 +651,11 @@ void collect_componentpower_sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* store the number of labels */
-    nlabels = orcm_sensor_base_runtime_metrics_active_label_count(metrics_obj);
+    if(orcm_sensor_base_runtime_inventory_available(mca_sensor_componentpower_component.runtime_metrics)) {
+        nlabels = orcm_sensor_base_runtime_metrics_active_label_count(metrics_obj);
+    } else {
+        nlabels = _rapl.n_sockets * 2;
+    }
 
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &nlabels, 1, OPAL_INT32))) {
 
@@ -949,11 +943,10 @@ static void generate_test_vector(opal_buffer_t *v)
     int ret;
     int i;
     const char *cpwr = "componentpower";
-    int32_t nsockets;
+    int32_t nsockets = TEST_SOCKETS;
     struct timeval tv_test;
     float cpu_test_power;
     float ddr_test_power;
-    nsockets = MAX_SOCKETS;
 
 /* Power units are Watts */
     cpu_test_power = 100;
@@ -974,8 +967,9 @@ static void generate_test_vector(opal_buffer_t *v)
         return;
     }
 
+    uint32_t total_data_items = nsockets * 2;
     /* pack then number of cores */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &nsockets, 1, OPAL_INT32))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &total_data_items, 1, OPAL_INT32))) {
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
         return;
@@ -994,7 +988,7 @@ static void generate_test_vector(opal_buffer_t *v)
     for (i=0; i < nsockets; i++) {
         char* label = NULL;
         uint8_t type = OPAL_FLOAT;
-        asprintf(&label, "ddr%d_power", i);
+        asprintf(&label, "cpu%d_power", i);
         if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &label, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&v);
@@ -1010,7 +1004,7 @@ static void generate_test_vector(opal_buffer_t *v)
             OBJ_DESTRUCT(&v);
             return;
         }
-        cpu_test_power += 10.0;
+        cpu_test_power += 0.1;
     }
 /* pack the ddr test power value */
     for (i=0; i < nsockets; i++) {
@@ -1033,7 +1027,7 @@ static void generate_test_vector(opal_buffer_t *v)
             OBJ_DESTRUCT(&v);
             return;
         }
-        ddr_test_power += 1.0;
+        ddr_test_power += 0.05;
     }
 
     opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
@@ -1043,39 +1037,44 @@ static void generate_test_vector(opal_buffer_t *v)
 
 static void generate_test_inv_data(opal_buffer_t *inventory_snapshot)
 {
-    unsigned int tot_items = 2;
+    int nsockets = TEST_SOCKETS;
+    unsigned int tot_items = nsockets * 2;
     const char *comp = "componentpower";
-    int rc = OPAL_SUCCESS;
+    int rc = ORCM_SUCCESS;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    comp = "sensor_componentpower_1";
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+    ON_FAILURE_RETURN(rc);
+    rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT);
+    ON_FAILURE_RETURN(rc);
 
-    comp = "cpu0_power";
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    comp = "sensor_componentpower_2";
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
+    comp = NULL;
+    for(int i = 0; i < nsockets; ++i) {
+        asprintf(&comp, "sensor_componentpower_%d", i+1);
+        ON_NULL_RETURN(comp);
+        rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+        SAFEFREE(comp);
+        ON_FAILURE_RETURN(rc);
+
+        asprintf(&comp, "cpu%d_power", i);
+        ON_NULL_RETURN(comp);
+        rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+        SAFEFREE(comp);
+        ON_FAILURE_RETURN(rc);
     }
 
-    comp = "ddr0_power";
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
+    comp = NULL;
+    for(int i = 0; i < nsockets; ++i) {
+        asprintf(&comp, "sensor_componentpower_%d", nsockets + i + 1);
+        ON_NULL_RETURN(comp);
+        rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+        SAFEFREE(comp);
+        ON_FAILURE_RETURN(rc);
+
+        asprintf(&comp, "ddr%d_power", i);
+        ON_NULL_RETURN(comp);
+        rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+        SAFEFREE(comp);
+        ON_FAILURE_RETURN(rc);
     }
 }
 
@@ -1199,10 +1198,7 @@ static void componentpower_inventory_log(char *hostname, opal_buffer_t *inventor
             return;
         }
 
-        mkv = OBJ_NEW(orcm_value_t);
-        mkv->value.key = inv;
-        mkv->value.type = OPAL_STRING;
-        mkv->value.data.string = inv_val;
+        mkv = orcm_util_load_orcm_value(inv, inv_val, OPAL_STRING, NULL);
         opal_list_append(records, (opal_list_item_t*)mkv);
 
         --tot_items;

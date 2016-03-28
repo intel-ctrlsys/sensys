@@ -18,16 +18,13 @@
 #define LED_TEMPORARY_ON 1
 #define LED_INDEFINITE_ON 2
 
+#define SAFE_RELEASE(p) if(NULL != p) { OBJ_RELEASE(p); p = NULL; }
+#define SAFE_ARGV_FREE(p) if(NULL != p) { opal_argv_free(p); p = NULL; }
+
 static void cleanup(char **nodelist, opal_buffer_t *buf, orte_rml_recv_cb_t *xfer){
-    if (nodelist)
-        opal_argv_free(nodelist);
-
-    if (buf)
-        OBJ_RELEASE(buf);
-
-    if (xfer)
-        OBJ_RELEASE(xfer);
-
+    SAFE_ARGV_FREE(nodelist);
+    SAFE_RELEASE(buf);
+    SAFE_RELEASE(xfer);
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
 }
 
@@ -45,9 +42,6 @@ static void show_header(void){
 
 static int begin_transaction(char* node, opal_buffer_t *buf, orte_rml_recv_cb_t *xfer){
     int rc = ORCM_SUCCESS;
-    OBJ_RETAIN(buf);
-    OBJ_RETAIN(xfer);
-
     xfer->active = true;
     orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD,
                             ORCM_RML_TAG_CMD_SERVER,
@@ -90,7 +84,7 @@ static int unpack_response(char* node, orte_rml_recv_cb_t *xfer){
     return rc;
 }
 
-static int show_state(char* node, orte_rml_recv_cb_t *xfer){
+static int unpack_state(char* node, orte_rml_recv_cb_t *xfer){
 
     int elements = 1;
     int state = -1;
@@ -118,54 +112,70 @@ static int show_state(char* node, orte_rml_recv_cb_t *xfer){
     return rc;
 }
 
-int orcm_octl_led_operation(orcm_cmd_server_flag_t command, orcm_cmd_server_flag_t subcommand, char *noderaw, int seconds){
+int pack_chassis_id_data(opal_buffer_t *buf, orcm_cmd_server_flag_t *command,
+        orcm_cmd_server_flag_t *sub_command, char **noderaw, unsigned char *seconds){
+    int rc = OPAL_SUCCESS;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, command, 1, ORCM_CMD_SERVER_T))){
+        return rc;
+    }
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, sub_command, 1, ORCM_CMD_SERVER_T))){
+        return rc;
+    }
+
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, noderaw, 1, OPAL_STRING))){
+        return rc;
+    }
+
+    if (ORCM_SET_CHASSIS_ID_TEMPORARY_ON == *sub_command){
+        rc = opal_dss.pack(buf, seconds, 1, OPAL_INT);
+    }
+
+    return rc;
+}
+
+int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
+        orcm_cmd_server_flag_t sub_command, char *noderaw, int seconds){
     char **nodelist = NULL;
     orte_rml_recv_cb_t *xfer = NULL;
     opal_buffer_t *buf = NULL;
     int rc = ORCM_SUCCESS;
     char error[255];
 
-    // TODO: Change this to get the aggregator!!!
     orcm_logical_group_parse_array_string(noderaw, &nodelist);
     int node_count = opal_argv_count(nodelist);
     if (0 == node_count){
-        opal_argv_free(nodelist);
-        nodelist = NULL;
         sprintf(error, "nodelist not found");
         rc = ORCM_ERR_BAD_PARAM;
         cleanup(nodelist, buf, xfer);
         show_help(TAG, error, rc);
         return rc;
     }
-    ///////
 
-    buf = OBJ_NEW(opal_buffer_t);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, ORCM_CMD_SERVER_T))){
-        sprintf(error, PACKERR);
+    if (NULL == (buf = OBJ_NEW(opal_buffer_t)) ||
+        NULL == (xfer = OBJ_NEW(orte_rml_recv_cb_t))){
+        rc = ORCM_ERR_OUT_OF_RESOURCE;
         cleanup(nodelist, buf, xfer);
         show_help(TAG, error, rc);
         return rc;
     }
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &subcommand, 1, ORCM_CMD_SERVER_T))){
+    rc = pack_chassis_id_data(buf, &command, &sub_command, &noderaw, &seconds);
+    if (OPAL_SUCCESS != rc){
         sprintf(error, PACKERR);
-        cleanup(nodelist, buf, xfer);
         show_help(TAG, error, rc);
         return rc;
     }
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &seconds, 1, OPAL_INT))){
-        sprintf(error, PACKERR);
-        cleanup(nodelist, buf, xfer);
-        show_help(TAG, error, rc);
-        return rc;
-    }
-
-    xfer = OBJ_NEW(orte_rml_recv_cb_t);
     if (ORCM_GET_CHASSIS_ID == command)
         show_header();
+
+    // Iterate through the aggregators!!!
     int i=0;
     for (i = 0; i < node_count; ++i){
+        OBJ_RETAIN(buf);
+        OBJ_RETAIN(xfer);
+
         if (ORCM_SUCCESS != begin_transaction(nodelist[i], buf, xfer)){
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
             continue;
@@ -182,10 +192,11 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command, orcm_cmd_server_flag
             continue;
         }
 
-        if (ORCM_GET_CHASSIS_ID == command)
-            show_state(nodelist[i], xfer);
-        else
-            printf("\n");
+        if (ORCM_GET_CHASSIS_ID == command &&
+            ORCM_SUCCESS != unpack_state(nodelist[i], xfer)){
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
+            continue;
+        }
     }
 
     cleanup(nodelist, buf, xfer);

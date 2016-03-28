@@ -428,6 +428,7 @@ static void dfg_generate_storage_events(orcm_ras_event_t *ecd)
 {
     orcm_value_t *list_item = NULL;
     bool raw_db = false;
+    bool is_valid_event_type = false;
 
     OPAL_LIST_FOREACH(list_item, &ecd->description, orcm_value_t) {
         if (NULL == list_item->value.key) {
@@ -458,7 +459,9 @@ static void dfg_generate_storage_events(orcm_ras_event_t *ecd)
         dfg_convert_and_log_data_to_db(ecd);
 
     //Store the event data into event table based on the MCA param.
-    if (ORCM_RAS_EVENT_EXCEPTION == ecd->type && true == orcm_analytics_base.store_event_data) {
+    is_valid_event_type = (ORCM_RAS_EVENT_EXCEPTION == ecd->type ||
+                                ORCM_RAS_EVENT_CHASSIS_ID_LED == ecd->type);
+    if (is_valid_event_type && true == orcm_analytics_base.store_event_data) {
         dfg_convert_and_log_data_to_db(ecd);
     }
 

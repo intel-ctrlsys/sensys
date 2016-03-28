@@ -107,6 +107,8 @@ const char* orcm_dispatch_base_print_type(int t)
             return "COUNTER";
         case ORCM_RAS_EVENT_STATE_TRANSITION:
             return "TRANSITION";
+        case ORCM_RAS_EVENT_CHASSIS_ID_LED:
+            return "CHASSIS_ID_LED";
         default:
             return "UNKNOWN";
     }

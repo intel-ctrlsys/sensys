@@ -62,7 +62,8 @@ BEGIN_C_DECLS
 #define ORCM_RAS_EVENT_EXCEPTION            1
 #define ORCM_RAS_EVENT_COUNTER              2
 #define ORCM_RAS_EVENT_STATE_TRANSITION     3
-#define ORCM_RAS_EVENT_UNKNOWN_TYPE         4
+#define ORCM_RAS_EVENT_CHASSIS_ID_LED       4
+#define ORCM_RAS_EVENT_UNKNOWN_TYPE         5
 
 /* define a callback function that will be executed
  * once the event generator has finished with the

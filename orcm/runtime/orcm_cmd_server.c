@@ -30,6 +30,10 @@
 #include "orcm/runtime/orcm_cmd_server.h"
 #include "orcm/runtime/led_control_interface.h"
 
+#include "orcm/util/utils.h"
+#include "orcm/mca/dispatch/base/base.h"
+#include "orcm/mca/dispatch/dispatch.h"
+
 #define  NULL_CHECK(p) if(NULL==p) {goto ERROR;}
 #define SAFE_RELEASE(p) if(NULL != p) OBJ_RELEASE(p);
 
@@ -46,6 +50,11 @@ static int orcm_cmd_server_set_smtp(opal_buffer_t* buffer);
 static int pack_opal_value(opal_buffer_t **buffer, opal_value_t **kv);
 static int unpack_opal_value(opal_buffer_t *buffer, opal_value_t **kv);
 static int orcm_cmd_server_get_smtp(opal_buffer_t* buffer, opal_buffer_t **result_buff, int *count);
+static void store_chassis_id_event(char* hostname, char *action);
+static int append_string_to_opal_list(opal_list_t *list, char *str, char* key);
+static void chassis_id_event_cleanup(void *cbdata);
+static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
+        char* hostname, unsigned int seconds, opal_buffer_t *pack_buff);
 
 int orcm_cmd_server_init(void)
 {
@@ -79,6 +88,9 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
     int rc = ORCM_SUCCESS;
     int response = ORCM_SUCCESS;
     int count = 0;
+    int cnt = 1;
+    int seconds = 0;
+    char* noderaw = NULL;
 
     rc = unpack_command_subcommand(buffer, &command, &sub_command);
     if (ORCM_SUCCESS != rc) {
@@ -135,65 +147,28 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
         rc = opal_dss.pack(pack_buff, &result_buff, 1, OPAL_BUFFER);
         goto RESPONSE;
     } else if (ORCM_GET_CHASSIS_ID == command || ORCM_SET_CHASSIS_ID == command){
-        // unpack BMC login information..
-        // LedControl lc(hostname, user, pass);
-        init_led_control();
-        int state;
-        int seconds = 0;
-        int cnt = 1;
         pack_buff = OBJ_NEW(opal_buffer_t);
-        switch (sub_command){
-            case ORCM_GET_CHASSIS_ID_STATE:
-                state = get_chassis_id_state();
-                response = ORCM_SUCCESS;
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
-                    fini_led_control();
-                    goto ERROR;
-                }
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &state, 1, OPAL_INT))){
-                    fini_led_control();
-                    goto ERROR;
-                }
-                break;
-            case ORCM_SET_CHASSIS_ID_OFF:
-                response = ORCM_ERROR;
-                if (!disable_chassis_id())
-                    response = ORCM_SUCCESS;
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
-                    fini_led_control();
-                    goto ERROR;
-                }
-                break;
-            case ORCM_SET_CHASSIS_ID_ON:
-                response = ORCM_ERROR;
-                if (!enable_chassis_id())
-                    response = ORCM_SUCCESS;
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
-                    fini_led_control();
-                    goto ERROR;
-                }
-                break;
-            case ORCM_SET_CHASSIS_ID_TEMPORARY_ON:
-                cnt = 1;
-                if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &seconds,
-                                                         &cnt, OPAL_INT))){
-                    fini_led_control();
-                    goto ERROR;
-                }
-                response = ORCM_ERROR;
-                if (!enable_chassis_id_with_timeout(seconds))
-                    response = ORCM_SUCCESS;
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
-                    fini_led_control();
-                    goto ERROR;
-                }
-                break;
-            default:
-                asprintf(&error,"invalid chassis-id command");
-                fini_led_control();
-                goto ERROR;
+        NULL_CHECK(pack_buff);
+
+        cnt = 1;
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &noderaw,
+                                                 &cnt, OPAL_STRING))){
+            goto ERROR;
         }
-        fini_led_control();
+
+        cnt = 1;
+        seconds = 0;
+        if (ORCM_SET_CHASSIS_ID_TEMPORARY_ON == sub_command &&
+            OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &seconds, &cnt, OPAL_INT))){
+            goto ERROR;
+        }
+
+        // Resolve noderaw to a list of nodes and send a
+        // chassis_id_operation() per node
+        rc = chassis_id_operation(sub_command, noderaw, seconds, pack_buff);
+        if (ORCM_SUCCESS != rc){
+            goto ERROR;
+        }
         goto RESPONSE;
     }
 
@@ -390,5 +365,101 @@ static int orcm_cmd_server_get_smtp(opal_buffer_t* buffer, opal_buffer_t **resul
     }
     *count = pack_count;
     OBJ_RELEASE(list);
+    return rc;
+}
+
+static void store_chassis_id_event(char* hostname, char *action){
+    orcm_ras_event_t* event_data = OBJ_NEW(orcm_ras_event_t);
+    struct timeval timestamp;
+    int rc = ORCM_SUCCESS;
+
+    if (NULL == event_data){
+        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+        return;
+    }
+    rc = append_string_to_opal_list(&(event_data->reporter), hostname, "hostname");
+    if (ORCM_SUCCESS != rc){
+        SAFE_RELEASE(event_data);
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    rc = append_string_to_opal_list(&(event_data->data), action, "chassis-id-state");
+    if (ORCM_SUCCESS != rc){
+        SAFE_RELEASE(event_data);
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+
+    gettimeofday(&timestamp, NULL);
+    event_data->timestamp = timestamp.tv_sec;
+    event_data->type = ORCM_RAS_EVENT_CHASSIS_ID_LED;
+    event_data->severity = ORCM_RAS_SEVERITY_INFO;
+    event_data->cbfunc = chassis_id_event_cleanup;
+    ORCM_RAS_EVENT(event_data);
+}
+
+static int append_string_to_opal_list(opal_list_t *list, char* str, char* key){
+    return orcm_util_append_orcm_value(list, key, str, OPAL_STRING, NULL);
+}
+
+static void chassis_id_event_cleanup(void *cbdata){
+    orcm_ras_event_t *event = (orcm_ras_event_t*)cbdata;
+    SAFE_RELEASE(event);
+}
+
+static int pack_response(opal_buffer_t *pack_buff, int response, int state,
+        orcm_cmd_server_flag_t sub_command){
+    int rc = ORCM_SUCCESS;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
+        return rc;
+    }
+
+    if (ORCM_GET_CHASSIS_ID_STATE == sub_command){
+        rc = opal_dss.pack(pack_buff, &state, 1, OPAL_INT);
+    }
+    return rc;
+}
+
+static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
+        char* hostname, unsigned int seconds, opal_buffer_t *pack_buff){
+    int state = 0;
+    int response = ORCM_SUCCESS;
+    int rc = ORCM_SUCCESS;
+
+    init_led_control();
+    switch (sub_command){
+        case ORCM_GET_CHASSIS_ID_STATE:
+            state = get_chassis_id_state();
+            response = ORCM_SUCCESS;
+            break;
+        case ORCM_SET_CHASSIS_ID_OFF:
+            response = ORCM_ERROR;
+            if (!disable_chassis_id()){
+                response = ORCM_SUCCESS;
+                store_chassis_id_event(hostname, "OFF");
+            }
+            break;
+        case ORCM_SET_CHASSIS_ID_ON:
+            response = ORCM_ERROR;
+            if (!enable_chassis_id()){
+                response = ORCM_SUCCESS;
+                store_chassis_id_event(hostname, "ON");
+            }
+            break;
+        case ORCM_SET_CHASSIS_ID_TEMPORARY_ON:
+            response = ORCM_ERROR;
+            if (!enable_chassis_id_with_timeout(seconds)){
+                response = ORCM_SUCCESS;
+                store_chassis_id_event(hostname, "TEMPORARY_ON");
+            }
+            break;
+        default:
+            fini_led_control();
+            return ORCM_ERROR;
+    }
+
+    rc = pack_response(pack_buff, response, state, sub_command);
+    fini_led_control();
     return rc;
 }

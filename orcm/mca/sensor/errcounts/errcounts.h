@@ -67,6 +67,8 @@ class errcounts_impl
         void data_callback(const char* label, int error_count);
         void inventory_callback(const char* label, const char* name);
         void perthread_errcounts_sample();
+        void generate_inventory_test_vector(opal_buffer_t* inventory_snapshot);
+        void generate_test_samples(bool perthread);
 
         /* Helper Methods */
         void collect_sample(bool perthread = false);

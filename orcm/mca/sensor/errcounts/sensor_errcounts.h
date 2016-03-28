@@ -28,6 +28,7 @@ typedef struct {
     int sample_rate;
     char* edac_mc_folder;
     bool collect_metrics;
+    bool test;
 } orcm_sensor_errcounts_component_t;
 
 typedef struct {

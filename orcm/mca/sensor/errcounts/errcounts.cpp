@@ -34,9 +34,15 @@ extern "C" {
 #include "edac_collector.h"
 
 // Conveniences...
-#define SAFE_DELETE(x) if(NULL != x) { delete x; x=NULL; }
-#define SAFE_FREE(x) if(NULL != x) { free((void*)x); x=NULL; }
-#define ON_NULL_BREAK(x) if(NULL==x) { ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE); break; }
+#define SAFE_DELETE(x) if(NULL != x){ delete x;x=NULL;}
+#define SAFE_FREE(x) if(NULL != x){ free((void*)x);x=NULL;}
+#define ON_NULL_BREAK(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);break;}
+#define ON_NULL_RETURN(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
+#define ON_FALSE_BREAK(x) if(!x){break;}
+#define ON_FALSE_RETURN_BOOL(x) if(!x){return x;}
+#define ON_FAILURE_RETURN_FALSE(x) if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);return false;}
+#define ON_FAILURE_BREAK(x) if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);break;}
+#define ON_FAILURE_RETURN(x) if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);return;}
 #define NOT_NULL ((void*)0xffffffffffffffff)
 // OBJ_RELEASE only conditially sets the pointer to NULL
 #define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x=NULL; }
@@ -170,15 +176,9 @@ void errcounts_impl::log(opal_buffer_t* buf)
         struct timeval timestamp;
 
         // Unpack data...
-        if(false == unpack_string(buf, hostname)) {
-            break;
-        }
-        if(false == unpack_timestamp(buf, timestamp)) {
-            break;
-        }
-        if(false == unpack_data_sample(buf)) {
-            break;
-        }
+        ON_FALSE_BREAK(unpack_string(buf, hostname));
+        ON_FALSE_BREAK(unpack_timestamp(buf, timestamp));
+        ON_FALSE_BREAK(unpack_data_sample(buf));
 
         // Create lists...
         key = OBJ_NEW(opal_list_t);
@@ -227,6 +227,10 @@ void errcounts_impl::log(opal_buffer_t* buf)
 
 void errcounts_impl::inventory_collect(opal_buffer_t* inventory_snapshot)
 {
+    if(mca_sensor_errcounts_component.test) {
+        generate_inventory_test_vector(inventory_snapshot);
+        return;
+    }
     if(true == edac_missing_) {
         return;
     }
@@ -239,12 +243,8 @@ void errcounts_impl::inventory_collect(opal_buffer_t* inventory_snapshot)
     collector_->collect_inventory(inventory_callback_relay, this);
 
     while(true) {
-        if(false == pack_string(inventory_snapshot, plugin_name_)) {
-            break;
-        }
-        if(false == pack_string(inventory_snapshot, hostname_)) {
-            break;
-        }
+        ON_FALSE_BREAK(pack_string(inventory_snapshot, plugin_name_));
+        ON_FALSE_BREAK(pack_string(inventory_snapshot, hostname_));
         pack_inv_sample(inventory_snapshot);
         break;
     }
@@ -270,9 +270,7 @@ void errcounts_impl::inventory_log(char* hostname, opal_buffer_t* inventory_snap
         string phostname;
         struct timeval timestamp;
         gettimeofday(&timestamp, NULL);
-        if(false == unpack_string(inventory_snapshot, phostname)) {
-            break;
-        }
+        ON_FALSE_BREAK(unpack_string(inventory_snapshot, phostname));
         orcm_value_t* item = make_orcm_value_string("hostname", phostname.c_str());
         ON_NULL_BREAK(item);
         opal_list_append(records, (opal_list_item_t*)item);
@@ -281,9 +279,7 @@ void errcounts_impl::inventory_log(char* hostname, opal_buffer_t* inventory_snap
         ON_NULL_BREAK(item);
         opal_list_append(records, (opal_list_item_t*)item);
 
-        if(false == unpack_inv_sample(inventory_snapshot)) {
-            break;
-        }
+        ON_FALSE_BREAK(unpack_inv_sample(inventory_snapshot));
         void* failed = NOT_NULL;
         for(map<string,string>::iterator it = inv_log_samples_.begin(); it != inv_log_samples_.end(); ++it) {
             item = make_orcm_value_string(it->first.c_str(), it->second.c_str());
@@ -446,6 +442,11 @@ void errcounts_impl::perthread_errcounts_sample()
 // Common data collection...
 void errcounts_impl::collect_sample(bool perthread /* = false*/)
 {
+    if(mca_sensor_errcounts_component.test) {
+        generate_test_samples(perthread);
+        return;
+    }
+
     if(0 == collect_metrics_->CountOfCollectedLabels() && !collect_metrics_->DoCollectMetrics()) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor errcounts : skipping actual sample collection",
@@ -470,24 +471,14 @@ void errcounts_impl::collect_sample(bool perthread /* = false*/)
     opal_buffer_t buffer;
     OBJ_CONSTRUCT(&buffer, opal_buffer_t);
     while(data_samples_values_.size() > 0) {
-        if(false == pack_string(&buffer, plugin_name_)) {
-            break;
-        }
-        if(false == pack_string(&buffer, hostname_)) {
-            break;
-        }
-        if(false == pack_timestamp(&buffer)) {
-            break;
-        }
-        if(false == pack_data_sample(&buffer)) {
-            break;
-        }
+        ON_FALSE_BREAK(pack_string(&buffer, plugin_name_));
+        ON_FALSE_BREAK(pack_string(&buffer, hostname_));
+        ON_FALSE_BREAK(pack_timestamp(&buffer));
+        ON_FALSE_BREAK(pack_data_sample(&buffer));
 
         opal_buffer_t* bptr = &buffer;
-        int rc;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(&errcounts_sampler_->bucket, &bptr, 1, OPAL_BUFFER))) {
-            ORTE_ERROR_LOG(rc);
-        }
+        int rc = opal_dss.pack(&errcounts_sampler_->bucket, &bptr, 1, OPAL_BUFFER);
+        ON_FAILURE_BREAK(rc);
         break;
     }
     OBJ_DESTRUCT(&buffer);
@@ -553,66 +544,44 @@ void errcounts_impl::ev_destroy_thread()
 // Packing methods...
 bool errcounts_impl::pack_string(opal_buffer_t* buffer, const std::string& str) const
 {
-    int rc;
     const char* str_ptr = str.c_str();
-    if(OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &str_ptr, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return false;
-    }
+    int rc = opal_dss.pack(buffer, &str_ptr, 1, OPAL_STRING);
+    ON_FAILURE_RETURN_FALSE(rc);
     return true;
 }
 
 bool errcounts_impl::pack_int32(opal_buffer_t* buffer, int32_t value) const
 {
-    int rc;
-    if(OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &value, 1, OPAL_INT32))) {
-        ORTE_ERROR_LOG(rc);
-        return false;
-    }
+    int rc = opal_dss.pack(buffer, &value, 1, OPAL_INT32);
+    ON_FAILURE_RETURN_FALSE(rc);
     return true;
 }
 
 bool errcounts_impl::pack_timestamp(opal_buffer_t* buffer) const
 {
-    int rc;
     struct timeval current_time;
-
     gettimeofday(&current_time, NULL);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &current_time, 1, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        return false;
-    }
+    int rc = opal_dss.pack(buffer, &current_time, 1, OPAL_TIMEVAL);
+    ON_FAILURE_RETURN_FALSE(rc);
     return true;
 }
 
 bool errcounts_impl::pack_data_sample(opal_buffer_t* buffer)
 {
-    if(false == pack_int32(buffer, (int32_t)data_samples_labels_.size())) {
-        return false;
-    }
+    ON_FALSE_RETURN_BOOL(pack_int32(buffer, (int32_t)data_samples_labels_.size()));
     for(size_t i = 0; i < data_samples_labels_.size(); ++i) {
-        if(false == pack_string(buffer, data_samples_labels_[i])) {
-            return false;
-        }
-        if(false == pack_int32(buffer, data_samples_values_[i])) {
-            return false;
-        }
+        ON_FALSE_RETURN_BOOL(pack_string(buffer, data_samples_labels_[i]));
+        ON_FALSE_RETURN_BOOL(pack_int32(buffer, data_samples_values_[i]));
     }
     return true;
 }
 
 bool errcounts_impl::pack_inv_sample(opal_buffer_t* buffer)
 {
-    if(false == pack_int32(buffer, (int32_t)inv_samples_.size())) {
-        return false;
-    }
+    ON_FALSE_RETURN_BOOL(pack_int32(buffer, (int32_t)inv_samples_.size()));
     for(map<string,string>::iterator it = inv_samples_.begin(); it != inv_samples_.end(); ++it) {
-        if(false == pack_string(buffer, it->first)) {
-            return false;
-        }
-        if(false == pack_string(buffer, it->second)) {
-            return false;
-        }
+        ON_FALSE_RETURN_BOOL(pack_string(buffer, it->first));
+        ON_FALSE_RETURN_BOOL(pack_string(buffer, it->second));
     }
     return true;
 }
@@ -622,12 +591,8 @@ bool errcounts_impl::unpack_string(opal_buffer_t* buffer, std::string& str) cons
     bool rv = true;
     int32_t n = 1;
     char* str_ptr = NULL;
-    int rc;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &str_ptr, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        SAFE_FREE(str_ptr);
-        return false;
-    }
+    int rc = opal_dss.unpack(buffer, &str_ptr, &n, OPAL_STRING);
+    ON_FAILURE_RETURN_FALSE(rc);
     if(1 == n && NULL != str_ptr) {
         str = str_ptr;
         SAFE_FREE(str_ptr);
@@ -645,40 +610,28 @@ bool errcounts_impl::unpack_string(opal_buffer_t* buffer, std::string& str) cons
 bool errcounts_impl::unpack_int32(opal_buffer_t* buffer, int32_t& value) const
 {
     int32_t n = 1;
-    int rc;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &value, &n, OPAL_INT32))) {
-        ORTE_ERROR_LOG(rc);
-        return false;
-    }
+    int rc = opal_dss.unpack(buffer, &value, &n, OPAL_INT32);
+    ON_FAILURE_RETURN_FALSE(rc);
     return true;
 }
 
 bool errcounts_impl::unpack_timestamp(opal_buffer_t* buffer, struct timeval& timestamp) const
 {
-    int rc;
     int32_t n = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &timestamp, &n, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        return false;
-    }
+    int rc = opal_dss.unpack(buffer, &timestamp, &n, OPAL_TIMEVAL);
+    ON_FAILURE_RETURN_FALSE(rc);
     return true;
 }
 
 bool errcounts_impl::unpack_data_sample(opal_buffer_t* buffer)
 {
     int32_t count;
-    if(false == unpack_int32(buffer, count)) {
-        return false;
-    }
+    ON_FALSE_RETURN_BOOL(unpack_int32(buffer, count));
     for(int32_t i = 0; i < count; ++i) {
         string label;
         int32_t errors;
-        if(false == unpack_string(buffer, label)) {
-            return false;
-        }
-        if(false == unpack_int32(buffer, errors)) {
-            return false;
-        }
+        ON_FALSE_RETURN_BOOL(unpack_string(buffer, label));
+        ON_FALSE_RETURN_BOOL(unpack_int32(buffer, errors));
 
         log_samples_labels_.push_back(label);
         log_samples_values_.push_back(errors);
@@ -690,19 +643,76 @@ bool errcounts_impl::unpack_inv_sample(opal_buffer_t* buffer)
 {
     int32_t count;
     inv_samples_.clear();
-    if(false == unpack_int32(buffer, count)) {
-        return false;
-    }
+    ON_FALSE_RETURN_BOOL(unpack_int32(buffer, count));
     for(int32_t i = 0; i < count; ++i) {
         string label;
         string name;
-        if(false == unpack_string(buffer, label)) {
-            return false;
-        }
-        if(false == unpack_string(buffer, name)) {
-            return false;
-        }
+        ON_FALSE_RETURN_BOOL(unpack_string(buffer, label));
+        ON_FALSE_RETURN_BOOL(unpack_string(buffer, name));
         inv_log_samples_[label] = name;
     }
     return true;
+}
+
+void errcounts_impl::generate_inventory_test_vector(opal_buffer_t* inventory_snapshot)
+{
+    inv_samples_.clear();
+
+    inventory_callback("sensor_errcounts_1", "CPU_SrcID#0_Sum_DIMM#0_CE");
+    inventory_callback("sensor_errcounts_2", "CPU_SrcID#0_Sum_DIMM#0_UE");
+    inventory_callback("sensor_errcounts_3", "CPU_SrcID#1_Sum_DIMM#0_CE");
+    inventory_callback("sensor_errcounts_4", "CPU_SrcID#1_Sum_DIMM#0_UE");
+
+    inventory_callback("sensor_errcounts_5", "CPU_SrcID#0_CH#0_DIMM#0_CE");
+    inventory_callback("sensor_errcounts_6", "CPU_SrcID#0_CH#0_DIMM#1_CE");
+    inventory_callback("sensor_errcounts_7", "CPU_SrcID#0_CH#0_DIMM#2_CE");
+    inventory_callback("sensor_errcounts_8", "CPU_SrcID#0_CH#0_DIMM#3_CE");
+
+    inventory_callback("sensor_errcounts_9", "CPU_SrcID#1_CH#0_DIMM#0_CE");
+    inventory_callback("sensor_errcounts_10", "CPU_SrcID#1_CH#0_DIMM#1_CE");
+    inventory_callback("sensor_errcounts_11", "CPU_SrcID#1_CH#0_DIMM#2_CE");
+    inventory_callback("sensor_errcounts_12", "CPU_SrcID#1_CH#0_DIMM#3_CE");
+
+    while(true) {
+        ON_FALSE_BREAK(pack_string(inventory_snapshot, plugin_name_));
+        ON_FALSE_BREAK(pack_string(inventory_snapshot, hostname_));
+        pack_inv_sample(inventory_snapshot);
+        break;
+    }
+}
+
+void errcounts_impl::generate_test_samples(bool perthread)
+{
+    data_samples_labels_.clear();
+    data_samples_values_.clear();
+
+    data_callback("CPU_SrcID#0_Sum_DIMM#0_CE", 0);
+    data_callback("CPU_SrcID#0_Sum_DIMM#0_UE", 0);
+    data_callback("CPU_SrcID#1_Sum_DIMM#0_CE", 0);
+    data_callback("CPU_SrcID#1_Sum_DIMM#0_UE", 0);
+
+    data_callback("CPU_SrcID#0_CH#0_DIMM#0_CE", 0);
+    data_callback("CPU_SrcID#0_CH#0_DIMM#1_CE", 0);
+    data_callback("CPU_SrcID#0_CH#0_DIMM#2_CE", 0);
+    data_callback("CPU_SrcID#0_CH#0_DIMM#3_CE", 0);
+
+    data_callback("CPU_SrcID#1_CH#0_DIMM#0_CE", 0);
+    data_callback("CPU_SrcID#1_CH#0_DIMM#1_CE", 0);
+    data_callback("CPU_SrcID#1_CH#0_DIMM#2_CE", 0);
+    data_callback("CPU_SrcID#1_CH#0_DIMM#3_CE", 0);
+
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    while(data_samples_values_.size() > 0) {
+        ON_FALSE_BREAK(pack_string(&buffer, plugin_name_));
+        ON_FALSE_BREAK(pack_string(&buffer, hostname_));
+        ON_FALSE_BREAK(pack_timestamp(&buffer));
+        ON_FALSE_BREAK(pack_data_sample(&buffer));
+
+        opal_buffer_t* bptr = &buffer;
+        int rc = opal_dss.pack(&errcounts_sampler_->bucket, &bptr, 1, OPAL_BUFFER);
+        ON_FAILURE_BREAK(rc);
+        break;
+    }
+    OBJ_DESTRUCT(&buffer);
 }

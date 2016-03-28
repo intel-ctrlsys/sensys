@@ -476,9 +476,11 @@ void ut_edac_collector_tests::MyDbStoreNew(int dbhandle, orcm_db_data_type_t dat
 {
     orcm_value_t* item;
     OPAL_LIST_FOREACH(item, input, orcm_value_t) {
-        string name = item->value.key;
-        string value = item->value.data.string;
-        database_data_[name] = value;
+        if(OPAL_STRING == item->value.type) {
+            string name = item->value.key;
+            string value = item->value.data.string;
+            database_data_[name] = value;
+        }
     }
     if(NULL != cbfunc) {
         cbfunc(dbhandle, ORCM_SUCCESS, input, NULL, NULL);
@@ -842,6 +844,57 @@ TEST_F(ut_edac_collector_tests, test_set_sample_rate_relay)
     errcounts_finalize_relay();
 
     errcounts_set_sample_rate_relay(1);
+    ASSERT_EQ(ORCM_ERR_NOT_AVAILABLE, last_orte_error_);
+}
+
+TEST_F(ut_edac_collector_tests, test_enable_relay)
+{
+    ResetTestEnvironment();
+
+    // Open plugin
+    ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
+
+    errcounts_enable_sampling_relay("test");
+    ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
+
+    // Close plugin...
+    errcounts_finalize_relay();
+
+    errcounts_enable_sampling_relay("test");
+    ASSERT_EQ(ORCM_ERR_NOT_AVAILABLE, last_orte_error_);
+}
+
+TEST_F(ut_edac_collector_tests, test_disable_relay)
+{
+    ResetTestEnvironment();
+
+    // Open plugin
+    ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
+
+    errcounts_disable_sampling_relay("test");
+    ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
+
+    // Close plugin...
+    errcounts_finalize_relay();
+
+    errcounts_disable_sampling_relay("test");
+    ASSERT_EQ(ORCM_ERR_NOT_AVAILABLE, last_orte_error_);
+}
+
+TEST_F(ut_edac_collector_tests, test_reset_relay)
+{
+    ResetTestEnvironment();
+
+    // Open plugin
+    ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
+
+    errcounts_reset_sampling_relay("test");
+    ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
+
+    // Close plugin...
+    errcounts_finalize_relay();
+
+    errcounts_reset_sampling_relay("test");
     ASSERT_EQ(ORCM_ERR_NOT_AVAILABLE, last_orte_error_);
 }
 
@@ -1298,6 +1351,8 @@ TEST_F(ut_edac_collector_tests, test_inventory_log)
     ResetTestEnvironment();
 
     opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+
     errcounts_impl dummy;
     dummy.init();
 
@@ -1370,6 +1425,7 @@ TEST_F(ut_edac_collector_tests, test_inventory_log)
     ASSERT_EQ(0, database_data_.size());
 
     dummy.finalize();
+    OBJ_DESTRUCT(&buffer);
 }
 
 TEST_F(ut_edac_collector_tests, test_component_functions)
@@ -1487,4 +1543,20 @@ TEST_F(ut_edac_collector_tests, errcounts_api_tests_2)
 
     // Cleanup
     errcounts.finalize();
+}
+
+TEST_F(ut_edac_collector_tests, test_sample_and_inv_test)
+{
+    ResetTestEnvironment();
+
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    errcounts_impl* impl = new errcounts_impl();
+    impl->init();
+    impl->generate_test_samples(false);
+    impl->generate_test_samples(true);
+    impl->generate_inventory_test_vector(&buffer);
+
+    OBJ_DESTRUCT(&buffer);
+    delete impl;
 }

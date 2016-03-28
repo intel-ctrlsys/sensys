@@ -11,6 +11,8 @@
 #include "orcm/constants.h"
 #include "orcm/types.h"
 
+#include <stdio.h>
+
 #include <errno.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -52,6 +54,8 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "sensor_freq.h"
+
+#define TEST_CORES (256)
 
 /* declare the API functions */
 static int init(void);
@@ -717,7 +721,6 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     int ret;
     corefreq_tracker_t *trk, *nxt;
     pstate_tracker_t *ptrk, *pnxt;
-
     FILE *fp;
     const char *cfreq = "freq";
     char* freq_data = NULL;
@@ -728,6 +731,16 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     unsigned int item_count = 0;
     struct timeval current_time;
     void* metrics_obj = mca_sensor_freq_component.runtime_metrics;
+
+    if (mca_sensor_freq_component.test){
+        /* generate and send a test vector */
+        OBJ_CONSTRUCT(&data, opal_buffer_t);
+        generate_test_vector(&data);
+        bptr = &data;
+        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
 
     if(0 == orcm_sensor_base_runtime_metrics_active_label_count(metrics_obj) &&
        !orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
@@ -745,16 +758,6 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
                         "%s sampling freq",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-
-    if (mca_sensor_freq_component.test){
-        /* generate and send a test vector */
-        OBJ_CONSTRUCT(&data, opal_buffer_t);
-        generate_test_vector(&data);
-        bptr = &data;
-        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
 
     /* prep to store the results */
     OBJ_CONSTRUCT(&data, opal_buffer_t);
@@ -774,7 +777,11 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* Store number of labels to collect */
-    ncores = (int32_t)orcm_sensor_base_runtime_metrics_active_label_count(mca_sensor_freq_component.runtime_metrics);
+    if(orcm_sensor_base_runtime_inventory_available) {
+        ncores = (int32_t)orcm_sensor_base_runtime_metrics_active_label_count(mca_sensor_freq_component.runtime_metrics);
+    } else {
+        ncores = (int32_t)opal_list_get_size(&tracking) + (int32_t)opal_list_get_size(&pstate_list);
+    }
     if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ncores, 1, OPAL_INT32))) {
         ORTE_ERROR_LOG(ret);
         goto cleanup;
@@ -798,16 +805,9 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
                             trk->file);
         /* read the freq */
         if (NULL == (fp = fopen(trk->file, "r"))) {
-            /* we can't be read, so remove it from the list */
-            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
-                                "%s access denied to freq file %s - removing it",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                trk->file);
-            opal_list_remove_item(&tracking, &trk->super);
+            ORTE_ERROR_LOG(ORCM_ERR_PERM);
             SAFEFREE(label);
-            OBJ_RELEASE(trk);
-            SAFEFREE(label);
-            continue;
+            goto cleanup;
         }
         while (NULL != (freq_data = orte_getline(fp))) {
             ghz = strtoul(freq_data, NULL, 10) / 1000000.0;
@@ -1094,7 +1094,7 @@ static void generate_test_vector(opal_buffer_t *v)
     float max_freq;
     float min_freq;
 
-    ncores = 8192;
+    ncores = TEST_CORES;
     min_freq = 1.0;
     max_freq = 5.0;
     test_freq = min_freq;
@@ -1132,7 +1132,8 @@ static void generate_test_vector(opal_buffer_t *v)
 /* Pack test core freqs */
     for (i=0; i < ncores; i++) {
         char* l = NULL;
-        asprintf(&l, "testfreq_%d", i);
+        asprintf(&l, "core%d", i);
+        ON_NULL_RETURN(l);
         if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &l, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&v);
@@ -1161,13 +1162,19 @@ static void generate_test_vector(opal_buffer_t *v)
 
 static void generate_test_inv_data(opal_buffer_t *inventory_snapshot)
 {
-    unsigned int tot_items = 20;
+    unsigned int tot_items = TEST_CORES;
     unsigned int i = 0;
     const char *key = "freq";
     char *comp = NULL;
     int rc = OPAL_SUCCESS;
+    struct timeval time_stamp;
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &key, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    gettimeofday(&time_stamp, NULL);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &time_stamp, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
@@ -1178,19 +1185,21 @@ static void generate_test_inv_data(opal_buffer_t *inventory_snapshot)
     for(i = 0; i < tot_items; ++i)
     {
         asprintf(&comp, "sensor_freq_%d", i+1);
+        ON_NULL_RETURN(comp);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
+            SAFEFREE(comp);
             return;
         }
-        free(comp);
-        asprintf(&comp, "Core Freq %d", i);
+        SAFEFREE(comp);
+        asprintf(&comp, "core%d", i);
+        ON_NULL_RETURN(comp);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            free(comp);
+            SAFEFREE(comp);
             return;
         }
-        free(comp);
+        SAFEFREE(comp);
     }
 }
 
@@ -1206,9 +1215,16 @@ static void freq_inventory_collect(opal_buffer_t *inventory_snapshot)
         char *comp = NULL;
         int rc = OPAL_SUCCESS;
         pstate_tracker_t* ptrk = NULL;
+        struct timeval time_stamp;
 
         tot_items += (unsigned int)opal_list_get_size(&pstate_list);
         if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &ccomp, 1, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            return;
+        }
+
+        gettimeofday(&time_stamp, NULL);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &time_stamp, 1, OPAL_TIMEVAL))) {
             ORTE_ERROR_LOG(rc);
             return;
         }
@@ -1282,12 +1298,16 @@ static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     orcm_value_t *time_stamp;
     struct timeval current_time;
 
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &tot_items, &n, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
 
-    gettimeofday(&current_time, NULL);
     time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
     if (NULL == time_stamp) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);

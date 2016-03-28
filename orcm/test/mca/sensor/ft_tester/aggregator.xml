@@ -10,7 +10,7 @@
             <name>default_row</name>
             <junction>
                 <type>rack</type>
-                <name>localhost</name>
+                <name>default_rack</name>
                 <controller>
                     <host>localhost</host>
                     <port>55805</port>
@@ -18,7 +18,7 @@
                 </controller>
                 <junction>
                     <type>node</type>
-                    <name>localhost</name>
+                    <name>default_node</name>
                 </junction>
             </junction>
         </junction>

@@ -17,26 +17,26 @@
             <junction>
                 <type>rack</type>
                 <name>default_rack</name>
-                <junction>
-                    <type>node</type>
-                    <name>localhost</name>
-                    <!-- controller .- Defines a node that will host an ORCM daemon (orcmd). Controllers can be assigned to clusters,
-                                       rows, racks or nodes-->
-                    <controller>
-                        <!-- host .- Defines the hostname or IP address of the node. Can be a regex, therefore, it can include the
-                                     hierarchical operator "@" as explained in "name". If it does, this "@" operator will refer to
-                                     the immediate junction "name" hosting this controller.-->
-                        <host>localhost</host>
-                        <!-- port .- Defines the port used by the ORCM monitoring daemons.-->
-                        <port>55805</port>
+                <!-- controller .- Defines a node that will host an ORCM daemon (orcmd). Controllers can be assigned to clusters,
+                                   rows, racks or nodes-->
+                 <controller>
+                     <!-- host .- Defines the hostname or IP address of the node. Can be a regex, therefore, it can include the
+                                 hierarchical operator "@" as explained in "name". If it does, this "@" operator will refer to
+                                 the immediate junction "name" hosting this controller.-->
+                     <host>localhost</host>
+                     <!-- port .- Defines the port used by the ORCM monitoring daemons.-->
+                     <port>55805</port>
                         <!-- aggregator .- Defines if the ORCM daemon will be an aggregator or no. If it is an aggregator it will
                                            collect all the data from the no-aggregator daemons in a deeper level and send the
                                            collected data to the data base (if connection information was provided).-->
-                        <aggregator>yes</aggregator>
-                        <!-- mca-params .- Defines the MCA parameters to be used by the ORCM daemon. It is a comma separated string
+                     <aggregator>yes</aggregator>
+                     <!-- mca-params .- Defines the MCA parameters to be used by the ORCM daemon. It is a comma separated string
                                            list, where each string contains a single tag-value pairs, with the "=" as separator.-->
-                        <mca-params>sensor_base_sample_rate=5,sensor_heartbeat_rate=10,sensor_base_log_samples=1</mca-params>
-                    </controller>
+                     <mca-params>sensor_base_sample_rate=5,sensor_heartbeat_rate=10,sensor_base_log_samples=1</mca-params>
+                </controller>
+                <junction>
+                    <type>node</type>
+                    <name>default_node</name>
                 </junction>
             </junction>
         </junction>

@@ -53,6 +53,10 @@
 
 #include "sensor_mcedata.h"
 
+#define ON_FAILURE_GOTO(x,label) if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);goto label;}
+#define ON_FAILURE_RETURN(x) if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);return;}
+#define ON_NULL_RETURN(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
+#define ON_NULL_GOTO(x,label) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
 
 /* declare the API functions */
 static int init(void);
@@ -79,7 +83,7 @@ static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
 int mcedata_enable_sampling(const char* sensor_specification);
 int mcedata_disable_sampling(const char* sensor_specification);
 int mcedata_reset_sampling(const char* sensor_specification);
-
+static void generate_test_vector(orcm_sensor_sampler_t* sampler);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_mcedata_module = {
@@ -1146,6 +1150,10 @@ void collect_mcedata_sample(orcm_sensor_sampler_t *sampler)
     FILE *fp;
     void* metrics_obj = mca_sensor_mcedata_component.runtime_metrics;
 
+    if(mca_sensor_mcedata_component.test) {
+        generate_test_vector(sampler);
+        return;
+    }
     if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor mcedata : skipping actual sample collection",
@@ -1461,7 +1469,18 @@ static void mcedata_get_sample_rate(int *sample_rate)
 
 static void mcedata_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
+    const unsigned int tot_items = 23;
     static char *sensor_names[] = {
+        "MCG_STATUS",
+        "MCG_CAP",
+        "MCI_STATUS",
+        "MCI_ADDR",
+        "MCI_MISC",
+        "cpu",
+        "socket",
+        "ErrorLocation",
+        "hierarchy_level",
+        "error_location",
         "error_type",
         "error_severity",
         "request_type",
@@ -1469,54 +1488,34 @@ static void mcedata_inventory_collect(opal_buffer_t *inventory_snapshot)
         "address_mode",
         "recov_addr_lsb",
         "corrected_filtering",
-        "hierarchy_level",
         "transaction_type",
         "cache_health",
         "err_addr",
         "participation",
-        "II",
-        "ErrorLocation"
+        "T",
+        "IT"
     };
-    unsigned int tot_items = 15; /* count of strings above + "hostname" pair */
     unsigned int i = 0;
     const char *comp ="mcedata";
     char *comp_name = NULL;
     int rc = OPAL_SUCCESS;
+    struct timeval time_stamp;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    --tot_items; /* don't count "hostname"/nodename pair */
-
-    /* store our hostname */
-    comp = "hostname";
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+    ON_FAILURE_RETURN(rc);
+    gettimeofday(&time_stamp, NULL);
+    rc = opal_dss.pack(inventory_snapshot, &time_stamp, 1, OPAL_TIMEVAL);
+    ON_FAILURE_RETURN(rc);
 
     for(i = 0; i < tot_items; ++i) {
         asprintf(&comp_name, "sensor_mcedata_%d", i+1);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp_name, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            free(comp_name);
-            return;
-        }
-        free(comp_name);
+        ON_NULL_RETURN(comp_name);
+        rc = opal_dss.pack(inventory_snapshot, &comp_name, 1, OPAL_STRING);
+        SAFEFREE(comp_name);
+        ON_FAILURE_RETURN(rc);
         comp_name = sensor_names[i];
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp_name, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
+        rc = opal_dss.pack(inventory_snapshot, &comp_name, 1, OPAL_STRING);
+        ON_FAILURE_RETURN(rc);
     }
 }
 
@@ -1527,57 +1526,52 @@ static void my_inventory_log_cleanup(int dbhandle, int status, opal_list_t *kvs,
 
 static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
 {
-    unsigned int tot_items = 0;
+    unsigned int tot_items = 23;
     int n = 1;
     opal_list_t *records = NULL;
     int rc = OPAL_SUCCESS;
     orcm_value_t *time_stamp;
     struct timeval current_time;
+    orcm_value_t *mkv = NULL;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &tot_items, &n, OPAL_UINT))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
 
-    gettimeofday(&current_time, NULL);
-    time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
-    if (NULL == time_stamp) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
     records = OBJ_NEW(opal_list_t);
+    ON_NULL_RETURN(records);
+    mkv = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
+    ON_NULL_GOTO(mkv, cleanup);
+    opal_list_append(records, (opal_list_item_t*)mkv);
+    mkv = NULL; /* Now owned by records */
+    time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
+    ON_NULL_GOTO(time_stamp, cleanup);
     opal_list_append(records, (opal_list_item_t*)time_stamp);
-    while(tot_items > 0) {
+    for(int i = 0; i < tot_items; ++i) {
         char *inv = NULL;
         char *inv_val = NULL;
-        orcm_value_t *mkv = NULL;
 
         n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_RELEASE(records);
-            return;
-        }
+        rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING);
+        ON_FAILURE_GOTO(rc, cleanup);
         n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv_val, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_RELEASE(records);
-            return;
-        }
+        rc = opal_dss.unpack(inventory_snapshot, &inv_val, &n, OPAL_STRING);
+        ON_FAILURE_GOTO(rc, cleanup);
 
-        mkv = OBJ_NEW(orcm_value_t);
-        mkv->value.key = inv;
-        mkv->value.type = OPAL_STRING;
-        mkv->value.data.string = inv_val;
+        mkv = orcm_util_load_orcm_value(inv, inv_val, OPAL_STRING, NULL);
+        ON_NULL_GOTO(mkv, cleanup);
         opal_list_append(records, (opal_list_item_t*)mkv);
-
-        --tot_items;
+        mkv = NULL; /* Now owned by records */
     }
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);
-    } else {
-        my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
+        goto do_exit;
     }
+cleanup:
+        my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
+do_exit:
+    return;
 }
 
 int mcedata_enable_sampling(const char* sensor_specification)
@@ -1596,4 +1590,45 @@ int mcedata_reset_sampling(const char* sensor_specification)
 {
     void* metrics = mca_sensor_mcedata_component.runtime_metrics;
     return orcm_sensor_base_runtime_metrics_reset(metrics, sensor_specification);
+}
+
+static void generate_test_vector(orcm_sensor_sampler_t* sampler)
+{
+    int ret;
+    opal_buffer_t data;
+    const char *temp = "mcedata";
+    struct timeval current_time;
+    unsigned int uval = 0;
+    opal_buffer_t* buffer = &data;
+
+    mca_sensor_mcedata_component.diagnostics |= (mca_sensor_mcedata_component.collect_metrics)?1:0;
+    OBJ_CONSTRUCT(&data, opal_buffer_t);
+
+    ret = opal_dss.pack(buffer, &temp, 1, OPAL_STRING);
+    ON_FAILURE_GOTO(ret, cleanup);
+
+    ret = opal_dss.pack(buffer, &orte_process_info.nodename, 1, OPAL_STRING);
+    ON_FAILURE_GOTO(ret, cleanup);
+
+    gettimeofday(&current_time, NULL);
+    ret = opal_dss.pack(buffer, &current_time, 1, OPAL_TIMEVAL);
+    ON_FAILURE_GOTO(ret, cleanup);
+
+    for(int i = 0; i < 5; ++i) {
+        uint64_t val = ((uint64_t)0xa5) << i;
+        ret = opal_dss.pack(buffer, &val, 1, OPAL_UINT64);
+        ON_FAILURE_GOTO(ret, cleanup);
+    }
+    uval = 1;
+    ret = opal_dss.pack(buffer, &uval, 1, OPAL_UINT);
+    ON_FAILURE_GOTO(ret, cleanup);
+    uval = 1;
+    ret = opal_dss.pack(buffer, &uval, 1, OPAL_UINT);
+    ON_FAILURE_GOTO(ret, cleanup);
+
+    ret = opal_dss.pack(&sampler->bucket, &buffer, 1, OPAL_BUFFER);
+    ON_FAILURE_GOTO(ret, cleanup);
+
+cleanup:
+    OBJ_DESTRUCT(&data);
 }

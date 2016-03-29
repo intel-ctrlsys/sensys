@@ -88,6 +88,7 @@ typedef struct {
     bool collect_metrics;
     void* runtime_metrics;
     int64_t diagnostics;
+    bool test;
 } orcm_sensor_mcedata_component_t;
 
 

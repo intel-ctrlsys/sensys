@@ -63,6 +63,10 @@ int ipmi_reset_sampling(const char* sensor_specification);
 void collect_ipmi_subsequent_data(orcm_sensor_sampler_t* sampler);
 void collect_ipmi_first_time_data(orcm_sensor_sampler_t* sampler, int* timeout);
 int collect_ipmi_subsequent_data_for_host(opal_buffer_t* sampler, orcm_sensor_hosts_t* host);
+static void generate_test_vector(orcm_sensor_sampler_t* sampler);
+static void generate_test_vector_inner(opal_buffer_t* buffer);
+static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot);
+static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *sensor_inventory);
 
 int first_sample = 0;
 
@@ -132,9 +136,6 @@ orcm_sensor_base_module_t orcm_sensor_ipmi_module = {
 
 /* local variables */
 static opal_buffer_t test_vector;
-static void generate_test_vector(opal_buffer_t *v);
-static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot);
-static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *sensor_inventory);
 
 char ipmi_inv_tv[10][2][30] = {
 {"bmc_ver","9.9"},
@@ -156,7 +157,6 @@ static int init(void)
 {
     int rc;
     disable_ipmi = 0;
-    char user[16];
 
     mca_sensor_ipmi_component.diagnostics = 0;
     mca_sensor_ipmi_component.runtime_metrics =
@@ -170,16 +170,8 @@ static int init(void)
     if (mca_sensor_ipmi_component.test) {
         /* generate test vector */
         OBJ_CONSTRUCT(&test_vector, opal_buffer_t);
-        generate_test_vector(&test_vector);
+        generate_test_vector_inner(&test_vector);
         return OPAL_SUCCESS;
-    }
-
-    /* Verify if user has root privileges, if not do not try to read BMC Credentials*/
-    getlogin_r(user, sizeof(user));
-    if(geteuid() != 0) {
-        orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-not-superuser",
-                       true, orte_process_info.nodename, user);
-        return ORCM_ERROR;
     }
 
     rc = orcm_sensor_ipmi_get_sensor_inventory_list(&sensor_inventory);
@@ -465,34 +457,6 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
 
 }
 
-static void ipmi_log_sample_item(opal_list_t *key, opal_list_t *non_compute_data, char *sample_key,
-                                void *sample_item, opal_data_type_t type, char *units )
-{
-    orcm_value_t *sensor_metric = NULL;
-    orcm_analytics_value_t *analytics_vals = NULL;
-
-    analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
-    if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
-         (NULL == analytics_vals->non_compute_data) ||(NULL == analytics_vals->compute_data)) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
-    }
-
-    sensor_metric = orcm_util_load_orcm_value(sample_key, sample_item, type, units);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
-    }
-
-    opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
-    orcm_analytics.send_data(analytics_vals);
-
- cleanup:
-     if ( NULL != analytics_vals) {
-         OBJ_RELEASE(analytics_vals);
-     }
-}
-
 static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_count)
 {
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -542,25 +506,16 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
 
         orcm_sensor_unpack_orcm_value_list(sample, &data_list);
         if(NULL != data_list) {
+            orcm_analytics_value_t *analytics_vals = NULL;
             OPAL_LIST_FOREACH(sensor_metric, data_list, orcm_value_t) {
-                char* units = NULL;
-                void* val = NULL;
-                if(NULL != sensor_metric->units && 0 != strlen(sensor_metric->units)) {
-                    units = sensor_metric->units;
+                if(NULL != sensor_metric->units && 0 == strlen(sensor_metric->units)) {
+                    SAFEFREE(sensor_metric->units);
                 }
-                if(OPAL_STRING == sensor_metric->value.type) {
-                    val = (void*)sensor_metric->value.data.string;
-                } else {
-                    val = (void*)&sensor_metric->value.data;
-                }
-                // Wrong when a string is used....
-                ipmi_log_sample_item(key, non_compute_data, sensor_metric->value.key,
-                                     val, sensor_metric->value.type,
-                                     units);
-
-                opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                    "UnPacked Label %s: Type: %d", sensor_metric->value.key, sensor_metric->value.type);
             }
+
+            analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, data_list);
+            ON_NULL_GOTO(analytics_vals, cleanup);
+            orcm_analytics.send_data(analytics_vals);
         } else {
             opal_output_verbose(0, orcm_sensor_base_framework.framework_output,
                                 "Possible Error: Failed to collect ipmi data from node : '%s'",
@@ -574,7 +529,6 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
         ORCM_RELEASE(non_compute_data);
     }
 }
-
 
 static void ipmi_log(opal_buffer_t *sample)
 {
@@ -609,6 +563,7 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
     unsigned int tot_items = 0;
     const char *comp = "ipmi";
     opal_value_t* inv_item = NULL;
+    struct timeval time_stamp;
 
     if (mca_sensor_ipmi_component.test) {
         /* generate test vector */
@@ -619,6 +574,11 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
     tot_items = ((unsigned int)opal_list_get_size(&sensor_inventory) / 2) + 5;
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    gettimeofday(&time_stamp, NULL);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &time_stamp, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
@@ -1184,6 +1144,7 @@ static bool compare_ipmi_record (ipmi_inventory_t* newhost , ipmi_inventory_t* o
 
     return true;
 }
+
 static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
 {
     char *inv, *inv_val;
@@ -1196,12 +1157,16 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     struct timeval current_time;
 
     n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    n=1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &tot_items, &n, OPAL_UINT))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
 
-    gettimeofday(&current_time, NULL);
     time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
     if (NULL == time_stamp) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
@@ -1670,7 +1635,7 @@ void collect_ipmi_subsequent_data(orcm_sensor_sampler_t* sampler)
     /* prep the buffer to collect the data */
     OBJ_CONSTRUCT(&data, opal_buffer_t);
     /* pack our component name - 1*/
-    ipmi = strdup("ipmi");
+    ipmi = "ipmi";
     if(NULL == ipmi) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         return;
@@ -1680,7 +1645,6 @@ void collect_ipmi_subsequent_data(orcm_sensor_sampler_t* sampler)
         OBJ_DESTRUCT(&data);
         return;
     }
-    free(ipmi);
 
     /* Begin sampling known nodes from here */
     host_count = opal_list_get_size(&sensor_active_hosts);
@@ -1733,46 +1697,137 @@ void collect_ipmi_sample(orcm_sensor_sampler_t* sampler)
     if(0 == first_sample && 3 > timeout && false == mca_sensor_ipmi_component.test) {
         collect_ipmi_first_time_data(sampler, &timeout);
     } else {
-        collect_ipmi_subsequent_data(sampler);
+        if(mca_sensor_ipmi_component.test) {
+            generate_test_vector(sampler);
+            mca_sensor_ipmi_component.diagnostics |= (mca_sensor_ipmi_component.collect_metrics?1:0);
+        } else {
+            collect_ipmi_subsequent_data(sampler);
+        }
     }
 }
 
-static void generate_test_vector(opal_buffer_t *v)
+#define TEST_LABEL_COUNT 10
+struct test_vector_type {
+    char* label;
+    float value;
+    char* units;
+};
+struct test_vector_type2 {
+    char* label;
+    char* value;
+};
+static void generate_test_vector_for_host(char* host, opal_buffer_t* buffer)
 {
+    static const struct test_vector_type2 test_vector_info[5] = {
+        { "bmcfwrev", "4.2" },
+        { "ipmiver", "2.0" },
+        { "manufacturer_id", "some_long_id" },
+        { "sys_power_state", "ON" },
+        { "dev_power_state", "ON" }
+    };
+    static const struct test_vector_type test_vector_data[5] = {
+        { "Exhaust Temperature", 55.0, "C" },
+        { "PSU 1 Power", 100.0, "W" },
+        { "PSU 2 Power", 50.0, "W" },
+        { "CPU FAN 1", 1200.0, "rpm" },
+        { "CPU FAN 2", 800.0, "rpm" }
+    };
+    struct timeval time_stamp;
+    opal_list_t* list = NULL;
+    orcm_value_t* item = NULL;
+
+    gettimeofday(&time_stamp, NULL);
+    opal_dss.pack(buffer, &time_stamp, 1, OPAL_TIMEVAL);
+    opal_dss.pack(buffer, &host, 1, OPAL_STRING);
+
+    list = OBJ_NEW(opal_list_t);
+    for(int i = 0; i < (TEST_LABEL_COUNT/2); ++i) {
+        item = orcm_util_load_orcm_value(test_vector_info[i].label,
+                                         (void*)test_vector_info[i].value,
+                                         OPAL_STRING, "");
+        opal_list_append(list, (opal_list_item_t*)item);
+        item = NULL;
+    }
+
+    for(int i = 0; i < (TEST_LABEL_COUNT/2); ++i) {
+        item = orcm_util_load_orcm_value(test_vector_data[i].label,
+                                         (void*)&test_vector_data[i].value,
+                                         OPAL_FLOAT, test_vector_data[i].units);
+        opal_list_append(list, (opal_list_item_t*)item);
+        item = NULL;
+    }
+
+    orcm_sensor_pack_orcm_value_list(buffer, list);
+
+    ORCM_RELEASE(list);
+    return;
+}
+
+#define TEST_HOST_COUNT 4
+static void generate_test_vector_inner(opal_buffer_t* buffer)
+{
+    static char* test_hosts[TEST_HOST_COUNT] = {
+        "test_host_1",
+        "test_host_2",
+        "test_host_3",
+        "test_host_4"
+    };
+    char* ipmi = "ipmi";
+    int host_count = TEST_HOST_COUNT;
+    opal_dss.pack(buffer, &ipmi, 1, OPAL_STRING);
+    opal_dss.pack(buffer, &host_count, 1, OPAL_INT);
+    for(int i = 0; i < host_count; ++i) {
+        generate_test_vector_for_host(test_hosts[i], buffer);
+    }
+    return;
+}
+
+static void generate_test_vector(orcm_sensor_sampler_t* sampler)
+{
+    opal_buffer_t buffer;
+    opal_buffer_t* bptr = &buffer;
+
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    generate_test_vector_inner(bptr);
+    opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+    OBJ_DESTRUCT(&buffer);
 }
 
 static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot)
 {
+    static const char* sensor_inventory[TEST_LABEL_COUNT+4][2] = {
+        { "bmc_ver", "4.2" },
+        { "ipmi_ver", "2.0" },
+        { "bb_serial", "some_long_id" },
+        { "bb_vendor", "Intel Corporation" },
+        { "sensor_ipmi_1", "bmcfwrev" },
+        { "sensor_ipmi_2", "ipmiver" },
+        { "sensor_ipmi_3", "manufacturer_id" },
+        { "sensor_ipmi_4", "sys_power_state" },
+        { "sensor_ipmi_5", "dev_power_state" },
+        { "sensor_ipmi_6", "Exhaust Temperature" },
+        { "sensor_ipmi_7", "PSU 1 Power" },
+        { "sensor_ipmi_8", "PSU 2 Power" },
+        { "sensor_ipmi_9", "CPU FAN 1" },
+        { "sensor_ipmi_10", "CPU FAN 2" }
+    };
     const char *comp = "ipmi";
-    unsigned int tot_items = 10;
-    int rc;
+    unsigned int tot_items = TEST_LABEL_COUNT+4;
+    struct timeval time_stamp;
+
     if(NULL != inventory_snapshot)
     {
-
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-
-        while(tot_items > 0)
+        opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+        gettimeofday(&time_stamp, NULL);
+        opal_dss.pack(inventory_snapshot, &time_stamp, 1, OPAL_TIMEVAL);
+        opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT);
+        for(unsigned int i = 0; i < tot_items; ++i)
         {
-            tot_items--;
-            comp = ipmi_inv_tv[tot_items][0];
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                return;
-            }
-            comp = ipmi_inv_tv[tot_items][1];
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                return;
-            }
+            opal_dss.pack(inventory_snapshot, &(sensor_inventory[i][0]), 1, OPAL_STRING);
+            opal_dss.pack(inventory_snapshot, &(sensor_inventory[i][1]), 1, OPAL_STRING);
         }
     }
+    return;
 }
 
 void orcm_sensor_ipmi_get_system_power_state(uchar in, char* str, int str_size)

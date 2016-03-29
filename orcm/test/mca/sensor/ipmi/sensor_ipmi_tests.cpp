@@ -197,11 +197,13 @@ TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_sample_tests)
     orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
 
     // Tests
+    mca_sensor_ipmi_component.collect_metrics = false;
     mca_sensor_ipmi_component.test = true;
     collect_ipmi_sample(sampler);
     mca_sensor_ipmi_component.test = false;
     EXPECT_EQ(0, (mca_sensor_ipmi_component.diagnostics & 0x1));
 
+    mca_sensor_ipmi_component.collect_metrics = true;
     orcm_sensor_base_runtime_metrics_set(object, true, "ipmi");
     mca_sensor_ipmi_component.test = true;
     collect_ipmi_sample(sampler);

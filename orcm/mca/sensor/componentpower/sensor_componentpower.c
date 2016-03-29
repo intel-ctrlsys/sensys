@@ -10,6 +10,8 @@
 #include "orcm/constants.h"
 #include "orcm/types.h"
 
+#include <stdio.h>
+
 #include <errno.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -111,6 +113,7 @@ static int rapl_cpu_energy_register_check(void);
 static int rapl_ddr_energy_register_check(void);
 
 #define ON_NULL_RETURN(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
+#define ON_NULL_GOTO(x,label) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
 #define ON_FAILURE_RETURN(x) if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);return;}
 
 static int init(void)
@@ -1039,7 +1042,7 @@ static void generate_test_inv_data(opal_buffer_t *inventory_snapshot)
 {
     int nsockets = TEST_SOCKETS;
     unsigned int tot_items = nsockets * 2;
-    const char *comp = "componentpower";
+    char *comp = "componentpower";
     int rc = ORCM_SUCCESS;
 
     rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
@@ -1112,39 +1115,43 @@ static void componentpower_inventory_collect(opal_buffer_t *inventory_snapshot)
 
         for(i = 0; i < _rapl.n_sockets; ++i) {
             asprintf(&comp, "sensor_componentpower_%d", i+1);
+            ON_NULL_RETURN(comp);
             if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
-                free(comp);
+                SAFEFREE(comp);
                 return;
             }
-            free(comp);
+            SAFEFREE(comp);
 
             asprintf(&comp, "cpu%d_power", i);
+            ON_NULL_RETURN(comp);
             orcm_sensor_base_runtime_metrics_track(mca_sensor_componentpower_component.runtime_metrics, comp);
             if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
-                free(comp);
+                SAFEFREE(comp);
                 return;
             }
-            free(comp);
+            SAFEFREE(comp);
         }
         for(i = 0; i < _rapl.n_sockets; ++i) {
             asprintf(&comp, "sensor_componentpower_%d", i+_rapl.n_sockets+1);
+            ON_NULL_RETURN(comp);
             if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
-                free(comp);
+                SAFEFREE(comp);
                 return;
             }
-            free(comp);
+            SAFEFREE(comp);
 
             asprintf(&comp, "ddr%d_power", i);
+            ON_NULL_RETURN(comp);
             orcm_sensor_base_runtime_metrics_track(mca_sensor_componentpower_component.runtime_metrics, comp);
             if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);
-                free(comp);
+                SAFEFREE(comp);
                 return;
             }
-            free(comp);
+            SAFEFREE(comp);
         }
     }
 }
@@ -1199,15 +1206,20 @@ static void componentpower_inventory_log(char *hostname, opal_buffer_t *inventor
         }
 
         mkv = orcm_util_load_orcm_value(inv, inv_val, OPAL_STRING, NULL);
+        ON_NULL_GOTO(mkv, cleanup);
         opal_list_append(records, (opal_list_item_t*)mkv);
 
         --tot_items;
     }
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);
-    } else {
-        my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
+        goto do_exit;
     }
+
+cleanup:
+        my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
+do_exit:
+    return;
 }
 
 int componentpower_enable_sampling(const char* sensor_specification)

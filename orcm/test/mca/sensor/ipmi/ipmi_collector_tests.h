@@ -13,6 +13,7 @@
 
 #include "gtest/gtest.h"
 #include <string>
+#include "orcm/mca/sensor/ipmi/ipmi_collector.h"
 
 using namespace std;
 
@@ -26,15 +27,17 @@ class ut_ipmi_collector: public testing::Test
             Aggregator="aggregator";
             User = "user";
             Pass = "pass";
-            AuthMethod = 5;
-            PrivLevel = 3;
-            Port = 1;
+            AuthMethod = AUTH_OEM;
+            PrivLevel = OEM;
+            Port = 2024;
             Channel = 1;
         }
         virtual void TearDown() {};
 
         string Hostname, BmcAddress, Aggregator, User, Pass;
-        int AuthMethod, PrivLevel, Port, Channel;
+        auth_methods AuthMethod;
+        priv_levels PrivLevel;
+        int Port, Channel;
 
 };
 

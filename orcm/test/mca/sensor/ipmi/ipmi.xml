@@ -1,0 +1,54 @@
+<ipmi>
+    <bmc_node name="cn01">
+        <bmc_address>192.168.0.1</bmc_address>
+        <user>username</user>
+        <pass>password</pass>
+        <auth_method>MD5</auth_method>
+        <priv_level>OEM</priv_level>
+        <port>1523</port>
+        <channel>2</channel>
+        <aggregator>aggregator01</aggregator>
+    </bmc_node>
+    <bmc_node name="cn02">
+        <bmc_address>192.168.0.1</bmc_address>
+        <user>username</user>
+        <pass>password</pass>
+        <priv_level>OEM</priv_level>
+        <port>1523</port>
+        <channel>2</channel>
+        <aggregator>aggregator01</aggregator>
+    </bmc_node>
+    <bmc_node name="cn03">
+        <bmc_address>192.168.0.1</bmc_address>
+        <user>username</user>
+        <pass>password</pass>
+        <auth_method>MD5</auth_method>
+        <port>1523</port>
+        <channel>2</channel>
+        <aggregator>aggregator01</aggregator>
+    </bmc_node>
+    <bmc_node name="cn04">
+        <bmc_address>192.168.0.1</bmc_address>
+        <user>username</user>
+        <pass>password</pass>
+        <auth_method>MD5</auth_method>
+        <priv_level>OEM</priv_level>
+        <channel>2</channel>
+        <aggregator>aggregator01</aggregator>
+    </bmc_node>
+    <bmc_node name="cn05">
+        <bmc_address>192.168.0.1</bmc_address>
+        <user>username</user>
+        <pass>password</pass>
+        <auth_method>MD5</auth_method>
+        <priv_level>OEM</priv_level>
+        <port>1523</port>
+        <aggregator>aggregator01</aggregator>
+    </bmc_node>
+    <bmc_node name="cn06">
+        <bmc_address>192.168.0.1</bmc_address>
+        <user>username</user>
+        <pass>password</pass>
+        <aggregator>aggregator01</aggregator>
+    </bmc_node>
+</ipmi>

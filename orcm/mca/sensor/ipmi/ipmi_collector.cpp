@@ -35,8 +35,8 @@ ipmiCollector::ipmiCollector(string hostname, string bmc_address, string aggrega
 }
 
 ipmiCollector::ipmiCollector(string hostname, string bmc_address, string aggregator,
-                             string user, string pass, int auth_method, int priv_level,
-                             int port, int channel)
+                             string user, string pass,  auth_methods auth_method,
+                             priv_levels priv_level, int port, int channel)
 {
     this->hostname = hostname;
     this->bmc_address = bmc_address;
@@ -57,7 +57,7 @@ ipmiCollector::ipmiCollector(string hostname, string bmc_address, string aggrega
     }
 }
 
-int ipmiCollector::setAuthMethod(int auth_method)
+int ipmiCollector::setAuthMethod(auth_methods auth_method)
 {
     if (0 > auth_method){
         return ORCM_ERROR;
@@ -66,7 +66,7 @@ int ipmiCollector::setAuthMethod(int auth_method)
     return ORCM_SUCCESS;
 }
 
-int ipmiCollector::setPrivLevel(int priv_level)
+int ipmiCollector::setPrivLevel(priv_levels priv_level)
 {
     if (0 > priv_level){
         return ORCM_ERROR;
@@ -79,6 +79,9 @@ int ipmiCollector::setPort(int port)
 {
     if (0 > port){
         return ORCM_ERROR;
+    }
+    if (1024 > port){
+        port += 1024;
     }
     this->port = port;
     return ORCM_SUCCESS;

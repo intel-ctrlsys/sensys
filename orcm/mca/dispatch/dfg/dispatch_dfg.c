@@ -340,7 +340,7 @@ static void dfg_generate_storage_events(orcm_ras_event_t *ecd)
         dfg_convert_and_log_data_to_db(ecd);
 
     //Store the event data into event table based on the MCA param.
-    if (ORCM_DB_EVENT_DATA == ecd->type && true == orcm_analytics_base.store_event_data) {
+    if (ORCM_RAS_EVENT_EXCEPTION == ecd->type && true == orcm_analytics_base.store_event_data) {
         dfg_convert_and_log_data_to_db(ecd);
     }
 

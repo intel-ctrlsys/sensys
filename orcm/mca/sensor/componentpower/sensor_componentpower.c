@@ -123,6 +123,10 @@ static int init(void)
         orcm_sensor_base_runtime_metrics_create("componentpower", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_componentpower_component.collect_metrics);
 
+    if(mca_sensor_componentpower_component.test) {
+        return ORCM_SUCCESS;
+    }
+
     setup_cpu_information();
 
     detect_cpu_for_each_socket();

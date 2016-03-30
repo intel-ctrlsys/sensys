@@ -57,6 +57,8 @@
 
 #define TEST_CORES (256)
 
+#define ON_NULL_RETURN(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
+
 /* declare the API functions */
 static int init(void);
 static void finalize(void);

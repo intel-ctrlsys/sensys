@@ -592,7 +592,6 @@ char* orcm_analytics_base_set_compute_type(int compute_type_id)
             compute_type = ORCM_ANALYTICS_COMPUTE_UNKNOW_STR;
             break;
     }
-
     return compute_type;
 }
 
@@ -617,7 +616,9 @@ char* orcm_analytics_get_hostname_from_attributes(opal_list_t* attributes)
 /**
  * Generate a data key identified by a given workflow and workflow step.
  */
-int orcm_analytics_base_data_key(char* data_key, char *wf_name, int wf_id, char *wf_step_name, int wf_step_id)
+int orcm_analytics_base_data_key(char** data_key, char* key, orcm_workflow_t* wf,
+                                 orcm_workflow_step_t* wf_step)
 {
-    return asprintf(data_key, "workflow step result: %s_%d_%s_%d", wf_name, wf_id, wf_step_name, wf_step_id);
+        return asprintf(data_key, "%s_workflow%d-step%d_%s:%s_%s", wf->name, wf->workflow_id,
+                        wf_step->step_id, wf_step->analytic, key, wf->hostname_regex);
 }

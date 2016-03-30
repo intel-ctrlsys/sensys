@@ -27,7 +27,6 @@
 static int init(orcm_analytics_base_module_t *imod);
 static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
-static char *generate_data_key(char *operation, int workflow_id, char* hostname);
 static void compute_min(orcm_value_t* agg_value, orcm_analytics_aggregate* aggregate, opal_list_t* compute);
 static void compute_max(orcm_value_t* agg_value, orcm_analytics_aggregate* aggregate, opal_list_t* compute);
 static void compute_average(orcm_value_t* agg_value, orcm_analytics_aggregate* aggregate, opal_list_t* compute);
@@ -102,13 +101,6 @@ static char* get_operation_name(opal_list_t* attributes)
     else {
         return NULL;
     }
-}
-
-static char *generate_data_key(char *operation, int workflow_id, char* hostname)
-{
-    char *data_key = NULL;
-    asprintf(&data_key, "Aggregate:%s_%s_Workflow %d", operation, hostname, workflow_id);
-    return data_key;
 }
 
 static orcm_value_t* compute_agg(char* op, char* data_key, opal_list_t* compute, orcm_analytics_aggregate* aggregate)
@@ -208,7 +200,7 @@ static int analyze(int sd, short args, void *cbdata)
 
     operation = get_operation_name(&current_caddy->wf_step->attributes);
     CHECK_NULL(operation, rc, cleanup);
-    data_key = generate_data_key(operation, current_caddy->wf->workflow_id, current_caddy->wf->hostname_regex);
+    orcm_analytics_base_data_key(&data_key, operation, current_caddy->wf, current_caddy->wf_step);
     CHECK_NULL_ALLOC(data_key, rc, cleanup);
 
     aggregate_value = compute_agg(operation, data_key, current_caddy->analytics_value->compute_data,

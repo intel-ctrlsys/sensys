@@ -36,7 +36,6 @@ ORCM_DECLSPEC orcm_workflow_caddy_t* orcm_analytics_base_create_caddy(orcm_workf
                                                                       orcm_analytics_value_t *data);
 
 ORCM_DECLSPEC void orcm_analytics_base_send_data(orcm_analytics_value_t *data);
-ORCM_DECLSPEC int  orcm_analytics_base_data_key(char* data_key, char *wf_name, int wf_id, char *wf_step_name, int wf_step_id);
 
 /* orcm_analytics_base_control_storage
  * Arguments: uint8_t storage_command - Command to change storage policy
@@ -123,6 +122,10 @@ int orcm_analytics_base_gen_notifier_event(orcm_value_t *current_value,
                                            orcm_workflow_caddy_t *caddy,
                                            int severity, char *msg, char *action,
                                            opal_list_t *event_list);
+
+/*Generate a data key identified by a given workflow and workflow step*/
+int orcm_analytics_base_data_key(char** data_key, char* key,
+                                 orcm_workflow_t* wf, orcm_workflow_step_t* wf_step);
 
 #define ANALYTICS_COUNT_DEFAULT 1
 #define MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP 2

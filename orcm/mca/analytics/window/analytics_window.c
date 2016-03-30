@@ -407,10 +407,9 @@ static int handle_full_window(win_statistics_t *win_statistics, orcm_workflow_ca
 #endif
 
     orcm_analytics_base_data_key(&data_key,
-                                 caddy->wf->workflow_id,
-                                 caddy->wf->name,
-                                 caddy->wf_step->analytic,
-                                 caddy->wf_step->step_id);
+                                 win_statistics->compute_type,
+                                 caddy->wf,
+                                 caddy->wf_step);
     if (NULL == data_key) {
         rc = ORCM_ERR_OUT_OF_RESOURCE;
         goto cleanup;

@@ -102,6 +102,7 @@ char *get_orcm_octl_query_event_date(int cmd, char **argv);
 int orcm_octl_sensor_store(int command, char** cmdlist);
 void orcm_octl_error(char *label, ...);
 void orcm_octl_info(char *label, ...);
+void orcm_octl_usage(char *label);
 
 END_C_DECLS
 

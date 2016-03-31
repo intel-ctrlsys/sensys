@@ -12,8 +12,94 @@
 [info:success]
 Success!
 
+[info:no-results]
+No results returned.
+
+[info:getting-policy]
+ORCM getting sensor policy from Node:%s
+
+[info:no-active-policy]
+There is no active policy!
+
+[info:policy-header]
+Sensor      Threshold        Hi/Lo    Max_Count/Time_Window    Severity      Action
+-----------------------------------------------------------------------------------
+
+[info:policy]
+%-10s %8.3f %3s     %5s   %5d in %5d seconds     %6s    %10s
+
+[info:setting-sample-rate]
+ORCM setting sensor:%s sample-rate on node:%s
+
+[info:getting-sample-rate]
+ORCM getting sensor %s sample-rate from node:%s
+
+[info:sample-rate-header]
+Sensor     sample-rate
+------------------------------------------------------------------------------
+
+[info:sample-rate]
+%s            %d
+
+[info:sampling-success]
+Success changing sensor sampling on node '%s'.
+
+[info:storage-reponse]
+Sensor storage response is: %i
+
 [error:unknown]
 Unknown error
 
-[error:generate-msg]
-Unable to generate message.
+[error:nodelist-extract]
+Unable to extract nodelist "%s" or an empty list was specified.
+
+[error:nodelist-notfound]
+Nodelist '%s' not found!
+
+[error:node-notfound]
+Node '%s' not found!
+
+[error:connection-fail]
+The connection to daemon failed.
+
+[error:invalid-argument]
+invalid arguments!
+%s
+
+[error:no-integer]
+%s is not an integer.
+
+[error:orcmsched-fail]
+Unable to get results via ORCM scheduler.
+
+[error:allocate-memory]
+Could not allocate memory for %s.
+
+[error:pack]
+Internal buffer pack error.
+
+[error:unpack]
+Internal buffer unpack error.
+
+[error:sampling-fail]
+Failure changing sensor sampling on node %s
+Is the datagroup and/or sensor label correct (%s)?
+Is the datagroup plugin actively running on the node?
+
+[usage:sensor]
+sensor enable|disable|reset <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
+
+[usage:sensor-get-policy]
+sensor get policy <nodelist>
+
+[usage:sensor-set-sample-rate]
+sensor set sample-rate <sensor-name> <sample-rate> <nodelist>
+
+[usage:sensor-get-sample-rate]
+sensor get sample-rate <sensor-name> <nodelist>
+
+[usage:sensor-get-inventory]
+sensor get inventory <nodelist>
+
+[usage:sensor-store]
+sensor store <command> <nodelist>

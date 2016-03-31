@@ -17,6 +17,7 @@
 #include "orcm/util/utils.h"
 #include "orcm/tools/octl/common.h"
 
+#define MAX_SIZE 1024
 char *search_msg(regex_t regex_label);
 int regex_label( regex_t *regex, char *type, char *label);
 
@@ -33,38 +34,45 @@ const char *next_label = "^[[:space:]]*\\[[^:]+[^]]+\\][[:space:]]*$";
  */
 char *search_msg(regex_t regex_label) {
     FILE *file = NULL;
-    char line[1024] = {0,};
+    char line[MAX_SIZE] = {0,};
     int regex_res = 0;
     char *msg = NULL;
     char *datadir = NULL;
+
     regex_t regex;
 
     asprintf(&datadir,"%s%s", OCTL_DATA_DIR,"/messages.txt");
+    if(NULL != datadir) {
 
-    regex_res = regcomp(&regex, next_label, REG_EXTENDED);
+        regex_res = regcomp(&regex, next_label, REG_EXTENDED);
+        file = fopen(datadir, "r");
 
-    file = fopen(datadir, "r");
-
-    if (file && !regex_res) {
-        while (NULL != fgets(line, 1024, file)) {
-            regex_res = regexec(&regex_label, line, 0, NULL, 0);
-            if (!regex_res){
-                msg = strdup("\0");
-                while ((fgets(line, 1024, file)) != NULL) {
-                    if (!regexec(&regex, line, 0, NULL, 0)) {
-                         break;
-                    }
-                    msg = (char *) realloc(msg, strlen(msg) + strlen(line) + 1);
-                    strcat(msg, line);
-                }
-                break;
+        if (NULL !=file) {
+            if(!regex_res) {
+               while (NULL != fgets(line, MAX_SIZE, file)) {
+                   regex_res = regexec(&regex_label, line, 0, NULL, 0);
+                   if (!regex_res){
+                       msg = strdup("\0");
+                       while ((fgets(line, 1024, file)) != NULL) {
+                           if (!regexec(&regex, line, 0, NULL, 0)) {
+                                // remove unnecessary last "\n"
+                                if (msg[strlen(msg)-1] == '\n')
+                                    msg[strlen(msg)-1] = '\0';
+                                break;
+                           }
+                           msg = (char *) realloc(msg, strlen(msg) + strlen(line) + 1);
+                           if (NULL != msg)
+                               strcat(msg, line);
+                       }
+                       break;
+                   }
+               }
+               regfree(&regex);
             }
+            fclose(file);
         }
-        regfree(&regex);
-        fclose(file);
+        SAFEFREE(datadir);
     }
-
-    SAFEFREE(datadir);
     return msg;
 }
 
@@ -84,15 +92,16 @@ char *search_msg(regex_t regex_label) {
 
 
 int regex_label( regex_t *regex, char *type, char *label) {
-      char *new_label = NULL;
-      char *regex_exp = "^\\[%s\\:%s\\]";
-      int rc = 0;
+    char *new_label = NULL;
+    char *regex_exp = "^\\[%s\\:%s\\]";
+    int rc = 0;
 
-      asprintf(&new_label, regex_exp, type, label);
-      rc = regcomp(regex, new_label, REG_EXTENDED);
-
-      SAFEFREE(new_label);
-      return rc;
+    rc = asprintf(&new_label, regex_exp, type, label);
+    if (NULL != new_label){
+        rc = regcomp(regex, new_label, REG_EXTENDED);
+        SAFEFREE(new_label);
+    }
+    return rc;
 }
 
 
@@ -104,7 +113,7 @@ int regex_label( regex_t *regex, char *type, char *label) {
  */
 void orcm_octl_info(char *label, ...){
     char *info_msg = NULL;
-    char *output = NULL;
+    char output[MAX_SIZE] = {0,};
     regex_t r_label;
 
     va_list var;
@@ -113,14 +122,13 @@ void orcm_octl_info(char *label, ...){
     if (!regex_label(&r_label, "info", label)) {
         info_msg = search_msg(r_label);
         if (NULL != info_msg) {
-            vasprintf(&output, info_msg, var);
-            fprintf(stdout, output);
+           vsnprintf(output, MAX_SIZE, info_msg, var);
+           fprintf(stdout, "%s", output);
         }
         regfree(&r_label);
     }
 
     va_end(var);
-    SAFEFREE(output);
     SAFEFREE(info_msg);
 }
 
@@ -132,7 +140,7 @@ void orcm_octl_info(char *label, ...){
  */
 void orcm_octl_error(char *label, ...){
     char *error_msg = NULL;
-    char *output = NULL;
+    char output[MAX_SIZE] = {0,};
     regex_t r_label;
 
     va_list var;
@@ -142,9 +150,8 @@ void orcm_octl_error(char *label, ...){
         error_msg = search_msg(r_label);
 
         if (NULL != error_msg) {
-            vasprintf(&output, error_msg, var);
+            vsnprintf(output, MAX_SIZE, error_msg, var);
             fprintf(stderr,"ERROR: %s", output);
-            SAFEFREE(output);
             SAFEFREE(error_msg);
         } else {
             fprintf(stderr,"ERROR: Unkown error.");
@@ -155,4 +162,35 @@ void orcm_octl_error(char *label, ...){
     }
 
    va_end(var);
+}
+
+/**
+ * @brief Is for error messages in the command line usage,
+ *        prints a invalid-argument error with a pre-defined
+ *        usage message.
+ *
+ * @param label Defined usage message label.
+ */
+void orcm_octl_usage(char *label){
+    char *usage_msg = NULL;
+    char *output = NULL;
+
+    regex_t r_label;
+
+    if (!regex_label( &r_label,"usage", label)) {
+        usage_msg = search_msg(r_label);
+
+        if (NULL != usage_msg) {
+            // remove unnecessary last "\n"
+            if (usage_msg[strlen(usage_msg)-1] == '\n')
+                usage_msg[strlen(usage_msg)-1] = '\0';
+            asprintf(&output,"USAGE: %s" ,usage_msg);
+            if (NULL != output)
+                orcm_octl_error("invalid-argument", output);
+            SAFEFREE(output);
+            SAFEFREE(usage_msg);
+
+        }
+        regfree(&r_label);
+    }
 }

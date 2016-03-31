@@ -294,7 +294,7 @@ static int remove_empty_items(xml_tree_t * io_xtree);
 static int is_singleton(const char * in_tagtext);
 static int check_duplicate_singletons(xml_tree_t * in_xtree);
 
-void replace_ampersand(char** io_name_to_modify, char * in_parent_name);
+static char *get_controller_name(char **element_name, char *parent_name);
 
 static int file30_init(void)
 {
@@ -1408,11 +1408,6 @@ static bool check_me(orcm_config_t *config, char *node,
     char *uri = NULL;
     bool node_itself = false;
 
-    if (NULL != node && 0 == strcmp(node, "localhost")) {
-        free(node);
-        node = strdup(orte_process_info.nodename);
-    }
-
     if (NULL != node &&
             ((opal_net_isaddr(node) && 0 == strcmp(node, my_ip)) ||
             0 == strcmp(node, orte_process_info.nodename))) {
@@ -1529,20 +1524,6 @@ static int parse_orcm_config(orcm_config_t *cfg,
     return ORTE_SUCCESS;
 }
 
-static char* pack_charname(char base, char *s)
-{
-    char *t;
-    size_t i;
-
-    t = strdup(s);
-    for (i=0; i < strlen(t); i++) {
-        if ('@' == t[i]) {
-            t[i] = base;
-        }
-    }
-    return t;
- }
-
 static int parse_node(orcm_node_t *node, int idx, orcm_cfgi_xml_parser_t *x)
 {
     int rc;
@@ -1559,7 +1540,7 @@ static int parse_node(orcm_node_t *node, int idx, orcm_cfgi_xml_parser_t *x)
             return ORCM_ERR_BAD_PARAM;
         }
 
-        node->name = strdup(x->value[0]);
+        node->name = strdup(get_controller_name(&x->value[0], NULL));
     } else {
         if (ORCM_SUCCESS != (rc = parse_orcm_config(&node->config, x))) {
             ORTE_ERROR_LOG(rc);
@@ -1590,8 +1571,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
             return ORCM_ERR_BAD_PARAM;
         }
 
-        replace_ampersand(&x->value[0], rack->name);
-        rack->controller.name = pack_charname(rack->name[0], x->value[0]);
+        rack->controller.name = strdup(get_controller_name(&x->value[0], rack->name));
         rack->controller.state = ORTE_NODE_STATE_UNKNOWN;
         /* parse any config that is attached to the rack controller */
         OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
@@ -1633,7 +1613,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
                     if (NULL == names[m]) {
                         continue;
                     }
-                    replace_ampersand(&names[m], rack->name);
+                    get_controller_name(&names[m], rack->name);
                     node = NULL;
                     OPAL_LIST_FOREACH(nd, &rack->nodes, orcm_node_t) {
                         if (0 == strcmp(nd->name, names[m])) {
@@ -1691,8 +1671,8 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
             ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
             return ORCM_ERR_BAD_PARAM;
         }
-        replace_ampersand(&x->value[0], row->name);
-        row->controller.name = pack_charname(row->name[0], x->value[0]);
+
+        row->controller.name = strdup(get_controller_name(&x->value[0], row->name));
         row->controller.state = ORTE_NODE_STATE_UNKNOWN;
         /* parse any subvals that are attached to the row controller */
         OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
@@ -1733,7 +1713,8 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
                     if (NULL == names[m]) {
                         continue;
                     }
-                    replace_ampersand(&names[m], row->name);
+
+                    get_controller_name(&names[m], row->name);
                     rack = NULL;
                     OPAL_LIST_FOREACH(r, &row->racks, orcm_rack_t) {
                         if (0 == strcmp(r->name, names[m])) {
@@ -1795,10 +1776,10 @@ static int parse_cluster(orcm_cluster_t *cluster,
                 return ORCM_ERR_BAD_PARAM;
             }
 
-            replace_ampersand(&x->value[0], cluster->name);
+            get_controller_name(&x->value[0], cluster->name);
 
             if (0 == only_one_cluster_controller) {
-                cluster->controller.name = strdup(x->value[0]);
+                cluster->controller.name = strdup(get_controller_name(&x->value[0], NULL));
                 cluster->controller.state = ORTE_NODE_STATE_UNKNOWN;
                 ++only_one_cluster_controller;
             }
@@ -1841,7 +1822,7 @@ static int parse_cluster(orcm_cluster_t *cluster,
                     /* see if we have each row object - if not, create it */
                     int m;
                     for (m=0; NULL != names[m]; m++) {
-                        replace_ampersand(&names[m], cluster->name);
+                        get_controller_name(&names[m], cluster->name);
                         row = NULL;
                         OPAL_LIST_FOREACH(r, &cluster->rows, orcm_row_t) {
                             if (0 == strcmp(r->name, names[m])) {
@@ -1919,7 +1900,7 @@ static int parse_scheduler(orcm_scheduler_t *scheduler,
                 return ORCM_ERR_BAD_PARAM;
             }
             if (only_one_scheduler) {
-                scheduler->controller.name = strdup(x->value[0]);
+                scheduler->controller.name = strdup(get_controller_name(&x->value[0], NULL));
                 only_one_scheduler = false;
             }
         } else {
@@ -5408,63 +5389,31 @@ static void xml_tree_print_lexer(const xml_tree_t * in_tree)
     }
 }
 
-void replace_ampersand(char** io_name_to_modify, char * in_parent_name)
+static char *get_controller_name(char **element_name, char *parent_name)
 {
-    if (NULL == io_name_to_modify || NULL == *io_name_to_modify) {
-        return;
-    }
+    char *at_sign = NULL;
+    int at_sign_pos = 0;
+    char *final_name = NULL;
 
-    if (NULL == strchr(*io_name_to_modify,'@')) {
-        return;
-    }
+    if (NULL != *element_name)
+    {
+        if(0 == strcmp(*element_name, "localhost")) {
+            free(*element_name);
+            *element_name = strdup(orte_process_info.nodename);
+        } else if(NULL != parent_name && NULL != (at_sign = strchr(*element_name,'@'))){
+            final_name = (char*) calloc(strlen(*element_name) + strlen(parent_name) + 1, sizeof(char));
+            at_sign_pos = (int)(at_sign - *element_name);
 
-    char * parent = "";
-    if (NULL != in_parent_name) {
-        parent = in_parent_name;
-    }
-
-    char * text = strdup(*io_name_to_modify);
-    if (NULL == text) {
-        return;
-    }
-
-    unsigned long sz_parent = strlen(parent);
-    unsigned long sz_text = strlen(text);
-    unsigned long sz_final = sz_text;
-
-    unsigned long i = 0;
-
-    for (i=0; i < sz_text; ++i) {
-        if ('@' == text[i]) {
-            sz_final += -1 + sz_parent;
-        }
-    }
-    ++sz_final; //+1 for the ending '\0'.
-
-    char * newtext = (char*) calloc(sz_final, sizeof(char));
-    if (NULL == newtext) {
-        free(text);
-        return;
-    }
-    free(*io_name_to_modify);
-    *io_name_to_modify = NULL;
-
-    unsigned long j = 0;
-    unsigned long k = 0;
-    for (i=0; i < sz_text; ++i) {
-        if ('@' == text[i]) {
-           for (j=0; j < sz_parent; ++j) {
-              newtext[k++] = parent[j];
-           }
-        } else {
-           newtext[k++] = text[i];
+            if(NULL != final_name){
+                memcpy(final_name,*element_name,(size_t)at_sign_pos);
+                final_name[at_sign_pos + 1] = '\x0';
+                strcat(final_name, parent_name);
+                strcat(final_name, (*element_name + at_sign_pos + 1));
+                free(*element_name);
+                *element_name = final_name;
+            }
         }
     }
 
-
-    *io_name_to_modify = newtext;
-    newtext = NULL;
-    free(text);
-    return;
+    return *element_name;
 }
-

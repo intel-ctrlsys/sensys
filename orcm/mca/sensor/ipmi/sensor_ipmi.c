@@ -1745,6 +1745,7 @@ static void generate_test_vector_for_host(char* host, opal_buffer_t* buffer)
         item = orcm_util_load_orcm_value(test_vector_info[i].label,
                                          (void*)test_vector_info[i].value,
                                          OPAL_STRING, "");
+        ON_NULL_GOTO(item, cleanup);
         opal_list_append(list, (opal_list_item_t*)item);
         item = NULL;
     }
@@ -1753,12 +1754,14 @@ static void generate_test_vector_for_host(char* host, opal_buffer_t* buffer)
         item = orcm_util_load_orcm_value(test_vector_data[i].label,
                                          (void*)&test_vector_data[i].value,
                                          OPAL_FLOAT, test_vector_data[i].units);
+        ON_NULL_GOTO(item, cleanup);
         opal_list_append(list, (opal_list_item_t*)item);
         item = NULL;
     }
 
     orcm_sensor_pack_orcm_value_list(buffer, list);
 
+cleanup:
     ORCM_RELEASE(list);
     return;
 }

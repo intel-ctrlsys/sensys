@@ -779,7 +779,7 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* Store number of labels to collect */
-    if(orcm_sensor_base_runtime_inventory_available) {
+    if(orcm_sensor_base_runtime_inventory_available(mca_sensor_freq_component.runtime_metrics)) {
         ncores = (int32_t)orcm_sensor_base_runtime_metrics_active_label_count(mca_sensor_freq_component.runtime_metrics);
     } else {
         ncores = (int32_t)opal_list_get_size(&tracking) + (int32_t)opal_list_get_size(&pstate_list);

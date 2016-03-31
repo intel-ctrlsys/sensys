@@ -167,7 +167,6 @@ static char* PLUGIN_NAME = "sigar";
 static uint64_t metric_diff_calc(sigar_uint64_t newval, uint64_t oldval,
                                  const char *name_for_log,
                                  const char* value_name_for_log);
-static void generate_test_vector(opal_buffer_t *v);
 
 #define ON_NULL_RETURN(x) if(NULL==x) return ORCM_ERR_OUT_OF_RESOURCE
 #define ON_NULL_GOTO(x,y) if(NULL==x) {ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto cleanup;}
@@ -188,13 +187,6 @@ static int init(void)
         orcm_sensor_base_runtime_metrics_create(PLUGIN_NAME, orcm_sensor_base.collect_metrics,
                                                 mca_sensor_sigar_component.collect_metrics);
 
-    if (mca_sensor_sigar_component.test) {
-        /* generate test vector */
-        OBJ_CONSTRUCT(&test_vector, opal_buffer_t);
-        generate_test_vector(&test_vector);
-        return ORCM_SUCCESS;
-    }
-
     /* setup the globals */
     OBJ_CONSTRUCT(&fslist, opal_list_t);
     OBJ_CONSTRUCT(&netlist, opal_list_t);
@@ -208,16 +200,32 @@ static int init(void)
     pswap.page_out = 0;
 
     /* initialize sigar */
-    if (0 != sigar_open(&sigar)) {
-        opal_output(0, "%s: sigar_open failed on node %s",
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                    orte_process_info.nodename);
-        return ORTE_ERROR;
+    if(!mca_sensor_sigar_component.test) {
+        if (0 != sigar_open(&sigar)) {
+            opal_output(0, "%s: sigar_open failed on node %s",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                        orte_process_info.nodename);
+            return ORTE_ERROR;
+        }
     }
 
     /* load the disk list */
-    if (0 != sigar_file_system_list_get(sigar, &sigar_fslist)) {
-        return ORTE_ERROR;
+    if(mca_sensor_sigar_component.test) {
+        sigar_fslist.number = 1;
+        sigar_fslist.size = sizeof(sigar_file_system_t);
+        sigar_fslist.data = malloc(sizeof(sigar_file_system_t));
+        sigar_file_system_t* fs = sigar_fslist.data;
+        strcpy(fs->dir_name, "/");
+        strcpy(fs->dev_name, "/dev/sda1");
+        strcpy(fs->type_name, "local");
+        strcpy(fs->sys_type_name, "ext3");
+        strcpy(fs->options, "");
+        fs->type = SIGAR_FSTYPE_LOCAL_DISK;
+        fs->flags = 0;
+    } else {
+        if (0 != sigar_file_system_list_get(sigar, &sigar_fslist)) {
+            return ORTE_ERROR;
+        }
     }
     for (i = 0; i < sigar_fslist.number; i++) {
         if (sigar_fslist.data[i].type == SIGAR_FSTYPE_LOCAL_DISK || sigar_fslist.data[i].type == SIGAR_FSTYPE_NETWORK) {
@@ -226,18 +234,33 @@ static int init(void)
             opal_list_append(&fslist, &dit->super);
         }
     }
-    sigar_file_system_list_destroy(sigar, &sigar_fslist);
+    if(mca_sensor_sigar_component.test) {
+        SAFEFREE(sigar_fslist.data);
+    } else {
+        sigar_file_system_list_destroy(sigar, &sigar_fslist);
+    }
 
     /* load the list of network interfaces */
-    if (0 != sigar_net_interface_list_get(sigar, &sigar_netlist)) {
-        return ORTE_ERROR;
+    if(mca_sensor_sigar_component.test) {
+        sigar_netlist.number = 1;
+        sigar_netlist.size = 0;
+        sigar_netlist.data = malloc(sizeof(char*));
+        sigar_netlist.data[0] = "eth0";
+    } else {
+        if (0 != sigar_net_interface_list_get(sigar, &sigar_netlist)) {
+            return ORTE_ERROR;
+        }
     }
     for (i=0; i < sigar_netlist.number; i++) {
         sit = OBJ_NEW(sensor_sigar_interface_t);
         sit->interface = strdup(sigar_netlist.data[i]);
         opal_list_append(&netlist, &sit->super);
     }
-    sigar_net_interface_list_destroy(sigar, &sigar_netlist);
+    if(mca_sensor_sigar_component.test) {
+        SAFEFREE(sigar_netlist.data);
+    } else {
+        sigar_net_interface_list_destroy(sigar, &sigar_netlist);
+    }
 
     return ORCM_SUCCESS;
 }
@@ -246,13 +269,7 @@ static void finalize(void)
 {
     opal_list_item_t *item;
 
-    if (mca_sensor_sigar_component.test) {
-        /* destruct test vector */
-        OBJ_DESTRUCT(&test_vector);
-        return;
-    }
-
-    if (NULL != sigar) {
+    if (NULL != sigar && !mca_sensor_sigar_component.test) {
         sigar_close(sigar);
     }
     while (NULL != (item = opal_list_remove_first(&fslist))) {
@@ -321,9 +338,16 @@ static int sigar_collect_mem(opal_list_t* data)
     sigar_mem_t mem;
     /* get the memory usage for this node */
     memset(&mem, 0, sizeof(mem));
-    if (SIGAR_OK != (rc = sigar_mem_get(sigar, &mem))) {
-        char* error_string = strerror(rc);
-        opal_output(0, "sigar_mem_get failed: %s", error_string);
+    if(mca_sensor_sigar_component.test) {
+        mem.total       = 0x1000000000;
+        mem.used        = 0x0010000000;
+        mem.actual_used = 0x000C000000;
+        mem.actual_free = 0x0FD0000000;
+    } else {
+        if (SIGAR_OK != (rc = sigar_mem_get(sigar, &mem))) {
+            char* error_string = strerror(rc);
+            opal_output(0, "sigar_mem_get failed: %s", error_string);
+        }
     }
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "mem total: %" PRIu64 " used: %" PRIu64 " actual used: %" PRIu64 " actual free: %" PRIu64 "",
@@ -360,9 +384,16 @@ static int sigar_collect_swap(opal_list_t* data)
     sigar_swap_t swap;
     /* get swap data */
     memset(&swap, 0, sizeof(swap));
-    if (SIGAR_OK != (rc = sigar_swap_get(sigar, &swap))) {
-        char* error_string = strerror(rc);
-        opal_output(0, "sigar_swap_get failed: %s", error_string);
+    if(mca_sensor_sigar_component.test) {
+        swap.total    = 0x00100000;
+        swap.used     = 0x00010000;
+        swap.page_in  = 0x01000000;
+        swap.page_out = 0x02000000;
+    } else {
+        if (SIGAR_OK != (rc = sigar_swap_get(sigar, &swap))) {
+            char* error_string = strerror(rc);
+            opal_output(0, "sigar_swap_get failed: %s", error_string);
+        }
     }
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "swap total: %" PRIu64 " used: %" PRIu64 "page_in: %" PRIu64 " page_out: %" PRIu64 "\n",
@@ -403,10 +434,22 @@ static int sigar_collect_cpu(opal_list_t* data)
     float tmp;
     /* get the cpu usage */
     memset(&cpu, 0, sizeof(cpu));
-    if (SIGAR_OK != (rc = sigar_cpu_get(sigar, &cpu))) {
-        char* error_string = strerror(rc);
-        opal_output(0, "sigar_cpu_get failed: %s", error_string);
+    if(mca_sensor_sigar_component.test) {
+        cpu.total    = 25;
+        cpu.user     = 5;
+        cpu.nice     = 2;
+        cpu.stolen   = 0;
+        cpu.sys      = 7;
+        cpu.soft_irq = 2;
+        cpu.wait     = 7;
+        cpu.irq      = 2;
+        cpu.idle     = 75;
+    } else {
+        if (SIGAR_OK != (rc = sigar_cpu_get(sigar, &cpu))) {
+            char* error_string = strerror(rc);
+            opal_output(0, "sigar_cpu_get failed: %s", error_string);
 
+        }
     }
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "cpu user: %" PRIu64 " sys: %" PRIu64 " idle: %" PRIu64 " wait: %" PRIu64 " nice: %" PRIu64 " total: %" PRIu64 "",
@@ -452,9 +495,15 @@ static int sigar_collect_load(opal_list_t* data)
 
     /* get load average data */
     memset(&loadavg, 0, sizeof(loadavg));
-    if (SIGAR_OK != (rc = sigar_loadavg_get(sigar, &loadavg))) {
-        char* error_string = strerror(rc);
-        opal_output(0, "sigar_loadavg_get failed: %s", error_string);
+    if(mca_sensor_sigar_component.test) {
+        loadavg.loadavg[0] = 0.5;
+        loadavg.loadavg[1] = 0.4;
+        loadavg.loadavg[2] = 0.3;
+    } else {
+        if (SIGAR_OK != (rc = sigar_loadavg_get(sigar, &loadavg))) {
+            char* error_string = strerror(rc);
+            opal_output(0, "sigar_loadavg_get failed: %s", error_string);
+        }
     }
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "load_avg: %e %e %e",
@@ -500,7 +549,30 @@ static int sigar_collect_disk(opal_list_t* data, double tdiff)
     /* get disk usage data */
     memset(&tdisk, 0, sizeof(tdisk));
     OPAL_LIST_FOREACH(dit, &fslist, sensor_sigar_disks_t) {
-        if (SIGAR_OK != (rc = sigar_file_system_usage_get(sigar, dit->mount_pt, &fsusage))) {
+        if(mca_sensor_sigar_component.test) {
+            rc = SIGAR_OK;
+            fsusage.use_percent = 0.5;
+            fsusage.total = 0x8000000000;
+            fsusage.free  = 0x6000000000;
+            fsusage.used  = 0x2000000000;
+            fsusage.avail = 0x1C00000000;
+            fsusage.files = 15000;
+            fsusage.free_files = 2500;
+            fsusage.disk.reads = 200000;
+            fsusage.disk.writes = 20000;
+            fsusage.disk.write_bytes = 0x0007F12345;
+            fsusage.disk.read_bytes = 0x007F123450;
+            fsusage.disk.rtime = 23000;
+            fsusage.disk.wtime = 5000;
+            fsusage.disk.qtime = 27000;
+            fsusage.disk.time = 0;
+            fsusage.disk.snaptime = 0;
+            fsusage.disk.service_time = 0.0;
+            fsusage.disk.queue = 0.0;
+        } else {
+            rc = sigar_file_system_usage_get(sigar, dit->mount_pt, &fsusage);
+        }
+        if (SIGAR_OK != rc) {
             char* error_string = strerror(rc);
             opal_output(0, "sigar_file_system_usage_get failed: %s", error_string);
             opal_output(0, "%s Failed to get usage data for filesystem %s",
@@ -635,7 +707,26 @@ static int sigar_collect_network(opal_list_t *data, double tdiff)
     memset(&tnet, 0, sizeof(tnet));
     OPAL_LIST_FOREACH_SAFE(sit, next, &netlist, sensor_sigar_interface_t) {
         memset(&ifc, 0, sizeof(ifc));
-        if (SIGAR_OK != (rc = sigar_net_interface_stat_get(sigar, sit->interface, &ifc))) {
+        if(mca_sensor_sigar_component.test) {
+            rc = SIGAR_OK;
+            ifc.rx_packets = 2000;
+            ifc.rx_dropped = 0;
+            ifc.rx_errors = 0;
+            ifc.rx_bytes = ifc.rx_packets * 800;
+            ifc.rx_frame = 0;
+            ifc.rx_overruns = 0;
+            ifc.speed = 0;
+            ifc.tx_packets = 200000;
+            ifc.tx_dropped = 0;
+            ifc.tx_errors = 0;
+            ifc.tx_bytes = ifc.tx_packets * 1200;
+            ifc.tx_overruns = 0;
+            ifc.tx_carrier = 0;
+            ifc.tx_collisions = 0;
+        } else {
+            rc = sigar_net_interface_stat_get(sigar, sit->interface, &ifc);
+        }
+        if (SIGAR_OK != rc) {
             char* error_string = strerror(rc);
             opal_output_verbose(1 , orcm_sensor_base_framework.framework_output,
                                 "sigar_net_interface_stat_get failed: %s", error_string);
@@ -750,9 +841,13 @@ static int sigar_collect_system(opal_list_t* data)
 
     /* get load average data */
     memset(&utime, 0, sizeof(utime));
-    if (SIGAR_OK != (rc = sigar_uptime_get(sigar, &utime))) {
-        char* error_string = strerror(rc);
-        opal_output(0, "sigar_uptime_get failed: %s", error_string);
+    if(mca_sensor_sigar_component.test) {
+        utime.uptime = 16800.0;
+    } else {
+        if (SIGAR_OK != (rc = sigar_uptime_get(sigar, &utime))) {
+            char* error_string = strerror(rc);
+            opal_output(0, "sigar_uptime_get failed: %s", error_string);
+        }
     }
     opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                         "uptime: %f", utime.uptime);
@@ -760,7 +855,7 @@ static int sigar_collect_system(opal_list_t* data)
     /* add them to the data */
     orcm_value_t* item = NULL;
     if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "uptime")) {
-        item = orcm_util_load_orcm_value("uptime", &utime.uptime, OPAL_DOUBLE, "");
+        item = orcm_util_load_orcm_value("uptime", &utime.uptime, OPAL_DOUBLE, "seconds");
         ON_NULL_RETURN(item);
         opal_list_append(data, (opal_list_item_t*)item);
     }
@@ -774,9 +869,19 @@ static int sigar_collect_global_procstat(opal_list_t* data)
 
     /* get load average data */
     memset(&procstat_info, 0, sizeof(procstat_info));
-    if (SIGAR_OK != (rc = sigar_proc_stat_get(sigar, &procstat_info))) {
-        char* error_string = strerror(rc);
-        opal_output(0, "sigar_proc_stat_get failed: %s", error_string);
+    if(mca_sensor_sigar_component.test) {
+        procstat_info.idle = 0;
+        procstat_info.running = 1;
+        procstat_info.sleeping = 0;
+        procstat_info.stopped = 0;
+        procstat_info.threads = 24;
+        procstat_info.zombie = 0;
+        procstat_info.total = 1;
+    } else {
+        if (SIGAR_OK != (rc = sigar_proc_stat_get(sigar, &procstat_info))) {
+            char* error_string = strerror(rc);
+            opal_output(0, "sigar_proc_stat_get failed: %s", error_string);
+        }
     }
     /* add them to the data */
     orcm_value_t* item = NULL;
@@ -835,15 +940,14 @@ static int sigar_collect_procstat(opal_list_t* data)
     int remaining_procs;
     orte_proc_t *child;
 
-    if (NULL != orte_local_children) {
+    if (NULL != orte_local_children && !mca_sensor_sigar_component.test) {
         remaining_procs = orte_local_children->size+1;
     } else {
         remaining_procs = 1;
     }
 
     for (i=0; i < remaining_procs; i++) {
-        if(0==i)
-        {
+        if(0==i) {
             sample_pid = orte_process_info.pid;
         } else {
             if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, i))) {
@@ -866,20 +970,45 @@ static int sigar_collect_procstat(opal_list_t* data)
 
         /* Sample all the proc details here */
         bool log_group = true;
-        if (SIGAR_OK != (rc = sigar_proc_state_get(sigar, sample_pid, &proc_info))) {
-            error_string = strerror(rc);
-            opal_output(0, "sigar_proc_state_get failed: %s", error_string);
-            log_group = false;
-        }
-        if (SIGAR_OK != (rc = sigar_proc_mem_get(sigar, sample_pid, &proc_mem_info))) {
-            error_string = strerror(rc);
-            opal_output(0, "sigar_proc_mem_get failed: %s", error_string);
-            log_group = false;
-        }
-        if (SIGAR_OK != (rc = sigar_proc_cpu_get(sigar, sample_pid, &proc_cpu_info))) {
-            error_string = strerror(rc);
-            opal_output(0, "sigar_loadavg_get failed: %s", error_string);
-            log_group = false;
+        if(mca_sensor_sigar_component.test) {
+            strcpy(proc_info.name, "test_orcmd");
+            proc_info.ppid = 14634;
+            proc_info.nice = 0;
+            proc_info.priority = 1;
+            proc_info.processor = 0;
+            proc_info.state = 'R';
+            proc_info.threads = 24;
+            proc_info.tty = 0;
+
+            proc_mem_info.major_faults = 0;
+            proc_mem_info.minor_faults = 3;
+            proc_mem_info.page_faults = 23;
+            proc_mem_info.resident = 120000000;
+            proc_mem_info.share = 300000;
+            proc_mem_info.size = 130000000;
+
+            proc_cpu_info.last_time = 0;
+            proc_cpu_info.percent = 0.22;
+            proc_cpu_info.sys = 10;
+            proc_cpu_info.user = 90;
+            proc_cpu_info.total = 100;
+            proc_cpu_info.start_time = 0;
+        } else {
+            if (SIGAR_OK != (rc = sigar_proc_state_get(sigar, sample_pid, &proc_info))) {
+                error_string = strerror(rc);
+                opal_output(0, "sigar_proc_state_get failed: %s", error_string);
+                log_group = false;
+            }
+            if (SIGAR_OK != (rc = sigar_proc_mem_get(sigar, sample_pid, &proc_mem_info))) {
+                error_string = strerror(rc);
+                opal_output(0, "sigar_proc_mem_get failed: %s", error_string);
+                log_group = false;
+            }
+            if (SIGAR_OK != (rc = sigar_proc_cpu_get(sigar, sample_pid, &proc_cpu_info))) {
+                error_string = strerror(rc);
+                opal_output(0, "sigar_loadavg_get failed: %s", error_string);
+                log_group = false;
+            }
         }
         if (false == log_group)
             continue;
@@ -1099,13 +1228,6 @@ void collect_sigar_sample(orcm_sensor_sampler_t *sampler)
         return;
     }
     mca_sensor_sigar_component.diagnostics |= 0x1;
-
-    if (mca_sensor_sigar_component.test) {
-        /* just send the test vector */
-        opal_buffer_t* bptr = &test_vector;
-        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
-        return;
-    }
 
     /* get the sample time */
     now = time(NULL);
@@ -1396,184 +1518,6 @@ static uint64_t metric_diff_calc(sigar_uint64_t newval, uint64_t oldval,
     }
 
     return diff;
-}
-
-static void generate_test_vector(opal_buffer_t *v)
-{
-    uint64_t ui64;
-    float ft = 0.0;
-    double d = 0.0;
-    struct timeval current_time;
-    bool log_group = true;
-
-    opal_dss.pack(v, &PLUGIN_NAME, 1, OPAL_STRING);
-    opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING);
-    /* get the time so it will be unique each time */
-    gettimeofday(&current_time, NULL);
-    opal_dss.pack(v, &current_time, 1, OPAL_TIMEVAL);
-
-    /* log_group */
-    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
-    /* mem_total */
-    ui64 = 1;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* mem_used */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* mem_actual_used */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* mem_actual_free */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-
-    /* log_group */
-    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
-    /* swap total */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* swap used */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* swap page in */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* swap page out */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-
-    /* log_group */
-    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
-    /* cpu user */
-    ft = 1.0;
-    opal_dss.pack(v, &ft, 1, OPAL_FLOAT);
-    /* cpu sys */
-    ft += 1.0;
-    opal_dss.pack(v, &ft, 1, OPAL_FLOAT);
-    /* cpu idle */
-    ft += 1.0;
-    opal_dss.pack(v, &ft, 1, OPAL_FLOAT);
-
-    /* log_group */
-    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
-    /* la */
-    ft += 1.0;
-    opal_dss.pack(v, &ft, 1, OPAL_FLOAT);
-    /* la5 */
-    ft += 1.0;
-    opal_dss.pack(v, &ft, 1, OPAL_FLOAT);
-    /* la15 */
-    ft += 1.0;
-    opal_dss.pack(v, &ft, 1, OPAL_FLOAT);
-
-    /* log_group */
-    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
-    /* reads */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* writes */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* read speed */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* write speed */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* read bytes */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* write bytes */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* rx packets */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* tx packets */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* disk_rt_total */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* disk_wt_total */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* disk_iot_total */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-
-    /* log_group */
-    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
-    /* net_rp_rate */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* net_wp_rate */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* net_rb_rate */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* net_wb_rate */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* net_wb_total */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* net_rb_total */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* net_wp_total */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* net_rp_total */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* net_tx_errors */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-    /* net_tx_errors */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_UINT64);
-
-    /* log_group */
-    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
-    /* uptime */
-    d += 1.0;
-    opal_dss.pack(v, &d, 1, OPAL_DOUBLE);
-
-    /* log_group */
-    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
-    /* total_processes */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
-    /* sleeping_processes */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
-    /* running_processes */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
-    /* zombie_processes */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
-    /* stopped_processes */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
-    /* idle_processes */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
-    /* threads */
-    ui64++;
-    opal_dss.pack(v, &ui64, 1, OPAL_INT64);
-
-    /* Sending no more groups */
-    log_group = false;
-
-    /* log_group */
-    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
-
-    /* log_group */
-    opal_dss.pack(v, &log_group, 1, OPAL_BOOL);
-
 }
 
 static void sigar_set_sample_rate(int sample_rate)

@@ -14,6 +14,8 @@
 #include "opal/class/opal_list.h"
 #include "opal/class/opal_hash_table.h"
 #include "orcm/util/utils.h"
+#include "orcm/mca/parser/parser.h"
+#include "orcm/mca/parser/base/base.h"
 #include <fcntl.h>
 
 #define MAX_LINE_LENGTH 1024
@@ -44,6 +46,7 @@ typedef struct {
 typedef struct {
     FILE *file;
     int fd;
+    int parser_fd;
     struct flock file_lock;
 } file_with_lock_t;
 

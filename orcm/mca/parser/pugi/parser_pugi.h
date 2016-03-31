@@ -120,6 +120,10 @@ extern opal_list_t* pugi_retrieve_section_from_list(int file_id,
  * @param[in] name:    it can be null, or empty string if it needs to be
  *                     ignored; otherwise, the result items need to match their
  *                     name attribute with the value of this param.
+ * @param[in] overwrite: If this variable is set to true, the contents of XML will
+ *                     be overwritten with the contents in input at specified key/name
+ *                     location. Please use this variable with caution. If you send NULL
+ *                     input at NULL key, then the entire XML will be overwritten
  *
  * @returns ORCM_SUCCESS- when operation is success or an appropriate failure.
  *

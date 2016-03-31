@@ -69,37 +69,21 @@ static opal_hash_table_t *orcm_logical_group_list_internal(char *tag, int do_all
                                                            char **members,
                                                            int do_all_member,
                                                            opal_hash_table_t *groups);
-/* open the storage file with a specific mode */
-static FILE *orcm_logical_group_open_file(char *storage_filename,
-                                          char *mode, bool *o_file_missing);
+/* open the storage file */
+static int orcm_logical_group_open_file(char *storage_filename);
 
-static int orcm_logical_group_close_file(void);
+/* create an XML file with logicalgroup tag in it */
+static int orcm_logical_group_crate_xml_file(char *storage_filename);
 
 /* load the content of the storage file to an in-memory hash table */
 static int orcm_logical_group_load_from_file(char *storage_filename,
                                              opal_hash_table_t *io_groups);
 
-/* whether a line is a comment or not */
-static int orcm_logical_group_is_comment(char *line);
-
-/* split a line in a file */
-static int orcm_logical_group_split_line(char *line, char ***o_line_fields);
-
-/* process a line that is a tag */
-static int orcm_logical_group_process_tag_line(char *tag);
-
-/* process a line */
-static int orcm_logical_group_process_line(char *line, opal_hash_table_t *io_groups);
-
 /* trim a line */
 static void orcm_logical_group_trim_string(char *string, char **o_string);
 
-/* get a new line from the storage file */
-static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
-                                          int max_line_length, int *o_eof);
-
 /* parsing a storage file */
-static int orcm_logical_group_parsing(char *line_buf, opal_hash_table_t *io_groups);
+static int orcm_logical_group_parsing(opal_list_t* result_list, opal_hash_table_t *io_groups);
 
 /* pass the storage file */
 static int orcm_logical_group_parse_from_file(opal_hash_table_t *io_groups);
@@ -110,7 +94,8 @@ static opal_list_t *orcm_logical_group_do_convertion(opal_list_t *members_list,
                                                      unsigned int reserved_size);
 
 /* concatenate multiple list item of members into one */
-static int orcm_logical_group_save_to_file_concat(char *tag, opal_list_t *members_list);
+static int orcm_logical_group_save_to_file_concat(opal_list_t *parser_input, char *tag,
+                                                  opal_list_t *members_list);
 
 /* internal function to save the in-memory content to a storage file */
 static int orcm_logical_group_save_to_file_internal(opal_hash_table_t *groups);
@@ -137,7 +122,7 @@ OBJ_CLASS_INSTANCE(orcm_logical_group_member_t, opal_list_item_t,
 orcm_logical_group_t LOGICAL_GROUP = {NULL, NULL};
 char *current_tag = NULL;
 
-file_with_lock_t logical_group_file_lock = {NULL, -1, {F_RDLCK, SEEK_SET, 0, 0, 0}};
+file_with_lock_t logical_group_file_lock = {NULL, -1, -1, {F_RDLCK, SEEK_SET, 0, 0, 0}};
 
 static int orcm_logical_group_init(char *config_file)
 {
@@ -145,7 +130,7 @@ static int orcm_logical_group_init(char *config_file)
 
     if (NULL == config_file) {
         if (-1 == (erri = asprintf(&(LOGICAL_GROUP.storage_filename),
-                   "%s/etc/orcm-logical-grouping.txt", opal_install_dirs.prefix))) {
+                   "%s/etc/orcm-default-config.xml", opal_install_dirs.prefix))) {
             return ORCM_ERR_OUT_OF_RESOURCE;
         }
     } else if (NULL == (LOGICAL_GROUP.storage_filename = strdup(config_file))) {
@@ -589,27 +574,6 @@ cleanup:
     return o_groups;
 }
 
-static int orcm_logical_group_is_comment(char *line)
-{
-    if (NULL == line || '\0' == line[0] || '\n' == line[0] ||
-        '\r' == line[0] || '#'  == line[0]
-       ) {
-        return 1;
-    }
-
-    return 0;
-}
-
-static int orcm_logical_group_split_line(char *line, char ***o_line_fields)
-{
-    *o_line_fields = opal_argv_split(line, '=');
-    if (2 != opal_argv_count(*o_line_fields)) {
-        return ORCM_ERR_BAD_PARAM;
-    }
-
-    return ORCM_SUCCESS;
-}
-
 static int orcm_logical_group_process_tag_line(char *tag)
 {
     if (NULL == current_tag || (0 != strncmp(current_tag, tag, strlen(current_tag) + 1))) {
@@ -620,30 +584,39 @@ static int orcm_logical_group_process_tag_line(char *tag)
     return ORCM_SUCCESS;
 }
 
-static int orcm_logical_group_process_line(char *line, opal_hash_table_t *groups)
+static int orcm_logical_group_parsing(opal_list_t *result_list, opal_hash_table_t *groups)
 {
     int erri = ORCM_SUCCESS;
-    char **line_fields = NULL;
+    orcm_value_t *list_item = NULL;
+    int rc = ORCM_SUCCESS;
 
-    if (orcm_logical_group_is_comment(line)) {
-        return erri;
+    OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
+
+        if (OPAL_STRING == list_item->value.type) {
+            if (0 == strcmp("name", list_item->value.key)) {
+                erri = orcm_logical_group_process_tag_line(list_item->value.data.string);
+            } else if (0 == strcmp("members", list_item->value.key)) {
+                erri = orcm_logical_group_add(current_tag, list_item->value.data.string, groups);
+            } else {
+                ORCM_UTIL_ERROR_MSG_WITH_ARG("Not recognize the current key %s", list_item->value.key);
+                erri = ORCM_ERR_BAD_PARAM;
+            }
+
+        } else if (list_item->value.type == OPAL_PTR) {
+            if (0 == strcmp(list_item->value.key, "group")) {
+                rc = orcm_logical_group_parsing((opal_list_t*)list_item->value.data.ptr, groups);
+                if (ORCM_SUCCESS != rc) {
+                    return rc;
+                }
+            } else {
+                ORCM_UTIL_ERROR_MSG_WITH_ARG("Unexpected key from config file %s", list_item->value.key);
+                return ORCM_ERR_BAD_PARAM;
+            }
+        } else {
+            ORCM_UTIL_ERROR_MSG_WITH_ARG("Unexpected data type %s from config file", list_item->value.type);
+            return ORCM_ERR_BAD_PARAM;
+        }
     }
-
-    if (ORCM_SUCCESS != (erri = orcm_logical_group_split_line(line, &line_fields))) {
-        goto cleanup;
-    }
-
-    if (0 == strncmp(line_fields[0], "group name", strlen(line_fields[0]) + 1)) {
-        erri = orcm_logical_group_process_tag_line(line_fields[1]);
-    } else if (0 == strncmp(line_fields[0], "member list", strlen(line_fields[0]) + 1)) {
-        erri = orcm_logical_group_add(current_tag, line_fields[1], groups);
-    } else {
-        ORCM_UTIL_ERROR_MSG_WITH_ARG("Not recognize the current line: %s", line);
-        erri = ORCM_ERR_BAD_PARAM;
-    }
-
-cleanup:
-    opal_argv_free(line_fields);
     return erri;
 }
 
@@ -672,127 +645,114 @@ static void orcm_logical_group_trim_string(char *string, char **o_string)
     }
 }
 
-static int orcm_logical_group_get_newline(FILE *storage_file, char *io_line,
-                                          int max_line_length, int *o_eof)
+static int orcm_logical_group_parse_from_file(opal_hash_table_t *io_groups)
 {
-    char *ret = NULL;
-    char *line_break = NULL;
+    opal_list_t *result_list = NULL;
+    int rc;
+    orcm_value_t *list_item = NULL;
 
-    /* +2 means to include the last '\0' and the line break '\n' */
-    ret = fgets(io_line, max_line_length + 2, storage_file);
-    if (NULL == ret) {
-        if (0 != feof(storage_file)) {
-            *o_eof = 1;
-            return ORCM_SUCCESS;
-        }
-        return ORCM_ERR_FILE_READ_FAILURE;
+    result_list = orcm_parser.retrieve_section(logical_group_file_lock.parser_fd, "logicalgroup", "");
+    if (NULL == result_list) {
+        return ORCM_ERR_NOT_FOUND;
     }
 
-    /* trim the last '\n' introduced by line break */
-    if (NULL != (line_break = strchr(io_line, '\n'))) {
-        *line_break = '\0';
+    OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
+
+        if (list_item->value.type == OPAL_PTR) {
+            if (0 == strcmp(list_item->value.key, "logicalgroup")) {
+                rc = orcm_logical_group_parsing((opal_list_t*)list_item->value.data.ptr, io_groups);
+                if (ORCM_SUCCESS != rc) {
+                    return rc;
+                }
+            }
+        }
+        else {
+            ORCM_UTIL_ERROR_MSG_WITH_ARG("Unexpected data type %s from config file", list_item->value.type);
+            SAFE_RELEASE(result_list);
+            return ORCM_ERROR;
+        }
+    }
+    SAFE_RELEASE(result_list);
+    return ORCM_SUCCESS;
+}
+
+static int orcm_logical_group_open_file(char *storage_filename)
+{
+
+    if (NULL == storage_filename || '\0' == storage_filename[0]) {
+        ORCM_UTIL_ERROR_MSG("Bad setup for parsing logical groupings.");
+        return ORCM_ERR_FILE_OPEN_FAILURE;
+    }
+
+    if (0 > (logical_group_file_lock.parser_fd = orcm_parser.open(storage_filename))) {
+        return logical_group_file_lock.parser_fd;
     }
 
     return ORCM_SUCCESS;
 }
 
-static int orcm_logical_group_parsing(char *line_buf, opal_hash_table_t *io_groups)
+static int orcm_logical_group_crate_xml_file(char *storage_filename)
 {
-    int eof = -1;
-    int erri = -1;
-    char *line_buf_after_trim = NULL;
-
-    if (-1 == fcntl(logical_group_file_lock.fd, F_SETLKW,
-                    &(logical_group_file_lock.file_lock))) {
-        return ORCM_ERR_FILE_READ_FAILURE;
-    }
-
-    while (1) {
-        eof = 0;
-        memset(line_buf, '\0', strlen(line_buf));
-        erri = orcm_logical_group_get_newline(logical_group_file_lock.file, line_buf,
-                                              MAX_LINE_LENGTH, &eof);
-        if (ORCM_SUCCESS != erri || 1 == eof) {
-            break;
-        }
-
-        if (orcm_logical_group_is_comment(line_buf)) {
-            continue;
-        }
-
-        orcm_logical_group_trim_string(line_buf, &line_buf_after_trim);
-        erri = orcm_logical_group_process_line(line_buf_after_trim, io_groups);
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
-    }
-
-    return erri;
-}
-
-static int orcm_logical_group_parse_from_file(opal_hash_table_t *io_groups)
-{
-    char *line_buf = NULL;
-    int erri = -1;
-
-    if (1 >= MAX_LINE_LENGTH) {
-        ORCM_UTIL_ERROR_MSG("The line length needs to be set larger than 1");
-        return ORCM_ERR_BAD_PARAM;
-    }
-
-    /* +2 means adding '\0' in the end, and '\n' line break */
-    if (NULL == (line_buf = (char*)malloc((MAX_LINE_LENGTH + 2) * sizeof(char)))) {
-        ORCM_UTIL_ERROR_MSG("Failed to allocate line buffer for logical groupings.");
-        return ORCM_ERR_OUT_OF_RESOURCE;
-    }
-
-    erri = orcm_logical_group_parsing(line_buf, io_groups);
-
-    SAFEFREE(line_buf);
-
-    return erri;
-}
-
-static FILE *orcm_logical_group_open_file(char *storage_filename,
-                                          char *mode, bool *o_file_missing)
-{
-    FILE *storage_file = NULL;
+    FILE *storage_fp = NULL;
 
     if (NULL == storage_filename || '\0' == storage_filename[0]) {
         ORCM_UTIL_ERROR_MSG("Bad setup for parsing logical groupings.");
-    } else {
-        if (NULL == (storage_file = fopen(storage_filename, mode))) {
-            if (ENOENT == errno) {
-                *o_file_missing = true;
-            } else {
-                ORCM_UTIL_ERROR_MSG("Failed to open file for logical groupings.");
-            }
+        return ORCM_ERR_FILE_OPEN_FAILURE;
+    }
+
+    storage_fp = fopen(storage_filename, "a");
+    if (NULL == storage_fp) {
+        ORCM_UTIL_ERROR_MSG("Failed to create file for logical groupings.");
+        return ORCM_ERR_FILE_OPEN_FAILURE;
+    }
+    else {
+        if (0 > fprintf(storage_fp, "<logicalgroup />")) {
+            fclose(storage_fp);
+            return ORCM_ERR_FILE_WRITE_FAILURE;
+        }
+    }
+    fflush(storage_fp);
+    fclose(storage_fp);
+    return ORCM_SUCCESS;
+}
+
+static int orcm_logical_group_open_file_write_mode(char *storage_filename)
+{
+    int ret = ORCM_SUCCESS;
+
+    ret = orcm_logical_group_crate_xml_file(storage_filename);
+    if (ORCM_SUCCESS == ret) {
+        ret = orcm_logical_group_open_file(storage_filename);
+    }
+    return ret;
+}
+
+static int orcm_logical_group_open_file_with_logicalgroup_tag(char *storage_filename)
+{
+    int ret = ORCM_SUCCESS;
+    opal_list_t *result_list = NULL;
+
+    ret = orcm_logical_group_open_file(storage_filename);
+    if (ORCM_SUCCESS != ret) {
+        ret = orcm_logical_group_open_file_write_mode(storage_filename);
+        if (ORCM_SUCCESS != ret) {
+            return ret;
         }
     }
 
-    return storage_file;
-}
-
-static int orcm_logical_group_close_file(void)
-{
-    int erri = ORCM_SUCCESS;
-
-    fflush(logical_group_file_lock.file);
-    logical_group_file_lock.file_lock.l_type = F_UNLCK;
-    if (-1 == fcntl(logical_group_file_lock.fd, F_SETLK,
-                    &(logical_group_file_lock.file_lock))) {
-        erri = ORCM_ERR_FILE_READ_FAILURE;
+    result_list = orcm_parser.retrieve_section(logical_group_file_lock.parser_fd, "logicalgroup", "");
+    if (NULL == result_list) {
+        ret = orcm_parser.close(logical_group_file_lock.parser_fd);
+        if (ORCM_SUCCESS == ret) {
+            ret = orcm_logical_group_open_file_write_mode(storage_filename);
+        }
     }
-    fclose(logical_group_file_lock.file);
-
-    return erri;
+    return ret;
 }
 
 static int orcm_logical_group_load_from_file(char *storage_filename,
                                              opal_hash_table_t *io_groups)
 {
-    bool file_missing = false;
-    char *mod = "r";
     int erri = ORCM_SUCCESS;
     int ret = ORCM_SUCCESS;
 
@@ -801,23 +761,19 @@ static int orcm_logical_group_load_from_file(char *storage_filename,
         return ORCM_ERR_BAD_PARAM;
     }
 
-    logical_group_file_lock.file_lock.l_type = F_RDLCK;
-    logical_group_file_lock.file = orcm_logical_group_open_file(storage_filename,
-                                                                mod, &file_missing);
-    if (NULL == logical_group_file_lock.file) {
-        if (file_missing) {
-            return ORCM_SUCCESS;
-        }
-        return ORCM_ERR_FILE_OPEN_FAILURE;
+    ret = orcm_logical_group_open_file(storage_filename);
+    if (ORCM_SUCCESS != ret) {
+        return ORCM_SUCCESS;
     }
-    logical_group_file_lock.fd = fileno(logical_group_file_lock.file);
 
     erri = orcm_logical_group_parse_from_file(io_groups);
-    ret = orcm_logical_group_close_file();
+    ret = orcm_parser.close(logical_group_file_lock.parser_fd);
+
     if (ORCM_SUCCESS == erri) {
         return ret;
+    } else if (ORCM_ERR_NOT_FOUND == erri) {
+        return ORCM_SUCCESS;
     }
-
     return erri;
 }
 
@@ -882,32 +838,59 @@ opal_list_t *orcm_logical_group_convert_members_list(opal_list_t *members_list,
     return o_members_list;
 }
 
-static int orcm_logical_group_save_to_file_concat(char *tag, opal_list_t *members_list)
+static int orcm_logical_group_save_to_file_concat(opal_list_t *parser_input, char *tag, opal_list_t *members_list)
 {
     int erri = ORCM_SUCCESS;
     orcm_logical_group_member_t *regex = NULL;
     opal_list_t *new_members_list = orcm_logical_group_convert_members_list(members_list,
                                                 MAX_LINE_LENGTH - strlen("member list="));
+    orcm_value_t* logicalgroup=NULL;
+    orcm_value_t* group_name=NULL;
+    orcm_value_t* members=NULL;
+    opal_list_t *inner_list = NULL;
+
 
     if (NULL == tag || NULL == new_members_list) {
         return erri;
     }
 
-    if (0 > fprintf(logical_group_file_lock.file, "group name=%s\n", tag)) {
+    inner_list = OBJ_NEW(opal_list_t);
+    if (NULL == inner_list) {
         erri = ORCM_ERR_FILE_WRITE_FAILURE;
         goto cleanup;
     }
 
+    group_name = orcm_util_load_orcm_value ("name", tag, OPAL_STRING, NULL);
+    if (NULL == group_name) {
+        erri = ORCM_ERR_FILE_WRITE_FAILURE;
+        SAFE_RELEASE(inner_list);
+        goto cleanup;
+    }
+    opal_list_append(inner_list, (opal_list_item_t *)group_name);
+
     OPAL_LIST_FOREACH(regex, new_members_list, orcm_logical_group_member_t) {
         if (NULL == regex) {
             erri = ORCM_ERR_BAD_PARAM;
+            SAFE_RELEASE(inner_list);
             goto cleanup;
         }
-        if (0 > fprintf(logical_group_file_lock.file, "member list=%s\n", regex->member)) {
+        members = orcm_util_load_orcm_value ("members", regex->member, OPAL_STRING, NULL);
+        if (NULL == members) {
             erri = ORCM_ERR_FILE_WRITE_FAILURE;
+            SAFE_RELEASE(inner_list);
             goto cleanup;
         }
+        opal_list_append(inner_list, (opal_list_item_t *)members);
     }
+
+    logicalgroup = orcm_util_load_orcm_value ("group", inner_list, OPAL_PTR, NULL);
+    if (NULL == logicalgroup) {
+        erri = ORCM_ERR_FILE_WRITE_FAILURE;
+        SAFE_RELEASE(inner_list);
+        goto cleanup;
+    }
+    opal_list_append(parser_input, (opal_list_item_t *)logicalgroup);
+
 
 cleanup:
     if (NULL != new_members_list) {
@@ -919,26 +902,27 @@ cleanup:
 static int orcm_logical_group_save_to_file_internal(opal_hash_table_t *groups)
 {
     int erri = ORCM_SUCCESS;
-    int ret = 0;
     char *key = NULL;
     size_t key_size = 0;
     opal_list_t *value = NULL;
     void *in_member = NULL;
     void *out_member = NULL;
+    opal_list_t *parser_input = NULL;
+    orcm_value_t* logicalgroup=NULL;
 
-    if (-1 == fcntl(logical_group_file_lock.fd, F_SETLKW,
-                    &(logical_group_file_lock.file_lock))) {
-        return ORCM_ERR_FILE_READ_FAILURE;
+    parser_input = OBJ_NEW(opal_list_t);
+    if (NULL == parser_input) {
+        return ORCM_ERR_FILE_WRITE_FAILURE;
     }
+
     if (0 == opal_hash_table_get_size(groups)) {
-        ret = fprintf(logical_group_file_lock.file, "# Empty logical grouping set\n");
-        if (0 > ret) {
-            erri = ORCM_ERR_FILE_WRITE_FAILURE;
-        }
+        erri = orcm_parser.write_section(logical_group_file_lock.parser_fd, NULL, "logicalgroup", "", true);
+        SAFE_RELEASE(parser_input);
+        return erri;
     } else {
         while (ORCM_SUCCESS == opal_hash_table_get_next_key_ptr(groups, (void**)&key,
                                         &key_size, (void**)&value, in_member, &out_member)) {
-            erri = orcm_logical_group_save_to_file_concat(key, value);
+            erri = orcm_logical_group_save_to_file_concat(parser_input, key, value);
             if (ORCM_SUCCESS != erri) {
                 break;
             }
@@ -947,13 +931,16 @@ static int orcm_logical_group_save_to_file_internal(opal_hash_table_t *groups)
         }
     }
 
+    if (ORCM_SUCCESS == erri) {
+        erri = orcm_parser.write_section(logical_group_file_lock.parser_fd, parser_input, "logicalgroup", "", true);
+    }
+
+    SAFE_RELEASE(parser_input);
     return erri;
 }
 
 int orcm_logical_group_save_to_file(char *storage_filename, opal_hash_table_t *groups)
 {
-    bool file_missing = false;
-    char *mod = "w";
     int erri = ORCM_SUCCESS;
     int ret = ORCM_SUCCESS;
 
@@ -962,16 +949,13 @@ int orcm_logical_group_save_to_file(char *storage_filename, opal_hash_table_t *g
         return ORCM_ERR_BAD_PARAM;
     }
 
-    logical_group_file_lock.file_lock.l_type = F_WRLCK;
-    logical_group_file_lock.file = orcm_logical_group_open_file(storage_filename,
-                                                                mod, &file_missing);
-    if (NULL == logical_group_file_lock.file) {
-        return ORCM_ERR_FILE_OPEN_FAILURE;
+    ret = orcm_logical_group_open_file_with_logicalgroup_tag(storage_filename);
+    if (ORCM_SUCCESS != ret) {
+        return ret;
     }
-    logical_group_file_lock.fd = fileno(logical_group_file_lock.file);
 
     erri = orcm_logical_group_save_to_file_internal(groups);
-    ret = orcm_logical_group_close_file();
+    ret = orcm_parser.close(logical_group_file_lock.parser_fd);
     if (ORCM_SUCCESS == erri) {
         return ret;
     }

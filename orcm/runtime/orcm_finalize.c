@@ -20,6 +20,7 @@
 
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/sst/base/base.h"
+#include "orcm/mca/parser/base/base.h"
 
 #include "orte/runtime/runtime.h"
 #include "runtime/runtime.h"
@@ -71,6 +72,8 @@ int orcm_finalize(void)
     opal_finalize();
 
     orcm_logical_group_finalize();
+
+    (void) mca_base_framework_close(&orcm_parser_base_framework);
 
     return ORCM_SUCCESS;
 }

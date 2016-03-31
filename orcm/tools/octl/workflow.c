@@ -24,7 +24,6 @@ static void workflow_output_setup(orte_rml_recv_cb_t *xfer);
 static int workflow_send_buffer(orte_process_name_t *wf_agg,
                                               opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
 static int workflow_add_unpack_buffer(orte_rml_recv_cb_t *xfer);
-static opal_list_t* workflow_add_retrieve_workflows_section(const char *file);
 static int workflow_add_send_workflow(opal_buffer_t *buf, char **aggregator);
 static int workflow_add_process_single_workflow(opal_list_t *result_list, char **aggregator, char *list_head_key);
 static int workflow_add_extract_aggregator(char ***aggregator, char *cli_aggregator, char *key, char *value);
@@ -100,29 +99,6 @@ static int workflow_add_unpack_buffer(orte_rml_recv_cb_t *xfer)
     return ORCM_SUCCESS;
 
 }
-
-static opal_list_t* workflow_add_retrieve_workflows_section(const char *file)
-{
-    opal_list_t *result_list = NULL;
-    int rc;
-
-    if (ORTE_SUCCESS != (rc = mca_base_framework_open(&orcm_parser_base_framework, 0))) {
-        ORTE_ERROR_LOG(rc);
-        return result_list;
-    }
-    if (ORTE_SUCCESS != (rc = orcm_parser_base_select())) {
-        ORTE_ERROR_LOG(rc);
-        (void) mca_base_framework_close(&orcm_parser_base_framework);
-        return result_list;
-    }
-
-    result_list = orcm_util_workflow_add_retrieve_workflows_section(file);
-
-    (void) mca_base_framework_close(&orcm_parser_base_framework);
-    return result_list;
-
-}
-
 
 static int workflow_add_send_workflow(opal_buffer_t *buf, char **aggregator)
 {
@@ -325,7 +301,7 @@ int orcm_octl_workflow_add(char **value)
         return rc;
     }
 
-    result_list = workflow_add_retrieve_workflows_section(file);
+    result_list = orcm_util_workflow_add_retrieve_workflows_section(file);
     if (NULL == result_list) {
         SAFEFREE(aggregator);
         return ORCM_ERROR;

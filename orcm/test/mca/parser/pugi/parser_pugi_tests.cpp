@@ -349,12 +349,12 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_invalidFile)
     ASSERT_EQ(ORCM_ERR_FILE_OPEN_FAILURE, ret);
 }
 
-TEST_F(ut_parser_pugi_tests, test_API_writeSection_nullInput)
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_nullInput_overwrite_false)
 {
     int file_id = pugi_open(writeFile.c_str());
     int ret = pugi_write_section(file_id, NULL, NULL, NULL, false);
     pugi_close(file_id);
-    ASSERT_EQ(ORCM_ERR_BAD_PARAM, ret);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
 }
 
 TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeAtRoot)
@@ -635,6 +635,17 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
 
     int ret = pugi_write_section(file_id, input, key, NULL, true);
     SAFE_OBJ_RELEASE(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_OverWriteSetAtRoot)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("overwriteloop");
+
+    int ret = pugi_write_section(file_id, NULL, key, NULL, true);
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);

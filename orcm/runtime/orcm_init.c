@@ -32,6 +32,7 @@
 
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/sst/base/base.h"
+#include "orcm/mca/parser/base/base.h"
 
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/runtime/runtime.h"
@@ -171,6 +172,17 @@ int orcm_init(orcm_proc_type_t flags)
     }
     if (ORCM_SUCCESS != (ret = orcm_cfgi_base_select())) {
         error = "orcm_cfgi_select";
+        goto error;
+    }
+
+    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_parser_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_parser_base_open";
+        goto error;
+    }
+    if (ORTE_SUCCESS != (ret = orcm_parser_base_select())) {
+        ORTE_ERROR_LOG(ret);
+        error = "orcm_parser_select";
         goto error;
     }
 

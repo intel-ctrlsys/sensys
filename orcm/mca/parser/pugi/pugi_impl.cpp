@@ -51,9 +51,6 @@ int pugi_impl::writeSection(opal_list_t *input, char const*key,
                             char const* name, bool overwrite)
 {
     int rc;
-    if (input == NULL) {
-        return ORCM_ERR_BAD_PARAM;
-    }
 
     rc = writeToTree(root, input, key, name, overwrite);
     if (ORCM_SUCCESS != rc) {
@@ -81,6 +78,10 @@ int pugi_impl::convertOpalListToXmlNodes(opal_list_t *list, xml_node& key_node)
 {
     orcm_value_t *list_item = NULL;
     int rc;
+
+    if (NULL == list) {
+        return ORCM_ERROR;
+    }
 
     OPAL_LIST_FOREACH(list_item, list, orcm_value_t) {
         if (list_item->value.type == OPAL_STRING) {
@@ -178,7 +179,7 @@ int pugi_impl::checkOpalPtrToWrite(orcm_value_t *item, opal_list_t *input, char 
 
 void pugi_impl::appendToList(opal_list_t *srcList, opal_list_t *input, bool overwrite)
 {
-    if((NULL == srcList) || (NULL == input)) {
+    if (NULL == srcList) {
         return;
     }
 
@@ -187,6 +188,9 @@ void pugi_impl::appendToList(opal_list_t *srcList, opal_list_t *input, bool over
         srcList = duplicateList(input);
     }
     else {
+        if (NULL == input) {
+            return;
+        }
         opal_list_join( srcList, opal_list_get_end(srcList), input);
     }
 }
@@ -281,7 +285,7 @@ void pugi_impl::addNodeChildrenToList(xml_node node, opal_list_t *list)
 int pugi_impl::extractFromEmptyKeyList(opal_list_t *list)
 {
     if (NULL == list){
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
     orcm_value_t *tmp = (orcm_value_t*) opal_list_remove_first(list);
     if (opal_list_is_empty(list) && itemListHasChildren(tmp)){

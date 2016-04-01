@@ -518,6 +518,7 @@ static int analyze(int sd, short args, void* cbdata)
     if (0 == spatial_statistics->size) {
         rc = init_spatial_statistics(spatial_statistics, &(caddy->wf_step->attributes));
         if (ORCM_SUCCESS != rc) {
+            spatial_statistics->size = 0;
             SAFE_RELEASE(caddy);
             return rc;
         }

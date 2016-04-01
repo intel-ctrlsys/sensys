@@ -46,6 +46,9 @@
 #define PACKERR  "internal buffer pack error"
 #define UNPACKERR "internal buffer unpack error"
 
+#define INVALID_USG 0
+#define ILLEGAL_USG 1
+
 /* A timeout length when blocking
  * until something happens */
 #define ORCM_OCTL_WAIT_TIMEOUT 10
@@ -102,7 +105,7 @@ char *get_orcm_octl_query_event_date(int cmd, char **argv);
 int orcm_octl_sensor_store(int command, char** cmdlist);
 void orcm_octl_error(char *label, ...);
 void orcm_octl_info(char *label, ...);
-void orcm_octl_usage(char *label);
+void orcm_octl_usage(char *label, int error);
 
 END_C_DECLS
 

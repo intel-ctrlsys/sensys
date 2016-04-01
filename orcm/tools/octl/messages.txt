@@ -66,6 +66,14 @@ The connection to daemon failed.
 invalid arguments!
 %s
 
+[error:illegal-cmd]
+Illegal command.
+%s
+
+[error:unknown-usg]
+Unknown.
+%s
+
 [error:no-integer]
 %s is not an integer.
 

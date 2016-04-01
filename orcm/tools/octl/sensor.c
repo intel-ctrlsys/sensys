@@ -42,7 +42,7 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
     orte_notifier_severity_t severity;
 
     if (4 != opal_argv_count(argv)) {
-        orcm_octl_usage("sensor-get-policy");
+        orcm_octl_usage("sensor-get-policy", INVALID_USG);
         rc = ORCM_ERR_BAD_PARAM;
         return rc;
     }
@@ -267,7 +267,7 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
     char *error = NULL;
 
     if (6 != opal_argv_count(argv)) {
-        orcm_octl_usage("sensor-set-sample-rate");
+        orcm_octl_usage("sensor-set-sample-rate", INVALID_USG);
         rc = ORCM_ERR_BAD_PARAM;
         return rc;
     }
@@ -402,7 +402,7 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
     char *error = NULL;
 
     if (5 != opal_argv_count(argv)) {
-        orcm_octl_usage("sensor-get-sample-rate");
+        orcm_octl_usage("sensor-get-sample-rate", INVALID_USG);
         rc = ORCM_ERR_BAD_PARAM;
         return rc;
     }
@@ -648,7 +648,7 @@ int orcm_octl_sensor_inventory_get(int cmd, char **argv)
 
 
     if (5 < argc || 4 > argc) {
-        orcm_octl_usage("sensor-get-inventory");
+        orcm_octl_usage("sensor-get-inventory", INVALID_USG);
         rv = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_sensor_inventory_get_cleanup;
     }
@@ -771,14 +771,14 @@ int orcm_octl_sensor_change_sampling(int command, char** cmdlist)
 
     if(2 < command || 0 > command) {
         rv = ORCM_ERR_BAD_PARAM;
-        orcm_octl_usage("sensor");
+        orcm_octl_usage("sensor", INVALID_USG);
         goto change_sampling_cleanup;
     }
 
 
     if (4 != argc) {
         rv = ORCM_ERR_BAD_PARAM;
-        orcm_octl_usage("sensor");
+        orcm_octl_usage("sensor", INVALID_USG);
         goto change_sampling_cleanup;
     }
 
@@ -970,7 +970,7 @@ int orcm_octl_sensor_store(int storage_command, char** cmdlist)
     int rc;
 
     if (4 != opal_argv_count(cmdlist) || 0 > storage_command) {
-        orcm_octl_usage("sensor-store");
+        orcm_octl_usage("sensor-store", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
 

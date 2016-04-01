@@ -18,8 +18,10 @@
 #include "orcm/tools/octl/common.h"
 
 #define MAX_SIZE 1024
+
 char *search_msg(regex_t regex_label);
 int regex_label( regex_t *regex, char *type, char *label);
+char *get_usage_label_error(int error);
 
 const char *next_label = "^[[:space:]]*\\[[^:]+[^]]+\\][[:space:]]*$";
 
@@ -104,6 +106,31 @@ int regex_label( regex_t *regex, char *type, char *label) {
     return rc;
 }
 
+/**
+ * @brief Function to get error message label from a usage error.
+ *
+ * @param error Type of command line usage error.
+ *
+ * @return char* Returns an error message label or NULL for a failure.
+ *               DON'T FORGET TO FREE!
+ *
+ */
+char *get_usage_label_error(int error) {
+    char *err_label = NULL;
+
+    switch(error) {
+        case 0 :
+           err_label = strdup("invalid-argument");
+           break;
+        case 1 :
+           err_label = strdup("illegal-cmd");
+           break;
+        default :
+           err_label = strdup("unknown-usg");
+           break;
+    }
+    return err_label;
+}
 
 /**
  * @brief Function to show revelant information regarding the operation
@@ -170,10 +197,13 @@ void orcm_octl_error(char *label, ...){
  *        usage message.
  *
  * @param label Defined usage message label.
+ *
+ * @param error Type of command line usage error.
  */
-void orcm_octl_usage(char *label){
+void orcm_octl_usage(char *label, int error){
     char *usage_msg = NULL;
     char *output = NULL;
+    char *err_label = NULL;
 
     regex_t r_label;
 
@@ -184,13 +214,17 @@ void orcm_octl_usage(char *label){
             // remove unnecessary last "\n"
             if (usage_msg[strlen(usage_msg)-1] == '\n')
                 usage_msg[strlen(usage_msg)-1] = '\0';
-            asprintf(&output,"USAGE: %s" ,usage_msg);
-            if (NULL != output)
-                orcm_octl_error("invalid-argument", output);
-            SAFEFREE(output);
-            SAFEFREE(usage_msg);
 
+            asprintf(&output,"USAGE: %s" ,usage_msg);
+            err_label = get_usage_label_error(error);
+
+            if (NULL != output || NULL != err_label)
+                orcm_octl_error(err_label, output);
         }
         regfree(&r_label);
     }
+
+   SAFEFREE(output);
+   SAFEFREE(usage_msg);
+   SAFEFREE(err_label);
 }

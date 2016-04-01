@@ -369,6 +369,15 @@ static int dfg_iterate_ras_desc(orcm_ras_event_t *ecd, char **notifier_msg,
     return ((NULL == *notifier_msg || NULL == *notifier_action) ? ORCM_ERROR : ORCM_SUCCESS);
 }
 
+static void dfg_free_mem(char *notifier_msg, char *notifier_action,
+                         char *exec_name, char *exec_argv)
+{
+    SAFEFREE(notifier_msg);
+    SAFEFREE(notifier_action);
+    SAFEFREE(exec_name);
+    SAFEFREE(exec_argv);
+}
+
 static void dfg_generate_notifier_event(orcm_ras_event_t *ecd)
 {
     int rc = ORCM_SUCCESS;
@@ -380,27 +389,26 @@ static void dfg_generate_notifier_event(orcm_ras_event_t *ecd)
     rc = dfg_iterate_ras_desc(ecd, &notifier_msg, &notifier_action, &exec_name, &exec_argv);
     if (ORCM_SUCCESS != rc) {
         ORTE_ERROR_LOG(rc);
-        SAFEFREE(notifier_msg);
-        SAFEFREE(notifier_action);
-        SAFEFREE(exec_name);
-        SAFEFREE(exec_argv);
+        dfg_free_mem(notifier_msg, notifier_action, exec_name, exec_argv);
         return;
     }
 
     if (ORCM_RAS_SEVERITY_EMERG <= ecd->severity && ORCM_RAS_SEVERITY_UNKNOWN > ecd->severity) {
-           OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
-                                "%s dispatch:dfg generating notifier with severity %d "
-                                "and notifier action as %s", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                ecd->severity, notifier_action));
-            if (0 != strncmp(notifier_action, "exec", strlen(notifier_action))) {
-                 ORTE_NOTIFIER_SYSTEM_EVENT(ecd->severity, notifier_msg, notifier_action);
-            } else {
-                dfg_send_exec(exec_name, exec_argv);
-            }
+        OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                             "%s dispatch:dfg generating notifier with severity %d "
+                             "and notifier action as %s", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                             ecd->severity, notifier_action));
+        if (0 != strncmp(notifier_action, "exec", strlen(notifier_action))) {
+            ORTE_NOTIFIER_SYSTEM_EVENT(ecd->severity, notifier_msg, notifier_action);
+        } else {
+            dfg_free_mem(notifier_msg, notifier_action, NULL, NULL);
+            dfg_send_exec(exec_name, exec_argv);
+        }
+    } else {
+        dfg_free_mem(notifier_msg, notifier_action, NULL, NULL);
     }
 
-    SAFEFREE(exec_name);
-    SAFEFREE(exec_argv);
+    dfg_free_mem(NULL, NULL, exec_name, exec_argv);
 }
 
 static void dfg_convert_and_log_data_to_db(orcm_ras_event_t* ecd)

@@ -44,7 +44,7 @@ bool check_threshold(orcm_value_t* current_value,
                      char** msg, char* hostname, int* sev, char** action);
 
 #define ON_NULL_RETURN(x, e)  if(NULL==x) { return e; }
-#define ON_ERROR_RETURN(x, label)  if(ORCM_SUCCESS != x) { goto label; }
+#define ON_ERROR_RETURN(x, rc, label)  if(ORCM_SUCCESS != (rc = x)) { goto label; }
 
 static void threshold_policy_t_con(orcm_mca_analytics_threshold_policy_t *policy)
 {
@@ -236,7 +236,7 @@ static int get_threshold_policy(opal_list_t* attributes, orcm_mca_analytics_thre
     }
     for(i = 0; i < count; i++) {
         token = opal_argv_split(policy[i], '|');
-        ON_ERROR_RETURN(parse_token(token, threshold_policy), done);
+        ON_ERROR_RETURN(parse_token(token, threshold_policy), rc, done);
         opal_argv_free(token);
         token = NULL;
     }
@@ -255,7 +255,7 @@ static int analyze(int sd, short args, void *cbdata)
     orcm_workflow_caddy_t *current_caddy = (orcm_workflow_caddy_t*)cbdata;
     opal_list_t* event_list = NULL;
 
-    ON_ERROR_RETURN(orcm_analytics_base_assert_caddy_data(current_caddy), done);
+    ON_ERROR_RETURN(orcm_analytics_base_assert_caddy_data(current_caddy), rc, done);
     threshold_policy = (orcm_mca_analytics_threshold_policy_t*) current_caddy->imod->orcm_mca_analytics_data_store;
     if(NULL == threshold_policy->hi_action && NULL == threshold_policy->low_action){
         if(ORCM_SUCCESS != (rc = get_threshold_policy(&current_caddy->wf_step->attributes,threshold_policy))){
@@ -269,12 +269,12 @@ static int analyze(int sd, short args, void *cbdata)
     CHECK_NULL_ALLOC(threshold_list, rc, done);
     event_list = OBJ_NEW(opal_list_t);
     CHECK_NULL_ALLOC(event_list, rc, done);
-    ON_ERROR_RETURN(monitor_threshold(current_caddy, threshold_policy, threshold_list, event_list), done);
+    ON_ERROR_RETURN(monitor_threshold(current_caddy, threshold_policy, threshold_list, event_list), rc, done);
     analytics_value_to_next = orcm_util_load_orcm_analytics_value_compute(current_caddy->analytics_value->key,
                                       current_caddy->analytics_value->non_compute_data, threshold_list);
     CHECK_NULL_ALLOC(analytics_value_to_next, rc, done);
     if(true == orcm_analytics_base_db_check(current_caddy->wf_step)){
-        ON_ERROR_RETURN(orcm_analytics_base_log_to_database_event(analytics_value_to_next), done);
+        ON_ERROR_RETURN(orcm_analytics_base_log_to_database_event(analytics_value_to_next), rc, done);
     }
     if(0 == event_list->opal_list_length){
         SAFE_RELEASE(event_list);

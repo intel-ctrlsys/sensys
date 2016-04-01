@@ -27,6 +27,7 @@ typedef struct {
     int sample_rate;
     char* config_file;
     bool collect_metrics;
+    bool test;
 } orcm_sensor_snmp_component_t;
 
 typedef struct {

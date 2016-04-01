@@ -78,6 +78,9 @@ class snmp_impl
         void ev_destroy_thread();
         void load_mca_variables();
         std::vector<vardata> getOIDsVardataVector(snmpCollector sc);
+        void generate_test_vector();
+        void generate_test_inv_vector(opal_buffer_t *inventory_snapshot);
+        std::vector<vardata> generate_data();
 
     PRIVATE: // Fields (i.e. state)
         std::vector<snmpCollector> collectorObj_;

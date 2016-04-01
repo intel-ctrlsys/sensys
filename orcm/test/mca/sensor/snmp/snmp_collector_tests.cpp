@@ -60,6 +60,10 @@ extern "C" {
 #define EXPECT_NOT_NULL(x) EXPECT_PTRNE(NULL,x)
 
 #define SNMP_ERR_BADVALUE               (3)
+#define HOSTNAME_STR "hostname"
+#define CTIME_STR "ctime"
+#define TOT_HOSTNAMES_STR "tot_hostnames"
+#define TOT_ITEMS_STR "tot_items"
 
 /* Fixture */
 using namespace std;
@@ -189,7 +193,11 @@ void ut_snmp_collector_tests::ResetTestEnvironment()
     }
     current_analytics_values_.clear();
 
+    orcm_sensor_base.collect_metrics = true;
+    orcm_sensor_base.collect_inventory = true;
     mca_sensor_snmp_component.collect_metrics = true;
+    mca_sensor_snmp_component.test = false;
+    mca_sensor_snmp_component.use_progress_thread = false;
 }
 
 void ut_snmp_collector_tests::initParserFramework()
@@ -362,6 +370,7 @@ void ut_snmp_collector_tests::SnmpFreePdu(netsnmp_pdu *pdu)
 
 TEST_F(ut_snmp_collector_tests, test_init_finalize_relays)
 {
+    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     ASSERT_EQ(ORCM_ERROR, snmp_init_relay());
@@ -371,6 +380,7 @@ TEST_F(ut_snmp_collector_tests, test_init_finalize_relays)
 
 TEST_F(ut_snmp_collector_tests, test_start_stop_relays)
 {
+    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     snmp_start_relay((orte_jobid_t)NOOP_JOBID);
@@ -390,6 +400,7 @@ TEST_F(ut_snmp_collector_tests, test_start_stop_relays)
 
 TEST_F(ut_snmp_collector_tests, test_sample_relay)
 {
+    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     snmp_sample_relay(NULL);
@@ -403,6 +414,7 @@ TEST_F(ut_snmp_collector_tests, test_sample_relay)
 
 TEST_F(ut_snmp_collector_tests, test_log_relay)
 {
+    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     snmp_log_relay(NULL);
@@ -416,6 +428,7 @@ TEST_F(ut_snmp_collector_tests, test_log_relay)
 
 TEST_F(ut_snmp_collector_tests, test_set_sample_rate_relay)
 {
+    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     snmp_set_sample_rate_relay(1);
@@ -429,6 +442,7 @@ TEST_F(ut_snmp_collector_tests, test_set_sample_rate_relay)
 
 TEST_F(ut_snmp_collector_tests, test_get_sample_rate_relay)
 {
+    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     snmp_get_sample_rate_relay(NULL);
@@ -442,6 +456,7 @@ TEST_F(ut_snmp_collector_tests, test_get_sample_rate_relay)
 
 TEST_F(ut_snmp_collector_tests, test_snmp_construction_and_init_finalize)
 {
+    ResetTestEnvironment();
     snmp_impl dummy;
 
     ASSERT_NULL(dummy.ev_base_);
@@ -455,6 +470,7 @@ TEST_F(ut_snmp_collector_tests, test_snmp_construction_and_init_finalize)
 
 TEST_F(ut_snmp_collector_tests, test_start_and_stop)
 {
+    ResetTestEnvironment();
     snmp_impl dummy;
 
     dummy.init();
@@ -485,6 +501,7 @@ TEST_F(ut_snmp_collector_tests, test_start_and_stop)
 
 TEST_F(ut_snmp_collector_tests, test_get_and_set_sample_rate)
 {
+    ResetTestEnvironment();
     int rate;
     snmp_impl dummy;
 
@@ -510,7 +527,7 @@ TEST_F(ut_snmp_collector_tests, test_get_and_set_sample_rate)
 
 TEST_F(ut_snmp_collector_tests, test_ev_create_thread_and_destroy_thread)
 {
-
+    ResetTestEnvironment();
     snmp_impl dummy;
 
     ResetTestEnvironment();
@@ -537,6 +554,7 @@ TEST_F(ut_snmp_collector_tests, test_ev_create_thread_and_destroy_thread)
 
 TEST_F(ut_snmp_collector_tests, neg_test_ev_create_thread_and_destroy_thread)
 {
+    ResetTestEnvironment();
     snmp_impl dummy;
 
     dummy.ev_create_thread();
@@ -554,6 +572,7 @@ TEST_F(ut_snmp_collector_tests, neg_test_ev_create_thread_and_destroy_thread)
 
 TEST_F(ut_snmp_collector_tests, test_ev_pause_and_resume)
 {
+    ResetTestEnvironment();
     snmp_impl dummy;
 
     dummy.init();
@@ -588,30 +607,32 @@ TEST_F(ut_snmp_collector_tests, test_ev_pause_and_resume)
 
 void ut_snmp_collector_tests::sample_check(opal_buffer_t *bucket)
 {
-   int32_t n = 1;
-   char *plugin_name = NULL;
-   opal_buffer_t *buf = NULL;
+    ResetTestEnvironment();
+    int32_t n = 1;
+    char *plugin_name = NULL;
+    opal_buffer_t *buf = NULL;
 
-   ASSERT_FALSE(NULL == bucket);
+    ASSERT_FALSE(NULL == bucket);
 
-   ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(bucket, &buf, &n, OPAL_BUFFER));
-   ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(buf, &plugin_name, &n, OPAL_STRING));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(bucket, &buf, &n, OPAL_BUFFER));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(buf, &plugin_name, &n, OPAL_STRING));
 
-   vector<vardata> collected_samples = unpackDataFromBuffer(buf);
+    vector<vardata> collected_samples = unpackDataFromBuffer(buf);
 
-   ASSERT_FALSE(collected_samples.empty());
+    ASSERT_FALSE(collected_samples.empty());
 
-   char *str = collected_samples[2].getValue<char*>();
-   ASSERT_STREQ(dataStr, str);
-   ASSERT_EQ(collected_samples[3].getValue<int64_t>(), dataInt);
-   ASSERT_FLOAT_EQ(collected_samples[4].getValue<float>(), dataFloat);
-   ASSERT_DOUBLE_EQ(collected_samples[5].getValue<double>(), dataDouble);
+    char *str = collected_samples[2].getValue<char*>();
+    ASSERT_STREQ(dataStr, str);
+    ASSERT_EQ(collected_samples[3].getValue<int64_t>(), dataInt);
+    ASSERT_FLOAT_EQ(collected_samples[4].getValue<float>(), dataFloat);
+    ASSERT_DOUBLE_EQ(collected_samples[5].getValue<double>(), dataDouble);
 
-   OBJ_RELEASE(buf);
+    OBJ_RELEASE(buf);
 }
 
 TEST_F(ut_snmp_collector_tests, test_sample)
 {
+    ResetTestEnvironment();
     snmp_impl dummy;
 
     dummy.init();
@@ -632,6 +653,7 @@ TEST_F(ut_snmp_collector_tests, test_sample)
 
 TEST_F(ut_snmp_collector_tests, test_log)
 {
+    ResetTestEnvironment();
     int32_t n = 1;
     snmp_impl dummy;
     char *plugin_name = NULL;
@@ -655,6 +677,7 @@ TEST_F(ut_snmp_collector_tests, test_log)
 
 TEST_F(ut_snmp_collector_tests, test_component_functions)
 {
+    ResetTestEnvironment();
     int ret = 0;
     int priority = -1;
     mca_base_module_t* module = NULL;
@@ -676,6 +699,7 @@ TEST_F(ut_snmp_collector_tests, test_component_functions)
 
 TEST_F(ut_snmp_collector_tests, test_pack_collected_data_function)
 {
+    ResetTestEnvironment();
     char *str;
     snmpCollector *collector;
     vector<vardata> collectedData;
@@ -711,6 +735,7 @@ TEST_F(ut_snmp_collector_tests, test_pack_collected_data_function)
 
 TEST_F(ut_snmp_collector_tests, test_v3_constructors)
 {
+    ResetTestEnvironment();
     snmpCollector *collector;
 
     collector = new snmpCollector("192.168.1.100", "username", "password");
@@ -741,6 +766,7 @@ TEST_F(ut_snmp_collector_tests, test_negative_collectData)
 
 TEST_F(ut_snmp_collector_tests, snmp_sensor_sample_tests)
 {
+    ResetTestEnvironment();
     {
         orcm_sensor_sampler_t sampler;
         OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
@@ -790,10 +816,12 @@ TEST_F(ut_snmp_collector_tests, snmp_sensor_sample_tests)
 
 TEST_F(ut_snmp_collector_tests, snmp_api_tests)
 {
+    ResetTestEnvironment();
     // Setup
     snmp_impl snmp;
     orcm_sensor_base.collect_metrics = false;
     mca_sensor_snmp_component.collect_metrics = false;
+
     snmp.init();
     snmp.start(0);
 
@@ -817,6 +845,7 @@ TEST_F(ut_snmp_collector_tests, snmp_api_tests)
 
 TEST_F(ut_snmp_collector_tests, snmp_api_tests_2)
 {
+    ResetTestEnvironment();
     // Setup
     snmp_impl snmp;
     orcm_sensor_base.collect_metrics = false;
@@ -850,4 +879,110 @@ TEST_F(ut_snmp_collector_tests, snmp_api_tests_2)
     // Cleanup
     snmp.stop(0);
     snmp.finalize();
+}
+
+#define TEST_VECTOR_SIZE 8
+static struct test_data {
+    const char* key;
+    float value;
+} test_vector[TEST_VECTOR_SIZE] = {
+    { "PDU1 Power", 1234.0 },
+    { "PDU1 Avg Power", 894.0 },
+    { "PDU1 Min Power", 264.0 },
+    { "PDU1 Max Power", 2352.0 },
+    { "PDU2 Power", 1234.0 },
+    { "PDU2 Avg Power", 894.0 },
+    { "PDU2 Min Power", 264.0 },
+    { "PDU2 Max Power", 2352.0 },
+};
+
+
+TEST_F(ut_snmp_collector_tests, snmp_generate_test_data)
+{
+    ResetTestEnvironment();
+    orcm_sensor_sampler_t sampler;
+    opal_buffer_t* bucket = &(sampler.bucket);
+    snmp_impl snmp;
+
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    mca_sensor_snmp_component.test = true;
+
+    snmp.init();
+    snmp.sample(&sampler);
+    snmp.finalize();
+
+    mca_sensor_snmp_component.test = false;
+
+    opal_buffer_t* buffer = NULL;
+    int n = 1;
+    int rc = opal_dss.unpack(bucket, &buffer, &n, OPAL_BUFFER);
+    OBJ_DESTRUCT(&sampler);
+    ASSERT_EQ(ORCM_SUCCESS, rc);
+    char* hostname = NULL;
+    n = 1;
+    rc = opal_dss.unpack(buffer, &hostname, &n, OPAL_STRING);
+    EXPECT_EQ(ORCM_SUCCESS, rc);
+    EXPECT_STREQ(plugin_name_, hostname) << "Wrong plugin name!";
+    EXPECT_NO_THROW({
+        vardata time_stamp = fromOpalBuffer(buffer);
+        EXPECT_STREQ(CTIME_STR, time_stamp.getKey().c_str()) << "Wrong order; expected time stamp!";
+    });
+    EXPECT_NO_THROW({
+        vardata hostname = fromOpalBuffer(buffer);
+        EXPECT_STREQ(HOSTNAME_STR, hostname.getKey().c_str()) << "Wrong order; expected hostname!";
+    });
+    for(int i = 0; i < TEST_VECTOR_SIZE; ++i) {
+        EXPECT_NO_THROW({
+            vardata item = fromOpalBuffer(buffer);
+            EXPECT_STREQ(test_vector[i].key, item.getKey().c_str()) << "Wrong order; expected item label!";
+            EXPECT_EQ(test_vector[i].value, item.getValue<float>()) << "Wrong value retreived!";
+        });
+    }
+
+    snmp.finalize();
+    mca_sensor_snmp_component.test = false;
+    SAFE_OBJ_RELEASE(buffer);
+}
+
+TEST_F(ut_snmp_collector_tests, snmp_generate_inv_test_data)
+{
+    ResetTestEnvironment();
+    opal_buffer_t* buffer = OBJ_NEW(opal_buffer_t);
+    snmp_impl snmp;
+    mca_sensor_snmp_component.test = true;
+    snmp.init();
+    snmp.inventory_collect(buffer);
+    snmp.finalize();
+    mca_sensor_snmp_component.test = false;
+
+    int n = 1;
+    char* hostname = NULL;
+    int rc = opal_dss.unpack(buffer, &hostname, &n, OPAL_STRING);
+    EXPECT_EQ(ORCM_SUCCESS, rc);
+    EXPECT_STREQ(plugin_name_, hostname) << "Wrong plugin name!";
+    EXPECT_NO_THROW({
+        vardata time_stamp = fromOpalBuffer(buffer);
+        EXPECT_STREQ(CTIME_STR, time_stamp.getKey().c_str()) << "Wrong order; expected time stamp!";
+    });
+    EXPECT_NO_THROW({
+        vardata hostname_count = fromOpalBuffer(buffer);
+        EXPECT_STREQ(TOT_HOSTNAMES_STR, hostname_count.getKey().c_str()) << "Wrong order; expected hostname count!";
+        EXPECT_EQ(1, hostname_count.getValue<uint64_t>());
+    });
+    EXPECT_NO_THROW({
+        vardata items_count = fromOpalBuffer(buffer);
+        EXPECT_STREQ(TOT_ITEMS_STR, items_count.getKey().c_str()) << "Wrong order; expected items count!";
+        EXPECT_EQ(TEST_VECTOR_SIZE, items_count.getValue<uint64_t>());
+    });
+    for(int i = 0; i < TEST_VECTOR_SIZE; ++i) {
+        EXPECT_NO_THROW({
+            vardata item = fromOpalBuffer(buffer);
+            stringstream ss;
+            ss << "sensor_snmp_" << (i+1);
+            EXPECT_STREQ(ss.str().c_str(), item.getKey().c_str()) << "Wrong order; expected item label!";
+            EXPECT_STREQ(test_vector[i].key, item.getValue<char*>()) << "Wrong value retreived!";
+        });
+    }
+
+    SAFE_OBJ_RELEASE(buffer);
 }

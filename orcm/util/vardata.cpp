@@ -11,14 +11,9 @@
 
 using namespace std;
 
-vardata::vardata(string value) {
+vardata::vardata(const string& value) {
     type = OPAL_STRING;
     strData = value;
-}
-
-vardata::vardata(char* value) {
-    type = OPAL_STRING;
-    strData = string(value);
 }
 
 vardata::vardata(float value) {
@@ -41,7 +36,7 @@ vardata::vardata(int64_t value) {
     data.int64 = value;
 }
 
-vardata::vardata(struct timeval value) {
+vardata::vardata(const struct timeval& value) {
     type = OPAL_TIMEVAL;
     data.tv = value;
 }
@@ -56,7 +51,7 @@ template <> string vardata::getValue<string>() {
 };
 
 template <> char* vardata::getValue<char*>() {
-    return (char*) strData.c_str();
+    return const_cast<char*>(strData.c_str());
 };
 
 void vardata::packTo(opal_buffer_t* buffer) {

@@ -50,19 +50,17 @@ union supportedDataTypes {
 
 class vardata {
     public:
-    // vardata(int value);
-    vardata(char* value);
-    vardata(std::string value);
+    vardata(const std::string& value);
     vardata(float value);
     vardata(double value);
     vardata(int32_t value);
     vardata(int64_t value);
-    vardata(struct timeval tv);
+    vardata(const struct timeval& tv);
 
-    vardata setKey(std::string k) { key = k; return *this;     };
-    std::string getKey()          { return key;                };
-    uint8_t getDataType()         { return type;               };
-    void* getDataPtr()            { return (void*) &data;      };
+    vardata& setKey(const std::string& k) { key = k; return *this; };
+    const std::string& getKey()           { return key;            };
+    uint8_t getDataType()                 { return type;           };
+    void* getDataPtr()                    { return (void*) &data;  };
 
 
     template <typename T> T getValue() { return *((T*) &data); };

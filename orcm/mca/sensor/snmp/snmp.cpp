@@ -83,22 +83,24 @@ int snmp_impl::init(void)
 {
     runtime_metrics_ = new RuntimeMetrics("snmp", orcm_sensor_base.collect_metrics,
                                           mca_sensor_snmp_component.collect_metrics);
-    try {
-        (void) load_mca_variables();
-        snmpParser sp(config_file_);
-        collectorObj_ = sp.getSnmpCollectorVector();
-        for(snmpCollectorVector::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
-            it->setRuntimeMetrics(runtime_metrics_);
+    if(!mca_sensor_snmp_component.test) {
+        try {
+            (void) load_mca_variables();
+            snmpParser sp(config_file_);
+            collectorObj_ = sp.getSnmpCollectorVector();
+            for(snmpCollectorVector::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
+                it->setRuntimeMetrics(runtime_metrics_);
+            }
+        } catch (exception &e) {
+            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                                "ERROR: %s sensor SNMP : init: '%s'",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
+
+            orte_show_help("help-orcm-sensor-snmp.txt", "no-snmp", true,
+                           (char*)hostname_.c_str());
+
+            return ORCM_ERROR;
         }
-    } catch (exception &e) {
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                            "ERROR: %s sensor SNMP : init: '%s'",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
-
-        orte_show_help("help-orcm-sensor-snmp.txt", "no-snmp", true,
-                       (char*)hostname_.c_str());
-
-        return ORCM_ERROR;
     }
 
     return ORCM_SUCCESS;
@@ -203,18 +205,18 @@ void snmp_impl::log(opal_buffer_t* buf)
 
         vector<vardata> compute_vector = unpackDataFromBuffer(buf);
 
+        analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute, compute);
         for(vector<vardata>::iterator it = compute_vector.begin(); it != compute_vector.end(); ++it) {
-            analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute, compute);
             ON_NULL_THROW(analytics_vals);
             ON_NULL_THROW(analytics_vals->key);
             ON_NULL_THROW(analytics_vals->non_compute_data);
             ON_NULL_THROW(analytics_vals->compute_data);
 
             it->appendToOpalList(analytics_vals->compute_data);
-
-            orcm_analytics.send_data(analytics_vals);
-            SAFE_OBJ_RELEASE(analytics_vals);
         }
+        orcm_analytics.send_data(analytics_vals);
+        SAFE_OBJ_RELEASE(analytics_vals);
+
     } catch (exception &e) {
         opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
                             "ERROR: %s sensor SNMP : init: '%s'",
@@ -243,13 +245,20 @@ void snmp_impl::inventory_collect(opal_buffer_t *inventory_snapshot)
     int64_t tot_items=0;
     const int64_t hostnameItem=1;
     vector<vardata> oids;
+    struct timeval current_time;
 
+    if(mca_sensor_snmp_component.test) {
+        generate_test_inv_vector(inventory_snapshot);
+        return;
+    }
     if (NULL == inventory_snapshot){
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;
     }
 
     packPluginName(inventory_snapshot);
+    gettimeofday(&current_time, NULL);
+    vardata(current_time).setKey(string(CTIME_STR)).packTo(inventory_snapshot);
     vardata((int64_t)collectorObj_.size()).setKey(TOT_HOSTNAMES_STR).packTo(inventory_snapshot);
     for(snmpCollectorVector::iterator it=collectorObj_.begin();
         it!=collectorObj_.end();++it)
@@ -279,18 +288,21 @@ void snmp_impl::inventory_log(char *hostname,
     opal_list_t *records = NULL;
 
     try {
+        struct timeval timestamp;
+        vardata time_stamp = fromOpalBuffer(inventory_snapshot);
+        if (CTIME_STR != time_stamp.getKey()){
+            ORTE_ERROR_LOG(ORCM_ERR_BUFFER);
+            throw corruptedInventoryBuffer();
+        }
         vardata tot_hostnames = fromOpalBuffer(inventory_snapshot);
         if (TOT_HOSTNAMES_STR != tot_hostnames.getKey()){
             ORTE_ERROR_LOG(ORCM_ERR_BUFFER);
             throw corruptedInventoryBuffer();
         }
-
         for(int h=0; h<tot_hostnames.getValue<int64_t>(); h++){
             records = OBJ_NEW(opal_list_t);
             ON_NULL_THROW(records);
-            struct timeval timestamp;
-            gettimeofday(&timestamp, NULL);
-            vardata(timestamp).setKey("ctime").appendToOpalList(records);
+            time_stamp.appendToOpalList(records);
 
             vardata tot_items = fromOpalBuffer(inventory_snapshot);
             if (TOT_ITEMS_STR != tot_items.getKey()){
@@ -309,9 +321,11 @@ void snmp_impl::inventory_log(char *hostname,
             } else {
                 my_inventory_log_cleanup(-1,-1,records,NULL,NULL);
             }
+            records = NULL;
         }
     } catch (exception &e) {
         opal_output(0, "ERROR: %s\n", e.what());
+        my_inventory_log_cleanup(-1,-1,records,NULL,NULL);
     }
 }
 
@@ -343,16 +357,25 @@ void snmp_impl::get_sample_rate(int* sample_rate)
 
 int snmp_impl::enable_sampling(const char* sensor_spec)
 {
+    if(mca_sensor_snmp_component.test) {
+        return ORCM_SUCCESS;
+    }
     return runtime_metrics_->SetCollectionState(true, sensor_spec);
 }
 
 int snmp_impl::disable_sampling(const char* sensor_spec)
 {
+    if(mca_sensor_snmp_component.test) {
+        return ORCM_SUCCESS;
+    }
     return runtime_metrics_->SetCollectionState(false, sensor_spec);
 }
 
 int snmp_impl::reset_sampling(const char* sensor_spec)
 {
+    if(mca_sensor_snmp_component.test) {
+        return ORCM_SUCCESS;
+    }
     return runtime_metrics_->ResetCollectionState(sensor_spec);
 }
 
@@ -388,6 +411,11 @@ void snmp_impl::perthread_snmp_sample()
 // Common data collection...
 void snmp_impl::collect_sample(bool perthread /* = false*/)
 {
+    if(mca_sensor_snmp_component.test) {
+        generate_test_vector();
+        return;
+    }
+
     if(!runtime_metrics_->DoCollectMetrics()) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor snmp : skipping actual sample collection",
@@ -409,8 +437,6 @@ void snmp_impl::collect_sample(bool perthread /* = false*/)
     gettimeofday(&current_time, NULL);
 
     try {
-        // opal_buffer_t *buffer = &snmp_sampler_->bucket;
-
         opal_buffer_t buffer;
         OBJ_CONSTRUCT(&buffer, opal_buffer_t);
 
@@ -496,5 +522,68 @@ void snmp_impl::ev_destroy_thread()
         opal_progress_thread_finalize("snmp");
         ev_base_ = NULL;
         ev_paused_ = false;
+    }
+}
+
+void snmp_impl::generate_test_vector()
+{
+    struct timeval current_time;
+    opal_buffer_t buffer;
+    opal_buffer_t* bucket = &buffer;
+    OBJ_CONSTRUCT(bucket, opal_buffer_t);
+
+    packPluginName(bucket);
+    gettimeofday(&current_time, NULL);
+    vardata(current_time).setKey(string(CTIME_STR)).packTo(bucket);
+    vardata(hostname_).setKey(string(HOSTNAME_STR)).packTo(bucket);
+
+    vector<vardata> dataSamples = generate_data();
+    packDataToBuffer(dataSamples, bucket);
+
+    int rc = opal_dss.pack(&snmp_sampler_->bucket, &bucket, 1, OPAL_BUFFER);
+    if (OPAL_SUCCESS != rc) {
+        ORTE_ERROR_LOG(rc);
+    }
+    OBJ_DESTRUCT(bucket);
+}
+
+#define TEST_VECTOR_SIZE 8
+static struct test_data {
+    const char* key;
+    float value;
+} test_vector[TEST_VECTOR_SIZE] = {
+    { "PDU1 Power", 1234.0 },
+    { "PDU1 Avg Power", 894.0 },
+    { "PDU1 Min Power", 264.0 },
+    { "PDU1 Max Power", 2352.0 },
+    { "PDU2 Power", 1234.0 },
+    { "PDU2 Avg Power", 894.0 },
+    { "PDU2 Min Power", 264.0 },
+    { "PDU2 Max Power", 2352.0 },
+};
+
+vector<vardata> snmp_impl::generate_data()
+{
+    vector<vardata> result;
+    for(int i = 0; i < TEST_VECTOR_SIZE; ++i) {
+        vardata d(test_vector[i].value);
+        d.setKey(test_vector[i].key);
+        result.push_back(d);
+    }
+    return result;
+}
+
+void snmp_impl::generate_test_inv_vector(opal_buffer_t* inventory_snapshot)
+{
+    struct timeval current_time;
+    packPluginName(inventory_snapshot);
+    gettimeofday(&current_time, NULL);
+    vardata(current_time).setKey(string(CTIME_STR)).packTo(inventory_snapshot);
+    vardata((int64_t)1).setKey(TOT_HOSTNAMES_STR).packTo(inventory_snapshot);
+    vardata((int64_t)TEST_VECTOR_SIZE).setKey(TOT_ITEMS_STR).packTo(inventory_snapshot);
+    for(int i = 0; i < TEST_VECTOR_SIZE; ++i) {
+        stringstream ss;
+        ss << "sensor_snmp_" << (i+1);
+        vardata(test_vector[i].key).setKey(ss.str()).packTo(inventory_snapshot);
     }
 }

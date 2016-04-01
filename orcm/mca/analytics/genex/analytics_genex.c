@@ -269,8 +269,13 @@ static int analyze(int sd, short args, void *cbdata)
         dest_genex_workflow_value(workflow_value, genex_analyze_caddy);
         return ORCM_ERROR;
     }
+
     event_list = OBJ_NEW(opal_list_t);
-    IF_NULL(event_list);
+    if (NULL == event_list) {
+        dest_genex_workflow_value(workflow_value, genex_analyze_caddy);
+        return ORCM_ERROR;
+    }
+
     rc = monitor_genex(workflow_value, cbdata, event_list);
     if (ORCM_SUCCESS != rc) {
         dest_genex_workflow_value(workflow_value, genex_analyze_caddy);

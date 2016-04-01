@@ -191,11 +191,11 @@ static int init(void)
     mca_sensor_nodepower_component.runtime_metrics =
         orcm_sensor_base_runtime_metrics_create("nodepower", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_nodepower_component.collect_metrics);
-
     /* we must be root to run */
     if (0 != geteuid()) {
-        return ORTE_ERROR;
+        return OPAL_ERR_PERM;
     }
+
 
     return ORCM_SUCCESS;
 }
@@ -213,38 +213,35 @@ static void start(orte_jobid_t jobid)
 {
     int ret;
 
-    /* we must be root to run */
-    if (0 != geteuid()) {
-        return;
-    }
-
     gettimeofday(&(_tv.tv_curr), NULL);
     _tv.tv_prev=_tv.tv_curr;
     _tv.interval=0;
 
-    ret=call_readein(&_node_power, 0, NODEPOWER_PA_R);
-    if (ret==ORCM_ERROR){
-        opal_output(0,"Unable to read Nodepower");
-        _readein.readein_a_accu_prev=0;
-        _readein.readein_a_cnt_prev=0;
-        return;
+    if(!mca_sensor_nodepower_component.test) {
+        ret=call_readein(&_node_power, 0, NODEPOWER_PA_R);
+        if (ret==ORCM_ERROR){
+            opal_output(0,"Unable to read Nodepower");
+            _readein.readein_a_accu_prev=0;
+            _readein.readein_a_cnt_prev=0;
+            return;
+        }
+
+        _readein.readein_a_accu_prev=_node_power.ret_val[0];
+        _readein.readein_a_cnt_prev=_node_power.ret_val[1];
+
+        ret=call_readein(&_node_power, 0, NODEPOWER_PB_R);
+        if (ret==ORCM_ERROR){
+            opal_output(0,"Unable to read Nodepower");
+            _readein.readein_b_accu_prev=0;
+            _readein.readein_b_cnt_prev=0;
+            return;
+        }
+
+        _readein.readein_b_accu_prev=_node_power.ret_val[0];
+        _readein.readein_b_cnt_prev=_node_power.ret_val[1];
+
+        _readein.ipmi_calls=2;
     }
-
-    _readein.readein_a_accu_prev=_node_power.ret_val[0];
-    _readein.readein_a_cnt_prev=_node_power.ret_val[1];
-
-    ret=call_readein(&_node_power, 0, NODEPOWER_PB_R);
-    if (ret==ORCM_ERROR){
-        opal_output(0,"Unable to read Nodepower");
-        _readein.readein_b_accu_prev=0;
-        _readein.readein_b_cnt_prev=0;
-        return;
-    }
-
-    _readein.readein_b_accu_prev=_node_power.ret_val[0];
-    _readein.readein_b_cnt_prev=_node_power.ret_val[1];
-
-    _readein.ipmi_calls=2;
     /* start a separate nodepower progress thread for sampling */
     if (mca_sensor_nodepower_component.use_progress_thread) {
         if (!orcm_sensor_nodepower.ev_active) {
@@ -345,6 +342,16 @@ void collect_nodepower_sample(orcm_sensor_sampler_t *sampler)
     float node_power_cur;
     void* metrics_obj = mca_sensor_nodepower_component.runtime_metrics;
 
+    if (mca_sensor_nodepower_component.test) {
+        /* generate and send a test vector */
+        OBJ_CONSTRUCT(&data, opal_buffer_t);
+        generate_test_vector(&data);
+        bptr = &data;
+        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+        OBJ_DESTRUCT(&data);
+        return;
+    }
+
     if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor nodepower : skipping actual sample collection",
@@ -355,20 +362,6 @@ void collect_nodepower_sample(orcm_sensor_sampler_t *sampler)
 
     _readein.ipmi_calls=0;
 
-    /* we must be root to run */
-    if (0 != geteuid()) {
-        return;
-    }
-
-    if (mca_sensor_nodepower_component.test) {
-        /* generate and send a test vector */
-        OBJ_CONSTRUCT(&data, opal_buffer_t);
-        generate_test_vector(&data);
-        bptr = &data;
-        opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
-        OBJ_DESTRUCT(&data);
-        return;
-    }
     gettimeofday(&(_tv.tv_curr), NULL);
     if (_tv.tv_curr.tv_usec>=_tv.tv_prev.tv_usec){
         _tv.interval=(unsigned long long)(_tv.tv_curr.tv_sec-_tv.tv_prev.tv_sec)*1000000
@@ -620,7 +613,7 @@ static void nodepower_log(opal_buffer_t *sample)
     if (node_power_cur<=(float)(0.0)){
         sensor_not_avail=1;
         if (_readein.ipmi_calls>4)
-            opal_output(0,"nodepower sensor data not logged due to unexpected return value from PSU\n");
+            opal_output(1,"nodepower sensor data not logged due to unexpected return value from PSU\n");
     } else {
         opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
     }
@@ -682,8 +675,7 @@ static void generate_test_vector(opal_buffer_t *v)
 /* get the time of sampling */
    gettimeofday(&tv_test,NULL);
 /* pack the sampling time */
-    if (OPAL_SUCCESS != (ret =
-                opal_dss.pack(v, &tv_test, 1, OPAL_TIMEVAL))){
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &tv_test, 1, OPAL_TIMEVAL))){
         ORTE_ERROR_LOG(ret);
         OBJ_DESTRUCT(&v);
         return;
@@ -704,26 +696,22 @@ static void generate_test_vector(opal_buffer_t *v)
 
 static void nodepower_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
-    unsigned int tot_items = 2;
     const char *comp = "nodepower";
     int rc = OPAL_SUCCESS;
+    struct timeval current_time;
 
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
+    /* Sample time */
+    gettimeofday(&current_time, NULL);
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-
     /* store our hostname */
-    comp = "hostname";
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
@@ -747,30 +735,37 @@ static void my_inventory_log_cleanup(int dbhandle, int status, opal_list_t *kvs,
 
 static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
 {
-    unsigned int tot_items = 0;
     int n = 1;
     opal_list_t *records = NULL;
     int rc = OPAL_SUCCESS;
     orcm_value_t *time_stamp;
     struct timeval current_time;
+    char* packed_hostname = NULL;
+    orcm_value_t *mkv = NULL;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &tot_items, &n, OPAL_UINT))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
-
-    gettimeofday(&current_time, NULL);
     time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
     if (NULL == time_stamp) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
         return;
     }
+    n=1;
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &packed_hostname, &n, OPAL_STRING))) {
+        ORTE_ERROR_LOG(rc);
+        return;
+    }
+    mkv = orcm_util_load_orcm_value("hostname", packed_hostname, OPAL_STRING, NULL);
+    SAFEFREE(packed_hostname);
     records = OBJ_NEW(opal_list_t);
+
+    opal_list_append(records, (opal_list_item_t*)mkv);
     opal_list_append(records, (opal_list_item_t*)time_stamp);
-    while(tot_items > 0) {
+    {
         char *inv = NULL;
         char *inv_val = NULL;
-        orcm_value_t *mkv = NULL;
 
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
@@ -790,8 +785,6 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
         mkv->value.type = OPAL_STRING;
         mkv->value.data.string = inv_val;
         opal_list_append(records, (opal_list_item_t*)mkv);
-
-        --tot_items;
     }
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);

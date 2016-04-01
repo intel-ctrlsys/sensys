@@ -16,7 +16,7 @@ import os.path
 from os import getenv
 from subprocess import Popen, PIPE, STDOUT
 
-cf_name="snmp.conf"
+cf_name="snmp.xml"
 
 def get_gtests(gtest_binary):
     process = Popen([ gtest_binary, '--gtest_list_tests' ], stdout=PIPE)
@@ -62,9 +62,9 @@ def setup_tests():
     prefix = prefix_search()
     cf_src = getenv("srcdir")
     if cf_src:
-        cf_src += "/test_files/snmp.conf"
+        cf_src += "/test_files/" + cf_name
     else:
-        cf_src = "test_files/snmp.conf"
+        cf_src = "test_files/" + cf_name
     cf_dst=prefix + "/etc/" + cf_name
     isThere = os.path.isfile(cf_dst)
     if isThere == False:

@@ -7,75 +7,88 @@
  * $HEADER$
  */
 
-#include <fstream>
-#include <iostream>
-#include <regex.h>
-#include <stdio.h>
-#include <string>
-
-#include "snmp_collector.h"
-extern "C"{
-    #include "opal/util/argv.h"
-    #include "opal/mca/installdirs/installdirs.h"
-    #include "orcm/util/logical_group.h"
-}
-
 #ifndef SNMP_PARSER_H
 #define SNMP_PARSER_H
 
-typedef std::map<std::string,snmpCollector> snmpCollectorMap;
+#include <string>
+#include <vector>
+#include <map>
+#include "orcm/constants.h"
+#include "snmp_collector.h"
+#include "orcm/util/string_utils.h"
+#include "orcm/runtime/orcm_globals.h"
 
-enum snmp_version{v1,v3};
+extern "C" {
+    #include "orcm/util/utils.h"
+    #include "opal/mca/installdirs/installdirs.h"
+    #include "opal/util/argv.h"
+    #include "orcm/util/logical_group.h"
+    #include "orcm/mca/parser/parser.h"
+}
+
+#define DEFAULT_SEC_TYPE  AUTHNOPRIV
+#define DEFAULT_AUTH_TYPE MD5
+#define SNMP_DEFAULT_FILE_NAME "snmp.xml"
+
+#define XML_SNMP "snmp"
+#define XML_CONFIG_NODE "config"
+#define XML_NAME "name"
+#define XML_VERSION "version"
+#define XML_USER "user"
+#define XML_PASS "pass"
+#define XML_AUTH_TYPE "auth"
+#define XML_SEC_TYPE "sec"
+#define XML_LOCATION "location"
+#define XML_AGGREGATOR "aggregator"
+#define XML_HOSTNAME "hostname"
+#define XML_OIDS "oids"
+
+typedef std::map<std::string, snmpCollector> snmpCollectorMap;
+typedef std::vector<snmpCollector> snmpCollectorVector;
 
 using std::runtime_error;
 
 class snmpParser {
     public:
-        snmpParser(std::string filePath="");
+        snmpParser(const std::string& filePath="");
         ~snmpParser();
-        void setParseFile(std::string filePath="");
+        void setParseFile(const std::string& filePath="");
         void unsetParseFile();
-        std::vector<snmpCollector> parse();
+        snmpCollectorVector getSnmpCollectorVector();
 
     private:
         std::string SNMP_DEFAULT_FILE_PATH;
-        std::string _filePath;
-        std::ifstream _snmp_file;
-        std::string hostname;
-        std::string username;
-        std::string password;
-        int version;
-        sec_type sec;
-        auth_type auth;
+        std::string file;
+        int fileId;
+        snmpCollectorMap snmpMap;
+        snmpCollectorVector collectors, snmpVector;
 
+        void setDefaultPath();
+        void parseFile();
         void openConfigFile();
         void closeConfigFile();
-        std::vector<snmpCollector> getSnmpCollectorVector();
-        void getHostnameVectorAndSnmpConfigMap(std::vector<std::string> &hostnames_vector, snmpCollectorMap &snmp_config_map);
-        void processNodeTag(std::vector<std::string> &hostnames_vector);
-        void processSnmpConfigTag(snmpCollectorMap &snmp_config_map);
-        std::vector<std::string> getTagEntriesVector();
-        std::vector<std::string> getMonitoredHostNamesFromTagEntries(std::vector<std::string> lines);
-        snmpCollectorMap getSnmpConfigMapFromTagEntries(std::vector<std::string> lines);
-        std::string getValueFromLine(std::string line);
-        std::vector<std::string> getVectorOfValuesFromLine(std::string line);
-        snmpCollector getSnmpCollectorVersion1(std::string hostname, std::string user, std::string oids, std::string location);
-        snmpCollector getSnmpCollectorVersion3(std::string hostname, std::string user, std::string pass, std::string auth, std::string sec, std::string oids, std::string location);
-        auth_type getAuthType(std::string auth);
-        sec_type getSecType(std::string sec);
+        void fillVectorFromMap();
+        void getSnmpCollectorFromSnmpSections(opal_list_t *snmpSections);
+        bool itemListHasChildren(orcm_value_t *item);
+        void unique_map_join(snmpCollectorMap &main_map, snmpCollectorMap join_map);
+        snmpCollectorMap getSnmpCollectorMapFromConfigNodes(opal_list_t *configNodes);
+        void addSnmpCollectorsFromOrcmValueToMap(orcm_value_t *node, snmpCollectorMap &tmpMap);
+        void buildSnmpCollectorsFromList(opal_list_t* list);
+        void getAllSnmpValues(std::string& aggregator, std::string& hostname, std::string& version,
+                              std::string& user, std::string& pass, std::string& location, std::string& oids,
+                              auth_type& authType, sec_type& secType, opal_list_t* list);
+        auth_type getAuthType(char *authType);
+        sec_type getSecType(char *secType);
+        inline bool fieldsAreNotEmpty(std::string aggregator, std::string hostname, std::string version,
+                                      std::string user, std::string oids);
+        bool aggregatorIsThisHostname(std::string aggregator);
+        void getSnmpCollectors(std::string version, std::string  hostname, std::string user, std::string pass,
+                               auth_type authType, sec_type secType, std::string oids, std::string location);
         std::vector<std::string> expandLogicalGroup(std::string str);
-        bool isSnmpConfigTag(std::string line);
-        bool isNodesTag(std::string line);
-        bool isTag(std::string line);
-        bool isThisHostname(std::string line);
-        bool isHostname(std::string line);
-        bool isVersion(std::string line);
-        bool isUser(std::string line);
-        bool isPass(std::string line);
-        bool isAuthentication(std::string line);
-        bool isSecurity(std::string line);
-        bool isOIDs(std::string line);
-        bool isLocation(std::string line);
+        snmpCollector getSnmpCollectorVersion1(std::string hostname, std::string user,
+                                               std::string oids, std::string location);
+        snmpCollector getSnmpCollectorVersion3(std::string hostname, std::string user, std::string pass,
+                                               auth_type auth, sec_type sec, std::string oids, std::string location);
 };
 
 class fileNotFound : public runtime_error {

@@ -17,6 +17,7 @@
 #include <list>
 #include <map>
 #include "orcm/util/vardata.h"
+#include "orcm/util/string_utils.h"
 #include <stdexcept>
 
 #ifndef SNMP_COLLECTOR_H
@@ -69,19 +70,6 @@ class snmpCollector {
         std::list<std::string> splitString(std::string input, char delimiter);
         std::vector<vardata> packCollectedData(netsnmp_pdu *response);
 
-        static inline std::string &ltrim(std::string &s) {
-            s.erase(s.begin(), find_if(s.begin(), s.end(), not1(std::ptr_fun<int, int>(isspace))));
-            return s;
-        }
-
-        static inline std::string &rtrim(std::string &s) {
-            s.erase(find_if(s.rbegin(), s.rend(), not1(std::ptr_fun<int, int>(isspace))).base(), s.end());
-            return s;
-        }
-
-        static inline std::string &trim(std::string &s) {
-            return ltrim(rtrim(s));
-        }
 };
 
 class invalidPassword : public runtime_error {

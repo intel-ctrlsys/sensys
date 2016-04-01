@@ -38,6 +38,8 @@
 extern "C" {
     #include "opal/runtime/opal_progress_threads.h"
     #include "opal/runtime/opal.h"
+    #include "orcm/mca/parser/base/base.h"
+    #include "orcm/mca/parser/pugi/parser_pugi.h"
 
     extern void collect_snmp_sample(orcm_sensor_sampler_t *sampler);
     extern orcm_sensor_snmp_component_t mca_sensor_snmp_component;
@@ -45,6 +47,7 @@ extern "C" {
 
 #define NOOP_JOBID -999
 #define SNMP_ERR_NOERROR 0
+#define MY_MODULE_PRIORITY 20
 
 #define SAFE_OBJ_RELEASE(x) if(NULL!=x) OBJ_RELEASE(x); x=NULL
 #define ASSERT_PTREQ(x,y)  ASSERT_EQ((void*)x,(void*)y)
@@ -106,12 +109,16 @@ void ut_snmp_collector_tests::SetUpTestCase()
 
     opal_init_test();
 
+    initParserFramework();
+
     ResetTestEnvironment();
 }
 
 void ut_snmp_collector_tests::TearDownTestCase()
 {
     golden_data_.clear();
+
+    cleanParserFramework();
 
     snmp_mocking.orte_errmgr_base_log_callback = NULL;
     snmp_mocking.opal_output_verbose_callback = NULL;
@@ -184,6 +191,24 @@ void ut_snmp_collector_tests::ResetTestEnvironment()
 
     mca_sensor_snmp_component.collect_metrics = true;
 }
+
+void ut_snmp_collector_tests::initParserFramework()
+{
+    OBJ_CONSTRUCT(&orcm_parser_base_framework.framework_components, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_parser_base.actives, opal_list_t);
+    orcm_parser_active_module_t *act_module;
+    act_module = OBJ_NEW(orcm_parser_active_module_t);
+    act_module->priority = MY_MODULE_PRIORITY;
+    act_module->module = &orcm_parser_pugi_module;
+    opal_list_append(&orcm_parser_base.actives, &act_module->super);
+}
+
+void ut_snmp_collector_tests::cleanParserFramework()
+{
+    OPAL_LIST_DESTRUCT(&orcm_parser_base_framework.framework_components);
+    OPAL_LIST_DESTRUCT(&orcm_parser_base.actives);
+}
+
 
 /* Mocking methods */
 struct snmp_session* ut_snmp_collector_tests::SnmpOpen(struct snmp_session* ss)

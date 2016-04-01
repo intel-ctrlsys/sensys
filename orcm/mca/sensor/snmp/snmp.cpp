@@ -86,8 +86,8 @@ int snmp_impl::init(void)
     try {
         (void) load_mca_variables();
         snmpParser sp(config_file_);
-        collectorObj_ = sp.parse();
-        for(vector<snmpCollector>::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
+        collectorObj_ = sp.getSnmpCollectorVector();
+        for(snmpCollectorVector::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
             it->setRuntimeMetrics(runtime_metrics_);
         }
     } catch (exception &e) {
@@ -251,7 +251,7 @@ void snmp_impl::inventory_collect(opal_buffer_t *inventory_snapshot)
 
     packPluginName(inventory_snapshot);
     vardata((int64_t)collectorObj_.size()).setKey(TOT_HOSTNAMES_STR).packTo(inventory_snapshot);
-    for(vector<snmpCollector>::iterator it=collectorObj_.begin();
+    for(snmpCollectorVector::iterator it=collectorObj_.begin();
         it!=collectorObj_.end();++it)
     {
         try {
@@ -444,7 +444,7 @@ void snmp_impl::packPluginName(opal_buffer_t* buffer) {
 
 
 void snmp_impl::collectAndPackDataSamples(opal_buffer_t *buffer) {
-    for(vector<snmpCollector>::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
+    for(snmpCollectorVector::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
         try {
             vector<vardata> dataSamples = it->collectData();
             packDataToBuffer(dataSamples, buffer);

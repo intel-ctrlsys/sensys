@@ -27,6 +27,8 @@ class ut_snmp_collector_tests: public testing::Test
         static void TearDownTestCase();
         static void ClearBuffers();
         static void ResetTestEnvironment();
+        static void initParserFramework();
+        static void cleanParserFramework();
 
         /* Mocking */
         static void OrteErrmgrBaseLog(int err, char* file, int lineno);

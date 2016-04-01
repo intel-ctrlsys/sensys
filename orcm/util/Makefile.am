@@ -15,7 +15,8 @@ headers += \
         util/cli.h \
         util/attr.h \
         util/logical_group.h \
-        util/vardata.h
+        util/vardata.h \
+        util/string_utils.h
 
 liborcm_la_SOURCES += \
         util/error_strings.c \

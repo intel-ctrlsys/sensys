@@ -12,11 +12,16 @@
 
 #include "gtest/gtest.h"
 #include "orcm/mca/sensor/snmp/snmp_parser.h"
+
 extern "C"{
+    #include "orcm/mca/parser/base/base.h"
+    #include "orcm/mca/parser/pugi/parser_pugi.h"
     #include "opal/runtime/opal.h"
 }
 #include <string.h>
 #include <iostream>
+
+#define MY_MODULE_PRIORITY 20
 
 class ut_snmp_parser_tests: public testing::Test {
     protected:
@@ -33,10 +38,14 @@ class ut_snmp_parser_tests: public testing::Test {
 
         virtual void SetUp(){
             opal_init_test();
+            initParserFramework();
         }
 
         virtual void TearDown(){
+           cleanParserFramework();
         }
+        virtual void initParserFramework();
+        virtual void cleanParserFramework();
 };
 
 #endif

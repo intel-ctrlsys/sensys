@@ -10,10 +10,12 @@
 //#include "opal/dss/dss.h"
 
 #include <iostream>
+#include <string>
 
 #include "orcm/tools/octl/common.h"
 
 #include "octl_led_tests.h"
+#define MAX_ELEMENTS 10
 
 using namespace std;
 
@@ -27,6 +29,7 @@ int ut_octl_led_tests::next_return = ORCM_SUCCESS;
 
 void ut_octl_led_tests::SetUpTestCase()
 {
+    opal_init_test();
     // Configure/Create OPAL level resources
     opal_dss_register_vars();
     opal_dss_open();
@@ -72,24 +75,30 @@ int ut_octl_led_tests::SendBuffer(orte_process_name_t* peer,
                       void* cbdata){
     int elements=1;
     int seconds=0;
+    char* noderaw;
     int rc = ORCM_SUCCESS;
     rc = opal_dss.unpack(buffer, &command, &elements, ORCM_CMD_SERVER_T);
-    if (ORCM_SUCCESS != rc)
-        return rc;
+    EXPECT_EQ(ORCM_SUCCESS, rc);
     rc = opal_dss.unpack(buffer, &subcommand, &elements, ORCM_CMD_SERVER_T);
-    if (ORCM_SUCCESS != rc)
-        return rc;
-    rc = opal_dss.unpack(buffer, &seconds, &elements, OPAL_INT);
-    if (ORCM_SUCCESS != rc)
-        return rc;
+    EXPECT_EQ(ORCM_SUCCESS, rc);
+    rc = opal_dss.unpack(buffer, &noderaw, &elements, OPAL_STRING);
+    EXPECT_EQ(ORCM_SUCCESS, rc);
+    if (ORCM_SET_CHASSIS_ID_TEMPORARY_ON == subcommand){
+        rc = opal_dss.unpack(buffer, &seconds, &elements, OPAL_INT);
+        EXPECT_EQ(ORCM_SUCCESS, rc);
+    }
 
     rc = opal_dss.pack(buffer, &command, elements, ORCM_CMD_SERVER_T);
-    if (ORCM_SUCCESS != rc)
-        return rc;
+    EXPECT_EQ(ORCM_SUCCESS, rc);
     rc = opal_dss.pack(buffer, &subcommand, elements, ORCM_CMD_SERVER_T);
-    if (ORCM_SUCCESS != rc)
-        return rc;
-    return opal_dss.pack(buffer, &seconds, elements, OPAL_INT);
+    EXPECT_EQ(ORCM_SUCCESS, rc);
+    rc = opal_dss.pack(buffer, &noderaw, elements, OPAL_STRING);
+    EXPECT_EQ(ORCM_SUCCESS, rc);
+    if (ORCM_SET_CHASSIS_ID_TEMPORARY_ON == subcommand){
+        rc = opal_dss.pack(buffer, &seconds, elements, OPAL_INT);
+        EXPECT_EQ(ORCM_SUCCESS, rc);
+    }
+    return rc;
 }
 
 void ut_octl_led_tests::RecvBuffer(orte_process_name_t* peer,
@@ -102,8 +111,8 @@ void ut_octl_led_tests::RecvBuffer(orte_process_name_t* peer,
     xfer->name.vpid = 0;
     OBJ_DESTRUCT(&xfer->data);
     OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
-    opal_dss.pack(&xfer->data, &next_return, 1, OPAL_INT);
-    opal_dss.pack(&xfer->data, &next_state, 1, OPAL_INT);
+    EXPECT_EQ(ORCM_SUCCESS, opal_dss.pack(&xfer->data, &next_return, 1, OPAL_INT));
+    EXPECT_EQ(ORCM_SUCCESS, opal_dss.pack(&xfer->data, &next_state, 1, OPAL_INT));
     xfer->active = false;
     OBJ_RELEASE(xfer);
 }

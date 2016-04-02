@@ -11,6 +11,11 @@
 #include "orcm/util/logical_group.h"
 #include "orcm/tools/octl/common.h"
 
+#include "orcm/util/utils.h"
+#include "orcm/mca/parser/parser.h"
+#include "orcm/mca/parser/base/base.h"
+#include "orcm/mca/sensor/ipmi/ipmi_parser_interface.h"
+
 #define MIN_CHASSIS_ID_ARG 3
 #define MAX_CHASSIS_ID_ARG 4
 
@@ -20,6 +25,12 @@
 
 #define SAFE_ARGV_FREE(p) if(NULL != p) { opal_argv_free(p); p = NULL; }
 
+static void cleanup(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
+static void show_help(const char* tag, const char* error, int rc);
+static void show_header(void);
+static int begin_transaction(char* node, opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
+static int unpack_response(char* node, orte_rml_recv_cb_t *xfer);
+static int unpack_state(char* node, orte_rml_recv_cb_t *xfer);
 int pack_chassis_id_data(opal_buffer_t *buf, orcm_cmd_server_flag_t *command,
         orcm_cmd_server_flag_t *sub_command, char **noderaw, unsigned char *seconds);
 int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
@@ -27,9 +38,10 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
 int orcm_octl_chassis_id_state(char **argv);
 int orcm_octl_chassis_id_on(char **argv);
 int orcm_octl_chassis_id_off(char **argv);
+static int open_parser_framework(void);
+static void close_parser_framework(void);
 
-static void cleanup(char **nodelist, opal_buffer_t *buf, orte_rml_recv_cb_t *xfer){
-    SAFE_ARGV_FREE(nodelist);
+static void cleanup(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer){
     SAFE_RELEASE(buf);
     SAFE_RELEASE(xfer);
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
@@ -143,26 +155,16 @@ int pack_chassis_id_data(opal_buffer_t *buf, orcm_cmd_server_flag_t *command,
 
 int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
         orcm_cmd_server_flag_t sub_command, char *noderaw, unsigned char seconds){
-    char **nodelist = NULL;
     orte_rml_recv_cb_t *xfer = NULL;
     opal_buffer_t *buf = NULL;
     int rc = ORCM_SUCCESS;
     char error[255];
-
-    orcm_logical_group_parse_array_string(noderaw, &nodelist);
-    int node_count = opal_argv_count(nodelist);
-    if (0 == node_count){
-        sprintf(error, "nodelist not found");
-        rc = ORCM_ERR_BAD_PARAM;
-        cleanup(nodelist, buf, xfer);
-        show_help(TAG, error, rc);
-        return rc;
-    }
+    char current_aggregator[256];
 
     if (NULL == (buf = OBJ_NEW(opal_buffer_t)) ||
         NULL == (xfer = OBJ_NEW(orte_rml_recv_cb_t))){
         rc = ORCM_ERR_OUT_OF_RESOURCE;
-        cleanup(nodelist, buf, xfer);
+        cleanup(buf, xfer);
         show_help(TAG, error, rc);
         return rc;
     }
@@ -174,16 +176,23 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
         return rc;
     }
 
+    if (ORTE_SUCCESS != (rc = open_parser_framework())){
+        sprintf(error, "\nError while opening parser framework\n");
+        show_help(TAG, error, rc);
+        return rc;
+    }
+
+    load_ipmi_config_file();
+    close_parser_framework();
+
     if (ORCM_GET_CHASSIS_ID == command)
         show_header();
 
-    // Iterate through the aggregators!!!
-    int i=0;
-    for (i = 0; i < node_count; ++i){
+    while(get_next_aggregator_name(current_aggregator)){
         OBJ_RETAIN(buf);
         OBJ_RETAIN(xfer);
 
-        if (ORCM_SUCCESS != begin_transaction(nodelist[i], buf, xfer)){
+        if (ORCM_SUCCESS != begin_transaction(current_aggregator, buf, xfer)){
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
             continue;
         }
@@ -194,19 +203,19 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
             continue;
         }
 
-        if (ORCM_SUCCESS != unpack_response(nodelist[i], xfer)){
+        if (ORCM_SUCCESS != unpack_response(current_aggregator, xfer)){
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
             continue;
         }
 
         if (ORCM_GET_CHASSIS_ID == command &&
-            ORCM_SUCCESS != unpack_state(nodelist[i], xfer)){
+            ORCM_SUCCESS != unpack_state(current_aggregator, xfer)){
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
             continue;
         }
     }
 
-    cleanup(nodelist, buf, xfer);
+    cleanup(buf, xfer);
     show_help(TAG, error, rc);
     return rc;
 }
@@ -238,10 +247,31 @@ int orcm_octl_chassis_id_on(char **argv){
     if (MIN_CHASSIS_ID_ARG == argv_count)
         rc = orcm_octl_led_operation(ORCM_SET_CHASSIS_ID, ORCM_SET_CHASSIS_ID_ON, argv[2], 0);
     else if (MAX_CHASSIS_ID_ARG == argv_count)
-        rc = orcm_octl_led_operation(ORCM_SET_CHASSIS_ID, ORCM_SET_CHASSIS_ID_TEMPORARY_ON, argv[3], atoi(argv[2]));
+        rc = orcm_octl_led_operation(ORCM_SET_CHASSIS_ID, ORCM_SET_CHASSIS_ID_TEMPORARY_ON, argv[3], (unsigned char)atoi(argv[2]));
     else {
         rc = ORCM_ERR_BAD_PARAM;
         show_help("octl:chassis-id:enable-usage", "incorrect arguments!", rc);
     }
     return rc;
+}
+
+static int open_parser_framework(){
+    int rc = ORCM_SUCCESS;
+
+    if (ORTE_SUCCESS != (rc = mca_base_framework_open(&orcm_parser_base_framework, (mca_base_open_flag_t)0))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+
+    if (ORTE_SUCCESS != (rc = orcm_parser_base_select())) {
+        ORTE_ERROR_LOG(rc);
+        (void) mca_base_framework_close(&orcm_parser_base_framework);
+        return rc;
+    }
+
+    return rc;
+}
+
+static void close_parser_framework(){
+    (void) mca_base_framework_close(&orcm_parser_base_framework);
 }

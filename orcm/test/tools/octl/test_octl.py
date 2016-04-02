@@ -9,10 +9,13 @@
 # $HEADER$
 #
 
-
+import re
 import sys
 import subprocess
+import os
 from subprocess import Popen, PIPE, STDOUT
+
+cf_name = "ipmi.xml"
 
 def get_gtests(gtest_binary):
     process = Popen([ gtest_binary, '--gtest_list_tests' ], stdout=PIPE)
@@ -42,7 +45,32 @@ def execute_test(gtest_binary, test_name):
     rv=process.wait()
     return (rv, output, err)
 
+def prefix_search():
+    prefix="/usr/local1/"
+    filename=os.getcwd()+"/../../../../config.status"
+    pattern = re.compile(r'S\[\"prefix\"\]=\"(.*)\"')
+    with open(filename) as f:
+        for line in f:
+            match = pattern.search(line)
+            if match:
+                prefix = match.group(1)
+
+    return prefix
+
+def setup_tests():
+    prefix = prefix_search()
+    cf_src = os.getenv("srcdir")
+    if cf_src:
+        cf_src += "/" + cf_name
+    else:
+        cf_src = cf_name
+    cf_dst=prefix + "/etc/" + cf_name
+    isThere = os.path.isfile(cf_dst)
+    if isThere == False:
+        os.system("sudo cp %s %s" % (cf_src, cf_dst))
+
 def run_tests(gtest_binary):
+    setup_tests()
     tests=get_gtests(gtest_binary)
     ret = 0
     passed=0

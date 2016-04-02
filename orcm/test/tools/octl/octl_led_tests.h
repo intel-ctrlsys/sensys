@@ -10,6 +10,12 @@
 #ifndef OCTL_LED_TESTS_H
 #define OCTL_LED_TESTS_H
 
+#include "gtest/gtest.h"
+#include "octl_mocking.h"
+#include "orcm/runtime/led_control.h"
+#include "orcm/mca/sensor/ipmi/ipmi_parser.h"
+#include "orcm/mca/sensor/ipmi/ipmi_parser_interface.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -17,13 +23,13 @@ extern "C" {
     #include "opal/dss/dss.h"
     // ORTE
     #include "orte/mca/rml/rml.h"
+    #include "orcm/util/utils.h"
+    #include "orcm/tools/octl/common.h"
+    #include "orcm/mca/parser/parser.h"
+    #include "orcm/mca/parser/base/base.h"
 #ifdef __cplusplus
 };
 #endif // __cplusplus
-
-#include "gtest/gtest.h"
-#include "octl_mocking.h"
-#include "orcm/runtime/led_control.h"
 
 class ut_octl_led_tests: public testing::Test
 {

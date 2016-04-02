@@ -31,8 +31,10 @@
 #include "orcm/runtime/led_control_interface.h"
 
 #include "orcm/util/utils.h"
+#include "orcm/util/logical_group.h"
 #include "orcm/mca/dispatch/base/base.h"
 #include "orcm/mca/dispatch/dispatch.h"
+#include "orcm/mca/sensor/ipmi/ipmi_parser_interface.h"
 
 #define  NULL_CHECK(p) if(NULL==p) {goto ERROR;}
 #define SAFE_RELEASE(p) if(NULL != p) OBJ_RELEASE(p);
@@ -54,7 +56,7 @@ static void store_chassis_id_event(char* hostname, char *action);
 static int append_string_to_opal_list(opal_list_t *list, char *str, char* key);
 static void chassis_id_event_cleanup(void *cbdata);
 static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
-        char* hostname, unsigned int seconds, opal_buffer_t *pack_buff);
+        char* hostname, char* user, char* pass, unsigned int seconds, opal_buffer_t *pack_buff);
 
 int orcm_cmd_server_init(void)
 {
@@ -86,11 +88,16 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
     opal_buffer_t *result_buff = NULL;
     char *error = NULL;
     int rc = ORCM_SUCCESS;
+    int rc_prev = ORCM_SUCCESS;
     int response = ORCM_SUCCESS;
     int count = 0;
     int cnt = 1;
     int seconds = 0;
     char* noderaw = NULL;
+    int node_count = 0;
+    char **nodelist = NULL;
+    int iter = 0;
+    ipmi_collector ipmi_c;
 
     rc = unpack_command_subcommand(buffer, &command, &sub_command);
     if (ORCM_SUCCESS != rc) {
@@ -163,11 +170,26 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
             goto ERROR;
         }
 
-        // Resolve noderaw to a list of nodes and send a
-        // chassis_id_operation() per node
-        rc = chassis_id_operation(sub_command, noderaw, seconds, pack_buff);
-        if (ORCM_SUCCESS != rc){
+        orcm_logical_group_parse_array_string(noderaw, &nodelist);
+        node_count = opal_argv_count(nodelist);
+        if (!node_count){
+            asprintf(&error, "nodelist not found");
             goto ERROR;
+        }
+
+        load_ipmi_config_file();
+        rc = ORCM_SUCCESS;
+        rc_prev = ORCM_SUCCESS;
+        for (iter = 0; iter < node_count; iter++){
+            if (!get_bmc_info(nodelist[iter], &ipmi_c)){
+                asprintf(&error, "node %s not found on IPMI configuration file", nodelist[iter]);
+                goto ERROR;
+            }
+            if (!strcmp(orte_process_info.nodename, ipmi_c.aggregator)){
+                rc = chassis_id_operation(sub_command, nodelist[iter],
+                        ipmi_c.user, ipmi_c.pass, seconds, pack_buff);
+                rc_prev = (ORCM_SUCCESS != rc_prev) ? rc_prev : rc;
+            }
         }
         goto RESPONSE;
     }
@@ -422,12 +444,13 @@ static int pack_response(opal_buffer_t *pack_buff, int response, int state,
 }
 
 static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
-        char* hostname, unsigned int seconds, opal_buffer_t *pack_buff){
+        char* hostname, char *user, char *pass, unsigned int seconds,
+        opal_buffer_t *pack_buff){
     int state = 0;
     int response = ORCM_SUCCESS;
     int rc = ORCM_SUCCESS;
 
-    init_led_control();
+    init_led_control(hostname, user, pass);
     switch (sub_command){
         case ORCM_GET_CHASSIS_ID_STATE:
             state = get_chassis_id_state();

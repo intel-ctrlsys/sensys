@@ -29,7 +29,9 @@ sources = \
         ipmi_collector.cpp \
         ipmi_collector.h \
         ipmi_parser.cpp \
-        ipmi_parser.h
+        ipmi_parser.h \
+        ipmi_parser_interface.h \
+        ipmi_parser_interface.cpp
 
 # Make the output library in this directory, and name it either
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la

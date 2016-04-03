@@ -289,8 +289,6 @@ static int transfer_to_node(unsigned long in_node_row,
                             const xml_tree_t * in_xtree,
                             orcm_cfgi_xml_parser_t * io_parent);
 
-static int remove_empty_items(xml_tree_t * io_xtree);
-
 static int is_singleton(const char * in_tagtext);
 static int check_duplicate_singletons(xml_tree_t * in_xtree);
 
@@ -314,7 +312,7 @@ static int file30_init(void)
         }
 
         if (NULL == orcm_cfgi_base.config_file) {
-            opal_output(orcm_cfgi_base_framework.framework_output, "NULL FILE");
+            opal_output(0, "NULL FILE");
             erri = ORCM_ERR_BAD_PARAM;
             break;
         }
@@ -322,7 +320,7 @@ static int file30_init(void)
         erri = lex_xml(orcm_cfgi_base.config_file, &xml_syntax);
 
         if (ORCM_SUCCESS != erri) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "FAILED TO PARSE XML CFGI FILE");
             break;
         }
@@ -337,14 +335,14 @@ static int file30_init(void)
             }
             if (0 == strcasecmp(TXversion, xml_syntax.items[i])) {
                 if (i+1 >= xml_syntax.sz_items) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                                 "MISSING VERSION DATA");
                     erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
                 data=xml_syntax.items[i+1];
                 if ('\t' != data[0]) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                                 "BAD PARSING OF VERSION DATA");
                     erri = ORCM_ERR_BAD_PARAM;
                     break;
@@ -352,7 +350,7 @@ static int file30_init(void)
                 if ('3' == data[1]) { /* TODO: Check for whitespace if someone quoted the version*/
                     version_found = 1;
                 } else {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                                 "EXPECTED VERSION 3 NOT FOUND: %s",data+1);
                     erri = ORCM_ERR_BAD_PARAM;
                     break;
@@ -364,7 +362,7 @@ static int file30_init(void)
         }
 
         if (0 == version_found){
-            opal_output(orcm_cfgi_base_framework.framework_output, "VERSION 3 NOT FOUND");
+            opal_output(0, "VERSION 3 NOT FOUND");
             erri = ORCM_ERR_NOT_FOUND;
         }
 
@@ -406,7 +404,7 @@ static int read_config(opal_list_t *config)
         return ORCM_ERR_SILENT;
     }
     if (0 != fclose(fp)) {
-        opal_output(orcm_cfgi_base_framework.framework_output,
+        opal_output(0,
                     "FAIL to PROPERLY CLOSE THE CFGI XML FILE");
         return ORCM_ERR_SILENT;
     } else {
@@ -421,15 +419,8 @@ static int read_config(opal_list_t *config)
 
         erri = lex_xml(orcm_cfgi_base.config_file, &xml_syntax);
         if (ORCM_SUCCESS != erri) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "FAILED TO XML LEX THE FILE");
-            break;
-        }
-
-        erri = remove_empty_items(&xml_syntax);
-        if (ORCM_SUCCESS != erri) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
-                        "FAILED TO REMOVE EMPTY FIELDS IN XML CFGI");
             break;
         }
 
@@ -467,7 +458,7 @@ static int read_config(opal_list_t *config)
 
         erri = parse_config(&xml_syntax, config);
         if (ORCM_SUCCESS != erri) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "FAILED TO PARSE THE CFGI XML FILE:%d",erri);
             break;
         }
@@ -559,7 +550,7 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
                         opal_dss.dump(0, scheduler, ORCM_SCHEDULER);
                     }
                 } else {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                                 "\tUNKNOWN TAG %s", x->name);
                     return ORTE_ERR_BAD_PARAM;
                 }
@@ -831,7 +822,7 @@ static int find_beginend_configuration(unsigned long in_start_index,
     int erri=ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
         if (in_start_index >= in_sz_items) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: Invalid start index for the configuration search");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -857,7 +848,7 @@ static int find_beginend_configuration(unsigned long in_start_index,
                 }
                 if (0 == strcasecmp(t,TXrole)) {
                     if ('\t' != in_items[i+1][0]) {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                                     "ERROR: Parser error at tag \"%s\"", t);
                         erri = ORCM_ERR_BAD_PARAM;
                         break;
@@ -884,7 +875,7 @@ static int find_beginend_configuration(unsigned long in_start_index,
                             beg = nota_index;
                         }
                     } else {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                                     "ERROR: Unkown option found for \"role\" :%s", t);
                         erri= ORCM_ERR_BAD_PARAM;
                         break;
@@ -894,7 +885,7 @@ static int find_beginend_configuration(unsigned long in_start_index,
                 } else if (0 == strcasecmp(t,TXcreation)) {
                     continue;
                 } else {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                                 "ERROR: Missing \"role\" tag before the \"%s\" tag",t);
                     erri = ORCM_ERR_BAD_PARAM;
                     break;
@@ -929,7 +920,7 @@ static int find_beginend_configuration(unsigned long in_start_index,
             }
         }
         if (nota_index == end) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: Missing closing tag for the <configuration> of type RECORD");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -1137,7 +1128,7 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
             break;
         }
         if (record_begin == record_end) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR:The RECORD <configuration> is missing from the XML CFGI file");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -1270,7 +1261,7 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config)
         xml=NULL;
 
         if (0 == sz_stack) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "EMPTY configuration hierarchy");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -2517,7 +2508,7 @@ static int check_lex_aggregator_yes_no(xml_tree_t * in_xtree)
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
         if (0 == in_xtree->sz_items) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: No XML items to examine.");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -2552,7 +2543,7 @@ static int check_lex_aggregator_yes_no(xml_tree_t * in_xtree)
                 /*All good*/
                 break;
             }
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: \"aggregator\" only allow the values: yes, no");
             erri = ORCM_ERR_BAD_PARAM;
             /*Do not use break in order to find all errors.
@@ -2578,7 +2569,7 @@ static int check_lex_allowed_junction_type(xml_tree_t * in_xtree)
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
         if (0 == in_xtree->sz_items) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: No XML items to examine.");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -2627,14 +2618,14 @@ static int check_lex_allowed_junction_type(xml_tree_t * in_xtree)
         }
 
         if (0 != t_inter) {
-            opal_output(orcm_cfgi_base_framework.framework_output, "ERROR: Junction NOT of "
+            opal_output(0, "ERROR: Junction NOT of "
                         "type (cluster|row|rack|node) have yet to be implemented.");
             erri = ORCM_ERR_BAD_PARAM;
             break;
         }
 
         if (0 == t_node) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: At least one junction of type \"node\" must be defined.");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -2653,7 +2644,7 @@ static int check_lex_single_record(xml_tree_t * in_xtree)
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
         if (0 == in_xtree->sz_items) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: No XML items to examine.");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -2682,7 +2673,7 @@ static int check_lex_single_record(xml_tree_t * in_xtree)
             } else if (0 == strcasecmp(t,FDmod)) {
                 /*All good. That is what one would expect. */
             } else {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: Unknown data content for the XML tag ->role");
                 erri = ORCM_ERR_BAD_PARAM;
                 break;
@@ -2693,7 +2684,7 @@ static int check_lex_single_record(xml_tree_t * in_xtree)
         }
 
         if (1 != record_count) {
-            opal_output(orcm_cfgi_base_framework.framework_output, "ERROR: Incorrect count"
+            opal_output(0, "ERROR: Incorrect count"
                         " of XML tag configuration of \"RECORD\" role:%lu", record_count);
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -2713,7 +2704,7 @@ static int check_lex_open_close_tags_matching(xml_tree_t * in_xtree)
     int erri = ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
         if (0 == in_xtree->sz_items) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: No XML items to examine.");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -2754,7 +2745,7 @@ static int check_lex_open_close_tags_matching(xml_tree_t * in_xtree)
             unsigned long k;
             k=i+1;
             if (k >= in_xtree->sz_items || '\t' != in_xtree->items[k][0]) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: Missing data field for XML tag ->%s", t);
                 erri = ORCM_ERR_BAD_PARAM;
                 break;
@@ -2762,7 +2753,7 @@ static int check_lex_open_close_tags_matching(xml_tree_t * in_xtree)
 
             k=i+2;
             if (k >= in_xtree->sz_items || '/' != in_xtree->items[k][0]) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: Missing closing tag for XML tag ->%s", t);
                 erri = ORCM_ERR_BAD_PARAM;
                 break;
@@ -2773,7 +2764,7 @@ static int check_lex_open_close_tags_matching(xml_tree_t * in_xtree)
         }
 
         if (openings != closings) {
-            opal_output(orcm_cfgi_base_framework.framework_output, "ERROR: The number of "
+            opal_output(0, "ERROR: The number of "
                         "opening and closing XML tags do not match: open=%lu close=%lu",
                         openings, closings);
             erri = ORCM_ERR_BAD_PARAM;
@@ -2789,7 +2780,7 @@ static int check_lex_tags_valid(xml_tree_t * in_xtree)
     int erri=ORCM_SUCCESS;
     while (ORCM_SUCCESS == erri) {
         if (0 == in_xtree->sz_items) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: No XML items to examine.");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -2798,7 +2789,7 @@ static int check_lex_tags_valid(xml_tree_t * in_xtree)
         for (i=0; i < in_xtree->sz_items; ++i) {
             char * t = in_xtree->items[i];
             if (NULL == t) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: NULL tag found.");
                 erri = ORCM_ERR_BAD_PARAM;
                 break;
@@ -2813,7 +2804,7 @@ static int check_lex_tags_valid(xml_tree_t * in_xtree)
                 k=0;
             }
             if (!is_known_tag(t+k)) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: Unknown XML tag->%s", t);
                 erri = ORCM_ERR_BAD_PARAM;
             }
@@ -2860,9 +2851,9 @@ static int check_lex_all_port_fields(xml_tree_t * in_xtree)
             number = strtol(t, &endptr, base);
 
             if ('\0' != *endptr) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: The value of a port is not a valid integer");
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "Error on lexer element %lu", i+1);
                 erri = ORCM_ERR_BAD_PARAM;
                 /*Do not bail out right away.  Survey all nodes.
@@ -2870,10 +2861,10 @@ static int check_lex_all_port_fields(xml_tree_t * in_xtree)
                 /*break;*/
             } else {
                 if (0 > number || USHRT_MAX < number) {
-                    opal_output(orcm_cfgi_base_framework.framework_output, "ERROR: The "
+                    opal_output(0, "ERROR: The "
                                 "value of a port is not in an acceptable range "
                                 "(0<=n<=SHRT_MAX): %ld", number);
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                                 "Error on lexer element %lu", i+1);
                     erri = ORCM_ERR_BAD_PARAM;
                     /*Do not bail out right away.  Survey all nodes.
@@ -2985,7 +2976,7 @@ static int structure_lexed_items(unsigned long in_begin_offset,
 
         if (k != ending_sectional_tags || 0 == k) {
             /*This crude check to see if we have the ending tag of the starting section*/
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR:Provided sub-section of XML lexer invalid");
             erri = ORCM_ERR_BAD_PARAM;
             break;
@@ -3119,7 +3110,7 @@ static int structure_lexed_items(unsigned long in_begin_offset,
         }
 
         if (sz_section+1 != io_xtree->sz_hierarchy) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR:: sz_section=%lu    sz_hierarchy=%lu\n",
                         sz_section, io_xtree->sz_hierarchy);
             erri = ORCM_ERR_BAD_PARAM;
@@ -3310,7 +3301,7 @@ static int transfer_to_node(unsigned long in_node_row,
             }
             if (NULL == field) {
                 erri = ORCM_ERR_BAD_PARAM;
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: XML syntax corruption found.");
                 break;
             }
@@ -3540,7 +3531,7 @@ static int transfer_to_controller(unsigned long in_ctrl_row,
         const char * hostf = get_field(TXhost, in_ctrl_row, in_xtree);
         if (NULL == hostf) {
             erri = ORCM_ERR_BAD_PARAM;
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: Controller with missing host field");
             break;
         }
@@ -3689,76 +3680,6 @@ static int transfer_to_scheduler(unsigned long in_sched_row,
     return erri;
 }
 
-static int remove_empty_items(xml_tree_t * io_xtree)
-{
-    unsigned long i=0,k=0;
-    char * t=NULL;
-    char * tt=NULL;
-
-    int erri=ORCM_SUCCESS;
-    while (ORCM_SUCCESS == erri) {
-        if (0 == io_xtree->sz_items || NULL == io_xtree->items) {
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-        if (0 == io_xtree->sz_items) {
-            break;
-        }
-
-        for (i=0; i < io_xtree->sz_items; ++i) {
-            t = io_xtree->items[i];
-            if (NULL == t){
-                continue;
-            }
-            if ('\t' == t[0] || '/' == t[0]) {
-                continue;
-            }
-
-            if (i+1 == io_xtree->sz_items) {
-                continue;
-            }
-
-            tt = io_xtree->items[i+1];
-            if ('\t' == tt[0]) {
-                continue;
-            }
-
-            ++tt; /*Jump over the foward slash*/
-            if (0 == strcasecmp(t,tt)) {
-                /*Empty field found*/
-                free ( io_xtree->items[i] );
-                io_xtree->items[i] = NULL;
-                free ( io_xtree->items[i+1] );
-                io_xtree->items[i+1] = NULL;
-            }
-        }
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
-
-        /*Remove nulled entries */
-        k=-1;
-        for (i=0; i < io_xtree->sz_items; ++i) {
-            t=io_xtree->items[i];
-            if (NULL != t) {
-                ++k;
-                io_xtree->items[k] = io_xtree->items[i];
-            }
-        }
-        /*free superflous entries of items*/
-        for (i=k+1; i < io_xtree->sz_items; ++i) {
-            if (NULL != io_xtree->items[i]) {
-                free (io_xtree->items[i]);
-                io_xtree->items[i] = NULL;
-            }
-        }
-        io_xtree->sz_items = k+1;
-
-        break;
-    }
-    return erri;
-}
-
 static int check_duplicate_singletons(xml_tree_t * in_xtree)
 {
     unsigned long i=0, j=0, k=0;
@@ -3781,13 +3702,13 @@ static int check_duplicate_singletons(xml_tree_t * in_xtree)
                         v = in_xtree->hierarchy[i][k];
                         if (is_field(v)) {
                             erri = ORCM_ERR_BAD_PARAM;
-                            opal_output(orcm_cfgi_base_framework.framework_output,
+                            opal_output(0,
                                         "ERROR: XML parser inconsistency found: %d", __LINE__);
                             break;
                         }
                         tt = in_xtree->items[ in_xtree->hierarchy[child_to_offset(v)][0] ];
                         if (0 == strcasecmp(t,tt)) {
-                            opal_output(orcm_cfgi_base_framework.framework_output,
+                            opal_output(0,
                                         "ERROR: More than one instance of the command \"%s\" was found in \"%s\"",tt,context);
                             erri = ORCM_ERR_BAD_PARAM;
                             break;
@@ -3811,7 +3732,7 @@ static int check_duplicate_singletons(xml_tree_t * in_xtree)
                         }
                         tt = in_xtree->items[v];
                         if (0 == strcasecmp(t,tt)) {
-                            opal_output(orcm_cfgi_base_framework.framework_output,
+                            opal_output(0,
                                         "ERROR: More than one instance of the command \"%s\" was found in \"%s\"",tt,context);
                             erri = ORCM_ERR_BAD_PARAM;
                             break;
@@ -3962,7 +3883,7 @@ static int check_junctions_have_names(xml_tree_t * in_tree)
             const char * name_found = get_field( TXname, i, in_tree);
 
             if (NULL == name_found) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: A junction (Lexer item %ld) is missing its name", u);
                 erri = ORCM_ERR_BAD_PARAM;
                 break;
@@ -4033,7 +3954,7 @@ static int check_parent_has_uniquely_named_children( xml_tree_t * in_tree )
                         break;
                     }
                     if ( 0 == strcmp(cA_name, cB_name) ) {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                                     "ERROR: Junction %lu has two children with the same name: %s", i, cB_name);
                         erri = ORCM_ERR_BAD_PARAM;
                         break;
@@ -4102,10 +4023,10 @@ static int check_host_field_has_matching_port( xml_tree_t * in_tree )
                     /* All good as neither have been mentioned.  So a pait it is */
                 } else {
                     if (1 == ona_scheduler) {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                                     msg_sched, u);
                     } else {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                                     msg_ctrlr, u);
                     }
                     erri = ORCM_ERR_BAD_PARAM;
@@ -4113,10 +4034,10 @@ static int check_host_field_has_matching_port( xml_tree_t * in_tree )
             } else {
                 if (NULL == host) {
                     if (1 == ona_scheduler) {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                                     msg_sched, u);
                     } else {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                                     msg_ctrlr, u);
                     }
                     erri = ORCM_ERR_BAD_PARAM;
@@ -4166,7 +4087,7 @@ static int check_unique_scheduler( xml_tree_t * in_tree )
         }
 
         if ( 1 != scheduler_count) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
                         "ERROR: Only a single scheduler is allowed at a time: %lu found.",
                         scheduler_count);
             erri = ORCM_ERR_BAD_PARAM;
@@ -4236,7 +4157,7 @@ static int check_unique_host_port_pair( xml_tree_t * in_tree )
 
             const char * port = get_field(TXport, i, in_tree);
             if (NULL == port) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: A conroller (XML-STRUCT=%lu) has a missing port", i);
                 erri = ORCM_ERR_BAD_PARAM;
                 break;
@@ -4280,7 +4201,7 @@ static int check_unique_host_port_pair( xml_tree_t * in_tree )
                 if (p1 == p2) {
                     if ( 0 == strcmp(t,t2) ) {
                         if (NULL == ampersand_found_in_t) {
-                            opal_output(orcm_cfgi_base_framework.framework_output,
+                            opal_output(0,
                                  "ERROR: Duplicate (s)host-port pair found: "
                                  "port=%lu\t(s)host=%s", p1, t);
                             erri = ORCM_ERR_BAD_PARAM;
@@ -4343,7 +4264,7 @@ static int check_unique_cluster_on_top( xml_tree_t * in_tree )
                 if (0 == strcasecmp(t,TXjunction)) {
                     jtype = get_field(TXtype, i, in_tree);
                     if (NULL == jtype) {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                        "ERROR: Each junction (LEX item %ld) must have a type property.", u);
                         erri = ORCM_ERR_BAD_PARAM;
                         /*Do not break out.  There might be other errors. */
@@ -4358,7 +4279,7 @@ static int check_unique_cluster_on_top( xml_tree_t * in_tree )
 
             const char * crole = get_field(TXrole, i, in_tree);
             if (NULL == crole){
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: Each configuration must have a role property.");
                 erri = ORCM_ERR_BAD_PARAM;
                 /*Do not break out.  There might be other errors. */
@@ -4379,7 +4300,7 @@ static int check_unique_cluster_on_top( xml_tree_t * in_tree )
                 if (NULL == jtype) {
                     tt = in_tree->items[ in_tree->hierarchy[child_to_offset(v)][0] ];
                     if (0 == strcasecmp(tt,TXjunction) ) {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                         "ERROR: Each junction (LEX item %ld) must have a type property.",
                         in_tree->hierarchy[child_to_offset(v)][0]);
                         erri = ORCM_ERR_BAD_PARAM;
@@ -4396,19 +4317,19 @@ static int check_unique_cluster_on_top( xml_tree_t * in_tree )
         } /* for (i=0; i < in_tree->sz_hierarchy; ++i) */
 
         if (1 != record_count) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
             "ERROR: There must be a single RECORD configuration: %lu found.", record_count);
             erri = ORCM_ERR_BAD_PARAM;
         }
 
         if (1 != cluster_count) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
             "ERROR: Each RECORD configuration must have a single cluster junction: %lu found.", cluster_count);
             erri = ORCM_ERR_BAD_PARAM;
         }
 
         if (1 != cluster_ontop) {
-            opal_output(orcm_cfgi_base_framework.framework_output,
+            opal_output(0,
             "ERROR: Each RECORD configuration must have a single cluster junction at the top: %lu found.", cluster_count);
             erri = ORCM_ERR_BAD_PARAM;
         }
@@ -4436,7 +4357,7 @@ static int check_no_sublevel_on_scheduler( xml_tree_t * in_tree )
             if (is_child(uu)) {
                 erri = ORCM_ERR_BAD_PARAM;
                 /*Do not break here. Spit out all error.*/
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: Scheduler (%lu) cannot have a child item (%ld)", i, -uu);
             }
         }
@@ -4462,7 +4383,7 @@ static int check_no_sublevel_on_controller( xml_tree_t * in_tree )
             if (is_child(uu)) {
                 erri = ORCM_ERR_BAD_PARAM;
                 /*Do not break here. Spit out all error.*/
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                             "ERROR: Controller (%lu) cannot have a child item (%ld)", i, -uu);
             }
         }
@@ -4537,13 +4458,13 @@ static int check_controller_on_node_junction( xml_tree_t * in_tree )
                 continue;
             } else {
                 if (node_name_is_regex) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                            "ERROR: A node controller host name must be @ if the parent node name is a regex.");
                     erri = ORCM_ERR_BAD_PARAM;
                     break;
                 } else {
                     if (0 != strcmp(ctrl_host, node_name)) {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                                "ERROR: A node controller host name must be the same as the non-regex parent node name.");
                         erri = ORCM_ERR_BAD_PARAM;
                         break;
@@ -4617,7 +4538,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
                 }
 
                 if (0 != strcasecmp(jtype2, FDrow)) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: A cluster junction must contain only row junction: %s found.",jtype2);
                     erri = ORCM_ERR_BAD_PARAM;
                     /*Do not break out.  There might be other errors. */
@@ -4628,7 +4549,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
                 break;
             }
             if (0 == junctions_in_cluster) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                 "ERROR: A cluster junction must contain at least one row junction: 0 found.");
                 erri = ORCM_ERR_BAD_PARAM;
             }
@@ -4683,7 +4604,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
                     break;
                 }
                 if (0 != strcasecmp(jtype2, FDrack)) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: A row junction must contain only rack junction: %s found.",jtype2);
                     erri = ORCM_ERR_BAD_PARAM;
                     /*Do not break out.  There might be other errors. */
@@ -4694,7 +4615,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
                 break;
             }
             if (0 == junctions_in_rows) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                 "ERROR: Row junction (LEX item %ld) must contain at least one rack junction",u);
                 erri = ORCM_ERR_BAD_PARAM;
             }
@@ -4746,7 +4667,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
                     break;
                 }
                 if (0 != strcasecmp(jtype2, FDnode)) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: A rack junction must contain only node junction: %s found.",jtype2);
                     erri = ORCM_ERR_BAD_PARAM;
                     /*Do not break out.  There might be other errors. */
@@ -4757,7 +4678,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
                 break;
             }
             if (0 == junctions_in_racks) {
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                 "ERROR: Rack junction (LEX item %ld) must contain at least one node junction",u);
                 erri = ORCM_ERR_BAD_PARAM;
             }
@@ -4805,7 +4726,7 @@ static int check_hierarchy_integrity( xml_tree_t * in_tree )
                     erri = ORCM_ERR_BAD_PARAM;
                     break;
                 }
-                opal_output(orcm_cfgi_base_framework.framework_output,
+                opal_output(0,
                 "ERROR: A node junction must contain no other junction: %s found.",jtype2);
                 erri = ORCM_ERR_BAD_PARAM;
                 /*Do not break out.  There might be other errors. */
@@ -4912,7 +4833,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
                 erri = xml_tree_grow( sizeof(unsigned long), xtBLOCK_SIZE,
                                       sz, (void**)&io_xtree->hier_row_lengths);
                 if (ORCM_SUCCESS != erri) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: Failed to grow row container for a row.");
                     break;
                 }
@@ -4922,7 +4843,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
                 /* 2) deal with io_xtree->hier_row_lengths */
                 long * newrow = (long*) calloc(4, sizeof(long));
                 if (NULL == newrow) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: Acquire location for fictitious row failed.");
                     erri = ORCM_ERR_OUT_OF_RESOURCE;
                     break;
@@ -4931,7 +4852,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
                 erri = xml_tree_grow( sizeof(long *), xtBLOCK_SIZE,
                                       sz, (void**)&io_xtree->hierarchy);
                 if (ORCM_SUCCESS != erri) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: Failed to grow hierarchy for a row.");
                     free(newrow);
                     newrow=NULL;
@@ -5018,7 +4939,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
                                          io_xtree->sz_items,
                                          (void**)&io_xtree->items);
                     if (ORCM_SUCCESS != erri) {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                         "ERROR: Failed to grow XML dictionary for a row.");
                         break;
                     }
@@ -5031,7 +4952,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
             } /*End of for (j=0; ...*/
             if (ORCM_SUCCESS != erri) {
                 if (ORCM_ERR_OUT_OF_RESOURCE == erri) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: Ressource acquisition for a row failed.");
                 }
                 break;
@@ -5110,7 +5031,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
                 erri = xml_tree_grow( sizeof(unsigned long), xtBLOCK_SIZE,
                                       sz, (void**)&io_xtree->hier_row_lengths);
                 if (ORCM_SUCCESS != erri) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: Failed to grow row container for a rack.");
                     break;
                 }
@@ -5120,7 +5041,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
                 /* 2) deal with io_xtree->hier_row_lengths */
                 long * newrow = (long*) calloc(4, sizeof(long));
                 if (NULL == newrow) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: Acquire location for fictitious rack failed.");
                     break;
                 }
@@ -5128,7 +5049,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
                 erri = xml_tree_grow( sizeof(long *), xtBLOCK_SIZE,
                                       sz, (void**)&io_xtree->hierarchy);
                 if (ORCM_SUCCESS != erri) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: Failed to grow hierarchy for a rack.");
                     free(newrow);
                     newrow=NULL;
@@ -5215,7 +5136,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
                                          io_xtree->sz_items,
                                          (void**)&io_xtree->items);
                     if (ORCM_SUCCESS != erri) {
-                        opal_output(orcm_cfgi_base_framework.framework_output,
+                        opal_output(0,
                         "ERROR: Failed to grow XML dictionary for a rack.");
                         break;
                     }
@@ -5228,7 +5149,7 @@ static int augment_hierarchy( xml_tree_t * io_xtree )
             }/*End of for (j=0; ...*/
             if (ORCM_SUCCESS != erri) {
                 if (ORCM_ERR_OUT_OF_RESOURCE == erri) {
-                    opal_output(orcm_cfgi_base_framework.framework_output,
+                    opal_output(0,
                     "ERROR: Ressource acquisition for a rack failed.");
                 }
                 break;

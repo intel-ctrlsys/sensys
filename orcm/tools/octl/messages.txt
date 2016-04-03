@@ -47,6 +47,67 @@ Success changing sensor sampling on node '%s'.
 [info:storage-reponse]
 Sensor storage response is: %i
 
+[info:power-modes]
+Possible modes:
+
+[info:power-budget]
+Current cluster power budget: %d watts.
+
+[info:power-mode-df]
+Current default power mode: %s.
+
+[info:power-window-df]
+Current default power window: %d ms.
+
+[info:power-budget-limit]
+Current default power budget %s limit: %d watts
+
+[info:power-time-limit]
+Current default power %s time limit: %d ms.
+
+[info:power-freq-df]
+Current default power frequency: %s.
+
+[info:power-freq-df-GHz]
+Current default power frequency: %f GHz.
+
+[info:power-freq-strict]
+Current default frequency strict setting: %s.
+
+[info:session-budget]
+Session %ld current cluster power budget: %d watts.
+
+[info:session-mode]
+Session %ld current power mode: %s.
+
+[info:session-window]
+Session %ld current power window: %d ms.
+
+[info:session-budget-limit]
+Session %ld current power budget %s limit: %d watts.
+
+[info:session-time-limit]
+Session %ld current power %s time limit: %d ms.
+
+[info:session-freq]
+Session %ld current power frequency: %s.
+
+[info:session-freq-GHz]
+Session %ld current power frequency: %f MHz.
+
+[info:session-freq-strict]
+ession %ld current frequency strict setting: %s.
+
+[info:executing-diag]
+ORCM Executing Diag:%s on Node: %s.
+
+[info:total-nodes]
+TOTAL NODES : %i
+
+[info:resource-header]
+NODES                : STATE  SCHED_STATE
+-----------------------------------------
+
 [error:unknown]
 Unknown error
 
@@ -94,6 +155,27 @@ Failure changing sensor sampling on node %s
 Is the datagroup and/or sensor label correct (%s)?
 Is the datagroup plugin actively running on the node?
 
+[error:illegal-pw-mode]
+Illegal Power Management mode, use 'power get modes' to see possible modes.
+
+[error:session-cancel]
+session cancel failed!
+
+[error:session-id]
+Invalid SESSION ID.
+
+[error:session-set]
+session set failed!
+
+[error:resource-drain]
+resource drain failed!
+
+[error:resource-resume]
+resource resume failed!
+
+[error:diag-mem]
+diag mem failed!
+
 [usage:sensor]
 sensor enable|disable|reset <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
 
@@ -111,3 +193,30 @@ sensor get inventory <nodelist>
 
 [usage:sensor-store]
 sensor store <command> <nodelist>
+
+[usage:power-set]
+power set <command> <value>
+
+[usage:power-set-mode]
+power set mode <value>
+
+[usage:power-get]
+power get <command>
+
+[usage:diag]
+diag <command> <nodelist>
+
+[usage:resource-drain]
+resource drain <nodelist>
+
+[usage:resource-resume]
+resource resume <nodelist>
+
+[usage:session-cancel]
+session cancel <session-id>
+
+[usage:session-set]
+session set <command> <session-id> <value>
+
+[usage:session-get]
+session get <command> <session-id>

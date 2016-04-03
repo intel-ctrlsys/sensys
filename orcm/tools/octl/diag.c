@@ -22,18 +22,16 @@ int orcm_octl_diag_cpu(char **argv)
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
-    char *err_str = NULL;
 
 
     if (3 != opal_argv_count(argv)) {
-        orte_show_help("help-octl.txt",
-                       "octl:diag:usage", true, "invalid arguments!");
+        orcm_octl_usage("diag", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
 
     orcm_logical_group_parse_array_string(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        orte_show_help("help-octl.txt","octl:nodelist-extract", true, argv[2]);
+        orcm_octl_error("nodelist-extract", argv[2]);
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -43,23 +41,27 @@ int orcm_octl_diag_cpu(char **argv)
     /* pack idag start command */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_DIAG_CMD_T))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     /* pack component */
     comp = strdup("cputest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     free(comp);
     /* pack if we want to wait for results */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &want_result,
                                             1, OPAL_BOOL))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     /* pack number of options to send */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &numopts,
                                             1, OPAL_INT))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     /* pack options */
@@ -77,8 +79,7 @@ int orcm_octl_diag_cpu(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        ORCM_UTIL_MSG("ORCM Executing Diag:cpu on Node: %s",
-                               nodelist[i]);
+        orcm_octl_info("executing-diag", "cpu", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
             goto finish;
@@ -95,6 +96,7 @@ int orcm_octl_diag_cpu(char **argv)
         /* wait for status message */
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_error("connection-fail");
             goto finish;
         }
 
@@ -104,13 +106,11 @@ int orcm_octl_diag_cpu(char **argv)
             cnt=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,
                                                       &cnt, OPAL_INT))) {
+                orcm_octl_error("unpack");
                 goto finish;
             }
             if (ORCM_SUCCESS == result) {
-                ORCM_UTIL_MSG("Success");
-            } else {
-                orcm_err2str(rc, (const char**)(&err_str));
-                orte_show_help("help-octl.txt", "octl:command-line:failure", true, err_str);
+                orcm_octl_info("success");
             }
         }
     }
@@ -135,17 +135,15 @@ int orcm_octl_diag_eth(char **argv)
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
-    char *err_str = NULL;
 
     if (3 != opal_argv_count(argv)) {
-        orte_show_help("help-octl.txt",
-                       "octl:diag:usage", true, "invalid arguments!");
+        orcm_octl_usage("diag", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
 
     orcm_logical_group_parse_array_string(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        orte_show_help("help-octl.txt","octl:nodelist-extract", true, argv[2]);
+        orcm_octl_error("nodelist-extract", argv[2]);
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -161,17 +159,20 @@ int orcm_octl_diag_eth(char **argv)
     comp = strdup("ethtest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     free(comp);
     /* pack if we want to wait for results */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &want_result,
                                             1, OPAL_BOOL))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     /* pack number of options to send */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &numopts,
                                             1, OPAL_INT))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     /* pack options */
@@ -189,10 +190,10 @@ int orcm_octl_diag_eth(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        ORCM_UTIL_MSG("ORCM Executing Diag:eth on Node: %s",
-                               nodelist[i]);
+        orcm_octl_info("executing-diag", "eth", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
+            orcm_octl_error("node-notfound", nodelist[i]);
             goto finish;
         }
 
@@ -201,12 +202,14 @@ int orcm_octl_diag_eth(char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_DIAG,
                                           orte_rml_send_callback, NULL))) {
+            orcm_octl_error("connection-fail");
             goto finish;
         }
 
         /* wait for status message */
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_error("connection-fail");
             goto finish;
         }
 
@@ -216,13 +219,11 @@ int orcm_octl_diag_eth(char **argv)
             cnt=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,
                                                       &cnt, OPAL_INT))) {
+                orcm_octl_error("unpack");
                 goto finish;
             }
             if (ORCM_SUCCESS == result) {
-                ORCM_UTIL_MSG("Success");
-            } else {
-                orcm_err2str(rc, (const char**)(&err_str));
-                orte_show_help("help-octl.txt", "octl:command-line:failure", true, err_str);
+                orcm_octl_info("success");
             }
         }
     }
@@ -252,18 +253,15 @@ int orcm_octl_diag_mem(char **argv)
     orte_process_name_t tgt;
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
-    char *err_str = NULL;
-
 
     if (3 != opal_argv_count(argv)) {
-        orte_show_help("help-octl.txt",
-                       "octl:diag:usage", true, "invalid arguments!");
+        orcm_octl_usage("diag", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
 
     orcm_logical_group_parse_array_string(argv[2], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
-        orte_show_help("help-octl.txt","octl:nodelist-extract", true, argv[2]);
+        orcm_octl_error("nodelist-extract", argv[2]);
         opal_argv_free(nodelist);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -273,23 +271,27 @@ int orcm_octl_diag_mem(char **argv)
     /* pack idag start command */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_DIAG_CMD_T))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     /* pack component */
     comp = strdup("memtest");
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &comp,
                                             1, OPAL_STRING))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     free(comp);
     /* pack if we want to wait for results */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &want_result,
                                             1, OPAL_BOOL))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     /* pack number of options to send */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &numopts,
                                             1, OPAL_INT))) {
+        orcm_octl_error("pack");
         goto finish;
     }
     /* pack options */
@@ -307,10 +309,10 @@ int orcm_octl_diag_mem(char **argv)
                                 ORTE_RML_NON_PERSISTENT,
                                 orte_rml_recv_callback, xfer);
 
-        ORCM_UTIL_MSG("ORCM Executing Diag:mem on Node: %s",
-                               nodelist[i]);
+        orcm_octl_info("executing-diag", "mem", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
+            orcm_octl_error("node-notfound", nodelist[i]);
             goto finish;
         }
 
@@ -319,12 +321,14 @@ int orcm_octl_diag_mem(char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_DIAG,
                                           orte_rml_send_callback, NULL))) {
+            orcm_octl_error("connection-fail");
             goto finish;
         }
 
         /* wait for status message */
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_error("connection-fail");
             goto finish;
         }
 
@@ -334,13 +338,13 @@ int orcm_octl_diag_mem(char **argv)
             cnt=1;
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result,
                                                       &cnt, OPAL_INT))) {
+                orcm_octl_error("unpack");
                 goto finish;
             }
             if (ORCM_SUCCESS == result) {
-                ORCM_UTIL_MSG("Success");
+                orcm_octl_info("success");
             } else {
-                orcm_err2str(rc, (const char**)(&err_str));
-                orte_show_help("help-octl.txt", "octl:command-line:failure", true, err_str);
+                orcm_octl_error("diag-mem");
             }
         }
     }

@@ -58,8 +58,9 @@ char *search_msg(regex_t regex_label) {
                        while ((fgets(line, 1024, file)) != NULL) {
                            if (!regexec(&regex, line, 0, NULL, 0)) {
                                 // remove unnecessary last "\n"
-                                if (msg[strlen(msg)-1] == '\n')
-                                    msg[strlen(msg)-1] = '\0';
+                                if (NULL != msg)
+                                    if (msg[strlen(msg)-1] == '\n')
+                                        msg[strlen(msg)-1] = '\0';
                                 break;
                            }
                            msg = (char *) realloc(msg, strlen(msg) + strlen(line) + 1);

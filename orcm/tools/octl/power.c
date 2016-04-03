@@ -27,8 +27,7 @@ int orcm_octl_power_set(int cmd, char **argv)
     bool per_session = false;
 
     if (4 != opal_argv_count(argv)) {
-        orte_show_help("help-octl.txt",
-                       "octl:power:set-usage", true, "invalid arguments!");
+        orcm_octl_usage("power-set", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -94,7 +93,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         }
 
         if (0 > int_param || ORCM_PWRMGMT_NUM_MODES <= int_param ) {
-            orte_show_help("help-octl.txt", "octl:power:set-mode", true);
+            orcm_octl_error("illegal-pw-mode");
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return ORCM_ERR_BAD_PARAM;
         }
@@ -256,7 +255,7 @@ int orcm_octl_power_set(int cmd, char **argv)
         return rc;
     }
     if (0 == result) {
-        ORCM_UTIL_MSG("Success!\n");
+        orcm_octl_info("success");
     } else {
         ORCM_UTIL_MSG("Failure\n");
     }
@@ -276,18 +275,17 @@ int orcm_octl_power_get(int cmd, char **argv)
     bool per_session = false;
 
     if (3 != opal_argv_count(argv)) {
-        orte_show_help("help-octl.txt",
-                       "octl:power:get-usage", true, "invalid arguments!");
+        orcm_octl_usage("power-get", INVALID_USG);
 
         return ORCM_ERR_BAD_PARAM;
     }
 
     if (ORCM_GET_POWER_MODES_COMMAND == cmd) {
-        ORCM_UTIL_MSG("Possible Modes: {\n%s", orcm_pwrmgmt_get_mode_string(0));
+        orcm_octl_info("power-modes");
+        printf("%s", orcm_pwrmgmt_get_mode_string(0));
         for(i = 1; i < ORCM_PWRMGMT_NUM_MODES; i++) {
-            ORCM_UTIL_MSG("%s",orcm_pwrmgmt_get_mode_string(i));
+            printf("%s",orcm_pwrmgmt_get_mode_string(i));
         }
-        ORCM_UTIL_MSG("}");
         return ORCM_SUCCESS;
     }
 
@@ -372,7 +370,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        ORCM_UTIL_MSG("Current cluster power budget: %d watts", int_param);
+        orcm_octl_info("power-budget", int_param);
     break;
     case ORCM_GET_POWER_MODE_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -381,7 +379,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        ORCM_UTIL_MSG("Current default power mode: %s", orcm_pwrmgmt_get_mode_string(int_param));
+        orcm_octl_info("power-mode-df", orcm_pwrmgmt_get_mode_string(int_param));
     break;
     case ORCM_GET_POWER_WINDOW_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -390,7 +388,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        ORCM_UTIL_MSG("Current default power window: %d ms", int_param);
+        orcm_octl_info("power-window-df", int_param);
     break;
     case ORCM_GET_POWER_OVERAGE_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -399,7 +397,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        ORCM_UTIL_MSG("Current default power budget overage limit: %d watts", int_param);
+        orcm_octl_info("power-budget-limit", "overage", int_param);
     break;
     case ORCM_GET_POWER_UNDERAGE_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -408,7 +406,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        ORCM_UTIL_MSG("Current default power budget 'underage' limit: %d watts", int_param);
+        orcm_octl_info("power-budget-limit", "'underage'", int_param);
     break;
     case ORCM_GET_POWER_OVERAGE_TIME_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -417,7 +415,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        ORCM_UTIL_MSG("Current default power overage time limit: %d ms", int_param);
+        orcm_octl_info("power-time-limit", "overage", int_param);
     break;
     case ORCM_GET_POWER_UNDERAGE_TIME_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &int_param,
@@ -426,7 +424,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        ORCM_UTIL_MSG("Current default power 'underage' time limit: %d ms", int_param);
+        orcm_octl_info("power-time-limit", "'underage'", int_param);
     break;
     case ORCM_GET_POWER_FREQUENCY_COMMAND:
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &float_param,
@@ -436,13 +434,13 @@ int orcm_octl_power_get(int cmd, char **argv)
             return rc;
         }
         if(fabsf((float)(float_param - (float)ORCM_PWRMGMT_MIN_FREQ)) < 0.0001) {
-            ORCM_UTIL_MSG("Current default power frequency: MAX_FREQ");
+            orcm_octl_info("power-freq-df", "MAX_FREQ");
         }
         else if(fabsf((float)(float_param - (float)ORCM_PWRMGMT_MIN_FREQ)) < 0.0001) {
-            ORCM_UTIL_MSG("Current default power frequency: MIN_FREQ");
+            orcm_octl_info("power-freq-df", "MIN_FREQ");
         }
         else {
-            ORCM_UTIL_MSG("Current default power frequency: %f GHz", float_param);
+            orcm_octl_info("power-freq-df-GHz", float_param);
         }
     break;
     case ORCM_GET_POWER_STRICT_COMMAND:
@@ -452,7 +450,7 @@ int orcm_octl_power_get(int cmd, char **argv)
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
-        ORCM_UTIL_MSG("Current default frequency strict setting: %s", bool_param ? "true" : "false");
+        orcm_octl_info("power-freq-strict", bool_param ? "true" : "false");
     break;
     default:
         OBJ_RELEASE(buf);

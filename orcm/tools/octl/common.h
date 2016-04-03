@@ -47,7 +47,7 @@
 #define UNPACKERR "internal buffer unpack error"
 
 #define INVALID_USG 0
-#define ILLEGAL_USG 1
+#define ILLEGAL_CMD 1
 
 /* A timeout length when blocking
  * until something happens */

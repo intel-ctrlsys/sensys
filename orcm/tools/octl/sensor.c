@@ -14,10 +14,6 @@
 #include "orcm/mca/db/db.h"
 #include "orcm/mca/analytics/analytics_types.h"
 
-#define TAG  "octl:command-line:failure"
-#define PACKERR  "internal buffer pack error"
-#define UNPACKERR "internal buffer unpack error"
-
 #define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x = NULL; }
 
 int orcm_octl_sensor_policy_get(int cmd, char **argv)

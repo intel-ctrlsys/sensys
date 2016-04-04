@@ -43,7 +43,7 @@ static opal_list_t* comp_retrieve_section(int file_id, char const* key,
 static opal_list_t* comp_retrieve_section_from_list(int file_id,
                                           opal_list_item_t *start,
                                           char const* key, char const* name);
-static int comp_write_section(int file_id, opal_list_t *input, char const *key, char const *name);
+static int comp_write_section(int file_id, opal_list_t *input, char const *key, char const *name, bool);
 
 orcm_parser_base_module_t orcm_parser_sample_module = {
     comp_init,
@@ -106,7 +106,7 @@ static opal_list_t* comp_retrieve_section_from_list(int file_id,
     return NULL;
 }
 
-static int comp_write_section(int file_id, opal_list_t *input, char const *key, char const *name)
+static int comp_write_section(int file_id, opal_list_t *input, char const *key, char const *name, bool overwrite)
 {
     return MY_ORCM_SUCCESS;
 }
@@ -380,7 +380,7 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_write_section)
 
     ut_parser_base_tests::reset_module_list();
 
-    rc = orcm_parser.write_section(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+    rc = orcm_parser.write_section(RANDOM_VALUE_TO_TEST_API, NULL, "", "", true);
     ASSERT_NE(MY_ORCM_SUCCESS, rc);
 }
 
@@ -398,6 +398,6 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_write_section)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    rc = orcm_parser.write_section(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+    rc = orcm_parser.write_section(RANDOM_VALUE_TO_TEST_API, NULL, "", "", true);
     ASSERT_EQ(MY_ORCM_SUCCESS, rc);
 }

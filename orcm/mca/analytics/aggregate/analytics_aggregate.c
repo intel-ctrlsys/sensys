@@ -92,7 +92,7 @@ static char* get_operation_name(opal_list_t* attributes)
     ON_NULL_RETURN(attributes);
     temp = (opal_value_t*)opal_list_get_first(attributes);
     ON_NULL_RETURN(temp);
-    if (0 == strcmp(temp->key,"operation")) {
+    if (0 == strcmp(temp->key,"compute")) {
         if(NULL != temp->data.string) {
             op = strdup(temp->data.string);
         }

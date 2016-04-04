@@ -65,7 +65,7 @@ int analytics_aggregate_analyze_null_data_test()
 {
     orcm_workflow_caddy_t *caddy = OBJ_NEW(orcm_workflow_caddy_t);
     opal_value_t* temp = OBJ_NEW(opal_value_t);
-    temp->key = strdup("operation");
+    temp->key = strdup("compute");
     temp->data.string = strdup("average");
     opal_list_t* computelist = OBJ_NEW(opal_list_t);
 
@@ -87,7 +87,7 @@ int analytics_aggregate_analyze_incorrect_operation_test()
     orcm_workflow_caddy_t *caddy = OBJ_NEW(orcm_workflow_caddy_t);
     opal_value_t* temp = OBJ_NEW(opal_value_t);
     orcm_value_t* compute_data = OBJ_NEW(orcm_value_t);
-    temp->key = strdup("operation");
+    temp->key = strdup("compute");
     temp->data.string = strdup("abcde");
 
     caddy->wf_step = OBJ_NEW(orcm_workflow_step_t);
@@ -118,7 +118,7 @@ int analytics_aggregate_analyze_test_average()
     orcm_workflow_caddy_t *caddy = OBJ_NEW(orcm_workflow_caddy_t);
     opal_value_t* temp = OBJ_NEW(opal_value_t);
     orcm_value_t* compute_data = OBJ_NEW(orcm_value_t);
-    temp->key = strdup("operation");
+    temp->key = strdup("compute");
     temp->data.string = strdup("average");
     opal_list_t* computelist = OBJ_NEW(opal_list_t);
 
@@ -146,7 +146,7 @@ int analytics_aggregate_analyze_test_min() {
     orcm_workflow_caddy_t *caddy = OBJ_NEW(orcm_workflow_caddy_t);
     opal_value_t* temp = OBJ_NEW(opal_value_t);
     orcm_value_t* compute_data = OBJ_NEW(orcm_value_t);
-    temp->key = strdup("operation");
+    temp->key = strdup("compute");
     temp->data.string = strdup("min");
     opal_list_t* computelist = OBJ_NEW(opal_list_t);
 
@@ -174,7 +174,7 @@ int analytics_aggregate_analyze_test_max() {
     orcm_workflow_caddy_t *caddy = OBJ_NEW(orcm_workflow_caddy_t);
     opal_value_t* temp = OBJ_NEW(opal_value_t);
     orcm_value_t* compute_data = OBJ_NEW(orcm_value_t);
-    temp->key = strdup("operation");
+    temp->key = strdup("compute");
     temp->data.string = strdup("max");
     opal_list_t* computelist = OBJ_NEW(opal_list_t);
 

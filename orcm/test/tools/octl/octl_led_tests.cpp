@@ -12,7 +12,6 @@
 #include <iostream>
 
 #include "orcm/tools/octl/common.h"
-#include "orcm/tools/octl/chassis-id.c"
 
 #include "octl_led_tests.h"
 

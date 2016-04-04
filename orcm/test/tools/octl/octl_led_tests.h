@@ -23,6 +23,7 @@ extern "C" {
 
 #include "gtest/gtest.h"
 #include "octl_mocking.h"
+#include "orcm/runtime/led_control.h"
 
 class ut_octl_led_tests: public testing::Test
 {

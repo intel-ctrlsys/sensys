@@ -52,7 +52,8 @@ LDADD = \
     $(top_builddir)/orcm/tools/octl/query.o \
     $(top_builddir)/orcm/tools/octl/notifier.o \
     $(top_builddir)/orcm/tools/octl/workflow.o \
-    $(top_builddir)/orcm/tools/octl/smtp.o
+    $(top_builddir)/orcm/tools/octl/smtp.o \
+    $(top_builddir)/orcm/tools/octl/output_handler.o
 
 AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 

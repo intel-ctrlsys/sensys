@@ -149,6 +149,8 @@ bool cpufreq_loaded = false;
 
 void dmidata_inv_con(dmidata_inventory_t *trk)
 {
+    trk->nodename = NULL;
+    trk->freq_step_list = NULL;
     trk->records = OBJ_NEW(opal_list_t);
 }
 
@@ -618,7 +620,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     hwloc_topology_t topo;
     int32_t n, rc;
     dmidata_inventory_t *newhost;
-    char *freq_step_list;
+    char *freq_step_list = NULL;
     opal_value_t *kv;
     orcm_value_t *time_stamp;
     struct timeval current_time;
@@ -660,6 +662,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
              * received inventory details*/
             OBJ_RELEASE(newhost->records);
             free(newhost->freq_step_list);
+            newhost->freq_step_list = NULL;
             newhost->records=OBJ_NEW(opal_list_t);
         }
     } else { /* Node not found, Create new node and attach inventory details */

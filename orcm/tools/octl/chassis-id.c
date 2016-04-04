@@ -18,8 +18,15 @@
 #define LED_TEMPORARY_ON 1
 #define LED_INDEFINITE_ON 2
 
-#define SAFE_RELEASE(p) if(NULL != p) { OBJ_RELEASE(p); p = NULL; }
 #define SAFE_ARGV_FREE(p) if(NULL != p) { opal_argv_free(p); p = NULL; }
+
+int pack_chassis_id_data(opal_buffer_t *buf, orcm_cmd_server_flag_t *command,
+        orcm_cmd_server_flag_t *sub_command, char **noderaw, unsigned char *seconds);
+int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
+        orcm_cmd_server_flag_t sub_command, char *noderaw, unsigned char seconds);
+int orcm_octl_chassis_id_state(char **argv);
+int orcm_octl_chassis_id_on(char **argv);
+int orcm_octl_chassis_id_off(char **argv);
 
 static void cleanup(char **nodelist, opal_buffer_t *buf, orte_rml_recv_cb_t *xfer){
     SAFE_ARGV_FREE(nodelist);
@@ -135,7 +142,7 @@ int pack_chassis_id_data(opal_buffer_t *buf, orcm_cmd_server_flag_t *command,
 }
 
 int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
-        orcm_cmd_server_flag_t sub_command, char *noderaw, int seconds){
+        orcm_cmd_server_flag_t sub_command, char *noderaw, unsigned char seconds){
     char **nodelist = NULL;
     orte_rml_recv_cb_t *xfer = NULL;
     opal_buffer_t *buf = NULL;

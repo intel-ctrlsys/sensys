@@ -135,6 +135,14 @@ extern opal_list_t* pugi_retrieve_section_from_list(int file_id,
  */
 extern int pugi_write_section(int file_id, opal_list_t *input,
                               char const *key, char const* name, bool overwrite);
+
+/**
+ * Cleans up memory when the module is closed.
+ *
+ * Deletes objects from unclosed files.
+ *
+ */
+extern void pugi_finalize(void);
 END_C_DECLS
 
 #endif /* PARSER_PUGI_H */

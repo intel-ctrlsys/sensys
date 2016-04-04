@@ -82,6 +82,18 @@ TEST_F(ut_parser_pugi_tests, test_pugiImpl_loadFile_validFile)
 
 /* Parser Pugi API Tests */
 
+// Finalize Function Tests.
+
+TEST_F(ut_parser_pugi_tests, test_API_finalize)
+{
+   OPEN_VALID_FILE(file_id);
+   EXPECT_EQ(++openedFiles, file_id);
+   pugi_finalize();
+   openedFiles=0;
+   file_id = pugi_open(validFile.c_str());
+   EXPECT_EQ(++openedFiles, file_id);
+   pugi_close(file_id);
+}
 
 // Open and Close API Tests.
 
@@ -248,8 +260,7 @@ TEST_F(ut_parser_pugi_tests,
        test_API_retrieveSectionFromList_validFileId_validKey_noName)
 {
     opal_list_t *rootList, *groupList;
-    int file_id = pugi_open(validFile.c_str());
-    ASSERT_TRUE(0 < file_id);
+    OPEN_VALID_FILE(file_id);
     rootList = pugi_retrieve_document(file_id);
     EXPECT_TRUE(NULL != rootList);
     if (NULL == rootList) {
@@ -274,8 +285,7 @@ TEST_F(ut_parser_pugi_tests,
        test_API_retrieveSectionFromList_validFileId_validKey_validName_attribute)
 {
     opal_list_t *rootList, *groupList;
-    int file_id = pugi_open(validFile.c_str());
-    ASSERT_TRUE(0 < file_id);
+    OPEN_VALID_FILE(file_id);
     rootList = pugi_retrieve_document(file_id);
     EXPECT_TRUE(NULL != rootList);
     if (NULL == rootList) {
@@ -300,8 +310,7 @@ TEST_F(ut_parser_pugi_tests,
        test_API_retrieveSectionFromList_validFileId_validKey_validName_tag)
 {
     opal_list_t *rootList, *groupList;
-    int file_id = pugi_open(validFile.c_str());
-    ASSERT_TRUE(0 < file_id);
+    OPEN_VALID_FILE(file_id);
     rootList = pugi_retrieve_document(file_id);
     EXPECT_TRUE(NULL != rootList);
     if (NULL == rootList) {
@@ -326,8 +335,7 @@ TEST_F(ut_parser_pugi_tests,
        test_API_retrieveSectionFromList_validFileId_validKey_invalidName)
 {
     opal_list_t *rootList, *groupList;
-    int file_id = pugi_open(validFile.c_str());
-    ASSERT_TRUE(0 < file_id);
+    OPEN_VALID_FILE(file_id);
     rootList = pugi_retrieve_document(file_id);
     EXPECT_TRUE(NULL != rootList);
     if (NULL == rootList) {

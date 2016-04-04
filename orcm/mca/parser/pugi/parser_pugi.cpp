@@ -31,7 +31,7 @@ BEGIN_C_DECLS
 
 orcm_parser_base_module_t orcm_parser_pugi_module = {
     NULL,
-    NULL,
+    pugi_finalize,
     pugi_open,
     pugi_close,
     pugi_retrieve_document,
@@ -43,11 +43,18 @@ orcm_parser_base_module_t orcm_parser_pugi_module = {
 static map<int,parser_t*> file_id_table;
 static int current_file_id=0;
 
-bool is_file_id_valid(int file_id){
-    if (0 >= file_id_table.count(file_id )){
-        return false;
+inline bool is_file_id_valid(int file_id){
+    return !(0 >= file_id_table.count(file_id));
+}
+
+void pugi_finalize()
+{
+    for(map<int,parser_t*>::iterator it=file_id_table.begin();
+        it != file_id_table.end() ; it++){
+        delete it->second;
     }
-    return true;
+    file_id_table.clear();
+    current_file_id = 0;
 }
 
 int pugi_open(char const *file)

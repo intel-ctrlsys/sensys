@@ -1156,6 +1156,7 @@ static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snap
     opal_list_t *records = NULL;
     int rc = OPAL_SUCCESS;
     orcm_value_t *time_stamp = NULL;
+    orcm_value_t *host_name=NULL;
     struct timeval current_time;
     char *tmp = NULL;
     orcm_value_t *mkv = NULL;
@@ -1177,11 +1178,16 @@ static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snap
     time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
     ON_NULL_RETURN(time_stamp);
 
+    host_name = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
+    ON_NULL_RETURN(host_name);
+
     records = OBJ_NEW(opal_list_t);
     ON_NULL_GOTO(records, cleanup);
 
     opal_list_append(records, (opal_list_item_t*)time_stamp);
+    opal_list_append(records, (opal_list_item_t*)host_name);
     time_stamp = NULL;
+    host_name=NULL;
     for(; tot_items > 0; --tot_items) {
         n=1;
         rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING);

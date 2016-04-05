@@ -8,6 +8,7 @@
  */
 
 #include "pugi_impl.h"
+#include "orcm/util/string_utils.h"
 
 using namespace pugi;
 using namespace std;
@@ -218,7 +219,8 @@ void pugi_impl::addNodeToList(xml_node node, opal_list_t *list)
     }
     addNodeAttributesToList(node,children);
     addNodeChildrenToList(node,children);
-    char *name = strdup(node.name());
+    string nameString(node.name());
+    char *name = strdup(trim(nameString).c_str());
     orcm_util_append_orcm_value(list, name, children, OPAL_PTR, NULL);
     SAFEFREE(name);
 }
@@ -236,7 +238,9 @@ void pugi_impl::addLeafNodeToList(xml_node node, opal_list_t *list)
     if (NULL == list){
         return;
     }
-    addValuesToList(list, node.name(), node.child_value());
+    string name(node.name());
+    string value(node.child_value());
+    addValuesToList(list, trim(name).c_str(), trim(value).c_str());
 }
 
 void pugi_impl::addValuesToList(opal_list_t *list, char const *key, char const *value)
@@ -258,7 +262,9 @@ void pugi_impl::addNodeAttributesToList(xml_node node, opal_list_t *list)
         return;
     }
     for(xml_attribute_iterator ait = node.attributes_begin(); ait != node.attributes_end(); ++ait){
-        addValuesToList(list,ait->name(),ait->value());
+        string name(ait->name());
+        string attribute(ait->value());
+        addValuesToList(list,trim(name).c_str(),trim(attribute).c_str());
     }
 }
 

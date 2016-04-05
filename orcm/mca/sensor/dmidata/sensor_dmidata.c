@@ -57,8 +57,12 @@ static void finalize(void);
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 
+/* Removed temporarily because the current test vector requires root and uses
+   hwloc.  This is not the goal of test vectors.  This will be repaired at some
+   point in the future. */
+#if 0
 static void generate_test_vector(opal_buffer_t *v);
-
+#endif
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_dmidata_module = {
@@ -557,11 +561,18 @@ static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
     FILE *fptr;
     char *freq_list;
     int size = 0;
+
+/* Removed temporarily because the current test vector requires root and uses
+   hwloc.  This is not the goal of test vectors.  This will be repaired at some
+   point in the future. */
+#if 0
     if (mca_sensor_dmidata_component.test) {
         /* just send the test vector */
         generate_test_vector(inventory_snapshot);
         return;
     }
+#endif
+
     if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
@@ -701,6 +712,10 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     }
 }
 
+/* Removed temporarily because the current test vector requires root and uses
+   hwloc.  This is not the goal of test vectors.  This will be repaired at some
+   point in the future. */
+#if 0
 static void generate_test_vector(opal_buffer_t *v)
 {
     int rc;
@@ -764,4 +779,4 @@ static void generate_test_vector(opal_buffer_t *v)
     }
 
 }
-
+#endif

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -26,7 +26,7 @@ orcm_sensor_dmidata_component_t mca_sensor_dmidata_component = {
     {
         {
             ORCM_SENSOR_BASE_VERSION_1_0_0,
-            
+
             "dmidata", /* MCA component name */
             ORCM_MAJOR_VERSION,  /* MCA component major version */
             ORCM_MINOR_VERSION,  /* MCA component minor version */
@@ -61,7 +61,7 @@ static int orcm_sensor_dmidata_query(mca_base_module_t **module, int *priority)
      * one socket in the configure test, so we don't have to
      * check again here
      */
-    *priority = 50; 
+    *priority = 50;
     *module = (mca_base_module_t *)&orcm_sensor_dmidata_module;
     return ORCM_SUCCESS;
 }
@@ -79,6 +79,10 @@ static int dmidata_component_register(void)
 {
     mca_base_component_t *c = &mca_sensor_dmidata_component.super.base_version;
 
+/* Removed temporarily because the current test vector requires root and uses
+   hwloc.  This is not the goal of test vectors.  This will be repaired at some
+   point in the future. */
+#if 0
     mca_sensor_dmidata_component.test = false;
     (void) mca_base_component_var_register (c, "test",
                                             "Generate and pass test vector",
@@ -86,6 +90,7 @@ static int dmidata_component_register(void)
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_dmidata_component.test);
+#endif
     mca_sensor_dmidata_component.ntw_dev = true;
     (void) mca_base_component_var_register (c, "ntw_dev",
                                             "Collect pci based network inventory",
@@ -121,6 +126,6 @@ static int dmidata_component_register(void)
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_dmidata_component.freq_steps);
-   
+
     return ORCM_SUCCESS;
 }

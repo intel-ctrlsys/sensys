@@ -53,9 +53,14 @@
 #define INPUT_SOCKET "/dev/orcm_log"
 #define IF_NULL_ERROR(x) if(NULL == x) { ORTE_ERROR_LOG(ORCM_ERROR); return; }
 #define ON_FAILURE_GOTO(code,target) if(OPAL_SUCCESS!=code) { ORTE_ERROR_LOG(code); goto target; }
+#define ON_FAILURE_RETURN(code) if(OPAL_SUCCESS!=code) { ORTE_ERROR_LOG(code); return; }
 #define ON_NULL_GOTO(pointer,target) if(NULL==pointer) { ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE); goto target; }
+#define ON_NULL_RETURN(pointer) if(NULL==pointer) { ORTE_ERROR_LOG(OPAL_ERR_OUT_OF_RESOURCE); return; }
 #define ORCM_RELEASE(x) if(NULL!=x){OBJ_RELEASE(x);x=NULL;}
 #define ORCM_FREE(x) if(NULL!=x){free(x); x=NULL;}
+
+#define USE_SEVERITY (0x01)
+#define USE_LOG      (0x02)
 
 /* declare the API functions */
 static int  init(void);
@@ -75,6 +80,11 @@ int syslog_disable_sampling(const char* sensor_specification);
 int syslog_reset_sampling(const char* sensor_specification);
 const char *syslog_get_facility(int prival);
 const char *syslog_get_severity(int  prival);
+static char* make_test_syslog_message(time_t t);
+bool orcm_sensor_syslog_generate_test_vector(opal_buffer_t* buffer);
+static void syslog_inventory_collect(opal_buffer_t *inventory_snapshot);
+static void syslog_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
+static void my_inventory_log_cleanup(int dbhandle, int status, opal_list_t *kvs, opal_list_t *output, void *cbdata);
 
 static opal_list_t msgQueue;
 static bool stop_thread = true;
@@ -140,8 +150,8 @@ orcm_sensor_base_module_t orcm_sensor_syslog_module = {
     stop,
     syslog_sample,
     syslog_log,
-    NULL,
-    NULL,
+    syslog_inventory_collect,
+    syslog_inventory_log,
     syslog_set_sample_rate,
     syslog_get_sample_rate,
     syslog_enable_sampling,
@@ -155,11 +165,12 @@ static __time_val _tv;
 static orcm_sensor_sampler_t *syslog_sampler;
 static orcm_sensor_syslog_t orcm_sensor_syslog;
 
+
 static int init(void)
 {
     /* we must be root to run */
     if (0 != geteuid()) {
-        return ORTE_ERROR;
+        return ORCM_ERR_PERM;
     }
 
     mca_sensor_syslog_component.diagnostics = 0;
@@ -192,7 +203,9 @@ static void start(orte_jobid_t jobid)
     _tv.interval=0;
 
     /* Create a thread to catch all messages addressed by rsyslog */
-    pthread_create(&listener, NULL, syslog_listener, NULL);
+    if(!mca_sensor_syslog_component.test) {
+        pthread_create(&listener, NULL, syslog_listener, NULL);
+    }
 
     /* start a separate syslog progress thread for sampling */
     if (mca_sensor_syslog_component.use_progress_thread) {
@@ -328,6 +341,18 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
     char *prival_str = NULL;
     int regex_res;
 
+    if(mca_sensor_syslog_component.test) {
+        opal_buffer_t buffer;
+        OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+        if(orcm_sensor_syslog_generate_test_vector(&buffer)) {
+            bptr = &buffer;
+            ret = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+        }
+        OBJ_DESTRUCT(&buffer);
+        ON_FAILURE_RETURN(ret);
+        return;
+    }
+
     /* prepare to store messages */
     OBJ_CONSTRUCT(&data, opal_buffer_t);
     packed = false;
@@ -364,6 +389,16 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
     ret = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL);
     ON_FAILURE_GOTO(ret, cleanup);
 
+    uint8_t bits = 0;
+    if(orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, "severity")) {
+        bits |= USE_SEVERITY;
+    }
+    if(orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, "log_message")) {
+        bits |= USE_LOG;
+    }
+    ret = opal_dss.pack(&data, &bits, 1, OPAL_UINT8);
+    ON_FAILURE_GOTO(ret, cleanup);
+
     /* Split log message into severity, facility and message */
     regcomp(&regex_comp_log, "<([0-9]+)>(.*)", REG_EXTENDED);
 
@@ -390,6 +425,7 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
 
             asprintf(&log_msg, "%s: %s", facility, message);
             ON_NULL_GOTO(log_msg, cleanup);
+
 
             ret = opal_dss.pack(&data, &severity, 1, OPAL_STRING);
             ON_FAILURE_GOTO(ret, cleanup);
@@ -422,7 +458,6 @@ static void syslog_log(opal_buffer_t *sample)
 {
     int rc,i,n;
     int32_t nmsg;
-    char tmp_log[32];
     char *log = NULL;
     char *severity = NULL;
     char *hostname = NULL;
@@ -442,10 +477,14 @@ static void syslog_log(opal_buffer_t *sample)
     n=1;
     rc = opal_dss.unpack(sample, &nmsg, &n, OPAL_INT32);
     ON_FAILURE_GOTO(rc, cleanup);
-
     /* sample time */
     n=1;
     rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL);
+    ON_FAILURE_GOTO(rc, cleanup);
+
+    n=1;
+    uint8_t flags = 0;
+    rc = opal_dss.unpack(sample, &flags, &n, OPAL_UINT8);
     ON_FAILURE_GOTO(rc, cleanup);
 
     key = OBJ_NEW(opal_list_t);
@@ -478,31 +517,31 @@ static void syslog_log(opal_buffer_t *sample)
         ON_NULL_GOTO(analytics_vals->compute_data, cleanup);
 
         n=1;
-        rc = opal_dss.unpack(sample, &severity, &n, OPAL_STRING);
-        ON_FAILURE_GOTO(rc, cleanup);
-
-        rc = opal_dss.unpack(sample, &log, &n, OPAL_STRING);
-        ON_FAILURE_GOTO(rc, cleanup);
-
-        if (0 > snprintf(tmp_log, sizeof(tmp_log), "log_message_%d", i)) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
+        if(USE_SEVERITY == (flags & USE_SEVERITY)) {
+            rc = opal_dss.unpack(sample, &severity, &n, OPAL_STRING);
+            ON_FAILURE_GOTO(rc, cleanup);
         }
-
+        n=1;
+        if(USE_LOG == (flags & USE_LOG)) {
+            rc = opal_dss.unpack(sample, &log, &n, OPAL_STRING);
+            ON_FAILURE_GOTO(rc, cleanup);
+        }
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                            "%s syslog_log: %s = %s\n",tmp_log,log,
+                            "log_message syslog_log: %s = %s\n",log,
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
 
-        sensor_metric = orcm_util_load_orcm_value(tmp_log, log, OPAL_STRING, "log");
-        ON_NULL_GOTO(sensor_metric, cleanup);
+        if(USE_SEVERITY == (flags & USE_SEVERITY)) {
+            sensor_metric = orcm_util_load_orcm_value("severity", severity, OPAL_STRING, "sev");
+            ON_NULL_GOTO(sensor_metric, cleanup);
+            opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
+        }
 
-        opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
-        orcm_analytics.send_data(analytics_vals);
+        if(USE_LOG == (flags & USE_LOG)) {
+            sensor_metric = orcm_util_load_orcm_value("log_message", log, OPAL_STRING, "log");
+            ON_NULL_GOTO(sensor_metric, cleanup);
+            opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
+        }
 
-        sensor_metric = orcm_util_load_orcm_value("severity", severity, OPAL_STRING, "sev");
-        ON_NULL_GOTO(sensor_metric, cleanup);
-
-        opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
         orcm_analytics.send_data(analytics_vals);
 
         ORCM_RELEASE(analytics_vals);
@@ -591,10 +630,8 @@ static void syslog_set_sample_rate(int sample_rate)
 
 static void syslog_get_sample_rate(int *sample_rate)
 {
-    if (NULL != sample_rate) {
-        /* check if syslog sample rate is provided for this*/
-        *sample_rate = mca_sensor_syslog_component.sample_rate;
-    }
+    ON_NULL_RETURN(sample_rate);
+    *sample_rate = mca_sensor_syslog_component.sample_rate;
     return;
 }
 
@@ -614,4 +651,216 @@ int syslog_reset_sampling(const char* sensor_specification)
 {
     void* metrics = mca_sensor_syslog_component.runtime_metrics;
     return orcm_sensor_base_runtime_metrics_reset(metrics, sensor_specification);
+}
+
+static char* make_test_syslog_message(time_t t)
+{
+    static const char* syslog_time_test_msg_fmt = "%FT%T%z";
+    static const char* syslog_test_msg_fmt = "<30>1 %s host1 snmpd 23611 - - \
+    Connection from UDP: [127.0.0.1]:58374->[127.0.0.1]";
+    static const int MAX_TIME_LEN = 32;
+    char stime[MAX_TIME_LEN];
+    char* result = NULL;
+    struct tm ttm;
+
+    localtime_r(&t, &ttm);
+    memset(stime, 0, MAX_TIME_LEN);
+    if(0 >= strftime(stime, MAX_TIME_LEN, syslog_time_test_msg_fmt, &ttm)) {
+        return NULL;
+    }
+    stime[MAX_TIME_LEN - 1] = '\0';
+    asprintf(&result, syslog_test_msg_fmt, stime);
+    return result;
+}
+
+#define LOCAL_ON_FAIL_CLEANUP(x) if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);result=false;goto cleanup;}
+#define LOCAL_ON_NULL_CLEANUP(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);result=false;goto cleanup;}
+bool orcm_sensor_syslog_generate_test_vector(opal_buffer_t* buffer)
+{
+    char* name = "syslog";
+    int ret = ORCM_SUCCESS;
+    int32_t sample_count = 1;
+    bool result = true;
+    struct current_time;
+    char* msg = NULL;
+    regex_t regex_comp_log;
+    int regex_res;
+    size_t log_parts = 5;
+    regmatch_t log_matches[log_parts];
+    int prival_int = 0;
+    char *prival_str = NULL;
+    const char *severity = NULL;
+    const char *facility = NULL;
+    char *message = NULL;
+    char *log_msg = NULL;
+    struct timeval current_time;
+
+    ret = opal_dss.pack(buffer, &name, 1, OPAL_STRING);
+    LOCAL_ON_FAIL_CLEANUP(ret);
+
+    /* store our hostname */
+    ret = opal_dss.pack(buffer, &orte_process_info.nodename, 1, OPAL_STRING);
+    LOCAL_ON_FAIL_CLEANUP(ret);
+
+    /* store the number of messages */
+    ret = opal_dss.pack(buffer, &sample_count, 1, OPAL_INT32);
+    LOCAL_ON_FAIL_CLEANUP(ret);
+
+    /* get the sample time */
+    gettimeofday(&current_time, NULL);
+    ret = opal_dss.pack(buffer, &current_time, 1, OPAL_TIMEVAL);
+    LOCAL_ON_FAIL_CLEANUP(ret);
+
+    uint8_t include_labels = 0; //USE_SEVERITY | USE_LOG;
+    void* rtm = mca_sensor_syslog_component.runtime_metrics;
+    include_labels |= orcm_sensor_base_runtime_metrics_do_collect(rtm, "severity")?USE_SEVERITY:0;
+    include_labels |= orcm_sensor_base_runtime_metrics_do_collect(rtm, "log_message")?USE_LOG:0;
+
+    ret = opal_dss.pack(buffer, &include_labels, 1, OPAL_UINT8);
+    ON_FAILURE_GOTO(ret, cleanup);
+
+    msg = make_test_syslog_message(current_time.tv_sec);
+    LOCAL_ON_NULL_CLEANUP(msg);
+
+    regcomp(&regex_comp_log, "<([0-9]+)>(.*)", REG_EXTENDED);
+    regex_res = regexec(&regex_comp_log, msg, log_parts, log_matches, 0);
+    if (!regex_res) {
+        char *tmp = NULL;
+        prival_str = strndup(&msg[log_matches[1].rm_so],
+                             (int)(log_matches[1].rm_eo - log_matches[1].rm_so));
+        LOCAL_ON_NULL_CLEANUP(prival_str);
+
+        prival_int = strtol(prival_str, &tmp, 10);
+        SAFEFREE(prival_str);
+        LOCAL_ON_NULL_CLEANUP(tmp);
+
+        severity = syslog_get_severity(prival_int);
+        LOCAL_ON_NULL_CLEANUP(severity);
+
+        facility = syslog_get_facility(prival_int);
+        LOCAL_ON_NULL_CLEANUP(facility);
+
+        message = strndup(&msg[log_matches[2].rm_so],
+                          (int)(log_matches[2].rm_eo - log_matches[2].rm_so));
+        LOCAL_ON_NULL_CLEANUP(message);
+
+        asprintf(&log_msg, "%s: %s", facility, message);
+        LOCAL_ON_NULL_CLEANUP(log_msg);
+
+
+        ret = opal_dss.pack(buffer, &severity, 1, OPAL_STRING);
+        ON_FAILURE_GOTO(ret, cleanup);
+
+        ret = opal_dss.pack(buffer, &log_msg, 1, OPAL_STRING);
+        LOCAL_ON_FAIL_CLEANUP(ret);
+    } else {
+        result = false;
+    }
+
+cleanup:
+    SAFEFREE(prival_str);
+    SAFEFREE(msg);
+    SAFEFREE(message);
+    SAFEFREE(log_msg);
+    return result;
+}
+#undef LOCAL_ON_FAIL_CLEANUP
+#undef LOCAL_ON_NULL_CLEANUP
+
+static void syslog_inventory_collect(opal_buffer_t *inventory_snapshot)
+{
+    struct timeval sample_time;
+    const char *ctemp = "syslog";
+    char *comp = NULL;
+    int rc = OPAL_SUCCESS;
+
+    rc = opal_dss.pack(inventory_snapshot, &ctemp, 1, OPAL_STRING);
+    ON_FAILURE_RETURN(rc);
+
+    rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
+    ON_FAILURE_RETURN(rc);
+
+    gettimeofday(&sample_time, NULL);
+    rc = opal_dss.pack(inventory_snapshot, &sample_time, 1, OPAL_TIMEVAL);
+    ON_FAILURE_RETURN(rc);
+
+    comp = "log_message";
+    orcm_sensor_base_runtime_metrics_track(mca_sensor_syslog_component.runtime_metrics, comp);
+    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+    ON_FAILURE_RETURN(rc);
+
+    comp = "severity";
+    orcm_sensor_base_runtime_metrics_track(mca_sensor_syslog_component.runtime_metrics, comp);
+    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+    ON_FAILURE_RETURN(rc);
+}
+
+static void my_inventory_log_cleanup(int dbhandle, int status, opal_list_t *kvs, opal_list_t *output, void *cbdata)
+{
+    OBJ_RELEASE(kvs);
+}
+
+static void syslog_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
+{
+    int n = 1;
+    opal_list_t *records = NULL;
+    int rc = OPAL_SUCCESS;
+    orcm_value_t *time_stamp = NULL;
+    struct timeval current_time;
+    char *tmp = NULL;
+    orcm_value_t* host = NULL;
+    orcm_value_t* items[2] = { NULL, NULL };
+
+    n=1;
+    rc = opal_dss.unpack(inventory_snapshot, &tmp, &n, OPAL_STRING);
+    ON_FAILURE_RETURN(rc);
+    SAFEFREE(tmp);
+
+    n=1;
+    rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL);
+    ON_FAILURE_RETURN(rc);
+
+    time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
+    ON_NULL_RETURN(time_stamp);
+
+    host = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
+    ON_NULL_RETURN(host);
+
+    records = OBJ_NEW(opal_list_t);
+    ON_NULL_GOTO(records, cleanup);
+
+    opal_list_append(records, (opal_list_item_t*)time_stamp);
+    opal_list_append(records, (opal_list_item_t*)host);
+    time_stamp = NULL;
+    host = NULL;
+
+    n=1;
+    rc = opal_dss.unpack(inventory_snapshot, &tmp, &n, OPAL_STRING);
+    ON_FAILURE_GOTO(rc, cleanup);
+    items[0] = orcm_util_load_orcm_value("sensor_syslog_1", tmp, OPAL_STRING, NULL);
+    SAFEFREE(tmp);
+    ON_NULL_GOTO(items[0], cleanup);
+    opal_list_append(records, (opal_list_item_t*)items[0]);
+    items[0] = NULL;
+
+    n=1;
+    rc = opal_dss.unpack(inventory_snapshot, &tmp, &n, OPAL_STRING);
+    ON_FAILURE_GOTO(rc, cleanup);
+    items[1] = orcm_util_load_orcm_value("sensor_syslog_2", tmp, OPAL_STRING, NULL);
+    SAFEFREE(tmp);
+    ON_NULL_GOTO(items[1], cleanup);
+    opal_list_append(records, (opal_list_item_t*)items[1]);
+    items[1] = NULL;
+
+    if (0 <= orcm_sensor_base.dbhandle) {
+        orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);
+        records = NULL;
+    }
+
+cleanup:
+    ORCM_RELEASE(items[0]);
+    ORCM_RELEASE(items[1]);
+    ORCM_RELEASE(time_stamp);
+    ORCM_RELEASE(host);
+    ORCM_RELEASE(records);
 }

@@ -14,6 +14,8 @@
 
 #include "opal/dss/dss.h"
 
+#include "orcm/mca/db/db.h"
+
 #include <stddef.h>
 
 #include <string>
@@ -33,6 +35,9 @@ class ut_syslog_tests: public testing::Test
         static void Cleanup(void* sampler, void* logBuffer, int jobid);
         static void ExpectCorrectSeverityAndFacility(int val, const char* sev, const char* fac);
         static void AssertCorrectPerThreadStartup(bool use_pt);
+        static void StoreNew(int handle, orcm_db_data_type_t type, opal_list_t* input,
+                             opal_list_t* ret, orcm_db_callback_fn_t cbfunct, void* cbdata);
+        static void mssleep(uint32_t milliseconds);
 
         static __uid_t euid_;
         static int syslog_socket_;

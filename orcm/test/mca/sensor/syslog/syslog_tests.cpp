@@ -26,12 +26,15 @@
 // Fixture
 using namespace std;
 
+#define DEF_MS_PERIOD (50)
+
 #define SOCKET_FD (30042)
 
 #define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x=NULL; }
 
 extern "C" {
     ORCM_DECLSPEC extern orcm_sensor_base_t orcm_sensor_base;
+    extern orcm_sensor_base_module_t orcm_sensor_syslog_module;
     extern void collect_syslog_sample(orcm_sensor_sampler_t *sampler);
     extern int syslog_enable_sampling(const char* sensor_specification);
     extern int syslog_disable_sampling(const char* sensor_specification);
@@ -43,6 +46,7 @@ extern "C" {
     extern void perthread_syslog_sample(int fd, short args, void *cbdata);
     extern const char *syslog_get_severity(int  prival);
     extern const char *syslog_get_facility(int prival);
+    extern bool orcm_sensor_syslog_generate_test_vector(opal_buffer_t* buffer);
 
     extern __uid_t __real_geteuid();
     __uid_t __wrap_geteuid()
@@ -149,6 +153,7 @@ void ut_syslog_tests::ResetTestCase()
     use_pt_ = true;
     bad_syslog_entry_ = false;
 
+    mca_sensor_syslog_component.test = false;
     mca_sensor_syslog_component.collect_metrics = true;
     mca_sensor_syslog_component.use_progress_thread = false;
     mca_sensor_syslog_component.sample_rate = 1;
@@ -187,7 +192,9 @@ bool ut_syslog_tests::ValidateSyslogData(opal_buffer_t* buffer)
         char* name = NULL;
         char* severity = NULL;
         char* log_line = NULL;
+        char* host = NULL;
         int n = 1;
+        uint8_t flags = 0;
         int rv = opal_dss.unpack(&remaining, &name, &n, OPAL_STRING);
         if(ORCM_SUCCESS != rv) {
             test_result = false;
@@ -208,6 +215,12 @@ bool ut_syslog_tests::ValidateSyslogData(opal_buffer_t* buffer)
             break;
         }
         n = 1;
+        rv = opal_dss.unpack(&remaining, &flags, &n, OPAL_UINT8);
+        if(ORCM_SUCCESS != rv) {
+            test_result = false;
+            break;
+        }
+        n = 1;
         rv = opal_dss.unpack(&remaining, &severity, &n, OPAL_STRING);
         if(ORCM_SUCCESS != rv) {
             test_result = false;
@@ -218,14 +231,6 @@ bool ut_syslog_tests::ValidateSyslogData(opal_buffer_t* buffer)
         n = 1;
         rv = opal_dss.unpack(&remaining, &log_line, &n, OPAL_STRING);
         if(ORCM_SUCCESS != rv) {
-            test_result = false;
-            break;
-        } else {
-            SAFEFREE(log_line);
-        }
-        n = 1;
-        rv = opal_dss.unpack(&remaining, &log_line, &n, OPAL_STRING);
-        if(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rv) {
             test_result = false;
             break;
         } else {
@@ -247,7 +252,9 @@ void ut_syslog_tests::Cleanup(void* sampler, void* logBuffer, int jobid)
     if(NULL != plogBuffer) {
         SAFE_OBJ_RELEASE(*plogBuffer);
     }
-    orcm_sensor_syslog_module.stop(jobid);
+    if(0 <= jobid) {
+        orcm_sensor_syslog_module.stop(jobid);
+    }
     orcm_sensor_syslog_module.finalize();
 }
 
@@ -276,10 +283,23 @@ void ut_syslog_tests::AssertCorrectPerThreadStartup(bool use_pt)
     mca_sensor_syslog_component.use_progress_thread = true;
     ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
     orcm_sensor_syslog_module.start(6);
-    sleep(1);
+    mssleep(DEF_MS_PERIOD);
     Cleanup(NULL, NULL, 6);
 }
 
+void ut_syslog_tests::StoreNew(int handle, orcm_db_data_type_t type, opal_list_t* input,
+                               opal_list_t* ret, orcm_db_callback_fn_t cbfunct, void* cbdata)
+{
+    cbfunct(handle, 0, input, ret, cbdata);
+}
+
+void ut_syslog_tests::mssleep(uint32_t milliseconds)
+{
+    struct timespec wait;
+    wait.tv_sec = (time_t)milliseconds / 1000;
+    wait.tv_nsec = (long)(milliseconds % 1000) * 1000000L;
+    nanosleep(&wait, NULL);
+}
 
 // Testing the data collection class
 TEST_F(ut_syslog_tests, syslog_sensor_sample_tests)
@@ -345,6 +365,7 @@ TEST_F(ut_syslog_tests, syslog_init_finalize_positive)
     orcm_sensor_syslog_module.finalize();
 }
 
+#if 0 // Deprecated
 TEST_F(ut_syslog_tests, syslog_init_finalize_negative)
 {
     ResetTestCase();
@@ -356,6 +377,7 @@ TEST_F(ut_syslog_tests, syslog_init_finalize_negative)
     EXPECT_EQ(0, (uint64_t)(mca_sensor_syslog_component.runtime_metrics));
     orcm_sensor_syslog_module.finalize();
 }
+#endif // 0
 
 TEST_F(ut_syslog_tests, syslog_start_stop)
 {
@@ -364,7 +386,7 @@ TEST_F(ut_syslog_tests, syslog_start_stop)
     mca_sensor_syslog_component.sample_rate = 0;
     EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
     orcm_sensor_syslog_module.start(5);
-    sleep(1);
+    mssleep(DEF_MS_PERIOD);
     orcm_sensor_syslog_module.stop(5);
     orcm_sensor_syslog_module.finalize();
 }
@@ -389,7 +411,7 @@ TEST_F(ut_syslog_tests, syslog_start_stop_negative2)
     use_pt_ = false;
 
     orcm_sensor_syslog_module.start(5);
-    sleep(1);
+    mssleep(DEF_MS_PERIOD);
     orcm_sensor_syslog_module.stop(5);
 }
 
@@ -423,7 +445,7 @@ TEST_F(ut_syslog_tests, syslog_sample_log_test)
     orcm_sensor_syslog_module.start(6);
     sysLogIndex_ = 0;
     while(0 == sysLogIndex_);
-    sleep(2);
+    mssleep(DEF_MS_PERIOD);
     orcm_sensor_sampler_t sampler;
     OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
     orcm_sensor_syslog_module.sample(&sampler);
@@ -458,7 +480,7 @@ TEST_F(ut_syslog_tests, syslog_sample_log_test2)
 
     ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
     orcm_sensor_syslog_module.start(6);
-    sleep(1);
+    mssleep(DEF_MS_PERIOD);
     orcm_sensor_sampler_t sampler;
     OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
     orcm_sensor_syslog_module.sample(&sampler);
@@ -491,7 +513,7 @@ TEST_F(ut_syslog_tests, syslog_sample_log_test3)
 
     ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
     orcm_sensor_syslog_module.start(6);
-    sleep(1);
+    mssleep(DEF_MS_PERIOD);
     orcm_sensor_sampler_t sampler;
     OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
     mca_sensor_syslog_component.use_progress_thread = true;
@@ -515,7 +537,7 @@ TEST_F(ut_syslog_tests, syslog_sample_log_test4)
 
     ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
     orcm_sensor_syslog_module.start(6);
-    sleep(1);
+    mssleep(DEF_MS_PERIOD);
     orcm_sensor_sampler_t sampler;
     OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
     orcm_sensor_syslog_module.sample(&sampler);
@@ -527,6 +549,54 @@ TEST_F(ut_syslog_tests, syslog_sample_log_test4)
     EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER, rv);
 
     Cleanup(&sampler, &logBuffer, 6);
+}
+
+TEST_F(ut_syslog_tests, syslog_sample_log_test5)
+{
+    ResetTestCase();
+
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.disable_sampling("syslog:severity");
+    orcm_db_base_API_store_new_fn_t saved = orcm_db.store_new;
+    orcm_db.store_new = ut_syslog_tests::StoreNew;
+    mssleep(DEF_MS_PERIOD);
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_syslog_module.sample(&sampler);
+    opal_buffer_t* buffer = &sampler.bucket;
+
+    int n = 1;
+    opal_buffer_t* logBuffer = NULL;
+    int rv = opal_dss.unpack(buffer, &logBuffer, &n, OPAL_BUFFER);
+    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER, rv);
+
+    orcm_db.store_new = saved;
+    orcm_sensor_syslog_module.reset_sampling("syslog");
+    Cleanup(&sampler, &logBuffer, -1);
+}
+
+TEST_F(ut_syslog_tests, syslog_sample_log_test6)
+{
+    ResetTestCase();
+
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.disable_sampling("syslog:log_message");
+    orcm_db_base_API_store_new_fn_t saved = orcm_db.store_new;
+    orcm_db.store_new = ut_syslog_tests::StoreNew;
+    mssleep(DEF_MS_PERIOD);
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_syslog_module.sample(&sampler);
+    opal_buffer_t* buffer = &sampler.bucket;
+
+    int n = 1;
+    opal_buffer_t* logBuffer = NULL;
+    int rv = opal_dss.unpack(buffer, &logBuffer, &n, OPAL_BUFFER);
+    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER, rv);
+
+    orcm_db.store_new = saved;
+    orcm_sensor_syslog_module.reset_sampling("syslog");
+    Cleanup(&sampler, &logBuffer, -1);
 }
 
 TEST_F(ut_syslog_tests, syslog_component_test)
@@ -563,4 +633,56 @@ TEST_F(ut_syslog_tests, syslog_get_severity_facility_test)
     ExpectCorrectSeverityAndFacility(-1, NULL, NULL);
     ExpectCorrectSeverityAndFacility(3 + (3 * 8), "error", "SYSTEM DAEMONS");
     ExpectCorrectSeverityAndFacility(3 + (24 * 8), "error", NULL);
+}
+
+TEST_F(ut_syslog_tests, test_inventory_collect)
+{
+    ResetTestCase();
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    mca_sensor_syslog_component.test = true;
+    orcm_sensor_syslog_module.init();
+    orcm_sensor_syslog_module.inventory_collect(&buffer);
+    orcm_sensor_syslog_module.finalize();
+    mca_sensor_syslog_component.test = false;
+    OBJ_DESTRUCT(&buffer);
+}
+
+
+TEST_F(ut_syslog_tests, test_inventory_log)
+{
+    ResetTestCase();
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    mca_sensor_syslog_component.test = true;
+    orcm_db_base_API_store_new_fn_t saved = orcm_db.store_new;
+    orcm_db.store_new = ut_syslog_tests::StoreNew;
+    orcm_sensor_base.dbhandle = 0;
+    orcm_sensor_syslog_module.init();
+    orcm_sensor_syslog_module.inventory_collect(&buffer);
+
+    char* plugin = NULL;
+    int n = 1;
+    int rv = opal_dss.unpack(&buffer, &plugin, &n, OPAL_STRING);
+    SAFEFREE(plugin);
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    orcm_sensor_syslog_module.inventory_log((char*)"testhost1", &buffer);
+    orcm_sensor_syslog_module.finalize();
+    orcm_db.store_new = saved;
+    mca_sensor_syslog_component.test = false;
+    OBJ_DESTRUCT(&buffer);
+}
+
+TEST_F(ut_syslog_tests, test_generate_vector)
+{
+    ResetTestCase();
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    mca_sensor_syslog_component.test = true;
+    orcm_sensor_syslog_module.init();
+    EXPECT_TRUE(orcm_sensor_syslog_generate_test_vector(&buffer));
+    orcm_sensor_syslog_module.finalize();
+    mca_sensor_syslog_component.test = false;
+    OBJ_DESTRUCT(&buffer);
 }

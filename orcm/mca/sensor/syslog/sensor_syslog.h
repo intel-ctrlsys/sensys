@@ -23,6 +23,7 @@ typedef struct {
     bool collect_metrics;
     void* runtime_metrics;
     int64_t diagnostics;
+    bool test;
 } orcm_sensor_syslog_component_t;
 
 ORCM_MODULE_DECLSPEC extern orcm_sensor_syslog_component_t mca_sensor_syslog_component;

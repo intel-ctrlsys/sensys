@@ -23,6 +23,7 @@ static int octl_interactive_cli(void);
 static void octl_init_cli(orcm_cli_t *cli);
 static int run_cmd_from_cli(char *cmd);
 
+#define OCTL_MAX_CLI_CMD 1024
 /*****************************************
  * Global Vars for Command line Arguments
  *****************************************/
@@ -219,7 +220,7 @@ static int run_cmd_from_cli(char *cmd)
     int argc;
     char **cmdlist = NULL;
 
-    cmdlist = opal_argv_split(cmd, ' ');
+    cmdlist = octl_split_argv(cmd, ' ');
     argc = opal_argv_count(cmdlist);
     return run_cmd(argc, cmdlist);
 }
@@ -822,4 +823,66 @@ static void octl_print_error_illegal_command(char **cmdlist)
             free(cmd);
         }
     }
+}
+
+char **octl_split_argv(char *str, int delimiter)
+{
+    char buffer[1024];
+    char **argv = NULL;
+    bool has_quote = false;
+    char *ptr = NULL;
+    int count = 0;
+    int argc = 0;
+    int len = 0;
+
+    if (NULL == str) {
+        return NULL;
+    }
+
+    len = strlen(str);
+    if (0 == len || OCTL_MAX_CLI_CMD < len) {
+        return NULL;
+    }
+
+    memset(buffer, 0, sizeof(buffer));
+    ptr = str;
+    while (str && *str) {
+
+        ptr = str;
+        count = 0;
+
+        while ('\0' != *ptr) {
+            if ('"' == *ptr && !has_quote) {
+                str++;
+                has_quote = true;
+            } else if ('"' == *ptr && has_quote) {
+                count--;
+                ptr++;
+                has_quote = false;
+                break;
+            }
+
+            if (*ptr == delimiter && !has_quote) {
+                break;
+            }
+
+            ptr++;
+            count++;
+        }
+
+        strncpy(buffer, str, count);
+        buffer[count] = '\0';
+        if (OPAL_SUCCESS != opal_argv_append(&argc, &argv, buffer)) {
+            return NULL;
+        }
+
+        if ('\0' == *ptr) {
+            str = ptr;
+            continue;
+        }
+
+        str = ptr + 1;
+    }
+
+    return argv;
 }

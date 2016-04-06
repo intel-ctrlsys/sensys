@@ -613,7 +613,7 @@ static int orcm_logical_group_parsing(opal_list_t *result_list, opal_hash_table_
                 return ORCM_ERR_BAD_PARAM;
             }
         } else {
-            ORCM_UTIL_ERROR_MSG_WITH_ARG("Unexpected data type %s from config file", list_item->value.type);
+            ORCM_UTIL_ERROR_MSG_WITH_ARG("Unexpected data type %c from config file", list_item->value.type);
             return ORCM_ERR_BAD_PARAM;
         }
     }
@@ -667,7 +667,7 @@ static int orcm_logical_group_parse_from_file(opal_hash_table_t *io_groups)
             }
         }
         else {
-            ORCM_UTIL_ERROR_MSG_WITH_ARG("Unexpected data type %s from config file", list_item->value.type);
+            ORCM_UTIL_ERROR_MSG_WITH_ARG("Unexpected data type %c from config file", list_item->value.type);
             SAFE_RELEASE(result_list);
             return ORCM_ERROR;
         }
@@ -908,7 +908,6 @@ static int orcm_logical_group_save_to_file_internal(opal_hash_table_t *groups)
     void *in_member = NULL;
     void *out_member = NULL;
     opal_list_t *parser_input = NULL;
-    orcm_value_t* logicalgroup=NULL;
 
     parser_input = OBJ_NEW(opal_list_t);
     if (NULL == parser_input) {

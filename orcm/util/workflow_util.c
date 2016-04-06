@@ -50,7 +50,7 @@ static int orcm_util_workflow_add_check_filter_step(char *key, char *value, bool
         else {
             ORCM_UTIL_MSG("%s workflow:util:Filter plugin not present",
                           ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-            return ORCM_ERROR;
+            return ORCM_ERR_BAD_PARAM;
         }
     }
     return ORCM_SUCCESS;
@@ -67,13 +67,13 @@ static int orcm_util_workflow_add_extract_string_type (opal_buffer_t *buf, char 
         else {
             ORCM_UTIL_MSG("%s workflow:util:'name' key is missing in 'workflow or 'step' groups",
                           ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-             return ORCM_ERROR;
+             return ORCM_ERR_BAD_PARAM;
         }
     }
 
     if (0 != strcmp("name", key)) {
         if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &key, 1, OPAL_STRING))) {
-            return ORCM_ERROR;
+            return rc;
         }
     }
 
@@ -86,7 +86,7 @@ static int orcm_util_workflow_add_extract_string_type (opal_buffer_t *buf, char 
     }
 
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &value, 1, OPAL_STRING))) {
-        return ORCM_ERROR;
+        return rc;
     }
     return ORCM_SUCCESS;
 }
@@ -99,7 +99,7 @@ int orcm_util_workflow_add_extract_workflow_info(opal_list_t *result_list, opal_
     bool is_name_first_key = false;
 
     if (NULL == result_list){
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     list_length = (int)result_list->opal_list_length - 1;
@@ -107,10 +107,10 @@ int orcm_util_workflow_add_extract_workflow_info(opal_list_t *result_list, opal_
                   ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), list_length);
 
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &list_length, 1, OPAL_INT))) {
-        return ORCM_ERROR;
+        return rc;
     }
 
-    rc = ORCM_ERROR;
+    rc = ORCM_ERR_BAD_PARAM;
     OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
         ORCM_UTIL_MSG("%s workflow:util:frame key is %s",
                       ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), list_item->value.key);
@@ -125,7 +125,7 @@ int orcm_util_workflow_add_extract_workflow_info(opal_list_t *result_list, opal_
             if (false == is_name_first_key) {
                 ORCM_UTIL_MSG("%s workflow:util:'name' key is missing in 'workflow or 'step' groups",
                               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-                return ORCM_ERROR;
+                return ORCM_ERR_BAD_PARAM;
             }
             if (0 == strcmp(list_item->value.key, "step")) {
                 rc = orcm_util_workflow_add_extract_workflow_info((opal_list_t*)list_item->value.data.ptr, buf, list_item->value.key, is_filter_first_step);
@@ -136,12 +136,12 @@ int orcm_util_workflow_add_extract_workflow_info(opal_list_t *result_list, opal_
             else {
                 ORCM_UTIL_MSG("%s workflow:util: Unexpected Key in workflow file",
                               ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-                return ORCM_ERROR;
+                return ORCM_ERR_BAD_PARAM;
             }
         } else {
             ORCM_UTIL_MSG("%s workflow:util: Unexpected data type from parser framework",
                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-            return ORCM_ERROR;
+            return ORCM_ERR_BAD_PARAM;
         }
     }
     return rc;

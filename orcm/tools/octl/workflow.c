@@ -38,6 +38,7 @@ static int workflow_list_pack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfe
 static int workflow_list_unpack_buffer(orte_rml_recv_cb_t *xfer);
 
 
+#define OPAL_ARGV_FREE(p) {opal_argv_free(p); p = NULL;}
 
 static void workflow_process_error(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer, char **list)
 {
@@ -74,7 +75,7 @@ static int workflow_send_buffer(orte_process_name_t *wf_agg,
                                                       ORCM_RML_TAG_ANALYTICS,
                                                       orte_rml_send_callback, NULL))) {
         orcm_octl_error("connection-fail");
-        return ORCM_ERROR;
+        return rc;
     }
     return ORCM_SUCCESS;
 }
@@ -88,7 +89,7 @@ static int workflow_add_unpack_buffer(orte_rml_recv_cb_t *xfer)
     n=1;
     if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_id, &n, OPAL_INT))) {
         orcm_octl_error("unpack");
-        return ORCM_ERROR;
+        return rc;
     }
 
     if (0 > workflow_id) {
@@ -196,19 +197,19 @@ static int workflow_add_extract_aggregator(char ***aggregator, char *cli_aggrega
         rc = orcm_logical_group_parse_array_string(cli_aggregator, aggregator);
         if (ORCM_SUCCESS != rc) {
             orcm_octl_error("no-aggregator");
-            return ORCM_ERROR;
+            return ORCM_ERR_BAD_PARAM;
         }
     }
     else if (0 == strcmp("aggregator", key)) {
         rc = orcm_logical_group_parse_array_string(value, aggregator);
         if (ORCM_SUCCESS != rc) {
             orcm_octl_error("no-aggregator");
-            return ORCM_ERROR;
+            return ORCM_ERR_BAD_PARAM;
         }
     }
     else {
         orcm_octl_error("no-aggregator");
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
 }
@@ -220,17 +221,17 @@ static int workflow_add_process_workflows (opal_list_t *result_list, char *cli_a
     char **aggregator = NULL;
 
     if (NULL == result_list){
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
         orcm_octl_info("workflow-key-type", list_item->value.key, list_item->value.type);
         if (list_item->value.type == OPAL_STRING) {
-             orcm_octl_info("workflow-value", list_item->value.data.string);
-            SAFEFREE(aggregator);
+            orcm_octl_info("workflow-value", list_item->value.data.string);
+            OPAL_ARGV_FREE(aggregator);
             rc = workflow_add_extract_aggregator(&aggregator, cli_aggregator, list_item->value.key, list_item->value.data.string);
             if (ORCM_SUCCESS != rc) {
-                SAFEFREE(aggregator);
+                OPAL_ARGV_FREE(aggregator);
                 return rc;
             }
         }
@@ -240,14 +241,14 @@ static int workflow_add_process_workflows (opal_list_t *result_list, char *cli_a
                     rc = orcm_logical_group_parse_array_string(cli_aggregator, &aggregator);
                     if (ORCM_SUCCESS != rc) {
                         orcm_octl_error("no-aggregator");
-                        SAFEFREE(aggregator);
+                        OPAL_ARGV_FREE(aggregator);
                         return ORCM_ERROR;
                     }
                 }
                 else {
                     orcm_octl_error("no-aggregator");
-                    SAFEFREE(aggregator);
-                    return ORCM_ERROR;
+                    OPAL_ARGV_FREE(aggregator);
+                    return ORCM_ERR_BAD_PARAM;
                 }
             }
             if (0 == strcmp(list_item->value.key, "workflow")) {
@@ -256,11 +257,11 @@ static int workflow_add_process_workflows (opal_list_t *result_list, char *cli_a
         }
         else {
             orcm_octl_error("framework-data-type");
-            SAFEFREE(aggregator);
-            return ORCM_ERROR;
+            OPAL_ARGV_FREE(aggregator);
+            return ORCM_ERR_BAD_PARAM;
         }
     }
-    SAFEFREE(aggregator);
+    OPAL_ARGV_FREE(aggregator);
     return rc;
 }
 
@@ -302,7 +303,6 @@ int orcm_octl_workflow_add(char **value)
 
     result_list = orcm_util_workflow_add_retrieve_workflows_section(file);
     if (NULL == result_list) {
-        SAFEFREE(aggregator);
         return ORCM_ERROR;
     }
 
@@ -318,11 +318,9 @@ int orcm_octl_workflow_add(char **value)
         else {
             orcm_octl_error("framework-data-type");
             SAFE_RELEASE(result_list);
-            SAFEFREE(aggregator);
             return ORCM_ERROR;
         }
     }
-    SAFEFREE(aggregator);
     SAFE_RELEASE(result_list);
     return rc;
 }

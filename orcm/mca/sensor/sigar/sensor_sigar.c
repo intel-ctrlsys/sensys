@@ -156,7 +156,6 @@ static struct swap_data_t {
     uint64_t page_out;
 } pswap;
 
-static opal_buffer_t test_vector;
 static orcm_sensor_sampler_t *sigar_sampler = NULL;
 static orcm_sensor_sigar_t orcm_sensor_sigar;
 
@@ -1384,13 +1383,12 @@ static void sigar_log(opal_buffer_t *sample)
     int rc;
     char* host = NULL;
     struct timeval sampletime;
-    opal_list_t *key = NULL;
-    opal_list_t *non_compute_data = NULL;
     orcm_value_t* item = NULL;
     orcm_value_t* group = NULL;
     orcm_value_t* ctime = NULL;
     orcm_value_t* hostname = NULL;
     orcm_analytics_value_t *analytics_vals = NULL;
+    char* data_group = NULL;
 
     rc = orcm_sensor_unpack_data_header_from_plugin(sample, &host, &sampletime);
 
@@ -1399,29 +1397,13 @@ static void sigar_log(opal_buffer_t *sample)
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == host) ? "NULL" : host);
 
-
-    /* Create key and non_compute_data lists */
-    non_compute_data = OBJ_NEW(opal_list_t);
-    ON_NULL_GOTO(non_compute_data,cleanup);
-    key = OBJ_NEW(opal_list_t);
-    ON_NULL_GOTO(key,cleanup);
-
     /* sample time */
     ctime = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, "");
     ON_NULL_GOTO(ctime,cleanup);
-    orcm_value_t* tmp = orcm_util_copy_orcm_value(ctime);
-    ON_NULL_GOTO(tmp,cleanup);
-    opal_list_append(non_compute_data, (opal_list_item_t*)tmp);
-    tmp = NULL;
 
     /* hostname */
     hostname = orcm_util_load_orcm_value("hostname", host, OPAL_STRING, "");
-    host = NULL; /* hostname now owns the memory */
     ON_NULL_GOTO(hostname,cleanup);
-    tmp = orcm_util_copy_orcm_value(hostname);
-    ON_NULL_GOTO(tmp,cleanup);
-    opal_list_append(key, (opal_list_item_t*)tmp);
-    tmp = NULL;
 
     /* Get first datagroup from sample */
     rc = orcm_sensor_unpack_orcm_value(sample, &group);
@@ -1433,29 +1415,31 @@ static void sigar_log(opal_buffer_t *sample)
         ORTE_ERROR_LOG(ORCM_ERR_UNPACK_FAILURE);
         goto cleanup;
     }
-
-    tmp = orcm_util_copy_orcm_value(group);
-    ON_NULL_GOTO(tmp,cleanup);
-    opal_list_append(key, (opal_list_item_t*)tmp);
-    tmp = NULL;
+    data_group = strdup(group->value.data.string);
 
     /* Create first analytics structure */
-    OBJ_RETAIN(non_compute_data);
-    analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
-    key = NULL; /* owned by analytics_vals */
+    analytics_vals = orcm_util_load_orcm_analytics_value(NULL, NULL, NULL);
     ON_NULL_GOTO(analytics_vals, cleanup);
     ON_NULL_GOTO(analytics_vals->key, cleanup);
     ON_NULL_GOTO(analytics_vals->non_compute_data, cleanup);
     ON_NULL_GOTO(analytics_vals->compute_data, cleanup);
 
-    while(0 != strncmp(END_DG_MARKER, group->value.data.string, strlen(END_DG_MARKER))) {
+    opal_list_append(analytics_vals->non_compute_data, (opal_list_item_t*)ctime);
+    ctime = NULL;
+    opal_list_append(analytics_vals->key, (opal_list_item_t*)hostname);
+    hostname = NULL;
+    opal_list_append(analytics_vals->key, (opal_list_item_t*)group);
+    group = NULL;
+
+    while(0 != strncmp(END_DG_MARKER, data_group, strlen(END_DG_MARKER))) {
         /* Get next item */
         rc = orcm_sensor_unpack_orcm_value(sample, &item);
         ON_FAILURE_GOTO(rc,cleanup);
         if(0 == strncmp(item->value.key, DATA_GROUP_KEY, strlen(DATA_GROUP_KEY))) {
-            ORCM_RELEASE(group);
             group = item;
             item = NULL;
+            SAFEFREE(data_group);
+            data_group = strdup(group->value.data.string);
             /* Send to analytics and cleanup */
             if(0 < opal_list_get_size(analytics_vals->compute_data)) {
                 orcm_analytics.send_data(analytics_vals);
@@ -1463,24 +1447,23 @@ static void sigar_log(opal_buffer_t *sample)
             ORCM_RELEASE(analytics_vals);
 
             /* Recreate key with new data group */
-            key = OBJ_NEW(opal_list_t);
-            ON_NULL_GOTO(key,cleanup);
-            tmp = orcm_util_copy_orcm_value(hostname);
-            ON_NULL_GOTO(tmp,cleanup);
-            opal_list_append(key, (opal_list_item_t*)tmp);
-            tmp = orcm_util_copy_orcm_value(group);
-            ON_NULL_GOTO(tmp,cleanup);
-            opal_list_append(key, (opal_list_item_t*)tmp);
-            tmp = NULL;
-            OBJ_RETAIN(non_compute_data);
+            ctime = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, "");
+            ON_NULL_GOTO(ctime,cleanup);
+            hostname = orcm_util_load_orcm_value("hostname", host, OPAL_STRING, NULL);
+            ON_NULL_GOTO(hostname, cleanup);
 
             /* recreate analytics object for new data group */
-            analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
-            key = NULL; /* owned by analytics_vals */
+            analytics_vals = orcm_util_load_orcm_analytics_value(NULL, NULL, NULL);
             ON_NULL_GOTO(analytics_vals, cleanup);
             ON_NULL_GOTO(analytics_vals->key, cleanup);
             ON_NULL_GOTO(analytics_vals->non_compute_data, cleanup);
             ON_NULL_GOTO(analytics_vals->compute_data, cleanup);
+            opal_list_append(analytics_vals->non_compute_data, (opal_list_item_t*)ctime);
+            ctime = NULL;
+            opal_list_append(analytics_vals->key, (opal_list_item_t*)hostname);
+            hostname = NULL;
+            opal_list_append(analytics_vals->key, (opal_list_item_t*)group);
+            group = NULL;
             continue;
         } else {
             opal_list_append(analytics_vals->compute_data, (opal_list_item_t*)item);
@@ -1489,13 +1472,13 @@ static void sigar_log(opal_buffer_t *sample)
     }
 
 cleanup:
+    ORCM_RELEASE(analytics_vals);
     ORCM_RELEASE(group);
     ORCM_RELEASE(item);
-    ORCM_RELEASE(key);
-    ORCM_RELEASE(non_compute_data);
     ORCM_RELEASE(hostname);
-    ORCM_RELEASE(tmp);
+    ORCM_RELEASE(ctime);
     SAFEFREE(host);
+    SAFEFREE(data_group);
 }
 
 /* Helper function to calculate the metric differences */

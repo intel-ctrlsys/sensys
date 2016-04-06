@@ -17,6 +17,8 @@
 #include "orcm/util/utils.h"
 #include "orcm/tools/octl/common.h"
 
+#include "opal/mca/installdirs/installdirs.h"
+
 #define MAX_SIZE 1024
 
 char *search_msg(regex_t regex_label);
@@ -43,7 +45,7 @@ char *search_msg(regex_t regex_label) {
 
     regex_t regex;
 
-    asprintf(&datadir,"%s%s", OCTL_DATA_DIR,"/help-octl.txt");
+    asprintf(&datadir,"%s%s", opal_install_dirs.opaldatadir,"/help-octl.txt");
     if(NULL != datadir) {
 
         regex_res = regcomp(&regex, next_label, REG_EXTENDED);

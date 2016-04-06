@@ -59,7 +59,5 @@ octl_LDADD = $(top_builddir)/orcm/liborcm.la \
              $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
              $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
-AM_CFLAGS = -DOCTL_DATA_DIR='"$(opaldatadir)"'
-
 distclean-local:
 	rm -f $(man_pages)

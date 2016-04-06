@@ -300,13 +300,13 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_init_finalize_test)
     mca_sensor_ipmi_component.test = true;
     EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
     orcm_sensor_ipmi_module.finalize();
-    mca_sensor_ipmi_component.test = false;
     sel_mocking.username = "random";
-    EXPECT_EQ(ORCM_ERROR, orcm_sensor_ipmi_module.init());
+    EXPECT_EQ(ORCM_ERR_PERM, orcm_sensor_ipmi_module.init());
     orcm_sensor_ipmi_module.finalize();
     sel_mocking.username = "root";
-    EXPECT_EQ(ORCM_ERROR, orcm_sensor_ipmi_module.init());
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
     orcm_sensor_ipmi_module.finalize();
+    mca_sensor_ipmi_component.test = false;
 }
 
 TEST_F(ut_sensor_ipmi_tests, ipmi_start_stop_test)

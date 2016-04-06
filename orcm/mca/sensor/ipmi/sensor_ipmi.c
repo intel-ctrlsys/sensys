@@ -190,13 +190,17 @@ static int init(void)
 
 static void finalize(void)
 {
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_ipmi_component.runtime_metrics);
+    mca_sensor_ipmi_component.runtime_metrics = NULL;
+
+    if(0 != geteuid()) {
+        return ORCM_ERR_PERM;
+    }
+
     OPAL_LIST_DESTRUCT(&sensor_active_hosts);
     OPAL_LIST_DESTRUCT(&ipmi_inventory_hosts);
     OPAL_LIST_DESTRUCT(&sensor_inventory);
     OBJ_RELEASE(cur_host);
-
-    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_ipmi_component.runtime_metrics);
-    mca_sensor_ipmi_component.runtime_metrics = NULL;
 }
 
 /*Start monitoring of local processes */

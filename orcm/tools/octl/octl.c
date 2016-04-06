@@ -18,7 +18,7 @@ static int orcm_octl_work(int argc, char *argv[]);
 static int run_cmd(int argc, char *cmdlist[]);
 static void octl_print_illegal_command(char *cmd);
 static void octl_print_error(int rc);
-static void octl_print_error_with_command(char **cmdlist);
+static void octl_print_error_illegal_command(char **cmdlist);
 static int octl_interactive_cli(void);
 static void octl_init_cli(orcm_cli_t *cli);
 static int run_cmd_from_cli(char *cmd);
@@ -203,7 +203,7 @@ static int octl_interactive_cli(void)
         }
 
         ret = run_cmd_from_cli(mycmd);
-        if (ORCM_ERROR == ret) {
+        if (ORCM_ERR_TAKE_NEXT_OPTION == ret) {
             printf("\nUse \'%s<tab>\' or \'%s<?>\' for help.\n", mycmd, mycmd);
         }
 
@@ -240,7 +240,7 @@ static int octl_cmd_to_enum(char* command)
 
     if (NULL != command) {
         for (; idx < NUM_TOKENS; idx++) {
-            if (0 == strncmp(command, orcm_octl_cmds[idx], strlen(command))) {
+            if (0 == strncmp(command, orcm_octl_cmds[idx], strlen(command) + 1)) {
                 cmd_enum = idx;
                 break;
             }
@@ -268,6 +268,9 @@ static int run_cmd_resource(char** cmdlist, int sub_cmd)
             break;
         case cmd_resume:
             rc = orcm_octl_resource_resume(cmdlist);
+            break;
+        case cmd_null:
+            rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
             rc = ORCM_ERROR;
@@ -300,6 +303,9 @@ static int run_cmd_queue(char** cmdlist, int sub_cmd)
             break;
         case cmd_priority:
             rc = orcm_octl_queue_priority(cmdlist);
+            break;
+        case cmd_null:
+            rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
             rc = ORCM_ERROR;
@@ -365,7 +371,7 @@ static int run_cmd_session(char** cmdlist, int sub_command)
         case cmd_set:
         case cmd_get:
             if (3 > opal_argv_count(cmdlist)) {
-                return ORCM_ERROR;
+                return ORCM_ERR_TAKE_NEXT_OPTION;
             }
             if (ORCM_ERROR != (rc = session_power_next_cmd(cmdlist[2], sub_command))) {
                 if (cmd_set == sub_command) {
@@ -374,6 +380,9 @@ static int run_cmd_session(char** cmdlist, int sub_command)
                     rc = orcm_octl_session_get(rc, cmdlist);
                 }
             }
+            break;
+        case cmd_null:
+            rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
             rc = ORCM_ERROR;
@@ -395,6 +404,9 @@ static int run_cmd_diag(char** cmdlist, int sub_cmd)
         case cmd_mem:
             rc = orcm_octl_diag_mem(cmdlist);
             break;
+        case cmd_null:
+            rc = ORCM_ERR_TAKE_NEXT_OPTION;
+            break;
         default:
             rc = ORCM_ERROR;
             break;
@@ -406,12 +418,16 @@ static int run_cmd_power(char** cmdlist, int sub_cmd)
 {
     int rc = ORCM_SUCCESS;
 
-    if (3 > opal_argv_count(cmdlist)) {
-        return ORCM_ERROR;
+    if (cmd_null == sub_cmd) {
+        return ORCM_ERR_TAKE_NEXT_OPTION;
     }
 
     if (cmd_set != sub_cmd && cmd_get != sub_cmd) {
         return ORCM_ERROR;
+    }
+
+    if (3 > opal_argv_count(cmdlist)) {
+        return ORCM_ERR_TAKE_NEXT_OPTION;
     }
 
     if (ORCM_ERROR == (rc = session_power_next_cmd(cmdlist[2], sub_cmd))) {
@@ -482,9 +498,9 @@ static int run_cmd_sensor_store(char** cmdlist)
 static int run_cmd_sensor(char** cmdlist, int sub_cmd)
 {
     int rc = ORCM_SUCCESS;
-    if ((cmd_set == sub_cmd || cmd_get == sub_cmd || cmd_store == sub_cmd)
-        && 3 > opal_argv_count(cmdlist)) {
-        return ORCM_ERROR;
+    if (cmd_null == sub_cmd || ((cmd_set == sub_cmd || cmd_get == sub_cmd ||
+        cmd_store == sub_cmd) && 3 > opal_argv_count(cmdlist))) {
+        return ORCM_ERR_TAKE_NEXT_OPTION;
     }
     switch (sub_cmd) {
         case cmd_set:
@@ -549,24 +565,23 @@ static int run_cmd_notifier_get(int sub_cmd, char** cmdlist)
 static int run_cmd_notifier(char** cmdlist, int sub_cmd)
 {
     int rc = ORCM_SUCCESS;
-    int next_cmd = NUM_TOKENS;
+    int next_cmd = cmd_null;
+
+    if (cmd_null == sub_cmd) {
+        return ORCM_ERR_TAKE_NEXT_OPTION;
+    }
+
+    if (cmd_set != sub_cmd && cmd_get != sub_cmd) {
+        return ORCM_ERROR;
+    }
 
     if (3 > opal_argv_count(cmdlist)) {
-        return ORCM_ERROR;
+        return ORCM_ERR_TAKE_NEXT_OPTION;
     }
     next_cmd = octl_cmd_to_enum(cmdlist[2]);
 
-    switch (sub_cmd) {
-        case cmd_set:
-            rc = run_cmd_notifier_set(next_cmd, cmdlist);
-            break;
-        case cmd_get:
-            rc = run_cmd_notifier_get(next_cmd, cmdlist);
-            break;
-        default:
-            rc = ORCM_ERROR;
-            break;
-    }
+    rc = (cmd_set == sub_cmd ? run_cmd_notifier_set(next_cmd, cmdlist) :
+                               run_cmd_notifier_get(next_cmd, cmdlist));
     return rc;
 }
 
@@ -583,6 +598,9 @@ static int run_cmd_grouping(int argc, char** cmdlist, int sub_cmd)
         case cmd_list:
             rc = orcm_octl_logical_group_list(argc, cmdlist);
             break;
+        case cmd_null:
+            rc = ORCM_ERR_TAKE_NEXT_OPTION;
+            break;
         default:
             rc = ORCM_ERROR;
             break;
@@ -593,14 +611,8 @@ static int run_cmd_grouping(int argc, char** cmdlist, int sub_cmd)
 static int run_cmd_workflow(char** cmdlist, int sub_cmd)
 {
     int rc = ORCM_SUCCESS;
-    int count = opal_argv_count(cmdlist);
 
-    if (3 > count) {
-        return ORCM_ERROR;
-    }
-
-    rc = octl_cmd_to_enum(cmdlist[1]);
-    switch (rc) {
+    switch (sub_cmd) {
         case cmd_add:
             rc = orcm_octl_workflow_add(cmdlist);
             break;
@@ -609,6 +621,9 @@ static int run_cmd_workflow(char** cmdlist, int sub_cmd)
             break;
         case cmd_list:
             rc = orcm_octl_workflow_list(cmdlist);
+            break;
+        case cmd_null:
+            rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
             rc = ORCM_ERROR;
@@ -622,7 +637,7 @@ static int run_cmd_query_node(char** cmdlist)
     int rc = ORCM_SUCCESS;
 
     if (3 > opal_argv_count(cmdlist)) {
-        return ORCM_ERROR;
+        return ORCM_ERR_TAKE_NEXT_OPTION;
     }
 
     rc = octl_cmd_to_enum(cmdlist[2]);
@@ -636,7 +651,7 @@ static int run_cmd_query_event(char** cmdlist)
     int rc = ORCM_SUCCESS;
 
     if (3 > opal_argv_count(cmdlist)) {
-        return ORCM_ERROR;
+        return ORCM_ERR_TAKE_NEXT_OPTION;
     }
 
     rc = octl_cmd_to_enum(cmdlist[2]);
@@ -676,6 +691,9 @@ static int run_cmd_query(char** cmdlist, int sub_cmd)
         case cmd_event:
             rc = run_cmd_query_event(cmdlist);
             break;
+        case cmd_null:
+            rc = ORCM_ERR_TAKE_NEXT_OPTION;
+            break;
         default:
             rc = ORCM_ERROR;
             break;
@@ -696,6 +714,9 @@ static int run_cmd_chasis_id(char** cmdlist, int sub_cmd)
         case cmd_state:
             rc = orcm_octl_chassis_id_state(cmdlist);
             break;
+        case cmd_null:
+            rc = ORCM_ERR_TAKE_NEXT_OPTION;
+            break;
         default:
             rc = ORCM_ERROR;
             break;
@@ -706,19 +727,17 @@ static int run_cmd_chasis_id(char** cmdlist, int sub_cmd)
 static int run_cmd(int argc, char *cmdlist[])
 {
     int rc = ORCM_SUCCESS;
-    int sub_cmd = NUM_TOKENS;
+    int sub_cmd = cmd_null;
 
-    if (2 > argc) {
-        if (0 == argc) {
-            ORCM_UTIL_ERROR_MSG("No command parsed!");
-        } else {
-            octl_print_error_with_command(cmdlist);
-        }
-        return ORCM_ERROR;
+    if (0 == argc) {
+        orcm_octl_error("empty-cmd");
+        return ORCM_ERR_TAKE_NEXT_OPTION;
     }
 
     rc = octl_cmd_to_enum(cmdlist[0]);
-    sub_cmd = octl_cmd_to_enum(cmdlist[1]);
+    if (2 <= argc) {
+        sub_cmd = octl_cmd_to_enum(cmdlist[1]);
+    }
 
     /* call corresponding function to passed command */
     switch (rc) {
@@ -761,7 +780,7 @@ static int run_cmd(int argc, char *cmdlist[])
     }
 
     if (ORCM_ERROR == rc) {
-        octl_print_error_with_command(cmdlist);
+        octl_print_error_illegal_command(cmdlist);
     } else {
         octl_print_error(rc);
     }
@@ -780,16 +799,20 @@ static void octl_print_illegal_command(char *cmd)
 static void octl_print_error(int rc)
 {
     if (ORCM_SUCCESS != rc) {
-        const char *errmsg = ORTE_ERROR_NAME(rc);
-        if (NULL != errmsg) {
-            fprintf(stdout, "\nERROR: %s\n", errmsg);
+        if (ORCM_ERR_TAKE_NEXT_OPTION == rc) {
+            fprintf(stdout, "ERROR: invalid arguments!\n");
         } else {
-            fprintf(stdout, "\nERROR: Internal\n");
+            const char *errmsg = ORTE_ERROR_NAME(rc);
+            if (NULL != errmsg) {
+                fprintf(stdout, "\nERROR: %s\n", errmsg);
+            } else {
+                fprintf(stdout, "\nERROR: Internal\n");
+            }
         }
     }
 }
 
-static void octl_print_error_with_command(char **cmdlist)
+static void octl_print_error_illegal_command(char **cmdlist)
 {
     char *cmd = NULL;
     if (NULL != cmdlist) {

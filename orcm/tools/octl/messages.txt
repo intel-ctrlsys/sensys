@@ -283,6 +283,9 @@ Node %s failed to get notifier smtp policy!
 [error:chassid-id-status]
 Node %s failed to get chassis id status.
 
+[error:empty-cmd]
+No command parsed!
+
 [usage:sensor]
 sensor enable|disable|reset <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
 

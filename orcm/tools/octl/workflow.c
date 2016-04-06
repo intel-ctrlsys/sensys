@@ -267,7 +267,7 @@ static int workflow_add_process_workflows (opal_list_t *result_list, char *cli_a
 
 static int workflow_add_parse_args(char **value, char **file, char **aggregator)
 {
-    if (2 > opal_argv_count(value)) {
+    if (3 > opal_argv_count(value)) {
         orcm_octl_usage("workflow-add", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }

@@ -266,7 +266,8 @@ typedef enum {
 #define TOK(X) cmd_##X,
 #define TOK_CONCAT(X, Y) cmd_##X##_##Y,
 #include "octl_tokens.def"
-    NUM_TOKENS
+    NUM_TOKENS,
+    cmd_null
 } orcm_octl_cmd_enums;
 
 /* list of unique command strings from the tokens

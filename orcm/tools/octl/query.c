@@ -43,7 +43,6 @@ size_t list_nodes_str_size(char **expanded_node_list,int extra_bytes_per_element
 char *assemble_datetime(char *date_str,char *time_str);
 double stopwatch(void);
 bool replace_wildcard(char **filter_me, bool quit_on_first);
-void show_query_error_message(char *query_help);
 
 double stopwatch(void)
 {
@@ -133,12 +132,12 @@ int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
             opal_list_append(*results, &tmp_value->super);
             }
        } else {
-        ORCM_UTIL_MSG("No results found!");
+        orcm_octl_info("no-results");
         rc = ORCM_SUCCESS;
         *results = NULL;
      }
     } else {
-        orte_show_help("help-octl.txt","octl:query:orcmsched-fail", true);
+        orcm_octl_error("orcmsched-fail");
         rc = ORCM_ERROR;
         *results = NULL;
     }
@@ -156,25 +155,25 @@ int get_nodes_from_args(char **argv, char ***node_list)
     char **argv_node_list = NULL;
 
     if (NULL == *argv){
-        orte_show_help("help-octl.txt","octl:no-args", true);
+        orcm_octl_error("no-args");
         return ORCM_ERR_BAD_PARAM;
     }
     arg_index = opal_argv_count(argv);
     /* Convert argv count to index */
     arg_index--;
     if (2 > arg_index){
-        orte_show_help("help-octl.txt","octl:nodelist-null", true);
+        orcm_octl_error("nodelist-null");
         return ORCM_ERR_BAD_PARAM;
     }
     raw_node_list = argv[arg_index];
     if (NULL == raw_node_list ) {
-        orte_show_help("help-octl.txt","octl:nodelist-null", true);
+        orcm_octl_error("nodelist-null");
         return ORCM_ERR_BAD_PARAM;
     }
     rc = orcm_logical_group_parse_array_string(raw_node_list, &argv_node_list);
     node_count = opal_argv_count(argv_node_list);
     if (0 == node_count) {
-        orte_show_help("help-octl.txt","octl:nodelist-extract", true, raw_node_list);
+        orcm_octl_error("nodelist-extract", raw_node_list);
         opal_argv_free(argv_node_list);
         return ORCM_ERR_BAD_PARAM;
     }
@@ -236,13 +235,10 @@ char *assemble_datetime(char *date_str, char *time_str)
                 if (NULL != new_time_str){
                     if (false == replace_wildcard(&new_time_str, true)){
                         strncat(date_time_str, new_time_str, strlen(new_time_str));
-                    } else {
-                        ORCM_UTIL_MSG("WARNING: time input was ignored due the presence of the * character");
                     }
                 }
             } else {
-               orte_show_help("help-octl.txt","octl:allocate-memory",
-                             true, "datetime string");
+               orcm_octl_error("allocate-memory", "datetime string");
             }
         } else {
             SAFE_FREE(date_time_str);
@@ -268,16 +264,6 @@ orcm_db_filter_t *create_string_filter(char *field, char *string,
     return filter;
 }
 
-void show_query_error_message(char *query_help)
-{
-    orte_show_help("help-octl.txt",
-                   strdup(query_help),
-                   true,
-                   "Incorrect arguments",
-                   ORTE_ERROR_NAME(ORCM_ERR_BAD_PARAM),
-                   ORCM_ERR_BAD_PARAM);
-}
-
 opal_list_t *create_query_idle_filter(int argc, char **argv)
 {
     opal_list_t *filters_list = NULL;
@@ -291,7 +277,7 @@ opal_list_t *create_query_idle_filter(int argc, char **argv)
         filter_item = create_string_filter("idle_time", argv[2], GT);
         opal_list_append(filters_list, &filter_item->value.super);
     } else {
-        show_query_error_message("octl:query:idle");
+        orcm_octl_usage("query-idle", INVALID_USG);
         return NULL;
     }
     return filters_list;
@@ -315,8 +301,7 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
             strncat(filter_str, argv[2], strlen(argv[2]));
             strncat(filter_str, "%", strlen("%"));
         } else {
-            orte_show_help("help-octl.txt","octl:allocate-memory",
-                           true, "filter string");
+            orcm_octl_error("allocate-memory", "filter string");
             return NULL;
         }
         filter_item = create_string_filter("log", filter_str, CONTAINS);
@@ -342,8 +327,7 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
             strncat(filter_str, argv[2], strlen(argv[2]));
             strncat(filter_str, "%", strlen("%"));
         } else {
-            orte_show_help("help-octl.txt","octl:allocate-memory",
-                           true, "filter string");
+            orcm_octl_error("allocate-memory", "filter string");
             return NULL;
         }
         filter_item = create_string_filter("log", filter_str, CONTAINS);
@@ -362,7 +346,7 @@ opal_list_t *create_query_log_filter(int argc, char **argv)
             SAFE_FREE(date_time_str);
         }
     } else {
-        show_query_error_message("octl:query:log");
+        orcm_octl_usage("query-log", INVALID_USG);
         return NULL;
     }
     return filters_list;
@@ -378,7 +362,7 @@ opal_list_t *create_query_node_filter(int argc, char **argv)
     /* Place holder for functionality when available in the DB */
         NULL;
     } else {
-        show_query_error_message("octl:query:node:status");
+        orcm_octl_usage("query-node-status", INVALID_USG);
         return NULL;
     }
     return filters_list;
@@ -408,7 +392,7 @@ opal_list_t *create_query_history_filter(int argc, char **argv)
             SAFE_FREE(date_time_str);
         }
     } else {
-        show_query_error_message("octl:query:history");
+        orcm_octl_usage("query-history", INVALID_USG);
         return NULL;
     }
     return filters_list;
@@ -482,7 +466,7 @@ opal_list_t *create_query_sensor_filter(int argc, char **argv)
             }
             SAFE_FREE(filter_str);
     } else {
-        show_query_error_message("octl:query:sensor");
+        orcm_octl_usage("query-sensor", INVALID_USG);
         return NULL;
     }
     return filters_list;
@@ -506,8 +490,7 @@ opal_list_t *create_query_event_data_filter(int argc, char **argv)
         time(&current_time);
         localdate = localtime(&current_time);
         if (NULL == localdate) {
-            orte_show_help("help-octl.txt","octl:allocate-memory",
-                          true, "datetime string");
+            orcm_octl_error("allocate-memory", "datatime string");
             return NULL;
         }
         strftime(current_date, sizeof(current_date), "%Y-%m-%d", localdate);
@@ -533,7 +516,7 @@ opal_list_t *create_query_event_data_filter(int argc, char **argv)
         filter_item = create_string_filter("severity", "INFO", NE);
         opal_list_append(filters_list, &filter_item->value.super);
     } else {
-        show_query_error_message("octl:query:event:data");
+        orcm_octl_usage("query-event-data", INVALID_USG);
         SAFEFREE(filters_list);
         return NULL;
     }
@@ -598,7 +581,7 @@ opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv)
             SAFE_FREE(filter_str);
         }
     } else {
-        show_query_error_message("octl:query:event:sensor-data");
+        orcm_octl_usage("query-event-sensor-data", INVALID_USG);
     }
 
     return filters_list;
@@ -632,7 +615,7 @@ opal_list_t *create_query_event_date_filter(int argc, char **argv)
         filter_item = create_string_filter("event_id", argv[3], EQ);
         opal_list_append(filters_list, &filter_item->value.super);
     } else {
-        show_query_error_message("octl:query:event:date");
+        orcm_octl_usage("query-event-date", INVALID_USG);
     }
 
     return filters_list;
@@ -715,7 +698,7 @@ orcm_db_filter_t *build_node_item(char **expanded_node_list)
         }
         SAFE_FREE(hosts_filter);
     } else {
-        orte_show_help("help-octl.txt","octl:allocate-memory", true,"node item");
+        orcm_octl_error("allocate-memory", "node item");
     }
     return filter_item;
 }
@@ -748,7 +731,7 @@ int orcm_octl_query_sensor(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if(rc != ORCM_SUCCESS) {
-        ORCM_UTIL_MSG("No results found!");
+        orcm_octl_info("no-results");
     } else {
         print_results(returned_list, start_time, stop_time);
     }
@@ -787,7 +770,7 @@ int orcm_octl_query_log(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if(rc != ORCM_SUCCESS) {
-        ORCM_UTIL_MSG("No results found!");
+        orcm_octl_info("no-results");
     } else {
         print_results(returned_list, start_time, stop_time);
     }
@@ -826,7 +809,7 @@ int orcm_octl_query_idle(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if(rc != ORCM_SUCCESS) {
-        ORCM_UTIL_MSG("No results found!");
+        orcm_octl_info("no-results");
     } else {
         print_results(returned_list, start_time, stop_time);
     }
@@ -865,7 +848,7 @@ int orcm_octl_query_node(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if(rc != ORCM_SUCCESS) {
-        ORCM_UTIL_MSG("No results found!");
+        orcm_octl_info("no-results");
     } else {
         print_results(returned_list, start_time, stop_time);
     }
@@ -905,7 +888,7 @@ int orcm_octl_query_event_data(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if (ORCM_SUCCESS != rc) {
-        ORCM_UTIL_MSG("No results found!");
+        orcm_octl_info("no-results");
     } else {
         print_results(returned_list, start_time, stop_time);
     }
@@ -933,20 +916,18 @@ orcm_octl_query_event_exit:
 int orcm_octl_query_event_snsr_data(int cmd, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    uint32_t rows_retrieved = 0;
     double start_time = 0.0;
     double stop_time = 0.0;
     char **argv_node_list = NULL;
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
     orcm_db_filter_t *node_list = NULL;
-    opal_value_t *line = NULL;
     char *date;
 
     date = get_orcm_octl_query_event_date(ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND, argv);
 
     if (NULL == date) {
-        show_query_error_message("octl:query:event:sensor-data");
+        orcm_octl_usage("query-event-sensor-data", INVALID_USG);
         rc = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_query_event_exit;
     } else {
@@ -975,7 +956,7 @@ int orcm_octl_query_event_snsr_data(int cmd, char **argv)
     rc = query_db(cmd, filter_list, &returned_list);
     stop_time = stopwatch();
     if (ORCM_SUCCESS != rc) {
-        ORCM_UTIL_MSG("No results found!");
+        orcm_octl_info("no-results");
     } else {
         print_results(returned_list, start_time, stop_time);
     }
@@ -1167,9 +1148,8 @@ void print_results(opal_list_t *results, double start_time, double stop_time) {
             rows = (uint32_t)opal_list_get_size(results);
             rows--;
             OPAL_LIST_FOREACH(line, results, opal_value_t) {
-                ORCM_UTIL_MSG("%s", line->data.string);
+                printf("%s", line->data.string);
             }
         }
-    ORCM_UTIL_MSG("\n%u rows were found (%0.3f seconds)", rows,
-                  stop_time - start_time);
+    orcm_octl_info("rows-found", rows, stop_time - start_time);
 }

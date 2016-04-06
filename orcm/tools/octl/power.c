@@ -257,7 +257,7 @@ int orcm_octl_power_set(int cmd, char **argv)
     if (0 == result) {
         orcm_octl_info("success");
     } else {
-        ORCM_UTIL_MSG("Failure\n");
+        orcm_octl_error("power-set");
     }
 
     return ORCM_SUCCESS;

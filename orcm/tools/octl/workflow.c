@@ -73,6 +73,7 @@ static int workflow_send_buffer(orte_process_name_t *wf_agg,
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(wf_agg, buf,
                                                       ORCM_RML_TAG_ANALYTICS,
                                                       orte_rml_send_callback, NULL))) {
+        orcm_octl_error("connection-fail");
         return ORCM_ERROR;
     }
     return ORCM_SUCCESS;
@@ -86,16 +87,16 @@ static int workflow_add_unpack_buffer(orte_rml_recv_cb_t *xfer)
 
     n=1;
     if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_id, &n, OPAL_INT))) {
+        orcm_octl_error("unpack");
         return ORCM_ERROR;
     }
 
     if (0 > workflow_id) {
-        orte_show_help("help-octl.txt", "octl:workflow:workflow-failure",
-                       true);
+        orcm_octl_error("workflow-failure");
         rc = workflow_id;
         return rc;
     }
-    ORCM_UTIL_MSG("Workflow created with id: %i", workflow_id);
+    orcm_octl_info("workflow-created", workflow_id);
     return ORCM_SUCCESS;
 
 }
@@ -120,8 +121,7 @@ static int workflow_add_send_workflow(opal_buffer_t *buf, char **aggregator)
 
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(aggregator[node_index],
                                                                    &wf_agg))) {
-            orte_show_help("help-octl.txt","octl:hostname-notfound",
-                           true, aggregator[node_index]);
+            orcm_octl_error("node-notfound", aggregator[node_index]);
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
             SAFE_RELEASE(xfer);
             return rc;
@@ -129,6 +129,7 @@ static int workflow_add_send_workflow(opal_buffer_t *buf, char **aggregator)
 
         rc = workflow_send_buffer(&wf_agg, buf, xfer);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_error("connection-fail");
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
             SAFE_RELEASE(xfer);
             return rc;
@@ -137,6 +138,7 @@ static int workflow_add_send_workflow(opal_buffer_t *buf, char **aggregator)
         /* unpack workflow id */
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_error("connection-fail");
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
             SAFE_RELEASE(xfer);
             return rc;
@@ -144,6 +146,7 @@ static int workflow_add_send_workflow(opal_buffer_t *buf, char **aggregator)
 
         rc = workflow_add_unpack_buffer(xfer);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_error("unpack");
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
             SAFE_RELEASE(xfer);
             return rc;
@@ -192,19 +195,19 @@ static int workflow_add_extract_aggregator(char ***aggregator, char *cli_aggrega
     if (NULL != cli_aggregator) {
         rc = orcm_logical_group_parse_array_string(cli_aggregator, aggregator);
         if (ORCM_SUCCESS != rc) {
-            orte_show_help("help-octl.txt", "octl:workflow:aggregator", true);
+            orcm_octl_error("no-aggregator");
             return ORCM_ERROR;
         }
     }
     else if (0 == strcmp("aggregator", key)) {
         rc = orcm_logical_group_parse_array_string(value, aggregator);
         if (ORCM_SUCCESS != rc) {
-            orte_show_help("help-octl.txt", "octl:workflow:aggregator", true);
+            orcm_octl_error("no-aggregator");
             return ORCM_ERROR;
         }
     }
     else {
-        orte_show_help("help-octl.txt", "octl:workflow:aggregator", true);
+        orcm_octl_error("no-aggregator");
         return ORCM_ERROR;
     }
     return ORCM_SUCCESS;
@@ -221,11 +224,9 @@ static int workflow_add_process_workflows (opal_list_t *result_list, char *cli_a
     }
 
     OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
-        ORCM_UTIL_MSG("Key: %s", list_item->value.key);
-        ORCM_UTIL_MSG("Type: %d", list_item->value.type);
+        orcm_octl_info("workflow-key-type", list_item->value.key, list_item->value.type);
         if (list_item->value.type == OPAL_STRING) {
-            ORCM_UTIL_MSG("value: %s", list_item->value.data.string);
-
+             orcm_octl_info("workflow-value", list_item->value.data.string);
             SAFEFREE(aggregator);
             rc = workflow_add_extract_aggregator(&aggregator, cli_aggregator, list_item->value.key, list_item->value.data.string);
             if (ORCM_SUCCESS != rc) {
@@ -238,13 +239,13 @@ static int workflow_add_process_workflows (opal_list_t *result_list, char *cli_a
                 if (NULL != cli_aggregator) {
                     rc = orcm_logical_group_parse_array_string(cli_aggregator, &aggregator);
                     if (ORCM_SUCCESS != rc) {
-                        orte_show_help("help-octl.txt", "octl:workflow:aggregator", true);
+                        orcm_octl_error("no-aggregator");
                         SAFEFREE(aggregator);
                         return ORCM_ERROR;
                     }
                 }
                 else {
-                    orte_show_help("help-octl.txt", "octl:workflow:aggregator", true);
+                    orcm_octl_error("no-aggregator");
                     SAFEFREE(aggregator);
                     return ORCM_ERROR;
                 }
@@ -254,7 +255,7 @@ static int workflow_add_process_workflows (opal_list_t *result_list, char *cli_a
             }
         }
         else {
-            ORCM_UTIL_MSG("Unexpected data type from parser framework");
+            orcm_octl_error("framework-data-type");
             SAFEFREE(aggregator);
             return ORCM_ERROR;
         }
@@ -266,8 +267,7 @@ static int workflow_add_process_workflows (opal_list_t *result_list, char *cli_a
 static int workflow_add_parse_args(char **value, char **file, char **aggregator)
 {
     if (2 > opal_argv_count(value)) {
-        orte_show_help("help-octl.txt",
-                       "octl:workflow:add-usage", true, "invalid arguments!");
+        orcm_octl_usage("workflow-add", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -275,8 +275,7 @@ static int workflow_add_parse_args(char **value, char **file, char **aggregator)
         *file = value[2];
     }
     else {
-        orte_show_help("help-octl.txt",
-                       "octl:workflow:workflow-notfound", true, value[2]);
+        orcm_octl_error("workflow-notfound");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -309,8 +308,7 @@ int orcm_octl_workflow_add(char **value)
 
     rc= ORCM_ERROR;
     OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
-        ORCM_UTIL_MSG("Key: %s", list_item->value.key);
-        ORCM_UTIL_MSG("Type: %d", list_item->value.type);
+        orcm_octl_info("workflow-key-type", list_item->value.key, list_item->value.type);
 
         if (list_item->value.type == OPAL_PTR) {
             if (0 == strcmp(list_item->value.key, "workflows")) {
@@ -318,7 +316,7 @@ int orcm_octl_workflow_add(char **value)
             }
         }
         else {
-            ORCM_UTIL_MSG("Unexpected data type from parser framework");
+            orcm_octl_error("framework-data-type");
             SAFE_RELEASE(result_list);
             SAFEFREE(aggregator);
             return ORCM_ERROR;
@@ -334,8 +332,7 @@ static int workflow_remove_parse_args(char **value, char ***aggregator, char **w
     int rc;
 
     if (5 != opal_argv_count(value)) {
-        orte_show_help("help-octl.txt",
-                       "octl:workflow:remove-usage", true, "invalid arguments!");
+        orcm_octl_usage("workflow-remove", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -347,7 +344,7 @@ static int workflow_remove_parse_args(char **value, char ***aggregator, char **w
 
     }
     else {
-        orte_show_help("help-octl.txt","octl:aggregator-null", true);
+        orcm_octl_error("null-arg", "aggregator", "aggregator");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -355,8 +352,7 @@ static int workflow_remove_parse_args(char **value, char ***aggregator, char **w
         *workflow_name = value[3];
     }
     else {
-        orte_show_help("help-octl.txt",
-                       "octl:workflow:workflow-name", true, value[3]);
+        orcm_octl_error("null-arg", "workflow-name", "workflow-name");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -364,8 +360,7 @@ static int workflow_remove_parse_args(char **value, char ***aggregator, char **w
         *workflow_id = value[4];
     }
     else {
-        orte_show_help("help-octl.txt",
-                       "octl:workflow:workflow-id", true, value[4]);
+        orcm_octl_error("null-arg", "workflow-id", "workflow-id");
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
@@ -381,16 +376,19 @@ static int workflow_remove_pack_buffer(opal_buffer_t *buf, char *workflow_name,
     command = ORCM_ANALYTICS_WORKFLOW_REMOVE;
     /* pack the alloc command flag */
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
+        orcm_octl_error("pack");
         return ORCM_ERROR;
     }
 
     /* pack the workflow name */
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &workflow_name, 1, OPAL_STRING))) {
+        orcm_octl_error("pack");
         return ORCM_ERROR;
     }
 
     /* pack the workflow id */
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &workflow_id, 1, OPAL_STRING))) {
+        orcm_octl_error("pack");
         return ORCM_ERROR;
     }
     return ORCM_SUCCESS;
@@ -405,13 +403,14 @@ static int workflow_remove_unpack_buffer(orte_rml_recv_cb_t *xfer)
     n=1;
 
     if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &result, &n, OPAL_INT))) {
+        orcm_octl_error("unpack");
         return ORCM_ERROR;
     }
     if (ORCM_ERROR != result) {
-        ORCM_UTIL_MSG("Workflow(s) deleted");
+        orcm_octl_info("workflow-deleted");
     }
     else {
-        orte_show_help("help-octl.txt","octl:workflow:workflow-notfound", true);
+        orcm_octl_error("workflow-notfound");
     }
     return ORCM_SUCCESS;
 
@@ -495,8 +494,7 @@ static int workflow_list_parse_args(char **value, char ***aggregator)
     int rc;
 
     if (3 != opal_argv_count(value)) {
-        orte_show_help("help-octl.txt",
-                       "octl:workflow:get-usage", true, "invalid arguments!");
+        orcm_octl_usage("workflow-list", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -508,8 +506,7 @@ static int workflow_list_parse_args(char **value, char ***aggregator)
 
     }
     else {
-        orte_show_help("help-octl.txt",
-                       "octl:aggregator-null", true, "invalid arguments!");
+        orcm_octl_error("null-arg", "aggregator", "aggregator");
         return ORCM_ERR_BAD_PARAM;
     }
     return ORCM_SUCCESS;
@@ -551,11 +548,11 @@ static int workflow_list_unpack_buffer(orte_rml_recv_cb_t *xfer)
         if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_name, &n, OPAL_STRING))) {
             return ORCM_ERROR;
         }
-        ORCM_UTIL_MSG("workflow name is: %s   workflow id is: %d", workflow_name, workflow_id);
+        orcm_octl_info("workflow-list", workflow_name, workflow_id);
         SAFEFREE(workflow_name);
     }
     if (0 == workflow_count) {
-        ORCM_UTIL_MSG("No workflow ids");
+        orcm_octl_info("no-workflows");
     }
     return ORCM_SUCCESS;
 }

@@ -17,15 +17,14 @@ int orcm_octl_logical_group_add(int argc, char **argv)
     char *regex = NULL;
 
     if (4 != argc) {
-        orte_show_help("help-octl.txt",
-                       "octl:grouping:add-usage", true, "invalid arguments!");
+        orcm_octl_usage("grouping-add", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
     tag = argv[2];
     regex = argv[3];
     if (0 == strncmp(tag, "*", strlen(tag) + 1) ||
         0 == strncmp(regex, "*", strlen(regex) + 1)) {
-        orte_show_help("help-octl.txt", "octl:grouping:add-wildcard", true);
+        orcm_octl_error("add-wildcard");
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -38,7 +37,7 @@ int orcm_octl_logical_group_add(int argc, char **argv)
         return erri;
     }
 
-    ORCM_UTIL_MSG("\nGrouping: Add done successfully!");
+    orcm_octl_info("grouping-success", "Add");
 
     return erri;
 }
@@ -51,8 +50,7 @@ int orcm_octl_logical_group_remove(int argc, char **argv)
     char *err_str = NULL;
 
     if (4 != argc) {
-        orte_show_help("help-octl.txt",
-                       "octl:grouping:remove-usage", true, "invalid arguments!");
+        orcm_octl_usage("grouping-remove", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
     tag = argv[2];
@@ -62,7 +60,7 @@ int orcm_octl_logical_group_remove(int argc, char **argv)
         if (ORCM_ERR_NO_ANY_GROUP == erri ||
             ORCM_ERR_GROUP_NOT_EXIST == erri || ORCM_ERR_NODE_NOT_EXIST == erri) {
             orcm_err2str(erri, (const char**)(&err_str));
-            orte_show_help("help-octl.txt", "octl:grouping:remove-failure", true, err_str);
+            orcm_octl_error("grouping-remove", err_str);
             erri = ORCM_ERR_BAD_PARAM;
         }
         return erri;
@@ -73,7 +71,7 @@ int orcm_octl_logical_group_remove(int argc, char **argv)
         return erri;
     }
 
-    ORCM_UTIL_MSG("\nGrouping: Remove done successfully!");
+    orcm_octl_info("grouping-success", "Remove");
 
     return erri;
 }
@@ -92,9 +90,9 @@ static int orcm_octl_logical_group_print_list(opal_hash_table_t *groups)
                                          &key_size, (void**)&value, in_member, &o_member)) {
         new_value = orcm_logical_group_convert_members_list(value, MAX_LINE_LENGTH);
         if (NULL != new_value && !opal_list_is_empty(new_value)) {
-            ORCM_UTIL_MSG("\ngroup name=%s", key);
+            orcm_octl_info("group-name", key);
             OPAL_LIST_FOREACH(member_item, new_value, orcm_logical_group_member_t) {
-                ORCM_UTIL_MSG("member list=%s", member_item->member);
+                orcm_octl_info("member-list", member_item->member);
             }
         }
         if (NULL != new_value) {
@@ -115,8 +113,7 @@ int orcm_octl_logical_group_list(int argc, char **argv)
     char *regex = NULL;
 
     if (4 != argc) {
-        orte_show_help("help-octl.txt",
-                       "octl:grouping:list-usage", true, "invalid arguments!");
+        orcm_octl_usage("grouping-list", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
     tag = argv[2];
@@ -124,7 +121,7 @@ int orcm_octl_logical_group_list(int argc, char **argv)
 
     o_groups = orcm_logical_group_list(tag, regex, LOGICAL_GROUP.groups);
     if (NULL == o_groups || 0 == opal_hash_table_get_size(o_groups)) {
-        ORCM_UTIL_MSG("\nThere is no record!");
+        orcm_octl_info("no-record");
         goto cleanup;
     }
 

@@ -32,11 +32,8 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
     orte_notifier_severity_t severity, sev_indx;
 
     if (4 != opal_argv_count(argv)) {
-        error = "incorrect arguments!";
         rc = ORCM_ERR_BAD_PARAM;
-        orte_show_help("help-octl.txt",
-                       "octl:get:notifier-usage",
-                       true, error, ORTE_ERROR_NAME(rc), rc);
+        orcm_octl_usage("notifier-get", INVALID_USG);
         return rc;
     }
 
@@ -45,7 +42,7 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
         nodelist = NULL;
-        error = "nodelist not found";
+        orcm_octl_error("nodelist-notfound", argv[3]);
         rc = ORCM_ERR_BAD_PARAM;
         goto done;
     }
@@ -57,6 +54,7 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
     /* pack the command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_CMD_SERVER_T))) {
+        orcm_octl_error("pack");
         error = PACKERR;
         goto done;
     }
@@ -65,7 +63,7 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
     /* pack the sub-command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_CMD_SERVER_T))) {
-        error = PACKERR;
+        orcm_octl_error("pack");
         goto done;
     }
 
@@ -83,8 +81,7 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
 
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
-            printf("\nError: node %s\n", nodelist[i]);
-            error = "incorrect node name";
+            orcm_octl_error("node-notfound", nodelist[i]);
             goto done;
         }
 
@@ -93,67 +90,58 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_CMD_SERVER,
                                           orte_rml_send_callback, NULL))) {
-            printf("\nError: node %s\n", nodelist[i]);
-            error = "daemon contact failed";
+            orcm_octl_error("connection-fail");
             goto done;
         }
 
         /* wait for status message */
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
-            printf("\nError: node %s\n", nodelist[i]);
-            error = "daemon contact failed";
+            orcm_octl_error("connection-fail");
             goto done;
         }
 
         cnt=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &response,
                                                   &cnt, OPAL_INT))) {
-            printf("\nError: node %s\n", nodelist[i]);
-            error = UNPACKERR;
+            orcm_octl_error("unpacker");
             goto done;
         }
 
         if ( ORCM_SUCCESS != response ) {
              if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &error,
                                                    &cnt, OPAL_STRING))) {
-                 printf("\nError: node %s\n", nodelist[i]);
-                 error = UNPACKERR;
+                 orcm_octl_error("unpacker");
                  goto done;
              }
-             printf("\nNode %s failed to get notifier policy!\n", nodelist[i]);
+             orcm_octl_error("notifier-policy", "get", nodelist[i]);
              goto done;
         } else {
              cnt = 1;
              if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &count,
                                                       &cnt, OPAL_INT))) {
-                 printf("\nError: node %s\n", nodelist[i]);
-                 error = UNPACKERR;
+                 orcm_octl_error("unpacker");
                  goto done;
              }
 
              if (0 == count) {
-                 printf("\n\nNode          Severity      Action\n");
-                 printf("-----------------------------------\n");
+                 orcm_octl_info("notifier-header");
                  printf("%-10s    %6s    %10s \n", nodelist[i], "n/a", "n/a");
                  goto done;
              }
              opal_buffer_t *result_buf = NULL;
              if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data,  &result_buf,
                                                &cnt, OPAL_BUFFER))) {
-                 printf("\nError: node %s\n", nodelist[i]);
-                 error = UNPACKERR;
+                 orcm_octl_error("unpacker");
                  goto done;
              }
-             printf("\n\nNode          Severity      Action\n");
-             printf("-----------------------------------\n");
+             orcm_octl_info("notifier-header");
              for(sev_indx = ORTE_NOTIFIER_EMERG; sev_indx <= ORTE_NOTIFIER_DEBUG; sev_indx++) {
                 /* unpack severity */
                 cnt = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(result_buf,  &severity,
                                                   &cnt, ORTE_NOTIFIER_SEVERITY_T))) {
-                    printf("\nError: node %s\n", nodelist[i]);
-                    error = UNPACKERR;
+                    orcm_octl_error("unpacker");
                     goto done;
                 }
 
@@ -161,8 +149,7 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
                 cnt = 1;
                 if (OPAL_SUCCESS != (rc = opal_dss.unpack(result_buf, &action,
                                                   &cnt, OPAL_STRING))) {
-                    printf("\nError: node %s\n", nodelist[i]);
-                    error = UNPACKERR;
+                    orcm_octl_error("unpacker");
                     goto done;
                 }
 
@@ -193,11 +180,6 @@ done:
 
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
 
-    if (ORCM_SUCCESS != rc) {
-        orte_show_help("help-octl.txt",
-                       TAG, true, error, ORTE_ERROR_NAME(rc), rc);
-    }
-
     return rc;
 }
 
@@ -217,11 +199,8 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
     char *error = NULL;
 
     if (6 != opal_argv_count(argv)) {
-        error = "incorrect arguments!";
         rc = ORCM_ERR_BAD_PARAM;
-        orte_show_help("help-octl.txt",
-                       "octl:set:notifier-usage",
-                       true, error, ORTE_ERROR_NAME(rc), rc);
+        orcm_octl_usage("notifier-set", INVALID_USG);
         return rc;
     }
 
@@ -230,7 +209,7 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
         nodelist = NULL;
-        error = "nodelist not found";
+        orcm_octl_error("nodelist-notfound");
         rc = ORCM_ERR_BAD_PARAM;
         goto done;
     }
@@ -242,7 +221,7 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
     /* pack the command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_CMD_SERVER_T))) {
-        error = PACKERR;
+        orcm_octl_error("pack");
         goto done;
     }
 
@@ -250,13 +229,15 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
     /* pack the sub-command flag */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &command,
                                             1, ORCM_CMD_SERVER_T))) {
+        orcm_octl_error("pack");
         error = PACKERR;
         goto done;
     }
 
     /* notification severity string to enum */
     if (-1 == (sev = severity_string_to_enum(argv[3]))) {
-        error = "severity not found";
+
+        orcm_octl_error("item-notfound", "severity");
         rc = -1;
         goto done;
     }
@@ -269,14 +250,15 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
     }
     /* notification action string to enum */
     if (-1 == (act = action_string_to_enum(argv[4]))) {
-        error = "action not found";
+
+        orcm_octl_error("item-notfound", "action");
         rc = -1;
         goto done;
     }
     /* pack notification action */
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &argv[4],
                                             1, OPAL_STRING))) {
-        error = PACKERR;
+        orcm_octl_error("pack");
         goto done;
     }
 
@@ -292,10 +274,11 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, xfer);
 
-        printf("\n Notifier set policy on Node:%s\n", nodelist[i]);
+
+        orcm_octl_error("notifier-policy", "set", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
-            error = "incorrect node name";
+            orcm_octl_error("node-notfound", nodelist[i]);
             goto done;
         }
 
@@ -304,14 +287,14 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_CMD_SERVER,
                                           orte_rml_send_callback, NULL))) {
-            error = "daemon contact failed";
+            orcm_octl_error("connection-fail");
             goto done;
         }
 
         /* wait for status message */
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
-            error = "daemon contact failed";
+            orcm_octl_error("connection-fail");
             goto done;
         }
 
@@ -322,7 +305,7 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
             goto done;
         }
         if (ORCM_SUCCESS == result) {
-            printf("\nSuccess\n");
+            orcm_octl_error("success");
         } else {
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &error,
                                                  &cnt, OPAL_STRING))) {
@@ -345,11 +328,6 @@ done:
         opal_argv_free(nodelist);
     }
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
-    if (ORCM_SUCCESS != rc) {
-        orte_show_help("help-octl.txt",
-                       TAG,
-                       true, error, ORTE_ERROR_NAME(rc), rc);
-    }
     return rc;
 }
 

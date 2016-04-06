@@ -26,8 +26,6 @@
 #define SAFE_ARGV_FREE(p) if(NULL != p) { opal_argv_free(p); p = NULL; }
 
 static void cleanup(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
-static void show_help(const char* tag, const char* error, int rc);
-static void show_header(void);
 static int begin_transaction(char* node, opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
 static int unpack_response(char* node, orte_rml_recv_cb_t *xfer);
 static int unpack_state(char* node, orte_rml_recv_cb_t *xfer);
@@ -47,17 +45,6 @@ static void cleanup(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer){
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
 }
 
-static void show_help(const char* tag, const char* error, int rc){
-    if (ORCM_SUCCESS == rc)
-        return;
-    orte_show_help("help-octl.txt",
-                   tag, true, error, ORTE_ERROR_NAME(rc), rc);
-}
-
-static void show_header(void){
-    printf("\n\nNode          Chassis ID LED\n");
-    printf("-----------------------------------\n");
-}
 
 static int begin_transaction(char* node, opal_buffer_t *buf, orte_rml_recv_cb_t *xfer){
     int rc = ORCM_SUCCESS;
@@ -70,14 +57,14 @@ static int begin_transaction(char* node, opal_buffer_t *buf, orte_rml_recv_cb_t 
     orte_process_name_t target;
     rc = orcm_cfgi_base_get_hostname_proc(node, &target);
     if (ORCM_SUCCESS != rc){
-        printf("\nError: node %s\n", node);
+        orcm_octl_error("node-notfound", node);
         return rc;
     }
 
     rc = orte_rml.send_buffer_nb(&target, buf, ORCM_RML_TAG_CMD_SERVER,
                                  orte_rml_send_callback, NULL);
     if (ORTE_SUCCESS != rc){
-        printf("\nError: node %s\n", node);
+        orcm_octl_error("connection-fail");
         return rc;
     }
 
@@ -91,12 +78,12 @@ static int unpack_response(char* node, orte_rml_recv_cb_t *xfer){
 
     rc = opal_dss.unpack(&xfer->data, &response, &elements, OPAL_INT);
     if (OPAL_SUCCESS != rc){
-        printf("\nError: node %s\n", node);
+        orcm_octl_error("unpack");
         return rc;
     }
 
     if (ORCM_SUCCESS != response){
-        printf("\nNode %s failed to get chassis id status\n", node);
+        orcm_octl_error("chassis-id-status", node);
         return response;
     }
 
@@ -109,7 +96,7 @@ static int unpack_state(char* node, orte_rml_recv_cb_t *xfer){
     int state = -1;
     int rc = opal_dss.unpack(&xfer->data, &state, &elements, OPAL_INT);
     if (OPAL_SUCCESS != rc){
-        printf("\nError: node %s\n", node);
+        orcm_octl_error("unpack");
         return rc;
     }
 
@@ -158,27 +145,23 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
     orte_rml_recv_cb_t *xfer = NULL;
     opal_buffer_t *buf = NULL;
     int rc = ORCM_SUCCESS;
-    char error[255];
     char current_aggregator[256];
 
     if (NULL == (buf = OBJ_NEW(opal_buffer_t)) ||
         NULL == (xfer = OBJ_NEW(orte_rml_recv_cb_t))){
         rc = ORCM_ERR_OUT_OF_RESOURCE;
         cleanup(buf, xfer);
-        show_help(TAG, error, rc);
         return rc;
     }
 
     rc = pack_chassis_id_data(buf, &command, &sub_command, &noderaw, &seconds);
     if (OPAL_SUCCESS != rc){
-        sprintf(error, PACKERR);
-        show_help(TAG, error, rc);
+        orcm_octl_error("pack");
         return rc;
     }
 
     if (ORTE_SUCCESS != (rc = open_parser_framework())){
-        sprintf(error, "\nError while opening parser framework\n");
-        show_help(TAG, error, rc);
+        orcm_octl_error("framework-open");
         return rc;
     }
 
@@ -186,7 +169,7 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
     close_parser_framework();
 
     if (ORCM_GET_CHASSIS_ID == command)
-        show_header();
+        orcm_octl_info("chassis-header");
 
     while(get_next_aggregator_name(current_aggregator)){
         OBJ_RETAIN(buf);
@@ -216,7 +199,6 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
     }
 
     cleanup(buf, xfer);
-    show_help(TAG, error, rc);
     return rc;
 }
 
@@ -224,7 +206,7 @@ int orcm_octl_chassis_id_state(char **argv){
     int rc = ORCM_SUCCESS;
     if (MIN_CHASSIS_ID_ARG != opal_argv_count(argv)){
         rc = ORCM_ERR_BAD_PARAM;
-        show_help("octl:chassis-id:state-usage", "incorrect arguments!", rc);
+        orcm_octl_usage("chassis-id-state", INVALID_USG);
         return rc;
     }
 
@@ -235,7 +217,7 @@ int orcm_octl_chassis_id_off(char **argv){
     int rc = ORCM_SUCCESS;
     if (MIN_CHASSIS_ID_ARG != opal_argv_count(argv)){
         rc = ORCM_ERR_BAD_PARAM;
-        show_help("octl:chassis-id:disable-usage", "incorrect arguments!", rc);
+        orcm_octl_usage("chassis-id-disable", INVALID_USG);
         return rc;
     }
     return orcm_octl_led_operation(ORCM_SET_CHASSIS_ID, ORCM_SET_CHASSIS_ID_OFF, argv[2], 0);
@@ -250,7 +232,7 @@ int orcm_octl_chassis_id_on(char **argv){
         rc = orcm_octl_led_operation(ORCM_SET_CHASSIS_ID, ORCM_SET_CHASSIS_ID_TEMPORARY_ON, argv[3], (unsigned char)atoi(argv[2]));
     else {
         rc = ORCM_ERR_BAD_PARAM;
-        show_help("octl:chassis-id:enable-usage", "incorrect arguments!", rc);
+        orcm_octl_usage("chassis-id-enable", INVALID_USG);
     }
     return rc;
 }

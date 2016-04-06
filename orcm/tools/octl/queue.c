@@ -63,7 +63,7 @@ int orcm_octl_queue_status(char **argv)
         return rc;
     }
 
-    ORCM_UTIL_MSG("********\nQUEUES\n********\n");
+    orcm_octl_info("queue-header");
 
     /* for each queue */
     for (i = 0; i < num_queues; i++) {
@@ -82,7 +82,7 @@ int orcm_octl_queue_status(char **argv)
             return rc;
         }
 
-        ORCM_UTIL_MSG("%s (%i sessions)\n----------\n", name, num_sessions);
+        orcm_octl_info("queue-sessions", name, num_sessions);
 
         if (0 < num_sessions) {
             allocs = (orcm_alloc_t**)malloc(num_sessions * sizeof(orcm_alloc_t*));

@@ -43,7 +43,7 @@ char *search_msg(regex_t regex_label) {
 
     regex_t regex;
 
-    asprintf(&datadir,"%s%s", OCTL_DATA_DIR,"/messages.txt");
+    asprintf(&datadir,"%s%s", OCTL_DATA_DIR,"/help-octl.txt");
     if(NULL != datadir) {
 
         regex_res = regcomp(&regex, next_label, REG_EXTENDED);

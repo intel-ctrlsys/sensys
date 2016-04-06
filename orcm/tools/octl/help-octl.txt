@@ -1,19 +1,17 @@
-# -*- text -*-
 #
-# Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
-# Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
+# Copyright (c) 2016     Intel, Inc.  All rights reserved.
 # $COPYRIGHT$
 #
-# Additional copyrights may follow
+#Additional copyrights may follow
 #
 # $HEADER$
 #
-# This is the US/English help file for Open Resilient Cluster Manager Tool
+# This is the US/English help file for OCTL
 #
+
 [usage]
 Usage: octl [OPTIONS]
   Open Resilient Cluster Manager "octl" Tool
-
 %s
 
 Interactive shell:
@@ -23,224 +21,388 @@ Use '<tab>' or '<?>' for help
 [version]
 octl %s
 
-#Report bugs to %s
-[octl:command-line:failure]
-ERROR: %s
+[info:success]
+Success!
 
-[octl:get:policy-usage]
-ERROR: %s
-USAGE: sensor get policy <nodelist>
+[info:no-results]
+No results returned.
 
-[octl:get:sample-rate-usage]
-ERROR: %s
-USAGE: sensor get sample-rate <sensor-name> <nodelist>
+[info:getting-policy]
+ORCM getting sensor policy from Node:%s
 
-[octl:set:sample-rate-usage]
-ERROR: %s
-USAGE: sensor set sample-rate <sensor-name> <sample-rate>  <nodelist>
+[info:no-active-policy]
+There is no active policy!
 
-[octl:sensor]
-ERROR: %s
-USAGE: sensor set|get|enable|disable|reset [specific-arguments]
+[info:policy-header]
+Sensor      Threshold        Hi/Lo    Max_Count/Time_Window    Severity      Action
+-----------------------------------------------------------------------------------
 
-[octl:enable]
-ERROR: %s
-USAGE: sensor enable <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
+[info:policy]
+%-10s %8.3f %3s     %5s   %5d in %5d seconds     %6s    %10s
 
-[octl:disable]
-ERROR: %s
-USAGE: sensor disable <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
+[info:setting-sample-rate]
+ORCM setting sensor:%s sample-rate on node:%s
 
-[octl:reset]
-ERROR: %s
-USAGE: sensor reset <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
+[info:getting-sample-rate]
+ORCM getting sensor %s sample-rate from node:%s
 
-[octl:grouping:add-usage]
-ERROR: %s
-USAGE: grouping add <tag> <nodelist>
+[info:sample-rate-header]
+Sensor     sample-rate
+------------------------------------------------------------------------------
 
-[octl:grouping:add-wildcard]
-ERROR: Neither the group name nor the node regex can be a wildcard for add!
+[info:sample-rate]
+%s            %d
 
-[octl:grouping:remove-usage]
-ERROR: %s
-USAGE: grouping remove <tag> <nodelist>
+[info:sampling-success]
+Success changing sensor sampling on node '%s'.
 
-[octl:grouping:remove-failure]
-ERROR: %s
-Grouping Remove Failed!
+[info:storage-reponse]
+Sensor storage response is: %i
 
-[octl:grouping:list-usage]
-ERROR: %s
-USAGE: grouping list <tag> <nodelist>
+[info:power-modes]
+Possible modes:
 
-[octl:query:history]
-ERROR: %s
-USAGE: query history [start-date start-time end-date end-time] <nodelist>
+[info:power-budget]
+Current cluster power budget: %d watts.
 
-[octl:query:sensor]
-ERROR: %s
-USAGE: query sensor <sensor-name> [start-date start-time end-date end-time [upper-bound lower-bound]] <nodelist>
+[info:power-mode-df]
+Current default power mode: %s.
 
-[octl:query:log]
-ERROR: %s
-USAGE: query log [text-in-log] [start-date start-time end-date end-time] <nodelist>
+[info:power-window-df]
+Current default power window: %d ms.
 
-[octl:query:idle]
-ERROR: %s
-USAGE: query idle [timeout in seconds or HH:MM:SS format] <nodelist>
+[info:power-budget-limit]
+Current default power budget %s limit: %d watts
 
-[octl:query:node:status]
-ERROR: %s
-USAGE: query node status <nodelist>
+[info:power-time-limit]
+Current default power %s time limit: %d ms.
 
-[octl:query:event:data]
-ERROR: %s
-USAGE: query event data [start-date start-time end-date end-time] <nodelist>
+[info:power-freq-df]
+Current default power frequency: %s.
 
-[octl:query:event:sensor-data]
-ERROR: %s
-USAGE: query event sensor-data <event-id> before/after <minutes> <sensor> <nodelist>
+[info:power-freq-df-GHz]
+Current default power frequency: %f GHz.
 
-[octl:query:event:date]
-ERROR: %s
-USAGE: query event date <event-id>
+[info:power-freq-strict]
+Current default frequency strict setting: %s.
 
-[octl:query:orcmsched-fail]
-ERROR: Unable to get results via ORCM scheduler
+[info:session-budget]
+Session %ld current cluster power budget: %d watts.
 
-[octl:get:notifier-usage]
-ERROR: %s
-USAGE: notifier get policy <nodelist>
+[info:session-mode]
+Session %ld current power mode: %s.
 
-[octl:set:notifier-usage]
-ERROR: %s
-USAGE: notifier set policy <severity> <action> <nodelist>
-EXAMPLE:
-       notifier set policy emerg  smtp   rack[2:1-8]
-       notifier set policy alert  smtp   rack[2:1-8]
-       notifier set policy crit   smtp   rack[2:1-8]
-       notifier set policy error  syslog rack[2:1-8]
-       notifier set policy warn   syslog rack[2:1-8]
-       notifier set policy notice syslog rack[2:1-8]
-       notifier set policy debug  syslog rack[2:1-8]
+[info:session-window]
+Session %ld current power window: %d ms.
 
-[octl:get:notifier-smtp-usage]
-ERROR: %s
-USAGE: notifier get smtp-policy <nodelist>
+[info:session-budget-limit]
+Session %ld current power budget %s limit: %d watts.
 
-[octl:set:notifier-smtp-usage]
-ERROR: %s
-USAGE: notifier set smtp-policy <key> <value> <nodelist>
-EXAMPLE: 
-       notifier set smtp-policy server_name <email-server>  rack[2:1-8]
-       notifier set smtp-policy server_port <portno>  rack[2:1-8]
-       notifier set smtp-policy to_addr <email-addr>  rack[2:1-8]
-       notifier set smtp-policy from_addr <email-addr>  rack[2:1-8]
-       notifier set smtp-policy from_name <name>  rack[2:1-8]
-       notifier set smtp-policy subject <email-subject>  rack[2:1-8]
-       notifier set smtp-policy body_preffix <email-body-preffix>  rack[2:1-8]
-       notifier set smtp-policy body_suffix <email-body-suffix>  rack[2:1-8]
-       notifier set smtp-policy priority <1-high,2-medium,3-low>  rack[2:1-8]
+[info:session-time-limit]
+Session %ld current power %s time limit: %d ms.
 
-[octl:chassis-id:state-usage]
-ERROR: %s
-USAGE: chassis-id state <nodelist>
+[info:session-freq]
+Session %ld current power frequency: %s.
 
-[octl:chassis-id:disable-usage]
-ERROR: %s
-USAGE: chassis-id disable <nodelist>
+[info:session-freq-GHz]
+Session %ld current power frequency: %f MHz.
 
-[octl:chassis-id:enable-usage]
-ERROR: %s
-USAGE: chassis-id enable [seconds] <nodelist>
+[info:session-freq-strict]
+Session %ld current frequency strict setting: %s.
 
-[octl:power:set-usage]
-ERROR: %s
-USAGE: power set <command> <value>
+[info:executing-diag]
+ORCM Executing Diag:%s on Node: %s.
 
-[octl:power:get-usage]
-ERROR: %s
-USAGE: power get <command>
+[info:total-nodes]
+TOTAL NODES : %i
 
-[octl:power:set-mode]
-ERROR: Illegal Power Management mode, use 'power get modes' to see possible modes
-USAGE: power set mode <value>
+[info:resource-header]
+NODES                : STATE  SCHED_STATE
+-----------------------------------------
 
-[octl:diag:usage]
-ERROR: %s
-USAGE: diag <command> <node-list>
+[info:rows-found]
+%u rows were found (%0.3f seconds)
 
-[octl:workflow:add-usage]
-ERROR: %s
-USAGE: workflow add <file> [aggregator]
+[info:workflow-created]
+Workflow created with id: %i.
 
-[octl:workflow:remove-usage]
-ERROR: %s
-USAGE: workflow remove <aggregator> <workflow-name> <workflow-id>
+[info:workflow-key-type]
+Key: %s
+Type: %d
 
-[octl:workflow:list-usage]
-ERROR: %s
-USAGE: workflow list <aggregator>
+[info:workflow-key-type]
+Value: %s
 
-[octl:workflow:workflow-failure]
-ERROR: Workflow not added.
-Possible bad file, please verify if the syntax is correct and try again.
+[info:workflow-deleted]
+Workflow(s) deleted.
 
-[octl:workflow:workflow-id]
-ERROR: Incorrect argument workflow id!workflow id is NULL
+[info:workflow-list]
+workflow name is: %s   workflow id is: %d.
 
-[octl:workflow:workflow-name]
-ERROR: Incorrect argument workflow name!workflowflow name is NULL
+[info:no-workflows]
+No workflow ids
 
-[octl:workflow:aggregator]
-ERROR: aggregator isn't present in the workflow file
+[info:grouping-success]
+Grouping: %s done successfully!
 
-[octl:workflow:filter]
-ERROR: Filter plugin isn't present in the start of workflow file
+[info:no-record]
+There is no record!
 
-[octl:workflow:memory]
-ERROR: Error in Memory allocation
+[info:group-name]
+group name=%s
 
-[octl:workflow:workflow-notfound]
-ERROR: Workflow not found
+[info:member-list]
+member list=%s
 
-[octl:session:cancel-usage]
-ERROR: %s
-USAGE: session cancel <session-id>
+[info:queue-header]
+********
+ QUEUES
+********
 
-[octl:session:set-usage]
-ERROR: %s
-USAGE: session set <command> <session-id> <value>
+[info:queue-sessions]
+%s (%i sessions)
+----------------
 
-[octl:session:get-usage]
-ERROR: %s
-USAGE: session get <command> <session-id>
+[info:smpt-header]
+NODE          SMTP_KEY      SMTP_VALUE
+--------------------------------------
 
-[octl:session:set-mode]
-ERROR: Illegal Power Management mode, use 'session get modes' to see possible modes.
-USAGE: session set mode <value>
+[info:notifier-policy]
+Notifier %s policy on Node: %s.
 
-[octl:session:session-id]
-ERROR: Invalid SESSION ID
+[info:notifier-get-policy]
+Node %s failed to get notifier policy!
 
-[octl:session:cancel-fail]
-Session cancel Failed!
+[info:notifier-header]
+Node          Severity      Action
+-----------------------------------
 
-[octl:nodelist-null]
-ERROR: An empty list of nodes was specified.
+[info:chassis-header]
+Node          Chassis ID LED
+-----------------------------------/
+
+[error:unknown]
+Unknown error
+
+[error:nodelist-null]
+An empty list of nodes was specified.
 It is necessary to provide a host or group.
 
-[octl:nodelist-extract]
-ERROR: Unable to extract nodelist "%s" or an empty list was specified.
+[error:nodelist-extract]
+Unable to extract nodelist "%s" or an empty list was specified.
 
-[octl:hostname-notfound]
-ERROR: Hostname "%s" not found!
+[error:nodelist-notfound]
+Nodelist '%s' not found!
 
-[octl:allocate-memory]
-ERROR: Could not allocate memory for %s
+[error:node-notfound]
+Node '%s' not found!
 
-[octl:allocate-memory]
+[error:connection-fail]
+The connection to daemon failed.
 
-[octl:no-args]
-ERROR: An array without arguments was received.
+[error:invalid-argument]
+invalid arguments!
+%s
+
+[error:no-args]
+An array without arguments was received.
+
+[error:illegal-cmd]
+Illegal command.
+%s
+
+[error:unknown-usg]
+Unknown.
+%s
+
+[error:no-integer]
+%s is not an integer.
+
+[error:null-arg]
+Invalid argument %s!
+%s is NULL.
+
+[error:orcmsched-fail]
+Unable to get results via ORCM scheduler.
+
+[error:allocate-memory]
+Could not allocate memory for %s.
+
+[error:pack]
+Internal buffer pack error.
+
+[error:unpack]
+Internal buffer unpack error.
+
+[error:framework-open]
+Error while opening parser framework
+
+[error:framework-data-type]
+Unexpected data type from parser framework.
+
+[error:sampling-fail]
+Failure changing sensor sampling on node %s
+Is the datagroup and/or sensor label correct (%s)?
+Is the datagroup plugin actively running on the node?
+
+[error:illegal-pw-mode]
+Illegal Power Management mode, use 'power get modes' to see possible modes.
+
+[error:power-set]
+power set failed!
+
+[error:session-cancel]
+session cancel failed!
+
+[error:session-id]
+Invalid SESSION ID.
+
+[error:session-set]
+session set failed!
+
+[error:resource-drain]
+resource drain failed!
+
+[error:resource-resume]
+resource resume failed!
+
+[error:diag-mem]
+diag mem failed!
+
+[error:workflow-failure]
+Workflow not added.
+Possible bad file, verify if the syntax is correct and try again.
+
+[error:no-aggregator]
+aggregator isn't present in the workflow file.
+
+[error:add-wildcard]
+Neither the group name nor the node regex can be a wildcard for add!
+
+[error:grouping-remove]
+%s
+grouping remove failed!
+
+[error:workflow-notfound]
+Workflow not found.
+
+[error:notifier-get-smpt-policy]
+Node %s failed to get notifier smtp policy!
+
+[error:item-notfound]
+%s not found
+
+[error:chassid-id-status]
+Node %s failed to get chassis id status.
+
+[error:empty-cmd]
+No command parsed!
+
+[usage:sensor]
+sensor enable|disable|reset <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
+
+[usage:sensor-get-policy]
+sensor get policy <nodelist>
+
+[usage:sensor-set-sample-rate]
+sensor set sample-rate <sensor-name> <sample-rate> <nodelist>
+
+[usage:sensor-get-sample-rate]
+sensor get sample-rate <sensor-name> <nodelist>
+
+[usage:sensor-get-inventory]
+sensor get inventory <nodelist>
+
+[usage:sensor-store]
+sensor store <command> <nodelist>
+
+[usage:power-set]
+power set <command> <value>
+
+[usage:power-set-mode]
+power set mode <value>
+
+[usage:power-get]
+power get <command>
+
+[usage:diag]
+diag <command> <nodelist>
+
+[usage:resource-drain]
+resource drain <nodelist>
+
+[usage:resource-resume]
+resource resume <nodelist>
+
+[usage:session-cancel]
+session cancel <session-id>
+
+[usage:session-set]
+session set <command> <session-id> <value>
+
+[usage:session-get]
+session get <command> <session-id>
+
+[usage:query-history]
+query history [start-date start-time end-date end-time] <nodelist>
+
+[usage:query-sensor]
+query sensor <sensor-name> [start-date start-time end-date end-time [upper-bound lower-bound]] <nodelist>
+
+[usage:query-log]
+query log [text-in-log] [start-date start-time end-date end-time] <nodelist>
+
+[usage:query-idle]
+query idle [timeout in seconds or HH:MM:SS format] <nodelist>
+
+[usage:query-node-status]
+query node status <nodelist>
+
+[usage:query-event-data]
+query event data [start-date start-time end-date end-time] <nodelist>
+
+[usage:query-event-sensor-data]
+query event sensor-data <event-id> before/after <minutes> <sensor> <nodelist>
+
+[usage:query-event-date]
+query event date <event-id>
+
+[usage:grouping:add-usage]
+grouping add <tag> <nodelist>
+
+[usage:grouping-remove]
+grouping remove <tag> <nodelist>
+
+[usage:grouping-list]
+grouping list <tag> <nodelist>
+
+[usage:workflow-add]
+workflow add <file> [aggregator]
+
+[usage:workflow-remove]
+workflow remove <aggregator> <workflow-name> <workflow-id>
+
+[usage:workflow-list]
+workflow list <aggregator>
+
+[usage:notifier-get]
+notifier get policy <nodelist>
+
+[usage:notifier-set]
+notifier set policy <severity> <action> <nodelist>
+
+[usage:notifier-get-smtp]
+notifier get smtp-policy <nodelist>
+
+[usage:notifier-set-smtp]
+notifier set smtp-policy <key> <value> <nodelist>
+
+[usage:chassis-id-state]
+chassis-id state <nodelist>
+
+[usage:chassis-id-disable]
+chassis-id disable <nodelist>
+
+[usage:chassis-id-enable]
+chassis-id enable [seconds] <nodelist>
+

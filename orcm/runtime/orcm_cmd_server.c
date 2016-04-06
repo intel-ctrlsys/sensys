@@ -58,6 +58,7 @@ static int append_string_to_opal_list(opal_list_t *list, char *str, char* key);
 static void chassis_id_event_cleanup(void *cbdata);
 static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
         char* hostname, char* user, char* pass, unsigned int seconds, opal_buffer_t *pack_buff);
+static int get_visible_nodes_count(char** nodelist, int node_count);
 
 int orcm_cmd_server_init(void)
 {
@@ -99,6 +100,7 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
     char **nodelist = NULL;
     int iter = 0;
     ipmi_collector ipmi_c;
+    int visible_nodes = 0;
 
     rc = unpack_command_subcommand(buffer, &command, &sub_command);
     if (ORCM_SUCCESS != rc) {
@@ -181,10 +183,15 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
         load_ipmi_config_file();
         rc = ORCM_SUCCESS;
         rc_prev = ORCM_SUCCESS;
+        visible_nodes = get_visible_nodes_count(nodelist, node_count);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &visible_nodes, 1, OPAL_INT))){
+            goto ERROR;
+        }
+
         for (iter = 0; iter < node_count; iter++){
             if (!get_bmc_info(nodelist[iter], &ipmi_c)){
                 asprintf(&error, "node %s not found on IPMI configuration file", nodelist[iter]);
-                goto ERROR;
+                continue;
             }
             if (!strcmp(orte_process_info.nodename, ipmi_c.aggregator)){
                 rc = chassis_id_operation(sub_command, nodelist[iter],
@@ -233,6 +240,22 @@ RESPONSE:
         SAFE_RELEASE(pack_buff);
         return;
     }
+}
+
+static int get_visible_nodes_count(char** nodelist, int node_count){
+    int count=0;
+    int iter=0;
+    ipmi_collector ipmi_c;
+
+    for (iter = 0; iter < node_count; iter++){
+        if (!get_bmc_info(nodelist[iter], &ipmi_c)){
+            continue;
+        }
+        if (!strcmp(orte_process_info.nodename, ipmi_c.aggregator)){
+            ++count;
+        }
+    }
+    return count;
 }
 
 static int unpack_command_subcommand(opal_buffer_t* buffer, orcm_cmd_server_flag_t *command,

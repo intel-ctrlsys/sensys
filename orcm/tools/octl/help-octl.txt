@@ -292,7 +292,7 @@ Node %s failed to get notifier smtp policy!
 [error:item-notfound]
 %s not found
 
-[error:chassid-id-status]
+[error:chassis-id-status]
 Node %s failed to get chassis id status.
 
 [error:empty-cmd]

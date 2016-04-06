@@ -182,6 +182,18 @@ static void proc_errors(int fd, short args, void *cbdata)
             OBJ_RELEASE(caddy);
             exit(1);
         } else {
+            if(ORTE_PROC_IS_TOOL) {
+                if (OPAL_EQUAL == orte_util_compare_name_fields(mask,
+                                      ORTE_PROC_MY_SCHEDULER, &caddy->name)) {
+                    opal_output(0, "COMMUNICATION FAILED WITH ORCMSCHED DAEMON");
+                } else {
+                    opal_output(0, "COMMUNICATION FAILED WITH DAEMON %s",
+                            ORTE_NAME_PRINT(&caddy->name));
+                }
+                /* cleanup */
+                OBJ_RELEASE(caddy);
+                return;
+            }
             /* only notify for orcm daemon failures */
             if (0 == caddy->name.jobid) {
                 OPAL_OUTPUT_VERBOSE((1, orte_errmgr_base_framework.framework_output,

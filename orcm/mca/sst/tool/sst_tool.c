@@ -293,9 +293,6 @@ static int tool_init(void)
         goto error;
     }
     
-    if (NULL == getenv(OPAL_MCA_PREFIX"errmgr")) {
-        putenv(OPAL_MCA_PREFIX"errmgr=default_tool");
-    }
     /* open the errmgr */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_errmgr_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);

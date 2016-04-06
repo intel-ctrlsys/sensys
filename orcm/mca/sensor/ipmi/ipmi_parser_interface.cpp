@@ -48,7 +48,7 @@ extern "C" {
         if (agg_it == aggregators.end()){
             return false;
         }
-        strcpy(aggregator, agg_it->c_str());
+        strncpy(aggregator, agg_it->c_str(), MAX_STR_LEN);
         agg_it++;
         return true;
     }
@@ -62,11 +62,11 @@ extern "C" {
 
         collector = ic;
 
-        strcpy(collector->bmc_address, ic_map[str_hostname].getBmcAddress().c_str());
-        strcpy(collector->user, ic_map[str_hostname].getUser().c_str());
-        strcpy(collector->pass, ic_map[str_hostname].getPass().c_str());
-        strcpy(collector->aggregator, ic_map[str_hostname].getAggregator().c_str());
-        strcpy(collector->hostname, ic_map[str_hostname].getHostname().c_str());
+        strncpy(collector->bmc_address, ic_map[str_hostname].getBmcAddress().c_str(), MAX_STR_LEN);
+        strncpy(collector->user, ic_map[str_hostname].getUser().c_str(), MAX_STR_LEN);
+        strncpy(collector->pass, ic_map[str_hostname].getPass().c_str(), MAX_STR_LEN);
+        strncpy(collector->aggregator, ic_map[str_hostname].getAggregator().c_str(), MAX_STR_LEN);
+        strncpy(collector->hostname, ic_map[str_hostname].getHostname().c_str(), MAX_STR_LEN);
         collector->auth_method = ic_map[str_hostname].getAuthMethod();
         collector->priv_level  = ic_map[str_hostname].getPrivLevel();
         collector->port        = ic_map[str_hostname].getPort();

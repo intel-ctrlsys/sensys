@@ -12,12 +12,14 @@
 
 #include <stdlib.h>
 
+#define MAX_STR_LEN 256
+
 typedef struct ipmi_collector {
-    char bmc_address[256];
-    char user[256];
-    char pass[256];
-    char aggregator[256];
-    char hostname[256];
+    char bmc_address[MAX_STR_LEN];
+    char user[MAX_STR_LEN];
+    char pass[MAX_STR_LEN];
+    char aggregator[MAX_STR_LEN];
+    char hostname[MAX_STR_LEN];
     int auth_method;
     int priv_level;
     int port;

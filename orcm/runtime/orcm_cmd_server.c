@@ -38,6 +38,7 @@
 
 #define  NULL_CHECK(p) if(NULL==p) {goto ERROR;}
 #define SAFE_RELEASE(p) if(NULL != p) OBJ_RELEASE(p);
+#define SAFE_ARGV_FREE(p) if(NULL != p) {opal_argv_free(p);}
 
 static bool recv_issued=false;
 static int unpack_command_subcommand(opal_buffer_t* buffer, orcm_cmd_server_flag_t *command,
@@ -195,7 +196,7 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
     }
 
 ERROR:
-
+    SAFE_ARGV_FREE(nodelist);
     if (NULL == pack_buff) {
          pack_buff = OBJ_NEW(opal_buffer_t);
     }
@@ -220,6 +221,7 @@ ERROR:
 
 
 RESPONSE:
+    SAFE_ARGV_FREE(nodelist);
     if (NULL != error) {
         free(error);
     }

@@ -38,7 +38,7 @@
 
 #define  NULL_CHECK(p) if(NULL==p) {goto ERROR;}
 #define SAFE_RELEASE(p) if(NULL != p) OBJ_RELEASE(p);
-#define SAFE_ARGV_FREE(p) if(NULL != p) {opal_argv_free(p);}
+#define SAFE_ARGV_FREE(p) if(NULL != p) {opal_argv_free(p);p=NULL;}
 
 static bool recv_issued=false;
 static int unpack_command_subcommand(opal_buffer_t* buffer, orcm_cmd_server_flag_t *command,

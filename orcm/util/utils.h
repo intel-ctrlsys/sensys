@@ -13,6 +13,8 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 
+#include "orte/mca/errmgr/errmgr.h"
+
 #include "opal/dss/dss_types.h"
 #include "opal/class/opal_bitmap.h"
 
@@ -20,8 +22,36 @@
 #include "orcm/mca/analytics/analytics.h"
 
 #define SAFEFREE(p) if(NULL!=p) {free(p); p=NULL;}
-#define SAFE_RELEASE(p) if(NULL != p) OBJ_RELEASE(p);
+#define SAFE_RELEASE(p) if(NULL!=p) OBJ_RELEASE(p)
 #define CHECK_NULL_ALLOC(x, e, label)  if(NULL==x) { e=ORCM_ERR_OUT_OF_RESOURCE; goto label; }
+
+
+/*
+   OBJ_RELEASE doesn't always set the variable to NULL, so need this macro
+   instead of SAFE_RELEASE when we always want the variable to get set to
+   NULL because it will not be access as known multi-ref counted object after
+   SAFE_RELEASE.
+ */
+#define ORCM_RELEASE(x) if(NULL!=x){OBJ_RELEASE(x);x=NULL;}
+
+
+/*
+ *  Friendly macros for error/exit conditions in orcm. These ALL use
+ *  ORTE_ERROR_LOG() to report the errors automatically.
+ */
+#define ORCM_ON_FAILURE_RETURN(x) \
+    if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);return;}
+#define ORCM_ON_FAILURE_GOTO(x,label) \
+    if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);goto label;}
+#define ORCM_ON_FAILURE_BREAK(x,label) \
+    if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);break;}
+#define ORCM_ON_NULL_RETURN(x) \
+    if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
+#define ORCM_ON_NULL_GOTO(x,label) \
+    if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
+#define ORCM_ON_NULL_BREAK(x,label) \
+    if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);break;}
+
 
 #define MSG_HEADER ""
 #define MSG_ERR_HEADER "\n"

@@ -59,7 +59,7 @@
             struct timespec tp = {0, 100000};                                 \
             nanosleep(&tp, NULL);                                             \
         }                                                                     \
-        *rc = ((flg) ? ORCM_ERROR : ORCM_SUCCESS);                            \
+        *rc = ((flg) ? ORCM_ERR_TIMEOUT : ORCM_SUCCESS);                      \
     }while(0);
 
 #define ORCM_UTIL_HASH_MULTIPLIER 31

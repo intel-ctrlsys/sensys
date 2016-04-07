@@ -57,17 +57,19 @@ char *search_msg(regex_t regex_label) {
                    regex_res = regexec(&regex_label, line, 0, NULL, 0);
                    if (!regex_res){
                        msg = strdup("\0");
-                       while ((fgets(line, 1024, file)) != NULL) {
+                       while (NULL != fgets(line, 1024, file) && NULL != msg) {
                            if (!regexec(&regex, line, 0, NULL, 0)) {
                                 // remove unnecessary last "\n"
-                                if (NULL != msg)
-                                    if (msg[strlen(msg)-1] == '\n')
-                                        msg[strlen(msg)-1] = '\0';
+                                if (msg[strlen(msg)-1] == '\n') {
+                                    msg[strlen(msg)-1] = '\0';
+                                }
                                 break;
-                           }
-                           msg = (char *) realloc(msg, strlen(msg) + strlen(line) + 1);
-                           if (NULL != msg)
-                               strcat(msg, line);
+                           } else {
+                               msg = (char *) realloc(msg, strlen(msg) + strlen(line) + 1);
+                               if (NULL != msg){
+                                   strcat(msg, line);
+                              }
+                          }
                        }
                        break;
                    }
@@ -142,7 +144,7 @@ char *get_usage_label_error(int error) {
  * @param label Defined message label.
  */
 void orcm_octl_info(char *label, ...){
-    char *info_msg = NULL;
+    static char *info_msg = NULL;
     char output[MAX_SIZE] = {0,};
     regex_t r_label;
 
@@ -169,7 +171,7 @@ void orcm_octl_info(char *label, ...){
  * @param label Defined message label.
  */
 void orcm_octl_error(char *label, ...){
-    char *error_msg = NULL;
+    static char *error_msg = NULL;
     char output[MAX_SIZE] = {0,};
     regex_t r_label;
 

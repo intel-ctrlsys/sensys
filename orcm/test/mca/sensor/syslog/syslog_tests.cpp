@@ -283,7 +283,7 @@ void ut_syslog_tests::AssertCorrectPerThreadStartup(bool use_pt)
     mca_sensor_syslog_component.use_progress_thread = true;
     ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
     orcm_sensor_syslog_module.start(6);
-    mssleep(DEF_MS_PERIOD);
+    mssleep(DEF_MS_PERIOD * 20);
     Cleanup(NULL, NULL, 6);
 }
 

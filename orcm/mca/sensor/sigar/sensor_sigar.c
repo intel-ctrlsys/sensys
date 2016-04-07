@@ -168,8 +168,8 @@ static uint64_t metric_diff_calc(sigar_uint64_t newval, uint64_t oldval,
                                  const char* value_name_for_log);
 
 #define ON_NULL_RETURN(x) if(NULL==x) return ORCM_ERR_OUT_OF_RESOURCE
-#define ON_NULL_GOTO(x,y) if(NULL==x) {ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto cleanup;}
-#define ON_FAILURE_GOTO(x,y) if(ORCM_SUCCESS!=x) {ORTE_ERROR_LOG(x);goto cleanup;}
+#define ON_NULL_GOTO(x,y) if(NULL==x) {ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto y;}
+#define ON_FAILURE_GOTO(x,y) if(ORCM_SUCCESS!=x) {ORTE_ERROR_LOG(x);goto y;}
 #define ON_NULL_PARAM_RETURN(x) if(NULL==x) return ORCM_ERR_BAD_PARAM
 #define ORCM_RELEASE(x) SAFE_RELEASE(x);x=NULL
 
@@ -180,6 +180,9 @@ static int init(void)
     sensor_sigar_disks_t *dit;
     sensor_sigar_interface_t *sit;
     unsigned int i;
+
+    memset(&sigar_fslist, 0, sizeof(sigar_file_system_list_t));
+    memset(&sigar_netlist, 0, sizeof(sigar_net_interface_list_t));
 
     mca_sensor_sigar_component.diagnostics = 0;
     mca_sensor_sigar_component.runtime_metrics =
@@ -213,6 +216,7 @@ static int init(void)
         sigar_fslist.number = 1;
         sigar_fslist.size = sizeof(sigar_file_system_t);
         sigar_fslist.data = malloc(sizeof(sigar_file_system_t));
+        ON_NULL_GOTO(sigar_fslist.data, error_exit);
         sigar_file_system_t* fs = sigar_fslist.data;
         strcpy(fs->dir_name, "/");
         strcpy(fs->dev_name, "/dev/sda1");
@@ -244,10 +248,11 @@ static int init(void)
         sigar_netlist.number = 1;
         sigar_netlist.size = 0;
         sigar_netlist.data = malloc(sizeof(char*));
+        ON_NULL_GOTO(sigar_netlist.data, error_exit);
         sigar_netlist.data[0] = "eth0";
     } else {
         if (0 != sigar_net_interface_list_get(sigar, &sigar_netlist)) {
-            return ORTE_ERROR;
+            return ORCM_ERROR;
         }
     }
     for (i=0; i < sigar_netlist.number; i++) {
@@ -262,6 +267,9 @@ static int init(void)
     }
 
     return ORCM_SUCCESS;
+
+error_exit:
+    return ORCM_ERR_OUT_OF_RESOURCE;
 }
 
 static void finalize(void)

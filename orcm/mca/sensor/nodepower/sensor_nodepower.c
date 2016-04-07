@@ -52,6 +52,11 @@
 
 #include <ipmicmd.h>
 
+#define ON_NULL_GOTO(x,y) if(NULL==x) {ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto cleanup;}
+#define ON_FAILURE_GOTO(x,y) if(ORCM_SUCCESS!=x) {ORTE_ERROR_LOG(x);goto cleanup;}
+
+#define ORCM_RELEASE(x) if(NULL!=x){OBJ_RELEASE(x);x=NULL;}
+
 #define MAX_IPMI_RESPONSE 1024
 /* declare the API functions */
 static int init(void);
@@ -282,7 +287,7 @@ static void stop(orte_jobid_t jobid)
         orcm_sensor_nodepower.ev_active = false;
         /* stop the thread without releasing the event base */
         opal_progress_thread_pause("nodepower");
-        OBJ_RELEASE(nodepower_sampler);
+        ORCM_RELEASE(nodepower_sampler);
     }
     return;
 }
@@ -625,7 +630,7 @@ static void nodepower_log(opal_buffer_t *sample)
 cleanup:
     SAFEFREE(hostname);
     if ( NULL != analytics_vals) {
-        OBJ_RELEASE(analytics_vals);
+        ORCM_RELEASE(analytics_vals);
     }
 }
 
@@ -730,7 +735,7 @@ static void nodepower_inventory_collect(opal_buffer_t *inventory_snapshot)
 
 static void my_inventory_log_cleanup(int dbhandle, int status, opal_list_t *kvs, opal_list_t *output, void *cbdata)
 {
-    OBJ_RELEASE(kvs);
+    ORCM_RELEASE(kvs);
 }
 
 static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
@@ -742,55 +747,45 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
     struct timeval current_time;
     char* packed_hostname = NULL;
     orcm_value_t *mkv = NULL;
+    char *inv = NULL;
+    char *inv_val = NULL;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL);
+    ON_FAILURE_GOTO(rc, cleanup);
+
     time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
-    if (NULL == time_stamp) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    ON_NULL_GOTO(time_stamp, cleanup);
+
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &packed_hostname, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.unpack(inventory_snapshot, &packed_hostname, &n, OPAL_STRING);
+    ON_FAILURE_GOTO(rc, cleanup);
+
     mkv = orcm_util_load_orcm_value("hostname", packed_hostname, OPAL_STRING, NULL);
     SAFEFREE(packed_hostname);
     records = OBJ_NEW(opal_list_t);
 
     opal_list_append(records, (opal_list_item_t*)mkv);
     opal_list_append(records, (opal_list_item_t*)time_stamp);
-    {
-        char *inv = NULL;
-        char *inv_val = NULL;
 
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_RELEASE(records);
-            return;
-        }
-        n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv_val, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_RELEASE(records);
-            return;
-        }
+    n=1;
+    rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING);
+    ON_FAILURE_GOTO(rc, cleanup);
 
-        mkv = OBJ_NEW(orcm_value_t);
-        mkv->value.key = inv;
-        mkv->value.type = OPAL_STRING;
-        mkv->value.data.string = inv_val;
-        opal_list_append(records, (opal_list_item_t*)mkv);
-    }
+    n=1;
+    rc = opal_dss.unpack(inventory_snapshot, &inv_val, &n, OPAL_STRING);
+    ON_FAILURE_GOTO(rc, cleanup);
+
+    mkv = orcm_util_load_orcm_value(inv, inv_val, OPAL_STRING, NULL);
+    ON_NULL_GOTO(mkv, cleanup);
+    opal_list_append(records, (opal_list_item_t*)mkv);
+
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);
-    } else {
-        my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
+        return;
     }
+
+cleanup:
+    ORCM_RELEASE(records);
 }
 
 int nodepower_enable_sampling(const char* sensor_specification)

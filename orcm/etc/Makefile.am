@@ -10,7 +10,7 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
-# Copyright (c) 2013      Intel, Inc.  All rights reserved.
+# Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -20,6 +20,9 @@
 
 orcm_config_files = @OPAL_SITE_CONFIG_FILE@
 orcm_config_file_found = @OPAL_SITE_CONFIG_FILE_FOUND@
+
+orcm_default_config_file = @ORCM_DEFAULT_CONFIG_FILE@
+orcm_default_config_file_found = @ORCM_DEFAULT_CONFIG_FILE_FOUND@
 
 orcm_rsyslog_config_file = @OPAL_SYSLOG_CONFIG_FILE@
 orcm_rsyslog_config_file_found = @OPAL_SYSLOG_CONFIG_FILE_FOUND@
@@ -56,6 +59,20 @@ install-data-local:
 	            fi; \
 	        done \
         fi;
+	@ p="$(orcm_default_config_file)"; \
+	echo "**FOUND $(orcm_default_config_file)**"; \
+        if test "$(orcm_default_config_file_found)" = "yes"; then \
+		if test -f $(DESTDIR)$(sysconfdir)/orcm-default-config.xml; then \
+			echo "******************************* WARNING ************************************"; \
+			echo "*** Not installing new $$p over existing file in:"; \
+			echo "***   $(DESTDIR)$(sysconfdir)/orcm-default-config.xml ";  \
+			echo "******************************* WARNING ************************************"; \
+		else \
+			if test -f  "$$p"; then d=; else d="$(srcdir)/../"; fi; \
+			echo "$(INSTALL_DATA) -m 600 $$d$$p $(DESTDIR)$(sysconfdir)/orcm-default-config.xml"; \
+			$(INSTALL_DATA) -m 600 $$d$$p $(DESTDIR)$(sysconfdir)/orcm-default-config.xml; \
+		fi \
+	fi;
 	@ p="$(orcm_rsyslog_config_file)"; \
         echo "**FOUND $(orcm_rsyslog_config_file)**"; \
         if test "$(orcm_rsyslog_config_file_found)" = "yes"; then \
@@ -82,4 +99,14 @@ uninstall-local:
 	      rm -f "$(DESTDIR)$(sysconfdir)/$$file" ; \
 	    fi ; \
 	  fi ; \
+	done
+	@ p="$(orcm_default_config_file)"; \
+	for file in $$p; do \
+		if test -f "$(DESTDIR)$(sysconfdir)/$$file"; then \
+			if test -f "$$file"; then d=; else d="$(srcdir)/../"; fi; \
+			if diff "$(DESTDIR)$(sysconfdir)/$$file" "$$d$$file" > /dev/null 2>&1 ; then \
+				echo "rm -f $(DESTDIR)$(sysconfdir)/$$file" ; \
+				rm -f "$(DESTDIR)$(sysconfdir)/$$file" ; \
+			fi ; \
+		fi ; \
 	done

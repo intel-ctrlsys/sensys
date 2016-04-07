@@ -19,7 +19,7 @@
 # Copyright (c) 2012      Oracle and/or its affiliates.  All rights reserved.
 # Copyright (c) 2013      Mellanox Technologies, Inc.
 #                         All rights reserved.
-# Copyright (c) 2013-2015 Intel, Inc.  All rights reserved.
+# Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
@@ -56,6 +56,7 @@ AC_CONFIG_MACRO_DIR(config)
 # Get our platform support file.  This has to be done very, very early
 # because it twiddles random bits of autoconf
 OPAL_LOAD_PLATFORM
+ORCM_CHECK_DEFAULT_CONFIG
 ORCM_LOAD_CONFIGURATION
 
 #

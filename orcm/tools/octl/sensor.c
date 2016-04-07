@@ -268,6 +268,8 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
         return rc;
     }
 
+    orcm_octl_info("sensor-set-sample-rate");
+
     if (isdigit(argv[4][strlen(argv[4]) - 1])) {
         sample_rate = (int)strtol(argv[4], NULL, 10);
     } else {

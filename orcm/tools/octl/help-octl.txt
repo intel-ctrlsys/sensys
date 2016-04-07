@@ -181,6 +181,12 @@ Node          Severity      Action
 Node          Chassis ID LED
 -----------------------------------/
 
+[info:sensor-set-sample-rate]
+Note: Setting per sensor sample rate in the examples below will take effect
+      only if the sensor is started in a progess thread
+Example: sensor set sample-rate coretemp 10 c[2:1-10]
+         sensor set sample-rate freq 10 c[2:1-10]
+
 [error:unknown]
 Unknown error
 
@@ -300,109 +306,217 @@ No command parsed!
 
 [usage:sensor]
 sensor enable|disable|reset <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
+Example: sensor enable c[2:1-10] coretemp:core0
+         sensor enable c[2:1-10] all:core0
+         sensor disable c[2:1-10] coretemp:core0
+         sensor disable c[2:1-10] all:core0
+         sensor reset c[2:1-10] coretemp:core0
+         sensor reset c[2:1-10] all:core0
 
 [usage:sensor-get-policy]
 sensor get policy <nodelist>
+Example: sensor get policy c[2:1-10]
 
 [usage:sensor-set-sample-rate]
 sensor set sample-rate <sensor-name> <sample-rate> <nodelist>
+Example: sensor set sample-rate base 10 c[2:1-10]
+
+Note: Setting per sensor sample rate in the examples below will take effect
+      only if the sensor is started in a progess thread
+Example: sensor set sample-rate coretemp 10 c[2:1-10]
+         sensor set sample-rate freq 10 c[2:1-10]
 
 [usage:sensor-get-sample-rate]
 sensor get sample-rate <sensor-name> <nodelist>
+Example: sensor get sample-rate base c[2:1-10]
+         sensor get sample-rate coretemp c[2:1-10]
+         sensor get sample-rate freq c[2:1-10]
 
 [usage:sensor-get-inventory]
 sensor get inventory <nodelist>
+Example: sensor get inventory c[2:1-10]
 
 [usage:sensor-store]
 sensor store <command> <nodelist>
+Example: sensor store environment_only c[2:1-10]
+         sensor store event_only c[2:1-10]
+         sensor store all c[2:1-10]
+         sensor store none c[2:1-10]
 
 [usage:power-set]
 power set <command> <value>
+Example: power set budget 100
+         power set mode MANUAL_FREQ
+         power set window 100
+         power set overage 100
+         power set underage 100
+         power set overage_time 100
+         power set underage_time 100
+         power set frequency 100
+         power set strict 0
 
 [usage:power-set-mode]
 power set mode <value>
+Example: power set mode MANUAL_FREQ
 
 [usage:power-get]
 power get <command>
+Example: power get budget
+         power get mode
+         power get modes
+         power get window
+         power get overage
+         power get underage
+         power get overage_time
+         power get underage_time
+         power get frequency
+         power get strict
 
 [usage:diag]
 diag <command> <nodelist>
+Example: diag cpu c[2:1-10]
+         diag eth c[2:1-10]
+         diag mem c[2:1-10]
 
 [usage:resource-drain]
 resource drain <nodelist>
+Example: resource drain c[2:1-10]
 
 [usage:resource-resume]
 resource resume <nodelist>
+Example: resource resume c[2:1-10]
 
 [usage:session-cancel]
 session cancel <session-id>
+Example: session cancel 1
 
 [usage:session-set]
 session set <command> <session-id> <value>
+Example: session set budget 1 100
+         session set mode 1 MANUAL_FREQ
+         session set window 1 100
+         session set overage 1 100
+         session set underage 1 100
+         session set overage_time 1 100
+         session set underage_time 1 100
+         session set frequency 1 100
+         session set strict 1 0
 
 [usage:session-get]
 session get <command> <session-id>
+Example: session get budget 1
+         session get mode 1
+         session get window 1
+         session get overage 1
+         session get underage 1
+         session get overage_time 1
+         session get underage_time 1
+         session get frequency 1
+         session get strict 1
 
 [usage:query-history]
 query history [start-date start-time end-date end-time] <nodelist>
+Example: query history 2015-11-13 15:00:00 2015-11-13 16:00:00 c[2:1-10]
 
 [usage:query-sensor]
 query sensor <sensor-name> [start-date start-time end-date end-time [upper-bound lower-bound]] <nodelist>
+Example: query sensor coretemp 2015-11-13 14:00:00 2015-11-13 16:00:00 0.1 1 c[2:1-10]
+         query sensor coretemp* 2015-11-13 14:00:00 2015-11-13 16:00:00 0.1 1 c[2:1-10]
 
 [usage:query-log]
 query log [text-in-log] [start-date start-time end-date end-time] <nodelist>
+Example: query log *access* c[2:1-10]
 
 [usage:query-idle]
 query idle [timeout in seconds or HH:MM:SS format] <nodelist>
+Example: query idle 60 c[2:1-10]
+         query idle 03:59:50 c[2:1-10]
 
 [usage:query-node-status]
 query node status <nodelist>
+Example: query node status c[2:1-10]
 
 [usage:query-event-data]
 query event data [start-date start-time end-date end-time] <nodelist>
+Example: query event data 2016-02-16 08:22:00 2016-02-16 08:22:14 c[2:1-10]
 
 [usage:query-event-sensor-data]
 query event sensor-data <event-id> before/after <minutes> <sensor> <nodelist>
+Example: query event sensor-data 1 after 10 coretemp* c[2:1-10]
 
 [usage:query-event-date]
 query event date <event-id>
+Example: query event date 1
 
-[usage:grouping:add-usage]
+[usage:grouping-add]
 grouping add <tag> <nodelist>
+Example: grouping add group1 c[2:1-10]
 
 [usage:grouping-remove]
 grouping remove <tag> <nodelist>
+Example: grouping remove group1 c[2:1-10]
+         grouping remove * c[2:1-10]
+         grouping remove group1 *
+         grouping remove * *
 
 [usage:grouping-list]
 grouping list <tag> <nodelist>
+Example: grouping list group1 c[2:1-10]
+         grouping list * c[2:1-10]
+         grouping list group1 *
+         grouping list * *
 
 [usage:workflow-add]
 workflow add <file> [aggregator]
+Example: workflow add /tmp/workflow1.xml
+         workflow add /tmp/workflow1.xml master1
 
 [usage:workflow-remove]
 workflow remove <aggregator> <workflow-name> <workflow-id>
+Example: workflow remove master1 wf1 0
 
 [usage:workflow-list]
 workflow list <aggregator>
+Example: workflow list master1
 
 [usage:notifier-get]
 notifier get policy <nodelist>
+Example: notifier get policy c[2:1-10]
 
 [usage:notifier-set]
 notifier set policy <severity> <action> <nodelist>
+Example: notifier set policy emerg smtp c[2:1-10]
+         notifier set policy alert smtp c[2:1-10]
+         notifier set policy crit smtp c[2:1-10]
+         notifier set policy error syslog c[2:1-10]
+         notifier set policy warn syslog c[2:1-10]
+         notifier set policy notice syslog c[2:1-10]
+         notifier set policy debug syslog c[2:1-10]
 
 [usage:notifier-get-smtp]
 notifier get smtp-policy <nodelist>
+Example: notifier get smtp-policy c[2:1-10]
 
 [usage:notifier-set-smtp]
 notifier set smtp-policy <key> <value> <nodelist>
+Example: notifier set smtp-policy server_name <email-server> c[2:1-10]
+         notifier set smtp-policy server_port <portno> c[2:1-10]
+         notifier set smtp-policy to_addr <email-addr> c[2:1-10]
+         notifier set smtp-policy from_addr <email-addr> c[2:1-10]
+         notifier set smtp-policy from_name <name> c[2:1-10]
+         notifier set smtp-policy subject <email-subject> c[2:1-10]
+         notifier set smtp-policy body_preffix <email-body-preffix> c[2:1-10]
+         notifier set smtp-policy body_suffix <email-body-suffix> c[2:1-10]
+         notifier set smtp-policy priority <1-high,2-normal,3-low> c[2:1-10]
 
 [usage:chassis-id-state]
 chassis-id state <nodelist>
+Example: chassis-id state c[2:1-10]
 
 [usage:chassis-id-disable]
 chassis-id disable <nodelist>
+Example: chassis-id disable c[2:1-10]
 
 [usage:chassis-id-enable]
 chassis-id enable [seconds] <nodelist>
-
+Example: chassis-id enable 10 c[2:1-10]

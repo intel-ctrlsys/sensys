@@ -26,7 +26,7 @@
 // Fixture
 using namespace std;
 
-#define DEF_MS_PERIOD (50)
+#define DEF_MS_PERIOD (75)
 
 #define SOCKET_FD (30042)
 
@@ -166,16 +166,24 @@ ssize_t ut_syslog_tests::GetSyslogEntry(char* buffer, size_t max_size)
         if(sysLog_.size() == sysLogIndex_ || NULL == buffer || 0 == max_size) {
             return 0;
         } else {
-            string msg = sysLog_[sysLogIndex_++];
-            size_t max_len = MIN(max_size-1, msg.size()+1);
-            strncpy(buffer, msg.c_str(), max_len);
-            buffer[max_len] = '\0';
-            return max_len;
+            try {
+                const char* raw = sysLog_[sysLogIndex_].c_str();
+                if(NULL == raw) {
+                    throw logic_error("message was NULL!");
+                }
+                ++sysLogIndex_;
+                string msg = raw;
+                size_t max_len = MIN(max_size-1, msg.size()+1);
+                strncpy(buffer, msg.c_str(), max_len);
+                buffer[max_len] = '\0';
+                return max_len;
+            } catch(logic_error& err) {
+                return 0;
+            }
         }
     } else {
         strncpy(buffer, "Hello World!", max_size);
         bad_syslog_entry_ = false;
-
     }
 }
 bool ut_syslog_tests::ValidateSyslogData(opal_buffer_t* buffer)
@@ -254,8 +262,10 @@ void ut_syslog_tests::Cleanup(void* sampler, void* logBuffer, int jobid)
     }
     if(0 <= jobid) {
         orcm_sensor_syslog_module.stop(jobid);
+        mssleep(mca_sensor_syslog_component.sample_rate * 1500);
     }
     orcm_sensor_syslog_module.finalize();
+    mca_sensor_syslog_component.use_progress_thread = false;
 }
 
 void ut_syslog_tests::ExpectCorrectSeverityAndFacility(int val, const char* expected_sev, const char* expected_fac)
@@ -283,7 +293,7 @@ void ut_syslog_tests::AssertCorrectPerThreadStartup(bool use_pt)
     mca_sensor_syslog_component.use_progress_thread = true;
     ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
     orcm_sensor_syslog_module.start(6);
-    mssleep(DEF_MS_PERIOD * 20);
+    mssleep(mca_sensor_syslog_component.sample_rate * 1500); /* 1.5x sample rate in ms */
     Cleanup(NULL, NULL, 6);
 }
 

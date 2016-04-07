@@ -1148,7 +1148,7 @@ void print_results(opal_list_t *results, double start_time, double stop_time) {
             rows = (uint32_t)opal_list_get_size(results);
             rows--;
             OPAL_LIST_FOREACH(line, results, opal_value_t) {
-                printf("%s", line->data.string);
+                printf("%s\n", line->data.string);
             }
         }
     orcm_octl_info("rows-found", rows, stop_time - start_time);

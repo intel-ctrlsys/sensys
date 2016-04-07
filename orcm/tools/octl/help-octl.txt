@@ -9,7 +9,7 @@
 # This is the US/English help file for OCTL
 #
 
-[usage]
+[info:usage]
 Usage: octl [OPTIONS]
   Open Resilient Cluster Manager "octl" Tool
 %s
@@ -18,8 +18,12 @@ Interactive shell:
 Use 'quit' - for exiting the shell
 Use '<tab>' or '<?>' for help
 
-[version]
+[info:version]
 octl %s
+
+[info:octl]
+*** WELCOME TO OCTL ***
+Possible commands:
 
 [info:success]
 Success!
@@ -190,6 +194,18 @@ Example: sensor set sample-rate coretemp 10 c[2:1-10]
 [error:unknown]
 Unknown error
 
+[error:orcm-finalize]
+Failed orcm_finalize.
+
+[error:orcm-init]
+Failed to initialize orcm.
+
+[error:no-cmd]
+No command specified.
+
+[error:not-implemented]
+Not implemented.
+
 [error:nodelist-null]
 An empty list of nodes was specified.
 It is necessary to provide a host or group.
@@ -214,8 +230,7 @@ invalid arguments!
 An array without arguments was received.
 
 [error:illegal-cmd]
-Illegal command.
-%s
+Illegal command: %s
 
 [error:unknown-usg]
 Unknown.

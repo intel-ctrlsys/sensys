@@ -16,8 +16,6 @@
  ******************/
 static int orcm_octl_work(int argc, char *argv[]);
 static int run_cmd(int argc, char *cmdlist[]);
-static void octl_print_illegal_command(char *cmd);
-static void octl_print_error(int rc);
 static void octl_print_error_illegal_command(char **cmdlist);
 static int octl_interactive_cli(void);
 static void octl_init_cli(orcm_cli_t *cli);
@@ -75,7 +73,7 @@ main(int argc, char *argv[])
         }
 
         if (ORCM_SUCCESS != (erri = orcm_finalize())) {
-            fprintf(stderr, "Failed orcm_finalize\n");
+            orcm_octl_error("orcm-finalize");
             break;
         }
 
@@ -95,7 +93,6 @@ static int orcm_octl_work(int argc, char *argv[])
 
     orcm_octl_globals = tmp;
     char *args = NULL;
-    char *str = NULL;
     int tailc = 0;
     char **tailv = NULL;
     int ret = 0;
@@ -123,24 +120,14 @@ static int orcm_octl_work(int argc, char *argv[])
 
     if (orcm_octl_globals.help) {
         args = opal_cmd_line_get_usage_msg(&cmd_line);
-        str = opal_show_help_string("help-octl.txt", "usage", false, args);
-        if (NULL != str) {
-            printf("%s", str);
-            free(str);
-        }
+        orcm_octl_info("usage", args);
         free(args);
         /* If we show the help message, that should be all we do */
         exit(0);
     }
 
     if (orcm_octl_globals.version) {
-        str = opal_show_help_string("help-octl.txt", "version", false,
-                                    ORCM_VERSION,
-                                    PACKAGE_BUGREPORT);
-        if (NULL != str) {
-            printf("%s", str);
-            free(str);
-        }
+        orcm_octl_info("version", ORCM_VERSION);
         exit(0);
     }
 
@@ -155,7 +142,7 @@ static int orcm_octl_work(int argc, char *argv[])
 
     /* initialize orcm for use as a tool */
     if (ORCM_SUCCESS != (ret = orcm_init(ORCM_TOOL))) {
-        fprintf(stderr, "Failed to initialize\n");
+        orcm_octl_error("orcm-init");
         exit(ret);
     }
 
@@ -176,6 +163,7 @@ static int octl_interactive_cli(void)
     orcm_cli_t cli;
     char *mycmd = NULL;
     int ret = 0;
+    char *help_msg = NULL;
 
     octl_init_cli(&cli);
 
@@ -184,7 +172,7 @@ static int octl_interactive_cli(void)
         /* run interactive cli */
         ret = orcm_cli_get_cmd("octl", &cli, &mycmd);
         if (ORCM_SUCCESS != ret) {
-            octl_print_illegal_command(mycmd);
+            orcm_octl_error("illegal-cmd");
             if (NULL != mycmd) {
                 free(mycmd);
             }
@@ -192,7 +180,7 @@ static int octl_interactive_cli(void)
         }
 
         if (NULL == mycmd) {
-            fprintf(stderr, "\nNo command specified\n");
+            orcm_octl_error("no-cmd");
             continue;
         }
 
@@ -205,9 +193,12 @@ static int octl_interactive_cli(void)
 
         ret = run_cmd_from_cli(mycmd);
         if (ORCM_ERR_TAKE_NEXT_OPTION == ret) {
-            printf("\nUse \'%s<tab>\' or \'%s<?>\' for help.\n", mycmd, mycmd);
+            asprintf(&help_msg, "Use \'%s<tab>\' or \'%s<?>\' for help.", mycmd, mycmd);
+          if (NULL != help_msg) {
+                orcm_octl_error("invalid-argument", help_msg);
+                SAFEFREE(help_msg);
+          }
         }
-
         free(mycmd);
     }
 
@@ -230,7 +221,7 @@ static void octl_init_cli(orcm_cli_t *cli)
     OBJ_CONSTRUCT(cli, orcm_cli_t);
     orcm_cli_create(cli, cli_init);
     /* give help on top level commands */
-    printf("*** WELCOME TO OCTL ***\n Possible commands:\n");
+    orcm_octl_info("octl");
     orcm_cli_print_cmd_help(cli, NULL);
 }
 
@@ -782,36 +773,13 @@ static int run_cmd(int argc, char *cmdlist[])
 
     if (ORCM_ERROR == rc) {
         octl_print_error_illegal_command(cmdlist);
-    } else {
-        octl_print_error(rc);
+    } else if(ORCM_ERR_NOT_IMPLEMENTED  == rc) {
+        orcm_octl_error("not-implemented");
     }
 
     return rc;
 }
 
-static void octl_print_illegal_command(char *cmd)
-{
-    if (NULL != cmd) {
-        fprintf(stderr, "\nERROR: Illegal command: %s\n", cmd);
-    }
-    return;
-}
-
-static void octl_print_error(int rc)
-{
-    if (ORCM_SUCCESS != rc) {
-        if (ORCM_ERR_TAKE_NEXT_OPTION == rc) {
-            fprintf(stdout, "ERROR: invalid arguments!\n");
-        } else {
-            const char *errmsg = ORTE_ERROR_NAME(rc);
-            if (NULL != errmsg) {
-                fprintf(stdout, "\nERROR: %s\n", errmsg);
-            } else {
-                fprintf(stdout, "\nERROR: Internal\n");
-            }
-        }
-    }
-}
 
 static void octl_print_error_illegal_command(char **cmdlist)
 {
@@ -819,7 +787,7 @@ static void octl_print_error_illegal_command(char **cmdlist)
     if (NULL != cmdlist) {
         cmd = opal_argv_join(cmdlist, ' ');
         if (NULL != cmd) {
-            octl_print_illegal_command(cmd);
+            orcm_octl_error("illegal-cmd", cmd);
             free(cmd);
         }
     }

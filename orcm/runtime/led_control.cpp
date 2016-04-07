@@ -66,10 +66,15 @@ int LedControl::getChassisIDState(){
     unsigned char buff_out[MAX_BUFF_SIZE];
     int out_size = sizeof(buff_out);
     unsigned char c_code;
+    int is_supported = 0;
 
 #ifdef HAVE_LED_CONTROL_SUPPORT
     ipmiCmdOperation(CHASSIS_STATUS, NULL, 0, buff_out, &out_size, &c_code);
 
+    is_supported = (buff_out[MISC_CHASSIS] >> 4) & 4;
+    if (!is_supported){
+        return -1;
+    }
     return (buff_out[MISC_CHASSIS] >> 4) & 3;
 #else
     return -1;

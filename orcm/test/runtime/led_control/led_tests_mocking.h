@@ -12,6 +12,7 @@
 
 extern int ipmi_open_session_count;
 extern bool is_remote_node;
+extern bool is_supported;
 
 #ifdef __cplusplus
 extern "C"{

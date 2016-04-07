@@ -477,8 +477,11 @@ static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
     init_led_control(hostname, user, pass);
     switch (sub_command){
         case ORCM_GET_CHASSIS_ID_STATE:
+            response = ORCM_ERROR;
             state = get_chassis_id_state();
-            response = ORCM_SUCCESS;
+            if (0 <= state){
+                response = ORCM_SUCCESS;
+            }
             break;
         case ORCM_SET_CHASSIS_ID_OFF:
             response = ORCM_ERROR;

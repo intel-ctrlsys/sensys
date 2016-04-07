@@ -15,15 +15,21 @@
 
 int ipmi_open_session_count = 0;
 bool is_remote_node = false;
+bool is_supported = true;
 
 extern "C" {
 
     int __wrap_ipmi_cmd(unsigned short cmd, unsigned char *pdata, int sdata,
             unsigned char *presp, int *sresp, unsigned char *pcc, char fdebugcmd){
             static unsigned char chassis_id_state = LED_OFF;
+
+        int misc_chassis_state = 0x00;
         switch(cmd){
             case CHASSIS_STATUS:
-                presp[MISC_CHASSIS] = 0x40 | (chassis_id_state << 4);
+                if (is_supported){
+                    misc_chassis_state = 0x40;
+                }
+                presp[MISC_CHASSIS] = misc_chassis_state | (chassis_id_state << 4);
                 *sresp = 4;
                 *pcc = 0;
                 break;

@@ -23,6 +23,7 @@ void ut_control_led_tests::SetUp(){
     cout<<"Starting test"<<endl;
     ipmi_open_session_count = 0;
     is_remote_node = false;
+    is_supported = true;
 }
 
 void ut_control_led_tests::TearDown(){
@@ -61,4 +62,10 @@ TEST_F(ut_control_led_tests, disable_chassis_id){
 TEST_F(ut_control_led_tests, wrong_remote_data){
     LedControl lc(HOSTNAME, "", PASS);
     ASSERT_NE(0, lc.disableChassisID());
+}
+
+TEST_F(ut_control_led_tests, chassis_status_query_not_supported){
+    LedControl lc(HOSTNAME, USER, PASS);
+    is_supported = false;
+    ASSERT_EQ(-1, lc.getChassisIDState());
 }

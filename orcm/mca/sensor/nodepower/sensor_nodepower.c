@@ -743,7 +743,7 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
     int n = 1;
     opal_list_t *records = NULL;
     int rc = OPAL_SUCCESS;
-    orcm_value_t *time_stamp;
+    orcm_value_t *time_stamp = NULL;
     struct timeval current_time;
     char* packed_hostname = NULL;
     orcm_value_t *mkv = NULL;

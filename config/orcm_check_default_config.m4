@@ -49,7 +49,8 @@ AC_DEFUN([ORCM_CHECK_DEFAULT_CONFIG], [
 
    if test "$orcm_default_config" = "default" ; then
      orcm_default_config="${srcdir}/orcm/etc/orcm-default-config.xml"
-   elif test "`echo $orcm_default_config | cut -c1`" != "/" ; then
+   fi
+   if test "`echo $orcm_default_config | cut -c1`" != "/" ; then
      orcm_default_config_base="`dirname $orcm_default_config`"
      orcm_default_config_name="`basename $orcm_default_config`"
      current_dir="`pwd`"

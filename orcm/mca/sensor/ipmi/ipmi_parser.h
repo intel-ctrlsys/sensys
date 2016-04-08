@@ -22,7 +22,7 @@ extern "C" {
     #include "opal/mca/installdirs/installdirs.h"
 }
 
-#define DEFAULT_FILE_NAME "ipmi.xml"
+#define DEFAULT_FILE_NAME "orcm-default-config.xml"
 #define XML_IPMI "ipmi"
 #define XML_BMC_NODE "bmc_node"
 #define XML_NAME "name"

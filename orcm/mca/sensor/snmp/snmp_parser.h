@@ -28,7 +28,7 @@ extern "C" {
 
 #define DEFAULT_SEC_TYPE  AUTHNOPRIV
 #define DEFAULT_AUTH_TYPE MD5
-#define SNMP_DEFAULT_FILE_NAME "snmp.xml"
+#define SNMP_DEFAULT_FILE_NAME "orcm-default-config.xml"
 
 #define XML_SNMP "snmp"
 #define XML_CONFIG_NODE "config"

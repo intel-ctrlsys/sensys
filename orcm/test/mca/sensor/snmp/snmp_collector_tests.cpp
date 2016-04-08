@@ -620,7 +620,7 @@ void ut_snmp_collector_tests::sample_check(opal_buffer_t *bucket)
     vector<vardata> collected_samples = unpackDataFromBuffer(buf);
 
     ASSERT_FALSE(collected_samples.empty());
-
+    ASSERT_TRUE(2 < collected_samples.size());
     char *str = collected_samples[2].getValue<char*>();
     ASSERT_STREQ(dataStr, str);
     ASSERT_EQ(collected_samples[3].getValue<int64_t>(), dataInt);

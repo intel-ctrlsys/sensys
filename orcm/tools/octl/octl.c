@@ -265,7 +265,7 @@ static int run_cmd_resource(char** cmdlist, int sub_cmd)
             rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -300,7 +300,7 @@ static int run_cmd_queue(char** cmdlist, int sub_cmd)
             rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
     }
     return rc;
 }
@@ -341,10 +341,10 @@ static int session_power_next_cmd(char* next_cmd, int cmd)
             rc = (cmd_set == cmd ? ORCM_SET_POWER_STRICT_COMMAND : ORCM_GET_POWER_STRICT_COMMAND);
             break;
         case cmd_modes:
-            rc = (cmd_get == cmd ? ORCM_GET_POWER_MODES_COMMAND : ORCM_ERROR);
+            rc = (cmd_get == cmd ? ORCM_GET_POWER_MODES_COMMAND : ORCM_ERR_OPERATION_UNSUPPORTED);
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -365,7 +365,7 @@ static int run_cmd_session(char** cmdlist, int sub_command)
             if (3 > opal_argv_count(cmdlist)) {
                 return ORCM_ERR_TAKE_NEXT_OPTION;
             }
-            if (ORCM_ERROR != (rc = session_power_next_cmd(cmdlist[2], sub_command))) {
+            if (ORCM_ERR_OPERATION_UNSUPPORTED != (rc = session_power_next_cmd(cmdlist[2], sub_command))) {
                 if (cmd_set == sub_command) {
                     rc = orcm_octl_session_set(rc, cmdlist);
                 } else {
@@ -377,7 +377,7 @@ static int run_cmd_session(char** cmdlist, int sub_command)
             rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -400,7 +400,7 @@ static int run_cmd_diag(char** cmdlist, int sub_cmd)
             rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -415,15 +415,15 @@ static int run_cmd_power(char** cmdlist, int sub_cmd)
     }
 
     if (cmd_set != sub_cmd && cmd_get != sub_cmd) {
-        return ORCM_ERROR;
+        return ORCM_ERR_OPERATION_UNSUPPORTED;
     }
 
     if (3 > opal_argv_count(cmdlist)) {
         return ORCM_ERR_TAKE_NEXT_OPTION;
     }
 
-    if (ORCM_ERROR == (rc = session_power_next_cmd(cmdlist[2], sub_cmd))) {
-        return ORCM_ERROR;
+    if (ORCM_ERR_OPERATION_UNSUPPORTED == (rc = session_power_next_cmd(cmdlist[2], sub_cmd))) {
+        return ORCM_ERR_OPERATION_UNSUPPORTED;
     }
 
     if (cmd_set == sub_cmd) {
@@ -439,7 +439,7 @@ static int run_cmd_sensor_set(char** cmdlist)
     if (cmd_sample_rate == rc) {
         rc = orcm_octl_sensor_sample_rate_set(ORCM_SET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
     } else {
-        rc = ORCM_ERROR;
+        rc = ORCM_ERR_OPERATION_UNSUPPORTED;
     }
     return rc;
 }
@@ -458,7 +458,7 @@ static int run_cmd_sensor_get(char** cmdlist)
             rc = orcm_octl_sensor_inventory_get(ORCM_GET_DB_SENSOR_INVENTORY_COMMAND, cmdlist);
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -481,7 +481,7 @@ static int run_cmd_sensor_store(char** cmdlist)
             rc = orcm_octl_sensor_store(3, cmdlist);
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -514,7 +514,7 @@ static int run_cmd_sensor(char** cmdlist, int sub_cmd)
             rc = run_cmd_sensor_store(cmdlist);
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -531,7 +531,7 @@ static int run_cmd_notifier_set(int sub_cmd, char** cmdlist)
             rc = orcm_octl_set_notifier_smtp(ORCM_SET_NOTIFIER_SMTP_COMMAND, cmdlist);
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -548,7 +548,7 @@ static int run_cmd_notifier_get(int sub_cmd, char** cmdlist)
             rc = orcm_octl_get_notifier_smtp(ORCM_GET_NOTIFIER_SMTP_COMMAND, cmdlist);
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -564,7 +564,7 @@ static int run_cmd_notifier(char** cmdlist, int sub_cmd)
     }
 
     if (cmd_set != sub_cmd && cmd_get != sub_cmd) {
-        return ORCM_ERROR;
+        return ORCM_ERR_OPERATION_UNSUPPORTED;
     }
 
     if (3 > opal_argv_count(cmdlist)) {
@@ -594,7 +594,7 @@ static int run_cmd_grouping(int argc, char** cmdlist, int sub_cmd)
             rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -618,7 +618,7 @@ static int run_cmd_workflow(char** cmdlist, int sub_cmd)
             rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -633,7 +633,7 @@ static int run_cmd_query_node(char** cmdlist)
     }
 
     rc = octl_cmd_to_enum(cmdlist[2]);
-    rc = (cmd_status != rc ? ORCM_ERROR :
+    rc = (cmd_status != rc ? ORCM_ERR_OPERATION_UNSUPPORTED :
           orcm_octl_query_node(ORCM_GET_DB_QUERY_NODE_COMMAND,cmdlist));
     return rc;
 }
@@ -655,7 +655,7 @@ static int run_cmd_query_event(char** cmdlist)
             rc = orcm_octl_query_event_snsr_data(ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND,cmdlist);
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -687,7 +687,7 @@ static int run_cmd_query(char** cmdlist, int sub_cmd)
             rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -710,7 +710,7 @@ static int run_cmd_chasis_id(char** cmdlist, int sub_cmd)
             rc = ORCM_ERR_TAKE_NEXT_OPTION;
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
     return rc;
@@ -767,11 +767,11 @@ static int run_cmd(int argc, char *cmdlist[])
             rc = run_cmd_chasis_id(cmdlist, sub_cmd);
             break;
         default:
-            rc = ORCM_ERROR;
+            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
             break;
     }
 
-    if (ORCM_ERROR == rc) {
+    if (ORCM_ERR_OPERATION_UNSUPPORTED == rc) {
         octl_print_error_illegal_command(cmdlist);
     } else if(ORCM_ERR_NOT_IMPLEMENTED  == rc) {
         orcm_octl_error("not-implemented");

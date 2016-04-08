@@ -838,9 +838,14 @@ char **octl_split_argv(char *str, int delimiter)
             count++;
         }
 
+        if (0 > count || sizeof(buffer) < count) {
+            count = 0;
+        }
         strncpy(buffer, str, count);
         buffer[count] = '\0';
+
         if (OPAL_SUCCESS != opal_argv_append(&argc, &argv, buffer)) {
+            opal_argv_free(argv);
             return NULL;
         }
 

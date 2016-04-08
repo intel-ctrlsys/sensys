@@ -145,7 +145,6 @@ char *get_usage_label_error(int error) {
  */
 void orcm_octl_info(char *label, ...){
     static char *info_msg = NULL;
-    char output[MAX_SIZE] = {0,};
     regex_t r_label;
 
     va_list var;
@@ -154,8 +153,7 @@ void orcm_octl_info(char *label, ...){
     if (!regex_label(&r_label, "info", label)) {
         info_msg = search_msg(r_label);
         if (NULL != info_msg) {
-           vsnprintf(output, MAX_SIZE, info_msg, var);
-           fprintf(stdout, "%s", output);
+            vfprintf(stdout, info_msg, var);
         }
         regfree(&r_label);
     }
@@ -172,8 +170,11 @@ void orcm_octl_info(char *label, ...){
  */
 void orcm_octl_error(char *label, ...){
     static char *error_msg = NULL;
-    char output[MAX_SIZE] = {0,};
+    const char *error_prepend = "ERROR: ";
+    char output[MAX_SIZE];
     regex_t r_label;
+
+    memset(output, 0, MAX_SIZE);
 
     va_list var;
     va_start(var, label);
@@ -182,8 +183,8 @@ void orcm_octl_error(char *label, ...){
         error_msg = search_msg(r_label);
 
         if (NULL != error_msg) {
-            vsnprintf(output, MAX_SIZE, error_msg, var);
-            fprintf(stderr,"ERROR: %s", output);
+            snprintf(output, MAX_SIZE, "%s%s", error_prepend, error_msg);
+            vfprintf(stderr, output, var);
             SAFEFREE(error_msg);
         } else {
             fprintf(stderr,"ERROR: Unkown error.");

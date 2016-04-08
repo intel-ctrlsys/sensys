@@ -190,7 +190,6 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
 
         for (iter = 0; iter < node_count; iter++){
             if (!get_bmc_info(nodelist[iter], &ipmi_c)){
-                asprintf(&error, "node %s not found on IPMI configuration file", nodelist[iter]);
                 continue;
             }
             if (!strcmp(orte_process_info.nodename, ipmi_c.aggregator)){

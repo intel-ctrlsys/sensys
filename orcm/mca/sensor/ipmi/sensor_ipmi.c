@@ -34,6 +34,8 @@
 #include <../share/ipmiutil/isensor.h>
 #include "sensor_ipmi_sel.h"
 
+#include "ipmi_parser_interface.h"
+
 typedef struct {
     opal_event_base_t *ev_base;
     bool ev_active;
@@ -67,6 +69,7 @@ static void generate_test_vector(orcm_sensor_sampler_t* sampler);
 static void generate_test_vector_inner(opal_buffer_t* buffer);
 static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot);
 static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *sensor_inventory);
+static int update_host_info_from_config_file(orcm_sensor_hosts_t* host);
 
 int first_sample = 0;
 
@@ -177,6 +180,8 @@ static int init(void)
         generate_test_vector_inner(&test_vector);
         return OPAL_SUCCESS;
     }
+
+    load_ipmi_config_file();
 
     rc = orcm_sensor_ipmi_get_sensor_inventory_list(&sensor_inventory);
     if(rc != ORCM_SUCCESS) {
@@ -1502,6 +1507,30 @@ void collect_ipmi_first_time_data(orcm_sensor_sampler_t* sampler, int* timeout)
     return;
 }
 
+static int update_host_info_from_config_file(orcm_sensor_hosts_t* host) {
+    ipmi_collector ic;
+
+    if (!get_bmc_info(host->capsule.node.name, &ic)) {
+        opal_output(0, "Unable to retrieve configuration for node: %s", host->capsule.node.name);
+        return ORCM_ERROR;
+    }
+
+    host->capsule.node.auth = ic.auth_method;
+    host->capsule.node.priv = ic.priv_level;
+    host->capsule.node.ciph = 3; /* Cipher suite No. 3 */
+
+    strncpy(host->capsule.node.user, ic.user, sizeof(host->capsule.node.user)-1);
+    host->capsule.node.user[sizeof(host->capsule.node.user)-1] = '\0';
+
+    strncpy(host->capsule.node.pasw, ic.pass, sizeof(host->capsule.node.pasw)-1);
+    host->capsule.node.pasw[sizeof(host->capsule.node.pasw)-1] = '\0';
+
+    strncpy(host->capsule.node.bmc_ip, ic.bmc_address, sizeof(host->capsule.node.bmc_ip)-1);
+    host->capsule.node.bmc_ip[sizeof(host->capsule.node.bmc_ip)-1] = '\0';
+
+    return ORCM_SUCCESS;
+}
+
 int collect_ipmi_subsequent_data_for_host(opal_buffer_t* data, orcm_sensor_hosts_t* host)
 {
     int rc;
@@ -1511,32 +1540,16 @@ int collect_ipmi_subsequent_data_for_host(opal_buffer_t* data, orcm_sensor_hosts
     orcm_value_t* item = NULL;
     void* metrics_obj = mca_sensor_ipmi_component.runtime_metrics;
 
-    host->capsule.node.auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
-    host->capsule.node.priv = IPMI_PRIV_LEVEL_USER;
-    host->capsule.node.ciph = 3; /* Cipher suite No. 3 */
+    if (ORCM_SUCCESS != update_host_info_from_config_file(host) ) {
+        opal_output(0, "Error reading configuration file for IPMI.");
+        rc = ORCM_ERROR;
+        ON_FAILURE_GOTO(rc, cleanup);
+    }
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Scanning metrics from node: %s",host->capsule.node.name);
     /* Clear all memory for the ipmi_capsule */
     memset(&(host->capsule.prop), '\0', sizeof(host->capsule.prop));
-
-    /* If the bmc username was passed as an mca parameter, set it. */
-    if (NULL != mca_sensor_ipmi_component.bmc_username) {
-        strncpy(host->capsule.node.user, mca_sensor_ipmi_component.bmc_username, sizeof(host->capsule.node.user)-1);
-        host->capsule.node.user[sizeof(host->capsule.node.user)-1] = '\0';
-    } else {
-        strncpy(host->capsule.node.user, "root", sizeof(host->capsule.node.user)-1);
-        host->capsule.node.user[sizeof(host->capsule.node.user)-1] = '\0';
-    }
-
-    /*
-    If the bmc password was passed as an mca parameter, set it.
-    Otherwise, leave it as null.
-    */
-    if (NULL != mca_sensor_ipmi_component.bmc_password) {
-        strncpy(host->capsule.node.pasw, mca_sensor_ipmi_component.bmc_password, sizeof(host->capsule.node.pasw)-1);
-        host->capsule.node.pasw[sizeof(host->capsule.node.pasw)-1] = '\0';
-    }
 
     /* Running a sample for a Node */
     orcm_sensor_ipmi_get_device_id(&host->capsule);
@@ -1672,8 +1685,8 @@ void collect_ipmi_subsequent_data(orcm_sensor_sampler_t* sampler)
 
     OPAL_LIST_FOREACH_SAFE(host, nxt, &sensor_active_hosts, orcm_sensor_hosts_t) {
         if(ORCM_SUCCESS != (rc = collect_ipmi_subsequent_data_for_host(&data, host))) {
-            OBJ_DESTRUCT(&data);
-            return;
+            opal_output(0, "WARNING: A problem occurred sampling host %s. ",
+                            host->capsule.node.name);
         }
     }
 
@@ -2008,7 +2021,7 @@ void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap)
         error_string = decode_rv(ret);
         orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-set-lan-fail",
                            true, orte_process_info.nodename,
-                           orte_process_info.nodename, cap->node.bmc_ip,
+                           cap->node.name, cap->node.bmc_ip,
                            cap->node.user, cap->node.pasw, cap->node.auth,
                            cap->node.priv, cap->node.ciph, error_string);
         return;
@@ -2018,7 +2031,7 @@ void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap)
             error_string = decode_rv(ret);
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-get-sdr-fail",
                            true, orte_process_info.nodename,
-                           orte_process_info.nodename, cap->node.bmc_ip,
+                           cap->node.bmc_ip, cap->node.bmc_ip,
                            cap->node.user, cap->node.pasw, cap->node.auth,
                            cap->node.priv, cap->node.ciph, error_string);
             return;

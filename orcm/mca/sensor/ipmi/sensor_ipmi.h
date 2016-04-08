@@ -29,8 +29,6 @@ typedef struct {
     bool test;
     char *sel_state_filename;
     //ipmi_capsule_t sample;
-    char *bmc_username;
-    char *bmc_password;
     char *sensor_list;
     char *sensor_group;
     bool use_progress_thread;

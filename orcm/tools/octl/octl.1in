@@ -244,7 +244,65 @@ For example:
 .
 .TP 4
 octl sensor get inventory node01 ip
+
 .PP
+.SS sensor policy listing
+.
+This command is designed to retrieve the policies regarding the sensor samples for a list of nodes.
+.PP
+.TP 4
+The command and interactive shell is:
+.B octl sensor get policy <node-regex|logical-group>
+.PP
+For example:
+.
+.TP 4
+octl sensor get policy c[2:1-10]
+
+.PP
+.SS sensor sample rate listing
+.
+This command is designed to retrieve the sample rate for the individual sensor for a list of nodes.
+.PP
+.TP 4
+The command and interactive shell is:
+.B octl sensor get sample-rate <sensor-name> <node-regex|logical-group>
+.PP
+For example:
+.
+.TP 4
+sensor get sample-rate base c[2:1-10]
+sensor get sample-rate coretemp c[2:1-10]
+sensor get sample-rate freq c[2:1-10]
+
+.PP
+.SS sensor sample rate setting
+.
+This command is designed to set the sample rate for the individual sensor for a list of nodes. Note
+that for per sensor (e.g. coretemp, freq) sample rate, this command will take effect only if the
+sensor is started in a progess thread. The setting of the base sample rate does not have this
+requirement.
+.PP
+.TP 4
+The command and interactive shell is:
+.B octl sensor get sample-rate <sensor-name> <node-regex|logical-group>
+.PP
+For example:
+.
+.TP 4
+sensor set sample-rate base 10 c[2:1-10]
+
+.PP
+.TP 4
+Setting per sensor sample rate in the examples below will take effect only if the sensor is
+started in a progess thread
+.PP
+For example:
+
+.
+.TP4
+sensor set sample-rate coretemp 10 c[2:1-10]
+sensor set sample-rate freq 10 c[2:1-10]
 
 ."================================================================================
 

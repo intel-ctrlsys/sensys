@@ -198,7 +198,7 @@ static void finalize(void)
     mca_sensor_ipmi_component.runtime_metrics = NULL;
 
     if(0 != geteuid()) {
-        return ORCM_ERR_PERM;
+        return;
     }
 
     OPAL_LIST_DESTRUCT(&sensor_active_hosts);

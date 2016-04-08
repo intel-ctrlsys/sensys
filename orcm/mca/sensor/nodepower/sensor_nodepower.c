@@ -762,10 +762,13 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
 
     mkv = orcm_util_load_orcm_value("hostname", packed_hostname, OPAL_STRING, NULL);
     SAFEFREE(packed_hostname);
+    ON_NULL_GOTO(mkv, cleanup);
     records = OBJ_NEW(opal_list_t);
 
     opal_list_append(records, (opal_list_item_t*)mkv);
     opal_list_append(records, (opal_list_item_t*)time_stamp);
+    mkv = NULL;
+    time_stamp = NULL;
 
     n=1;
     rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING);
@@ -778,6 +781,9 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
     mkv = orcm_util_load_orcm_value(inv, inv_val, OPAL_STRING, NULL);
     ON_NULL_GOTO(mkv, cleanup);
     opal_list_append(records, (opal_list_item_t*)mkv);
+    mkv = NULL;
+    SAFEFREE(inv);
+    SAFEFREE(inv_val);
 
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);
@@ -785,7 +791,9 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
     }
 
 cleanup:
+    ORCM_RELEASE(time_stamp);
     ORCM_RELEASE(records);
+    SAFEFREE(inv);
 }
 
 int nodepower_enable_sampling(const char* sensor_specification)

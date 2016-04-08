@@ -367,6 +367,9 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
                  goto done;
              }
              rc = result;
+             if (ORCM_ERR_SENSOR_LIMIT_EXCEEDED == result) {
+                 orcm_octl_error("sensor_limit_exceeded");
+             }
              goto done;
          }
     }

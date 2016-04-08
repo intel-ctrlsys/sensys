@@ -319,6 +319,9 @@ Node %s failed to get chassis id status.
 [error:empty-cmd]
 No command parsed!
 
+[error:sensor_limit_exceeded]
+Sensor limit exceeded!
+
 [usage:sensor]
 sensor enable|disable|reset <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
 Example: sensor enable c[2:1-10] coretemp:core0

@@ -28,6 +28,7 @@
 static void cleanup(opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
 static int begin_transaction(char* node, opal_buffer_t *buf, orte_rml_recv_cb_t *xfer);
 static int unpack_responses_count(orte_rml_recv_cb_t *xfer);
+static int unpack_nodename(char** node, orte_rml_recv_cb_t *xfer);
 static int unpack_response(char* node, orte_rml_recv_cb_t *xfer);
 static int unpack_state(char* node, orte_rml_recv_cb_t *xfer);
 int pack_chassis_id_data(opal_buffer_t *buf, orcm_cmd_server_flag_t *command,
@@ -84,6 +85,19 @@ static int unpack_responses_count(orte_rml_recv_cb_t *xfer){
     }
 
     return responses_count;
+}
+
+static int unpack_nodename(char** node, orte_rml_recv_cb_t *xfer){
+    int rc = ORCM_SUCCESS;
+    int response = ORCM_SUCCESS;
+    int elements = 1;
+
+    rc = opal_dss.unpack(&xfer->data, node, &elements, OPAL_STRING);
+    if (OPAL_SUCCESS != rc){
+        orcm_octl_error("unpack");
+    }
+
+    return rc;
 }
 
 static int unpack_response(char* node, orte_rml_recv_cb_t *xfer){
@@ -163,6 +177,7 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
     char current_aggregator[256];
     int responses = 0;
     int iter = 0;
+    char* nodename = NULL;
 
     if (NULL == (buf = OBJ_NEW(opal_buffer_t)) ||
         NULL == (xfer = OBJ_NEW(orte_rml_recv_cb_t))){
@@ -210,13 +225,18 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
         }
 
         for (iter=0; iter<responses; ++iter){
-            if (ORCM_SUCCESS != unpack_response(current_aggregator, xfer)){
+            if (ORCM_SUCCESS != unpack_nodename(&nodename, xfer)){
+                orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
+                continue;
+            }
+
+            if (ORCM_SUCCESS != unpack_response(nodename, xfer)){
                 orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
                 continue;
             }
 
             if (ORCM_GET_CHASSIS_ID == command &&
-                ORCM_SUCCESS != unpack_state(current_aggregator, xfer)){
+                ORCM_SUCCESS != unpack_state(nodename, xfer)){
                 orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_CMD_SERVER);
                 continue;
             }

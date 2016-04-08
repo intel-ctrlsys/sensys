@@ -12,7 +12,7 @@
 
 #include <stdlib.h>
 
-extern void init_led_control(char*, char*, char*);
+extern void init_led_control(char*, char*, char*, int, int);
 
 extern int get_chassis_id_state(void);
 

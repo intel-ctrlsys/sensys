@@ -16,6 +16,8 @@
 #define HOSTNAME "hostame"
 #define USER "user"
 #define PASS "password"
+#define AUTH 2
+#define PRIV 4
 
 using namespace std;
 
@@ -36,7 +38,7 @@ TEST_F(ut_control_led_tests, new_led_object){
 }
 
 TEST_F(ut_control_led_tests, new_led_object_remote){
-    LedControl lc(HOSTNAME, USER, PASS);
+    LedControl lc(HOSTNAME, USER, PASS, AUTH, PRIV);
     ASSERT_EQ(0, lc.disableChassisID());
     ASSERT_TRUE(is_remote_node);
 }
@@ -60,12 +62,12 @@ TEST_F(ut_control_led_tests, disable_chassis_id){
 }
 
 TEST_F(ut_control_led_tests, wrong_remote_data){
-    LedControl lc(HOSTNAME, "", PASS);
+    LedControl lc(HOSTNAME, "", PASS, AUTH, PRIV);
     ASSERT_NE(0, lc.disableChassisID());
 }
 
 TEST_F(ut_control_led_tests, chassis_status_query_not_supported){
-    LedControl lc(HOSTNAME, USER, PASS);
+    LedControl lc(HOSTNAME, USER, PASS, AUTH, PRIV);
     is_supported = false;
     ASSERT_EQ(-1, lc.getChassisIDState());
 }

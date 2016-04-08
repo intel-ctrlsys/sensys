@@ -42,7 +42,7 @@ class LedControl{
         //      hostname: BMC hostname/IP address
         //      user: BMC user
         //      pass: BMC password
-        LedControl(const char *hostname, const char *user, const char *pass);
+        LedControl(const char *hostname, const char *user, const char *pass, int auth, int priv);
 
         // Destructor
         ~LedControl();
@@ -81,6 +81,8 @@ class LedControl{
         char* hostname;
         char* user;
         char* pass;
+        int auth;
+        int priv;
 };
 
 #endif /* LED_CONTROL_H */

@@ -25,13 +25,18 @@ LedControl::LedControl(){
     this->hostname = NULL;
     this->user = NULL;
     this->pass = NULL;
+    this->auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
+    this->priv = IPMI_PRIV_LEVEL_USER;
 }
 
-LedControl::LedControl(const char *hostname, const char *user, const char *pass){
+LedControl::LedControl(const char *hostname, const char *user, const char *pass,
+        int auth, int priv){
     this->remote_node = true;
     this->hostname = strdup(hostname);
     this->user = strdup(user);
     this->pass = strdup(pass);
+    this->auth = auth;
+    this->priv = priv;
 }
 
 LedControl::~LedControl(){
@@ -49,8 +54,7 @@ int LedControl::ipmiCmdOperation(unsigned short cmd, unsigned char *buff_in,
 #ifdef HAVE_LED_CONTROL_SUPPORT
     int ret = 0;
     if (this->remote_node){
-        ret = set_lan_options(hostname, user, pass, IPMI_SESSION_AUTHTYPE_PASSWORD,
-            IPMI_PRIV_LEVEL_USER, 3, NULL, 0);
+        ret = set_lan_options(hostname, user, pass, auth, priv, 3, NULL, 0);
         if (ret)
             return ret;
     }
@@ -83,6 +87,7 @@ int LedControl::getChassisIDState(){
 
 int LedControl::setChassisID(unsigned char value){
     unsigned char buff_in[MAX_BUFF_SIZE];
+    unsigned char buff_out[MAX_BUFF_SIZE];
     int in_size = 0;
     int out_size = 0;
     unsigned char c_code;
@@ -92,7 +97,7 @@ int LedControl::setChassisID(unsigned char value){
     in_size = (value == LED_INDEFINITE_ON) ? 2 : 1;
 
 #ifdef HAVE_LED_CONTROL_SUPPORT
-    return ipmiCmdOperation(CHASSIS_IDENTIFY, buff_in, in_size, NULL, &out_size, &c_code);
+    return ipmiCmdOperation(CHASSIS_IDENTIFY, buff_in, in_size, buff_out, &out_size, &c_code);
 #else
     return -1;
 #endif

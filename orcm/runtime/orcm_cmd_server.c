@@ -57,7 +57,8 @@ static void store_chassis_id_event(char* hostname, char *action);
 static int append_string_to_opal_list(opal_list_t *list, char *str, char* key);
 static void chassis_id_event_cleanup(void *cbdata);
 static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
-        char* hostname, char* user, char* pass, unsigned int seconds, opal_buffer_t *pack_buff);
+        char* hostname, char* bmc_addr, char* user, char* pass,
+        int auth, int priv, unsigned int seconds, opal_buffer_t *pack_buff);
 static int get_visible_nodes_count(char** nodelist, int node_count);
 
 int orcm_cmd_server_init(void)
@@ -193,8 +194,10 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
                 continue;
             }
             if (!strcmp(orte_process_info.nodename, ipmi_c.aggregator)){
-                rc = chassis_id_operation(sub_command, nodelist[iter],
-                        ipmi_c.user, ipmi_c.pass, seconds, pack_buff);
+                rc = chassis_id_operation(sub_command, ipmi_c.hostname,
+                        ipmi_c.bmc_address, ipmi_c.user, ipmi_c.pass,
+                        ipmi_c.auth_method, ipmi_c.priv_level, seconds,
+                        pack_buff);
                 rc_prev = (ORCM_SUCCESS != rc_prev) ? rc_prev : rc;
             }
         }
@@ -455,26 +458,32 @@ static void chassis_id_event_cleanup(void *cbdata){
 }
 
 static int pack_response(opal_buffer_t *pack_buff, int response, int state,
-        orcm_cmd_server_flag_t sub_command){
+        char* node, orcm_cmd_server_flag_t sub_command){
     int rc = ORCM_SUCCESS;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &node, 1, OPAL_STRING))){
+        return rc;
+    }
+
     if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
         return rc;
     }
 
     if (ORCM_GET_CHASSIS_ID_STATE == sub_command){
-        rc = opal_dss.pack(pack_buff, &state, 1, OPAL_INT);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &state, 1, OPAL_INT))){
+            return rc;
+        }
     }
     return rc;
 }
 
 static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
-        char* hostname, char *user, char *pass, unsigned int seconds,
-        opal_buffer_t *pack_buff){
+        char* hostname, char* bmc_addr, char* user, char* pass,
+        int auth, int priv, unsigned int seconds, opal_buffer_t *pack_buff){
     int state = 0;
     int response = ORCM_SUCCESS;
     int rc = ORCM_SUCCESS;
 
-    init_led_control(hostname, user, pass);
+    init_led_control(bmc_addr, user, pass, auth, priv);
     switch (sub_command){
         case ORCM_GET_CHASSIS_ID_STATE:
             response = ORCM_ERROR;
@@ -509,7 +518,7 @@ static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
             return ORCM_ERROR;
     }
 
-    rc = pack_response(pack_buff, response, state, sub_command);
+    rc = pack_response(pack_buff, response, state, hostname, sub_command);
     fini_led_control();
     return rc;
 }

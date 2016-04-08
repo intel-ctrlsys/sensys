@@ -14,8 +14,8 @@ LedControl *lc = 0;
 extern "C" {
     #include "led_control_interface.h"
 
-    void init_led_control(char* hostname, char* user, char* pass){
-        lc = new LedControl(hostname, user, pass);
+    void init_led_control(char* hostname, char* user, char* pass, int auth, int priv){
+        lc = new LedControl(hostname, user, pass, auth, priv);
     }
 
     int get_chassis_id_state(){

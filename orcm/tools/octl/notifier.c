@@ -114,7 +114,7 @@ int orcm_octl_get_notifier_policy(int cmd, char **argv)
                  orcm_octl_error("unpacker");
                  goto done;
              }
-             orcm_octl_error("notifier-policy", "get", nodelist[i]);
+             orcm_octl_info("notifier-policy", "get", nodelist[i]);
              goto done;
         } else {
              cnt = 1;
@@ -275,7 +275,7 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
                             orte_rml_recv_callback, xfer);
 
 
-        orcm_octl_error("notifier-policy", "set", nodelist[i]);
+        orcm_octl_info("notifier-policy", "set", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
             orcm_octl_error("node-notfound", nodelist[i]);
@@ -305,7 +305,7 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
             goto done;
         }
         if (ORCM_SUCCESS == result) {
-            orcm_octl_error("success");
+            orcm_octl_info("success");
         } else {
             if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &error,
                                                  &cnt, OPAL_STRING))) {

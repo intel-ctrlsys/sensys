@@ -961,6 +961,7 @@ static int orcm_octl_sensor_store_send_buffer(orte_process_name_t *wf_agg,
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(wf_agg, buf,
                                                       ORCM_RML_TAG_ANALYTICS,
                                                       orte_rml_send_callback, NULL))) {
+        orcm_octl_error("connection-fail");
         return ORCM_ERROR;
     }
     return ORCM_SUCCESS;
@@ -974,6 +975,7 @@ static int orcm_octl_sensor_store_unpack_buffer(orte_rml_recv_cb_t *xfer)
 
     n=1;
     if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &response, &n, OPAL_INT))) {
+        orcm_octl_error("unpack");
         return ORCM_ERROR;
     }
     orcm_octl_info("storage-response", response);

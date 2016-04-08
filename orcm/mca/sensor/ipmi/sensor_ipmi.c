@@ -163,6 +163,10 @@ static int init(void)
         orcm_sensor_base_runtime_metrics_create("ipmi", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_ipmi_component.collect_metrics);
 
+    if(0 != geteuid()) {
+        return ORCM_ERR_PERM;
+    }
+
     OBJ_CONSTRUCT(&sensor_inventory, opal_list_t);
     OBJ_CONSTRUCT(&sensor_active_hosts, opal_list_t);
     OBJ_CONSTRUCT(&ipmi_inventory_hosts, opal_list_t);

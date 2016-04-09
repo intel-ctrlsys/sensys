@@ -90,8 +90,8 @@ snmpCollectorVector snmpParser::getSnmpCollectorVector()
 
 void snmpParser::setDefaultPath()
 {
-    SNMP_DEFAULT_FILE_PATH = string(opal_install_dirs.prefix) + string("/etc/") +
-                             string(SNMP_DEFAULT_FILE_NAME);
+    string prefix = (NULL != opal_install_dirs.prefix) ? string(opal_install_dirs.prefix) + "/etc/" : "";
+    SNMP_DEFAULT_FILE_PATH = prefix + SNMP_DEFAULT_FILE_NAME;
 }
 
 void snmpParser::parseFile()

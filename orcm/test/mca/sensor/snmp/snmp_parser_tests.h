@@ -13,6 +13,8 @@
 #include "gtest/gtest.h"
 #include "orcm/mca/sensor/snmp/snmp_parser.h"
 
+#include "snmp_test_files.h"
+
 extern "C"{
     #include "orcm/mca/parser/base/base.h"
     #include "orcm/mca/parser/pugi/parser_pugi.h"
@@ -25,27 +27,25 @@ extern "C"{
 
 class ut_snmp_parser_tests: public testing::Test {
     protected:
-        std::string test_files_dir;
-        ut_snmp_parser_tests(){
-            // 'make check' will provide $(srcdir) with the path to
-            // test source folder.
-            char* srcdir = getenv("srcdir");
-            if (NULL != srcdir)
-                test_files_dir = std::string(srcdir) + "/test_files/";
-            else
-                test_files_dir = "test_files/";
-        }
-
         virtual void SetUp(){
             opal_init_test();
             initParserFramework();
+            replaceConfigFile();
+            writeTestFiles();
         }
 
         virtual void TearDown(){
            cleanParserFramework();
+           restoreConfigFile();
+           removeTestFiles();
         }
+
         virtual void initParserFramework();
         virtual void cleanParserFramework();
+        virtual void replaceConfigFile();
+        virtual void restoreConfigFile();
+        virtual void writeTestFiles();
+        virtual void removeTestFiles();
 };
 
 #endif

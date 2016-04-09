@@ -155,6 +155,18 @@ void ut_snmp_collector_tests::TearDown()
     snmp_mocking.orcm_util_load_orcm_analytics_value_callback = NULL;
 }
 
+void ut_snmp_collector_tests::replaceConfigFile()
+{
+    int ret = testFilesObj.writeDefaultSnmpConfigFile();
+    ASSERT_TRUE(ORCM_SUCCESS == ret);
+}
+
+void ut_snmp_collector_tests::restoreConfigFile()
+{
+     int ret = testFilesObj.restoreDefaultSnmpConfigFile();
+     ASSERT_TRUE(ORCM_SUCCESS == ret);
+}
+
 void ut_snmp_collector_tests::ClearBuffers()
 {
     while(0 < packed_int32_.size()) {

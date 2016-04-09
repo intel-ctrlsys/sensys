@@ -11,12 +11,6 @@
 
 import sys
 from subprocess import Popen, PIPE
-import re
-import os.path
-from os import getenv
-
-DEFAULT_CONFIG_FILE_NAME = "orcm-default-config.xml"
-TEST_FILE_NAME = "snmp.xml"
 
 def get_gtests(gtest_binary):
     """ Get list of tests to be executed """
@@ -49,36 +43,8 @@ def execute_test(gtest_binary, test_name):
     retv = process.wait()
     return (retv, output, err)
 
-def prefix_search():
-    """ Returns path to installation path """
-    prefix = "/usr/local1/"
-    filename = os.getcwd() + "/../../../../../config.status"
-    pattern = re.compile(r'S\[\"prefix\"\]=\"(.*)\"')
-    with open(filename) as opened_file:
-        for line in opened_file:
-            match = pattern.search(line)
-            if match:
-                prefix = match.group(1)
-    return prefix
-
-def setup_tests():
-    """ Copies test file example to default config file """
-    prefix = prefix_search()
-    cf_src = getenv("srcdir")
-    if cf_src:
-        cf_src += "/test_files/" + TEST_FILE_NAME
-    else:
-        cf_src = "test_files/" + TEST_FILE_NAME
-    cf_dst = prefix + "/etc/" + DEFAULT_CONFIG_FILE_NAME
-    exists = os.path.isfile(cf_dst)
-    if exists:
-        os.system("sudo mv %s %s.bak" % (cf_dst, cf_dst))
-    os.system("sudo cp %s %s" % (cf_src, cf_dst))
-    return cf_dst
-
 def run_tests(gtest_binary):
     """ Execute gtest binary """
-    cf_dst = setup_tests()
     tests = get_gtests(gtest_binary)
     ret = 0
     passed = 0
@@ -95,7 +61,6 @@ def run_tests(gtest_binary):
             passed = passed+1
     print '+TEST SUMMARY PASSED = %d'%(passed)
     print '+TEST SUMMARY FAILED = %d'%(failed)
-    os.system("sudo mv %s.bak %s" % (cf_dst, cf_dst))
     return ret
 
 if __name__ == '__main__':

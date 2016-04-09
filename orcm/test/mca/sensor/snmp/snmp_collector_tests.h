@@ -13,6 +13,8 @@
 #include "gtest/gtest.h"
 #include "snmp_tests_mocking.h"
 
+#include "snmp_test_files.h"
+
 #include <map>
 #include <vector>
 #include <queue>
@@ -31,6 +33,8 @@ class ut_snmp_collector_tests: public testing::Test
         static void ResetTestEnvironment();
         static void initParserFramework();
         static void cleanParserFramework();
+        static void replaceConfigFile();
+        static void restoreConfigFile();
 
         /* Mocking */
         static void OrteErrmgrBaseLog(int err, char* file, int lineno);

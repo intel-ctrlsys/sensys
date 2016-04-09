@@ -116,6 +116,8 @@ void ut_snmp_collector_tests::SetUpTestCase()
     initParserFramework();
 
     ResetTestEnvironment();
+
+    replaceConfigFile();
 }
 
 void ut_snmp_collector_tests::TearDownTestCase()
@@ -123,6 +125,8 @@ void ut_snmp_collector_tests::TearDownTestCase()
     golden_data_.clear();
 
     cleanParserFramework();
+
+    restoreConfigFile();
 
     snmp_mocking.orte_errmgr_base_log_callback = NULL;
     snmp_mocking.opal_output_verbose_callback = NULL;
@@ -137,6 +141,18 @@ void ut_snmp_collector_tests::TearDownTestCase()
     snmp_mocking.snmp_parse_oid_callback = NULL;
     snmp_mocking.snmp_add_null_var_callback = NULL;
     snmp_mocking.snprint_objid_callback = NULL;
+}
+
+void ut_snmp_collector_tests::replaceConfigFile()
+{
+    int ret = testFilesObj.writeDefaultSnmpConfigFile();
+    ASSERT_TRUE(ORCM_SUCCESS == ret);
+}
+
+void ut_snmp_collector_tests::restoreConfigFile()
+{
+     int ret = testFilesObj.restoreDefaultSnmpConfigFile();
+     ASSERT_TRUE(ORCM_SUCCESS == ret);
 }
 
 void ut_snmp_collector_tests::ClearBuffers()

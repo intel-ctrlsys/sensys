@@ -41,7 +41,10 @@ snmp_tests_SOURCES = \
     snmp_tests_mocking.cpp \
     snmp_tests_mocking.h \
     snmp_parser_tests.cpp \
-    snmp_parser_tests.h
+    snmp_parser_tests.h \
+    snmp_test_files.cpp \
+    snmp_test_files.h \
+    file_defs.h
 
 MOCKING=\
     -Wl,--wrap=orte_errmgr_base_log \

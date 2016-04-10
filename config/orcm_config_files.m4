@@ -14,21 +14,10 @@ AC_DEFUN([ORCM_CONFIG_FILES],[
     orcm/etc/Makefile
     orcm/include/Makefile
 
-    orcm/tools/ocli/Makefile
     orcm/tools/octl/Makefile
-    orcm/tools/oflow/Makefile
-    orcm/tools/ops/Makefile
-    orcm/tools/opwrvirus/Makefile
-    orcm/tools/orcm-emulator/Makefile
     orcm/tools/orcm-info/Makefile
     orcm/tools/orcmd/Makefile
     orcm/tools/orcmsched/Makefile
-    orcm/tools/orcmsd/Makefile
-    orcm/tools/orun/Makefile
-    orcm/tools/osub/Makefile
-    orcm/tools/odiag/Makefile
-    orcm/tools/otestcmd/Makefile
-    orcm/tools/otop/Makefile
     orcm/tools/wrappers/Makefile
     orcm/tools/wrappers/orcm.pc
     orcm/tools/wrappers/orcmcc-wrapper-data.txt

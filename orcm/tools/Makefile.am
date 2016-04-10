@@ -10,37 +10,15 @@
 #
 
 SUBDIRS += \
-        tools/ocli \
         tools/octl \
-        tools/oflow \
-        tools/ops \
-        tools/opwrvirus \
-        tools/orcm-emulator \
         tools/orcm-info \
         tools/orcmd \
         tools/orcmsched \
-        tools/orun \
-        tools/osub \
-        tools/odiag \
-        tools/otestcmd \
-        tools/otop \
-        tools/orcmsd \
         tools/wrappers
 
 DIST_SUBDIRS += \
-        tools/ocli \
         tools/octl \
-        tools/oflow \
-        tools/ops \
-        tools/opwrvirus \
-        tools/orcm-emulator \
         tools/orcm-info \
         tools/orcmd \
         tools/orcmsched \
-        tools/orun \
-        tools/osub \
-        tools/odiag \
-        tools/otestcmd \
-        tools/otop \
-        tools/orcmsd \
         tools/wrappers

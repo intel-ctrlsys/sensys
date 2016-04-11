@@ -11,15 +11,24 @@
 # This is the US/English general help file
 #
 [no-snmp]
-SNMP plugin sensor is unable to connecto to the remote device.
-Please, provide the connection parameters in the following MCA variables:
+SNMP plugin sensor is unable to connect to the remote devices.
+Please, provide the connection parameters and variable information in the
+orcm-default-config.xml file, on the snmp section. For further details,
+please check the documentation.
 
-sensor_snmp_dev_hostname                Comma sep. list of SNMP device addresses
-sensor_snmp_username                    Community or user name for the SNMP device
-sensor_snmp_password                    Password for the SNMP device (v3)
-sensor_snmp_auth_type                   Authentication type (MD5, SHA1)
-sensor_snmp_sec_type                    Security type (NOAUTH, AUTHNOPRIV, AUTHPRIV)
-sensor_snmp_oid_list                    Comma sep. list of object identfiers (OIDs)
+Section example:
 
+<snmp>
+    <config name="snmp1" version="3" user="user" pass="12345678" auth="MD5" sec="AUTHNOPRIV">
+        <aggregator>localhost</aggregator>
+        <hostname>server[2:0-20],server21</hostname>
+        <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids>
+    </config>
+    <config name="snmp2" version="1" user="user" location="X Lab">
+        <aggregator>node01</aggregator>
+        <hostname>switches[2:0-20],switch21</hostname>
+        <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids>
+    </config>
+</snmp>
 #
 

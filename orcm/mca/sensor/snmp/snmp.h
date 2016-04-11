@@ -81,6 +81,7 @@ class snmp_impl
         void generate_test_vector();
         void generate_test_inv_vector(opal_buffer_t *inventory_snapshot);
         std::vector<vardata> generate_data();
+        void printInitErrorMsg(const char *extraMsg);
 
     PRIVATE: // Fields (i.e. state)
         std::vector<snmpCollector> collectorObj_;
@@ -108,6 +109,11 @@ class incorrectConfig : public std::runtime_error {
 class corruptedInventoryBuffer : public std::runtime_error {
     public:
     corruptedInventoryBuffer() : std::runtime_error( "Inventory buffer is corrupted") {}
+};
+
+class noSnmpConfigAvailable : public std::runtime_error {
+    public:
+    noSnmpConfigAvailable() : std::runtime_error( "No snmp configuration available." ) {}
 };
 
 #endif /* SNMP_H */

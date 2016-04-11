@@ -86,6 +86,7 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
 
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("node-notfound", nodelist[i]);
             goto done;
         }
@@ -96,6 +97,7 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_SENSOR,
                                           orte_rml_send_callback, NULL))) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("connection-fail");
             goto done;
         }
@@ -103,6 +105,7 @@ int orcm_octl_sensor_policy_get(int cmd, char **argv)
         /* wait for status message */
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("connection-fail");
             goto done;
         }
@@ -332,6 +335,7 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
         orcm_octl_info("setting-sample-rate", argv[3], nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("node-notfound", nodelist[i]);
             goto done;
         }
@@ -341,6 +345,7 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_SENSOR,
                                           orte_rml_send_callback, NULL))) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("connection-fail");
             goto done;
         }
@@ -348,6 +353,7 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
         /* wait for status message */
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("connection-fail");
             goto done;
         }
@@ -459,6 +465,7 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
        orcm_octl_info("getting-sample-rate", argv[3], nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("node-notfound", nodelist[i]);
             goto done;
         }
@@ -468,6 +475,7 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
             (rc = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_SENSOR,
                                           orte_rml_send_callback, NULL))) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("connection-fail");
             goto done;
         }
@@ -475,6 +483,7 @@ int orcm_octl_sensor_sample_rate_get(int cmd, char **argv)
         /* wait for status message */
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("connection-fail");
             goto done;
         }
@@ -586,6 +595,7 @@ static int get_inventory_list(int cmd, opal_list_t *filterlist, opal_list_t** re
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buffer,
                                                       ORCM_RML_TAG_ORCMD_FETCH,
                                                       orte_rml_send_callback, xfer))) {
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
         ORTE_ERROR_LOG(rc);
         goto inv_list_cleanup;
     }
@@ -593,6 +603,7 @@ static int get_inventory_list(int cmd, opal_list_t *filterlist, opal_list_t** re
     /* wait for status message */
     ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
     if (ORCM_SUCCESS != rc) {
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
         ORTE_ERROR_LOG(rc);
         goto inv_list_cleanup;
     }
@@ -827,6 +838,7 @@ int orcm_octl_sensor_change_sampling(int command, char** cmdlist)
                                 orte_rml_recv_callback, xfer);
 
         if (ORCM_SUCCESS != (rv = orcm_cfgi_base_get_hostname_proc(nodelist[i], &tgt))) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("node-notfound", nodelist[i]);
             goto change_sampling_cleanup;
         }
@@ -837,6 +849,7 @@ int orcm_octl_sensor_change_sampling(int command, char** cmdlist)
             (rv = orte_rml.send_buffer_nb(&tgt, buf,
                                           ORCM_RML_TAG_SENSOR,
                                           orte_rml_send_callback, NULL))) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             opal_buffer_t* tmp = buf;
             OBJ_RELEASE(tmp); // There are 2 ref counts here; dispose of one.
 
@@ -847,6 +860,7 @@ int orcm_octl_sensor_change_sampling(int command, char** cmdlist)
         /* wait for status message */
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rv);
         if (ORCM_SUCCESS != rv) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_error("connection-fail");
             goto change_sampling_cleanup;
         }
@@ -998,6 +1012,7 @@ int orcm_octl_sensor_store(int storage_command, char** cmdlist)
 
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[node_index],
                                                                    &wf_agg))) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_sensor_store_process_error(buf, xfer, nodelist);
             return rc;
         }
@@ -1006,6 +1021,7 @@ int orcm_octl_sensor_store(int storage_command, char** cmdlist)
 
         rc = orcm_octl_sensor_store_pack_buffer(buf, xfer, storage_command);
         if (ORCM_SUCCESS != rc) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             SAFE_OBJ_RELEASE(buf);
             orcm_octl_sensor_store_process_error(buf, xfer, nodelist);
             return rc;
@@ -1013,12 +1029,14 @@ int orcm_octl_sensor_store(int storage_command, char** cmdlist)
 
         rc = orcm_octl_sensor_store_send_buffer(&wf_agg, buf, xfer);
         if (ORCM_SUCCESS != rc) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_sensor_store_process_error(buf, xfer, nodelist);
             return rc;
         }
 
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
             orcm_octl_sensor_store_process_error(buf, xfer, nodelist);
             return rc;
         }

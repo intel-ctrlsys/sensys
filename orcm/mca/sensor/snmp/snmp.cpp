@@ -79,6 +79,15 @@ snmp_impl::~snmp_impl()
     finalize();
 }
 
+void snmp_impl::printInitErrorMsg(const char *extraMsg)
+{
+    opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                        "ERROR: %s sensor SNMP : init: '%s'",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), extraMsg);
+    orte_show_help("help-orcm-sensor-snmp.txt", "no-snmp", true,
+                   (char*)hostname_.c_str());
+}
+
 int snmp_impl::init(void)
 {
     runtime_metrics_ = new RuntimeMetrics("snmp", orcm_sensor_base.collect_metrics,
@@ -88,21 +97,17 @@ int snmp_impl::init(void)
             (void) load_mca_variables();
             snmpParser sp(config_file_);
             collectorObj_ = sp.getSnmpCollectorVector();
+            if (0 == collectorObj_.size()){
+                throw noSnmpConfigAvailable();
+            }
             for(snmpCollectorVector::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
                 it->setRuntimeMetrics(runtime_metrics_);
             }
         } catch (exception &e) {
-            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                                "ERROR: %s sensor SNMP : init: '%s'",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
-
-            orte_show_help("help-orcm-sensor-snmp.txt", "no-snmp", true,
-                           (char*)hostname_.c_str());
-
+            printInitErrorMsg(e.what());
             return ORCM_ERROR;
         }
     }
-
     return ORCM_SUCCESS;
 }
 
@@ -247,12 +252,13 @@ void snmp_impl::inventory_collect(opal_buffer_t *inventory_snapshot)
     vector<vardata> oids;
     struct timeval current_time;
 
-    if(mca_sensor_snmp_component.test) {
-        generate_test_inv_vector(inventory_snapshot);
-        return;
-    }
     if (NULL == inventory_snapshot){
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
+        return;
+    }
+
+    if(mca_sensor_snmp_component.test) {
+        generate_test_inv_vector(inventory_snapshot);
         return;
     }
 
@@ -298,6 +304,12 @@ void snmp_impl::inventory_log(char *hostname,
         if (TOT_HOSTNAMES_STR != tot_hostnames.getKey()){
             ORTE_ERROR_LOG(ORCM_ERR_BUFFER);
             throw corruptedInventoryBuffer();
+        }
+        if (0 == tot_hostnames.getValue<int64_t>()){
+            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
+                                "WARNING: %s sensor SNMP : inventory: No items to collect.",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+            return;
         }
         for(int h=0; h<tot_hostnames.getValue<int64_t>(); h++){
             records = OBJ_NEW(opal_list_t);

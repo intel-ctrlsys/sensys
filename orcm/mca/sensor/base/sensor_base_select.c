@@ -211,6 +211,15 @@ int orcm_sensor_base_select(void)
                  */
                 if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_AGGREGATOR) {
                     i_module->sampling = false;
+                    i_module->module->inventory_collect = NULL;
+                    i_module->module->sample = NULL;
+                    i_module->module->start = NULL;
+                    i_module->module->stop = NULL;
+                    i_module->module->set_sample_rate = NULL;
+                    i_module->module->get_sample_rate = NULL;
+                    i_module->module->reset_sampling = NULL;
+                    i_module->module->enable_sampling = NULL;
+                    i_module->module->disable_sampling = NULL;
                 } else {
                     i_module->module->finalize();
                     opal_pointer_array_set_item(&orcm_sensor_base.modules, i, NULL);

@@ -14,7 +14,7 @@
  * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
  *                         reserved.
  * Copyright (c) 2010      Oracle and/or its affiliates.  All rights reserved.
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -69,6 +69,7 @@ int orcm_octl_session_cancel(char **argv)
             orcm_octl_error("pack");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
 
@@ -78,6 +79,7 @@ int orcm_octl_session_cancel(char **argv)
             orcm_octl_error("pack");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER,
@@ -88,6 +90,7 @@ int orcm_octl_session_cancel(char **argv)
             orcm_octl_error("connection-fail");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         /* get result */
@@ -96,10 +99,12 @@ int orcm_octl_session_cancel(char **argv)
         if (ORCM_SUCCESS != rc) {
             orcm_octl_error("connection-fail");
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
                                                   &n, OPAL_INT))) {
+            orcm_octl_error("unpack");
             OBJ_DESTRUCT(&xfer);
             return rc;
         }
@@ -155,6 +160,7 @@ int orcm_octl_session_set(int cmd, char **argv)
         orcm_octl_error("pack");
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -165,6 +171,7 @@ int orcm_octl_session_set(int cmd, char **argv)
         orcm_octl_error("pack");
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -174,6 +181,7 @@ int orcm_octl_session_set(int cmd, char **argv)
         orcm_octl_error("pack");
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -184,6 +192,7 @@ int orcm_octl_session_set(int cmd, char **argv)
         orcm_octl_error("pack");
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -210,6 +219,7 @@ int orcm_octl_session_set(int cmd, char **argv)
 
         if (0 > int_param || ORCM_PWRMGMT_NUM_MODES <= int_param ) {
             orcm_octl_error("illegal-pw-mode");
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return ORCM_ERR_BAD_PARAM;
         }
         // FIXME: validate that power mode is valid
@@ -219,6 +229,7 @@ int orcm_octl_session_set(int cmd, char **argv)
             orcm_octl_error("pack");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -231,6 +242,7 @@ int orcm_octl_session_set(int cmd, char **argv)
             orcm_octl_error("pack");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -240,9 +252,10 @@ int orcm_octl_session_set(int cmd, char **argv)
 
         /* pack the power overage */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            orcm_octl_error("illegal-pw-mode");
+            orcm_octl_error("pack");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -252,9 +265,10 @@ int orcm_octl_session_set(int cmd, char **argv)
 
         /* pack the power underage */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            orcm_octl_error("illegal-pw-mode");
+            orcm_octl_error("pack");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -264,9 +278,10 @@ int orcm_octl_session_set(int cmd, char **argv)
 
         /* pack the power overage time */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            orcm_octl_error("illegal-pw-mode");
+            orcm_octl_error("pack");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -276,9 +291,10 @@ int orcm_octl_session_set(int cmd, char **argv)
 
         /* pack the power underage time */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &int_param, 1, OPAL_INT32))) {
-            orcm_octl_error("illegal-pw-mode");
+            orcm_octl_error("pack");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -294,8 +310,10 @@ int orcm_octl_session_set(int cmd, char **argv)
                 float_param = ORCM_PWRMGMT_MIN_FREQ;
             }
             else {
+                orcm_octl_usage("session-set", INVALID_USG);
                 OBJ_RELEASE(buf);
                 OBJ_DESTRUCT(&xfer);
+                orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
                 return ORCM_ERR_BAD_PARAM;
             }
         }
@@ -303,9 +321,10 @@ int orcm_octl_session_set(int cmd, char **argv)
 
         /* pack the power freq */
         if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &float_param, 1, OPAL_FLOAT))) {
-            orcm_octl_error("illegal-pw-mode");
+            orcm_octl_error("pack");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
@@ -321,8 +340,10 @@ int orcm_octl_session_set(int cmd, char **argv)
                 bool_param = false;
             }
             else {
+                orcm_octl_usage("session-set", INVALID_USG);
                 OBJ_RELEASE(buf);
                 OBJ_DESTRUCT(&xfer);
+                orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
                 return ORCM_ERR_BAD_PARAM;
             }
         }
@@ -333,12 +354,14 @@ int orcm_octl_session_set(int cmd, char **argv)
             orcm_octl_error("pack");
             OBJ_RELEASE(buf);
             OBJ_DESTRUCT(&xfer);
+            orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
             return rc;
         }
         break;
     default:
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return ORTE_ERR_BAD_PARAM;
     }
 
@@ -350,6 +373,7 @@ int orcm_octl_session_set(int cmd, char **argv)
         orcm_octl_error("connection-fail");
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
     /* get result */
@@ -358,6 +382,7 @@ int orcm_octl_session_set(int cmd, char **argv)
     if (ORCM_SUCCESS != rc) {
         orcm_octl_error("connection-fail");
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer.data, &result,
@@ -413,6 +438,7 @@ int orcm_octl_session_get(int cmd, char **argv)
         orcm_octl_error("pack");
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -423,6 +449,7 @@ int orcm_octl_session_get(int cmd, char **argv)
         orcm_octl_error("pack");
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -432,6 +459,7 @@ int orcm_octl_session_get(int cmd, char **argv)
         orcm_octl_error("pack");
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -442,6 +470,7 @@ int orcm_octl_session_get(int cmd, char **argv)
         orcm_octl_error("pack");
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -453,6 +482,7 @@ int orcm_octl_session_get(int cmd, char **argv)
         orcm_octl_error("connection-fail");
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 
@@ -462,6 +492,7 @@ int orcm_octl_session_get(int cmd, char **argv)
     if (ORCM_SUCCESS != rc) {
         orcm_octl_error("connection-fail");
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
         return rc;
     }
 

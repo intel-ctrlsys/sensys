@@ -838,7 +838,7 @@ char **octl_split_argv(char *str, int delimiter)
             count++;
         }
 
-        if (0 > count || sizeof(buffer) < count) {
+        if (0 > count || sizeof(buffer) <= count) {
             count = 0;
         }
         strncpy(buffer, str, count);

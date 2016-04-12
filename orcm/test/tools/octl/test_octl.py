@@ -15,7 +15,8 @@ import subprocess
 import os
 from subprocess import Popen, PIPE, STDOUT
 
-cf_name = "ipmi.xml"
+cf_name = "orcm-default-config.xml"
+cf_dst = ""
 
 def get_gtests(gtest_binary):
     process = Popen([ gtest_binary, '--gtest_list_tests' ], stdout=PIPE)
@@ -58,6 +59,7 @@ def prefix_search():
     return prefix
 
 def setup_tests():
+    global cf_dst
     prefix = prefix_search()
     cf_src = os.getenv("srcdir")
     if cf_src:
@@ -66,8 +68,13 @@ def setup_tests():
         cf_src = cf_name
     cf_dst=prefix + "/etc/" + cf_name
     isThere = os.path.isfile(cf_dst)
-    if isThere == False:
-        os.system("sudo cp %s %s" % (cf_src, cf_dst))
+    if isThere:
+        os.system("sudo mv %s %s.bak" % (cf_dst, cf_dst))
+    os.system("sudo cp %s %s" % (cf_src, cf_dst))
+
+def teardown_tests():
+    global cf_dst
+    os.system("sudo mv %s.bak %s" % (cf_dst, cf_dst))
 
 def run_tests(gtest_binary):
     setup_tests()
@@ -87,6 +94,7 @@ def run_tests(gtest_binary):
             passed=passed+1
     print '+TEST SUMMARY PASSED = %d'%(passed)
     print '+TEST SUMMARY FAILED = %d'%(failed)
+    teardown_tests();
     return ret
 
 prog='./octl_tests'

@@ -223,6 +223,11 @@ void collect_inventory_info(opal_buffer_t *inventory_snapshot)
 
         if (NULL != i_module->module->inventory_collect) {
             i_module->module->inventory_collect(inventory_snapshot);
+        }else{
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "%s sensor:base: [%s]: init failed - skipping inventory collection",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                i_module->component->base_version.mca_component_name);
         }
     }
 
@@ -242,7 +247,6 @@ void collect_inventory_info(opal_buffer_t *inventory_snapshot)
     }
 
 }
-
 static void recv_inventory(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
                        orte_rml_tag_t tag, void *cbdata)
@@ -375,7 +379,7 @@ static void take_sample(int fd, short args, void *cbdata)
             NULL == strcasestr(sampler->sensors, i_module->component->base_version.mca_component_name)) {
             continue;
         }
-        if (NULL != i_module->module->sample && i_module->sampling) {
+        if (NULL != i_module->module->sample) {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "%s sensor:base: sampling component %s",
                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
@@ -385,6 +389,11 @@ static void take_sample(int fd, short args, void *cbdata)
             i_module->module->sample(sampler);
             stop_time_measurement(&measure);
             print_time_measurement(&measure, i_module->component->base_version.mca_component_name);
+        }else{
+            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                                "%s sensor:base: [%s]: init failed - not sampling",
+                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                i_module->component->base_version.mca_component_name);
         }
     }
 

@@ -712,7 +712,7 @@ static void nodepower_inventory_collect(opal_buffer_t *inventory_snapshot)
 
     /* Sample time */
     gettimeofday(&current_time, NULL);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_TIMEVAL))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &current_time, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
         return;
     }
@@ -760,10 +760,11 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
     rc = opal_dss.unpack(inventory_snapshot, &packed_hostname, &n, OPAL_STRING);
     ON_FAILURE_GOTO(rc, cleanup);
 
-    mkv = orcm_util_load_orcm_value("hostname", packed_hostname, OPAL_STRING, NULL);
+    mkv = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
     SAFEFREE(packed_hostname);
     ON_NULL_GOTO(mkv, cleanup);
     records = OBJ_NEW(opal_list_t);
+    ON_NULL_GOTO(records,cleanup);
 
     opal_list_append(records, (opal_list_item_t*)mkv);
     opal_list_append(records, (opal_list_item_t*)time_stamp);

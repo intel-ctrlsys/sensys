@@ -717,15 +717,21 @@ static void scroll_down(int *scroll_indx, char *input, size_t *len, char *prompt
 
 static void save_cmd_history(char *input)
 {
+    int local_index;
     if (0 < strlen(input)) {
-        strcpy (cmd_hist.hist[cmd_hist.indx], input);
-        if ((CLI_HISTORY_SIZE - 1) > cmd_hist.count) {
-            cmd_hist.count ++;
-        }
-        if ((CLI_HISTORY_SIZE -1) > cmd_hist.indx) {
-            cmd_hist.indx++;
+        if (CLI_HISTORY_SIZE == cmd_hist.indx) {
+            for (local_index = 0; local_index < CLI_HISTORY_SIZE - 1; local_index++ ) {
+                strcpy(cmd_hist.hist[local_index], cmd_hist.hist[local_index + 1]);
+            }
+            strcpy (cmd_hist.hist[CLI_HISTORY_SIZE - 1], input);
         } else {
-            cmd_hist.indx = 0;
+            strcpy (cmd_hist.hist[cmd_hist.indx], input);
+            if ((CLI_HISTORY_SIZE - 1) >= cmd_hist.count) {
+                cmd_hist.count++;
+            }
+            if ((CLI_HISTORY_SIZE - 1) >= cmd_hist.indx) {
+                cmd_hist.indx++;
+            }
         }
     }
 }

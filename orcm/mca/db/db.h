@@ -378,7 +378,9 @@ typedef struct {
     mca_db_base_component_create_hdl_fn_t create_handle;
     mca_db_base_component_finalize_fn_t   finalize;
 } orcm_db_base_component_t;
-
+extern const int VALUE_INT_COLUMN_NUM;
+extern const int VALUE_REAL_COLUMN_NUM;
+extern const int VALUE_STR_COLUMN_NUM;
 /*
  * Macro for use in components that are of type db
  */

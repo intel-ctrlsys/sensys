@@ -40,7 +40,7 @@
 #include "orcm/runtime/orcm_globals.h"
 
 #include "orcm/mca/db/base/base.h"
-
+#include "orcm/mca/db/base/db_base_utils.c"
 #include "db_odbc.h"
 
 extern bool is_supported_opal_int_type(opal_data_type_t type);
@@ -3976,8 +3976,6 @@ static int odbc_get_num_rows(struct orcm_db_base_module_t *imod, int rshandle, i
  **************************************************************************************************/
  #define COLUMN_NAME_WIDTH 48 /* size is arbitrary but reasonable */
  #define NO_COLUMN         (-1)
-extern const char *opal_type_column_name;
-extern const char *value_column_names[];
 
 static int get_number_of_columns(SQLHSTMT results)
 {
@@ -4085,10 +4083,6 @@ static opal_data_type_t get_opal_type_from_sql_type(SQLSMALLINT sql_type)
     }
 }
 /**************************************************************************************************/
-
-#define VALUE_STR_COLUMN_NUM    0
-#define VALUE_INT_COLUMN_NUM    1
-#define VALUE_REAL_COLUMN_NUM   2
 
 static opal_value_t *get_value_object(SQLHSTMT results, int unused, opal_data_type_t type)
 {

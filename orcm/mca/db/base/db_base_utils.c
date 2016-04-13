@@ -29,10 +29,21 @@ void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
 extern int asprintf(char** new_str, const char* format,...);
 
 const char *opal_type_column_name = "data_type_id";
+
+/* List order is used to determine priority in searching for if column contains data.
+ * The last NULL item terminates the list. */
 const char *value_column_names[] = {
-    "value_str",
     "value_int",
     "value_real",
+    "value_str",
+    NULL
+};
+/* List order must matched with values in value_column_names[]
+ * The last NULL item terminates the list. */
+const opal_data_type_t value_column_types[] = {
+    OPAL_INT,
+    OPAL_DOUBLE,
+    OPAL_STRING,
     NULL
 };
 

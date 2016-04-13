@@ -70,7 +70,7 @@ TEST_F(ut_parser_pugi_tests, test_pugiImpl_createParser_charptrConstructor)
 TEST_F(ut_parser_pugi_tests, test_pugiImpl_loadFile_invalidFile)
 {
     parser_t p(invalidFile);
-    ASSERT_TRUE(p.loadFile());
+    ASSERT_THROW(p.loadFile(), unableToOpenFile);
 }
 
 TEST_F(ut_parser_pugi_tests, test_pugiImpl_loadFile_validFile)

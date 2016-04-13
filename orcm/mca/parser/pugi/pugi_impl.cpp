@@ -19,7 +19,7 @@ int pugi_impl::loadFile()
     if (result){
         return convertXmlNodeToOpalList(doc,root);
     }
-    return ORCM_ERR_FILE_OPEN_FAILURE;
+    throw unableToOpenFile(file, result.description());
 }
 
 opal_list_t* pugi_impl::retrieveSection(char const *key, char const* name)

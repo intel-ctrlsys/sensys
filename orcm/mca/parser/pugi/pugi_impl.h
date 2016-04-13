@@ -12,6 +12,7 @@
 
 #include <stdlib.h>
 #include <string>
+#include <stdexcept>
 #include "orcm/constants.h"
 #include "pugixml/pugixml.hpp"
 
@@ -72,6 +73,12 @@ class pugi_impl {
         opal_list_t* searchKeyInTree(opal_list_t *tree, char const *key);
         opal_list_t* searchKeyAndNameInTree(opal_list_t *tree, char const *key, char const* name);
         opal_list_t* searchInTree(opal_list_t *tree, char const *key,char const* name);
+};
+
+class unableToOpenFile : public std::runtime_error {
+    public:
+    unableToOpenFile(const std::string& file, const std::string& pugi_error_msg) :
+        std::runtime_error("Cannot open file: " + file + " Error: " + pugi_error_msg) {}
 };
 
 #endif

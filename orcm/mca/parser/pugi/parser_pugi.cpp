@@ -28,7 +28,6 @@ typedef pugi_impl parser_t;
 
 BEGIN_C_DECLS
 
-
 orcm_parser_base_module_t orcm_parser_pugi_module = {
     NULL,
     pugi_finalize,
@@ -47,6 +46,14 @@ inline bool is_file_id_valid(int file_id){
     return !(0 >= file_id_table.count(file_id));
 }
 
+void print_error_msg(const char *msg)
+{
+    int opal_id = opal_output_open(NULL);
+    opal_output(opal_id, "ERROR: pugi_parser: %s", msg);
+    opal_output_close(opal_id);
+}
+
+
 void pugi_finalize()
 {
     for(map<int,parser_t*>::iterator it=file_id_table.begin();
@@ -61,9 +68,13 @@ int pugi_open(char const *file)
 {
     parser_t *p= new parser_t(file);
     if (NULL != p){
-        if (ORCM_SUCCESS == p->loadFile()){
-            file_id_table[++current_file_id] = p;
-            return current_file_id;
+        try {
+            if (ORCM_SUCCESS == p->loadFile()){
+                file_id_table[++current_file_id] = p;
+                return current_file_id;
+            }
+        } catch (exception &e){
+            print_error_msg(e.what());
         }
         delete p;
     }

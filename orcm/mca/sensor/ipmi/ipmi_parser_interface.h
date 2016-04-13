@@ -26,7 +26,7 @@ typedef struct ipmi_collector {
     int channel;
 } ipmi_collector;
 
-extern void load_ipmi_config_file(void);
+extern bool load_ipmi_config_file(void);
 
 extern void start_aggregator_count(void);
 

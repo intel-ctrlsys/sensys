@@ -18,8 +18,6 @@ static set<string>::iterator agg_it;
 extern "C" {
     #include "ipmi_parser_interface.h"
 
-    static ipmi_collector *collector;
-
     // Obtains the list of aggregator names from IPMI collector
     static void get_aggregators(){
         ipmiCollectorVector::iterator it;
@@ -31,11 +29,13 @@ extern "C" {
 
     // Parses the file and retrieves the IPMI collector 'map' & 'vector'
     // and 'set' of aggregators.
-    void load_ipmi_config_file(){
+    bool load_ipmi_config_file(){
         ipmiParser parser;
         ic_map = parser.getIpmiCollectorMap();
         ic_vector = parser.getIpmiCollectorVector();
         get_aggregators();
+
+        return ic_vector.empty();
     }
 
     // Initializes the aggregator count
@@ -60,17 +60,15 @@ extern "C" {
             return false;
         }
 
-        collector = ic;
-
-        strncpy(collector->bmc_address, ic_map[str_hostname].getBmcAddress().c_str(), MAX_STR_LEN-1);
-        strncpy(collector->user, ic_map[str_hostname].getUser().c_str(), MAX_STR_LEN-1);
-        strncpy(collector->pass, ic_map[str_hostname].getPass().c_str(), MAX_STR_LEN-1);
-        strncpy(collector->aggregator, ic_map[str_hostname].getAggregator().c_str(), MAX_STR_LEN-1);
-        strncpy(collector->hostname, ic_map[str_hostname].getHostname().c_str(), MAX_STR_LEN-1);
-        collector->auth_method = ic_map[str_hostname].getAuthMethod();
-        collector->priv_level  = ic_map[str_hostname].getPrivLevel();
-        collector->port        = ic_map[str_hostname].getPort();
-        collector->channel     = ic_map[str_hostname].getChannel();
+        strncpy(ic->bmc_address, ic_map[str_hostname].getBmcAddress().c_str(), MAX_STR_LEN-1);
+        strncpy(ic->user, ic_map[str_hostname].getUser().c_str(), MAX_STR_LEN-1);
+        strncpy(ic->pass, ic_map[str_hostname].getPass().c_str(), MAX_STR_LEN-1);
+        strncpy(ic->aggregator, ic_map[str_hostname].getAggregator().c_str(), MAX_STR_LEN-1);
+        strncpy(ic->hostname, ic_map[str_hostname].getHostname().c_str(), MAX_STR_LEN-1);
+        ic->auth_method = ic_map[str_hostname].getAuthMethod();
+        ic->priv_level  = ic_map[str_hostname].getPrivLevel();
+        ic->port        = ic_map[str_hostname].getPort();
+        ic->channel     = ic_map[str_hostname].getChannel();
         return true;
     }
 }

@@ -277,7 +277,7 @@ int orcm_octl_set_notifier_smtp(int cmd, char **argv)
                             ORTE_RML_NON_PERSISTENT,
                             orte_rml_recv_callback, xfer);
 
-        orcm_octl_info("notifier-set-policy", nodelist[i]);
+        orcm_octl_info("notifier-policy", "set", nodelist[i]);
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(nodelist[i],
                                                                    &tgt))) {
             orcm_octl_error("node-notfound");

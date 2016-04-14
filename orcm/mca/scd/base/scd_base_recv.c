@@ -184,10 +184,25 @@ static int orcm_scd_base_unpack_exec_buffer(opal_buffer_t *buf, char **exec_name
     return ORCM_SUCCESS;
 }
 
+static char *orcm_scd_truncate_slash(char *actual_exec_name)
+{
+    char *ptr = strrchr(actual_exec_name, '/');
+    if (NULL == ptr) {
+        return actual_exec_name;
+    }
+
+    if (1 == strlen(ptr)) {
+        return NULL;
+    }
+
+    return ptr + 1;
+}
+
 static int orcm_scd_base_get_full_exec_name(char *exec_name, char **exec_full_name)
 {
     int rc = ORCM_SUCCESS;
     char *actual_exec_name = NULL;
+    char *final_exec_name = NULL;
     char *ptr = NULL;
 
     if (NULL == orcm_event_exec_path || '0' == *orcm_event_exec_path) {
@@ -201,13 +216,16 @@ static int orcm_scd_base_get_full_exec_name(char *exec_name, char **exec_full_na
     if (NULL == actual_exec_name) {
         return ORCM_ERROR;
     }
+    if (NULL == (final_exec_name = orcm_scd_truncate_slash(actual_exec_name))) {
+        return ORCM_ERROR;
+    }
 
     ptr = strrchr(orcm_event_exec_path, '/');
     /* last character is '/' */
     if (NULL != ptr && 1 == strlen(ptr)) {
-        asprintf(exec_full_name, "%s%s", orcm_event_exec_path, actual_exec_name);
+        asprintf(exec_full_name, "%s%s", orcm_event_exec_path, final_exec_name);
     } else {
-        asprintf(exec_full_name, "%s/%s", orcm_event_exec_path, actual_exec_name);
+        asprintf(exec_full_name, "%s/%s", orcm_event_exec_path, final_exec_name);
     }
 
     if (NULL == *exec_full_name) {

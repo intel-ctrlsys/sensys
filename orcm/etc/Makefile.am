@@ -23,12 +23,13 @@ orcm_config_file_found = @OPAL_SITE_CONFIG_FILE_FOUND@
 
 orcm_default_config_file = @ORCM_DEFAULT_CONFIG_FILE@
 orcm_default_config_file_found = @ORCM_DEFAULT_CONFIG_FILE_FOUND@
+orcm_default_config_file_dist = orcm-default-config.xml
 
 orcm_rsyslog_config_file = @OPAL_SYSLOG_CONFIG_FILE@
 orcm_rsyslog_config_file_found = @OPAL_SYSLOG_CONFIG_FILE_FOUND@
 orcm_rsyslog_supported_config_location = "/etc/rsyslog.d"
 
-EXTRA_DIST = $(orcm_config_files)
+EXTRA_DIST = $(orcm_config_files) $(orcm_default_config_file_dist)
 
 # Steal a little trickery from a generated Makefile to only install
 # files if they do not already exist at the target.  Be sure to read

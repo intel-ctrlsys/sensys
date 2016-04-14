@@ -48,25 +48,30 @@
 # global Open RCM stuff
 #
 Prefix: /opt/openrcm
-%define orcm_name openrcm
-%define orcm_version @ORCM_VERSION@
+%{!?orcm_name: %define orcm_name openrcm}
+%{!?orcm_version: %define orcm_version @ORCM_VERSION@}
 %{!?orcm_package_version:%define orcm_package_version default}
 %define orcm_extra_version %{nil}
-%define orcm_release 1
+%{!?orcm_release: %define orcm_release 1}
 %define orcm_prefix  /opt/%{orcm_name}
 %define orcm_build_root %{_tmppath}/%{orcm_name}-%{orcm_version}-%{orcm_release}-root
 %define orcm_source %{orcm_name}-%{orcm_version}.tar.gz
 %define orcm_url https://www.open-mpi.org/projects/orcm/
 %define orcm_specfile %{_topdir}/SPECS/%{orcm_name}-%{orcm_version}.spec
-%{!?configure_options: %define configure_options  %{nil}}
+
+%{!?config_platform: %define config_platform --with-platform=contrib/platform/intel/hillsboro/orcm-linux}
+
 %if 0%{?suse_version} > 1220
 %{!?config_postgres: %define config_postgres --with-postgres=%{_usr}/lib/postgresql93}
 %else
-%define configure_options --with-platform=contrib/platform/intel/hillsboro/orcm-linux --with-postgres=/usr/pgsql-9.3
+%{!?config_postgres: %define config_postgres --with-postgres=%{_usr}/pgsql-9.3}
 %endif
-%define orcm_configure_params  %{nil}
-%define orcm_compile_root %{orcm_name}-%{orcm_version}
 
+%{!?config_extras: %define config_extras %{nil}}
+
+%{!?configure_flags: %define configure_flags %{config_platform} %{config_postgres} %{config_extras} }
+
+%define orcm_compile_root %{orcm_name}-%{orcm_version}
 
 #
 # fix configure 
@@ -77,14 +82,6 @@ Prefix: /opt/openrcm
 %define _includedir %{_prefix}/include
 %define _mandir %{_prefix}/share/man
 %define _pkgdatadir %{_prefix}/share/openmpi
-
-
-#
-# compiler settings
-#
-%define orcm_compiler default
-%define orcm_cc  " "
-%define orcm_cxx " "
 
 
 ######################################################################
@@ -129,14 +126,8 @@ This part build and install the Open RCM source tree.
 %setup -q
 
 %build
-ORCM_CONFIGURE_FLAGS="%{orcm_configure_params}"
-ORCM_CONFIGURE_OPTIONS="%{configure_options}"
-if [ "%{orcm_compiler}" != "default" ]; then
-ORCM_CONFIGURE_FLAGS="$ORCM_CONFIGURE_FLAGS CC=%{orcm_cc} CXX=%{orcm_cxx}"
-fi
-
-%configure $ORCM_CONFIGURE_FLAGS $ORCM_CONFIGURE_OPTIONS
-make -j4
+%configure %{configure_flags}
+%{__make} %{?_smp_mflags}
 
 %install
 
@@ -355,7 +346,7 @@ for entry in /no_build; do
 done
 if [ $BUILD_PACKAGE == 1 ] ; then 
 eval export ORCM_PACKAGE_VERSION=`/bin/echo unknown`
-rpmbuild -bc --define '_topdir %_topdir'  --define 'build_build 1' --define 'build_default 0' --define "orcm_package_version $ORCM_PACKAGE_VERSION" %{orcm_specfile}
+rpmbuild -bc --define '_topdir %_topdir' --define 'orcm_name %{orcm_name}' --define 'build_build 1' --define 'build_default 0' --define "orcm_package_version $ORCM_PACKAGE_VERSION" %{orcm_specfile}
 fi
 
 BUILD_PACKAGE=1
@@ -368,7 +359,7 @@ for entry in /no_install; do
 done
 if [ $BUILD_PACKAGE == 1 ] ; then 
 eval export ORCM_PACKAGE_VERSION=`/bin/echo unknown`
-rpmbuild -bi --define '_topdir %_topdir'  --define 'build_install 1' --define 'build_default 0' --define "orcm_package_version $ORCM_PACKAGE_VERSION" %{orcm_specfile}
+rpmbuild -bi --define '_topdir %_topdir' --define 'orcm_name %{orcm_name}' --define 'build_install 1' --define 'build_default 0' --define "orcm_package_version $ORCM_PACKAGE_VERSION" %{orcm_specfile}
 fi
 
 

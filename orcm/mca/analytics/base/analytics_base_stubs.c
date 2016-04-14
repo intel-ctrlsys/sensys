@@ -40,7 +40,7 @@ static void orcm_analytics_base_set_event_workflow_step(orcm_workflow_t *wf,
                                                         orcm_workflow_step_t *wf_step,
                                                         orcm_workflow_caddy_t *caddy);
 static int orcm_analytics_base_workflow_list_append_info(opal_buffer_t *buffer);
-static void orcm_analytics_base_workflow_step_error(int rc, orcm_workflow_step_t *wf_step, char *step_name);
+static void orcm_analytics_base_workflow_step_error(int rc, orcm_workflow_step_t *wf_step);
 
 
 static int workflow_id = 0;
@@ -239,11 +239,10 @@ static int orcm_analytics_base_add_new_workflow_event_base(orcm_workflow_t *wf)
     return rc;
 }
 
-static void orcm_analytics_base_workflow_step_error(int rc, orcm_workflow_step_t *wf_step, char *step_name)
+static void orcm_analytics_base_workflow_step_error(int rc, orcm_workflow_step_t *wf_step)
 {
     ORTE_ERROR_LOG(rc);
     SAFE_RELEASE(wf_step);
-    SAFEFREE(step_name);
 }
 
 static int orcm_analytics_base_workflow_step_add(orcm_workflow_t *wf, opal_buffer_t* buffer, int step)
@@ -263,26 +262,26 @@ static int orcm_analytics_base_workflow_step_add(orcm_workflow_t *wf, opal_buffe
 
     rc = opal_dss.unpack(buffer, &num_attributes, &cnt, OPAL_INT);
     if (OPAL_SUCCESS != rc) {
-        orcm_analytics_base_workflow_step_error(rc, wf_step, step_name);
+        orcm_analytics_base_workflow_step_error(rc, wf_step);
         return rc;
     }
 
     rc = opal_dss.unpack(buffer, &step_name, &cnt, OPAL_STRING);
     if (OPAL_SUCCESS != rc) {
-        orcm_analytics_base_workflow_step_error(rc, wf_step, step_name);
+        orcm_analytics_base_workflow_step_error(rc, wf_step);
         return rc;
     }
     wf_step->analytic = step_name;
 
     rc = orcm_analytics_base_parse_attributes(&wf_step->attributes, buffer, num_attributes);
     if (ORCM_SUCCESS != rc ) {
-        orcm_analytics_base_workflow_step_error(rc, wf_step, step_name);
+        orcm_analytics_base_workflow_step_error(rc, wf_step);
         return rc;
     }
 
     rc = orcm_analytics_base_select_workflow_step(wf_step);
     if (ORCM_SUCCESS != rc) {
-        orcm_analytics_base_workflow_step_error(rc, wf_step, step_name);
+        orcm_analytics_base_workflow_step_error(rc, wf_step);
         OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
                              "%s analytics:base:workflow step can't be created",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
@@ -333,6 +332,8 @@ int orcm_analytics_base_workflow_add(opal_buffer_t* buffer, int *wfid)
     }
 
     if (NULL == (wf = orcm_analytics_base_workflow_object_init(wfid, wf_name))) {
+        rc = ORCM_ERROR;
+        SAFEFREE(wf_name);
         goto error;
     }
 
@@ -356,7 +357,6 @@ int orcm_analytics_base_workflow_add(opal_buffer_t* buffer, int *wfid)
 
 error:
     SAFE_RELEASE(wf);
-    SAFEFREE(wf_name);
     return rc;
 }
 

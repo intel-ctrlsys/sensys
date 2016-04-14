@@ -41,7 +41,8 @@ opal_list_t* orcm_util_workflow_add_retrieve_workflows_section(const char *file)
     return result_list;
 }
 
-static int orcm_util_workflow_add_check_filter_step(char *key, char *value, bool *is_filter_first_step)
+static int orcm_util_workflow_add_check_filter_step(char *key, char *value,
+                                                    bool *is_filter_first_step)
 {
     if ( (false == *is_filter_first_step) && (0 == strcmp("step", key)) ) {
         if (0 == strcmp("filter", value)) {
@@ -56,7 +57,8 @@ static int orcm_util_workflow_add_check_filter_step(char *key, char *value, bool
     return ORCM_SUCCESS;
 }
 
-static int orcm_util_workflow_add_extract_string_type (opal_buffer_t *buf, char *key, char *value, char *list_head_key, bool *is_name_first_key, bool *is_filter_first_step)
+static int orcm_util_workflow_add_check_name_key(opal_buffer_t *buf, char *list_head_key,
+                                                 char *key, bool *is_name_first_key)
 {
     int rc;
 
@@ -72,13 +74,32 @@ static int orcm_util_workflow_add_extract_string_type (opal_buffer_t *buf, char 
     }
 
     if (0 != strcmp("name", key)) {
+        if (0 == strcmp("workflow", list_head_key)) {
+            ORCM_UTIL_MSG("%s workflow:util:Wrong tag in workflow block",
+                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+            return ORCM_ERR_BAD_PARAM;
+        }
         if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &key, 1, OPAL_STRING))) {
             return rc;
         }
     }
+    return ORCM_SUCCESS;
+}
+
+static int orcm_util_workflow_add_extract_string_type (opal_buffer_t *buf, char *key,
+                                                       char *value, char *list_head_key,
+                                                       bool *is_name_first_key,
+                                                       bool *is_filter_first_step)
+{
+    int rc;
 
     ORCM_UTIL_MSG("%s workflow:util:frame value is %s",
                   ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), value);
+
+    rc = orcm_util_workflow_add_check_name_key(buf, list_head_key, key, is_name_first_key);
+    if (ORCM_SUCCESS != rc) {
+        return rc;
+    }
 
     rc = orcm_util_workflow_add_check_filter_step(list_head_key, value, is_filter_first_step);
     if (ORCM_SUCCESS != rc) {
@@ -91,7 +112,8 @@ static int orcm_util_workflow_add_extract_string_type (opal_buffer_t *buf, char 
     return ORCM_SUCCESS;
 }
 
-int orcm_util_workflow_add_extract_workflow_info(opal_list_t *result_list, opal_buffer_t *buf, char *list_head_key, bool *is_filter_first_step)
+int orcm_util_workflow_add_extract_workflow_info(opal_list_t *result_list, opal_buffer_t *buf,
+                                                 char *list_head_key, bool *is_filter_first_step)
 {
     orcm_value_t *list_item = NULL;
     int rc;
@@ -116,7 +138,10 @@ int orcm_util_workflow_add_extract_workflow_info(opal_list_t *result_list, opal_
                       ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), list_item->value.key);
 
         if (list_item->value.type == OPAL_STRING) {
-            rc = orcm_util_workflow_add_extract_string_type(buf, list_item->value.key, list_item->value.data.string, list_head_key, &is_name_first_key, is_filter_first_step);
+            rc = orcm_util_workflow_add_extract_string_type(buf, list_item->value.key,
+                                                            list_item->value.data.string,
+                                                            list_head_key, &is_name_first_key,
+                                                            is_filter_first_step);
             if (ORCM_SUCCESS != rc) {
                 return rc;
             }
@@ -128,7 +153,9 @@ int orcm_util_workflow_add_extract_workflow_info(opal_list_t *result_list, opal_
                 return ORCM_ERR_BAD_PARAM;
             }
             if (0 == strcmp(list_item->value.key, "step")) {
-                rc = orcm_util_workflow_add_extract_workflow_info((opal_list_t*)list_item->value.data.ptr, buf, list_item->value.key, is_filter_first_step);
+                rc = orcm_util_workflow_add_extract_workflow_info((opal_list_t*)list_item->value.data.ptr,
+                                                                  buf, list_item->value.key,
+                                                                  is_filter_first_step);
                 if (ORCM_SUCCESS != rc) {
                     return rc;
                 }

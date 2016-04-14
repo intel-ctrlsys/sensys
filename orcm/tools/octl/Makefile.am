@@ -33,6 +33,7 @@ octl_SOURCES = \
         diag.c \
         octl.h \
         octl.c \
+        octl_commands.c \
         power.c \
         queue.c \
         resource.c \

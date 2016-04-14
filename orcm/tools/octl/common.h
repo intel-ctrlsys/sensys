@@ -107,6 +107,7 @@ void orcm_octl_error(char *label, ...);
 void orcm_octl_info(char *label, ...);
 void orcm_octl_usage(char *label, int error);
 char **octl_split_argv(char *str, int delimiter);
+int orcm_octl_work(int argc, char *argv[]);
 
 END_C_DECLS
 

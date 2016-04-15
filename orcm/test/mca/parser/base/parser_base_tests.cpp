@@ -138,6 +138,12 @@ void ut_parser_base_tests::reset_module_list()
     OBJ_CONSTRUCT(&orcm_parser_base.actives, opal_list_t);
 }
 
+void ut_parser_base_tests::reset_base_framework_comp()
+{
+    OPAL_LIST_DESTRUCT(&orcm_parser_base_framework.framework_components);
+    OBJ_CONSTRUCT(&orcm_parser_base_framework.framework_components, opal_list_t);
+}
+
 void ut_parser_base_tests::SetUpTestCase()
 {
     OBJ_CONSTRUCT(&orcm_parser_base_framework.framework_components, opal_list_t);
@@ -181,13 +187,14 @@ TEST_F(ut_parser_base_tests, parser_base_select_NULL_component)
 TEST_F(ut_parser_base_tests, parser_base_select_NULL_query_component)
 {
     int ret;
-    orcm_parser_base_component_t *parser_component;
+    orcm_parser_base_component_t parser_component;
     mca_base_component_list_item_t *component;
 
+    ut_parser_base_tests::reset_base_framework_comp();
     component = OBJ_NEW(mca_base_component_list_item_t);
-    component->cli_component = (mca_base_component_t *) parser_component;
+    component->cli_component = (mca_base_component_t *) &parser_component;
 
-    parser_component->base_version.mca_query_component = NULL;
+    parser_component.base_version.mca_query_component = NULL;
 
     opal_list_append(&orcm_parser_base_framework.framework_components,(opal_list_item_t *)component);
 
@@ -198,13 +205,14 @@ TEST_F(ut_parser_base_tests, parser_base_select_NULL_query_component)
 TEST_F(ut_parser_base_tests, parser_base_select_query_component_with_NULL_module)
 {
     int ret;
-    orcm_parser_base_component_t *parser_component;
+    orcm_parser_base_component_t parser_component;
     mca_base_component_list_item_t *component;
 
+    ut_parser_base_tests::reset_base_framework_comp();
     component = OBJ_NEW(mca_base_component_list_item_t);
-    component->cli_component = (mca_base_component_t *) parser_component;
+    component->cli_component = (mca_base_component_t *) &parser_component;
 
-    parser_component->base_version.mca_query_component = component_query_null_module;
+    parser_component.base_version.mca_query_component = component_query_null_module;
 
     opal_list_append(&orcm_parser_base_framework.framework_components,(opal_list_item_t *)component);
 
@@ -215,13 +223,14 @@ TEST_F(ut_parser_base_tests, parser_base_select_query_component_with_NULL_module
 TEST_F(ut_parser_base_tests, parser_base_select_query_component_with_NULL_init_module)
 {
     int ret;
-    orcm_parser_base_component_t *parser_component;
+    orcm_parser_base_component_t parser_component;
     mca_base_component_list_item_t *component;
 
+    ut_parser_base_tests::reset_base_framework_comp();
     component = OBJ_NEW(mca_base_component_list_item_t);
-    component->cli_component = (mca_base_component_t *) parser_component;
+    component->cli_component = (mca_base_component_t *) &parser_component;
 
-    parser_component->base_version.mca_query_component = component_query_with_null_api_module;
+    parser_component.base_version.mca_query_component = component_query_with_null_api_module;
 
     opal_list_append(&orcm_parser_base_framework.framework_components,(opal_list_item_t *)component);
 
@@ -232,13 +241,14 @@ TEST_F(ut_parser_base_tests, parser_base_select_query_component_with_NULL_init_m
 TEST_F(ut_parser_base_tests, parser_base_select_query_component_with_one_module)
 {
     int ret;
-    orcm_parser_base_component_t *parser_component;
+    orcm_parser_base_component_t parser_component;
     mca_base_component_list_item_t *component;
 
+    ut_parser_base_tests::reset_base_framework_comp();
     component = OBJ_NEW(mca_base_component_list_item_t);
-    component->cli_component = (mca_base_component_t *) parser_component;
+    component->cli_component = (mca_base_component_t *) &parser_component;
 
-    parser_component->base_version.mca_query_component = component_query_with_module;
+    parser_component.base_version.mca_query_component = component_query_with_module;
 
     opal_list_append(&orcm_parser_base_framework.framework_components,(opal_list_item_t *)component);
 

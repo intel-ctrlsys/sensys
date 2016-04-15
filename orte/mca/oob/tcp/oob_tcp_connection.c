@@ -154,12 +154,13 @@ void mca_oob_tcp_peer_try_connect(int fd, short args, void *cbdata)
     mca_oob_tcp_conn_op_t *op = (mca_oob_tcp_conn_op_t*)cbdata;
     mca_oob_tcp_peer_t *peer = op->peer;
     int rc;
+    struct sockaddr_in inaddr;
     opal_socklen_t addrlen = 0;
     mca_oob_tcp_addr_t *addr;
     char *host;
     mca_oob_tcp_send_t *snd;
     bool connected = false;
-
+    int port;
     opal_output_verbose(OOB_TCP_DEBUG_CONNECT, orte_oob_base_framework.framework_output,
                         "%s orte_tcp_peer_try_connect: "
                         "attempting to connect to proc %s",
@@ -188,7 +189,6 @@ void mca_oob_tcp_peer_try_connect(int fd, short args, void *cbdata)
                         "attempting to connect to proc %s on socket %d",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         ORTE_NAME_PRINT(&(peer->name)), peer->sd);
-
     addrlen = sizeof(struct sockaddr_in);
     OPAL_LIST_FOREACH(addr, &peer->addrs, mca_oob_tcp_addr_t) {
         opal_output_verbose(OOB_TCP_DEBUG_CONNECT, orte_oob_base_framework.framework_output,
@@ -218,6 +218,27 @@ void mca_oob_tcp_peer_try_connect(int fd, short args, void *cbdata)
         peer->active_addr = addr;  // record the one we are using
     retry_connect:
         addr->retries++;
+        port = opal_net_get_port((struct sockaddr*)&addr->addr);
+        if (1024 < port) {
+        opal_output_verbose(OOB_TCP_DEBUG_CONNECT, orte_oob_base_framework.framework_output,
+                        "%s orte_tcp_peer_try_connect: %s:%d port privilege failure",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                        opal_net_get_hostname((struct sockaddr*)&addr->addr),
+                        opal_net_get_port((struct sockaddr*)&addr->addr));
+        continue;
+        }
+        ((struct sockaddr_in*) &inaddr)->sin_family = AF_INET;
+        ((struct sockaddr_in*) &inaddr)->sin_port = htons(port);
+        if (bind(peer->sd, (struct sockaddr*)&inaddr, addrlen) < 0) {
+            opal_output(0, "%s bind() failed for port %d: %s (%d)",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                        port,
+                        strerror(opal_socket_errno),
+                        opal_socket_errno );
+            CLOSE_THE_SOCKET(peer->sd);
+            OBJ_RELEASE(op);
+            return;
+        }
         if (connect(peer->sd, (struct sockaddr*)&addr->addr, addrlen) < 0) {
             /* non-blocking so wait for completion */
             if (opal_socket_errno == EINPROGRESS || opal_socket_errno == EWOULDBLOCK) {

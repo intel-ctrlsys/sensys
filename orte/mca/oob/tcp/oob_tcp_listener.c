@@ -850,10 +850,22 @@ static void connection_handler(int sd, short flags, void* cbdata)
 static void connection_event_handler(int incoming_sd, short flags, void* cbdata)
 {
     struct sockaddr addr;
-    opal_socklen_t addrlen = sizeof(struct sockaddr);
+    opal_socklen_t addrlen = sizeof(struct sockaddr_in);
     int sd;
+    int port;
 
     sd = accept(incoming_sd, (struct sockaddr*)&addr, &addrlen);
+    port = opal_net_get_port((struct sockaddr*) &addr);
+    if ((-1 == port || 1024 < port) && !ORTE_PROC_IS_SCHEDULER) {
+        /* someone tried to cross-connect privileges,say something */
+        orte_show_help("help-oob-tcp.txt",
+                       "privilege failure",
+                       true, opal_process_info.nodename,
+                       port);
+      CLOSE_THE_SOCKET(sd);
+      CLOSE_THE_SOCKET(incoming_sd);
+      return;
+    }
     opal_output_verbose(OOB_TCP_DEBUG_CONNECT, orte_oob_base_framework.framework_output,
                         "%s connection_event_handler: working connection "
                         "(%d, %d) %s:%d\n",

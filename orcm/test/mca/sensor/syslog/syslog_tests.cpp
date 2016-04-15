@@ -22,6 +22,7 @@
 
 // C++
 #include <iostream>
+#include <stdexcept>
 
 // Fixture
 using namespace std;

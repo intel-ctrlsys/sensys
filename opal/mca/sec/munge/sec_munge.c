@@ -109,13 +109,13 @@ static int get_my_cred(int dstorehandle,
     return OPAL_SUCCESS;
 }
 
-static int group_authorize(uid_t uid_remote) 
+static int group_authorize(uid_t uid_remote)
 {
     struct group* grp = NULL;
     grp = getgrgid(uid_remote);
     if (NULL == authorize_grp) {
         opal_output_verbose(100, opal_sec_base_framework.framework_output,
-                            "sec: munge: set opal_sec_munge_authorize_group" 
+                            "sec: munge: set opal_sec_munge_authorize_group"
                             "MCA parameter not defined\n");
         return OPAL_ERR_AUTHENTICATION_FAILED;
     }
@@ -132,7 +132,7 @@ static int group_authorize(uid_t uid_remote)
     return OPAL_ERROR;
 }
 
-static int get_grouplist(uid_t uid_remote, gid_t** groups, int* ngroups) 
+static int get_grouplist(uid_t uid_remote, gid_t** groups, int* ngroups)
 {
     struct passwd* pwd = NULL;
     pwd = getpwuid(uid_remote);
@@ -171,6 +171,14 @@ static int grouplist_authorize(int ngroups, gid_t* groups)
     struct group* grp = NULL;
     opal_output_verbose(100, opal_sec_base_framework.framework_output,
                         "sec: munge: ngroups = %d\n", ngroups);
+
+    if (NULL == authorize_grp) {
+        opal_output_verbose(100, opal_sec_base_framework.framework_output,
+                            "sec: munge: set opal_sec_munge_authorize_group"
+                            "MCA parameter not defined\n");
+        return OPAL_ERR_AUTHENTICATION_FAILED;
+    }
+
     for (indexgrp = 0; indexgrp < ngroups; indexgrp++) {
         grp = getgrgid(groups[indexgrp]);
         if (NULL == grp) {

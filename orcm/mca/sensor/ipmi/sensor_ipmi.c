@@ -181,10 +181,7 @@ static int init(void)
         return OPAL_SUCCESS;
     }
 
-    if (!load_ipmi_config_file()) {
-        opal_output(0, "Unable to collect ipmi configuration");
-        return ORCM_ERROR;
-    }
+    load_ipmi_config_file();
 
     rc = orcm_sensor_ipmi_get_sensor_inventory_list(&sensor_inventory);
     if(rc != ORCM_SUCCESS) {
@@ -580,12 +577,6 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
     const char *comp = "ipmi";
     opal_value_t* inv_item = NULL;
     struct timeval time_stamp;
-
-    if (NULL == cur_host) {
-        opal_output_verbose(0, orcm_sensor_base_framework.framework_output,
-            "Possible Error: Failed to collect ipmi inventory'");
-        return;
-    }
 
     if (mca_sensor_ipmi_component.test) {
         /* generate test vector */

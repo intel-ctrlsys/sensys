@@ -252,6 +252,7 @@ int orcm_octl_resource_drain(char **argv)
     if (ORCM_SUCCESS != (rc = orcm_logical_group_parse_string(argv[2], &nodelist))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &nodelist,
@@ -347,6 +348,7 @@ int orcm_octl_resource_resume(char **argv)
     if (ORCM_SUCCESS != (rc = orcm_logical_group_parse_string(argv[2], &nodelist))) {
         OBJ_RELEASE(buf);
         OBJ_DESTRUCT(&xfer);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_RM);
         return rc;
     }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buf, &nodelist,

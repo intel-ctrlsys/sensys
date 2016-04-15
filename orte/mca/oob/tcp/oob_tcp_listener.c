@@ -850,10 +850,32 @@ static void connection_handler(int sd, short flags, void* cbdata)
 static void connection_event_handler(int incoming_sd, short flags, void* cbdata)
 {
     struct sockaddr addr;
-    opal_socklen_t addrlen = sizeof(struct sockaddr);
+    opal_socklen_t addrlen = sizeof(struct sockaddr_in);
     int sd;
+    uint16_t static_port = 0;
+    int inport = 0;
 
     sd = accept(incoming_sd, (struct sockaddr*)&addr, &addrlen);
+    inport = opal_net_get_port((struct sockaddr*) &addr);
+    if(NULL != mca_oob_tcp_component.tcp_static_ports){
+        static_port = strtol(mca_oob_tcp_component.tcp_static_ports[0], NULL, 10);
+    }
+#if OPAL_ENABLE_IPV6
+    if(NULL != mca_oob_tcp_component.tcp6_static_ports){
+        static_port = strtol(mca_oob_tcp_component.tcp6_static_ports[0], NULL, 10);
+    }
+#endif
+    if(1024 > static_port){
+        if (-1 == inport || 1024 <= inport) {
+            /* someone tried to cross-connect privileges,say something */
+            orte_show_help("help-oob-tcp.txt",
+                           "privilege failure",
+                           true, opal_process_info.nodename,
+                           inport, static_port);
+          CLOSE_THE_SOCKET(sd);
+          return;
+        }
+    }
     opal_output_verbose(OOB_TCP_DEBUG_CONNECT, orte_oob_base_framework.framework_output,
                         "%s connection_event_handler: working connection "
                         "(%d, %d) %s:%d\n",

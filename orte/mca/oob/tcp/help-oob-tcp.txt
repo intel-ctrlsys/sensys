@@ -96,3 +96,13 @@ eventually timeout / abort.
   Errno:          %d (%s)
   Probable cause: %s
 #
+[privilege failure]
+An attempt was made to initiate a TCP connection from an
+unprivileged source while we are operating at privileged
+levels.
+
+  Local host:      %s
+  Inbound port:    %d
+  Listening port:  %d
+
+The connection was rejected.

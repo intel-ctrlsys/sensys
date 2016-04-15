@@ -197,7 +197,7 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
         return rc;
     }
 
-    (void) load_ipmi_config_file();
+    load_ipmi_config_file();
     close_parser_framework();
 
     if (ORCM_GET_CHASSIS_ID == command)

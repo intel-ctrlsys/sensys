@@ -181,7 +181,7 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
             goto ERROR;
         }
 
-        (void) load_ipmi_config_file();
+        load_ipmi_config_file();
         rc = ORCM_SUCCESS;
         rc_prev = ORCM_SUCCESS;
         visible_nodes = get_visible_nodes_count(nodelist, node_count);

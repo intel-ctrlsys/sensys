@@ -63,10 +63,15 @@ extern "C" {
         collector = ic;
 
         strncpy(collector->bmc_address, ic_map[str_hostname].getBmcAddress().c_str(), MAX_STR_LEN-1);
+        collector->bmc_address[MAX_STR_LEN-1] = '\0';
         strncpy(collector->user, ic_map[str_hostname].getUser().c_str(), MAX_STR_LEN-1);
+        collector->user[MAX_STR_LEN-1] = '\0';
         strncpy(collector->pass, ic_map[str_hostname].getPass().c_str(), MAX_STR_LEN-1);
+        collector->pass[MAX_STR_LEN-1] = '\0';
         strncpy(collector->aggregator, ic_map[str_hostname].getAggregator().c_str(), MAX_STR_LEN-1);
+        collector->aggregator[MAX_STR_LEN-1] = '\0';
         strncpy(collector->hostname, ic_map[str_hostname].getHostname().c_str(), MAX_STR_LEN-1);
+        collector->hostname[MAX_STR_LEN-1] = '\0';
         collector->auth_method = ic_map[str_hostname].getAuthMethod();
         collector->priv_level  = ic_map[str_hostname].getPrivLevel();
         collector->port        = ic_map[str_hostname].getPort();

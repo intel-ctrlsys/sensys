@@ -721,9 +721,13 @@ static void save_cmd_history(char *input)
     if (0 < strlen(input)) {
         if (CLI_HISTORY_SIZE == cmd_hist.indx) {
             for (local_index = 0; local_index < CLI_HISTORY_SIZE - 1; local_index++ ) {
-                strcpy(cmd_hist.hist[local_index], cmd_hist.hist[local_index + 1]);
+                strncpy(cmd_hist.hist[local_index],
+                        cmd_hist.hist[local_index + 1],
+                        sizeof(cmd_hist.hist[local_index]));
             }
-            strcpy (cmd_hist.hist[CLI_HISTORY_SIZE - 1], input);
+            strncpy(cmd_hist.hist[CLI_HISTORY_SIZE - 1],
+                    input,
+                    sizeof(cmd_hist.hist[CLI_HISTORY_SIZE - 1]));
         } else {
             strcpy (cmd_hist.hist[cmd_hist.indx], input);
             if ((CLI_HISTORY_SIZE - 1) >= cmd_hist.count) {

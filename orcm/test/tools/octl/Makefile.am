@@ -40,7 +40,8 @@ octl_tests_SOURCES = \
     octl_led_tests.cpp \
     workflow_tests.cpp
 MOCKING = \
-    -Wl,--wrap=orcm_cfgi_base_get_hostname_proc
+    -Wl,--wrap=orcm_cfgi_base_get_hostname_proc \
+    -Wl,--wrap=get_bmc_info
 
 #
 # Libraries we depend on

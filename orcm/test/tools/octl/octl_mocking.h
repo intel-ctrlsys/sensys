@@ -17,8 +17,11 @@ extern "C" {
     #include <stdlib.h>
     #include <stdio.h>
     #include "orte/include/orte/types.h"
+    #include "orcm/mca/sensor/ipmi/ipmi_parser_interface.h"
 
     extern int __real_orcm_cfgi_base_get_hostname_proc(char* hostname, orte_process_name_t* proc);
+
+    extern bool __real_get_bmc_info(char* hostname, ipmi_collector *ic);
 
 #ifdef __cplusplus
 }

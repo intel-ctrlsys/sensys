@@ -1518,6 +1518,7 @@ static int parse_orcm_config(orcm_config_t *cfg,
 static int parse_node(orcm_node_t *node, int idx, orcm_cfgi_xml_parser_t *x)
 {
     int rc;
+    char *tmp = NULL;
 
     if (0 == strcmp(x->name, TXname)) {
         /* the value contains the node name, or an expression
@@ -1531,7 +1532,17 @@ static int parse_node(orcm_node_t *node, int idx, orcm_cfgi_xml_parser_t *x)
             return ORCM_ERR_BAD_PARAM;
         }
 
-        node->name = strdup(get_controller_name(&x->value[0], NULL));
+        tmp = get_controller_name(&x->value[0], NULL);
+        if (NULL == tmp) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+        node->name = strdup(tmp);
+        if (NULL == node->name) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+
     } else {
         if (ORCM_SUCCESS != (rc = parse_orcm_config(&node->config, x))) {
             ORTE_ERROR_LOG(rc);
@@ -1546,6 +1557,7 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
     int n, rc;
     orcm_cfgi_xml_parser_t *xx;
     orcm_node_t *node, *nd;
+    char *tmp = NULL;
     char **vals = NULL;
     char **names = NULL;
 
@@ -1562,7 +1574,17 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
             return ORCM_ERR_BAD_PARAM;
         }
 
-        rack->controller.name = strdup(get_controller_name(&x->value[0], rack->name));
+        tmp = get_controller_name(&x->value[0], rack->name);
+        if (NULL == tmp) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+        rack->controller.name = strdup(tmp);
+        if (NULL == rack->controller.name) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+
         rack->controller.state = ORTE_NODE_STATE_UNKNOWN;
         /* parse any config that is attached to the rack controller */
         OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
@@ -1650,6 +1672,7 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
     int n, rc;
     orcm_cfgi_xml_parser_t *xx;
     orcm_rack_t *rack, *r;
+    char *tmp = NULL;
     char **vals = NULL;
     char **names = NULL;
 
@@ -1663,8 +1686,19 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
             return ORCM_ERR_BAD_PARAM;
         }
 
-        row->controller.name = strdup(get_controller_name(&x->value[0], row->name));
+        tmp = get_controller_name(&x->value[0], row->name);
+        if (NULL == tmp) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+        row->controller.name = strdup(tmp);
+        if (NULL == row->controller.name) {
+            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
+
         row->controller.state = ORTE_NODE_STATE_UNKNOWN;
+
         /* parse any subvals that are attached to the row controller */
         OPAL_LIST_FOREACH(xx, &x->subvals, orcm_cfgi_xml_parser_t) {
             if (ORCM_SUCCESS != (rc = parse_orcm_config(&row->controller.config, xx))) {
@@ -1718,6 +1752,7 @@ static int parse_row(orcm_row_t *row, orcm_cfgi_xml_parser_t *x)
                                             "\tNEW RACK NAME %s", names[m]);
                         rack = OBJ_NEW(orcm_rack_t);
                         rack->name = strdup(names[m]);
+
                         OBJ_RETAIN(row);
                         rack->row = row;
                         opal_list_append(&row->racks, &rack->super);
@@ -1751,6 +1786,7 @@ static int parse_cluster(orcm_cluster_t *cluster,
     orcm_cfgi_xml_parser_t *x, *y;
     int rc, n;
     orcm_row_t *r, *row;
+    char *tmp = NULL;
     char **vals = NULL;
     char **names = NULL;
 
@@ -1770,7 +1806,16 @@ static int parse_cluster(orcm_cluster_t *cluster,
             get_controller_name(&x->value[0], cluster->name);
 
             if (0 == only_one_cluster_controller) {
-                cluster->controller.name = strdup(get_controller_name(&x->value[0], NULL));
+                tmp = get_controller_name(&x->value[0], NULL);
+                if (NULL == tmp) {
+                    ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+                    return ORCM_ERR_OUT_OF_RESOURCE;
+                }
+                cluster->controller.name = strdup(tmp);
+                if (NULL == cluster->controller.name) {
+                    ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+                    return ORCM_ERR_OUT_OF_RESOURCE;
+                }
                 cluster->controller.state = ORTE_NODE_STATE_UNKNOWN;
                 ++only_one_cluster_controller;
             }
@@ -1857,6 +1902,7 @@ static int parse_cluster(orcm_cluster_t *cluster,
 static int parse_scheduler(orcm_scheduler_t *scheduler,
                          orcm_cfgi_xml_parser_t *xx)
 {
+    char *tmp = NULL;
     orcm_cfgi_xml_parser_t *x;
     int rc, n;
 
@@ -1891,7 +1937,16 @@ static int parse_scheduler(orcm_scheduler_t *scheduler,
                 return ORCM_ERR_BAD_PARAM;
             }
             if (only_one_scheduler) {
-                scheduler->controller.name = strdup(get_controller_name(&x->value[0], NULL));
+                tmp = get_controller_name(&x->value[0], NULL);
+                if (NULL == tmp) {
+                    ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+                    return ORCM_ERR_OUT_OF_RESOURCE;
+                }
+                scheduler->controller.name = strdup(tmp);
+                if (NULL == scheduler->controller.name) {
+                    ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+                    return ORCM_ERR_OUT_OF_RESOURCE;
+                }
                 only_one_scheduler = false;
             }
         } else {

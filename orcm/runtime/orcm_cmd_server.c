@@ -57,9 +57,7 @@ static void store_chassis_id_event(char* hostname, char *action);
 static int append_string_to_opal_list(opal_list_t *list, char *str, char* key);
 static void chassis_id_event_cleanup(void *cbdata);
 static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
-        char* hostname, char* bmc_addr, char* user, char* pass,
-        int auth, int priv, unsigned int seconds, opal_buffer_t *pack_buff);
-static int get_visible_nodes_count(char** nodelist, int node_count);
+        ipmi_collector *ic, unsigned int seconds, opal_buffer_t *pack_buff);
 
 int orcm_cmd_server_init(void)
 {
@@ -91,17 +89,12 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
     opal_buffer_t *result_buff = NULL;
     char *error = NULL;
     int rc = ORCM_SUCCESS;
-    int rc_prev = ORCM_SUCCESS;
     int response = ORCM_SUCCESS;
     int count = 0;
     int cnt = 1;
     int seconds = 0;
-    char* noderaw = NULL;
-    int node_count = 0;
-    char **nodelist = NULL;
-    int iter = 0;
-    ipmi_collector ipmi_c;
-    int visible_nodes = 0;
+    char* nodename = NULL;
+    ipmi_collector ic;
 
     rc = unpack_command_subcommand(buffer, &command, &sub_command);
     if (ORCM_SUCCESS != rc) {
@@ -162,7 +155,7 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
         NULL_CHECK(pack_buff);
 
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &noderaw,
+        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &nodename,
                                                  &cnt, OPAL_STRING))){
             goto ERROR;
         }
@@ -174,47 +167,23 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
             goto ERROR;
         }
 
-        orcm_logical_group_parse_array_string(noderaw, &nodelist);
-        node_count = opal_argv_count(nodelist);
-        if (!node_count){
-            asprintf(&error, "nodelist not found");
-            goto ERROR;
-        }
-
         load_ipmi_config_file();
-        rc = ORCM_SUCCESS;
-        rc_prev = ORCM_SUCCESS;
-        visible_nodes = get_visible_nodes_count(nodelist, node_count);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &visible_nodes, 1, OPAL_INT))){
+        if (!get_bmc_info(nodename, &ic)){
             goto ERROR;
         }
-
-        for (iter = 0; iter < node_count; iter++){
-            if (!get_bmc_info(nodelist[iter], &ipmi_c)){
-                continue;
-            }
-            if (!strcmp(orte_process_info.nodename, ipmi_c.aggregator)){
-                rc = chassis_id_operation(sub_command, ipmi_c.hostname,
-                        ipmi_c.bmc_address, ipmi_c.user, ipmi_c.pass,
-                        ipmi_c.auth_method, ipmi_c.priv_level, seconds,
-                        pack_buff);
-                rc_prev = (ORCM_SUCCESS != rc_prev) ? rc_prev : rc;
-            }
-        }
+        rc = chassis_id_operation(sub_command, &ic, seconds, pack_buff);
         goto RESPONSE;
     }
 
 ERROR:
-    SAFE_ARGV_FREE(nodelist);
+    SAFEFREE(nodename);
     if (NULL == pack_buff) {
          pack_buff = OBJ_NEW(opal_buffer_t);
     }
     if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))) {
         ORTE_ERROR_LOG(rc);
         SAFE_RELEASE(pack_buff);
-        if (NULL != error) {
-            free(error);
-        }
+        SAFEFREE(error);
         return;
     }
     if (NULL == error) {
@@ -224,16 +193,14 @@ ERROR:
     if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &error, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         SAFE_RELEASE(pack_buff);
-        free(error);
+        SAFEFREE(error);
         return;
     }
 
 
 RESPONSE:
-    SAFE_ARGV_FREE(nodelist);
-    if (NULL != error) {
-        free(error);
-    }
+    SAFEFREE(nodename);
+    SAFEFREE(error);
     if (ORTE_SUCCESS !=
         (rc = orte_rml.send_buffer_nb(sender, pack_buff,
                                       ORCM_RML_TAG_CMD_SERVER,
@@ -242,22 +209,6 @@ RESPONSE:
         SAFE_RELEASE(pack_buff);
         return;
     }
-}
-
-static int get_visible_nodes_count(char** nodelist, int node_count){
-    int count=0;
-    int iter=0;
-    ipmi_collector ipmi_c;
-
-    for (iter = 0; iter < node_count; iter++){
-        if (!get_bmc_info(nodelist[iter], &ipmi_c)){
-            continue;
-        }
-        if (!strcmp(orte_process_info.nodename, ipmi_c.aggregator)){
-            ++count;
-        }
-    }
-    return count;
 }
 
 static int unpack_command_subcommand(opal_buffer_t* buffer, orcm_cmd_server_flag_t *command,
@@ -458,12 +409,8 @@ static void chassis_id_event_cleanup(void *cbdata){
 }
 
 static int pack_response(opal_buffer_t *pack_buff, int response, int state,
-        char* node, orcm_cmd_server_flag_t sub_command){
+        orcm_cmd_server_flag_t sub_command){
     int rc = ORCM_SUCCESS;
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &node, 1, OPAL_STRING))){
-        return rc;
-    }
-
     if (OPAL_SUCCESS != (rc = opal_dss.pack(pack_buff, &response, 1, OPAL_INT))){
         return rc;
     }
@@ -477,13 +424,12 @@ static int pack_response(opal_buffer_t *pack_buff, int response, int state,
 }
 
 static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
-        char* hostname, char* bmc_addr, char* user, char* pass,
-        int auth, int priv, unsigned int seconds, opal_buffer_t *pack_buff){
+        ipmi_collector *ic, unsigned int seconds, opal_buffer_t *pack_buff){
     int state = 0;
     int response = ORCM_SUCCESS;
     int rc = ORCM_SUCCESS;
 
-    init_led_control(bmc_addr, user, pass, auth, priv);
+    init_led_control(ic->bmc_address, ic->user, ic->pass, ic->auth_method, ic->priv_level);
     switch (sub_command){
         case ORCM_GET_CHASSIS_ID_STATE:
             response = ORCM_ERROR;
@@ -496,21 +442,21 @@ static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
             response = ORCM_ERROR;
             if (!disable_chassis_id()){
                 response = ORCM_SUCCESS;
-                store_chassis_id_event(hostname, "OFF");
+                store_chassis_id_event(ic->hostname, "OFF");
             }
             break;
         case ORCM_SET_CHASSIS_ID_ON:
             response = ORCM_ERROR;
             if (!enable_chassis_id()){
                 response = ORCM_SUCCESS;
-                store_chassis_id_event(hostname, "ON");
+                store_chassis_id_event(ic->hostname, "ON");
             }
             break;
         case ORCM_SET_CHASSIS_ID_TEMPORARY_ON:
             response = ORCM_ERROR;
             if (!enable_chassis_id_with_timeout(seconds)){
                 response = ORCM_SUCCESS;
-                store_chassis_id_event(hostname, "TEMPORARY_ON");
+                store_chassis_id_event(ic->hostname, "TEMPORARY_ON");
             }
             break;
         default:
@@ -518,7 +464,7 @@ static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
             return ORCM_ERROR;
     }
 
-    rc = pack_response(pack_buff, response, state, hostname, sub_command);
+    rc = pack_response(pack_buff, response, state, sub_command);
     fini_led_control();
     return rc;
 }

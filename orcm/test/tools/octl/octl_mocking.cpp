@@ -26,6 +26,12 @@ extern "C" { // Mocking must use correct "C" linkages
             return octl_mocking.orcm_cfgi_base_get_hostname_proc_callback(hostname, proc);
         }
     }
+
+    bool __wrap_get_bmc_info(char* hostname, ipmi_collector *ic){
+        strncpy(ic->aggregator, "localhost", MAX_STR_LEN-1);
+        ic->aggregator[MAX_STR_LEN-1] = '\0';
+        return true;
+    }
 } // extern "C"
 
 octl_tests_mocking::octl_tests_mocking() : orcm_cfgi_base_get_hostname_proc_callback(NULL)

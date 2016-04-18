@@ -166,10 +166,9 @@ ssize_t ut_syslog_tests::GetSyslogEntry(char* buffer, size_t max_size)
         if(sysLog_.size() == sysLogIndex_ || NULL == buffer || 0 == max_size) {
             return 0;
         } else {
-            try {
                 const char* raw = sysLog_[sysLogIndex_].c_str();
                 if(NULL == raw) {
-                    throw logic_error("message was NULL!");
+                    return 0;
                 }
                 ++sysLogIndex_;
                 string msg = raw;
@@ -177,9 +176,6 @@ ssize_t ut_syslog_tests::GetSyslogEntry(char* buffer, size_t max_size)
                 strncpy(buffer, msg.c_str(), max_len);
                 buffer[max_len] = '\0';
                 return max_len;
-            } catch(logic_error& err) {
-                return 0;
-            }
         }
     } else {
         strncpy(buffer, "Hello World!", max_size);

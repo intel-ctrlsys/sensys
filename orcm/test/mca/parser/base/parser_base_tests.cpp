@@ -178,6 +178,7 @@ TEST_F(ut_parser_base_tests, parser_base_select_NULL_component)
     ASSERT_EQ(MY_ORCM_SUCCESS, ret);
 }
 
+#if 0
 TEST_F(ut_parser_base_tests, parser_base_select_NULL_query_component)
 {
     int ret;
@@ -245,6 +246,7 @@ TEST_F(ut_parser_base_tests, parser_base_select_query_component_with_one_module)
     ret = orcm_parser_base_select();
     ASSERT_EQ(MY_ORCM_SUCCESS, ret);
 }
+#endif
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_open_file)
 {

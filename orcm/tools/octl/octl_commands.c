@@ -449,10 +449,10 @@ static int run_cmd_sensor_store(char** cmdlist)
         case cmd_none:
             rc = orcm_octl_sensor_store(0, cmdlist);
             break;
-        case cmd_environment_only:
+        case cmd_raw_data:
             rc = orcm_octl_sensor_store(1, cmdlist);
             break;
-        case cmd_event_only:
+        case cmd_event_data:
             rc = orcm_octl_sensor_store(2, cmdlist);
             break;
         case cmd_all:

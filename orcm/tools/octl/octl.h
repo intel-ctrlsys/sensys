@@ -139,8 +139,8 @@ static orcm_cli_init_t cli_init[] = {
     "datagroup or sensor for a node-list: reset <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
     // sensor storage policy commands
     { { "sensor", NULL }, "store", 0, 0, "Sensor store Commands" },
-    { { "sensor", "store", NULL }, "environment_only", 0, 1, "store environment_only nodelist" },
-    { { "sensor", "store", NULL }, "event_only", 0, 1, "store event_only nodelist" },
+    { { "sensor", "store", NULL }, "raw_data", 0, 1, "store raw_data nodelist" },
+    { { "sensor", "store", NULL }, "event_data", 0, 1, "store event_data nodelist" },
     { { "sensor", "store", NULL }, "all", 0, 1, "store all nodelist" },
     { { "sensor", "store", NULL }, "none", 0, 1, "store none nodelist" },
 

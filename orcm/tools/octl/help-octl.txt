@@ -356,8 +356,8 @@ Example: sensor get inventory c[2:1-10]
 
 [usage:sensor-store]
 sensor store <command> <nodelist>
-Example: sensor store environment_only c[2:1-10]
-         sensor store event_only c[2:1-10]
+Example: sensor store raw_data c[2:1-10]
+         sensor store event_data c[2:1-10]
          sensor store all c[2:1-10]
          sensor store none c[2:1-10]
 

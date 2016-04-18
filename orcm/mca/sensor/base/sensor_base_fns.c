@@ -942,6 +942,10 @@ static bool valid_data_group(const char* sensor_spec)
         return false;
     }
     char* datagroup = strdup(sensor_spec);
+    if(NULL == datagroup) {
+        ORTE_ERROR_LOG(ORTE_ERR_COPY_FAILURE);
+        return false;
+    }
     char* colon_pos = strchr(datagroup, ':');
     if(NULL != colon_pos) {
         *colon_pos = '\0';

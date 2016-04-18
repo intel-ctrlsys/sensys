@@ -1275,6 +1275,10 @@ static void freq_inventory_collect(opal_buffer_t *inventory_snapshot)
             }
             free(comp);
             comp = strdup(ptrk->sysname);
+            if (NULL == comp) {
+                ORTE_ERROR_LOG(ORTE_ERR_COPY_FAILURE);
+                return;
+            }
             orcm_sensor_base_runtime_metrics_track(mca_sensor_freq_component.runtime_metrics, comp);
             if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
                 ORTE_ERROR_LOG(rc);

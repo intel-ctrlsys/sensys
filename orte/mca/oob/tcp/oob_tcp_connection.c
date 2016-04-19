@@ -229,15 +229,16 @@ void mca_oob_tcp_peer_try_connect(int fd, short args, void *cbdata)
         }
         ((struct sockaddr_in*) &inaddr)->sin_family = AF_INET;
         ((struct sockaddr_in*) &inaddr)->sin_port = htons(port);
-        if (bind(peer->sd, (struct sockaddr*)&inaddr, addrlen) < 0) {
-            opal_output(0, "%s bind() failed for port %d: %s (%d)",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        port,
-                        strerror(opal_socket_errno),
-                        opal_socket_errno );
-            CLOSE_THE_SOCKET(peer->sd);
-            OBJ_RELEASE(op);
-            return;
+        if(ORTE_PROC_IS_DAEMON){
+            if (bind(peer->sd, (struct sockaddr*)&inaddr, addrlen) < 0) {
+                opal_output(0, "%s bind() failed for port %d: %s (%d)",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                            port,
+                            strerror(opal_socket_errno),
+                            opal_socket_errno );
+                CLOSE_THE_SOCKET(peer->sd);
+                return;
+            }
         }
         if (connect(peer->sd, (struct sockaddr*)&addr->addr, addrlen) < 0) {
             /* non-blocking so wait for completion */

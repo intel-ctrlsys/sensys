@@ -470,6 +470,7 @@ static inline opal_object_t *opal_obj_new(opal_class_t * cls)
 #else
     object = (opal_object_t *) malloc(cls->cls_sizeof);
 #endif
+    assert(NULL != object);
     if (0 == cls->cls_initialized) {
         opal_class_initialize(cls);
     }

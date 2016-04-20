@@ -39,6 +39,7 @@
 #include "orcm/tools/orcm-info/orcm-info.h"
 
 #include "opal/util/show_help.h"
+#include "orcm/util/utils.h"
 
 #define OPAL_max(a,b) (((a) > (b)) ? (a) : (b)) 
 
@@ -80,6 +81,9 @@ void orcm_info_out(const char *pretty_message, const char *plain_message, const 
 
     /* Strip leading and trailing whitespace from the string value */
     v = v_to_free = strdup(value);
+    if (NULL == v) {
+        return;
+    }
     len = strlen(v);
     if (isspace(v[0])) {
         char *newv;
@@ -89,6 +93,9 @@ void orcm_info_out(const char *pretty_message, const char *plain_message, const 
         }
         newv = strdup(v + i);
         free(v_to_free);
+        if (NULL == newv) {
+            return;
+        }
         v_to_free = v = newv;
         len = strlen(v);
     }
@@ -111,6 +118,10 @@ void orcm_info_out(const char *pretty_message, const char *plain_message, const 
                      (int)strlen(pretty_message), " ");
         } else {
             spaces = strdup("");
+            if (NULL == spaces) {
+                SAFEFREE(v_to_free);
+                return;
+            }
 #if OPAL_ENABLE_DEBUG
             if (centerpoint < (int)strlen(pretty_message)) {
                 opal_show_help("help-orcm-info.txt", 
@@ -168,6 +179,11 @@ void orcm_info_out(const char *pretty_message, const char *plain_message, const 
                 /* Reset for the next iteration */
                 free(filler);
                 filler = strdup(spaces);
+                if (NULL == filler) {
+                    SAFEFREE(spaces);
+                    SAFEFREE(v_to_free);
+                    return;
+                }
                 free(spaces);
                 spaces = NULL;
             }

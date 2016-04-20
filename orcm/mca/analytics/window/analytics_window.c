@@ -173,6 +173,9 @@ static int fill_win_statistics(win_statistics_t *win_statistics)
 
     if (NULL == win_statistics->win_type) {
         win_statistics->win_type = strdup("time");
+        if (NULL == win_statistics->win_type) {
+            return ORCM_ERR_OUT_OF_RESOURCE;
+        }
     } else if (0 != strncmp(win_statistics->win_type, "time", strlen("time")) &&
                0 != strncmp(win_statistics->win_type, "counter", strlen("counter"))) {
         return ORCM_ERR_BAD_PARAM;

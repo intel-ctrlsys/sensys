@@ -170,6 +170,14 @@ int orcm_octl_resource_status(char **argv)
                 orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
                 return rc;
             }
+
+            if (NULL == regexp) {
+                OPAL_LIST_DESTRUCT(&containers);
+                OBJ_DESTRUCT(&xfer);
+                orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SCD);
+                return ORTE_ERR_OUT_OF_RESOURCE;
+            }
+
             if (21 > strlen(regexp)) {
                 printf("%-20s : %s %16s\n",
                        regexp,

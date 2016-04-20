@@ -224,6 +224,11 @@ static void start(orte_jobid_t jobid)
         filename = strdup(mca_sensor_file_component.file);
     }
 
+    if (NULL == filename) {
+         ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+         return;
+     }
+
     /* create the tracking object */
     ft = OBJ_NEW(file_tracker_t);
     ft->jobid = jobid;
@@ -237,6 +242,11 @@ static void start(orte_jobid_t jobid)
             ft->check_size = OPAL_INT_TO_BOOL(mca_sensor_file_component.check_size);
         }
     } else {
+        if (NULL == ptr) {
+            OBJ_RELEASE(ft);
+            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            return;
+        }
         ft->check_size = OPAL_INT_TO_BOOL(strtol(ptr, NULL, 10));
         free(ptr);
     }
@@ -247,6 +257,11 @@ static void start(orte_jobid_t jobid)
             ft->check_access = OPAL_INT_TO_BOOL(mca_sensor_file_component.check_access);
         }
     } else {
+        if (NULL == ptr) {
+            OBJ_RELEASE(ft);
+            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            return;
+        }
         ft->check_access = OPAL_INT_TO_BOOL(strtol(ptr, NULL, 10));
         free(ptr);
     }
@@ -257,6 +272,11 @@ static void start(orte_jobid_t jobid)
             ft->check_mod = OPAL_INT_TO_BOOL(mca_sensor_file_component.check_mod);
         }
     } else {
+        if (NULL == ptr) {
+            OBJ_RELEASE(ft);
+            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            return;
+        }
         ft->check_mod = OPAL_INT_TO_BOOL(strtol(ptr, NULL, 10));
         free(ptr);
     }
@@ -264,6 +284,11 @@ static void start(orte_jobid_t jobid)
     if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_limit", &ptr)) {
         ft->limit = mca_sensor_file_component.limit;
     } else {
+        if (NULL == ptr) {
+            OBJ_RELEASE(ft);
+            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            return;
+        }
         ft->limit = strtol(ptr, NULL, 10);
         free(ptr);
     }

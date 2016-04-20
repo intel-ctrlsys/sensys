@@ -1984,6 +1984,10 @@ static void setup_environ(char **env)
     for (i=0; NULL != tmp[i]; i++) {
         if (0 == strncmp(tmp[i], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
             t = strdup(tmp[i]);
+            if (NULL == t) {
+                opal_argv_free(tmp);
+                return;
+            }
             opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
                                 "PUSHING %s TO ENVIRON", t);
             putenv(t);

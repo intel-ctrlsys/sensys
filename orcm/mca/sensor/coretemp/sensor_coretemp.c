@@ -505,6 +505,12 @@ static int init(void)
              * be used as the start of all the related files
              */
             tmp = strdup(entry->d_name);
+            if (NULL == tmp) {
+                /* unrecognized format */
+                OBJ_RELEASE(trk);
+                continue;
+            }
+
             if (NULL == (ptr = strchr(tmp, '_'))) {
                 /* unrecognized format */
                 free(tmp);

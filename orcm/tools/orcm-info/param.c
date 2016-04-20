@@ -306,6 +306,7 @@ void orcm_info_show_path(const char *type, const char *value)
     char *pretty, *path;
     
     pretty = strdup(type);
+    assert(NULL != pretty);
     pretty[0] = toupper(pretty[0]);
     
     asprintf(&path, "path:%s", type);

@@ -219,17 +219,9 @@ void mca_oob_tcp_peer_try_connect(int fd, short args, void *cbdata)
     retry_connect:
         addr->retries++;
         port = opal_net_get_port((struct sockaddr*)&addr->addr);
-        if (1024 < port) {
-        opal_output_verbose(OOB_TCP_DEBUG_CONNECT, orte_oob_base_framework.framework_output,
-                        "%s orte_tcp_peer_try_connect: %s:%d port privilege failure",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                        opal_net_get_hostname((struct sockaddr*)&addr->addr),
-                        opal_net_get_port((struct sockaddr*)&addr->addr));
-        continue;
-        }
         ((struct sockaddr_in*) &inaddr)->sin_family = AF_INET;
         ((struct sockaddr_in*) &inaddr)->sin_port = htons(port);
-        if(ORTE_PROC_IS_DAEMON){
+        if(ORTE_PROC_IS_DAEMON && 1024 >= port){
             if (bind(peer->sd, (struct sockaddr*)&inaddr, addrlen) < 0) {
                 opal_output(0, "%s bind() failed for port %d: %s (%d)",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),

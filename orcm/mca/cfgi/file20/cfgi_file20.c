@@ -484,6 +484,9 @@ static char* extract_tag(char *filename, char *line)
     char *tmp, *ret;
 
     tmp = strdup(line);
+    if (NULL == tmp) {
+        return NULL;
+    }
     /* find the start of the tag */
     start = strchr(tmp, '<');
     if (NULL == start) {
@@ -771,10 +774,13 @@ static int parse_orcm_config(orcm_config_t *cfg,
 
 static char* pack_charname(char base, char *s)
 {
-    char *t;
     size_t i;
 
-    t = strdup(s);
+    char* t = strdup(s);
+    if (NULL == t) {
+        return NULL;
+    }
+
     for (i=0; i < strlen(t); i++) {
         if ('@' == t[i]) {
             t[i] = base;
@@ -873,6 +879,11 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
         } else {
             asprintf(&rack->name, "%s%0*d", rack->row->name, digits, idx);
             free(name);
+        }
+        if (NULL == rack->name) {
+            rc = ORCM_ERR_OUT_OF_RESOURCE;
+            ORTE_ERROR_LOG(rc);
+            return rc;
         }
         rack->controller.name = strdup(rack->name);
         rack->controller.state = ORTE_NODE_STATE_UNKNOWN;
@@ -1196,6 +1207,10 @@ static void setup_environ(char **env)
     for (i=0; NULL != tmp[i]; i++) {
         if (0 == strncmp(tmp[i], OPAL_MCA_PREFIX, strlen(OPAL_MCA_PREFIX))) {
             t = strdup(tmp[i]);
+            if (NULL == t) {
+                opal_argv_free(tmp);
+                return;
+            }
             opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
                                 "PUSHING %s TO ENVIRON", t);
             putenv(t);

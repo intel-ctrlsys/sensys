@@ -122,6 +122,7 @@ vardata fromOpalBuffer(opal_buffer_t *buffer) {
         throw invalidBuffer();
     }
     string key = string(label);
+    SAFEFREE(label);
 
     // Unpack data
     if ( OPAL_SUCCESS != (rc = opal_dss.peek(buffer, &localType, &number)) ) {
@@ -136,7 +137,9 @@ vardata fromOpalBuffer(opal_buffer_t *buffer) {
             ORTE_ERROR_LOG(rc);
             throw invalidBuffer();
         }
-        return vardata(string(s)).setKey(label);
+        string ss(s);
+        SAFEFREE(s);
+        return vardata(ss).setKey(key);
     } else {
         union supportedDataTypes localData;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &localData, &number, localType))) {
@@ -146,19 +149,19 @@ vardata fromOpalBuffer(opal_buffer_t *buffer) {
 
         switch(localType) {
             case OPAL_FLOAT:
-                return vardata(localData.fval).setKey(label);
+                return vardata(localData.fval).setKey(key);
                 break;
             case OPAL_DOUBLE:
-                return vardata(localData.dval).setKey(label);
+                return vardata(localData.dval).setKey(key);
                 break;
             case OPAL_INT32:
-                return vardata(localData.int32).setKey(label);
+                return vardata(localData.int32).setKey(key);
                 break;
             case OPAL_INT64:
-                return vardata(localData.int64).setKey(label);
+                return vardata(localData.int64).setKey(key);
                 break;
             case OPAL_TIMEVAL:
-                return vardata(localData.tv).setKey(label);
+                return vardata(localData.tv).setKey(key);
                 break;
             default:
                 throw unsupportedDataType();

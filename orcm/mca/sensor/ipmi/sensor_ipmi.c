@@ -529,6 +529,7 @@ static void ipmi_log_existing_multiple_hosts(opal_buffer_t *sample, int host_cou
             analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, data_list);
             ON_NULL_GOTO(analytics_vals, cleanup);
             orcm_analytics.send_data(analytics_vals);
+            ORCM_RELEASE(analytics_vals);
         } else {
             opal_output_verbose(0, orcm_sensor_base_framework.framework_output,
                                 "Possible Error: Failed to collect ipmi data from node : '%s'",

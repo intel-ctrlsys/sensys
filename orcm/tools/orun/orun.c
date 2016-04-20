@@ -448,6 +448,10 @@ int orun(int argc, char *argv[])
                 param[strlen(param)-1] = '\0';
             }
             tmp_basename = strdup(orun_globals.path_to_mpirun);
+            if (NULL == tmp_basename) {
+                ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+                exit(1);
+            }
             if (0 == strcmp(OPAL_PATH_SEP, &(tmp_basename[strlen(tmp_basename)-1]))) {
                 tmp_basename[strlen(tmp_basename)-1] = '\0';
             }

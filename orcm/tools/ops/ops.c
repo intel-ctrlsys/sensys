@@ -393,6 +393,9 @@ static int pretty_print_nodes(orte_node_t **nodes, orte_std_cntr_t num_nodes) {
             len_name = (int) strlen(node->name);
 
         node_state = pretty_node_state(node->state);
+        if (NULL == node_state) {
+            return ORTE_ERR_OUT_OF_RESOURCE;
+        }
         if( (int)strlen(node_state) > len_state )
             len_state = (int)strlen(node_state);
         SAFEFREE(node_state);
@@ -424,6 +427,9 @@ static int pretty_print_nodes(orte_node_t **nodes, orte_std_cntr_t num_nodes) {
         
         printf("%*s | ", len_name,    node->name);
         node_state = pretty_node_state(node->state);
+        if (NULL == node_state) {
+            return ORTE_ERR_OUT_OF_RESOURCE;
+        }
         printf("%*s | ", len_state,   node_state);
         SAFEFREE(node_state);
         printf("%*d | ", len_slots,   (uint)node->slots);
@@ -848,6 +854,9 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
         nodes = hnpinfo->nodes;
         for (i=0; i < hnpinfo->num_nodes; i++) {
             node_state = pretty_node_state(nodes[i]->state);
+            if (NULL == node_state) {
+                return ORTE_ERR_OUT_OF_RESOURCE;
+            }
             printf("node:%s:state:%s:slots:%d:in use:%d\n",
                    nodes[i]->name, node_state,
                    nodes[i]->slots, nodes[i]->slots_inuse);
@@ -873,6 +882,9 @@ static int parseable_print(orte_ps_mpirun_info_t *hnpinfo)
                 appname = strdup("NULL");
             } else {
                 appname = opal_basename(app->app);
+            }
+            if (NULL == appname) {
+                return ORTE_ERR_OUT_OF_RESOURCE;
             }
             orte_get_attribute(&proc->attributes, ORTE_PROC_NODENAME, (void**)&nodename, OPAL_STRING);
             printf("process:%s:rank:%s:pid:%lu:node:%s:state:%s\n",

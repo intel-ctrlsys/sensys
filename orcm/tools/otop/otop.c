@@ -411,6 +411,11 @@ main(int argc, char *argv[])
             target_hnp = OBJ_NEW(orte_hnp_contact_t);
             target_hnp->rml_uri = strdup(hnpuristr);
         }
+        if (NULL == target_hnp->rml_uri) {
+            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            orte_finalize();
+            exit(1);
+        }
         /* set the info in our contact table */
         orte_rml.set_contact_info(target_hnp->rml_uri);
         /* extract the name */
@@ -829,6 +834,10 @@ static void pretty_print(void)
             OBJ_CONSTRUCT(&tmplist, opal_list_t);
             stats = (opal_pstats_t*)item;
             node = strdup(stats->node);
+            if (NULL == node) {
+                OBJ_DESTRUCT(&tmplist);
+                return;
+            }
             opal_list_append(&tmplist, &stats->super);
             /* cycle through the rest of the list looking
              * for matching nodes

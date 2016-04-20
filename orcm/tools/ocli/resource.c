@@ -165,6 +165,12 @@ int orcm_ocli_resource_status(char **argv)
                 OBJ_DESTRUCT(&xfer);
                 return rc;
             }
+            if (NULL == regexp) {
+                ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
+                OPAL_LIST_DESTRUCT(&containers);
+                OBJ_DESTRUCT(&xfer);
+                return ORCM_ERR_OUT_OF_RESOURCE;
+            }
             if (21 > strlen(regexp)) {
                 printf("%-20s : %s %16s\n",
                        regexp,

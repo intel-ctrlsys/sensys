@@ -227,6 +227,7 @@ void snmp_impl::log(opal_buffer_t* buf)
                             "ERROR: %s sensor SNMP : init: '%s'",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
     }
+    SAFE_OBJ_RELEASE(key);
     SAFE_OBJ_RELEASE(compute);
     SAFE_OBJ_RELEASE(non_compute);
     SAFE_OBJ_RELEASE(analytics_vals);

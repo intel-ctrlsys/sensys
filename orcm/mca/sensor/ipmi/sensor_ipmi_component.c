@@ -103,7 +103,7 @@ int ipmi_component_register(void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_ipmi_component.sensor_list);
 
-    mca_sensor_ipmi_component.sensor_group = strdup("*");
+    mca_sensor_ipmi_component.sensor_group = "*";
     (void) mca_base_component_var_register (c, "sensor_group",
                                             "Pass the BMC sensors group to be sampled",
                                             MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,

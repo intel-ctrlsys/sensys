@@ -614,10 +614,7 @@ opal_list_t *create_query_event_date_filter(int argc, char **argv)
         filters_list = OBJ_NEW(opal_list_t);
         filter_item = create_string_filter("event_id", argv[3], EQ);
         opal_list_append(filters_list, &filter_item->value.super);
-    } else {
-        orcm_octl_usage("query-event-date", INVALID_USG);
     }
-
     return filters_list;
 }
 

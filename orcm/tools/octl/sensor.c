@@ -281,6 +281,12 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
         goto done;
     }
 
+    if(1 > sample_rate) {
+        orcm_octl_error("not-integer", "sample rate");
+        rc = ORCM_ERR_BAD_PARAM;
+        goto done;
+    }
+
     orcm_logical_group_parse_array_string(argv[5], &nodelist);
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);

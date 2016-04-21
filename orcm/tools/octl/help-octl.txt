@@ -355,11 +355,11 @@ sensor get inventory <nodelist>
 Example: sensor get inventory c[2:1-10]
 
 [usage:sensor-store]
-sensor store <command> <nodelist>
-Example: sensor store environment_only c[2:1-10]
-         sensor store event_only c[2:1-10]
-         sensor store all c[2:1-10]
-         sensor store none c[2:1-10]
+sensor store <command> <aggregators>
+Example: sensor store raw_data a[2:1-10]
+         sensor store event_data a[2:1-10]
+         sensor store all a[2:1-10]
+         sensor store none a[2:1-10]
 
 [usage:power-set]
 power set <command> <value>
@@ -485,16 +485,16 @@ Example: grouping list group1 c[2:1-10]
          grouping list * *
 
 [usage:workflow-add]
-workflow add <file> [aggregator]
+workflow add <file> [aggregators]
 Example: workflow add /tmp/workflow1.xml
          workflow add /tmp/workflow1.xml master1
 
 [usage:workflow-remove]
-workflow remove <aggregator> <workflow-name> <workflow-id>
+workflow remove <aggregators> <workflow-name> <workflow-id>
 Example: workflow remove master1 wf1 0
 
 [usage:workflow-list]
-workflow list <aggregator>
+workflow list <aggregators>
 Example: workflow list master1
 
 [usage:notifier-get]

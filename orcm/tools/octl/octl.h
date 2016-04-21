@@ -139,10 +139,10 @@ static orcm_cli_init_t cli_init[] = {
     "datagroup or sensor for a node-list: reset <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
     // sensor storage policy commands
     { { "sensor", NULL }, "store", 0, 0, "Sensor store Commands" },
-    { { "sensor", "store", NULL }, "environment_only", 0, 1, "store environment_only nodelist" },
-    { { "sensor", "store", NULL }, "event_only", 0, 1, "store event_only nodelist" },
-    { { "sensor", "store", NULL }, "all", 0, 1, "store all nodelist" },
-    { { "sensor", "store", NULL }, "none", 0, 1, "store none nodelist" },
+    { { "sensor", "store", NULL }, "raw_data", 0, 1, "store raw_data aggregators" },
+    { { "sensor", "store", NULL }, "event_data", 0, 1, "store event_data aggregators" },
+    { { "sensor", "store", NULL }, "all", 0, 1, "store all aggregators" },
+    { { "sensor", "store", NULL }, "none", 0, 1, "store none aggregators" },
 
     /****** notifier commands ******/
     { { NULL }, "notifier", 0, 0, "notifier" },
@@ -213,9 +213,9 @@ static orcm_cli_init_t cli_init[] = {
 
     /****** workflow commands ******/
     { { NULL }, "workflow", 0, 0, "Workflow information" },
-    { { "workflow", NULL }, "add", 0, 1, "workflow add file.txt [aggregator]" },
-    { { "workflow", NULL }, "remove", 0, 2, "workflow remove aggregator workflow_name workflow_id" },
-    { { "workflow", NULL }, "list", 0, 0, "workflow list aggregator" },
+    { { "workflow", NULL }, "add", 0, 1, "workflow add file.txt [aggregators]" },
+    { { "workflow", NULL }, "remove", 0, 2, "workflow remove aggregators workflow_name workflow_id" },
+    { { "workflow", NULL }, "list", 0, 0, "workflow list aggregators" },
 
     /****** Query commands ******/
     { { NULL}, "query", 0, 0, "Query data from DB" },

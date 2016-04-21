@@ -462,10 +462,6 @@ Example: query event data 2016-02-16 08:22:00 2016-02-16 08:22:14 c[2:1-10]
 query event sensor-data <event-id> before/after <minutes> <sensor> <nodelist>
 Example: query event sensor-data 1 after 10 coretemp* c[2:1-10]
 
-[usage:query-event-date]
-query event date <event-id>
-Example: query event date 1
-
 [usage:grouping-add]
 grouping add <tag> <nodelist>
 Example: grouping add group1 c[2:1-10]

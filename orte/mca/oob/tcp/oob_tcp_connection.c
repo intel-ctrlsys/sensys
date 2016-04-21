@@ -160,7 +160,7 @@ void mca_oob_tcp_peer_try_connect(int fd, short args, void *cbdata)
     char *host;
     mca_oob_tcp_send_t *snd;
     bool connected = false;
-    int port;
+    int port = 1023;
     opal_output_verbose(OOB_TCP_DEBUG_CONNECT, orte_oob_base_framework.framework_output,
                         "%s orte_tcp_peer_try_connect: "
                         "attempting to connect to proc %s",
@@ -218,16 +218,19 @@ void mca_oob_tcp_peer_try_connect(int fd, short args, void *cbdata)
         peer->active_addr = addr;  // record the one we are using
     retry_connect:
         addr->retries++;
-        port = opal_net_get_port((struct sockaddr*)&addr->addr);
-        ((struct sockaddr_in*) &inaddr)->sin_family = AF_INET;
-        ((struct sockaddr_in*) &inaddr)->sin_port = htons(port);
-        if(ORTE_PROC_IS_DAEMON && 1024 >= port){
-            if (bind(peer->sd, (struct sockaddr*)&inaddr, addrlen) < 0) {
-                opal_output(0, "%s bind() failed for port %d: %s (%d)",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                            port,
-                            strerror(opal_socket_errno),
-                            opal_socket_errno );
+        if(1024 > opal_net_get_port((struct sockaddr*)&addr->addr)){
+            ((struct sockaddr_in*) &inaddr)->sin_family = AF_INET;
+            ((struct sockaddr_in*) &inaddr)->sin_port = htons(port);
+            while(1 <= port){
+                if(0 == bind(peer->sd, (struct sockaddr*)&inaddr, addrlen)) {
+                    break;
+                }
+                port --;
+                ((struct sockaddr_in*) &inaddr)->sin_port = htons(port);
+            }
+            if(1 > port){
+                opal_output(0, "%s bind() failed : Unable to find a port",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
                 CLOSE_THE_SOCKET(peer->sd);
                 return;
             }

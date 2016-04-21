@@ -862,8 +862,8 @@ static void connection_event_handler(int incoming_sd, short flags, void* cbdata)
     } else if(NULL != mca_oob_tcp_component.tcp6_static_ports){
         static_port = strtol(mca_oob_tcp_component.tcp6_static_ports[0], NULL, 10);
     }
-    if(1024 >= static_port){
-        if ((-1 == inport || 1024 <= inport) && ORTE_PROC_IS_AGGREGATOR) {
+    if(1024 > static_port){
+        if (-1 == inport || 1024 <= inport) {
             /* someone tried to cross-connect privileges,say something */
             orte_show_help("help-oob-tcp.txt",
                            "privilege failure",

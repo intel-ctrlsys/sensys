@@ -282,9 +282,9 @@ int orcm_octl_power_get(int cmd, char **argv)
 
     if (ORCM_GET_POWER_MODES_COMMAND == cmd) {
         orcm_octl_info("power-modes");
-        printf("%s", orcm_pwrmgmt_get_mode_string(0));
+        printf("%s\n", orcm_pwrmgmt_get_mode_string(0));
         for(i = 1; i < ORCM_PWRMGMT_NUM_MODES; i++) {
-            printf("%s",orcm_pwrmgmt_get_mode_string(i));
+            printf("%s\n",orcm_pwrmgmt_get_mode_string(i));
         }
         return ORCM_SUCCESS;
     }

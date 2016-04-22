@@ -144,6 +144,22 @@ static int tcp_peer_create_socket(mca_oob_tcp_peer_t* peer)
     return ORTE_SUCCESS;
 }
 
+int oob_tcp_privilege_bind(struct sockaddr_in inaddr, mca_oob_tcp_peer_t* peer)
+{
+    int port = 1023;
+    ((struct sockaddr_in*) &inaddr)->sin_family = AF_INET;
+    while (905 <= port) {
+        ((struct sockaddr_in*) &inaddr)->sin_port = htons(port);
+        if (0 == bind(peer->sd, (struct sockaddr*) &inaddr, sizeof(struct sockaddr_in))) {
+            return ORTE_SUCCESS;
+        }
+        port--;
+    }
+    opal_output(0, "%s bind() failed : Unable to find a port",
+            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+    CLOSE_THE_SOCKET(peer->sd);
+    return ORTE_ERROR;
+}
 
 /*
  * Try connecting to a peer - cycle across all known addresses
@@ -219,19 +235,7 @@ void mca_oob_tcp_peer_try_connect(int fd, short args, void *cbdata)
     retry_connect:
         addr->retries++;
         if(1024 > opal_net_get_port((struct sockaddr*)&addr->addr)){
-            ((struct sockaddr_in*) &inaddr)->sin_family = AF_INET;
-            ((struct sockaddr_in*) &inaddr)->sin_port = htons(port);
-            while(1 <= port){
-                if(0 == bind(peer->sd, (struct sockaddr*)&inaddr, addrlen)) {
-                    break;
-                }
-                port --;
-                ((struct sockaddr_in*) &inaddr)->sin_port = htons(port);
-            }
-            if(1 > port){
-                opal_output(0, "%s bind() failed : Unable to find a port",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-                CLOSE_THE_SOCKET(peer->sd);
+            if(ORTE_SUCCESS != oob_tcp_privilege_bind(inaddr, peer)){
                 return;
             }
         }

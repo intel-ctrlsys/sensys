@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015      Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -557,19 +557,6 @@ TEST_F(analyze_counter_tests, test_component_init_finalize)
 
     cott_finalize(NULL);
     cott_finalize(mod);
-}
-
-TEST_F(analyze_counter_tests, test_component_obj_new_out_of_mem)
-{
-    ResetTestCase();
-
-    mca_analytics_cott_module_t* mod = (mca_analytics_cott_module_t*)malloc(sizeof(mca_analytics_cott_module_t));
-    ASSERT_NOT_NULL(mod);
-
-    fail_malloc_call_.push(true);
-    ASSERT_NE(ORCM_SUCCESS, cott_init((orcm_analytics_base_module_t*)mod));
-    ASSERT_NULL(mod->api.orcm_mca_analytics_data_store);
-    SAFE_FREE(mod);
 }
 
 TEST_F(analyze_counter_tests, test_component_hash_init_failure)

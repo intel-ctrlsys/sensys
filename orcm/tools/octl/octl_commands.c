@@ -283,84 +283,6 @@ static int run_cmd_queue(char** cmdlist, int sub_cmd)
     return rc;
 }
 
-static int session_power_next_cmd(char* next_cmd, int cmd)
-{
-    int rc = octl_cmd_to_enum(next_cmd);
-    switch (rc) {
-        case cmd_budget:
-            rc = (cmd_set == cmd ? ORCM_SET_POWER_BUDGET_COMMAND : ORCM_GET_POWER_BUDGET_COMMAND);
-            break;
-        case cmd_mode:
-            rc = (cmd_set == cmd ? ORCM_SET_POWER_MODE_COMMAND : ORCM_GET_POWER_MODE_COMMAND);
-            break;
-        case cmd_window:
-            rc = (cmd_set == cmd ? ORCM_SET_POWER_WINDOW_COMMAND : ORCM_GET_POWER_WINDOW_COMMAND);
-            break;
-        case cmd_overage:
-            rc = (cmd_set == cmd ? ORCM_SET_POWER_OVERAGE_COMMAND : ORCM_GET_POWER_OVERAGE_COMMAND);
-            break;
-        case cmd_underage:
-            rc = (cmd_set == cmd ? ORCM_SET_POWER_UNDERAGE_COMMAND :
-                                   ORCM_GET_POWER_UNDERAGE_COMMAND);
-            break;
-        case cmd_overage_time:
-            rc = (cmd_set == cmd ? ORCM_SET_POWER_OVERAGE_TIME_COMMAND :
-                                   ORCM_GET_POWER_OVERAGE_TIME_COMMAND);
-            break;
-        case cmd_underage_time:
-            rc = (cmd_set == cmd ? ORCM_SET_POWER_UNDERAGE_TIME_COMMAND :
-                                   ORCM_GET_POWER_UNDERAGE_TIME_COMMAND);
-            break;
-        case cmd_frequency:
-            rc = (cmd_set == cmd ? ORCM_SET_POWER_FREQUENCY_COMMAND :
-                                   ORCM_GET_POWER_FREQUENCY_COMMAND);
-            break;
-        case cmd_strict:
-            rc = (cmd_set == cmd ? ORCM_SET_POWER_STRICT_COMMAND : ORCM_GET_POWER_STRICT_COMMAND);
-            break;
-        case cmd_modes:
-            rc = (cmd_get == cmd ? ORCM_GET_POWER_MODES_COMMAND : ORCM_ERR_OPERATION_UNSUPPORTED);
-            break;
-        default:
-            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
-            break;
-    }
-    return rc;
-}
-
-static int run_cmd_session(char** cmdlist, int sub_command)
-{
-    int rc = ORCM_SUCCESS;
-    switch (sub_command) {
-        case cmd_status:
-            rc = orcm_octl_session_status(cmdlist);
-            break;
-        case cmd_cancel:
-            rc = orcm_octl_session_cancel(cmdlist);
-            break;
-        case cmd_set:
-        case cmd_get:
-            if (3 > opal_argv_count(cmdlist)) {
-                return ORCM_ERR_TAKE_NEXT_OPTION;
-            }
-            if (ORCM_ERR_OPERATION_UNSUPPORTED != (rc = session_power_next_cmd(cmdlist[2], sub_command))) {
-                if (cmd_set == sub_command) {
-                    rc = orcm_octl_session_set(rc, cmdlist);
-                } else {
-                    rc = orcm_octl_session_get(rc, cmdlist);
-                }
-            }
-            break;
-        case cmd_null:
-            rc = ORCM_ERR_TAKE_NEXT_OPTION;
-            break;
-        default:
-            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
-            break;
-    }
-    return rc;
-}
-
 static int run_cmd_diag(char** cmdlist, int sub_cmd)
 {
     int rc = ORCM_SUCCESS;
@@ -382,33 +304,6 @@ static int run_cmd_diag(char** cmdlist, int sub_cmd)
             break;
     }
     return rc;
-}
-
-static int run_cmd_power(char** cmdlist, int sub_cmd)
-{
-    int rc = ORCM_SUCCESS;
-
-    if (cmd_null == sub_cmd) {
-        return ORCM_ERR_TAKE_NEXT_OPTION;
-    }
-
-    if (cmd_set != sub_cmd && cmd_get != sub_cmd) {
-        return ORCM_ERR_OPERATION_UNSUPPORTED;
-    }
-
-    if (3 > opal_argv_count(cmdlist)) {
-        return ORCM_ERR_TAKE_NEXT_OPTION;
-    }
-
-    if (ORCM_ERR_OPERATION_UNSUPPORTED == (rc = session_power_next_cmd(cmdlist[2], sub_cmd))) {
-        return ORCM_ERR_OPERATION_UNSUPPORTED;
-    }
-
-    if (cmd_set == sub_cmd) {
-        return orcm_octl_power_set(rc, cmdlist);
-    }
-
-    return orcm_octl_power_get(rc, cmdlist);
 }
 
 static int run_cmd_sensor_set(char** cmdlist)
@@ -717,14 +612,8 @@ static int run_cmd(int argc, char *cmdlist[])
         case cmd_queue:
             rc = run_cmd_queue(cmdlist, sub_cmd);
             break;
-        case cmd_session:
-            rc = run_cmd_session(cmdlist, sub_cmd);
-            break;
         case cmd_diag:
             rc = run_cmd_diag(cmdlist, sub_cmd);
-            break;
-        case cmd_power:
-            rc = run_cmd_power(cmdlist, sub_cmd);
             break;
         case cmd_sensor:
             rc = run_cmd_sensor(cmdlist, sub_cmd);

@@ -53,56 +53,6 @@ static orcm_cli_init_t cli_init[] = {
     // priority subcommand
     { { "queue", NULL }, "priority", 0, 2, "Queue Priority Modification" },
 
-    /****** session command ******/
-    { { NULL }, "session", 0, 0, "Session Management" },
-    // status subcommand
-    { { "session", NULL }, "status", 0, 0, "Session Status" },
-    // cancel subcommand
-    { { "session", NULL }, "cancel", 0, 1, "Session Cancel [arg: session id]" },
-    //set subcommand
-    { { "session", NULL }, "set", 0, 0, "Set Session Power Policy" },
-    // budget subcommand
-    { { "session", "set", NULL }, "budget", 0, 2, "Set Session Power Budget" },
-    //get subcommand
-    { { "session", NULL }, "get", 0, 0, "Get Session Power Policy" },
-    // mode subcommand
-    { { "session", "set", NULL }, "mode", 0, 2, "Set Session Power Mode" },
-    // window subcommand
-    { { "session", "set", NULL }, "window", 0, 2, "Set Session Power Window" },
-    // overage subcommand
-    { { "session", "set", NULL }, "overage", 0, 2, "Set Session Power Overage Limit" },
-    // underage subcommand
-    { { "session", "set", NULL }, "underage", 0, 2, "Set Session Power Underage Limit" },
-    // overage_time subcommand
-    { { "session", "set", NULL }, "overage_time", 0, 2, "Set Session Power Overage Time Limit" },
-    // underage_time subcommand
-    { { "session", "set", NULL }, "underage_time", 0, 2, "Set Session Power Underage Time Limit" },
-    // freq subcommand
-    { { "session", "set", NULL }, "frequency", 0, 2, "Set Session Manual Frequency" },
-    // strict subcommand
-    { { "session", "set", NULL }, "strict", 0, 2, "Set Session Strictness Policy For Frequency Settings" },
-    // budget subcommand
-    { { "session", "get", NULL }, "budget", 0, 1, "Get Session Power Budget" },
-    // mode subcommand
-    { { "session", "get", NULL }, "mode", 0, 1, "Get Session Power Mode" },
-    // modes subcommand
-    { { "session", "get", NULL }, "modes", 0, 0, "Get List of Power Modes" },
-    // window subcommand
-    { { "session", "get", NULL }, "window", 0, 1, "Get Session Power Window" },
-    // overage subcommand
-    { { "session", "get", NULL }, "overage", 0, 1, "Get Session Power Overage Limit" },
-    // underage subcommand
-    { { "session", "get", NULL }, "underage", 0, 1, "Get Session Power Underage Limit" },
-    // overage_time subcommand
-    { { "session", "get", NULL }, "overage_time", 0, 1, "Get Session Power Overage Time Limit" },
-    // underage_time subcommand
-    { { "session", "get", NULL }, "underage_time", 0, 1, "Get Session Power Underage Time Limit" },
-    // freq subcommand
-    { { "session", "get", NULL }, "frequency", 0, 1, "Get Session Manual Frequency" },
-    // strict subcommand
-    { { "session", "get", NULL }, "strict", 0, 1, "Get Session Strictness Policy For Frequency Settings" },
-
-
     /****** diag command ******/
     { { NULL }, "diag", 0, 0, "Diagnostics" },
     // cpu subcommand
@@ -157,50 +107,6 @@ static orcm_cli_init_t cli_init[] = {
     { { "notifier", "get", NULL }, "policy", 0, 2, "notifier get policy <nodelist>" },
     // notifier get smtp subcommand
     { { "notifier", "get", NULL }, "smtp-policy", 0, 2, "notifier get smtp-policy <nodelist>" },
-
-    /****** power command ******/
-    { { NULL }, "power", 0, 0, "Global Power Policy" },
-    { { "power", NULL }, "set", 0, 0, "Set Power Policy" },
-    // budget subcommand
-    { { "power", "set", NULL }, "budget", 0, 1, "Set Global Power Budget" },
-    // mode subcommand
-    { { "power", "set", NULL }, "mode", 0, 1, "Set Default Power Mode" },
-    // window subcommand
-    { { "power", "set", NULL }, "window", 0, 1, "Set Default Power Window" },
-    // overage subcommand
-    { { "power", "set", NULL }, "overage", 0, 1, "Set Default Power Overage Limit" },
-    // underage subcommand
-    { { "power", "set", NULL }, "underage", 0, 1, "Set Default Power Underage Limit" },
-    // overage_time subcommand
-    { { "power", "set", NULL }, "overage_time", 0, 1, "Set Default Power Overage Time Limit" },
-    // underage_time subcommand
-    { { "power", "set", NULL }, "underage_time", 0, 1, "Set Default Power Underage Time Limit" },
-    // freq subcommand
-    { { "power", "set", NULL }, "frequency", 0, 1, "Set Default Manual Frequency" },
-    // strict subcommand
-    { { "power", "set", NULL }, "strict", 0, 1, "Set Strictness Policy For Frequency Settings" },
-    //get subcommand
-    { { "power", NULL }, "get", 0, 0, "Get Power Policy" },
-    // budget subcommand
-    { { "power", "get", NULL }, "budget", 0, 0, "Get Global Power Budget" },
-    // mode subcommand
-    { { "power", "get", NULL }, "mode", 0, 0, "Get Default Power Mode" },
-    // modes subcommand
-    { { "power", "get", NULL }, "modes", 0, 0, "Get List of Power Modes" },
-    // window subcommand
-    { { "power", "get", NULL }, "window", 0, 0, "Get Default Power Window" },
-    // overage subcommand
-    { { "power", "get", NULL }, "overage", 0, 0, "Get Default Power Overage Limit" },
-    // underage subcommand
-    { { "power", "get", NULL }, "underage", 0, 0, "Get Default Power Underage Limit" },
-    // overage_time subcommand
-    { { "power", "get", NULL }, "overage_time", 0, 0, "Get Default Power Overage Time Limit" },
-    // underage_time subcommand
-    { { "power", "get", NULL }, "underage_time", 0, 0, "Get Default Power Underage Time Limit" },
-    // freq subcommand
-    { { "power", "get", NULL }, "frequency", 0, 0, "Get Default Manual Frequency" },
-    // strict subcommand
-    { { "power", "get", NULL }, "strict", 0, 0, "Get Strictness Policy For Frequency Settings" },
 
     /****** logical group command ******/
     { { NULL }, "grouping", 0, 0, "Logical Grouping Information" },

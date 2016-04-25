@@ -873,7 +873,6 @@ static void connection_event_handler(int incoming_sd, short flags, void* cbdata)
                            true, opal_process_info.nodename,
                            inport, static_port);
           CLOSE_THE_SOCKET(sd);
-          CLOSE_THE_SOCKET(incoming_sd);
           return;
         }
     }

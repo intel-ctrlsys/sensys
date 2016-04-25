@@ -108,6 +108,9 @@ int snmp_impl::init(void)
             return ORCM_ERROR;
         }
     }
+    else {
+        load_mca_variables();
+    }
     return ORCM_SUCCESS;
 }
 

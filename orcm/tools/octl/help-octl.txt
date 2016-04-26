@@ -32,7 +32,7 @@ Success!
 No results returned.
 
 [info:getting-policy]
-ORCM getting sensor policy from Node:%s
+ORCM getting sensor policy from node:%s
 
 [info:no-active-policy]
 There is no active policy!
@@ -48,7 +48,7 @@ Sensor      Threshold        Hi/Lo    Max_Count/Time_Window    Severity      Act
 ORCM setting sensor:%s sample-rate on node:%s
 
 [info:getting-sample-rate]
-ORCM getting sensor %s sample-rate from node:%s
+ORCM getting sensor:%s sample-rate from node:%s
 
 [info:sample-rate-header]
 Sensor     sample-rate
@@ -115,7 +115,7 @@ Session %ld current power frequency: %f MHz.
 Session %ld current frequency strict setting: %s.
 
 [info:executing-diag]
-ORCM Executing Diag:%s on Node: %s.
+ORCM Executing Diag:%s on node: %s
 
 [info:total-nodes]
 TOTAL NODES : %i
@@ -172,7 +172,7 @@ NODE          SMTP_KEY      SMTP_VALUE
 --------------------------------------
 
 [info:notifier-policy]
-Notifier %s policy on Node: %s.
+Notifier %s policy on node: %s
 
 [info:notifier-get-policy]
 Node %s failed to get notifier policy!

@@ -155,12 +155,14 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
     node_count = opal_argv_count(nodelist);
     if (!node_count){
         rc = ORCM_ERROR;
+        SAFE_ARGV_FREE(nodelist);
         return rc;
     }
 
     // Open parser framework
     if (ORTE_SUCCESS != (rc = open_parser_framework())){
         orcm_octl_error("framework-open");
+        SAFE_ARGV_FREE(nodelist);
         return rc;
     }
 
@@ -175,6 +177,7 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
             NULL == (xfer = OBJ_NEW(orte_rml_recv_cb_t))){
             rc = ORCM_ERR_OUT_OF_RESOURCE;
             cleanup(&buf, &xfer);
+            SAFE_ARGV_FREE(nodelist);
             return rc;
         }
 
@@ -217,6 +220,7 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
         cleanup(&buf, &xfer);
     }
 
+    SAFE_ARGV_FREE(nodelist);
     return rc;
 }
 

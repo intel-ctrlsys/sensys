@@ -974,6 +974,7 @@ static void freq_log(opal_buffer_t *sample)
         freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
         return;
     }
+    SAFEFREE(hostname);
     rc = orcm_util_append_orcm_value(key, "data_group", "freq", OPAL_STRING, NULL);
     if (ORCM_SUCCESS != rc) {
         ORTE_ERROR_LOG(rc);
@@ -1053,9 +1054,6 @@ static void freq_log(opal_buffer_t *sample)
             }
         }
         SAFEFREE(label);
-
-        /* check corefreq event policy */
-        //corefreq_policy_filter(hostname, idx, fval, sampletime.tv_sec);
     }
 
     orcm_analytics.send_data(analytics_vals);

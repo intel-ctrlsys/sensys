@@ -522,6 +522,7 @@ retry_b:
             return;
         }
     }
+    OBJ_DESTRUCT(&data);
 }
 
 /*
@@ -619,8 +620,10 @@ static void nodepower_log(opal_buffer_t *sample)
         sensor_not_avail=1;
         if (_readein.ipmi_calls>4)
             opal_output(1,"nodepower sensor data not logged due to unexpected return value from PSU\n");
+        ORCM_RELEASE(sensor_metric);
     } else {
         opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
+        sensor_metric = NULL;
     }
 
     if (!sensor_not_avail) {
@@ -629,9 +632,8 @@ static void nodepower_log(opal_buffer_t *sample)
 
 cleanup:
     SAFEFREE(hostname);
-    if ( NULL != analytics_vals) {
-        ORCM_RELEASE(analytics_vals);
-    }
+    ORCM_RELEASE(analytics_vals);
+    ORCM_RELEASE(sensor_metric);
 }
 
 static void nodepower_set_sample_rate(int sample_rate)

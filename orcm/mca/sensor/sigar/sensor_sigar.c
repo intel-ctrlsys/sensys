@@ -167,11 +167,10 @@ static uint64_t metric_diff_calc(sigar_uint64_t newval, uint64_t oldval,
                                  const char *name_for_log,
                                  const char* value_name_for_log);
 
-#define ON_NULL_RETURN(x) if(NULL==x) return ORCM_ERR_OUT_OF_RESOURCE
-#define ON_NULL_GOTO(x,y) if(NULL==x) {ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto y;}
-#define ON_FAILURE_GOTO(x,y) if(ORCM_SUCCESS!=x) {ORTE_ERROR_LOG(x);goto y;}
+#define ON_NULL_RETURN(x) ORCM_ON_NULL_RETURN(x)
+#define ON_NULL_GOTO(x,y) ORCM_ON_NULL_GOTO(x,y)
+#define ON_FAILURE_GOTO(x,y) ORCM_ON_FAILURE_GOTO(x,y)
 #define ON_NULL_PARAM_RETURN(x) if(NULL==x) return ORCM_ERR_BAD_PARAM
-#define ORCM_RELEASE(x) SAFE_RELEASE(x);x=NULL
 
 static int init(void)
 {
@@ -941,7 +940,7 @@ static int sigar_collect_procstat(opal_list_t* data)
     sigar_proc_mem_t   proc_mem_info;
     sigar_proc_cpu_t   proc_cpu_info;
     char *error_string;
-    opal_pstats_t *stats;
+    opal_pstats_t *stats = NULL;
     pid_t sample_pid;
     int i;
     int remaining_procs;
@@ -1136,7 +1135,6 @@ static int sigar_collect_procstat(opal_list_t* data)
         if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "shared_memory")) {
             item = orcm_util_load_orcm_value("shared_memory", &proc_mem_info.share, OPAL_INT64, "bytes");
             if(NULL == item) {
-                ORCM_RELEASE(stats);
                 return ORCM_ERR_OUT_OF_RESOURCE;
             }
             opal_list_append(data, (opal_list_item_t*)item);
@@ -1145,7 +1143,6 @@ static int sigar_collect_procstat(opal_list_t* data)
         if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "minor_faults")) {
             item = orcm_util_load_orcm_value("minor_faults", &proc_mem_info.minor_faults, OPAL_INT64, "");
             if(NULL == item) {
-                ORCM_RELEASE(stats);
                 return ORCM_ERR_OUT_OF_RESOURCE;
             }
             opal_list_append(data, (opal_list_item_t*)item);
@@ -1154,7 +1151,6 @@ static int sigar_collect_procstat(opal_list_t* data)
         if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "major_faults")) {
             item = orcm_util_load_orcm_value("major_faults", &proc_mem_info.major_faults, OPAL_INT64, "");
             if(NULL == item) {
-                ORCM_RELEASE(stats);
                 return ORCM_ERR_OUT_OF_RESOURCE;
             }
             opal_list_append(data, (opal_list_item_t*)item);
@@ -1163,7 +1159,6 @@ static int sigar_collect_procstat(opal_list_t* data)
         if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "page_faults")) {
             item = orcm_util_load_orcm_value("page_faults", &proc_mem_info.page_faults, OPAL_INT64, "");
             if(NULL == item) {
-                ORCM_RELEASE(stats);
                 return ORCM_ERR_OUT_OF_RESOURCE;
             }
             opal_list_append(data, (opal_list_item_t*)item);
@@ -1172,7 +1167,6 @@ static int sigar_collect_procstat(opal_list_t* data)
         if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "percent")) {
             item = orcm_util_load_orcm_value("percent", &proc_cpu_info.percent, OPAL_DOUBLE, "%");
             if(NULL == item) {
-                ORCM_RELEASE(stats);
                 return ORCM_ERR_OUT_OF_RESOURCE;
             }
             opal_list_append(data, (opal_list_item_t*)item);

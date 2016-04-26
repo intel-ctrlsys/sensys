@@ -43,7 +43,7 @@ using namespace std;
 class ipmiParser {
     public:
         ipmiParser(const string& file="");
-        ~ipmiParser() {};
+        ~ipmiParser() { closeFile(); };
 
         ipmiCollectorMap    getIpmiCollectorMap() { return ipmiMap; };
         ipmiCollectorVector getIpmiCollectorVector() { return ipmiVector; };

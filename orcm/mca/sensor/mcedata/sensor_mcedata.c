@@ -133,7 +133,7 @@ static char *log_line_token[] = {
 static long log_file_pos;
 
 /* MCE log lines for reporting*/
-static char *log_lines[mcelog_sentinel];
+static char* log_lines[mcelog_sentinel];
 
 static void start_log_file(void)
 {
@@ -206,12 +206,8 @@ static long update_log_file_size(FILE *fp)
 
 static void free_log_lines(void)
 {
-    int i;
-    for (i=0; i < mcelog_sentinel; i++){
-        if (log_lines[i] != NULL){
-          free(log_lines[i]);
-          log_lines[i] = NULL;
-        }
+    for (int i = 0; i < mcelog_sentinel; i++) {
+        SAFEFREE(log_lines[i]);
     }
 }
 
@@ -224,6 +220,7 @@ static void get_log_lines(FILE *fp)
     while (nextTag < mcelog_sentinel && -1 != getline(&ptr, &n, fp)){
 
         if (strstr(ptr, "mcelog") && strstr(ptr, log_line_token[nextTag])){
+            SAFEFREE(log_lines[nextTag]);
             log_lines[nextTag++] = ptr;
         }
         else{
@@ -263,6 +260,8 @@ static int init(void)
     struct dirent *dir_entry;
     char *dirname = NULL;
     char *skt;
+
+    memset((void*)log_lines, 0, sizeof(log_lines));
 
     mca_sensor_mcedata_component.diagnostics = 0;
     mca_sensor_mcedata_component.runtime_metrics =
@@ -322,6 +321,8 @@ static void finalize(void)
 
     orcm_sensor_base_runtime_metrics_destroy(mca_sensor_mcedata_component.runtime_metrics);
     mca_sensor_mcedata_component.runtime_metrics = NULL;
+
+    free_log_lines();
 }
 
 /*
@@ -1533,6 +1534,8 @@ static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     orcm_value_t *time_stamp;
     struct timeval current_time;
     orcm_value_t *mkv = NULL;
+    char *inv = NULL;
+    char *inv_val = NULL;
 
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(rc);
@@ -1548,10 +1551,7 @@ static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
     ON_NULL_GOTO(time_stamp, cleanup);
     opal_list_append(records, (opal_list_item_t*)time_stamp);
-    for(int i = 0; i < tot_items; ++i) {
-        char *inv = NULL;
-        char *inv_val = NULL;
-
+    for(unsigned int i = 0; i < tot_items; ++i) {
         n=1;
         rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING);
         ON_FAILURE_GOTO(rc, cleanup);
@@ -1560,6 +1560,8 @@ static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         ON_FAILURE_GOTO(rc, cleanup);
 
         mkv = orcm_util_load_orcm_value(inv, inv_val, OPAL_STRING, NULL);
+        SAFEFREE(inv);
+        SAFEFREE(inv_val);
         ON_NULL_GOTO(mkv, cleanup);
         opal_list_append(records, (opal_list_item_t*)mkv);
         mkv = NULL; /* Now owned by records */
@@ -1569,7 +1571,9 @@ static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         goto do_exit;
     }
 cleanup:
-        my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
+    my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
+    SAFEFREE(inv);
+    SAFEFREE(inv_val);
 do_exit:
     return;
 }

@@ -80,6 +80,7 @@ opal_list_t ipmi_inventory_hosts; /* Hosts list for storing inventory details */
 static orcm_sensor_sampler_t *ipmi_sampler = NULL;
 static orcm_sensor_ipmi_t orcm_sensor_ipmi;
 static opal_list_t sensor_inventory;
+static bool have_sensor_inventory = false;
 
 static void ipmi_con(orcm_sensor_hosts_t *host)
 {
@@ -91,7 +92,7 @@ OBJ_CLASS_INSTANCE(orcm_sensor_hosts_t,
                    opal_list_item_t,
                    ipmi_con, ipmi_des);
 
-orcm_sensor_hosts_t *cur_host;
+orcm_sensor_hosts_t *cur_host = NULL;
 
 typedef struct {
     opal_list_item_t super;
@@ -152,9 +153,8 @@ char ipmi_inv_tv[10][2][30] = {
 {"sensor_ipmi_4","Processor 2 Fan"},
 {"sensor_ipmi_5","Exit Air Temp"}};
 
-#define ON_NULL_GOTO(OBJ,LABEL) if(NULL==OBJ) { ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE); goto LABEL; }
-#define ON_FAILURE_GOTO(RV,LABEL) if(ORCM_SUCCESS!=RV) { ORTE_ERROR_LOG(RV); goto LABEL; }
-#define ORCM_RELEASE(x) if(NULL!=x){OBJ_RELEASE(x); x=NULL;}
+#define ON_NULL_GOTO(OBJ,LABEL) ORCM_ON_NULL_GOTO(OBJ,LABEL)
+#define ON_FAILURE_GOTO(RV,LABEL) ORCM_ON_FAILURE_GOTO(RV,LABEL)
 
 static int init(void)
 {
@@ -173,10 +173,10 @@ static int init(void)
     OBJ_CONSTRUCT(&sensor_inventory, opal_list_t);
     OBJ_CONSTRUCT(&sensor_active_hosts, opal_list_t);
     OBJ_CONSTRUCT(&ipmi_inventory_hosts, opal_list_t);
-    cur_host = OBJ_NEW(orcm_sensor_hosts_t);
     if (mca_sensor_ipmi_component.test) {
         /* generate test vector */
         OBJ_CONSTRUCT(&test_vector, opal_buffer_t);
+        OBJ_DESTRUCT(&sensor_inventory);
         generate_test_vector_inner(&test_vector);
         return OPAL_SUCCESS;
     }
@@ -185,15 +185,19 @@ static int init(void)
 
     rc = orcm_sensor_ipmi_get_sensor_inventory_list(&sensor_inventory);
     if(rc != ORCM_SUCCESS) {
+        OBJ_DESTRUCT(&sensor_inventory);
         opal_output(0, "Unable to collect the current sensor inventory");
         return ORCM_ERROR;
     }
+    cur_host = OBJ_NEW(orcm_sensor_hosts_t);
     rc = orcm_sensor_ipmi_get_bmc_cred(cur_host);
     if(rc != ORCM_SUCCESS) {
         opal_output(0, "Unable to collect the current host details");
+        OBJ_DESTRUCT(&sensor_inventory);
+        ORCM_RELEASE(cur_host);
         return ORCM_ERROR;
     }
-
+    have_sensor_inventory = true;
     return OPAL_SUCCESS;
 }
 
@@ -208,8 +212,11 @@ static void finalize(void)
 
     OPAL_LIST_DESTRUCT(&sensor_active_hosts);
     OPAL_LIST_DESTRUCT(&ipmi_inventory_hosts);
-    OPAL_LIST_DESTRUCT(&sensor_inventory);
-    OBJ_RELEASE(cur_host);
+    if(have_sensor_inventory) {
+        OPAL_LIST_DESTRUCT(&sensor_inventory);
+        have_sensor_inventory = false;
+    }
+    ORCM_RELEASE(cur_host);
 }
 
 /*Start monitoring of local processes */
@@ -255,7 +262,6 @@ static void start(orte_jobid_t jobid)
         opal_event_evtimer_add(&ipmi_sampler->ev, &ipmi_sampler->rate);
     }else{
 	 mca_sensor_ipmi_component.sample_rate = orcm_sensor_base.sample_rate;
-
     }
 
     return;
@@ -445,6 +451,7 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
         goto cleanup;
     }
     opal_list_append(non_compute_data, (opal_list_item_t *)sensor_metric);
+    sensor_metric = NULL;
 
     analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
     if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
@@ -454,17 +461,12 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
     }
 
     orcm_analytics.send_data(analytics_vals);
-    if ( NULL != analytics_vals) {
-        OBJ_RELEASE(analytics_vals);
-    }
 
  cleanup:
-    if ( NULL != key) {
-        OBJ_RELEASE(key);
-    }
-    if ( NULL != non_compute_data) {
-        OBJ_RELEASE(non_compute_data);
-    }
+    ORCM_RELEASE(key);
+    ORCM_RELEASE(non_compute_data);
+    ORCM_RELEASE(analytics_vals);
+    ORCM_RELEASE(sensor_metric);
 
     return;
 
@@ -1161,13 +1163,13 @@ static bool compare_ipmi_record (ipmi_inventory_t* newhost , ipmi_inventory_t* o
 
 static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
 {
-    char *inv, *inv_val;
+    char *inv = NULL, *inv_val = NULL;
     unsigned int tot_items;
     int rc, n;
-    ipmi_inventory_t *newhost, *oldhost;
-    orcm_value_t *mkv, *mkv_copy;
-    opal_value_t *kv;
-    orcm_value_t *time_stamp;
+    ipmi_inventory_t *newhost = NULL, *oldhost = NULL;
+    orcm_value_t *mkv = NULL, *mkv_copy = NULL;
+    opal_value_t *kv = NULL;
+    orcm_value_t *time_stamp = NULL;
     struct timeval current_time;
 
     n=1;
@@ -1195,12 +1197,13 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
-            return;
+            goto cleanup;
         }
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv_val, &n, OPAL_STRING))) {
+            SAFEFREE(inv);
             ORTE_ERROR_LOG(rc);
-            return;
+            goto cleanup;
         }
 
         mkv = OBJ_NEW(orcm_value_t);
@@ -1210,11 +1213,16 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         {
             mkv->value.type = OPAL_FLOAT;
             mkv->value.data.fval = strtof(inv_val,NULL);
+            SAFEFREE(inv_val);
+            inv_val = NULL;
         } else {
             mkv->value.type = OPAL_STRING;
             mkv->value.data.string = inv_val;
+            inv_val = NULL;
         }
+        inv = NULL;
         opal_list_append(newhost->records, (opal_list_item_t *)mkv);
+        mkv = NULL;
         tot_items--;
     }
 
@@ -1225,7 +1233,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         if(false == compare_ipmi_record(newhost, oldhost))
         {
             opal_output(0,"IPMI Compare failed; Notify User; Update List; Update Database");
-            OBJ_RELEASE(oldhost->records);
+            ORCM_RELEASE(oldhost->records);
             oldhost->records=OBJ_NEW(opal_list_t);
             OPAL_LIST_FOREACH(mkv, newhost->records, orcm_value_t) {
                 mkv_copy = OBJ_NEW(orcm_value_t);
@@ -1240,16 +1248,20 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                     mkv_copy->value.data.string = strdup(mkv->value.data.string);
                 }
                 opal_list_append(oldhost->records,(opal_list_item_t *)mkv_copy);
+                mkv_copy = NULL;
             }
+            ORCM_RELEASE(newhost);
 
             kv = orcm_util_load_opal_value("hostname", oldhost->nodename, OPAL_STRING);
             if (NULL == kv) {
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                     "Unable to allocate data");
-                return;
+                goto cleanup;
             }
             opal_list_prepend(oldhost->records, &kv->super);
+            kv = NULL;
             opal_list_prepend(oldhost->records, (opal_list_item_t*)time_stamp);
+            time_stamp = NULL;
 
             /* Send the collected inventory details to the database for storage */
             if (0 <= orcm_sensor_base.dbhandle) {
@@ -1259,27 +1271,32 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "ipmi compare passed");
         }
-        /* newhost structure can be destroyed after comparision with original list and update */
-        OBJ_RELEASE(newhost);
-
     } else {
-        /* Append the new node to the existing host list */
-        opal_list_append(&ipmi_inventory_hosts, &newhost->super);
-
         kv = orcm_util_load_opal_value("hostname", newhost->nodename, OPAL_STRING);
         if (NULL == kv) {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                 "Unable to allocate data");
-            return;
+            goto cleanup;
         }
         opal_list_prepend(newhost->records, &kv->super);
+        kv = NULL;
         opal_list_prepend(newhost->records, (opal_list_item_t*)time_stamp);
+        time_stamp = NULL;
+
+        /* Append the new node to the existing host list */
+        opal_list_append(&ipmi_inventory_hosts, &newhost->super);
 
         /* Send the collected inventory details to the database for storage */
         if (0 <= orcm_sensor_base.dbhandle) {
             orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA , newhost->records, NULL, NULL, NULL);
         }
+        newhost = NULL; /* In list so don't release */
     }
+cleanup:
+    SAFEFREE(inv);
+    SAFEFREE(inv_val);
+    ORCM_RELEASE(time_stamp);
+    ORCM_RELEASE(newhost);
 }
 
 static void ipmi_set_sample_rate(int sample_rate)
@@ -2133,13 +2150,16 @@ static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *inventory_lis
                 kv = OBJ_NEW(opal_value_t);
                 kv->type = OPAL_STRING;
                 kv->data.string = key; /* kv takes memory ownership */
+                key = NULL;
                 opal_list_append(inventory_list, &kv->super); /* List owns kv*/
+                kv = NULL;
 
                 /* Store Inventory Value */
                 kv = OBJ_NEW(opal_value_t);
                 kv->type = OPAL_STRING;
                 kv->data.string = strdup(val); /* kv takes memory ownership */
                 opal_list_append(inventory_list, &kv->super); /* List owns kv*/
+                kv = NULL;
                 orcm_sensor_base_runtime_metrics_track(mca_sensor_ipmi_component.runtime_metrics, val);
 
                 ++sensor_num; /* increment sensor number for key */

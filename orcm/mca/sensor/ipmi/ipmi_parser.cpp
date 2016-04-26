@@ -49,7 +49,9 @@ using namespace std;
 static inline bool stringMatchRegex(string str, string pattern){
    regex_t regex_comp;
    regcomp(&regex_comp, pattern.c_str(), REG_ICASE|REG_EXTENDED);
-   return !regexec(&regex_comp, str.c_str(), 0, NULL, 0);
+   bool rv = !regexec(&regex_comp, str.c_str(), 0, NULL, 0);
+   regfree(&regex_comp);
+   return rv;
 }
 
 ipmiParser::ipmiParser(const string& file)

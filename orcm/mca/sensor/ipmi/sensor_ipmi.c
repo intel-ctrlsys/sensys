@@ -95,7 +95,7 @@ OBJ_CLASS_INSTANCE(orcm_sensor_hosts_t,
                    opal_list_item_t,
                    ipmi_con, ipmi_des);
 
-orcm_sensor_hosts_t *cur_host;
+orcm_sensor_hosts_t *cur_host = NULL;
 
 typedef struct {
     opal_list_item_t super;
@@ -153,9 +153,8 @@ char ipmi_inv_tv[10][2][30] = {
 {"sensor_ipmi_4","Processor 2 Fan"},
 {"sensor_ipmi_5","Exit Air Temp"}};
 
-#define ON_NULL_GOTO(OBJ,LABEL) if(NULL==OBJ) { ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE); goto LABEL; }
-#define ON_FAILURE_GOTO(RV,LABEL) if(ORCM_SUCCESS!=RV) { ORTE_ERROR_LOG(RV); goto LABEL; }
-#define ORCM_RELEASE(x) if(NULL!=x){OBJ_RELEASE(x); x=NULL;}
+#define ON_NULL_GOTO(OBJ,LABEL) ORCM_ON_NULL_GOTO(OBJ,LABEL)
+#define ON_FAILURE_GOTO(RV,LABEL) ORCM_ON_FAILURE_GOTO(RV,LABEL)
 
 static int init(void)
 {
@@ -181,6 +180,7 @@ static int init(void)
     if (mca_sensor_ipmi_component.test) {
         /* generate test vector */
         OBJ_CONSTRUCT(&test_vector, opal_buffer_t);
+        OBJ_DESTRUCT(&sensor_inventory);
         generate_test_vector_inner(&test_vector);
         return OPAL_SUCCESS;
     }
@@ -227,8 +227,11 @@ static void finalize(void)
 
     OPAL_LIST_DESTRUCT(&sensor_active_hosts);
     OPAL_LIST_DESTRUCT(&ipmi_inventory_hosts);
-    OPAL_LIST_DESTRUCT(&sensor_inventory);
-    OBJ_RELEASE(cur_host);
+    if(have_sensor_inventory) {
+        OPAL_LIST_DESTRUCT(&sensor_inventory);
+        have_sensor_inventory = false;
+    }
+    ORCM_RELEASE(cur_host);
 }
 
 /*Start monitoring of local processes */
@@ -274,7 +277,6 @@ static void start(orte_jobid_t jobid)
         opal_event_evtimer_add(&ipmi_sampler->ev, &ipmi_sampler->rate);
     }else{
 	 mca_sensor_ipmi_component.sample_rate = orcm_sensor_base.sample_rate;
-
     }
 
     return;
@@ -413,6 +415,7 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
     sensor_metric = orcm_util_load_orcm_value("BBpart", baseboard_part, OPAL_STRING, NULL);
     ORCM_ON_NULL_GOTO(sensor_metric, cleanup);
     opal_list_append(non_compute_data, (opal_list_item_t *)sensor_metric);
+    sensor_metric = NULL;
 
     analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
     ORCM_ON_NULL_GOTO(analytics_vals, cleanup);
@@ -421,17 +424,12 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
     ORCM_ON_NULL_GOTO(analytics_vals->compute_data, cleanup);
 
     orcm_analytics.send_data(analytics_vals);
-    if ( NULL != analytics_vals) {
-        OBJ_RELEASE(analytics_vals);
-    }
 
  cleanup:
-    if ( NULL != key) {
-        OBJ_RELEASE(key);
-    }
-    if ( NULL != non_compute_data) {
-        OBJ_RELEASE(non_compute_data);
-    }
+    ORCM_RELEASE(key);
+    ORCM_RELEASE(non_compute_data);
+    ORCM_RELEASE(analytics_vals);
+    ORCM_RELEASE(sensor_metric);
 
     return;
 
@@ -1044,8 +1042,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     unsigned int tot_items;
     int rc, n;
     ipmi_inventory_t *newhost = NULL, *oldhost = NULL;
-    orcm_value_t *mkv = NULL;
-    orcm_value_t *mkv_copy = NULL;
+    orcm_value_t *mkv = NULL, *mkv_copy = NULL;
     opal_value_t *kv = NULL;
     orcm_value_t *time_stamp = NULL;
     struct timeval current_time;

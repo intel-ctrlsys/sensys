@@ -65,6 +65,7 @@ ipmi_sel_collector::~ipmi_sel_collector()
     if(false == bad_instance_) {
         ipmi_close();
         SAFE_DELETE(persist_record_);
+        SAFE_DELETE(current_record_);
     }
 }
 

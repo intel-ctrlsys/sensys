@@ -55,11 +55,10 @@
 
 #define TEST_CORES (256)
 
-#define ON_FAILURE_RETURN(x) if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);return;}
-#define ON_FAILURE_GOTO(x,label) if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);goto label;}
-#define ON_NULL_RETURN(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
-#define ON_NULL_GOTO(x,label) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
-#define ORCM_RELEASE(x) if(NULL!=x){OBJ_RELEASE(x);x=NULL;}
+#define ON_FAILURE_RETURN(x) ORCM_ON_FAILURE_RETURN(x)
+#define ON_FAILURE_GOTO(x,label) ORCM_ON_FAILURE_GOTO(x,label)
+#define ON_NULL_RETURN(x) ORCM_ON_NULL_RETURN(x)
+#define ON_NULL_GOTO(x,label) ORCM_ON_NULL_GOTO(x,label)
 
 /* declare the API functions */
 static int init(void);
@@ -1173,6 +1172,7 @@ static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snap
     rc = opal_dss.unpack(inventory_snapshot, &tmp, &n, OPAL_STRING);
     SAFEFREE(tmp);
     ON_FAILURE_RETURN(rc);
+    SAFEFREE(tmp);
 
     n=1;
     rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL);
@@ -1205,9 +1205,9 @@ static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snap
         ON_FAILURE_GOTO(rc, cleanup);
 
         mkv = orcm_util_load_orcm_value(inv, inv_val, OPAL_STRING, NULL);
+        SAFEFREE(inv);
+        SAFEFREE(inv_val);
         ON_NULL_GOTO(mkv, cleanup);
-        inv = NULL;
-        inv_val = NULL;
         opal_list_append(records, (opal_list_item_t*)mkv);
         mkv = NULL;
     }

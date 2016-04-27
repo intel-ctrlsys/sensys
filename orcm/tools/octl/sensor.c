@@ -679,7 +679,7 @@ int orcm_octl_sensor_inventory_get(int cmd, char **argv)
     node_count = opal_argv_count(argv_node_list);
 
     if (NULL == raw_node_list || 0 == node_count) {
-        orcm_octl_error("nodelist-extract");
+        orcm_octl_error("nodelist-extract", raw_node_list);
         rv = ORCM_ERR_BAD_PARAM;
         goto orcm_octl_sensor_inventory_get_cleanup;
     }

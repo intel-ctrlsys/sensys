@@ -1,6 +1,7 @@
 .\" Man page contributed by Dirk Eddelbuettel <edd@debian.org>
 .\" and released under the BSD license
 .\" Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
+.\" Copyright (c) 2016      Intel, Inc. All rights reserved.
 .TH orcm-info 1 "#OPAL_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
 .SH NAME
 orcm-info - Display information about the ORCM installation
@@ -23,7 +24,7 @@ be useful for at least three common scenarios:
 1. Checking local configuration and seeing how ORCM was installed.
 .PP
 2. Submitting bug reports / help requests to the ORCM community
-(see 
+(see
 .IR https://github.com/open-mpi/orcm/issues )
 .PP
 3. Seeing a list of installed ORCM plugins and querying what
@@ -36,10 +37,10 @@ MCA parameters they support.
 .B orcm-info
 accepts the following options:
 .TP 8
-.I \-a|\-\-all 
+.I \-a|\-\-all
 Show all configuration options and MCA parameters
 .TP 8
-.I \-\-arch   
+.I \-\-arch
 Show architecture ORCM was compiled on
 .TP 8
 .I \-c|\-\-config
@@ -85,7 +86,7 @@ Show version of ORCM or a component.  <component> can be the
 keywords "orcm" or "all", the name of a framework (e.g., "coll" shows
 all components in the coll framework), or the name of a specific
 component (e.g., "pls:rsh" shows the information from the rsh PLS
-component).  <scope> can be one of: full, major, minor, release,
+component).  <scope> can be one of: all, full, major, minor, release,
 greek, svn.
 .
 .\" **************************
@@ -141,8 +142,8 @@ prettyprint format.
 .
 .TP
 orcm-info --all
-Show 
-.I all 
+Show
+.I all
 information about the ORCM installation, including all components
 that can be found, the MCA parameters that they support, versions of
 ORCM and the components, etc.

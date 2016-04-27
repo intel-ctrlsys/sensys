@@ -5,17 +5,17 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Sun Microsystems, Inc.  All rights reserved.
  * Copyright (c) 2010-2011 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -62,15 +62,30 @@ static void show_mca_version(const mca_base_component_t *component,
                              const char *scope, const char *ver_type);
 static char *make_version_str(const char *scope,
                               int major, int minor, int release,
-                              const char *greek, 
+                              const char *greek,
                               bool want_repo, const char *repo);
+
+
+void orcm_info_show_all_components_version(const char *scope)
+{
+    char *pos;
+    int j;
+
+    orcm_info_show_orcm_version(scope);
+    for (j = 0; j < mca_types.size; ++j) {
+        if (NULL == (pos = (char*)opal_pointer_array_get_item(&mca_types, j))) {
+            continue;
+        }
+        orcm_info_show_component_version(pos, orcm_info_component_all, scope, orcm_info_type_all);
+    }
+}
 
 /*
  * do_version
  *
  * Determines the version information related to the orcm components
  * being used.
- * Accepts: 
+ * Accepts:
  *	- want_all: True if all components' info is required.
  *	- cmd_line: The constructed command line argument
  */
@@ -78,46 +93,44 @@ void orcm_info_do_version(bool want_all, opal_cmd_line_t *cmd_line)
 {
     unsigned int count;
     size_t i;
-    char *arg1, *scope, *type, *component;
-    char *pos;
-    int j;
-    
+    char *arg1, *scope, *type, *component, *pos;
+
     orcm_info_components_open();
-    
+
     if (want_all) {
-        orcm_info_show_orcm_version(orcm_info_ver_full);
-        for (j = 0; j < mca_types.size; ++j) {
-            if (NULL == (pos = (char*)opal_pointer_array_get_item(&mca_types, j))) {
-                continue;
-            }
-            orcm_info_show_component_version(pos, orcm_info_component_all, orcm_info_ver_full, orcm_info_type_all);
-        }
+        orcm_info_show_all_components_version(orcm_info_ver_full);
     } else {
         count = opal_cmd_line_get_ninsts(cmd_line, "version");
         for (i = 0; i < count; ++i) {
             arg1 = opal_cmd_line_get_param(cmd_line, "version", (int)i, 0);
             scope = opal_cmd_line_get_param(cmd_line, "version", (int)i, 1);
-            
+
+            /* Show Version for all components */
+
+            if (NULL != arg1 && NULL != scope && 0 == strcmp(orcm_info_ver_all, arg1)) {
+                orcm_info_show_all_components_version(scope);
+            }
+
             /* Version of Open MPI */
-            
-            if (NULL != arg1 && NULL != scope && 0 == strcmp(orcm_info_type_orcm, arg1)) {
+
+            else if (NULL != arg1 && NULL != scope && 0 == strcmp(orcm_info_type_orcm, arg1)) {
                 orcm_info_show_orcm_version(scope);
-            } 
-            
+            }
+
             /* Specific type and component */
-            
+
             else if (NULL != arg1 && NULL != scope && NULL != (pos = strchr(arg1, ':'))) {
                 *pos = '\0';
                 type = arg1;
                 pos++;
                 component = pos;
-                
+
                 orcm_info_show_component_version(type, component, scope, orcm_info_ver_all);
-                
+
             }
-            
+
             /* All components of a specific type */
-            
+
             else if (NULL != arg1 && NULL != scope) {
                 orcm_info_show_component_version(arg1, orcm_info_component_all, scope, orcm_info_ver_all);
             }
@@ -130,7 +143,7 @@ void orcm_info_do_version(bool want_all, opal_cmd_line_t *cmd_line)
  * Show all the components of a specific type/component combo (component may be
  * a wildcard)
  */
-void orcm_info_show_component_version(const char *type_name, 
+void orcm_info_show_component_version(const char *type_name,
                                       const char *component_name,
                                       const char *scope, const char *ver_type)
 {
@@ -143,12 +156,12 @@ void orcm_info_show_component_version(const char *type_name,
     int j;
     char *pos;
     opal_info_component_map_t *map;
-    
+
     /* see if all components wanted */
     if (0 == strcmp(orcm_info_type_all, component_name)) {
         want_all_components = true;
     }
-    
+
     /* Check to see if the type is valid */
     for (found = false, j = 0; j < mca_types.size; ++j) {
         if (NULL == (pos = (char*)opal_pointer_array_get_item(&mca_types, j))) {
@@ -159,11 +172,11 @@ void orcm_info_show_component_version(const char *type_name,
             break;
         }
     }
-    
-    if (!found) {
+
+    if (!found && !want_all_components) {
         exit(1);
     }
-    
+
     /* Now that we have a valid type, find the right component list */
     components = NULL;
     for (j=0; j < component_map.size; j++) {
@@ -209,22 +222,22 @@ static void show_mca_version(const mca_base_component_t* component,
     char *api_version;
     char *component_version;
     char *tmp;
-    
+
     if (0 == strcmp(ver_type, orcm_info_ver_all) ||
         0 == strcmp(ver_type, orcm_info_ver_mca)) {
         want_mca = true;
     }
-    
+
     if (0 == strcmp(ver_type, orcm_info_ver_all) ||
         0 == strcmp(ver_type, orcm_info_ver_type)) {
         want_type = true;
     }
-    
+
     if (0 == strcmp(ver_type, orcm_info_ver_all) ||
         0 == strcmp(ver_type, orcm_info_ver_component)) {
         want_component = true;
     }
-    
+
     mca_version = make_version_str(scope, component->mca_major_version,
                                    component->mca_minor_version,
                                    component->mca_release_version, "",
@@ -235,14 +248,14 @@ static void show_mca_version(const mca_base_component_t* component,
                                    false, "");
     component_version = make_version_str(scope, component->mca_component_major_version,
                                          component->mca_component_minor_version,
-                                         component->mca_component_release_version, 
+                                         component->mca_component_release_version,
                                          "", false, "");
-    
+
     if (orcm_info_pretty) {
         asprintf(&message, "MCA %s", component->mca_type_name);
         printed = false;
         asprintf(&content, "%s (", component->mca_component_name);
-        
+
         if (want_mca) {
             asprintf(&tmp, "%sMCA v%s", content, mca_version);
             free(content);
@@ -279,7 +292,7 @@ static void show_mca_version(const mca_base_component_t* component,
         } else {
             tmp = NULL;
         }
-        
+
         if (NULL != tmp) {
             orcm_info_out(message, NULL, tmp);
             free(tmp);
@@ -314,12 +327,12 @@ static void show_mca_version(const mca_base_component_t* component,
 
 static char *make_version_str(const char *scope,
                                int major, int minor, int release,
-                               const char *greek, 
+                               const char *greek,
                                bool want_repo, const char *repo)
 {
     char *str = NULL, *tmp;
     char temp[BUFSIZ];
-    
+
     temp[BUFSIZ - 1] = '\0';
     if (0 == strcmp(scope, orcm_info_ver_full) ||
         0 == strcmp(scope, orcm_info_ver_all)) {
@@ -352,10 +365,10 @@ static char *make_version_str(const char *scope,
     } else if (0 == strcmp(scope, orcm_info_ver_repo)) {
         str = strdup(repo);
     }
-    
+
     if (NULL == str) {
         str = strdup(temp);
     }
-    
+
     return str;
 }

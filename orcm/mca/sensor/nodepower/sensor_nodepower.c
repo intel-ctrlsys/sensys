@@ -536,7 +536,7 @@ static void nodepower_log(opal_buffer_t *sample)
     int sensor_not_avail=0;
     struct timeval tv_curr;
     struct tm *time_info;
-    orcm_value_t *sensor_metric;
+    orcm_value_t *sensor_metric = NULL;
     float node_power_cur;
     char time_str[40];
     orcm_analytics_value_t *analytics_vals = NULL;

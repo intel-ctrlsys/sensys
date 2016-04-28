@@ -596,7 +596,8 @@ void snmp_impl::generate_test_inv_vector(opal_buffer_t* inventory_snapshot)
     gettimeofday(&current_time, NULL);
     vardata(current_time).setKey(string(CTIME_STR)).packTo(inventory_snapshot);
     vardata((int64_t)1).setKey(TOT_HOSTNAMES_STR).packTo(inventory_snapshot);
-    vardata((int64_t)TEST_VECTOR_SIZE).setKey(TOT_ITEMS_STR).packTo(inventory_snapshot);
+    vardata((int64_t)TEST_VECTOR_SIZE+1).setKey(TOT_ITEMS_STR).packTo(inventory_snapshot);
+    vardata(hostname_).setKey(string(HOSTNAME_STR)).packTo(inventory_snapshot);
     for(int i = 0; i < TEST_VECTOR_SIZE; ++i) {
         stringstream ss;
         ss << "sensor_snmp_" << (i+1);

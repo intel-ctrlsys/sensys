@@ -14,7 +14,7 @@
 # <major>.<minor>.<release>.  If release is zero, then it is omitted.
 
 major=0
-minor=25
+minor=27
 release=0
 
 # greek is used for alpha or beta release tags.  If it is non-empty,

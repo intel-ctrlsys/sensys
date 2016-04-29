@@ -205,6 +205,13 @@ static void ethtest_run(int sd, short args, void *cbdata)
     int i, ret, rc;
     int strset_len;
     char *resource = strdup("eth0");
+    if (NULL == resource) {
+        opal_output(0, "%s diag:ethtest: memory allocation failed",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        opal_output(0, "%s Diagnostic checking ethernet:\t\t\t[NOTRUN]\n",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
+        return;
+    }
     orcm_diag_cmd_flag_t command = ORCM_DIAG_AGG_COMMAND;
     opal_buffer_t *data = NULL;
     struct timeval now;
@@ -236,19 +243,20 @@ static void ethtest_run(int sd, short args, void *cbdata)
 
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                            "%s diag:cannot open socket",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        opal_output(0, "%s diag:ethtest:cannot open socket", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        opal_output(0, "%s Diagnostic checking ethernet:\t\t\t[NOTRUN]\n",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME) );
         eth_diag_ret |= DIAG_ETH_NOTRUN;
         goto sendresults;
     }
-    if (strlen(resource) >= sizeof(ifr.ifr_name)) {
-        copy_size = sizeof(ifr.ifr_name) - 1;
+
+    copy_size = strlen(resource);
+    if (copy_size >= sizeof(ifr.ifr_name)) {
+        copy_size = 0;
     } else {
-        copy_size = strlen(resource);
+        strncpy(ifr.ifr_name, resource, copy_size);
     }
-    /* TODO: pass interface(s) via options list */
-    strncpy(ifr.ifr_name, resource, copy_size);
+    ifr.ifr_name[copy_size] = '\0';
 
      /* Get string set length */
     testinfo_offset = (int)offsetof(struct ethtool_drvinfo, testinfo_len);
@@ -260,9 +268,8 @@ static void ethtest_run(int sd, short args, void *cbdata)
 
     ret = ioctl(sock, SIOCETHTOOL, &ifr);
     if ( ret ) {
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                            "%s diag:ethtool ioctl GDRVINFO failed",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        opal_output(0, "%s diag:ethtool ioctl GDRVINFO failed - %s",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), strerror(errno));
         eth_diag_ret |= DIAG_ETH_NOTRUN;
         goto sendresults;
     }
@@ -270,9 +277,8 @@ static void ethtest_run(int sd, short args, void *cbdata)
 
     gstring = calloc(1, sizeof(*gstring) + strset_len * ETH_GSTRING_LEN);
     if ( !gstring ) {
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                            "%s diag:calloc failed",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        opal_output(0, "%s diag:ethtest:calloc failed - %s",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), strerror(errno));
         eth_diag_ret |= DIAG_ETH_NOTRUN;
         goto sendresults;
     }
@@ -285,9 +291,8 @@ static void ethtest_run(int sd, short args, void *cbdata)
 
     ret = ioctl(sock, SIOCETHTOOL, &ifr);
     if ( ret ) {
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                            "%s diag:ethtool ioctl GSTRINGS failed - %s",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), strerror(errno));
+        opal_output(0, "%s diag:ethtool ioctl GSTRINGS failed - %s",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), strerror(errno));
         eth_diag_ret |= DIAG_ETH_NOTRUN;
         goto sendresults;
     }
@@ -299,9 +304,7 @@ static void ethtest_run(int sd, short args, void *cbdata)
 
     eth_test = calloc(1, sizeof(*eth_test) + gstring->len * sizeof(long long));
     if ( !eth_test ) {
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                            "%s diag:calloc failed",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        opal_output(0, "%s diag:ethtest:calloc failed", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         eth_diag_ret |= DIAG_ETH_NOTRUN;
         goto sendresults;
     }
@@ -317,9 +320,8 @@ static void ethtest_run(int sd, short args, void *cbdata)
 
     ret = ioctl(sock, SIOCETHTOOL, &ifr);
     if ( ret < 0 ) {
-        opal_output_verbose(1, orcm_diag_base_framework.framework_output,
-                            "%s diag:ethtool ioctl TEST failed - %s",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), strerror(errno));
+        opal_output(0, "%s diag:ethtool ioctl TEST failed - %s",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), strerror(errno));
         eth_diag_ret |= DIAG_ETH_NOTRUN;
         result_num = 0;
         goto sendresults;

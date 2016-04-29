@@ -147,7 +147,6 @@ static int workflow_add_send_workflow(opal_buffer_t *buf, char **aggregator)
 
         rc = workflow_add_unpack_buffer(xfer);
         if (ORCM_SUCCESS != rc) {
-            orcm_octl_error("unpack");
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ANALYTICS);
             SAFE_RELEASE(xfer);
             return rc;
@@ -337,6 +336,7 @@ static int workflow_remove_parse_args(char **value, char ***aggregator, char **w
     if (NULL != value[2]) {
         rc = orcm_logical_group_parse_array_string(value[2], aggregator);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_error("nodelist-extract", value[2]);
             return rc;
         }
 
@@ -452,6 +452,7 @@ int orcm_octl_workflow_remove(char **value)
 
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(aggregator[node_index],
                                                                    &wf_agg))) {
+            orcm_octl_error("node-notfound", aggregator[node_index]);
             workflow_process_error(buf, xfer, aggregator);
             return rc;
         }
@@ -470,6 +471,7 @@ int orcm_octl_workflow_remove(char **value)
 
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_error("connection-fail");
             workflow_process_error(buf, xfer, aggregator);
             return rc;
         }
@@ -499,6 +501,7 @@ static int workflow_list_parse_args(char **value, char ***aggregator)
     if (NULL != value[2]) {
         rc = orcm_logical_group_parse_array_string(value[2], aggregator);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_error("nodelist-notfound", value[2]);
             return rc;
         }
 
@@ -518,7 +521,7 @@ static int workflow_list_pack_buffer(opal_buffer_t *buf, orte_rml_recv_cb_t *xfe
     command = ORCM_ANALYTICS_WORKFLOW_LIST;
     /* pack the alloc command flag */
     if (ORCM_SUCCESS != (rc = opal_dss.pack(buf, &command, 1, OPAL_UINT8))) {
-
+        orcm_octl_error("pack");
         return rc;
     }
     return ORCM_SUCCESS;
@@ -541,9 +544,11 @@ static int workflow_list_unpack_buffer(orte_rml_recv_cb_t *xfer)
 
     for (temp = 0; temp < workflow_count; temp++) {
         if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_id, &n, OPAL_INT))) {
+            orcm_octl_error("unpack");
             return rc;
         }
         if (ORCM_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &workflow_name, &n, OPAL_STRING))) {
+            orcm_octl_error("unpack");
             return rc;
         }
         orcm_octl_info("workflow-list", workflow_name, workflow_id);
@@ -591,6 +596,7 @@ int orcm_octl_workflow_list(char **value)
 
         if (ORCM_SUCCESS != (rc = orcm_cfgi_base_get_hostname_proc(aggregator[node_index],
                                                                    &wf_agg))) {
+            orcm_octl_error("node-notfound", aggregator[node_index]);
             workflow_process_error(buf, xfer, aggregator);
             return rc;
         }
@@ -609,6 +615,7 @@ int orcm_octl_workflow_list(char **value)
 
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_error("connection-fail");
             workflow_process_error(buf, xfer, aggregator);
             return rc;
         }

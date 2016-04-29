@@ -309,7 +309,9 @@ void mca_oob_tcp_peer_try_connect(int fd, short args, void *cbdata)
         peer->state = MCA_OOB_TCP_FAILED;
         host = orte_get_proc_hostname(&(peer->name));
         if (NULL == host) {
-            host = opal_net_get_hostname((struct sockaddr*)&(peer->active_addr->addr));
+            if(NULL != peer->active_addr) {
+                host = opal_net_get_hostname((struct sockaddr*)&(peer->active_addr->addr));
+            }
         }
         /* use an opal_output here instead of show_help as we may well
          * not be connected to the HNP at this point */

@@ -83,7 +83,7 @@ static int unpack_response(char* node, orte_rml_recv_cb_t *xfer){
     }
 
     if (ORCM_SUCCESS != response){
-        orcm_octl_error("chassis-id-status", node);
+        orcm_octl_error("chassis-id-operation", node);
         return response;
     }
 
@@ -154,6 +154,8 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
     orcm_logical_group_parse_array_string(noderaw, &nodelist);
     node_count = opal_argv_count(nodelist);
     if (!node_count){
+        orcm_octl_info("chassis-failure", nodelist[iter]);
+        orcm_octl_error("nodelist-notfound", noderaw);
         rc = ORCM_ERROR;
         SAFE_ARGV_FREE(nodelist);
         return rc;
@@ -161,6 +163,7 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
 
     // Open parser framework
     if (ORTE_SUCCESS != (rc = open_parser_framework())){
+        orcm_octl_info("chassis-failure", nodelist[iter]);
         orcm_octl_error("framework-open");
         SAFE_ARGV_FREE(nodelist);
         return rc;
@@ -175,10 +178,10 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
     for (iter=0; iter < node_count; ++iter){
         if (NULL == (buf = OBJ_NEW(opal_buffer_t)) ||
             NULL == (xfer = OBJ_NEW(orte_rml_recv_cb_t))){
-            rc = ORCM_ERR_OUT_OF_RESOURCE;
+            orcm_octl_info("chassis-failure", nodelist[iter]);
+            orcm_octl_error("allocate-memory", "buffer");
             cleanup(&buf, &xfer);
-            SAFE_ARGV_FREE(nodelist);
-            return rc;
+            continue;
         }
 
         OBJ_RETAIN(buf);
@@ -186,37 +189,48 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
 
         rc = pack_chassis_id_data(buf, &command, &sub_command, &nodelist[iter], &seconds);
         if (OPAL_SUCCESS != rc){
+            orcm_octl_info("chassis-failure", nodelist[iter]);
             orcm_octl_error("pack");
             cleanup(&buf, &xfer);
             continue;
         }
 
         if (!get_bmc_info(nodelist[iter], &ipmi_c)){
+            orcm_octl_info("chassis-failure", nodelist[iter]);
+            orcm_octl_error("bmc-info", nodelist[iter]);
             cleanup(&buf, &xfer);
             continue;
         }
 
         if (ORCM_SUCCESS != begin_transaction(ipmi_c.aggregator, buf, xfer)){
+            orcm_octl_info("chassis-failure", nodelist[iter]);
             cleanup(&buf, &xfer);
             continue;
         }
 
         ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
         if (ORCM_SUCCESS != rc) {
+            orcm_octl_info("chassis-failure", nodelist[iter]);
+            orcm_octl_error("connection-fail");
             cleanup(&buf, &xfer);
             continue;
         }
 
         if (ORCM_SUCCESS != unpack_response(nodelist[iter], xfer)){
+            orcm_octl_info("chassis-failure", nodelist[iter]);
             cleanup(&buf, &xfer);
             continue;
         }
 
-        if (ORCM_GET_CHASSIS_ID == command &&
-            ORCM_SUCCESS != unpack_state(nodelist[iter], xfer)){
+        if (ORCM_GET_CHASSIS_ID != command){
+            orcm_octl_info("chassis-success", nodelist[iter]);
+        }
+        else if (ORCM_SUCCESS != unpack_state(nodelist[iter], xfer)){
+            orcm_octl_info("chassis-failure", nodelist[iter]);
             cleanup(&buf, &xfer);
             continue;
         }
+
         cleanup(&buf, &xfer);
     }
 

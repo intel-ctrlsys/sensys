@@ -185,6 +185,12 @@ Node          Severity      Action
 Node          Chassis ID LED
 -----------------------------------/
 
+[info:chassis-success]
+%s: Success!
+
+[info:chassis-failure]
+%s: Failed
+
 [info:sensor-set-sample-rate]
 Note: Setting per sensor sample rate in the examples below will take effect
       only if the sensor is started in a progess thread
@@ -313,8 +319,11 @@ Node %s failed to get notifier smtp policy!
 [error:item-notfound]
 %s not found
 
-[error:chassis-id-status]
-Node %s failed to get chassis id status.
+[error:chassis-id-operation]
+Node %s failed to perform chassis id operation.
+
+[error:bmc-info]
+BMC information not found for node %s.
 
 [error:empty-cmd]
 No command parsed!

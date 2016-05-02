@@ -167,7 +167,7 @@ static uint64_t metric_diff_calc(sigar_uint64_t newval, uint64_t oldval,
                                  const char *name_for_log,
                                  const char* value_name_for_log);
 
-#define ON_NULL_RETURN(x) ORCM_ON_NULL_RETURN(x)
+#define ON_NULL_RETURN(x) ORCM_ON_NULL_RETURN_ERROR(x,ORCM_ERR_OUT_OF_RESOURCE)
 #define ON_NULL_GOTO(x,y) ORCM_ON_NULL_GOTO(x,y)
 #define ON_FAILURE_GOTO(x,y) ORCM_ON_FAILURE_GOTO(x,y)
 #define ON_NULL_PARAM_RETURN(x) if(NULL==x) return ORCM_ERR_BAD_PARAM

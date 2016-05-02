@@ -47,6 +47,8 @@
     if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);break;}
 #define ORCM_ON_NULL_RETURN(x) \
     if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
+#define ORCM_ON_NULL_RETURN_ERROR(x,y) \
+    if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return y;}
 #define ORCM_ON_NULL_GOTO(x,label) \
     if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
 #define ORCM_ON_NULL_BREAK(x,label) \

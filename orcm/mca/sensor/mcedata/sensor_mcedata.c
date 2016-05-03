@@ -68,11 +68,11 @@ static void mcedata_log(opal_buffer_t *buf);
 
 static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals);
 mcetype get_mcetype(uint64_t mci_status);
-static void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
-static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals);
+void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
+void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals);
-static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
-static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals);
+void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
+void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals);
 static void get_log_lines(FILE *fp);
 static void perthread_mcedata_sample(int fd, short args, void *cbdata);
 void collect_mcedata_sample(orcm_sensor_sampler_t *sampler);
@@ -418,7 +418,7 @@ mcetype get_mcetype(uint64_t mci_status)
 
 }
 
-static void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
+void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     orcm_value_t *sensor_metric;
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -453,7 +453,7 @@ static void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 }
 
-static void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals)
+void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     orcm_value_t *sensor_metric;
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -611,7 +611,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 }
 
-static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
+void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     orcm_value_t *sensor_metric;
     bool ar, s, pcc, addrv, miscv, uc, val;
@@ -851,7 +851,7 @@ static void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 
 }
 
-static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
+void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     orcm_value_t *sensor_metric;
     uint64_t pp, t, ii;
@@ -1060,7 +1060,7 @@ static void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     }
 }
 
-static void mcedata_unknown_filter(unsigned long *mce_reg, opal_list_t *vals)
+void mcedata_unknown_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     orcm_value_t *sensor_metric;
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -1597,6 +1597,7 @@ static void generate_test_vector(orcm_sensor_sampler_t* sampler)
     int ret;
     opal_buffer_t data;
     const char *temp = "mcedata";
+    const char* host = "testhost";
     struct timeval current_time;
     unsigned int uval = 0;
     opal_buffer_t* buffer = &data;
@@ -1607,7 +1608,7 @@ static void generate_test_vector(orcm_sensor_sampler_t* sampler)
     ret = opal_dss.pack(buffer, &temp, 1, OPAL_STRING);
     ON_FAILURE_GOTO(ret, cleanup);
 
-    ret = opal_dss.pack(buffer, &orte_process_info.nodename, 1, OPAL_STRING);
+    ret = opal_dss.pack(buffer, &host, 1, OPAL_STRING);
     ON_FAILURE_GOTO(ret, cleanup);
 
     gettimeofday(&current_time, NULL);

@@ -34,9 +34,14 @@ PY_LOG_COMPILER = /usr/bin/python
 check_PROGRAMS = mcedata_tests
 
 mcedata_tests_SOURCES = \
-	mcedata_tests.cpp
+	mcedata_tests.cpp \
+	mcedata_tests_mocking.cpp
 
-MOCKING =
+
+MOCKING = \
+    -Wl,--wrap=opendir \
+    -Wl,--wrap=closedir \
+    -Wl,--wrap=readdir
 
 #
 # Libraries we depend on

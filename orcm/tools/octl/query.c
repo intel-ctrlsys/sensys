@@ -1115,26 +1115,27 @@ char *add_to_str_date(char *date, int seconds){
     struct tm tm_date;
     time_t t_res_date;
     struct tm *tm_res_date;
+    char *res_date = NULL;
 
-    if (NULL == date) {
-        return NULL;
-    }
+    if( NULL != date ) {
+        res_date = (char *)malloc(20);
 
-    char *res_date = (char *)malloc(20);
+        if( NULL != res_date ) {
+            setlocale(LC_TIME, "UTC");
+            strptime(date, "%Y-%m-%d %H:%M:%S", &tm_date);
+            tm_date.tm_isdst = -1;
+            t_res_date = mktime(&tm_date) + seconds;
+            tm_res_date = localtime(&t_res_date);
 
-    if( NULL != res_date ) {
-        setlocale(LC_TIME, "UTC");
-        strptime(date, "%Y-%m-%d %H:%M:%S", &tm_date);
-        tm_date.tm_isdst = 0;
-        t_res_date = mktime(&tm_date) + seconds;
-        tm_res_date = localtime(&t_res_date);
-        if ( NULL != tm_res_date ) {
-            strftime(res_date, 20, "%Y-%m-%d %H:%M:%S", tm_res_date);
+            if ( NULL != tm_res_date ) {
+                strftime(res_date, 20, "%Y-%m-%d %H:%M:%S", tm_res_date);
+            }
         }
     }
 
     return res_date;
 }
+
 
 
 void print_results(opal_list_t *results, double start_time, double stop_time) {

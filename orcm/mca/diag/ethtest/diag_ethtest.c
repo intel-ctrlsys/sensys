@@ -221,7 +221,6 @@ static void ethtest_run(int sd, short args, void *cbdata)
     char *diag_subtype;
     int  result_num = 0;
     orte_process_name_t *tgt;
-    size_t copy_size = 0;
 
     if (ORTE_PROC_IS_CM) {
         /* we send to our daemon */
@@ -250,13 +249,8 @@ static void ethtest_run(int sd, short args, void *cbdata)
         goto sendresults;
     }
 
-    copy_size = strlen(resource);
-    if (copy_size >= sizeof(ifr.ifr_name)) {
-        copy_size = 0;
-    } else {
-        strncpy(ifr.ifr_name, resource, copy_size);
-    }
-    ifr.ifr_name[copy_size] = '\0';
+    strncpy(ifr.ifr_name, resource, sizeof(ifr.ifr_name));
+    ifr.ifr_name[sizeof(ifr.ifr_name) - 1] = '\0';
 
      /* Get string set length */
     testinfo_offset = (int)offsetof(struct ethtool_drvinfo, testinfo_len);

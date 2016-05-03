@@ -988,8 +988,12 @@ TEST_F(ut_snmp_collector_tests, snmp_generate_inv_test_data)
     EXPECT_NO_THROW({
         vardata items_count = fromOpalBuffer(buffer);
         EXPECT_STREQ(TOT_ITEMS_STR, items_count.getKey().c_str()) << "Wrong order; expected items count!";
-        EXPECT_EQ(TEST_VECTOR_SIZE, items_count.getValue<uint64_t>());
+        EXPECT_EQ(TEST_VECTOR_SIZE+1, items_count.getValue<uint64_t>());
     });
+    EXPECT_NO_THROW({
+        vardata hostname_str = fromOpalBuffer(buffer);
+        EXPECT_STREQ(HOSTNAME_STR, hostname_str.getKey().c_str()) << "Wrong order; expected 'hostname' key!";
+       });
     for(int i = 0; i < TEST_VECTOR_SIZE; ++i) {
         EXPECT_NO_THROW({
             vardata item = fromOpalBuffer(buffer);

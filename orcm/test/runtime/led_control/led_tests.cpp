@@ -10,12 +10,16 @@
 
 #include "orcm/runtime/led_control.h"
 
+extern "C" {
+#include "orcm/runtime/led_control_interface.h"
+};
+
 #include "led_tests.h"
 #include "led_tests_mocking.h"
 
-#define HOSTNAME "hostame"
-#define USER "user"
-#define PASS "password"
+#define HOSTNAME (char*)("hostame")
+#define USER (char*)("user")
+#define PASS (char*)("password")
 #define AUTH 2
 #define PRIV 4
 
@@ -38,36 +42,36 @@ TEST_F(ut_control_led_tests, new_led_object){
 }
 
 TEST_F(ut_control_led_tests, new_led_object_remote){
-    LedControl lc(HOSTNAME, USER, PASS, AUTH, PRIV);
-    ASSERT_EQ(0, lc.disableChassisID());
+    init_led_control(HOSTNAME, USER, PASS, AUTH, PRIV);
+    ASSERT_EQ(0, disable_chassis_id());
     ASSERT_TRUE(is_remote_node);
 }
 
 TEST_F(ut_control_led_tests, enable_chassis_id_n_seconds){
-    LedControl lc;
-    ASSERT_EQ(0, lc.enableChassisID(20));
-    ASSERT_EQ(LED_TEMPORARY_ON, lc.getChassisIDState());
+    init_led_control(HOSTNAME, USER, PASS, AUTH, PRIV);
+    ASSERT_EQ(0, enable_chassis_id_with_timeout(20));
+    ASSERT_EQ(LED_TEMPORARY_ON, get_chassis_id_state());
 }
 
 TEST_F(ut_control_led_tests, enable_chassis_id_indefinitely){
-    LedControl lc;
-    ASSERT_EQ(0, lc.enableChassisID());
-    ASSERT_EQ(LED_INDEFINITE_ON, lc.getChassisIDState());
+    init_led_control(HOSTNAME, USER, PASS, AUTH, PRIV);
+    ASSERT_EQ(0, enable_chassis_id());
+    ASSERT_EQ(LED_INDEFINITE_ON, get_chassis_id_state());
 }
 
 TEST_F(ut_control_led_tests, disable_chassis_id){
-    LedControl lc;
-    ASSERT_EQ(0, lc.disableChassisID());
-    ASSERT_EQ(LED_OFF, lc.getChassisIDState());
+    init_led_control(HOSTNAME, USER, PASS, AUTH, PRIV);
+    ASSERT_EQ(0, disable_chassis_id());
+    ASSERT_EQ(LED_OFF, get_chassis_id_state());
 }
 
 TEST_F(ut_control_led_tests, wrong_remote_data){
-    LedControl lc(HOSTNAME, "", PASS, AUTH, PRIV);
-    ASSERT_NE(0, lc.disableChassisID());
+    init_led_control(HOSTNAME,(char*)(""), PASS, AUTH, PRIV);
+    ASSERT_NE(0, disable_chassis_id());
 }
 
 TEST_F(ut_control_led_tests, chassis_status_query_not_supported){
-    LedControl lc(HOSTNAME, USER, PASS, AUTH, PRIV);
+    init_led_control(HOSTNAME, USER, PASS, AUTH, PRIV);
     is_supported = false;
-    ASSERT_EQ(-1, lc.getChassisIDState());
+    ASSERT_EQ(-1, get_chassis_id_state());
 }

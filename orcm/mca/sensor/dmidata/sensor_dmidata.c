@@ -140,15 +140,15 @@ hwloc_topology_t dmidata_hwloc_topology;
 bool sensor_set_hwloc;
 bool cpufreq_loaded = false;
 
-
-#define addStringRecord(key_str, valueStr) {      \
-    mkv = OBJ_NEW(orcm_value_t);    \
-    mkv->value.type = OPAL_STRING;         \
-    mkv->value.key = (key_str);                  \
-    mkv->value.data.string = (valueStr);        \
-    opal_list_append(newhost->records, (opal_list_item_t *)mkv);        \
-    opal_output_verbose(5, orcm_sensor_base_framework.framework_output, \
+#define addStringRecord(key_str, valueStr) {                           \
+    mkv = OBJ_NEW(orcm_value_t);                                       \
+    mkv->value.type = OPAL_STRING;                                     \
+    asprintf(&mkv->value.key, "sensor_dmidata_%s", key_str);           \
+    mkv->value.data.string = (valueStr);                               \
+    opal_list_append(newhost->records, (opal_list_item_t *)mkv);       \
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,\
       "Found %s : %s",mkv->value.key, mkv->value.data.string);         \
+    if (NULL != key_str) { free(key_str); }                            \
 }
 
 void dmidata_inv_con(dmidata_inventory_t *trk)
@@ -300,7 +300,9 @@ static void extract_baseboard_inventory(hwloc_topology_t topo, char *hostname, d
     /* Pack the total MACHINE Stats present and to be copied */
     for (k=0; k < obj->infos_count; k++) {
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY))) {
-            addStringRecord(strdup(inv_key), strdup(obj->infos[k].value));
+            asprintf(&inv_key, "%s", inv_key);
+            ORCM_ON_NULL_RETURN(inv_key);
+            addStringRecord(inv_key, strdup(obj->infos[k].value));
         }
     }
 }
@@ -325,7 +327,8 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
     }
     mkv = OBJ_NEW(orcm_value_t);
     mkv->value.type = OPAL_UINT;
-    mkv->value.key = strdup("num_sockets");;
+    asprintf(&mkv->value.key, "sensor_dmidata_num_sockets");
+    ORCM_ON_FAILURE_GOTO(mkv->value.key, cleanup);
     mkv->value.data.uint = socket_count;
     opal_list_append(newhost->records, (opal_list_item_t *)mkv);
 
@@ -334,7 +337,8 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
     for (k=0; k < obj->infos_count; k++) {
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY))) {
             mkv = OBJ_NEW(orcm_value_t);
-            mkv->value.key = strdup(inv_key);
+            asprintf(&mkv->value.key, "sensor_dmidata_%s", inv_key);
+            ORCM_ON_FAILURE_GOTO(mkv->value.key, cleanup);
             if(!strncmp(inv_key,"cpu_model_number",sizeof("cpu_model_number")) |
                !strncmp(inv_key,"cpu_family",sizeof("cpu_family"))) {
                 mkv->value.type = OPAL_INT;
@@ -348,6 +352,10 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
                 "Found Inventory Item %s : %s",inv_key,obj->infos[k].value);
         }
     }
+    return;
+
+cleanup:
+    SAFEFREE(mkv);
 }
 
 /* Extract the PCI Device with BLOCK class codes */
@@ -381,11 +389,10 @@ static void extract_blk_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_i
                     addStringRecord(key_str, strdup(obj->infos[k].value));
                 }
             }
-
-
         }
     }
 }
+
 /* Extract the PCI Device with NETWORK class codes */
 static void extract_ntw_inventory(hwloc_obj_t obj, uint32_t pci_count, dmidata_inventory_t *newhost)
 {
@@ -540,14 +547,16 @@ static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata
         freq_list_token = opal_argv_split(freq_step_list, ' ');
         size = opal_argv_count(freq_list_token)-1;
         mkv = OBJ_NEW(orcm_value_t);
-        asprintf(&mkv->value.key,"total_freq_steps");
+        asprintf(&mkv->value.key, "sensor_dmidata_total_freq_steps");
+        ORCM_ON_FAILURE_GOTO(mkv->value.key, cleanup);
         mkv->value.type = OPAL_UINT;
         mkv->value.data.uint = size;
         opal_list_append(newhost->records, (opal_list_item_t *)mkv);
 
         for(i = 0; i < size; i++) {
             mkv = OBJ_NEW(orcm_value_t);
-            asprintf(&mkv->value.key,"freq_step%d",i);
+            asprintf(&mkv->value.key,"sensor_dmidata_freq_step%d",i);
+            ORCM_ON_FAILURE_GOTO(mkv->value.key, cleanup);
             mkv->value.type = OPAL_UINT;
             mkv->units = strdup("kHz");
             mkv->value.data.uint = strtol(freq_list_token[i],NULL,10);
@@ -558,6 +567,12 @@ static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata
     }
     newhost->freq_step_list = strdup(freq_step_list);
     opal_argv_free(freq_list_token);
+
+    return;
+
+cleanup:
+    SAFEFREE(mkv);
+
 }
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
 {

@@ -264,6 +264,7 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
     orte_rml_recv_cb_t *xfer = NULL;
     char **nodelist = NULL;
     char *error = NULL;
+    char *convert_flag = NULL;
 
     if (6 != opal_argv_count(argv)) {
         orcm_octl_usage("sensor-set-sample-rate", INVALID_USG);
@@ -273,16 +274,15 @@ int orcm_octl_sensor_sample_rate_set(int cmd, char **argv)
 
     orcm_octl_info("sensor-set-sample-rate");
 
-    if (isdigit(argv[4][strlen(argv[4]) - 1])) {
-        sample_rate = (int)strtol(argv[4], NULL, 10);
-    } else {
-        orcm_octl_error("not-integer", "sample rate");
+    sample_rate = (int)strtol(argv[4], &convert_flag, 10);
+    if (NULL == convert_flag || '\0' != *convert_flag) {
+        orcm_octl_error("invalid-sample-rate");
         rc = ORCM_ERR_BAD_PARAM;
         goto done;
     }
 
     if(1 > sample_rate) {
-        orcm_octl_error("not-integer", "sample rate");
+        orcm_octl_error("invalid-sample-rate");
         rc = ORCM_ERR_BAD_PARAM;
         goto done;
     }

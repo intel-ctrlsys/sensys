@@ -36,6 +36,8 @@
 #include <sys/inotify.h>
 #endif
 
+#include <regex.h>
+
 #include "opal/runtime/opal.h"
 #include "opal/util/if.h"
 #include "opal/util/net.h"
@@ -2562,59 +2564,49 @@ static int is_singleton(const char * in_tagtext)
 
 static int check_lex_aggregator_yes_no(xml_tree_t * in_xtree)
 {
-    unsigned long i=0;
-
     int erri = ORCM_SUCCESS;
-    while (ORCM_SUCCESS == erri) {
-        if (0 == in_xtree->sz_items) {
-            opal_output(0,
-                        "ERROR: No XML items to examine.");
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
+    unsigned long i = 0;
+    regex_t regex_comp;
+    int regex_res;
+
+    regcomp(&regex_comp, "^[[:space:]]*aggregator[[:space:]]*$", REG_EXTENDED);
+
+    if (0 == in_xtree->sz_items) {
+        opal_output(0, "ERROR: No XML items to examine.");
+        erri = ORCM_ERR_BAD_PARAM;
+    } else {
+        for (i=0; i < in_xtree->sz_items && ORCM_SUCCESS == erri; i++) {
+            regex_res = regexec(&regex_comp, in_xtree->items[i], 0, NULL, 0);
+
+            if ( !regex_res ) {
+                regcomp(&regex_comp, "^[[:space:]]*(yes|no)[[:space:]]*$", REG_EXTENDED);
+
+                if ( (i+1) < in_xtree->sz_items ) {
+                    regex_res = regexec(&regex_comp, in_xtree->items[i+1], 0, NULL, 0);
+
+                    if( !regex_res ){
+                        break;
+                    } else if ( REG_NOMATCH == regex_res ){
+                        opal_output(0,"ERROR: \"aggregator\" only allow the values: yes, no");
+                        erri = ORCM_ERR_BAD_PARAM;
+                    } else {
+                        opal_output(0, "ERROR: Regex match failed in configuration file.");
+                        erri = ORCM_ERROR;
+                    }
+                } else {
+                    opal_output(0,"ERROR: \"aggregator\" only allow the values: yes, no");
+                    erri = ORCM_ERR_BAD_PARAM;
+                }
+            } else if ( REG_NOMATCH != regex_res ) {
+                opal_output(0, "ERROR: Regex match failed in configuration file.");
+                erri = ORCM_ERROR;
+            }
         }
-
-        /*Check if the aggregator field is really yes or no*/
-        for (i=0; i < in_xtree->sz_items; ++i) {
-            char * t;
-            t = in_xtree->items[i];
-
-            if ('\t' == t[0] || '/' == t[0]) {
-                /*Skip ending tags and data fields*/
-                continue;
-            }
-
-            if ('a' != t[0] && 'A' != t[0]) {
-                /*Not the right tag*/
-                continue;
-            }
-            if (0 != strcasecmp(t,TXaggregat)) {
-                continue;
-            }
-
-            t = in_xtree->items[i+1];
-            t += 1; /*Jump over the tab*/
-
-            if ('y' == t[0] || 'Y' == t[0]) {
-                /*All good*/
-                break;
-            }
-            if ('n' == t[0] || 'N' == t[0]) {
-                /*All good*/
-                break;
-            }
-            opal_output(0,
-                        "ERROR: \"aggregator\" only allow the values: yes, no");
-            erri = ORCM_ERR_BAD_PARAM;
-            /*Do not use break in order to find all errors.
-             *Uncomment the following in order to stop at the first error.
-             *break;
-             */
-        }
-
-        break;
     }
+
     return erri;
 }
+
 static int check_lex_allowed_junction_type(xml_tree_t * in_xtree)
 {
     unsigned long i=0;

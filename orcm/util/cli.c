@@ -709,7 +709,11 @@ static void scroll_down(int *scroll_indx, char *input, size_t *len, char *prompt
         return;
     }
     *scroll_indx = *scroll_indx + 1;
-    strcpy(input, cmd_hist.hist[*scroll_indx]);
+    if (CLI_HISTORY_SIZE == *scroll_indx) {
+        input[0] = 0;
+    } else {
+        strcpy(input, cmd_hist.hist[*scroll_indx]);
+    }
     *len = strlen(input);
     printf("%s", input);
     return;

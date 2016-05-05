@@ -334,6 +334,9 @@ Sensor limit exceeded!
 [error:invalid-sample-rate]
 The sample rate is invalid. The valid sample rate should be an integer no less than 1.
 
+[error:storage-set-failure]
+Storage policy setting failed!
+
 [usage:sensor]
 sensor enable|disable|reset <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
 Example: sensor enable c[2:1-10] coretemp:core0

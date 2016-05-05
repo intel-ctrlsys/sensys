@@ -39,39 +39,47 @@ void ut_control_led_tests::TearDown(){
 
 TEST_F(ut_control_led_tests, new_led_object){
     LedControl lc;
+    ASSERT_EQ(0, lc.disableChassisID());
+    ASSERT_FALSE(is_remote_node);
 }
 
 TEST_F(ut_control_led_tests, new_led_object_remote){
     init_led_control(HOSTNAME, USER, PASS, AUTH, PRIV);
     ASSERT_EQ(0, disable_chassis_id());
     ASSERT_TRUE(is_remote_node);
+    fini_led_control();
 }
 
 TEST_F(ut_control_led_tests, enable_chassis_id_n_seconds){
     init_led_control(HOSTNAME, USER, PASS, AUTH, PRIV);
     ASSERT_EQ(0, enable_chassis_id_with_timeout(20));
     ASSERT_EQ(LED_TEMPORARY_ON, get_chassis_id_state());
+    fini_led_control();
 }
 
 TEST_F(ut_control_led_tests, enable_chassis_id_indefinitely){
     init_led_control(HOSTNAME, USER, PASS, AUTH, PRIV);
     ASSERT_EQ(0, enable_chassis_id());
     ASSERT_EQ(LED_INDEFINITE_ON, get_chassis_id_state());
+    fini_led_control();
 }
 
 TEST_F(ut_control_led_tests, disable_chassis_id){
     init_led_control(HOSTNAME, USER, PASS, AUTH, PRIV);
     ASSERT_EQ(0, disable_chassis_id());
     ASSERT_EQ(LED_OFF, get_chassis_id_state());
+    fini_led_control();
 }
 
 TEST_F(ut_control_led_tests, wrong_remote_data){
     init_led_control(HOSTNAME,(char*)(""), PASS, AUTH, PRIV);
     ASSERT_NE(0, disable_chassis_id());
+    fini_led_control();
 }
 
 TEST_F(ut_control_led_tests, chassis_status_query_not_supported){
     init_led_control(HOSTNAME, USER, PASS, AUTH, PRIV);
     is_supported = false;
     ASSERT_EQ(-1, get_chassis_id_state());
+    fini_led_control();
 }

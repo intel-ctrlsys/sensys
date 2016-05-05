@@ -113,6 +113,16 @@ extern "C" { // Mocking must use correct "C" linkages
         }
     }
 
+    orcm_analytics_value_t* __wrap_orcm_util_load_orcm_analytics_value(opal_list_t *key,
+                                   opal_list_t *non_compute,  opal_list_t *compute)
+    {
+        if(NULL == snmp_mocking.orcm_util_load_orcm_analytics_value_callback) {
+            __real_orcm_util_load_orcm_analytics_value(key, non_compute, compute);
+        } else {
+            snmp_mocking.orcm_util_load_orcm_analytics_value_callback(key, non_compute, compute);
+        }
+    }
+
     void __wrap_orcm_analytics_base_send_data(orcm_analytics_value_t *data)
     {
         if(NULL == snmp_mocking.orcm_analytics_base_send_data_callback) {
@@ -145,6 +155,6 @@ snmp_tests_mocking::snmp_tests_mocking() :
     opal_progress_thread_init_callback(NULL), opal_progress_thread_finalize_callback(NULL),
     snmp_open_callback(NULL), snmp_synch_response_callback(NULL), snmp_free_pdu_callback(NULL),
     snmp_pdu_create_callback(NULL), snmp_parse_oid_callback(NULL), snmp_add_null_var_callback(NULL),
-    snprint_objid_callback(NULL)
+    snprint_objid_callback(NULL), orcm_util_load_orcm_analytics_value_callback(NULL)
 {
 }

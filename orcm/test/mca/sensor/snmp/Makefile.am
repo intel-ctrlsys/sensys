@@ -59,7 +59,8 @@ MOCKING=\
     -Wl,--wrap=snmp_pdu_create \
     -Wl,--wrap=snmp_parse_oid \
     -Wl,--wrap=snmp_add_null_var \
-    -Wl,--wrap=snprint_objid
+    -Wl,--wrap=snprint_objid \
+    -Wl,--wrap=orcm_util_load_orcm_analytics_value
 
 #
 # Libraries we depend on

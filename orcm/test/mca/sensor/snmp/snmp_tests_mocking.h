@@ -36,6 +36,8 @@ extern "C" {
     extern int __real_snmp_parse_oid(const char *input, oid *objid, size_t *objidlen);
     extern int __real_snprint_objid(char *buf, size_t len, oid *objid, size_t *objidlen);
     extern netsnmp_variable_list* __real_snmp_add_null_var(netsnmp_pdu *pdu, const oid *objid, size_t objidlen);
+    extern orcm_analytics_value_t* __real_orcm_util_load_orcm_analytics_value(opal_list_t *key,
+                                          opal_list_t *non_compute, opal_list_t *compute);
 
 #ifdef __cplusplus
 }
@@ -54,6 +56,9 @@ typedef struct snmp_pdu* (*snmp_pdu_create_callback_ft_t)(int command);
 typedef oid* (*snmp_parse_oid_callback_ft_t)(const char *input, oid *objid, size_t *objidlen);
 typedef int (*snprint_objid_callback_ft_t)(char *buf, size_t len, oid *objid, size_t *objidlen);
 typedef netsnmp_variable_list* (*snmp_add_null_var_callback_ft_t)(netsnmp_pdu *pdu, const oid *objid, size_t objidlen);
+typedef orcm_analytics_value_t* (*orcm_util_load_orcm_analytics_value_fn_t)(opal_list_t *key,
+                                          opal_list_t *non_compute, opal_list_t *compute);
+
 
 class snmp_tests_mocking
 {
@@ -75,6 +80,7 @@ class snmp_tests_mocking
         snmp_parse_oid_callback_ft_t snmp_parse_oid_callback;
         snmp_add_null_var_callback_ft_t snmp_add_null_var_callback;
         snprint_objid_callback_ft_t snprint_objid_callback;
+        orcm_util_load_orcm_analytics_value_fn_t orcm_util_load_orcm_analytics_value_callback;
 };
 
 extern snmp_tests_mocking snmp_mocking;

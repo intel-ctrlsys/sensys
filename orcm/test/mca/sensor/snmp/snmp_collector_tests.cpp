@@ -64,6 +64,10 @@ extern "C" {
 #define CTIME_STR "ctime"
 #define TOT_HOSTNAMES_STR "tot_hostnames"
 #define TOT_ITEMS_STR "tot_items"
+#define OIDS_LIST ".1.3.6.1.2.1.1.7.0,.1.3.6.1.2.1.1.7.9"
+#define OIDS_LIST_SIZE 2
+#define OID_0 ".1.3.6.1.2.1.1.7.0"
+#define OID_1 ".1.3.6.1.2.1.1.7.9"
 
 /* Fixture */
 using namespace std;
@@ -141,6 +145,7 @@ void ut_snmp_collector_tests::TearDownTestCase()
     snmp_mocking.snmp_parse_oid_callback = NULL;
     snmp_mocking.snmp_add_null_var_callback = NULL;
     snmp_mocking.snprint_objid_callback = NULL;
+    snmp_mocking.orcm_util_load_orcm_analytics_value_callback = NULL;
 }
 
 void ut_snmp_collector_tests::replaceConfigFile()
@@ -188,6 +193,7 @@ void ut_snmp_collector_tests::ResetTestEnvironment()
     snmp_mocking.snmp_parse_oid_callback = ReadObjid;
     snmp_mocking.snmp_add_null_var_callback = SnmpAddNullVar;
     snmp_mocking.snprint_objid_callback = PrintObjid;
+    snmp_mocking.orcm_util_load_orcm_analytics_value_callback = NULL;
 
     orte_process_info.nodename = (char*)hostname_;
 
@@ -238,6 +244,11 @@ void ut_snmp_collector_tests::cleanParserFramework()
 struct snmp_session* ut_snmp_collector_tests::SnmpOpen(struct snmp_session* ss)
 {
   return new snmp_session;
+}
+
+struct snmp_session* ut_snmp_collector_tests::SnmpOpenReturnNull(struct snmp_session* ss)
+{
+  return NULL;
 }
 
 void ut_snmp_collector_tests::OrteErrmgrBaseLog(int err, char* file, int lineno)
@@ -383,10 +394,14 @@ void ut_snmp_collector_tests::SnmpFreePdu(netsnmp_pdu *pdu)
   return;
 }
 
+orcm_analytics_value_t* ut_snmp_collector_tests::OrcmUtilLoadAnalyticsValue(
+                            opal_list_t *key, opal_list_t *nc, opal_list_t *c)
+{
+    return NULL;
+}
 
 TEST_F(ut_snmp_collector_tests, test_init_finalize_relays)
 {
-    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     ASSERT_EQ(ORCM_ERROR, snmp_init_relay());
@@ -396,7 +411,6 @@ TEST_F(ut_snmp_collector_tests, test_init_finalize_relays)
 
 TEST_F(ut_snmp_collector_tests, test_start_stop_relays)
 {
-    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     snmp_start_relay((orte_jobid_t)NOOP_JOBID);
@@ -416,7 +430,6 @@ TEST_F(ut_snmp_collector_tests, test_start_stop_relays)
 
 TEST_F(ut_snmp_collector_tests, test_sample_relay)
 {
-    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     snmp_sample_relay(NULL);
@@ -430,7 +443,6 @@ TEST_F(ut_snmp_collector_tests, test_sample_relay)
 
 TEST_F(ut_snmp_collector_tests, test_log_relay)
 {
-    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     snmp_log_relay(NULL);
@@ -444,7 +456,6 @@ TEST_F(ut_snmp_collector_tests, test_log_relay)
 
 TEST_F(ut_snmp_collector_tests, test_set_sample_rate_relay)
 {
-    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     snmp_set_sample_rate_relay(1);
@@ -458,7 +469,6 @@ TEST_F(ut_snmp_collector_tests, test_set_sample_rate_relay)
 
 TEST_F(ut_snmp_collector_tests, test_get_sample_rate_relay)
 {
-    ResetTestEnvironment();
     ASSERT_EQ(ORCM_SUCCESS, snmp_init_relay());
 
     snmp_get_sample_rate_relay(NULL);
@@ -472,7 +482,6 @@ TEST_F(ut_snmp_collector_tests, test_get_sample_rate_relay)
 
 TEST_F(ut_snmp_collector_tests, test_snmp_construction_and_init_finalize)
 {
-    ResetTestEnvironment();
     snmp_impl dummy;
 
     ASSERT_NULL(dummy.ev_base_);
@@ -486,7 +495,6 @@ TEST_F(ut_snmp_collector_tests, test_snmp_construction_and_init_finalize)
 
 TEST_F(ut_snmp_collector_tests, test_start_and_stop)
 {
-    ResetTestEnvironment();
     snmp_impl dummy;
 
     dummy.init();
@@ -517,7 +525,6 @@ TEST_F(ut_snmp_collector_tests, test_start_and_stop)
 
 TEST_F(ut_snmp_collector_tests, test_get_and_set_sample_rate)
 {
-    ResetTestEnvironment();
     int rate;
     snmp_impl dummy;
 
@@ -543,7 +550,6 @@ TEST_F(ut_snmp_collector_tests, test_get_and_set_sample_rate)
 
 TEST_F(ut_snmp_collector_tests, test_ev_create_thread_and_destroy_thread)
 {
-    ResetTestEnvironment();
     snmp_impl dummy;
 
     ResetTestEnvironment();
@@ -570,7 +576,6 @@ TEST_F(ut_snmp_collector_tests, test_ev_create_thread_and_destroy_thread)
 
 TEST_F(ut_snmp_collector_tests, neg_test_ev_create_thread_and_destroy_thread)
 {
-    ResetTestEnvironment();
     snmp_impl dummy;
 
     dummy.ev_create_thread();
@@ -588,7 +593,6 @@ TEST_F(ut_snmp_collector_tests, neg_test_ev_create_thread_and_destroy_thread)
 
 TEST_F(ut_snmp_collector_tests, test_ev_pause_and_resume)
 {
-    ResetTestEnvironment();
     snmp_impl dummy;
 
     dummy.init();
@@ -623,7 +627,6 @@ TEST_F(ut_snmp_collector_tests, test_ev_pause_and_resume)
 
 void ut_snmp_collector_tests::sample_check(opal_buffer_t *bucket)
 {
-    ResetTestEnvironment();
     int32_t n = 1;
     char *plugin_name = NULL;
     opal_buffer_t *buf = NULL;
@@ -646,9 +649,24 @@ void ut_snmp_collector_tests::sample_check(opal_buffer_t *bucket)
     OBJ_RELEASE(buf);
 }
 
+TEST_F(ut_snmp_collector_tests, test_perthread_snmp_sample)
+{
+    snmp_impl dummy;
+    int fd = 0;
+    short args = 0;
+
+    mca_sensor_snmp_component.test = true;
+    mca_sensor_snmp_component.use_progress_thread = true;
+
+    dummy.init();
+    dummy.start(fd);
+    dummy.perthread_snmp_sample_relay(fd, args, (void*) &dummy);
+    dummy.stop(fd);
+    dummy.finalize();
+}
+
 TEST_F(ut_snmp_collector_tests, test_sample)
 {
-    ResetTestEnvironment();
     snmp_impl dummy;
 
     dummy.init();
@@ -669,7 +687,6 @@ TEST_F(ut_snmp_collector_tests, test_sample)
 
 TEST_F(ut_snmp_collector_tests, test_log)
 {
-    ResetTestEnvironment();
     int32_t n = 1;
     snmp_impl dummy;
     char *plugin_name = NULL;
@@ -693,7 +710,6 @@ TEST_F(ut_snmp_collector_tests, test_log)
 
 TEST_F(ut_snmp_collector_tests, test_component_functions)
 {
-    ResetTestEnvironment();
     int ret = 0;
     int priority = -1;
     mca_base_module_t* module = NULL;
@@ -715,7 +731,6 @@ TEST_F(ut_snmp_collector_tests, test_component_functions)
 
 TEST_F(ut_snmp_collector_tests, test_pack_collected_data_function)
 {
-    ResetTestEnvironment();
     char *str;
     snmpCollector *collector;
     vector<vardata> collectedData;
@@ -751,7 +766,6 @@ TEST_F(ut_snmp_collector_tests, test_pack_collected_data_function)
 
 TEST_F(ut_snmp_collector_tests, test_v3_constructors)
 {
-    ResetTestEnvironment();
     snmpCollector *collector;
 
     collector = new snmpCollector("192.168.1.100", "username", "password");
@@ -759,11 +773,40 @@ TEST_F(ut_snmp_collector_tests, test_v3_constructors)
     delete collector;
 }
 
+TEST_F(ut_snmp_collector_tests, test_getOIDs)
+{
+    snmp_impl snmp;
+    snmpCollector collector;
+
+    collector.setOIDs(OIDS_LIST);
+    list<string> oidList = collector.getOIDsList();
+    ASSERT_EQ(OIDS_LIST_SIZE, oidList.size());
+    EXPECT_STREQ(oidList.front().c_str(), OID_0);
+    EXPECT_STREQ(oidList.back().c_str(), OID_1);
+
+    vector<vardata> v = snmp.getOIDsVardataVector(collector);
+    ASSERT_EQ(OIDS_LIST_SIZE, v.size());
+    EXPECT_STREQ(v[0].getValue<char*>(), OID_0);
+    EXPECT_STREQ(v[1].getValue<char*>(), OID_1);
+}
+
+TEST_F(ut_snmp_collector_tests, noSnmpConfigAvailable)
+{
+    snmp_impl snmp;
+
+    mca_sensor_snmp_component.config_file = (char *) NO_AGGREGATORS_XML_NAME;
+    testFilesObj.writeInvalidSnmpConfigFile();
+    EXPECT_TRUE(ORCM_ERROR == snmp.init());
+
+    mca_sensor_snmp_component.config_file = NULL;
+    testFilesObj.removeInvalidSnmpConfigFile();
+}
+
 TEST_F(ut_snmp_collector_tests, test_negative_collectData)
 {
     snmpCollector *collector;
     collector = new snmpCollector("192.168.1.100", "public");
-    collector->setOIDs(".1.3.6.1.2.1.1.7.0");
+    collector->setOIDs(OID_0);
 
     // Timeout
     snmp_mocking.snmp_synch_response_callback = SnmpSynchResponse_timeout;
@@ -776,6 +819,10 @@ TEST_F(ut_snmp_collector_tests, test_negative_collectData)
     // Data packet collection error
     snmp_mocking.snmp_synch_response_callback = SnmpSynchResponse_packeterror;
     ASSERT_THROW(collector->collectData(), packetError);
+
+    //Invalid snmp session
+    snmp_mocking.snmp_open_callback = SnmpOpenReturnNull;
+    ASSERT_THROW(collector->collectData(), invalidSession);
 
     delete collector;
 }
@@ -830,9 +877,29 @@ TEST_F(ut_snmp_collector_tests, snmp_sensor_sample_tests)
     mca_sensor_snmp_component.collect_metrics = true;
 }
 
+TEST_F(ut_snmp_collector_tests, snmp_sensor_api_tests)
+{
+    // Setup
+    orcm_sensor_base.collect_metrics = false;
+    mca_sensor_snmp_component.collect_metrics = false;
+
+    snmp_init_relay();
+    snmp_start_relay(0);
+
+    // Tests
+    EXPECT_TRUE(ORCM_SUCCESS == snmp_enable_sampling_relay("snmp"));
+    EXPECT_TRUE(ORCM_SUCCESS == snmp_reset_sampling_relay("snmp"));
+    EXPECT_TRUE(ORCM_SUCCESS == snmp_enable_sampling_relay("all"));
+    EXPECT_TRUE(ORCM_SUCCESS == snmp_disable_sampling_relay("not_the_right_datagroup"));
+    EXPECT_TRUE(ORCM_SUCCESS == snmp_disable_sampling_relay("snmp"));
+
+    // Cleanup
+    snmp_stop_relay(0);
+    snmp_finalize_relay();
+}
+
 TEST_F(ut_snmp_collector_tests, snmp_api_tests)
 {
-    ResetTestEnvironment();
     // Setup
     snmp_impl snmp;
     orcm_sensor_base.collect_metrics = false;
@@ -861,7 +928,6 @@ TEST_F(ut_snmp_collector_tests, snmp_api_tests)
 
 TEST_F(ut_snmp_collector_tests, snmp_api_tests_2)
 {
-    ResetTestEnvironment();
     // Setup
     snmp_impl snmp;
     orcm_sensor_base.collect_metrics = false;
@@ -915,7 +981,6 @@ static struct test_data {
 
 TEST_F(ut_snmp_collector_tests, snmp_generate_test_data)
 {
-    ResetTestEnvironment();
     orcm_sensor_sampler_t sampler;
     opal_buffer_t* bucket = &(sampler.bucket);
     snmp_impl snmp;
@@ -960,15 +1025,51 @@ TEST_F(ut_snmp_collector_tests, snmp_generate_test_data)
     SAFE_OBJ_RELEASE(buffer);
 }
 
+TEST_F(ut_snmp_collector_tests, test_snmp_inventory_log)
+{
+    opal_buffer_t *buffer = OBJ_NEW(opal_buffer_t);
+    mca_sensor_snmp_component.test = true;
+
+    snmp_init_relay();
+    snmp_inventory_collect(buffer);
+    snmp_inventory_log((char*)hostname_, buffer);
+    EXPECT_THROW(fromOpalBuffer(buffer), invalidBuffer);
+    snmp_finalize_relay();
+
+    SAFE_OBJ_RELEASE(buffer);
+}
+
+TEST_F(ut_snmp_collector_tests, test_unable_to_allocate_obj)
+{
+
+    int32_t n = 1;
+    snmp_impl dummy;
+    char *plugin_name = NULL;
+    opal_buffer_t *buf;
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+
+    snmp_mocking.orcm_util_load_orcm_analytics_value_callback = OrcmUtilLoadAnalyticsValue;
+
+    dummy.init();
+    dummy.sample(&sampler);
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(&sampler.bucket, &buf, &n, OPAL_BUFFER));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(buf, &plugin_name, &n, OPAL_STRING));
+
+    dummy.log(buf);
+
+    dummy.finalize();
+    SAFE_OBJ_RELEASE(buf);
+}
+
+
 TEST_F(ut_snmp_collector_tests, snmp_generate_inv_test_data)
 {
-    ResetTestEnvironment();
     opal_buffer_t* buffer = OBJ_NEW(opal_buffer_t);
-    snmp_impl snmp;
     mca_sensor_snmp_component.test = true;
-    snmp.init();
-    snmp.inventory_collect(buffer);
-    snmp.finalize();
+    snmp_init_relay();
+    snmp_inventory_collect(buffer);
+    snmp_finalize_relay();
     mca_sensor_snmp_component.test = false;
 
     int n = 1;

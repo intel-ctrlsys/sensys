@@ -28,6 +28,9 @@ class testFiles {
         int writeDefaultSnmpConfigFile();
         int writeTestFiles();
         int removeTestFiles();
+        int writeInvalidSnmpConfigFile() { return writeStringToFile(NO_AGGREGATORS_XML_NAME,
+                                                                    NO_AGGREGATORS_XML_FILE); }
+        int removeInvalidSnmpConfigFile() { return removeFile(NO_AGGREGATORS_XML_NAME); }
 
     private:
         string SNMP_DEFAULT_FILE_PATH;

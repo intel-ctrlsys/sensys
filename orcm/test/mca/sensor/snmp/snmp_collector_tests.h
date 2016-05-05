@@ -44,6 +44,7 @@ class ut_snmp_collector_tests: public testing::Test
         static void MyDbStoreNew(int dbhandle, orcm_db_data_type_t data_type, opal_list_t *input,
                                  opal_list_t *ret, orcm_db_callback_fn_t cbfunc, void *cbdata);
         static struct snmp_session* SnmpOpen(struct snmp_session* ss);
+        static struct snmp_session* SnmpOpenReturnNull(struct snmp_session* ss);
         static int SnmpSynchResponse(netsnmp_session *session, netsnmp_pdu *pdu, netsnmp_pdu **response);
         static int SnmpSynchResponse_error(netsnmp_session *session, netsnmp_pdu *pdu, netsnmp_pdu **response);
         static int SnmpSynchResponse_timeout(netsnmp_session *session, netsnmp_pdu *pdu, netsnmp_pdu **response);
@@ -55,6 +56,7 @@ class ut_snmp_collector_tests: public testing::Test
         static int PrintObjid(char *buf, size_t len,  oid *objid, size_t *objidlen);
         static netsnmp_variable_list *SnmpAddNullVar(netsnmp_pdu *pdu, const oid *objid, size_t objidlen);
         static std::vector<snmpCollector> init(void);
+        static  orcm_analytics_value_t* OrcmUtilLoadAnalyticsValue(opal_list_t *key, opal_list_t*nc, opal_list_t *c);
 
         static snmpCollector *collector;
         static const char* hostname_;

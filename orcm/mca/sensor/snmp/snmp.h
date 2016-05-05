@@ -101,11 +101,6 @@ class unableToAllocateObj : public std::runtime_error {
     unableToAllocateObj() : std::runtime_error( "Unable to allocate object in memory" ) {}
 };
 
-class incorrectConfig : public std::runtime_error {
-    public:
-    incorrectConfig() : std::runtime_error( "Incorrect configuration parameter" ) {}
-};
-
 class corruptedInventoryBuffer : public std::runtime_error {
     public:
     corruptedInventoryBuffer() : std::runtime_error( "Inventory buffer is corrupted") {}

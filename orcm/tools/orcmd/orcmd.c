@@ -120,14 +120,6 @@ static int slm_fork_hnp_procs(orte_jobid_t jobid, int port_num, int hnp,
                        char *hnp_uri, orcm_alloc_t *alloc, int *stepd_pid);
 static int kill_local(pid_t pid, int signum);
 
-static void hide_cmdline_parameters(int arg_cnt, char *str[]){
-   int cnt;
-   for(cnt=1; cnt < (arg_cnt-1); cnt++){
-      if ((strcmp(str[cnt],"sensor_ipmi_bmc_password") == 0) || (strcmp(str[cnt],"sensor_ipmi_bmc_username") == 0)){
-          memset(str[cnt+1],'X', strlen(str[cnt+1]));
-      }
-    }
-}
 
 int main(int argc, char *argv[])
 {
@@ -197,8 +189,6 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    hide_cmdline_parameters(argc,argv);
-    
     /***************
      * Initialize
      ***************/

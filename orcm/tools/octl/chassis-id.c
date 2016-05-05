@@ -151,10 +151,15 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
     ipmi_collector ipmi_c;
 
     // Get nodelist
-    orcm_logical_group_parse_array_string(noderaw, &nodelist);
+    rc = orcm_logical_group_parse_array_string(noderaw, &nodelist);
+    if (ORCM_SUCCESS != rc){
+        orcm_octl_error("nodelist-notfound", noderaw);
+        SAFE_ARGV_FREE(nodelist);
+        return rc;
+    }
+
     node_count = opal_argv_count(nodelist);
     if (!node_count){
-        orcm_octl_info("chassis-failure", nodelist[iter]);
         orcm_octl_error("nodelist-notfound", noderaw);
         rc = ORCM_ERROR;
         SAFE_ARGV_FREE(nodelist);
@@ -163,7 +168,6 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
 
     // Open parser framework
     if (ORTE_SUCCESS != (rc = open_parser_framework())){
-        orcm_octl_info("chassis-failure", nodelist[iter]);
         orcm_octl_error("framework-open");
         SAFE_ARGV_FREE(nodelist);
         return rc;

@@ -572,8 +572,9 @@ static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata
 
 cleanup:
     SAFEFREE(mkv);
-
+    opal_argv_free(freq_list_token);
 }
+
 static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
 {
     int32_t rc;

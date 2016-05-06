@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -52,6 +52,7 @@ static void db_open_cb(int handle, int status, opal_list_t *kvs,
 static int orcm_diag_base_close(void)
 {
     int rc;
+    orcm_diag_active_module_t* mod = NULL;
 
     if (ORCM_SUCCESS != (rc = orcm_diag_base_comm_stop())) {
         ORTE_ERROR_LOG(rc);
@@ -61,6 +62,11 @@ static int orcm_diag_base_close(void)
     opal_progress_thread_finalize("diag");
 
     /* deconstruct the base objects */
+    OPAL_LIST_FOREACH(mod, &orcm_diag_base.modules, orcm_diag_active_module_t) {
+        if(NULL != mod->module && NULL != mod->module->finalize) {
+            mod->module->finalize();
+        }
+    }
     OPAL_LIST_DESTRUCT(&orcm_diag_base.modules);
 
     return mca_base_framework_components_close(&orcm_diag_base_framework, NULL);

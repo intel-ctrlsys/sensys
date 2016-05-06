@@ -50,6 +50,13 @@ opal_event_base_t *orcm_dispatch_evbase = NULL;
 
 static int orcm_dispatch_base_close(void)
 {
+    orcm_dispatch_active_module_t* active = NULL;
+    OPAL_LIST_FOREACH(active, &orcm_dispatch_base.actives, orcm_dispatch_active_module_t) {
+        if(NULL != active && NULL != active->module && NULL != active->module->finalize) {
+            active->module->finalize();
+        }
+    }
+
     if (NULL != orcm_dispatch_evbase) {
         opal_progress_thread_finalize("dispatch");
     }

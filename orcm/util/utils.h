@@ -54,6 +54,8 @@
 #define ORCM_ON_NULL_BREAK(x,label) \
     if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);break;}
 
+/* Helpful for debuging in orcmd when gdb is not correctly working with source code */
+#define FORCE_SEGFAULT { opal_value_t __dummy; OBJ_DESTRUCT(&__dummy); }
 
 #define MSG_HEADER ""
 #define MSG_ERR_HEADER "\n"

@@ -249,7 +249,7 @@ static void ethtest_run(int sd, short args, void *cbdata)
         goto sendresults;
     }
 
-    strncpy(ifr.ifr_name, resource, sizeof(ifr.ifr_name));
+    strncpy(ifr.ifr_name, resource, sizeof(ifr.ifr_name) - 1);
     ifr.ifr_name[sizeof(ifr.ifr_name) - 1] = '\0';
 
      /* Get string set length */

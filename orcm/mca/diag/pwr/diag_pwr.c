@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -146,7 +146,7 @@ static int init(void)
     char *filename, **vals;
     char *tmp = NULL;
     FILE *fp;
-    tracker_t *trk;
+    tracker_t *trk = NULL;
     opal_value_t *kv;
 
     OPAL_OUTPUT_VERBOSE((5, orcm_diag_base_framework.framework_output,
@@ -483,7 +483,7 @@ static void sensor_sample(opal_buffer_t *buffer, void *cbdata)
     /* store it */
     if (0 <= orcm_sensor_base.dbhandle) {
         /* the database framework will release the values */
-	orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL); 
+	orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_ENV_DATA, vals, NULL, mycleanup, NULL);
     } else {
         /* cleanup the xfr storage */
         OBJ_RELEASE(vals);

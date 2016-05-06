@@ -116,6 +116,7 @@ static int orcm_sensor_base_close(void)
         if (NULL != i_module->module->finalize) {
             i_module->module->finalize();
         }
+        ORCM_RELEASE(i_module);
     }
     OBJ_DESTRUCT(&orcm_sensor_base.modules);
 

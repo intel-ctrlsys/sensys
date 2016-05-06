@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -205,10 +205,12 @@ static int orcmd_init(void)
                                                        &mynode,
                                                        &orte_process_info.num_procs,
                                                        &buf))) {
+        OBJ_DESTRUCT(&config);
         OBJ_DESTRUCT(&buf);
         error = "define system";
         goto error;
     }
+    OBJ_DESTRUCT(&config);
 
     /* if my name didn't get set, then we didn't find our node
      * in the config - report it and die
@@ -690,12 +692,12 @@ static int orcmd_init(void)
     }
 
     return ORTE_SUCCESS;
-    
+
  error:
     orte_show_help("help-orcm-runtime.txt",
                    "orcm_init:startup:internal-failure",
                    true, error, ORTE_ERROR_NAME(ret), ret);
-    
+
     return ORTE_ERR_SILENT;
 }
 
@@ -742,9 +744,9 @@ static void orcmd_finalize(void)
     (void) mca_base_framework_close(&orte_oob_base_framework);
     (void) mca_base_framework_close(&orte_state_base_framework);
 
+    (void) mca_base_framework_close(&orcm_dispatch_base_framework);
     (void) mca_base_framework_close(&orcm_db_base_framework);
     (void) mca_base_framework_close(&opal_dstore_base_framework);
-    (void) mca_base_framework_close(&orcm_dispatch_base_framework);
 
     /* cleanup any lingering session directories */
     orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);

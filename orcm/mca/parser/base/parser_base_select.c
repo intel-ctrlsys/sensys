@@ -112,3 +112,8 @@ int orcm_parser_base_select(void)
     }
     return ORCM_SUCCESS;
 }
+
+void orcm_parser_base_reset_selected(void)
+{
+    selected = false;
+}

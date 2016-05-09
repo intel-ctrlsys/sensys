@@ -230,6 +230,7 @@ static void orcm_analytics_base_load_default_workflows(void)
 
     result_list = orcm_util_workflow_add_retrieve_workflows_section(file);
     if (NULL == result_list) {
+        SAFEFREE(file);
         return;
     }
 
@@ -244,7 +245,7 @@ static void orcm_analytics_base_load_default_workflows(void)
             }
         }
     }
-
+    SAFEFREE(file);
     SAFE_RELEASE(result_list);
     return;
 }
@@ -265,7 +266,7 @@ static int orcm_analytics_base_open(mca_base_open_flag_t flags)
     if (OPAL_SUCCESS != rc) {
         return rc;
     }
-    
+
     /* start the receive */
     if (ORCM_SUCCESS != (rc = orcm_analytics_base_comm_start())) {
         ORTE_ERROR_LOG(rc);

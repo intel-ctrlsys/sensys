@@ -11,7 +11,6 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 #include "orcm/types.h"
-#include "orcm/mca/pwrmgmt/pwrmgmt_types.h"
 
 #include "opal/mca/mca.h"
 #include "opal/mca/base/base.h"
@@ -139,7 +138,7 @@ static int orcm_scd_base_register(mca_base_register_flag_t flags)
                                  &orcm_scd_base.power_budget);
 
     /* get default power mode for cluster */
-    orcm_scd_base.power_mode = ORCM_PWRMGMT_MODE_NONE;
+    orcm_scd_base.power_mode = 0;
     (void) mca_base_var_register("orcm", "scd", "base", "power_mode",
                                  "ORCM Cluster power mode",
                                  MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,

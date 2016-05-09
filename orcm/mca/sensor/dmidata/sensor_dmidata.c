@@ -680,7 +680,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         /* Check and Verify Node Inventory record and update db/notify user accordingly */
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output, "dmidata HOST found!!");
         if((opal_dss.compare(topo, newhost->hwloc_topo,OPAL_HWLOC_TOPO) == OPAL_EQUAL) &&
-           (strncmp(freq_step_list,newhost->freq_step_list, strlen(freq_step_list)) == 0) ) {
+           (opal_dss.compare(freq_step_list,newhost->freq_step_list, OPAL_STRING) == OPAL_EQUAL)) {
 
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Compared values match for : hwloc; Do nothing");

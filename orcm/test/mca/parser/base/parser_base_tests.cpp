@@ -142,6 +142,7 @@ void ut_parser_base_tests::reset_base_framework_comp()
 {
     OPAL_LIST_DESTRUCT(&orcm_parser_base_framework.framework_components);
     OBJ_CONSTRUCT(&orcm_parser_base_framework.framework_components, opal_list_t);
+    orcm_parser_base_reset_selected();
 }
 
 void ut_parser_base_tests::SetUpTestCase()
@@ -175,6 +176,7 @@ TEST_F(ut_parser_base_tests, parser_base_select_NULL_component)
     orcm_parser_base_component_t *parser_component = NULL;
     mca_base_component_list_item_t *component;
 
+    ut_parser_base_tests::reset_base_framework_comp();
     component = OBJ_NEW(mca_base_component_list_item_t);
     component->cli_component = (mca_base_component_t *) parser_component;
 

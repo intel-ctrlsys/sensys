@@ -113,6 +113,7 @@ opal_list_t* WorkflowsPtrType(int file_id, char const* key, char const* name)
 
 void ut_octl_workflow_tests::SetUpTestCase()
 {
+    ut_octl_tests::SetUpTestCase();
     saved_open_fn_t = orcm_parser.open;
     saved_retrieve_section_fnt_t = orcm_parser.retrieve_section;
     saved_close_fn_t = orcm_parser.close;
@@ -120,6 +121,7 @@ void ut_octl_workflow_tests::SetUpTestCase()
 
 void ut_octl_workflow_tests::TearDownTestCase()
 {
+    ut_octl_tests::TearDownTestCase();
     orcm_parser.open = saved_open_fn_t;
     orcm_parser.retrieve_section = saved_retrieve_section_fnt_t;
     orcm_parser.close = saved_close_fn_t;
@@ -144,6 +146,41 @@ int ut_octl_workflow_tests::CloseFile(int file_id)
 
 }
 
+void ut_octl_workflow_tests::NegListRecvBuffer(orte_process_name_t* peer,
+                                               orte_rml_tag_t tag,
+                                               bool persistent,
+                                               orte_rml_buffer_callback_fn_t cbfunc,
+                                               void* cbdata)
+{
+    orte_rml_recv_cb_t* xfer = (orte_rml_recv_cb_t*)cbdata;
+    xfer->name.jobid = 0;
+    xfer->name.vpid = 0;
+    OBJ_DESTRUCT(&xfer->data);
+    OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
+    int rv = 3;
+    int count = 1;
+    opal_dss.pack(&xfer->data, &rv, 1, OPAL_INT);
+    opal_dss.pack(&xfer->data, &count, 1, OPAL_INT);
+    xfer->active = false;
+}
+static orte_rml_module_recv_buffer_nb_fn_t saved_recv_buffer;
+void ut_octl_workflow_tests::NegRemoveRecvBuffer(orte_process_name_t* peer,
+                                                 orte_rml_tag_t tag,
+                                                 bool persistent,
+                                                 orte_rml_buffer_callback_fn_t cbfunc,
+                                                 void* cbdata)
+{
+    orte_rml_recv_cb_t* xfer = (orte_rml_recv_cb_t*)cbdata;
+    xfer->name.jobid = 0;
+    xfer->name.vpid = 0;
+    OBJ_DESTRUCT(&xfer->data);
+    OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
+    int rv = -1;
+    opal_dss.pack(&xfer->data, &rv, 1, OPAL_INT);
+    xfer->active = false;
+}
+
+
 TEST_F(ut_octl_workflow_tests, workflow_add_negative)
 {
     const char* cmdlist[3] = {
@@ -155,23 +192,14 @@ TEST_F(ut_octl_workflow_tests, workflow_add_negative)
     ASSERT_NE(MY_ORCM_SUCCESS, rv);
 }
 
-TEST_F(ut_octl_workflow_tests, workflow_add_negative1)
-{
-    const char* cmdlist[2] = {
-        "workflow",
-        "add",
-    };
-    int rv = orcm_octl_workflow_add((char**)cmdlist);
-    ASSERT_NE(MY_ORCM_SUCCESS, rv);
-}
-
 TEST_F(ut_octl_workflow_tests, workflow_add_negative2)
 {
-    const char* cmdlist[4] = {
+    const char* cmdlist[5] = {
         "workflow",
         "add",
         "workflow.xml",
-        "master"
+        "master",
+        NULL
     };
 
     orcm_parser.open = OpenFile;
@@ -184,11 +212,12 @@ TEST_F(ut_octl_workflow_tests, workflow_add_negative2)
 
 TEST_F(ut_octl_workflow_tests, workflow_add_negative3)
 {
-    const char* cmdlist[4] = {
+    const char* cmdlist[5] = {
         "workflow",
         "add",
         "workflow.xml",
-        "master"
+        "master",
+        NULL
     };
 
     orcm_parser.open = OpenFile;
@@ -201,11 +230,12 @@ TEST_F(ut_octl_workflow_tests, workflow_add_negative3)
 
 TEST_F(ut_octl_workflow_tests, workflow_add_negative4)
 {
-    const char* cmdlist[4] = {
+    const char* cmdlist[5] = {
         "workflow",
         "add",
         "workflow.xml",
-        "master"
+        "master",
+        NULL
     };
 
     orcm_parser.open = OpenFile;
@@ -218,11 +248,12 @@ TEST_F(ut_octl_workflow_tests, workflow_add_negative4)
 
 TEST_F(ut_octl_workflow_tests, workflow_add_negative5)
 {
-    const char* cmdlist[4] = {
+    const char* cmdlist[5] = {
         "workflow",
         "add",
         "workflow.xml",
-        "master"
+        "master",
+        NULL
     };
 
     orcm_parser.open = OpenFile;
@@ -308,3 +339,161 @@ TEST_F(ut_octl_workflow_tests, extract_workflow_info_negative3){
 
     ASSERT_NE(rc, MY_ORCM_SUCCESS);
 }
+
+
+
+TEST_F(ut_octl_workflow_tests, workflow_remove_negative)
+{
+    const char* cmdlist[3] = {
+        "workflow",
+        "remove",
+        NULL
+    };
+    int rv = orcm_octl_workflow_remove((char**)cmdlist);
+    ASSERT_NE(MY_ORCM_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_workflow_tests, workflow_remove_negative_wrong_name)
+{
+    const char* cmdlist[6] = {
+        "workflow",
+        "remove",
+        "master[",
+        "wf1",
+        "0",
+        NULL
+    };
+    int rv = orcm_octl_workflow_remove((char**)cmdlist);
+    ASSERT_NE(MY_ORCM_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_workflow_tests, workflow_remove_negative_1)
+{
+    const char* cmdlist[6] = {
+        "workflow",
+        "remove",
+        "master",
+        "wf1",
+        "0",
+        NULL
+    };
+
+    next_proc_result = ORTE_ERROR;
+
+    int rv = orcm_octl_workflow_remove((char**)cmdlist);
+    ASSERT_NE(MY_ORCM_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_workflow_tests, workflow_remove_negative_2)
+{
+    const char* cmdlist[6] = {
+        "workflow",
+        "remove",
+        "master",
+        "wf1",
+        "0",
+        NULL
+    };
+
+    next_send_result = ORTE_ERROR;
+
+    int rv = orcm_octl_workflow_remove((char**)cmdlist);
+    ASSERT_NE(MY_ORCM_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_workflow_tests, workflow_remove_negative_workflow_not_found)
+{
+    const char* cmdlist[6] = {
+        "workflow",
+        "remove",
+        "master",
+        "wf1",
+        "0",
+        NULL
+    };
+    orte_rml_module_recv_buffer_nb_fn_t saved_recv_buffer;
+
+    saved_recv_buffer = orte_rml.recv_buffer_nb;
+
+    orte_rml.recv_buffer_nb = NegRemoveRecvBuffer;
+
+    int rv = orcm_octl_workflow_remove((char**)cmdlist);
+    ASSERT_EQ(MY_ORCM_SUCCESS, rv);
+
+    orte_rml.recv_buffer_nb = saved_recv_buffer;
+}
+
+
+TEST_F(ut_octl_workflow_tests, workflow_list_negative)
+{
+    const char* cmdlist[3] = {
+        "workflow",
+        "list",
+        NULL
+    };
+    int rv = orcm_octl_workflow_list((char**)cmdlist);
+    ASSERT_NE(MY_ORCM_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_workflow_tests, workflow_list_negative_wrong_name)
+{
+    const char* cmdlist[4] = {
+        "workflow",
+        "list",
+        "master[",
+        NULL
+    };
+    int rv = orcm_octl_workflow_list((char**)cmdlist);
+    ASSERT_NE(MY_ORCM_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_workflow_tests, workflow_list_negative_1)
+{
+    const char* cmdlist[4] = {
+        "workflow",
+        "list",
+        "master",
+        NULL
+    };
+
+    next_proc_result = ORTE_ERROR;
+
+    int rv = orcm_octl_workflow_list((char**)cmdlist);
+    ASSERT_NE(MY_ORCM_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_workflow_tests, workflow_list_negative_2)
+{
+    const char* cmdlist[4] = {
+        "workflow",
+        "remove",
+        "master",
+        NULL
+    };
+
+    next_send_result = ORTE_ERROR;
+
+    int rv = orcm_octl_workflow_list((char**)cmdlist);
+    ASSERT_NE(MY_ORCM_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_workflow_tests, workflow_list_negative_3)
+{
+    const char* cmdlist[4] = {
+        "workflow",
+        "remove",
+        "master",
+        NULL
+    };
+
+    orte_rml_module_recv_buffer_nb_fn_t saved_recv_buffer;
+
+    saved_recv_buffer = orte_rml.recv_buffer_nb;
+
+    orte_rml.recv_buffer_nb = NegListRecvBuffer;
+
+    int rv = orcm_octl_workflow_list((char**)cmdlist);
+    ASSERT_NE(MY_ORCM_SUCCESS, rv);
+    orte_rml.recv_buffer_nb = saved_recv_buffer;
+}
+

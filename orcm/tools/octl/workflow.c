@@ -328,41 +328,24 @@ static int workflow_remove_parse_args(char **value, char ***aggregator, char **w
 {
     int rc;
 
+    rc =  opal_argv_count(value);
+
     if (5 != opal_argv_count(value)) {
         orcm_octl_usage("workflow-remove", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (NULL != value[2]) {
-        rc = orcm_logical_group_parse_array_string(value[2], aggregator);
-        if (ORCM_SUCCESS != rc) {
-            orcm_octl_error("nodelist-extract", value[2]);
-            return rc;
-        }
-
-    }
-    else {
-        orcm_octl_error("null-arg", "aggregator", "aggregator");
-        return ORCM_ERR_BAD_PARAM;
+    rc = orcm_logical_group_parse_array_string(value[2], aggregator);
+    if (ORCM_SUCCESS != rc) {
+        orcm_octl_error("nodelist-extract", value[2]);
+        return rc;
     }
 
-    if (NULL != value[3]) {
-        *workflow_name = value[3];
-    }
-    else {
-        orcm_octl_error("null-arg", "workflow-name", "workflow-name");
-        return ORCM_ERR_BAD_PARAM;
-    }
+    *workflow_name = value[3];
 
-    if (NULL != value[4]) {
-        *workflow_id = value[4];
-    }
-    else {
-        orcm_octl_error("null-arg", "workflow-id", "workflow-id");
-        return ORCM_ERR_BAD_PARAM;
-    }
+    *workflow_id = value[4];
+
     return ORCM_SUCCESS;
-
 }
 
 static int workflow_remove_pack_buffer(opal_buffer_t *buf, char *workflow_name,
@@ -498,18 +481,12 @@ static int workflow_list_parse_args(char **value, char ***aggregator)
         return ORCM_ERR_BAD_PARAM;
     }
 
-    if (NULL != value[2]) {
-        rc = orcm_logical_group_parse_array_string(value[2], aggregator);
-        if (ORCM_SUCCESS != rc) {
-            orcm_octl_error("nodelist-notfound", value[2]);
-            return rc;
-        }
+    rc = orcm_logical_group_parse_array_string(value[2], aggregator);
+    if (ORCM_SUCCESS != rc) {
+        orcm_octl_error("nodelist-notfound", value[2]);
+        return rc;
+    }
 
-    }
-    else {
-        orcm_octl_error("null-arg", "aggregator", "aggregator");
-        return ORCM_ERR_BAD_PARAM;
-    }
     return ORCM_SUCCESS;
 }
 

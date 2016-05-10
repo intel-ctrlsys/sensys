@@ -27,8 +27,9 @@ extern "C" {
 
 #include "gtest/gtest.h"
 #include "octl_mocking.h"
+#include "octl_tests.h"
 
-class ut_octl_workflow_tests: public testing::Test
+class ut_octl_workflow_tests: public ut_octl_tests
 {
     protected:
         // gtest fixture required methods
@@ -37,6 +38,16 @@ class ut_octl_workflow_tests: public testing::Test
         static int NegOpenFile(char const *file);
         static int OpenFile(char const *file);
         static int CloseFile(int file_id);
+        static void NegRemoveRecvBuffer(orte_process_name_t* peer,
+                                        orte_rml_tag_t tag,
+                                        bool persistent,
+                                        orte_rml_buffer_callback_fn_t cbfunc,
+                                        void* cbdata);
+        static void NegListRecvBuffer(orte_process_name_t* peer,
+                                      orte_rml_tag_t tag,
+                                      bool persistent,
+                                      orte_rml_buffer_callback_fn_t cbfunc,
+                                      void* cbdata);
         static orcm_parser_module_open_fn_t saved_open_fn_t;
         static orcm_parser_module_retrieve_section_fn_t saved_retrieve_section_fnt_t;
         static orcm_parser_module_close_fn_t saved_close_fn_t;

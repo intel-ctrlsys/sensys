@@ -15,6 +15,7 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/mca/Makefile
     orcm/test/mca/dispatch/Makefile
     orcm/test/mca/dispatch/dfg/Makefile
+    orcm/test/mca/dispatch/base/Makefile
     orcm/test/mca/sensor/Makefile
     orcm/test/mca/sensor/ipmi/Makefile
     orcm/test/mca/sensor/base/Makefile

@@ -52,6 +52,8 @@ typedef struct {
 OBJ_CLASS_DECLARATION(orcm_dispatch_active_module_t);
 
 ORCM_DECLSPEC int orcm_dispatch_base_select(void);
+/*This function is meant to be used by test code only*/
+ORCM_DECLSPEC void orcm_dispatch_base_reset_selected(void);
 
 ORCM_DECLSPEC extern mca_base_framework_t orcm_dispatch_base_framework;
 ORCM_DECLSPEC extern orcm_dispatch_base_t orcm_dispatch_base;

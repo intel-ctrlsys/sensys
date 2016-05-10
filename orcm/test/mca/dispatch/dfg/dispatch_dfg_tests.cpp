@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#define MY_RAS_SEVERITY 89
+
 extern orcm_db_API_module_t orcm_db;
 
 
@@ -201,6 +203,51 @@ TEST(dispatch_dfg, generate_success_sensor_db_event)
         ecd->cbfunc = orcm_dispatch_tests_cleanup;
         ecd->type = ORCM_RAS_EVENT_SENSOR;
         ecd->severity = ORCM_RAS_SEVERITY_INFO;
+        orcm_dispatch_dfg_module.generate(ecd);
+        orcm_dispatch_dfg_module.finalize();
+        orcm_dispatch_test_tear_down();
+    }
+}
+
+TEST(dispatch_dfg, generate_success_sensor_unknown_event)
+{
+    orcm_ras_event_t *ecd = OBJ_NEW(orcm_ras_event_t);
+    if (NULL != ecd) {
+        orcm_dispatch_test_setup();
+        orcm_dispatch_dfg_module.init();
+        ecd->cbfunc = orcm_dispatch_tests_cleanup;
+        ecd->type = MY_RAS_SEVERITY; //This is intentional to cover the default branch.
+        ecd->severity = MY_RAS_SEVERITY;
+        orcm_dispatch_dfg_module.generate(ecd);
+        orcm_dispatch_dfg_module.finalize();
+        orcm_dispatch_test_tear_down();
+    }
+}
+
+TEST(dispatch_dfg, generate_success_sensor_debug_event)
+{
+    orcm_ras_event_t *ecd = OBJ_NEW(orcm_ras_event_t);
+    if (NULL != ecd) {
+        orcm_dispatch_test_setup();
+        orcm_dispatch_dfg_module.init();
+        ecd->cbfunc = orcm_dispatch_tests_cleanup;
+        ecd->type = ORCM_RAS_EVENT_STATE_TRANSITION;
+        ecd->severity = ORCM_RAS_SEVERITY_DEBUG;
+        orcm_dispatch_dfg_module.generate(ecd);
+        orcm_dispatch_dfg_module.finalize();
+        orcm_dispatch_test_tear_down();
+    }
+}
+
+TEST(dispatch_dfg, generate_success_sensor_alert_event)
+{
+    orcm_ras_event_t *ecd = OBJ_NEW(orcm_ras_event_t);
+    if (NULL != ecd) {
+        orcm_dispatch_test_setup();
+        orcm_dispatch_dfg_module.init();
+        ecd->cbfunc = orcm_dispatch_tests_cleanup;
+        ecd->type = ORCM_RAS_EVENT_SENSOR; //This is intentional to cover the default branch.
+        ecd->severity = ORCM_RAS_SEVERITY_ALERT;
         orcm_dispatch_dfg_module.generate(ecd);
         orcm_dispatch_dfg_module.finalize();
         orcm_dispatch_test_tear_down();

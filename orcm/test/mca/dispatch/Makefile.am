@@ -1,5 +1,5 @@
 if HAVE_GTEST
-gtestSubdirs=dfg
+gtestSubdirs=dfg base
 endif
 
 SUBDIRS=$(gtestSubdirs)

@@ -113,3 +113,8 @@ int orcm_dispatch_base_select(void)
 
     return ORCM_SUCCESS;;
 }
+
+void orcm_dispatch_base_reset_selected(void)
+{
+    selected = false;
+}

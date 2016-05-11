@@ -30,11 +30,14 @@
 #include "orte/mca/notifier/base/base.h"
 
 #define IF_NULL(x) if(NULL==x) { ORTE_ERROR_LOG(ORCM_ERROR); return ORCM_ERROR; }
+#define IF_NULL_ALLOC(x) if(NULL==x) { ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE); return ORCM_ERR_OUT_OF_RESOURCE; }
 
 static int init(orcm_analytics_base_module_t *imod);
 static void finalize(orcm_analytics_base_module_t *imod);
 static int analyze(int sd, short args, void *cbdata);
-static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, opal_list_t* event_list);
+int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, opal_list_t* event_list);
+int get_genex_policy(void *cbdata, genex_workflow_value_t *workflow_value);
+void dest_genex_workflow_value(genex_workflow_value_t *workflow_value, orcm_workflow_caddy_t *genex_analyze_caddy);
 
 mca_analytics_genex_module_t orcm_analytics_genex_module = {{
     init,
@@ -44,8 +47,8 @@ mca_analytics_genex_module_t orcm_analytics_genex_module = {{
     NULL
 }};
 
-static void dest_genex_workflow_value(genex_workflow_value_t *workflow_value,
-                                      orcm_workflow_caddy_t *genex_analyze_caddy)
+void dest_genex_workflow_value(genex_workflow_value_t *workflow_value,
+                               orcm_workflow_caddy_t *genex_analyze_caddy)
 {
     SAFEFREE(workflow_value->msg_regex_label);
     SAFEFREE(workflow_value->severity_label);
@@ -56,25 +59,23 @@ static void dest_genex_workflow_value(genex_workflow_value_t *workflow_value,
     SAFEFREE(workflow_value->msg_regex);
     SAFEFREE(workflow_value->severity);
     SAFEFREE(workflow_value);
-    if (NULL != genex_analyze_caddy) {
-        OBJ_RELEASE(genex_analyze_caddy);
-    }
+    SAFE_RELEASE(genex_analyze_caddy);
 }
 
 static int init(orcm_analytics_base_module_t *imod)
 {
-    if(NULL == imod) {
-        return ORCM_ERROR;
-    }
+    int rc = 0;
+
+    IF_NULL(imod);
     mca_analytics_genex_module_t* mod = (mca_analytics_genex_module_t *)imod;
+
     mod->api.orcm_mca_analytics_event_store = OBJ_NEW(opal_hash_table_t);
-    if (NULL == mod->api.orcm_mca_analytics_event_store){
-        return ORCM_ERROR;
-    }
+    IF_NULL(mod->api.orcm_mca_analytics_event_store);
+
     opal_hash_table_t* table = (opal_hash_table_t*)mod->api.orcm_mca_analytics_event_store;
-    if(ORCM_SUCCESS != opal_hash_table_init(table, HASH_TABLE_SIZE)) {
-        return ORCM_ERROR;
-    }
+    rc = opal_hash_table_init(table, HASH_TABLE_SIZE);
+    ORCM_ON_NULL_RETURN_ERROR(rc, ORCM_ERROR);
+
     return ORCM_SUCCESS;
 }
 
@@ -89,8 +90,6 @@ static void finalize(orcm_analytics_base_module_t *imod)
         }
         SAFEFREE(mod);
     }
-    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-        "%s analytics:genex:finalize", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 }
 
 /**
@@ -104,10 +103,12 @@ static void finalize(orcm_analytics_base_module_t *imod)
  * @param workflow_value Pointer to the genex-workflow structure in which
  *        the arguments will be loaded
  */
-static int get_genex_policy(void *cbdata, genex_workflow_value_t *workflow_value)
+int get_genex_policy(void *cbdata, genex_workflow_value_t *workflow_value)
 {
     orcm_workflow_caddy_t *parse_workflow_caddy = NULL;
     opal_value_t *temp = NULL;
+
+    IF_NULL(workflow_value);
 
     workflow_value->msg_regex_label = strdup("msg_regex");
     workflow_value->severity_label = strdup("severity");
@@ -118,12 +119,7 @@ static int get_genex_policy(void *cbdata, genex_workflow_value_t *workflow_value
     workflow_value->notifier = NULL;
     workflow_value->db = NULL;
 
-    if ( NULL == cbdata) {
-        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-            "%s analytics:average:NULL caddy data passed by previous workflow step",
-            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        return ORCM_ERROR;
-    }
+    IF_NULL(cbdata);
 
     parse_workflow_caddy = (orcm_workflow_caddy_t *) cbdata;
     if (ORCM_SUCCESS != orcm_analytics_base_assert_caddy_data(cbdata)) {
@@ -131,9 +127,10 @@ static int get_genex_policy(void *cbdata, genex_workflow_value_t *workflow_value
     }
 
     OPAL_LIST_FOREACH(temp, &parse_workflow_caddy->wf_step->attributes, opal_value_t) {
-        if (NULL == temp || NULL == temp->key || NULL == temp->data.string) {
-            return ORCM_ERROR;
-        }
+        IF_NULL(temp);
+        IF_NULL(temp->key);
+        IF_NULL(temp->data.string);
+
         if (0 == strncmp(temp->key, workflow_value->msg_regex_label,strlen(temp->key))) {
             if (NULL == workflow_value->msg_regex) {
                 workflow_value->msg_regex = strdup(temp->data.string);
@@ -156,7 +153,7 @@ static int get_genex_policy(void *cbdata, genex_workflow_value_t *workflow_value
     return ORCM_SUCCESS;
 }
 
-static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, opal_list_t* event_list)
+int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, opal_list_t* event_list)
 {
     int rc = ORCM_SUCCESS;
     orcm_workflow_caddy_t *caddy = NULL;
@@ -182,21 +179,14 @@ static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, o
         return ORCM_ERROR;
     }
 
-    if (NULL == cbdata) {
-        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-            "%s analytics:genex:NULL caddy data passed by the previous workflow step",
-            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        return ORCM_ERROR;
-    }
+    IF_NULL(cbdata);
 
     caddy = (orcm_workflow_caddy_t *) cbdata;
     sample_data_list = caddy->analytics_value->compute_data;
     IF_NULL(sample_data_list);
 
     OPAL_LIST_FOREACH(analytics_value, sample_data_list, orcm_value_t) {
-        if (NULL == analytics_value) {
-            return ORCM_ERROR;
-        }
+        IF_NULL(analytics_value);
 
         if (0 == strcmp("severity", analytics_value->value.key)) {
             genex_value.severity = analytics_value->value.data.string;
@@ -222,9 +212,7 @@ static int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, o
                 }
              } else if(regex_res && regex_res != REG_NOMATCH) {
                 error_buffer = malloc(100);
-                if (NULL == error_buffer) {
-                    return ORCM_ERR_OUT_OF_RESOURCE;
-                }
+                IF_NULL_ALLOC(error_buffer);
 
                 regerror(regex_res, &regex_comp_wflow, error_buffer, 100);
                 OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
@@ -252,11 +240,7 @@ static int analyze(int sd, short args, void *cbdata)
     }
 
     workflow_value = (genex_workflow_value_t *)malloc(sizeof(genex_workflow_value_t));
-    if ( NULL == workflow_value) {
-        OPAL_OUTPUT_VERBOSE((1, orcm_analytics_base_framework.framework_output,
-                            "%s Insufficient data", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        return ORCM_ERR_OUT_OF_RESOURCE;
-    }
+    IF_NULL_ALLOC(workflow_value);
 
     genex_analyze_caddy = (orcm_workflow_caddy_t *) cbdata;
 

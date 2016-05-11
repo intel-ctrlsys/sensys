@@ -114,13 +114,14 @@ typedef uint8_t orcm_rm_cmd_flag_t;
 #define ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND      36
 #define ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND 37
 #define ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND      38
-#define ORCM_GET_CHASSIS_ID                       39
-#define ORCM_GET_CHASSIS_ID_STATE                 40
-#define ORCM_SET_CHASSIS_ID                       41
-#define ORCM_SET_CHASSIS_ID_OFF                   42
-#define ORCM_SET_CHASSIS_ID_ON                    43
-#define ORCM_SET_CHASSIS_ID_TEMPORARY_ON          44
-#define ORCM_DISPATCH_LAUNCH_EXEC_COMMAND         45
+#define ORCM_GET_DB_STREAM                        39
+#define ORCM_GET_CHASSIS_ID                       40
+#define ORCM_GET_CHASSIS_ID_STATE                 41
+#define ORCM_SET_CHASSIS_ID                       42
+#define ORCM_SET_CHASSIS_ID_OFF                   43
+#define ORCM_SET_CHASSIS_ID_ON                    44
+#define ORCM_SET_CHASSIS_ID_TEMPORARY_ON          45
+#define ORCM_DISPATCH_LAUNCH_EXEC_COMMAND         46
 
 /* define diagnostic commands */
 typedef uint8_t orcm_diag_cmd_flag_t;

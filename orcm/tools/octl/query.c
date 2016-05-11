@@ -18,8 +18,26 @@
 #define SAFE_FREE(x) if(NULL!=x) { free(x); x = NULL; }
 /* Default idle time in seconds */
 #define DEFAULT_IDLE_TIME "10"
+#define MAX_STREAM_SIZE 10000
+
+/* Macros to help with code coverage */
+#define ON_FAILURE_RETURN(x) \
+    if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);return x;}
+#define ON_FAILURE_GOTO(x,label) \
+    if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);goto label;}
+#define ON_NULL_GOTO(x,label) \
+    if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
+#define ON_NULL_RETURN(x,y) \
+    if(NULL==x){ORTE_ERROR_LOG(y);return y;}
 
 int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results);
+int query_db_stream(int cmd, opal_list_t *filterlist, uint32_t *results_count,
+                    int *stream_index);
+int create_buffer_from_filters(opal_buffer_t **buffer,
+                               opal_list_t *filters_list,
+                               orcm_rm_cmd_flag_t cmd);
+int create_buffer_for_stream_request(opal_buffer_t **buffer_to_send,
+                                     orcm_rm_cmd_flag_t cmd, int stream_index);
 int get_nodes_from_args(char **argv, char ***node_list);
 opal_list_t *create_query_sensor_filter(int argc, char **argv);
 opal_list_t *create_query_idle_filter(int argc, char **argv);
@@ -33,6 +51,9 @@ int split_db_results(char *db_res, char ***db_results);
 void free_db_results(int num_elements, char ***db_res_array);
 char *add_to_str_date(char *date, int seconds);
 void print_results(opal_list_t *results, double start_time, double stop_time);
+int print_results_from_stream(uint32_t results_count,
+                              int requested_buffer_index, double start_time,
+                              double stop_time);
 orcm_db_filter_t *create_string_filter(char *field, char *string,
                                        orcm_db_comparison_op_t op);
 
@@ -70,62 +91,45 @@ int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
         goto query_db_cleanup;
     }
     filterlist_count = (uint16_t)opal_list_get_size(filterlist);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &command, 1, ORCM_RM_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
-        goto query_db_cleanup;
-                        }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &filterlist_count, 1, OPAL_UINT16))) {
-        ORTE_ERROR_LOG(rc);
-        goto query_db_cleanup;
-    }
+    rc = opal_dss.pack(buffer, &command, 1, ORCM_RM_CMD_T);
+    ON_FAILURE_GOTO(rc, query_db_cleanup);
+    rc = opal_dss.pack(buffer, &filterlist_count, 1, OPAL_UINT16);
+    ON_FAILURE_GOTO(rc, query_db_cleanup);
     OPAL_LIST_FOREACH(tmp_filter, filterlist, orcm_db_filter_t) {
         uint8_t operation = (uint8_t)tmp_filter->op;
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &tmp_filter->value.key, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            goto query_db_cleanup;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &operation, 1, OPAL_UINT8))) {
-            ORTE_ERROR_LOG(rc);
-            goto query_db_cleanup;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &tmp_filter->value.data.string, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            goto query_db_cleanup;
-        }
+        rc = opal_dss.pack(buffer, &tmp_filter->value.key, 1, OPAL_STRING);
+        ON_FAILURE_GOTO(rc, query_db_cleanup);
+        rc = opal_dss.pack(buffer, &operation, 1, OPAL_UINT8);
+        ON_FAILURE_GOTO(rc, query_db_cleanup);
+        rc = opal_dss.pack(buffer, &tmp_filter->value.data.string, 1, OPAL_STRING);
+        ON_FAILURE_GOTO(rc, query_db_cleanup);
     }
     xfer = OBJ_NEW(orte_rml_recv_cb_t);
+    ON_NULL_GOTO(ORCM_ERR_OUT_OF_RESOURCE, query_db_cleanup);
     xfer->active = true;
-    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH, ORTE_RML_NON_PERSISTENT,
-                            orte_rml_recv_callback, xfer);
-
-    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buffer,
-                                                      ORCM_RML_TAG_ORCMD_FETCH,
-                                                      orte_rml_send_callback, xfer))) {
-        ORTE_ERROR_LOG(rc);
-        goto query_db_cleanup;
-    }
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH,
+                            ORTE_RML_NON_PERSISTENT, orte_rml_recv_callback,
+                            xfer);
+    rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buffer,
+                                 ORCM_RML_TAG_ORCMD_FETCH,
+                                 orte_rml_send_callback, xfer);
+    ON_FAILURE_GOTO(rc, query_db_cleanup);
     /* wait for status message */
     ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
-    if (ORCM_SUCCESS != rc) {
-        goto query_db_cleanup;
-    }
-
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &returned_status, &n, OPAL_INT))) {
-        goto query_db_cleanup;
-    }
+    ON_FAILURE_GOTO(rc, query_db_cleanup);
+    rc = opal_dss.unpack(&xfer->data, &returned_status, &n, OPAL_INT);
+    ON_FAILURE_GOTO(rc, query_db_cleanup);
     if(0 == returned_status) {
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &results_count, &n, OPAL_UINT32))) {
-            goto query_db_cleanup;
-        }
+        rc = opal_dss.unpack(&xfer->data, &results_count, &n, OPAL_UINT32);
+        ON_FAILURE_GOTO(rc, query_db_cleanup);
         if (0 < results_count) {
         (*results) = OBJ_NEW(opal_list_t);
         for(uint32_t i = 0; i < results_count; ++i) {
             char* tmp_str = NULL;
             opal_value_t *tmp_value = NULL;
             n = 1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(&xfer->data, &tmp_str, &n, OPAL_STRING))) {
-                goto query_db_cleanup;
-            }
+            rc = opal_dss.unpack(&xfer->data, &tmp_str, &n, OPAL_STRING);
+            ON_FAILURE_GOTO(rc, query_db_cleanup);
             tmp_value = OBJ_NEW(opal_value_t);
             tmp_value->type = OPAL_STRING;
             tmp_value->data.string = tmp_str;
@@ -143,6 +147,141 @@ int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
     }
 query_db_cleanup:
     SAFE_RELEASE(xfer);
+    return rc;
+}
+
+/**
+ * @brief Alternative version of query_db function which had a logic
+ *        incompatible with a new protocol that retrieves an error code and the
+ *        amount of rows from the DB. This version allows for that.
+ * @param cmd is the command to send to the SCD framework, which serves to
+ *            select the appropriate view in the DB framework.
+ * @param filterslist is the memory address that contains a list with the
+ *                    filters created by this tool based on the parameters
+ *                    provided by the user at the command line interface.
+ * @param results_count is the memory address where number of rows returned by
+ *                      the SCD framework should be stored.
+ * @param stream_index is the memory address where the stream index value
+ *                     received from the SCD framework should be stored. This
+ *                     stream index is used to retrieve the data which resulted
+ *                     from our query to the SCD.
+ * @return rc which is a code to verify that function completed successfully or
+ *            to notify the occurrence on an error.
+ */
+int query_db_stream(int cmd, opal_list_t *filterlist, uint32_t *results_count,
+                    int *stream_index)
+{
+    int rc = ORCM_SUCCESS;
+    int n = 1;
+    int returned_status = 0;
+    orte_rml_recv_cb_t *xfer = NULL;
+    opal_buffer_t *buffer = NULL;
+
+    if (NULL == filterlist || NULL == results_count || NULL == stream_index) {
+        rc = ORCM_ERR_BAD_PARAM;
+        return rc;
+    }
+    rc = create_buffer_from_filters(&buffer, filterlist, cmd);
+    ON_FAILURE_RETURN(rc);
+    xfer = OBJ_NEW(orte_rml_recv_cb_t);
+    ON_NULL_RETURN(xfer, ORCM_ERR_OUT_OF_RESOURCE);
+    xfer->active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH,
+                            ORTE_RML_NON_PERSISTENT, orte_rml_recv_callback, xfer);
+    rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buffer,
+                                 ORCM_RML_TAG_ORCMD_FETCH,
+                                 orte_rml_send_callback, xfer);
+    ON_FAILURE_RETURN(rc);
+    ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT_STREAM, &rc);
+    ON_FAILURE_RETURN(rc);
+    rc = opal_dss.unpack(&xfer->data, &returned_status, &n, OPAL_INT);
+    ON_FAILURE_RETURN(rc);
+    rc = opal_dss.unpack(&xfer->data, results_count, &n, OPAL_UINT32);
+    ON_FAILURE_RETURN(rc);
+    rc = opal_dss.unpack(&xfer->data, stream_index, &n, OPAL_INT);
+    ON_FAILURE_RETURN(rc);
+    SAFE_RELEASE(xfer);
+
+    return rc;
+}
+
+int create_buffer_for_stream_request(opal_buffer_t **buffer_to_send,
+                                     orcm_rm_cmd_flag_t cmd, int stream_index)
+{
+    int rc = ORCM_SUCCESS;
+    opal_buffer_t *tmp_buffer = NULL;
+    orcm_rm_cmd_flag_t command = cmd;
+    int requested_stream = stream_index;
+
+    tmp_buffer = OBJ_NEW(opal_buffer_t);
+    ON_NULL_RETURN(tmp_buffer, ORCM_ERR_OUT_OF_RESOURCE);
+    rc = opal_dss.pack(tmp_buffer, &command, 1, ORCM_RM_CMD_T);
+    ON_FAILURE_GOTO(rc, create_buffer_for_stream_cleanup);
+    rc = opal_dss.pack(tmp_buffer, &requested_stream, 1, OPAL_INT);
+    ON_FAILURE_GOTO(rc, create_buffer_for_stream_cleanup);
+    *buffer_to_send = tmp_buffer;
+
+    return rc;
+
+create_buffer_for_stream_cleanup:
+    OBJ_RELEASE(tmp_buffer);
+
+    return rc;
+}
+
+int create_buffer_from_filters(opal_buffer_t **buffer_to_send,
+                               opal_list_t *filters_list,
+                               orcm_rm_cmd_flag_t cmd)
+{
+    int rc = ORCM_SUCCESS;
+    opal_buffer_t *tmp_buffer = NULL;
+    uint16_t filters_list_size = 0;
+    orcm_rm_cmd_flag_t command = cmd;
+    orcm_db_filter_t *tmp_filter = NULL;
+
+    if (NULL == filters_list){
+        rc = OPAL_ERR_BAD_PARAM;
+        return rc;
+    }
+    tmp_buffer = OBJ_NEW(opal_buffer_t);
+    ON_NULL_RETURN(tmp_buffer, ORCM_ERR_OUT_OF_RESOURCE);
+    rc = opal_dss.pack(tmp_buffer, &command, 1, ORCM_RM_CMD_T);
+    ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
+    filters_list_size = (uint16_t)opal_list_get_size(filters_list);
+    if (2 > filters_list_size) {
+        rc = OPAL_ERR_BAD_PARAM;
+        goto create_buffer_from_filters_cleanup;
+    }
+    rc = opal_dss.pack(tmp_buffer, &filters_list_size, 1, OPAL_UINT16);
+    ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
+    OPAL_LIST_FOREACH(tmp_filter, filters_list, orcm_db_filter_t) {
+        uint8_t operation = (uint8_t)tmp_filter->op;
+        if (0 != strlen(tmp_filter->value.key)) {
+            rc = opal_dss.pack(tmp_buffer, &tmp_filter->value.key, 1,
+                               OPAL_STRING);
+            ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
+        } else {
+            rc = OPAL_ERR_BAD_PARAM;
+            goto create_buffer_from_filters_cleanup;
+        }
+        rc = opal_dss.pack(tmp_buffer, &operation, 1, OPAL_UINT8);
+        ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
+        if (tmp_filter->value.type == OPAL_STRING){
+            rc = opal_dss.pack(tmp_buffer, &tmp_filter->value.data.string, 1,
+                               OPAL_STRING);
+            ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
+        } else {
+            rc = OPAL_ERR_BAD_PARAM;
+            goto create_buffer_from_filters_cleanup;
+        }
+    }
+    *buffer_to_send = tmp_buffer;
+
+    return rc;
+
+create_buffer_from_filters_cleanup:
+    OBJ_RELEASE(tmp_buffer);
+
     return rc;
 }
 
@@ -709,6 +848,8 @@ int orcm_octl_query_sensor(int cmd, char **argv)
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
     orcm_db_filter_t *nodes_list = NULL;
+    uint32_t results_count = 0;
+    int stream_from_query = 0;
 
     /* Build input node list */
     filter_list = build_filters_list(cmd, argv);
@@ -725,12 +866,13 @@ int orcm_octl_query_sensor(int cmd, char **argv)
     }
     /* Get list of results from scheduler (or other management node) */
     start_time = stopwatch();
-    rc = query_db(cmd, filter_list, &returned_list);
+    rc = query_db_stream(cmd, filter_list, &results_count, &stream_from_query);
     stop_time = stopwatch();
     if(rc != ORCM_SUCCESS) {
         orcm_octl_info("no-results");
     } else {
-        print_results(returned_list, start_time, stop_time);
+        print_results_from_stream(results_count, stream_from_query, start_time,
+                                  stop_time);
     }
     SAFE_RELEASE(returned_list);
     SAFE_RELEASE(filter_list);
@@ -1150,4 +1292,63 @@ void print_results(opal_list_t *results, double start_time, double stop_time) {
             }
         }
     orcm_octl_info("rows-found", rows, stop_time - start_time);
+}
+
+int print_results_from_stream(uint32_t results_count, int stream_index,
+                              double start_time, double stop_time)
+{
+    int rc = ORCM_SUCCESS;
+    int n = 1;
+    int stream_index_recv = 0;
+    uint32_t stream_size_recv = 0;
+    opal_buffer_t *stream_buffer = NULL;
+    orte_rml_recv_cb_t *xfer = NULL;
+    char *tmp_str = NULL;
+
+    rc = create_buffer_for_stream_request(&stream_buffer, ORCM_GET_DB_STREAM,
+                                          stream_index);
+    ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
+    xfer = OBJ_NEW(orte_rml_recv_cb_t);
+    ON_NULL_GOTO(ORCM_ERR_OUT_OF_RESOURCE, print_from_stream_cleanup);
+    xfer->active = true;
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH,
+                            ORTE_RML_NON_PERSISTENT, orte_rml_recv_callback,
+                            xfer);
+    rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, stream_buffer,
+                                                      ORCM_RML_TAG_ORCMD_FETCH,
+                                                      orte_rml_send_callback,
+                                                      xfer);
+    ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
+    ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
+    ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
+    n = 1;
+    rc = opal_dss.unpack(&xfer->data, &stream_index_recv, &n, OPAL_INT);
+    ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
+    if (stream_index != stream_index_recv) {
+        rc = OPAL_ERR_DATA_VALUE_NOT_FOUND;
+        goto print_from_stream_cleanup;
+    }
+    n = 1;
+    rc = opal_dss.unpack(&xfer->data, &stream_size_recv, &n, OPAL_UINT32);
+    ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
+    for(uint32_t i = 0; i < stream_size_recv; ++i) {
+        n = 1;
+        rc = opal_dss.unpack(&xfer->data, &tmp_str, &n, OPAL_STRING);
+        ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
+        printf("%s\n", tmp_str);
+    }
+    if (MAX_STREAM_SIZE > results_count) {
+        orcm_octl_info("rows-found", results_count, stop_time-start_time);
+    } else {
+        orcm_octl_info("rows-found-limited", results_count, stop_time-start_time);
+    }
+
+    SAFE_RELEASE(xfer);
+    return rc;
+
+print_from_stream_cleanup:
+    SAFE_RELEASE(stream_buffer);
+    SAFE_RELEASE(xfer);
+
+    return rc;
 }

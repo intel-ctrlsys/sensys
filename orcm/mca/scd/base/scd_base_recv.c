@@ -38,6 +38,14 @@
 
 #include <sys/wait.h>
 
+/* Macros to help with code coverage */
+#define ON_NULL_RETURN(x,y) \
+    if(NULL==x){ORTE_ERROR_LOG(y);return y;}
+#define ON_NULL_GOTO(x,label) \
+    if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
+#define ON_FAILURE_GOTO(x,label) \
+    if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);goto label;}
+
 static bool recv_issued=false;
 
 static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
@@ -53,8 +61,15 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                               opal_buffer_t* buffer, orte_rml_tag_t tag,
                               void* cbdata);
 int build_filter_list(opal_buffer_t* buffer, opal_list_t **filter_list);
-int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_view);
+int query_db_view(opal_list_t *filters, opal_list_t **results, 
+                  const char *db_view);
+uint32_t query_db_for_streaming(opal_list_t *filters, opal_list_t **results,
+                                const char *db_view);
 int assemble_response(opal_list_t *results, opal_buffer_t **response_buffer);
+int assemble_stream(uint32_t query_results_count, opal_list_t *db_query_results,
+                    opal_buffer_t **response_buffer);
+int send_stream(orte_process_name_t* sender, orte_rml_tag_t tag, void* cbdata,
+                int stream_to_send);
 char *query_header(const char *db_view);
 
 int orcm_scd_base_comm_start(void)
@@ -1331,6 +1346,135 @@ char* get_plugin_from_sensor_name(const char* sensor_name)
 #define SAFE_FREE(x) if(NULL!=x) { free(x); x = NULL; }
 #define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x = NULL; }
 
+int send_stream(orte_process_name_t* sender, orte_rml_tag_t tag, void* cbdata,
+                int stream_to_send)
+{
+    int rc;
+    opal_buffer_t *response_buffer = NULL;
+
+    response_buffer = opal_pointer_array_get_item(&orcm_scd_base.db_streams,
+                                                  stream_to_send);
+    ON_NULL_RETURN(response_buffer, ORCM_ERR_OUT_OF_RESOURCE);
+    OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output,
+                        "Pointer retrieved from db_datastreams %p at "
+                        "index %d", (void *)response_buffer, stream_to_send));
+    /*Send buffer*/
+    rc = orte_rml.send_buffer_nb(sender, response_buffer,
+                                 ORCM_RML_TAG_ORCMD_FETCH,
+                                 orte_rml_send_callback, cbdata);
+    ON_FAILURE_GOTO(rc, send_stream_cleanup);
+#if 0
+    if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender,
+                                                      response_buffer,
+                                                      ORCM_RML_TAG_ORCMD_FETCH,
+                                                      orte_rml_send_callback,
+                                                      cbdata))) {
+         ORTE_ERROR_LOG(rc);
+         OBJ_RELEASE(response_buffer);
+    }
+#endif
+    opal_pointer_array_set_item(&orcm_scd_base.db_streams, stream_to_send,
+                                NULL);
+
+    return rc;
+
+send_stream_cleanup:
+    OBJ_RELEASE(response_buffer);
+    return rc;
+}
+
+int assemble_stream(uint32_t query_results_count, opal_list_t *db_query_results,
+                    opal_buffer_t **response_buffer)
+{
+    int rc = ORCM_SUCCESS;
+    int returned_status = 0;
+    uint32_t results_count = 0;
+    opal_value_t *tmp_value = NULL;
+    opal_buffer_t *tmp_stream = NULL;
+    int buffer_index = 0;
+    int stream_size = 0;
+
+    /*Init response buffer*/
+    *response_buffer = OBJ_NEW(opal_buffer_t);
+    ON_NULL_RETURN(*response_buffer, ORCM_ERR_OUT_OF_RESOURCE);
+    rc = opal_dss.pack(*response_buffer, &returned_status, 1, OPAL_INT);
+    ON_FAILURE_GOTO(rc, assemble_stream_cleanup);
+#if 0
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(*response_buffer,
+                                            &returned_status, 1, OPAL_INT))) {
+        rc = ORCM_ERR_PACK_FAILURE;
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+#endif
+    /*Pack results count*/
+    if (0 == returned_status) {
+        if (NULL != db_query_results) {
+            results_count = query_results_count;;
+        }
+        OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output,
+                            "Results count to send back %d", results_count));
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(*response_buffer,
+                                                &results_count, 1,
+                                                OPAL_UINT32))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+     }
+    /*Add results*/
+    if(ORCM_SUCCESS == rc && 0 == returned_status && NULL != db_query_results) {
+        tmp_stream = OBJ_NEW(opal_buffer_t);
+        OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output,
+                            "Stream created at %p",(void*)tmp_stream));
+        if (-1 == (buffer_index =
+                              opal_pointer_array_add(&orcm_scd_base.db_streams,
+                                                    tmp_stream))) {
+             rc = ORCM_ERR_PACK_FAILURE;
+             ORTE_ERROR_LOG(rc);
+             return rc;
+        }
+    /* Pack the index to the first stream into both response buffer and stream */
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(*response_buffer,
+                                                &buffer_index, 1,
+                                                OPAL_INT))) {
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(tmp_stream, &buffer_index,
+                                                1, OPAL_INT))) {
+            rc = ORCM_ERR_PACK_FAILURE;
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+        stream_size = (uint32_t)opal_list_get_size(db_query_results);
+        if (OPAL_SUCCESS != (rc = opal_dss.pack(tmp_stream,
+                                                &stream_size, 1,
+                                                OPAL_UINT32))) {
+            rc = ORCM_ERR_PACK_FAILURE;
+            ORTE_ERROR_LOG(rc);
+            return rc;
+        }
+        OPAL_LIST_FOREACH(tmp_value, db_query_results, opal_value_t) {
+            if (OPAL_SUCCESS != (rc = opal_dss.pack(tmp_stream,
+                                                    &tmp_value->data.string,
+                                                    1, OPAL_STRING))) {
+                rc = ORCM_ERR_PACK_FAILURE;
+                ORTE_ERROR_LOG(rc);
+                return rc;
+            }
+        }
+        SAFE_OBJ_RELEASE(db_query_results);
+    }
+    return rc;
+
+assemble_stream_cleanup:
+    SAFE_OBJ_RELEASE(*response_buffer);
+    SAFE_OBJ_RELEASE(db_query_results);
+
+    return rc;
+}
+
+
 int assemble_response(opal_list_t *db_query_results, opal_buffer_t **response_buffer)
 {
     int rc = ORCM_SUCCESS;
@@ -1446,6 +1590,125 @@ int build_filter_list(opal_buffer_t* buffer,opal_list_t **filter_list)
 #define SAFE_FREE(x) if(NULL!=x) { free(x); x = NULL; }
 #define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x = NULL; }
 #define TMP_STR_SIZE 1024
+#define MAX_STREAM_SIZE 10000
+
+uint32_t query_db_for_streaming(opal_list_t *filters, opal_list_t **results,
+                                const char *db_view)
+{
+    fetch_cb_data data;
+    opal_list_t *row = NULL;
+    opal_value_t *string_row = NULL;
+    opal_value_t *item = NULL;
+    opal_list_t *fetch_output;
+    char tmp_str[TMP_STR_SIZE];
+    int num_rows = 0;
+    int num_rows_to_stream = 0;
+    int row_index = 0;
+    size_t row_str_size = 0;
+    size_t data_str_size = 0;
+
+    /*Setup fetch callback data*/
+    data.dbhandle = -1;
+    data.active = true;
+    /*Open connection to DB*/
+    orcm_db.open(NULL, NULL, open_callback, &data);
+    ORTE_WAIT_FOR_COMPLETION(data.active);
+    if (ORCM_SUCCESS != data.status){
+        opal_output(0, "Failed to open database to retrieve sensor");
+        if(NULL != filters){
+            SAFE_OBJ_RELEASE(filters);
+        }
+        goto db_stream_cleanup;
+    }
+    data.active = true;
+    fetch_output = OBJ_NEW(opal_list_t);
+    ON_NULL_GOTO(fetch_output, db_stream_cleanup);
+    orcm_db.fetch(data.dbhandle, db_view, filters, fetch_output, fetch_callback,
+                  &data);
+    ORTE_WAIT_FOR_COMPLETION(data.active);
+    /*Free filters list as we no longer need it*/
+    SAFE_OBJ_RELEASE(filters);
+    if (ORCM_SUCCESS != data.status || -1 == data.session_handle) {
+        opal_output(0, "Failed to fetch from the database");
+        goto db_stream_cleanup;
+    }
+    data.status = orcm_db.get_num_rows(data.dbhandle, data.session_handle,
+                                       &num_rows);
+    if (ORCM_SUCCESS != data.status) {
+        opal_output(0, "Failed to get the number of sensor rows in the "
+                    "database");
+        goto db_stream_cleanup;
+    }
+    OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output,
+                        "The amount of rows obtained by query is: %d", num_rows));
+    if(0 < num_rows) {
+        *results = OBJ_NEW(opal_list_t);
+        ON_NULL_GOTO(*results, db_stream_cleanup);
+        /*Create first item of results*/
+        string_row = OBJ_NEW(opal_value_t);
+        ON_NULL_GOTO(string_row, db_stream_cleanup);
+        string_row->type = OPAL_STRING;
+        string_row->data.string = strdup(query_header(db_view));
+        opal_list_append(*results, &string_row->super);
+        if (MAX_STREAM_SIZE < num_rows) {
+            num_rows_to_stream = MAX_STREAM_SIZE;
+        } else {
+            num_rows_to_stream = num_rows;
+        }
+        for (row_index = 0; row_index < num_rows_to_stream; ++row_index){
+            row = OBJ_NEW(opal_list_t);
+            data.status = orcm_db.get_next_row(data.dbhandle, data.session_handle, row);
+            if (ORCM_SUCCESS != data.status){
+                opal_output(0, "Failed to get row %d when querying the database",
+                            row_index);
+                goto db_stream_cleanup;
+            }
+            tmp_str[0] = '\0';
+            OPAL_LIST_FOREACH(item, row, opal_value_t){
+                switch (item->type){
+                    case OPAL_STRING:
+                        data_str_size = strlen(item->data.string);
+                        if (sizeof(tmp_str) > strlen(tmp_str) + data_str_size + 1 ) {
+                            strncat(tmp_str, item->data.string, data_str_size);
+                        } else {
+                            opal_output(0, "Failed to add value to row!");
+                        }
+                        strncat(tmp_str, ",", 1);
+                        break;
+                    default:
+                        continue;
+                }
+            }
+            string_row = OBJ_NEW(opal_value_t);
+            ON_NULL_GOTO(string_row, db_stream_cleanup);
+            string_row->type = OPAL_STRING;
+            row_str_size = strlen(tmp_str)-1;
+            /*Trim trailing comma*/
+            if (0 < row_str_size){
+                tmp_str[row_str_size]='\0';
+            } else {
+                opal_output(0, "Failed to remove trailing comma from row");
+            }
+            string_row->data.string = strdup(tmp_str);
+            opal_list_append(*results, &string_row->super);
+            SAFE_OBJ_RELEASE(row);
+        }
+    }
+db_stream_cleanup:
+    data.status = orcm_db.close_result_set(data.dbhandle, data.session_handle);
+    if (ORCM_SUCCESS != data.status){
+        opal_output(0, "Failed to close the database results handle");
+        SAFE_OBJ_RELEASE(*results);
+    }
+    data.active = true;
+    orcm_db.close(data.dbhandle, close_callback, &data);
+    ORTE_WAIT_FOR_COMPLETION(data.active);
+    if (ORCM_SUCCESS != data.status) {
+        opal_output(0, "Failed to close the database handle");
+    }
+
+    return (uint32_t)num_rows;
+}
 
 int query_db_view(opal_list_t *filters, opal_list_t **results, const char *db_view)
 {
@@ -1550,6 +1813,7 @@ db_cleanup:
     if (ORCM_SUCCESS != data.status) {
         opal_output(0, "Failed to close the database handle");
     }
+
     return db_status;
 }
 
@@ -1677,7 +1941,9 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
     orcm_db_filter_t *tmp_filter = NULL;
     opal_list_t *results_list = NULL;
     uint16_t results_count;
+    uint32_t stream_results_count;
     opal_buffer_t *response_buffer = NULL;
+    int buffer_index = 0;
     int returned_status = 0;
 
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command, &n, ORCM_RM_CMD_T))) {
@@ -1690,10 +1956,14 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 OBJ_RELEASE(filter_list);
                 return;
             }
-            query_db_view(filter_list, &results_list, "data_sensors_view");
-            if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
-                ORTE_ERROR_LOG(rc);
-                return;
+            stream_results_count = query_db_for_streaming(filter_list,
+                                                          &results_list,
+                                                         "data_sensors_view");
+            if (ORCM_SUCCESS != (rc = assemble_stream(stream_results_count,
+                                                      results_list,
+                                                      &response_buffer))) {
+                 ORTE_ERROR_LOG(rc);
+                 return;
             }
             if (NULL == response_buffer){
                 rc = ORCM_ERR_BAD_PARAM;
@@ -1709,34 +1979,34 @@ void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
                 OBJ_RELEASE(response_buffer);
                 return;
             }
-            if(NULL != results_list){
-                OBJ_RELEASE(results_list);
-            }
             break;
         case ORCM_GET_DB_QUERY_SENSOR_COMMAND:
             if (ORCM_ERROR == build_filter_list(buffer, &filter_list)){
                 OBJ_RELEASE(filter_list);
                 return;
             }
-            query_db_view(filter_list, &results_list, "data_sensors_view");
-            if (ORCM_SUCCESS != (rc = assemble_response(results_list, &response_buffer))) {
-                ORTE_ERROR_LOG(rc);
-                return;
+            stream_results_count = query_db_for_streaming(filter_list,
+                                                          &results_list,
+                                                         "data_sensors_view");
+            if (ORCM_SUCCESS != (rc = assemble_stream(stream_results_count,
+                                                      results_list,
+                                                      &response_buffer))) {
+                 ORTE_ERROR_LOG(rc);
+                 return;
             }
             if (NULL == response_buffer){
                 rc = ORCM_ERR_BAD_PARAM;
                 ORTE_ERROR_LOG(rc);
                 return;
             }
-            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender, response_buffer,
+            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(sender,
+                                                              response_buffer,
                                                               ORCM_RML_TAG_ORCMD_FETCH,
-                                                              orte_rml_send_callback, cbdata))) {
+                                                              orte_rml_send_callback,
+                                                              cbdata))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_RELEASE(response_buffer);
                 return;
-            }
-            if(NULL != results_list){
-                OBJ_RELEASE(results_list);
             }
             break;
         case ORCM_GET_DB_QUERY_LOG_COMMAND:
@@ -1988,6 +2258,15 @@ send_buffer:
             if(NULL != results_list) {
                 OBJ_RELEASE(results_list);
             }
+            break;
+        case ORCM_GET_DB_STREAM:
+            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &buffer_index, &n, OPAL_INT))) {
+                ORTE_ERROR_LOG (rc);
+                return;
+            }
+            OPAL_OUTPUT_VERBOSE((4, orcm_scd_base_framework.framework_output,
+                                 "Requested buffer index %d", buffer_index));
+            send_stream(sender, ORCM_RML_TAG_ORCMD_FETCH, cbdata, buffer_index);
             break;
         default:
             opal_output(0, "%s: COMMAND UNKNOWN", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));

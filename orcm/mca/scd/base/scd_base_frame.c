@@ -235,6 +235,7 @@ static int orcm_scd_base_close(void)
     OPAL_LIST_DESTRUCT(&orcm_scd_base.rmstates);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.queues);
     OPAL_LIST_DESTRUCT(&orcm_scd_base.tracking);
+    OBJ_DESTRUCT(&orcm_scd_base.db_streams);
 
     for (i = 0; i < orcm_scd_base.topologies.size; i++) {
         if (NULL != (t = (hwloc_topology_t)opal_pointer_array_get_item(&orcm_scd_base.topologies, i))) {
@@ -278,6 +279,8 @@ static int orcm_scd_base_open(mca_base_open_flag_t flags)
     OBJ_CONSTRUCT(&orcm_scd_base.topologies, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_scd_base.topologies, 1, INT_MAX, 1);
     OBJ_CONSTRUCT(&orcm_scd_base.tracking, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_scd_base.db_streams, opal_pointer_array_t);
+    opal_pointer_array_init(&orcm_scd_base.db_streams, 8, INT_MAX, 1);
 
     if (OPAL_SUCCESS !=
         (rc = mca_base_framework_components_open(&orcm_scd_base_framework,

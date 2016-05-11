@@ -29,8 +29,7 @@ sql_create_view_clauses['postgresql'] = {
                    CONCAT(dsr.time_stamp) AS time_stamp,
                    CONCAT(dsr.value_int, dsr.value_real, dsr.value_str) AS value_str,
                    dsr.units AS units
-               FROM data_sample_raw AS dsr
-                   LIMIT 100;
+               FROM data_sample_raw AS dsr;
     """),
     'syslog_view' : textwrap.dedent("""
         CREATE OR REPLACE VIEW syslog_view AS

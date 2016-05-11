@@ -17,6 +17,9 @@ extern "C" {
     #include "opal/dss/dss.h"
     // ORTE
     #include "orte/mca/rml/rml.h"
+    // ORCM
+    #include "orcm/runtime/orcm_globals.h"
+    #include "orcm/mca/db/db.h"
 #ifdef __cplusplus
 };
 #endif // __cplusplus
@@ -64,7 +67,6 @@ class ut_octl_query: public testing::Test
     static int ReplaceWildcard(const char *input_string,
                                const char *expected_string,
                                bool stop_on_first);
-
     static int AssembleDatetime(const char *date,
                                 const char *time,
                                 const char *expected_datetime);
@@ -75,6 +77,59 @@ class ut_octl_query: public testing::Test
     static int AddToStrDate(const char *date,
                             const char *expected_date,
                             int seconds);
+    static opal_list_t* CreateFiltersList(int filters_size);
+    static int QueryDbStreamVaryingFilters(uint32_t *results_count,
+                                           int *stream_index, int filters_size);
+    static int CreateBufferFromFilters(opal_buffer_t **buffer,
+                                       opal_list_t *filters,
+                                       orcm_rm_cmd_flag_t cmd);
+    static int CreateBufferFromVaryingFilters(opal_buffer_t **buffer,
+                                       opal_list_t *filters,
+                                       orcm_rm_cmd_flag_t cmd,
+                                       int filters_size);
+    static orcm_db_filter_t* CreateStringFilter(const char *field,
+                                                const char *string,
+                                                orcm_db_comparison_op_t op);
+    static void MockedRecvBuffer(orte_process_name_t* peer, orte_rml_tag_t tag,
+                                 bool persistent,
+                                 orte_rml_buffer_callback_fn_t cbfunc,
+                                 void* cbdata)
+    static int MockedSendBufferFromDbQuery(orte_process_name_t* peer,
+                                 struct opal_buffer_t* buffer,
+                                  orte_rml_tag_t tag,
+                                  orte_rml_buffer_callback_fn_t cbfunc,
+                                  void* cbdata);
+    static int MockedSendBufferFromPrint(orte_process_name_t* peer,
+                                 struct opal_buffer_t* buffer,
+                                  orte_rml_tag_t tag,
+                                  orte_rml_buffer_callback_fn_t cbfunc,
+                                  void* cbdata);
+    static int MockedFailure1SendBuffer(orte_process_name_t* peer,
+                                  struct opal_buffer_t* buffer,
+                                  orte_rml_tag_t tag,
+                                  orte_rml_buffer_callback_fn_t cbfunc,
+                                  void* cbdata);
+    static int MockedFailure2SendBuffer(orte_process_name_t* peer,
+                                  struct opal_buffer_t* buffer,
+                                  orte_rml_tag_t tag,
+                                  orte_rml_buffer_callback_fn_t cbfunc,
+                                  void* cbdata);
+    static int MockedFailure3SendBuffer(orte_process_name_t* peer,
+                                  struct opal_buffer_t* buffer,
+                                  orte_rml_tag_t tag,
+                                  orte_rml_buffer_callback_fn_t cbfunc,
+                                  void* cbdata);
+    static int MockedFailure4SendBuffer(orte_process_name_t* peer,
+                                  struct opal_buffer_t* buffer,
+                                  orte_rml_tag_t tag,
+                                  orte_rml_buffer_callback_fn_t cbfunc,
+                                  void* cbdata);
+    static int MockedFailure5SendBuffer(orte_process_name_t* peer,
+                                  struct opal_buffer_t* buffer,
+                                  orte_rml_tag_t tag,
+                                  orte_rml_buffer_callback_fn_t cbfunc,
+                                  void* cbdata);
+    static int PrintResultsFromStream(uint32_t results_count, int stream_index,
+                                      double start_time, double stop_time);
 };
-
 #endif // OCTL_TESTS_H

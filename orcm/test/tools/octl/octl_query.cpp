@@ -14,6 +14,7 @@
 
 // ORCM
 #include "orcm/tools/octl/common.h"
+#include "orcm/mca/db/db.h"
 
 // C++
 #include <iostream>
@@ -21,13 +22,24 @@
 
 // Fixture
 using namespace std;
+enum FilterSizes{zero_filters, one_filters, two_filters,
+                 two_filters_empty_key, two_filters_corrupted_value_type,
+                 three_filters};
 
 extern "C" {
+    int query_db_stream(int cmd, opal_list_t *filters, uint32_t *results_count,
+                        int *stream_index);
+    int create_buffer_from_filters(opal_buffer_t **buffer, opal_list_t *filters,
+                                   orcm_rm_cmd_flag_t cmd);
+    int print_results_from_stream(uint32_t results_count, int stream_index,
+                                  double start_time, double stop_time);
     int orcm_octl_query_event_data(int cmd, char **argv);
     opal_list_t *build_filters_list(int cmd, char **argv);
     opal_list_t *create_query_event_data_filter(int argc, char **argv);
     opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv);
     opal_list_t *create_query_event_date_filter(int argc, char **argv);
+    orcm_db_filter_t *create_string_filter(char *field, char *string,
+                                           orcm_db_comparison_op_t op);
     int split_db_results(char *db_res, char ***db_results);
     char *add_to_str_date(char *date, int seconds);
     size_t opal_list_get_size(opal_list_t *list);
@@ -37,12 +49,158 @@ extern "C" {
 
 void ut_octl_query::SetUpTestCase()
 {
-    return;
+    opal_dss_register_vars();
+    opal_dss_open();
+
+    orte_rml.recv_buffer_nb = MockedRecvBuffer;
 }
 
 void ut_octl_query::TearDownTestCase()
 {
-    return;
+    opal_dss_close();
+}
+
+void ut_octl_query::MockedRecvBuffer(orte_process_name_t* peer,
+                                     orte_rml_tag_t tag,
+                                     bool persistent,
+                                     orte_rml_buffer_callback_fn_t cbfunc,
+                                     void* cbdata)
+{
+    NULL;
+}
+
+int ut_octl_query::MockedSendBufferFromDbQuery(orte_process_name_t* peer,
+                              struct opal_buffer_t* buffer,
+                              orte_rml_tag_t tag,
+                              orte_rml_buffer_callback_fn_t cbfunc,
+                              void* cbdata)
+{
+    orte_rml_recv_cb_t* xfer = (orte_rml_recv_cb_t*)cbdata;
+    int rv = ORTE_SUCCESS;
+    int packed_int = ORCM_SUCCESS;
+    uint32_t number_of_rows = 100000000;
+    int stream_index = 1;
+    xfer->active = false;
+    OBJ_DESTRUCT(&xfer->data);
+    OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
+    opal_dss.pack(&xfer->data, &packed_int, 1, OPAL_INT);
+    opal_dss.pack(&xfer->data, &number_of_rows, 1, OPAL_UINT32);
+    opal_dss.pack(&xfer->data, &stream_index, 1, OPAL_INT);
+
+    return rv;
+}
+
+int ut_octl_query::MockedSendBufferFromPrint(orte_process_name_t* peer,
+                              struct opal_buffer_t* buffer,
+                              orte_rml_tag_t tag,
+                              orte_rml_buffer_callback_fn_t cbfunc,
+                              void* cbdata)
+{
+    orte_rml_recv_cb_t* xfer = (orte_rml_recv_cb_t*)cbdata;
+    int rv = ORTE_SUCCESS;
+    int packed_int = ORCM_SUCCESS;
+    uint32_t number_of_rows = 1;
+    int stream_index = 1;
+    char *packed_str = NULL;
+    xfer->active = false;
+    packed_str = strdup("This is a str sent by the SCD framework");
+    OBJ_DESTRUCT(&xfer->data);
+    OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
+    opal_dss.pack(&xfer->data, &stream_index, 1, OPAL_INT);
+    opal_dss.pack(&xfer->data, &number_of_rows, 1, OPAL_UINT32);
+    opal_dss.pack(&xfer->data, &packed_str, 1, OPAL_STRING);
+
+    return rv;
+}
+
+int ut_octl_query::MockedFailure1SendBuffer(orte_process_name_t* peer,
+                              struct opal_buffer_t* buffer,
+                              orte_rml_tag_t tag,
+                              orte_rml_buffer_callback_fn_t cbfunc,
+                              void* cbdata)
+{
+    return ORTE_ERR_BAD_PARAM;
+}
+
+int ut_octl_query::MockedFailure2SendBuffer(orte_process_name_t* peer,
+                              struct opal_buffer_t* buffer,
+                              orte_rml_tag_t tag,
+                              orte_rml_buffer_callback_fn_t cbfunc,
+                              void* cbdata)
+{
+    orte_rml_recv_cb_t* xfer = (orte_rml_recv_cb_t*)cbdata;
+    xfer->active = false;
+    OBJ_DESTRUCT(&xfer->data);
+    OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
+    return ORCM_SUCCESS;
+}
+
+int ut_octl_query::MockedFailure3SendBuffer(orte_process_name_t* peer,
+                              struct opal_buffer_t* buffer,
+                              orte_rml_tag_t tag,
+                              orte_rml_buffer_callback_fn_t cbfunc,
+                              void* cbdata)
+{
+    orte_rml_recv_cb_t* xfer = (orte_rml_recv_cb_t*)cbdata;
+    int rv = ORTE_SUCCESS;
+    int packed_int = ORCM_SUCCESS;
+    uint32_t number_of_rows = 100000000;
+    int stream_index = 1;
+    xfer->active = false;
+    OBJ_DESTRUCT(&xfer->data);
+    OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
+    opal_dss.pack(&xfer->data, &packed_int, 1, OPAL_INT);
+
+    return rv;
+}
+
+int ut_octl_query::MockedFailure4SendBuffer(orte_process_name_t* peer,
+                              struct opal_buffer_t* buffer,
+                              orte_rml_tag_t tag,
+                              orte_rml_buffer_callback_fn_t cbfunc,
+                              void* cbdata)
+{
+    orte_rml_recv_cb_t* xfer = (orte_rml_recv_cb_t*)cbdata;
+    int rv = ORTE_SUCCESS;
+    int packed_int = ORCM_SUCCESS;
+    uint32_t number_of_rows = 100000000;
+    int stream_index = 1;
+    xfer->active = false;
+    OBJ_DESTRUCT(&xfer->data);
+    OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
+    opal_dss.pack(&xfer->data, &packed_int, 1, OPAL_INT);
+    opal_dss.pack(&xfer->data, &number_of_rows, 1, OPAL_UINT32);
+
+    return rv;
+}
+
+int ut_octl_query::MockedFailure5SendBuffer(orte_process_name_t* peer,
+                              struct opal_buffer_t* buffer,
+                              orte_rml_tag_t tag,
+                              orte_rml_buffer_callback_fn_t cbfunc,
+                              void* cbdata)
+{
+    orte_rml_recv_cb_t* xfer = (orte_rml_recv_cb_t*)cbdata;
+    int rv = ORTE_SUCCESS;
+    int packed_int = ORCM_SUCCESS;
+    uint32_t number_of_rows = 1;
+    int stream_index = 1;
+
+    xfer->active = false;
+    OBJ_DESTRUCT(&xfer->data);
+    OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
+    opal_dss.pack(&xfer->data, &stream_index, 1, OPAL_INT);
+    opal_dss.pack(&xfer->data, &number_of_rows, 1, OPAL_UINT32);
+
+    return rv;
+}
+
+int ut_octl_query::PrintResultsFromStream(uint32_t results_count,
+                                          int stream_index, double start_time,
+                                          double stop_time)
+{
+    return print_results_from_stream(results_count, stream_index, start_time,
+                                     stop_time);
 }
 
 int ut_octl_query::ReplaceWildcard(const char *input_string,
@@ -103,6 +261,95 @@ int ut_octl_query::AddToStrDate(const char *date,
     rc = strcmp(result_date, expected_date);
     return rc;
 }
+
+orcm_db_filter_t* ut_octl_query::CreateStringFilter(const char *field, const char *string,
+                                                    orcm_db_comparison_op_t op)
+{
+    return create_string_filter((char *)field, (char *)string, op);
+}
+
+opal_list_t * ut_octl_query::CreateFiltersList(int filters_size)
+{
+    opal_list_t *filters_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+
+    filters_list = OBJ_NEW(opal_list_t);
+    switch(filters_size) {
+        case zero_filters:
+            break;
+        case one_filters:
+            filter_item = CreateStringFilter("data_item", "%", CONTAINS);
+            opal_list_append(filters_list, &filter_item->value.super);
+            break;
+        case two_filters:
+            filter_item = CreateStringFilter("data_item", "%", CONTAINS);
+            opal_list_append(filters_list, &filter_item->value.super);
+            filter_item = CreateStringFilter("hostname", "%", CONTAINS);
+            opal_list_append(filters_list, &filter_item->value.super);
+            break;
+        case two_filters_empty_key:
+            filter_item = CreateStringFilter("", "%", CONTAINS);
+            opal_list_append(filters_list, &filter_item->value.super);
+            filter_item = CreateStringFilter("hostname", "%", CONTAINS);
+            opal_list_append(filters_list, &filter_item->value.super);
+            break;
+        case two_filters_corrupted_value_type:
+            filter_item = CreateStringFilter("data_item", "%", CONTAINS);
+            filter_item->value.type = OPAL_INT;
+            opal_list_append(filters_list, &filter_item->value.super);
+            filter_item = CreateStringFilter("hostname", "%", CONTAINS);
+            opal_list_append(filters_list, &filter_item->value.super);
+            break;
+        case three_filters:
+            filter_item = CreateStringFilter("data_item", "%", CONTAINS);
+            opal_list_append(filters_list, &filter_item->value.super);
+            filter_item = CreateStringFilter("hostname", "%", CONTAINS);
+            opal_list_append(filters_list, &filter_item->value.super);
+            filter_item = CreateStringFilter("another", "filter", NONE);
+            opal_list_append(filters_list, &filter_item->value.super);
+            break;
+    }
+
+    return filters_list;
+}
+int ut_octl_query::QueryDbStreamVaryingFilters(uint32_t *results_count,
+                                             int *stream_index,
+                                             int filters_size)
+{
+    int rc;
+    int cmd = -1;
+    opal_list_t *filters_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+
+    filters_list = CreateFiltersList(filters_size);
+    rc = query_db_stream(cmd, filters_list, results_count, stream_index);
+
+    return rc;
+}
+
+int ut_octl_query::CreateBufferFromFilters(opal_buffer_t **buffer_to_send,
+                                           opal_list_t *filterslist,
+                                           orcm_rm_cmd_flag_t cmd)
+{
+    int rc;
+    rc = create_buffer_from_filters(buffer_to_send, filterslist, cmd);
+    return rc;
+}
+
+int ut_octl_query::CreateBufferFromVaryingFilters(opal_buffer_t **buffer_to_send,
+                                           opal_list_t *filterslist,
+                                           orcm_rm_cmd_flag_t cmd,
+                                           int filters_size)
+{
+    int rc;
+    opal_list_t *filters_list = NULL;
+
+    filters_list = CreateFiltersList(filters_size);
+    rc = create_buffer_from_filters(buffer_to_send, filters_list, cmd);
+    return rc;
+}
+
+
 
 TEST_F(ut_octl_query, event_data_node_list_incomplete)
 {
@@ -682,4 +929,544 @@ TEST_F(ut_octl_query, replace_wildcard_in_the_end_with_stop)
     int rc;
     rc = ReplaceWildcard("Somestring*", "Somestring%", true);
     EXPECT_EQ(0, rc);
+}
+
+// query_db_stream function tests
+
+TEST_F(ut_octl_query, query_db_stream_valid_filters_rc)
+{
+    int rc;
+    uint32_t results_count = 0;
+    int stream_index = 0;
+
+    orte_rml.send_buffer_nb = MockedSendBufferFromDbQuery;
+    rc = QueryDbStreamVaryingFilters(&results_count, &stream_index, two_filters);
+
+    EXPECT_EQ(ORCM_SUCCESS, rc);
+}
+
+TEST_F(ut_octl_query, query_db_stream_valid_filters_results_count)
+{
+    int rc;
+    uint32_t results_count = 0;
+    int stream_index = 0;
+
+    orte_rml.send_buffer_nb = MockedSendBufferFromDbQuery;
+    rc = QueryDbStreamVaryingFilters(&results_count, &stream_index, two_filters);
+
+    EXPECT_NE(0, results_count);
+}
+
+TEST_F(ut_octl_query, query_db_stream_valid_filters_stream_index)
+{
+    int rc;
+    uint32_t results_count = 0;
+    int stream_index = 0;
+
+    orte_rml.send_buffer_nb = MockedSendBufferFromDbQuery;
+    rc = QueryDbStreamVaryingFilters(&results_count, &stream_index, two_filters);
+
+    EXPECT_NE(0, stream_index);
+}
+
+TEST_F(ut_octl_query, query_db_stream_valid_filters_null_results_count)
+{
+    int rc;
+    int stream_index = 0;
+
+    rc = QueryDbStreamVaryingFilters(NULL, &stream_index, two_filters);
+
+    EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
+}
+
+TEST_F(ut_octl_query, query_db_stream_valid_filters_null_stream_index)
+{
+    int rc;
+    uint32_t results_count = 0;
+
+    rc = QueryDbStreamVaryingFilters(&results_count, NULL, two_filters);
+
+    EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
+}
+
+TEST_F(ut_octl_query, query_db_stream_invalid_filters)
+{
+    int rc;
+    uint32_t results_count = 0;
+    int stream_index = 0;
+
+    rc = QueryDbStreamVaryingFilters(&results_count, &stream_index,
+                                     one_filters);
+
+    EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
+}
+
+TEST_F(ut_octl_query, query_db_stream_no_receiver)
+{
+    int rc;
+    uint32_t results_count = 0;
+    int stream_index = 0;
+
+    orte_rml.send_buffer_nb = MockedFailure1SendBuffer;
+    rc = QueryDbStreamVaryingFilters(&results_count, &stream_index,
+                                     two_filters);
+    orte_rml.send_buffer_nb = MockedSendBufferFromDbQuery;
+
+    EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
+}
+
+TEST_F(ut_octl_query, query_db_stream_first_unpack_error)
+{
+    int rc;
+    uint32_t results_count = 0;
+    int stream_index = 0;
+    orte_rml.send_buffer_nb = MockedFailure2SendBuffer;
+    rc = QueryDbStreamVaryingFilters(&results_count, &stream_index,
+                                     two_filters);
+    orte_rml.send_buffer_nb = MockedSendBufferFromDbQuery;
+    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER, rc);
+}
+
+TEST_F(ut_octl_query, query_db_stream_second_unpack_error)
+{
+    int rc;
+    uint32_t results_count = 0;
+    int stream_index = 0;
+    orte_rml.send_buffer_nb = MockedFailure3SendBuffer;
+    rc = QueryDbStreamVaryingFilters(&results_count, &stream_index,
+                                     two_filters);
+    orte_rml.send_buffer_nb = MockedSendBufferFromDbQuery;
+    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER, rc);
+}
+
+TEST_F(ut_octl_query, query_db_stream_third_unpack_error)
+{
+    int rc;
+    uint32_t results_count = 0;
+    int stream_index = 0;
+    orte_rml.send_buffer_nb = MockedFailure4SendBuffer;
+    rc = QueryDbStreamVaryingFilters(&results_count, &stream_index,
+                                     two_filters);
+    orte_rml.send_buffer_nb = MockedSendBufferFromDbQuery;
+    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER, rc);
+}
+
+// create_buffer_from_filters function tests
+
+TEST_F(ut_octl_query, create_buffer_from_filters_null_filters)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    orcm_rm_cmd_flag_t command = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+
+    rc = CreateBufferFromFilters(&buffer, NULL, command);
+    EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_buffer_unharmed)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    orcm_rm_cmd_flag_t command = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+
+    rc = CreateBufferFromFilters(&buffer, NULL, command);
+    EXPECT_EQ(NULL, buffer);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_first_pack_failed)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+    orcm_rm_cmd_flag_t command = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+
+    filters_list = OBJ_NEW(opal_list_t);
+    opal_dss_close();
+    rc = CreateBufferFromFilters(&buffer, filters_list,
+                                 (orcm_rm_cmd_flag_t)command);
+    EXPECT_EQ(OPAL_ERR_PACK_FAILURE, rc);
+    opal_dss_register_vars();
+    opal_dss_open();
+}
+
+
+TEST_F(ut_octl_query, create_buffer_from_filters_empty_filters)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_rm_cmd_flag_t command = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+
+    rc = CreateBufferFromFilters(&buffer, filters_list,
+                                 (orcm_rm_cmd_flag_t)command);
+    EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_empty_filters_buffer_unharmed)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_rm_cmd_flag_t command = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+
+
+    rc = CreateBufferFromVaryingFilters(&buffer, filters_list,
+                                        (orcm_rm_cmd_flag_t)command,
+                                        zero_filters);
+    EXPECT_EQ(NULL, buffer);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_not_enough_filters)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_rm_cmd_flag_t command = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+
+    rc = CreateBufferFromVaryingFilters(&buffer, filters_list,
+                                        (orcm_rm_cmd_flag_t)command,
+                                        one_filters);
+    EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
+}
+
+
+TEST_F(ut_octl_query, create_buffer_from_filters_empty_key)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+    orcm_rm_cmd_flag_t command = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+
+    rc = CreateBufferFromVaryingFilters(&buffer, filters_list,
+                                        (orcm_rm_cmd_flag_t)command,
+                                        two_filters_empty_key);
+
+    EXPECT_EQ(ORCM_ERR_BAD_PARAM, rc);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_empty_key_buffer_unharmed)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+    orcm_rm_cmd_flag_t command = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+
+    rc = CreateBufferFromVaryingFilters(&buffer, filters_list,
+                                        (orcm_rm_cmd_flag_t)command,
+                                        two_filters_empty_key);
+
+    EXPECT_EQ(NULL, buffer);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_corrupted_value_type)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+    orcm_rm_cmd_flag_t command = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+
+    rc = CreateBufferFromVaryingFilters(&buffer, filters_list,
+                                        (orcm_rm_cmd_flag_t)command,
+                                        two_filters_corrupted_value_type);
+
+    EXPECT_EQ(ORCM_ERR_BAD_PARAM, rc);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_corrupted_value_type_unharmed_buffer)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_db_filter_t *filter_item = NULL;
+    orcm_rm_cmd_flag_t command = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+
+    rc = CreateBufferFromVaryingFilters(&buffer, filters_list,
+                                        (orcm_rm_cmd_flag_t)command,
+                                        two_filters_corrupted_value_type);
+
+    EXPECT_EQ(NULL, buffer);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_valid_return_code)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    int unpacked_int;
+    uint16_t unpacked_uint16;
+    uint8_t unpacked_uint8;
+    orcm_rm_cmd_flag_t command;
+    int n=1;
+
+    rc = CreateBufferFromVaryingFilters(&buffer, filters_list,
+                                        (orcm_rm_cmd_flag_t)command,
+                                        two_filters);
+
+    EXPECT_EQ(0, rc);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_valid_command_packed)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_rm_cmd_flag_t command_to_send = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+    orcm_rm_cmd_flag_t command_to_recv = ORCM_GET_DB_QUERY_HISTORY_COMMAND;
+    int n=1;
+
+    CreateBufferFromVaryingFilters(&buffer, filters_list, command_to_send,
+                                   two_filters);
+    opal_dss.unpack(buffer, &command_to_recv, &n, ORCM_RM_CMD_T);
+
+    EXPECT_EQ(ORCM_GET_DB_QUERY_HISTORY_COMMAND, command_to_recv);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_valid_filter_list_size_packed)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    uint16_t unpacked_uint16;
+    orcm_rm_cmd_flag_t command;
+    int n=1;
+
+    CreateBufferFromVaryingFilters(&buffer, filters_list, command,
+                                   two_filters);
+    opal_dss.unpack(buffer, &command, &n, ORCM_RM_CMD_T);
+    opal_dss.unpack(buffer, &unpacked_uint16, &n, OPAL_UINT16);
+
+    EXPECT_EQ(2, unpacked_uint16);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_first_filter_key)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_rm_cmd_flag_t command;
+    uint16_t unpacked_uint16;
+    char *unpacked_string;
+    int n=1;
+
+    CreateBufferFromVaryingFilters(&buffer, filters_list, command,
+                                   two_filters);
+    opal_dss.unpack(buffer, &command, &n, ORCM_RM_CMD_T);
+    opal_dss.unpack(buffer, &unpacked_uint16, &n, OPAL_UINT16);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+
+    EXPECT_STREQ("data_item", unpacked_string);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_first_filter_operation)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_rm_cmd_flag_t command;
+    uint16_t unpacked_uint16;
+    char *unpacked_string;
+    uint8_t unpacked_uint8;
+    int n=1;
+
+    CreateBufferFromVaryingFilters(&buffer, filters_list, command,
+                                   two_filters);
+    opal_dss.unpack(buffer, &command, &n, ORCM_RM_CMD_T);
+    opal_dss.unpack(buffer, &unpacked_uint16, &n, OPAL_UINT16);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+    opal_dss.unpack(buffer, &unpacked_uint8, &n, OPAL_UINT8);
+
+    EXPECT_EQ(CONTAINS, unpacked_uint8);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_first_filter_value)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_rm_cmd_flag_t command;
+    uint16_t unpacked_uint16;
+    char *unpacked_string;
+    uint8_t unpacked_uint8;
+    int n=1;
+
+    CreateBufferFromVaryingFilters(&buffer, filters_list, command,
+                                   two_filters);
+    opal_dss.unpack(buffer, &command, &n, ORCM_RM_CMD_T);
+    opal_dss.unpack(buffer, &unpacked_uint16, &n, OPAL_UINT16);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+    opal_dss.unpack(buffer, &unpacked_uint8, &n, OPAL_UINT8);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+
+    EXPECT_STREQ("%", unpacked_string);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_second_filter_key)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_rm_cmd_flag_t command;
+    uint16_t unpacked_uint16;
+    char *unpacked_string;
+    uint8_t unpacked_uint8;
+    int n=1;
+
+    CreateBufferFromVaryingFilters(&buffer, filters_list, command,
+                                   two_filters);
+    opal_dss.unpack(buffer, &command, &n, ORCM_RM_CMD_T);
+    opal_dss.unpack(buffer, &unpacked_uint16, &n, OPAL_UINT16);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+    opal_dss.unpack(buffer, &unpacked_uint8, &n, OPAL_UINT8);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+
+    EXPECT_STREQ("hostname", unpacked_string);
+
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_second_filter_operation)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_rm_cmd_flag_t command;
+    uint16_t unpacked_uint16;
+    char *unpacked_string;
+    uint8_t unpacked_uint8;
+    int n=1;
+
+    CreateBufferFromVaryingFilters(&buffer, filters_list, command,
+                                   two_filters);
+    opal_dss.unpack(buffer, &command, &n, ORCM_RM_CMD_T);
+    opal_dss.unpack(buffer, &unpacked_uint16, &n, OPAL_UINT16);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+    opal_dss.unpack(buffer, &unpacked_uint8, &n, OPAL_UINT8);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+    opal_dss.unpack(buffer, &unpacked_uint8, &n, OPAL_UINT8);
+
+    EXPECT_EQ(CONTAINS, unpacked_uint8);
+}
+
+TEST_F(ut_octl_query, create_buffer_from_filters_second_filter_value)
+{
+    int rc;
+    opal_buffer_t *buffer = NULL;
+    opal_list_t *filters_list = NULL;
+    orcm_rm_cmd_flag_t command;
+    uint16_t unpacked_uint16;
+    char *unpacked_string;
+    uint8_t unpacked_uint8;
+    int n=1;
+
+    CreateBufferFromVaryingFilters(&buffer, filters_list, command,
+                                   two_filters);
+    opal_dss.unpack(buffer, &command, &n, ORCM_RM_CMD_T);
+    opal_dss.unpack(buffer, &unpacked_uint16, &n, OPAL_UINT16);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+    opal_dss.unpack(buffer, &unpacked_uint8, &n, OPAL_UINT8);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+    opal_dss.unpack(buffer, &unpacked_uint8, &n, OPAL_UINT8);
+    opal_dss.unpack(buffer, &unpacked_string, &n, OPAL_STRING);
+
+    EXPECT_STREQ("%", unpacked_string);
+}
+
+// print_results_from_stream function tests
+
+TEST_F(ut_octl_query, print_results_from_stream_return_code)
+{
+    int rc;
+    int results_count = 1;
+    int stream_index = 1;
+    double start_time = 0.0;
+    double stop_time = 1.0;
+
+    orte_rml.send_buffer_nb = MockedSendBufferFromPrint;
+    rc = PrintResultsFromStream(results_count, stream_index, start_time,
+                                stop_time);
+
+    EXPECT_EQ(OPAL_SUCCESS, rc);
+}
+
+TEST_F(ut_octl_query, print_results_from_stream_no_receiver)
+{
+    int rc;
+    int results_count = 2;
+    int stream_index = 1980;
+    double start_time = 0.0;
+    double stop_time = 1.0;
+
+    orte_rml.send_buffer_nb = MockedFailure1SendBuffer;
+    rc = print_results_from_stream(results_count, stream_index, start_time,
+                                   stop_time);
+    orte_rml.send_buffer_nb = MockedSendBufferFromPrint;
+
+    EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
+}
+
+TEST_F(ut_octl_query, print_results_from_stream_corrupted_stream_index)
+{
+    int rc;
+    int results_count = 2;
+    int stream_index = 1980;
+    double start_time = 0.0;
+    double stop_time = 1.0;
+
+    orte_rml.send_buffer_nb = MockedFailure2SendBuffer;
+    rc = print_results_from_stream(results_count, stream_index, start_time,
+                                   stop_time);
+    orte_rml.send_buffer_nb = MockedSendBufferFromPrint;
+
+    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER, rc);
+}
+
+TEST_F(ut_octl_query, print_results_from_stream_unexpected_stream_index)
+{
+    int rc;
+    int results_count = 2;
+    int stream_index = 1;
+    double start_time = 0.0;
+    double stop_time = 1.0;
+
+    orte_rml.send_buffer_nb = MockedFailure5SendBuffer;
+    rc = print_results_from_stream(results_count, stream_index, start_time,
+                                   stop_time);
+
+    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER, rc);
+}
+
+TEST_F(ut_octl_query, print_results_from_stream_results_greater_than_count)
+{
+    int rc;
+    int results_count = 2;
+    int stream_index = 1;
+    double start_time = 0.0;
+    double stop_time = 1.0;
+
+    orte_rml.send_buffer_nb = MockedSendBufferFromPrint;
+    rc = print_results_from_stream(results_count, stream_index, start_time,
+                                   stop_time);
+
+    EXPECT_EQ(ORCM_SUCCESS, rc);
+}
+
+TEST_F(ut_octl_query, print_results_from_stream_results_less_than_count)
+{
+    int rc;
+    int results_count = 10002;
+    int stream_index = 1;
+    double start_time = 0.0;
+    double stop_time = 1.0;
+
+    orte_rml.send_buffer_nb = MockedSendBufferFromPrint;
+    rc = print_results_from_stream(results_count, stream_index, start_time,
+                                   stop_time);
+
+    EXPECT_EQ(ORCM_ERROR, rc);
 }

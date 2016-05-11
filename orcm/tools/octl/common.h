@@ -52,6 +52,7 @@
 /* A timeout length when blocking
  * until something happens */
 #define ORCM_OCTL_WAIT_TIMEOUT 10
+#define ORCM_OCTL_WAIT_TIMEOUT_STREAM 600
 
 BEGIN_C_DECLS
 

@@ -127,6 +127,9 @@ NODES                : STATE  SCHED_STATE
 [info:rows-found]
 %u rows were found (%0.3f seconds)
 
+[info:rows-found-limited]
+%u rows were found (%0.3f seconds) [Only the first 10,000 rows are displayed]
+
 [info:workflow-created]
 Workflow created with id: %i.
 

@@ -108,6 +108,8 @@ typedef struct {
     opal_pointer_array_t topologies;
     /* track running allocations and number of nodes completed */
     opal_list_t tracking;
+    /* data streams */
+    opal_pointer_array_t db_streams;
 } orcm_scd_base_t;
 ORCM_DECLSPEC extern orcm_scd_base_t orcm_scd_base;
 

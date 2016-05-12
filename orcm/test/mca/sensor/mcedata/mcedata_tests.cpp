@@ -36,6 +36,10 @@ extern "C" {
     extern void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals);
     extern void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
     extern void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals);
+    extern long orcm_sensor_mcedata_get_log_file_pos(void);
+    extern void mcedata_get_sample_rate(int *sample_rate);
+    extern mcetype get_mcetype(uint64_t mci_status);
+    extern void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals);
 };
 
 void ut_mcedata_tests::SetUpTestCase()
@@ -64,6 +68,12 @@ int ut_mcedata_tests::CloseDir(DIR* dir_fd)
 {
     delete (int*)dir_fd;
     return 0;
+}
+
+int ut_mcedata_tests::FSeekError(FILE*,long,int)
+{
+    errno = EBADF;
+    return -1;
 }
 
 static const char* entries[] = {
@@ -220,6 +230,36 @@ TEST_F(ut_mcedata_tests, mcedata_init_start_stop_finalize_test2)
     mca_sensor_mcedata_component.test = false;
 }
 
+TEST_F(ut_mcedata_tests, mcedata_init_start_stop_finalize_test3)
+{
+    mca_sensor_mcedata_component.test = true;
+    mca_sensor_mcedata_component.use_progress_thread = true;
+    mca_sensor_mcedata_component.sample_rate = 1;
+
+    mcedata_mocking.opendir_callback = OpenDir;
+    mcedata_mocking.closedir_callback = CloseDir;
+    mcedata_mocking.readdir_callback = ReadDir;
+
+    int rv = orcm_sensor_mcedata_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    orcm_sensor_mcedata_module.start(5);
+    orcm_sensor_mcedata_module.start(6);
+
+    sleep(2);
+
+    orcm_sensor_mcedata_module.stop(5);
+    orcm_sensor_mcedata_module.stop(6);
+
+    orcm_sensor_mcedata_module.finalize();
+
+    mcedata_mocking.opendir_callback = NULL;
+    mcedata_mocking.closedir_callback = NULL;
+    mcedata_mocking.readdir_callback = NULL;
+    mca_sensor_mcedata_component.use_progress_thread = false;
+    mca_sensor_mcedata_component.test = false;
+}
+
 TEST_F(ut_mcedata_tests, mcedata_sample_log_test)
 {
     mca_sensor_mcedata_component.test = true;
@@ -361,4 +401,363 @@ TEST_F(ut_mcedata_tests, mcedata_cache_filter_test)
     EXPECT_EQ(5, opal_list_get_size(vals));
 
     ORCM_RELEASE(vals);
+}
+
+TEST_F(ut_mcedata_tests, mcedata_start_log_file_test)
+{
+    mcedata_mocking.opendir_callback = OpenDir;
+    mcedata_mocking.closedir_callback = CloseDir;
+    mcedata_mocking.readdir_callback = ReadDir;
+
+    mca_sensor_mcedata_component.use_progress_thread = false;
+    char* saved_logfile = mca_sensor_mcedata_component.logfile;
+    mca_sensor_mcedata_component.logfile = (char*)"./test.logfile";
+
+    int rv = orcm_sensor_mcedata_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    orcm_sensor_mcedata_module.start(2);
+    EXPECT_EQ(0, orcm_sensor_mcedata_get_log_file_pos());
+    orcm_sensor_mcedata_module.stop(2);
+
+    orcm_sensor_mcedata_module.finalize();
+
+    remove("./test.logfile");
+
+    mca_sensor_mcedata_component.logfile = saved_logfile;
+
+    mcedata_mocking.opendir_callback = NULL;
+    mcedata_mocking.closedir_callback = NULL;
+    mcedata_mocking.readdir_callback = NULL;
+}
+
+TEST_F(ut_mcedata_tests, mcedata_start_log_file_test_2)
+{
+    mcedata_mocking.opendir_callback = OpenDir;
+    mcedata_mocking.closedir_callback = CloseDir;
+    mcedata_mocking.readdir_callback = ReadDir;
+
+    FILE* tfd = fopen("./test.logfile", "w");
+    ASSERT_NE((uint64_t)0, (uint64_t)tfd);
+    fclose(tfd);
+    mca_sensor_mcedata_component.use_progress_thread = false;
+    char* saved_logfile = mca_sensor_mcedata_component.logfile;
+    mca_sensor_mcedata_component.logfile = (char*)"./test.logfile";
+
+    int rv = orcm_sensor_mcedata_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    orcm_sensor_mcedata_module.start(2);
+    EXPECT_EQ(0, orcm_sensor_mcedata_get_log_file_pos());
+    remove("./test.logfile");
+    orcm_sensor_mcedata_module.stop(2);
+
+    orcm_sensor_mcedata_module.finalize();
+
+    mca_sensor_mcedata_component.logfile = saved_logfile;
+
+    mcedata_mocking.opendir_callback = NULL;
+    mcedata_mocking.closedir_callback = NULL;
+    mcedata_mocking.readdir_callback = NULL;
+}
+
+TEST_F(ut_mcedata_tests, mcedata_update_collect_sample_test_negative)
+{
+    mcedata_mocking.opendir_callback = OpenDir;
+    mcedata_mocking.closedir_callback = CloseDir;
+    mcedata_mocking.readdir_callback = ReadDir;
+    mca_sensor_mcedata_component.test = false;
+    mca_sensor_mcedata_component.use_progress_thread = false;
+    char* saved_logfile = mca_sensor_mcedata_component.logfile;
+    mca_sensor_mcedata_component.logfile = (char*)"./test.logfile";
+    mca_sensor_mcedata_component.collect_metrics = true;
+
+    int rv = orcm_sensor_mcedata_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    orcm_sensor_mcedata_module.start(2);
+
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_mcedata_module.sample(&sampler);
+    EXPECT_EQ(0x01, mca_sensor_mcedata_component.diagnostics);
+    OBJ_DESTRUCT(&sampler);
+
+    orcm_sensor_mcedata_module.stop(2);
+
+    orcm_sensor_mcedata_module.finalize();
+
+    remove("./test.logfile");
+
+    mca_sensor_mcedata_component.test = true;
+    mca_sensor_mcedata_component.logfile = saved_logfile;
+    mcedata_mocking.opendir_callback = NULL;
+    mcedata_mocking.closedir_callback = NULL;
+    mcedata_mocking.readdir_callback = NULL;
+}
+
+TEST_F(ut_mcedata_tests, mcedata_update_log_file_size_test)
+{
+    char* logfile = (char*)"./test.logfile";
+    char* lines[] = {
+        (char*)"DUMMY COMMENT LINE\n",
+        (char*)"DUMMY LOG mcelog CPU \n",
+        (char*)"DUMMY LOG mcelog BANK \n",
+        (char*)"DUMMY LOG mcelog MISC \n",
+        (char*)"DUMMY LOG mcelog ADDR \n",
+        (char*)"DUMMY LOG mcelog STATUS \n",
+        (char*)"DUMMY LOG mcelog MCGSTATUS \n",
+        (char*)"DUMMY LOG mcelog TIME \n",
+        (char*)"DUMMY LOG mcelog SOCKETID \n",
+        (char*)"DUMMY LOG mcelog MCGCAP \n",
+        (char*)"\n",
+        NULL
+    };
+    int full_size = 0;
+    for(int i = 0; NULL != lines[i]; ++i) {
+        full_size += strlen(lines[i]);
+    }
+    int first_line_size = strlen(lines[0]);
+    mcedata_mocking.opendir_callback = OpenDir;
+    mcedata_mocking.closedir_callback = CloseDir;
+    mcedata_mocking.readdir_callback = ReadDir;
+    mca_sensor_mcedata_component.test = false;
+    mca_sensor_mcedata_component.use_progress_thread = false;
+    char* saved_logfile = mca_sensor_mcedata_component.logfile;
+    mca_sensor_mcedata_component.logfile = logfile;
+    mca_sensor_mcedata_component.collect_metrics = true;
+
+    FILE* tfd = fopen(logfile, "w");
+    ASSERT_NE((uint64_t)0, (uint64_t)tfd);
+    fprintf(tfd, lines[0]);
+    fclose(tfd);
+
+    int rv = orcm_sensor_mcedata_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    orcm_sensor_mcedata_module.start(2);
+
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_mcedata_module.sample(&sampler);
+    EXPECT_EQ(0x01, mca_sensor_mcedata_component.diagnostics);
+    EXPECT_EQ(first_line_size, (size_t)orcm_sensor_mcedata_get_log_file_pos());
+    OBJ_DESTRUCT(&sampler);
+
+    tfd = fopen(logfile, "w");
+    EXPECT_NE((uint64_t)0, (uint64_t)tfd);
+    if(NULL != tfd) {
+        int i = 0;
+        while(NULL != lines[i])
+            fprintf(tfd, lines[i++]);
+        fclose(tfd);
+    }
+
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_mcedata_module.sample(&sampler);
+    EXPECT_EQ(0x01, mca_sensor_mcedata_component.diagnostics);
+    EXPECT_EQ(full_size, (size_t)orcm_sensor_mcedata_get_log_file_pos());
+    OBJ_DESTRUCT(&sampler);
+
+    orcm_sensor_mcedata_module.stop(2);
+
+    orcm_sensor_mcedata_module.finalize();
+
+    remove(logfile);
+
+    mca_sensor_mcedata_component.test = true;
+    mca_sensor_mcedata_component.logfile = saved_logfile;
+    mcedata_mocking.opendir_callback = NULL;
+    mcedata_mocking.closedir_callback = NULL;
+    mcedata_mocking.readdir_callback = NULL;
+}
+
+TEST_F(ut_mcedata_tests, mcedata_update_log_file_size_test_2)
+{
+    mcedata_mocking.opendir_callback = OpenDir;
+    mcedata_mocking.closedir_callback = CloseDir;
+    mcedata_mocking.readdir_callback = ReadDir;
+    mcedata_mocking.fseek_callback = FSeekError;
+    mca_sensor_mcedata_component.test = false;
+    mca_sensor_mcedata_component.use_progress_thread = false;
+    char* saved_logfile = mca_sensor_mcedata_component.logfile;
+    mca_sensor_mcedata_component.logfile = (char*)"./test.logfile";
+    mca_sensor_mcedata_component.collect_metrics = true;
+
+    FILE* tfd = fopen("./test.logfile", "w");
+    ASSERT_NE((uint64_t)0, (uint64_t)tfd);
+    fprintf(tfd, "DUMMY LOG LINE\n");
+    fclose(tfd);
+
+    int rv = orcm_sensor_mcedata_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    orcm_sensor_mcedata_module.start(2);
+
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_mcedata_module.sample(&sampler);
+    EXPECT_EQ(0x01, mca_sensor_mcedata_component.diagnostics);
+    EXPECT_EQ(0, (size_t)orcm_sensor_mcedata_get_log_file_pos());
+    OBJ_DESTRUCT(&sampler);
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_mcedata_module.sample(&sampler);
+    EXPECT_EQ(0x01, mca_sensor_mcedata_component.diagnostics);
+    EXPECT_EQ(0, (size_t)orcm_sensor_mcedata_get_log_file_pos());
+    OBJ_DESTRUCT(&sampler);
+
+    orcm_sensor_mcedata_module.stop(2);
+
+    orcm_sensor_mcedata_module.finalize();
+
+    remove("./test.logfile");
+
+    mca_sensor_mcedata_component.test = true;
+    mca_sensor_mcedata_component.logfile = saved_logfile;
+    mcedata_mocking.opendir_callback = NULL;
+    mcedata_mocking.closedir_callback = NULL;
+    mcedata_mocking.readdir_callback = NULL;
+    mcedata_mocking.fseek_callback = NULL;
+}
+
+TEST_F(ut_mcedata_tests, mcedata_perthread_test)
+{
+    mcedata_mocking.opendir_callback = OpenDir;
+    mcedata_mocking.closedir_callback = CloseDir;
+    mcedata_mocking.readdir_callback = ReadDir;
+
+    mca_sensor_mcedata_component.sample_rate = 1;
+    mca_sensor_mcedata_component.use_progress_thread = true;
+    mca_sensor_mcedata_component.test = true;
+
+    int rv = orcm_sensor_mcedata_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    orcm_sensor_mcedata_module.start(2);
+    sleep(2);
+    mca_sensor_mcedata_component.sample_rate = 2;
+    sleep(3);
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_mcedata_module.sample(&sampler);
+    OBJ_DESTRUCT(&sampler);
+    orcm_sensor_mcedata_module.stop(2);
+
+    orcm_sensor_mcedata_module.finalize();
+
+    mca_sensor_mcedata_component.use_progress_thread = false;
+    mca_sensor_mcedata_component.test = false;
+    mca_sensor_mcedata_component.sample_rate = 1;
+
+    mcedata_mocking.opendir_callback = NULL;
+    mcedata_mocking.closedir_callback = NULL;
+    mcedata_mocking.readdir_callback = NULL;
+}
+
+TEST_F(ut_mcedata_tests, mcedata_get_sample_rate_test)
+{
+    mcedata_mocking.opendir_callback = OpenDir;
+    mcedata_mocking.closedir_callback = CloseDir;
+    mcedata_mocking.readdir_callback = ReadDir;
+
+    mca_sensor_mcedata_component.sample_rate = 1;
+
+    int rv = orcm_sensor_mcedata_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    mcedata_get_sample_rate(NULL);
+    int rate = -1;
+    mcedata_get_sample_rate(&rate);
+    EXPECT_EQ(1, rate);
+
+    orcm_sensor_mcedata_module.finalize();
+
+    mcedata_mocking.opendir_callback = NULL;
+    mcedata_mocking.closedir_callback = NULL;
+    mcedata_mocking.readdir_callback = NULL;
+}
+
+TEST_F(ut_mcedata_tests, mcedata_get_mcetype_test)
+{
+    ASSERT_EQ(e_unknown_error, get_mcetype(0));
+    ASSERT_EQ(e_bus_ic_error, get_mcetype(BUS_IC_ERR_MASK));
+    ASSERT_EQ(e_cache_error, get_mcetype(CACHE_ERR_MASK));
+    ASSERT_EQ(e_mem_ctrl_error, get_mcetype(MEM_CTRL_ERR_MASK));
+    ASSERT_EQ(e_tlb_error, get_mcetype(TLB_ERR_MASK));
+    ASSERT_EQ(e_gen_cache_error, get_mcetype(GEN_CACHE_ERR_MASK));
+}
+
+TEST_F(ut_mcedata_tests, mcedata_decode_test)
+{
+    uint64_t combos[] = {
+        0,
+        MCI_UC_MASK,
+        MCI_MISCV_MASK,
+        MCI_PCC_MASK,
+        MCI_S_MASK,
+        MCI_AR_MASK,
+
+        MCI_UC_MASK | MCI_MISCV_MASK,
+        MCI_UC_MASK | MCI_PCC_MASK,
+        MCI_UC_MASK | MCI_S_MASK,
+        MCI_UC_MASK | MCI_AR_MASK,
+        MCI_MISCV_MASK | MCI_PCC_MASK,
+        MCI_MISCV_MASK | MCI_S_MASK,
+        MCI_MISCV_MASK | MCI_AR_MASK,
+        MCI_PCC_MASK | MCI_S_MASK,
+        MCI_PCC_MASK | MCI_AR_MASK,
+        MCI_S_MASK | MCI_AR_MASK,
+
+        MCI_UC_MASK | MCI_MISCV_MASK | MCI_PCC_MASK,
+        MCI_UC_MASK | MCI_MISCV_MASK | MCI_S_MASK,
+        MCI_UC_MASK | MCI_MISCV_MASK | MCI_AR_MASK,
+        MCI_UC_MASK | MCI_PCC_MASK | MCI_S_MASK,
+        MCI_UC_MASK | MCI_PCC_MASK | MCI_AR_MASK,
+        MCI_UC_MASK | MCI_S_MASK | MCI_AR_MASK,
+        MCI_MISCV_MASK | MCI_PCC_MASK | MCI_S_MASK,
+        MCI_MISCV_MASK | MCI_PCC_MASK | MCI_AR_MASK,
+        MCI_PCC_MASK | MCI_S_MASK | MCI_AR_MASK,
+
+        MCI_UC_MASK | MCI_MISCV_MASK | MCI_PCC_MASK | MCI_S_MASK,
+        MCI_UC_MASK | MCI_MISCV_MASK | MCI_PCC_MASK | MCI_AR_MASK,
+        MCI_MISCV_MASK | MCI_PCC_MASK | MCI_S_MASK | MCI_AR_MASK,
+
+        MCI_UC_MASK | MCI_MISCV_MASK | MCI_PCC_MASK | MCI_S_MASK | MCI_AR_MASK,
+
+        0xffffffffffffffff
+    };
+    uint64_t mce_reg[5] = { 0, 0, 0, 0, 0 };
+    uint64_t test_vals[6] = {
+        0,
+        BUS_IC_ERR_MASK,
+        CACHE_ERR_MASK,
+        MEM_CTRL_ERR_MASK,
+        TLB_ERR_MASK,
+        GEN_CACHE_ERR_MASK
+    };
+    opal_list_t* data = OBJ_NEW(opal_list_t);
+
+    for(int i = 0; i < 6; ++i) {
+        for(int j = 0; 0xffffffffffffffff != combos[j]; ++j) {
+            uint64_t extra = ((j % 3) == 0)?MCI_VALID_MASK:0;
+            if(0 == j) {
+                mce_reg[MCG_CAP] = MCG_TES_P_MASK;
+            } else {
+                mce_reg[MCG_CAP] = MCG_TES_P_MASK | MCG_CMCI_P_MASK | MCG_SER_P_MASK;
+            }
+            mce_reg[MCI_STATUS] = test_vals[i] | combos[j] | 0x30 | extra;
+            mcedata_decode(mce_reg, data);
+        }
+        for(int j = 0; 0xffffffffffffffff != combos[j]; ++j) {
+            uint64_t extra = ((j % 3) == 0)?MCI_VALID_MASK:0;
+            if(0 == j) {
+                mce_reg[MCG_CAP] = MCG_TES_P_MASK;
+            } else {
+                mce_reg[MCG_CAP] = MCG_TES_P_MASK | MCG_CMCI_P_MASK | MCG_SER_P_MASK;
+            }
+            mce_reg[MCI_STATUS] = test_vals[i] | combos[j] | 0x90 | extra;
+            mcedata_decode(mce_reg, data);
+        }
+    }
+    ORCM_RELEASE(data);
 }

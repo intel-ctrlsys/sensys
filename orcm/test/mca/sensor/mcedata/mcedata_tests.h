@@ -36,6 +36,7 @@ class ut_mcedata_tests: public testing::Test
                              opal_list_t *input, opal_list_t *ret,
                              orcm_db_callback_fn_t cbfunc, void *cbdata);
         static void SendData(orcm_analytics_value_t *analytics_vals);
+        static int FSeekError(FILE*,long, int);
 }; // class
 
 #endif // MCEDATA_TESTS_H

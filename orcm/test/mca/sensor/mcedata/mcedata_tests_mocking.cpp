@@ -42,9 +42,19 @@ extern "C" { // Mocking must use correct "C" linkages
             return mcedata_mocking.readdir_callback(dir_fd);
         }
     }
+
+    int __wrap_fseek(FILE* fd, long offset, int based_from)
+    {
+        if(NULL == mcedata_mocking.fseek_callback) {
+            return __real_fseek(fd, offset, based_from);
+        } else {
+            return mcedata_mocking.fseek_callback(fd, offset, based_from);
+        }
+    }
 } // extern "C"
 
 mcedata_tests_mocking::mcedata_tests_mocking() :
-    opendir_callback(NULL), closedir_callback(NULL), readdir_callback(NULL)
+    opendir_callback(NULL), closedir_callback(NULL), readdir_callback(NULL),
+    fseek_callback(NULL)
 {
 }

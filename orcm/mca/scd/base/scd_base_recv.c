@@ -55,6 +55,7 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
 void open_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out, void *cbdata);
 void close_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out, void *cbdata);
 void fetch_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out, void *cbdata);
+bool is_wanted_column(const char* name);
 char* get_plugin_from_sensor_name(const char* sensor_name);
 int get_inventory_list(opal_list_t *filters, opal_list_t **results);
 void orcm_scd_base_fetch_recv(int status, orte_process_name_t* sender,
@@ -1322,6 +1323,24 @@ void fetch_callback(int dbhandle, int status, opal_list_t *in, opal_list_t *out,
     data->active = false;
 }
 
+bool is_wanted_column(const char* name)
+{
+    static char *wanted_column_names[] = {
+        "hostname",
+        "feature",
+        "value",
+        NULL
+    };
+    bool rv = false;
+    for(int i = 0; NULL != wanted_column_names[i]; ++i) {
+        if(0 == strcmp(wanted_column_names[i], name)) {
+            rv = true;
+            break;
+        }
+    }
+    return rv;
+}
+
 char* get_plugin_from_sensor_name(const char* sensor_name)
 {
     char* pos1 = strchr(sensor_name, '_');
@@ -1825,11 +1844,8 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
     fetch_cb_data data;
     opal_list_t *row = NULL;
     opal_value_t *string_row = NULL;
-    opal_value_t *string_row_header = OBJ_NEW(opal_value_t);
     char* tmp = NULL;
-    char* col1_data = NULL;
-    char* col2_data = NULL;
-    char* col3_data = NULL;
+    char* new_tmp = NULL;
 
     data.dbhandle = -1;
 
@@ -1864,14 +1880,14 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
     }
 
     if(0 < num_rows) {
+        bool first_item = true;
         *results = OBJ_NEW(opal_list_t);
-        string_row_header->type = OPAL_STRING;
-        string_row_header->data.string = strdup("\"Node Name\",\"Source Plugin Name\",\"Sensor Name\"");
-        opal_list_append(*results, &string_row_header->super);
         for(int i = 0; i < num_rows; ++i) {
             row = OBJ_NEW(opal_list_t);
             string_row = OBJ_NEW(opal_value_t);
             opal_value_t *item = NULL;
+            bool first_column = true;
+            int col_num = 0;
 
             data.status = orcm_db.get_next_row(data.dbhandle, data.session_handle, row);
 
@@ -1880,20 +1896,66 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
                 rv = data.status;
                 goto error_exit;
             }
-            OPAL_LIST_FOREACH(item, row, opal_value_t){
-                if(0 == strcmp(item->key, "hostname")) {
-                    col1_data = item->data.string;
-                } else if(0 == strcmp(item->key, "feature")) {
-                    char* plugin = get_plugin_from_sensor_name(item->data.string);
-                    col2_data = plugin;
-                } else if (0 == strcmp(item->key, "value")) {
-                    col3_data = item->data.string;
+            if(-1 == asprintf(&tmp, "\"")) {
+                rv = ORCM_ERROR;
+                goto error_exit;
+            }
+            OPAL_LIST_FOREACH(item, row, opal_value_t) {
+                if(true == is_wanted_column(item->key)) {
+                    if(false == first_column) {
+                        if(-1 == asprintf(&new_tmp, "%s\",\"", tmp)) {
+                            rv = ORCM_ERROR;
+                            goto error_exit;
+                        }
+                        SAFE_FREE(tmp);
+                        tmp = new_tmp;
+                        new_tmp = NULL;
+                    }
+                    if(0 == strcmp(item->key, "feature"))
+                    {
+                        char* plugin = get_plugin_from_sensor_name(item->data.string);
+                        if(-1 == asprintf(&new_tmp, "%s%s", tmp, plugin)) {
+                            rv = ORCM_ERROR;
+                            SAFE_FREE(plugin);
+                            goto error_exit;
+                        }
+                        SAFE_FREE(plugin);
+                        SAFE_FREE(tmp);
+                        tmp = new_tmp;
+                        new_tmp = NULL;
+                    } else {
+                        if(-1 == asprintf(&new_tmp, "%s%s", tmp, item->data.string)) {
+                            rv = ORCM_ERROR;
+                            goto error_exit;
+                        }
+                        SAFE_FREE(tmp);
+                        tmp = new_tmp;
+                        new_tmp = NULL;
+                    }
+                    if(true == first_column) {
+                        first_column = false;
+                    }
                 }
+                ++col_num;
+            }
+            if(-1 == asprintf(&new_tmp, "%s\"", tmp)) {
+                rv = ORCM_ERROR;
+                goto error_exit;
+            }
+            SAFE_FREE(tmp);
+            tmp = new_tmp;
+            new_tmp = NULL;
+            if(true == first_item) {
+                string_row->type = OPAL_STRING;
+                string_row->data.string = strdup("\"Node Name\",\"Source Plugin Name\",\"Sensor Name\"");
+                opal_list_append(*results, &string_row->super);
+                string_row = OBJ_NEW(opal_value_t);
             }
             string_row->type = OPAL_STRING;
-            asprintf(&tmp,"\"%s\",\"%s\",\"%s\"", col1_data, col2_data, col3_data);
             string_row->data.string = strdup(tmp);
             opal_list_append(*results, &string_row->super);
+            first_item = false;
+
             SAFE_FREE(tmp);
             SAFE_OBJ_RELEASE(row);
         }
@@ -1903,7 +1965,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
 error_exit:
     SAFE_FREE(tmp);
     SAFE_OBJ_RELEASE(row);
-    SAFE_OBJ_RELEASE(string_row_header);
+    OBJ_RELEASE(string_row);
     SAFE_OBJ_RELEASE(*results);
 
 clean_exit:

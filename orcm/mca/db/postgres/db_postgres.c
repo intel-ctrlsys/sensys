@@ -11,6 +11,7 @@
 
 #include "orcm_config.h"
 #include "orcm/constants.h"
+
 #include <string.h>
 #include <sys/types.h>
 #ifdef HAVE_LIMITS_H
@@ -23,6 +24,7 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
 #include <sys/time.h>
 #include <time.h>
 
@@ -2328,25 +2330,20 @@ static inline bool is_fatal(PGresult *res)
  **************************************************************************************************/
 extern const char *opal_type_column_name;
 extern const char *value_column_names[];
-extern const opal_data_type_t value_column_types[];
-
-const int VALUE_INT_COLUMN_NUM = 0;
-const int VALUE_REAL_COLUMN_NUM = 1;
-const int VALUE_STR_COLUMN_NUM = 2;
 
 static int get_str_column(PGresult* results)
 {
-    return PQfnumber(results, value_column_names[VALUE_STR_COLUMN_NUM]);
+    return PQfnumber(results, value_column_names[0]);
 }
 
 static int get_real_column(PGresult* results)
 {
-    return PQfnumber(results, value_column_names[VALUE_REAL_COLUMN_NUM]);
+    return PQfnumber(results, value_column_names[2]);
 }
 
 static int get_int_column(PGresult* results)
 {
-    return PQfnumber(results, value_column_names[VALUE_INT_COLUMN_NUM]);
+    return PQfnumber(results, value_column_names[1]);
 }
 
 static bool is_column_name_a_value_column(const char* column_name)
@@ -2588,44 +2585,54 @@ static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
     int rc = ORCM_SUCCESS;
     mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
     PGresult *results = (PGresult*)opal_pointer_array_get_item(mod->results_sets, rshandle);
-    int cols_count = 0;
-    int data_type_col = NO_COLUMN;
-    int value_col = NO_COLUMN;
+    int cols = -1;
+    int data_type_col = -1;
     opal_data_type_t data_type = OPAL_UNDEF;
     int data_length = -1;
     opal_value_t *value_object = NULL;
-    bool ignore_column = false;
+    bool inserted_value = false;
 
     if(NULL == results) {
         rc = ORCM_ERROR;
         ERR_MSG_FMT_FETCH("Bad results handle: %d", rshandle);
         goto next_cleanup;
     }
+
+    /* get row ORCM data value type */
     data_type_col = PQfnumber(results, opal_type_column_name);
-    if (NO_COLUMN != data_type_col) {
+    if(NO_COLUMN != data_type_col) {
         data_type = atoi(PQgetvalue(results, mod->current_row, data_type_col));
-    } else {
-        for (int j = 0; NULL != value_column_names[j]; ++j) {
-            value_col = PQfnumber(results, value_column_names[j]);
-            if (NO_COLUMN != value_col) {
-                data_type = value_column_types[j];
-                data_length = PQgetlength(results, mod->current_row, value_col);
-                if (0 < data_length) {
-                    break;
-                }
-            }
-        }
-    }
-    if (OPAL_UNDEF != data_type) {
+
         /* retrieve 1 correctly typed object for one of 'value_str', 'value_int', 'value_real' */
         value_object = get_value_object(results, mod->current_row, data_type);
-        opal_list_append(row, &value_object->super);
-        data_type_col = NO_COLUMN;
+    } else {
+        data_type_col = PQfnumber(results, "value_int");
+        data_length = PQgetlength(results, mod->current_row, data_type_col);
+        if(0 >= data_length) {
+            data_type_col = PQfnumber(results, "value_real");
+            data_length = PQgetlength(results, mod->current_row, data_type_col);
+            if(0 >= data_length) {
+                data_type_col = PQfnumber(results, "value_str");
+                data_length = PQgetlength(results, mod->current_row, data_type_col);
+                if(0 >= data_length) {
+                    data_type = OPAL_UNDEF;
+                } else {
+                    data_type = OPAL_STRING;
+                }
+            } else {
+                data_type = OPAL_DOUBLE;
+            }
+        } else {
+            data_type = OPAL_INT64;
+        }
+        /* retrieve 1 correctly typed object for one of 'value_str', 'value_int', 'value_real' */
+        value_object = get_value_object(results, mod->current_row, data_type);
+        data_type_col = -1;
     }
 
     /* Get row general column data */
-    cols_count = PQnfields(results);
-    for(int i = 0; i < cols_count; ++i) {
+    cols = PQnfields(results);
+    for(int i = 0; i < cols; ++i) {
         Oid pg_type;
         opal_value_t* kv = NULL;
         opal_data_type_t type = OPAL_UNDEF;
@@ -2635,19 +2642,16 @@ static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
         }
 
         name_ref = PQfname(results, i);
-        for (int k = 0; NULL != value_column_names[k]; ++k) {
-            if (0 == strcmp(name_ref, value_column_names[k])) {
-                ignore_column = true;
-                break;
+        pg_type = PQftype(results, i);
+        if(true == is_column_name_a_value_column(name_ref)) {
+            if(false == inserted_value && NULL != value_object) {
+                opal_list_append(row, &value_object->super);
+                value_object = NULL;
+                inserted_value = true;
             }
-        }
-        if (ignore_column) {
-            ignore_column = false;
-            continue; /* skip column already processed above. */
+            continue; /* skip all 'value_*' named columns as thjey are already handled */
         }
 
-        pg_type = PQftype(results, i);
-        pg_type = PQftype(results, i);
         type = get_opal_type_from_postgres_type(pg_type);
         if(OPAL_UNDEF == type) {
             ERR_MSG_FMT_FETCH("An unrecognized column name '%s' was encountered and skipped during a call to 'get_next_row'", name_ref);
@@ -2672,6 +2676,7 @@ static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
     ++(mod->current_row); /* move to next row */
 
 next_cleanup:
+    free(value_object);
     return rc;
 }
 

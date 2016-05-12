@@ -117,8 +117,8 @@ int orcm_octl_diag_cpu(char **argv)
     goto finish;
 
 finish:
-    if(buf) OBJ_RELEASE(buf);
-    if(xfer) OBJ_RELEASE(xfer);
+    SAFE_RELEASE(buf);
+    SAFE_RELEASE(xfer);
     if(nodelist) opal_argv_free(nodelist);
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_DIAG);
     return rc;
@@ -235,8 +235,8 @@ int orcm_octl_diag_eth(char **argv)
     return ORCM_SUCCESS;
 
 finish:
-    if(buf) OBJ_RELEASE(buf);
-    if(xfer) OBJ_RELEASE(xfer);
+    SAFE_RELEASE(buf);
+    SAFE_RELEASE(xfer);
     if(nodelist) opal_argv_free(nodelist);
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_DIAG);
     return rc;
@@ -351,8 +351,8 @@ int orcm_octl_diag_mem(char **argv)
     goto finish;
 
 finish:
-    if(buf) OBJ_RELEASE(buf);
-    if(xfer) OBJ_RELEASE(xfer);
+    SAFE_RELEASE(buf);
+    SAFE_RELEASE(xfer);
     if(nodelist) opal_argv_free(nodelist);
     orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_DIAG);
     return rc;

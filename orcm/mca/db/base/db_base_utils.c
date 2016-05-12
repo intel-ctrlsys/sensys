@@ -242,7 +242,7 @@ char* build_query_from_view_name_and_filters(const char* view_name, opal_list_t*
                 }
             }
             old_query = query;
-            asprintf(&query, "%s;", old_query);
+            asprintf(&query, "%s LIMIT 10000000;", old_query);
             free(old_query);
         }
     }

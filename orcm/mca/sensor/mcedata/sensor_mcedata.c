@@ -66,7 +66,7 @@ static void stop(orte_jobid_t job);
 static void mcedata_sample(orcm_sensor_sampler_t *sampler);
 static void mcedata_log(opal_buffer_t *buf);
 
-static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals);
+void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals);
 mcetype get_mcetype(uint64_t mci_status);
 void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
 void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals);
@@ -77,13 +77,24 @@ static void get_log_lines(FILE *fp);
 static void perthread_mcedata_sample(int fd, short args, void *cbdata);
 void collect_mcedata_sample(orcm_sensor_sampler_t *sampler);
 static void mcedata_set_sample_rate(int sample_rate);
-static void mcedata_get_sample_rate(int *sample_rate);
+void mcedata_get_sample_rate(int *sample_rate);
 static void mcedata_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 int mcedata_enable_sampling(const char* sensor_specification);
 int mcedata_disable_sampling(const char* sensor_specification);
 int mcedata_reset_sampling(const char* sensor_specification);
 static void generate_test_vector(orcm_sensor_sampler_t* sampler);
+long orcm_sensor_mcedata_get_log_file_pos(void);
+
+static char* decode_severity(uint64_t status);
+static char* decode_hierarchy_level(uint64_t status);
+static char* decode_address_mode(uint64_t status);
+static char* decode_memory_io(uint64_t status);
+static char* decode_timeout(uint64_t status);
+static char* decode_request_type(uint64_t status);
+static char* decode_participation(uint64_t status);
+static char* decode_transaction_type(uint64_t status);
+static char* decode_cache_health(uint64_t status);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_mcedata_module = {
@@ -135,13 +146,20 @@ static long log_file_pos;
 /* MCE log lines for reporting*/
 static char *log_lines[mcelog_sentinel];
 
+/* UT accessors only */
+long orcm_sensor_mcedata_get_log_file_pos(void)
+{
+    return log_file_pos;
+}
+
 static void start_log_file(void)
 {
     FILE *fp;
     long tot_bytes = -1;
     long ret;
-    log_file_pos = 0;
     char buf[128];
+
+    log_file_pos = 0;
 
     if (true != mca_sensor_mcedata_component.historical_collection) {
         /* If the user requires MCE collection from the point when sensor was
@@ -176,15 +194,14 @@ static long update_log_file_size(FILE *fp)
     static int errorReported = 0;
     char buf[128];
 
-    if (fp){
-        ret = fseek(fp, 0, SEEK_END);
+    /* The caller is checking for fp = NULL */
+    ret = fseek(fp, 0, SEEK_END);
 
-        if (ret == 0){
-          tot_bytes = ftell(fp);
-        }
+    if (ret == 0) {
+      tot_bytes = ftell(fp);
     }
 
-    if (tot_bytes < 0){
+    if (tot_bytes < 0) {
         if (!errorReported){
             snprintf(buf, 127, "mcedata log file error: %s",strerror(errno));
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -420,36 +437,23 @@ mcetype get_mcetype(uint64_t mci_status)
 
 void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
+    const char* levels[4] = {
+        "Level 0",
+        "Level 1",
+        "Level 2",
+        "Generic"
+    };
     orcm_value_t *sensor_metric;
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "MCE Error Type 0 - Generic Cache Hierarchy Errors");
 
     sensor_metric = orcm_util_load_orcm_value("ErrorLocation", "GenCacheError", OPAL_STRING, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Get the cache level */
-    switch (mce_reg[MCI_STATUS] & 0x3) {
-        case 0:
-            sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "Level 0", OPAL_STRING, NULL);
-            break;
-        case 1:
-            sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "Level 1", OPAL_STRING, NULL);
-            break;
-        case 2:
-            sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "Level 2", OPAL_STRING, NULL);
-            break;
-        case 3:
-            sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "Generic", OPAL_STRING, NULL);
-            break;
-    }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    sensor_metric = orcm_util_load_orcm_value("hierarchy_level", (char*)levels[mce_reg[MCI_STATUS] & 0x3], OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 }
 
@@ -460,12 +464,158 @@ void mcedata_tlb_filter(unsigned long *mce_reg, opal_list_t *vals)
                         "MCE Error Type 1 - TLB Errors");
 
     sensor_metric = orcm_util_load_orcm_value("error_location", "tlb_Error", OPAL_STRING, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
+}
+
+static char* decode_severity(uint64_t status)
+{
+    static const char* severities[] = {
+        "CE",      /* 0 */
+        "UCNA",    /* 1 */
+        "CE",      /* 2 */
+        "UCNA",    /* 3 */
+        "UNKNOWN", /* 4 */
+        "UC",      /* 5 */
+        "UNKNOWN", /* 6 */
+        "UC",      /* 7 */
+        "CE",      /* 8 */
+        "SRAO",    /* 9 */
+        "CE",      /* 10 */
+        "SRAO",    /* 11 */
+        "UNKNOWN", /* 12 */
+        "UC",      /* 13 */
+        "UNKNOWN", /* 14 */
+        "UC",      /* 15 */
+        "CE",      /* 16 */
+        "UNKNOWN", /* 17 */
+        "CE",      /* 18 */
+        "UNKNOWN", /* 19 */
+        "UNKNOWN", /* 20 */
+        "UC",      /* 21 */
+        "UNKNOWN", /* 22 */
+        "UC",      /* 23 */
+        "CE",      /* 24 */
+        "SRAR",    /* 25 */
+        "CE",      /* 26 */
+        "CE",      /* 27 */
+        "UNKNOWN", /* 28 */
+        "UC",      /* 29 */
+        "UNKNOWN", /* 30 */
+        "UC"       /* 31 */
+    };
+    uint64_t index;
+    /* Fig 15-6 of the Intel(R) 64 & IA-32 spec */
+    /* Decode to first 5 bits in a number to use as an index lookup. */
+    index = ((status & MCI_UC_MASK) >> 61) |    /* bit 0 */
+            ((status & MCI_MISCV_MASK) >> 58) | /* bit 1 */
+            ((status & MCI_PCC_MASK) >> 55) |   /* bit 2 */
+            ((status & MCI_S_MASK) >> 53) |     /* bit 3 */
+            ((status & MCI_AR_MASK) >> 51);     /* bit 4 */
+    return (char*)severities[index];
+}
+
+static char* decode_hierarchy_level(uint64_t status)
+{
+    static const char* hlevels[] = {
+        "L0",
+        "L1",
+        "L2",
+        "G"
+    };
+    return (char*)hlevels[status & 0x3];
+}
+
+static char* decode_address_mode(uint64_t status)
+{
+    static const char* amodes[] = {
+        "SegmentOffset",
+        "LinearAddress",
+        "PhysicalAddress",
+        "MemoryAddress"
+    };
+    uint64_t index = ((status & MCI_ADDR_MODE_MASK) >> 6);
+    return (char*)amodes[index];
+}
+
+static char* decode_memory_io(uint64_t status)
+{
+    static const char* it[] = {
+        "M",
+        "reserved",
+        "IO",
+        "other_transaction"
+    };
+    uint64_t index = ((status & 0xC) >> 2) & 0x3;
+    return (char*)it[index];
+}
+
+static char* decode_timeout(uint64_t status)
+{
+    static const char* timeout[] = {
+        "NOTIMEOUT",
+        "TIMEOUT"
+    };
+    uint64_t index = (((status & 0x100) >> 8) & 0x1);
+    return (char*)timeout[index];
+}
+
+static char* decode_request_type(uint64_t status)
+{
+    static const char* request_types[] = {
+        "ERR",
+        "RD", /* Memory Read Error */
+        "WR", /* Memory Write Error */
+        "DRD",/* Address/Command Error */
+        "DWR",/* Memory Scrubbing Error */
+        "IRD",
+        "PREFETCH",
+        "EVICT",
+        "SNOOP",
+        "Unknown"
+    };
+    uint64_t index = (status & 0xF0) >> 4;
+    if(8 < index) {
+        index = 9;
+    }
+    return (char*)request_types[index];
+}
+
+static char* decode_participation(uint64_t status)
+{
+    static const char* part_types[] = {
+        "SRC",
+        "RES",
+        "OBS",
+        "generic"
+    };
+    uint64_t index = ((status & 0x600) >> 9);
+    return (char*)part_types[index];
+}
+
+static char* decode_transaction_type(uint64_t status)
+{
+    static const char* tt[] = {
+        "I", /* Instruction */
+        "D", /* Data */
+        "G", /* Generic */
+        "Unknown"
+    };
+    uint64_t index = (status & 0xC) >> 2;
+    return (char*)tt[index];
+}
+
+static char* decode_cache_health(uint64_t status)
+{
+    static const char* health[] = {
+        "NotTracking",
+        "Green",
+        "Yellow",
+        "Reserved"
+    };
+    uint64_t index = (status >> 53) & 0x3;
+    return (char*)health[index];
 }
 
 static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
@@ -475,15 +625,13 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
     uint64_t addr_type, lsb_addr;
     bool correct_filter;
     uint32_t channel_num;
+    char* str = NULL;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "MCE Error Type 2 - Memory Controller Errors");
 
     sensor_metric = orcm_util_load_orcm_value("error_type", "mem_ctrl_error", OPAL_STRING, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Fig 15-6 of the Intel(R) 64 & IA-32 spec */
@@ -495,103 +643,36 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 
     if (((mce_reg[MCG_CAP] & MCG_TES_P_MASK) == MCG_TES_P_MASK) &&
         ((mce_reg[MCG_CAP] & MCG_CMCI_P_MASK) == MCG_CMCI_P_MASK)) { /* Sec. 15.3.2.2.1 */
-        if (uc && pcc) {
-            sensor_metric = orcm_util_load_orcm_value("error_severity", "UC", OPAL_STRING, NULL);
-        } else if(!(uc || pcc)) {
-            sensor_metric = orcm_util_load_orcm_value("error_severity", "CE", OPAL_STRING, NULL);
-        } else if (uc) {
-            if (!(pcc || s || ar)) {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "UCNA", OPAL_STRING, NULL);
-            } else if (!(pcc || (!s) || ar)) {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "SRAO", OPAL_STRING, NULL);
-            } else if (!(pcc || (!s) || (!ar))) {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "SRAR", OPAL_STRING, NULL);
-            } else {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "UNKNOWN", OPAL_STRING, NULL);
-            }
-        } else {
-            sensor_metric = orcm_util_load_orcm_value("error_severity", "UNKNOWN", OPAL_STRING, NULL);
-        }
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        str = decode_severity(mce_reg[MCG_CAP]);
+        sensor_metric = orcm_util_load_orcm_value("error_severity", str, OPAL_STRING, NULL);
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
     }
 
-    switch ((mce_reg[MCI_STATUS] & 0x70) >> 4) {
-        case 0:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "GEN", OPAL_STRING, NULL);
-            break;
-        case 1: /* Memory Read Error */
-            sensor_metric = orcm_util_load_orcm_value("request_type", "RD", OPAL_STRING, NULL);
-            break;
-        case 2: /* Memory Write Error */
-            sensor_metric = orcm_util_load_orcm_value("request_type", "WR", OPAL_STRING, NULL);
-            break;
-        case 3: /* Address/Command Error */
-            sensor_metric = orcm_util_load_orcm_value("request_type", "AC", OPAL_STRING, NULL);
-            break;
-        case 4:       /* Memory Scrubbing Error */
-            sensor_metric = orcm_util_load_orcm_value("request_type", "MS", OPAL_STRING, NULL);
-            break;
-        default:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "Reserved", OPAL_STRING, NULL);
-            break;
-    }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    str = decode_request_type(mce_reg[MCI_STATUS]);
+    sensor_metric = orcm_util_load_orcm_value("request_type", str, OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Channel Number */
     if ((mce_reg[MCI_STATUS] & 0xF) != 0xf) {
         channel_num = (mce_reg[MCI_STATUS] & 0xF);
         sensor_metric = orcm_util_load_orcm_value("channel_number", &channel_num, OPAL_UINT, NULL);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
     }
     if(miscv  && ((mce_reg[MCG_CAP] & MCG_SER_P_MASK) == MCG_SER_P_MASK)) {
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "MISC Register Valid");
-        addr_type = ((mce_reg[MCI_MISC] & MCI_ADDR_MODE_MASK) >> 6);
-        switch (addr_type) {
-            case 0:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "SegmentOffset", OPAL_STRING, NULL);
-                break;
-            case 1:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "LinearAddress", OPAL_STRING, NULL);
-                break;
-            case 2:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "PhysicalAddress", OPAL_STRING, NULL);
-                break;
-            case 3:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "MemoryAddress", OPAL_STRING, NULL);
-                break;
-            case 7:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "Generic", OPAL_STRING, NULL);
-                break;
-            default:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "Reserved", OPAL_STRING, NULL);
-                break;
-        }
+        str = decode_address_mode(mce_reg[MCI_MISC]);
+        sensor_metric = orcm_util_load_orcm_value("address_mode", str, OPAL_STRING, NULL);
 
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
         lsb_addr = ((mce_reg[MCI_MISC] & MCI_RECV_ADDR_MASK));
         sensor_metric = orcm_util_load_orcm_value("recov_addr_lsb", &lsb_addr, OPAL_UINT, NULL);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
     }
 
@@ -604,19 +685,17 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
         correct_filter = false;
         sensor_metric = orcm_util_load_orcm_value("corrected_filtering", &correct_filter, OPAL_BOOL, NULL);
     }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 }
 
 void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     orcm_value_t *sensor_metric;
-    bool ar, s, pcc, addrv, miscv, uc, val;
-    uint64_t cache_health, addr_type, lsb_addr;
+    bool addrv, miscv, uc, val;
+    uint64_t mask, lsb_addr;
     bool correct_filter;
+    char* str = NULL;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "MCE Error Type 3 - Cache Hierarchy Errors");
@@ -633,91 +712,25 @@ void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     }
 
     sensor_metric = orcm_util_load_orcm_value("error_type", "cache_error", OPAL_STRING, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Get the cache level */
-    switch (mce_reg[MCI_STATUS] & 0x3) {
-        case 0:
-            sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "L0", OPAL_STRING, NULL);
-            break;
-        case 1:
-            sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "L1", OPAL_STRING, NULL);
-            break;
-        case 2:
-            sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "L2", OPAL_STRING, NULL);
-            break;
-        case 3:
-            sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "G", OPAL_STRING, NULL);
-            break;
-    }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    str = decode_hierarchy_level(mce_reg[MCI_STATUS]);
+    sensor_metric = orcm_util_load_orcm_value("hierarchy_level", str, OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Transaction Type */
-    switch ((mce_reg[MCI_STATUS] & 0xC) >> 2) {
-        case 0: /* Instruction */
-            sensor_metric = orcm_util_load_orcm_value("transaction_type", "I", OPAL_STRING, NULL);
-            break;
-        case 1: /* Data */
-            sensor_metric = orcm_util_load_orcm_value("transaction_type", "D", OPAL_STRING, NULL);
-            break;
-        case 2:  /* Generic */
-            sensor_metric = orcm_util_load_orcm_value("transaction_type", "G", OPAL_STRING, NULL);
-            break;
-        default:
-            sensor_metric = orcm_util_load_orcm_value("transaction_type", "Unknown", OPAL_STRING, NULL);
-            break;
-    }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    str = decode_transaction_type(mce_reg[MCI_STATUS]);
+    sensor_metric = orcm_util_load_orcm_value("transaction_type", str, OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Request Type */
-    switch ((mce_reg[MCI_STATUS] & 0xF0) >> 4) {
-        case 0:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "ERR", OPAL_STRING, NULL);
-            break;
-        case 1:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "RD", OPAL_STRING, NULL);
-            break;
-        case 2:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "WR", OPAL_STRING, NULL);
-            break;
-        case 3:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "DRD", OPAL_STRING, NULL);
-            break;
-        case 4:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "DWR", OPAL_STRING, NULL);
-            break;
-        case 5:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "IRD", OPAL_STRING, NULL);
-            break;
-        case 6:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "PREFETCH", OPAL_STRING, NULL);
-            break;
-        case 7:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "EVICT", OPAL_STRING, NULL);
-            break;
-        case 8:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "SNOOP", OPAL_STRING, NULL);
-            break;
-        default:
-            sensor_metric = orcm_util_load_orcm_value("request_type", "Unknown", OPAL_STRING, NULL);
-            break;
-    }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    str = decode_request_type(mce_reg[MCI_STATUS]);
+    sensor_metric = orcm_util_load_orcm_value("request_type", str, OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Fig 15-6 of the Intel(R) 64 & IA-32 spec */
@@ -725,61 +738,20 @@ void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     uc = (mce_reg[MCI_STATUS] & MCI_UC_MASK)? true : false ;
     miscv = (mce_reg[MCI_STATUS] & MCI_MISCV_MASK)? true : false ;
     addrv = (mce_reg[MCI_STATUS] & MCI_ADDRV_MASK)? true : false ;
-    pcc = (mce_reg[MCI_STATUS] & MCI_PCC_MASK)? true : false ;
-    s = (mce_reg[MCI_STATUS] & MCI_S_MASK)? true : false ;
-    ar = (mce_reg[MCI_STATUS] & MCI_AR_MASK)? true : false ;
 
-    if (((mce_reg[MCG_CAP] & MCG_TES_P_MASK) == MCG_TES_P_MASK) &&
-        ((mce_reg[MCG_CAP] & MCG_CMCI_P_MASK) == MCG_CMCI_P_MASK)) { /* Sec. 15.3.2.2.1 */
-        if (uc && pcc) {
-            sensor_metric = orcm_util_load_orcm_value("error_severity", "UC", OPAL_STRING, NULL);
-        } else if(!(uc || pcc)) {
-            sensor_metric = orcm_util_load_orcm_value("error_severity", "CE", OPAL_STRING, NULL);
-        } else if (uc) {
-            if (!(pcc || s || ar)) {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "UCNA", OPAL_STRING, NULL);
-            } else if (!(pcc || (!s) || ar)) {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "SRAO", OPAL_STRING, NULL);
-            } else if (!(pcc || (!s) || (!ar))) {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "SRAR", OPAL_STRING, NULL);
-            } else {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "UNKNOWN", OPAL_STRING, NULL);
-            }
-        } else {
-            sensor_metric = orcm_util_load_orcm_value("error_severity", "UNKNOWN", OPAL_STRING, NULL);
-        }
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+    mask = (MCG_TES_P_MASK | MCG_CMCI_P_MASK);
+    if (((mce_reg[MCG_CAP] & mask) == mask)) { /* Sec. 15.3.2.2.1 */
+        str = decode_severity(mce_reg[MCI_STATUS]);
+        sensor_metric = orcm_util_load_orcm_value("error_severity", str, OPAL_STRING, NULL);
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
         if(!uc && ((mce_reg[MCG_CAP]&0x800)>>11)) { /* Table 15-1 */
             opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                                 "Enhanced chache reporting available");
-
-            cache_health = (((mce_reg[MCI_STATUS] & HEALTH_STATUS_MASK ) >> 53) & 0x3);
-            switch (cache_health) {
-                case 0:
-                    sensor_metric = orcm_util_load_orcm_value("cache_health", "NotTracking", OPAL_STRING, NULL);
-                    break;
-                case 1:
-                    sensor_metric = orcm_util_load_orcm_value("cache_health", "Green", OPAL_STRING, NULL);
-                    break;
-                case 2:
-                    sensor_metric = orcm_util_load_orcm_value("cache_health", "Yellow", OPAL_STRING, NULL);
-                    break;
-                case 3:
-                    sensor_metric = orcm_util_load_orcm_value("cache_health", "Reserved", OPAL_STRING, NULL);
-                    break;
-                default:
-                    sensor_metric = orcm_util_load_orcm_value("cache_health", "UNKNOWN", OPAL_STRING, NULL);
-                    break;
-            }
-            if (NULL == sensor_metric) {
-                ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-                return;
-            }
+            str = decode_cache_health(mce_reg[MCI_STATUS]);
+            sensor_metric = orcm_util_load_orcm_value("cache_health", str, OPAL_STRING, NULL);
+            ORCM_ON_NULL_RETURN(sensor_metric);
             opal_list_append(vals, (opal_list_item_t *)sensor_metric);
         }
     }
@@ -787,50 +759,21 @@ void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
     if(miscv && ((mce_reg[MCG_CAP] & MCG_SER_P_MASK) == MCG_SER_P_MASK)) {
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "MISC Register Valid");
-
-        addr_type = ((mce_reg[MCI_MISC] & MCI_ADDR_MODE_MASK) >> 6);
-        switch (addr_type) {
-            case 0:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "SegmentOffset", OPAL_STRING, NULL);
-                break;
-            case 1:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "LinearAddress", OPAL_STRING, NULL);
-                break;
-            case 2:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "PhysicalAddress", OPAL_STRING, NULL);
-                break;
-            case 3:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "MemoryAddress", OPAL_STRING, NULL);
-                break;
-            case 7:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "Generic", OPAL_STRING, NULL);
-                break;
-            default:
-                sensor_metric = orcm_util_load_orcm_value("address_mode", "Reserved", OPAL_STRING, NULL);
-                break;
-        }
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        str = decode_address_mode(mce_reg[MCI_MISC]);
+        sensor_metric = orcm_util_load_orcm_value("address_mode", str, OPAL_STRING, NULL);
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
         lsb_addr = ((mce_reg[MCI_MISC] & MCI_RECV_ADDR_MASK));
         sensor_metric = orcm_util_load_orcm_value("recov_addr_lsb", &lsb_addr, OPAL_UINT, NULL);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
     }
     if (addrv) {
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "ADDR Register Valid");
         sensor_metric = orcm_util_load_orcm_value("err_addr", &mce_reg[MCI_ADDR], OPAL_UINT64, NULL);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
     }
 
@@ -843,180 +786,60 @@ void mcedata_cache_filter(unsigned long *mce_reg, opal_list_t *vals)
         correct_filter = false;
         sensor_metric = orcm_util_load_orcm_value("corrected_filtering", &correct_filter, OPAL_BOOL, NULL);
     }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
-
 }
 
 void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     orcm_value_t *sensor_metric;
-    uint64_t pp, t, ii;
-    bool ar, s, pcc, miscv, uc;
+    bool miscv;
     uint64_t addr_type, lsb_addr;
+    char* str = NULL;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "MCE Error Type 4 - Bus and Interconnect Errors");
 
     sensor_metric = orcm_util_load_orcm_value("error_type", "bus_ic_error", OPAL_STRING, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Request Type */
-    switch ((mce_reg[MCI_STATUS] & 0xF0) >> 4) {
-    case 0:
-        sensor_metric = orcm_util_load_orcm_value("request_type", "ERR", OPAL_STRING, NULL);
-        break;
-    case 1:
-        sensor_metric = orcm_util_load_orcm_value("request_type", "RD", OPAL_STRING, NULL);
-        break;
-    case 2:
-        sensor_metric = orcm_util_load_orcm_value("request_type", "WR", OPAL_STRING, NULL);
-        break;
-    case 3:
-        sensor_metric = orcm_util_load_orcm_value("request_type", "DRD", OPAL_STRING, NULL);
-        break;
-    case 4:
-        sensor_metric = orcm_util_load_orcm_value("request_type", "DWR", OPAL_STRING, NULL);
-        break;
-    case 5:
-        sensor_metric = orcm_util_load_orcm_value("request_type", "IRD", OPAL_STRING, NULL);
-        break;
-    case 6:
-        sensor_metric = orcm_util_load_orcm_value("request_type", "PREFETCH", OPAL_STRING, NULL);
-        break;
-    case 7:
-        sensor_metric = orcm_util_load_orcm_value("request_type", "EVICT", OPAL_STRING, NULL);
-        break;
-    case 8:
-        sensor_metric = orcm_util_load_orcm_value("request_type", "SNOOP", OPAL_STRING, NULL);
-        break;
-    default:
-        sensor_metric = orcm_util_load_orcm_value("request_type", "Unknown", OPAL_STRING, NULL);
-        break;
-    }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    str = decode_request_type(mce_reg[MCI_STATUS]);
+    sensor_metric = orcm_util_load_orcm_value("request_type", str, OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-    pp = ((mce_reg[MCI_STATUS] & 0x600) >> 9);
-    switch (pp) {
-        case 0:
-            sensor_metric = orcm_util_load_orcm_value("participation", "SRC", OPAL_STRING, NULL);
-            break;
-        case 1:
-            sensor_metric = orcm_util_load_orcm_value("participation", "RES", OPAL_STRING, NULL);
-            break;
-        case 2:
-            sensor_metric = orcm_util_load_orcm_value("participation", "OBS", OPAL_STRING, NULL);
-            break;
-        case 3:
-            sensor_metric = orcm_util_load_orcm_value("participation", "generic", OPAL_STRING, NULL);
-            break;
-    }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    str = decode_participation(mce_reg[MCI_STATUS]);
+    sensor_metric = orcm_util_load_orcm_value("participation", str, OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Timeout */
-    t = (((mce_reg[MCI_STATUS] & 0x100) >> 8) & 0x1);
-    switch (t) {
-        case 0:
-            sensor_metric = orcm_util_load_orcm_value("T", "NOTIMEOUT", OPAL_STRING, NULL);
-            break;
-        case 1:
-            sensor_metric = orcm_util_load_orcm_value("T", "TIMEOUT", OPAL_STRING, NULL);
-            break;
-    }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    str = decode_timeout(mce_reg[MCI_STATUS]);
+    sensor_metric = orcm_util_load_orcm_value("T", str, OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Memory/IO */
-    ii = (((mce_reg[MCI_STATUS] & 0xC) >> 2)&0x3);
-    switch (ii) {
-        case 0:
-            sensor_metric = orcm_util_load_orcm_value("IT", "M", OPAL_STRING, NULL);
-            break;
-        case 1:
-            sensor_metric = orcm_util_load_orcm_value("IT", "reserved", OPAL_STRING, NULL);
-            break;
-        case 2:
-            sensor_metric = orcm_util_load_orcm_value("IT", "IO", OPAL_STRING, NULL);
-            break;
-        case 3:
-            sensor_metric = orcm_util_load_orcm_value("IT", "other_transaction", OPAL_STRING, NULL);
-            break;
-    }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    str = decode_memory_io(mce_reg[MCI_STATUS]);
+    sensor_metric = orcm_util_load_orcm_value("IT", str, OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Get the level */
-    switch (mce_reg[MCI_STATUS] & 0x3) {
-    case 0:
-        sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "L0", OPAL_STRING, NULL);
-        break;
-    case 1:
-        sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "L1", OPAL_STRING, NULL);
-        break;
-    case 2:
-        sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "L2", OPAL_STRING, NULL);
-        break;
-    case 3:
-        sensor_metric = orcm_util_load_orcm_value("hierarchy_level", "G", OPAL_STRING, NULL);
-        break;
-    }
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    str = decode_hierarchy_level(mce_reg[MCI_STATUS] & 0x3);
+    sensor_metric = orcm_util_load_orcm_value("hierarchy_level", str,
+                                              OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
-    /* Fig 15-6 of the Intel(R) 64 & IA-32 spec */
-    uc = (mce_reg[MCI_STATUS] & MCI_UC_MASK)? true : false ;
-    miscv = (mce_reg[MCI_STATUS] & MCI_MISCV_MASK)? true : false ;
-    pcc = (mce_reg[MCI_STATUS] & MCI_PCC_MASK)? true : false ;
-    s = (mce_reg[MCI_STATUS] & MCI_S_MASK)? true : false ;
-    ar = (mce_reg[MCI_STATUS] & MCI_AR_MASK)? true : false ;
+    miscv = ((mce_reg[MCI_STATUS] & MCI_MISCV_MASK) == MCI_MISCV_MASK)?true:false;
 
-    if (((mce_reg[MCG_CAP] & MCG_TES_P_MASK) == MCG_TES_P_MASK) &&
-        ((mce_reg[MCG_CAP] & MCG_CMCI_P_MASK) == MCG_CMCI_P_MASK)) { /* Sec. 15.3.2.2.1 */
-        if (uc && pcc) {
-            sensor_metric = orcm_util_load_orcm_value("error_severity", "UC", OPAL_STRING, NULL);
-        } else if(!(uc || pcc)) {
-            sensor_metric = orcm_util_load_orcm_value("error_severity", "CE", OPAL_STRING, NULL);
-        } else if (uc) {
-            if (!(pcc || s || ar)) {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "UCNA", OPAL_STRING, NULL);
-            } else if (!(pcc || (!s) || ar)) {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "SRAO", OPAL_STRING, NULL);
-            } else if (!(pcc || (!s) || (!ar))) {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "SRAR", OPAL_STRING, NULL);
-            } else {
-                sensor_metric = orcm_util_load_orcm_value("error_severity", "UNKNOWN", OPAL_STRING, NULL);
-            }
-        } else {
-            sensor_metric = orcm_util_load_orcm_value("error_severity", "UNKNOWN", OPAL_STRING, NULL);
-        }
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+    if ((mce_reg[MCG_CAP] & (MCG_TES_P_MASK | MCG_CMCI_P_MASK)) == (MCG_TES_P_MASK | MCG_CMCI_P_MASK)) { /* Sec. 15.3.2.2.1 */
+        str = decode_severity(mce_reg[MCI_STATUS]);
+        sensor_metric = orcm_util_load_orcm_value("error_severity", str, OPAL_STRING, NULL);
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
     }
 
@@ -1024,38 +847,14 @@ void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "MISC Register Valid");
         addr_type = ((mce_reg[MCI_MISC] & MCI_ADDR_MODE_MASK) >> 6);
-        switch (addr_type) {
-        case 0:
-            sensor_metric = orcm_util_load_orcm_value("address_mode", "SegmentOffset", OPAL_STRING, NULL);
-            break;
-        case 1:
-            sensor_metric = orcm_util_load_orcm_value("address_mode", "LinearAddress", OPAL_STRING, NULL);
-            break;
-        case 2:
-            sensor_metric = orcm_util_load_orcm_value("address_mode", "PhysicalAddress", OPAL_STRING, NULL);
-            break;
-        case 3:
-            sensor_metric = orcm_util_load_orcm_value("address_mode", "MemoryAddress", OPAL_STRING, NULL);
-            break;
-        case 7:
-            sensor_metric = orcm_util_load_orcm_value("address_mode", "Generic", OPAL_STRING, NULL);
-            break;
-        default:
-            sensor_metric = orcm_util_load_orcm_value("address_mode", "Reserved", OPAL_STRING, NULL);
-            break;
-        }
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        str = decode_address_mode(mce_reg[MCI_MISC]);
+        sensor_metric = orcm_util_load_orcm_value("address_mode", str, OPAL_STRING, NULL);
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
         lsb_addr = ((mce_reg[MCI_MISC] & MCI_RECV_ADDR_MASK));
         sensor_metric = orcm_util_load_orcm_value("recov_addr_lsb", &lsb_addr, OPAL_UINT, NULL);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        ORCM_ON_NULL_RETURN(sensor_metric);
         opal_list_append(vals, (opal_list_item_t *)sensor_metric);
     }
 }
@@ -1067,14 +866,11 @@ void mcedata_unknown_filter(unsigned long *mce_reg, opal_list_t *vals)
                         "MCE Error Type 5 - Unknown Error");
 
     sensor_metric = orcm_util_load_orcm_value("ErrorLocation", "Unknown Error", OPAL_STRING, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    ORCM_ON_NULL_RETURN(sensor_metric);
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 }
 
-static void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals)
+void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals)
 {
     int i = 0;
     mcetype type;
@@ -1335,25 +1131,20 @@ static void mcedata_log(opal_buffer_t *sample)
 
 
     analytics_vals = orcm_util_load_orcm_analytics_value(NULL, NULL, NULL);
-    if ((NULL == analytics_vals) || (NULL == analytics_vals->key) ||
-         (NULL == analytics_vals->non_compute_data) ||(NULL == analytics_vals->compute_data)) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
-    }
+    ORCM_ON_NULL_GOTO(analytics_vals, cleanup);
+    ORCM_ON_NULL_GOTO(analytics_vals->key, cleanup);
+    ORCM_ON_NULL_GOTO(analytics_vals->non_compute_data, cleanup);
+    ORCM_ON_NULL_GOTO(analytics_vals->compute_data, cleanup);
 
     /* unpack the host this came from */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        goto cleanup;
-    }
+    rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING);
+    ORCM_ON_FAILURE_GOTO(rc, cleanup);
 
     /* sample time */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        goto cleanup;
-    }
+    rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL);
+    ORCM_ON_FAILURE_GOTO(rc, cleanup);
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "%s Received log from host %s with xx cores",
@@ -1361,80 +1152,50 @@ static void mcedata_log(opal_buffer_t *sample)
                         (NULL == hostname) ? "NULL" : hostname);
 
     sensor_metric = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
-    }
+    ORCM_ON_NULL_GOTO(sensor_metric, cleanup);
     opal_list_append(analytics_vals->non_compute_data, (opal_list_item_t *)sensor_metric);
 
-    /* load the hostname */
-    if (NULL == hostname) {
-        ORTE_ERROR_LOG(OPAL_ERR_BAD_PARAM);
-        goto cleanup;
-    }
-
     sensor_metric = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
-    }
+    ORCM_ON_NULL_GOTO(sensor_metric, cleanup);
     opal_list_append(analytics_vals->key, (opal_list_item_t *)sensor_metric);
 
     sensor_metric = orcm_util_load_orcm_value("data_group", "mcedata", OPAL_STRING, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
-    }
+    ORCM_ON_NULL_GOTO(sensor_metric, cleanup);
     opal_list_append(analytics_vals->key, (opal_list_item_t *)sensor_metric);
 
     while (i < 5) {
         /* MCE Registers */
         n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &mce_reg[i], &n, OPAL_UINT64))) {
-            ORTE_ERROR_LOG(rc);
-            goto cleanup;
-        }
+        rc = opal_dss.unpack(sample, &mce_reg[i], &n, OPAL_UINT64);
+        ORCM_ON_FAILURE_GOTO(rc, cleanup);
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                     "Collected %s: %lu", mce_reg_name[i],mce_reg[i]);
 
         sensor_metric = orcm_util_load_orcm_value((char *)mce_reg_name[i], &mce_reg[i], OPAL_UINT64, NULL);
-        if (NULL == sensor_metric) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            goto cleanup;
-        }
+        ORCM_ON_NULL_GOTO(sensor_metric, cleanup);
         opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
         i++;
     }
 
     /* Logical CPU ID */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &cpu, &n, OPAL_UINT))) {
-        ORTE_ERROR_LOG(rc);
-        goto cleanup;
-    }
+    rc = opal_dss.unpack(sample, &cpu, &n, OPAL_UINT);
+    ORCM_ON_FAILURE_GOTO(rc, cleanup);
 
     /* Socket ID */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &socket, &n, OPAL_UINT))) {
-        ORTE_ERROR_LOG(rc);
-        goto cleanup;
-    }
+    rc = opal_dss.unpack(sample, &socket, &n, OPAL_UINT);
+    ORCM_ON_FAILURE_GOTO(rc, cleanup);
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                 "Collected logical CPU's ID %d: Socket ID %d", cpu, socket );
 
     sensor_metric = orcm_util_load_orcm_value("cpu", &cpu, OPAL_UINT, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
-    }
+    ORCM_ON_NULL_GOTO(sensor_metric, cleanup);
     opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
 
     sensor_metric = orcm_util_load_orcm_value("socket", &socket, OPAL_UINT, NULL);
-    if (NULL == sensor_metric) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
-    }
+    ORCM_ON_NULL_GOTO(sensor_metric, cleanup);
     opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
 
     mcedata_decode(mce_reg, analytics_vals->compute_data);
@@ -1443,10 +1204,7 @@ static void mcedata_log(opal_buffer_t *sample)
 
 cleanup:
     SAFEFREE(hostname);
-    if (NULL != analytics_vals) {
-        OBJ_RELEASE(analytics_vals);
-    }
-
+    ORCM_RELEASE(analytics_vals);
 }
 
 static void mcedata_set_sample_rate(int sample_rate)
@@ -1458,11 +1216,11 @@ static void mcedata_set_sample_rate(int sample_rate)
     return;
 }
 
-static void mcedata_get_sample_rate(int *sample_rate)
+void mcedata_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {
     /* check if mcedata sample rate is provided for this*/
-            *sample_rate = mca_sensor_mcedata_component.sample_rate;
+        *sample_rate = mca_sensor_mcedata_component.sample_rate;
     }
     return;
 }
@@ -1534,10 +1292,8 @@ static void mcedata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     struct timeval current_time;
     orcm_value_t *mkv = NULL;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL);
+    ORCM_ON_FAILURE_RETURN(rc);
 
     records = OBJ_NEW(opal_list_t);
     ON_NULL_RETURN(records);

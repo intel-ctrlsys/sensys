@@ -41,7 +41,8 @@ mcedata_tests_SOURCES = \
 MOCKING = \
     -Wl,--wrap=opendir \
     -Wl,--wrap=closedir \
-    -Wl,--wrap=readdir
+    -Wl,--wrap=readdir \
+    -Wl,--wrap=fseek
 
 #
 # Libraries we depend on

@@ -23,6 +23,8 @@ class ut_snmp_collector_tests: public testing::Test
 {
     protected:
         /* gtests */
+        virtual void SetUp();
+        virtual void TearDown();
         static void SetUpTestCase();
         static void TearDownTestCase();
         static void ClearBuffers();

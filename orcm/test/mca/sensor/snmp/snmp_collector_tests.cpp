@@ -111,6 +111,11 @@ extern "C" {
     extern int snmp_component_register(void);
 }
 
+void ut_snmp_collector_tests::SetUp()
+{
+    ResetTestEnvironment();
+}
+
 void ut_snmp_collector_tests::SetUpTestCase()
 {
     opal_dss_register_vars();
@@ -119,7 +124,7 @@ void ut_snmp_collector_tests::SetUpTestCase()
 
     initParserFramework();
 
-    ResetTestEnvironment();
+    replaceConfigFile();
 }
 
 void ut_snmp_collector_tests::TearDownTestCase()
@@ -128,6 +133,12 @@ void ut_snmp_collector_tests::TearDownTestCase()
 
     cleanParserFramework();
 
+    restoreConfigFile();
+
+}
+
+void ut_snmp_collector_tests::TearDown()
+{
     snmp_mocking.orte_errmgr_base_log_callback = NULL;
     snmp_mocking.opal_output_verbose_callback = NULL;
     snmp_mocking.orte_util_print_name_args_callback = NULL;
@@ -1009,18 +1020,66 @@ TEST_F(ut_snmp_collector_tests, snmp_generate_test_data)
     SAFE_OBJ_RELEASE(buffer);
 }
 
-TEST_F(ut_snmp_collector_tests, test_snmp_inventory_log)
+TEST_F(ut_snmp_collector_tests, test_snmp_inventory_test_branch)
+{
+    char *plugin_name = NULL;
+    int32_t n = 1;
+    opal_buffer_t *buffer = OBJ_NEW(opal_buffer_t);
+    mca_sensor_snmp_component.test = true;
+    orcm_sensor_base.dbhandle = -1;
+
+    snmp_init_relay();
+    snmp_inventory_collect(buffer);
+    EXPECT_EQ(ORCM_SUCCESS, last_orte_error_);
+    EXPECT_EQ(OPAL_SUCCESS, opal_dss.unpack(buffer, &plugin_name, &n, OPAL_STRING));
+    snmp_inventory_log((char*)hostname_, buffer);
+    EXPECT_EQ(ORCM_SUCCESS, last_orte_error_);
+    snmp_finalize_relay();
+
+    SAFE_OBJ_RELEASE(buffer);
+}
+
+TEST_F(ut_snmp_collector_tests, test_snmp_corrupted_inventory_buffer)
 {
     opal_buffer_t *buffer = OBJ_NEW(opal_buffer_t);
     mca_sensor_snmp_component.test = true;
 
     snmp_init_relay();
     snmp_inventory_collect(buffer);
+    EXPECT_EQ(ORCM_SUCCESS, last_orte_error_);
     snmp_inventory_log((char*)hostname_, buffer);
-    EXPECT_THROW(fromOpalBuffer(buffer), invalidBuffer);
+    EXPECT_EQ(ORCM_ERR_BUFFER, last_orte_error_);
     snmp_finalize_relay();
 
     SAFE_OBJ_RELEASE(buffer);
+}
+
+TEST_F(ut_snmp_collector_tests, test_snmp_inventory_no_dbhandle)
+{
+    char *plugin_name = NULL;
+    int32_t n = 1;
+    opal_buffer_t *buffer = OBJ_NEW(opal_buffer_t);
+    orcm_sensor_base.dbhandle = -1;
+
+    snmp_init_relay();
+    snmp_inventory_collect(buffer);
+    EXPECT_EQ(ORCM_SUCCESS, last_orte_error_);
+    EXPECT_EQ(OPAL_SUCCESS, opal_dss.unpack(buffer, &plugin_name, &n, OPAL_STRING));
+    snmp_inventory_log((char*)hostname_, buffer);
+    EXPECT_EQ(ORCM_SUCCESS, last_orte_error_);
+    snmp_finalize_relay();
+
+    SAFE_OBJ_RELEASE(buffer);
+}
+
+TEST_F(ut_snmp_collector_tests, test_snmp_inventory_null_buffer)
+{
+    snmp_init_relay();
+    snmp_inventory_collect(NULL);
+    EXPECT_EQ(ORTE_ERR_BAD_PARAM, last_orte_error_);
+    snmp_inventory_log((char*)hostname_, NULL );
+    EXPECT_EQ(ORTE_ERR_BAD_PARAM, last_orte_error_);
+    snmp_finalize_relay();
 }
 
 TEST_F(ut_snmp_collector_tests, test_unable_to_allocate_obj)

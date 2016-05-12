@@ -93,7 +93,7 @@ class ut_octl_query: public testing::Test
     static void MockedRecvBuffer(orte_process_name_t* peer, orte_rml_tag_t tag,
                                  bool persistent,
                                  orte_rml_buffer_callback_fn_t cbfunc,
-                                 void* cbdata)
+                                 void* cbdata);
     static int MockedSendBufferFromDbQuery(orte_process_name_t* peer,
                                  struct opal_buffer_t* buffer,
                                   orte_rml_tag_t tag,

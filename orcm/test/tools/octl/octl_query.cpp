@@ -1468,5 +1468,5 @@ TEST_F(ut_octl_query, print_results_from_stream_results_less_than_count)
     rc = print_results_from_stream(results_count, stream_index, start_time,
                                    stop_time);
 
-    EXPECT_EQ(ORCM_ERROR, rc);
+    EXPECT_EQ(ORCM_SUCCESS, rc);
 }

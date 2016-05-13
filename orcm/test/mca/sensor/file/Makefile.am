@@ -34,9 +34,11 @@ PY_LOG_COMPILER = /usr/bin/python
 check_PROGRAMS = file_tests
 
 file_tests_SOURCES = \
-	file_tests.cpp
+	file_tests.cpp \
+    file_tests_mocking.cpp
 
-MOCKING =
+MOCKING = \
+    -Wl,--wrap=orte_get_job_data_object
 
 #
 # Libraries we depend on

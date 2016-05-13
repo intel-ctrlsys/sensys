@@ -54,18 +54,29 @@
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "sensor_file.h"
 
+#define ON_NULL_REPORT_ERROR_AND_RETURN(p,e) if(NULL==p){ORTE_ERROR_LOG(e);return;}
+
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
 static void start(orte_jobid_t job);
 static void stop(orte_jobid_t job);
-static void file_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_file_sample(int fd, short args, void *cbdata);
+static void file_activate_job_state(orte_job_t *jdata, int flag);
 void collect_file_sample(orcm_sensor_sampler_t *sampler);
-static void file_log(opal_buffer_t *sample);
 int file_enable_sampling(const char* sensor_specification);
 int file_disable_sampling(const char* sensor_specification);
 int file_reset_sampling(const char* sensor_specification);
+
+
+/* This typedef and function pointer is required to keep UT tests from causing
+ * a segault.  This redirection allows the tests to subclass this private
+ * function "file_activate_job_state".
+ */
+static void file_sample(orcm_sensor_sampler_t *sampler);
+typedef void (*test_file_activate_job_state_fn_t)(orte_job_t*, int);
+test_file_activate_job_state_fn_t test_file_activate_job_state = file_activate_job_state;
+
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_file_module = {
@@ -74,7 +85,7 @@ orcm_sensor_base_module_t orcm_sensor_file_module = {
     start,
     stop,
     file_sample,
-    file_log,
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -110,9 +121,7 @@ static void ft_constructor(file_tracker_t *ft)
 }
 static void ft_destructor(file_tracker_t *ft)
 {
-    if (NULL != ft->file) {
-        free(ft->file);
-    }
+    SAFEFREE(ft->file);
 }
 OBJ_CLASS_INSTANCE(file_tracker_t,
                    opal_list_item_t,
@@ -136,9 +145,11 @@ static int init(void)
 
 static void finalize(void)
 {
-    opal_list_item_t *item;
 
-    while (NULL != (item = opal_list_remove_first(&jobs))) {
+
+    while (true) {
+        opal_list_item_t *item = opal_list_remove_first(&jobs);
+        ORCM_ON_NULL_BREAK(item);
         OBJ_RELEASE(item);
     }
     OBJ_DESTRUCT(&jobs);
@@ -152,16 +163,13 @@ static void finalize(void)
 static bool find_value(orte_app_context_t *app,
                        char *pattern, char **value)
 {
-    int i;
-    char *ptr;
-
-    for (i=0; NULL != app->env[i]; i++) {
+    for (int i=0; NULL != app->env[i]; i++) {
         if (0 == strncmp(app->env[i], pattern, strlen(pattern))) {
-            ptr = strchr(app->env[i], '=');
+            char* ptr = strchr(app->env[i], '=');
+            ORCM_ON_NULL_RETURN_ERROR(ptr, true);
             ptr++;
-            if (NULL != value) {
-                *value = strdup(ptr);
-            }
+            ORCM_ON_NULL_RETURN_ERROR(value, true);
+            *value = strdup(ptr);
             return true;
         }
     }
@@ -177,24 +185,21 @@ static void start(orte_jobid_t jobid)
     orte_app_context_t *app, *aptr;
     int i;
     char *filename;
-    file_tracker_t *ft;
+    file_tracker_t *ft = NULL;
     char *ptr;
 
     /* cannot monitor my own job */
     if (jobid == ORTE_PROC_MY_NAME->jobid && ORTE_JOBID_WILDCARD != jobid) {
         return;
     }
-
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "%s starting file monitoring for job %s",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          ORTE_JOBID_PRINT(jobid)));
 
     /* get the local jobdat for this job */
-    if (NULL == (jobdat = orte_get_job_data_object(jobid))) {
-        ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
-        return;
-    }
+    jobdat = orte_get_job_data_object(jobid);
+    ON_NULL_REPORT_ERROR_AND_RETURN(jobdat, ORTE_ERR_NOT_FOUND);
 
     /* must be at least one app_context, so use the first one found */
     app = NULL;
@@ -209,7 +214,6 @@ static void start(orte_jobid_t jobid)
         ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
         return;
     }
-
     /* search the environ to get the filename */
     if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_filename", &filename)) {
         /* was a default file given */
@@ -224,16 +228,13 @@ static void start(orte_jobid_t jobid)
         filename = strdup(mca_sensor_file_component.file);
     }
 
-    if (NULL == filename) {
-         ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-         return;
-     }
+    ORCM_ON_NULL_RETURN(filename);
 
     /* create the tracking object */
     ft = OBJ_NEW(file_tracker_t);
     ft->jobid = jobid;
     ft->file = strdup(filename);
-    free(filename);
+    SAFEFREE(filename);
 
     /* search the environ to see what we are checking */
     if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_check_size", &ptr)) {
@@ -242,14 +243,11 @@ static void start(orte_jobid_t jobid)
             ft->check_size = OPAL_INT_TO_BOOL(mca_sensor_file_component.check_size);
         }
     } else {
-        if (NULL == ptr) {
-            OBJ_RELEASE(ft);
-            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        ORCM_ON_NULL_GOTO(ptr, cleanup);
         ft->check_size = OPAL_INT_TO_BOOL(strtol(ptr, NULL, 10));
         free(ptr);
     }
+
 
     if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_check_access", &ptr)) {
         /* was a default value given */
@@ -257,11 +255,7 @@ static void start(orte_jobid_t jobid)
             ft->check_access = OPAL_INT_TO_BOOL(mca_sensor_file_component.check_access);
         }
     } else {
-        if (NULL == ptr) {
-            OBJ_RELEASE(ft);
-            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        ORCM_ON_NULL_GOTO(ptr, cleanup);
         ft->check_access = OPAL_INT_TO_BOOL(strtol(ptr, NULL, 10));
         free(ptr);
     }
@@ -272,11 +266,7 @@ static void start(orte_jobid_t jobid)
             ft->check_mod = OPAL_INT_TO_BOOL(mca_sensor_file_component.check_mod);
         }
     } else {
-        if (NULL == ptr) {
-            OBJ_RELEASE(ft);
-            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        ORCM_ON_NULL_GOTO(ptr, cleanup);
         ft->check_mod = OPAL_INT_TO_BOOL(strtol(ptr, NULL, 10));
         free(ptr);
     }
@@ -284,21 +274,18 @@ static void start(orte_jobid_t jobid)
     if (!find_value(app, OPAL_MCA_PREFIX"sensor_file_limit", &ptr)) {
         ft->limit = mca_sensor_file_component.limit;
     } else {
-        if (NULL == ptr) {
-            OBJ_RELEASE(ft);
-            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-            return;
-        }
+        ORCM_ON_NULL_GOTO(ptr, cleanup);
         ft->limit = strtol(ptr, NULL, 10);
         free(ptr);
     }
-    opal_list_append(&jobs, &ft->super);
     OPAL_OUTPUT_VERBOSE((1, orcm_sensor_base_framework.framework_output,
                          "%s file %s monitored for %s%s%s with limit %d",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          ft->file, ft->check_size ? "SIZE:" : " ",
                          ft->check_access ? "ACCESS TIME:" : " ",
                          ft->check_mod ? "MOD TIME" : " ", ft->limit));
+    opal_list_append(&jobs, &ft->super);
+    ft = NULL; /* Now owned by the list */
 
     /* start a separate file progress thread for sampling */
     if (mca_sensor_file_component.use_progress_thread) {
@@ -306,12 +293,13 @@ static void start(orte_jobid_t jobid)
             orcm_sensor_file.ev_active = true;
             if (NULL == (orcm_sensor_file.ev_base = opal_progress_thread_init("file"))) {
                 orcm_sensor_file.ev_active = false;
-                return;
+                goto cleanup;
             }
         }
 
         /* setup file sampler */
         file_sampler = OBJ_NEW(orcm_sensor_sampler_t);
+        ORCM_ON_NULL_GOTO(file_sampler, cleanup);
 
         /* check if file sample rate is provided for this*/
         if (mca_sensor_file_component.sample_rate) {
@@ -324,6 +312,9 @@ static void start(orte_jobid_t jobid)
                                perthread_file_sample, file_sampler);
         opal_event_evtimer_add(&file_sampler->ev, &file_sampler->rate);
     }
+
+cleanup:
+    ORCM_RELEASE(ft);
     return;
 }
 
@@ -397,7 +388,6 @@ void collect_file_sample(orcm_sensor_sampler_t *sampler)
     file_tracker_t *ft;
     orte_job_t *jdata;
     void* metrics_obj = mca_sensor_file_component.runtime_metrics;
-
     if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor file : skipping actual sample collection",
@@ -467,13 +457,19 @@ void collect_file_sample(orcm_sensor_sampler_t *sampler)
             orte_show_help("help-orcm-sensor-file.txt", "file-stalled", true,
                            ft->file, ft->file_size, ctime(&ft->last_access), ctime(&ft->last_mod));
             jdata = orte_get_job_data_object(ft->jobid);
-            ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_SENSOR_BOUND_EXCEEDED);
+            /* Under UT testing this function ALWAYS segfaults so this is a
+               function pointer so the UT can "subclass" the
+               "file_activate_job_state" function to remove the segfault. */
+            test_file_activate_job_state(jdata, ORTE_JOB_STATE_SENSOR_BOUND_EXCEEDED);
         }
     }
 }
 
-static void file_log(opal_buffer_t *sample)
+static void file_activate_job_state(orte_job_t *jdata, int flag)
 {
+printf("*** DEBUG: activate_job_state called!\n");
+    ORCM_ON_NULL_RETURN(jdata);
+    ORTE_ACTIVATE_JOB_STATE(jdata, flag);
 }
 
 int file_enable_sampling(const char* sensor_specification)

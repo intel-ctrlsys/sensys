@@ -51,7 +51,7 @@
     if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return y;}
 #define ORCM_ON_NULL_GOTO(x,label) \
     if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
-#define ORCM_ON_NULL_BREAK(x,label) \
+#define ORCM_ON_NULL_BREAK(x) \
     if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);break;}
 
 /* Helpful for debuging in orcmd when gdb is not correctly working with source code */

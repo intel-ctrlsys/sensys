@@ -533,12 +533,14 @@ static void syslog_log(opal_buffer_t *sample)
         if(USE_SEVERITY == (flags & USE_SEVERITY)) {
             sensor_metric = orcm_util_load_orcm_value("severity", severity, OPAL_STRING, "sev");
             ON_NULL_GOTO(sensor_metric, cleanup);
+            SAFEFREE(severity);
             opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
         }
 
         if(USE_LOG == (flags & USE_LOG)) {
             sensor_metric = orcm_util_load_orcm_value("log_message", log, OPAL_STRING, "log");
             ON_NULL_GOTO(sensor_metric, cleanup);
+            SAFEFREE(log);
             opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
         }
 
@@ -551,6 +553,7 @@ cleanup:
     ORCM_RELEASE(analytics_vals);
     SAFEFREE(hostname);
     SAFEFREE(log);
+    SAFEFREE(severity);
     ORCM_RELEASE(key);
     ORCM_RELEASE(non_compute_data);
 }

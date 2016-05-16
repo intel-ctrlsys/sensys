@@ -948,6 +948,7 @@ static void freq_log(opal_buffer_t *sample)
     n = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &ncores, &n, OPAL_INT32))) {
         ORTE_ERROR_LOG(rc);
+        freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
         return;
     }
     /* sample time */
@@ -1059,7 +1060,7 @@ static void freq_log(opal_buffer_t *sample)
     }
 
     orcm_analytics.send_data(analytics_vals);
-    freq_log_cleanup(NULL, NULL, key, non_compute_data, analytics_vals);
+    freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
 
     /* unpack the pstate entry count */
 }

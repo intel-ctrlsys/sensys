@@ -325,6 +325,9 @@ Node %s failed to get notifier smtp policy!
 [error:chassis-id-operation]
 Node %s failed to perform chassis id operation.
 
+[error:chassis-ipmi-colission]
+Node %s failed to perform chassis id operation since ipmi or nodepower sensors are running on its aggregator.
+
 [error:bmc-info]
 BMC information not found for node %s.
 

@@ -57,6 +57,7 @@ static int begin_transaction(char* node, opal_buffer_t *buf, orte_rml_recv_cb_t 
     orte_process_name_t target;
     rc = orcm_cfgi_base_get_hostname_proc(node, &target);
     if (ORCM_SUCCESS != rc){
+        orcm_octl_info("chassis-failure", node);
         orcm_octl_error("node-notfound", node);
         return rc;
     }
@@ -64,6 +65,7 @@ static int begin_transaction(char* node, opal_buffer_t *buf, orte_rml_recv_cb_t 
     rc = orte_rml.send_buffer_nb(&target, buf, ORCM_RML_TAG_CMD_SERVER,
                                  orte_rml_send_callback, NULL);
     if (ORTE_SUCCESS != rc){
+        orcm_octl_info("chassis-failure", node);
         orcm_octl_error("connection-fail");
         return rc;
     }
@@ -78,16 +80,28 @@ static int unpack_response(char* node, orte_rml_recv_cb_t *xfer){
 
     rc = opal_dss.unpack(&xfer->data, &response, &elements, OPAL_INT);
     if (OPAL_SUCCESS != rc){
+        orcm_octl_info("chassis-failure", node);
         orcm_octl_error("unpack");
         return rc;
     }
 
-    if (ORCM_SUCCESS != response){
+    if (ORCM_ERR_IPMI_CONFLICT == response){
+        orcm_octl_info("chassis-failure", node);
+        orcm_octl_error("chassis-ipmi-colission", node);
+        return response;
+    }
+    else if (ORCM_ERR_BMC_INFO_NOT_FOUND == response){
+        orcm_octl_info("chassis-failure", node);
+        orcm_octl_error("bmc-info", node);
+        return response;
+    }
+    else if (ORCM_SUCCESS != response){
+        orcm_octl_info("chassis-failure", node);
         orcm_octl_error("chassis-id-operation", node);
         return response;
     }
 
-    return rc;
+    return ORCM_SUCCESS;
 }
 
 static int unpack_state(char* node, orte_rml_recv_cb_t *xfer){
@@ -96,6 +110,7 @@ static int unpack_state(char* node, orte_rml_recv_cb_t *xfer){
     int state = -1;
     int rc = opal_dss.unpack(&xfer->data, &state, &elements, OPAL_INT);
     if (OPAL_SUCCESS != rc){
+        orcm_octl_info("chassis-failure", node);
         orcm_octl_error("unpack");
         return rc;
     }
@@ -207,7 +222,6 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
         }
 
         if (ORCM_SUCCESS != begin_transaction(ipmi_c.aggregator, buf, xfer)){
-            orcm_octl_info("chassis-failure", nodelist[iter]);
             cleanup(&buf, &xfer);
             continue;
         }
@@ -221,7 +235,6 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
         }
 
         if (ORCM_SUCCESS != unpack_response(nodelist[iter], xfer)){
-            orcm_octl_info("chassis-failure", nodelist[iter]);
             cleanup(&buf, &xfer);
             continue;
         }
@@ -230,7 +243,6 @@ int orcm_octl_led_operation(orcm_cmd_server_flag_t command,
             orcm_octl_info("chassis-success", nodelist[iter]);
         }
         else if (ORCM_SUCCESS != unpack_state(nodelist[iter], xfer)){
-            orcm_octl_info("chassis-failure", nodelist[iter]);
             cleanup(&buf, &xfer);
             continue;
         }

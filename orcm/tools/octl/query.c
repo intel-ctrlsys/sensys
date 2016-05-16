@@ -22,7 +22,7 @@
 
 /* Macros to help with code coverage */
 #define ON_FAILURE_RETURN(x) \
-    if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);return x;}
+    if(ORCM_SUCCESS!=x){return x;}
 #define ON_FAILURE_GOTO(x,label) \
     if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);goto label;}
 #define ON_NULL_GOTO(x,label) \

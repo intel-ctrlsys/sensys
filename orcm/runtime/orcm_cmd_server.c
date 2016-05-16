@@ -36,6 +36,9 @@
 #include "orcm/mca/dispatch/dispatch.h"
 #include "orcm/mca/sensor/ipmi/ipmi_parser_interface.h"
 
+#include "orcm/mca/sensor/base/sensor_private.h"
+
+
 #define  NULL_CHECK(p) if(NULL==p) {goto ERROR;}
 #define SAFE_RELEASE(p) if(NULL != p) OBJ_RELEASE(p);
 #define SAFE_ARGV_FREE(p) if(NULL != p) {opal_argv_free(p);p=NULL;}
@@ -58,6 +61,7 @@ static int append_string_to_opal_list(opal_list_t *list, char *str, char* key);
 static void chassis_id_event_cleanup(void *cbdata);
 static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
         ipmi_collector *ic, unsigned int seconds, opal_buffer_t *pack_buff);
+static bool is_loaded(const char*);
 
 int orcm_cmd_server_init(void)
 {
@@ -155,7 +159,7 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
         NULL_CHECK(pack_buff);
 
         cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &nodename,
+        if (OPAL_SUCCESS != (response = opal_dss.unpack(buffer, &nodename,
                                                  &cnt, OPAL_STRING))){
             goto ERROR;
         }
@@ -163,15 +167,21 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
         cnt = 1;
         seconds = 0;
         if (ORCM_SET_CHASSIS_ID_TEMPORARY_ON == sub_command &&
-            OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &seconds, &cnt, OPAL_INT))){
+            OPAL_SUCCESS != (response = opal_dss.unpack(buffer, &seconds, &cnt, OPAL_INT))){
             goto ERROR;
         }
 
         load_ipmi_config_file();
         if (!get_bmc_info(nodename, &ic)){
+            response = ORCM_ERR_BMC_INFO_NOT_FOUND;
             goto ERROR;
         }
-        rc = chassis_id_operation(sub_command, &ic, seconds, pack_buff);
+
+        if (is_loaded("ipmi") || is_loaded("nodepower")){
+            response = ORCM_ERR_IPMI_CONFLICT;
+            goto ERROR;
+        }
+        response = chassis_id_operation(sub_command, &ic, seconds, pack_buff);
         goto RESPONSE;
     }
 
@@ -420,7 +430,7 @@ static int pack_response(opal_buffer_t *pack_buff, int response, int state,
             return rc;
         }
     }
-    return rc;
+    return ORCM_SUCCESS;
 }
 
 static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
@@ -467,4 +477,19 @@ static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
     rc = pack_response(pack_buff, response, state, sub_command);
     fini_led_control();
     return rc;
+}
+
+bool is_loaded(const char* module){
+    int i = 0;
+    orcm_sensor_active_module_t *i_module;
+    for(i = 0; i < orcm_sensor_base.modules.size; ++i) {
+        i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i);
+        if( NULL == i_module ) {
+            continue;
+        }
+        if (0 == strcmp(module, i_module->component->base_version.mca_component_name)){
+            return true;
+        }
+    }
+    return false;
 }

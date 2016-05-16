@@ -31,6 +31,12 @@ int orcm_err2str(int errnum, const char **errmsg)
         case ORCM_ERR_NODE_NOT_EXIST:
         *errmsg = "Some node(s) does(do) not exist in the requested group(s)!";
         break;
+        case ORCM_ERR_IPMI_CONFLICT:
+        *errmsg = "Unable to perform IPMI operation. IPMI operations on different threads are not supported.";
+        break;
+        case ORCM_ERR_BMC_INFO_NOT_FOUND:
+        *errmsg = "No BMC information was found for that node!";
+        break;
         default:
             *errmsg = NULL;
     }

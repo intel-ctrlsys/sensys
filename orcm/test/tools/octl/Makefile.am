@@ -40,7 +40,8 @@ octl_tests_SOURCES = \
     octl_led_tests.cpp \
     workflow_tests.cpp \
     octl_diag_tests.cpp \
-    octl_queue_tests.cpp
+    octl_queue_tests.cpp \
+    octl_resource_tests.cpp
 MOCKING = \
     -Wl,--wrap=orcm_cfgi_base_get_hostname_proc \
     -Wl,--wrap=get_bmc_info
@@ -59,7 +60,8 @@ LDADD = \
     $(top_builddir)/orcm/tools/octl/smtp.o \
     $(top_builddir)/orcm/tools/octl/output_handler.o \
     $(top_builddir)/orcm/tools/octl/diag.o \
-    $(top_builddir)/orcm/tools/octl/queue.o  
+    $(top_builddir)/orcm/tools/octl/queue.o \
+    $(top_builddir)/orcm/tools/octl/resource.o  
 
 AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 

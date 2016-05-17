@@ -32,6 +32,10 @@ extern void start_aggregator_count(void);
 
 extern bool get_next_aggregator_name(char* aggregator);
 
-extern bool get_bmc_info(char* hostname, ipmi_collector *ic);
+extern bool get_bmc_info(const char* hostname, ipmi_collector *ic);
+
+extern bool get_bmcs_for_aggregator(char* agg, ipmi_collector** bmc_list, int *n);
+
+extern void release_bmc_list(ipmi_collector** bmc_list, int n);
 
 #endif

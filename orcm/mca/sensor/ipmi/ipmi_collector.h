@@ -35,23 +35,28 @@ enum priv_levels {
     OEM,
 };
 
-using namespace std;
+/**
+ * DISCLAIMER: even when port and channel information is retrieved and
+ * handled by the configuration parser, neither IPMI sensor plugin nor
+ * chassis-id feature supports a custom configuration for these values.
+ * The implementation is not removed in order to be used in the near future.
+ */
 
 class ipmiCollector {
     public:
         ipmiCollector();
-        ipmiCollector(string hostname, string bmc_address, string aggregator,
-                      string user, string pass);
-        ipmiCollector(string hostname, string bmc_address, string aggregator,
-                      string user, string pass, auth_methods auth_method,
+        ipmiCollector(std::string hostname, std::string bmc_address, std::string aggregator,
+                      std::string user, std::string pass);
+        ipmiCollector(std::string hostname, std::string bmc_address, std::string aggregator,
+                      std::string user, std::string pass, auth_methods auth_method,
                       priv_levels priv_level, int port, int channel);
         ~ipmiCollector() {};
 
-        string getHostname()   { return hostname; };
-        string getBmcAddress() { return bmc_address; };
-        string getUser()       { return user; };
-        string getPass()       { return pass; };
-        string getAggregator() { return aggregator; };
+        std::string getHostname()   { return hostname; };
+        std::string getBmcAddress() { return bmc_address; };
+        std::string getUser()       { return user; };
+        std::string getPass()       { return pass; };
+        std::string getAggregator() { return aggregator; };
         auth_methods getAuthMethod()    { return auth_method; };
         priv_levels  getPrivLevel()     { return priv_level; };
         int getPort()          { return port; };
@@ -63,11 +68,11 @@ class ipmiCollector {
         int setChannel(int channel);
 
     private:
-        string bmc_address;
-        string user;
-        string pass;
-        string aggregator;
-        string hostname;
+        std::string bmc_address;
+        std::string user;
+        std::string pass;
+        std::string aggregator;
+        std::string hostname;
         auth_methods auth_method;
         priv_levels  priv_level;
         int port;

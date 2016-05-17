@@ -9,6 +9,8 @@
 
 #include "ipmi_collector.h"
 
+using namespace std;
+
 ipmiCollector::ipmiCollector()
 {
     hostname = bmc_address = aggregator = user = pass = "";

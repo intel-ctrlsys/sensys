@@ -10,6 +10,8 @@
 #include <set>
 #include "orcm/mca/sensor/ipmi/ipmi_parser.h"
 
+using namespace std;
+
 static ipmiCollectorMap ic_map;
 static ipmiCollectorVector ic_vector;
 static set<string> aggregators;
@@ -54,7 +56,7 @@ extern "C" {
     }
 
     // Retrieves the BMC information from a given node name
-    bool get_bmc_info(char* hostname, ipmi_collector *ic){
+    bool get_bmc_info(const char* hostname, ipmi_collector *ic){
         string str_hostname(hostname);
         if (NULL == ic || 0 == ic_map.count(str_hostname)){
             return false;
@@ -75,5 +77,47 @@ extern "C" {
         ic->port        = ic_map[str_hostname].getPort();
         ic->channel     = ic_map[str_hostname].getChannel();
         return true;
+    }
+
+    // Returns an array of BMC info for a given aggregator
+    bool get_bmcs_for_aggregator(char* agg, ipmi_collector** bmc_list, int *n)
+    {
+        int i = 0;
+        string str_agg(agg);
+        set<string> str_bmc_list;
+        ipmiCollectorVector::iterator it;
+        set<string>::iterator bmc_it;
+        ipmi_collector* local_bmc_list = NULL;
+
+        for (it = ic_vector.begin(); it != ic_vector.end(); ++it) {
+            if (0 == str_agg.compare(it->getAggregator())) {
+                str_bmc_list.insert(it->getHostname());
+            }
+        }
+
+        if (0 == str_bmc_list.size()) {
+            return false;
+        }
+
+        local_bmc_list = (ipmi_collector*) malloc(str_bmc_list.size()*sizeof(ipmi_collector));
+        ORCM_ON_NULL_RETURN_ERROR(local_bmc_list, false);
+
+        for (bmc_it = str_bmc_list.begin(); bmc_it != str_bmc_list.end(); ++bmc_it) {
+            (void) get_bmc_info((*bmc_it).c_str(), &local_bmc_list[i++]);
+        }
+
+        *n = i;
+        *bmc_list = local_bmc_list;
+
+        return true;
+    }
+
+    // Utilitary function for releasing an array of BMC info
+    void release_bmc_list(ipmi_collector** bmc_list, int n)
+    {
+        for (int i = 0; i < n; ++i) {
+            SAFE_RELEASE(bmc_list[i]);
+        }
+        SAFE_RELEASE(bmc_list);
     }
 }

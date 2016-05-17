@@ -22,6 +22,7 @@
 #include "orte/runtime/orte_globals.h"
 
 #include "orcm/mca/cfgi/base/base.h"
+#include "orcm/util/utils.h"
 
 
 /*
@@ -88,6 +89,7 @@ static int orcm_cfgi_base_close(void)
         }
     }
     OPAL_LIST_DESTRUCT(&orcm_cfgi_base.actives);
+    SAFEFREE(orcm_cfgi_base.config_file);
 
     return mca_base_framework_components_close(&orcm_cfgi_base_framework, NULL);
 }

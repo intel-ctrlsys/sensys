@@ -1336,6 +1336,7 @@ static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         n=1;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv_val, &n, OPAL_STRING))) {
             ORTE_ERROR_LOG(rc);
+            SAFEFREE(inv_val);
             OBJ_RELEASE(records);
             return;
         }

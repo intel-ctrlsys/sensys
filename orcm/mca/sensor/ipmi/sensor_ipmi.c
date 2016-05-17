@@ -70,6 +70,7 @@ static void generate_test_vector_inner(opal_buffer_t* buffer);
 static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot);
 static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *sensor_inventory);
 static int update_host_info_from_config_file(orcm_sensor_hosts_t* host);
+static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, ipmi_capsule_t *cap);
 
 int first_sample = 0;
 
@@ -159,6 +160,8 @@ char ipmi_inv_tv[10][2][30] = {
 static int init(void)
 {
     int rc;
+    ipmi_collector* bmc_list = NULL;
+    int number_of_nodes = 0;
     disable_ipmi = 0;
 
     mca_sensor_ipmi_component.diagnostics = 0;
@@ -186,21 +189,29 @@ static int init(void)
         return ORCM_ERROR;
     }
 
+    if (!get_bmcs_for_aggregator(orte_process_info.nodename, &bmc_list, &number_of_nodes)) {
+        opal_output(0, "Unable to collect ipmi configuration");
+        return ORCM_ERROR;
+    }
+
+    // Add the node to the slave list of the aggregator
+    for (int i = 0; i < number_of_nodes; ++i) {
+        if (ORCM_SUCCESS != orcm_sensor_ipmi_addhost(&bmc_list[i], &sensor_active_hosts))
+        {
+            opal_output(0,"Unable to add the new host! Try restarting ORCM");
+            orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-addhost-fail",
+                   true, orte_process_info.nodename, bmc_list[i].hostname);
+        }
+    }
+    SAFEFREE(bmc_list);
+
     rc = orcm_sensor_ipmi_get_sensor_inventory_list(&sensor_inventory);
     if(rc != ORCM_SUCCESS) {
-        OBJ_DESTRUCT(&sensor_inventory);
         opal_output(0, "Unable to collect the current sensor inventory");
         return ORCM_ERROR;
     }
-    cur_host = OBJ_NEW(orcm_sensor_hosts_t);
-    rc = orcm_sensor_ipmi_get_bmc_cred(cur_host);
-    if(rc != ORCM_SUCCESS) {
-        opal_output(0, "Unable to collect the current host details");
-        OBJ_DESTRUCT(&sensor_inventory);
-        ORCM_RELEASE(cur_host);
-        return ORCM_ERROR;
-    }
     have_sensor_inventory = true;
+
     return OPAL_SUCCESS;
 }
 
@@ -364,27 +375,6 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
     ipmi_log_extract_create_string(sample, baseboard_part, sizeof(baseboard_part));
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
         "Unpacked Baseboard Part Number(9a): %s", baseboard_part);
-
-    /* Add the node only if it has not been added previously, for the
-     * off chance that the compute node daemon was started once before,
-     * and after running for sometime was killed
-     * VINFIX: Eventually, this node which is already present and is
-     * re-started has to be removed first, and then added again afresh,
-     * just so that we update our list with the latest credentials
-     */
-    if(ORCM_ERR_NOT_FOUND == orcm_sensor_ipmi_found(nodename, &sensor_active_hosts))
-    {
-        if(ORCM_SUCCESS != orcm_sensor_ipmi_addhost(nodename, hostip, bmcip, &sensor_active_hosts)) /* Add the node to the slave list of the aggregator */
-        {
-            opal_output(0,"Unable to add the new host! Try restarting ORCM");
-            orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-addhost-fail",
-                   true, orte_process_info.nodename, nodename);
-            return;
-        }
-    } else {
-        opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
-                            "Node already populated; Not going be added again");
-    }
 
     key = OBJ_NEW(opal_list_t);
     if (NULL == key) {
@@ -766,6 +756,13 @@ int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host)
     long int fru_area;
     long int max_fru_area = 0;
     char *error_string;
+    ipmi_capsule_t *cap = NULL;
+    char addr[16];
+
+    ORCM_ON_NULL_RETURN_ERROR(host, ORCM_ERROR);
+    cap = &host->capsule;
+
+    ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
 
     memset(idata,0x00,sizeof(idata));
     for (id = 0; id < MAX_FRU_DEVICES; id++) {
@@ -1070,19 +1067,27 @@ int orcm_sensor_ipmi_found(char *nodename, opal_list_t *host_list)
     return ORCM_ERR_NOT_FOUND;
 }
 
-int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip, opal_list_t *host_list)
+int orcm_sensor_ipmi_addhost(ipmi_collector* ic, opal_list_t *host_list)
 {
     orcm_sensor_hosts_t *newhost;
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                        "Adding New Node: %s, with BMC IP: %s", nodename, bmc_ip);
+                        "Adding New Node: %s, with BMC IP: %s", ic->hostname, ic->bmc_address);
 
     newhost = OBJ_NEW(orcm_sensor_hosts_t);
-    strncpy(newhost->capsule.node.name,nodename,sizeof(newhost->capsule.node.name)-1);
+    strncpy(newhost->capsule.node.name,ic->hostname,sizeof(newhost->capsule.node.name)-1);
     newhost->capsule.node.name[sizeof(newhost->capsule.node.name)-1] = '\0';
-    strncpy(newhost->capsule.node.host_ip,host_ip,sizeof(newhost->capsule.node.host_ip)-1);
+    strncpy(newhost->capsule.node.host_ip,ic->hostname,sizeof(newhost->capsule.node.host_ip)-1);
     newhost->capsule.node.host_ip[sizeof(newhost->capsule.node.host_ip)-1] = '\0';
-    strncpy(newhost->capsule.node.bmc_ip,bmc_ip,sizeof(newhost->capsule.node.bmc_ip)-1);
+    strncpy(newhost->capsule.node.bmc_ip,ic->bmc_address,sizeof(newhost->capsule.node.bmc_ip)-1);
     newhost->capsule.node.bmc_ip[sizeof(newhost->capsule.node.bmc_ip)-1] = '\0';
+    strncpy(newhost->capsule.node.user,ic->user,sizeof(newhost->capsule.node.user)-1);
+    newhost->capsule.node.user[sizeof(newhost->capsule.node.user)-1] = '\0';
+    strncpy(newhost->capsule.node.pasw,ic->pass,sizeof(newhost->capsule.node.pasw)-1);
+    newhost->capsule.node.pasw[sizeof(newhost->capsule.node.pasw)-1] = '\0';
+
+    newhost->capsule.node.auth = ic->auth_method;
+    newhost->capsule.node.priv = ic->priv_level;
+    newhost->capsule.node.ciph = 3; /* Cipher suite No. 3 */
 
     /* Add to Host list */
     opal_list_append(host_list, &newhost->super);
@@ -1736,21 +1741,15 @@ void collect_ipmi_subsequent_data(orcm_sensor_sampler_t* sampler)
 
 void collect_ipmi_sample(orcm_sensor_sampler_t* sampler)
 {
-    static int timeout = 0;
-
     if(1 == disable_ipmi) {
         return;
     }
 
-    if(0 == first_sample && 3 > timeout && false == mca_sensor_ipmi_component.test) {
-        collect_ipmi_first_time_data(sampler, &timeout);
+    if(mca_sensor_ipmi_component.test) {
+        generate_test_vector(sampler);
+        mca_sensor_ipmi_component.diagnostics |= (mca_sensor_ipmi_component.collect_metrics?1:0);
     } else {
-        if(mca_sensor_ipmi_component.test) {
-            generate_test_vector(sampler);
-            mca_sensor_ipmi_component.diagnostics |= (mca_sensor_ipmi_component.collect_metrics?1:0);
-        } else {
-            collect_ipmi_subsequent_data(sampler);
-        }
+        collect_ipmi_subsequent_data(sampler);
     }
 }
 
@@ -2119,11 +2118,44 @@ void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap)
 
 static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *inventory_list)
 {
+    int rc = 0;
+    orcm_sensor_hosts_t* host = NULL;
+    orcm_sensor_hosts_t* nxt = NULL;
+
+    OPAL_LIST_FOREACH_SAFE(host, nxt, &sensor_active_hosts, orcm_sensor_hosts_t) {
+        rc |= get_sensor_inventory_list_from_node(inventory_list, &host->capsule);
+        rc |= orcm_sensor_get_fru_inv(host);
+        if(ORCM_SUCCESS != rc) {
+            opal_output(0, "WARNING: A problem occurred while gathering inventory from host %s. ",
+                            host->capsule.node.name);
+        }
+    }
+
+    return ORCM_SUCCESS;
+}
+
+static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, ipmi_capsule_t *cap)
+{
     int ret = 0;
+    char addr[16];
     unsigned char *sdrlist = NULL;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "Gathering local ipmi sensors for inventory");
+    ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
+
+    if (ret) {
+        char *error_string;
+        error_string = decode_rv(ret);
+        orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-set-lan-fail",
+                           true, orte_process_info.nodename,
+                           cap->node.name, cap->node.bmc_ip,
+                           cap->node.user, "*****", cap->node.auth,
+                           cap->node.priv, cap->node.ciph, error_string);
+        opal_output(0, "Failed to get sensor inventory data!");
+        return ORCM_ERROR;
+    }
+
     ret = get_sdr_cache(&sdrlist);
     if (ret) {
         char *error_string;
@@ -2131,9 +2163,9 @@ static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *inventory_lis
         error_string = decode_rv(ret);
         orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-get-sdr-fail",
                        true, orte_process_info.nodename,
-                       orte_process_info.nodename, "localhost",
-                       "NA", "NA", 0,
-                       0, 0, error_string);
+                       cap->node.name, cap->node.bmc_ip,
+                       cap->node.user, "*****", cap->node.auth,
+                       cap->node.priv, cap->node.ciph, error_string);
         opal_output(0, "Failed to get sensor inventory data!");
         return ORCM_ERROR;
     } else {

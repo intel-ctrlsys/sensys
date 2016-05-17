@@ -36,6 +36,8 @@ ignoring date/time
 */
 #define BOARD_INFO_DATA_START 6
 
+#include "ipmi_parser_interface.h"
+
 unsigned char disable_ipmi;
 
 // GET_DEVICE_ID
@@ -144,7 +146,7 @@ void orcm_sensor_ipmi_get_device_power_state(uchar in, char* str, int str_size);
 int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host);
 int orcm_sensor_ipmi_found(char *nodename, opal_list_t *host_list);
 unsigned int orcm_sensor_ipmi_counthosts(void);
-int orcm_sensor_ipmi_addhost(char *nodename, char *host_ip, char *bmc_ip, opal_list_t * host_list);
+int orcm_sensor_ipmi_addhost(ipmi_collector* ic, opal_list_t *host_list);
 
 int orcm_sensor_ipmi_label_found(char * tag);
 int orcm_sensor_get_fru_inv(orcm_sensor_hosts_t *host);

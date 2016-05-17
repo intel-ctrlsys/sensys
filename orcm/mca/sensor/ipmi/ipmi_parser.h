@@ -35,36 +35,41 @@ extern "C" {
 #define XML_PORT "port"
 #define XML_CHANNEL "channel"
 
-typedef map<string, ipmiCollector> ipmiCollectorMap;
-typedef vector<ipmiCollector> ipmiCollectorVector;
+typedef std::map<std::string, ipmiCollector> ipmiCollectorMap;
+typedef std::vector<ipmiCollector> ipmiCollectorVector;
 
-using namespace std;
+/**
+ * DISCLAIMER: even when port and channel information is retrieved and
+ * handled by the configuration parser, neither IPMI sensor plugin nor
+ * chassis-id feature supports a custom configuration for these values.
+ * The implementation is not removed in order to be used in the near future.
+ */
 
 class ipmiParser {
     public:
-        ipmiParser(const string& file="");
+        ipmiParser(const std::string& file="");
         ~ipmiParser() { closeFile(); };
 
         ipmiCollectorMap    getIpmiCollectorMap() { return ipmiMap; };
         ipmiCollectorVector getIpmiCollectorVector() { return ipmiVector; };
 
     private:
-        string file;
+        std::string file;
         int fileId;
-        string IPMI_DEFAULT_FILE_PATH;
+        std::string IPMI_DEFAULT_FILE_PATH;
         ipmiCollectorMap ipmiMap;
         ipmiCollectorVector ipmiVector;
 
         int  openFile();
         void closeFile();
-        void setFile(const string& file);
+        void setFile(const std::string& file);
         void setDefaultPath();
         void parse();
         void getIpmiCollectorMapFromIpmiSections(opal_list_t *ipmiSections);
         void fillVectorFromMap();
         bool itemListHasChildren(orcm_value_t *item);
-        bool fieldsAreNotEmpty(string hostname, string bmcAddress,
-                               string aggregator, string user, string pass);
+        bool fieldsAreNotEmpty(std::string hostname, std::string bmcAddress,
+                               std::string aggregator, std::string user, std::string pass);
         auth_methods getAuthMethodType(char *auth_method);
         priv_levels  getPrivLevelType(char *priv_level);
         ipmiCollectorMap getIpmiCollectorMapFromBmcNodes(opal_list_t *bmcNodes);
@@ -72,9 +77,9 @@ class ipmiParser {
                              ipmiCollectorMap join_map);
         ipmiCollector* getIpmiCollectorFromOrcmValue(orcm_value_t *node);
         ipmiCollector* buildIpmiCollectorFromList(opal_list_t* list);
-        void getAllIpmiValues(string& hostname, string& bmcAddress, string& user,
-                      string& pass, string& aggregator, auth_methods& authMethod,
-                      priv_levels& privLevel, int& port, int& channel, opal_list_t*list);
+        void getAllIpmiValues(std::string& hostname, std::string& bmcAddress, std::string& user,
+                              std::string& pass, std::string& aggregator, auth_methods& authMethod,
+                              priv_levels& privLevel, int& port, int& channel, opal_list_t*list);
 };
 
 #endif //IPMI_PARSER_H

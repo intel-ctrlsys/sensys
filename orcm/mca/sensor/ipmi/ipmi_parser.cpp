@@ -44,6 +44,8 @@
         return value;                                                     \
     }
 
+using namespace std;
+
 static inline bool stringMatchRegex(string str, string pattern){
    regex_t regex_comp;
    regcomp(&regex_comp, pattern.c_str(), REG_ICASE|REG_EXTENDED);

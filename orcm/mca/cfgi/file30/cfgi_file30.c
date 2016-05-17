@@ -2603,7 +2603,7 @@ static int check_lex_aggregator_yes_no(xml_tree_t * in_xtree)
             }
         }
     }
-
+    regfree(&regex_comp);
     return erri;
 }
 

@@ -796,6 +796,7 @@ static void nodepower_inventory_log(char *hostname, opal_buffer_t *inventory_sna
 cleanup:
     ORCM_RELEASE(time_stamp);
     ORCM_RELEASE(records);
+    ORCM_RELEASE(mkv);
     SAFEFREE(inv);
 }
 

@@ -202,6 +202,7 @@ static int dlopen_foreachfile(const char *search_path,
                 /* Skip libtool files */
                 if (strcmp(ptr, ".la") == 0 ||
                     strcmp(ptr, ".lo") == 0) {
+                    free(abs_name);
                     continue;
                 }
 

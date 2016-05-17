@@ -145,7 +145,7 @@ int pugi_impl::writeToTree(opal_list_t *srcList, opal_list_t *input, char const*
     }
 
     if ((NULL == key) || (0 == strcmp("", key))) {
-        appendToList(srcList, input, overwrite);
+        appendToList(&srcList, input, overwrite);
         return ORCM_SUCCESS;
     }
     orcm_value_t *item = NULL;
@@ -170,28 +170,28 @@ int pugi_impl::checkOpalPtrToWrite(orcm_value_t *item, opal_list_t *input, char 
                                    char const* name, bool overwrite)
 {
     if (true == itemMatchesKeyAndName(item, key, name)) {
-        appendToList((opal_list_t*)item->value.data.ptr, input, overwrite);
+        appendToList((opal_list_t**)&item->value.data.ptr, input, overwrite);
         return ORCM_SUCCESS;
     }
 
     return ORCM_ERROR;
 }
 
-void pugi_impl::appendToList(opal_list_t *srcList, opal_list_t *input, bool overwrite)
+void pugi_impl::appendToList(opal_list_t **srcList, opal_list_t *input, bool overwrite)
 {
-    if (NULL == srcList) {
+    if ((NULL == srcList) || (NULL == *srcList)) {
         return;
     }
 
     if (true == overwrite) {
-        SAFE_RELEASE(srcList);
-        srcList = duplicateList(input);
+        SAFE_RELEASE(*srcList);
+        *srcList = duplicateList(input);
     }
     else {
         if (NULL == input) {
             return;
         }
-        opal_list_join( srcList, opal_list_get_end(srcList), input);
+        opal_list_join( *srcList, opal_list_get_end(*srcList), input);
     }
 }
 

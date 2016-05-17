@@ -53,7 +53,7 @@ class pugi_impl {
                          char const*name, bool overwrite);
         int  checkOpalPtrToWrite(orcm_value_t *item, opal_list_t *input, char const* key,
                                  char const* name, bool overwrite);
-        void appendToList(opal_list_t *srcList, opal_list_t *input, bool overwrite);
+        void appendToList(opal_list_t **srcList, opal_list_t *input, bool overwrite);
         void addLeafNodeToList(pugi::xml_node node, opal_list_t *list);
         void addNodeAttributesToList(pugi::xml_node node, opal_list_t *list);
         void addNodeChildrenToList(pugi::xml_node node, opal_list_t *list);

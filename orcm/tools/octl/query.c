@@ -250,7 +250,7 @@ int create_buffer_from_filters(opal_buffer_t **buffer_to_send,
     rc = opal_dss.pack(tmp_buffer, &command, 1, ORCM_RM_CMD_T);
     ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
     filters_list_size = (uint16_t)opal_list_get_size(filters_list);
-    if (2 > filters_list_size) {
+    if (0 == filters_list_size) {
         rc = OPAL_ERR_BAD_PARAM;
         goto create_buffer_from_filters_cleanup;
     }

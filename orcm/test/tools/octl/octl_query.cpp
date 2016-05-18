@@ -323,6 +323,7 @@ int ut_octl_query::QueryDbStreamVaryingFilters(uint32_t *results_count,
 
     filters_list = CreateFiltersList(filters_size);
     rc = query_db_stream(cmd, filters_list, results_count, stream_index);
+    OPAL_LIST_RELEASE(filters_list);
 
     return rc;
 }
@@ -995,8 +996,9 @@ TEST_F(ut_octl_query, query_db_stream_invalid_filters)
     uint32_t results_count = 0;
     int stream_index = 0;
 
+    orte_rml.send_buffer_nb = MockedSendBufferFromDbQuery;
     rc = QueryDbStreamVaryingFilters(&results_count, &stream_index,
-                                     one_filters);
+                                     zero_filters);
 
     EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
 }
@@ -1126,7 +1128,7 @@ TEST_F(ut_octl_query, create_buffer_from_filters_not_enough_filters)
 
     rc = CreateBufferFromVaryingFilters(&buffer, filters_list,
                                         (orcm_rm_cmd_flag_t)command,
-                                        one_filters);
+                                        zero_filters);
     EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
 }
 

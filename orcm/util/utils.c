@@ -771,3 +771,25 @@ uint64_t orcm_util_get_time_in_sec(char* time)
     return seconds;
 }
 
+void orcm_util_release_nested_orcm_value_list_item(orcm_value_t **item)
+{
+    if (NULL != item && NULL != *item){
+        if (OPAL_PTR == (*item)->value.type){
+            orcm_util_release_nested_orcm_value_list((opal_list_t *) (*item)->value.data.ptr);
+            (*item)->value.data.ptr = NULL;
+        }
+        SAFE_RELEASE(*item);
+    }
+}
+
+void orcm_util_release_nested_orcm_value_list(opal_list_t *list)
+{
+    if (NULL != list)  {
+        orcm_value_t *item = NULL, *next = NULL;
+        OPAL_LIST_FOREACH_SAFE(item, next, list, orcm_value_t){
+            opal_list_remove_item(list, (opal_list_item_t *) item);
+            orcm_util_release_nested_orcm_value_list_item(&item);
+        }
+        OPAL_LIST_RELEASE(list);
+    }
+}

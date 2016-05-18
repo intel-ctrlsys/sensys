@@ -22,6 +22,7 @@ extern "C" {
     // ORCM
     #include "orcm/runtime/orcm_globals.h"
     #include "orcm/mca/parser/base/base.h"
+    #include "orcm/util/utils.h"
 
 };
 
@@ -267,6 +268,7 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_open_file)
 
     ret = orcm_parser.open(RANDOM_FILE_NAME_TO_TEST_API);
     ASSERT_NE(MY_ORCM_SUCCESS, ret);
+    orcm_parser.close(ret);
 }
 
 
@@ -287,6 +289,7 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_with_no_open_file_api)
 
     ret = orcm_parser.open(RANDOM_FILE_NAME_TO_TEST_API);
     ASSERT_NE(MY_ORCM_SUCCESS, ret);
+    orcm_parser.close(ret);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_open_file)
@@ -306,6 +309,7 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_open_file)
 
     ret = orcm_parser.open(RANDOM_FILE_NAME_TO_TEST_API);
     ASSERT_EQ(MY_ORCM_SUCCESS, ret);
+    orcm_parser.close(ret);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_close_file)
@@ -359,7 +363,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_close_file)
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_retrieve_document)
 {
     ut_parser_base_tests::reset_module_list();
-    orcm_parser.retrieve_document(RANDOM_VALUE_TO_TEST_API);
+    opal_list_t *ret = orcm_parser.retrieve_document(RANDOM_VALUE_TO_TEST_API);
+    SAFE_RELEASE_NESTED_LIST(ret);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_retrieve_document_api)
@@ -375,7 +380,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_no_retrieve_document_api)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    orcm_parser.retrieve_document(RANDOM_VALUE_TO_TEST_API);
+    opal_list_t *ret = orcm_parser.retrieve_document(RANDOM_VALUE_TO_TEST_API);
+    SAFE_RELEASE_NESTED_LIST(ret);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_document)
@@ -391,13 +397,15 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_document)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    orcm_parser.retrieve_document(RANDOM_VALUE_TO_TEST_API);
+    opal_list_t *ret =orcm_parser.retrieve_document(RANDOM_VALUE_TO_TEST_API);
+    SAFE_RELEASE_NESTED_LIST(ret);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_retrieve_section)
 {
     ut_parser_base_tests::reset_module_list();
-    orcm_parser.retrieve_section(RANDOM_VALUE_TO_TEST_API, "", "");
+    opal_list_t *ret = orcm_parser.retrieve_section(RANDOM_VALUE_TO_TEST_API, "", "");
+    SAFE_RELEASE_NESTED_LIST(ret);
 }
 
 
@@ -414,7 +422,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_with_no_retrieve_section_api)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    orcm_parser.retrieve_section(RANDOM_VALUE_TO_TEST_API, "", "");
+    opal_list_t *ret = orcm_parser.retrieve_section(RANDOM_VALUE_TO_TEST_API, "", "");
+    SAFE_RELEASE_NESTED_LIST(ret);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section)
@@ -430,7 +439,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    orcm_parser.retrieve_section(RANDOM_VALUE_TO_TEST_API, "", "");
+    opal_list_t *ret = orcm_parser.retrieve_section(RANDOM_VALUE_TO_TEST_API, "", "");
+    SAFE_RELEASE_NESTED_LIST(ret);
 }
 
 
@@ -440,7 +450,8 @@ TEST_F(ut_parser_base_tests,
 {
     ut_parser_base_tests::reset_module_list();
 
-    orcm_parser.retrieve_section_from_list(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+    opal_list_t *ret = orcm_parser.retrieve_section_from_list(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+    SAFE_RELEASE_NESTED_LIST(ret);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_with_no_retrieve_section_from_list_api)
@@ -456,7 +467,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_with_no_retrieve_section_from_lis
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    orcm_parser.retrieve_section_from_list(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+    opal_list_t *ret = orcm_parser.retrieve_section_from_list(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+    SAFE_RELEASE_NESTED_LIST(ret);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section_from_list)
@@ -472,7 +484,8 @@ TEST_F(ut_parser_base_tests, parser_base_stubs_retrieve_section_from_list)
 
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 
-    orcm_parser.retrieve_section_from_list(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+    opal_list_t *ret = orcm_parser.retrieve_section_from_list(RANDOM_VALUE_TO_TEST_API, NULL, "", "");
+    SAFE_RELEASE_NESTED_LIST(ret);
 }
 
 TEST_F(ut_parser_base_tests, parser_base_stubs_no_active_module_write_section)

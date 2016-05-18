@@ -246,7 +246,7 @@ static void orcm_analytics_base_load_default_workflows(void)
         }
     }
     SAFEFREE(file);
-    SAFE_RELEASE(result_list);
+    SAFE_RELEASE_NESTED_LIST(result_list);
     return;
 }
 

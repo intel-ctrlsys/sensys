@@ -662,17 +662,18 @@ static int orcm_logical_group_parse_from_file(opal_hash_table_t *io_groups)
             if (0 == strcmp(list_item->value.key, "logicalgroup")) {
                 rc = orcm_logical_group_parsing((opal_list_t*)list_item->value.data.ptr, io_groups);
                 if (ORCM_SUCCESS != rc) {
+                    SAFE_RELEASE_NESTED_LIST(result_list);
                     return rc;
                 }
             }
         }
         else {
             ORCM_UTIL_ERROR_MSG_WITH_ARG("Unexpected data type %c from config file", list_item->value.type);
-            SAFE_RELEASE(result_list);
+            SAFE_RELEASE_NESTED_LIST(result_list);
             return ORCM_ERROR;
         }
     }
-    SAFE_RELEASE(result_list);
+    SAFE_RELEASE_NESTED_LIST(result_list);
     return ORCM_SUCCESS;
 }
 
@@ -747,6 +748,7 @@ static int orcm_logical_group_open_file_with_logicalgroup_tag(char *storage_file
             ret = orcm_logical_group_open_file_write_mode(storage_filename);
         }
     }
+    SAFE_RELEASE_NESTED_LIST(result_list);
     return ret;
 }
 

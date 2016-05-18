@@ -23,6 +23,8 @@
 
 #define SAFEFREE(p) if(NULL!=p) {free(p); p=NULL;}
 #define SAFE_RELEASE(p) if(NULL!=p) OBJ_RELEASE(p)
+#define SAFE_RELEASE_NESTED_LIST(p) if(NULL!=p){orcm_util_release_nested_orcm_value_list(p); \
+                                    p = NULL;}
 #define CHECK_NULL_ALLOC(x, e, label)  if(NULL==x) { e=ORCM_ERR_OUT_OF_RESOURCE; goto label; }
 
 
@@ -169,5 +171,9 @@ ORCM_DECLSPEC opal_list_t* orcm_util_workflow_add_retrieve_workflows_section(con
 
 /*Extract one block of workflow info from XML file */
 ORCM_DECLSPEC int orcm_util_workflow_add_extract_workflow_info(opal_list_t *result_list, opal_buffer_t *buf, char *list_head_key, bool *is_filter_first_step);
+
+/* Release orcm_value_t nested list (orcm_value_t list of lists */
+ORCM_DECLSPEC void orcm_util_release_nested_orcm_value_list(opal_list_t *list);
+ORCM_DECLSPEC void orcm_util_release_nested_orcm_value_list_item(orcm_value_t **item);
 
 #endif

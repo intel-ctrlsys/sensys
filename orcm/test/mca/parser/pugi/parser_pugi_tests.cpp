@@ -11,7 +11,12 @@
 #include "opal/class/opal_list.h"
 #include "orcm/runtime/orcm_globals.h"
 
-#define SAFE_OBJ_RELEASE(x)  if(NULL != x){ OBJ_RELEASE(x); x = NULL;}
+BEGIN_C_DECLS
+    #include "orcm/util/utils.h"
+    extern void orcm_util_release_nested_orcm_value_list_item(orcm_value_t **item);
+    extern void orcm_util_release_nested_orcm_value_list(opal_list_t *list);
+    extern orcm_value_t* orcm_util_load_orcm_value(char *key, void *data, opal_data_type_t type, char *units);
+END_C_DECLS
 
 #define OPEN_VALID_FILE(x)   int x = pugi_open(validFile.c_str()); \
                              ASSERT_LT(0, x);
@@ -151,7 +156,7 @@ TEST_F(ut_parser_pugi_tests, test_API_retrieveDocument_validFileId)
         if (OPAL_PTR == root->value.type){
             EXPECT_TRUE(NULL != root->value.data.ptr);
         }
-        SAFE_OBJ_RELEASE(list);
+        SAFE_RELEASE_NESTED_LIST(list);
     }
     pugi_close(file_id);
 }
@@ -160,7 +165,7 @@ TEST_F(ut_parser_pugi_tests, test_API_retrieveDocument_invalidFileId)
 {
     opal_list_t *list = pugi_retrieve_document(ORCM_ERROR);
     EXPECT_TRUE(NULL == list);
-    SAFE_OBJ_RELEASE(list);
+    SAFE_RELEASE_NESTED_LIST(list);
 }
 
 // Retrieve Section API Tests.
@@ -170,7 +175,7 @@ TEST_F(ut_parser_pugi_tests,
 {
     opal_list_t *list = pugi_retrieve_section(ORCM_ERROR,"","");
     EXPECT_TRUE(NULL == list);
-    SAFE_OBJ_RELEASE(list);
+    SAFE_RELEASE_NESTED_LIST(list);
 }
 
 TEST_F(ut_parser_pugi_tests,
@@ -178,7 +183,7 @@ TEST_F(ut_parser_pugi_tests,
 {
     opal_list_t *list = pugi_retrieve_section(ORCM_ERROR,validKey,"");
     EXPECT_TRUE(NULL == list);
-    SAFE_OBJ_RELEASE(list);
+    SAFE_RELEASE_NESTED_LIST(list);
 }
 
 TEST_F(ut_parser_pugi_tests,
@@ -187,7 +192,7 @@ TEST_F(ut_parser_pugi_tests,
     OPEN_VALID_FILE(file_id);
     opal_list_t *list = pugi_retrieve_section(file_id,invalidKey,"");
     EXPECT_TRUE(NULL == list);
-    SAFE_OBJ_RELEASE(list);
+    SAFE_RELEASE_NESTED_LIST(list);
     pugi_close(file_id);
 }
 
@@ -198,7 +203,7 @@ TEST_F(ut_parser_pugi_tests,
     opal_list_t *list = pugi_retrieve_section(file_id,validKey,"");
     EXPECT_TRUE(NULL != list);
     EXPECT_TRUE(allItemsInListHaveGivenKey(list,validKey));
-    SAFE_OBJ_RELEASE(list);
+    SAFE_RELEASE_NESTED_LIST(list);
     pugi_close(file_id);
 }
 
@@ -208,7 +213,7 @@ TEST_F(ut_parser_pugi_tests,
     OPEN_VALID_FILE(file_id);
     opal_list_t *list = pugi_retrieve_section(file_id,invalidKey,invalidName);
     EXPECT_TRUE(NULL == list);
-    SAFE_OBJ_RELEASE(list);
+    SAFE_RELEASE_NESTED_LIST(list);
     pugi_close(file_id);
 }
 
@@ -218,7 +223,7 @@ TEST_F(ut_parser_pugi_tests,
     OPEN_VALID_FILE(file_id);
     opal_list_t *list = pugi_retrieve_section(file_id,validKey,invalidName);
     EXPECT_TRUE(NULL == list);
-    SAFE_OBJ_RELEASE(list);
+    SAFE_RELEASE_NESTED_LIST(list);
     pugi_close(file_id);
 }
 
@@ -242,7 +247,7 @@ TEST_F(ut_parser_pugi_tests,
         }
         EXPECT_TRUE(NULL != name && 0 == strcmp("tag_name2", name->value.data.string));
     }
-    SAFE_OBJ_RELEASE(list);
+    SAFE_RELEASE_NESTED_LIST(list);
     pugi_close(file_id);
 }
 
@@ -253,7 +258,7 @@ TEST_F(ut_parser_pugi_tests,
 {
     opal_list_t *list = pugi_retrieve_section_from_list(ORCM_ERROR, NULL, "", "");
     EXPECT_TRUE(NULL == list);
-    SAFE_OBJ_RELEASE(list);
+    SAFE_RELEASE_NESTED_LIST(list);
 }
 
 TEST_F(ut_parser_pugi_tests,
@@ -273,12 +278,13 @@ TEST_F(ut_parser_pugi_tests,
     EXPECT_TRUE(NULL != groupList);
     if (NULL == groupList) {
         pugi_close(file_id);
-        SAFE_OBJ_RELEASE(rootList);
+        SAFE_RELEASE_NESTED_LIST(rootList);
         return;
     }
     EXPECT_TRUE(numOfValidKey == opal_list_get_size(groupList));
     EXPECT_FALSE(pugi_close(file_id));
-    SAFE_OBJ_RELEASE(groupList);
+    SAFE_RELEASE_NESTED_LIST(groupList);
+    SAFE_RELEASE_NESTED_LIST(rootList);
 }
 
 TEST_F(ut_parser_pugi_tests,
@@ -298,12 +304,13 @@ TEST_F(ut_parser_pugi_tests,
     EXPECT_TRUE(NULL != groupList);
     if (NULL == groupList) {
         pugi_close(file_id);
-        SAFE_OBJ_RELEASE(rootList);
+        SAFE_RELEASE_NESTED_LIST(rootList);
         return;
     }
     EXPECT_TRUE(1 == opal_list_get_size(groupList));
     EXPECT_FALSE(pugi_close(file_id));
-    SAFE_OBJ_RELEASE(groupList);
+    SAFE_RELEASE_NESTED_LIST(groupList);
+    SAFE_RELEASE_NESTED_LIST(rootList);
 }
 
 TEST_F(ut_parser_pugi_tests,
@@ -323,12 +330,13 @@ TEST_F(ut_parser_pugi_tests,
     EXPECT_TRUE(NULL != groupList);
     if (NULL == groupList) {
         pugi_close(file_id);
-        SAFE_OBJ_RELEASE(rootList);
+        SAFE_RELEASE_NESTED_LIST(rootList);
         return;
     }
     EXPECT_TRUE(1 == opal_list_get_size(groupList));
     EXPECT_FALSE(pugi_close(file_id));
-    SAFE_OBJ_RELEASE(groupList);
+    SAFE_RELEASE_NESTED_LIST(groupList);
+    SAFE_RELEASE_NESTED_LIST(rootList);
 }
 
 TEST_F(ut_parser_pugi_tests,
@@ -346,9 +354,9 @@ TEST_F(ut_parser_pugi_tests,
     groupList = pugi_retrieve_section_from_list(file_id, opal_list_get_first(rootList),
                                       validKey,invalidName);
     EXPECT_TRUE(NULL == groupList);
-    SAFE_OBJ_RELEASE(rootList);
     EXPECT_FALSE(pugi_close(file_id));
-    SAFE_OBJ_RELEASE(groupList);
+    SAFE_RELEASE_NESTED_LIST(groupList);
+    SAFE_RELEASE_NESTED_LIST(rootList);
 }
 
 TEST_F(ut_parser_pugi_tests, test_API_writeSection_invalidFile)
@@ -374,7 +382,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeAtRoot)
     parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -389,7 +397,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeAtNonRoot)
     parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_NE(ORCM_SUCCESS, ret);
@@ -408,7 +416,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_twoNodeHirearchyAtRoot)
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -429,7 +437,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_twoNodeHirearchyWithNameAttrA
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -454,7 +462,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_twoNodeHirearchyWithIntAtRoot
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_NE(ORCM_SUCCESS, ret);
@@ -483,7 +491,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -511,7 +519,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, NULL, NULL, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
 }
@@ -525,7 +533,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeWithNameAttrAtNULL)
     parser_pugi_load_orcm_value (input, strdup("group"), NULL, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, NULL, NULL, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
 }
@@ -553,7 +561,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -582,7 +590,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -612,7 +620,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, name, false);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     SAFEFREE(name);
     pugi_close(file_id);
@@ -642,7 +650,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, true);
-    SAFE_OBJ_RELEASE(input);
+    SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -699,32 +707,4 @@ void parser_pugi_load_orcm_value (opal_list_t *input, char *key, void *data, opa
     orcm_value_t *group = OBJ_NEW(orcm_value_t);
     group = orcm_util_load_orcm_value(key, data, type, NULL);
     opal_list_append(input, (opal_list_item_t *)group);
-}
-
-orcm_value_t* orcm_util_load_orcm_value(char *key, void *data, opal_data_type_t type, char *units)
-{
-    int rc = -1;
-    orcm_value_t *kv = OBJ_NEW(orcm_value_t);
-
-    if (NULL != kv) {
-        if (NULL != key) {
-            kv->value.key = strdup(key);
-            if (NULL == kv->value.key) {
-                return NULL;
-            }
-        }
-        rc = opal_value_load(&kv->value, data, type);
-        if (ORCM_SUCCESS != rc) {
-            OBJ_RELEASE(kv);
-            kv = NULL;
-            return kv;
-        }
-        if ( NULL != units ) {
-            kv->units = strdup(units);
-            if (NULL == kv->units) {
-                return NULL;
-            }
-        }
-    }
-    return kv;
 }

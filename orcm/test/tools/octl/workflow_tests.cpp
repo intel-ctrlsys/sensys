@@ -31,7 +31,6 @@ opal_list_t* C_NULLRetrieveSection(int file_id, char const* key, char const* nam
 opal_list_t* C_RetrieveSection(int file_id, char const* key, char const* name)
 {
     opal_list_t *result_list = OBJ_NEW(opal_list_t);
-    opal_buffer_t *buf = OBJ_NEW(opal_buffer_t);
     orcm_value_t *value;
     int workflow_value = 10;
     char *workflow_key = strdup("workflows");
@@ -46,7 +45,6 @@ opal_list_t* C_RetrieveSection(int file_id, char const* key, char const* name)
 opal_list_t* WorkflowsNULL(int file_id, char const* key, char const* name)
 {
     opal_list_t *result_list = OBJ_NEW(opal_list_t);
-    opal_buffer_t *buf = OBJ_NEW(opal_buffer_t);
     orcm_value_t *value;
     int *workflow_value = NULL;
     char *workflow_key = strdup("workflows");
@@ -61,7 +59,6 @@ opal_list_t* WorkflowsNULL(int file_id, char const* key, char const* name)
 opal_list_t* WorkflowsIntType(int file_id, char const* key, char const* name)
 {
     opal_list_t *result_list = OBJ_NEW(opal_list_t);
-    opal_buffer_t *buf = OBJ_NEW(opal_buffer_t);
     orcm_value_t *value;
     orcm_value_t *value1;
     opal_list_t *workflows_value = OBJ_NEW(opal_list_t);
@@ -83,7 +80,6 @@ opal_list_t* WorkflowsIntType(int file_id, char const* key, char const* name)
 opal_list_t* WorkflowsPtrType(int file_id, char const* key, char const* name)
 {
     opal_list_t *result_list = OBJ_NEW(opal_list_t);
-    opal_buffer_t *buf = OBJ_NEW(opal_buffer_t);
     orcm_value_t *value;
     orcm_value_t *value1;
     orcm_value_t *value2;
@@ -266,8 +262,6 @@ TEST_F(ut_octl_workflow_tests, workflow_add_negative5)
 
 
 TEST_F(ut_octl_workflow_tests, retrieve_workflow_open_negative){
-    opal_list_t *result_list = NULL;
-
     orcm_parser.open = NegOpenFile;
     orcm_parser.retrieve_section = C_NULLRetrieveSection;
     orcm_parser.close = CloseFile;
@@ -277,8 +271,6 @@ TEST_F(ut_octl_workflow_tests, retrieve_workflow_open_negative){
 }
 
 TEST_F(ut_octl_workflow_tests, retrieve_workflow_retrieve_negative){
-    opal_list_t *result_list = NULL;
-
     orcm_parser.open = OpenFile;
     orcm_parser.retrieve_section = C_NULLRetrieveSection;
     orcm_parser.close = CloseFile;
@@ -302,6 +294,7 @@ TEST_F(ut_octl_workflow_tests, extract_workflow_info_negative1){
     rc = orcm_util_workflow_add_extract_workflow_info(result_list, NULL, NULL, NULL);
 
     ASSERT_NE(rc, MY_ORCM_SUCCESS);
+    SAFE_RELEASE_NESTED_LIST(result_list);
 
 }
 
@@ -312,8 +305,8 @@ TEST_F(ut_octl_workflow_tests, extract_workflow_info_negative2){
 
     rc = orcm_util_workflow_add_extract_workflow_info(result_list, buf, NULL, NULL);
 
-    OBJ_RELEASE(result_list);
-
+    SAFE_RELEASE_NESTED_LIST(result_list);
+    SAFE_RELEASE(buf);
     ASSERT_NE(rc, MY_ORCM_SUCCESS);
 }
 
@@ -335,7 +328,8 @@ TEST_F(ut_octl_workflow_tests, extract_workflow_info_negative3){
 
     rc = orcm_util_workflow_add_extract_workflow_info(result_list, buf, NULL, NULL);
 
-    OBJ_RELEASE(result_list);
+    SAFE_RELEASE_NESTED_LIST(result_list);
+    SAFE_RELEASE(buf);
 
     ASSERT_NE(rc, MY_ORCM_SUCCESS);
 }

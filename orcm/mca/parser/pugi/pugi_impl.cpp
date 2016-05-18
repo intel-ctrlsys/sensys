@@ -184,7 +184,7 @@ void pugi_impl::appendToList(opal_list_t **srcList, opal_list_t *input, bool ove
     }
 
     if (true == overwrite) {
-        SAFE_RELEASE(*srcList);
+        SAFE_RELEASE_NESTED_LIST(*srcList);
         *srcList = duplicateList(input);
     }
     else {
@@ -292,10 +292,10 @@ int pugi_impl::extractFromEmptyKeyList(opal_list_t *list)
         opal_list_join(list, opal_list_get_first(list),
                              (opal_list_t *)tmp->value.data.ptr);
         tmp->value.data.ptr = NULL;
-        SAFE_RELEASE(tmp);
+        orcm_util_release_nested_orcm_value_list_item(&tmp);
         return ORCM_SUCCESS;
     }
-    SAFE_RELEASE(tmp);
+    orcm_util_release_nested_orcm_value_list_item(&tmp);
     return ORCM_ERROR;
 }
 
@@ -337,11 +337,11 @@ opal_list_t* pugi_impl::searchKeyInList(opal_list_t *srcList, char const *key)
     OPAL_LIST_FOREACH_SAFE(item, next, list, orcm_value_t){
         if (0 != strcmp(key,item->value.key)){
             opal_list_remove_item(list,(opal_list_item_t*)item);
-            SAFE_RELEASE(item);
+            orcm_util_release_nested_orcm_value_list_item(&item);
         }
     }
     if (opal_list_is_empty(list)){
-        SAFE_RELEASE(list);
+        OPAL_LIST_RELEASE(list);
         return NULL;
     }
     return list;
@@ -383,8 +383,7 @@ void pugi_impl::joinLists(opal_list_t **list, opal_list_t **otherList)
         return;
     }
     opal_list_join(*list, opal_list_get_first(*list), *otherList);
-    SAFE_RELEASE(*otherList);
-    *otherList = NULL;
+    SAFE_RELEASE_NESTED_LIST(*otherList);
 }
 
 opal_list_t* pugi_impl::searchKeyAndNameInTree(opal_list_t *tree, char const *key,
@@ -418,11 +417,11 @@ opal_list_t* pugi_impl::searchKeyAndNameInList(opal_list_t *srcList, char const 
     OPAL_LIST_FOREACH_SAFE(item, next, list, orcm_value_t){
         if (!itemMatchesKeyAndName(item,key,name)){
             opal_list_remove_item(list,(opal_list_item_t*)item);
-            SAFE_RELEASE(item);
+            orcm_util_release_nested_orcm_value_list_item(&item);
         }
     }
     if (opal_list_is_empty(list)){
-        SAFE_RELEASE(list);
+        OPAL_LIST_RELEASE(list);
         return NULL;
     }
     return list;
@@ -465,5 +464,5 @@ void pugi_impl::unloadFile()
 
 void pugi_impl::freeRoot()
 {
-    SAFE_RELEASE(root);
+    SAFE_RELEASE_NESTED_LIST(root);
 }

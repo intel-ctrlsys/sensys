@@ -82,7 +82,7 @@ void ipmiParser::parse()
     if (ORCM_ERROR != openFile()){
         opal_list_t *ipmiSections = orcm_parser.retrieve_section(fileId, XML_IPMI, NULL);
         getIpmiCollectorMapFromIpmiSections(ipmiSections);
-        SAFE_RELEASE(ipmiSections);
+        SAFE_RELEASE_NESTED_LIST(ipmiSections);
         fillVectorFromMap();
         closeFile();
     }
@@ -107,7 +107,7 @@ void ipmiParser::getIpmiCollectorMapFromIpmiSections(opal_list_t *ipmiSections)
                 opal_list_t *bmcNodes = orcm_parser.retrieve_section_from_list(fileId,
                                    (opal_list_item_t*)section, XML_BMC_NODE, NULL);
                 unique_map_join(ipmiMap, getIpmiCollectorMapFromBmcNodes(bmcNodes));
-                SAFE_RELEASE(bmcNodes);
+                SAFE_RELEASE_NESTED_LIST(bmcNodes);
             }
         }
     }

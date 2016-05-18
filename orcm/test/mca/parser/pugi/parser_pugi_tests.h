@@ -15,15 +15,14 @@
 #include <iostream>
 
 #include "orcm/constants.h"
-#include "orcm/mca/sensor/base/sensor_private.h"
 
 #include "orcm/mca/parser/pugi/parser_pugi.h"
 #include "orcm/mca/parser/pugi/pugi_impl.h"
 
 extern "C" {
+    #include "orcm/mca/sensor/base/sensor_private.h"
     #include "opal/runtime/opal.h"
     #include "opal/dss/dss_types.h"
-    #include "orcm/util/utils.h"
 }
 
 class ut_parser_pugi_tests: public testing::Test {
@@ -54,6 +53,7 @@ class ut_parser_pugi_tests: public testing::Test {
             opal_init_test();
         }
         virtual void TearDown() {
+            pugi_finalize();
         }
 };
 

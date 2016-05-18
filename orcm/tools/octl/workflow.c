@@ -316,11 +316,11 @@ int orcm_octl_workflow_add(char **value)
         }
         else {
             orcm_octl_error("framework-data-type");
-            SAFE_RELEASE(result_list);
+            SAFE_RELEASE_NESTED_LIST(result_list);
             return ORCM_ERR_BAD_PARAM;
         }
     }
-    SAFE_RELEASE(result_list);
+    SAFE_RELEASE_NESTED_LIST(result_list);
     return rc;
 }
 

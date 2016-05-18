@@ -99,7 +99,7 @@ void snmpParser::parseFile()
     openConfigFile();
     opal_list_t *snmpSections = orcm_parser.retrieve_section(fileId, XML_SNMP, NULL);
     getSnmpCollectorFromSnmpSections(snmpSections);
-    SAFE_RELEASE(snmpSections);
+    SAFE_RELEASE_NESTED_LIST(snmpSections);
     closeConfigFile();
     fillVectorFromMap();
 }
@@ -131,7 +131,7 @@ void snmpParser::getSnmpCollectorFromSnmpSections(opal_list_t *snmpSections)
                 opal_list_t *configNodes = orcm_parser.retrieve_section_from_list(fileId,
                                    (opal_list_item_t*)section, XML_CONFIG_NODE, NULL);
                 unique_map_join(snmpMap, getSnmpCollectorMapFromConfigNodes(configNodes));
-                SAFE_RELEASE(configNodes);
+                SAFE_RELEASE_NESTED_LIST(configNodes);
             }
         }
     }

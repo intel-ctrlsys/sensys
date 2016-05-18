@@ -39,6 +39,16 @@ typedef struct {
     int sample_rate;
 } orcm_sensor_freq_t;
 
+typedef struct {
+    opal_list_item_t super;
+    char *file;     /* sysfs entry file location */
+    char *sysname;  /* sysfs entry name */
+    unsigned int value;
+} pstate_tracker_t;
+ORCM_DECLSPEC OBJ_CLASS_DECLARATION(pstate_tracker_t);
+extern void freq_ptrk_con(pstate_tracker_t *trk);
+extern void freq_ptrk_des(pstate_tracker_t *trk);
+
 ORCM_MODULE_DECLSPEC extern orcm_sensor_freq_component_t mca_sensor_freq_component;
 extern orcm_sensor_base_module_t orcm_sensor_freq_module;
 

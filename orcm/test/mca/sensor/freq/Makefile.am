@@ -34,9 +34,13 @@ PY_LOG_COMPILER = /usr/bin/python
 check_PROGRAMS = freq_tests
 
 freq_tests_SOURCES = \
-	freq_tests.cpp
+        freq_tests.cpp \
+        freq_tests_mocking.cpp
 
-MOCKING =
+MOCKING =  \
+    -Wl,--wrap=opendir \
+    -Wl,--wrap=closedir \
+    -Wl,--wrap=readdir
 
 #
 # Libraries we depend on

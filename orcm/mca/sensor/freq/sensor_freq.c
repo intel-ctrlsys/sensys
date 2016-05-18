@@ -58,7 +58,7 @@
 #define TEST_CORES (256)
 
 #define ON_NULL_RETURN(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
-
+#define F_CLOSE(x) if(NULL!=x){fclose(x); x=NULL;}
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
@@ -75,6 +75,7 @@ static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
 int freq_enable_sampling(const char* sensor_specification);
 int freq_disable_sampling(const char* sensor_specification);
 int freq_reset_sampling(const char* sensor_specification);
+void freq_get_units(char* label, char** units);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_freq_module = {
@@ -114,25 +115,6 @@ typedef struct {
     int    count;
     time_t tstamp;
 } corefreq_history_t;
-static void hst_con(corefreq_history_t *hst)
-{
-    hst->hostname = NULL;
-    hst->core_no  = 0;
-    hst->hi_thres = true;
-    hst->severity = ORTE_NOTIFIER_INFO;
-    hst->count    = 0;
-    hst->tstamp   = 0;
-}
-static void hst_des(corefreq_history_t *hst)
-{
-    if (NULL != hst->hostname) {
-        free(hst->hostname);
-    }
-
-}
-OBJ_CLASS_INSTANCE(corefreq_history_t,
-                   opal_list_item_t,
-                   hst_con, hst_des);
 
 typedef struct {
     opal_list_item_t super;
@@ -147,36 +129,24 @@ static void ctr_con(corefreq_tracker_t *trk)
 }
 static void ctr_des(corefreq_tracker_t *trk)
 {
-    if (NULL != trk->file) {
-        free(trk->file);
-    }
+    SAFEFREE(trk->file);
 }
 OBJ_CLASS_INSTANCE(corefreq_tracker_t,
                    opal_list_item_t,
                    ctr_con, ctr_des);
 
-typedef struct {
-    opal_list_item_t super;
-    char *file;     /* sysfs entry file location */
-    char *sysname;  /* sysfs entry name */
-    unsigned int value;
-} pstate_tracker_t;
-static void ptrk_con(pstate_tracker_t *trk)
+void freq_ptrk_con(pstate_tracker_t *trk)
 {
     trk->file = NULL;
 }
-static void ptrk_des(pstate_tracker_t *trk)
+void freq_ptrk_des(pstate_tracker_t *trk)
 {
-    if (NULL != trk->file) {
-        free(trk->file);
-    }
-    if(NULL != trk->sysname) {
-        free(trk->sysname);
-    }
+    SAFEFREE(trk->file);
+    SAFEFREE(trk->sysname);
 }
 OBJ_CLASS_INSTANCE(pstate_tracker_t,
                    opal_list_item_t,
-                   ptrk_con, ptrk_des);
+                   freq_ptrk_con, freq_ptrk_des);
 
 static bool intel_pstate_avail = false;
 static opal_list_t tracking;
@@ -186,7 +156,6 @@ static orcm_sensor_sampler_t *freq_sampler = NULL;
 static orcm_sensor_freq_t orcm_sensor_freq;
 
 static void generate_test_vector(opal_buffer_t *v);
-char **corefreq_policy_list; /* store corefreq policies from MCA parameter */
 
 static char *orte_getline(FILE *fp)
 {
@@ -195,212 +164,12 @@ static char *orte_getline(FILE *fp)
 
     ret = fgets(input, 1024, fp);
     if (NULL != ret) {
-	   input[strlen(input)-1] = '\0';  /* remove newline */
-	   buff = strdup(input);
-	   return buff;
+        input[strlen(input)-1] = '\0';  /* remove newline */
+        buff = strdup(input);
+        return buff;
     }
 
     return NULL;
-}
-
-static int corefreq_load_policy(char *policy)
-{
-    char **tokens = NULL;
-    int array_length = 0;
-    orcm_sensor_policy_t *plc, *newplc;
-    bool found_me;
-    const char *sensor_name = "corefreq";
-    char *action = NULL;
-    float threshold;
-    bool hi_thres;
-    int max_count, time_window;
-    orte_notifier_severity_t sev;
-    int ret;
-
-    ret = ORCM_ERR_BAD_PARAM;
-    tokens = opal_argv_split(policy, ':');
-    array_length = opal_argv_count(tokens);
-
-    if ( 6 == array_length ) {
-        threshold = (float)strtof(tokens[0], NULL);
-        if ( 0 == strcmp(tokens[1], "hi") ) {
-            hi_thres = true;
-        } else if ( 0 == strcmp(tokens[1], "lo") ) {
-            hi_thres = false;
-        } else {
-            goto done;
-        }
-
-        if (isdigit(tokens[2][strlen(tokens[2]) - 1])) {
-            max_count = (int)strtol(tokens[2], NULL, 10);
-        } else {
-            goto done;
-        }
-
-        if (isdigit(tokens[3][strlen(tokens[3]) - 1])) {
-            time_window = (int)strtol(tokens[3], NULL, 10);
-        } else {
-            goto done;
-        }
-
-        if ( 0 == strcmp(tokens[4], "emerg") ) {
-            sev = ORTE_NOTIFIER_EMERG;
-        } else if ( 0 == strcmp(tokens[4], "alert") ) {
-            sev = ORTE_NOTIFIER_ALERT;
-        } else if ( 0 == strcmp(tokens[4], "crit") ) {
-            sev = ORTE_NOTIFIER_CRIT;
-        } else if ( 0 == strcmp(tokens[4], "error") ) {
-            sev = ORTE_NOTIFIER_ERROR;
-        } else if ( 0 == strcmp(tokens[4], "warn") ) {
-            sev = ORTE_NOTIFIER_WARN;
-        } else if ( 0 == strcmp(tokens[4], "notice") ) {
-            sev = ORTE_NOTIFIER_NOTICE;
-        } else if ( 0 == strcmp(tokens[4], "info") ) {
-            sev = ORTE_NOTIFIER_INFO;
-        } else if ( 0 == strcmp(tokens[4], "debug") ) {
-            sev = ORTE_NOTIFIER_DEBUG;
-        } else {
-            goto done;
-        }
-
-        action = tokens[5];
-
-        /* look for sensor event policy; update with new setting or create new policy if not existing */
-        found_me = false;
-        OPAL_LIST_FOREACH(plc, &orcm_sensor_base.policy, orcm_sensor_policy_t) {
-            if ( (0 == strcmp(sensor_name, plc->sensor_name)) &&
-                 (hi_thres == plc->hi_thres ) &&
-                 (sev == plc->severity) ) {
-                found_me = true;
-                /* update existing policy */
-                plc->threshold = threshold;
-                plc->max_count = max_count;
-                plc->time_window = time_window;
-                plc->action = strdup(action);
-                break;
-            }
-        }
-
-        if ( !found_me ) {
-            /* matched policy not found, insert into policy list */
-            newplc = OBJ_NEW(orcm_sensor_policy_t);
-            newplc->sensor_name = strdup(sensor_name);
-            newplc->threshold = threshold;
-            newplc->hi_thres  = hi_thres;
-            newplc->max_count = max_count;
-            newplc->time_window = time_window;
-            newplc->severity  = sev;
-            newplc->action = strdup(action);
-
-            opal_list_append(&orcm_sensor_base.policy, &newplc->super);
-            opal_output(0, "Add policy: %s %.2f %s %d %d %d %s!",
-                                newplc->sensor_name, newplc->threshold, newplc->hi_thres ? "higher" : "lower",
-                                newplc->max_count, newplc->time_window, newplc->severity, newplc->action);
-        }
-        ret = ORCM_SUCCESS;
-
-    } else {
-        goto done;
-    }
-
-done:
-
-    opal_argv_free(tokens);
-    return ret;
-}
-
-static int corefreq_policy_filter(char *hostname, int core_no, float cf, time_t ts)
-{
-    orcm_sensor_policy_t *plc;
-    corefreq_history_t *hst, *newhst;
-    bool found_me;
-    const char *sev;
-    char *msg;
-
-    /* Check if this sample may be filtered
-     * We have to check for all policies, one single sample might trigger
-     * multiple events with different severity levels
-     */
-    OPAL_LIST_FOREACH(plc, &orcm_sensor_base.policy, orcm_sensor_policy_t) {
-        /* check for corefreq sensor type */
-        if ( 0 != strcmp(plc->sensor_name, "corefreq") ) {
-            continue;
-        }
-
-        if ( (plc->hi_thres && (cf < plc->threshold) ) ||
-             (!plc->hi_thres && (cf > plc->threshold) ) ) {
-            continue;
-        }
-
-        sev = orte_notifier_base_sev2str(plc->severity);
-        /* this sample should be accounted for this policy
-         * we have a candidate, let's check there is similar sample accounted in history or not
-         */
-        found_me = false;
-        OPAL_LIST_FOREACH(hst, &event_history, corefreq_history_t) {
-            /* check for any matching record in history list */
-            /* match by host name and core number */
-            if (   hst->tstamp &&
-                 ( 0 == strcmp(hostname, hst->hostname) ) &&
-                 ( core_no == hst->core_no ) &&
-                 ( plc->hi_thres == hst->hi_thres ) &&
-                 ( plc->severity == hst->severity) ) {
-                found_me = true;
-                /* this sample pattern has been captured in history
-                 * let's test the time windows expiration
-                 */
-                if ( (hst->tstamp + plc->time_window) < ts ) {
-                    /* Matching history record had expired, just overwrite it */
-                    hst->count = 1;
-                    hst->tstamp = ts;
-                } else {
-                    hst->count++;
-                }
-
-                /* filter policy threshold reached */
-                if ( hst->count >= plc->max_count ) {
-                    /* fire an event */
-                    asprintf(&msg, "host: %s core %d freq %f GHz, %s than or equal to threshold %f GHz for %d times in %d seconds",
-                                    hostname, core_no, cf, plc->hi_thres ? "higher" : "lower",
-                                    plc->threshold, plc->max_count, plc->time_window);
-                    ORTE_NOTIFIER_SYSTEM_EVENT(plc->severity, msg, plc->action);
-                    opal_output(0, "host: %s core %d freq %f GHz, %s than or equal to threshold %f GHz for %d times in %d seconds, trigger %s event!",
-                                    hostname, core_no, cf, plc->hi_thres ? "higher" : "lower",
-                                    plc->threshold, plc->max_count, plc->time_window, sev);
-                    /* stop watching for this history record, remove from list */
-                    opal_list_remove_item(&event_history, &hst->super);
-                }
-
-                break;
-            }
-        }
-
-        if ( !found_me ) {
-            /* matched sample not seen before, insert into history list */
-            if ( 1 == plc->max_count ) {
-                /* fire an event right away, no need to store in history list */
-                asprintf(&msg, "host: %s core %d freq %f GHz, %s than or equal to threshold %f GHz for %d times in %d seconds",
-                                    hostname, core_no, cf, plc->hi_thres ? "higher" : "lower",
-                                    plc->threshold, plc->max_count, plc->time_window);
-                ORTE_NOTIFIER_SYSTEM_EVENT(plc->severity, msg, plc->action);
-                opal_output(0, "host: %s Core %d freq %f GHz, %s than or equal to threshold %f GHz for %d times in %d seconds, trigger %s event!",
-                                    hostname, core_no, cf, plc->hi_thres ? "higher" : "lower",
-                                    plc->threshold, plc->max_count, plc->time_window, sev);
-            } else {
-                newhst = OBJ_NEW(corefreq_history_t);
-                newhst->hostname = strdup(hostname);
-                newhst->core_no = core_no;
-                newhst->hi_thres = plc->hi_thres;
-                newhst->severity = plc->severity;
-                newhst->count = 1;
-                newhst->tstamp = ts;
-                opal_list_append(&event_history, &newhst->super);
-            }
-        }
-    }
-
-
-  return 1;
 }
 
 /* FOR FUTURE: extend to read cooling device speeds in
@@ -430,23 +199,6 @@ static int init(void)
     OBJ_CONSTRUCT(&pstate_list, opal_list_t);
     OBJ_CONSTRUCT(&event_history, opal_list_t);
 
-    /* get policy from MCA parameters */
-    if( NULL != mca_sensor_freq_component.policy ) {
-        corefreq_policy_list = opal_argv_split(mca_sensor_freq_component.policy, ',');
-    }
-
-    /* load policies */
-    for(i =0; i <opal_argv_count(corefreq_policy_list); i++) {
-        ret = corefreq_load_policy(corefreq_policy_list[i]);
-        if ( ORCM_SUCCESS != ret ) {
-            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
-                                "%s failed loading corefreq policy - %s",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                corefreq_policy_list[i]);
-        }
-    }
-    opal_argv_free(corefreq_policy_list);
-
     /*
      * Open up the base directory so we can get a listing
      */
@@ -465,14 +217,13 @@ static int init(void)
         /*
          * Skip the obvious
          */
-        if (0 == strncmp(entry->d_name, ".", strlen(".")) ||
-            0 == strncmp(entry->d_name, "..", strlen(".."))) {
-            continue;
-        }
+        if(0 == strncmp(entry->d_name, ".", strlen("."))){continue;}
+        if(0 == strncmp(entry->d_name, "..", strlen(".."))){continue;}
+
 
         /* look for cpu directories */
         if (0 != strncmp(entry->d_name, "cpu", strlen("cpu"))) {
-            /* cannot be a cpu directory */
+             /*cannot be a cpu directory*/
             continue;
         }
         /* empty directory entry, probably not even possible? */
@@ -582,10 +333,8 @@ static int init(void)
         /*
          * Skip the obvious
          */
-        if (0 == strncmp(entry->d_name, ".", strlen(".")) ||
-            0 == strncmp(entry->d_name, "..", strlen(".."))) {
-            continue;
-        }
+        if(0 == strncmp(entry->d_name, ".", strlen("."))){continue;}
+                if(0 == strncmp(entry->d_name, "..", strlen(".."))){continue;}
 
         /* track the info for this core */
         ptrk = OBJ_NEW(pstate_tracker_t);
@@ -661,7 +410,7 @@ static void start(orte_jobid_t jobid)
                                perthread_freq_sample, freq_sampler);
         opal_event_evtimer_add(&freq_sampler->ev, &freq_sampler->rate);
     }else{
-	 mca_sensor_freq_component.sample_rate = orcm_sensor_base.sample_rate;
+        mca_sensor_freq_component.sample_rate = orcm_sensor_base.sample_rate;
 
     }
 
@@ -767,16 +516,12 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     orcm_sensor_base_runtime_metrics_begin(mca_sensor_freq_component.runtime_metrics);
 
     /* pack our name */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &cfreq, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(ret);
-        goto cleanup;
-    }
+    ret = opal_dss.pack(&data, &cfreq, 1, OPAL_STRING);
+    ORCM_ON_FAILURE_GOTO(ret,cleanup);
 
     /* store our hostname */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(ret);
-        goto cleanup;
-    }
+    ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING);
+    ORCM_ON_FAILURE_GOTO(ret,cleanup);
 
     /* Store number of labels to collect */
     if(orcm_sensor_base_runtime_inventory_available(mca_sensor_freq_component.runtime_metrics)) {
@@ -784,18 +529,13 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     } else {
         ncores = (int32_t)opal_list_get_size(&tracking) + (int32_t)opal_list_get_size(&pstate_list);
     }
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ncores, 1, OPAL_INT32))) {
-        ORTE_ERROR_LOG(ret);
-        goto cleanup;
-    }
+    ret = opal_dss.pack(&data, &ncores, 1, OPAL_INT32);
+    ORCM_ON_FAILURE_GOTO(ret,cleanup);
 
     /* get the sample time */
     gettimeofday(&current_time, NULL);
-
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(ret);
-        goto cleanup;
-    }
+    ret = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL);
+    ORCM_ON_FAILURE_GOTO(ret,cleanup);
 
     int core = 0;
     OPAL_LIST_FOREACH_SAFE(trk, nxt, &tracking, corefreq_tracker_t) {
@@ -819,31 +559,20 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
                                     "%s sensor:freq: Core %d freq %f max %f min %f",
                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                     trk->core, ghz, trk->max_freq, trk->min_freq);
-                if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &label, 1, OPAL_STRING))) {
-                    ORTE_ERROR_LOG(ret);
-                    free(freq_data);
-                    fclose(fp);
-                    SAFEFREE(label);
-                    goto cleanup;
-                }
+                ret = opal_dss.pack(&data, &label, 1, OPAL_STRING);
                 SAFEFREE(label);
-                if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &type, 1, OPAL_UINT8))) {
-                    ORTE_ERROR_LOG(ret);
-                    free(freq_data);
-                    fclose(fp);
-                    goto cleanup;
-                }
-                if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ghz, 1, OPAL_FLOAT))) {
-                    ORTE_ERROR_LOG(ret);
-                    free(freq_data);
-                    fclose(fp);
-                    goto cleanup;
-                }
+                ORCM_ON_FAILURE_GOTO(ret,cleanup);
+
+                ret = opal_dss.pack(&data, &type, 1, OPAL_UINT8);
+                ORCM_ON_FAILURE_GOTO(ret,cleanup);
+
+                ret = opal_dss.pack(&data, &ghz, 1, OPAL_FLOAT);
+                ORCM_ON_FAILURE_GOTO(ret,cleanup);
                 packed = true;
             }
-            free(freq_data);
+            SAFEFREE(freq_data);
         }
-        fclose(fp);
+        F_CLOSE(fp);
         SAFEFREE(label);
     }
 
@@ -865,47 +594,39 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
         }
         if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_freq_component.runtime_metrics, ptrk->sysname)) {
             uint8_t type = OPAL_UINT;
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ptrk->sysname, 1, OPAL_STRING))) {
-                    ORTE_ERROR_LOG(ret);
-                    fclose(fp);
-                    goto cleanup;
-            }
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &type, 1, OPAL_UINT8))) {
-                    ORTE_ERROR_LOG(ret);
-                    fclose(fp);
-                    goto cleanup;
-            }
+            ret = opal_dss.pack(&data, &ptrk->sysname, 1, OPAL_STRING);
+            ORCM_ON_FAILURE_GOTO(ret,cleanup);
+
+            ret = opal_dss.pack(&data, &type, 1, OPAL_UINT8);
+            ORCM_ON_FAILURE_GOTO(ret,cleanup);
+
             while (NULL != (freq_data = orte_getline(fp))) {
                 ptrk->value = strtoul(freq_data, NULL, 10);
                 opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                     "%s sensor:pstate: file %s : %d",
                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                     ptrk->file, ptrk->value);
-                if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &ptrk->value, 1, OPAL_UINT))) {
-                    ORTE_ERROR_LOG(ret);
-                    free(freq_data);
-                    fclose(fp);
-                    goto cleanup;
-                }
+                ret = opal_dss.pack(&data, &ptrk->value, 1, OPAL_UINT);
+                ORCM_ON_FAILURE_GOTO(ret,cleanup);
                 packed = true;
-                free(freq_data);
+                SAFEFREE(freq_data);
             }
         }
-        fclose(fp);
+        F_CLOSE(fp);
     }
 
     /* xfer the data for transmission */
     if (packed) {
         bptr = &data;
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
-            ORTE_ERROR_LOG(ret);
-            goto cleanup;
-        }
+        ret = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+        ORCM_ON_FAILURE_GOTO(ret,cleanup);
     }
 
 cleanup:
     orcm_sensor_base_runtime_metrics_end(mca_sensor_freq_component.runtime_metrics);
     OBJ_DESTRUCT(&data);
+    F_CLOSE(fp);
+    SAFEFREE(freq_data);
 }
 
 static void freq_log_cleanup(char *label, char *hostname, opal_list_t *key,
@@ -940,129 +661,90 @@ static void freq_log(opal_buffer_t *sample)
 
     /* unpack the host this came from */
     n = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING);
+    ORCM_ON_FAILURE_RETURN(rc);
+
     /* and the number of samples on that host */
     n = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &ncores, &n, OPAL_INT32))) {
-        ORTE_ERROR_LOG(rc);
-        freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
-        return;
-    }
-    /* sample time */
-    n = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
-        return;
-    }
+    rc = opal_dss.unpack(sample, &ncores, &n, OPAL_INT32);
+    ORCM_ON_FAILURE_GOTO(rc,cleanup);
 
+     /* sample time */
+    n = 1;
+    rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL);
+    ORCM_ON_FAILURE_GOTO(rc,cleanup);
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                         "%s Received freq log from host %s with %d cores",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                         (NULL == hostname) ? "NULL" : hostname, ncores);
 
     /* fill the key list with hostname and data_group */
-    if (NULL == (key = OBJ_NEW(opal_list_t))) {
-        freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
-        return;
-    }
+    key = OBJ_NEW(opal_list_t);
+    ORCM_ON_NULL_GOTO(key,cleanup);
     rc = orcm_util_append_orcm_value(key, "hostname", hostname, OPAL_STRING, NULL);
-    if (ORCM_SUCCESS != rc) {
-        ORTE_ERROR_LOG(rc);
-        freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
-        return;
-    }
+    ORCM_ON_FAILURE_GOTO(rc,cleanup);
     SAFEFREE(hostname);
     rc = orcm_util_append_orcm_value(key, "data_group", "freq", OPAL_STRING, NULL);
-    if (ORCM_SUCCESS != rc) {
-        ORTE_ERROR_LOG(rc);
-        freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
-        return;
-    }
+    ORCM_ON_FAILURE_GOTO(rc,cleanup);
 
     /* fill the non compute data list with time stamp */
-    if (NULL == (non_compute_data = OBJ_NEW(opal_list_t))) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
-        return;
-    }
+    non_compute_data = OBJ_NEW(opal_list_t);
+    ORCM_ON_NULL_GOTO(non_compute_data,cleanup);
     rc = orcm_util_append_orcm_value(non_compute_data, "ctime", &sampletime, OPAL_TIMEVAL, NULL);
-    if (ORCM_SUCCESS != rc) {
-        ORTE_ERROR_LOG(rc);
-        freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
-        return;
-    }
+    ORCM_ON_FAILURE_GOTO(rc,cleanup);
 
     /* fill the compute data with the coretemp of all cores */
     analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute_data, NULL);
-    if (NULL == analytics_vals || NULL == analytics_vals->key ||
-        NULL == analytics_vals->non_compute_data || NULL == analytics_vals->compute_data) {
-            ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-            freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
-            return;
-        }
+    ORCM_ON_NULL_GOTO(analytics_vals,cleanup);
+    ORCM_ON_NULL_GOTO(analytics_vals->key,cleanup);
+    ORCM_ON_NULL_GOTO(analytics_vals->non_compute_data,cleanup);
+    ORCM_ON_NULL_GOTO(analytics_vals->compute_data,cleanup);
 
     for (idx = 0; idx < ncores; idx++) {
         char* label = NULL;
         uint8_t type;
         n = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &label, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            freq_log_cleanup(label, hostname, key, non_compute_data, analytics_vals);
-            return;
-        }
+        rc = opal_dss.unpack(sample, &label, &n, OPAL_STRING);
+        ORCM_ON_FAILURE_GOTO(rc,cleanup);
         n = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &type, &n, OPAL_UINT8))) {
-            ORTE_ERROR_LOG(rc);
-            freq_log_cleanup(label, hostname, key, non_compute_data, analytics_vals);
-            return;
-        }
+        rc = opal_dss.unpack(sample, &type, &n, OPAL_UINT8);
+        ORCM_ON_FAILURE_GOTO(rc,cleanup);
         n = 1;
         if(OPAL_FLOAT == type) {
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT))) {
-                ORTE_ERROR_LOG(rc);
-                freq_log_cleanup(label, hostname, key, non_compute_data, analytics_vals);
-                return;
-            }
-
-            if (ORCM_SUCCESS != (rc = orcm_util_append_orcm_value(analytics_vals->compute_data,
-                                 label, &fval, OPAL_FLOAT, "GHz"))) {
-                ORTE_ERROR_LOG(rc);
-                freq_log_cleanup(label, hostname, key, non_compute_data, analytics_vals);
-                return;
-            }
+            rc = opal_dss.unpack(sample, &fval, &n, OPAL_FLOAT);
+            ORCM_ON_FAILURE_GOTO(rc,cleanup);
+            rc = orcm_util_append_orcm_value(analytics_vals->compute_data,
+            label, &fval, OPAL_FLOAT, "GHz");
+            ORCM_ON_FAILURE_GOTO(rc,cleanup);
         } else if(OPAL_UINT == type) {
             unsigned int uival;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &uival, &n, OPAL_UINT))) {
-                ORTE_ERROR_LOG(rc);
-                freq_log_cleanup(label, hostname, key, non_compute_data, analytics_vals);
-                return;
-            }
+            rc = opal_dss.unpack(sample, &uival, &n, OPAL_UINT);
+            ORCM_ON_FAILURE_GOTO(rc,cleanup);
             char* units = "%";
-            if((11 == strlen(label) && 0 == strncmp(label, "num_pstates", 11)) ||
-                (8 == strlen(label) && 0 == strncmp(label, "no_turbo", 8)) ||
-                (11 == strlen(label) && 0 == strncmp(label, "allow_turbo", 11))) {
-                units = "";
-            }
-            if (ORCM_SUCCESS != (rc = orcm_util_append_orcm_value(analytics_vals->compute_data,
-                                 label, &uival, OPAL_UINT, units))) {
-                ORTE_ERROR_LOG(rc);
-                freq_log_cleanup(label, hostname, key, non_compute_data, analytics_vals);
-                return;
-            }
+            freq_get_units(label,&units);
+            rc = orcm_util_append_orcm_value(analytics_vals->compute_data,
+                                             label, &uival, OPAL_UINT, units);
+            SAFEFREE(units);
+            ORCM_ON_FAILURE_GOTO(rc,cleanup);
         }
         SAFEFREE(label);
     }
 
     orcm_analytics.send_data(analytics_vals);
+cleanup:
     freq_log_cleanup(NULL, hostname, key, non_compute_data, analytics_vals);
 
     /* unpack the pstate entry count */
 }
-
+void freq_get_units(char* label, char** units)
+{
+    *units="%";
+    if ((11 == strlen(label) && 0 == strncmp(label, "num_pstates", 11)) ||
+       (8 == strlen(label) && 0 == strncmp(label, "no_turbo", 8)) ||
+       (11 == strlen(label) && 0 == strncmp(label, "allow_turbo", 11))) {
+        *units = "";
+    }
+}
 static void freq_set_sample_rate(int sample_rate)
 {
     /* set the freq sample rate if seperate thread is enabled */
@@ -1076,7 +758,7 @@ static void freq_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {
     /* check if freq sample rate is provided for this*/
-            *sample_rate = mca_sensor_freq_component.sample_rate;
+        *sample_rate = mca_sensor_freq_component.sample_rate;
     }
     return;
 }
@@ -1101,55 +783,33 @@ static void generate_test_vector(opal_buffer_t *v)
     test_freq = min_freq;
 
 /* pack the plugin name */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&v);
-    return;
-    }
-
+    ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING);
+    ORCM_ON_FAILURE_RETURN(ret);
 /* pack the hostname */
-    if (OPAL_SUCCESS != (ret =
-            opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&v);
-        return;
-    }
-
+    ret = opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING);
+    ORCM_ON_FAILURE_RETURN(ret);
 /* pack then number of cores */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ncores, 1, OPAL_INT32))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&v);
-        return;
-    }
-
+    ret = opal_dss.pack(v, &ncores, 1, OPAL_INT32);
+    ORCM_ON_FAILURE_RETURN(ret);
 /* get the sample time */
     gettimeofday(&sample_time, NULL);
-
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &sample_time, 1, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(ret);
-        return;
-    }
+    ret = opal_dss.pack(v, &sample_time, 1, OPAL_TIMEVAL);
+    ORCM_ON_FAILURE_RETURN(ret);
 
 /* Pack test core freqs */
     for (i=0; i < ncores; i++) {
         char* l = NULL;
         asprintf(&l, "core%d", i);
         ON_NULL_RETURN(l);
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &l, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&v);
-            SAFEFREE(l);
-        }
+
+        ret = opal_dss.pack(v, &l, 1, OPAL_STRING);
         SAFEFREE(l);
+        ORCM_ON_FAILURE_RETURN(ret);
         uint8_t t = OPAL_FLOAT;
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &t, 1, OPAL_UINT8))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&v);
-        }
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &test_freq, 1, OPAL_FLOAT))) {
-            ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&v);
-        }
+        ret = opal_dss.pack(v, &t, 1, OPAL_UINT8);
+        ORCM_ON_FAILURE_RETURN(ret);
+        ret = opal_dss.pack(v, &test_freq, 1, OPAL_FLOAT);
+        ORCM_ON_FAILURE_RETURN(ret);
         test_freq += 0.01;
         if (test_freq >= max_freq){
             test_freq = min_freq;
@@ -1157,8 +817,8 @@ static void generate_test_vector(opal_buffer_t *v)
     }
 
     opal_output_verbose(5,orcm_sensor_base_framework.framework_output,
-        "%s sensor:freq: Size of test vector is %d",
-        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),ncores);
+    "%s sensor:freq: Size of test vector is %d",
+    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),ncores);
 }
 
 static void generate_test_inv_data(opal_buffer_t *inventory_snapshot)
@@ -1169,38 +829,25 @@ static void generate_test_inv_data(opal_buffer_t *inventory_snapshot)
     char *comp = NULL;
     int rc = OPAL_SUCCESS;
     struct timeval time_stamp;
-
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &key, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.pack(inventory_snapshot, &key, 1, OPAL_STRING);
+    ORCM_ON_FAILURE_RETURN(rc);
     gettimeofday(&time_stamp, NULL);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &time_stamp, 1, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.pack(inventory_snapshot, &time_stamp, 1, OPAL_TIMEVAL);
+    ORCM_ON_FAILURE_RETURN(rc);
+    rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT);
+    SAFEFREE(comp);
+    ORCM_ON_FAILURE_RETURN(rc);
     for(i = 0; i < tot_items; ++i)
     {
         asprintf(&comp, "sensor_freq_%d", i+1);
         ON_NULL_RETURN(comp);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            SAFEFREE(comp);
-            return;
-        }
+        rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
         SAFEFREE(comp);
+        ORCM_ON_FAILURE_RETURN(rc);
         asprintf(&comp, "core%d", i);
-        ON_NULL_RETURN(comp);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            SAFEFREE(comp);
-            return;
-        }
-        SAFEFREE(comp);
+        ORCM_ON_NULL_RETURN(comp);
+        rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+        ORCM_ON_FAILURE_RETURN(rc);
     }
 }
 
@@ -1219,79 +866,57 @@ static void freq_inventory_collect(opal_buffer_t *inventory_snapshot)
         struct timeval time_stamp;
 
         tot_items += (unsigned int)opal_list_get_size(&pstate_list);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &ccomp, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-
+        rc = opal_dss.pack(inventory_snapshot, &ccomp, 1, OPAL_STRING);
+        ORCM_ON_FAILURE_RETURN(rc);
+        /*store the time_stamp*/
         gettimeofday(&time_stamp, NULL);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &time_stamp, 1, OPAL_TIMEVAL))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
+        rc = opal_dss.pack(inventory_snapshot, &time_stamp, 1, OPAL_TIMEVAL);
+        ORCM_ON_FAILURE_RETURN(rc);
+        /*pack the tot_items*/
+        rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT);
+        ORCM_ON_FAILURE_RETURN(rc);
         --tot_items; /* adjust back for extra "hostname"/nodename pair */
         tot_items -= (unsigned int)opal_list_get_size(&pstate_list);
         /* store our hostname */
         ccomp = "hostname";
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &ccomp, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            return;
-        }
+        rc = opal_dss.pack(inventory_snapshot, &ccomp, 1, OPAL_STRING);
+        ORCM_ON_FAILURE_RETURN(rc);
+        rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
+        ORCM_ON_FAILURE_RETURN(rc);
 
         for(i = 0; i < tot_items; ++i) {
             asprintf(&comp, "sensor_freq_%d", i+1);
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                free(comp);
-                return;
-            }
-            free(comp);
+            rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+            SAFEFREE(comp);
+            ORCM_ON_FAILURE_RETURN(rc);
             asprintf(&comp, "core%d", i);
             orcm_sensor_base_runtime_metrics_track(mca_sensor_freq_component.runtime_metrics, comp);
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                free(comp);
-                return;
-            }
-            free(comp);
+            rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+            SAFEFREE(comp);
+            ORCM_ON_FAILURE_RETURN(rc);
         }
         offset = tot_items;
         OPAL_LIST_FOREACH(ptrk, &pstate_list, pstate_tracker_t) {
             asprintf(&comp, "sensor_freq_%d", ++offset);
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                free(comp);
-                return;
-            }
-            free(comp);
+            rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+            SAFEFREE(comp);
+            ORCM_ON_FAILURE_RETURN(rc);
             comp = strdup(ptrk->sysname);
             if (NULL == comp) {
                 ORTE_ERROR_LOG(ORTE_ERR_COPY_FAILURE);
                 return;
             }
             orcm_sensor_base_runtime_metrics_track(mca_sensor_freq_component.runtime_metrics, comp);
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                free(comp);
-                return;
-            }
-            free(comp);
+            rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+            SAFEFREE(comp);
+            ORCM_ON_FAILURE_RETURN(rc);
         }
     }
 }
 
 static void my_inventory_log_cleanup(int dbhandle, int status, opal_list_t *kvs, opal_list_t *output, void *cbdata)
 {
-    OBJ_RELEASE(kvs);
+    ORCM_RELEASE(kvs);
 }
 
 static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
@@ -1302,56 +927,55 @@ static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     int rc = OPAL_SUCCESS;
     orcm_value_t *time_stamp;
     struct timeval current_time;
+    char *inv_val = NULL;
+    char *inv = NULL;
 
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL);
+    ORCM_ON_FAILURE_RETURN(rc);
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &tot_items, &n, OPAL_UINT))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.unpack(inventory_snapshot, &tot_items, &n, OPAL_UINT);
+    ORCM_ON_FAILURE_RETURN(rc);
 
     time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
-    if (NULL == time_stamp) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        return;
-    }
+    ORCM_ON_NULL_RETURN(time_stamp);
+
     records = OBJ_NEW(opal_list_t);
     opal_list_append(records, (opal_list_item_t*)time_stamp);
+    time_stamp=NULL;
     while(tot_items > 0) {
-        char *inv = NULL;
-        char *inv_val = NULL;
         orcm_value_t *mkv = NULL;
 
         n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            OBJ_RELEASE(records);
-            return;
-        }
+        rc = opal_dss.unpack(inventory_snapshot, &inv, &n, OPAL_STRING);
+        ORCM_ON_FAILURE_GOTO(rc,cleanup);
+
         n=1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &inv_val, &n, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            SAFEFREE(inv_val);
-            OBJ_RELEASE(records);
-            return;
-        }
+        rc = opal_dss.unpack(inventory_snapshot, &inv_val, &n, OPAL_STRING);
+        ORCM_ON_FAILURE_GOTO(rc,cleanup);
 
         mkv = OBJ_NEW(orcm_value_t);
         mkv->value.key = inv;
+        inv=NULL;
         mkv->value.type = OPAL_STRING;
         mkv->value.data.string = inv_val;
+        inv_val=NULL;
         opal_list_append(records, (opal_list_item_t*)mkv);
 
         --tot_items;
+
     }
+
     if (0 <= orcm_sensor_base.dbhandle) {
         orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA, records, NULL, my_inventory_log_cleanup, NULL);
     } else {
         my_inventory_log_cleanup(-1, -1, records, NULL, NULL);
     }
+    records=NULL;
+cleanup:
+    ORCM_RELEASE(records);
+    SAFEFREE(inv_val);
+    SAFEFREE(inv);
+
 }
 
 int freq_enable_sampling(const char* sensor_specification)

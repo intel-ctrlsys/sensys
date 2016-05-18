@@ -55,7 +55,7 @@
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "sensor_freq.h"
 
-#define TEST_CORES (256)
+#define TEST_CORES (8192)
 
 #define ON_NULL_RETURN(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
 #define F_CLOSE(x) if(NULL!=x){fclose(x); x=NULL;}
@@ -68,8 +68,8 @@ static void freq_sample(orcm_sensor_sampler_t *sampler);
 static void perthread_freq_sample(int fd, short args, void *cbdata);
 void collect_freq_sample(orcm_sensor_sampler_t *sampler);
 static void freq_log(opal_buffer_t *buf);
-static void freq_set_sample_rate(int sample_rate);
-static void freq_get_sample_rate(int *sample_rate);
+void freq_set_sample_rate(int sample_rate);
+void freq_get_sample_rate(int *sample_rate);
 static void freq_inventory_collect(opal_buffer_t *inventory_snapshot);
 static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot);
 int freq_enable_sampling(const char* sensor_specification);
@@ -208,7 +208,6 @@ static int init(void)
                        "/sys/devices/system/cpu");
         return ORTE_ERROR;
     }
-
     /*
      * For each directory
      */
@@ -312,8 +311,8 @@ static int init(void)
         /* 'intel_pstate' configuration settings.
          * Open up the intel_pstate base directory so we can get a listing
          */
-        if (NULL == (cur_dirp = opendir("/sys/devices/system/cpu/intel_pstate"))) {
-            opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+         if (NULL == (cur_dirp = opendir("/sys/devices/system/cpu/intel_pstate"))) {
+             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                     "pstate information requested but module not in use, freq collection will occur");
              intel_pstate_avail = false;
              return ORCM_SUCCESS;
@@ -334,7 +333,7 @@ static int init(void)
          * Skip the obvious
          */
         if(0 == strncmp(entry->d_name, ".", strlen("."))){continue;}
-                if(0 == strncmp(entry->d_name, "..", strlen(".."))){continue;}
+        if(0 == strncmp(entry->d_name, "..", strlen(".."))){continue;}
 
         /* track the info for this core */
         ptrk = OBJ_NEW(pstate_tracker_t);
@@ -744,7 +743,7 @@ void freq_get_units(char* label, char** units)
         *units = "";
     }
 }
-static void freq_set_sample_rate(int sample_rate)
+void freq_set_sample_rate(int sample_rate)
 {
     /* set the freq sample rate if seperate thread is enabled */
     if (mca_sensor_freq_component.use_progress_thread) {
@@ -753,7 +752,7 @@ static void freq_set_sample_rate(int sample_rate)
     return;
 }
 
-static void freq_get_sample_rate(int *sample_rate)
+void freq_get_sample_rate(int *sample_rate)
 {
     if (NULL != sample_rate) {
     /* check if freq sample rate is provided for this*/

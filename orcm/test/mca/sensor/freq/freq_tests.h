@@ -27,10 +27,12 @@ class ut_freq_tests: public testing::Test
         // gtest fixture required methods
         static void SetUpTestCase();
         static void TearDownTestCase();
-
+        static FILE* FOpen(const char* , const char* );
         static DIR* OpenDir(const char*);
         static int CloseDir(DIR*);
         static struct dirent* ReadDir(DIR*);
+        static int FClose(FILE* fd);
+        static char* fgets(char* , int size, FILE*);
 }; // class
 
 #endif // FREQ_TESTS_H

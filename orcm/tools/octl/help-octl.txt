@@ -200,6 +200,9 @@ Note: Setting per sensor sample rate in the examples below will take effect
 Example: sensor set sample-rate coretemp 10 c[2:1-10]
          sensor set sample-rate freq 10 c[2:1-10]
 
+[info:query-no-event]
+The event "%s" does not exists.
+
 [error:unknown]
 Unknown error
 

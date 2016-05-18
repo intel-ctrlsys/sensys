@@ -183,7 +183,7 @@ static int init(void)
     DIR *cur_dirp = NULL;
     struct dirent *entry;
     char *filename, *tmp;
-    FILE *fp;
+    FILE *fp = NULL;
     corefreq_tracker_t *trk;
     pstate_tracker_t *ptrk;
     int i = 0;
@@ -472,7 +472,7 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     int ret;
     corefreq_tracker_t *trk, *nxt;
     pstate_tracker_t *ptrk, *pnxt;
-    FILE *fp;
+    FILE *fp = NULL;
     const char *cfreq = "freq";
     char* freq_data = NULL;
     float ghz;

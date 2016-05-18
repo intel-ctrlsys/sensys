@@ -40,7 +40,10 @@ freq_tests_SOURCES = \
 MOCKING =  \
     -Wl,--wrap=opendir \
     -Wl,--wrap=closedir \
-    -Wl,--wrap=readdir
+    -Wl,--wrap=readdir \
+    -Wl,--wrap=fopen  \
+    -Wl,--wrap=fclose  \
+    -Wl,--wrap=fgets
 
 #
 # Libraries we depend on

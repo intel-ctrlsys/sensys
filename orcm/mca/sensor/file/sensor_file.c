@@ -55,6 +55,7 @@
 #include "sensor_file.h"
 
 #define ON_NULL_REPORT_ERROR_AND_RETURN(p,e) if(NULL==p){ORTE_ERROR_LOG(e);return;}
+#define BREAK_ON_NULL(x) if(NULL==x){break;}
 
 /* declare the API functions */
 static int init(void);
@@ -149,7 +150,7 @@ static void finalize(void)
 
     while (true) {
         opal_list_item_t *item = opal_list_remove_first(&jobs);
-        ORCM_ON_NULL_BREAK(item);
+        BREAK_ON_NULL(item);
         OBJ_RELEASE(item);
     }
     OBJ_DESTRUCT(&jobs);

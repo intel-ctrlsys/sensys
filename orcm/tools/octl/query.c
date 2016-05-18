@@ -25,8 +25,6 @@
     if(ORCM_SUCCESS!=x){return x;}
 #define ON_FAILURE_GOTO(x,label) \
     if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);goto label;}
-#define ON_FAILURE_CANCEL_COMM(rc, label, ctag) \
-    if(ORCM_SUCCESS != rc){ orcm_octl_error("connection-fail"); orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ctag); goto label;}
 #define ON_NULL_GOTO(x,label) \
     if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
 #define ON_NULL_RETURN(x,y) \
@@ -115,10 +113,10 @@ int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
     rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buffer,
                                  ORCM_RML_TAG_ORCMD_FETCH,
                                  orte_rml_send_callback, xfer);
-    ON_FAILURE_CANCEL_COMM(rc, query_db_cleanup, ORCM_RML_TAG_ORCMD_FETCH);
+    ON_FAILURE_GOTO(rc, query_db_cleanup);
     /* wait for status message */
     ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
-    ON_FAILURE_CANCEL_COMM(rc, query_db_cleanup, ORCM_RML_TAG_ORCMD_FETCH);
+    ON_FAILURE_GOTO(rc, query_db_cleanup);
     rc = opal_dss.unpack(&xfer->data, &returned_status, &n, OPAL_INT);
     ON_FAILURE_GOTO(rc, query_db_cleanup);
     if(0 == returned_status) {
@@ -686,7 +684,11 @@ opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv)
     char *filter_str = NULL;
     char *end_date;
 
-    if (8 == argc && NULL != argv) {
+    if (argv == NULL) {
+        return NULL;
+    }
+
+    if (8 == argc) {
         filters_list = OBJ_NEW(opal_list_t);
 
         if ( 0 == strcmp("before", argv[4]) ){
@@ -1052,7 +1054,7 @@ orcm_octl_query_event_exit:
  */
 int orcm_octl_query_event_snsr_data(int cmd, char **argv)
 {
-    int rc = ORCM_ERR_BAD_PARAM;
+    int rc = ORCM_SUCCESS;
     double start_time = 0.0;
     double stop_time = 0.0;
     char **argv_node_list = NULL;
@@ -1063,39 +1065,44 @@ int orcm_octl_query_event_snsr_data(int cmd, char **argv)
 
     date = get_orcm_octl_query_event_date(ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND, argv);
 
-    if (NULL != date) {
+    if (NULL == date) {
+        orcm_octl_usage("query-event-sensor-data", INVALID_USG);
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    } else {
         SAFE_FREE(argv[3]);
         argv[3] = date;
-
-        filter_list = build_filters_list(cmd, argv);
-        if (NULL != filter_list) {
-            rc = get_nodes_from_args(argv, &argv_node_list);
-
-            if (ORCM_SUCCESS == rc) {
-                node_list = build_node_item(argv_node_list);
-
-                if (NULL != node_list) {
-                    opal_list_append(filter_list, &node_list->value.super);
-
-                    start_time = stopwatch();
-                    rc = query_db(cmd, filter_list, &returned_list);
-                    stop_time = stopwatch();
-                    if (ORCM_SUCCESS == rc) {
-                        print_results(returned_list, start_time, stop_time);
-                    } else {
-                        orcm_octl_info("no-results");
-                    }
-
-                    SAFE_RELEASE(returned_list);
-                } else {
-                    rc = ORCM_ERR_BAD_PARAM;
-                }
-                opal_argv_free(argv_node_list);
-            }
-            SAFE_RELEASE(filter_list);
-        }
     }
 
+    filter_list = build_filters_list(cmd, argv);
+    if (NULL == filter_list) {
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+
+    rc = get_nodes_from_args(argv, &argv_node_list);
+    if (ORCM_SUCCESS != rc) {
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
+
+    node_list = build_node_item(argv_node_list);
+    if (NULL != node_list) {
+        opal_list_append(filter_list, &node_list->value.super);
+    }
+
+    start_time = stopwatch();
+    rc = query_db(cmd, filter_list, &returned_list);
+    stop_time = stopwatch();
+    if (ORCM_SUCCESS != rc) {
+        orcm_octl_info("no-results");
+    } else {
+        print_results(returned_list, start_time, stop_time);
+    }
+    SAFE_RELEASE(returned_list);
+    SAFE_RELEASE(filter_list);
+orcm_octl_query_event_exit:
+    opal_argv_free(argv_node_list);
     return rc;
 }
 
@@ -1117,7 +1124,7 @@ int orcm_octl_query_event_snsr_data(int cmd, char **argv)
  * @return char* Date of the event. DON'T FORGET TO FREE!.
  */
 char* get_orcm_octl_query_event_date(int cmd, char **argv){
-    int rc = ORCM_ERR_BAD_PARAM;
+    int rc = ORCM_SUCCESS;
     uint32_t rows_retrieved = 0;
     opal_list_t *filter_list = NULL;
     opal_list_t *returned_list = NULL;
@@ -1127,12 +1134,15 @@ char* get_orcm_octl_query_event_date(int cmd, char **argv){
     int num_db_results = 0;
 
     filter_list = build_filters_list(cmd, argv);
-    if (NULL != filter_list) {
-        rc = query_db(cmd, filter_list, &returned_list);
+    if (NULL == filter_list) {
+        rc = ORCM_ERR_BAD_PARAM;
+        goto orcm_octl_query_event_exit;
+    }
 
-        if (ORCM_SUCCESS == rc && NULL != returned_list) {
+    rc = query_db(cmd, filter_list, &returned_list);
+    if (ORCM_SUCCESS == rc) {
+        if (NULL != returned_list) {
             rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
-
             if (1 < rows_retrieved){
                 line = (opal_value_t*)opal_list_get_last(returned_list);
                 num_db_results = split_db_results(line->data.string, &db_results);
@@ -1141,10 +1151,12 @@ char* get_orcm_octl_query_event_date(int cmd, char **argv){
                     free_db_results(num_db_results, &db_results);
                 }
             }
-            SAFE_RELEASE(returned_list);
+            OBJ_RELEASE(returned_list);
         }
-        SAFE_RELEASE(filter_list);
     }
+
+    SAFE_RELEASE(filter_list);
+orcm_octl_query_event_exit:
 
     return date;
 }

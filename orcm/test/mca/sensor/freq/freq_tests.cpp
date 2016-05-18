@@ -8,11 +8,15 @@
  */
 
 #include "freq_tests.h"
+#include "freq_tests_mocking.h"
 
 // ORTE
 #include "orte/runtime/orte_globals.h"
 
 // ORCM
+#include "orcm/mca/mca.h"
+#include "orcm/mca/sensor/sensor.h"
+#include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "orcm/mca/sensor/freq/sensor_freq.h"
@@ -26,6 +30,9 @@ extern "C" {
     extern int freq_enable_sampling(const char* sensor_specification);
     extern int freq_disable_sampling(const char* sensor_specification);
     extern int freq_reset_sampling(const char* sensor_specification);
+    extern void freq_get_units(char* label, char** units);
+    extern void freq_ptrk_des(pstate_tracker_t *trk);
+    extern void freq_ptrk_con(pstate_tracker_t *trk);
 };
 
 void ut_freq_tests::SetUpTestCase()
@@ -41,6 +48,40 @@ void ut_freq_tests::TearDownTestCase()
     opal_dss_close();
 }
 
+DIR* ut_freq_tests::OpenDir(const char* dirname)
+{
+    (void)dirname;
+    int* rv = new int;
+    *rv = 0;
+    return (DIR*)rv;
+}
+
+int ut_freq_tests::CloseDir(DIR* dir_fd)
+{
+    delete (int*)dir_fd;
+    return 0;
+}
+static const char* entries[] = {
+         ".",
+        "..",
+      "cpu0",
+   "cpufreq",
+   (const char*)NULL
+};
+
+struct dirent* ut_freq_tests::ReadDir(DIR* dir_fd)
+{
+    static struct dirent dir;
+    memset(&dir, 0, sizeof(struct dirent));
+    int* index = (int*)dir_fd;
+    if(entries[*index] != NULL) {
+        strcpy(dir.d_name, entries[*index]);
+        ++(*index);
+        return &dir;
+    } else {
+        return NULL;
+    }
+}
 
 // Testing the data collection class
 TEST_F(ut_freq_tests, freq_sensor_sample_tests)
@@ -120,4 +161,103 @@ TEST_F(ut_freq_tests, freq_api_tests_2)
     // Cleanup
     orcm_sensor_base_runtime_metrics_destroy(object);
     mca_sensor_freq_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_freq_tests, freq_get_units_tests)
+{
+    char* units;
+    freq_get_units((char*)"num_pstates", &units);
+    EXPECT_STREQ("", units);
+    freq_get_units((char*)"no_turbo", &units);
+    EXPECT_STREQ("", units);
+    freq_get_units((char*)"allow_turbo", &units);
+    EXPECT_STREQ("", units);
+    freq_get_units((char*)"num_cpu_cores", &units);
+    EXPECT_STREQ("%", units);
+    freq_get_units((char*)"cpu_core", &units);
+    EXPECT_STREQ("%", units);
+    freq_get_units((char*)"p_cpu_cores", &units);
+    EXPECT_STREQ("%", units);
+}
+
+TEST_F(ut_freq_tests, freq_init_start_stop_finalize_test)
+{
+    freq_mocking.opendir_callback = OpenDir;
+    freq_mocking.closedir_callback = CloseDir;
+    freq_mocking.readdir_callback = ReadDir;
+
+    mca_sensor_freq_component.use_progress_thread = false;
+
+    int rv = orcm_sensor_freq_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    orcm_sensor_freq_module.start(2);
+    orcm_sensor_freq_module.stop(2);
+
+    orcm_sensor_freq_module.finalize();
+
+    freq_mocking.opendir_callback = NULL;
+    freq_mocking.closedir_callback = NULL;
+    freq_mocking.readdir_callback = NULL;
+}
+
+TEST_F(ut_freq_tests, freq_init_start_stop_finalize_test2)
+{
+    mca_sensor_freq_component.use_progress_thread = true;
+    mca_sensor_freq_component.sample_rate = 1;
+
+    freq_mocking.opendir_callback = OpenDir;
+    freq_mocking.closedir_callback = CloseDir;
+    freq_mocking.readdir_callback = ReadDir;
+
+    int rv = orcm_sensor_freq_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+    orcm_sensor_freq_module.start(5);
+    sleep(2);
+
+    orcm_sensor_freq_module.stop(5);
+
+    orcm_sensor_freq_module.finalize();
+
+    freq_mocking.opendir_callback = NULL;
+    freq_mocking.closedir_callback = NULL;
+    freq_mocking.readdir_callback = NULL;
+    mca_sensor_freq_component.use_progress_thread = false;
+    mca_sensor_freq_component.test = false;
+}
+
+TEST_F(ut_freq_tests, freq_init_start_stop_finalize_test3)
+{
+    mca_sensor_freq_component.use_progress_thread = true;
+    mca_sensor_freq_component.sample_rate = 1;
+
+    freq_mocking.opendir_callback = OpenDir;
+    freq_mocking.closedir_callback = CloseDir;
+    freq_mocking.readdir_callback = ReadDir;
+
+    int rv = orcm_sensor_freq_module.init();
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    orcm_sensor_freq_module.start(5);
+    orcm_sensor_freq_module.start(6);
+
+    sleep(2);
+
+    orcm_sensor_freq_module.stop(5);
+    orcm_sensor_freq_module.stop(6);
+
+    orcm_sensor_freq_module.finalize();
+
+    freq_mocking.opendir_callback = NULL;
+    freq_mocking.closedir_callback = NULL;
+    freq_mocking.readdir_callback = NULL;
+    mca_sensor_freq_component.use_progress_thread = false;
+    mca_sensor_freq_component.test = false;
+}
+
+TEST_F(ut_freq_tests, freq_ptrk_con_des_test)
+{
+    pstate_tracker_t *trk;
+    trk=OBJ_NEW(pstate_tracker_t);
+    OBJ_RELEASE(trk);
 }

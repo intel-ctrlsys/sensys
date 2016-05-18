@@ -12,8 +12,14 @@
 
 #include "gtest/gtest.h"
 
+#include <sys/types.h>
+#include <dirent.h>
+
 #include <string>
 #include <vector>
+
+#include "orcm/mca/db/db.h"
+#include "orcm/mca/analytics/analytics.h"
 
 class ut_freq_tests: public testing::Test
 {
@@ -21,6 +27,10 @@ class ut_freq_tests: public testing::Test
         // gtest fixture required methods
         static void SetUpTestCase();
         static void TearDownTestCase();
+
+        static DIR* OpenDir(const char*);
+        static int CloseDir(DIR*);
+        static struct dirent* ReadDir(DIR*);
 }; // class
 
 #endif // FREQ_TESTS_H

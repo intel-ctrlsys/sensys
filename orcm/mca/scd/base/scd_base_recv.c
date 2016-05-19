@@ -1380,8 +1380,8 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
                 if(0 == strcmp(item->key, "hostname")) {
                     col1_data = item->data.string;
                 } else if(0 == strcmp(item->key, "feature")) {
-                    char* plugin = get_plugin_from_sensor_name(item->data.string);
-                    col2_data = plugin;
+                    SAFE_FREE(col2_data);
+                    col2_data = get_plugin_from_sensor_name(item->data.string);
                 } else if (0 == strcmp(item->key, "value")) {
                     col3_data = item->data.string;
                 }
@@ -1391,6 +1391,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
             string_row->data.string = strdup(tmp);
             opal_list_append(*results, &string_row->super);
             SAFE_FREE(tmp);
+            SAFE_FREE(col2_data);
             SAFE_OBJ_RELEASE(row);
         }
     }

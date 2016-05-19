@@ -1884,6 +1884,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
                 if(0 == strcmp(item->key, "hostname")) {
                     col1_data = item->data.string;
                 } else if(0 == strcmp(item->key, "feature")) {
+                    SAFE_FREE(col2_data);
                     col2_data = get_plugin_from_sensor_name(item->data.string);
                 } else if (0 == strcmp(item->key, "value")) {
                     col3_data = item->data.string;

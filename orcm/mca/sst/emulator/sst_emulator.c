@@ -373,7 +373,6 @@ static int emulator_init(void)
     if (ORTE_SUCCESS != (ret = orte_routed.init_routes(ORTE_PROC_MY_NAME->jobid, clusterbuf))) {
         ORTE_ERROR_LOG(ret);
         OBJ_RELEASE(clusterbuf);
-        OBJ_RELEASE(uribuf);
         error = "orte_routed.init_routes";
         goto error;
     }
@@ -434,6 +433,10 @@ static int emulator_init(void)
         ORTE_ERROR_LOG(ret);
         error = "orte_dfs_select";
         goto error;
+    }
+
+    if (tgts) {
+        opal_argv_free(tgts);
     }
 
     return ORCM_SUCCESS;

@@ -455,15 +455,21 @@ Example: session get budget 1
 
 [usage:query-history]
 query history [start-date start-time end-date end-time] <nodelist>
+Date has the format: yyyy-mm-dd
+Time has the format: hh:mm:ss
 Example: query history 2015-11-13 15:00:00 2015-11-13 16:00:00 c[2:1-10]
 
 [usage:query-sensor]
 query sensor <sensor-name> [start-date start-time end-date end-time [upper-bound lower-bound]] <nodelist>
+Date has the format: yyyy-mm-dd
+Time has the format: hh:mm:ss
 Example: query sensor coretemp 2015-11-13 14:00:00 2015-11-13 16:00:00 0.1 1 c[2:1-10]
          query sensor coretemp* 2015-11-13 14:00:00 2015-11-13 16:00:00 0.1 1 c[2:1-10]
 
 [usage:query-log]
 query log [text-in-log] [start-date start-time end-date end-time] <nodelist>
+Date has the format: yyyy-mm-dd
+Time has the format: hh:mm:ss
 Example: query log *access* c[2:1-10]
 
 [usage:query-idle]
@@ -477,6 +483,8 @@ Example: query node status c[2:1-10]
 
 [usage:query-event-data]
 query event data [start-date start-time end-date end-time] <nodelist>
+Date has the format: yyyy-mm-dd
+Time has the format: hh:mm:ss
 Example: query event data 2016-02-16 08:22:00 2016-02-16 08:22:14 c[2:1-10]
 
 [usage:query-event-sensor-data]

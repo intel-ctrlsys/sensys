@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2014-2016      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -142,7 +142,6 @@ static int tool_init(void)
     if (initialized) {
         return ORCM_SUCCESS;
     }
-    initialized = true;
     
     /* Initialize the ORTE data type support */
     if (ORTE_SUCCESS != (ret = orte_ess_base_std_prolog())) {
@@ -527,7 +526,8 @@ static int tool_init(void)
         error = "orte_dfs_select";
         goto error;
     }
-    
+
+    initialized = true;
     return ORTE_SUCCESS;
     
 error:

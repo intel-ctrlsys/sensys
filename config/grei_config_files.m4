@@ -39,6 +39,8 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/mca/parser/Makefile
     orcm/test/mca/parser/pugi/Makefile
     orcm/test/mca/parser/base/Makefile
+    orcm/test/mca/sst/Makefile
+    orcm/test/mca/sst/tool/Makefile
     orcm/test/tools/Makefile
     orcm/test/tools/octl/Makefile
     orcm/test/runtime/Makefile

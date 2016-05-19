@@ -225,6 +225,8 @@ int orcm_octl_resource_drain(char **argv)
         orcm_octl_usage("resource-drain", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
+
+    orcm_octl_info("resource-drain");
     /* setup to receive the result */
     OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
     xfer.active = true;
@@ -321,6 +323,8 @@ int orcm_octl_resource_resume(char **argv)
         orcm_octl_usage("resource-resume", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
+
+    orcm_octl_info("resource-resume");
     /* setup to receive the result */
     OBJ_CONSTRUCT(&xfer, orte_rml_recv_cb_t);
     xfer.active = true;

@@ -237,7 +237,7 @@ void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
                 /* may hit a race condition where the process has
                  * terminated, so just ignore any error
                  */
-                OBJ_RELEASE(stats);
+                SAFE_RELEASE(stats);
                 continue;
             }
             /* the stats framework can't know nodename or rank */
@@ -247,8 +247,8 @@ void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &stats, 1, OPAL_PSTAT))) {
                 ORTE_ERROR_LOG(rc);
                 OBJ_DESTRUCT(&buf);
-                OBJ_RELEASE(stats);
-                OBJ_RELEASE(nstats);
+                SAFE_RELEASE(stats);
+                SAFE_RELEASE(nstats);
                 return;
             }
         }

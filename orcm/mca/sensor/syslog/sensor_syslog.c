@@ -322,7 +322,7 @@ const char *syslog_get_facility(int prival)
 
 void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
 {
-    int ret;
+    int ret = OPAL_SUCCESS;
     int nmsg;
     const char *name = "syslog";
     bool packed;

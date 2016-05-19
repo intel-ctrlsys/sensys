@@ -43,6 +43,7 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/tools/octl/Makefile
     orcm/test/runtime/Makefile
     orcm/test/runtime/led_control/Makefile
+    orcm/test/runtime/orcm_globals/Makefile
     orcm/test/mca/analytics/spatial/Makefile
     orcm/test/mca/db/Makefile
     orcm/test/mca/db/print/Makefile

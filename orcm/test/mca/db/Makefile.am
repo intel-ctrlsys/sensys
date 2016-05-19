@@ -7,7 +7,7 @@
 # $HEADER$
 
 if HAVE_GTEST
-gtestSubdirs=base print
+gtestSubdirs=base print odbc
 endif
 
 SUBDIRS=$(gtestSubdirs)

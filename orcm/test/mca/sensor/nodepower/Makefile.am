@@ -34,9 +34,14 @@ PY_LOG_COMPILER = /usr/bin/python
 check_PROGRAMS = nodepower_tests
 
 nodepower_tests_SOURCES = \
-	nodepower_tests.cpp
+	nodepower_tests.cpp \
+	nodepower_tests_mocking.cpp
 
-MOCKING =
+MOCKING = \
+    -Wl,--wrap=ipmi_cmdraw \
+    -Wl,--wrap=ipmi_close \
+    -Wl,--wrap=geteuid \
+    -Wl,--wrap=localtime
 
 #
 # Libraries we depend on

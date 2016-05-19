@@ -203,6 +203,19 @@ Note: Setting per sensor sample rate in the examples below will take effect
 Example: sensor set sample-rate coretemp 10 c[2:1-10]
          sensor set sample-rate freq 10 c[2:1-10]
 
+[info:query-no-event]
+The event "%s" does not exists.
+
+[info:resource-drain]
+Note: This command only takes the nodes out of the available resource
+      pool of the scheduler. It has nothing to do with the running
+      status of the nodes.
+
+[info:resource-resume]
+Note: This command only brings the nodes into the available resource
+      pool of the scheduler. It has nothing to do with the running
+      status of the nodes.
+
 [error:unknown]
 Unknown error
 
@@ -422,10 +435,16 @@ Example: diag cpu c[2:1-10]
 
 [usage:resource-drain]
 resource drain <nodelist>
+Note: This command only takes the nodes out of the available resource
+      pool of the scheduler. It has nothing to do with the running
+      status of the nodes.
 Example: resource drain c[2:1-10]
 
 [usage:resource-resume]
 resource resume <nodelist>
+Note: This command only brings the nodes into the available resource
+      pool of the scheduler. It has nothing to do with the running
+      status of the nodes.
 Example: resource resume c[2:1-10]
 
 [usage:session-cancel]

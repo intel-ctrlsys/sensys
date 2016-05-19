@@ -100,8 +100,8 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
     char* nodename = NULL;
     ipmi_collector ic;
 
-    rc = unpack_command_subcommand(buffer, &command, &sub_command);
-    if (ORCM_SUCCESS != rc) {
+    response = unpack_command_subcommand(buffer, &command, &sub_command);
+    if (ORCM_SUCCESS != response) {
         goto ERROR;
     }
     if (ORCM_SET_NOTIFIER_COMMAND == command) {
@@ -116,6 +116,7 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
             break;
         default:
             asprintf(&error,"invalid notifier set command");
+            response = ORCM_ERROR;
             goto ERROR;
         }
         if (ORCM_SUCCESS != response) {
@@ -139,6 +140,7 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
             break;
         default:
             asprintf(&error,"invalid notifier get command");
+            response = ORCM_ERROR;
             goto ERROR;
         }
         if (ORCM_SUCCESS != response) {
@@ -183,6 +185,9 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
         }
         response = chassis_id_operation(sub_command, &ic, seconds, pack_buff);
         goto RESPONSE;
+    }
+    else{
+        response = ORCM_ERROR;
     }
 
 ERROR:
@@ -470,8 +475,8 @@ static int chassis_id_operation(orcm_cmd_server_flag_t sub_command,
             }
             break;
         default:
-            fini_led_control();
-            return ORCM_ERROR;
+            response = ORCM_ERROR;
+            break;
     }
 
     rc = pack_response(pack_buff, response, state, sub_command);

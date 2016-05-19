@@ -1391,6 +1391,7 @@ int get_inventory_list(opal_list_t *filters, opal_list_t **results)
                 rv = data.status;
                 goto error_exit;
             }
+
             if(-1 == asprintf(&tmp, "\"")) {
                 rv = ORCM_ERROR;
                 goto error_exit;

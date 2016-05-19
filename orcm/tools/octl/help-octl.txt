@@ -184,6 +184,9 @@ Node %s failed to get notifier policy!
 Node          Severity      Action
 -----------------------------------
 
+[info:notifier-data]
+%-10s    %6s    %10s
+
 [info:chassis-header]
 Node          Chassis ID LED
 -----------------------------------/

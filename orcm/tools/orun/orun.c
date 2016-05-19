@@ -113,11 +113,14 @@
 #include "orcm/mca/scd/scd_types.h"
 #include "orcm/runtime/runtime.h"
 #include "orcm/version.h"
+#include "orcm/util/utils.h"
 
 /* ensure I can behave like a daemon */
 #include "orte/orted/orted.h"
 
 #include "orun.h"
+
+#define ON_NULL_GOTO(x,label) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
 
 /*
  * Globals
@@ -1122,6 +1125,7 @@ static int create_app(int argc, char* argv[],
              * environment
              */
             param = strdup(environ[i]);
+            ON_NULL_GOTO(param, cleanup);
             value = strchr(param, '=');
             if (value != NULL) {
                 *value = '\0';
@@ -1280,10 +1284,10 @@ static int create_app(int argc, char* argv[],
                     param[strlen(param)-1] = '\0';
                 }
                 value = strdup(orun_globals.prefix);
-                if (0 == strcmp(OPAL_PATH_SEP, &(value[strlen(value)-1]))) {
+                if (NULL != value && 0 == strcmp(OPAL_PATH_SEP, &(value[strlen(value)-1]))) {
                     value[strlen(value)-1] = '\0';
                 }
-                if (NULL != param && 0 != strcmp(param, value)) {
+                if (NULL != param && NULL != value && 0 != strcmp(param, value)) {
                     orte_show_help("help-orterun.txt", "orterun:app-prefix-conflict",
                                    true, orte_basename, value, param);
                     /* let the global-level prefix take precedence since we
@@ -1292,7 +1296,7 @@ static int create_app(int argc, char* argv[],
                     free(param);
                     param = strdup(orun_globals.prefix);
                 }
-                free(value);
+                SAFEFREE(value);
             } else if (NULL != orun_globals.prefix) {
                 param = strdup(orun_globals.prefix);
             } else if (opal_cmd_line_is_taken(&cmd_line, "prefix")){

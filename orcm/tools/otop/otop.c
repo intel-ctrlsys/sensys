@@ -546,6 +546,7 @@ cleanup:
         fclose(fp);
     }
     orte_finalize();
+    OBJ_DESTRUCT(&cmd_line);
     
     return ret;
 }

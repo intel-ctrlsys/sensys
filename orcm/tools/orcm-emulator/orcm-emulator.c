@@ -158,6 +158,7 @@ int main(int argc, char *argv[])
      ***************/
     OPAL_LIST_DESTRUCT(&orcm_globals.targets);
     orcm_finalize();
+    OBJ_DESTRUCT(&cmd_line);
 
     return ret;
 }

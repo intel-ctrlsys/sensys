@@ -260,15 +260,14 @@ void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
         if (OPAL_SUCCESS != (rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER))) {
             ORTE_ERROR_LOG(rc);
             OBJ_DESTRUCT(&buf);
-            OBJ_RELEASE(stats);
-            OBJ_RELEASE(nstats);
+            SAFE_RELEASE(stats);
+            SAFE_RELEASE(nstats);
             return;
         }
     }
-    if(NULL != stats) {
-        OBJ_RELEASE(stats);
-    }
-    OBJ_RELEASE(nstats);
+
+    SAFE_RELEASE(stats);
+    SAFE_RELEASE(nstats);
     OBJ_DESTRUCT(&buf);
 }
 

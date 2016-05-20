@@ -22,7 +22,7 @@
 // The total number of parameters that need to be gathered for each node
 // Eventually this number should equal the items under ipmi_property_t
 #define TOTAL_PROPERTIES_PER_NODE   14
-#define TOTAL_FLOAT_METRICS     100
+#define TOTAL_FLOAT_METRICS     250
 #define MAX_UNIT_LENGTH         20
 #define MAX_METRIC_NAME         20
 
@@ -143,7 +143,6 @@ typedef enum {
 // Function Declarations
 void orcm_sensor_ipmi_get_system_power_state(uchar in, char* str, int str_size);
 void orcm_sensor_ipmi_get_device_power_state(uchar in, char* str, int str_size);
-int orcm_sensor_ipmi_get_bmc_cred(orcm_sensor_hosts_t *host);
 int orcm_sensor_ipmi_found(char *nodename, opal_list_t *host_list);
 unsigned int orcm_sensor_ipmi_counthosts(void);
 int orcm_sensor_ipmi_addhost(ipmi_collector* ic, opal_list_t *host_list);

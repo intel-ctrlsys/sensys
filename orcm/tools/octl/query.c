@@ -1315,9 +1315,9 @@ int print_results_from_stream(uint32_t results_count, int stream_index,
                                                       ORCM_RML_TAG_ORCMD_FETCH,
                                                       orte_rml_send_callback,
                                                       xfer);
-    ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
+    ON_FAILURE_CANCEL_COMM(rc, print_from_stream_cleanup, ORCM_RML_TAG_ORCMD_FETCH);
     ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
-    ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
+    ON_FAILURE_CANCEL_COMM(rc, print_from_stream_cleanup, ORCM_RML_TAG_ORCMD_FETCH);
     n = 1;
     rc = opal_dss.unpack(&xfer->data, &stream_index_recv, &n, OPAL_INT);
     ON_FAILURE_GOTO(rc, print_from_stream_cleanup);

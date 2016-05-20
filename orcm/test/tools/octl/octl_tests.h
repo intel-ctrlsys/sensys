@@ -129,6 +129,8 @@ class ut_octl_query: public testing::Test
                                   orte_rml_tag_t tag,
                                   orte_rml_buffer_callback_fn_t cbfunc,
                                   void* cbdata);
+    static void Mocked_recv_cancel(orte_process_name_t* peer,
+                                   orte_rml_tag_t tag);
     static int PrintResultsFromStream(uint32_t results_count, int stream_index,
                                       double start_time, double stop_time);
 };

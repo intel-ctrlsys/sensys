@@ -11,6 +11,7 @@
 
 // OPAL
 #include "opal/dss/dss.h"
+#include "opal/mca/installdirs/installdirs.h"
 
 // ORCM
 #include "orcm/tools/octl/common.h"
@@ -53,6 +54,11 @@ void ut_octl_query::SetUpTestCase()
     opal_dss_open();
 
     orte_rml.recv_buffer_nb = MockedRecvBuffer;
+
+    if(opal_install_dirs.opaldatadir != NULL){
+        free(opal_install_dirs.opaldatadir);
+    }
+    opal_install_dirs.opaldatadir = strdup("../../../tools/octl/");
 }
 
 void ut_octl_query::TearDownTestCase()
@@ -193,6 +199,12 @@ int ut_octl_query::MockedFailure5SendBuffer(orte_process_name_t* peer,
     opal_dss.pack(&xfer->data, &number_of_rows, 1, OPAL_UINT32);
 
     return rv;
+}
+
+void ut_octl_query::Mocked_recv_cancel(orte_process_name_t* peer,
+                                        orte_rml_tag_t tag)
+{
+    /*dummy function*/
 }
 
 int ut_octl_query::PrintResultsFromStream(uint32_t results_count,
@@ -1003,19 +1015,20 @@ TEST_F(ut_octl_query, query_db_stream_invalid_filters)
     EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
 }
 
-/*TEST_F(ut_octl_query, query_db_stream_no_receiver)
+TEST_F(ut_octl_query, query_db_stream_no_receiver)
 {
     int rc;
     uint32_t results_count = 0;
     int stream_index = 0;
 
+    orte_rml.recv_cancel = Mocked_recv_cancel;
     orte_rml.send_buffer_nb = MockedFailure1SendBuffer;
     rc = QueryDbStreamVaryingFilters(&results_count, &stream_index,
                                      two_filters);
     orte_rml.send_buffer_nb = MockedSendBufferFromDbQuery;
 
     EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
-}*/
+}
 
 TEST_F(ut_octl_query, query_db_stream_first_unpack_error)
 {
@@ -1404,6 +1417,7 @@ TEST_F(ut_octl_query, print_results_from_stream_no_receiver)
     double start_time = 0.0;
     double stop_time = 1.0;
 
+    orte_rml.recv_cancel = Mocked_recv_cancel;
     orte_rml.send_buffer_nb = MockedFailure1SendBuffer;
     rc = print_results_from_stream(results_count, stream_index, start_time,
                                    stop_time);

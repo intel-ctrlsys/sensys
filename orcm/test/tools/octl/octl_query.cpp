@@ -1003,7 +1003,7 @@ TEST_F(ut_octl_query, query_db_stream_invalid_filters)
     EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
 }
 
-TEST_F(ut_octl_query, query_db_stream_no_receiver)
+/*TEST_F(ut_octl_query, query_db_stream_no_receiver)
 {
     int rc;
     uint32_t results_count = 0;
@@ -1015,7 +1015,7 @@ TEST_F(ut_octl_query, query_db_stream_no_receiver)
     orte_rml.send_buffer_nb = MockedSendBufferFromDbQuery;
 
     EXPECT_EQ(OPAL_ERR_BAD_PARAM, rc);
-}
+}*/
 
 TEST_F(ut_octl_query, query_db_stream_first_unpack_error)
 {

@@ -204,7 +204,8 @@ Example: sensor set sample-rate coretemp 10 c[2:1-10]
          sensor set sample-rate freq 10 c[2:1-10]
 
 [info:query-no-event]
-The event "%s" does not exists.
+There were no coincidences for event "%s".
+Please verify orcmsched connectivity and that event exists.
 
 [info:resource-drain]
 Note: This command only takes the nodes out of the available resource

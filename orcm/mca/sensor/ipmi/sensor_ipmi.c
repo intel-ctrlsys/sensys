@@ -329,10 +329,8 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
 
     /* sample time - 1b */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL);
+    ORCM_ON_FAILURE_RETURN(rc);
 
     /* Unpack the node_name - 2 */
     ipmi_log_extract_create_string(sample, nodename, sizeof(nodename));
@@ -374,9 +372,10 @@ static void ipmi_log_new_node(opal_buffer_t *sample)
         "Unpacked Baseboard Part Number(9a): %s", baseboard_part);
 
     key = OBJ_NEW(opal_list_t);
+    ORCM_ON_NULL_RETURN(key);
 
     non_compute_data = OBJ_NEW(opal_list_t);
-    ORCM_ON_NULL_RETURN(non_compute_data);
+    ORCM_ON_NULL_GOTO(non_compute_data,cleanup);
 
     sensor_metric = orcm_util_load_orcm_value("ctime", &sampletime, OPAL_TIMEVAL, NULL);
     ORCM_ON_NULL_GOTO(sensor_metric, cleanup);

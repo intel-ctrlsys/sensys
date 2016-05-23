@@ -2588,15 +2588,20 @@ static int check_lex_aggregator_yes_no(xml_tree_t * in_xtree)
         erri = ORCM_ERR_BAD_PARAM;
     } else {
         for (i=0; i < in_xtree->sz_items && ORCM_SUCCESS == erri; i++) {
+            regex_t rec;
+            bool rec_used = false;
             regex_res = regexec(&regex_comp, in_xtree->items[i], 0, NULL, 0);
 
             if ( !regex_res ) {
-                regcomp(&regex_comp, "^[[:space:]]*(yes|no)[[:space:]]*$", REG_EXTENDED);
-
+                regcomp(&rec, "^[[:space:]]*(yes|no)[[:space:]]*$", REG_EXTENDED);
+                rec_used = true;
                 if ( (i+1) < in_xtree->sz_items ) {
-                    regex_res = regexec(&regex_comp, in_xtree->items[i+1], 0, NULL, 0);
+                    regex_res = regexec(&rec, in_xtree->items[i+1], 0, NULL, 0);
 
                     if( !regex_res ){
+                        if(rec_used) {
+                            regfree(&rec);
+                        }
                         break;
                     } else if ( REG_NOMATCH == regex_res ){
                         opal_output(0,"ERROR: \"aggregator\" only allow the values: yes, no");
@@ -2608,6 +2613,9 @@ static int check_lex_aggregator_yes_no(xml_tree_t * in_xtree)
                 } else {
                     opal_output(0,"ERROR: \"aggregator\" only allow the values: yes, no");
                     erri = ORCM_ERR_BAD_PARAM;
+                }
+                if(rec_used) {
+                    regfree(&rec);
                 }
             } else if ( REG_NOMATCH != regex_res ) {
                 opal_output(0, "ERROR: Regex match failed in configuration file.");

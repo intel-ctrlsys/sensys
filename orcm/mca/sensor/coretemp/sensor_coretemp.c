@@ -996,7 +996,7 @@ static void coretemp_log(opal_buffer_t *sample)
         }
         SAFEFREE(core_label);
         /* check coretemp event policy */
-        coretemp_policy_filter(hostname, idx, fval, sampletime.tv_sec);
+        /* coretemp_policy_filter(hostname, idx, fval, sampletime.tv_sec); */
     }
 
     orcm_analytics.send_data(analytics_vals);
@@ -1152,7 +1152,7 @@ static void coretemp_inventory_collect(opal_buffer_t *inventory_snapshot)
 
 static void my_inventory_log_cleanup(int dbhandle, int status, opal_list_t *kvs, opal_list_t *output, void *cbdata)
 {
-    OBJ_RELEASE(kvs);
+    ORCM_RELEASE(kvs);
 }
 
 static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
@@ -1171,6 +1171,7 @@ static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snap
 
     n=1;
     rc = opal_dss.unpack(inventory_snapshot, &tmp, &n, OPAL_STRING);
+    SAFEFREE(tmp);
     ON_FAILURE_RETURN(rc);
 
     n=1;
@@ -1218,6 +1219,7 @@ static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snap
     records = NULL;
 
 cleanup:
+    ORCM_RELEASE(host_name);
     ORCM_RELEASE(mkv);
     ORCM_RELEASE(time_stamp);
     ORCM_RELEASE(records);

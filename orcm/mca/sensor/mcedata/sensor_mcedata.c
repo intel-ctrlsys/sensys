@@ -1176,7 +1176,7 @@ static void mcedata_log(opal_buffer_t *sample)
         opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
         i++;
     }
-
+    sensor_metric = NULL;
     /* Logical CPU ID */
     n=1;
     rc = opal_dss.unpack(sample, &cpu, &n, OPAL_UINT);
@@ -1197,7 +1197,7 @@ static void mcedata_log(opal_buffer_t *sample)
     sensor_metric = orcm_util_load_orcm_value("socket", &socket, OPAL_UINT, NULL);
     ORCM_ON_NULL_GOTO(sensor_metric, cleanup);
     opal_list_append(analytics_vals->compute_data, (opal_list_item_t *)sensor_metric);
-
+    sensor_metric = NULL;
     mcedata_decode(mce_reg, analytics_vals->compute_data);
 
     orcm_analytics.send_data(analytics_vals);
@@ -1205,6 +1205,7 @@ static void mcedata_log(opal_buffer_t *sample)
 cleanup:
     SAFEFREE(hostname);
     ORCM_RELEASE(analytics_vals);
+    ORCM_RELEASE(sensor_metric);
 }
 
 static void mcedata_set_sample_rate(int sample_rate)

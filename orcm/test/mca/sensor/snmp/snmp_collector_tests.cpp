@@ -1060,7 +1060,7 @@ TEST_F(ut_snmp_collector_tests, test_snmp_corrupted_inventory_buffer)
     snmp_inventory_collect(buffer);
     EXPECT_EQ(ORCM_SUCCESS, last_orte_error_);
     snmp_inventory_log((char*)hostname_, buffer);
-    EXPECT_EQ(ORCM_ERR_BUFFER, last_orte_error_);
+    EXPECT_NE(ORCM_SUCCESS, last_orte_error_);
     snmp_finalize_relay();
 
     SAFE_OBJ_RELEASE(buffer);

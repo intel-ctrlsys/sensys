@@ -98,6 +98,7 @@ class unableToPack : public std::runtime_error {
     unableToPack() : std::runtime_error( "Unable to pack into buffer" ) {}
 };
 
+vardata fromOpalBuffer(opal_buffer_t* buffer, opal_data_type_t localType);
 vardata fromOpalBuffer(opal_buffer_t* buffer);
 std::vector<vardata> unpackDataFromBuffer(opal_buffer_t *buffer);
 void packDataToBuffer(std::vector<vardata> inputData, opal_buffer_t *buffer);

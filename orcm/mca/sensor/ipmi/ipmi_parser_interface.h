@@ -30,7 +30,7 @@ extern bool load_ipmi_config_file(void);
 
 extern void start_aggregator_count(void);
 
-extern bool get_next_aggregator_name(char* aggregator);
+extern bool get_next_aggregator_name(char** aggregator);
 
 extern bool get_bmc_info(const char* hostname, ipmi_collector *ic);
 

@@ -43,7 +43,9 @@ ipmi_tests_SOURCES = \
 	ipmi_collector_tests.cpp \
 	ipmi_collector_tests.h \
 	ipmi_parser_tests.cpp \
-	ipmi_parser_tests.h
+	ipmi_parser_tests.h \
+	ipmi_parser_interface_tests.cpp \
+	ipmi_parser_interface_tests.h
 
 MOCKING=\
 	-Wl,--wrap=rename \

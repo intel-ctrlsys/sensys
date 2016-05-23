@@ -46,11 +46,11 @@ extern "C" {
     }
 
     // Retrieves the next aggregator name on aggregators 'set'.
-    bool get_next_aggregator_name(char* aggregator){
+    bool get_next_aggregator_name(char** aggregator){
         if (agg_it == aggregators.end()){
             return false;
         }
-        strncpy(aggregator, agg_it->c_str(), MAX_STR_LEN-1);
+        *aggregator = strdup(agg_it->c_str());
         agg_it++;
         return true;
     }

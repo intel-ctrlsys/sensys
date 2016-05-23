@@ -148,3 +148,16 @@ TEST_F(ut_ipmi_parser, test_parse_validFile)
     verifyNode_DEFAULT_CHANNEL(ipmiVector[4]);
     verifyNode_AllDefaults(ipmiVector[5]);
 }
+
+TEST_F(ut_ipmi_parser, test_parse_collectorMap)
+{
+    ipmiParser p(fileName);
+    ipmiCollectorMap ipmiMap = p.getIpmiCollectorMap();
+    ASSERT_EQ(NUM_NODES, ipmiMap.size());
+    verifyNode_AllParamsProvided(ipmiMap["cn01"]);
+    verifyNode_DEFAULT_AUTH_METHOD(ipmiMap["cn02"]);
+    verifyNode_DEFAULT_PRIV_LEVEL(ipmiMap["cn03"]);
+    verifyNode_DEFAULT_PORT(ipmiMap["cn04"]);
+    verifyNode_DEFAULT_CHANNEL(ipmiMap["cn05"]);
+    verifyNode_AllDefaults(ipmiMap["cn06"]);
+}

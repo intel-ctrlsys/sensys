@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -280,7 +280,9 @@ static int analyze(int sd, short args, void *cbdata)
             goto cleanup;
         }
     }
-    filter_caddy->wf->hostname_regex = orcm_analytics_get_hostname_from_attributes(&filter_caddy->wf_step->attributes);
+    if(NULL == filter_caddy->wf->hostname_regex) {
+        filter_caddy->wf->hostname_regex = orcm_analytics_get_hostname_from_attributes(&filter_caddy->wf_step->attributes);
+    }
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(filter_caddy->wf, filter_caddy->wf_step,
                                      filter_key->unique_id, data_to_next, NULL);
 cleanup:

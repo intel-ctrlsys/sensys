@@ -1190,6 +1190,7 @@ int orcm_sensor_unpack_orcm_value_list(opal_buffer_t* bucket, opal_list_t** list
             rc = orcm_sensor_unpack_orcm_value(bucket, &item);
             if(ORCM_SUCCESS != rc) {
                 ORTE_ERROR_LOG(rc);
+                ORCM_RELEASE(*list);
                 return rc;
             }
             opal_list_append(*list, item);

@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -93,7 +93,7 @@ static opal_list_t my_children;  // orte_routed_tree_t's
 static int init(void)
 {
     lifeline = NULL;
-    
+
     if (ORTE_PROC_IS_TOOL) {
         return ORTE_SUCCESS;
     }
@@ -120,7 +120,7 @@ static int delete_route(orte_process_name_t *proc)
     /* There is nothing to do here. The routes will be
      * redefined when we update the routing tree
      */
-    
+
     return ORTE_SUCCESS;
 }
 
@@ -211,9 +211,9 @@ found:
     OPAL_OUTPUT_VERBOSE((1, orte_routed_base_framework.framework_output,
                          "%s routed_orcm_get(%s) --> %s",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                         ORTE_NAME_PRINT(target), 
+                         ORTE_NAME_PRINT(target),
                          ORTE_NAME_PRINT(ret)));
-    
+
     return *ret;
 }
 
@@ -240,7 +240,7 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
 
     /* the cluster definition comes to us in a set of packed
      * opal_buffer_t objects, so unpack them in order */
-    
+
     /* first unpack the scheduler section */
     cnt = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(ndat, &sched, &cnt, OPAL_BUFFER))) {
@@ -383,7 +383,7 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
                 lifeline = ORTE_PROC_MY_PARENT;
             }
         }
-        
+
         opal_output_verbose(1, orte_routed_base_framework.framework_output,
                             "%s init_routes: row %d(%s) has %d racks",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
@@ -533,6 +533,14 @@ static int init_routes(orte_jobid_t job, opal_buffer_t *ndat)
                 ORTE_ERROR_LOG(rc);
                 return rc;
             }
+            if(NULL != rack) {
+                OBJ_RELEASE(rack);
+                rack = NULL;
+            }
+        }
+        if(NULL != row) {
+            OBJ_RELEASE(row);
+            row = NULL;
         }
     }
 
@@ -618,7 +626,7 @@ static bool route_is_defined(const orte_process_name_t *target)
 }
 
 static int set_lifeline(orte_process_name_t *proc)
-{    
+{
     return ORTE_ERR_NOT_FOUND;
 }
 

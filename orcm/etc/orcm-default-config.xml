@@ -29,3 +29,29 @@
         </step>
     </workflow>
 </workflows>
+<!-- The following is an example of the IPMI section
+<ipmi>
+    <bmc_node name="node04">
+        <bmc_address>192.168.0.104</bmc_address>
+        <user>bmc_username_01</user>
+        <pass>bmc_password_01</pass>
+        <auth_method>PASSWORD</auth_method>
+        <priv_level>USER</priv_level>
+        <aggregator>agg01</aggregator>
+    </bmc_node>
+</ipmi>
+-->
+<!-- The following is an example of the SNMP section
+<snmp>
+    <config name="snmp1" version="3" user="user" pass="12345678" auth="MD5" sec="AUTHNOPRIV">
+        <aggregator>localhost</aggregator>
+        <hostname>server[2:0-20],server21</hostname>
+        <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids>
+    </config>
+    <config name="snmp2" version="1" user="user" location="X Lab">
+        <aggregator>node01</aggregator>
+        <hostname>switches[2:0-20],switch21</hostname>
+        <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids>
+    </config>
+</snmp>
+-->

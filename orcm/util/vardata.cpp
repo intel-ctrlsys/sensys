@@ -71,7 +71,12 @@ void vardata::packTo(opal_buffer_t* buffer) {
     if (NULL != labelPtr) {
         free(labelPtr);
     }
-
+#if !OPAL_ENABLE_DEBUG
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &type, 1, OPAL_DATA_TYPE_T))) {
+        ORTE_ERROR_LOG(rc);
+        throw unableToPack();
+    }
+#endif
     if (OPAL_STRING == type) {
         char* strPtr = strdup(strData.c_str());
         rc = opal_dss.pack(buffer, &strPtr, 1, type);
@@ -109,30 +114,44 @@ void vardata::appendToOpalList(opal_list_t *opalList) {
     opal_list_append(opalList, (opal_list_item_t *)value);
 }
 
-vardata fromOpalBuffer(opal_buffer_t *buffer) {
-    opal_data_type_t localType;
-    int32_t number;
+string unpackKey(opal_buffer_t *buffer) {
+    char* label = NULL;
+    int32_t number = 1;
     int rc;
 
-    // Unpack label
-    char* label;
-    number = 1;
     if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &label, &number, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         throw invalidBuffer();
     }
     string key = string(label);
     SAFEFREE(label);
+    return key;
+}
 
-    // Unpack data
+opal_data_type_t getUnpackType(opal_buffer_t *buffer) {
+    int32_t number = 1;
+    int rc;
+    opal_data_type_t localType;
+#if OPAL_ENABLE_DEBUG
     if ( OPAL_SUCCESS != (rc = opal_dss.peek(buffer, &localType, &number)) ) {
         ORTE_ERROR_LOG(rc);
         throw invalidBuffer();
     }
+#else
+    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &localType, &number, OPAL_DATA_TYPE_T))) {
+        ORTE_ERROR_LOG(rc);
+        throw invalidBuffer();
+    }
+#endif
+    return localType;
+}
 
-    number = 1;
+vardata getUnpackedData(opal_buffer_t *buffer, opal_data_type_t localType, string key) {
+    int32_t number = 1;
+    int rc;
+
     if (OPAL_STRING == localType) {
-        char* s;
+        char* s = NULL;
         if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &s, &number, localType))) {
             ORTE_ERROR_LOG(rc);
             throw invalidBuffer();
@@ -167,6 +186,17 @@ vardata fromOpalBuffer(opal_buffer_t *buffer) {
                 throw unsupportedDataType();
         }
     }
+}
+
+vardata fromOpalBuffer(opal_buffer_t *buffer) {
+    string key = unpackKey(buffer);
+    opal_data_type_t localType = getUnpackType(buffer);
+    return getUnpackedData(buffer, localType, key);
+}
+
+vardata fromOpalBuffer(opal_buffer_t *buffer, opal_data_type_t localType) {
+    string key = unpackKey(buffer);
+    return getUnpackedData(buffer, localType, key);
 }
 
 void packDataToBuffer(vector<vardata> inputData, opal_buffer_t *buffer) {

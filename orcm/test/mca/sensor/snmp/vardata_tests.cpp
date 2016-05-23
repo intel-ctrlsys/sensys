@@ -97,6 +97,7 @@ TEST_F(ut_vardata_tests, test_vardata_getDataPtr) {
     ASSERT_TRUE( NULL != testData->getDataPtr() );
 }
 
+
 /*
  * vardataList tests
  */
@@ -131,4 +132,115 @@ TEST_F(ut_vardataList_tests, test_pack_unpack) {
 
 TEST_F(ut_vardata_negative, packTo) {
     ASSERT_THROW( (new vardata((int) 1))->packTo(NULL), unableToPack );
+}
+
+//
+// fromOpalBuffer tests
+//
+
+TEST_F(ut_vardata_tests, test_from_opal_buffer_int32) {
+    const char* label = "label" ;
+    opal_data_type_t type = OPAL_INT32;
+
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &label, 1, OPAL_STRING));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &testValue, 1, type));
+
+    vardata result = fromOpalBuffer(&buffer, type);
+    EXPECT_STREQ(label,result.getKey().c_str());
+    EXPECT_EQ(testValue, result.getValue<int32_t>());
+}
+
+TEST_F(ut_vardata_tests, test_from_opal_buffer_float) {
+    const char* label = "label" ;
+    opal_data_type_t type = OPAL_FLOAT;
+    float testValue = 3.14156;
+
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &label, 1, OPAL_STRING));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &testValue, 1, type));
+
+    vardata result = fromOpalBuffer(&buffer, type);
+    EXPECT_STREQ(label,result.getKey().c_str());
+    EXPECT_EQ(testValue, result.getValue<float>());
+}
+
+TEST_F(ut_vardata_tests, test_from_opal_buffer_double) {
+    const char* label = "label" ;
+    opal_data_type_t type = OPAL_DOUBLE;
+    double testValue = 3.14156;
+
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &label, 1, OPAL_STRING));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &testValue, 1, type));
+
+    vardata result = fromOpalBuffer(&buffer, type);
+    EXPECT_STREQ(label,result.getKey().c_str());
+    EXPECT_EQ(testValue, result.getValue<double>());
+}
+
+TEST_F(ut_vardata_tests, test_from_opal_buffer_int64) {
+    const char* label = "label" ;
+    opal_data_type_t type = OPAL_INT64;
+    int64_t testValue = 314156;
+
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &label, 1, OPAL_STRING));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &testValue, 1, type));
+
+    vardata result = fromOpalBuffer(&buffer, type);
+    EXPECT_STREQ(label,result.getKey().c_str());
+    EXPECT_EQ(testValue, result.getValue<int64_t>());
+}
+
+TEST_F(ut_vardata_tests, test_from_opal_buffer_string) {
+    const char* label = "label" ;
+    opal_data_type_t type = OPAL_STRING;
+    const char* testValue = "3.14156" ;
+
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &label, 1, OPAL_STRING));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &testValue, 1, type));
+
+    vardata result = fromOpalBuffer(&buffer, type);
+    EXPECT_STREQ(label,result.getKey().c_str());
+    EXPECT_STREQ(testValue, result.getValue<char*>());
+}
+
+TEST_F(ut_vardata_tests, test_from_opal_buffer_timeval) {
+    const char* label = "label" ;
+    opal_data_type_t type = OPAL_TIMEVAL;
+    const struct timeval testValue = { 314156, 314156 };
+
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &label, 1, OPAL_STRING));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &testValue, 1, type));
+
+    vardata result = fromOpalBuffer(&buffer, type);
+    EXPECT_STREQ(label,result.getKey().c_str());
+    struct timeval *ptr = (struct timeval *)result.getDataPtr();
+    EXPECT_EQ(testValue.tv_sec, ptr->tv_sec);
+    EXPECT_EQ(testValue.tv_usec, ptr->tv_usec);
+}
+TEST_F(ut_vardata_negative, test_from_opal_buffer_null_buffer) {
+    EXPECT_THROW(fromOpalBuffer(NULL, OPAL_STRING), invalidBuffer);
+}
+
+TEST_F(ut_vardata_tests, test_from_opal_buffer_unsupported_type) {
+    const char* label = "label" ;
+    opal_data_type_t type = OPAL_UINT8;
+    uint8_t testValue = 10 ;
+
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &label, 1, OPAL_STRING));
+    ASSERT_EQ(OPAL_SUCCESS, opal_dss.pack(&buffer, &testValue, 1, type));
+
+    EXPECT_THROW(fromOpalBuffer(&buffer, type),unsupportedDataType);
 }

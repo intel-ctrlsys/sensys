@@ -1039,13 +1039,13 @@ compare_ipmi_record_error:
 
 static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
 {
-    char *inv, *inv_val;
+    char *inv = NULL, *inv_val = NULL;
     unsigned int tot_items;
     int rc, n;
-    ipmi_inventory_t *newhost, *oldhost;
-    orcm_value_t *mkv, *mkv_copy;
-    opal_value_t *kv;
-    orcm_value_t *time_stamp;
+    ipmi_inventory_t *newhost = NULL, *oldhost = NULL;
+    orcm_value_t *mkv = NULL, *mkv_copy = NULL;
+    opal_value_t *kv = NULL;
+    orcm_value_t *time_stamp = NULL;
     struct timeval current_time;
 
     n=1;

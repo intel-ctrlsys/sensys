@@ -351,6 +351,10 @@ static int orcmd_init(void)
                         ret = ORTE_ERR_NOT_SUPPORTED;
                         OBJ_DESTRUCT(&buf);
                         error = "cannot bind";
+                        hwloc_bitmap_free(pucpus);
+                        hwloc_bitmap_free(ours);
+                        hwloc_bitmap_free(res);
+                        opal_argv_free(cores);
                         goto error;
                     }
                     hwloc_bitmap_and(pucpus, pu->online_cpuset, pu->allowed_cpuset);

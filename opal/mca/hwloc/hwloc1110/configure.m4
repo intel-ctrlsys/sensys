@@ -100,8 +100,14 @@ AC_DEFUN([MCA_opal_hwloc_hwloc1110_CONFIG],[
 
         # Override -- disable hwloc's libxml2 support, but enable the
         # native hwloc XML support
-        enable_libxml2=no
-        enable_xml=yes
+        AC_ARG_ENABLE([libxml2],
+                      [AC_HELP_STRING([--enable_libxml2],
+                                      [Build libxml2 support (default: no)])],
+                                      [], enable_libxml2=no)
+        AC_ARG_ENABLE([xml],
+                      [AC_HELP_STRING([--enable_xml],
+                                      [Build xml support (default: yes)])],
+                                      [], enable_xml=yes)
 
         # hwloc checks for compiler visibility, and its needs to do
         # this without "picky" flags.

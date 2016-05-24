@@ -16,7 +16,7 @@
 #define FAKEHOST "fakehost"
 #define CN01 "cn01"
 
-void ut_ipmi_parser_interface::initParserFramework()
+void init_parser_framework() 
 {
     OBJ_CONSTRUCT(&orcm_parser_base_framework.framework_components, opal_list_t);
     OBJ_CONSTRUCT(&orcm_parser_base.actives, opal_list_t);
@@ -27,7 +27,7 @@ void ut_ipmi_parser_interface::initParserFramework()
     opal_list_append(&orcm_parser_base.actives, &act_module->super);
 }
 
-void ut_ipmi_parser_interface::cleanParserFramework()
+void clean_parser_framework()
 {
     OPAL_LIST_DESTRUCT(&orcm_parser_base_framework.framework_components);
     OPAL_LIST_DESTRUCT(&orcm_parser_base.actives);
@@ -53,6 +53,7 @@ void ut_ipmi_parser_interface::mockedConstructor()
 
 TEST(negative, default_initialization)
 {
+    init_parser_framework();
     ASSERT_FALSE(load_ipmi_config_file());
 }
 
@@ -87,9 +88,9 @@ TEST_F(ut_ipmi_parser_interface, get_bmcs)
     int n = 0;
     ipmi_collector *ic = NULL;
 
-    EXPECT_FALSE(get_bmcs_for_aggregator(FAKEHOST, &ic, &n));
+    EXPECT_FALSE(get_bmcs_for_aggregator((char*) FAKEHOST, &ic, &n));
     EXPECT_TRUE( 0 == n );
 
-    ASSERT_TRUE(get_bmcs_for_aggregator(AGG_NAME, &ic, &n));
+    ASSERT_TRUE(get_bmcs_for_aggregator((char*) AGG_NAME, &ic, &n));
     EXPECT_TRUE( 6 == n);
 }

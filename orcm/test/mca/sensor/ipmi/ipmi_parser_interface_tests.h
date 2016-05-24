@@ -25,22 +25,23 @@ extern "C" {
 
 using namespace std;
 
+void init_parser_framework();
+void clean_parser_framework();
+
 class ut_ipmi_parser_interface: public testing::Test
 {
     protected:
         virtual void SetUp()
         {
-            initParserFramework();
+            init_parser_framework();
             setFileName();
             mockedConstructor();
         }
 
         virtual void TearDown()
         {
-            cleanParserFramework();
+            clean_parser_framework();
         }
-        void initParserFramework();
-        void cleanParserFramework();
         void setFileName();
         void mockedConstructor();
 

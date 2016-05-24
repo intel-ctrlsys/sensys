@@ -52,8 +52,8 @@
 
 #include <ipmicmd.h>
 
-#define ON_NULL_GOTO(x,y) if(NULL==x) {ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto cleanup;}
-#define ON_FAILURE_GOTO(x,y) if(ORCM_SUCCESS!=x) {ORTE_ERROR_LOG(x);goto cleanup;}
+#define ON_NULL_GOTO(x,y) if(NULL==x) {ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto y;}
+#define ON_FAILURE_GOTO(x,y) if(ORCM_SUCCESS!=x) {ORTE_ERROR_LOG(x);goto y;}
 
 #define ORCM_RELEASE(x) if(NULL!=x){OBJ_RELEASE(x);x=NULL;}
 

@@ -41,7 +41,6 @@ void ut_octl_tests::SetUpTestCase()
     // Configure/Create OPAL level resources
     opal_dss_register_vars();
     opal_dss_open();
-
     saved_send_buffer = orte_rml.send_buffer_nb;
     orte_rml.send_buffer_nb = SendBuffer;
 
@@ -59,6 +58,7 @@ void ut_octl_tests::SetUpTestCase()
 void ut_octl_tests::TearDownTestCase()
 {
     octl_mocking.orcm_cfgi_base_get_hostname_proc_callback = NULL;
+    octl_mocking.opal_dss_pack_callback = NULL;
 
     orte_rml.recv_buffer_nb = saved_recv_buffer;
     saved_recv_buffer = NULL;
@@ -91,6 +91,47 @@ void ut_octl_tests::RecvBuffer(orte_process_name_t* peer,
     xfer->active = false;
 }
 
+void ut_octl_tests::RecvBufferError(orte_process_name_t* peer,
+                              orte_rml_tag_t tag,
+                              bool persistent,
+                              orte_rml_buffer_callback_fn_t cbfunc,
+                              void* cbdata)
+{
+    orte_rml_recv_cb_t* xfer = (orte_rml_recv_cb_t*)cbdata;
+    xfer->name.jobid = 0;
+    xfer->name.vpid = 0;
+    OBJ_DESTRUCT(&xfer->data);
+    OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
+    int rv = ORTE_ERROR;
+    int count = 0;
+    opal_dss.pack(&xfer->data, &rv, 1, OPAL_INT);
+    opal_dss.pack(&xfer->data, &count, 1, OPAL_INT);
+    xfer->active = false;
+}
+
+void ut_octl_tests::RecvBufferCount(orte_process_name_t* peer,
+                              orte_rml_tag_t tag,
+                              bool persistent,
+                              orte_rml_buffer_callback_fn_t cbfunc,
+                              void* cbdata)
+{
+    orte_rml_recv_cb_t* xfer = (orte_rml_recv_cb_t*)cbdata;
+    struct timeval now;
+    opal_buffer_t *data = OBJ_NEW(opal_buffer_t);
+    gettimeofday(&now, NULL);
+    opal_dss.pack(data, &now, 1, OPAL_TIMEVAL);
+    xfer->name.jobid = 0;
+    xfer->name.vpid = 0;
+    OBJ_DESTRUCT(&xfer->data);
+    OBJ_CONSTRUCT(&xfer->data, opal_buffer_t);
+    int rv = ORTE_SUCCESS;
+    int count = 1;
+    opal_dss.pack(&xfer->data, &rv, 1, OPAL_INT);
+    opal_dss.pack(&xfer->data, &count, 1, OPAL_INT);
+    opal_dss.pack(&xfer->data, &data, 1, OPAL_BUFFER);
+    xfer->active = false;
+}
+
 int ut_octl_tests::SendBuffer(orte_process_name_t* peer,
                               struct opal_buffer_t* buffer,
                               orte_rml_tag_t tag,
@@ -120,6 +161,16 @@ int ut_octl_tests::GetHostnameProc(char* hostname, orte_process_name_t* proc)
     return rv;
 }
 
+int ut_octl_tests::OpalDssPack(opal_buffer_t* buffer,
+                                  const void* src,
+                                  int32_t num_vals,
+                                  opal_data_type_t type)
+{
+    int rc = __real_opal_dss_pack(buffer, src, num_vals, type);
+    if(octl_mocking.fail_at == octl_mocking.current_execution++)
+        return ORTE_ERROR;
+    return rc;
+}
 
 // Testing the data collection class
 TEST_F(ut_octl_tests, sensor_sampling_positive_test)
@@ -569,6 +620,44 @@ TEST_F(ut_octl_tests, notifier_set_smtp_policy_negative_test_4)
     EXPECT_NE(ORTE_SUCCESS, rv);
 }
 
+TEST_F(ut_octl_tests, notifier_set_smtp_policy_negative_test_5)
+{
+    const char* cmdlist[4] = {
+        "notifier",
+        "set",
+        "smtp-policy",
+         NULL
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_set_notifier_smtp(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_set_smtp_policy_negative_test_6)
+{
+    const char* cmdlist[7] = {
+        "notifier",
+        "set",
+        "smtp-policy",
+        "server_name",
+        "OutlookOR.intel.com",
+        "tn01,tn02",
+        NULL
+    };
+    int return_value = 0;
+    octl_mocking.opal_dss_pack_callback = OpalDssPack;
+    next_proc_result = ORTE_SUCCESS;
+    next_send_result = ORTE_SUCCESS;
+
+    for(octl_mocking.fail_at = 1; octl_mocking.fail_at <= 3; octl_mocking.fail_at++){
+            octl_mocking.current_execution = 1;
+            return_value = orcm_octl_set_notifier_smtp(0, (char**)cmdlist);
+
+    }
+    octl_mocking.opal_dss_pack_callback = NULL;
+    EXPECT_NE(ORTE_SUCCESS, return_value);
+}
+
 // Testing the notifier get smtp policy
 TEST_F(ut_octl_tests, notifier_get_smtp_policy_test)
 {
@@ -624,5 +713,85 @@ TEST_F(ut_octl_tests, notifier_get_smtp_policy_negative_test_3)
     };
     next_send_result = ORTE_ERROR;
     int rv = orcm_octl_get_notifier_smtp(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_get_smtp_policy_negative_test_4)
+{
+    const char* cmdlist[3] = {
+        "notifer",
+        "get",
+        NULL
+    };
+    next_send_result = ORTE_ERROR;
+    int rv = orcm_octl_get_notifier_smtp(1, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_get_smtp_policy_negative_test_5)
+{
+    const char* cmdlist[5] = {
+        "notifier",
+        "get",
+        "smtp-policy",
+        "tn01,tn02",
+        NULL
+    };
+    int return_value = 0;
+    octl_mocking.opal_dss_pack_callback = OpalDssPack;
+
+    for(octl_mocking.fail_at = 1; octl_mocking.fail_at <= 2; octl_mocking.fail_at++){
+            octl_mocking.current_execution = 1;
+            return_value = orcm_octl_get_notifier_smtp(0, (char**)cmdlist);
+
+    }
+
+    EXPECT_NE(ORTE_SUCCESS, return_value);
+}
+
+TEST_F(ut_octl_tests, notifier_get_smtp_policy_negative_test_6)
+{
+    const char* cmdlist[5] = {
+        "notifier",
+        "get",
+        "smtp-policy",
+        "tn01,tn02",
+        NULL
+    };
+    next_proc_result = ORTE_ERROR;
+    next_send_result = ORTE_SUCCESS;
+    int rv = orcm_octl_get_notifier_smtp(0, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_get_smtp_policy_negative_test_7)
+{
+    const char* cmdlist[5] = {
+        "notifier",
+        "get",
+        "smtp-policy",
+        "tn01,tn02",
+        NULL
+    };
+    orte_rml.recv_buffer_nb = RecvBufferError;
+    next_proc_result = ORTE_SUCCESS;
+    next_send_result = ORTE_SUCCESS;
+    int rv = orcm_octl_get_notifier_smtp(0, (char**)cmdlist);
+    EXPECT_NE(ORTE_SUCCESS, rv);
+}
+
+TEST_F(ut_octl_tests, notifier_get_smtp_policy_negative_test_8)
+{
+    const char* cmdlist[5] = {
+        "notifier",
+        "get",
+        "smtp-policy",
+        "tn01,tn02",
+        NULL
+    };
+    orte_rml.recv_buffer_nb = RecvBufferCount;
+    next_proc_result = ORTE_SUCCESS;
+    next_send_result = ORTE_SUCCESS;
+    int rv = orcm_octl_get_notifier_smtp(0, (char**)cmdlist);
     EXPECT_NE(ORTE_SUCCESS, rv);
 }

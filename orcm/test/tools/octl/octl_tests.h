@@ -47,9 +47,23 @@ class ut_octl_tests: public testing::Test
                                bool persistent,
                                orte_rml_buffer_callback_fn_t cbfunc,
                                void* cbdata);
+        static void RecvBufferError(orte_process_name_t* peer,
+                               orte_rml_tag_t tag,
+                               bool persistent,
+                               orte_rml_buffer_callback_fn_t cbfunc,
+                               void* cbdata);
+        static void RecvBufferCount(orte_process_name_t* peer,
+                               orte_rml_tag_t tag,
+                               bool persistent,
+                               orte_rml_buffer_callback_fn_t cbfunc,
+                               void* cbdata);
         static void RecvCancel(orte_process_name_t* peer,
                                orte_rml_tag_t tag);
         static int GetHostnameProc(char* hostname, orte_process_name_t* proc);
+        static int OpalDssPack(opal_buffer_t* buffer,
+                               const void* src,
+                               int32_t num_vals,
+                               opal_data_type_t type);
 
         static orte_rml_module_send_buffer_nb_fn_t saved_send_buffer;
         static orte_rml_module_recv_buffer_nb_fn_t saved_recv_buffer;

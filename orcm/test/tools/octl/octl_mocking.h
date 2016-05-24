@@ -23,11 +23,14 @@ extern "C" {
 
     extern bool __real_get_bmc_info(char* hostname, ipmi_collector *ic);
 
+    extern int __real_opal_dss_pack(opal_buffer_t* buffer, const void* src, int32_t num_vals, opal_data_type_t type);
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
 
 typedef int (*orcm_cfgi_base_get_hostname_proc_callback_fn_t)(char* hostname, orte_process_name_t* proc);
+typedef int (*opal_dss_pack_fn_t)(opal_buffer_t* buffer, const void* src, int32_t num_vals, opal_data_type_t type);
 
 class octl_tests_mocking
 {
@@ -37,6 +40,11 @@ class octl_tests_mocking
 
         // Public Callbacks
         orcm_cfgi_base_get_hostname_proc_callback_fn_t orcm_cfgi_base_get_hostname_proc_callback;
+        opal_dss_pack_fn_t opal_dss_pack_callback;
+
+        //Public variables
+        int fail_at;
+        int current_execution;
 };
 
 extern octl_tests_mocking octl_mocking;

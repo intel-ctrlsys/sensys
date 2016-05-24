@@ -72,7 +72,8 @@ static void generate_test_vector_inner(opal_buffer_t* buffer);
 static void generate_test_vector_inv(opal_buffer_t *inventory_snapshot);
 static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *sensor_inventory);
 static int update_host_info_from_config_file(orcm_sensor_hosts_t* host);
-static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, ipmi_capsule_t *cap);
+static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, orcm_sensor_hosts_t* host);
+static void store_version_info_into_inventory(opal_list_t *inventory_list, ipmi_capsule_t *cap);
 
 int first_sample = 0;
 
@@ -555,7 +556,7 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
 
     ORCM_ON_NULL_GOTO(cur_host, ipmi_inventory_collect_error);
 
-    tot_items = ((unsigned int)opal_list_get_size(&sensor_inventory) / 2) + 5;
+    tot_items = ((unsigned int)opal_list_get_size(&sensor_inventory) / 2);
 
     rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
     ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
@@ -565,46 +566,6 @@ static void ipmi_inventory_collect(opal_buffer_t *inventory_snapshot)
     ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
 
     rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT);
-    ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
-
-    comp = "bmc_ver";
-    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
-    ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
-
-    comp = cur_host->capsule.prop.bmc_rev;
-    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
-    ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
-
-    comp = "ipmi_ver";
-    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
-    ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
-
-    comp = cur_host->capsule.prop.ipmi_ver;
-    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
-    ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
-
-    comp = "bb_serial";
-    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
-    ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
-
-    comp = cur_host->capsule.prop.baseboard_serial;
-    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
-    ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
-
-    comp = "bb_vendor";
-    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
-    ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
-
-    comp = cur_host->capsule.prop.baseboard_manufacturer;
-    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
-    ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
-
-    comp = "bb_manufactured_date";
-    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
-    ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
-
-    comp = cur_host->capsule.prop.baseboard_manuf_date;
-    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
     ORCM_ON_FAILURE_GOTO(rc, ipmi_inventory_collect_error);
 
     OPAL_LIST_FOREACH(inv_item, &sensor_inventory, opal_value_t) {
@@ -1788,8 +1749,7 @@ static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *inventory_lis
     orcm_sensor_hosts_t* nxt = NULL;
 
     OPAL_LIST_FOREACH_SAFE(host, nxt, &sensor_active_hosts, orcm_sensor_hosts_t) {
-        rc |= get_sensor_inventory_list_from_node(inventory_list, &host->capsule);
-        rc |= orcm_sensor_get_fru_inv(host);
+        rc = get_sensor_inventory_list_from_node(inventory_list, host);
         if(ORCM_SUCCESS != rc) {
             opal_output(0, "WARNING: A problem occurred while gathering inventory from host %s. ",
                             host->capsule.node.name);
@@ -1799,11 +1759,16 @@ static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *inventory_lis
     return ORCM_SUCCESS;
 }
 
-static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, ipmi_capsule_t *cap)
+static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, orcm_sensor_hosts_t* host)
 {
     int ret = 0;
     char addr[16];
     unsigned char *sdrlist = NULL;
+    ipmi_capsule_t *cap = NULL;
+
+    ORCM_ON_NULL_RETURN_ERROR(host, ORCM_ERROR);
+
+    cap = &host->capsule;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "Gathering local ipmi sensors for inventory");
@@ -1871,6 +1836,9 @@ static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, ipmi
         free_sdr_cache(sdrlist);
         ipmi_close();
 
+        orcm_sensor_get_fru_inv(host);
+        store_version_info_into_inventory(inventory_list, cap);
+
         /* Store node name*/
         kv = orcm_util_load_opal_value(NULL, "hostname", OPAL_STRING);
         opal_list_append(inventory_list, &kv->super); /* List owns kv*/
@@ -1882,6 +1850,55 @@ static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, ipmi
 
         return ORCM_SUCCESS;
     }
+}
+
+void store_version_info_into_inventory(opal_list_t *inventory_list, ipmi_capsule_t *cap)
+{
+    opal_value_t *kv = NULL;
+
+    orcm_sensor_ipmi_get_device_id(cap);
+
+    kv = orcm_util_load_opal_value(NULL,  "bmc_ver", OPAL_STRING);
+    opal_list_append(inventory_list, &kv->super);
+    kv = NULL;
+
+    kv = orcm_util_load_opal_value(NULL,  cap->prop.bmc_rev, OPAL_STRING);
+    opal_list_append(inventory_list, &kv->super);
+    kv = NULL;
+
+    kv = orcm_util_load_opal_value(NULL,  "ipmi_ver", OPAL_STRING);
+    opal_list_append(inventory_list, &kv->super);
+    kv = NULL;
+
+    kv = orcm_util_load_opal_value(NULL,  cap->prop.ipmi_ver, OPAL_STRING);
+    opal_list_append(inventory_list, &kv->super);
+    kv = NULL;
+
+    kv = orcm_util_load_opal_value(NULL,  "bb_serial", OPAL_STRING);
+    opal_list_append(inventory_list, &kv->super);
+    kv = NULL;
+
+    kv = orcm_util_load_opal_value(NULL,  cap->prop.baseboard_serial, OPAL_STRING);
+    opal_list_append(inventory_list, &kv->super);
+    kv = NULL;
+
+    kv = orcm_util_load_opal_value(NULL,  "bb_vendor", OPAL_STRING);
+    opal_list_append(inventory_list, &kv->super);
+    kv = NULL;
+
+    kv = orcm_util_load_opal_value(NULL,  cap->prop.baseboard_manufacturer, OPAL_STRING);
+    opal_list_append(inventory_list, &kv->super);
+    kv = NULL;
+
+    kv = orcm_util_load_opal_value(NULL,  "bb_manufactured_date", OPAL_STRING);
+    opal_list_append(inventory_list, &kv->super);
+    kv = NULL;
+
+    kv = orcm_util_load_opal_value(NULL,  cap->prop.baseboard_manuf_date, OPAL_STRING);
+    opal_list_append(inventory_list, &kv->super);
+    kv = NULL;
+
+    return;
 }
 
 void orcm_sensor_sel_error_callback(int level, const char* msg)

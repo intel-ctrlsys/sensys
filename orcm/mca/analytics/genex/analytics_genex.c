@@ -64,8 +64,6 @@ void dest_genex_workflow_value(genex_workflow_value_t *workflow_value,
 
 static int init(orcm_analytics_base_module_t *imod)
 {
-    int rc = 0;
-
     IF_NULL(imod);
     mca_analytics_genex_module_t* mod = (mca_analytics_genex_module_t *)imod;
 
@@ -73,10 +71,8 @@ static int init(orcm_analytics_base_module_t *imod)
     IF_NULL(mod->api.orcm_mca_analytics_event_store);
 
     opal_hash_table_t* table = (opal_hash_table_t*)mod->api.orcm_mca_analytics_event_store;
-    rc = opal_hash_table_init(table, HASH_TABLE_SIZE);
-    ORCM_ON_NULL_RETURN_ERROR(rc, ORCM_ERROR);
 
-    return ORCM_SUCCESS;
+    return opal_hash_table_init(table, HASH_TABLE_SIZE);
 }
 
 static void finalize(orcm_analytics_base_module_t *imod)

@@ -8,12 +8,16 @@
  */
 
 #include "octl_mocking.h"
+#include "orcm/tools/octl/common.h"
 
 #include <iostream>
 using namespace std;
 
 octl_tests_mocking octl_mocking;
-
+bool is_mca_base_framework_open_expected_to_succeed = true;
+bool is_orcm_parser_base_select_expected_to_succeed = true;
+bool is_get_bmc_info_expected_to_succeed = true;
+bool is_orcm_logical_group_parse_array_string_expected_to_succeed = true;
 
 extern "C" { // Mocking must use correct "C" linkages
     #include <stdarg.h>
@@ -39,8 +43,27 @@ extern "C" { // Mocking must use correct "C" linkages
     bool __wrap_get_bmc_info(char* hostname, ipmi_collector *ic){
         strncpy(ic->aggregator, "localhost", MAX_STR_LEN-1);
         ic->aggregator[MAX_STR_LEN-1] = '\0';
-        return true;
+        return is_get_bmc_info_expected_to_succeed;
     }
+
+    int __wrap_mca_base_framework_open(struct mca_base_framework_t *framework, mca_base_open_flag_t flags){
+        if (!is_mca_base_framework_open_expected_to_succeed)
+            return ORCM_ERROR;
+        return __real_mca_base_framework_open(framework, flags);
+    }
+
+    int __wrap_orcm_parser_base_select(){
+        if (!is_orcm_parser_base_select_expected_to_succeed)
+            return ORCM_ERROR;
+        return __real_orcm_parser_base_select();
+    }
+
+    int __wrap_orcm_logical_group_parse_array_string(char* regex, char*** o_array_string){
+        if (!is_orcm_logical_group_parse_array_string_expected_to_succeed)
+            return ORCM_ERROR;
+        return __real_orcm_logical_group_parse_array_string(regex, o_array_string);
+    }
+
 } // extern "C"
 
 octl_tests_mocking::octl_tests_mocking() : orcm_cfgi_base_get_hostname_proc_callback(NULL),

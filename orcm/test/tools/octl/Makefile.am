@@ -45,7 +45,10 @@ octl_tests_SOURCES = \
 MOCKING = \
     -Wl,--wrap=orcm_cfgi_base_get_hostname_proc \
     -Wl,--wrap=get_bmc_info \
-    -Wl,--wrap=opal_dss_pack
+    -Wl,--wrap=opal_dss_pack \
+    -Wl,--wrap=mca_base_framework_open \
+    -Wl,--wrap=orcm_parser_base_select \
+    -Wl,--wrap=orcm_logical_group_parse_array_string
 
 #
 # Libraries we depend on

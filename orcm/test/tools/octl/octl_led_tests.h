@@ -37,6 +37,8 @@ class ut_octl_led_tests: public testing::Test
         // gtest fixture required methods
         static void SetUpTestCase();
         static void TearDownTestCase();
+        virtual void SetUp();
+        virtual void TearDown();
 
         static int SendBuffer(orte_process_name_t* peer,
                               struct opal_buffer_t* buffer,
@@ -57,6 +59,9 @@ class ut_octl_led_tests: public testing::Test
         static orcm_cmd_server_flag_t subcommand;
         static int next_state;
         static int next_return;
+        static bool is_send_expected_to_succeed;
+        static bool is_unpack_state_expected_to_succeed;
+        static bool is_get_hostname_proc_expected_to_succeed;
 }; // class
 
 #endif // OCTL_LED_TESTS_H

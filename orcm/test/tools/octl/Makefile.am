@@ -44,7 +44,8 @@ octl_tests_SOURCES = \
     octl_resource_tests.cpp
 MOCKING = \
     -Wl,--wrap=orcm_cfgi_base_get_hostname_proc \
-    -Wl,--wrap=get_bmc_info
+    -Wl,--wrap=get_bmc_info \
+    -Wl,--wrap=opal_dss_pack
 
 #
 # Libraries we depend on

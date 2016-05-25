@@ -51,6 +51,7 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/mca/analytics/spatial/Makefile
     orcm/test/mca/db/Makefile
     orcm/test/mca/db/print/Makefile
+    orcm/test/mca/db/base/Makefile
     orcm/test/mca/diag/Makefile
     orcm/test/mca/diag/ethtest/Makefile
     ])

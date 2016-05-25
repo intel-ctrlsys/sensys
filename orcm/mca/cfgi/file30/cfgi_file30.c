@@ -1400,18 +1400,10 @@ static bool check_me(orcm_config_t *config, char *node,
 {
     char *uri = NULL;
     bool node_itself = false;
-    char *this_ip = NULL;
-    struct hostent *h = NULL;
 
-    if (NULL == (h = gethostbyname(node))) {
-        this_ip = node;
-    } else {
-        this_ip = inet_ntoa(*(struct in_addr*)h->h_addr_list[0]);
-    }
-
-    if (NULL != this_ip &&
-        (0 == strcmp(this_ip, my_ip) ||
-         0 == strcmp(node, orte_process_info.nodename))) {
+    if (NULL != node &&
+            ((opal_net_isaddr(node) && 0 == strcmp(node, my_ip)) ||
+            0 == strcmp(node, orte_process_info.nodename))) {
         ORTE_PROC_MY_NAME->vpid = vpid;
         setup_environ(config->mca_params);
         if (config->aggregator) {

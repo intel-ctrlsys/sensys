@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -75,6 +75,15 @@ static int orcm_cfgi_base_register(mca_base_register_flag_t flags)
                                  MCA_BASE_VAR_SCOPE_READONLY,
                                  &orcm_cfgi_base.validate);
 
+    /* by default, no port number is specified */
+    orcm_cfgi_base.port_number = NULL;
+    (void) mca_base_var_register("orcm", "cfgi", "base", "port_number",
+                                 "Port number of this daemon",
+                                 MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
+                                 OPAL_INFO_LVL_9,
+                                 MCA_BASE_VAR_SCOPE_READONLY,
+                                 &orcm_cfgi_base.port_number);
+
     return ORCM_SUCCESS;
 }
 
@@ -90,6 +99,7 @@ static int orcm_cfgi_base_close(void)
     }
     OPAL_LIST_DESTRUCT(&orcm_cfgi_base.actives);
     SAFEFREE(orcm_cfgi_base.config_file);
+    SAFEFREE(orcm_cfgi_base.port_number);
 
     return mca_base_framework_components_close(&orcm_cfgi_base_framework, NULL);
 }

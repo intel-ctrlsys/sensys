@@ -107,6 +107,10 @@ static opal_cmd_line_init_t cmd_line_init[] = {
       NULL, OPAL_CMD_LINE_TYPE_STRING,
       "Logical group configuration file for this orcm chain" },
 
+    { "cfgi_base_port_number", 'p', "port-number", "port-number", 1,
+      NULL, OPAL_CMD_LINE_TYPE_STRING,
+      "The user specified port number of this orcm daemon" },
+
     /* End of list */
     { NULL, '\0', NULL, NULL, 0,
       NULL, OPAL_CMD_LINE_TYPE_NULL, NULL }

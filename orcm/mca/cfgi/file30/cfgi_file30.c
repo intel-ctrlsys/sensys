@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2015-2016      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -492,7 +492,7 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
                          orte_vpid_t *num_procs, opal_buffer_t *buf)
 {
     struct hostent *h;
-    char *my_ip;
+    char *my_ip = NULL;
     orte_vpid_t vpid;
     bool found_me;
     int rc;
@@ -511,17 +511,20 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
 
     /* convert my hostname to its IP form just in case we need it */
     if (opal_net_isaddr(orte_process_info.nodename)) {
-        my_ip = orte_process_info.nodename;
+        my_ip = strdup(orte_process_info.nodename);
     } else {
         /* lookup the address of this node */
         if (NULL == (h = gethostbyname(orte_process_info.nodename))) {
             /* if we can't get it for some reason, don't worry about it */
-            my_ip = orte_process_info.nodename;
+            my_ip = strdup(orte_process_info.nodename);
         } else {
-            my_ip = inet_ntoa(*(struct in_addr*)h->h_addr_list[0]);
+            my_ip = strdup(inet_ntoa(*(struct in_addr*)h->h_addr_list[0]));
         }
     }
 
+    if (NULL == my_ip) {
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
     OPAL_LIST_FOREACH(xx, config, orcm_cfgi_xml_parser_t) {
         if (0 == strcmp(xx->name, TXconfig)) {
             OPAL_LIST_FOREACH(x, &xx->subvals, orcm_cfgi_xml_parser_t) {
@@ -536,6 +539,7 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
                     }
                     opal_list_append(orcm_clusters, &cluster->super);
                     if (ORTE_SUCCESS != (rc = parse_cluster(cluster, x))) {
+                        SAFEFREE(my_ip);
                         return rc;
                     }
                     if (30 < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
@@ -546,6 +550,7 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
                     scheduler = OBJ_NEW(orcm_scheduler_t);
                     opal_list_append(orcm_schedulers, &scheduler->super);
                     if (ORTE_SUCCESS != (rc = parse_scheduler(scheduler, x))) {
+                        SAFEFREE(my_ip);
                         return rc;
                     }
                     if (30 < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
@@ -554,6 +559,7 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
                 } else {
                     opal_output(0,
                                 "\tUNKNOWN TAG %s", x->name);
+                    SAFEFREE(my_ip);
                     return ORTE_ERR_BAD_PARAM;
                 }
             }
@@ -792,6 +798,7 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
     /* cleanup */
     OBJ_DESTRUCT(&uribuf);
     OBJ_DESTRUCT(&clusterbuf);
+    SAFEFREE(my_ip);
 
     return ORCM_SUCCESS;
 }
@@ -1400,10 +1407,22 @@ static bool check_me(orcm_config_t *config, char *node,
 {
     char *uri = NULL;
     bool node_itself = false;
+    char *this_ip = NULL;
+    struct hostent *h = NULL;
 
-    if (NULL != node &&
-            ((opal_net_isaddr(node) && 0 == strcmp(node, my_ip)) ||
-            0 == strcmp(node, orte_process_info.nodename))) {
+    if (NULL == (h = gethostbyname(node))) {
+        this_ip = node;
+    } else {
+        this_ip = inet_ntoa(*(struct in_addr*)h->h_addr_list[0]);
+    }
+
+    if (NULL != this_ip &&
+        (0 == strcmp(this_ip, my_ip) ||
+         0 == strcmp(node, orte_process_info.nodename))) {
+        if (NULL != orcm_cfgi_base.port_number && NULL != config->port &&
+            0 != strcmp(orcm_cfgi_base.port_number, config->port)) {
+            return node_itself;
+        }
         ORTE_PROC_MY_NAME->vpid = vpid;
         setup_environ(config->mca_params);
         if (config->aggregator) {

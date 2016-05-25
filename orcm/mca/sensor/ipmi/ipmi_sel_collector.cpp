@@ -77,6 +77,7 @@ bool ipmi_sel_collector::is_bad() const
 bool ipmi_sel_collector::load_last_record_id(const char* filename)
 {
     if(false == bad_instance_) {
+        SAFE_DELETE(persist_record_);
         persist_record_ = new persist_sel_record_id(hostname_.c_str(), error_callback_);
         persist_record_->load_last_record_id(filename);
         last_record_id_ = persist_record_->get_record_id();

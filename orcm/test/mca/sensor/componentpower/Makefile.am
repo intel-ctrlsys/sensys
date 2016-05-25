@@ -34,9 +34,17 @@ PY_LOG_COMPILER = /usr/bin/python
 check_PROGRAMS = componentpower_tests
 
 componentpower_tests_SOURCES = \
-	componentpower_tests.cpp
+	componentpower_tests.cpp \
+        componentpower_tests.h \
+        componentpower_tests_mocking.cpp \
+        componentpower_tests_mocking.h
 
-MOCKING =
+MOCKING = \
+    -Wl,--wrap=orte_errmgr_base_log \
+    -Wl,--wrap=fopen\
+    -Wl,--wrap=open \
+    -Wl,--wrap=read \
+    -Wl,--wrap=opal_progress_thread_init
 
 #
 # Libraries we depend on

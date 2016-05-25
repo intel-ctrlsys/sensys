@@ -7,7 +7,7 @@
 # $HEADER$
 
 if HAVE_GTEST
-gtestSubdirs=print
+gtestSubdirs=base print
 endif
 
 SUBDIRS=$(gtestSubdirs)

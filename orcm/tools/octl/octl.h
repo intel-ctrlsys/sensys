@@ -123,8 +123,6 @@ static orcm_cli_init_t cli_init[] = {
     // sensor policy subcommand
     { { "sensor", "get", NULL }, "sample-rate", 0, 2, "Get Sensor Sample Rate: get sample-rate "
     "<sensor-name> <node-name>" },
-    // sensor policy subcommand
-    { { "sensor", "get", NULL }, "policy", 0, 1, "Get Sensor Event Policy" },
     // sensor inventory subcommand
     { { "sensor", "get", NULL }, "inventory", 0, 2, "Get the current sensor inventory for a specified "
     "node: get inventory <node-name> [<filter>]" },

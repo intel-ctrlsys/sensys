@@ -426,9 +426,6 @@ static int run_cmd_sensor_get(char** cmdlist)
 {
     int rc = octl_cmd_to_enum(cmdlist[2]);
     switch (rc) {
-        case cmd_policy:
-            rc = orcm_octl_sensor_policy_get(ORCM_GET_SENSOR_POLICY_COMMAND, cmdlist);
-            break;
         case cmd_sample_rate:
             rc = orcm_octl_sensor_sample_rate_get(ORCM_GET_SENSOR_SAMPLE_RATE_COMMAND, cmdlist);
             break;

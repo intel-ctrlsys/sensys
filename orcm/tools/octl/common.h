@@ -79,7 +79,6 @@ int orcm_octl_power_set(int cmd, char **argv);
 int orcm_octl_power_get(int cmd, char **argv);
 int orcm_octl_sensor_sample_rate_set(int cmd, char **argv);
 int orcm_octl_sensor_sample_rate_get(int cmd, char **argv);
-int orcm_octl_sensor_policy_get(int cmd, char **argv);
 int orcm_octl_sensor_inventory_get(int command, char** argv);
 int orcm_octl_logical_group_add(int argc, char **argv);
 int orcm_octl_logical_group_remove(int argc, char **argv);

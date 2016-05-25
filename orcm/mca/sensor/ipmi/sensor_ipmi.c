@@ -106,6 +106,8 @@ typedef struct {
 
 static void inv_con(ipmi_inventory_t *trk)
 {
+    trk->nodename = NULL;
+    trk->hashId = 0;
     trk->records = OBJ_NEW(opal_list_t);
 }
 static void inv_des(ipmi_inventory_t *trk)
@@ -1120,6 +1122,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                                         "ipmi compare passed");
                 }
             } else {
+                newhost->nodename = strdup(hostname);
                 kv = orcm_util_load_opal_value("hostname", newhost->nodename, OPAL_STRING);
                 ORCM_ON_NULL_GOTO(kv, cleanup);
 

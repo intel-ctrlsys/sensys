@@ -38,6 +38,7 @@ typedef struct {
     char *config_file;
     int ping_rate;
     bool validate;
+    char *port_number;
 } orcm_cfgi_base_t;
 ORCM_DECLSPEC extern orcm_cfgi_base_t orcm_cfgi_base;
 

@@ -17,6 +17,8 @@ from subprocess import Popen, PIPE, STDOUT
 
 cf_name = "orcm-default-config.xml"
 cf_dst = ""
+help_name = "help-octl.txt"
+help_dst = "."
 
 def get_gtests(gtest_binary):
     process = Popen([ gtest_binary, '--gtest_list_tests' ], stdout=PIPE)
@@ -60,6 +62,8 @@ def prefix_search():
 
 def setup_tests():
     global cf_dst
+    global help_dst
+
     prefix = prefix_search()
     cf_src = os.getenv("srcdir")
     if cf_src:
@@ -72,9 +76,13 @@ def setup_tests():
         os.system("sudo mv %s %s.bak" % (cf_dst, cf_dst))
     os.system("sudo cp %s %s" % (cf_src, cf_dst))
 
+    help_src = prefix + "/share/openmpi/" + help_name
+    os.system("cp %s %s" % (help_src, help_dst))
+
 def teardown_tests():
     global cf_dst
     os.system("sudo mv %s.bak %s" % (cf_dst, cf_dst))
+    os.system("rm %s" % (help_name))
 
 def run_tests(gtest_binary):
     setup_tests()

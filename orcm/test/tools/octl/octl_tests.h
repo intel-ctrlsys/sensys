@@ -148,4 +148,11 @@ class ut_octl_query: public testing::Test
     static int PrintResultsFromStream(uint32_t results_count, int stream_index,
                                       double start_time, double stop_time);
 };
+
+class ut_octl_output_handler_tests: public testing::Test
+{
+  protected:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+};
 #endif // OCTL_TESTS_H

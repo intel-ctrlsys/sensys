@@ -41,7 +41,9 @@ octl_tests_SOURCES = \
     workflow_tests.cpp \
     octl_diag_tests.cpp \
     octl_queue_tests.cpp \
-    octl_resource_tests.cpp
+    octl_resource_tests.cpp \
+    octl_output_handler_tests.cpp
+
 MOCKING = \
     -Wl,--wrap=orcm_cfgi_base_get_hostname_proc \
     -Wl,--wrap=get_bmc_info \

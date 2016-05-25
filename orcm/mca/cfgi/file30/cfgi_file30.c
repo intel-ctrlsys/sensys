@@ -1412,10 +1412,6 @@ static bool check_me(orcm_config_t *config, char *node,
     if (NULL != this_ip &&
         (0 == strcmp(this_ip, my_ip) ||
          0 == strcmp(node, orte_process_info.nodename))) {
-        if (NULL != orcm_cfgi_base.port_number && NULL != config->port &&
-            0 != strcmp(orcm_cfgi_base.port_number, config->port)) {
-            return node_itself;
-        }
         ORTE_PROC_MY_NAME->vpid = vpid;
         setup_environ(config->mca_params);
         if (config->aggregator) {

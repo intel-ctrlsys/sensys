@@ -1058,7 +1058,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                         mkv_copy = OBJ_NEW(orcm_value_t);
                         mkv_copy->value.key = mkv->value.key;
                         mkv->value.key = NULL;
-                        if(!strncmp(mkv->value.key,"bmc_ver",sizeof("bmc_ver")) || !strncmp(mkv->value.key,"ipmi_ver",sizeof("ipmi_ver")))
+                        if(!strncmp(mkv_copy->value.key,"bmc_ver",sizeof("bmc_ver")) || !strncmp(mkv_copy->value.key,"ipmi_ver",sizeof("ipmi_ver")))
                         {
                             mkv_copy->value.type = OPAL_FLOAT;
                             mkv_copy->value.data.fval = mkv->value.data.fval;

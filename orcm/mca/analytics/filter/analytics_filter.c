@@ -86,8 +86,8 @@ static int find_match(char *target, char ** candidate)
 
     for (index = 0; index < count; index++) {
         if(0 == strncmp(target, candidate[index], strlen(target) + 1)) {
-            OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                "%s analytics:Filtered Value:%s", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), target));
+            opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
+                "%s analytics:Filtered Value:%s", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), target);
             return ORCM_SUCCESS;
         }
     }

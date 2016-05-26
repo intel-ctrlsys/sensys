@@ -259,9 +259,9 @@ static int analyze(int sd, short args, void *cbdata)
     threshold_policy = (orcm_mca_analytics_threshold_policy_t*) current_caddy->imod->orcm_mca_analytics_data_store;
     if(NULL == threshold_policy->hi_action && NULL == threshold_policy->low_action){
         if(ORCM_SUCCESS != (rc = get_threshold_policy(&current_caddy->wf_step->attributes,threshold_policy))){
-            OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-                            "%s analytics:threshold:Invalid argument/s to workflow step",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+            opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
+                                 "%s analytics:threshold:Invalid argument/s to workflow step",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
             goto done;
         }
     }

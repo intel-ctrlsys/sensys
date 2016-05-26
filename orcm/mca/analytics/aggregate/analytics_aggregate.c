@@ -142,8 +142,8 @@ static void compute_average(orcm_value_t* agg_value, orcm_analytics_aggregate* a
     aggregate->average = agg_value->value.data.dval;
     aggregate->num_sample += size;
 
-    OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output, "%s %s is: %f, and the number of sample is:%u",
-        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), agg_value->value.key, aggregate->average,aggregate->num_sample));
+    opal_output_verbose(5, orcm_analytics_base_framework.framework_output, "%s %s is: %f, and the number of sample is:%u",
+        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), agg_value->value.key, aggregate->average,aggregate->num_sample);
 }
 
 static void compute_min(orcm_value_t* agg_value, orcm_analytics_aggregate* aggregate, opal_list_t* compute)

@@ -196,9 +196,9 @@ int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, opal_lis
             regex_res=regexec(&regex_comp_wflow, genex_value.message, 0, NULL, 0);
             if (!regex_res && 0 == strcmp(genex_value.severity, workflow_value->severity))
             {
-                OPAL_OUTPUT_VERBOSE((5,orcm_analytics_base_framework.framework_output,
+                opal_output_verbose(5,orcm_analytics_base_framework.framework_output,
                     "%s analytics:genex: MATCHES USER PARAMS: \"%s\" ",
-                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), genex_value.message));
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), genex_value.message);
 
                 rc = orcm_analytics_base_gen_notifier_event(analytics_value, caddy,
                            orcm_analytics_event_get_severity(workflow_value->severity),

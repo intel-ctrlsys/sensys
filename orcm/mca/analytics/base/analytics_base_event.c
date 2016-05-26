@@ -558,8 +558,8 @@ int orcm_analytics_base_gen_notifier_event(orcm_value_t* current_value,
     orcm_analytics_value_t* analytics_value = NULL;
 
     if (NULL != msg) {
-        OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,
-            "%s analytics:event message:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg));
+        opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
+            "%s analytics:event message:%s",ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg);
     }
 
     ON_NULL_RETURN(action, ORCM_ERROR);

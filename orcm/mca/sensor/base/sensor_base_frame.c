@@ -41,6 +41,8 @@
 
 #include "orcm/mca/sensor/base/static-components.h"
 
+#define ON_NULL_CONTINUE(x) if(NULL==x) { continue;}
+
 /*
  * Global variables
  */
@@ -110,9 +112,8 @@ static int orcm_sensor_base_close(void)
 
     OPAL_LIST_DESTRUCT(&orcm_sensor_base.policy);
     for (i=0; i < orcm_sensor_base.modules.size; i++) {
-        if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
-            continue;
-        }
+        i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i);
+        ON_NULL_CONTINUE(i_module);
         if (NULL != i_module->module->finalize) {
             i_module->module->finalize();
         }
@@ -146,11 +147,8 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
     opal_pointer_array_init(&orcm_sensor_base.modules, 3, INT_MAX, 1);
 
     /* Open up all available components */
-    if (OPAL_SUCCESS != (rc = mca_base_framework_components_open(&orcm_sensor_base_framework, flags))) {
-        return rc;
-    }
-
-    return OPAL_SUCCESS;
+    rc = mca_base_framework_components_open(&orcm_sensor_base_framework, flags);
+    return rc;
 }
 
 MCA_BASE_FRAMEWORK_DECLARE(orcm, sensor, "ORCM Monitoring Sensors",
@@ -177,9 +175,7 @@ static void scon(orcm_sensor_sampler_t *p)
 }
 static void sdes(orcm_sensor_sampler_t *p)
 {
-    if (NULL != p->sensors) {
-        free(p->sensors);
-    }
+    SAFEFREE(p->sensors);
     OBJ_DESTRUCT(&p->bucket);
 }
 OBJ_CLASS_INSTANCE(orcm_sensor_sampler_t,
@@ -198,13 +194,8 @@ static void pcon(orcm_sensor_policy_t *plc)
 }
 static void pdes(orcm_sensor_policy_t *plc)
 {
-    if (NULL != plc->action) {
-        free(plc->action);
-    }
-
-    if (NULL != plc->sensor_name) {
-        free(plc->sensor_name);
-    }
+    SAFEFREE(plc->action);
+    SAFEFREE(plc->sensor_name);
 }
 OBJ_CLASS_INSTANCE(orcm_sensor_policy_t,
                    opal_list_item_t,

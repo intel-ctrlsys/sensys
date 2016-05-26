@@ -19,8 +19,12 @@ extern "C" {
     // ORCM
     #include "orcm/runtime/orcm_globals.h"
     #include "orcm/include/orcm/constants.h"
+    #include "orcm/util/utils.h"
+
+    extern bool orcm_sensor_base_selected;
 
     extern int manage_sensor_sampling(int command, const char* sensor_spec);
+    extern int orcm_sensor_base_select(void);
 };
 #define GTEST_MOCK_TESTING
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
@@ -65,6 +69,7 @@ int ut_base_tests::sampling_callback(const char* spec)
     sampling_result = true;
     return ORCM_SUCCESS;
 }
+
 
 // Testing the data collection class
 TEST_F(ut_base_tests, base_sensor_runtime_metrics)
@@ -190,4 +195,11 @@ TEST_F(ut_base_tests, base_manage_sensor_set_labels)
     EXPECT_EQ(2, orcm_sensor_base_runtime_metrics_active_label_count(obj));
 
     orcm_sensor_base_runtime_metrics_destroy(obj);
+}
+
+TEST_F(ut_base_tests, sensor_base_select_test)
+{
+    orcm_sensor_base_selected = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_base_select());
+    orcm_sensor_base_selected = false;
 }

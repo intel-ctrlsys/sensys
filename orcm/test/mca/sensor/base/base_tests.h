@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include "opal/dss/dss.h"
+
 #include "orcm/mca/sensor/sensor.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 

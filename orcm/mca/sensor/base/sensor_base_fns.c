@@ -29,7 +29,14 @@
 
 #include "orcm/util/utils.h"
 
-#define SAFE_OBJ_RELEASE(x) if(NULL!=x) { OBJ_RELEASE(x); x=NULL; }
+#define ON_NULL_CONTINUE(x) if(NULL==x) { continue;}
+#define ON_FAILURE_CLEANUP(x,z) if(ORCM_SUCCESS!=x) { ORTE_ERROR_LOG(x); z; }
+#define ON_FAILURE_CLEANUP_GOTO(x,y,z) if(ORCM_SUCCESS!=x) { ORTE_ERROR_LOG(x); z; goto y; }
+#define ON_FAILURE_CLEANUP_RETURN(x,z) if(ORCM_SUCCESS!=x) { ORTE_ERROR_LOG(x); z; return; }
+#define ON_FAILURE_CLEANUP_RETURN_ERROR(x,z) if(ORCM_SUCCESS!=x) { ORTE_ERROR_LOG(x); z; return x; }
+#define ON_NULL_RETURN(x) if(NULL==x) return ORCM_ERR_OUT_OF_RESOURCE
+#define ON_NULL_PARAM_RETURN(x) if(NULL==x) return ORCM_ERR_BAD_PARAM
+#define ON_FAILURE_RETURN_ERROR(x) if(ORCM_SUCCESS!=x) { ORTE_ERROR_LOG(x); return x; }
 
 static bool recv_issued=false;
 static bool mods_active = false;
@@ -66,10 +73,7 @@ static void db_open_cb(int handle, int status, opal_list_t *props,
         opal_output(0,"DB Open failed");
         orcm_sensor_base.dbhandle_acquired = false;
     }
-    if (NULL != props) {
-        OBJ_RELEASE(props);
-    }
-
+    ORCM_RELEASE(props);
 }
 
 void orcm_sensor_base_start(orte_jobid_t job)
@@ -134,10 +138,8 @@ void orcm_sensor_base_start(orte_jobid_t job)
 
         /* call the start function of all modules in priority order */
         for (i=0; i < orcm_sensor_base.modules.size; i++) {
-            if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
-                continue;
-            }
-
+            i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i);
+            ON_NULL_CONTINUE(i_module);
             /* Checks if the value of the sampling rate exceeds the limit.
              * If so, then reset its value to the limit value.
              */
@@ -210,17 +212,12 @@ void collect_inventory_info(opal_buffer_t *inventory_snapshot)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: Starting Inventory Collection",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-
+    rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
+    ORCM_ON_FAILURE_RETURN(rc);
     /* call the inventory collection function of all enabled modules in priority order */
     for (i=0; i < orcm_sensor_base.modules.size; i++) {
-        if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
-            continue;
-        }
-
+        i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i);
+        ON_NULL_CONTINUE(i_module);
         if (NULL != i_module->module->inventory_collect) {
             i_module->module->inventory_collect(inventory_snapshot);
         }else{
@@ -239,29 +236,21 @@ void collect_inventory_info(opal_buffer_t *inventory_snapshot)
     }
 
     /* send Inventory data */
-    if (ORCM_SUCCESS != (rc = orte_rml.send_buffer_nb(tgt, inventory_snapshot,
-                                                      ORCM_RML_TAG_INVENTORY,
-                                                      orte_rml_send_callback, NULL))) {
-        ORTE_ERROR_LOG(rc);
-        OBJ_RELEASE(inventory_snapshot);
-    }
-
+    rc = orte_rml.send_buffer_nb(tgt, inventory_snapshot, ORCM_RML_TAG_INVENTORY, orte_rml_send_callback, NULL);
+    ON_FAILURE_CLEANUP(rc, ORCM_RELEASE(inventory_snapshot));
 }
 static void recv_inventory(int status, orte_process_name_t* sender,
                        opal_buffer_t *buffer,
                        orte_rml_tag_t tag, void *cbdata)
 {
-    char *temp, *hostname;
+    char *temp = NULL, *hostname = NULL;
     int32_t i, n, rc;
     orcm_sensor_active_module_t *i_module;
 
     /* unpack the host this came from */
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &hostname, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-
+    rc = opal_dss.unpack(buffer, &hostname, &n, OPAL_STRING);
+    ORCM_ON_FAILURE_RETURN(rc);
     if(true != orcm_sensor_base.dbhandle_acquired) {
         opal_output(0,"Unable to acquire DB Handle");
         ORTE_ERROR_LOG(ORCM_ERR_TIMEOUT);
@@ -282,14 +271,14 @@ static void recv_inventory(int status, orte_process_name_t* sender,
                     }
                 }
             }
-            free(temp);
+            SAFEFREE(temp);
             n=1;
         }
     }
     if (OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER != rc) {
         ORTE_ERROR_LOG(rc);
     }
-    free(hostname);
+    SAFEFREE(hostname);
 }
 
 void orcm_sensor_base_stop(orte_jobid_t job)
@@ -323,9 +312,8 @@ void orcm_sensor_base_stop(orte_jobid_t job)
 
     /* call the stop function of all modules in priority order */
     for (i=0; i < orcm_sensor_base.modules.size; i++) {
-        if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
-            continue;
-        }
+        i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i);
+        ON_NULL_CONTINUE(i_module);
         if (NULL != i_module->module->stop) {
             i_module->module->stop(job);
         }
@@ -371,9 +359,8 @@ static void take_sample(int fd, short args, void *cbdata)
      * priority, so it will send any collected data
      */
     for (i=0; i < orcm_sensor_base.modules.size; i++) {
-        if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
-            continue;
-        }
+        i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i);
+        ON_NULL_CONTINUE(i_module);
         /* see if this sensor is included in the request */
         if (NULL != sampler->sensors &&
             NULL == strcasestr(sampler->sensors, i_module->component->base_version.mca_component_name)) {
@@ -412,7 +399,7 @@ static void take_sample(int fd, short args, void *cbdata)
         }
         opal_event_evtimer_add(&sampler->ev, &sampler->rate);
     } else {
-        OBJ_RELEASE(sampler);
+        ORCM_RELEASE(sampler);
     }
     return;
 }
@@ -438,9 +425,8 @@ void orcm_sensor_base_log(char *comp, opal_buffer_t *data)
 
     /* find the specified module  */
     for (i=0; i < orcm_sensor_base.modules.size; i++) {
-        if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
-            continue;
-        }
+        i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i);
+        ON_NULL_CONTINUE(i_module);
         if (0 == strcmp(comp, i_module->component->base_version.mca_component_name)) {
             if (NULL != i_module->module->log) {
                 i_module->module->log(data);
@@ -509,37 +495,25 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
 
     /* unpack the command */
     cnt = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &command,
-                                              &cnt, ORCM_SENSOR_CMD_T))) {
-        ORTE_ERROR_LOG(rc);
-        goto ERROR;
-    }
+    rc = opal_dss.unpack(buffer, &command, &cnt, ORCM_SENSOR_CMD_T);
+    ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
     if (ORCM_SET_SENSOR_COMMAND == command) {
         cnt = 1;
         /* unpack the subcommand */
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sub_command,
-                                                  &cnt, ORCM_SENSOR_CMD_T))) {
-            ORTE_ERROR_LOG(rc);
-            goto ERROR;
-        }
+        rc = opal_dss.unpack(buffer, &sub_command, &cnt, ORCM_SENSOR_CMD_T);
+        ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
         switch(sub_command) {
         case ORCM_SET_SENSOR_SAMPLE_RATE_COMMAND:
             /* unpack the sensor name */
             cnt = 1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sensor_name,
-                                                      &cnt, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                goto ERROR;
-            }
+            rc = opal_dss.unpack(buffer, &sensor_name, &cnt, OPAL_STRING);
+            ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
             cnt = 1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sample_rate,
-                                                      &cnt, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
-                goto ERROR;
-            }
+            rc = opal_dss.unpack(buffer, &sample_rate, &cnt, OPAL_INT);
+            ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
             /* Check if sampling rate exceeds configured limit */
             if (NULL == (env_limit = getenv(OPAL_MCA_PREFIX"sensor_limit_sample_rate"))) {
@@ -571,9 +545,8 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                 /* find the specified module  */
                 found_me = false;
                 for (i=0; i < orcm_sensor_base.modules.size; i++) {
-                    if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
-                        continue;
-                    }
+                    i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i);
+                    ON_NULL_CONTINUE(i_module);
                     if (0 == strcmp(sensor_name, i_module->component->base_version.mca_component_name)) {
                         if (NULL != i_module->module->set_sample_rate) {
                             i_module->module->set_sample_rate(sample_rate);
@@ -591,11 +564,8 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
             /* send back the immediate success*/
             if (found_me) {
                 response = ORCM_SUCCESS;
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
-                    ORTE_ERROR_LOG(rc);
-                    OBJ_RELEASE(ans);
-                    return;
-                }
+                rc = opal_dss.pack(ans, &response, 1, OPAL_INT);
+                ON_FAILURE_CLEANUP_RETURN(rc, ORCM_RELEASE(ans));
                 goto RESPONSE;
             } else {
                 response = ORTE_ERR_NOT_FOUND;
@@ -606,53 +576,31 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
 
         case ORCM_SET_SENSOR_POLICY_COMMAND:
             /* unpack sensor name */
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sensor_name,
-                                                  &cnt, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                goto ERROR;
-            }
-
+            rc = opal_dss.unpack(buffer, &sensor_name, &cnt, OPAL_STRING);
+            ORCM_ON_FAILURE_GOTO(rc, ERROR);
             /* unpack threshold value */
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &threshold,
-                                                  &cnt, OPAL_FLOAT))) {
-                ORTE_ERROR_LOG(rc);
-                goto ERROR;
-            }
+            rc = opal_dss.unpack(buffer, &threshold, &cnt, OPAL_FLOAT);
+            ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
             /* unpack threshold type */
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &hi_thres,
-                                                  &cnt, OPAL_BOOL))) {
-                ORTE_ERROR_LOG(rc);
-                goto ERROR;
-            }
+            rc = opal_dss.unpack(buffer, &hi_thres, &cnt, OPAL_BOOL);
+            ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
             /* unpack max count */
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &max_count,
-                                                  &cnt, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
-                goto ERROR;
-            }
+            rc = opal_dss.unpack(buffer, &max_count, &cnt, OPAL_INT);
+            ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
             /* unpack time window */
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &time_window,
-                                                  &cnt, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
-                goto ERROR;
-            }
+            rc = opal_dss.unpack(buffer, &time_window, &cnt, OPAL_INT);
+            ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
             /* unpack severity level */
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sev,
-                                                  &cnt, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
-                goto ERROR;
-            }
+            rc = opal_dss.unpack(buffer, &sev, &cnt, OPAL_INT);
+            ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
             /* unpack notification action */
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &action,
-                                                  &cnt, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                goto ERROR;
-            }
+            rc = opal_dss.unpack(buffer, &action, &cnt, OPAL_STRING);
+            ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
             /* look for sensor event policy; update with new setting or create new policy if not existing */
             found_me = false;
@@ -691,11 +639,8 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
 
             /* send confirmation back to sender */
             response = ORCM_SUCCESS;
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(ans);
-                return;
-            }
+            rc = opal_dss.pack(ans, &response, 1, OPAL_INT);
+            ON_FAILURE_CLEANUP_RETURN(rc, ORCM_RELEASE(ans));
             goto RESPONSE;
             break;
         default:
@@ -707,21 +652,15 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
         cnt = 1;
 
         /* unpack the subcommand */
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sub_command,
-                                                  &cnt, ORCM_SENSOR_CMD_T))) {
-            ORTE_ERROR_LOG(rc);
-            goto ERROR;
-        }
+        rc = opal_dss.unpack(buffer, &sub_command, &cnt, ORCM_SENSOR_CMD_T);
+        ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
         switch(sub_command) {
         case ORCM_GET_SENSOR_SAMPLE_RATE_COMMAND:
             /* unpack the sensor name */
             cnt = 1;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &sensor_name,
-                                                      &cnt, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                goto ERROR;
-            }
+            rc = opal_dss.unpack(buffer, &sensor_name, &cnt, OPAL_STRING);
+            ORCM_ON_FAILURE_GOTO(rc, ERROR);
 
             if (0 == strcmp(sensor_name, "base")) {
                 orcm_sensor_base_get_sample_rate(&sample_rate);
@@ -735,9 +674,8 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                 /* find the specified module  */
                 found_me = false;
                 for (i=0; i < orcm_sensor_base.modules.size; i++) {
-                    if (NULL == (i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i))) {
-                        continue;
-                    }
+                    i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i);
+                    ON_NULL_CONTINUE(i_module);
                     if (0 == strcmp(sensor_name, i_module->component->base_version.mca_component_name)) {
                         if (NULL != i_module->module->get_sample_rate) {
                             i_module->module->get_sample_rate(&sample_rate);
@@ -759,23 +697,13 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
                 asprintf(&error,"%s sensor module not found", sensor_name);
                 goto ERROR;
             }
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(ans);
-                goto ERROR;
-            }
+            rc = opal_dss.pack(ans, &response, 1, OPAL_INT);
+            ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
 
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &sensor_name,
-                                                    1, OPAL_STRING))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(ans);
-                goto ERROR;
-            }
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &sample_rate, 1, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(ans);
-                goto ERROR;
-            }
+            rc = opal_dss.pack(ans, &sensor_name, 1, OPAL_STRING);
+            ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
+            rc = opal_dss.pack(ans, &sample_rate, 1, OPAL_INT);
+            ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
             goto RESPONSE;
             break;
 
@@ -783,69 +711,38 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
 
             /* pack the number of policies we have */
             cnt = opal_list_get_size(&orcm_sensor_base.policy);
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &cnt, 1, OPAL_INT))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(ans);
-                goto ERROR;
-            }
+            rc = opal_dss.pack(ans, &cnt, 1, OPAL_INT);
+            ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
 
             /* for each queue, */
             OPAL_LIST_FOREACH(plc, &orcm_sensor_base.policy, orcm_sensor_policy_t) {
                 /* pack sensor name */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->sensor_name,
-                                                  1, OPAL_STRING))) {
-                    ORTE_ERROR_LOG(rc);
-                    OBJ_RELEASE(ans);
-                    goto ERROR;
-                }
+                rc = opal_dss.pack(ans, &plc->sensor_name, 1, OPAL_STRING);
+                ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
 
                 /* pack threshold value */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->threshold,
-                                                  1, OPAL_FLOAT))) {
-                    ORTE_ERROR_LOG(rc);
-                    OBJ_RELEASE(ans);
-                    goto ERROR;
-                }
+                rc = opal_dss.pack(ans, &plc->threshold, 1, OPAL_FLOAT);
+                ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
 
                 /* pack threshold type */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->hi_thres,
-                                                  1, OPAL_BOOL))) {
-                    ORTE_ERROR_LOG(rc);
-                    OBJ_RELEASE(ans);
-                    goto ERROR;
-                }
+                rc = opal_dss.pack(ans, &plc->hi_thres, 1, OPAL_BOOL);
+                ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
 
                 /* pack max count */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->max_count,
-                                                  1, OPAL_INT))) {
-                    ORTE_ERROR_LOG(rc);
-                    OBJ_RELEASE(ans);
-                    goto ERROR;
-                }
+                rc = opal_dss.pack(ans, &plc->max_count, 1, OPAL_INT);
+                ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
 
                 /* pack time window */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->time_window,
-                                                  1, OPAL_INT))) {
-                    ORTE_ERROR_LOG(rc);
-                    OBJ_RELEASE(ans);
-                    goto ERROR;
-                }
+                rc = opal_dss.pack(ans, &plc->time_window, 1, OPAL_INT);
+                ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
 
                 /* pack severity level */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->severity,
-                                                  1, OPAL_INT))) {
-                    ORTE_ERROR_LOG(rc);
-                    OBJ_RELEASE(ans);
-                    goto ERROR;
-                }
+                rc = opal_dss.pack(ans, &plc->severity, 1, OPAL_INT);
+                ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
 
                 /* pack notification action */
-                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &plc->action,
-                                                  1, OPAL_STRING))) {
-                    ORTE_ERROR_LOG(rc);
-                    OBJ_RELEASE(ans);
-                    goto ERROR;
-                }
+                rc = opal_dss.pack(ans, &plc->action, 1, OPAL_STRING);
+                ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
             }
             goto RESPONSE;
             break;
@@ -859,55 +756,31 @@ static void orcm_sensor_base_recv(int status, orte_process_name_t *sender,
               ORCM_RESET_SENSOR_SAMPLING_COMMAND == command) {
         char* spec;
         int cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &spec, &cnt, OPAL_STRING))) {
-            ORTE_ERROR_LOG(rc);
-            goto ERROR;
-        }
+        rc = opal_dss.unpack(buffer, &spec, &cnt, OPAL_STRING);
+        ORCM_ON_FAILURE_GOTO(rc, ERROR);
         int response = manage_sensor_sampling(command, (const char*)spec);
         SAFEFREE(spec);
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
-            ORTE_ERROR_LOG(rc);
-            SAFE_OBJ_RELEASE(ans);
-            goto ERROR;
-        }
+        rc = opal_dss.pack(ans, &response, 1, OPAL_INT);
+        ON_FAILURE_CLEANUP_GOTO(rc, ERROR, ORCM_RELEASE(ans));
         goto RESPONSE;
     }
 
 ERROR:
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &response, 1, OPAL_INT))) {
-        ORTE_ERROR_LOG(rc);
-        if(NULL != ans) {
-            OBJ_RELEASE(ans);
-        }
-        SAFEFREE(error);
-        return;
-    }
+    rc = opal_dss.pack(ans, &response, 1, OPAL_INT);
+    ON_FAILURE_CLEANUP_RETURN(rc, {ORCM_RELEASE(ans); SAFEFREE(error);});
     if (NULL == error) {
         asprintf(&error,"sensor data buffer mismatch");
     }
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &error, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        if(NULL != ans) {
-            OBJ_RELEASE(ans);
-        }
-        SAFEFREE(error);
-        return;
-    }
+    rc = opal_dss.pack(ans, &error, 1, OPAL_STRING);
+    ON_FAILURE_CLEANUP_RETURN(rc, {ORCM_RELEASE(ans); SAFEFREE(error);});
     SAFEFREE(error);
 
 RESPONSE:
-    if (ORTE_SUCCESS !=
-        (rc = orte_rml.send_buffer_nb(sender, ans,
-                                      ORCM_RML_TAG_SENSOR,
-                                      orte_rml_send_callback, NULL))) {
-        ORTE_ERROR_LOG(rc);
-        if(NULL != ans) {
-            OBJ_RELEASE(ans);
-        }
-        return;
-    }
+    rc = orte_rml.send_buffer_nb(sender, ans, ORCM_RML_TAG_SENSOR,
+                                 orte_rml_send_callback, NULL);
+    ON_FAILURE_CLEANUP_RETURN(rc, ORCM_RELEASE(ans));
 }
 
 void orcm_sensor_base_collect(int fd, short args, void *cbdata)
@@ -919,7 +792,7 @@ void orcm_sensor_base_collect(int fd, short args, void *cbdata)
      * so it can be swept up by the next update */
     opal_dss.copy_payload(&orcm_sensor_base.cache, &x->bucket);
     /* release memory */
-    OBJ_RELEASE(x);
+    ORCM_RELEASE(x);
 }
 
 /* sensor sample rate will take effect in the next sampling cycle*/
@@ -942,10 +815,7 @@ static bool valid_data_group(const char* sensor_spec)
         return false;
     }
     char* datagroup = strdup(sensor_spec);
-    if(NULL == datagroup) {
-        ORTE_ERROR_LOG(ORTE_ERR_COPY_FAILURE);
-        return false;
-    }
+    ORCM_ON_NULL_RETURN_ERROR(datagroup, false);
     char* colon_pos = strchr(datagroup, ':');
     if(NULL != colon_pos) {
         *colon_pos = '\0';
@@ -957,9 +827,8 @@ static bool valid_data_group(const char* sensor_spec)
     }
     for(int index = 0; index < orcm_sensor_base.modules.size; ++index) {
         orcm_sensor_active_module_t* i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, index);
-        if(NULL == i_module || NULL == i_module->component) {
-            continue;
-        }
+        ON_NULL_CONTINUE(i_module);
+        ON_NULL_CONTINUE(i_module->component);
         const char* plugin_name = i_module->component->base_version.mca_component_name;
         if(0 == strncmp(plugin_name, datagroup, strlen(plugin_name))) {
             rv = true;
@@ -977,9 +846,8 @@ int manage_sensor_sampling(int command, const char* sensor_spec)
         int rv = ORCM_SUCCESS;
         for(int index = 0; index < orcm_sensor_base.modules.size; ++index) {
             orcm_sensor_active_module_t* i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, index);
-            if(NULL == i_module || NULL == i_module->module) {
-                continue;
-            }
+            ON_NULL_CONTINUE(i_module);
+            ON_NULL_CONTINUE(i_module->module);
             if(ORCM_ENABLE_SENSOR_SAMPLING_COMMAND == command &&
                NULL != i_module->module->enable_sampling) {
                 i_module->module->enable_sampling(sensor_spec);
@@ -997,8 +865,6 @@ int manage_sensor_sampling(int command, const char* sensor_spec)
     }
 }
 
-#define ON_NULL_RETURN(x) if(NULL==x) return ORCM_ERR_OUT_OF_RESOURCE
-#define ON_NULL_PARAM_RETURN(x) if(NULL==x) return ORCM_ERR_BAD_PARAM
 int orcm_sensor_pack_data_header(opal_buffer_t* bucket, const char* primary_key, const char* hostname, const struct timeval* current_time)
 {
     ON_NULL_PARAM_RETURN(bucket);
@@ -1007,23 +873,15 @@ int orcm_sensor_pack_data_header(opal_buffer_t* bucket, const char* primary_key,
     ON_NULL_PARAM_RETURN(current_time);
     char* tmp = strdup(primary_key);
     int rc;
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &tmp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        SAFEFREE(tmp);
-        return rc;
-    }
+    rc = opal_dss.pack(bucket, &tmp, 1, OPAL_STRING);
+    ON_FAILURE_CLEANUP_RETURN_ERROR(rc, SAFEFREE(tmp));
     SAFEFREE(tmp);
     tmp = strdup(hostname);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &tmp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        SAFEFREE(tmp);
-        return rc;
-    }
+    rc = opal_dss.pack(bucket, &tmp, 1, OPAL_STRING);
+    ON_FAILURE_CLEANUP_RETURN_ERROR(rc, SAFEFREE(tmp));
     SAFEFREE(tmp);
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, current_time, 1, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
-    }
+    rc = opal_dss.pack(bucket, current_time, 1, OPAL_TIMEVAL);
+    ON_FAILURE_RETURN_ERROR(rc);
     return ORCM_SUCCESS;
 }
 
@@ -1039,16 +897,11 @@ int orcm_sensor_unpack_data_header_from_plugin(opal_buffer_t* bucket, char** hos
     char* host = NULL;
     int rc;
     int n = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, &host, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
-    }
+    rc = opal_dss.unpack(bucket, &host, &n, OPAL_STRING);
+    ON_FAILURE_RETURN_ERROR(rc);
     n = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, current_time, &n, OPAL_TIMEVAL))) {
-        ORTE_ERROR_LOG(rc);
-        SAFEFREE(host);
-        return rc;
-    }
+    rc = opal_dss.unpack(bucket, current_time, &n, OPAL_TIMEVAL);
+    ON_FAILURE_CLEANUP_RETURN_ERROR(rc, SAFEFREE(host));
     *hostname = host;
     return ORCM_SUCCESS;
 }
@@ -1063,30 +916,22 @@ int orcm_sensor_pack_orcm_value(opal_buffer_t* bucket, const orcm_value_t* item)
     /* local units incase of NULL */
     if(NULL == units) {
         units = strdup("");
-        ON_NULL_RETURN(units);
+        ORCM_ON_NULL_RETURN_ERROR(units, ORCM_ERR_OUT_OF_RESOURCE);
         do_free = true;
     }
 
     /* Pack label */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &item->value.key, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        goto cleanup;
-    }
+    rc = opal_dss.pack(bucket, &item->value.key, 1, OPAL_STRING);
+    ORCM_ON_FAILURE_GOTO(rc, cleanup);
     /* Pack type */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &item->value.type, 1, OPAL_UINT8))) {
-        ORTE_ERROR_LOG(rc);
-        goto cleanup;
-    }
+    rc = opal_dss.pack(bucket, &item->value.type, 1, OPAL_UINT8);
+    ORCM_ON_FAILURE_GOTO(rc, cleanup);
     /* Pack value */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &item->value.data, 1, item->value.type))) {
-        ORTE_ERROR_LOG(rc);
-        goto cleanup;
-    }
+    rc = opal_dss.pack(bucket, &item->value.data, 1, item->value.type);
+    ORCM_ON_FAILURE_GOTO(rc, cleanup);
     /* Pack units */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(bucket, &units, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        goto cleanup;
-    }
+    rc = opal_dss.pack(bucket, &units, 1, OPAL_STRING);
+    ORCM_ON_FAILURE_GOTO(rc, cleanup);
 
 cleanup:
     if(do_free) {
@@ -1108,32 +953,20 @@ int orcm_sensor_unpack_orcm_value(opal_buffer_t* bucket, orcm_value_t** result)
     /* Unpack label */
     int n = 1;
     int rc;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, &item->value.key, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        SAFE_RELEASE(item);
-        return rc;
-    }
+    rc = opal_dss.unpack(bucket, &item->value.key, &n, OPAL_STRING);
+    ON_FAILURE_CLEANUP_RETURN_ERROR(rc, ORCM_RELEASE(item));
     /* Unpack type */
     n = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, &item->value.type, &n, OPAL_UINT8))) {
-        ORTE_ERROR_LOG(rc);
-        SAFE_RELEASE(item);
-        return rc;
-    }
+    rc = opal_dss.unpack(bucket, &item->value.type, &n, OPAL_UINT8);
+    ON_FAILURE_CLEANUP_RETURN_ERROR(rc, ORCM_RELEASE(item));
     /* Unpack value */
     n = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, &item->value.data, &n, item->value.type))) {
-        ORTE_ERROR_LOG(rc);
-        SAFE_RELEASE(item);
-        return rc;
-    }
+    rc = opal_dss.unpack(bucket, &item->value.data, &n, item->value.type);
+    ON_FAILURE_CLEANUP_RETURN_ERROR(rc, ORCM_RELEASE(item));
     /* Unpack units */
     n = 1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(bucket, &item->units, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        SAFE_RELEASE(item);
-        return rc;
-    }
+    rc = opal_dss.unpack(bucket, &item->units, &n, OPAL_STRING);
+    ON_FAILURE_CLEANUP_RETURN_ERROR(rc, ORCM_RELEASE(item));
     *result = item;
     return ORCM_SUCCESS;
 }
@@ -1147,16 +980,10 @@ int orcm_sensor_pack_orcm_value_list(opal_buffer_t* bucket, const opal_list_t* l
     orcm_value_t* item = NULL;
     uint16_t size = (uint16_t)opal_list_get_size((opal_list_t*)list);
     rc = opal_dss.pack(bucket, &size, 1, OPAL_UINT16);
-    if(ORCM_SUCCESS != rc) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
-    }
+    ON_FAILURE_RETURN_ERROR(rc);
     OPAL_LIST_FOREACH(item, (opal_list_t*)list, orcm_value_t) {
         rc = orcm_sensor_pack_orcm_value(bucket, item);
-        if(ORCM_SUCCESS != rc) {
-            ORTE_ERROR_LOG(rc);
-            return rc;
-        }
+        ON_FAILURE_RETURN_ERROR(rc);
     }
     return ORCM_SUCCESS;
 }
@@ -1176,10 +1003,7 @@ int orcm_sensor_unpack_orcm_value_list(opal_buffer_t* bucket, opal_list_t** list
     int n = 1;
 
     rc = opal_dss.unpack(bucket, &size, &n, OPAL_UINT16);
-    if(ORCM_SUCCESS != rc) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
-    }
+    ON_FAILURE_RETURN_ERROR(rc);
     *list = OBJ_NEW(opal_list_t);
     if(NULL == *list) {
         ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
@@ -1188,11 +1012,7 @@ int orcm_sensor_unpack_orcm_value_list(opal_buffer_t* bucket, opal_list_t** list
     if(0 != size) {
         for(int16_t i = 0; i < size; ++i) {
             rc = orcm_sensor_unpack_orcm_value(bucket, &item);
-            if(ORCM_SUCCESS != rc) {
-                ORTE_ERROR_LOG(rc);
-                ORCM_RELEASE(*list);
-                return rc;
-            }
+            ON_FAILURE_CLEANUP_RETURN_ERROR(rc, ORCM_RELEASE(*list));
             opal_list_append(*list, item);
             item = NULL;
         }

@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -27,8 +27,10 @@
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 
+#define ON_NULL_CONTINUE(x) if(NULL==x) { continue;}
 
-static bool selected = false;
+
+bool orcm_sensor_base_selected = false;
 
 /**
  * Function for weeding out sensor components that don't want to run.
@@ -50,10 +52,10 @@ int orcm_sensor_base_select(void)
     orcm_sensor_active_module_t *tmp_module = NULL, *tmp_module_sw = NULL;
     bool duplicate;
 
-    if (selected) {
+    if (orcm_sensor_base_selected) {
         return ORCM_SUCCESS;
     }
-    selected = true;
+    orcm_sensor_base_selected = true;
 
     OBJ_CONSTRUCT(&tmp_array, opal_pointer_array_t);
 
@@ -103,9 +105,7 @@ int orcm_sensor_base_select(void)
         duplicate = false;
         for (i=0; i < tmp_array.size; i++) {
             tmp_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&tmp_array, i);
-            if (NULL == tmp_module) {
-                continue;
-            }
+            ON_NULL_CONTINUE(tmp_module);
             if (0 == strcmp(component->data_measured, tmp_module->component->data_measured)) {
                 if (tmp_module->priority < priority) {
                     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -134,7 +134,7 @@ int orcm_sensor_base_select(void)
          * Append them to the temporary list, we will sort later
          */
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                            "sensor:base:select Query of component [%s] set priority to %d", 
+                            "sensor:base:select Query of component [%s] set priority to %d",
                             component->base_version.mca_component_name, priority);
         tmp_module = OBJ_NEW(orcm_sensor_active_module_t);
         tmp_module->component = component;
@@ -156,18 +156,14 @@ int orcm_sensor_base_select(void)
     priority = 0;
     for(j = 0; j < tmp_array.size; ++j) {
         tmp_module_sw = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&tmp_array, j);
-        if( NULL == tmp_module_sw ) {
-            continue;
-        }
+        ON_NULL_CONTINUE(tmp_module_sw);
 
         low_i   = -1;
         priority = tmp_module_sw->priority;
 
         for(i = 0; i < tmp_array.size; ++i) {
             tmp_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&tmp_array, i);
-            if( NULL == tmp_module ) {
-                continue;
-            }
+            ON_NULL_CONTINUE(tmp_module);
             if( tmp_module->priority > priority ) {
                 low_i = i;
                 priority = tmp_module->priority;
@@ -176,9 +172,7 @@ int orcm_sensor_base_select(void)
 
         if( low_i >= 0 ) {
             tmp_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&tmp_array, low_i);
-            if ( NULL == tmp_module ) {
-                continue;
-            }
+            ON_NULL_CONTINUE(tmp_module);
             opal_pointer_array_set_item(&tmp_array, low_i, NULL);
             j--; /* Try this entry again, if it is not the lowest */
         } else {
@@ -200,9 +194,7 @@ int orcm_sensor_base_select(void)
      */
     for(i = 0; i < orcm_sensor_base.modules.size; ++i) {
         i_module = (orcm_sensor_active_module_t*)opal_pointer_array_get_item(&orcm_sensor_base.modules, i);
-        if( NULL == i_module ) {
-            continue;
-        }
+        ON_NULL_CONTINUE(i_module);
         if( NULL != i_module->module->init ) {
             if (ORCM_SUCCESS != i_module->module->init()) {
                 /* can't sample - however, if we are the HNP

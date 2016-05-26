@@ -452,9 +452,9 @@ void snmp_impl::collect_sample(bool perthread /* = false*/)
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
 
+    opal_buffer_t buffer;
+    OBJ_CONSTRUCT(&buffer, opal_buffer_t);
     try {
-        opal_buffer_t buffer;
-        OBJ_CONSTRUCT(&buffer, opal_buffer_t);
 
         packPluginName(&buffer);
 
@@ -472,6 +472,7 @@ void snmp_impl::collect_sample(bool perthread /* = false*/)
                             "ERROR: %s sensor SNMP : collect_data: '%s'",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
     }
+    OBJ_DESTRUCT(&buffer);
 }
 
 void snmp_impl::packPluginName(opal_buffer_t* buffer) {

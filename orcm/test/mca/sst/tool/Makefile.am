@@ -41,7 +41,9 @@ MOCKING = \
 	-Wl,--wrap=orte_ess_base_std_prolog \
 	-Wl,--wrap=opal_pointer_array_init \
 	-Wl,--wrap=orte_plm_base_set_hnp_name \
-	-Wl,--wrap=orte_register_params
+	-Wl,--wrap=orte_register_params \
+	-Wl,--wrap=mca_base_framework_open \
+	-Wl,--wrap=opal_dss_unpack
 
 #
 # Libraries we depend on

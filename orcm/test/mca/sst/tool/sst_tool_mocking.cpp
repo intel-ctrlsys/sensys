@@ -46,6 +46,18 @@ extern "C" {
         }
     }
 
+    int __wrap_mca_base_framework_open(struct mca_base_framework_t *framework,
+                             mca_base_open_flag_t flags)
+    {
+        if(sst_mocking.mca_base_framework_open){
+            if (sst_mocking.framework_open_counter++ >=
+                sst_mocking.mca_base_framework_open_max){
+                return ORCM_ERROR;
+            }
+        }
+        return __real_mca_base_framework_open(framework, flags);
+    }
+
     int __wrap_orte_plm_base_set_hnp_name(void) {
         if (sst_mocking.orte_plm_base_set_hnp_name) {
             return ORCM_ERROR;
@@ -60,6 +72,21 @@ extern "C" {
         } else {
             return ORCM_SUCCESS;
         }
+    }
+
+    int __wrap_opal_dss_unpack(opal_buffer_t *buffer,
+                               void *dst,
+                               int32_t *num_vals,
+                               opal_data_type_t type)
+    {
+        void **tmpresult = (void**) dst;
+        if(sst_mocking.opal_dss_unpack){
+            if(type == OPAL_BUFFER){
+                *tmpresult = OBJ_NEW(opal_buffer_t);
+                return ORCM_SUCCESS;
+            }
+        }
+        return __real_opal_dss_unpack(buffer, dst, num_vals, type);
     }
 }
 
@@ -82,3 +109,4 @@ int mock_cfgi_define_system(opal_list_t *config,
         return ORCM_SUCCESS;
     }
 }
+

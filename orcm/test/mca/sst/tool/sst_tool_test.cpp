@@ -13,6 +13,9 @@
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/mca/cfgi/cfgi.h"
 #include "sst_tool_mocking.h"
+#include "opal/runtime/opal.h"
+#include "orte/runtime/orte_globals.h"
+#include "orte/mca/routed/routed.h"
 
 // C++ includes
 #include <iostream>
@@ -50,6 +53,7 @@ void ut_sst_tool_tests::InitMockingFlags()
     sst_mocking.orte_plm_base_set_hnp_name = false;
     sst_mocking.orte_register_params = false;
     sst_mocking.mca_base_framework_open = false;
+    sst_mocking.opal_dss_unpack = false;
     // Change function pointers
     orcm_cfgi.read_config = &mock_cfgi_read_config;
     orcm_cfgi.define_system = &mock_cfgi_define_system;
@@ -135,5 +139,23 @@ TEST_F(ut_sst_tool_tests, tool_init_orte_register_params)
     InitMockingFlags();
     sst_mocking.orte_register_params = true;
     rc = orcm_sst_tool_module.init();
+    EXPECT_EQ(rc, ORTE_ERR_SILENT);
+}
+
+TEST_F(ut_sst_tool_tests, tool_init_mca_base_framework_open_all)
+{
+    int rc=ORTE_ERR_SILENT;
+    int calls_to_mock = 35;
+    InitMockingFlags();
+
+    opal_init(NULL,NULL);
+    orte_event_base = opal_sync_event_base;
+    orte_process_info.proc_type = (ORTE_PROC_CM |ORTE_PROC_DAEMON);
+    sst_mocking.opal_dss_unpack = true;
+    sst_mocking.mca_base_framework_open = true;
+    for(sst_mocking.mca_base_framework_open_max=0;sst_mocking.mca_base_framework_open_max<calls_to_mock;sst_mocking.mca_base_framework_open_max++){
+        sst_mocking.framework_open_counter = 0;
+        rc &= orcm_sst_tool_module.init();
+    }
     EXPECT_EQ(rc, ORTE_ERR_SILENT);
 }

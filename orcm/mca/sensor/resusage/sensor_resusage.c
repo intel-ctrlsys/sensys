@@ -521,7 +521,6 @@ static void generate_test_vector(opal_buffer_t *v)
     /* pack the plugin name */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING))){
         ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&v);
         return;
     }
 
@@ -529,7 +528,6 @@ static void generate_test_vector(opal_buffer_t *v)
     if (OPAL_SUCCESS != (ret =
                 opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))){
         ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&v);
         return;
     }
 
@@ -538,7 +536,6 @@ static void generate_test_vector(opal_buffer_t *v)
 
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &current_time, 1, OPAL_TIMEVAL))) {
         ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&v);
         return;
     }
 
@@ -549,7 +546,6 @@ static void generate_test_vector(opal_buffer_t *v)
         ORTE_ERROR_LOG(ret);
         OBJ_RELEASE(stats);
         OBJ_RELEASE(nstats);
-        OBJ_DESTRUCT(&v);
         return;
     }
 
@@ -577,7 +573,6 @@ static void generate_test_vector(opal_buffer_t *v)
     /* pack the node stats */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &nstats, 1, OPAL_NODE_STAT))) {
         ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&v);
         OBJ_RELEASE(stats);
         OBJ_RELEASE(nstats);
         return;
@@ -586,7 +581,6 @@ static void generate_test_vector(opal_buffer_t *v)
     /* pack the process stats */
     if (OPAL_SUCCESS != (ret = opal_dss.pack(v, &stats, 1, OPAL_PSTAT))) {
         ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&v);
         OBJ_RELEASE(stats);
         OBJ_RELEASE(nstats);
         return;

@@ -16,7 +16,8 @@ TEST(db_print, init_normal_file)
     int rc = ORCM_SUCCESS;
     const char *file_path = "/tmp/print_test.txt";
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
-    mod->file = (char*)file_path;
+    memset(mod, 0, sizeof(mca_db_print_module_t));
+    mod->file = strdup((char*)file_path);
     rc = mca_db_print_module.api.init((orcm_db_base_module_t*)mod);
     ASSERT_EQ(ORCM_SUCCESS, rc);
     mca_db_print_module.api.finalize((orcm_db_base_module_t*)mod);
@@ -25,6 +26,7 @@ TEST(db_print, init_normal_file)
 TEST(db_print, finalize_stdout_fp)
 {
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     mca_db_print_module.api.finalize((orcm_db_base_module_t*)mod);
 }
@@ -32,6 +34,7 @@ TEST(db_print, finalize_stdout_fp)
 TEST(db_print, finalize_stderr_fp)
 {
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stderr;
     mca_db_print_module.api.finalize((orcm_db_base_module_t*)mod);
 }
@@ -40,6 +43,7 @@ TEST(db_print, commit)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     rc = mca_db_print_module.api.commit((orcm_db_base_module_t*)mod);
     ASSERT_EQ(ORCM_SUCCESS, rc);
@@ -50,6 +54,7 @@ TEST(db_print, rollback)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stderr;
     rc = mca_db_print_module.api.rollback((orcm_db_base_module_t*)mod);
     ASSERT_EQ(ORCM_SUCCESS, rc);
@@ -60,6 +65,7 @@ TEST(db_print, record_diag_test_valid_diag_type_null_others)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     const char *diag_type = "cpu";
     rc = mca_db_print_module.api.record_diag_test((orcm_db_base_module_t*)mod, NULL, diag_type,
@@ -72,6 +78,7 @@ TEST(db_print, record_diag_test_valid_result_null_others)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     const char *test_result = "Success";
     rc = mca_db_print_module.api.record_diag_test((orcm_db_base_module_t*)mod, NULL, NULL, NULL,
@@ -84,6 +91,7 @@ TEST(db_print, record_data_samples_valid_hostname_null_others)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     const char *hostname = "RamdomeName";
     rc = mca_db_print_module.api.record_data_samples((orcm_db_base_module_t*)mod, hostname, NULL,
@@ -96,6 +104,7 @@ TEST(db_print, record_data_samples_valid_data_groups_null_others)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     const char *data_groups = "coretemp";
     rc = mca_db_print_module.api.record_data_samples((orcm_db_base_module_t*)mod, NULL, NULL,
@@ -108,6 +117,7 @@ TEST(db_print, record_data_samples_negative_time_usec)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
@@ -122,6 +132,7 @@ TEST(db_print, record_data_samples_larger_time_usec)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
@@ -136,6 +147,7 @@ TEST(db_print, record_data_samples_sample_null_key_null_unit)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     opal_list_t *list = OBJ_NEW(opal_list_t);
     orcm_value_t *mv = NULL;
@@ -156,6 +168,7 @@ TEST(db_print, update_node_features_valid_hostname_null_features)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     const char *hostname = "RandomName";
 
@@ -169,6 +182,7 @@ TEST(db_print, update_node_features_null_hostname_valid_features)
 {
     int rc = ORCM_SUCCESS;
     mca_db_print_module_t *mod = (mca_db_print_module_t*)malloc(sizeof(mca_db_print_module_t));
+    memset(mod, 0, sizeof(mca_db_print_module_t));
     mod->fp = stdout;
     opal_list_t *list = OBJ_NEW(opal_list_t);
     orcm_value_t *mv = NULL;

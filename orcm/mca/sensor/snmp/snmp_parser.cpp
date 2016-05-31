@@ -274,7 +274,9 @@ vector<string> snmpParser::expandLogicalGroup(string str)
 
     count = opal_argv_count(hosts);
 
-    return vector<string>(hosts, hosts+count);
+    vector<string> result(hosts, hosts+count);
+    opal_argv_free(hosts);
+    return result;
 }
 
 

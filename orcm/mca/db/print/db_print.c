@@ -11,6 +11,7 @@
 
 #include "orcm_config.h"
 #include "orcm/constants.h"
+#include "orcm/util/utils.h"
 
 #include <time.h>
 #include <string.h>
@@ -126,7 +127,7 @@ static void finalize(struct orcm_db_base_module_t *imod)
         stderr != mod->fp) {
         fclose(mod->fp);
     }
-
+    SAFEFREE(mod->file);
     free(mod);
 }
 

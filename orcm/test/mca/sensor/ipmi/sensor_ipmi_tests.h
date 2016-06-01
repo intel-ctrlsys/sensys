@@ -25,6 +25,7 @@ class ut_sensor_ipmi_tests: public testing::Test
     protected: // gtest required methods
         static void SetUpTestCase();
         static void TearDownTestCase();
+        virtual void SetUp();
 
     public: // Helper Functions
         static void populate_capsule(ipmi_capsule_t* capsule);

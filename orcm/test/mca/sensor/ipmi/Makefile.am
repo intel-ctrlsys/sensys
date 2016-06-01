@@ -45,7 +45,9 @@ ipmi_tests_SOURCES = \
 	ipmi_parser_tests.cpp \
 	ipmi_parser_tests.h \
 	ipmi_parser_interface_tests.cpp \
-	ipmi_parser_interface_tests.h
+	ipmi_parser_interface_tests.h \
+	sensor_ipmi_negative_mocks.cpp \
+	sensor_ipmi_negative_mocks.h
 
 MOCKING=\
 	-Wl,--wrap=rename \
@@ -54,7 +56,14 @@ MOCKING=\
 	-Wl,--wrap=ipmi_close \
 	-Wl,--wrap=opal_output_verbose \
 	-Wl,--wrap=getlogin_r \
-	-Wl,--wrap=geteuid
+	-Wl,--wrap=geteuid \
+	-Wl,--wrap=load_ipmi_config_file \
+	-Wl,--wrap=get_bmcs_for_aggregator \
+	-Wl,--wrap=opal_progress_thread_init \
+	-Wl,--wrap=get_sdr_cache \
+	-Wl,--wrap=find_sdr_next \
+	-Wl,--wrap=free_sdr_cache \
+	-Wl,--wrap=ipmi_cmd_mc
 
 #
 # Libraries we depend on

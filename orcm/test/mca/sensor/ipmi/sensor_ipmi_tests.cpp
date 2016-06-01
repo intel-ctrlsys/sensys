@@ -10,6 +10,7 @@
 
 #include "sensor_ipmi_tests.h"
 #include "sensor_ipmi_sel_mocked_functions.h"
+#include "sensor_ipmi_negative_mocks.h"
 
 // OPAL
 #include "opal/dss/dss.h"
@@ -64,6 +65,13 @@ void ut_sensor_ipmi_tests::TearDownTestCase()
 {
     // Release OPAL level resources
     opal_dss_close();
+}
+
+void ut_sensor_ipmi_tests::SetUp()
+{
+    is_load_ipmi_config_file_expected_to_succeed = true;
+    is_get_bmcs_for_aggregator_expected_to_succeed = true;
+    is_opal_progress_thread_init_expected_to_succeed = false;
 }
 
 // Helper functions
@@ -323,4 +331,109 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_start_stop_test)
     orcm_sensor_ipmi_module.finalize();
     mca_sensor_ipmi_component.use_progress_thread = false;
     mca_sensor_ipmi_component.test = false;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_start_twice)
+{
+    mca_sensor_ipmi_component.test = true;
+    mca_sensor_ipmi_component.use_progress_thread = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    // Call start twice
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+    mca_sensor_ipmi_component.use_progress_thread = false;
+    mca_sensor_ipmi_component.test = false;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_init_get_inventory_success){
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.finalize();
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_init_unable_to_load_ipmi_config_file){
+    is_load_ipmi_config_file_expected_to_succeed = false;
+    EXPECT_EQ(ORCM_ERROR, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.finalize();
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_init_unable_to_get_bmcs_for_aggregator){
+    is_get_bmcs_for_aggregator_expected_to_succeed = false;
+    EXPECT_EQ(ORCM_ERROR, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.finalize();
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_start_unable_to_start_thread){
+    mca_sensor_ipmi_component.test = true;
+    mca_sensor_ipmi_component.use_progress_thread = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    is_opal_progress_thread_init_expected_to_succeed = false;
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+    mca_sensor_ipmi_component.use_progress_thread = false;
+    mca_sensor_ipmi_component.test = false;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_set_and_get_sample_rate){
+    int sample_rate = 0;
+    int old_sample_rate = mca_sensor_ipmi_component.sample_rate;
+    int new_sample_rate = 100;
+
+    mca_sensor_ipmi_component.test = true;
+    mca_sensor_ipmi_component.use_progress_thread = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+
+    orcm_sensor_ipmi_module.set_sample_rate(new_sample_rate);
+    orcm_sensor_ipmi_module.get_sample_rate(&sample_rate);
+    EXPECT_EQ(sample_rate, new_sample_rate);
+    orcm_sensor_ipmi_module.finalize();
+
+    mca_sensor_ipmi_component.use_progress_thread = false;
+    mca_sensor_ipmi_component.test = false;
+    mca_sensor_ipmi_component.sample_rate = old_sample_rate;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_set_and_get_sample_rate_no_progress_thread){
+    int sample_rate = 0;
+    int new_sample_rate = 100;
+
+    mca_sensor_ipmi_component.test = true;
+    mca_sensor_ipmi_component.use_progress_thread = false;
+
+    orcm_sensor_ipmi_module.set_sample_rate(new_sample_rate);
+    orcm_sensor_ipmi_module.get_sample_rate(&sample_rate);
+    EXPECT_NE(sample_rate, new_sample_rate);
+
+    mca_sensor_ipmi_component.test = false;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_get_sample_rate_null_check){
+    orcm_sensor_ipmi_module.get_sample_rate(NULL);
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_start_with_sample_rate){
+    int old_sample_rate = mca_sensor_ipmi_component.sample_rate;
+    mca_sensor_ipmi_component.test = true;
+    mca_sensor_ipmi_component.use_progress_thread = true;
+
+    mca_sensor_ipmi_component.sample_rate = 100;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+
+    mca_sensor_ipmi_component.use_progress_thread = false;
+    mca_sensor_ipmi_component.test = false;
+    mca_sensor_ipmi_component.sample_rate = old_sample_rate;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_log_zero_hosts){
+    opal_buffer_t *sample = NULL;
+    int host_count = 0;
+    sample = OBJ_NEW(opal_buffer_t);
+    opal_dss.pack(sample, &host_count, 1, OPAL_INT);
+
+    orcm_sensor_ipmi_module.log(sample);
 }

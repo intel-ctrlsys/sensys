@@ -328,7 +328,7 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
     mkv = OBJ_NEW(orcm_value_t);
     mkv->value.type = OPAL_UINT;
     asprintf(&mkv->value.key, "sensor_dmidata_num_sockets");
-    ORCM_ON_FAILURE_GOTO(mkv->value.key, cleanup);
+    ORCM_ON_NULL_GOTO(mkv->value.key, cleanup);
     mkv->value.data.uint = socket_count;
     opal_list_append(newhost->records, (opal_list_item_t *)mkv);
 
@@ -338,7 +338,7 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
         if(NULL != (inv_key = check_inv_key(obj->infos[k].name, INVENTORY_KEY))) {
             mkv = OBJ_NEW(orcm_value_t);
             asprintf(&mkv->value.key, "sensor_dmidata_%s", inv_key);
-            ORCM_ON_FAILURE_GOTO(mkv->value.key, cleanup);
+            ORCM_ON_NULL_GOTO(mkv->value.key, cleanup);
             if(!strncmp(inv_key,"cpu_model_number",sizeof("cpu_model_number")) |
                !strncmp(inv_key,"cpu_family",sizeof("cpu_family"))) {
                 mkv->value.type = OPAL_INT;
@@ -548,7 +548,7 @@ static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata
         size = opal_argv_count(freq_list_token)-1;
         mkv = OBJ_NEW(orcm_value_t);
         asprintf(&mkv->value.key, "sensor_dmidata_total_freq_steps");
-        ORCM_ON_FAILURE_GOTO(mkv->value.key, cleanup);
+        ORCM_ON_NULL_GOTO(mkv->value.key, cleanup);
         mkv->value.type = OPAL_UINT;
         mkv->value.data.uint = size;
         opal_list_append(newhost->records, (opal_list_item_t *)mkv);
@@ -556,7 +556,7 @@ static void extract_cpu_freq_steps(char *freq_step_list, char *hostname, dmidata
         for(i = 0; i < size; i++) {
             mkv = OBJ_NEW(orcm_value_t);
             asprintf(&mkv->value.key,"sensor_dmidata_freq_step%d",i);
-            ORCM_ON_FAILURE_GOTO(mkv->value.key, cleanup);
+            ORCM_ON_NULL_GOTO(mkv->value.key, cleanup);
             mkv->value.type = OPAL_UINT;
             mkv->units = strdup("kHz");
             mkv->value.data.uint = strtol(freq_list_token[i],NULL,10);
@@ -726,9 +726,9 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
 
     /*Extract all required inventory items here */
     extract_baseboard_inventory(newhost->hwloc_topo, hostname, newhost);
+    extract_pci_inventory(newhost->hwloc_topo, hostname, newhost);
     extract_cpu_inventory(newhost->hwloc_topo, hostname, newhost);
     extract_cpu_freq_steps(freq_step_list, hostname, newhost);
-    extract_pci_inventory(newhost->hwloc_topo, hostname, newhost);
     extract_memory_inventory(newhost->hwloc_topo, hostname, newhost);
 
     /* Send the collected inventory details to the database for storage */

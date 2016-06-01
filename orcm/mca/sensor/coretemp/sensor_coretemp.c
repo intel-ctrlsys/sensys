@@ -115,25 +115,6 @@ typedef struct {
     int    count;
     time_t tstamp;
 } coretemp_history_t;
-static void hst_con(coretemp_history_t *hst)
-{
-    hst->hostname = NULL;
-    hst->core_no  = 0;
-    hst->hi_thres = true;
-    hst->severity = ORTE_NOTIFIER_INFO;
-    hst->count    = 0;
-    hst->tstamp   = 0;
-}
-static void hst_des(coretemp_history_t *hst)
-{
-    if (NULL != hst->hostname) {
-        free(hst->hostname);
-    }
-
-}
-OBJ_CLASS_INSTANCE(coretemp_history_t,
-                   opal_list_item_t,
-                   hst_con, hst_des);
 
 typedef struct {
     opal_list_item_t super;
@@ -144,6 +125,7 @@ typedef struct {
     float critical_temp;
     float max_temp;
 } coretemp_tracker_t;
+
 static void ctr_con(coretemp_tracker_t *trk)
 {
     trk->file = NULL;
@@ -170,7 +152,6 @@ static orcm_sensor_sampler_t *coretemp_sampler = NULL;
 static orcm_sensor_coretemp_t orcm_sensor_coretemp;
 
 static void generate_test_vector(opal_buffer_t *v);
-char **coretemp_policy_list; /* store coretemp policies from MCA parameter */
 
 static char *orte_getline(FILE *fp)
 {
@@ -185,206 +166,6 @@ static char *orte_getline(FILE *fp)
     }
 
     return NULL;
-}
-
-static int coretemp_load_policy(char *policy)
-{
-    char **tokens = NULL;
-    int array_length = 0;
-    orcm_sensor_policy_t *plc, *newplc;
-    bool found_me;
-    const char *sensor_name = "coretemp";
-    const char *action = NULL;
-    float threshold;
-    bool hi_thres;
-    int max_count, time_window;
-    orte_notifier_severity_t sev;
-    int ret;
-
-    ret = ORCM_ERR_BAD_PARAM;
-    tokens = opal_argv_split(policy, ':');
-    array_length = opal_argv_count(tokens);
-
-    if ( 6 == array_length ) {
-        threshold = (float)strtof(tokens[0], NULL);
-        if ( 0 == strcmp(tokens[1], "hi") ) {
-            hi_thres = true;
-        } else if ( 0 == strcmp(tokens[1], "lo") ) {
-            hi_thres = false;
-        } else {
-            goto done;
-        }
-
-        if (isdigit(tokens[2][strlen(tokens[2]) - 1])) {
-            max_count = (int)strtol(tokens[2], NULL, 10);
-        } else {
-            goto done;
-        }
-
-        if (isdigit(tokens[3][strlen(tokens[3]) - 1])) {
-            time_window = (int)strtol(tokens[3], NULL, 10);
-        } else {
-            goto done;
-        }
-
-        if ( 0 == strcmp(tokens[4], "emerg") ) {
-            sev = ORTE_NOTIFIER_EMERG;
-        } else if ( 0 == strcmp(tokens[4], "alert") ) {
-            sev = ORTE_NOTIFIER_ALERT;
-        } else if ( 0 == strcmp(tokens[4], "crit") ) {
-            sev = ORTE_NOTIFIER_CRIT;
-        } else if ( 0 == strcmp(tokens[4], "error") ) {
-            sev = ORTE_NOTIFIER_ERROR;
-        } else if ( 0 == strcmp(tokens[4], "warn") ) {
-            sev = ORTE_NOTIFIER_WARN;
-        } else if ( 0 == strcmp(tokens[4], "notice") ) {
-            sev = ORTE_NOTIFIER_NOTICE;
-        } else if ( 0 == strcmp(tokens[4], "info") ) {
-            sev = ORTE_NOTIFIER_INFO;
-        } else if ( 0 == strcmp(tokens[4], "debug") ) {
-            sev = ORTE_NOTIFIER_DEBUG;
-        } else {
-            goto done;
-        }
-
-        action = tokens[5];
-
-        /* look for sensor event policy; update with new setting or create new policy if not existing */
-        found_me = false;
-        OPAL_LIST_FOREACH(plc, &orcm_sensor_base.policy, orcm_sensor_policy_t) {
-            if ( (0 == strcmp(sensor_name, plc->sensor_name)) &&
-                 (hi_thres == plc->hi_thres ) &&
-                 (sev == plc->severity) ) {
-                found_me = true;
-                /* update existing policy */
-                plc->threshold = threshold;
-                plc->max_count = max_count;
-                plc->time_window = time_window;
-                plc->action = strdup(action);
-                break;
-            }
-        }
-
-        if ( !found_me ) {
-            /* matched policy not found, insert into policy list */
-            newplc = OBJ_NEW(orcm_sensor_policy_t);
-            newplc->sensor_name = strdup(sensor_name);
-            newplc->threshold = threshold;
-            newplc->hi_thres  = hi_thres;
-            newplc->max_count = max_count;
-            newplc->time_window = time_window;
-            newplc->severity  = sev;
-            newplc->action = strdup(action);
-
-            opal_list_append(&orcm_sensor_base.policy, &newplc->super);
-            opal_output(0, "Add policy: %s %.2f %s %d %d %d %s!",
-                                newplc->sensor_name, newplc->threshold, newplc->hi_thres ? "higher" : "lower",
-                                newplc->max_count, newplc->time_window, newplc->severity, newplc->action);
-        }
-        ret = ORCM_SUCCESS;
-
-    } else {
-        goto done;
-    }
-
-done:
-    opal_argv_free(tokens);
-    return ret;
-}
-
-static int coretemp_policy_filter(char *hostname, int core_no, float ct, time_t ts)
-{
-    orcm_sensor_policy_t *plc;
-    coretemp_history_t *hst, *newhst;
-    bool found_me;
-    const char *sev = NULL;
-    char *msg;
-
-    /* Check if this sample may be filtered
-     * We have to check for all policies, one single sample might trigger
-     * multiple events with different severity levels
-     */
-    OPAL_LIST_FOREACH(plc, &orcm_sensor_base.policy, orcm_sensor_policy_t) {
-        /* check for coretemp sensor type */
-        if ( 0 != strcmp(plc->sensor_name, "coretemp") ) {
-            continue;
-        }
-
-        if ( (plc->hi_thres && (ct < plc->threshold) ) ||
-             (!plc->hi_thres && (ct > plc->threshold) ) ) {
-            continue;
-        }
-
-        sev = orte_notifier_base_sev2str(plc->severity);
-
-        /* this sample should be accounted for this policy
-         * we have a candidate, let's check there is similar sample accounted in history or not
-         */
-        found_me = false;
-        OPAL_LIST_FOREACH(hst, &event_history, coretemp_history_t) {
-            /* check for any matching record in history list */
-            /* match by host name and core number */
-            if (   hst->tstamp &&
-                 ( 0 == strcmp(hostname, hst->hostname) ) &&
-                 ( core_no == hst->core_no ) &&
-                 ( plc->hi_thres == hst->hi_thres ) &&
-                 ( plc->severity == hst->severity) ) {
-                found_me = true;
-                /* this sample pattern has been captured in history
-                 * let's test the time windows expiration
-                 */
-                if ( (hst->tstamp + plc->time_window) < ts ) {
-                    /* Matching history record had expired, just overwrite it */
-                    hst->count = 1;
-                    hst->tstamp = ts;
-                } else {
-                    hst->count++;
-                }
-
-                /* filter policy threshold reached */
-                if ( hst->count >= plc->max_count ) {
-                    /* fire an event */
-                    asprintf(&msg, "host: %s core %d temperature %f °C, %s than or equal to threshold %f °C for %d times in %d seconds",
-                                    hostname, core_no, ct, plc->hi_thres ? "higher" : "lower",
-                                    plc->threshold, plc->max_count, plc->time_window);
-                    ORTE_NOTIFIER_SYSTEM_EVENT(plc->severity, msg, plc->action);
-                    opal_output(0, "host: %s core %d temperature %f °C, %s than or equal to threshold %f °C for %d times in %d seconds, trigger %s event!",
-                                    hostname, core_no, ct, plc->hi_thres ? "higher" : "lower",
-                                    plc->threshold, plc->max_count, plc->time_window, sev);
-                    /* stop watching for this history record, remove from list */
-                    opal_list_remove_item(&event_history, &hst->super);
-                }
-
-                break;
-            }
-        }
-
-        if ( !found_me ) {
-            /* matched sample not seen before, insert into history list */
-            if ( 1 == plc->max_count ) {
-                /* fire an event right away, no need to store in history list */
-                asprintf(&msg, "host: %s core %d temperature %f °C, %s than or equal to threshold %f °C for %d times in %d seconds",
-                                    hostname, core_no, ct, plc->hi_thres ? "higher" : "lower",
-                                    plc->threshold, plc->max_count, plc->time_window);
-                ORTE_NOTIFIER_SYSTEM_EVENT(plc->severity, msg, plc->action);
-                opal_output(0, "host: %s Core %d temperature %f °C, %s than or equal to threshold %f °C for %d times in %d seconds, trigger %s event!",
-                                    hostname, core_no, ct, plc->hi_thres ? "higher" : "lower",
-                                    plc->threshold, plc->max_count, plc->time_window, sev);
-            } else {
-                newhst = OBJ_NEW(coretemp_history_t);
-                newhst->hostname = strdup(hostname);
-                newhst->core_no = core_no;
-                newhst->hi_thres = plc->hi_thres;
-                newhst->severity = plc->severity;
-                newhst->count = 1;
-                newhst->tstamp = ts;
-                opal_list_append(&event_history, &newhst->super);
-            }
-        }
-    }
-
-
-  return 1;
 }
 
 /* FOR FUTURE: extend to read cooling device speeds in
@@ -417,23 +198,6 @@ static int init(void)
     /* always construct this so we don't segfault in finalize */
     OBJ_CONSTRUCT(&tracking, opal_list_t);
     OBJ_CONSTRUCT(&event_history, opal_list_t);
-
-    /* get policy from MCA parameters */
-    if( NULL != mca_sensor_coretemp_component.policy ) {
-        coretemp_policy_list = opal_argv_split(mca_sensor_coretemp_component.policy, ',');
-    }
-
-    /* load policies */
-    for(i =0; i <opal_argv_count(coretemp_policy_list); i++) {
-        ret = coretemp_load_policy(coretemp_policy_list[i]);
-        if ( ORCM_SUCCESS != ret ) {
-            opal_output_verbose(2, orcm_sensor_base_framework.framework_output,
-                                "%s failed loading coretemp policy - %s",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                coretemp_policy_list[i]);
-        }
-    }
-    opal_argv_free(coretemp_policy_list);
 
     /*
      * Open up the base directory so we can get a listing
@@ -994,8 +758,6 @@ static void coretemp_log(opal_buffer_t *sample)
             return;
         }
         SAFEFREE(core_label);
-        /* check coretemp event policy */
-        /* coretemp_policy_filter(hostname, idx, fval, sampletime.tv_sec); */
     }
 
     orcm_analytics.send_data(analytics_vals);

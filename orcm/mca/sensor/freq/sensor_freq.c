@@ -724,7 +724,6 @@ static void freq_log(opal_buffer_t *sample)
             freq_get_units(label,&units);
             rc = orcm_util_append_orcm_value(analytics_vals->compute_data,
                                              label, &uival, OPAL_UINT, units);
-            SAFEFREE(units);
             ORCM_ON_FAILURE_GOTO(rc,cleanup);
         }
         SAFEFREE(label);

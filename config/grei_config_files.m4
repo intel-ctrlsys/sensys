@@ -30,6 +30,7 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/mca/sensor/snmp/Makefile
     orcm/test/mca/sensor/file/Makefile
     orcm/test/mca/sensor/errcounts/Makefile
+    orcm/test/mca/sensor/heartbeat/Makefile
     orcm/test/mca/analytics/Makefile
     orcm/test/mca/analytics/base/Makefile
     orcm/test/mca/analytics/util/Makefile

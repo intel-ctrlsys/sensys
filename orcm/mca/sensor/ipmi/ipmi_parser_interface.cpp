@@ -111,13 +111,4 @@ extern "C" {
 
         return true;
     }
-
-    // Utilitary function for releasing an array of BMC info
-    void release_bmc_list(ipmi_collector** bmc_list, int n)
-    {
-        for (int i = 0; i < n; ++i) {
-            SAFE_RELEASE(bmc_list[i]);
-        }
-        SAFE_RELEASE(bmc_list);
-    }
 }

@@ -62,7 +62,7 @@ Prefix: /opt/openrcm
 %{!?config_platform: %define config_platform --with-platform=contrib/platform/intel/hillsboro/orcm-linux}
 
 %if 0%{?suse_version} > 1220
-%{!?config_postgres: %define config_postgres --with-postgres=%{_oldincludedir}/pgsql}
+%{!?config_postgres: %define config_postgres --with-postgres=%{_usr}/lib/postgresql93}
 %else
 %{!?config_postgres: %define config_postgres --with-postgres=%{_usr}/pgsql-9.3}
 %endif

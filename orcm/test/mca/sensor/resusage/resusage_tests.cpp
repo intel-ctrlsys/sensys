@@ -263,8 +263,8 @@ TEST_F(ut_resusage_tests, res_log_second_unpack_fail)
     opal_dss.pack(test_buffer, &test_string, 1, OPAL_STRING);
     opal_dss.pack(test_buffer, &test_string, 1, OPAL_STRING);
     orcm_sensor_resusage_module.log(test_buffer);
-    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER,
-              opal_dss.unpack(test_buffer, &tmp, &n, OPAL_STRING));
+    EXPECT_EQ(OPAL_ERR_UNPACK_FAILURE, opal_dss.unpack(test_buffer, &tmp, &n,
+                                                       OPAL_STRING));
 }
 
 TEST_F(ut_resusage_tests, res_log_third_unpack_fail)
@@ -281,8 +281,8 @@ TEST_F(ut_resusage_tests, res_log_third_unpack_fail)
     opal_dss.pack(test_buffer, &test_time, 1, OPAL_TIMEVAL);
     opal_dss.pack(test_buffer, &test_string, 1, OPAL_STRING);
     orcm_sensor_resusage_module.log(test_buffer);
-    EXPECT_EQ(OPAL_ERR_UNPACK_READ_PAST_END_OF_BUFFER,
-              opal_dss.unpack(test_buffer, &tmp, &n, OPAL_STRING));
+    EXPECT_EQ(OPAL_ERR_UNPACK_FAILURE, opal_dss.unpack(test_buffer, &tmp, &n,
+                                                       OPAL_STRING));
 }
 
 TEST_F(ut_resusage_tests, res_log_node_stats_valid)
@@ -318,10 +318,10 @@ TEST_F(ut_resusage_tests, resusage_component_open_query_close)
     mca_base_open_flag_t test_open_flag = (mca_base_open_flag_t)0;
     putenv((char *)string1);
     putenv((char *)string2);
-    opal_init_test();
+
+
     EXPECT_EQ(ORCM_SUCCESS, mca_base_framework_open(
                   &orcm_sensor_base_framework, test_open_flag));
     EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_base_select());
     EXPECT_EQ(ORCM_SUCCESS, mca_base_framework_close(&orcm_sensor_base_framework));
-    opal_finalize_util();
 }

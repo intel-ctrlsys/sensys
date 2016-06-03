@@ -1104,7 +1104,7 @@ static int sigar_collect_procstat(opal_list_t* data)
         }
 
         if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "vsize")) {
-            item = orcm_util_load_orcm_value("vsize", &stats->vsize, OPAL_FLOAT, "Mbytes");
+            item = orcm_util_load_orcm_value("vsize", &stats->vsize, OPAL_FLOAT, "bytes");
             if(NULL == item) {
                 ORCM_RELEASE(stats);
                 return ORCM_ERR_OUT_OF_RESOURCE;
@@ -1113,7 +1113,7 @@ static int sigar_collect_procstat(opal_list_t* data)
         }
 
         if(orcm_sensor_base_runtime_metrics_do_collect(mca_sensor_sigar_component.runtime_metrics, "rss")) {
-            item = orcm_util_load_orcm_value("rss", &stats->rss, OPAL_FLOAT, "Mbytes");
+            item = orcm_util_load_orcm_value("rss", &stats->rss, OPAL_FLOAT, "bytes");
             if(NULL == item) {
                 ORCM_RELEASE(stats);
                 return ORCM_ERR_OUT_OF_RESOURCE;

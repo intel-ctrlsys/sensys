@@ -187,12 +187,12 @@ static int init(void)
     }
 
     if (!load_ipmi_config_file()) {
-        opal_output(0, "Unable to load ipmi configuration");
+        opal_output(0, "Unable to load ipmi configuration.");
         return ORCM_ERROR;
     }
 
     if (!get_bmcs_for_aggregator(orte_process_info.nodename, &bmc_list, &number_of_nodes)) {
-        opal_output(0, "Unable to collect ipmi configuration");
+        opal_output(0, "No BMCs available for node %s.", orte_process_info.nodename);
         return ORCM_ERROR;
     }
 
@@ -209,7 +209,7 @@ static int init(void)
 
     rc = orcm_sensor_ipmi_get_sensor_inventory_list(&sensor_inventory);
     if(rc != ORCM_SUCCESS) {
-        opal_output(0, "Unable to collect the current sensor inventory");
+        opal_output(0, "A problem with inventory collection has been detected");
         return ORCM_ERROR;
     }
     have_sensor_inventory = true;
@@ -1090,7 +1090,6 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                     ORCM_RELEASE(newhost);
                 }
             } else {
-                newhost->nodename = strdup(hostname);
                 kv = orcm_util_load_opal_value("hostname", newhost->nodename, OPAL_STRING);
                 ORCM_ON_NULL_GOTO(kv, cleanup);
 
@@ -1351,8 +1350,9 @@ void collect_ipmi_subsequent_data(orcm_sensor_sampler_t* sampler)
 
     OPAL_LIST_FOREACH_SAFE(host, nxt, &sensor_active_hosts, orcm_sensor_hosts_t) {
         if(ORCM_SUCCESS != (rc = collect_ipmi_subsequent_data_for_host(&data, host))) {
-            opal_output(0, "WARNING: A problem occurred sampling host %s. ",
+            opal_output(0, "WARNING: A problem occurred sampling host %s. Disabling data collection.",
                             host->capsule.node.name);
+            opal_list_remove_item (&sensor_active_hosts, (opal_list_item_t *) host);
         }
     }
 
@@ -1751,8 +1751,9 @@ static int orcm_sensor_ipmi_get_sensor_inventory_list(opal_list_t *inventory_lis
     OPAL_LIST_FOREACH_SAFE(host, nxt, &sensor_active_hosts, orcm_sensor_hosts_t) {
         rc = get_sensor_inventory_list_from_node(inventory_list, host);
         if(ORCM_SUCCESS != rc) {
-            opal_output(0, "WARNING: A problem occurred while gathering inventory from host %s. ",
+            opal_output(0, "WARNING: A problem occurred while gathering inventory from host %s. Disabling data collection.",
                             host->capsule.node.name);
+            opal_list_remove_item (&sensor_active_hosts, (opal_list_item_t *) host);
         }
     }
 
@@ -1771,7 +1772,7 @@ static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, orcm
     cap = &host->capsule;
 
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
-                        "Gathering local ipmi sensors for inventory");
+                        "Gathering ipmi sensors for inventory for node %s.", cap->node.name);
     ret = set_lan_options(cap->node.bmc_ip, cap->node.user, cap->node.pasw, cap->node.auth, cap->node.priv, cap->node.ciph, &addr, 16);
 
     if (ret) {
@@ -1782,7 +1783,7 @@ static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, orcm
                            cap->node.name, cap->node.bmc_ip,
                            cap->node.user, "*****", cap->node.auth,
                            cap->node.priv, cap->node.ciph, error_string);
-        opal_output(0, "Failed to get sensor inventory data!");
+        opal_output(0, "Failed to get sensor inventory data for node %s.", cap->node.name );
         return ORCM_ERROR;
     }
 
@@ -1797,6 +1798,7 @@ static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, orcm
                        cap->node.user, "*****", cap->node.auth,
                        cap->node.priv, cap->node.ciph, error_string);
         opal_output(0, "Failed to get sensor inventory data!");
+
         return ORCM_ERROR;
     } else {
         unsigned short int id = 0;

@@ -36,6 +36,16 @@ vardata::vardata(int64_t value) {
     data.int64 = value;
 }
 
+vardata::vardata(uint32_t value) {
+    type = OPAL_UINT32;
+    data.int32 = value;
+}
+
+vardata::vardata(uint64_t value) {
+    type = OPAL_UINT64;
+    data.int64 = value;
+}
+
 vardata::vardata(const struct timeval& value) {
     type = OPAL_TIMEVAL;
     data.tv = value;
@@ -45,6 +55,8 @@ template int32_t vardata::getValue<int32_t>();
 template float   vardata::getValue<float>();
 template double  vardata::getValue<double>();
 template int64_t vardata::getValue<int64_t>();
+template uint32_t vardata::getValue<uint32_t>();
+template uint64_t vardata::getValue<uint64_t>();
 
 template <> string vardata::getValue<string>() {
     return strData;
@@ -178,6 +190,12 @@ vardata getUnpackedData(opal_buffer_t *buffer, opal_data_type_t localType, strin
                 break;
             case OPAL_INT64:
                 return vardata(localData.int64).setKey(key);
+                break;
+            case OPAL_UINT32:
+                return vardata(localData.uint32).setKey(key);
+                break;
+            case OPAL_UINT64:
+                return vardata(localData.uint64).setKey(key);
                 break;
             case OPAL_TIMEVAL:
                 return vardata(localData.tv).setKey(key);

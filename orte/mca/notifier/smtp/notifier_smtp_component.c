@@ -63,10 +63,10 @@ orte_notifier_smtp_component_t mca_notifier_smtp_component = {
 
 static int smtp_register(void)
 {
-    char version[256];
+    static char version[256];
 
     /* Server stuff */
-    mca_notifier_smtp_component.server = strdup("localhost");
+    mca_notifier_smtp_component.server = "localhost";
     (void) mca_base_component_var_register(&mca_notifier_smtp_component.super.base_version, "server",
                                            "SMTP server name or IP address",
                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
@@ -97,14 +97,14 @@ static int smtp_register(void)
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_notifier_smtp_component.from_addr);
-    mca_notifier_smtp_component.from_name = strdup("ORTE Notifier");
+    mca_notifier_smtp_component.from_name = "ORTE Notifier";
     (void) mca_base_component_var_register(&mca_notifier_smtp_component.super.base_version, "from_name",
                                            "Email name that messages will be from",
                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_notifier_smtp_component.from_name);
-    mca_notifier_smtp_component.subject = strdup("ORTE Notifier");
+    mca_notifier_smtp_component.subject = "ORTE Notifier";
     (void) mca_base_component_var_register(&mca_notifier_smtp_component.super.base_version, "subject",
                                            "Email subject",
                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
@@ -113,14 +113,14 @@ static int smtp_register(void)
                                            &mca_notifier_smtp_component.subject);
 
     /* Mail body prefix and suffix */
-    mca_notifier_smtp_component.body_prefix = strdup("The ORTE SMTP notifier wishes to inform you of the following message:\n\n");
+    mca_notifier_smtp_component.body_prefix = "The ORTE SMTP notifier wishes to inform you of the following message:\n\n";
     (void) mca_base_component_var_register(&mca_notifier_smtp_component.super.base_version, "body_prefix",
                                            "Text to put at the beginning of the mail message",
                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_notifier_smtp_component.body_prefix);
-    mca_notifier_smtp_component.body_suffix = strdup("\n\nSincerely,\nOscar the ORTE Owl");
+    mca_notifier_smtp_component.body_suffix = "\n\nSincerely,\nOscar the ORTE Owl";
     (void) mca_base_component_var_register(&mca_notifier_smtp_component.super.base_version, "body_suffix",
                                            "Text to put at the end of the mail message",
                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
@@ -139,7 +139,7 @@ static int smtp_register(void)
     /* Libesmtp version */
     smtp_version(version, sizeof(version), 0);
     version[sizeof(version) - 1] = '\0';
-    mca_notifier_smtp_component.version = strdup(version);
+    mca_notifier_smtp_component.version = version;
     (void) mca_base_component_var_register(&mca_notifier_smtp_component.super.base_version, "libesmtp_version",
                                            "Version of libesmtp that this component is linked against",
                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,

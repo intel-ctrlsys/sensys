@@ -89,6 +89,7 @@ static int orcm_db_base_frame_close(void)
         if (NULL != active->component->finalize) {
             active->component->finalize();
         }
+        OBJ_RELEASE(active);
     }
     OPAL_LIST_DESTRUCT(&orcm_db_base.actives);
 

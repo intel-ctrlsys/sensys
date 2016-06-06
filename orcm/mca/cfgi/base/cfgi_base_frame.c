@@ -44,8 +44,10 @@ orcm_cfgi_API_module_t orcm_cfgi = {
 
 static int orcm_cfgi_base_register(mca_base_register_flag_t flags)
 {
+    static char config_filename[1024];
     /* check for file name */
-    asprintf(&orcm_cfgi_base.config_file, "%s/etc/orcm-site.xml", opal_install_dirs.prefix);
+    sprintf(config_filename, "%s/etc/orcm-site.xml", opal_install_dirs.prefix);
+    orcm_cfgi_base.config_file = (char*)config_filename;
     (void) mca_base_var_register("orcm", "cfgi", "base", "config_file",
                                  "ORCM configuration file",
                                  MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,

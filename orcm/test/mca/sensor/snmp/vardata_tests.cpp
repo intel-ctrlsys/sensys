@@ -61,6 +61,20 @@ TEST_F(ut_vardata_constructor_tests, test_int64_t) {
     ASSERT_TRUE( i == probe.getValue<int64_t>());
 }
 
+TEST_F(ut_vardata_constructor_tests, test_uint32_t) {
+    const uint32_t i = 31416;
+    vardata probe = vardata(i);
+    ASSERT_EQ(OPAL_UINT32, probe.getDataType());
+    ASSERT_TRUE( i == probe.getValue<uint32_t>());
+}
+
+TEST_F(ut_vardata_constructor_tests, test_uint64_t) {
+    const uint64_t i = 314159265;
+    vardata probe = vardata(i);
+    ASSERT_EQ(OPAL_UINT64, probe.getDataType());
+    ASSERT_TRUE( i == probe.getValue<uint64_t>());
+}
+
 TEST_F(ut_vardata_constructor_tests, test_timestamp) {
     ASSERT_TRUE(true);
     struct timeval current_time;

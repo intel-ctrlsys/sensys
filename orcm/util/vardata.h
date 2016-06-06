@@ -55,6 +55,8 @@ class vardata {
     vardata(double value);
     vardata(int32_t value);
     vardata(int64_t value);
+    vardata(uint32_t value);
+    vardata(uint64_t value);
     vardata(const struct timeval& tv);
 
     vardata& setKey(const std::string& k) { key = k; return *this; };

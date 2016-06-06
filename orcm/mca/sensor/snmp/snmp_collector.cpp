@@ -11,6 +11,8 @@
 
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 
+#include <arpa/inet.h>
+
 using namespace std;
 
 snmpCollector::snmpCollector() : runtime_metrics_(NULL) {
@@ -171,8 +173,14 @@ vector<vardata> snmpCollector::packCollectedData(netsnmp_pdu *response) {
     for(netsnmp_variable_list *vars = response->variables; vars; vars = vars->next_variable) {
         vardata *var;
         string strData;
+        struct in_addr addr;
 
         switch(vars->type) {
+           case ASN_IPADDRESS:
+                addr.s_addr = *vars->val.integer;
+                strData = string( inet_ntoa(addr) );
+                var = new vardata(strData);
+                break;
            case ASN_OCTET_STR:
                 strData = string( (char*) vars->val.string, vars->val_len);
                 var = new vardata(strData);
@@ -180,11 +188,19 @@ vector<vardata> snmpCollector::packCollectedData(netsnmp_pdu *response) {
             case ASN_INTEGER:
                 var = new vardata(*vars->val.integer);
                 break;
+            case ASN_COUNTER:
+            case ASN_GAUGE:
+            case ASN_TIMETICKS:
+                var = new vardata(*(uint32_t*)vars->val.integer);
+                break;
             case ASN_OPAQUE_FLOAT:
                 var = new vardata(*vars->val.floatVal);
                 break;
             case ASN_OPAQUE_DOUBLE:
                 var = new vardata(*vars->val.doubleVal);
+                break;
+            case ASN_OPAQUE_COUNTER64:
+                var = new vardata(vars->val.counter64->high);
                 break;
             default:
                 var = new vardata(string("Unsupported data type"));

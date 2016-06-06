@@ -30,7 +30,19 @@ check_PROGRAMS = odbc_tests
 
 odbc_tests_SOURCES = \
     db_odbc_test.cpp \
-    db_odbc_test.h
+    db_odbc_test_mocking.cpp \
+    db_odbc_test.h \
+    db_odbc_test_mocking.h
+
+MOCKING = \
+    -Wl,--wrap=SQLAllocHandle \
+    -Wl,--wrap=SQLSetEnvAttr \
+    -Wl,--wrap=SQLSetConnectAttr \
+    -Wl,--wrap=SQLConnect \
+    -Wl,--wrap=SQLPrepare \
+    -Wl,--wrap=SQLBindParameter \
+    -Wl,--wrap=SQLExecute \
+    -Wl,--wrap=SQLEndTran
 
 ODBC_BUILD_DIR=$(top_builddir)/orcm/mca/db/odbc
 
@@ -54,7 +66,7 @@ LDADD = \
     $(ODBC_LIB) \
     $(ANALYTICS_UTIL_LIB_DIR)/analytics_util.o
 
-AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto -lipmiutil -lodbc
+AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto -lipmiutil -lodbc $(MOCKING)
 
 #
 # Preprocessor flags

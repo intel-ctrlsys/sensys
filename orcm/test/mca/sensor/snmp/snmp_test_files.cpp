@@ -117,7 +117,7 @@ int testFiles::writeTestFiles()
     return ret;
 }
 
-inline int testFiles::removeFile(const string& file)
+int testFiles::removeFile(const string& file)
 {
     return system((string("rm  ") + file).c_str());
 }

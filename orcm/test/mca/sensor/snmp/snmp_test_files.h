@@ -40,7 +40,7 @@ class testFiles {
         int restoreBackupFile(const string& file);
         inline bool fileExists(const string& file);
         int createBakFile(const string& file, const string& bakFile, unsigned int permissions);
-        inline int removeFile(const string& file);
+        int removeFile(const string& file);
 };
 
 extern testFiles testFilesObj;

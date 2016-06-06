@@ -778,7 +778,7 @@ void orcm_util_release_nested_orcm_value_list_item(orcm_value_t **item)
             orcm_util_release_nested_orcm_value_list((opal_list_t *) (*item)->value.data.ptr);
             (*item)->value.data.ptr = NULL;
         }
-        SAFE_RELEASE(*item);
+        ORCM_RELEASE(*item);
     }
 }
 
@@ -790,6 +790,6 @@ void orcm_util_release_nested_orcm_value_list(opal_list_t *list)
             opal_list_remove_item(list, (opal_list_item_t *) item);
             orcm_util_release_nested_orcm_value_list_item(&item);
         }
-        OPAL_LIST_RELEASE(list);
+        ORCM_RELEASE(list);
     }
 }

@@ -34,9 +34,13 @@ PY_LOG_COMPILER = /usr/bin/python
 check_PROGRAMS = sigar_tests
 
 sigar_tests_SOURCES = \
-	sigar_tests.cpp
+    sigar_tests.cpp \
+    sigar_tests.h \
+    sigar_mocked_functions.cpp \
+    sigar_mocked_functions.h
 
-MOCKING =
+MOCKING = \
+    -Wl,--wrap=orcm_sensor_base_runtime_metrics_do_collect
 
 #
 # Libraries we depend on

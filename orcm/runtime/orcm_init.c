@@ -59,6 +59,8 @@ const char orcm_version_string[] = ORCM_IDENT_STRING;
 
 char *orcm_event_exec_path = NULL;
 
+char *orcm_proc_hostname = NULL;
+
 int orcm_init(orcm_proc_type_t flags)
 {
     int ret;

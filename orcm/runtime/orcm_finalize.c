@@ -51,6 +51,7 @@ int orcm_finalize(void)
         OBJ_RELEASE(orcm_schedulers);
     }
     SAFEFREE(orcm_event_exec_path);
+    SAFEFREE(orcm_proc_hostname);
 
     (void)orte_ess.finalize();
 

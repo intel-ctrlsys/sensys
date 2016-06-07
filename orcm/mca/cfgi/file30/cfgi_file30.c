@@ -1409,6 +1409,7 @@ static bool check_me(orcm_config_t *config, char *node,
     bool node_itself = false;
     char *this_ip = NULL;
     struct hostent *h = NULL;
+    int rc = ORCM_SUCCESS;
 
     if (NULL == (h = gethostbyname(node))) {
         this_ip = node;
@@ -1434,6 +1435,12 @@ static bool check_me(orcm_config_t *config, char *node,
             opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
                                 "push our port %s", uri);
             node_itself = true;
+        }
+    }
+
+    if (node_itself) {
+        if (ORCM_SUCCESS != (rc = orcm_set_proc_hostname(node))) {
+            ORTE_ERROR_LOG(rc);
         }
     }
 

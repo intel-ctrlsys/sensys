@@ -39,6 +39,25 @@ int orcm_dt_init(void)
     return ORCM_SUCCESS;
 }
 
+int orcm_set_proc_hostname(char *hostname)
+{
+    int rc = ORCM_SUCCESS;
+
+    if (NULL == orcm_proc_hostname) {
+        orcm_proc_hostname = strdup(hostname);
+        if (NULL == orcm_proc_hostname) {
+            rc = ORCM_ERR_OUT_OF_RESOURCE;
+        }
+    }
+
+    return rc;
+}
+
+char *orcm_get_proc_hostname()
+{
+    return orcm_proc_hostname;
+}
+
 const char *orcm_node_state_to_str(orcm_node_state_t state)
 {
     char *s;

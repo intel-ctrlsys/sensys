@@ -172,6 +172,9 @@ ORCM_DECLSPEC extern int orcm_debug_verbosity;
 
 ORCM_DECLSPEC extern char *orcm_event_exec_path;
 
+/* the logical hostname where the daemon is running */
+ORCM_DECLSPEC extern char *orcm_proc_hostname;
+
 /* extend the ORTE RML tags to add ORCM DAEMONS tags */
 /* scheduler */
 #define ORCM_RML_TAG_SCD           (ORTE_RML_TAG_MAX + 1)
@@ -212,6 +215,11 @@ ORCM_DECLSPEC extern opal_list_t *orcm_schedulers;
  * Init the ORCM datatype support
  */
 ORCM_DECLSPEC int orcm_dt_init(void);
+
+/* APIs to set/get the hostname where the daemon is running
+ * */
+ORCM_DECLSPEC int orcm_set_proc_hostname(char *hostname);
+ORCM_DECLSPEC char *orcm_get_proc_hostname(void);
 
 const char *orcm_node_state_to_str(orcm_node_state_t state);
 const char *orcm_node_state_to_char(orcm_node_state_t state);

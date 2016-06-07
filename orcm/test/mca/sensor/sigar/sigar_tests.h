@@ -21,6 +21,8 @@ class ut_sigar_tests: public testing::Test
         // gtest fixture required methods
         static void SetUpTestCase();
         static void TearDownTestCase();
+        virtual void SetUp();
+        virtual void TearDown();
 }; // class
 
 #endif // SIGAR_TESTS_H

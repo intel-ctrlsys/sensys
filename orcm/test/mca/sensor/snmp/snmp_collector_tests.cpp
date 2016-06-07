@@ -74,6 +74,7 @@ using namespace std;
 
 char dataStr[] = "jelou";
 int long dataInt = 9;
+uint32_t dataUint = 9;
 int long dataIp = 570534080;
 char dataIpAddr[] = "192.168.1.34";
 float dataFloat = 9.9;
@@ -376,22 +377,19 @@ int ut_snmp_collector_tests::SnmpSynchResponse(netsnmp_session *session,
     t_counter->name = (oid*)strdup("myCounter");
     t_counter->name_length = strlen((char*)t_counter->name);
     t_counter->type = ASN_COUNTER;
-    t_counter->val.integer = new long;
-    *t_counter->val.integer = dataInt;
+    t_counter->val.integer = (long*) &dataUint;
     t_counter->next_variable = t_gauge;
 
     t_gauge->name = (oid*)strdup("myGauge");
     t_gauge->name_length = strlen((char*)t_gauge->name);
     t_gauge->type = ASN_INTEGER;
-    t_gauge->val.integer = new long;
-    *t_gauge->val.integer = dataInt;
+    t_gauge->val.integer = (long*) &dataUint;
     t_gauge->next_variable = t_timeticks;
 
     t_timeticks->name = (oid*)strdup("myTimeticks");
     t_timeticks->name_length = strlen((char*)t_timeticks->name);
     t_timeticks->type = ASN_INTEGER;
-    t_timeticks->val.integer = new long;
-    *t_timeticks->val.integer = dataInt;
+    t_timeticks->val.integer = (long*) &dataUint;
     t_timeticks->next_variable = NULL;
 
     (*response)->variables = t_str;
@@ -693,10 +691,9 @@ void ut_snmp_collector_tests::sample_check(opal_buffer_t *bucket)
     str = collected_samples[6].getValue<char*>();
     ASSERT_STREQ(dataIpAddr, str);
 
-    ASSERT_EQ(collected_samples[7].getValue<int64_t>(), dataInt);
-    ASSERT_EQ(collected_samples[8].getValue<int64_t>(), dataInt);
-    ASSERT_EQ(collected_samples[9].getValue<int64_t>(), dataInt);
-
+    ASSERT_EQ(collected_samples[7].getValue<uint32_t>(), dataUint);
+    ASSERT_EQ(collected_samples[8].getValue<uint32_t>(), dataUint);
+    ASSERT_EQ(collected_samples[9].getValue<uint32_t>(), dataUint);
 
     OBJ_RELEASE(buf);
 }

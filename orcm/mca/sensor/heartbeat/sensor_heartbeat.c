@@ -104,6 +104,7 @@ static void finalize(void)
         opal_event_del(&check_ev);
         check_active = false;
     }
+    daemons = NULL;
     return;
 }
 
@@ -191,6 +192,13 @@ static void check_heartbeat(int fd, short dummy, void *arg)
                              orte_finalizing ? "TRUE" : "FALSE",
                              orte_initialized ? "TRUE" : "FALSE"));
         check_active = false;
+        return;
+    }
+
+    if (NULL == daemons || NULL == daemons->procs) {
+        OPAL_OUTPUT_VERBOSE((3,  orcm_sensor_base_framework.framework_output,
+                             "%s IGNORING CHECK can not get procs info.",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
         return;
     }
     

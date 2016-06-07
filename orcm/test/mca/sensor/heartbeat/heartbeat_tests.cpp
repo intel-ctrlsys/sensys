@@ -12,6 +12,11 @@
 
 #include "opal/dss/dss.h"
 
+extern "C" {
+    #include "orcm/mca/sensor/heartbeat/sensor_heartbeat.c"
+    #include "opal/mca/event/event.h"
+}
+
 using namespace std;
 
 int ut_heartbeat_tests::last_orte_error_ = ORCM_SUCCESS;
@@ -125,6 +130,10 @@ orte_job_t* ut_heartbeat_tests::OrteGetJobDataObject(orte_jobid_t job)
     return orte_job;
 }
 
+void callback_event_fn (evutil_socket_t es, short s, void *arg)
+{
+}
+
 //
 // TESTS
 //
@@ -135,6 +144,7 @@ TEST_F(ut_heartbeat_tests, init_noHPN_noAGREGATOR)
     orte_process_info.proc_type = 0;
 
     EXPECT_EQ(ORCM_SUCCESS,orcm_sensor_heartbeat_module.init());
+    orcm_sensor_heartbeat_module.finalize();
 
     orte_process_info.proc_type = current_type;
 }
@@ -151,10 +161,10 @@ TEST_F(ut_heartbeat_tests, sample_orte_finalizing)
     orte_finalizing = orte_finalizing_value;
 }
 
-TEST_F(ut_heartbeat_tests, sample_orte_initialized)
+TEST_F(ut_heartbeat_tests, sample_orte_not_initialized)
 {
     bool orte_initialized_value = orte_initialized;
-    orte_initialized = true;
+    orte_initialized = false;
     orcm_sensor_sampler_t *sampler = OBJ_NEW(orcm_sensor_sampler_t);
 
     orcm_sensor_heartbeat_module.sample(sampler);
@@ -229,10 +239,62 @@ TEST_F(ut_heartbeat_tests, api_proc_type_HPN)
     orte_proc_type_t current_type = orte_process_info.proc_type;
     orte_process_info.proc_type = ORTE_PROC_HNP;
     orte_jobid_t job = 4444;
+    bool orte_initialized_value = orte_initialized;
+    orte_initialized = true;
+    opal_event_base_t *base_event = opal_event_base_create();
+    opal_event_t *event = opal_event_new(base_event, -1, EV_TIMEOUT, callback_event_fn,
+                                         (char *)"Sample event");
 
     EXPECT_EQ(ORCM_SUCCESS,orcm_sensor_heartbeat_module.init());
     orcm_sensor_heartbeat_module.start(job);
+    orcm_sensor_heartbeat_module.start(job);
+    check_heartbeat(-1, -1, event);
     orcm_sensor_heartbeat_module.finalize();
 
+    orte_initialized = orte_initialized_value;
     orte_process_info.proc_type = current_type;
+    opal_event_free(event);
+    opal_event_base_free(base_event);
+}
+
+TEST_F(ut_heartbeat_tests, check_heartbeat_orte_not_initialized)
+{
+    opal_event_t event;
+    check_heartbeat(0, 0, &event);
+    EXPECT_FALSE(check_active);
+}
+
+TEST_F(ut_heartbeat_tests, check_heartbeat_orte_abnormal_term_ordered)
+{
+    bool orte_abnormal_term_ordered_value = orte_abnormal_term_ordered;
+    orte_abnormal_term_ordered = true;
+    opal_event_t event;
+
+    check_heartbeat(0, 0, &event);
+    EXPECT_FALSE(check_active);
+
+    orte_abnormal_term_ordered = orte_abnormal_term_ordered_value;
+}
+
+TEST_F(ut_heartbeat_tests, check_heartbeat_orte_finalizing)
+{
+    bool orte_finalizing_value = orte_finalizing;
+    orte_finalizing = true;
+    opal_event_t event;
+
+    check_heartbeat(0, 0, &event);
+    EXPECT_FALSE(check_active);
+
+    orte_finalizing = orte_finalizing_value;
+}
+
+TEST_F(ut_heartbeat_tests, check_heartbeat_null_daemons)
+{
+    bool orte_initialized_value = orte_initialized;
+    orte_initialized = true;
+    opal_event_t event;
+
+    check_heartbeat(0, 0, &event);
+
+    orte_initialized = orte_initialized_value;
 }

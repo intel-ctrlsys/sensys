@@ -9,7 +9,6 @@
 
 #include "heartbeat_tests_mocking.h"
 
-#include <iostream>
 using namespace std;
 
 heartbeat_tests_mocking heartbeat_mocking;

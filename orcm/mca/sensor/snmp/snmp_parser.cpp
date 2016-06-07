@@ -8,6 +8,7 @@
  */
 
 #include "snmp_parser.h"
+#include "orcm/runtime/orcm_globals.h"
 
 #define getStringValueFromItem(variable, searchedKey, field) \
     if (NULL != field && OPAL_STRING == field->value.type    \
@@ -239,8 +240,10 @@ inline bool snmpParser::fieldsAreNotEmpty(string aggregator, string hostname,
 }
 
 bool snmpParser::aggregatorIsThisHostname(string aggregator){
-    char thisHostname[1024];
-    gethostname(thisHostname, 1023);
+    char* thisHostname = orcm_get_proc_hostname();
+    if (NULL == thisHostname) {
+        thisHostname = (char*) "localhost";
+    }
 
     if (0 == aggregator.compare(thisHostname) || 0 == aggregator.compare("localhost")){
         return true;

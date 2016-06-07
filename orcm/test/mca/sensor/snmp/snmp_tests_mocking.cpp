@@ -147,6 +147,11 @@ extern "C" { // Mocking must use correct "C" linkages
             snmp_mocking.opal_progress_thread_finalize_callback(name);
         }
     }
+
+    char* __wrap_orcm_get_proc_hostname(void)
+    {
+       return (char*) "localhost";
+    }
 } // extern "C"
 
 snmp_tests_mocking::snmp_tests_mocking() :

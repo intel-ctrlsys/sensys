@@ -35,6 +35,7 @@ extern "C" {
     extern struct snmp_pdu* __real_snmp_pdu_create(int command);
     extern int __real_snmp_parse_oid(const char *input, oid *objid, size_t *objidlen);
     extern int __real_snprint_objid(char *buf, size_t len, oid *objid, size_t *objidlen);
+    extern char* __real_orcm_get_proc_hostname(void);
     extern netsnmp_variable_list* __real_snmp_add_null_var(netsnmp_pdu *pdu, const oid *objid, size_t objidlen);
     extern orcm_analytics_value_t* __real_orcm_util_load_orcm_analytics_value(opal_list_t *key,
                                           opal_list_t *non_compute, opal_list_t *compute);

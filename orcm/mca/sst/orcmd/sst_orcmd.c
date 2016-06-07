@@ -700,7 +700,10 @@ static void orcmd_finalize(void)
     orcm_sensor.stop(ORTE_PROC_MY_NAME->jobid);
     (void) mca_base_framework_close(&orcm_sensor_base_framework);
     (void) mca_base_framework_close(&opal_pstat_base_framework);
-
+    if (ORCM_PROC_IS_AGGREGATOR) {
+        (void) mca_base_framework_close(&orcm_analytics_base_framework);
+    }
+     
     if (signals_set) {
         /* Release all local signal handlers */
         opal_event_del(&epipe_handler);
@@ -736,7 +739,6 @@ static void orcmd_finalize(void)
     (void) mca_base_framework_close(&orte_oob_base_framework);
     (void) mca_base_framework_close(&orte_state_base_framework);
     if (ORCM_PROC_IS_AGGREGATOR) {
-        (void) mca_base_framework_close(&orcm_analytics_base_framework);
         (void) mca_base_framework_close(&orcm_dispatch_base_framework);
         (void) mca_base_framework_close(&orcm_db_base_framework);
     }

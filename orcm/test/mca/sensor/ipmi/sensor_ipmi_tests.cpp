@@ -71,7 +71,9 @@ void ut_sensor_ipmi_tests::SetUp()
 {
     is_load_ipmi_config_file_expected_to_succeed = true;
     is_get_bmcs_for_aggregator_expected_to_succeed = true;
-    is_opal_progress_thread_init_expected_to_succeed = false;
+    is_opal_progress_thread_init_expected_to_succeed = true;
+    is_get_sdr_cache_expected_to_succeed = true;
+    find_sdr_next_success_count = 3;
 }
 
 // Helper functions
@@ -364,6 +366,12 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_init_unable_to_get_bmcs_for_aggregator){
     orcm_sensor_ipmi_module.finalize();
 }
 
+TEST_F(ut_sensor_ipmi_tests, ipmi_init_get_sdr_cache_failed){
+    is_get_sdr_cache_expected_to_succeed = false;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.finalize();
+}
+
 TEST_F(ut_sensor_ipmi_tests, ipmi_start_unable_to_start_thread){
     mca_sensor_ipmi_component.test = true;
     mca_sensor_ipmi_component.use_progress_thread = true;
@@ -436,4 +444,69 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_log_zero_hosts){
     opal_dss.pack(sample, &host_count, 1, OPAL_INT);
 
     orcm_sensor_ipmi_module.log(sample);
+    OBJ_RELEASE(sample);
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_collect_test_vector){
+    opal_buffer_t *buff = NULL;
+
+    mca_sensor_ipmi_component.test = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.inventory_collect(buff);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+    mca_sensor_ipmi_component.test = false;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_log_zero_items){
+    opal_buffer_t *buff = OBJ_NEW(opal_buffer_t);
+    struct timeval current_time;
+    unsigned int tot_items = 0;
+
+    opal_dss.pack(buff, &current_time, 1, OPAL_TIMEVAL);
+    opal_dss.pack(buff, &tot_items, 1, OPAL_UINT);
+
+    mca_sensor_ipmi_component.test = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.inventory_log((char*)"host", buff);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+    mca_sensor_ipmi_component.test = false;
+
+    OBJ_RELEASE(buff);
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_log_found_inventory_host_failed){
+    opal_buffer_t *buff = OBJ_NEW(opal_buffer_t);
+    struct timeval current_time;
+    unsigned int tot_items = 4;
+    const char *inv[4] = {"dummy", "bmc_ver", "ipmi_ver", "hostname"};
+    const char *inv_val[4] = {"dummy_val", "bmc_ver_val", "ipmi_ver_val", "hostname_val"};
+
+    // Pack inventory collection
+    opal_dss.pack(buff, &current_time, 1, OPAL_TIMEVAL);
+    opal_dss.pack(buff, &tot_items, 1, OPAL_UINT);
+    for (int i=0; i<tot_items; ++i){
+        opal_dss.pack(buff, &inv[i], 1, OPAL_STRING);
+        opal_dss.pack(buff, &inv_val[i], 1, OPAL_STRING);
+    }
+
+    // disable the storage
+    int saved = orcm_sensor_base.dbhandle;
+    orcm_sensor_base.dbhandle = -1;
+
+    mca_sensor_ipmi_component.test = true;
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.inventory_log((char*)"host", buff);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+
+    mca_sensor_ipmi_component.test = false;
+    orcm_sensor_base.dbhandle = saved;
+
+    OBJ_RELEASE(buff);
 }

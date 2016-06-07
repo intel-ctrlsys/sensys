@@ -163,6 +163,11 @@ static int init(void)
     ipmi_collector* bmc_list = NULL;
     int number_of_nodes = 0;
     disable_ipmi = 0;
+    char* hostname = NULL;
+
+    if (NULL == (hostname = orcm_get_proc_hostname())) {
+        hostname = (char*) "localhost";
+    }
 
     mca_sensor_ipmi_component.diagnostics = 0;
     mca_sensor_ipmi_component.runtime_metrics =
@@ -191,7 +196,7 @@ static int init(void)
         return ORCM_ERROR;
     }
 
-    if (!get_bmcs_for_aggregator(orte_process_info.nodename, &bmc_list, &number_of_nodes)) {
+    if (!get_bmcs_for_aggregator(hostname, &bmc_list, &number_of_nodes)) {
         opal_output(0, "No BMCs available for node %s.", orte_process_info.nodename);
         return ORCM_ERROR;
     }
@@ -202,7 +207,7 @@ static int init(void)
         {
             opal_output(0,"Unable to add the new host! Try restarting ORCM");
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-addhost-fail",
-                   true, orte_process_info.nodename, bmc_list[i].hostname);
+                   true, hostname, bmc_list[i].hostname);
         }
     }
     SAFEFREE(bmc_list);

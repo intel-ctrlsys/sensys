@@ -111,8 +111,8 @@ void snmpCollector::setOIDs(string strOIDs) {
 
     oidList = splitString(strOIDs, ',');
 
-    anOID_len = MAX_OID_LEN;
     for (list<string>::const_iterator it = oidList.begin(); it != oidList.end(); ++it) {
+        anOID_len = MAX_OID_LEN;
         if (NULL == snmp_parse_oid(it->c_str(), anOID, &anOID_len)) {
            throw invalidOIDParsing();
         }
@@ -123,8 +123,8 @@ void snmpCollector::setOIDs(string strOIDs) {
 void snmpCollector::updateOIDs() {
     pdu = snmp_pdu_create(SNMP_MSG_GET);
 
-    anOID_len = MAX_OID_LEN;
     for (list<string>::const_iterator it = oidList.begin(); it != oidList.end(); ++it) {
+        anOID_len = MAX_OID_LEN;
         if (NULL == snmp_parse_oid(it->c_str(), anOID, &anOID_len)) {
             throw invalidOIDParsing();
         }

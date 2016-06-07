@@ -14,6 +14,8 @@
 bool is_load_ipmi_config_file_expected_to_succeed = true;
 bool is_get_bmcs_for_aggregator_expected_to_succeed = true;
 bool is_opal_progress_thread_init_expected_to_succeed = true;
+bool is_get_sdr_cache_expected_to_succeed = true;
+int find_sdr_next_success_count = 3;
 
 extern "C" {
 
@@ -59,14 +61,19 @@ extern "C" {
     }
 
     int __wrap_get_sdr_cache(unsigned char **pcache){
-        return 0;
+        return is_get_sdr_cache_expected_to_succeed ? 0 : 1;
     }
 
     void __wrap_free_sdr_cache(unsigned char **pcache){
     }
 
     int __wrap_find_sdr_next(unsigned char *psdr, unsigned char *pcache, unsigned short id){
-        return 1;
+        if (!find_sdr_next_success_count)
+            return 1;
+        memset(psdr, 0xFF, 80);
+        psdr[3] = 0x01;
+        --find_sdr_next_success_count;
+        return 0;
     }
 
     int __wrap_ipmi_cmd_mc(unsigned short icmd, unsigned char *pdata, int sdata, unsigned char *presp, int *sresp, unsigned char *pcc, char fdebugcmd){

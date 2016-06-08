@@ -35,9 +35,12 @@ check_PROGRAMS = util_tests
 
 util_tests_SOURCES = \
     util_tests.cpp \
-    util_tests.h
+    util_tests.h \
+    util_tests_mocking.cpp \
+    util_tests_mocking.h
 
-MOCKING =
+MOCKING = \
+    -Wl,--wrap=orte_errmgr_base_log
 
 #
 # Libraries we depend on

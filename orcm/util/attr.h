@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2014      Intel, Inc. All rights reserved
+ * Copyright (c) 2014-2016      Intel, Inc. All rights reserved
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -22,13 +22,13 @@
 /* define a max value for ORCM keys */
 #define ORCM_ATTR_KEY_MAX         ORCM_ATTR_KEY_BASE+1000
 
-/* 
+/*
  * Power Management Attributes
  */
-#define ORCM_PWRMGMT_START_KEY   ORCM_ATTR_KEY_MAX
+#define ORCM_PWRMGMT_START_KEY   ORCM_ATTR_KEY_BASE
 
 #define ORCM_PWRMGMT_POWER_MODE_KEY               (ORCM_PWRMGMT_START_KEY + 1) // orcm_pwrmgmt_mode - enum power mode
-#define ORCM_PWRMGMT_POWER_BUDGET_KEY             (ORCM_PWRMGMT_START_KEY + 2) // int32_t - power cap in watts 
+#define ORCM_PWRMGMT_POWER_BUDGET_KEY             (ORCM_PWRMGMT_START_KEY + 2) // int32_t - power cap in watts
 #define ORCM_PWRMGMT_POWER_WINDOW_KEY             (ORCM_PWRMGMT_START_KEY + 3) // int32_t - time window in msec to calculate energy over
 #define ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY        (ORCM_PWRMGMT_START_KEY + 4) // int32_t - power in watts that we can exceed the power cap
 #define ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY       (ORCM_PWRMGMT_START_KEY + 5) // int32_t - power in watts that we can go under the power cap

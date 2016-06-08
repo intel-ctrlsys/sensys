@@ -63,7 +63,8 @@ MOCKING=\
 	-Wl,--wrap=get_sdr_cache \
 	-Wl,--wrap=find_sdr_next \
 	-Wl,--wrap=free_sdr_cache \
-	-Wl,--wrap=ipmi_cmd_mc
+	-Wl,--wrap=ipmi_cmd_mc \
+	-Wl,--wrap=get_bmc_info
 
 #
 # Libraries we depend on

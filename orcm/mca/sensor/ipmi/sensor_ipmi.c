@@ -1070,6 +1070,7 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                         mkv_copy = NULL;
                     }
                     ORCM_RELEASE(newhost);
+                    mkv = NULL;
 
                     kv = orcm_util_load_opal_value("hostname", oldhost->nodename, OPAL_STRING);
                     ORCM_ON_NULL_GOTO(kv, cleanup);

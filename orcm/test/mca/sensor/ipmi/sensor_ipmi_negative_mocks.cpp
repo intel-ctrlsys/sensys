@@ -15,6 +15,7 @@ bool is_load_ipmi_config_file_expected_to_succeed = true;
 bool is_get_bmcs_for_aggregator_expected_to_succeed = true;
 bool is_opal_progress_thread_init_expected_to_succeed = true;
 bool is_get_sdr_cache_expected_to_succeed = true;
+bool is_get_bmc_info_expected_to_succeed = true;
 int find_sdr_next_success_count = 3;
 
 extern "C" {
@@ -78,5 +79,18 @@ extern "C" {
 
     int __wrap_ipmi_cmd_mc(unsigned short icmd, unsigned char *pdata, int sdata, unsigned char *presp, int *sresp, unsigned char *pcc, char fdebugcmd){
         return 0;
+    }
+
+    bool __wrap_get_bmc_info(const char* hostname, ipmi_collector *ic){
+        strcpy(ic->bmc_address, "192.168.1.1");
+        strcpy(ic->user, "user");
+        strcpy(ic->pass, "password");
+        strcpy(ic->aggregator, "aggregator");
+        strcpy(ic->hostname, "host01");
+        ic->auth_method = 1;
+        ic->priv_level  = 2;
+        ic->port        = 3;
+        ic->channel     = 4;
+        return is_get_bmc_info_expected_to_succeed;
     }
 }

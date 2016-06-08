@@ -73,6 +73,7 @@ void ut_sensor_ipmi_tests::SetUp()
     is_get_bmcs_for_aggregator_expected_to_succeed = true;
     is_opal_progress_thread_init_expected_to_succeed = true;
     is_get_sdr_cache_expected_to_succeed = true;
+    is_get_bmc_info_expected_to_succeed = true;
     find_sdr_next_success_count = 3;
 }
 
@@ -438,13 +439,58 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_start_with_sample_rate){
 }
 
 TEST_F(ut_sensor_ipmi_tests, ipmi_log_zero_hosts){
-    opal_buffer_t *sample = NULL;
     int host_count = 0;
+    opal_buffer_t *sample = NULL;
+    struct timeval sampletime;
+    const char* dummy_str = "dummy_str";
+
     sample = OBJ_NEW(opal_buffer_t);
     opal_dss.pack(sample, &host_count, 1, OPAL_INT);
+    opal_dss.pack(sample, &sampletime, 1, OPAL_TIMEVAL);
+    // node_name
+    opal_dss.pack(sample, &dummy_str, 1, OPAL_STRING);
+    // host_ip
+    opal_dss.pack(sample, &dummy_str, 1, OPAL_STRING);
+    // bmcip
+    opal_dss.pack(sample, &dummy_str, 1, OPAL_STRING);
+    // manufacture date
+    opal_dss.pack(sample, &dummy_str, 1, OPAL_STRING);
+    // manufacturer name
+    opal_dss.pack(sample, &dummy_str, 1, OPAL_STRING);
+    // product name
+    opal_dss.pack(sample, &dummy_str, 1, OPAL_STRING);
+    // serial number
+    opal_dss.pack(sample, &dummy_str, 1, OPAL_STRING);
+    // part number
+    opal_dss.pack(sample, &dummy_str, 1, OPAL_STRING);
+
+    orcm_analytics_API_module_send_data_fn_t saved = orcm_analytics.send_data;
+    orcm_analytics.send_data = ut_sensor_ipmi_tests::SendData;
 
     orcm_sensor_ipmi_module.log(sample);
     OBJ_RELEASE(sample);
+
+    orcm_analytics.send_data = saved;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_log_zero_hosts_no_extra_info){
+    int host_count = 0;
+    opal_buffer_t *sample = NULL;
+    struct timeval sampletime;
+
+    sample = OBJ_NEW(opal_buffer_t);
+    opal_dss.pack(sample, &host_count, 1, OPAL_INT);
+    opal_dss.pack(sample, &sampletime, 1, OPAL_TIMEVAL);
+    // notice the lack of node_name, host_ip, bmcip, etc...
+
+
+    orcm_analytics_API_module_send_data_fn_t saved = orcm_analytics.send_data;
+    orcm_analytics.send_data = ut_sensor_ipmi_tests::SendData;
+
+    orcm_sensor_ipmi_module.log(sample);
+    OBJ_RELEASE(sample);
+
+    orcm_analytics.send_data = saved;
 }
 
 TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_collect_test_vector){
@@ -457,6 +503,16 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_collect_test_vector){
     orcm_sensor_ipmi_module.stop(0);
     orcm_sensor_ipmi_module.finalize();
     mca_sensor_ipmi_component.test = false;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_collect_no_test_vector){
+    opal_buffer_t *buff = NULL;
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.inventory_collect(buff);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
 }
 
 TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_log_zero_items){
@@ -478,6 +534,8 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_log_zero_items){
     OBJ_RELEASE(buff);
 }
 
+// This will provoke compare_ipmi_record to return false.. this might be an issue
+// with ipmi_sensor implementation.
 TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_log_found_inventory_host_failed){
     opal_buffer_t *buff = OBJ_NEW(opal_buffer_t);
     struct timeval current_time;
@@ -502,6 +560,15 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_log_found_inventory_host_failed){
     EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
     orcm_sensor_ipmi_module.start(0);
     orcm_sensor_ipmi_module.inventory_log((char*)"host", buff);
+
+    // Pack inventory collection again
+    opal_dss.pack(buff, &current_time, 1, OPAL_TIMEVAL);
+    opal_dss.pack(buff, &tot_items, 1, OPAL_UINT);
+    for (int i=0; i<tot_items; ++i){
+        opal_dss.pack(buff, &inv[i], 1, OPAL_STRING);
+        opal_dss.pack(buff, &inv_val[i], 1, OPAL_STRING);
+    }
+    orcm_sensor_ipmi_module.inventory_log((char*)"host", buff);
     orcm_sensor_ipmi_module.stop(0);
     orcm_sensor_ipmi_module.finalize();
 
@@ -509,4 +576,86 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_inventory_log_found_inventory_host_failed){
     orcm_sensor_base.dbhandle = saved;
 
     OBJ_RELEASE(buff);
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_sample_using_progres_thread){
+    orcm_sensor_sampler_t* sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+    mca_sensor_ipmi_component.use_progress_thread = true;
+    mca_sensor_ipmi_component.test = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.sample(sampler);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+    mca_sensor_ipmi_component.test = false;
+    mca_sensor_ipmi_component.use_progress_thread = false;
+
+    OBJ_RELEASE(sampler);
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_sample_no_test_vector_and_metrix_failure){
+    orcm_sensor_sampler_t* sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.start(0);
+    orcm_sensor_ipmi_module.sample(sampler);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+
+    OBJ_RELEASE(sampler);
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_sample_no_test_vector_and_zero_hosts_count)
+{
+    // Setup
+    void* object = orcm_sensor_base_runtime_metrics_create("ipmi", false, false);
+    mca_sensor_ipmi_component.runtime_metrics = object;
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+
+    mca_sensor_ipmi_component.collect_metrics = true;
+    orcm_sensor_base_runtime_metrics_set(object, true, "ipmi");
+    collect_ipmi_sample(sampler);
+
+    // Cleanup
+    OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_ipmi_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_sample_no_test_vector_and_unable_to_get_bmc_info){
+    orcm_sensor_sampler_t* sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    void* object = orcm_sensor_base_runtime_metrics_create("ipmi", false, false);
+    mca_sensor_ipmi_component.runtime_metrics = object;
+    mca_sensor_ipmi_component.collect_metrics = true;
+    orcm_sensor_base_runtime_metrics_set(object, true, "ipmi");
+    orcm_sensor_ipmi_module.start(0);
+
+    is_get_bmc_info_expected_to_succeed = false;
+    orcm_sensor_ipmi_module.sample(sampler);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+
+    OBJ_RELEASE(sampler);
+    mca_sensor_ipmi_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_sample_no_test_vector_all_success){
+    orcm_sensor_sampler_t* sampler = OBJ_NEW(orcm_sensor_sampler_t);
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    void* object = orcm_sensor_base_runtime_metrics_create("ipmi", false, false);
+    mca_sensor_ipmi_component.runtime_metrics = object;
+    mca_sensor_ipmi_component.collect_metrics = true;
+    orcm_sensor_base_runtime_metrics_set(object, true, "ipmi");
+    orcm_sensor_ipmi_module.start(0);
+
+    orcm_sensor_ipmi_module.sample(sampler);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+
+    OBJ_RELEASE(sampler);
+    mca_sensor_ipmi_component.runtime_metrics = NULL;
 }

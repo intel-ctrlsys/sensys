@@ -14,6 +14,7 @@ extern bool is_load_ipmi_config_file_expected_to_succeed;
 extern bool is_get_bmcs_for_aggregator_expected_to_succeed;
 extern bool is_opal_progress_thread_init_expected_to_succeed;
 extern bool is_get_sdr_cache_expected_to_succeed;
+extern bool is_get_bmc_info_expected_to_succeed;
 extern int find_sdr_next_success_count;
 
 #ifdef __cplusplus
@@ -36,6 +37,8 @@ extern "C"{
     extern int __real_find_sdr_next(unsigned char *psdr, unsigned char *pcache, unsigned short id);
 
     extern int __real_ipmi_cmd_mc(unsigned short, unsigned char, int, unsigned char, int, unsigned char, char);
+
+    extern bool __real_get_bmc_info(const char*, ipmi_collector*);
 
 #ifdef __cplusplus
 }

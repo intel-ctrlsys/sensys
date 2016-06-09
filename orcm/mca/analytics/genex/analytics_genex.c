@@ -203,10 +203,14 @@ int monitor_genex(genex_workflow_value_t *workflow_value, void* cbdata, opal_lis
                 rc = orcm_analytics_base_gen_notifier_event(analytics_value, caddy,
                            orcm_analytics_event_get_severity(workflow_value->severity),
                            (char*)genex_value.message, workflow_value->notifier, event_list);
+
                 if ( ORCM_SUCCESS != rc ) {
+                    opal_output_verbose(5,orcm_analytics_base_framework.framework_output,
+                        "%s analytics:genex:notifier: Failed to raise the notification alert",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
                     return rc;
                 }
-             } else if(regex_res && regex_res != REG_NOMATCH) {
+            } else if(regex_res && regex_res != REG_NOMATCH) {
                 error_buffer = malloc(100);
                 IF_NULL_ALLOC(error_buffer);
 
@@ -279,11 +283,13 @@ static int analyze(int sd, short args, void *cbdata)
             return ORCM_ERROR;
         }
     }
+
     if(0 == event_list->opal_list_length){
         SAFE_RELEASE(event_list);
     }
+
     ORCM_ACTIVATE_NEXT_WORKFLOW_STEP(genex_analyze_caddy->wf,genex_analyze_caddy->wf_step,
-                                     genex_analyze_caddy->hash_key, analytics_value_to_next, NULL);
+                                     genex_analyze_caddy->hash_key, analytics_value_to_next, event_list);
 
     dest_genex_workflow_value(workflow_value, genex_analyze_caddy);
 

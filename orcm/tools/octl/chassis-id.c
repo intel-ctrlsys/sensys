@@ -278,10 +278,13 @@ int orcm_octl_chassis_id_off(char **argv){
 int orcm_octl_chassis_id_on(char **argv){
     int rc = ORCM_SUCCESS;
     int argv_count = opal_argv_count(argv);
+    unsigned int sec = 0;
     if (MIN_CHASSIS_ID_ARG == argv_count)
         rc = orcm_octl_led_operation(ORCM_SET_CHASSIS_ID, ORCM_SET_CHASSIS_ID_ON, argv[2], 0);
-    else if (MAX_CHASSIS_ID_ARG == argv_count)
-        rc = orcm_octl_led_operation(ORCM_SET_CHASSIS_ID, ORCM_SET_CHASSIS_ID_TEMPORARY_ON, argv[3], (unsigned char)atoi(argv[2]));
+    else if (MAX_CHASSIS_ID_ARG == argv_count){
+        sec = (unsigned int)atoi(argv[2]);
+        rc = orcm_octl_led_operation(ORCM_SET_CHASSIS_ID, ORCM_SET_CHASSIS_ID_TEMPORARY_ON, argv[3], sec>255 ? 255 : sec);
+    }
     else {
         rc = ORCM_ERR_BAD_PARAM;
         orcm_octl_usage("chassis-id-enable", INVALID_USG);

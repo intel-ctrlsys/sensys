@@ -72,7 +72,7 @@ class LedControl{
         int getChassisIDState();
 
     private:
-        int setChassisID(unsigned char);
+        int setChassisID(int, unsigned char);
         int ipmiCmdOperation(unsigned short, unsigned char*, int, unsigned char*,
                     int *, unsigned char *);
 

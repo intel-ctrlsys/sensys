@@ -85,16 +85,16 @@ int LedControl::getChassisIDState(){
 #endif
 }
 
-int LedControl::setChassisID(unsigned char value){
+int LedControl::setChassisID(int action, unsigned char seconds){
     unsigned char buff_in[MAX_BUFF_SIZE];
     unsigned char buff_out[MAX_BUFF_SIZE];
     int in_size = 0;
     int out_size = 0;
     unsigned char c_code;
 
-    buff_in[0] = value;
+    buff_in[0] = seconds;
     buff_in[1] = 1;
-    in_size = (value == LED_INDEFINITE_ON) ? 2 : 1;
+    in_size = (action == LED_INDEFINITE_ON) ? 2 : 1;
 
 #ifdef HAVE_LED_CONTROL_SUPPORT
     return ipmiCmdOperation(CHASSIS_IDENTIFY, buff_in, in_size, buff_out, &out_size, &c_code);
@@ -104,13 +104,13 @@ int LedControl::setChassisID(unsigned char value){
 }
 
 int LedControl::disableChassisID(){
-    return this->setChassisID(LED_OFF);
+    return this->setChassisID(LED_OFF, 0);
 }
 
 int LedControl::enableChassisID(unsigned char seconds){
-    return this->setChassisID(seconds);
+    return this->setChassisID(LED_TEMPORARY_ON, seconds);
 }
 
 int LedControl::enableChassisID(){
-    return this->setChassisID(LED_INDEFINITE_ON);
+    return this->setChassisID(LED_INDEFINITE_ON, 0);
 }

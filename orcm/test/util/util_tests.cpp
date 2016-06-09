@@ -13,7 +13,25 @@
 
 #define UNKNOWN_KEY "UNKNOWN-KEY"
 
+#define TESTING_STRING  "Hello \tworld,  happy "
+#define HELLO_TAB_WORLD "Hello \tworld"
+#define HAPPY           "happy"
+#define __HAPPY_        "  happy "
+#define HELLO           "Hello"
+#define WORLD           "world,"
+#define TAB_WORLD       "\tworld,"
+
 using namespace std;
+
+void free_charptr_array(char **ptr, int size)
+{
+    if (NULL != ptr) {
+        for(int i = 0; i < size; i++) {
+            SAFEFREE(ptr[i]);
+        }
+        SAFEFREE(ptr);
+    }
+}
 
 int ut_util_tests::last_orte_error_ = ORCM_SUCCESS;
 
@@ -264,3 +282,95 @@ TEST_F(ut_util_tests, orcm_attr_key_print_known_key)
     EXPECT_STREQ("PWRMGMT_FREQ_STRICT", str);
 }
 
+TEST_F(ut_util_tests, string_utils_splitString_defaults)
+{
+    string myString = TESTING_STRING; // "Hello \tworld,  happy "
+    vector<string> myVector = splitString(myString);
+    ASSERT_EQ(2, myVector.size());
+    EXPECT_TRUE(HELLO_TAB_WORLD == myVector[0]);
+    EXPECT_TRUE(HAPPY == myVector[1]);
+}
+
+TEST_F(ut_util_tests, string_utils_splitString_comma_notrim)
+{
+    string myString = TESTING_STRING; // "Hello \tworld,  happy "
+    vector<string> myVector = splitString(myString, ",", false);
+    ASSERT_EQ(2, myVector.size());
+    EXPECT_TRUE(HELLO_TAB_WORLD == myVector[0]);
+    EXPECT_TRUE(__HAPPY_ == myVector[1]);
+}
+
+TEST_F(ut_util_tests, string_utils_splitString_space_trim)
+{
+    string myString = TESTING_STRING; // "Hello \tworld,  happy "
+    vector<string> myVector = splitString(myString, " ");
+    ASSERT_EQ(5, myVector.size());
+    EXPECT_TRUE(HELLO == myVector[0]);
+    EXPECT_TRUE(WORLD == myVector[1]);
+    EXPECT_TRUE("" == myVector[2]);
+    EXPECT_TRUE(HAPPY == myVector[3]);
+    EXPECT_TRUE("" == myVector[4]);
+}
+
+TEST_F(ut_util_tests, string_utils_splitString_space_notrim)
+{
+    string myString = TESTING_STRING; // "Hello \tworld,  happy "
+    vector<string> myVector = splitString(myString, " ", false);
+    ASSERT_EQ(5, myVector.size());
+    EXPECT_TRUE(HELLO == myVector[0]);
+    EXPECT_TRUE(TAB_WORLD == myVector[1]);
+    EXPECT_TRUE("" == myVector[2]);
+    EXPECT_TRUE(HAPPY == myVector[3]);
+    EXPECT_TRUE("" == myVector[4]);
+}
+
+
+TEST_F(ut_util_tests, string_utils_unique_str_vector_join)
+{
+    vector<string> v1;
+    vector<string> v2;
+
+    v1.push_back(HELLO);
+    v1.push_back(WORLD);
+    v1.push_back(HAPPY);
+
+    v2.push_back(__HAPPY_);
+    v2.push_back(HELLO);
+    v2.push_back(TAB_WORLD);
+    v2.push_back(HAPPY);
+
+    unique_str_vector_join(v1, v2);
+
+    ASSERT_EQ(5, v1.size());
+    EXPECT_TRUE(v1[0] == HELLO);
+    EXPECT_TRUE(v1[1] == WORLD);
+    EXPECT_TRUE(v1[2] == HAPPY);
+    EXPECT_TRUE(v1[3] == __HAPPY_);
+    EXPECT_TRUE(v1[4] == TAB_WORLD);
+
+    ASSERT_EQ(4, v2.size());
+    EXPECT_TRUE(v2[0] == __HAPPY_);
+    EXPECT_TRUE(v2[1] == HELLO);
+    EXPECT_TRUE(v2[2] == TAB_WORLD);
+    EXPECT_TRUE(v2[3] == HAPPY);
+}
+
+TEST_F(ut_util_tests, string_utils_convertStringVectorToCharPtrArray_emptyVector)
+{
+    vector<string> v1;
+    char **ptr = convertStringVectorToCharPtrArray(v1);
+    EXPECT_TRUE(NULL == ptr);
+    free_charptr_array(ptr, v1.size());
+}
+
+TEST_F(ut_util_tests, string_utils_convertStringVectorToCharPtrArray)
+{
+    vector<string> v1;
+    v1.push_back(HELLO);
+    v1.push_back(WORLD);
+    char **ptr = convertStringVectorToCharPtrArray(v1);
+    EXPECT_TRUE(NULL != ptr);
+    EXPECT_TRUE(0 == strcmp(ptr[0], HELLO));
+    EXPECT_TRUE(0 == strcmp(ptr[1], WORLD));
+    free_charptr_array(ptr, v1.size());
+}

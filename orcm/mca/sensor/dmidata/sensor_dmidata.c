@@ -51,6 +51,8 @@
 #include "sensor_dmidata_decls.h"
 
 #include "hwloc.h"
+
+#define SAFE_HWLOC_TOPO_FREE(x)  if(NULL != x) {opal_hwloc_base_free_topology(x); x = NULL; }
 /* declare the API functions */
 static int init(void);
 static void finalize(void);
@@ -162,19 +164,10 @@ void dmidata_inv_con(dmidata_inventory_t *trk)
 void dmidata_inv_des(dmidata_inventory_t *trk)
 {
     if(NULL != trk) {
-        if(NULL != trk->records) {
-            ORCM_RELEASE(trk->records);
-        }
-        if (NULL != trk->nodename) {
-            SAFEFREE(trk->nodename);
-        }
-        if (NULL != trk->freq_step_list) {
-            SAFEFREE(trk->freq_step_list);
-        }
-        if(NULL != trk->hwloc_topo) {
-            opal_hwloc_base_free_topology(trk->hwloc_topo);
-            trk->hwloc_topo = NULL;
-        }
+        ORCM_RELEASE(trk->records);
+        SAFEFREE(trk->nodename);
+        SAFEFREE(trk->freq_step_list);
+        SAFE_HWLOC_TOPO_FREE(trk->hwloc_topo);
     }
 }
 
@@ -658,23 +651,16 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
     struct timeval current_time;
 
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &topo, &n, OPAL_HWLOC_TOPO))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.unpack(inventory_snapshot, &topo, &n, OPAL_HWLOC_TOPO);
+    ORCM_ON_FAILURE_RETURN(rc);
 
     n=1;
-    if (OPAL_SUCCESS != (rc = opal_dss.unpack(inventory_snapshot, &freq_step_list, &n, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        goto cleanup;
-    }
+    rc = opal_dss.unpack(inventory_snapshot, &freq_step_list, &n, OPAL_STRING);
+    ORCM_ON_FAILURE_GOTO(rc, cleanup);
 
     gettimeofday(&current_time, NULL);
     time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
-    if (NULL == time_stamp) {
-        ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
-        goto cleanup;
-    }
+    ORCM_ON_NULL_GOTO(time_stamp, cleanup);
 
     if (NULL != (newhost = found_inventory_host(hostname))) {
         /* Check and Verify Node Inventory record and update db/notify user accordingly */
@@ -688,10 +674,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
         } else {
             opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                 "Value mismatch : hwloc; Notify User; Update List; Update Database");
-            if(NULL != newhost->hwloc_topo) {
-                opal_hwloc_base_free_topology(newhost->hwloc_topo);
-                newhost->hwloc_topo = NULL;
-            }
+            SAFE_HWLOC_TOPO_FREE(newhost->hwloc_topo);
             newhost->hwloc_topo = topo;
             topo = NULL;
 
@@ -739,10 +722,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
 cleanup:
     SAFEFREE(freq_step_list);
     ORCM_RELEASE(time_stamp);
-    if(NULL != topo) {
-        opal_hwloc_base_free_topology(topo);
-        topo = NULL;
-    }
+    SAFE_HWLOC_TOPO_FREE(topo);
 }
 
 /* Removed temporarily because the current test vector requires root and uses

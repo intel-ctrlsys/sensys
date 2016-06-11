@@ -306,7 +306,7 @@ TEST(ut_db_postgres_tests, store_data_sample_event_invalid_time_stamp_type)
     mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
     opal_list_t *input_list = create_list_with_mandatory_fields(OPAL_STRING, (void*)host,
                               OPAL_STRING, (void*)data_group, OPAL_STRING, (void*)(&current_time));
-   create_list_with_mandatory_fields_event(input_list, OPAL_DOUBLE, (void*)(&d_value),
+    create_list_with_mandatory_fields_event(input_list, OPAL_DOUBLE, (void*)(&d_value),
                               OPAL_STRING, (void*)severity, OPAL_STRING, (void*)type,
                               OPAL_STRING, (void*)version, OPAL_STRING, (void*)vendor,
                               OPAL_STRING, (void*)description);
@@ -425,7 +425,7 @@ TEST(ut_db_postgres_tests, store_diag_invalid_end_time)
     mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
     opal_list_t *input_list = create_list_with_mandatory_fields_diag(OPAL_STRING, (void*)host,
                               OPAL_STRING, (void*)type, OPAL_STRING, (void*)subtype,
-                              OPAL_TIMEVAL, (void*)(&end_time), OPAL_STRING, (void*)test_result,
+                              OPAL_TIMEVAL, (void*)(&start_time), OPAL_STRING, (void*)test_result,
                               OPAL_TIME, NULL, OPAL_INT, (void*)(&component_index));
 
     orcm_value_t *mv = OBJ_NEW(orcm_value_t);
@@ -447,8 +447,8 @@ TEST(ut_db_postgres_tests, store_diag_invalid_end_time_type)
     mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
     opal_list_t *input_list = create_list_with_mandatory_fields_diag(OPAL_STRING, (void*)host,
                               OPAL_STRING, (void*)type, OPAL_STRING, (void*)subtype,
-                              OPAL_DOUBLE, (void*)(&d_value), OPAL_STRING, (void*)test_result,
-                              OPAL_TIME, NULL, OPAL_INT, (void*)(&component_index));
+                              OPAL_TIMEVAL, (void*)(&start_time), OPAL_STRING, (void*)test_result,
+                              OPAL_DOUBLE, (void*)(&d_value), OPAL_INT, (void*)(&component_index));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_DIAG_DATA, input_list, NULL);
     OBJ_RELEASE(input_list);
@@ -528,3 +528,49 @@ TEST(ut_db_postgres_tests, store_node_feature_invalid_time_stamp_value)
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
+
+TEST(ut_db_postgres_tests, store_sample_invalid_time_stamp_value)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    gettimeofday(&start_time, NULL);
+    opal_list_t *input_list = create_list_with_mandatory_fields(OPAL_STRING, (void*)host,
+                              OPAL_STRING, (void*)data_group, OPAL_TIME,NULL);
+
+
+    orcm_value_t *mv = OBJ_NEW(orcm_value_t);
+    mv->value.key = strdup(analytics_util::cppstr_to_cstr("ctime"));
+    mv->value.type = OPAL_TIME;
+    mv->value.data.tv.tv_sec = LONG_MAX;
+    opal_list_append(input_list, (opal_list_item_t*)mv);
+    rc = mca_db_postgres_module.api.store((orcm_db_base_module_t*)mod,
+                                           data_group, input_list);
+    OBJ_RELEASE(input_list);
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
+}
+
+TEST(ut_db_postgres_tests, store_sample_invalid_time_stamp_type)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    opal_list_t *input_list = create_list_with_mandatory_fields(OPAL_STRING, (void*)host,
+                              OPAL_STRING, (void*)data_group, OPAL_DOUBLE, (void*)(&d_value));
+    rc = mca_db_postgres_module.api.store((orcm_db_base_module_t*)mod,
+                                           data_group, input_list);
+    OBJ_RELEASE(input_list);
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
+}
+
+TEST(ut_db_postgres_tests, store_sample_invalid_hostname_type)
+{
+    int rc = ORCM_SUCCESS;
+    gettimeofday(&start_time, NULL);
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    opal_list_t *input_list = create_list_with_mandatory_fields(OPAL_DOUBLE, (void*)(&d_value),
+                              OPAL_STRING, (void*)data_group, OPAL_TIMEVAL, (void*)(&start_time));
+    rc = mca_db_postgres_module.api.store((orcm_db_base_module_t*)mod,
+                                           data_group, input_list);
+    OBJ_RELEASE(input_list);
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
+}
+

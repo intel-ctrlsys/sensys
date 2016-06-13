@@ -44,16 +44,14 @@ int orcm_finalize(void)
     (void) mca_base_framework_close(&orcm_cfgi_base_framework);
 
     /* cleanup any globals */
-    if (NULL != orcm_clusters) {
-        OBJ_RELEASE(orcm_clusters);
-    }
-    if (NULL != orcm_schedulers) {
-        OBJ_RELEASE(orcm_schedulers);
-    }
+    ORCM_RELEASE(orcm_clusters);
+    ORCM_RELEASE(orcm_schedulers);
     SAFEFREE(orcm_event_exec_path);
     SAFEFREE(orcm_proc_hostname);
 
-    (void)orte_ess.finalize();
+    if (NULL != orte_ess.finalize) {
+        (void)orte_ess.finalize();
+    }
 
     /* close the ess itself */
     (void) mca_base_framework_close(&orte_ess_base_framework);

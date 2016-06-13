@@ -734,7 +734,7 @@ static int check_numeric(char* value) {
     if(NULL == value){
         return ORCM_ERROR;
     }
-    while (j != '\0') {
+    while (value[j] != '\0') {
         if (!isdigit(value[j])) {
             return ORCM_ERR_BAD_PARAM;
         }

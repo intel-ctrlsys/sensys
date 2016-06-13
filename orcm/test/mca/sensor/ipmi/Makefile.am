@@ -22,7 +22,7 @@ include $(top_srcdir)/Makefile.ompi-rules
 # other non-zero: fail
 #
 
-TESTS = ipmi_tests
+TESTS = ipmi_tests.py
 
 #
 # Executables to be built for "make check"

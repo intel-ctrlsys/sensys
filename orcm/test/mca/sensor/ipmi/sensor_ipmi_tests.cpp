@@ -659,3 +659,128 @@ TEST_F(ut_sensor_ipmi_tests, ipmi_sample_no_test_vector_all_success){
     OBJ_RELEASE(sampler);
     mca_sensor_ipmi_component.runtime_metrics = NULL;
 }
+
+TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_found_success){
+    const char* nodename = "hostname";
+    ipmi_collector ic;
+    opal_list_t *list = NULL;
+
+    strncpy(ic.bmc_address, "192.168.1.1", MAX_STR_LEN-1);
+    ic.bmc_address[MAX_STR_LEN-1] = '\0';
+    strncpy(ic.user, "user", MAX_STR_LEN-1);
+    ic.user[MAX_STR_LEN-1] = '\0';
+    strncpy(ic.pass, "pass", MAX_STR_LEN-1);
+    ic.pass[MAX_STR_LEN-1] = '\0';
+    strncpy(ic.aggregator, "aggregator", MAX_STR_LEN-1);
+    ic.aggregator[MAX_STR_LEN-1] = '\0';
+    strncpy(ic.hostname, "hostname", MAX_STR_LEN-1);
+    ic.hostname[MAX_STR_LEN-1] = '\0';
+    ic.auth_method = 3;
+    ic.priv_level  = 3;
+    ic.port        = 2000;
+    ic.channel     = 3;
+
+    list = OBJ_NEW(opal_list_t);
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_addhost(&ic, list));
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_found((char*)nodename, list));
+    OBJ_RELEASE(list);
+}
+
+TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_found_fails){
+    opal_list_t *list = OBJ_NEW(opal_list_t);
+    EXPECT_EQ(ORCM_ERR_NOT_FOUND, orcm_sensor_ipmi_found((char*)"test", list));
+    OBJ_RELEASE(list);
+}
+
+TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_label_found_false){
+    opal_list_t *list = OBJ_NEW(opal_list_t);
+    EXPECT_EQ(0, orcm_sensor_ipmi_label_found((char*)"test"));
+    OBJ_RELEASE(list);
+}
+
+TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_label_found_true){
+    opal_list_t *list = OBJ_NEW(opal_list_t);
+    const char* sensor = "test";
+
+    mca_sensor_ipmi_component.sensor_list = (char*)sensor;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.start(0);
+
+    EXPECT_EQ(1, orcm_sensor_ipmi_label_found((char*)sensor));
+
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+    OBJ_RELEASE(list);
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_sample_using_perthread){
+    mca_sensor_ipmi_component.use_progress_thread = true;
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.set_sample_rate(1);
+    orcm_sensor_ipmi_module.start(0);
+    sleep(5);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+
+    mca_sensor_ipmi_component.use_progress_thread = false;
+}
+
+TEST_F(ut_sensor_ipmi_tests, ipmi_sample_using_perthread_with_new_sample_rate){
+    mca_sensor_ipmi_component.use_progress_thread = true;
+    mca_sensor_ipmi_component.test = true;
+
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_module.init());
+    orcm_sensor_ipmi_module.set_sample_rate(1);
+    orcm_sensor_ipmi_module.start(0);
+    sleep(5);
+    orcm_sensor_ipmi_module.set_sample_rate(2);
+    sleep(5);
+    orcm_sensor_ipmi_module.stop(0);
+    orcm_sensor_ipmi_module.finalize();
+
+    mca_sensor_ipmi_component.test = false;
+    mca_sensor_ipmi_component.use_progress_thread = false;
+}
+
+TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_get_system_power_state_test){
+    char str[256];
+    int val[15] = {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0x0A, 0x20, 0x21, 0x2A, 0xFF};
+    for (int i=0; i<15; i++){
+        orcm_sensor_ipmi_get_system_power_state(val[i], str, sizeof(str));
+        switch(val[i]) {
+            case 0x0:   ASSERT_EQ(0, strcmp(str, "S0/G0")); break;
+            case 0x1:   ASSERT_EQ(0, strcmp(str,"S1")); break;
+            case 0x2:   ASSERT_EQ(0, strcmp(str,"S2")); break;
+            case 0x3:   ASSERT_EQ(0, strcmp(str,"S3")); break;
+            case 0x4:   ASSERT_EQ(0, strcmp(str,"S4")); break;
+            case 0x5:   ASSERT_EQ(0, strcmp(str,"S5/G2")); break;
+            case 0x6:   ASSERT_EQ(0, strcmp(str,"S4/S5")); break;
+            case 0x7:   ASSERT_EQ(0, strcmp(str,"G3")); break;
+            case 0x8:   ASSERT_EQ(0, strcmp(str,"sleeping")); break;
+            case 0x9:   ASSERT_EQ(0, strcmp(str,"G1 sleeping")); break;
+            case 0x0A:  ASSERT_EQ(0, strcmp(str,"S5 override")); break;
+            case 0x20:  ASSERT_EQ(0, strcmp(str,"Legacy On")); break;
+            case 0x21:  ASSERT_EQ(0, strcmp(str,"Legacy Off")); break;
+            case 0x2A:  ASSERT_EQ(0, strcmp(str,"Unknown")); break;
+            default:    ASSERT_EQ(0, strcmp(str,"Illegal")); break;
+        }
+    }
+}
+
+TEST_F(ut_sensor_ipmi_tests, orcm_sensor_ipmi_get_device_power_state_test){
+    char str[256];
+    int val[6] = {0x0, 0x1, 0x2, 0x3, 0x4, 0xFF};
+    for (int i=0; i<6; i++){
+        orcm_sensor_ipmi_get_device_power_state(val[i], str, sizeof(str));
+        switch(val[i]) {
+            case 0x0:   ASSERT_EQ(0, strcmp(str,"D0")); break;
+            case 0x1:   ASSERT_EQ(0, strcmp(str,"D1")); break;
+            case 0x2:   ASSERT_EQ(0, strcmp(str,"D2")); break;
+            case 0x3:   ASSERT_EQ(0, strcmp(str,"D3")); break;
+            case 0x4:   ASSERT_EQ(0, strcmp(str,"Unknown")); break;
+            default:    ASSERT_EQ(0, strcmp(str,"Illegal")); break;
+        }
+    }
+}

@@ -10,6 +10,7 @@
 #include "util_tests.h"
 
 #include <iostream>
+#include "orcm/util/utils.c"
 
 #define UNKNOWN_KEY "UNKNOWN-KEY"
 
@@ -373,4 +374,89 @@ TEST_F(ut_util_tests, string_utils_convertStringVectorToCharPtrArray)
     EXPECT_TRUE(0 == strcmp(ptr[0], HELLO));
     EXPECT_TRUE(0 == strcmp(ptr[1], WORLD));
     free_charptr_array(ptr, v1.size());
+}
+
+TEST_F(ut_util_tests, check_numeric_tests)
+{
+    char* bad_string = (char*) "123 TEST STRING";
+    char* good_string = (char*) "31415";
+    EXPECT_EQ(ORCM_ERROR, check_numeric(NULL));
+    EXPECT_EQ(ORCM_ERR_BAD_PARAM, check_numeric(bad_string));
+    EXPECT_EQ(ORCM_SUCCESS, check_numeric(good_string));
+}
+
+TEST_F(ut_util_tests, orcm_util_get_time_in_sec_tests)
+{
+    char* bad_string = (char*) "123 TEST STRING";
+    EXPECT_EQ(0, orcm_util_get_time_in_sec(NULL));
+    EXPECT_EQ(0, orcm_util_get_time_in_sec(bad_string));
+}
+
+TEST_F(ut_util_tests, orcm_util_relase_nested_orcm_value_list_item_tests)
+{
+    orcm_value_t *null_ptr = NULL;
+
+    orcm_util_release_nested_orcm_value_list_item(NULL);
+    orcm_util_release_nested_orcm_value_list_item(&null_ptr);
+}
+
+TEST_F(ut_util_tests, orcm_util_get_number_orcm_value)
+{
+    char *units = strdup("");
+    char *intkey = strdup("int");
+    char *uintkey = strdup("uintkey");
+
+    orcm_value_t* ptr = NULL;
+
+    EXPECT_DOUBLE_EQ( (double) 0.0, orcm_util_get_number_orcm_value(NULL));
+
+    /* INTs */
+    int intValue = 3;
+
+    ptr = orcm_util_load_orcm_value(intkey, &intValue, OPAL_INT, units);
+    EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
+    SAFEFREE(ptr);
+
+    ptr = orcm_util_load_orcm_value(intkey, &intValue, OPAL_INT8, units);
+    EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
+    SAFEFREE(ptr);
+
+    ptr = orcm_util_load_orcm_value(intkey, &intValue, OPAL_INT16, units);
+    EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
+    SAFEFREE(ptr);
+
+    ptr = orcm_util_load_orcm_value(intkey, &intValue, OPAL_INT32, units);
+    EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
+    SAFEFREE(ptr);
+
+    ptr = orcm_util_load_orcm_value(intkey, &intValue, OPAL_INT64, units);
+    EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
+    SAFEFREE(ptr);
+
+    /* UINTs */
+    uint uintValue = 3;
+
+    ptr = orcm_util_load_orcm_value(uintkey, &intValue, OPAL_UINT, units);
+    EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
+    SAFEFREE(ptr);
+
+    ptr = orcm_util_load_orcm_value(uintkey, &intValue, OPAL_UINT8, units);
+    EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
+    SAFEFREE(ptr);
+
+    ptr = orcm_util_load_orcm_value(uintkey, &intValue, OPAL_UINT16, units);
+    EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
+    SAFEFREE(ptr);
+
+    ptr = orcm_util_load_orcm_value(uintkey, &intValue, OPAL_UINT32, units);
+    EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
+    SAFEFREE(ptr);
+
+    ptr = orcm_util_load_orcm_value(uintkey, &intValue, OPAL_UINT64, units);
+    EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
+    SAFEFREE(ptr);
+
+    SAFEFREE(units);
+    SAFEFREE(intkey);
+    SAFEFREE(uintkey);
 }

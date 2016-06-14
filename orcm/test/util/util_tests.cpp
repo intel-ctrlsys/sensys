@@ -412,6 +412,7 @@ TEST_F(ut_util_tests, orcm_util_get_number_orcm_value)
 
     /* INTs */
     int intValue = 3;
+    int64_t int64Value = 3;
 
     ptr = orcm_util_load_orcm_value(intkey, &intValue, OPAL_INT, units);
     EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
@@ -429,7 +430,7 @@ TEST_F(ut_util_tests, orcm_util_get_number_orcm_value)
     EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
     SAFEFREE(ptr);
 
-    ptr = orcm_util_load_orcm_value(intkey, &intValue, OPAL_INT64, units);
+    ptr = orcm_util_load_orcm_value(intkey, &int64Value, OPAL_INT64, units);
     EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
     SAFEFREE(ptr);
 
@@ -452,11 +453,133 @@ TEST_F(ut_util_tests, orcm_util_get_number_orcm_value)
     EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
     SAFEFREE(ptr);
 
-    ptr = orcm_util_load_orcm_value(uintkey, &intValue, OPAL_UINT64, units);
+    ptr = orcm_util_load_orcm_value(uintkey, &int64Value, OPAL_UINT64, units);
     EXPECT_DOUBLE_EQ( (double) 3.0, orcm_util_get_number_orcm_value(ptr));
     SAFEFREE(ptr);
 
     SAFEFREE(units);
     SAFEFREE(intkey);
     SAFEFREE(uintkey);
+}
+
+TEST_F(ut_util_tests, orcm_util_copy_opal_value_data_tests)
+{
+    char *key = strdup("key");
+    opal_value_t* src = NULL;
+    opal_value_t* dst;
+
+    int intval = 3;
+    unsigned int uintval = 3;
+    double val = 3.14159265;
+    bool flag = false;
+    uint8_t bobj[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+    src = OBJ_NEW(opal_value_t);
+
+    src = orcm_util_load_opal_value(key, &val, OPAL_DOUBLE);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(NULL, src));
+
+    src = orcm_util_load_opal_value(key, key, OPAL_STRING);
+    EXPECT_EQ(ORCM_ERR_COPY_FAILURE, orcm_util_copy_opal_value_data(NULL, src));
+
+    src = orcm_util_load_opal_value(key, bobj, OPAL_BYTE_OBJECT);
+    EXPECT_EQ(ORCM_ERR_COPY_FAILURE, orcm_util_copy_opal_value_data(NULL, src));
+
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &flag, OPAL_BOOL);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.flag, src->data.flag);
+    OBJ_RELEASE(dst);
+
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, key, OPAL_STRING);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_STREQ(dst->data.string, src->data.string);
+
+    SAFEFREE(src->data.string);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_TRUE(NULL == dst->data.string);
+    OBJ_RELEASE(dst);
+
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &intval, OPAL_SIZE);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &intval, OPAL_PID);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &intval, OPAL_INT);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &intval, OPAL_INT8);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &intval, OPAL_INT16);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &intval, OPAL_INT32);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &intval, OPAL_INT64);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &uintval, OPAL_UINT);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &uintval, OPAL_UINT8);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &uintval, OPAL_UINT16);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &uintval, OPAL_UINT32);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &uintval, OPAL_UINT64);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
 }

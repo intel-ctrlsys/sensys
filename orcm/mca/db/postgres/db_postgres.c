@@ -241,9 +241,8 @@ static void postgres_finalize(struct orcm_db_base_module_t *imod)
     if (NULL != mod->conn) {
         PQfinish(mod->conn);
     }
-    OBJ_RELEASE(mod->results_sets);
-    mod->results_sets = NULL;
-    free(mod);
+    ORCM_RELEASE(mod->results_sets);
+    SAFEFREE(mod);
 }
 
 #define ERR_MSG_STORE(msg) \

@@ -48,6 +48,10 @@ static mca_db_postgres_module_t* create_postgres_mod(const char* dbname,
     mod->user = (NULL != user) ? strdup(user) : NULL;
     mod->pguri = (NULL != uri) ? strdup(uri) : NULL;
     mod->autocommit = true;
+    mod->conn = NULL;
+    mod->pgoptions = NULL;
+    mod->pgtty = NULL;
+    mod->results_sets = NULL;
     return mod;
 }
 
@@ -194,6 +198,7 @@ TEST(ut_db_postgres_tests, init_failure)
     int rc = ORCM_SUCCESS;
     mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, "dummy_host");
     rc = mca_db_postgres_module.api.init((orcm_db_base_module_t*)mod);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     EXPECT_EQ(ORCM_ERR_CONNECTION_FAILED,rc);
 }
 
@@ -202,6 +207,7 @@ TEST(ut_db_postgres_tests, init_null_dbname)
     int rc = ORCM_SUCCESS;
     mca_db_postgres_module_t *mod = create_postgres_mod(NULL, user, host);
     rc = mca_db_postgres_module.api.init((orcm_db_base_module_t*)mod);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     EXPECT_EQ(ORCM_ERR_BAD_PARAM,rc);
 }
 
@@ -210,6 +216,7 @@ TEST(ut_db_postgres_tests, init_null_uri)
     int rc = ORCM_SUCCESS;
     mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, NULL);
     rc = mca_db_postgres_module.api.init((orcm_db_base_module_t*)mod);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     EXPECT_EQ(ORCM_ERR_BAD_PARAM,rc);
 }
 
@@ -218,13 +225,16 @@ TEST(ut_db_postgres_tests, init_incorrect_uri)
     int rc = ORCM_SUCCESS;
     mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, "localhost:incorrect:uri");
     rc = mca_db_postgres_module.api.init((orcm_db_base_module_t*)mod);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     EXPECT_EQ(ORCM_ERR_BAD_PARAM,rc);
 }
 
 TEST(ut_db_postgres_tests, store_unsupported_type)
 {
     orcm_db_data_type_t unknown_type = (orcm_db_data_type_t)4;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
     int rc = mca_db_postgres_module.api.store_new(NULL, unknown_type, NULL, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     ASSERT_EQ(ORCM_ERR_NOT_IMPLEMENTED, rc);
 }
 
@@ -237,6 +247,7 @@ TEST(ut_db_postgres_tests, store_data_sample_invalid_data_group_type)
                               OPAL_DOUBLE, (void*)(&d_value), OPAL_TIMEVAL, (void*)(&start_time));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_ENV_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -257,6 +268,7 @@ TEST(ut_db_postgres_tests, store_data_sample_invalid_time_stamp)
     opal_list_append(input_list, (opal_list_item_t*)mv);
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_ENV_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -269,6 +281,7 @@ TEST(ut_db_postgres_tests, store_data_sample_invalid_time_stamp_type)
                               OPAL_STRING, (void*)data_group, OPAL_DOUBLE, (void*)(&d_value));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_ENV_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -282,6 +295,7 @@ TEST(ut_db_postgres_tests, store_data_sample_invalid_hostname_type)
                               OPAL_STRING, (void*)data_group, OPAL_STRING, (void*)(&current_time));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_ENV_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -295,6 +309,7 @@ TEST(ut_db_postgres_tests, store_data_sample_no_data_samples)
                               OPAL_STRING, (void*)data_group, OPAL_STRING, (void*)(&current_time));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_ENV_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -313,6 +328,7 @@ TEST(ut_db_postgres_tests, store_data_sample_event_invalid_time_stamp_type)
 
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_ENV_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -329,6 +345,7 @@ TEST(ut_db_postgres_tests, store_diag_invalid_hostname_type)
                               OPAL_TIMEVAL, (void*)(&end_time), OPAL_INT, (void*)(&component_index));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_DIAG_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -345,6 +362,7 @@ TEST(ut_db_postgres_tests, store_diag_invalid_diagnostic_type)
                               OPAL_TIMEVAL, (void*)(&end_time), OPAL_INT, (void*)(&component_index));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_DIAG_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -361,6 +379,7 @@ TEST(ut_db_postgres_tests, store_diag_ivalid_diagnostic_subtype)
                               OPAL_TIMEVAL, (void*)(&end_time), OPAL_INT, (void*)(&component_index));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_DIAG_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -383,6 +402,7 @@ TEST(ut_db_postgres_tests, store_diag_invalid_start_time)
 
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_DIAG_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -398,6 +418,7 @@ TEST(ut_db_postgres_tests, store_diag_invalid_start_time_type)
                               OPAL_TIMEVAL, (void*)(&end_time), OPAL_INT, (void*)(&component_index));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_DIAG_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -414,6 +435,7 @@ TEST(ut_db_postgres_tests, store_diag_invalid_test_results_type)
                               OPAL_TIMEVAL, (void*)(&end_time), OPAL_INT, (void*)(&component_index));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_DIAG_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -436,6 +458,7 @@ TEST(ut_db_postgres_tests, store_diag_invalid_end_time)
 
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_DIAG_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -451,6 +474,7 @@ TEST(ut_db_postgres_tests, store_diag_invalid_end_time_type)
                               OPAL_DOUBLE, (void*)(&d_value), OPAL_INT, (void*)(&component_index));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_DIAG_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -469,6 +493,7 @@ TEST(ut_db_postgres_tests, store_diag_invalid_component_type)
 
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_DIAG_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -481,6 +506,7 @@ TEST(ut_db_postgres_tests, store_node_feature_missing_time_stamp)
                               OPAL_STRING, (void*)data_group, OPAL_TIME, NULL);
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_INVENTORY_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -494,6 +520,7 @@ TEST(ut_db_postgres_tests, store_node_feature_invalid_hostname_type)
                               OPAL_STRING, (void*)data_group, OPAL_TIMEVAL, (void*)(&start_time));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_INVENTORY_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -506,6 +533,7 @@ TEST(ut_db_postgres_tests, store_node_feature_invalid_time_stamp_type)
                               OPAL_STRING, (void*)data_group, OPAL_DOUBLE, (void*)(&d_value));
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_INVENTORY_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -525,6 +553,7 @@ TEST(ut_db_postgres_tests, store_node_feature_invalid_time_stamp_value)
 
     rc = mca_db_postgres_module.api.store_new((orcm_db_base_module_t*)mod,
                                            ORCM_DB_INVENTORY_DATA, input_list, NULL);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -545,6 +574,7 @@ TEST(ut_db_postgres_tests, store_sample_invalid_time_stamp_value)
     opal_list_append(input_list, (opal_list_item_t*)mv);
     rc = mca_db_postgres_module.api.store((orcm_db_base_module_t*)mod,
                                            data_group, input_list);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -557,6 +587,7 @@ TEST(ut_db_postgres_tests, store_sample_invalid_time_stamp_type)
                               OPAL_STRING, (void*)data_group, OPAL_DOUBLE, (void*)(&d_value));
     rc = mca_db_postgres_module.api.store((orcm_db_base_module_t*)mod,
                                            data_group, input_list);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
@@ -570,7 +601,76 @@ TEST(ut_db_postgres_tests, store_sample_invalid_hostname_type)
                               OPAL_STRING, (void*)data_group, OPAL_TIMEVAL, (void*)(&start_time));
     rc = mca_db_postgres_module.api.store((orcm_db_base_module_t*)mod,
                                            data_group, input_list);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     OBJ_RELEASE(input_list);
     ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
 }
 
+
+TEST(ut_db_postgres_tests, update_node_features_fail)
+{
+    int rc = ORCM_SUCCESS;
+    gettimeofday(&start_time, NULL);
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    opal_list_t *input_list = create_list_with_mandatory_fields(OPAL_DOUBLE, (void*)(&d_value),
+                              OPAL_STRING, (void*)data_group, OPAL_TIMEVAL, (void*)(&start_time));
+    rc = mca_db_postgres_module.api.update_node_features((orcm_db_base_module_t*)mod,
+                                           data_group, input_list);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
+    OBJ_RELEASE(input_list);
+    ASSERT_EQ(ORCM_ERROR, rc);
+}
+
+
+TEST(ut_db_postgres_tests, commit_fail)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, "dummy_host");
+    mca_db_postgres_module.api.init((orcm_db_base_module_t*)mod);
+    rc = mca_db_postgres_module.api.commit((orcm_db_base_module_t*)mod);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
+    ASSERT_EQ(ORCM_ERROR, rc);
+}
+
+TEST(ut_db_postgres_tests, rollback_fail)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, "dummy_host");
+    mca_db_postgres_module.api.init((orcm_db_base_module_t*)mod);
+    rc = mca_db_postgres_module.api.rollback((orcm_db_base_module_t*)mod);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
+    ASSERT_EQ(ORCM_ERROR, rc);
+}
+
+TEST(ut_db_postgres_tests, close_result_set_fail)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    mca_db_postgres_module.api.init((orcm_db_base_module_t*)mod);
+    rc = mca_db_postgres_module.api.close_result_set((orcm_db_base_module_t*)mod, 0);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
+    ASSERT_EQ(ORCM_ERROR, rc);
+}
+
+TEST(ut_db_postgres_tests, get_next_row_fail)
+{
+    int rc = ORCM_SUCCESS;
+    opal_list_t *row = OBJ_NEW(opal_list_t);
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    mca_db_postgres_module.api.init((orcm_db_base_module_t*)mod);
+    rc = mca_db_postgres_module.api.get_next_row((orcm_db_base_module_t*)mod, 0, row);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
+    ORCM_RELEASE(row);
+    ASSERT_EQ(ORCM_ERROR, rc);
+}
+
+TEST(ut_db_postgres_tests, get_num_rows_fail)
+{
+    int rc = ORCM_SUCCESS;
+    int *num_rows = NULL;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    mca_db_postgres_module.api.init((orcm_db_base_module_t*)mod);
+    rc = mca_db_postgres_module.api.get_num_rows((orcm_db_base_module_t*)mod, 0, num_rows);
+    mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
+    ASSERT_EQ(ORCM_ERROR, rc);
+}

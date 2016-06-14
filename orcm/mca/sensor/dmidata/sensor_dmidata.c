@@ -587,14 +587,12 @@ static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
     }
 #endif
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &dmidata_hwloc_topology, 1, OPAL_HWLOC_TOPO))) {
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);
+    ORCM_ON_FAILURE_RETURN(rc);
+
+    rc = opal_dss.pack(inventory_snapshot, &dmidata_hwloc_topology, 1, OPAL_HWLOC_TOPO);
+    ORCM_ON_FAILURE_RETURN(rc);
+
     if (cpufreq_loaded == true) {
         if(NULL != (fptr = fopen("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies","r"))) {
             fseek(fptr, 0, SEEK_END);
@@ -616,11 +614,10 @@ static void dmidata_inventory_collect(opal_buffer_t *inventory_snapshot)
         freq_list = strdup("NULL");
     }
 
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &freq_list, 1, OPAL_STRING))) {
-        free(freq_list);
-        ORTE_ERROR_LOG(rc);
-        return;
-    }
+    rc = opal_dss.pack(inventory_snapshot, &freq_list, 1, OPAL_STRING);
+    ORCM_ON_FAILURE_GOTO(rc, cleanup);
+
+cleanup:
     free(freq_list);
 }
 

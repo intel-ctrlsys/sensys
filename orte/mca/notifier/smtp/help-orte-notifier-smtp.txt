@@ -29,5 +29,6 @@ Oops!  Open MPI's SMTP notifier failed to send an email.
   Reason: %s
   libESMTP function: %s
   libESMTP message: %s
+  error: %d
   Message: %s
 #

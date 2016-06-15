@@ -60,7 +60,7 @@ int LedControl::ipmiCmdOperation(unsigned short cmd, unsigned char *buff_in,
     }
     ret = ipmi_cmd(cmd, buff_in, in_size, buff_out, out_size, ccode, 0);
     ipmi_close();
-    return ret;
+    return 0 == *ccode ? ret : -1;
 #else
     return -1;
 #endif

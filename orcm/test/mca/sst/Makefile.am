@@ -1,5 +1,5 @@
 if HAVE_GTEST
-gtestSubdirs=tool
+gtestSubdirs=tool orcmd
 endif
 
 SUBDIRS=$(gtestSubdirs)

@@ -296,6 +296,18 @@ static int check_duplicate_singletons(xml_tree_t * in_xtree);
 
 static char *get_controller_name(char **element_name, char *parent_name);
 
+static int ret_without_msg(xml_tree_t *xml_syntax, int ret)
+{
+    xml_tree_destroy(xml_syntax);
+    return ret;
+}
+
+static int ret_error(xml_tree_t *xml_syntax, int ret, const char *err_msg)
+{
+    opal_output(0, err_msg);
+    return ret_without_msg(xml_syntax, ret);
+}
+
 static int file30_init(void)
 {
     xml_tree_t xml_syntax;
@@ -307,77 +319,46 @@ static int file30_init(void)
 
     int erri = ORCM_SUCCESS;
 
-    while (ORCM_SUCCESS == erri){
-        erri = xml_tree_create(&xml_syntax);
-        if (ORCM_SUCCESS != erri) {
-            break;
+    xml_tree_create(&xml_syntax);
+
+    if (NULL == orcm_cfgi_base.config_file) {
+        return ret_error(&xml_syntax, ORCM_ERR_TAKE_NEXT_OPTION, "NULL FILE");
+    }
+
+    erri = lex_xml(orcm_cfgi_base.config_file, &xml_syntax);
+    if (ORCM_SUCCESS != erri) {
+        return ret_error(&xml_syntax, ORCM_ERR_TAKE_NEXT_OPTION, "FAILED TO PARSE XML CFGI FILE");
+    }
+
+    /* Now look for the first version data field */
+    for (i = 0; i != xml_syntax.sz_items; ++i) {
+        if ('/' == xml_syntax.items[i][0] || '\t' == xml_syntax.items[i][0]) {
+            continue;
         }
-
-        if (NULL == orcm_cfgi_base.config_file) {
-            opal_output(0, "NULL FILE");
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-
-        erri = lex_xml(orcm_cfgi_base.config_file, &xml_syntax);
-
-        if (ORCM_SUCCESS != erri) {
-            opal_output(0,
-                        "FAILED TO PARSE XML CFGI FILE");
-            break;
-        }
-
-        /* Now look for the first version data field */
-        for (i=0; i!=xml_syntax.sz_items; ++i) {
-            if ('/' == xml_syntax.items[i][0]) {
-                continue;
+        if (0 == strcasecmp(TXversion, xml_syntax.items[i])) {
+            if (i+1 >= xml_syntax.sz_items) {
+                return ret_error(&xml_syntax, ORCM_ERR_TAKE_NEXT_OPTION, "MISSING VERSION DATA");
             }
-            if ('\t' == xml_syntax.items[i][0]) {
-                continue;
+            data = xml_syntax.items[i+1];
+            if ('\t' != data[0]) {
+                return ret_error(&xml_syntax, ORCM_ERR_TAKE_NEXT_OPTION,
+                                 "BAD PARSING OF VERSION DATA");
             }
-            if (0 == strcasecmp(TXversion, xml_syntax.items[i])) {
-                if (i+1 >= xml_syntax.sz_items) {
-                    opal_output(0,
-                                "MISSING VERSION DATA");
-                    erri = ORCM_ERR_BAD_PARAM;
-                    break;
-                }
-                data=xml_syntax.items[i+1];
-                if ('\t' != data[0]) {
-                    opal_output(0,
-                                "BAD PARSING OF VERSION DATA");
-                    erri = ORCM_ERR_BAD_PARAM;
-                    break;
-                }
-                if ('3' == data[1]) { /* TODO: Check for whitespace if someone quoted the version*/
-                    version_found = 1;
-                } else {
-                    opal_output(0,
-                                "EXPECTED VERSION 3 NOT FOUND: %s",data+1);
-                    erri = ORCM_ERR_BAD_PARAM;
-                    break;
-                }
+            if ('3' == data[1]) { /* TODO: Check for whitespace if someone quoted the version*/
+                version_found = 1;
+            } else {
+                opal_output(0, "EXPECTED VERSION 3 NOT FOUND: %s", data + 1);
+                ret_without_msg(&xml_syntax, ORCM_ERR_TAKE_NEXT_OPTION);
             }
         }
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
+    }
 
-        if (0 == version_found){
-            opal_output(0, "VERSION 3 NOT FOUND");
-            erri = ORCM_ERR_NOT_FOUND;
-        }
-
-        break;
+    if (0 == version_found){
+        return ret_error(&xml_syntax, ORCM_ERR_TAKE_NEXT_OPTION, "VERSION 3 NOT FOUND");
     }
 
     xml_tree_destroy(&xml_syntax);
-
-    if (ORCM_SUCCESS != erri) {
-        return ORCM_ERR_TAKE_NEXT_OPTION;
-    }
-
-    return ORCM_SUCCESS;
+    return ret_without_msg(&xml_syntax, ORCM_SUCCESS);
 }
 
 static void file30_finalize(void)
@@ -388,99 +369,85 @@ static int parse_config(xml_tree_t * io_xtree, opal_list_t *io_config);
 static bool check_me(orcm_config_t *config, char *node,
                      orte_vpid_t vpid, char *my_ip);
 
-static int read_config(opal_list_t *config)
+static int check_file_exist(void)
 {
-    FILE * fp=NULL;
-
-    orcm_cfgi_xml_parser_t *xml; //An iterator, owns nothing.
-
-    xml_tree_t xml_syntax;
-
-    int erri = ORCM_SUCCESS;
-
-    /*Check if the file exist*/     /*TODO: Use something more robust than fopen */
-    fp = fopen(orcm_cfgi_base.config_file, "r");
+    FILE *fp = fopen(orcm_cfgi_base.config_file, "r");
     if (NULL == fp) {
         orte_show_help("help-orcm-cfgi.txt", "site-file-not-found",
                        true, orcm_cfgi_base.config_file);
         return ORCM_ERR_SILENT;
     }
+
     if (0 != fclose(fp)) {
-        opal_output(0,
-                    "FAIL to PROPERLY CLOSE THE CFGI XML FILE");
-        return ORCM_ERR_SILENT;
-    } else {
-        fp = NULL;
-    }
-
-    while (ORCM_SUCCESS == erri) {
-        erri = xml_tree_create(&xml_syntax);
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
-
-        erri = lex_xml(orcm_cfgi_base.config_file, &xml_syntax);
-        if (ORCM_SUCCESS != erri) {
-            opal_output(0,
-                        "FAILED TO XML LEX THE FILE");
-            break;
-        }
-
-        if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
-            xml_tree_print_lexer(&xml_syntax);
-        }
-        erri = check_lex_tags_valid(&xml_syntax);
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
-        erri = check_lex_open_close_tags_matching(&xml_syntax);
-        if ( ORCM_SUCCESS != erri ) {
-            break;
-        }
-        erri = check_lex_single_record(&xml_syntax);
-        if ( ORCM_SUCCESS != erri ) {
-            break;
-        }
-        erri = check_lex_allowed_junction_type(&xml_syntax);
-        if ( ORCM_SUCCESS != erri ) {
-            break;
-        }
-        erri = check_lex_aggregator_yes_no(&xml_syntax);
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
-
-        erri = check_lex_all_port_fields(&xml_syntax);
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
-
-        opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
-                            "XML lexer-level VALIDITY CHECKED and PASSED");
-
-        erri = parse_config(&xml_syntax, config);
-        if (ORCM_SUCCESS != erri) {
-            opal_output(0,
-                        "FAILED TO PARSE THE CFGI XML FILE:%d",erri);
-            break;
-        }
-
-        if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
-            OPAL_LIST_FOREACH(xml, config, orcm_cfgi_xml_parser_t) {
-                orcm_util_print_xml(xml, NULL);
-            }
-        }
-
-        break;
-    }
-
-    xml_tree_destroy(&xml_syntax);
-
-    if (ORCM_SUCCESS != erri) {
+        opal_output(0, "FAIL to PROPERLY CLOSE THE CFGI XML FILE");
         return ORCM_ERR_SILENT;
     }
 
+    fp = NULL;
     return ORCM_SUCCESS;
+}
+
+static int read_config(opal_list_t *config)
+{
+    orcm_cfgi_xml_parser_t *xml; //An iterator, owns nothing.
+
+    xml_tree_t xml_syntax;
+
+    int erri = check_file_exist();
+    if (ORCM_SUCCESS != erri) {
+        return erri;
+    }
+
+    xml_tree_create(&xml_syntax);
+
+    if (ORCM_SUCCESS != lex_xml(orcm_cfgi_base.config_file, &xml_syntax)) {
+        return ret_error(&xml_syntax, ORCM_ERR_SILENT, "FAILED TO XML LEX THE FILE");
+    }
+
+    if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
+        xml_tree_print_lexer(&xml_syntax);
+    }
+
+    if (ORCM_SUCCESS != check_lex_tags_valid(&xml_syntax)) {
+        return ret_without_msg(&xml_syntax, ORCM_ERR_SILENT);
+    }
+
+    if (ORCM_SUCCESS != check_lex_open_close_tags_matching(&xml_syntax)) {
+        return ret_without_msg(&xml_syntax, ORCM_ERR_SILENT);
+    }
+
+    if (ORCM_SUCCESS != check_lex_single_record(&xml_syntax)) {
+        return ret_without_msg(&xml_syntax, ORCM_ERR_SILENT);
+    }
+
+    if (ORCM_SUCCESS != check_lex_allowed_junction_type(&xml_syntax)) {
+        return ret_without_msg(&xml_syntax, ORCM_ERR_SILENT);
+    }
+
+    if (ORCM_SUCCESS != check_lex_aggregator_yes_no(&xml_syntax)) {
+        return ret_without_msg(&xml_syntax, ORCM_ERR_SILENT);
+    }
+
+    if (ORCM_SUCCESS != check_lex_all_port_fields(&xml_syntax)) {
+        return ret_without_msg(&xml_syntax, ORCM_ERR_SILENT);
+    }
+
+    opal_output_verbose(V_HI, orcm_cfgi_base_framework.framework_output,
+                        "XML lexer-level VALIDITY CHECKED and PASSED");
+
+    erri = parse_config(&xml_syntax, config);
+    if (ORCM_SUCCESS != erri) {
+        opal_output(0, "FAILED TO PARSE THE CFGI XML FILE:%d", erri);
+        return ret_without_msg(&xml_syntax, ORCM_ERR_SILENT);
+    }
+
+    if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
+        OPAL_LIST_FOREACH(xml, config, orcm_cfgi_xml_parser_t) {
+            orcm_util_print_xml(xml, NULL);
+        }
+    }
+
+    return ret_without_msg(&xml_syntax, ORCM_SUCCESS);
 }
 
 static void setup_environ(char **env);
@@ -488,10 +455,19 @@ static int parse_cluster(orcm_cluster_t *cluster, orcm_cfgi_xml_parser_t *x);
 static int parse_scheduler(orcm_scheduler_t *scheduler,
                            orcm_cfgi_xml_parser_t *x);
 
+static void get_node_ip(char *node, char **my_ip)
+{
+    struct hostent *h = gethostbyname(node);
+    if (NULL == h) {
+        *my_ip = strdup(node);
+    } else {
+        *my_ip = strdup(inet_ntoa(*(struct in_addr*)h->h_addr_list[0]));
+    }
+}
+
 static int define_system(opal_list_t *config,    orcm_node_t **mynode,
                          orte_vpid_t *num_procs, opal_buffer_t *buf)
 {
-    struct hostent *h;
     char *my_ip = NULL;
     orte_vpid_t vpid;
     bool found_me;
@@ -510,21 +486,9 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
     *mynode = NULL;
 
     /* convert my hostname to its IP form just in case we need it */
-    if (opal_net_isaddr(orte_process_info.nodename)) {
-        my_ip = strdup(orte_process_info.nodename);
-    } else {
-        /* lookup the address of this node */
-        if (NULL == (h = gethostbyname(orte_process_info.nodename))) {
-            /* if we can't get it for some reason, don't worry about it */
-            my_ip = strdup(orte_process_info.nodename);
-        } else {
-            my_ip = strdup(inet_ntoa(*(struct in_addr*)h->h_addr_list[0]));
-        }
-    }
+    get_node_ip(orte_process_info.nodename, &my_ip);
+    ORCM_ON_NULL_RETURN_ERROR(my_ip, ORCM_ERR_OUT_OF_RESOURCE);
 
-    if (NULL == my_ip) {
-        return ORCM_ERR_OUT_OF_RESOURCE;
-    }
     OPAL_LIST_FOREACH(xx, config, orcm_cfgi_xml_parser_t) {
         if (0 == strcmp(xx->name, TXconfig)) {
             OPAL_LIST_FOREACH(x, &xx->subvals, orcm_cfgi_xml_parser_t) {
@@ -1408,20 +1372,15 @@ static bool check_me(orcm_config_t *config, char *node,
     char *uri = NULL;
     bool node_itself = false;
     char *this_ip = NULL;
-    struct hostent *h = NULL;
     int rc = ORCM_SUCCESS;
 
-    if (NULL == (h = gethostbyname(node))) {
-        this_ip = node;
-    } else {
-        this_ip = inet_ntoa(*(struct in_addr*)h->h_addr_list[0]);
-    }
+    get_node_ip(node, &this_ip);
+    ORCM_ON_NULL_RETURN_ERROR(this_ip, node_itself);
 
-    if (NULL != this_ip &&
-        (0 == strcmp(this_ip, my_ip) ||
-         0 == strcmp(node, orte_process_info.nodename))) {
+    if (0 == strcmp(this_ip, my_ip)) {
         if (NULL != orcm_cfgi_base.port_number && NULL != config->port &&
             0 != strcmp(orcm_cfgi_base.port_number, config->port)) {
+            SAFEFREE(this_ip);
             return node_itself;
         }
         ORTE_PROC_MY_NAME->vpid = vpid;
@@ -1444,6 +1403,7 @@ static bool check_me(orcm_config_t *config, char *node,
         }
     }
 
+    SAFEFREE(this_ip);
     return node_itself;
 }
 
@@ -2955,40 +2915,54 @@ static int check_lex_all_port_fields(xml_tree_t * in_xtree)
     return erri;
 }
 
+static int ret_lexed_items(unsigned long *section_starts,
+                           unsigned long *section_ends,
+                           unsigned long *section_parents,
+                           unsigned long *section_counts,
+                           int ret)
+{
+    SAFEFREE(section_starts);
+    SAFEFREE(section_ends);
+    SAFEFREE(section_parents);
+    SAFEFREE(section_counts);
+
+    return ret;
+}
+
+/* in_begin_offset : The start of the offset in io_xtree->items
+ *                   where to begin the search.
+ *                   ==>IMPORTANT: It has to be on a sectional item
+ * in_end_offset :  Where to stop the search.
+ *                   ==>IMPORTANT: It has include the ending tag of the
+ *                                 sectional item refer to by in_begin_offset.
+ * io_xtree : the xml syntax tree to be constructed
+ *            It is assumed that io_xtree->items and io_xtree->sz_items have
+ *            already been constructed by the lex_xml function.
+ *
+ * A row in io_xtree->hierarchy contains a sequence of signed integers:
+ *          A positive integer is an offset into io_xtree->items
+ *          A negative integer is an offset into io_xtree->hierarchy
+ *      The first, at offset=0, positive integer points to where that
+ *      sectional item starts in io_xtree->items.
+ *      All other positive integers points to non-sectional entries
+ *      in io_xtree->items, for that sectional item.
+ *          Only beginning tags are pointed to; ending tags and data fields
+ *          are not included.  Those are assumed to be there.
+ *
+ *      All negative integers points to a sectional entry.
+ *      So negative integers are the child sections of the current row.
+ *      The positive integers are the properties local to the current row.
+ *
+ */
+
+/* The algorithm is essentially a hierarchical search without using recursion
+ * or a stack.
+ * A little slower maybe but it is real easy to fix if wrong.
+ */
 static int structure_lexed_items(unsigned long in_begin_offset,
                                  unsigned long in_end_offset,
                                  xml_tree_t * io_xtree)
 {
-    /* in_begin_offset : The start of the offset in io_xtree->items
-     *                   where to begin the search.
-     *                   ==>IMPORTANT: It has to be on a sectional item
-     * in_end_offset :  Where to stop the search.
-     *                   ==>IMPORTANT: It has include the ending tag of the
-     *                                 sectional item refer to by in_begin_offset.
-     * io_xtree : the xml syntax tree to be constructed
-     *            It is assumed that io_xtree->items and io_xtree->sz_items have
-     *            already been constructed by the lex_xml function.
-     *
-     * A row in io_xtree->hierarchy contains a sequence of signed integers:
-     *          A positive integer is an offset into io_xtree->items
-     *          A negative integer is an offset into io_xtree->hierarchy
-     *      The first, at offset=0, positive integer points to where that
-     *      sectional item starts in io_xtree->items.
-     *      All other positive integers points to non-sectional entries
-     *      in io_xtree->items, for that sectional item.
-     *          Only beginning tags are pointed to; ending tags and data fields
-     *          are not included.  Those are assumed to be there.
-     *
-     *      All negative integers points to a sectional entry.
-     *      So negative integers are the child sections of the current row.
-     *      The positive integers are the properties local to the current row.
-     *
-     */
-
-    /*The algorithm is essentially a hierarchical search without using recursion
-     * or a stack.
-     * A little slower maybe but it is real easy to fix if wrong.
-     */
     const unsigned long nota_index=(unsigned long)(-1);
     int erri=ORCM_SUCCESS;
 
@@ -3006,334 +2980,289 @@ static int structure_lexed_items(unsigned long in_begin_offset,
     io_xtree->hier_row_lengths = NULL;
     io_xtree->hierarchy = NULL;
 
-    while (ORCM_SUCCESS == erri){
-        if (0 == io_xtree->sz_items || NULL == io_xtree->items) {
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-        if (in_begin_offset >= in_end_offset ||
-            in_begin_offset >= io_xtree->sz_items ||
-            in_end_offset > io_xtree->sz_items) {
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
+    if (0 == io_xtree->sz_items || NULL == io_xtree->items) {
+        return ret_lexed_items(section_starts, section_ends,
+                               section_parents, section_counts, ORCM_ERR_BAD_PARAM);
+    }
 
-        if (!is_sectional_item(io_xtree->items[in_begin_offset])) {
+    if (in_begin_offset >= in_end_offset ||
+        in_begin_offset >= io_xtree->sz_items ||
+        in_end_offset > io_xtree->sz_items) {
+        return ret_lexed_items(section_starts, section_ends,
+                               section_parents, section_counts, ORCM_ERR_BAD_PARAM);
+    }
+
+    if (!is_sectional_item(io_xtree->items[in_begin_offset])) {
             /*We are not starting on a sectional element*/
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
+        return ret_lexed_items(section_starts, section_ends,
+                               section_parents, section_counts, ORCM_ERR_BAD_PARAM);
+    }
 
-        /*First count the number of sections we have */
-        k=0;
-        ending_sectional_tags=0;
-        for (i=in_begin_offset; i < in_end_offset; ++i) {
-            t = io_xtree->items[i];
-            if ('\t' == t[0]) {
-                continue;
-            }
-            if ('/' == t[0]) {
-                if (is_sectional_item(t+1)) {
-                    ++ending_sectional_tags;
-                }
-            }
-            if (!is_sectional_item(t)) {
-                continue;
-            }
-            opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
-                                "Section =%s",t);
-            if ('/' == t[0]) {
-                ++ending_sectional_tags;
-            } else {
-                ++k;
-            }
+    /*First count the number of sections we have */
+    k = 0;
+    ending_sectional_tags = 0;
+    for (i = in_begin_offset; i < in_end_offset; ++i) {
+        t = io_xtree->items[i];
+        if ('\t' == t[0]) {
+            continue;
+        }
+        if ('/' == t[0] && is_sectional_item(t+1)) {
+            ++ending_sectional_tags;
+        }
+        if (!is_sectional_item(t)) {
+            continue;
         }
         opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
-                            "Section count=%lu  %lu\n",k, ending_sectional_tags);
-
-        if (k != ending_sectional_tags || 0 == k) {
-            /*This crude check to see if we have the ending tag of the starting section*/
-            opal_output(0,
-                        "ERROR:Provided sub-section of XML lexer invalid");
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
+                            "Section =%s",t);
+        if ('/' == t[0]) {
+            ++ending_sectional_tags;
+        } else {
+            ++k;
         }
+    }
 
-        io_xtree->sz_hierarchy=k;
-        k=0;
-        erri = xml_tree_alloc_hierarchy(io_xtree);
-        if (ORCM_SUCCESS != erri) {
-            break;
+    opal_output_verbose(V_LO, orcm_cfgi_base_framework.framework_output,
+                        "Section count=%lu  %lu\n",k, ending_sectional_tags);
+
+    if (k != ending_sectional_tags || 0 == k) {
+        /*This crude check to see if we have the ending tag of the starting section*/
+        opal_output(0, "ERROR:Provided sub-section of XML lexer invalid");
+        return ret_lexed_items(section_starts, section_ends,
+                               section_parents, section_counts, ORCM_ERR_BAD_PARAM);
+    }
+
+    io_xtree->sz_hierarchy = k;
+    k = 0;
+    erri = xml_tree_alloc_hierarchy(io_xtree);
+    if (ORCM_SUCCESS != erri) {
+        return ret_lexed_items(section_starts, section_ends, section_parents, section_counts, erri);
+    }
+
+    sz_section=0;
+    erri = ORCM_ERR_OUT_OF_RESOURCE;
+
+    section_starts = (unsigned long *) calloc(io_xtree->sz_hierarchy, sizeof(unsigned long));
+    ORCM_ON_NULL_GOTO(section_starts, cleanup);
+
+    section_ends = (unsigned long *) calloc(io_xtree->sz_hierarchy, sizeof(unsigned long));
+    ORCM_ON_NULL_GOTO(section_ends, cleanup);
+
+    section_parents = (unsigned long *) calloc(io_xtree->sz_hierarchy, sizeof(unsigned long));
+    ORCM_ON_NULL_GOTO(section_parents, cleanup);
+
+    section_counts = (unsigned long *) calloc(io_xtree->sz_hierarchy, sizeof(unsigned long));
+    ORCM_ON_NULL_GOTO(section_counts, cleanup);
+
+    /*Find the beginning and the end of each section, and their parent section */
+
+    /*NOTE: Section_parents does not store indices in io_xtree->items.
+     *      It stores indices pointing in section_starts.
+     */
+
+    /*NOTE: The observation here is that an offset of zero in either
+     *      section_ends or section_parents is not possible.
+     *      In the section_parents, only sections being reporting to
+     *      the base section can be zero.
+     *      The entry zero of section_parents cannot be defined as
+     *      the base section has no parents.
+     */
+
+    /*TODO: Optimize the search for the first empty ending.
+     *      As it is, we are looking at a worst case O(N^2) parsing.
+     *      Using sections_ends as a stack would speed things up.
+     */
+
+    /*NOTE: This algorithm is done twice. Once now and once afterward.*/
+    section_parents[0] = nota_index;
+
+    sz_section = -1;
+    for (i = in_begin_offset; i < in_end_offset; ++i) {
+        t = io_xtree->items[i];
+        if ('\t' == t[0]) { /*Skip data field*/
+            continue;
         }
-
-        sz_section=0;
-        section_starts = (unsigned long *) calloc(io_xtree->sz_hierarchy, sizeof(unsigned long));
-        if (NULL == section_starts) {
-            erri = ORCM_ERR_OUT_OF_RESOURCE;
-            break;
-        }
-
-        section_ends = (unsigned long *) calloc(io_xtree->sz_hierarchy, sizeof(unsigned long));
-        if (NULL == section_ends) {
-            erri = ORCM_ERR_OUT_OF_RESOURCE;
-            break;
-        }
-
-        section_parents = (unsigned long *) calloc(io_xtree->sz_hierarchy, sizeof(unsigned long));
-        if (NULL == section_parents) {
-            erri = ORCM_ERR_OUT_OF_RESOURCE;
-            break;
-        }
-
-        section_counts = (unsigned long *) calloc(io_xtree->sz_hierarchy, sizeof(unsigned long));
-        if (NULL == section_counts) {
-            erri = ORCM_ERR_OUT_OF_RESOURCE;
-            break;
-        }
-
-        /*Find the beginning and the end of each section, and their parent section */
-
-        /*NOTE: Section_parents does not store indices in io_xtree->items.
-         *      It stores indices pointing in section_starts.
-         */
-
-        /*NOTE: The observation here is that an offset of zero in either
-         *      section_ends or section_parents is not possible.
-         *      In the section_parents, only sections being reporting to
-         *      the base section can be zero.
-         *      The entry zero of section_parents cannot be defined as
-         *      the base section has no parents.
-         */
-
-        /*TODO: Optimize the search for the first empty ending.
-         *      As it is, we are looking at a worst case O(N^2) parsing.
-         *      Using sections_ends as a stack would speed things up.
-         */
-
-        /*NOTE: This algorithm is done twice. Once now and once afterward.*/
-        section_parents[0]=nota_index;
-
-        sz_section=-1;
-        for (i=in_begin_offset; i < in_end_offset; ++i) {
-            t = io_xtree->items[i];
-            if ('\t' == t[0]) { /*Skip data field*/
+        if ('/' == t[0]) { /*An ending*/
+            if (!is_sectional_item(t+1)) {
                 continue;
             }
-            if ('/' == t[0]) { /*An ending*/
-                if (!is_sectional_item(t+1)) {
-                    continue;
-                }
-            } else if (!is_sectional_item(t)) {
-                /*Not a sectional tag, not an ending tag and not a data field*/
-                if ((unsigned long)(-1) == sz_section) {
-                    /*I did not expect that here. */
-                    erri = ORCM_ERR_BAD_PARAM;
-                    break;
-                }
-                long x;
-                for (x=sz_section; x >= 0; --x) {
-                    if (0 == section_ends[x]) {
-                        /*Found the first empty ending*/
-                        break;
-                    }
-                }
-                if (0==x && 0 != section_ends[0]) {
-                    /* No empty ending found ???*/
-                    erri = ORCM_ERR_BAD_PARAM;
-                    break;
-                }
-                ++section_counts[x];
-                continue;
+        } else if (!is_sectional_item(t)) {
+            /*Not a sectional tag, not an ending tag and not a data field*/
+            if ((unsigned long)(-1) == sz_section) {
+                /*I did not expect that here. */
+                return ret_lexed_items(section_starts, section_ends,
+                                       section_parents, section_counts, ORCM_ERR_BAD_PARAM);
             }
+            long x;
+            for (x = sz_section; x >= 0; --x) {
+                if (0 == section_ends[x]) {
+                    /*Found the first empty ending*/
+                    break;
+                }
+            }
+            if (0 == x && 0 != section_ends[0]) {
+                /* No empty ending found ???*/
+                return ret_lexed_items(section_starts, section_ends,
+                                       section_parents, section_counts, ORCM_ERR_BAD_PARAM);
+            }
+            ++section_counts[x];
+            continue;
+        }
 
-            if ('/' == t[0]) { /*An ending tag of a section */
+        if ('/' == t[0]) { /*An ending tag of a section */
+            long x;
+            for (x = sz_section; x >= 0; --x) {
+                if (0 == section_ends[x]) {
+                    /*Found the first empty ending*/
+                    break;
+                }
+            }
+            if (0 == x && 0 != section_ends[0]) {
+                /* No empty ending found ???*/
+                return ret_lexed_items(section_starts, section_ends,
+                                       section_parents, section_counts, ORCM_ERR_BAD_PARAM);
+            }
+            section_ends[x] = i;
+        } else { /*A beginning tag of a section */
+            ++sz_section;
+            section_starts[sz_section] = i;
+            section_ends[sz_section] = 0;
+            if (0 != sz_section) {
+                /*Find first empty ending */
                 long x;
-                for (x=sz_section; x >= 0; --x) {
+                for (x = sz_section-1; x >= 0; --x) {
                     if (0 == section_ends[x]) {
-                        /*Found the first empty ending*/
+                        /*Found the first available parent*/
+                        section_parents[sz_section] = x;
                         break;
                     }
                 }
                 if (0 == x && 0 != section_ends[0]) {
-                    /* No empty ending found ???*/
-                    erri = ORCM_ERR_BAD_PARAM;
-                    break;
-                }
-                section_ends[x]=i;
-            } else { /*A beginning tag of a section */
-                ++sz_section;
-                section_starts[sz_section]=i;
-                section_ends[sz_section]=0;
-                if (0 != sz_section) {
-                    /*Find first empty ending */
-                    long x;
-                    for (x=sz_section-1;  x>= 0; --x) {
-                        if (0 == section_ends[x]) {
-                            /*Found the first available parent*/
-                            section_parents[sz_section] = x;
-                            break;
-                        }
-                    }
-                    if (0 == x && 0 != section_ends[0]) {
-                        /* No parent were found ???*/
-                        erri = ORCM_ERR_BAD_PARAM;
-                        break;
-                    }
+                    /* No parent were found ???*/
+                    return ret_lexed_items(section_starts, section_ends,
+                                           section_parents, section_counts, ORCM_ERR_BAD_PARAM);
                 }
             }
         }
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
-
-        if (sz_section+1 != io_xtree->sz_hierarchy) {
-            opal_output(0,
-                        "ERROR:: sz_section=%lu    sz_hierarchy=%lu\n",
-                        sz_section, io_xtree->sz_hierarchy);
-            erri = ORCM_ERR_BAD_PARAM;
-            break;
-        }
-
-        /*Add to the count the number of childrens*/
-        erri = xml_tree_alloc_hier_row_lengths(io_xtree);
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
-        memcpy(io_xtree->hier_row_lengths,section_counts,(io_xtree->sz_hierarchy)*sizeof(unsigned long));
-
-        /*Add the sub-sectional items */
-        for (k=0; k < io_xtree->sz_hierarchy; ++k) {
-            if (nota_index == section_parents[k]) {
-                continue;
-            }
-            i = section_parents[k];
-            ++io_xtree->hier_row_lengths[i];
-        }
-        /*Add the space for section_starts */
-        for (k=0; k < io_xtree->sz_hierarchy; ++k) {
-            ++io_xtree->hier_row_lengths[k];
-        }
-
-        /*Allocate the memory for the entries in io_xtree->hierarchy*/
-        for (k=0; k < io_xtree->sz_hierarchy; ++k) {
-            i = io_xtree->hier_row_lengths[k];
-            io_xtree->hierarchy[k] = (long *) calloc(i, sizeof(long));
-            if (NULL == io_xtree->hierarchy[k]) {
-                erri = ORCM_ERR_OUT_OF_RESOURCE;
-                break;
-            }
-        }
-        if (ORCM_SUCCESS != erri){
-            break;
-        }
-
-        /*Fill each row of o_hierarchy up */
-        memset(section_ends, 0, (io_xtree->sz_hierarchy)*sizeof(unsigned long));
-        memset(section_counts, 0, (io_xtree->sz_hierarchy)*sizeof(unsigned long));
-
-        /*Add the section_starts to the hierarchy */
-        for (k=0; k < io_xtree->sz_hierarchy; ++k) {
-            io_xtree->hierarchy[k][0] = section_starts[k];
-            ++section_counts[k];
-        }
-
-        /*Do the same as above but only to get the non-sectional items*/
-        /*No need to recalculate the section_starts.  Keep them for later*/
-        /*No need to recalculate the section_parents.  Keep them for later*/
-        /*section_counts & sections_ends are re-built*/
-
-        sz_section=-1;
-        for (i=in_begin_offset; i < in_end_offset; ++i) {
-            t = io_xtree->items[i];
-            if ('\t' == t[0]) { /*Skip data field*/
-                continue;
-            }
-            if ('/' == t[0]) { /*An ending*/
-                if (!is_sectional_item(t+1)) {
-                    continue;
-                }
-            }else if (!is_sectional_item(t)) {
-                /*Not a sectional tag, not an ending tag and not a data field*/
-                if ((unsigned long)(-1) == sz_section) {
-                    /*I did not expect that here. */
-                    erri = ORCM_ERR_BAD_PARAM;
-                    break;
-                }
-                long x;
-                for (x=sz_section; x >= 0; --x) {
-                    if (0 == section_ends[x]) {
-                        /*Found the first empty ending*/
-                        break;
-                    }
-                }
-                if (0 == x && 0 != section_ends[0]) {
-                    /* No empty ending found ???*/
-                    erri = ORCM_ERR_BAD_PARAM;
-                    break;
-                }
-                io_xtree->hierarchy[x][section_counts[x]] = i;
-                ++section_counts[x];
-                continue;
-            }
-
-            if ('/' == t[0]) { /*An ending tag of a section */
-                long x;
-                for (x=sz_section; x >= 0; --x) {
-                    if (0 == section_ends[x]) {
-                        /*Found the first empty ending*/
-                        break;
-                    }
-                }
-                if (0 == x && 0!=section_ends[0]) {
-                    /* No empty ending found ???*/
-                    erri = ORCM_ERR_BAD_PARAM;
-                    break;
-                }
-                section_ends[x]=i;
-            } else { /*A beginning tag of a section */
-                ++sz_section;
-                section_ends[sz_section]=0;
-            }
-        }
-        if (ORCM_SUCCESS != erri) {
-            break;
-        }
-
-        /*Add the missing children */
-        /*This will consume section_counts */
-        for (k=0; k < io_xtree->sz_hierarchy; ++k) {
-            if (nota_index == section_parents[k]){
-                continue;
-            }
-            i = section_parents[k];
-            io_xtree->hierarchy[i][section_counts[i]] = (-1L)*k;
-            ++section_counts[i];
-        }
-
-        break;
-    }/* while(!erri) */
-
-    if (NULL != section_starts) {
-        free(section_starts);
-        section_starts=NULL;
-        sz_section=0;
-    }
-    if (NULL != section_ends) {
-        free(section_ends);
-        section_ends=NULL;
-        sz_section=0;
-    }
-    if (NULL != section_parents) {
-        free(section_parents);
-        section_parents=NULL;
-        sz_section=0;
-    }
-    if (NULL != section_counts) {
-        free(section_counts);
-        section_counts=NULL;
-        sz_section=0;
     }
 
+    if (sz_section + 1 != io_xtree->sz_hierarchy) {
+        opal_output(0, "ERROR:: sz_section=%lu    sz_hierarchy=%lu\n",
+                    sz_section, io_xtree->sz_hierarchy);
+        return ret_lexed_items(section_starts, section_ends,
+                               section_parents, section_counts, ORCM_ERR_BAD_PARAM);
+    }
+
+    /*Add to the count the number of childrens*/
+    erri = xml_tree_alloc_hier_row_lengths(io_xtree);
+    if (ORCM_SUCCESS != erri) {
+        return ret_lexed_items(section_starts, section_ends,
+                               section_parents, section_counts, erri);
+    }
+    memcpy(io_xtree->hier_row_lengths,section_counts,(io_xtree->sz_hierarchy)*sizeof(unsigned long));
+
+    /*Add the sub-sectional items */
+    for (k = 0; k < io_xtree->sz_hierarchy; ++k) {
+        if (nota_index == section_parents[k]) {
+            continue;
+        }
+        i = section_parents[k];
+        ++io_xtree->hier_row_lengths[i];
+    }
+    /*Add the space for section_starts */
+    for (k = 0; k < io_xtree->sz_hierarchy; ++k) {
+        ++io_xtree->hier_row_lengths[k];
+    }
+
+    /*Allocate the memory for the entries in io_xtree->hierarchy*/
+    for (k = 0; k < io_xtree->sz_hierarchy; ++k) {
+        i = io_xtree->hier_row_lengths[k];
+        io_xtree->hierarchy[k] = (long *) calloc(i, sizeof(long));
+        erri = ORCM_ERR_OUT_OF_RESOURCE;
+        ORCM_ON_NULL_GOTO(io_xtree->hierarchy[k], cleanup);
+    }
+
+    /*Fill each row of o_hierarchy up */
+    memset(section_ends, 0, (io_xtree->sz_hierarchy)*sizeof(unsigned long));
+    memset(section_counts, 0, (io_xtree->sz_hierarchy)*sizeof(unsigned long));
+
+    /*Add the section_starts to the hierarchy */
+    for (k = 0; k < io_xtree->sz_hierarchy; ++k) {
+        io_xtree->hierarchy[k][0] = section_starts[k];
+        ++section_counts[k];
+    }
+
+    /*Do the same as above but only to get the non-sectional items*/
+    /*No need to recalculate the section_starts.  Keep them for later*/
+    /*No need to recalculate the section_parents.  Keep them for later*/
+    /*section_counts & sections_ends are re-built*/
+
+    sz_section = -1;
+    for (i = in_begin_offset; i < in_end_offset; ++i) {
+        t = io_xtree->items[i];
+        if ('\t' == t[0]) { /*Skip data field*/
+            continue;
+        }
+        if ('/' == t[0]) { /*An ending*/
+            if (!is_sectional_item(t+1)) {
+                continue;
+            }
+        } else if (!is_sectional_item(t)) {
+            /*Not a sectional tag, not an ending tag and not a data field*/
+            if ((unsigned long)(-1) == sz_section) {
+                /*I did not expect that here. */
+                return ret_lexed_items(section_starts, section_ends,
+                                       section_parents, section_counts, ORCM_ERR_BAD_PARAM);
+            }
+            long x;
+            for (x = sz_section; x >= 0; --x) {
+                if (0 == section_ends[x]) {
+                    /*Found the first empty ending*/
+                    break;
+                }
+            }
+            if (0 == x && 0 != section_ends[0]) {
+                return ret_lexed_items(section_starts, section_ends,
+                                       section_parents, section_counts, ORCM_ERR_BAD_PARAM);
+            }
+            io_xtree->hierarchy[x][section_counts[x]] = i;
+            ++section_counts[x];
+            continue;
+        }
+
+        if ('/' == t[0]) { /*An ending tag of a section */
+            long x;
+            for (x = sz_section; x >= 0; --x) {
+                if (0 == section_ends[x]) {
+                    /*Found the first empty ending*/
+                    break;
+                }
+            }
+            if (0 == x && 0 != section_ends[0]) {
+                return ret_lexed_items(section_starts, section_ends,
+                                       section_parents, section_counts, ORCM_ERR_BAD_PARAM);;
+            }
+            section_ends[x]=i;
+        } else { /*A beginning tag of a section */
+            ++sz_section;
+            section_ends[sz_section]=0;
+        }
+    }
+
+    /*Add the missing children */
+    /*This will consume section_counts */
+    for (k = 0; k < io_xtree->sz_hierarchy; ++k) {
+        if (nota_index == section_parents[k]){
+            continue;
+        }
+        i = section_parents[k];
+        io_xtree->hierarchy[i][section_counts[i]] = (-1L)*k;
+        ++section_counts[i];
+    }
+
+    erri = ORCM_SUCCESS;
+
+cleanup:
+    ret_lexed_items(section_starts, section_ends, section_parents, section_counts, erri);
     return erri;
 }
 

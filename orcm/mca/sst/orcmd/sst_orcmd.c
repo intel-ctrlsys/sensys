@@ -143,7 +143,6 @@ static int orcmd_init(void)
     if (initialized) {
         return ORCM_SUCCESS;
     }
-    initialized = true;
 
     /* Initialize the ORTE data type support */
     if (ORTE_SUCCESS != (ret = orte_ess_base_std_prolog())) {
@@ -684,6 +683,7 @@ static int orcmd_init(void)
         goto error;
     }
 
+    initialized = true;
     return ORTE_SUCCESS;
 
  error:

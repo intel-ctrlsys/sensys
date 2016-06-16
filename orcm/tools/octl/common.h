@@ -56,6 +56,17 @@
 
 BEGIN_C_DECLS
 
+typedef enum {
+    QUERY_EVENT_DATA,
+    QUERY_EVENT_SNSR_DATA,
+    QUERY_IDLE,
+    QUERY_LOG,
+    QUERY_NODE_STATUS,
+    QUERY_HISTORY,
+    QUERY_SENSOR,
+    QUERY_SNSR_GET_INVENTORY,
+} query_func_names;
+
 int orcm_octl_resource_status(char **argv);
 int orcm_octl_resource_add(char **argv);
 int orcm_octl_resource_remove(char **argv);
@@ -77,6 +88,7 @@ int orcm_octl_diag_eth(char **argv);
 int orcm_octl_diag_mem(char **argv);
 int orcm_octl_power_set(int cmd, char **argv);
 int orcm_octl_power_get(int cmd, char **argv);
+int orcm_octl_query_func(query_func_names func_name, int argc, char **argv);
 int orcm_octl_sensor_sample_rate_set(int cmd, char **argv);
 int orcm_octl_sensor_sample_rate_get(int cmd, char **argv);
 int orcm_octl_sensor_inventory_get(int command, char** argv);
@@ -86,12 +98,6 @@ int orcm_octl_logical_group_list(int argc, char **argv);
 int orcm_octl_workflow_add(char **value);
 int orcm_octl_workflow_remove(char **value);
 int orcm_octl_workflow_list (char **value);
-int orcm_octl_query_sensor(int cmd, char **argv);
-int orcm_octl_query_log(int cmd, char **argv);
-int orcm_octl_query_idle(int cmd, char **argv);
-int orcm_octl_query_node(int cmd, char **argv);
-int orcm_octl_query_event_data(int cmd, char **argv);
-int orcm_octl_query_event_snsr_data(int cmd, char **argv);
 int orcm_octl_sensor_inventory_get(int command, char** argv);
 int orcm_octl_sensor_change_sampling(int command, char** cmdlist);
 int orcm_octl_get_notifier_policy(int cmd, char **argv);
@@ -101,13 +107,12 @@ int orcm_octl_set_notifier_smtp(int cmd, char **argv);
 int orcm_octl_chassis_id_off(char **argv);
 int orcm_octl_chassis_id_on(char **argv);
 int orcm_octl_chassis_id_state(char **argv);
-char *get_orcm_octl_query_event_date(int cmd, char **argv);
 int orcm_octl_sensor_store(int command, char** cmdlist);
 void orcm_octl_error(char *label, ...);
 void orcm_octl_info(char *label, ...);
 void orcm_octl_usage(char *label, int error);
-char **octl_split_argv(char *str, int delimiter);
 int orcm_octl_work(int argc, char *argv[]);
+char **octl_split_argv(char *str, int delimiter);
 
 END_C_DECLS
 

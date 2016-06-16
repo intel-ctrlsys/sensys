@@ -602,32 +602,34 @@ static int run_cmd_workflow(char** cmdlist, int sub_cmd)
 static int run_cmd_query_node(char** cmdlist)
 {
     int rc = ORCM_SUCCESS;
+    int argc = opal_argv_count(cmdlist);
 
-    if (3 > opal_argv_count(cmdlist)) {
+    if (3 > argc) {
         return ORCM_ERR_TAKE_NEXT_OPTION;
     }
 
     rc = octl_cmd_to_enum(cmdlist[2]);
     rc = (cmd_status != rc ? ORCM_ERR_OPERATION_UNSUPPORTED :
-          orcm_octl_query_node(ORCM_GET_DB_QUERY_NODE_COMMAND,cmdlist));
+          orcm_octl_query_func(QUERY_NODE_STATUS, argc - 3, cmdlist + sizeof(char) * 3));
     return rc;
 }
 
 static int run_cmd_query_event(char** cmdlist)
 {
     int rc = ORCM_SUCCESS;
+    int argc = opal_argv_count(cmdlist);
 
-    if (3 > opal_argv_count(cmdlist)) {
+    if (3 > argc) {
         return ORCM_ERR_TAKE_NEXT_OPTION;
     }
 
     rc = octl_cmd_to_enum(cmdlist[2]);
     switch (rc) {
         case cmd_data:
-            rc = orcm_octl_query_event_data(ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND,cmdlist);
+            rc = orcm_octl_query_func(QUERY_EVENT_DATA, argc - 3, cmdlist + sizeof(char) * 3);
             break;
         case cmd_sensor_data:
-            rc = orcm_octl_query_event_snsr_data(ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND,cmdlist);
+            rc = orcm_octl_query_func(QUERY_EVENT_SNSR_DATA, argc - 3, cmdlist + sizeof(char) * 3);
             break;
         default:
             rc = ORCM_ERR_OPERATION_UNSUPPORTED;
@@ -636,21 +638,23 @@ static int run_cmd_query_event(char** cmdlist)
     return rc;
 }
 
-static int run_cmd_query(char** cmdlist, int sub_cmd)
+static int run_cmd_query(int argc, char** cmdlist, int sub_cmd)
 {
     int rc = ORCM_SUCCESS;
+    /* Decrease argc and increase cmdlist by one */
+    /* Send argc and argv to execute query command */
     switch (sub_cmd) {
         case cmd_sensor:
-            rc = orcm_octl_query_sensor(ORCM_GET_DB_QUERY_SENSOR_COMMAND,cmdlist);
+            rc = orcm_octl_query_func(QUERY_SENSOR, argc - 2, cmdlist + sizeof(char) * 2);
             break;
         case cmd_history:
-            rc = orcm_octl_query_sensor(ORCM_GET_DB_QUERY_HISTORY_COMMAND,cmdlist);
+            rc = orcm_octl_query_func(QUERY_HISTORY, argc - 2, cmdlist + sizeof(char) * 2);
             break;
         case cmd_log:
-            rc = orcm_octl_query_log(ORCM_GET_DB_QUERY_LOG_COMMAND,cmdlist);
+            rc = orcm_octl_query_func(QUERY_LOG, argc - 2, cmdlist + sizeof(char) * 2);
             break;
         case cmd_idle:
-            rc = orcm_octl_query_idle(ORCM_GET_DB_QUERY_IDLE_COMMAND,cmdlist);
+            rc = orcm_octl_query_func(QUERY_IDLE, argc - 2, cmdlist + sizeof(char) * 2);
             break;
         case cmd_node:
             rc = run_cmd_query_node(cmdlist);
@@ -736,7 +740,7 @@ static int run_cmd(int argc, char *cmdlist[])
             rc = run_cmd_workflow(cmdlist, sub_cmd);
             break;
         case cmd_query:
-            rc = run_cmd_query(cmdlist, sub_cmd);
+            rc = run_cmd_query(argc, cmdlist, sub_cmd);
             break;
         case cmd_chassis_id:
             rc = run_cmd_chasis_id(cmdlist, sub_cmd);

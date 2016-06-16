@@ -474,6 +474,9 @@ TEST_F(ut_util_tests, orcm_util_copy_opal_value_data_tests)
     bool flag = false;
     uint8_t bobj[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
     src = OBJ_NEW(opal_value_t);
 
     src = orcm_util_load_opal_value(key, &val, OPAL_DOUBLE);
@@ -489,6 +492,12 @@ TEST_F(ut_util_tests, orcm_util_copy_opal_value_data_tests)
     src = orcm_util_load_opal_value(key, &flag, OPAL_BOOL);
     EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
     EXPECT_EQ(dst->data.flag, src->data.flag);
+    OBJ_RELEASE(dst);
+
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &bobj[0], OPAL_BYTE);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.byte, src->data.byte);
     OBJ_RELEASE(dst);
 
     dst = OBJ_NEW(opal_value_t);
@@ -581,5 +590,36 @@ TEST_F(ut_util_tests, orcm_util_copy_opal_value_data_tests)
     src = orcm_util_load_opal_value(key, &uintval, OPAL_UINT64);
     EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
     EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, &now, OPAL_TIMEVAL);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = orcm_util_load_opal_value(key, bobj, OPAL_BYTE_OBJECT);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src)); // Freeing dst
+
+    src->data.bo.size = 0;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_TRUE( NULL == dst->data.bo.bytes && 0 == dst->data.bo.bytes );
+
+    SAFEFREE(src->data.bo.bytes);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_util_copy_opal_value_data(dst, src));
+    EXPECT_TRUE( NULL == dst->data.bo.bytes && 0 == dst->data.bo.bytes );
+
+    EXPECT_EQ(dst->data.size, src->data.size);
+    OBJ_RELEASE(dst);
+
+    OBJ_RELEASE(src);
+    dst = OBJ_NEW(opal_value_t);
+    src = OBJ_NEW(opal_value_t);
+    src->type = OPAL_NULL;
+    EXPECT_EQ(OPAL_ERR_NOT_SUPPORTED, orcm_util_copy_opal_value_data(dst, src));
     OBJ_RELEASE(dst);
 }

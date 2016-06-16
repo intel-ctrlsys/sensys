@@ -18,6 +18,7 @@ bool is_mca_base_framework_open_expected_to_succeed = true;
 bool is_orcm_parser_base_select_expected_to_succeed = true;
 bool is_get_bmc_info_expected_to_succeed = true;
 bool is_orcm_logical_group_parse_array_string_expected_to_succeed = true;
+bool is_mocked_db_close_result_set = true;
 
 extern "C" { // Mocking must use correct "C" linkages
     #include <stdarg.h>

@@ -603,7 +603,39 @@ static void process_fetch(int fd, short args, void *cbdata)
 
     if (NULL != hdl->module->fetch) {
         rc = hdl->module->fetch((struct orcm_db_base_module_t*)hdl->module,
-                                req->view_name, req->input, req->output);
+                                req->source_data_name, req->input, req->output);
+    } else {
+        rc = ORCM_ERR_NOT_IMPLEMENTED;
+    }
+
+callback_and_cleanup:
+    if (NULL != req->cbfunc) {
+        req->cbfunc(req->dbhandle, rc, NULL, req->output, req->cbdata);
+    }
+    OBJ_RELEASE(req);
+}
+
+static void process_fetch_function(int fd, short args, void *cbdata)
+{
+    orcm_db_request_t *req = (orcm_db_request_t*)cbdata;
+    orcm_db_handle_t *hdl = NULL;
+    int rc = ORCM_SUCCESS;
+
+    /* get the handle object */
+    hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles,
+                                                         req->dbhandle);
+    if (NULL == hdl) {
+        rc = ORCM_ERR_NOT_FOUND;
+        goto callback_and_cleanup;
+    }
+    if (NULL ==  hdl->module) {
+        rc = ORCM_ERR_NOT_FOUND;
+        goto callback_and_cleanup;
+    }
+
+    if (NULL != hdl->module->fetch_function) {
+        rc = hdl->module->fetch_function((struct orcm_db_base_module_t*)hdl->module,
+                                req->source_data_name, req->input, req->output);
     } else {
         rc = ORCM_ERR_NOT_IMPLEMENTED;
     }
@@ -616,7 +648,7 @@ callback_and_cleanup:
 }
 
 void orcm_db_base_fetch(int dbhandle,
-                        const char *view,
+                        const char *source_data,
                         opal_list_t *filters,
                         opal_list_t *kvs,
                         orcm_db_callback_fn_t cbfunc,
@@ -634,10 +666,37 @@ void orcm_db_base_fetch(int dbhandle,
     req->output = kvs;
     req->cbfunc = cbfunc;
     req->cbdata = cbdata;
-    req->view_name = view;
+    req->source_data_name = source_data;
     opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
                    OPAL_EV_WRITE,
                    process_fetch, req);
+    opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
+    opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
+}
+
+void orcm_db_base_fetch_function(int dbhandle,
+                        const char *source_data,
+                        opal_list_t *arguments,
+                        opal_list_t *kvs,
+                        orcm_db_callback_fn_t cbfunc,
+                        void *cbdata)
+{
+    orcm_db_request_t *req;
+
+    /* push this request into our event_base
+     * for processing to ensure nobody else is
+     * using that dbhandle
+     */
+    req = OBJ_NEW(orcm_db_request_t);
+    req->dbhandle = dbhandle;
+    req->input = arguments;
+    req->output = kvs;
+    req->cbfunc = cbfunc;
+    req->cbdata = cbdata;
+    req->source_data_name = source_data;
+    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
+                   OPAL_EV_WRITE,
+                   process_fetch_function, req);
     opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
     opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
 }

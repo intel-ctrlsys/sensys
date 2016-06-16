@@ -16,6 +16,12 @@
 #include "orcm/mca/db/db.h"
 #include "orcm/mca/db/base/base.h"
 
+char* build_query_from_function_name_and_arguments(const char* function_name, opal_list_t* arguments);
+bool build_argument_string(char **argument_string, opal_list_t *argument_list);
+char* format_opal_value_as_sql_string(opal_value_t *value);
+char* format_string_to_sql(opal_data_type_t type, char* raw_string);
+int check_for_invalid_characters(const char *function);
+
 BEGIN_C_DECLS
 
 ORCM_MODULE_DECLSPEC extern orcm_db_base_component_t mca_db_postgres_component;

@@ -11,6 +11,7 @@
 
 #include "orcm_config.h"
 #include "orcm/constants.h"
+#include "orcm/util/utils.h"
 
 #include <time.h>
 #include <string.h>
@@ -93,6 +94,7 @@ mca_db_print_module_t mca_db_print_module = {
         record_diag_test,
         commit,
         rollback,
+        NULL,
         NULL,
         NULL,
         NULL,

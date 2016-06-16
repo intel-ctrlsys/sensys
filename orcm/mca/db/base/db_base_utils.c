@@ -12,7 +12,9 @@
 #include "orcm/constants.h"
 
 char* build_query_from_view_name_and_filters(const char* view_name, opal_list_t* filters);
+
 char* get_opal_value_as_sql_string(opal_value_t *value);
+char* format_opal_value_as_sql_string(opal_value_t *value);
 char* timeval_to_iso8601(struct timeval* tv);
 bool is_supported_opal_int_type(opal_data_type_t type);
 int opal_value_to_orcm_db_item(const opal_value_t *kv,

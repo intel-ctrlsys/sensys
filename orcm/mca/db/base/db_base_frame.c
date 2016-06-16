@@ -34,6 +34,7 @@
 
 extern char* get_opal_value_as_sql_string(opal_value_t *value);
 extern char* build_query_from_view_name_and_filters(const char* view_name, opal_list_t* filters);
+extern char* build_query_from_function_name_and_arguments(const char* function_name, opal_list_t* arguments);
 
 orcm_db_API_module_t orcm_db = {
     orcm_db_base_open,
@@ -49,7 +50,8 @@ orcm_db_API_module_t orcm_db = {
     orcm_db_base_get_num_rows,
     orcm_db_base_get_next_row,
     orcm_db_base_close_result_set,
-    orcm_db_base_remove_data
+    orcm_db_base_remove_data,
+    orcm_db_base_fetch_function
 };
 orcm_db_base_t orcm_db_base;
 
@@ -148,7 +150,7 @@ static void req_con(orcm_db_request_t *p)
     p->end_time = NULL;
     p->component_index = NULL;
     p->test_result = NULL;
-    p->view_name = NULL;
+    p->source_data_name = NULL;
 
     p->kvs = NULL;
 }

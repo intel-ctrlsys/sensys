@@ -122,6 +122,11 @@ static int postgres_get_next_row(struct orcm_db_base_module_t *imod,
 static int postgres_close_result_set(struct orcm_db_base_module_t *imod,
                                      int rshandle);
 
+static int postgres_fetch_function(struct orcm_db_base_module_t *imod,
+                          const char *function,
+                          opal_list_t *arguments,
+                          opal_list_t *output);
+
 mca_db_postgres_module_t mca_db_postgres_module = {
     {
         postgres_init,
@@ -137,7 +142,8 @@ mca_db_postgres_module_t mca_db_postgres_module = {
         postgres_get_num_rows,
         postgres_get_next_row,
         postgres_close_result_set,
-        NULL
+        NULL,
+        postgres_fetch_function,
     },
 };
 
@@ -2672,4 +2678,175 @@ static int postgres_close_result_set(struct orcm_db_base_module_t *imod,
     opal_pointer_array_set_item(mod->results_sets, rshandle, NULL);
 
     return ORCM_SUCCESS;
+}
+
+
+
+char* format_string_to_sql(opal_data_type_t type, char* raw_string){
+    char* formated_string = NULL;
+
+    switch(type){
+        case ORCM_DB_QRY_DATE:
+            if(NULL == raw_string)
+                asprintf(&formated_string,"\'%s\'::TIMESTAMP","INFINITY");
+            else
+                asprintf(&formated_string,"\'%s\'::TIMESTAMP",raw_string);
+            break;
+        case ORCM_DB_QRY_FLOAT:
+            if(NULL == raw_string)
+                asprintf(&formated_string,"%s::DOUBLE","NULL");
+            else
+                asprintf(&formated_string,"%s::DOUBLE",raw_string);
+            break;
+        case ORCM_DB_QRY_INTEGER:
+            if(NULL == raw_string)
+                asprintf(&formated_string,"%s::INT","NULL");
+            else
+                asprintf(&formated_string,"%s::INT",raw_string);
+            break;
+        case ORCM_DB_QRY_INTERVAL:
+            if(NULL == raw_string)
+                formated_string = strdup("NULL::INTERVAL");
+            else
+                asprintf(&formated_string,"\'%s\'::INTERVAL",raw_string);
+            break;
+        case ORCM_DB_QRY_OCOMMA_LIST:
+        case ORCM_DB_QRY_STRING:
+            if(NULL == raw_string)
+                formated_string = strdup("NULL");
+            else{
+                char escaped_raw_string[2 * STRING_MAX_LEN + 1];
+                memset(escaped_raw_string,0,sizeof(escaped_raw_string));
+                escape_string_apostrophe(raw_string, escaped_raw_string);
+                asprintf(&formated_string,"E\'%s\'",escaped_raw_string);
+            }
+            break;
+        default:
+            formated_string = strdup("");
+    }
+    return formated_string;
+}
+
+char* format_opal_value_as_sql_string(opal_value_t *value){
+    char* raw_string = NULL;
+    char* formated_string = NULL;
+
+    if(NULL != value->data.string)
+        raw_string = strdup(value->data.string);
+
+    formated_string = format_string_to_sql(value->type, raw_string);
+
+    SAFEFREE(raw_string);
+    return formated_string;
+}
+
+bool build_argument_string(char **argument_string, opal_list_t *argument_list)
+{
+
+    bool use_comma = false;
+    if(NULL == argument_list) {
+        *argument_string = strdup("");
+        return false;
+    } else {
+        opal_value_t* argument = NULL;
+        OPAL_LIST_FOREACH(argument, argument_list, opal_value_t) {
+            char *old_argument_string = *argument_string;
+            char* val = format_opal_value_as_sql_string(argument);
+            if(use_comma)
+                asprintf(argument_string,"%s,%s",old_argument_string,val);
+            else{
+                asprintf(argument_string,"%s",val);
+                use_comma = true;
+            }
+            SAFEFREE(val);
+        }
+        return true;
+    }
+}
+
+char* build_query_from_function_name_and_arguments(const char* function_name, opal_list_t* arguments)
+{
+    char* query = NULL;
+    char* argument_string = NULL;
+
+    if(NULL != function_name && 0 < strlen(function_name)) {
+        build_argument_string(&argument_string,arguments);
+        asprintf(&query, "select * from %s(%s);", function_name,argument_string);
+        SAFEFREE(argument_string);
+    }
+    return query;
+}
+
+int check_for_invalid_characters(const char *function){
+    char *invalid_chars = "(;\"\'";
+    int function_size, invalid_chars_size;
+
+    function_size = strlen(function);
+    invalid_chars_size = strlen(invalid_chars);
+
+    for(int i=0; i < function_size; i++)
+        for(int j=0; j < invalid_chars_size; j++)
+            if(function[i] == invalid_chars[j])
+                return ORCM_ERR_BAD_PARAM;
+
+    return ORCM_SUCCESS;
+}
+
+
+static int postgres_fetch_function(struct orcm_db_base_module_t *imod,
+                         const char *function,
+                         opal_list_t *arguments,
+                         opal_list_t *kvs)
+{
+    mca_db_postgres_module_t *mod = (mca_db_postgres_module_t*)imod;
+    int rc = ORCM_SUCCESS;
+    PGresult *results = NULL;
+    int handle = -1;
+    opal_value_t *result = NULL;
+    char* query = NULL;
+
+    if(NULL == function || 0 == strlen(function)) {
+        ERR_MSG_FMT_FETCH("database function passed was %s or empty!", "NULL");
+        return ORCM_ERR_NOT_IMPLEMENTED;
+    }
+
+    if( ORCM_SUCCESS != check_for_invalid_characters(function)){
+        ERR_MSG_FMT_FETCH("Function name \"%s\" contains invalid characters",function);
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if(NULL == kvs) {
+        ERR_MSG_FMT_FETCH("Argument 'kvs' passed was NULL but was expected to be valid opal_list_t pointer: %d", 0);
+        rc = ORCM_ERROR;
+        goto cleanup_and_exit;
+    }
+
+    query = build_query_from_function_name_and_arguments(function, arguments);
+
+    results = PQexec(mod->conn, query);
+    if(!status_ok(results)) {
+        ERR_MSG_FMT_FETCH("PQexec returned: %s", "NULL");
+        rc = ORCM_ERROR;
+        postgres_reconnect_if_needed(mod);
+        goto cleanup_and_exit;
+    }
+
+    /* Add new results set handle */
+    handle = opal_pointer_array_add(mod->results_sets, (void*)results);
+    if(0 > handle) {
+        rc = ORCM_ERROR;
+        ERR_MSG_FMT_FETCH("opal_pointer_array_add returned: %d", handle);
+        goto cleanup_and_exit;
+    }
+    mod->current_row = 0; /* Simulate 'get_next_row' functionality. */
+
+    /* Create returned handle object */
+    result = OBJ_NEW(opal_value_t);
+    result->type = OPAL_INT;
+    result->data.integer = handle;
+    opal_list_append(kvs, (void*)result); /* takes ownership */
+
+cleanup_and_exit:
+    SAFEFREE(query);
+    return rc;
 }

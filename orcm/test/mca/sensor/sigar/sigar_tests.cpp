@@ -46,6 +46,7 @@ void ut_sigar_tests::TearDownTestCase()
 void ut_sigar_tests::SetUp()
 {
     collect_sample_flag = false;
+    uvalue_sample_flag = false;
 }
 
 void ut_sigar_tests::TearDown()
@@ -83,12 +84,36 @@ TEST_F(ut_sigar_tests, sigar_collect_mem_tests)
     mca_sensor_sigar_component.mem = true;
     orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
 
-    for(int i = 0; i < collect_mem_size; i++){
+    for(int i = 0; i < sigar_mem_size; i++){
         collect_mem_success_flag[i] = true;
         collect_sigar_sample(sampler);
         ASSERT_TRUE(collect_sample_flag);
         collect_mem_success_flag[i] = false;
         collect_sample_flag = false;
+    }
+
+    mca_sensor_sigar_component.mem = false;
+    mca_sensor_sigar_component.test = false;
+    OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_sigar_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_sigar_tests, sigar_uvalue_mem_tests)
+{
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+    void* object = orcm_sensor_base_runtime_metrics_create("sigar", false, false);
+    mca_sensor_sigar_component.runtime_metrics = object;
+    mca_sensor_sigar_component.test = true;
+    mca_sensor_sigar_component.mem = true;
+    orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
+
+    for(int i = 0; i < sigar_mem_size; i++){
+        uvalue_mem_success_flag[i] = true;
+        collect_sigar_sample(sampler);
+        ASSERT_TRUE(uvalue_sample_flag);
+        uvalue_mem_success_flag[i] = false;
+        uvalue_sample_flag = false;
     }
 
     mca_sensor_sigar_component.mem = false;
@@ -107,12 +132,36 @@ TEST_F(ut_sigar_tests, sigar_collect_swap_tests)
     mca_sensor_sigar_component.swap = true;
     orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
 
-    for(int i = 0; i < collect_swap_size; i++){
+    for(int i = 0; i < sigar_swap_size; i++){
         collect_swap_success_flag[i] = true;
         collect_sigar_sample(sampler);
         ASSERT_TRUE(collect_sample_flag);
         collect_swap_success_flag[i] = false;
         collect_sample_flag = false;
+    }
+
+    mca_sensor_sigar_component.swap = false;
+    mca_sensor_sigar_component.test = false;
+    OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_sigar_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_sigar_tests, sigar_uvalue_swap_tests)
+{
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+    void* object = orcm_sensor_base_runtime_metrics_create("sigar", false, false);
+    mca_sensor_sigar_component.runtime_metrics = object;
+    mca_sensor_sigar_component.test = true;
+    mca_sensor_sigar_component.swap = true;
+    orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
+
+    for(int i = 0; i < sigar_swap_size; i++){
+        uvalue_swap_success_flag[i] = true;
+        collect_sigar_sample(sampler);
+        ASSERT_TRUE(uvalue_sample_flag);
+        uvalue_swap_success_flag[i] = false;
+        uvalue_sample_flag = false;
     }
 
     mca_sensor_sigar_component.swap = false;
@@ -131,12 +180,36 @@ TEST_F(ut_sigar_tests, sigar_collect_cpu_tests)
     mca_sensor_sigar_component.cpu = true;
     orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
 
-    for(int i = 0; i < collect_cpu_size; i++){
+    for(int i = 0; i < sigar_cpu_size; i++){
         collect_cpu_success_flag[i] = true;
         collect_sigar_sample(sampler);
         ASSERT_TRUE(collect_sample_flag);
         collect_cpu_success_flag[i] = false;
         collect_sample_flag = false;
+    }
+
+    mca_sensor_sigar_component.cpu = false;
+    mca_sensor_sigar_component.test = false;
+    OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_sigar_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_sigar_tests, sigar_uvalue_cpu_tests)
+{
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+    void* object = orcm_sensor_base_runtime_metrics_create("sigar", false, false);
+    mca_sensor_sigar_component.runtime_metrics = object;
+    mca_sensor_sigar_component.test = true;
+    mca_sensor_sigar_component.cpu = true;
+    orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
+
+    for(int i = 0; i < sigar_cpu_size; i++){
+        uvalue_cpu_success_flag[i] = true;
+        collect_sigar_sample(sampler);
+        ASSERT_TRUE(uvalue_sample_flag);
+        uvalue_cpu_success_flag[i] = false;
+        uvalue_sample_flag = false;
     }
 
     mca_sensor_sigar_component.cpu = false;
@@ -155,12 +228,36 @@ TEST_F(ut_sigar_tests, sigar_collect_load_tests)
     mca_sensor_sigar_component.load = true;
     orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
 
-    for(int i = 0; i < collect_load_size; i++){
+    for(int i = 0; i < sigar_load_size; i++){
         collect_load_success_flag[i] = true;
         collect_sigar_sample(sampler);
         ASSERT_TRUE(collect_sample_flag);
         collect_load_success_flag[i] = false;
         collect_sample_flag = false;
+    }
+
+    mca_sensor_sigar_component.load = false;
+    mca_sensor_sigar_component.test = false;
+    OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_sigar_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_sigar_tests, sigar_uvalue_load_tests)
+{
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+    void* object = orcm_sensor_base_runtime_metrics_create("sigar", false, false);
+    mca_sensor_sigar_component.runtime_metrics = object;
+    mca_sensor_sigar_component.test = true;
+    mca_sensor_sigar_component.load = true;
+    orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
+
+    for(int i = 0; i < sigar_load_size; i++){
+        uvalue_load_success_flag[i] = true;
+        collect_sigar_sample(sampler);
+        ASSERT_TRUE(uvalue_sample_flag);
+        uvalue_load_success_flag[i] = false;
+        uvalue_sample_flag = false;
     }
 
     mca_sensor_sigar_component.load = false;
@@ -181,12 +278,37 @@ TEST_F(ut_sigar_tests, sigar_collect_disk_tests)
     mca_sensor_sigar_component.runtime_metrics = object;
     orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
 
-    for(int i = 0; i < collect_disk_size; i++){
+    for(int i = 0; i < sigar_disk_size; i++){
         collect_disk_success_flag[i] = true;
         collect_sigar_sample(sampler);
         ASSERT_TRUE(collect_sample_flag);
         collect_disk_success_flag[i] = false;
         collect_sample_flag = false;
+    }
+
+    mca_sensor_sigar_component.disk = false;
+    mca_sensor_sigar_component.test = false;
+    OBJ_RELEASE(sampler);
+    orcm_sensor_sigar_module.finalize();
+}
+
+TEST_F(ut_sigar_tests, sigar_uvalue_disk_tests)
+{
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+    void* object = orcm_sensor_base_runtime_metrics_create("sigar", false, false);
+    mca_sensor_sigar_component.test = true;
+    mca_sensor_sigar_component.disk = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_sigar_module.init());
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_sigar_component.runtime_metrics);
+    mca_sensor_sigar_component.runtime_metrics = object;
+    orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
+
+    for(int i = 0; i < sigar_disk_size; i++){
+        uvalue_disk_success_flag[i] = true;
+        collect_sigar_sample(sampler);
+        ASSERT_TRUE(uvalue_sample_flag);
+        uvalue_disk_success_flag[i] = false;
+        uvalue_sample_flag = false;
     }
 
     mca_sensor_sigar_component.disk = false;
@@ -206,12 +328,37 @@ TEST_F(ut_sigar_tests, sigar_collect_network_tests)
     mca_sensor_sigar_component.runtime_metrics = object;
     orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
 
-    for(int i = 0; i < collect_network_size; i++){
+    for(int i = 0; i < sigar_network_size; i++){
         collect_network_success_flag[i] = true;
         collect_sigar_sample(sampler);
         ASSERT_TRUE(collect_sample_flag);
         collect_network_success_flag[i] = false;
         collect_sample_flag = false;
+    }
+
+    mca_sensor_sigar_component.network = false;
+    mca_sensor_sigar_component.test = false;
+    OBJ_RELEASE(sampler);
+    orcm_sensor_sigar_module.finalize();
+}
+
+TEST_F(ut_sigar_tests, sigar_uvalue_network_tests)
+{
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+    void* object = orcm_sensor_base_runtime_metrics_create("sigar", false, false);
+    mca_sensor_sigar_component.test = true;
+    mca_sensor_sigar_component.network = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_sigar_module.init());
+    orcm_sensor_base_runtime_metrics_destroy(mca_sensor_sigar_component.runtime_metrics);
+    mca_sensor_sigar_component.runtime_metrics = object;
+    orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
+
+    for(int i = 0; i < sigar_network_size; i++){
+        uvalue_network_success_flag[i] = true;
+        collect_sigar_sample(sampler);
+        ASSERT_TRUE(uvalue_sample_flag);
+        uvalue_network_success_flag[i] = false;
+        uvalue_sample_flag = false;
     }
 
     mca_sensor_sigar_component.network = false;
@@ -241,6 +388,27 @@ TEST_F(ut_sigar_tests, sigar_collect_system_tests)
     mca_sensor_sigar_component.runtime_metrics = NULL;
 }
 
+TEST_F(ut_sigar_tests, sigar_uvalue_system_tests)
+{
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+    void* object = orcm_sensor_base_runtime_metrics_create("sigar", false, false);
+    mca_sensor_sigar_component.runtime_metrics = object;
+    mca_sensor_sigar_component.test = true;
+    mca_sensor_sigar_component.sys = true;
+    orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
+
+    uvalue_sys_success_flag = true;
+    collect_sigar_sample(sampler);
+    ASSERT_TRUE(uvalue_sample_flag);
+    uvalue_sys_success_flag = false;
+
+    mca_sensor_sigar_component.sys = false;
+    mca_sensor_sigar_component.test = false;
+    OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_sigar_component.runtime_metrics = NULL;
+}
+
 TEST_F(ut_sigar_tests, sigar_collect_global_procstat_tests)
 {
     orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
@@ -250,12 +418,36 @@ TEST_F(ut_sigar_tests, sigar_collect_global_procstat_tests)
     mca_sensor_sigar_component.proc = true;
     orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
 
-    for(int i = 0; i < collect_gproc_size; i++){
+    for(int i = 0; i < sigar_gproc_size; i++){
         collect_gproc_success_flag[i] = true;
         collect_sigar_sample(sampler);
         ASSERT_TRUE(collect_sample_flag);
         collect_gproc_success_flag[i] = false;
         collect_sample_flag = false;
+    }
+
+    mca_sensor_sigar_component.proc = false;
+    mca_sensor_sigar_component.test = false;
+    OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_sigar_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_sigar_tests, sigar_uvalue_global_procstat_tests)
+{
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+    void* object = orcm_sensor_base_runtime_metrics_create("sigar", false, false);
+    mca_sensor_sigar_component.runtime_metrics = object;
+    mca_sensor_sigar_component.test = true;
+    mca_sensor_sigar_component.proc = true;
+    orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
+
+    for(int i = 0; i < sigar_gproc_size; i++){
+        uvalue_gproc_success_flag[i] = true;
+        collect_sigar_sample(sampler);
+        ASSERT_TRUE(uvalue_sample_flag);
+        uvalue_gproc_success_flag[i] = false;
+        uvalue_sample_flag = false;
     }
 
     mca_sensor_sigar_component.proc = false;
@@ -274,12 +466,36 @@ TEST_F(ut_sigar_tests, sigar_collect_procstat_tests)
     mca_sensor_sigar_component.proc = true;
     orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
 
-    for(int i = 0; i < collect_proc_size; i++){
+    for(int i = 0; i < sigar_proc_size; i++){
         collect_proc_success_flag[i] = true;
         collect_sigar_sample(sampler);
         ASSERT_TRUE(collect_sample_flag);
         collect_proc_success_flag[i] = false;
         collect_sample_flag = false;
+    }
+
+    mca_sensor_sigar_component.proc = false;
+    mca_sensor_sigar_component.test = false;
+    OBJ_RELEASE(sampler);
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_sigar_component.runtime_metrics = NULL;
+}
+
+TEST_F(ut_sigar_tests, sigar_uvalue_procstat_tests)
+{
+    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+    void* object = orcm_sensor_base_runtime_metrics_create("sigar", false, false);
+    mca_sensor_sigar_component.runtime_metrics = object;
+    mca_sensor_sigar_component.test = true;
+    mca_sensor_sigar_component.proc = true;
+    orcm_sensor_base_runtime_metrics_set(object, true, "sigar");
+
+    for(int i = 0; i < sigar_proc_size; i++){
+        uvalue_proc_success_flag[i] = true;
+        collect_sigar_sample(sampler);
+        ASSERT_TRUE(uvalue_sample_flag);
+        uvalue_proc_success_flag[i] = false;
+        uvalue_sample_flag = false;
     }
 
     mca_sensor_sigar_component.proc = false;

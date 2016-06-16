@@ -42,6 +42,7 @@ octl_SOURCES = \
         workflow.c \
         notifier.c \
         smtp.c \
+        query.h \
         query.c \
         chassis-id.c \
         octl_tokens.def \

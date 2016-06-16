@@ -6,1346 +6,890 @@
  *
  * $HEADER$
  */
-#include "orte/mca/notifier/notifier.h"
 
-#include "orcm/tools/octl/common.h"
-#include "orcm/util/logical_group.h"
-#include "orcm/mca/db/base/base.h"
-#include "orcm/mca/db/db.h"
-#include <regex.h>
-#include <locale.h>
-
-#define SAFE_FREE(x) if(NULL!=x) { free(x); x = NULL; }
-/* Default idle time in seconds */
-#define DEFAULT_IDLE_TIME "10"
-#define MAX_STREAM_SIZE 10000
-
-/* Macros to help with code coverage */
-#define ON_FAILURE_RETURN(x) \
-    if(ORCM_SUCCESS!=x){return x;}
-#define ON_FAILURE_GOTO(x,label) \
-    if(ORCM_SUCCESS!=x){ORTE_ERROR_LOG(x);goto label;}
-#define ON_FAILURE_CANCEL_COMM(rc, label, ctag) \
-    if(ORCM_SUCCESS != rc){ orcm_octl_error("connection-fail"); orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ctag); goto label;}
-#define ON_NULL_GOTO(x,label) \
-    if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);goto label;}
-#define ON_NULL_RETURN(x,y) \
-    if(NULL==x){ORTE_ERROR_LOG(y);return y;}
-
-int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results);
-int query_db_stream(int cmd, opal_list_t *filterlist, uint32_t *results_count,
-                    int *stream_index);
-int create_buffer_from_filters(opal_buffer_t **buffer,
-                               opal_list_t *filters_list,
-                               orcm_rm_cmd_flag_t cmd);
-int create_buffer_for_stream_request(opal_buffer_t **buffer_to_send,
-                                     orcm_rm_cmd_flag_t cmd, int stream_index);
-int get_nodes_from_args(char **argv, char ***node_list);
-opal_list_t *create_query_sensor_filter(int argc, char **argv);
-opal_list_t *create_query_idle_filter(int argc, char **argv);
-opal_list_t *create_query_log_filter(int argc,char **argv);
-opal_list_t *create_query_history_filter(int argc, char **argv);
-opal_list_t *create_query_node_filter(int argc, char **argv);
-opal_list_t *create_query_event_data_filter(int argc, char **argv);
-opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv);
-opal_list_t *create_query_event_date_filter(int argc, char **argv);
-int split_db_results(char *db_res, char ***db_results);
-void free_db_results(int num_elements, char ***db_res_array);
-char *add_to_str_date(char *date, int seconds);
-void print_results(opal_list_t *results, double start_time, double stop_time);
-int print_results_from_stream(uint32_t results_count,
-                              int requested_buffer_index, double start_time,
-                              double stop_time);
-orcm_db_filter_t *create_string_filter(char *field, char *string,
-                                       orcm_db_comparison_op_t op);
-
-/* Helper functions */
-opal_list_t *build_filters_list(int cmd,char **argv);
-orcm_db_filter_t *build_node_item(char **expanded_node_list);
-size_t list_nodes_str_size(char **expanded_node_list,int extra_bytes_per_element);
-char *assemble_datetime(char *date_str,char *time_str);
-double stopwatch(void);
-bool replace_wildcard(char **filter_me, bool quit_on_first);
-
-double stopwatch(void)
-{
-    double time_secs = 0.0;
-    struct timeval now;
-    gettimeofday(&now, (struct timezone*)0);
-    time_secs = (double) (now.tv_sec +now.tv_usec*1.0e-6);
-    return time_secs;
-}
-
-int query_db(int cmd, opal_list_t *filterlist, opal_list_t** results)
-{
-    int n = 1;
-    int rc = -1;
-    orcm_rm_cmd_flag_t command = (orcm_rm_cmd_flag_t)cmd;
-    orcm_db_filter_t *tmp_filter = NULL;
-    opal_buffer_t *buffer = OBJ_NEW(opal_buffer_t);
-    orte_rml_recv_cb_t *xfer = NULL;
-    uint16_t filterlist_count = 0;
-    uint32_t results_count = 0;
-    int returned_status = 0;
-
-    if (NULL == filterlist || NULL == results){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto query_db_cleanup;
-    }
-    filterlist_count = (uint16_t)opal_list_get_size(filterlist);
-    rc = opal_dss.pack(buffer, &command, 1, ORCM_RM_CMD_T);
-    ON_FAILURE_GOTO(rc, query_db_cleanup);
-    rc = opal_dss.pack(buffer, &filterlist_count, 1, OPAL_UINT16);
-    ON_FAILURE_GOTO(rc, query_db_cleanup);
-    OPAL_LIST_FOREACH(tmp_filter, filterlist, orcm_db_filter_t) {
-        uint8_t operation = (uint8_t)tmp_filter->op;
-        rc = opal_dss.pack(buffer, &tmp_filter->value.key, 1, OPAL_STRING);
-        ON_FAILURE_GOTO(rc, query_db_cleanup);
-        rc = opal_dss.pack(buffer, &operation, 1, OPAL_UINT8);
-        ON_FAILURE_GOTO(rc, query_db_cleanup);
-        rc = opal_dss.pack(buffer, &tmp_filter->value.data.string, 1, OPAL_STRING);
-        ON_FAILURE_GOTO(rc, query_db_cleanup);
-    }
-    xfer = OBJ_NEW(orte_rml_recv_cb_t);
-    ON_NULL_GOTO(ORCM_ERR_OUT_OF_RESOURCE, query_db_cleanup);
-    xfer->active = true;
-    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH,
-                            ORTE_RML_NON_PERSISTENT, orte_rml_recv_callback,
-                            xfer);
-    rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buffer,
-                                 ORCM_RML_TAG_ORCMD_FETCH,
-                                 orte_rml_send_callback, xfer);
-    ON_FAILURE_CANCEL_COMM(rc, query_db_cleanup, ORCM_RML_TAG_ORCMD_FETCH);
-    /* wait for status message */
-    ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
-    ON_FAILURE_CANCEL_COMM(rc, query_db_cleanup, ORCM_RML_TAG_ORCMD_FETCH);
-    rc = opal_dss.unpack(&xfer->data, &returned_status, &n, OPAL_INT);
-    ON_FAILURE_GOTO(rc, query_db_cleanup);
-    if(0 == returned_status) {
-        rc = opal_dss.unpack(&xfer->data, &results_count, &n, OPAL_UINT32);
-        ON_FAILURE_GOTO(rc, query_db_cleanup);
-        if (0 < results_count) {
-        (*results) = OBJ_NEW(opal_list_t);
-        for(uint32_t i = 0; i < results_count; ++i) {
-            char* tmp_str = NULL;
-            opal_value_t *tmp_value = NULL;
-            n = 1;
-            rc = opal_dss.unpack(&xfer->data, &tmp_str, &n, OPAL_STRING);
-            ON_FAILURE_GOTO(rc, query_db_cleanup);
-            tmp_value = OBJ_NEW(opal_value_t);
-            tmp_value->type = OPAL_STRING;
-            tmp_value->data.string = tmp_str;
-            opal_list_append(*results, &tmp_value->super);
-            }
-       } else {
-        orcm_octl_info("no-results");
-        rc = ORCM_SUCCESS;
-        *results = NULL;
-     }
-    } else {
-        orcm_octl_error("orcmsched-fail");
-        rc = ORCM_ERROR;
-        *results = NULL;
-    }
-query_db_cleanup:
-    SAFE_RELEASE(xfer);
-    return rc;
-}
+#include "orcm/tools/octl/query.h"
 
 /**
- * @brief Alternative version of query_db function which had a logic
- *        incompatible with a new protocol that retrieves an error code and the
- *        amount of rows from the DB. This version allows for that.
- * @param cmd is the command to send to the SCD framework, which serves to
- *            select the appropriate view in the DB framework.
- * @param filterslist is the memory address that contains a list with the
- *                    filters created by this tool based on the parameters
- *                    provided by the user at the command line interface.
- * @param results_count is the memory address where number of rows returned by
- *                      the SCD framework should be stored.
- * @param stream_index is the memory address where the stream index value
- *                     received from the SCD framework should be stored. This
- *                     stream index is used to retrieve the data which resulted
- *                     from our query to the SCD.
- * @return rc which is a code to verify that function completed successfully or
- *            to notify the occurrence on an error.
+ * @brief Array to correlate query arg types with their errors.
+ *        This array must be closely related to the "orcm_db_qry_arg_types"
+ *        enum on "db.h" of the DB framework. Relates each arg type
+ *        to an error tag on "help-octl.txt.".
  */
-int query_db_stream(int cmd, opal_list_t *filterlist, uint32_t *results_count,
-                    int *stream_index)
+char* orcm_db_qry_arg_types_error[] = {
+    "",
+    "no-date",
+    "no-float",
+    "no-integer",
+    "no-interval",
+    "no-ocomma_list",
+    "no-string"
+};
+
+octl_query_cmd_t query_cmd[] = {
+    { "query_event_data", "query-event-data", 'M',
+        { ORCM_DB_QRY_DATE|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_DATE|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_OCOMMA_LIST, ORCM_DB_QRY_END } },
+    { "query_event_snsr_data", "query-event-sensor-data", 'M',
+        { ORCM_DB_QRY_INTEGER, ORCM_DB_QRY_INTERVAL|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_OCOMMA_LIST, ORCM_DB_QRY_OCOMMA_LIST|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_END } },
+    { "query_idle", "query-idle", 'S',
+        { ORCM_DB_QRY_INTERVAL|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_OCOMMA_LIST, ORCM_DB_QRY_END } },
+    { "query_log", "query-log", 'M',
+        { ORCM_DB_QRY_STRING, ORCM_DB_QRY_DATE|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_DATE|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_OCOMMA_LIST|ORCM_DB_QRY_OPTIONAL, ORCM_DB_QRY_END } },
+    { "query_node_status", "query-node-status", 'M',
+        { ORCM_DB_QRY_OCOMMA_LIST, ORCM_DB_QRY_END } },
+    { "query_sensor_history", "query-history", 'M',
+        { ORCM_DB_QRY_OCOMMA_LIST|ORCM_DB_QRY_NULL,
+          ORCM_DB_QRY_DATE|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_DATE|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_STRING|ORCM_DB_QRY_NULL,
+          ORCM_DB_QRY_STRING|ORCM_DB_QRY_NULL,
+          ORCM_DB_QRY_OCOMMA_LIST, ORCM_DB_QRY_END } },
+    { "query_sensor_history", "query-sensor", 'M',
+        { ORCM_DB_QRY_OCOMMA_LIST, ORCM_DB_QRY_DATE|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_DATE|ORCM_DB_QRY_OPTIONAL, ORCM_DB_QRY_STRING,
+          ORCM_DB_QRY_STRING, ORCM_DB_QRY_OCOMMA_LIST|ORCM_DB_QRY_OPTIONAL,
+          ORCM_DB_QRY_END } },
+    { "query_snsr_get_inventory", "sensor-get-inventory", 'M',
+        { ORCM_DB_QRY_OCOMMA_LIST, ORCM_DB_QRY_END } }
+};
+
+int orcm_octl_query_func(query_func_names func_name, int argc, char **argv)
 {
     int rc = ORCM_SUCCESS;
-    int n = 1;
-    int returned_status = 0;
-    orte_rml_recv_cb_t *xfer = NULL;
-    opal_buffer_t *buffer = NULL;
+    opal_list_t *query_func_args = NULL;
 
-    if (NULL == filterlist || NULL == results_count || NULL == stream_index) {
-        rc = ORCM_ERR_BAD_PARAM;
-        return rc;
-    }
-    rc = create_buffer_from_filters(&buffer, filterlist, cmd);
-    ON_FAILURE_RETURN(rc);
-    xfer = OBJ_NEW(orte_rml_recv_cb_t);
-    ON_NULL_RETURN(xfer, ORCM_ERR_OUT_OF_RESOURCE);
-    xfer->active = true;
-    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH,
-                            ORTE_RML_NON_PERSISTENT, orte_rml_recv_callback, xfer);
-    rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buffer,
-                                 ORCM_RML_TAG_ORCMD_FETCH,
-                                 orte_rml_send_callback, xfer);
-    ON_FAILURE_CANCEL_COMM(rc, query_db_return, ORCM_RML_TAG_ORCMD_FETCH);
-    ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT_STREAM, &rc);
-    ON_FAILURE_CANCEL_COMM(rc, query_db_return, ORCM_RML_TAG_ORCMD_FETCH);
-    rc = opal_dss.unpack(&xfer->data, &returned_status, &n, OPAL_INT);
-    ON_FAILURE_RETURN(rc);
-    rc = opal_dss.unpack(&xfer->data, results_count, &n, OPAL_UINT32);
-    ON_FAILURE_RETURN(rc);
-    rc = opal_dss.unpack(&xfer->data, stream_index, &n, OPAL_INT);
-    ON_FAILURE_RETURN(rc);
-    SAFE_RELEASE(xfer);
-
-query_db_return:
-    return rc;
-}
-
-int create_buffer_for_stream_request(opal_buffer_t **buffer_to_send,
-                                     orcm_rm_cmd_flag_t cmd, int stream_index)
-{
-    int rc = ORCM_SUCCESS;
-    opal_buffer_t *tmp_buffer = NULL;
-    orcm_rm_cmd_flag_t command = cmd;
-    int requested_stream = stream_index;
-
-    tmp_buffer = OBJ_NEW(opal_buffer_t);
-    ON_NULL_RETURN(tmp_buffer, ORCM_ERR_OUT_OF_RESOURCE);
-    rc = opal_dss.pack(tmp_buffer, &command, 1, ORCM_RM_CMD_T);
-    ON_FAILURE_GOTO(rc, create_buffer_for_stream_cleanup);
-    rc = opal_dss.pack(tmp_buffer, &requested_stream, 1, OPAL_INT);
-    ON_FAILURE_GOTO(rc, create_buffer_for_stream_cleanup);
-    *buffer_to_send = tmp_buffer;
-
-    return rc;
-
-create_buffer_for_stream_cleanup:
-    OBJ_RELEASE(tmp_buffer);
-
-    return rc;
-}
-
-int create_buffer_from_filters(opal_buffer_t **buffer_to_send,
-                               opal_list_t *filters_list,
-                               orcm_rm_cmd_flag_t cmd)
-{
-    int rc = ORCM_SUCCESS;
-    opal_buffer_t *tmp_buffer = NULL;
-    uint16_t filters_list_size = 0;
-    orcm_rm_cmd_flag_t command = cmd;
-    orcm_db_filter_t *tmp_filter = NULL;
-
-    if (NULL == filters_list){
-        rc = OPAL_ERR_BAD_PARAM;
-        return rc;
-    }
-    tmp_buffer = OBJ_NEW(opal_buffer_t);
-    ON_NULL_RETURN(tmp_buffer, ORCM_ERR_OUT_OF_RESOURCE);
-    rc = opal_dss.pack(tmp_buffer, &command, 1, ORCM_RM_CMD_T);
-    ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
-    filters_list_size = (uint16_t)opal_list_get_size(filters_list);
-    if (0 == filters_list_size) {
-        rc = OPAL_ERR_BAD_PARAM;
-        goto create_buffer_from_filters_cleanup;
-    }
-    rc = opal_dss.pack(tmp_buffer, &filters_list_size, 1, OPAL_UINT16);
-    ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
-    OPAL_LIST_FOREACH(tmp_filter, filters_list, orcm_db_filter_t) {
-        uint8_t operation = (uint8_t)tmp_filter->op;
-        if (0 != strlen(tmp_filter->value.key)) {
-            rc = opal_dss.pack(tmp_buffer, &tmp_filter->value.key, 1,
-                               OPAL_STRING);
-            ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
-        } else {
-            rc = OPAL_ERR_BAD_PARAM;
-            goto create_buffer_from_filters_cleanup;
+    rc = query_args_list(func_name, &query_func_args, argc, argv);
+    if( ORCM_SUCCESS == rc ) {
+        rc = query_args_add_limit(OCTL_QUERY_DFLT_LIMIT, &query_func_args);
+        if( ORCM_SUCCESS == rc ) {
+            rc = query(func_name, query_func_args, OCTL_QUERY_DFLT_LIMIT);
         }
-        rc = opal_dss.pack(tmp_buffer, &operation, 1, OPAL_UINT8);
-        ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
-        if (tmp_filter->value.type == OPAL_STRING){
-            rc = opal_dss.pack(tmp_buffer, &tmp_filter->value.data.string, 1,
-                               OPAL_STRING);
-            ON_FAILURE_GOTO(rc, create_buffer_from_filters_cleanup);
-        } else {
-            rc = OPAL_ERR_BAD_PARAM;
-            goto create_buffer_from_filters_cleanup;
-        }
+    } else if( ORCM_ERR_BAD_PARAM == rc) {
+        orcm_octl_usage(query_cmd[func_name].cmd_usage_info, INVALID_USG);
     }
-    *buffer_to_send = tmp_buffer;
-
-    return rc;
-
-create_buffer_from_filters_cleanup:
-    OBJ_RELEASE(tmp_buffer);
+    query_custom_opal_list_free(&query_func_args);
 
     return rc;
 }
 
-int get_nodes_from_args(char **argv, char ***node_list)
+int query_args_list(query_func_names func_name, opal_list_t **args, int argc,
+                    char **argv)
 {
+    int argc_remain = argc;
+    char **argv_remain = argv;
+    int iterator = 0;
     int rc = ORCM_SUCCESS;
-    int arg_index = 0;
-    int node_count = 0;
-    char *raw_node_list = NULL;
-    char **argv_node_list = NULL;
+    char *aux_buff = NULL;
+    orcm_db_qry_arg_types pure_type = ORCM_DB_QRY_END;
 
-    if (NULL == *argv){
-        orcm_octl_error("no-args");
-        return ORCM_ERR_BAD_PARAM;
-    }
-    arg_index = opal_argv_count(argv);
-    /* Convert argv count to index */
-    arg_index--;
-    if (2 > arg_index){
-        orcm_octl_error("nodelist-null");
-        return ORCM_ERR_BAD_PARAM;
-    }
-    raw_node_list = argv[arg_index];
-    if (NULL == raw_node_list ) {
-        orcm_octl_error("nodelist-null");
-        return ORCM_ERR_BAD_PARAM;
-    }
-    rc = orcm_logical_group_parse_array_string(raw_node_list, &argv_node_list);
-    node_count = opal_argv_count(argv_node_list);
-    if (0 == node_count) {
-        orcm_octl_error("nodelist-extract", raw_node_list);
-        opal_argv_free(argv_node_list);
-        return ORCM_ERR_BAD_PARAM;
-    }
-    *node_list = argv_node_list;
-    return rc;
-}
+    *args = OBJ_NEW(opal_list_t);
+    if( NULL != (*args) ) {
+        for(; ORCM_DB_QRY_END != query_cmd[func_name].args[iterator]
+                  && ORCM_SUCCESS == rc; iterator++ ) {
 
-bool replace_wildcard(char **filter_me, bool quit_on_first)
-{
-    /* In-place replacement of first or all wildcards found in the filter_me string */
-    char *temp_filter = NULL;
-    bool found_wildcard = false;
+            if( 0 != (query_cmd[func_name].args[iterator] & ORCM_DB_QRY_NULL) ) {
+                pure_type = ORCM_DB_QRY_NULL;
+            } else {
+                pure_type = query_cmd[func_name].args[iterator]
+                           & (ORCM_DB_QRY_OPTIONAL - 1);
+            }
 
-    if (filter_me == NULL || *filter_me == NULL) {
-        return false;
-    }
-
-    temp_filter = *filter_me;
-    for(size_t i = 0; i < strlen(temp_filter); ++i) {
-        if('*' == temp_filter[i]) {
-                found_wildcard = true;
-                temp_filter[i] = '%';
-                /* Once we have found a wildcard ignore the rest of the string */
-                if (true == quit_on_first){
-                    temp_filter[i+1] = '\0';
-                    return true;
-                }
-        }
-    }
-    return found_wildcard;
-}
-
-char *assemble_datetime(char *date_str, char *time_str)
-{
-    char *date_time_str = NULL;
-    char *new_date_str = NULL;
-    char *new_time_str = NULL;
-    size_t date_time_length = 0;
-
-    if (NULL == date_str || NULL == time_str) {
-        return NULL;
-    }
-
-    if (NULL != date_str){
-        date_time_length = strlen(date_str);
-        new_date_str = strdup(date_str);
-    }
-    if (NULL != time_str){
-        date_time_length += strlen(time_str);
-        new_time_str = strdup(time_str);
-    }
-    if (0 < date_time_length && NULL != (date_time_str = calloc(sizeof(char),
-                                                                date_time_length))) {
-        if (false == replace_wildcard(&new_date_str, true)){
-            if (NULL != new_date_str){
-                strncpy(date_time_str, new_date_str, date_time_length - 1);
-                date_time_str[date_time_length - 1] = '\0';
-                strncat(date_time_str, " ", strlen(" "));
-                if (NULL != new_time_str){
-                    if (false == replace_wildcard(&new_time_str, true)){
-                        strncat(date_time_str, new_time_str, strlen(new_time_str));
+            switch( pure_type ) {
+                case ORCM_DB_QRY_DATE:
+                    rc = query_validate_date(&argc_remain, argv_remain,
+                                             &aux_buff);
+                    break;
+                case ORCM_DB_QRY_FLOAT:
+                    rc = query_validate_float(&argc_remain, argv_remain, &aux_buff);
+                    break;
+                case ORCM_DB_QRY_INTEGER:
+                    rc = query_validate_integer(&argc_remain, argv_remain, &aux_buff);
+                    break;
+                case ORCM_DB_QRY_INTERVAL:
+                    rc = query_validate_bef_aft(&argc_remain, argv_remain,
+                                                query_cmd[func_name].interval_dflt,
+                                                &aux_buff);
+                    break;
+                case ORCM_DB_QRY_OCOMMA_LIST:
+                    rc = query_validate_string(&argc_remain, argv_remain, &aux_buff);
+                    if( ORCM_SUCCESS == rc) {
+                        rc = query_comma_list_expand(&aux_buff);
                     }
+                    break;
+                case ORCM_DB_QRY_STRING:
+                    rc = query_validate_string(&argc_remain, argv_remain, &aux_buff);
+                    break;
+                case ORCM_DB_QRY_NULL:
+                    break;
+                default:
+                    orcm_octl_error("qry-unk-db-data-type");
+                    rc = ORCM_ERR_BAD_PARAM;
+                    break;
+            }
+
+            if( ORCM_ERR_OUT_OF_RESOURCE != rc ) {
+                query_args_post_val(&rc, query_cmd[func_name].args[iterator],
+                                   aux_buff, *argv_remain, args);
+            }
+
+            SAFEFREE(aux_buff);
+            argv_remain = argv + (sizeof(char) * (argc - argc_remain));
+        }
+
+        if( 0 < argc_remain && ORCM_SUCCESS == rc ) {
+            orcm_octl_info("query-extra-args", *argv_remain,
+                           argc - argc_remain + 1);
+            orcm_octl_info(query_cmd[func_name].cmd_usage_info);
+        }
+    } else {
+        rc = ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    return rc;
+}
+
+int query_args_add_limit(int limit, opal_list_t **args)
+{
+    int rc = ORCM_SUCCESS;
+    int length = 0;
+    char *str_limit = NULL;
+
+    if( limit > 0 ) {
+        length = log10( limit ) + 2;
+        str_limit = (char*)malloc(sizeof(char) * length);
+        if( NULL == str_limit ) {
+            rc = ORCM_ERR_OUT_OF_RESOURCE;
+        } else {
+            sprintf(str_limit, "%d", limit);
+        }
+    } else {
+        rc = ORCM_ERR_BAD_PARAM;
+    }
+
+    if( ORCM_ERR_OUT_OF_RESOURCE != rc ) {
+        query_args_post_val(&rc, ORCM_DB_QRY_INTEGER|ORCM_DB_QRY_OPTIONAL,
+                                   str_limit, str_limit, args);
+        SAFEFREE(str_limit);
+    }
+
+    return rc;
+}
+
+int query_args_post_val(int *rc, orcm_db_qry_arg_types type, char *arg,
+                        char *original_arg, opal_list_t **args)
+{
+    opal_value_t *opal_arg = NULL;
+    orcm_db_qry_arg_types pure_type = type & (ORCM_DB_QRY_OPTIONAL - 1);
+
+    opal_arg = OBJ_NEW(opal_value_t);
+    if( NULL != opal_arg ) {
+        switch( *rc ) {
+            case ORCM_SUCCESS:
+                opal_arg->type = pure_type;
+
+                if( 0 != (type & ORCM_DB_QRY_NULL) ) {
+                    opal_arg->data.string = NULL;
+                } else {
+                    opal_arg->data.string = strdup(arg);
+                    if( NULL == opal_arg->data.string ) {
+                        *rc = ORCM_ERR_OUT_OF_RESOURCE;
+                    }
+                }
+                break;
+            case ORCM_ERR_BAD_PARAM:
+                if( 0 != (type & ORCM_DB_QRY_OPTIONAL) ) {
+                    opal_arg->type = pure_type;
+                    opal_arg->data.string = NULL;
+                    *rc = ORCM_SUCCESS;
+                } else {
+                    orcm_octl_error(orcm_db_qry_arg_types_error[pure_type],
+                                    original_arg);
+                }
+                break;
+        }
+
+        opal_list_append(*args, &opal_arg->super);
+    } else {
+        *rc = ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    return *rc;
+}
+
+int query_validate_date(int *argc, char **argv, char **date)
+{
+    regmatch_t ts_matches[2];
+    struct tm *tm_date;
+    time_t t_date;
+    int res = ORCM_ERR_BAD_PARAM;
+
+    *date = strdup("0000-00-00 00:00:00");
+    if( NULL != (*date) ){
+        res = query_validate_with_regex(ts_matches, 2, REG_EXTENDED, argv[0],
+                "^[[:digit:]]{4}-[0-1][[:digit:]]-[0-3][[:digit:]]"
+                "([[:space:]][0-2][[:digit:]]:[0-5][[:digit:]]:[0-5][[:digit:]])?$");
+        if( ORCM_SUCCESS == res ) {
+            strncpy((*date), argv[0], ts_matches[0].rm_eo - ts_matches[0].rm_so);
+            (*argc)--;
+            argv += sizeof(char);
+        } else if( ORCM_ERR_BAD_PARAM == res ){
+            setlocale(LC_TIME, "UTC");
+            time( &t_date );
+            if( NULL != (tm_date = localtime( &t_date )) ) {
+                tm_date->tm_isdst = -1;
+                strftime((*date), 19, "%Y-%m-%d 00:00:00", tm_date);
+            } else {
+                res = ORCM_ERR_OUT_OF_RESOURCE;
+            }
+        }
+
+        if( ORCM_ERROR != res && ORCM_ERR_OUT_OF_RESOURCE != res
+            && 0 < (*argc)
+            && 0 >= (ts_matches[1].rm_eo - ts_matches[1].rm_so) ) {
+
+            if( ORCM_SUCCESS
+                == query_validate_with_regex(NULL, 0, REG_EXTENDED, argv[0],
+                        "^[0-2][[:digit:]]:[0-5][[:digit:]]:[0-5][[:digit:]]$") ) {
+                strcpy((*date) + sizeof(char) * 11, *argv);
+                (*argc)--;
+                res = ORCM_SUCCESS;
+            }
+        }
+    } else {
+        res = ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    return res;
+}
+
+int query_validate_interval(int *argc, char **argv)
+{
+    int res = ORCM_ERR_BAD_PARAM;
+
+    res = query_validate_with_regex(NULL, 0, REG_EXTENDED, argv[0],
+            "^[+-]?[[:digit:]]{2,}:[0-5][[:digit:]]:[0-5][[:digit:]]$");
+
+    if( ORCM_SUCCESS == res ){
+        (*argc)--;
+    }
+
+    return res;
+}
+
+int query_validate_integer(int *argc, char **argv, char **data)
+{
+    int res = ORCM_ERR_BAD_PARAM;
+
+    res = query_validate_with_regex(NULL, 0, REG_EXTENDED, argv[0],
+                                    "^[+-]?[[:digit:]]+$");
+    if( ORCM_SUCCESS == res ) {
+        *data = strdup(argv[0]);
+        if( NULL != (*data) ) {
+            (*argc)--;
+        } else {
+            res = ORCM_ERR_OUT_OF_RESOURCE;
+        }
+    }
+
+    return res;
+}
+
+int query_validate_float(int *argc, char **argv, char **data)
+{
+    int res = ORCM_ERR_BAD_PARAM;
+
+    res = query_validate_with_regex(NULL, 0, REG_EXTENDED, argv[0],
+            "^[+-]?(([[:digit:]]+)|([[:digit:]]*\\.[[:digit:]]+))$");
+    if( ORCM_SUCCESS == res ) {
+        *data = strdup(argv[0]);
+        if( NULL != (*data) ) {
+            (*argc)--;
+        } else {
+            res = ORCM_ERR_OUT_OF_RESOURCE;
+        }
+    }
+
+    return res;
+}
+
+int query_validate_string(int *argc, char **argv, char **data)
+{
+    int res = ORCM_ERR_BAD_PARAM;
+
+    res = query_validate_with_regex(NULL, 0, REG_EXTENDED, argv[0], "^.+$");
+    if( ORCM_SUCCESS == res ) {
+        *data = strdup(argv[0]);
+        if( NULL != (*data) ) {
+            (*argc)--;
+        } else {
+            res = ORCM_ERR_OUT_OF_RESOURCE;
+        }
+    }
+
+    return res;
+}
+
+int query_validate_bef_aft(int *argc, char **argv, char default_unit,
+                           char **data)
+{
+    regmatch_t reg_matches[3];
+    char before = 0;
+    int argc_bef_aft = 0;
+    int res = ORCM_ERR_BAD_PARAM;
+
+    res = query_validate_with_regex(reg_matches, 3, REG_EXTENDED, argv[0],
+                                    "^(before)|(after)$");
+    if( ORCM_SUCCESS == res ){
+        before = ( -1 < reg_matches[1].rm_so ) ? 1:0;
+        argv += sizeof(char);
+        argc_bef_aft++;
+        (*argc)--;
+    }
+
+    if( ORCM_ERROR != res
+        && ORCM_ERR_BAD_PARAM
+           == (res = query_validate_bef_aft_interval(argc, argv,
+                                                     default_unit,
+                                                     before, data)) ) {
+        (*argc) += argc_bef_aft;
+    }
+
+    return res;
+}
+
+int query_validate_bef_aft_interval(int *argc, char **argv, char default_unit,
+                                    char before, char **interval)
+{
+    regmatch_t reg_matches[6];
+    int res = ORCM_SUCCESS;
+    double quantity = 0;
+
+    res = query_validate_with_regex(reg_matches, 6, REG_EXTENDED, argv[0],
+            "^([+-])?(([[:digit:]]+)|([[:digit:]]*\\.[[:digit:]]+))([HMS])?$");
+    if( ORCM_SUCCESS == res ) {
+        (*argc)--;
+        if( -1 < reg_matches[1].rm_so
+            && '-' == argv[0][reg_matches[1].rm_so] ) {
+            before = !before;
+        }
+
+        *interval = strndup( argv[0] + reg_matches[2].rm_so,
+                             reg_matches[2].rm_eo - reg_matches[2].rm_so);
+        if( NULL != (*interval) ) {
+            quantity = atof(*interval) * pow(-1,before);
+            SAFEFREE(*interval);
+
+            if( -1 < reg_matches[5].rm_so ) {
+                default_unit = argv[0][reg_matches[5].rm_so];
+            }
+            res = query_double_to_interval( quantity, default_unit,
+                                            interval);
+        } else {
+            res = ORCM_ERR_OUT_OF_RESOURCE;
+        }
+    } else if( ORCM_ERR_BAD_PARAM == res
+               && ORCM_SUCCESS
+                  == (res = query_validate_interval(argc, argv)) ) {
+
+        if( before ) {
+            if( '-' == argv[0][0] || '+' == argv[0][0] ) {
+                *interval = strdup( *argv + sizeof(char) );
+            } else {
+                *interval = strdup( argv[0] );
+            }
+
+            if( '-' != argv[0][0]  && NULL != (*interval) ) {
+                *interval = (char*)realloc( *interval, strlen(*interval)
+                                                       + sizeof(char) * 2 );
+                if( NULL != (*interval) ) {
+                    strcpy( *interval + sizeof(char), (*interval) );
+                    (*interval)[0] = '-';
+                }
+            }
+        } else {
+            *interval = strdup( argv[0] );
+        }
+
+        if( NULL == (*interval) ) {
+            res = ORCM_ERR_OUT_OF_RESOURCE;
+        }
+    }
+
+    return res;
+}
+
+int query_validate_with_regex(regmatch_t *reg_matches, size_t nmatches,
+                              int eflags, char* str_eval,
+                              const char* str_regex) {
+    regex_t regex_comp;
+    int regex_res;
+    int res = ORCM_ERR_BAD_PARAM;
+
+    if( NULL != str_eval ){
+        regcomp(&regex_comp, str_regex, eflags);
+
+        regex_res = regexec(&regex_comp, str_eval, nmatches, reg_matches, 0);
+        if( !regex_res ){
+            res = ORCM_SUCCESS;
+        } else if( REG_NOMATCH != regex_res ){
+            orcm_octl_error("no-regex");
+            res = ORCM_ERROR;
+        }
+        regfree(&regex_comp);
+    }
+
+    return res;
+}
+
+int query_comma_list_expand(char **comma_list)
+{
+    typedef int (*oregex_logroup_expander_fn_t)(char *expandable,
+                                                char ***results);
+
+    int rc = ORCM_SUCCESS;
+    int regex_res = 0;
+    regex_t regex_comp_oregex;
+    regex_t regex_comp_logroup;
+    regmatch_t list_matches[2];
+    char *expandable = NULL;
+    char **expanded = NULL;
+    oregex_logroup_expander_fn_t expander;
+    int list_length = 0;
+    int str_pos = 0;
+
+
+    if( NULL != *comma_list){
+        regcomp(&regex_comp_oregex,
+                "([^[,]+\\[[[:digit:]]+:[[:digit:]]+-[[:digit:]]+\\]),?",
+                REG_EXTENDED);
+        regcomp(&regex_comp_logroup, "(\\$[^,]+),?", REG_EXTENDED);
+
+        list_length = strlen(*comma_list);
+
+        while( ORCM_SUCCESS == rc && !regex_res ) {
+
+            if( !(regex_res = regexec(&regex_comp_oregex,
+                                      (*comma_list) + str_pos, 2,
+                                      list_matches,0)) ) {
+                expander = orte_regex_extract_node_names;
+            }
+            else if( REG_NOMATCH == regex_res
+                     && !(regex_res = regexec(&regex_comp_logroup,
+                                              (*comma_list) + str_pos, 2,
+                                              list_matches,0)) ) {
+                expander = orcm_logical_group_parse_array_string;
+            }
+
+            if ( !regex_res ) {
+                expandable = strndup( (*comma_list) + str_pos
+                                          + list_matches[1].rm_so,
+                                      (int)(list_matches[1].rm_eo
+                                          - list_matches[1].rm_so));
+                if( NULL != expandable ) {
+                    memmove( (void *)((*comma_list) + str_pos
+                                         + list_matches[0].rm_so),
+                             (void *)((*comma_list) + str_pos
+                                         + list_matches[0].rm_eo),
+                             list_length - str_pos - list_matches[0].rm_eo + 1);
+                    list_length = strlen(*comma_list);
+                    str_pos += list_matches[0].rm_so;
+                    if( list_length && (*comma_list)[list_length - 1] == ',' ) {
+                        (*comma_list)[list_length - 1] = '\x0';
+                        list_length--;
+                    }
+
+                    if( ORCM_SUCCESS
+                            == (rc = expander(expandable, &expanded)) ) {
+                        rc = query_comma_list_add_unique_elements(comma_list,
+                                                                  &expanded,
+                                                                  &list_length);
+                    }
+                    SAFEFREE(expandable);
+                } else {
+                    rc = ORCM_ERR_OUT_OF_RESOURCE;
+                }
+            } else if( REG_NOMATCH != regex_res ) {
+                orcm_octl_error("no-regex");
+                rc = ORCM_ERROR;
+            }
+        }
+        regfree(&regex_comp_oregex);
+        regfree(&regex_comp_logroup);
+    }
+
+    return rc;
+}
+
+int query_comma_list_add_unique_elements(char **comma_list, char ***elements,
+                                         int *list_length)
+{
+    int rc = ORCM_SUCCESS;
+    int iterator = 0;
+    int element_length = 0;
+    int regex_res = 0;
+    regex_t regex_comp;
+    char *element_regex = NULL;
+
+    if( NULL != *elements ) {
+        for( iterator=0; (*elements)[iterator] != NULL
+                         && ORCM_SUCCESS == rc;
+             iterator++ ){
+            element_regex = strdup((*elements)[iterator]);
+
+            if( NULL != element_regex ) {
+                rc = query_comma_list_element_to_regex( &element_regex,
+                                                        strlen(element_regex) );
+                if( ORCM_SUCCESS == rc ) {
+                    regcomp(&regex_comp, element_regex, REG_EXTENDED);
+
+                    regex_res = regexec(&regex_comp, *comma_list, 0, NULL, 0);
+                    if( REG_NOMATCH == regex_res ) {
+                        element_length = strlen((*elements)[iterator]);
+                        if( 0 != (*list_length) ) {
+                            (*comma_list)[*list_length] = ',';
+                            (*list_length)++;
+                        }
+
+                        *comma_list = (char *)realloc( *comma_list,
+                                                       ((*list_length)
+                                                           + element_length + 1)
+                                                       * sizeof(char) );
+                        if( NULL != *comma_list) {
+                            strcpy( (*comma_list) + (*list_length),
+                                    (*elements)[iterator] );
+                            (*list_length) += element_length;
+                        } else {
+                            rc = ORCM_ERR_OUT_OF_RESOURCE;
+                        }
+                    } else if( regex_res ) {
+                        orcm_octl_error("no-regex");
+                        rc = ORCM_ERROR;
+                    }
+
+                    regfree(&regex_comp);
+                    SAFEFREE((*elements)[iterator]);
                 }
             } else {
-               orcm_octl_error("allocate-memory", "datetime string");
+                rc = ORCM_ERR_OUT_OF_RESOURCE;
             }
+            SAFEFREE(element_regex);
+        }
+    }
+
+    return rc;
+}
+
+int query_comma_list_element_to_regex(char **str, int act_length)
+{
+    int rc;
+
+    if( ORCM_SUCCESS == (rc = query_str_to_regex(str, act_length)) ) {
+        act_length = strlen(*str);
+
+        *str = (char *)realloc( *str, act_length + 11 );
+        if( NULL != *str ) {
+            memmove( (void *)((*str) + 5), (void *)(*str), act_length );
+            memmove( (void *)(*str), "(^|,)", 5 );
+            strcpy( (*str) + act_length + 5, "(,|$)" );
         } else {
-            SAFE_FREE(date_time_str);
+            rc = ORCM_ERR_OUT_OF_RESOURCE;
         }
     }
-    SAFE_FREE(new_date_str);
-    SAFE_FREE(new_time_str);
-    return date_time_str;
+
+    return rc;
 }
 
-orcm_db_filter_t *create_string_filter(char *field, char *string,
-                                    orcm_db_comparison_op_t op){
-    orcm_db_filter_t *filter = NULL;
-    if (NULL != field && NULL != string) {
-        filter = OBJ_NEW(orcm_db_filter_t);
-        if (NULL != filter) {
-            filter->value.type = OPAL_STRING;
-            filter->value.key = strdup(field);
-            filter->value.data.string = strdup(string);
-            filter->op = op;
-        }
-    }
-    return filter;
-}
-
-opal_list_t *create_query_idle_filter(int argc, char **argv)
+int query_str_to_regex(char **str, int act_length)
 {
-    opal_list_t *filters_list = NULL;
-    orcm_db_filter_t *filter_item = NULL;
+    int rc = ORCM_SUCCESS;
+    int str_pos = 0;
+    int regex_res = 0;
+    regex_t regex_comp;
+    regmatch_t str_matches[1];
 
-    filters_list = OBJ_NEW(opal_list_t);
-    if (3 == argc) {
-        filter_item = create_string_filter("idle_time", DEFAULT_IDLE_TIME, GT);
-        opal_list_append(filters_list, &filter_item->value.super);
-    } else if (4 == argc) {
-        filter_item = create_string_filter("idle_time", argv[2], GT);
-        opal_list_append(filters_list, &filter_item->value.super);
-    } else {
-        orcm_octl_usage("query-idle", INVALID_USG);
-        return NULL;
-    }
-    return filters_list;
-}
+    regcomp(&regex_comp, "(\\\\|\\^|\\$|\\.|\\]|[[(){}+*?|-])", REG_EXTENDED);
 
-opal_list_t *create_query_log_filter(int argc, char **argv)
-{
-    opal_list_t *filters_list = NULL;
-    orcm_db_filter_t *filter_item = NULL;
-    char *date_time_str = NULL;
-    char *filter_str = NULL;
+    while( ORCM_SUCCESS == rc && !regex_res) {
 
-    filters_list = OBJ_NEW(opal_list_t);
-    if (3 == argc) {
-    /* There's no need to create a filter */
-        NULL;
-    } else if (4 == argc){
-        /* Add 3 more chars including the end of the string '\0' */
-        if (NULL != (filter_str = calloc(sizeof(char), strlen(argv[2])+3))){
-            strncat(filter_str, "%", strlen("%"));
-            strncat(filter_str, argv[2], strlen(argv[2]));
-            strncat(filter_str, "%", strlen("%"));
-        } else {
-            orcm_octl_error("allocate-memory", "filter string");
-            return NULL;
-        }
-        filter_item = create_string_filter("log", filter_str, CONTAINS);
-        opal_list_append(filters_list, &filter_item->value.super);
-        SAFE_FREE(filter_str);
-    } else if (7 == argc){
-        /* Create filter for start time if necessary */
-        if (NULL != (date_time_str = assemble_datetime(argv[2], argv[3]))) {
-            filter_item = create_string_filter("time_stamp", date_time_str, GT);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(date_time_str);
-        }
-        /* Create filter for end time if necessary */
-        if (NULL != (date_time_str = assemble_datetime(argv[4], argv[5]))) {
-            filter_item = create_string_filter("time_stamp", date_time_str, LT);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(date_time_str);
-        }
-    } else if (8 == argc){
-        /* Add 3 more chars including the end of the string '\0' */
-        if (NULL != (filter_str = calloc(sizeof(char), strlen(argv[2])+3))){
-            strncat(filter_str, "%", strlen("%"));
-            strncat(filter_str, argv[2], strlen(argv[2]));
-            strncat(filter_str, "%", strlen("%"));
-        } else {
-            orcm_octl_error("allocate-memory", "filter string");
-            return NULL;
-        }
-        filter_item = create_string_filter("log", filter_str, CONTAINS);
-        opal_list_append(filters_list, &filter_item->value.super);
-        SAFE_FREE(filter_str);
-        /* Create filter for start time if necessary */
-        if (NULL != (date_time_str = assemble_datetime(argv[3], argv[4]))) {
-            filter_item = create_string_filter("time_stamp", date_time_str, GT);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(date_time_str);
-        }
-        /* Create filter for end time if necessary */
-        if (NULL != (date_time_str = assemble_datetime(argv[5], argv[6]))) {
-            filter_item = create_string_filter("time_stamp", date_time_str, LT);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(date_time_str);
-        }
-    } else {
-        orcm_octl_usage("query-log", INVALID_USG);
-        return NULL;
-    }
-    return filters_list;
-}
+        regex_res = regexec(&regex_comp, (*str) + str_pos, 1, str_matches,0);
+        if( !regex_res ) {
+            *str = (char *)realloc( *str, act_length + 2 );
 
-opal_list_t *create_query_node_filter(int argc, char **argv)
-{
-    opal_list_t *filters_list = NULL;
-
-    filters_list = OBJ_NEW(opal_list_t);
-
-    if (4 == argc) {
-    /* Place holder for functionality when available in the DB */
-        NULL;
-    } else {
-        orcm_octl_usage("query-node-status", INVALID_USG);
-        return NULL;
-    }
-    return filters_list;
-}
-
-opal_list_t *create_query_history_filter(int argc, char **argv)
-{
-    opal_list_t *filters_list = NULL;
-    orcm_db_filter_t *filter_item = NULL;
-    char *date_time_str = NULL;
-
-    filters_list = OBJ_NEW(opal_list_t);
-    if (3 == argc) {
-        filter_item = create_string_filter("data_item", "%", CONTAINS);
-        opal_list_append(filters_list, &filter_item->value.super);
-    } else if (7 == argc){
-        /* Create filter for start time if necessary */
-        if (NULL != (date_time_str = assemble_datetime(argv[2],argv[3]))) {
-            filter_item = create_string_filter("time_stamp", date_time_str, GT);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(date_time_str);
-        }
-        /* Create filter for end time if necessary */
-        if (NULL != (date_time_str = assemble_datetime(argv[4], argv[5]))) {
-            filter_item = create_string_filter("time_stamp", date_time_str, LT);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(date_time_str);
-        }
-    } else {
-        orcm_octl_usage("query-history", INVALID_USG);
-        return NULL;
-    }
-    return filters_list;
-}
-
-opal_list_t *create_query_sensor_filter(int argc, char **argv)
-{
-    opal_list_t *filters_list = NULL;
-    orcm_db_filter_t *filter_item = NULL;
-    char *date_time_str = NULL;
-    char *filter_str = NULL;
-
-    filters_list = OBJ_NEW(opal_list_t);
-    if (4 == argc){
-            /* Create a filter for a sensor */
-            filter_str = strdup(argv[2]);
-            replace_wildcard(&filter_str, false);
-            filter_item = create_string_filter("data_item", filter_str, CONTAINS);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(filter_str);
-    } else if (8 == argc){
-            /* Create a filter for a sensor */
-            filter_str = strdup(argv[2]);
-            replace_wildcard(&filter_str, false);
-            filter_item = create_string_filter("data_item", filter_str, CONTAINS);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(filter_str);
-            /* Create filter for start time if necessary */
-            if (NULL != (date_time_str = assemble_datetime(argv[3], argv[4]))) {
-                filter_item = create_string_filter("time_stamp", date_time_str, GT);
-                opal_list_append(filters_list, &filter_item->value.super);
-                SAFE_FREE(date_time_str);
+            if( NULL != (*str) ) {
+                memmove( (void *)((*str) + str_pos + str_matches[0].rm_eo),
+                         (void *)((*str) + str_pos + str_matches[0].rm_so),
+                         act_length - str_pos - str_matches[0].rm_so + 1);
+                (*str)[str_pos + str_matches[0].rm_so] = '\\';
+                str_pos += str_matches[0].rm_eo + 1;
+                act_length += 2;
+            } else {
+                rc = ORCM_ERR_OUT_OF_RESOURCE;
             }
-            /* Create filter for end time if necessary */
-            if (NULL != (date_time_str = assemble_datetime(argv[5], argv[6]))) {
-                filter_item = create_string_filter("time_stamp", date_time_str, LT);
-                opal_list_append(filters_list, &filter_item->value.super);
-                SAFE_FREE(date_time_str);
-            }
-    } else if (10 == argc){
-            /* Create a filter for a sensor */
-            filter_str = strdup(argv[2]);
-            replace_wildcard(&filter_str, false);
-            filter_item = create_string_filter("data_item", filter_str, CONTAINS);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(filter_str);
-            /* Create filter for start time if necessary */
-            if (NULL != (date_time_str = assemble_datetime(argv[3], argv[4]))) {
-                filter_item = create_string_filter("time_stamp", date_time_str, GT);
-                opal_list_append(filters_list, &filter_item->value.super);
-                SAFE_FREE(date_time_str);
-            }
-            /* Create filter for end time if necessary */
-            if (NULL != (date_time_str = assemble_datetime(argv[5], argv[6]))) {
-                filter_item = create_string_filter("time_stamp", date_time_str, LT);
-                opal_list_append(filters_list, &filter_item->value.super);
-                SAFE_FREE(date_time_str);
-            }
-            filter_str = strdup(argv[7]);
-            /* Create filter for upper bound necessary */
-            if (false == replace_wildcard(&filter_str, true)){
-                filter_item = create_string_filter("value_str", filter_str, GT);
-                opal_list_append(filters_list, &filter_item->value.super);
-            }
-            SAFE_FREE(filter_str);
-            filter_str = strdup(argv[8]);
-            /* Create filter for upper bound necessary */
-            if (false == replace_wildcard(&filter_str, true)){
-                filter_item = create_string_filter("value_str", filter_str, LT);
-                opal_list_append(filters_list, &filter_item->value.super);
-            }
-            SAFE_FREE(filter_str);
-    } else {
-        orcm_octl_usage("query-sensor", INVALID_USG);
-        return NULL;
+        } else if( REG_NOMATCH != regex_res ) {
+            orcm_octl_error("no-regex");
+            rc = ORCM_ERROR;
+        }
     }
-    return filters_list;
+    regfree(&regex_comp);
+
+    return rc;
 }
 
-opal_list_t *create_query_event_data_filter(int argc, char **argv)
+int query_double_to_interval(double quantity, const char units, char **interval)
 {
-    opal_list_t *filters_list = NULL;
-    orcm_db_filter_t *filter_item = NULL;
-    char *filter_str = NULL;
+    int rc = ORCM_SUCCESS;
+    double hours = 0, minutes = 0, tminutes = 0;
+    int seconds = 0, tseconds = 0;
+    int length = 0;
 
-    if (NULL == argv) {
-        return NULL;
-    }
-
-    filters_list = OBJ_NEW(opal_list_t);
-    if (4 == argc) {
-        time_t current_time;
-        struct tm *localdate;
-        char current_date[12];
-        time(&current_time);
-        localdate = localtime(&current_time);
-        if (NULL == localdate) {
-            orcm_octl_error("allocate-memory", "datatime string");
-            return NULL;
-        }
-        strftime(current_date, sizeof(current_date), "%Y-%m-%d", localdate);
-        filter_item = create_string_filter("time_stamp", current_date, GT);
-        opal_list_append(filters_list, &filter_item->value.super);
-        filter_item = create_string_filter("severity", "INFO", NE);
-        opal_list_append(filters_list, &filter_item->value.super);
-    } else if (8 == argc) {
-        /* Doing nothing here, we want to retrieve all the DB data */
-        if (NULL != (filter_str = assemble_datetime(argv[3], argv[4]))){
-            filter_item = create_string_filter("time_stamp", filter_str, GT);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFEFREE(filter_str);
-        }
-        if (NULL != (filter_str = assemble_datetime(argv[5], argv[6]))){
-            filter_item = create_string_filter("time_stamp", filter_str, LT);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFEFREE(filter_str);
-        }
-        /* We create a fixed filter to get all events different from INFO
-         * which are less important for the user.
-         */
-        filter_item = create_string_filter("severity", "INFO", NE);
-        opal_list_append(filters_list, &filter_item->value.super);
-    } else {
-        orcm_octl_usage("query-event-data", INVALID_USG);
-        SAFEFREE(filters_list);
-        return NULL;
-    }
-    return filters_list;
-}
-
-/**
- * @brief Function that creates the data filters (WHERE clause on
- *        normal SQL queries) for the following report:
- *        "Sensor data around N minutes before/after an event".
- *        Each filter is equivalent to a single comparison on the
- *        WHERE clause.
- *
- * @param argc Number of arguments that are present in the command.
- *             The command words are also counted as arguments. e.g.
- *             > query event sensor-data 1 after 1 coretemp* node_x
- *             Has 8 arguments (from 0 to 7).
- *
- * @param argv Array of strings. Each array position contains an
- *             argument of the command as a string.
- */
-opal_list_t *create_query_event_snsr_data_filter(int argc, char **argv)
-{
-    opal_list_t *filters_list = NULL;
-    orcm_db_filter_t *filter_item = NULL;
-    char *filter_str = NULL;
-    char *end_date;
-
-    if (8 == argc && NULL != argv) {
-        filters_list = OBJ_NEW(opal_list_t);
-
-        if ( 0 == strcmp("before", argv[4]) ){
-            filter_item = create_string_filter("time_stamp", argv[3], LE);
-            opal_list_append(filters_list, &filter_item->value.super);
-
-            end_date = add_to_str_date(argv[3], 0 - (atoi(argv[5]) * 60) );
-            filter_item = create_string_filter("time_stamp", end_date, GE);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(end_date);
-        } else if ( 0 == strcmp("after", argv[4]) ){
-            filter_item = create_string_filter("time_stamp", argv[3], GE);
-            opal_list_append(filters_list, &filter_item->value.super);
-
-            end_date = add_to_str_date(argv[3], (atoi(argv[5]) * 60) );
-            filter_item = create_string_filter("time_stamp", end_date, LE);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(end_date);
-        } else {
-            orcm_octl_usage("query-event-sensor-data", INVALID_USG);
-            SAFE_RELEASE(filters_list);
-            filters_list = NULL;
-        }
-
-        if( NULL != filters_list ){
-            filter_str = strdup(argv[6]);
-            replace_wildcard(&filter_str, false);
-            filter_item = create_string_filter("data_item", filter_str, CONTAINS);
-            opal_list_append(filters_list, &filter_item->value.super);
-            SAFE_FREE(filter_str);
-        }
-    } else {
-        orcm_octl_usage("query-event-sensor-data", INVALID_USG);
-    }
-
-    return filters_list;
-}
-
-/**
- * @brief Function that creates the data filters (WHERE clause on
- *        normal SQL queries) for the following report:
- *        "Obtain date of an event".
- *        This is not a formal report, instead it's used as a support
- *        report to be able to query the "Sensor data around N minutes
- *        before/after an event" report.
- *        Each filter is equivalent to a single comparison on the
- *        WHERE clause.
- *
- * @param argc Number of arguments that are present in the command.
- *             The command words are also counted as arguments. e.g.
- *             > query event sensor-data 1 after 1 coretemp* node_x
- *             Has 8 arguments (from 0 to 7).
- *
- * @param argv Array of strings. Each array position contains an
- *             argument of the command as a string.
- */
-opal_list_t *create_query_event_date_filter(int argc, char **argv)
-{
-    opal_list_t *filters_list = NULL;
-    orcm_db_filter_t *filter_item = NULL;
-
-    if( 3 < argc && NULL != argv){
-        filters_list = OBJ_NEW(opal_list_t);
-        filter_item = create_string_filter("event_id", argv[3], EQ);
-        opal_list_append(filters_list, &filter_item->value.super);
-    } else {
-        orcm_octl_usage("query-event-sensor-data", INVALID_USG);
-    }
-
-    return filters_list;
-}
-
-opal_list_t *build_filters_list(int cmd, char **argv)
-{
-    opal_list_t *filters_list = NULL;
-    char argc = 0;
-
-    argc = opal_argv_count(argv);
-    switch(cmd){
-        case ORCM_GET_DB_QUERY_NODE_COMMAND:
-            filters_list = create_query_node_filter(argc, argv);
+    switch( units ) {
+        case 'S':
+            seconds = tseconds = fabs(quantity);
             break;
-        case ORCM_GET_DB_QUERY_IDLE_COMMAND:
-            filters_list = create_query_idle_filter(argc, argv);
+        case 'M':
+            minutes = tminutes = fabs(quantity);
             break;
-        case ORCM_GET_DB_QUERY_LOG_COMMAND:
-            filters_list = create_query_log_filter(argc, argv);
-            break;
-        case ORCM_GET_DB_QUERY_HISTORY_COMMAND:
-            filters_list = create_query_history_filter(argc, argv);
-            break;
-        case ORCM_GET_DB_QUERY_SENSOR_COMMAND:
-            filters_list = create_query_sensor_filter(argc, argv);
-            break;
-        case ORCM_GET_DB_QUERY_EVENT_DATA_COMMAND:
-            filters_list = create_query_event_data_filter(argc, argv);
-            break;
-        case ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND:
-            filters_list = create_query_event_date_filter(argc, argv);
-            break;
-        case ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND:
-            filters_list = create_query_event_snsr_data_filter(argc, argv);
+        case 'H':
+            hours = fabs(quantity);
             break;
         default:
+            orcm_octl_error("no-interval-unit", units);
+            rc = ORCM_ERR_BAD_PARAM;
             break;
     }
-    return filters_list;
-}
 
-size_t list_nodes_str_size(char **expanded_node_list, int extra_bytes_per_element)
-{
-    size_t str_length = 0;
-    int node_count = 0;
+    if( ORCM_SUCCESS == rc ) {
+        minutes += modf(hours, &hours) * 60;
+        tseconds = (seconds += modf(minutes, &minutes) * 60);
+        tminutes = minutes;
 
-    node_count = opal_argv_count(expanded_node_list);
-    for(int i = 0; i < node_count; ++i) {
-        str_length += strlen(expanded_node_list[i])+extra_bytes_per_element;
-    }
-    return str_length;
-}
+        seconds = seconds % 60;
+        tminutes = (minutes += (int)(tseconds/60));
+        minutes = (int)minutes % 60;
+        hours += (int)(tminutes/60);
 
-orcm_db_filter_t *build_node_item(char **expanded_node_list)
-{
-    int node_count = 0;
-    size_t str_length = 0;
-    char *hosts_filter = NULL;
-    orcm_db_filter_t *filter_item = NULL;
-
-    str_length = list_nodes_str_size(expanded_node_list, 3);
-    /* Add one character for '\0' */
-    str_length++;
-    if (NULL != (hosts_filter = calloc(sizeof(char), str_length))){
-        node_count = opal_argv_count(expanded_node_list);
-        for(int i=0; i < node_count; ++i){
-            strncat(hosts_filter, "'", strlen("'"));
-            strncat(hosts_filter, expanded_node_list[i], strlen(expanded_node_list[i]));
-            strncat(hosts_filter, "'", strlen("'"));
-            strncat(hosts_filter, ",", strlen(","));
-        }
-        /* Remove trailing comma */
-        hosts_filter[strlen(hosts_filter)-1]= '\0';
-        /* Operator for query depends on whether we find a wildcard in the hostname arg */
-        if (true == replace_wildcard(&hosts_filter, true)){
-            filter_item = create_string_filter("hostname", "%", CONTAINS);
+        length = log10( abs( (hours)?hours:1 ) ) + 2;
+        *interval = (char*)malloc(sizeof(char) * (length + 7));
+        if( NULL != (*interval) ) {
+            sprintf(*interval, (0 > quantity)?"-%02d:%02d:%02d":
+                    "%02d:%02d:%02d", (int)hours, (int)minutes, (int)seconds);
         } else {
-            filter_item = create_string_filter("hostname", hosts_filter, IN);
+            rc = ORCM_ERR_OUT_OF_RESOURCE;
         }
-        SAFE_FREE(hosts_filter);
-    } else {
-        orcm_octl_error("allocate-memory", "node item");
     }
-    return filter_item;
-}
 
-int orcm_octl_query_sensor(int cmd, char **argv)
-{
-    int rc = ORCM_SUCCESS;
-    char **argv_node_list = NULL;
-    double start_time = 0.0;
-    double stop_time = 0.0;
-    opal_list_t *filter_list = NULL;
-    opal_list_t *returned_list = NULL;
-    orcm_db_filter_t *nodes_list = NULL;
-    uint32_t results_count = 0;
-    int stream_from_query = 0;
-
-    /* Build input node list */
-    filter_list = build_filters_list(cmd, argv);
-    if (NULL == filter_list){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_sensor_cleanup;
-    }
-    if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_sensor_cleanup;
-    }
-    if (NULL != (nodes_list = build_node_item(argv_node_list))){
-        opal_list_append(filter_list, &nodes_list->value.super);
-    }
-    /* Get list of results from scheduler (or other management node) */
-    start_time = stopwatch();
-    rc = query_db_stream(cmd, filter_list, &results_count, &stream_from_query);
-    stop_time = stopwatch();
-    if(rc != ORCM_SUCCESS) {
-        orcm_octl_info("no-results");
-    } else {
-        print_results_from_stream(results_count, stream_from_query, start_time,
-                                  stop_time);
-    }
-    SAFE_RELEASE(returned_list);
-    SAFE_RELEASE(filter_list);
-orcm_octl_query_sensor_cleanup:
-    opal_argv_free(argv_node_list);
     return rc;
 }
 
-int orcm_octl_query_log(int cmd, char **argv)
+int open_database()
 {
-    int rc = ORCM_SUCCESS;
-    char **argv_node_list = NULL;
-    double start_time = 0.0;
-    double stop_time = 0.0;
-    opal_list_t *filter_list = NULL;
-    opal_list_t *returned_list = NULL;
-    orcm_db_filter_t *nodes_list = NULL;
-
-    /* Build input node list */
-    filter_list = build_filters_list(cmd, argv);
-    if (NULL == filter_list){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_log_cleanup;
+    bool valid_component;
+    query_data.dbhandle = -1;
+    query_data.active = true;
+    orcm_db.open(NULL, NULL, open_callback, &query_data);
+    ORTE_WAIT_FOR_COMPLETION(query_data.active);
+    if (ORCM_SUCCESS != query_data.status) {
+        return ORCM_ERROR;
     }
-    if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_log_cleanup;
+    /* Check if has valid component */
+    valid_component = is_valid_db_component_selected();
+    if (!valid_component) {
+        return ORCM_ERR_NOT_FOUND;
     }
-    if (NULL != (nodes_list = build_node_item(argv_node_list))){
-        opal_list_append(filter_list, &nodes_list->value.super);
-    }
-    /* Get list of results from scheduler (or other management node) */
-    start_time = stopwatch();
-    rc = query_db(cmd, filter_list, &returned_list);
-    stop_time = stopwatch();
-    if(rc != ORCM_SUCCESS) {
-        orcm_octl_info("no-results");
-    } else {
-        print_results(returned_list, start_time, stop_time);
-    }
-    SAFE_RELEASE(returned_list);
-    SAFE_RELEASE(filter_list);
-orcm_octl_query_log_cleanup:
-    opal_argv_free(argv_node_list);
-    return rc;
+    return ORCM_SUCCESS;
 }
 
-int orcm_octl_query_idle(int cmd, char **argv)
-{
-    int rc = ORCM_SUCCESS;
-    char **argv_node_list = NULL;
-    double start_time = 0.0;
-    double stop_time = 0.0;
-    opal_list_t *filter_list = NULL;
-    opal_list_t *returned_list = NULL;
-    orcm_db_filter_t *nodes_list = NULL;
-
-    /* Build input node list */
-    filter_list = build_filters_list(cmd, argv);
-    if (NULL == filter_list){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_idle_cleanup;
+bool is_valid_db_component_selected() {
+    orcm_db_handle_t *hdl;
+    hdl = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles,
+                                                         query_data.dbhandle);
+    if (NULL != hdl) {
+        if (strcmp("print", hdl->component->base_version.mca_component_name)) {
+            return true;
+        }
     }
-    if (ORCM_SUCCESS != get_nodes_from_args(argv, &argv_node_list)){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_idle_cleanup;
-    }
-    if (NULL != (nodes_list = build_node_item(argv_node_list))){
-        opal_list_append(filter_list, &nodes_list->value.super);
-    }
-    /* Get list of results from scheduler (or other management node) */
-    start_time = stopwatch();
-    rc = query_db(cmd, filter_list, &returned_list);
-    stop_time = stopwatch();
-    if(rc != ORCM_SUCCESS) {
-        orcm_octl_info("no-results");
-    } else {
-        print_results(returned_list, start_time, stop_time);
-    }
-    SAFE_RELEASE(returned_list);
-    SAFE_RELEASE(filter_list);
-orcm_octl_query_idle_cleanup:
-    opal_argv_free(argv_node_list);
-    return rc;
+    return false;
 }
 
-int orcm_octl_query_node(int cmd, char **argv)
+int close_database()
 {
-    int rc = ORCM_SUCCESS;
-    char **argv_node_list = NULL;
-    double start_time = 0.0;
-    double stop_time = 0.0;
-    opal_list_t *filter_list = NULL;
-    opal_list_t *returned_list = NULL;
-    orcm_db_filter_t *nodes_list = NULL;
-
-    /* Build input node list */
-    filter_list = build_filters_list(cmd, argv);
-    if (NULL == filter_list){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_node_cleanup;
-    }
-    if (ORCM_SUCCESS != (rc = get_nodes_from_args(argv, &argv_node_list))){
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_node_cleanup;
-    }
-    if (NULL != (nodes_list = build_node_item(argv_node_list))){
-        opal_list_append(filter_list, &nodes_list->value.super);
-    }
-    /* Get list of results from scheduler (or other management node) */
-    start_time = stopwatch();
-    rc = query_db(cmd, filter_list, &returned_list);
-    stop_time = stopwatch();
-    if(rc != ORCM_SUCCESS) {
-        orcm_octl_info("no-results");
-    } else {
-        print_results(returned_list, start_time, stop_time);
-    }
-    SAFE_RELEASE(returned_list);
-    SAFE_RELEASE(filter_list);
-orcm_octl_query_node_cleanup:
-    opal_argv_free(argv_node_list);
-    return rc;
-}
-
-int orcm_octl_query_event_data(int cmd, char **argv)
-{
-    int rc = ORCM_SUCCESS;
-    double start_time = 0.0;
-    double stop_time = 0.0;
-    char **argv_node_list = NULL;
-    opal_list_t *filter_list = NULL;
-    opal_list_t *returned_list = NULL;
-    orcm_db_filter_t *node_list = NULL;
-
-    filter_list = build_filters_list(cmd, argv);
-    if (NULL == filter_list) {
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_event_exit;
-    }
-    rc = get_nodes_from_args(argv, &argv_node_list);
+    int rc;
+    rc = orcm_db.close_result_set(query_data.dbhandle, query_data.session_handle);
     if (ORCM_SUCCESS != rc) {
-        rc = ORCM_ERR_BAD_PARAM;
-        goto orcm_octl_query_event_exit;
+      return rc;
     }
-    node_list = build_node_item(argv_node_list);
-    if (NULL != node_list) {
-        opal_list_append(filter_list, &node_list->value.super);
+    query_data.active = true;
+    orcm_db.close(query_data.dbhandle, close_callback, &query_data);
+    ORTE_WAIT_FOR_COMPLETION(query_data.active);
+    if (ORCM_SUCCESS != query_data.status) {
+      return ORCM_ERROR;
     }
-
-    start_time = stopwatch();
-    rc = query_db(cmd, filter_list, &returned_list);
-    stop_time = stopwatch();
-    if (ORCM_SUCCESS != rc) {
-        orcm_octl_info("no-results");
-    } else {
-        print_results(returned_list, start_time, stop_time);
-    }
-    SAFE_RELEASE(filter_list);
-    SAFE_RELEASE(filter_list);
-orcm_octl_query_event_exit:
-    opal_argv_free(argv_node_list);
-    return rc;
+    return ORCM_SUCCESS;
 }
 
-/**
- * @brief Function that interprets the command making the
- *        query and sending it to the orcm scheduler to be
- *        performed.
- *        Finally it prints the result on the screen.
- *        The report is:
- *        "Sensor data around N minutes before/after an event"
- *
- * @param cmd Command to be run. For this command it must be:
- *            ORCM_GET_DB_QUERY_EVENT_SNSR_DATA_COMMAND
- *
- * @param argv Array of strings. Each array position contains an
- *             argument of the command as a string.
- */
-int orcm_octl_query_event_snsr_data(int cmd, char **argv)
+int fetch_data_from_db(query_func_names db_func_name, opal_list_t *filters)
 {
-    int rc = ORCM_ERR_BAD_PARAM;
-    double start_time = 0.0;
-    double stop_time = 0.0;
-    char **argv_node_list = NULL;
-    opal_list_t *filter_list = NULL;
-    opal_list_t *returned_list = NULL;
-    orcm_db_filter_t *node_list = NULL;
-    char *date;
-
-    date = get_orcm_octl_query_event_date(ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND, argv);
-
-    if (NULL != date) {
-        SAFE_FREE(argv[3]);
-        argv[3] = date;
-
-        filter_list = build_filters_list(cmd, argv);
-        if (NULL != filter_list) {
-            rc = get_nodes_from_args(argv, &argv_node_list);
-
-            if (ORCM_SUCCESS == rc) {
-                node_list = build_node_item(argv_node_list);
-
-                if (NULL != node_list) {
-                    opal_list_append(filter_list, &node_list->value.super);
-
-                    start_time = stopwatch();
-                    rc = query_db(cmd, filter_list, &returned_list);
-                    stop_time = stopwatch();
-                    if (ORCM_SUCCESS == rc) {
-                        print_results(returned_list, start_time, stop_time);
-                    } else {
-                        orcm_octl_info("no-results");
-                    }
-
-                    SAFE_RELEASE(returned_list);
-                } else {
-                    rc = ORCM_ERR_BAD_PARAM;
-                }
-                opal_argv_free(argv_node_list);
-            }
-            SAFE_RELEASE(filter_list);
-        }
+    opal_list_t *results = OBJ_NEW(opal_list_t);
+    if (NULL == results) {
+        return ORCM_ERROR;
     }
+    query_data.active = true;
+    orcm_db.fetch_function(query_data.dbhandle, query_cmd[db_func_name].sql_func_name, filters, results, fetch_callback, &query_data);
+    ORTE_WAIT_FOR_COMPLETION(query_data.active);
 
-    return rc;
+    if (ORCM_SUCCESS != query_data.status || -1 == query_data.session_handle) {
+        return ORCM_ERROR;
+    }
+    return ORCM_SUCCESS;
 }
 
-/**
- * @brief Function that interprets the command making the
- *        query and sending it to the orcm scheduler to be
- *        performed.
- *        The report is:
- *        "Obtain date of an event"
- *        As this is not a formal report it doesn't outputs
- *        to the screen, instead it returns the event date.
- *
- * @param cmd Command to be run. For this command it must be:
- *            ORCM_GET_DB_QUERY_EVENT_DATE_COMMAND
- *
- * @param argv Array of strings. Each array position contains an
- *             argument of the command as a string.
- *
- * @return char* Date of the event. DON'T FORGET TO FREE!.
- */
-char* get_orcm_octl_query_event_date(int cmd, char **argv){
-    int rc = ORCM_ERR_BAD_PARAM;
-    uint32_t rows_retrieved = 0;
-    opal_list_t *filter_list = NULL;
-    opal_list_t *returned_list = NULL;
-    opal_value_t *line = NULL;
-    char *date = NULL;
-    char **db_results = NULL;
-    int num_db_results = 0;
-
-    filter_list = build_filters_list(cmd, argv);
-
-    if (NULL != filter_list) {
-        rc = query_db(cmd, filter_list, &returned_list);
-
-        if (ORCM_SUCCESS == rc && NULL != returned_list) {
-            rows_retrieved = (uint32_t)opal_list_get_size(returned_list);
-
-            if (1 < rows_retrieved){
-                line = (opal_value_t*)opal_list_get_last(returned_list);
-                num_db_results = split_db_results(line->data.string, &db_results);
-
-                if ( NULL != db_results ) {
-                    date = strndup(db_results[1], strlen(db_results[1]));
-                    free_db_results(num_db_results, &db_results);
-                }
-            }
-            SAFE_RELEASE(returned_list);
-        } else {
-            orcm_octl_info("query-no-event", argv[3]);
-        }
-        SAFE_RELEASE(filter_list);
-    }
-
-    return date;
-}
-
-/**
- * @brief Currently, the query results that are returned from
- *        the DB through the ORCM Scheduler are in a comma
- *        separated string.
- *        This function allows to split them again into an array
- *        of results, something that consumes some valuable
- *        processing time but for now it's necessary.
- *        Be careful with this function because values are not
- *        being enclosed into quotation marks ("value,1" like in
- *        CSV format) so, if you have a comma in your value
- *        (value,1) you will end with an unexpected result for
- *        sure.
- *
- * @param db_res Comma separated string that contains the query
- *               results.
- *
- * @param db_results Pointer to an array of strings in which the
- *                   array of results will be stored.
- *
- * @return int Size of the array of results.
- */
-int split_db_results(char *db_res, char ***db_results){
-    regex_t regex_comp_db_res;
-    int regex_res;
-    regmatch_t db_res_matches[2];
-    char *str_aux = NULL;
-    int str_pos = 0;
-    int db_res_length;
-    int res_size=0;
-
-    if (NULL == db_res || NULL == db_results) {
-        return 0;
-    }
-
-    db_res_length = strlen(db_res);
-    *db_results = (char **)malloc(res_size * sizeof(char *));
-
-    regcomp(&regex_comp_db_res, "([^,]+)", REG_EXTENDED);
-    while(str_pos < db_res_length) {
-        str_aux = strndup(&db_res[str_pos], db_res_length - str_pos);
-        regex_res = regexec(&regex_comp_db_res, str_aux, 2, db_res_matches,0);
-        if (!regex_res) {
-            res_size++;
-            *db_results = (char **)realloc( *db_results, res_size * sizeof(char *) );
-            if ( NULL != *db_results ) {
-                (*db_results)[res_size - 1] = strndup(&str_aux[db_res_matches[1].rm_so],
-                                              (int)(db_res_matches[1].rm_eo - db_res_matches[1].rm_so));
-                str_pos += db_res_matches[1].rm_eo;
-            }
-            SAFEFREE(str_aux);
-        } else {
-            str_pos++;
-        }
-    }
-
-    return res_size;
-}
-
-/**
- * @brief Function that frees the memory used to split a
- *        query-comma-separated-string of results.
- *
- * @param num_elements Size of the array to free.
- *
- * @param db_results Pointer to an array of strings that
- *                   contains the query results to free.
- */
-void free_db_results(int num_elements, char ***db_res_array)
+int get_query_num_rows()
 {
-    for(int act_elem=0; act_elem < num_elements; act_elem++){
-        SAFEFREE( (*db_res_array)[act_elem] );
-    }
-
-    SAFEFREE(*db_res_array);
-}
-
-/**
- * @brief Currently, all the data retrieved from the DB
- *        through the ORCM Scheduler for queries is in
- *        a comma separated string format.
- *        This function enables you to add time to a date
- *        in string format and retrieve it again as an
- *        string.
- *
- * @param date Date in string format "%Y-%m-%d %H:%M:%S"
- *             to which the time will be added.
- *
- * @param seconds Time to add to the date in seconds.
- *
- * @return char* Date after the time is added in string
- *               format. DON'T FORGET TO FREE!.
- */
-char *add_to_str_date(char *date, int seconds){
-    struct tm tm_date;
-    time_t t_res_date;
-    struct tm *tm_res_date;
-    char *res_date = NULL;
-
-    if( NULL != date ) {
-        res_date = (char *)malloc(20);
-
-        if( NULL != res_date ) {
-            setlocale(LC_TIME, "UTC");
-            strptime(date, "%Y-%m-%d %H:%M:%S", &tm_date);
-            tm_date.tm_isdst = -1;
-            t_res_date = mktime(&tm_date) + seconds;
-            tm_res_date = localtime(&t_res_date);
-
-            if ( NULL != tm_res_date ) {
-                strftime(res_date, 20, "%Y-%m-%d %H:%M:%S", tm_res_date);
-            }
-        }
-    }
-
-    return res_date;
-}
-
-
-
-void print_results(opal_list_t *results, double start_time, double stop_time) {
-    uint32_t rows = 0;
-    opal_value_t *line = NULL;
-
-    if (NULL != results) {
-            rows = (uint32_t)opal_list_get_size(results);
-            rows--;
-            OPAL_LIST_FOREACH(line, results, opal_value_t) {
-                printf("%s\n", line->data.string);
-            }
-        }
-    orcm_octl_info("rows-found", rows, stop_time - start_time);
-}
-
-int print_results_from_stream(uint32_t results_count, int stream_index,
-                              double start_time, double stop_time)
-{
+    int num_rows = 0;
     int rc = ORCM_SUCCESS;
-    int n = 1;
-    int stream_index_recv = 0;
-    uint32_t stream_size_recv = 0;
-    opal_buffer_t *stream_buffer = NULL;
-    orte_rml_recv_cb_t *xfer = NULL;
-    char *tmp_str = NULL;
+    rc = orcm_db.get_num_rows(query_data.dbhandle, query_data.session_handle, &num_rows);
+    if (ORCM_SUCCESS != rc) {
+      num_rows = -1;
+    }
+    return num_rows;
+}
 
-    rc = create_buffer_for_stream_request(&stream_buffer, ORCM_GET_DB_STREAM,
-                                          stream_index);
-    ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
-    xfer = OBJ_NEW(orte_rml_recv_cb_t);
-    ON_NULL_GOTO(ORCM_ERR_OUT_OF_RESOURCE, print_from_stream_cleanup);
-    xfer->active = true;
-    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH,
-                            ORTE_RML_NON_PERSISTENT, orte_rml_recv_callback,
-                            xfer);
-    rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, stream_buffer,
-                                                      ORCM_RML_TAG_ORCMD_FETCH,
-                                                      orte_rml_send_callback,
-                                                      xfer);
-    ON_FAILURE_CANCEL_COMM(rc, print_from_stream_cleanup, ORCM_RML_TAG_ORCMD_FETCH);
-    ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
-    ON_FAILURE_CANCEL_COMM(rc, print_from_stream_cleanup, ORCM_RML_TAG_ORCMD_FETCH);
-    n = 1;
-    rc = opal_dss.unpack(&xfer->data, &stream_index_recv, &n, OPAL_INT);
-    ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
-    if (stream_index != stream_index_recv) {
-        rc = OPAL_ERR_DATA_VALUE_NOT_FOUND;
-        goto print_from_stream_cleanup;
+int query_get_next_row(opal_list_t *row)
+{
+    int rc;
+    if (NULL == row) {
+      return ORCM_ERROR;
     }
-    n = 1;
-    rc = opal_dss.unpack(&xfer->data, &stream_size_recv, &n, OPAL_UINT32);
-    ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
-    for(uint32_t i = 0; i < stream_size_recv; ++i) {
-        n = 1;
-        rc = opal_dss.unpack(&xfer->data, &tmp_str, &n, OPAL_STRING);
-        ON_FAILURE_GOTO(rc, print_from_stream_cleanup);
-        printf("%s\n", tmp_str);
-    }
-    if (MAX_STREAM_SIZE > results_count) {
-        orcm_octl_info("rows-found", results_count, stop_time-start_time);
-    } else {
-        orcm_octl_info("rows-found-limited", results_count, stop_time-start_time);
+    rc = orcm_db.get_next_row(query_data.dbhandle, query_data.session_handle, row);
+    if (ORCM_SUCCESS != rc) {
+      return rc;
     }
 
-    SAFE_RELEASE(xfer);
-    return rc;
+    return ORCM_SUCCESS;
+}
 
-print_from_stream_cleanup:
-    SAFE_RELEASE(stream_buffer);
-    SAFE_RELEASE(xfer);
+int print_row(opal_list_t *row, const char *separator, bool is_header)
+{
+    /* Heads up! the incoming data may not be only string
+     * and this function need to be changed in the future.
+     */
+    opal_value_t *item;
+    int item_count = 0;
+    if (NULL == row) {
+      return ORCM_ERROR;
+    }
 
-    return rc;
+    OPAL_LIST_FOREACH(item, row, opal_value_t) {
+      if (OPAL_STRING == item->type) {
+        item_count++;
+        if (is_header) {
+            printf("%s", item->key);
+        } else {
+            printf("%s", item->data.string);
+        }
+        if (row->opal_list_length > item_count) {
+          printf("%s", separator);
+        }
+      }
+    }
+    printf("\n");
+    return ORCM_SUCCESS;
+}
+
+int print_all_query_results(time_t *query_time, int query_limit)
+{
+    int returned_rows;
+    int i;
+    opal_list_t *row;
+    int rc;
+    bool is_header = true;
+    returned_rows = get_query_num_rows();
+    if (-1 == returned_rows) {
+        opal_output(0, "Failed to get amount of returned rows");
+        return ORCM_ERROR;
+    }
+
+    /* Print all results one by one, not loading all the results in memory */
+    for (i = 0; i < returned_rows; i++) {
+        row = OBJ_NEW(opal_list_t);
+        if (NULL == row) {
+            opal_output(0, "Error creating opal_list_t");
+            return ORCM_ERROR;
+        }
+        rc = query_get_next_row(row);
+        if (ORCM_SUCCESS != rc) {
+            break;
+        }
+
+        if( is_header ) {
+            rc = print_row(row, ",", is_header);
+            is_header = false;
+        }
+        rc = print_row(row, ",", is_header);
+        SAFE_RELEASE(row);
+    }
+    printf("\n");
+    orcm_octl_info("rows-found", returned_rows, ((double)*query_time));
+
+    if( query_limit ) {
+        orcm_octl_info("rows-limit", query_limit);
+    }
+
+    return returned_rows;
+}
+
+int query(query_func_names db_func, opal_list_t *filters, int query_limit)
+{
+    int rc;
+    int returned_rows;
+    time_t query_time;
+
+    rc = open_database();
+    if (ORCM_ERROR == rc) {
+        orcm_octl_error("connection-db-fail");
+        return rc;
+    } else if (ORCM_ERR_NOT_FOUND == rc) {
+        orcm_octl_error("bad-db-component");
+        return rc;
+    }
+
+    query_time = time(NULL);
+    rc = fetch_data_from_db(db_func, filters);
+    query_time = time(NULL) - query_time;
+    if (ORCM_SUCCESS != rc) {
+        orcm_octl_error("fetch-db-fail");
+        return rc;
+    }
+
+    returned_rows = print_all_query_results(&query_time, query_limit);
+
+    rc = close_database();
+    if (ORCM_SUCCESS != rc) {
+        orcm_octl_error("disconnect-db-fail");
+        return rc;
+    }
+    return returned_rows;
+}
+
+void query_custom_opal_list_free(opal_list_t **opal_list)
+{
+    opal_value_t *it = NULL;
+
+    if( NULL != *opal_list ) {
+        while( NULL != (it = (opal_value_t *)opal_list_remove_first(*opal_list)) ) {
+            if( NULL != it->data.string ) {
+                free(it->data.string);
+                it->data.string = NULL;
+            }
+
+            free(it);
+        }
+        OBJ_RELEASE(*opal_list);
+    }
 }

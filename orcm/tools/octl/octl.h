@@ -125,26 +125,26 @@ static orcm_cli_init_t cli_init[] = {
     { { NULL}, "query", 0, 0, "Query data from DB" },
     { { "query", NULL}, "history", 0, 0, "Returns all the data logged by the provided nodes during "
     "specified time:" },
-    { { "query", NULL}, "", 0, 0, "query history [start-date start-time end-date end-time] <nodelist>" },
+    { { "query", NULL}, "", 0, 0, "query history [start-date [end-date]] <nodelist>" },
     { { "query", NULL}, "sensor", 0, 0, "Returns the logged data corresponding to the given sensor, "
     "time and node list:" },
-    { { "query", NULL}, "", 0, 0, "query sensor <sensor-name> [start-date start-time end-date end-time "
-    "[upper-bound lower-bound]] <nodelist>" },
+    { { "query", NULL}, "", 0, 0, "query sensor <sensor-list> [start-date [end-date]] "
+    "<upper-bound lower-bound> [node-list]" },
     { { "query", NULL}, "log", 0, 0, "Returns the logged data coming from the syslog to the given "
     "nodes and search word:" },
-    { { "query", NULL}, "", 0, 0, "query log [search word] [start-date start-time end-date end-time] "
+    { { "query", NULL}, "", 0, 0, "query log <text-in-log> [start-date [end-date]] [nodelist] "
     "<nodelist>" },
     { { "query", NULL}, "idle", 0, 0, "Returns the nodes in those that has been idle for the given "
     "time or more:" },
-    { { "query", NULL}, "", 0, 0, "query idle [minimum idle time in seconds or HH:MM:SS format] <nodelist>" },
+    { { "query", NULL}, "", 0, 0, "query idle [interval] <node-list>" },
     { { "query", NULL}, "event", 0, 1, "Event data/sensor-data commands" },
     { { "query", "event", NULL}, "data", 0, 0, "Returns events from database" },
-    { { "query", "event", NULL}, "", 0, 0, "query event data [start-date start-time end-date end-time] <nodelist>" },
+    { { "query", "event", NULL}, "", 0, 0, "query event data [start-date [end-date]] <node-list>" },
     { { "query", "event", NULL}, "sensor-data", 0, 0, "Returns the sensor data around an event" },
-    { { "query", "event", NULL}, "", 0, 0, "query event sensor-data <event-id> before/after <minutes> <sensor> <nodelist>" },
-    { { "query", NULL}, "node", 0, 0, "Node status command" },
+    { { "query", "event", NULL}, "", 0, 0, "query event sensor-data <event-id> [interval] <sensor-list> [node-list]" },
+    { { "query", NULL}, "node", 0, 0, "Node status command." },
     { { "query", "node", NULL}, "status", 0, 0, "Returns the status logged in the data base for the "
-    "nodes in the database: query node status <nodelist>" },
+    "nodes in the database: query node status <node-list>" },
 
     /****** Chassis ID commands ******/
     { { NULL}, "chassis-id", 0, 0, "Enable/Disable chassis identify LED." },

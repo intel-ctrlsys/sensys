@@ -63,6 +63,30 @@ Success changing sensor sampling on node '%s'.
 [info:storage-reponse]
 Sensor storage response is: %i
 
+[info:query-extra-args]
+WARNING: Ignoring from "%s" at position "%d". Extra arguments detected!
+
+[info:query-event-data]
+Command syntax: query event data [start-date [end-date]] <node-list>
+
+[info:query-event-sensor-data]
+Command syntax: query event sensor-data <event-id> [interval] <sensor-list> [node-list]
+
+[info:query-history]
+Command syntax: query history [start-date [end-date]] <nodelist>
+
+[info:query-idle]
+Command syntax: query idle [interval] <node-list>
+
+[info:query-log]
+Command syntax: query log <text-in-log> [start-date [end-date]] [nodelist]
+
+[info:query-node-status]
+Command syntax: query node status <node-list>
+
+[info:query-sensor]
+Command syntax: query sensor <sensor-list> [start-date [end-date]] <upper-bound lower-bound> [node-list]
+
 [info:power-modes]
 Possible modes:
 
@@ -127,8 +151,8 @@ NODES                : STATE  SCHED_STATE
 [info:rows-found]
 %u rows were found (%0.3f seconds)
 
-[info:rows-found-limited]
-%u rows were found (%0.3f seconds) [Only the first 10,000 rows are displayed]
+[info:rows-limit]
+Results have a limit of %d rows!
 
 [info:workflow-created]
 Workflow created with id: %i.
@@ -203,10 +227,6 @@ Note: Setting per sensor sample rate in the examples below will take effect
 Example: sensor set sample-rate coretemp 10 c[2:1-10]
          sensor set sample-rate freq 10 c[2:1-10]
 
-[info:query-no-event]
-There were no coincidences for event "%s".
-Please verify orcmsched connectivity and that event exists.
-
 [info:resource-drain]
 Note: This command only takes the nodes out of the available resource
       pool of the scheduler. It has nothing to do with the running
@@ -217,24 +237,102 @@ Note: This command only brings the nodes into the available resource
       pool of the scheduler. It has nothing to do with the running
       status of the nodes.
 
-[error:unknown]
-Unknown error
+[error:add-wildcard]
+Neither the group name nor the node regex can be a wildcard for add!
 
-[error:orcm-finalize]
-Failed orcm_finalize.
+[error:allocate-memory]
+Could not allocate memory for %s.
 
-[error:orcm-init]
-Failed to initialize orcm.
+[error:bad-db-component]
+Is not possible to connect to the database.
+Please ensure that the database credentials are stored
+in the openmpi-mca-params.conf file.
+
+[error:bmc-info]
+BMC information not found for node %s.
+
+[error:chassis-id-operation]
+Node %s failed to perform chassis id operation.
+
+[error:chassis-ipmi-colission]
+Node %s failed to perform chassis id operation since ipmi or nodepower sensors are running on its aggregator.
+
+[error:connection-db-fail]
+The connection to the database has failed.
+
+[error:connection-fail]
+The connection to daemon failed.
+
+[error:diag-mem]
+diag mem failed!
+
+[error:disconnect-db-fail]
+Failed to close database connection.
+
+[error:empty-cmd]
+No command parsed!
+
+[error:fetch-db-fail]
+Failed to fetch data from the database.
+
+[error:framework-data-type]
+Unexpected data type from parser framework.
+
+[error:framework-open]
+Error while opening parser framework
+
+[error:grouping-remove]
+%s
+grouping remove failed!
+
+[error:illegal-cmd]
+Illegal command: %s
+
+[error:illegal-pw-mode]
+Illegal Power Management mode, use 'power get modes' to see possible modes.
+
+[error:invalid-argument]
+invalid arguments!
+%s
+
+[error:item-notfound]
+%s not found
+
+[error:no-aggregator]
+aggregator isn't present in the workflow file.
 
 [error:no-cmd]
 No command specified.
 
-[error:not-implemented]
-Not implemented.
+[error:no-date]
+"%s" is not a date.
 
-[error:nodelist-null]
-An empty list of nodes was specified.
-It is necessary to provide a host or group.
+[error:no-float]
+"%s" is not a real number.
+
+[error:no-integer]
+"%s" is not an integer.
+
+[error:no-interval]
+"%s" is not an interval.
+
+[error:no-interval-unit]
+"%c" is not a valid interval unit.
+
+[error:invalid-sample-rate]
+The sample rate is invalid. The valid sample rate should be an integer no less than 1.
+
+[error:no-ocomma_list]
+"%s" is not an orcm comma separated list.
+
+[error:no-regex]
+Regular expression failed to execute.
+
+[error:no-string]
+"%s" is not a string.
+
+[error:node-notfound]
+Node '%s' not found!
 
 [error:nodelist-extract]
 Unable to extract nodelist "%s" or an empty list was specified.
@@ -242,61 +340,47 @@ Unable to extract nodelist "%s" or an empty list was specified.
 [error:nodelist-notfound]
 Nodelist '%s' not found!
 
-[error:node-notfound]
-Node '%s' not found!
+[error:not-implemented]
+Not implemented.
 
-[error:connection-fail]
-The connection to daemon failed.
-
-[error:invalid-argument]
-invalid arguments!
-%s
-
-[error:no-args]
-An array without arguments was received.
-
-[error:illegal-cmd]
-Illegal command: %s
-
-[error:unknown-usg]
-Unknown.
-%s
-
-[error:no-integer]
-%s is not an integer.
+[error:notifier-get-smpt-policy]
+Node %s failed to get notifier smtp policy!
 
 [error:null-arg]
 Invalid argument %s!
 %s is NULL.
 
+[error:orcm-init]
+Failed to initialize orcm.
+
+[error:orcm-finalize]
+Failed orcm_finalize.
+
 [error:orcmsched-fail]
 Unable to get results via ORCM scheduler.
-
-[error:allocate-memory]
-Could not allocate memory for %s.
 
 [error:pack]
 Internal buffer pack error.
 
-[error:unpack]
-Internal buffer unpack error.
+[error:power-set]
+power set failed!
 
-[error:framework-open]
-Error while opening parser framework
+[error:qry-unk-db-data-type]
+Unknown ORCM DB query data type.
 
-[error:framework-data-type]
-Unexpected data type from parser framework.
+[error:resource-drain]
+resource drain failed!
+
+[error:resource-resume]
+resource resume failed!
 
 [error:sampling-fail]
 Failure changing sensor sampling on node %s
 Is the datagroup and/or sensor label correct (%s)?
 Is the datagroup plugin actively running on the node?
 
-[error:illegal-pw-mode]
-Illegal Power Management mode, use 'power get modes' to see possible modes.
-
-[error:power-set]
-power set failed!
+[error:sensor_limit_exceeded]
+Sensor limit exceeded!
 
 [error:session-cancel]
 session cancel failed!
@@ -307,58 +391,25 @@ Invalid SESSION ID.
 [error:session-set]
 session set failed!
 
-[error:resource-drain]
-resource drain failed!
+[error:storage-set-failure]
+Storage policy setting failed!
 
-[error:resource-resume]
-resource resume failed!
+[error:unknown]
+Unknown error
 
-[error:diag-mem]
-diag mem failed!
+[error:unknown-usg]
+Unknown.
+%s
+
+[error:unpack]
+Internal buffer unpack error.
 
 [error:workflow-failure]
 Workflow not added.
 Possible bad file, verify if the syntax is correct and try again.
 
-[error:no-aggregator]
-aggregator isn't present in the workflow file.
-
-[error:add-wildcard]
-Neither the group name nor the node regex can be a wildcard for add!
-
-[error:grouping-remove]
-%s
-grouping remove failed!
-
 [error:workflow-notfound]
 Workflow not found.
-
-[error:notifier-get-smpt-policy]
-Node %s failed to get notifier smtp policy!
-
-[error:item-notfound]
-%s not found
-
-[error:chassis-id-operation]
-Node %s failed to perform chassis id operation.
-
-[error:chassis-ipmi-colission]
-Node %s failed to perform chassis id operation since ipmi or nodepower sensors are running on its aggregator.
-
-[error:bmc-info]
-BMC information not found for node %s.
-
-[error:empty-cmd]
-No command parsed!
-
-[error:sensor_limit_exceeded]
-Sensor limit exceeded!
-
-[error:invalid-sample-rate]
-The sample rate is invalid. The valid sample rate should be an integer no less than 1.
-
-[error:storage-set-failure]
-Storage policy setting failed!
 
 [usage:sensor]
 sensor enable|disable|reset <nodelist> <{datagroup|"all"}[:sensor-label-name|"all"]>
@@ -476,43 +527,67 @@ Example: session get budget 1
          session get frequency 1
          session get strict 1
 
-[usage:query-history]
-query history [start-date start-time end-date end-time] <nodelist>
-Date has the format: yyyy-mm-dd
-Time has the format: hh:mm:ss
-Example: query history 2015-11-13 15:00:00 2015-11-13 16:00:00 c[2:1-10]
-
-[usage:query-sensor]
-query sensor <sensor-name> [start-date start-time end-date end-time [upper-bound lower-bound]] <nodelist>
-Date has the format: yyyy-mm-dd
-Time has the format: hh:mm:ss
-Example: query sensor coretemp 2015-11-13 14:00:00 2015-11-13 16:00:00 0.1 1 c[2:1-10]
-         query sensor coretemp* 2015-11-13 14:00:00 2015-11-13 16:00:00 0.1 1 c[2:1-10]
-
-[usage:query-log]
-query log [text-in-log] [start-date start-time end-date end-time] <nodelist>
-Date has the format: yyyy-mm-dd
-Time has the format: hh:mm:ss
-Example: query log *access* c[2:1-10]
-
-[usage:query-idle]
-query idle [timeout in seconds or HH:MM:SS format] <nodelist>
-Example: query idle 60 c[2:1-10]
-         query idle 03:59:50 c[2:1-10]
-
-[usage:query-node-status]
-query node status <nodelist>
-Example: query node status c[2:1-10]
-
 [usage:query-event-data]
-query event data [start-date start-time end-date end-time] <nodelist>
-Date has the format: yyyy-mm-dd
-Time has the format: hh:mm:ss
+query event data [start-date [end-date]] <node-list>
+Date has the format: YYYY-MM-DD hh:mm:ss
+                     YYYY-MM-DD (00:00:00 will be added)
+                     hh:mm:ss (current day will be added)
 Example: query event data 2016-02-16 08:22:00 2016-02-16 08:22:14 c[2:1-10]
+         query event data 08:22:00 2015-01-01
+         query event data 10:00:00 c[2:1-10],a[2:1-10]
 
 [usage:query-event-sensor-data]
-query event sensor-data <event-id> before/after <minutes> <sensor> <nodelist>
-Example: query event sensor-data 1 after 10 coretemp* c[2:1-10]
+query event sensor-data <event-id> [interval] <sensor-list> [node-list]
+Interval has the format: [before/after] #.#U
+                         [before/after] hh:mm:ss
+                         were "U" = "H" for hours, "M" for minutes, "S" for seconds
+                         if "U" is not specified "M" (minutes will be selected)
+Example: query event sensor-data 1 before 10 coretemp* c[2:1-10]
+         query event sensor-data 1 -00:10:00 * c[2:1-10],node01,a[2:21-30]
+         query event sensor-data 1 -10M coretemp*,freq_core[1:0-9]
+
+[usage:query-history]
+query history [start-date [end-date]] <nodelist>
+Date has the format: YYYY-MM-DD hh:mm:ss
+                     YYYY-MM-DD (00:00:00 will be added)
+                     hh:mm:ss (current day will be added)
+Example: query history 2015-11-13 15:00:00 2015-11-13 16:00:00 c[2:1-10]
+         query history 13:01:01 2015-01-01
+         query history *
+
+[usage:query-idle]
+query idle [interval] <node-list>
+Interval has the format: [before/after] #.#U
+                         [before/after] hh:mm:ss
+                         were "U" = "H" for hours, "M" for minutes, "S" for seconds
+                         if "U" is not specified "S" (seconds will be selected)
+Example: query idle 60 c[2:1-10]
+         query idle 1.5H *
+         query idle 01:30:00 c[2:1-10],a[2:1-10]
+
+[usage:query-log]
+query log <text-in-log> [start-date [end-date]] [nodelist]
+Date has the format: YYYY-MM-DD hh:mm:ss
+                     YYYY-MM-DD (00:00:00 will be added)
+                     hh:mm:ss (current day will be added)
+Example: query log *access* c[2:1-10]
+         query log * 13:01:01 2015-01-01
+         query log *
+
+[usage:query-node-status]
+query node status <node-list>
+Example: query node status c[2:1-10]
+         query node status c[1:1-10],$group01
+         query node status *
+
+[usage:query-sensor]
+query sensor <sensor-list> [start-date [end-date]] <upper-bound lower-bound> [node-list]
+Date has the format: YYYY-MM-DD hh:mm:ss
+                     YYYY-MM-DD (00:00:00 will be added)
+                     hh:mm:ss (current day will be added)
+Example: query sensor coretemp* 2015-11-13 14:00:00 2015-11-13 16:00:00 0.1 1 c[2:1-10]
+         query sensor coretemp*,freq_core[1:0-9] 14:00:00 2015-01-01 * * c[2:1-10],node01
+         query sensor syslog* KERNEL* * c[2:1-10],a[2:21-30]
 
 [usage:grouping-add]
 grouping add <tag> <nodelist>

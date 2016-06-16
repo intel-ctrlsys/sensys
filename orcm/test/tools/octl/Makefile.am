@@ -35,7 +35,7 @@ check_PROGRAMS = octl_tests
 
 octl_tests_SOURCES = \
     octl_tests.cpp \
-    octl_query.cpp \
+    octl_query_tests.cpp \
     octl_mocking.cpp \
     octl_led_tests.cpp \
     workflow_tests.cpp \
@@ -50,7 +50,8 @@ MOCKING = \
     -Wl,--wrap=opal_dss_pack \
     -Wl,--wrap=mca_base_framework_open \
     -Wl,--wrap=orcm_parser_base_select \
-    -Wl,--wrap=orcm_logical_group_parse_array_string
+    -Wl,--wrap=orcm_logical_group_parse_array_string \
+    -Wl,--wrap=opal_pointer_array_get_item
 
 #
 # Libraries we depend on

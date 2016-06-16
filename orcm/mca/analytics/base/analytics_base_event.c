@@ -183,15 +183,10 @@ static bool is_repeat_event(opal_hash_table_t* ts_table, orcm_ras_event_t* ev, e
 
 static orcm_ras_event_t* get_next_event(opal_list_t* event_list)
 {
-    opal_value_t* ev_val = NULL;
-    orcm_ras_event_t** event_ptr = NULL;
     orcm_ras_event_t* ras_event = NULL;
-    ev_val = (opal_value_t*) opal_list_remove_first(event_list);
+    opal_value_t* ev_val = (opal_value_t*) opal_list_remove_first(event_list);
     if(NULL != ev_val && NULL != ev_val->data.ptr){
-        event_ptr = (orcm_ras_event_t**)ev_val->data.ptr;
-        if(NULL != event_ptr){
-            ras_event = *event_ptr;
-        }
+        ras_event = (orcm_ras_event_t*)ev_val->data.ptr;
     }
     SAFE_RELEASE(ev_val);
     return ras_event;
@@ -309,23 +304,16 @@ done:
 
 int event_list_append(opal_list_t* event_list, orcm_ras_event_t* ev)
 {
-    orcm_ras_event_t** event_ptr = NULL;
     opal_value_t* opal_ev = NULL;
 
     if(NULL == event_list || NULL == ev){
-        return ORCM_ERROR;
+        return ORCM_ERR_BAD_PARAM;
     }
 
     opal_ev = OBJ_NEW(opal_value_t);
-    event_ptr = malloc(sizeof(orcm_ras_event_t *));
-    if(NULL == event_ptr || NULL == opal_ev){
-        SAFEFREE(event_ptr);
-        SAFEFREE(opal_ev);
-        return ORCM_ERR_OUT_OF_RESOURCE;
-    }
-    *event_ptr = ev;
+    ORCM_ON_NULL_RETURN_ERROR(opal_ev, ORCM_ERR_OUT_OF_RESOURCE);
+    opal_ev->data.ptr = ev;
     ev = NULL;
-    opal_ev->data.ptr = event_ptr;
     opal_list_append(event_list, (opal_list_item_t*)opal_ev);
     return ORCM_SUCCESS;
 }
@@ -583,6 +571,6 @@ int orcm_analytics_base_gen_notifier_event(orcm_value_t* current_value,
     } else {
         rc = event_list_append(event_list, ras_event);
     }
-
+    ORCM_RELEASE(analytics_value);
     return rc;
 }

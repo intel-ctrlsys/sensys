@@ -40,7 +40,8 @@ sigar_tests_SOURCES = \
     sigar_mocked_functions.h
 
 MOCKING = \
-    -Wl,--wrap=orcm_sensor_base_runtime_metrics_do_collect
+    -Wl,--wrap=orcm_sensor_base_runtime_metrics_do_collect \
+    -Wl,--wrap=orcm_util_load_orcm_value
 
 #
 # Libraries we depend on

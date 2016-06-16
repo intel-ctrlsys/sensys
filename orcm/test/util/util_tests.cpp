@@ -7,13 +7,20 @@
  * $HEADER$
  */
 
-#include "util_tests.h"
-
 #include <iostream>
+#include "util_tests.h"
 #include "orcm/util/utils.c"
+#include "orcm/util/string_utils.h"
+
+extern "C" {
+    #include "orcm/util/attr.h"
+    #include "orcm/util/cli.c"
+    #include "orcm/util/logical_group.h"
+    #include "orcm/util/utils.h"
+    #include "opal/runtime/opal.h"
+}
 
 #define UNKNOWN_KEY "UNKNOWN-KEY"
-
 #define TESTING_STRING  "Hello \tworld,  happy "
 #define HELLO_TAB_WORLD "Hello \tworld"
 #define HAPPY           "happy"
@@ -622,4 +629,267 @@ TEST_F(ut_util_tests, orcm_util_copy_opal_value_data_tests)
     src->type = OPAL_NULL;
     EXPECT_EQ(OPAL_ERR_NOT_SUPPORTED, orcm_util_copy_opal_value_data(dst, src));
     OBJ_RELEASE(dst);
+}
+
+TEST_F(ut_util_tests, orcm_cli_create){
+
+    char *no_parent = strdup("no_parent");
+    char *test_parent = strdup("test_parent");
+    char *test_cmd = strdup("test_cmd");
+    char *help = strdup("Test option command");
+    orcm_cli_t cli;
+    OBJ_CONSTRUCT(&cli, orcm_cli_t);
+
+    orcm_cli_init_t cli_fail[] = {
+    { { no_parent }, NULL, 0, 0, NULL}
+    };
+
+    orcm_cli_init_t cli_init[] = {
+    { { NULL },  test_parent, 0, 0, NULL },
+    { { test_parent, NULL}, NULL, 0, 1, NULL },
+    { { test_parent, NULL}, test_cmd, 1, 1, help},
+    { { NULL }, NULL, 0, 0, NULL }
+    };
+
+
+    EXPECT_EQ(ORCM_ERR_BAD_PARAM, orcm_cli_create(NULL, NULL));
+    EXPECT_EQ(ORCM_SUCCESS, orcm_cli_create(&cli, NULL));
+    EXPECT_EQ(ORCM_ERR_NOT_FOUND, orcm_cli_create(&cli, cli_fail));
+    EXPECT_EQ(ORCM_SUCCESS, orcm_cli_create(&cli, cli_init));
+}
+
+TEST_F(ut_util_tests, orcm_cli_print_cmd){
+
+    regex_t regex_comp;
+    int regex_res = -1;
+    orcm_cli_cmd_t *cmds;
+    cmds = OBJ_NEW(orcm_cli_cmd_t);
+
+    //Print prefix,command and help
+    cmds->cmd = strdup("command");
+    cmds->help = strdup("help");
+    char *prefix = strdup("prefix");
+
+    regcomp(&regex_comp, "^([[:space:]]*(prefix|command|help)[[:space:]]*)+$", REG_EXTENDED|REG_ICASE);
+    testing::internal::CaptureStdout();
+    orcm_cli_print_cmd(cmds, prefix);
+
+    char *output = strdup(testing::internal::GetCapturedStdout().c_str());
+    regex_res = regexec(&regex_comp, output, 0, NULL, 0);
+
+    SAFEFREE(output);
+    EXPECT_EQ(0, regex_res);
+
+    //Print null information
+    cmds->cmd = NULL;
+    cmds->help = NULL;
+
+    regcomp(&regex_comp, "^([[:space:]]*(NULL|NULL)[[:space:]]*)+$", REG_EXTENDED|REG_ICASE);
+    testing::internal::CaptureStdout();
+    orcm_cli_print_cmd(cmds, NULL);
+
+    output = strdup(testing::internal::GetCapturedStdout().c_str());
+    regex_res = regexec(&regex_comp, output, 0, NULL, 0);
+
+    SAFEFREE(output);
+    EXPECT_EQ(0, regex_res);
+
+    }
+
+TEST_F(ut_util_tests, orcm_cli_print_tree){
+
+    regex_t regex_comp;
+    int regex_res = -1;
+    orcm_cli_t cli;
+    OBJ_CONSTRUCT(&cli, orcm_cli_t);
+
+    char *test_parent = strdup("test_parent");
+    char *test_cmd = strdup("test_cmd");
+    char *test_subcmd = strdup("test_subcmd");
+    char *help = strdup("Test command");
+
+    orcm_cli_init_t cli_init[] = {
+    { { NULL }, test_parent, 0, 0, NULL },
+    { { test_parent, NULL}, test_cmd, 0, 0, help },
+    { { test_parent, test_cmd, NULL}, test_subcmd, 0, 2, help },
+    { { test_parent, test_cmd, test_subcmd, NULL}, NULL, 0, 1, NULL },
+    { { NULL }, NULL, 0, 0, NULL }
+    };
+
+    //Verify if the the tree is printed correctly
+    regcomp(&regex_comp, "^[[:space:]]*test_parent([^[:alnum:]]+(test_cmd|test_subcmd|NULL))+[[:space:]]*$", REG_EXTENDED|REG_ICASE);
+    orcm_cli_create(&cli, cli_init);
+    testing::internal::CaptureStdout();
+    orcm_cli_print_tree(&cli);
+    char *output = strdup(testing::internal::GetCapturedStdout().c_str());
+    regex_res = regexec(&regex_comp, output, 0, NULL, 0);
+
+    SAFEFREE(output);
+    EXPECT_EQ(0, regex_res);
+    }
+
+
+TEST_F(ut_util_tests, orcm_cli_handle_auto_completion){
+    regex_t regex_comp;
+    int regex_res = -1;
+    orcm_cli_t cli;
+    char input[ORCM_MAX_CLI_LENGTH];
+    size_t j = 0;
+    bool space = false;
+    char prompt[] = "test";
+
+    char *dummy_command =  strdup("dummy_command");
+    char *command = strdup("command");
+    char *command1 = strdup("command1");
+
+    string bonk = "\a";
+
+    orcm_cli_init_t cli_init[] = {
+    { { NULL }, dummy_command, 0, 0, NULL },
+    { { NULL }, command, 0, 0, NULL },
+    { { NULL }, command1, 0, 0, NULL },
+    { { NULL }, NULL, 0, 0, NULL }
+    };
+
+    OBJ_CONSTRUCT(&cli, orcm_cli_t);
+
+    //No completions and no options, shouldn't print anything.
+    testing::internal::CaptureStdout();
+    EXPECT_EQ(ORCM_SUCCESS,orcm_cli_handle_auto_completion(&cli, input, &j, &space, prompt));
+    string output = strdup(testing::internal::GetCapturedStdout().c_str());
+    EXPECT_EQ(0,output.compare(bonk));
+
+    // Not match command, there is no commands to match.
+    strcpy (input,(char *)"comman");
+    testing::internal::CaptureStdout();
+    EXPECT_EQ(ORCM_SUCCESS,orcm_cli_handle_auto_completion(&cli, input, &j, &space, prompt));
+    output = strdup(testing::internal::GetCapturedStdout().c_str());
+    EXPECT_EQ(0,output.compare(bonk));
+
+    //Match command, show all options
+    regcomp(&regex_comp, "^([[:space:]]*(command1|command))+[[:space:]]+test.*$", REG_EXTENDED|REG_ICASE);
+    orcm_cli_create(&cli, cli_init);
+    testing::internal::CaptureStdout();
+    EXPECT_EQ(ORCM_SUCCESS,orcm_cli_handle_auto_completion(&cli, input, &j, &space, prompt));
+    char *options = strdup(testing::internal::GetCapturedStdout().c_str());
+    regex_res = regexec(&regex_comp, options, 0, NULL, 0);
+    EXPECT_EQ(0,regex_res);
+
+    //Match 1 command, complete the command
+    strcpy (input,(char *)"dummy_comm");
+    testing::internal::CaptureStdout();
+    EXPECT_EQ(ORCM_SUCCESS,orcm_cli_handle_auto_completion(&cli, input, &j, &space, prompt));
+    string completions = strdup(testing::internal::GetCapturedStdout().c_str());
+    EXPECT_EQ(0,completions.compare("and "));
+
+    //Fully match
+    testing::internal::CaptureStdout();
+    strcpy (input,(char *)"command");
+    EXPECT_EQ(ORCM_SUCCESS,orcm_cli_handle_auto_completion(&cli, input, &j, &space, prompt));
+    output = strdup(testing::internal::GetCapturedStdout().c_str());
+    EXPECT_EQ(0,output.compare(bonk));
+    }
+
+
+TEST_F(ut_util_tests, orcm_cli_add_char_to_input_array){
+    size_t j = 0;
+    char c = 'a';
+    char *prompt = strdup("test_prompt");
+    char input[ORCM_MAX_CLI_LENGTH];
+
+    add_char_to_input_array(c, input, &j);
+    EXPECT_EQ(0, strcmp(input,"a"));
+
+    //MAX SIZE, don't add anything
+    memset(input, 0, ORCM_MAX_CLI_LENGTH);
+    j = ORCM_MAX_CLI_LENGTH;
+    add_char_to_input_array(c, input, &j);
+    EXPECT_NE(0, strcmp(input,"a"));
+}
+
+TEST_F(ut_util_tests, orcm_cli_scroll_up){
+
+    char *prompt = strdup("test");
+    char input[ORCM_MAX_CLI_LENGTH];
+
+    strcpy(cmd_hist.hist[0], "Command 1");
+    strcpy(cmd_hist.hist[1], "Command 2");
+    strcpy(cmd_hist.hist[2], "Command 3");
+    cmd_hist.indx = 0;
+    cmd_hist.count = 0;
+    size_t j = 0;
+    int scroll_index = cmd_hist.count;
+
+    memset(input, 0, ORCM_MAX_CLI_LENGTH);
+
+    //No history count
+    scroll_up(&scroll_index, input, &j, prompt);
+    EXPECT_EQ(0, strlen(input));
+
+    cmd_hist.count = 3;
+    //Index = 0, we are at the top
+    scroll_index = 0;
+    scroll_up(&scroll_index, input, &j, prompt);
+    EXPECT_EQ(0, strlen(input));
+
+   //Print the previous command
+    scroll_index = 2;
+    scroll_up(&scroll_index, input, &j, prompt);
+    EXPECT_EQ(0, strcmp(input,cmd_hist.hist[1]));
+}
+
+TEST_F(ut_util_tests, orcm_cli_scroll_down){
+    char *prompt = strdup("test");
+    char input[ORCM_MAX_CLI_LENGTH];
+
+    strcpy(cmd_hist.hist[0], "Command 1");
+    strcpy(cmd_hist.hist[1], "Command 2");
+    strcpy(cmd_hist.hist[2], "Command 3");
+    cmd_hist.indx = 0;
+    cmd_hist.count = 0;
+    size_t j = 0;
+    int scroll_index = cmd_hist.count;
+
+    memset(input, 0, ORCM_MAX_CLI_LENGTH);
+
+    // No history, nothing to show
+    scroll_down(&scroll_index, input,&j,prompt );
+    EXPECT_EQ(0, strlen(input));
+
+    cmd_hist.count = 3;
+
+    //We are at the bottom of the history
+    scroll_index=2;
+    scroll_down(&scroll_index, input,&j,prompt );
+    EXPECT_EQ(0, strlen(input));
+
+    //Print down
+    scroll_index = 2;
+    scroll_up(&scroll_index, input, &j, prompt);
+    EXPECT_EQ(0, strcmp(input,cmd_hist.hist[1]));
+
+}
+
+TEST_F(ut_util_tests, orcm_cli_handle_backspace){
+    size_t j = 0;
+    char input[ORCM_MAX_CLI_LENGTH];
+    char c = 'a';
+    char space = ' ';
+    bool b_space = false;
+    memset(input, 0, ORCM_MAX_CLI_LENGTH);
+
+    //No input, bonk!
+    orcm_cli_handle_backspace(&j, input, &b_space);
+    EXPECT_EQ(0, strlen(input));
+
+    //Delete the only char
+    add_char_to_input_array(c, input, &j);
+    orcm_cli_handle_backspace(&j, input, &b_space);
+    EXPECT_NE(0, strcmp(input,"a"));
+
+    //Delete last char with a space
+    add_char_to_input_array(space, input, &j);
+    add_char_to_input_array(c, input, &j);
+    orcm_cli_handle_backspace(&j, input, &b_space);
+    EXPECT_EQ(0, strcmp(input," "));
 }

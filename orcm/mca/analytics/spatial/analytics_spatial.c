@@ -312,7 +312,6 @@ static int do_compute(spatial_statistics_t* spatial_statistics, char** units)
     int idx = 0;
     opal_list_t* bucket_item_value = NULL;
     orcm_value_t* list_item = NULL;
-    double num = 0.0;
 
     for(; idx < spatial_statistics->size; idx++) {
         if (OPAL_SUCCESS != (rc = opal_hash_table_get_value_ptr(spatial_statistics->buckets,

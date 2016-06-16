@@ -66,6 +66,7 @@ static void stop(orte_jobid_t job);
 static void mcedata_sample(orcm_sensor_sampler_t *sampler);
 static void mcedata_log(opal_buffer_t *buf);
 
+void mcedata_unknown_filter(unsigned long *mce_reg, opal_list_t *vals);
 void mcedata_decode(unsigned long *mce_reg, opal_list_t *vals);
 mcetype get_mcetype(uint64_t mci_status);
 void mcedata_gen_cache_filter(unsigned long *mce_reg, opal_list_t *vals);
@@ -622,8 +623,8 @@ static char* decode_cache_health(uint64_t status)
 static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     orcm_value_t *sensor_metric;
-    bool ar, s, pcc, miscv, uc;
-    uint64_t addr_type, lsb_addr;
+    bool miscv;
+    uint64_t lsb_addr;
     bool correct_filter;
     uint32_t channel_num;
     char* str = NULL;
@@ -636,11 +637,7 @@ static void mcedata_mem_ctrl_filter(unsigned long *mce_reg, opal_list_t *vals)
     opal_list_append(vals, (opal_list_item_t *)sensor_metric);
 
     /* Fig 15-6 of the Intel(R) 64 & IA-32 spec */
-    uc = (mce_reg[MCI_STATUS] & MCI_UC_MASK)? true : false ;
     miscv = (mce_reg[MCI_STATUS] & MCI_MISCV_MASK)? true : false ;
-    pcc = (mce_reg[MCI_STATUS] & MCI_PCC_MASK)? true : false ;
-    s = (mce_reg[MCI_STATUS] & MCI_S_MASK)? true : false ;
-    ar = (mce_reg[MCI_STATUS] & MCI_AR_MASK)? true : false ;
 
     if (((mce_reg[MCG_CAP] & MCG_TES_P_MASK) == MCG_TES_P_MASK) &&
         ((mce_reg[MCG_CAP] & MCG_CMCI_P_MASK) == MCG_CMCI_P_MASK)) { /* Sec. 15.3.2.2.1 */
@@ -795,7 +792,7 @@ void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
 {
     orcm_value_t *sensor_metric;
     bool miscv;
-    uint64_t addr_type, lsb_addr;
+    uint64_t lsb_addr;
     char* str = NULL;
 
     opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
@@ -847,7 +844,6 @@ void mcedata_bus_ic_filter(unsigned long *mce_reg, opal_list_t *vals)
     if(miscv && ((mce_reg[MCG_CAP] & MCG_SER_P_MASK) == MCG_SER_P_MASK)) {
         opal_output_verbose(3, orcm_sensor_base_framework.framework_output,
                             "MISC Register Valid");
-        addr_type = ((mce_reg[MCI_MISC] & MCI_ADDR_MODE_MASK) >> 6);
         str = decode_address_mode(mce_reg[MCI_MISC]);
         sensor_metric = orcm_util_load_orcm_value("address_mode", str, OPAL_STRING, NULL);
         ORCM_ON_NULL_RETURN(sensor_metric);

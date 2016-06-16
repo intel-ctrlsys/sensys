@@ -83,6 +83,7 @@ static int tcp_peer_send_blocking(int sd, void* data, size_t size);
 static bool tcp_peer_recv_blocking(mca_oob_tcp_peer_t* peer, int sd,
                                    void* data, size_t size);
 static void tcp_peer_connected(mca_oob_tcp_peer_t* peer);
+static int oob_tcp_privilege_bind(struct sockaddr_in inaddr, mca_oob_tcp_peer_t* peer);
 
 static int tcp_peer_create_socket(mca_oob_tcp_peer_t* peer)
 {
@@ -144,7 +145,7 @@ static int tcp_peer_create_socket(mca_oob_tcp_peer_t* peer)
     return ORTE_SUCCESS;
 }
 
-int oob_tcp_privilege_bind(struct sockaddr_in inaddr, mca_oob_tcp_peer_t* peer)
+static int oob_tcp_privilege_bind(struct sockaddr_in inaddr, mca_oob_tcp_peer_t* peer)
 {
     int port = 1023;
     ((struct sockaddr_in*) &inaddr)->sin_family = AF_INET;
@@ -176,7 +177,7 @@ void mca_oob_tcp_peer_try_connect(int fd, short args, void *cbdata)
     char *host;
     mca_oob_tcp_send_t *snd;
     bool connected = false;
-    int port = 1023;
+
     opal_output_verbose(OOB_TCP_DEBUG_CONNECT, orte_oob_base_framework.framework_output,
                         "%s orte_tcp_peer_try_connect: "
                         "attempting to connect to proc %s",

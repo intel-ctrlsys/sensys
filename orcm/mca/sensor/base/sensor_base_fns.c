@@ -1013,7 +1013,7 @@ int orcm_sensor_unpack_orcm_value_list(opal_buffer_t* bucket, opal_list_t** list
         for(int16_t i = 0; i < size; ++i) {
             rc = orcm_sensor_unpack_orcm_value(bucket, &item);
             ON_FAILURE_CLEANUP_RETURN_ERROR(rc, ORCM_RELEASE(*list));
-            opal_list_append(*list, item);
+            opal_list_append(*list, (opal_list_item_t *)item);
             item = NULL;
         }
     }

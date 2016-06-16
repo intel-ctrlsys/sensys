@@ -38,9 +38,7 @@
 
 #include "orcm/mca/sensor/base/sensor_private.h"
 
-
 #define  NULL_CHECK(p) if(NULL==p) {goto ERROR;}
-#define SAFE_RELEASE(p) if(NULL != p) OBJ_RELEASE(p);
 #define SAFE_ARGV_FREE(p) if(NULL != p) {opal_argv_free(p);p=NULL;}
 
 static bool recv_issued=false;

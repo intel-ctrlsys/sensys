@@ -186,8 +186,6 @@ static int init(void)
     bool inserted;
     opal_list_t foobar;
     int corecount = 0;
-    int i = 0;
-    int ret = 0;
     char *skt;
 
     mca_sensor_coretemp_component.diagnostics = 0;

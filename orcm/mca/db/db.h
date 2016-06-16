@@ -62,6 +62,18 @@ typedef enum {
     IN
 } orcm_db_comparison_op_t;
 
+typedef enum {
+    ORCM_DB_QRY_END = 0,
+    ORCM_DB_QRY_DATE,
+    ORCM_DB_QRY_FLOAT,
+    ORCM_DB_QRY_INTEGER,
+    ORCM_DB_QRY_INTERVAL,
+    ORCM_DB_QRY_OCOMMA_LIST,
+    ORCM_DB_QRY_STRING,
+    ORCM_DB_QRY_OPTIONAL = 32,
+    ORCM_DB_QRY_NULL = 1024
+} orcm_db_qry_arg_types;
+
 typedef struct {
     opal_value_t value;
     orcm_db_comparison_op_t op;
@@ -268,6 +280,16 @@ typedef int (*orcm_db_base_module_fetch_fn_t)(struct orcm_db_base_module_t *imod
                                               opal_list_t *filters,
                                               opal_list_t *kvs);
 
+typedef void (*orcm_db_base_API_fetch_function_fn_t)(int dbhandle,
+                                            const char* function,
+                                            opal_list_t *arguments,
+                                            opal_list_t *kvs,
+                                            orcm_db_callback_fn_t cbfunc,
+                                            void *cbdata);
+typedef int (*orcm_db_base_module_fetch_function_fn_t)(struct orcm_db_base_module_t *imod,
+                                              const char* fuction,
+                                              opal_list_t *arguments,
+                                              opal_list_t *kvs);
 /*
  * Get the number of rows returned in a result set (previously fetched from the
  * database).
@@ -336,6 +358,7 @@ struct orcm_db_base_module_t{
     orcm_db_base_module_get_next_row_fn_t         get_next_row;
     orcm_db_base_module_close_result_set_fn_t     close_result_set;
     orcm_db_base_module_remove_fn_t               remove;
+    orcm_db_base_module_fetch_function_fn_t       fetch_function;
 };
 
 typedef struct orcm_db_base_module_t orcm_db_base_module_t;
@@ -355,6 +378,7 @@ typedef struct {
     orcm_db_base_API_get_next_row_fn_t         get_next_row;
     orcm_db_base_API_close_result_set_fn_t     close_result_set;
     orcm_db_base_API_remove_fn_t               remove;
+    orcm_db_base_API_fetch_function_fn_t       fetch_function;
 } orcm_db_API_module_t;
 
 

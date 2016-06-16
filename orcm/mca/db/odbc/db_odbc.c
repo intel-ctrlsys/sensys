@@ -125,7 +125,8 @@ mca_db_odbc_module_t mca_db_odbc_module = {
         odbc_get_num_rows,
         odbc_get_next_row,
         odbc_close_result_set,
-        odbc_remove
+        odbc_remove,
+        NULL
     },
 };
 

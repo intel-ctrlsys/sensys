@@ -193,6 +193,54 @@ create_list_with_mandatory_fields_diag(opal_data_type_t hostname_type, void *hos
     return input_list;
 }
 
+static opal_value_t*
+create_argument_to_function(char* value, orcm_db_qry_arg_types type){
+    opal_value_t *return_item = OBJ_NEW(opal_value_t);
+    return_item->type = type;
+    return_item->data.string = value;
+}
+
+static opal_list_t* create_list_with_supported_types(){
+    opal_list_t *argument_list = OBJ_NEW(opal_list_t);
+
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    strdup("value"), ORCM_DB_QRY_DATE));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    strdup("value"), ORCM_DB_QRY_FLOAT));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    strdup("value"), ORCM_DB_QRY_INTEGER));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    strdup("value"), ORCM_DB_QRY_INTERVAL));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    strdup("value"), ORCM_DB_QRY_OCOMMA_LIST));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    strdup("value"), ORCM_DB_QRY_STRING));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    strdup("value"), ORCM_DB_QRY_NULL));
+
+    return argument_list;
+}
+
+static opal_list_t* create_list_with_null_values(){
+    opal_list_t *argument_list = OBJ_NEW(opal_list_t);
+
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    NULL, ORCM_DB_QRY_DATE));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    NULL, ORCM_DB_QRY_FLOAT));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    NULL, ORCM_DB_QRY_INTEGER));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    NULL, ORCM_DB_QRY_INTERVAL));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    NULL, ORCM_DB_QRY_OCOMMA_LIST));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    NULL, ORCM_DB_QRY_STRING));
+    opal_list_append(argument_list, (opal_list_item_t*)create_argument_to_function(
+                                    NULL, ORCM_DB_QRY_NULL));
+    return argument_list;
+}
+
 TEST(ut_db_postgres_tests, init_failure)
 {
     int rc = ORCM_SUCCESS;
@@ -673,4 +721,100 @@ TEST(ut_db_postgres_tests, get_num_rows_fail)
     rc = mca_db_postgres_module.api.get_num_rows((orcm_db_base_module_t*)mod, 0, num_rows);
     mca_db_postgres_module.api.finalize((orcm_db_base_module_t*)mod);
     ASSERT_EQ(ORCM_ERROR, rc);
+}
+
+TEST(ut_db_postgres_tests, check_for_invalid_characters)
+{
+    int rc = ORCM_SUCCESS;
+    rc = check_for_invalid_characters("function_name");
+    ASSERT_EQ(ORCM_SUCCESS, rc);
+}
+
+TEST(ut_db_postgres_tests, check_for_invalid_characters_fail)
+{
+    int rc = ORCM_SUCCESS;
+    rc = check_for_invalid_characters("function;name");
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
+    rc = check_for_invalid_characters("function(name");
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
+    rc = check_for_invalid_characters("function\'name");
+    ASSERT_EQ(ORCM_ERR_BAD_PARAM, rc);
+}
+
+TEST(ut_db_postgres_tests, build_query_from_function_name_and_arguments_1)
+{
+    char* query = NULL;
+    query = build_query_from_function_name_and_arguments("function_name",NULL);
+    ASSERT_EQ(0, strcmp(query, "select * from function_name();"));
+}
+
+TEST(ut_db_postgres_tests, build_query_from_function_name_and_arguments_2)
+{
+    char* query = NULL;
+    opal_list_t* argument_list = create_list_with_supported_types();
+    query = build_query_from_function_name_and_arguments("function_name",argument_list);
+    ASSERT_EQ(0, strcmp(query, "select * from function_name('value'::TIMESTAMP,value::DOUBLE,value::INT,'value'::INTERVAL,E'value',E'value',);"));
+}
+
+TEST(ut_db_postgres_tests, build_query_from_function_name_and_arguments_3)
+{
+    char* query = NULL;
+    opal_list_t* argument_list = create_list_with_null_values();
+    query = build_query_from_function_name_and_arguments("function_name",argument_list);
+    ASSERT_EQ(0, strcmp(query, "select * from function_name('INFINITY'::TIMESTAMP,NULL::DOUBLE,NULL::INT,NULL::INTERVAL,NULL,NULL,);"));
+}
+
+TEST(ut_db_postgres_tests, build_query_from_function_name_and_arguments_fail)
+{
+    char* rc = NULL;
+    rc = build_query_from_function_name_and_arguments(NULL,NULL);
+    ASSERT_EQ(NULL, rc);
+}
+
+TEST(ut_db_postgres_tests, build_query_from_function_name_and_arguments_fail_2)
+{
+    char* rc = NULL;
+    rc = build_query_from_function_name_and_arguments("",NULL);
+    ASSERT_EQ(NULL, rc);
+}
+
+TEST(ut_db_postgres_tests, fetch_function_null_function_name)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    rc = mca_db_postgres_module.api.fetch_function((orcm_db_base_module_t*)mod,NULL,NULL,NULL);
+    EXPECT_EQ(ORCM_ERR_NOT_IMPLEMENTED,rc);
+}
+
+TEST(ut_db_postgres_tests, fetch_function_empty_function_name)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    rc = mca_db_postgres_module.api.fetch_function((orcm_db_base_module_t*)mod,"",NULL,NULL);
+    EXPECT_EQ(ORCM_ERR_NOT_IMPLEMENTED,rc);
+}
+
+TEST(ut_db_postgres_tests, fetch_function_invalid_function_name)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    rc = mca_db_postgres_module.api.fetch_function((orcm_db_base_module_t*)mod,"function;name",NULL,NULL);
+    EXPECT_EQ(ORCM_ERR_BAD_PARAM,rc);
+}
+
+TEST(ut_db_postgres_tests, fetch_function_null_kvs)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    rc = mca_db_postgres_module.api.fetch_function((orcm_db_base_module_t*)mod,"function_name",NULL,NULL);
+    EXPECT_EQ(ORCM_ERROR,rc);
+}
+
+TEST(ut_db_postgres_tests, fetch_function_pqexec_fail)
+{
+    int rc = ORCM_SUCCESS;
+    mca_db_postgres_module_t *mod = create_postgres_mod(db_name, user, host);
+    opal_list_t* argument_list = create_list_with_supported_types();
+    rc = mca_db_postgres_module.api.fetch_function((orcm_db_base_module_t*)mod,"function_name",argument_list,argument_list);
+    EXPECT_EQ(ORCM_ERROR,rc);
 }

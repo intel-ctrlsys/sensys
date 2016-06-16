@@ -2344,21 +2344,6 @@ static int get_int_column(PGresult* results)
     return PQfnumber(results, value_column_names[VALUE_INT_COLUMN_NUM]);
 }
 
-static bool is_column_name_a_value_column(const char* column_name)
-{
-    int i = 0;
-    bool rv = false;
-
-    while(NULL != value_column_names[i]) {
-        if(0 == strcmp(column_name, value_column_names[i])) {
-            rv = true;
-            break;
-        }
-        ++i;
-    }
-    return rv;
-}
-
 static opal_data_type_t get_opal_type_from_postgres_type(Oid pg_type)
 {
     switch(pg_type) {

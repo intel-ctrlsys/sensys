@@ -78,7 +78,6 @@ int main(int argc, char *argv[])
     bool want_all = false;
     char **app_env = NULL, **global_env = NULL;
     int i, len;
-    char *str;
 
     /* Initialize the argv parsing handle */
     if (ORCM_SUCCESS != opal_init_util(&argc, &argv)) {

@@ -771,6 +771,7 @@ static void octl_print_error_illegal_command(char **cmdlist)
 char **octl_split_argv(char *str, int delimiter)
 {
     char buffer[1024];
+    const int buffer_size = 1024;
     char **argv = NULL;
     bool has_quote = false;
     char *ptr = NULL;
@@ -787,7 +788,7 @@ char **octl_split_argv(char *str, int delimiter)
         return NULL;
     }
 
-    memset(buffer, 0, sizeof(buffer));
+    memset(buffer, 0, buffer_size);
     ptr = str;
     while (str && *str) {
 
@@ -813,7 +814,7 @@ char **octl_split_argv(char *str, int delimiter)
             count++;
         }
 
-        if (0 > count || sizeof(buffer) <= count) {
+        if (0 > count || buffer_size <= count) {
             count = 0;
         }
         else {

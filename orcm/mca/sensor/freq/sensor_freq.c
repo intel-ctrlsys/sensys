@@ -186,8 +186,6 @@ static int init(void)
     FILE *fp = NULL;
     corefreq_tracker_t *trk;
     pstate_tracker_t *ptrk;
-    int i = 0;
-    int ret = 0;
 
     mca_sensor_freq_component.diagnostics = 0;
     mca_sensor_freq_component.runtime_metrics =
@@ -478,7 +476,6 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     opal_buffer_t data, *bptr;
     int32_t ncores;
     bool packed;
-    unsigned int item_count = 0;
     struct timeval current_time;
     void* metrics_obj = mca_sensor_freq_component.runtime_metrics;
 
@@ -648,15 +645,8 @@ static void freq_log(opal_buffer_t *sample)
     orcm_analytics_value_t *analytics_vals = NULL;
     opal_list_t *key = NULL;
     opal_list_t *non_compute_data = NULL;
-    opal_list_t *pstate_key = NULL;
-    opal_list_t *pstate_non_compute_data = NULL;
     float fval = 0;
     int idx = 0;
-    unsigned int pstate_count = 0;
-    unsigned int pstate_value = 0;
-    char *pstate_name = NULL;
-    char *core_label = NULL;
-    bool pstate_flag = false;
 
     /* unpack the host this came from */
     n = 1;
@@ -764,13 +754,11 @@ void freq_get_sample_rate(int *sample_rate)
 static void generate_test_vector(opal_buffer_t *v)
 {
     int ret;
-    time_t now;
     const char *ctmp  = "freq";
-    char time_str[40];
     struct timeval sample_time;
     int32_t ncores;
     int i;
-/* Units are GHz */
+    /* Units are GHz */
     float test_freq;
     float max_freq;
     float min_freq;

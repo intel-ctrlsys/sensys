@@ -175,6 +175,9 @@ void orte_notifier_base_event(int sd, short args, void *cbdata)
         }
     }
     opal_argv_free(modules);
+    if (NULL != req) {
+        OBJ_RELEASE(req);
+    }
 }
 
 void orte_notifier_base_report(int sd, short args, void *cbdata)

@@ -84,8 +84,8 @@ typedef struct {
     orte_job_state_t state;
     orte_notifier_severity_t severity;
     int errcode;
-    const char *msg;
-    const char *action;
+    char *msg;
+    char *action;
     time_t t;
 } orte_notifier_request_t;
 OBJ_CLASS_DECLARATION(orte_notifier_request_t);

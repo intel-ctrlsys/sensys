@@ -459,7 +459,6 @@ void snmp_impl::collect_sample(bool perthread /* = false*/)
         packPluginName(&buffer);
 
         vardata(current_time).setKey(string(CTIME_STR)).packTo(&buffer);
-        vardata(hostname_).setKey(string(HOSTNAME_STR)).packTo(&buffer);
         collectAndPackDataSamples(&buffer);
 
         opal_buffer_t* bptr = &buffer;
@@ -490,6 +489,7 @@ void snmp_impl::collectAndPackDataSamples(opal_buffer_t *buffer) {
     for(snmpCollectorVector::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
         try {
             vector<vardata> dataSamples = it->collectData();
+            vardata(it->getHostname()).setKey(HOSTNAME_STR).packTo(buffer);
             packDataToBuffer(dataSamples, buffer);
         } catch (exception &e) {
             opal_output_verbose(1, orcm_sensor_base_framework.framework_output,

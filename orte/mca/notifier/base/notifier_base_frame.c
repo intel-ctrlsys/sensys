@@ -261,6 +261,14 @@ static void req_des(orte_notifier_request_t *r)
     if (NULL != r->jdata) {
         OBJ_RELEASE(r->jdata);
     }
+    if (NULL != r->msg) {
+        free(r->msg);
+        r->msg = NULL;
+    }
+    if (NULL != r->action) {
+        free(r->action);
+        r->action = NULL;
+    }
 }
 OBJ_CLASS_INSTANCE (orte_notifier_request_t,
                     opal_object_t,

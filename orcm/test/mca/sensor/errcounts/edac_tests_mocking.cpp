@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -24,32 +24,6 @@ extern "C" { // Mocking must use correct "C" linkages
             return __real_stat(pathname, sb);
         } else {
             return edac_mocking.stat_callback(pathname, sb);
-        }
-    }
-    FILE* __wrap_fopen(const char* path, const char* mode)
-    {
-        if(NULL == edac_mocking.fopen_callback) {
-            return __real_fopen(path, mode);
-        } else {
-            return edac_mocking.fopen_callback(path, mode);
-        }
-    }
-
-    ssize_t __wrap_getline(char** line_buf, size_t* line_buff_size, FILE* fd)
-    {
-        if(NULL == edac_mocking.getline_callback) {
-            return __real_getline(line_buf, line_buff_size, fd);
-        } else {
-            return edac_mocking.getline_callback(line_buf, line_buff_size, fd);
-        }
-    }
-
-    int __wrap_fclose(FILE* fd)
-    {
-        if(NULL == edac_mocking.fclose_callback) {
-            return __real_fclose(fd);
-        } else {
-            return edac_mocking.fclose_callback(fd);
         }
     }
 
@@ -128,10 +102,10 @@ extern "C" { // Mocking must use correct "C" linkages
 } // extern "C"
 
 edac_tests_mocking::edac_tests_mocking() :
-    stat_callback(NULL), fopen_callback(NULL), getline_callback(NULL), fclose_callback(NULL),
-    orte_errmgr_base_log_callback(NULL), opal_output_verbose_callback(NULL),
-    orte_util_print_name_args_callback(NULL), opal_dss_pack_callback(NULL),
-    opal_dss_unpack_callback(NULL), orcm_analytics_base_send_data_callback(NULL),
-    opal_progress_thread_init_callback(NULL), opal_progress_thread_finalize_callback(NULL)
+    stat_callback(NULL), orte_errmgr_base_log_callback(NULL),
+    opal_output_verbose_callback(NULL), orte_util_print_name_args_callback(NULL),
+    opal_dss_pack_callback(NULL), opal_dss_unpack_callback(NULL),
+    orcm_analytics_base_send_data_callback(NULL), opal_progress_thread_init_callback(NULL),
+    opal_progress_thread_finalize_callback(NULL)
 {
 }

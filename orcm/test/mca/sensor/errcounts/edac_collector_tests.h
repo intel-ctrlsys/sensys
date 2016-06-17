@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -19,8 +19,11 @@
 
 // ORCM (Not from mocking)
 #include "orcm/mca/db/db.h"
+#define GTEST_MOCK_TESTING
+#include "orcm/mca/sensor/errcounts/edac_collector.h"
+#undef GTEST_MOCK_TESTING
 
-class ut_edac_collector_tests: public testing::Test
+class ut_edac_collector_tests: public testing::Test, public edac_collector
 {
     protected: // gtest required methods
         static void SetUpTestCase();
@@ -28,14 +31,22 @@ class ut_edac_collector_tests: public testing::Test
         static void ClearBuffers();
         static void ResetTestEnvironment();
 
+        virtual void SetUp();
+        virtual void TearDown();
+        virtual FILE* FOpen(const char* path, const char* mode) const;
+        virtual int FClose(FILE* fd) const;
+        virtual ssize_t GetLine(char** lineptr, size_t* n, FILE* stream) const;
+        bool fail_fopen;
+        bool fail_getline;
+
         // Mocking....
         static int Stat(const char* pathname, struct stat* sb);
         static int StatFail(const char* pathname, struct stat* sb);
-        static FILE* FOpen(const char* path, const char* mode);
-        static FILE* FOpenFail(const char* path, const char* mode);
-        static ssize_t GetLine(char** line_buf, size_t* line_buff_size, FILE* fd);
-        static ssize_t GetLineFail(char** line_buf, size_t* line_buff_size, FILE* fd);
-        static int FClose(FILE* fd);
+        static FILE* FOpenMock(const char* path, const char* mode);
+        static FILE* FOpenMockFail(const char* path, const char* mode);
+        static ssize_t GetLineMock(char** line_buf, size_t* line_buff_size, FILE* fd);
+        static ssize_t GetLineMockFail(char** line_buf, size_t* line_buff_size, FILE* fd);
+        static int FCloseMock(FILE* fd);
         static void OrteErrmgrBaseLog(int err, char* file, int lineno);
         static void OpalOutputVerbose(int level, int output_id, const char* line);
         static char* OrteUtilPrintNameArgs(const orte_process_name_t *name);

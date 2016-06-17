@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015  Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -20,9 +20,6 @@ extern "C" {
     #include "orcm/mca/analytics/analytics_types.h"
 
     extern int __real_stat(const char* pathname, struct stat* sb);
-    extern FILE* __real_fopen(const char* path, const char* mode);
-    extern ssize_t __real_getline(char** line_buf, size_t* line_buff_size, FILE* fd);
-    extern int __real_fclose(FILE* fd);
     extern void __real_orte_errmgr_base_log(int err, char* file, int lineno);
     extern void __real_opal_output_verbose(int level, int output_id, const char* format, ...);
     extern char* __real_orte_util_print_name_args(const orte_process_name_t* name);
@@ -37,9 +34,6 @@ extern "C" {
 #endif // __cplusplus
 
 typedef int (*stat_callback_fn_t)(const char* pathname, struct stat* sb);
-typedef FILE* (*fopen_callback_fn_t)(const char* path, const char* mode);
-typedef ssize_t (*getline_callback_fn_t)(char** line_buf, size_t* line_buff_size, FILE* fd);
-typedef int (*fclose_callback_fn_t)(FILE* fd);
 typedef void (*orte_errmgr_base_log_callback_fn_t)(int err, char* file, int lineno);
 typedef void (*opal_output_verbose_callback_fn_t)(int level, int id, const char* line);
 typedef char* (*orte_util_print_name_args_fn_t)(const orte_process_name_t* name);
@@ -57,9 +51,6 @@ class edac_tests_mocking
 
         // Public Callbacks
         stat_callback_fn_t stat_callback;
-        fopen_callback_fn_t fopen_callback;
-        getline_callback_fn_t getline_callback;
-        fclose_callback_fn_t fclose_callback;
         orte_errmgr_base_log_callback_fn_t orte_errmgr_base_log_callback;
         opal_output_verbose_callback_fn_t opal_output_verbose_callback;
         orte_util_print_name_args_fn_t orte_util_print_name_args_callback;

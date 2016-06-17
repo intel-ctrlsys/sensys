@@ -11,7 +11,6 @@
 
 // Code being tested...
 #define GTEST_MOCK_TESTING
-#include "orcm/mca/sensor/errcounts/edac_collector.h"
 #include "orcm/mca/sensor/errcounts/sensor_errcounts.h"
 #include "orcm/mca/sensor/errcounts/errcounts.h"
 #undef GTEST_MOCK_TESTING
@@ -164,8 +163,6 @@ void ut_edac_collector_tests::SetUpTestCase()
     golden_inv_["sensor_errcounts_10"] = "TEST_MC1_CSROW0_CH1_CE";
     golden_inv_["sensor_errcounts_11"] = "TEST_MC1_CSROW0_CH2_CE";
     golden_inv_["sensor_errcounts_12"] = "TEST_MC1_CSROW0_CH3_CE";
-
-    ResetTestEnvironment();
 }
 
 void ut_edac_collector_tests::TearDownTestCase()
@@ -173,11 +170,19 @@ void ut_edac_collector_tests::TearDownTestCase()
     sysfs_.clear();
     golden_data_.clear();
     golden_inv_.clear();
+}
 
+void ut_edac_collector_tests::SetUp()
+{
+    ResetTestEnvironment();
+
+    fail_getline = false;
+    fail_fopen = false;
+}
+
+void ut_edac_collector_tests::TearDown()
+{
     edac_mocking.stat_callback = NULL;
-    edac_mocking.fopen_callback = NULL;
-    edac_mocking.getline_callback = NULL;
-    edac_mocking.fclose_callback = NULL;
     edac_mocking.orte_errmgr_base_log_callback = NULL;
     edac_mocking.opal_output_verbose_callback = NULL;
     edac_mocking.orte_util_print_name_args_callback = NULL;
@@ -188,6 +193,29 @@ void ut_edac_collector_tests::TearDownTestCase()
     edac_mocking.opal_progress_thread_finalize_callback = NULL;
 
     fopened_ = false;
+}
+
+FILE* ut_edac_collector_tests::FOpen(const char* path, const char* mode) const
+{
+    if(fail_fopen) {
+        return FOpenMockFail(path, mode);
+    } else {
+        return FOpenMock(path, mode);
+    }
+}
+
+int ut_edac_collector_tests::FClose(FILE* fd) const
+{
+    return FCloseMock(fd);
+}
+
+ssize_t ut_edac_collector_tests::GetLine(char** lineptr, size_t* n, FILE* stream) const
+{
+    if(fail_getline) {
+        return GetLineMockFail(lineptr, n, stream);
+    } else {
+        return GetLineMock(lineptr, n, stream);
+    }
 }
 
 void ut_edac_collector_tests::ClearBuffers()
@@ -212,9 +240,6 @@ void ut_edac_collector_tests::ResetTestEnvironment()
     ClearBuffers();
 
     edac_mocking.stat_callback = Stat;
-    edac_mocking.fopen_callback = FOpen;
-    edac_mocking.getline_callback = GetLine;
-    edac_mocking.fclose_callback = FClose;
     edac_mocking.orte_errmgr_base_log_callback = OrteErrmgrBaseLog;
     edac_mocking.opal_output_verbose_callback = OpalOutputVerbose;
     edac_mocking.orte_util_print_name_args_callback = OrteUtilPrintNameArgs;
@@ -274,7 +299,7 @@ int ut_edac_collector_tests::StatFail(const char* pathname, struct stat* sb)
     return -1;
 }
 
-FILE* ut_edac_collector_tests::FOpen(const char* path, const char* mode)
+FILE* ut_edac_collector_tests::FOpenMock(const char* path, const char* mode)
 {
     if(sysfs_.end() == sysfs_.find(path)) {
         errno = ENOENT;
@@ -288,7 +313,7 @@ FILE* ut_edac_collector_tests::FOpen(const char* path, const char* mode)
     }
 }
 
-FILE* ut_edac_collector_tests::FOpenFail(const char* path, const char* mode)
+FILE* ut_edac_collector_tests::FOpenMockFail(const char* path, const char* mode)
 {
     (void)path;
     (void)mode;
@@ -296,7 +321,7 @@ FILE* ut_edac_collector_tests::FOpenFail(const char* path, const char* mode)
     return NULL;
 }
 
-ssize_t ut_edac_collector_tests::GetLine(char** line_buf, size_t* line_buff_size, FILE* fd)
+ssize_t ut_edac_collector_tests::GetLineMock(char** line_buf, size_t* line_buff_size, FILE* fd)
 {
     const char* lookup = (const char*)fd;
     if(NULL == lookup) {
@@ -322,7 +347,7 @@ ssize_t ut_edac_collector_tests::GetLine(char** line_buf, size_t* line_buff_size
     }
 }
 
-ssize_t ut_edac_collector_tests::GetLineFail(char** line_buf, size_t* line_buff_size, FILE* fd)
+ssize_t ut_edac_collector_tests::GetLineMockFail(char** line_buf, size_t* line_buff_size, FILE* fd)
 {
     (void)line_buf;
     (void)line_buff_size;
@@ -331,7 +356,7 @@ ssize_t ut_edac_collector_tests::GetLineFail(char** line_buf, size_t* line_buff_
     return -1;
 }
 
-int ut_edac_collector_tests::FClose(FILE* fd)
+int ut_edac_collector_tests::FCloseMock(FILE* fd)
 {
     if(0 == fopened_ || NULL == fd) {
         errno = EBADF;
@@ -511,8 +536,6 @@ void ut_edac_collector_tests::InventorySink(const char* label, const char* name,
 // Testing the data collection class
 TEST_F(ut_edac_collector_tests, test_constructor_error_callback)
 {
-    ResetTestEnvironment();
-
     edac_collector collector;
 
     last_user_data_ = NULL;
@@ -531,8 +554,6 @@ TEST_F(ut_edac_collector_tests, test_constructor_error_callback)
 
 TEST_F(ut_edac_collector_tests, test_have_edac)
 {
-    ResetTestEnvironment();
-
     edac_collector collector;
 
     edac_mocking.stat_callback = StatFail;
@@ -544,8 +565,6 @@ TEST_F(ut_edac_collector_tests, test_have_edac)
 
 TEST_F(ut_edac_collector_tests, test_get_mc_folder_count)
 {
-    ResetTestEnvironment();
-
     edac_collector collector;
 
     ASSERT_EQ(2, collector.get_mc_folder_count());
@@ -553,8 +572,6 @@ TEST_F(ut_edac_collector_tests, test_get_mc_folder_count)
 
 TEST_F(ut_edac_collector_tests, test_get_csrow_folder_count)
 {
-    ResetTestEnvironment();
-
     edac_collector collector(ErrorSink);
 
     ASSERT_EQ(1, collector.get_csrow_folder_count(0));
@@ -563,8 +580,6 @@ TEST_F(ut_edac_collector_tests, test_get_csrow_folder_count)
 
 TEST_F(ut_edac_collector_tests, test_get_channel_folder_count)
 {
-    ResetTestEnvironment();
-
     edac_collector collector(ErrorSink);
 
     ASSERT_EQ(4, collector.get_channel_folder_count(0, 0));
@@ -573,130 +588,115 @@ TEST_F(ut_edac_collector_tests, test_get_channel_folder_count)
 
 TEST_F(ut_edac_collector_tests, test_get_ce_count)
 {
-    ResetTestEnvironment();
+    error_callback = ErrorSink;
 
-    edac_collector collector(ErrorSink);
+    ASSERT_EQ(2, get_ce_count(0, 0));
+    ASSERT_EQ(6, get_ce_count(1, 0));
 
-    ASSERT_EQ(2, collector.get_ce_count(0, 0));
-    ASSERT_EQ(6, collector.get_ce_count(1, 0));
+    fail_fopen = true;
 
-    edac_mocking.fopen_callback = FOpenFail;
-
-    ASSERT_NE(2, collector.get_ce_count(0, 0));
-    ASSERT_NE(6, collector.get_ce_count(1, 0));
+    ASSERT_NE(2, get_ce_count(0, 0));
+    ASSERT_NE(6, get_ce_count(1, 0));
 }
 
 TEST_F(ut_edac_collector_tests, test_get_ue_count)
 {
-    ResetTestEnvironment();
+    error_callback = DataSink;
 
-    edac_collector collector(DataSink);
+    ASSERT_EQ(1, get_ue_count(0, 0));
+    ASSERT_EQ(2, get_ue_count(1, 0));
 
-    ASSERT_EQ(1, collector.get_ue_count(0, 0));
-    ASSERT_EQ(2, collector.get_ue_count(1, 0));
+    fail_fopen = true;
 
-    edac_mocking.fopen_callback = FOpenFail;
-
-    ASSERT_NE(1, collector.get_ue_count(0, 0));
-    ASSERT_NE(2, collector.get_ue_count(1, 0));
+    ASSERT_NE(1, get_ue_count(0, 0));
+    ASSERT_NE(2, get_ue_count(1, 0));
 }
 
 TEST_F(ut_edac_collector_tests, test_get_channel_ce_count)
 {
-    ResetTestEnvironment();
+    error_callback = ErrorSink;
 
-    edac_collector collector(ErrorSink);
+    ASSERT_EQ(0, get_channel_ce_count(0, 0, 0));
+    ASSERT_EQ(1, get_channel_ce_count(0, 0, 1));
+    ASSERT_EQ(1, get_channel_ce_count(0, 0, 2));
+    ASSERT_EQ(0, get_channel_ce_count(0, 0, 3));
 
-    ASSERT_EQ(0, collector.get_channel_ce_count(0, 0, 0));
-    ASSERT_EQ(1, collector.get_channel_ce_count(0, 0, 1));
-    ASSERT_EQ(1, collector.get_channel_ce_count(0, 0, 2));
-    ASSERT_EQ(0, collector.get_channel_ce_count(0, 0, 3));
+    ASSERT_EQ(1, get_channel_ce_count(1, 0, 0));
+    ASSERT_EQ(2, get_channel_ce_count(1, 0, 1));
+    ASSERT_EQ(1, get_channel_ce_count(1, 0, 2));
+    ASSERT_EQ(2, get_channel_ce_count(1, 0, 3));
 
-    ASSERT_EQ(1, collector.get_channel_ce_count(1, 0, 0));
-    ASSERT_EQ(2, collector.get_channel_ce_count(1, 0, 1));
-    ASSERT_EQ(1, collector.get_channel_ce_count(1, 0, 2));
-    ASSERT_EQ(2, collector.get_channel_ce_count(1, 0, 3));
+    fail_fopen = true;
 
-    edac_mocking.fopen_callback = FOpenFail;
+    ASSERT_NE(0, get_channel_ce_count(0, 0, 0));
+    ASSERT_NE(1, get_channel_ce_count(0, 0, 1));
+    ASSERT_NE(1, get_channel_ce_count(0, 0, 2));
+    ASSERT_NE(0, get_channel_ce_count(0, 0, 3));
 
-    ASSERT_NE(0, collector.get_channel_ce_count(0, 0, 0));
-    ASSERT_NE(1, collector.get_channel_ce_count(0, 0, 1));
-    ASSERT_NE(1, collector.get_channel_ce_count(0, 0, 2));
-    ASSERT_NE(0, collector.get_channel_ce_count(0, 0, 3));
-
-    ASSERT_NE(1, collector.get_channel_ce_count(1, 0, 0));
-    ASSERT_NE(2, collector.get_channel_ce_count(1, 0, 1));
-    ASSERT_NE(1, collector.get_channel_ce_count(1, 0, 2));
-    ASSERT_NE(2, collector.get_channel_ce_count(1, 0, 3));
+    ASSERT_NE(1, get_channel_ce_count(1, 0, 0));
+    ASSERT_NE(2, get_channel_ce_count(1, 0, 1));
+    ASSERT_NE(1, get_channel_ce_count(1, 0, 2));
+    ASSERT_NE(2, get_channel_ce_count(1, 0, 3));
 }
 
 TEST_F(ut_edac_collector_tests, test_get_channel_label)
 {
-    ResetTestEnvironment();
+    error_callback = ErrorSink;
 
-    edac_collector collector(ErrorSink);
+    ASSERT_STREQ("TEST_MC0_CSROW0_CH0", get_channel_label(0, 0, 0).c_str());
+    ASSERT_STREQ("TEST_MC0_CSROW0_CH1", get_channel_label(0, 0, 1).c_str());
+    ASSERT_STREQ("TEST_MC0_CSROW0_CH2", get_channel_label(0, 0, 2).c_str());
+    ASSERT_STREQ("TEST_MC0_CSROW0_CH3", get_channel_label(0, 0, 3).c_str());
 
-    ASSERT_STREQ("TEST_MC0_CSROW0_CH0", collector.get_channel_label(0, 0, 0).c_str());
-    ASSERT_STREQ("TEST_MC0_CSROW0_CH1", collector.get_channel_label(0, 0, 1).c_str());
-    ASSERT_STREQ("TEST_MC0_CSROW0_CH2", collector.get_channel_label(0, 0, 2).c_str());
-    ASSERT_STREQ("TEST_MC0_CSROW0_CH3", collector.get_channel_label(0, 0, 3).c_str());
+    ASSERT_STREQ("TEST_MC1_CSROW0_CH0", get_channel_label(1, 0, 0).c_str());
+    ASSERT_STREQ("TEST_MC1_CSROW0_CH1", get_channel_label(1, 0, 1).c_str());
+    ASSERT_STREQ("TEST_MC1_CSROW0_CH2", get_channel_label(1, 0, 2).c_str());
+    ASSERT_STREQ("TEST_MC1_CSROW0_CH3", get_channel_label(1, 0, 3).c_str());
 
-    ASSERT_STREQ("TEST_MC1_CSROW0_CH0", collector.get_channel_label(1, 0, 0).c_str());
-    ASSERT_STREQ("TEST_MC1_CSROW0_CH1", collector.get_channel_label(1, 0, 1).c_str());
-    ASSERT_STREQ("TEST_MC1_CSROW0_CH2", collector.get_channel_label(1, 0, 2).c_str());
-    ASSERT_STREQ("TEST_MC1_CSROW0_CH3", collector.get_channel_label(1, 0, 3).c_str());
+    fail_fopen = true;
 
-    edac_mocking.fopen_callback = FOpenFail;
+    ASSERT_STRNE("TEST_MC0_CSROW0_CH0", get_channel_label(0, 0, 0).c_str());
+    ASSERT_STRNE("TEST_MC0_CSROW0_CH1", get_channel_label(0, 0, 1).c_str());
+    ASSERT_STRNE("TEST_MC0_CSROW0_CH2", get_channel_label(0, 0, 2).c_str());
+    ASSERT_STRNE("TEST_MC0_CSROW0_CH3", get_channel_label(0, 0, 3).c_str());
 
-    ASSERT_STRNE("TEST_MC0_CSROW0_CH0", collector.get_channel_label(0, 0, 0).c_str());
-    ASSERT_STRNE("TEST_MC0_CSROW0_CH1", collector.get_channel_label(0, 0, 1).c_str());
-    ASSERT_STRNE("TEST_MC0_CSROW0_CH2", collector.get_channel_label(0, 0, 2).c_str());
-    ASSERT_STRNE("TEST_MC0_CSROW0_CH3", collector.get_channel_label(0, 0, 3).c_str());
-
-    ASSERT_STRNE("TEST_MC1_CSROW0_CH0", collector.get_channel_label(1, 0, 0).c_str());
-    ASSERT_STRNE("TEST_MC1_CSROW0_CH1", collector.get_channel_label(1, 0, 1).c_str());
-    ASSERT_STRNE("TEST_MC1_CSROW0_CH2", collector.get_channel_label(1, 0, 2).c_str());
-    ASSERT_STRNE("TEST_MC1_CSROW0_CH3", collector.get_channel_label(1, 0, 3).c_str());
+    ASSERT_STRNE("TEST_MC1_CSROW0_CH0", get_channel_label(1, 0, 0).c_str());
+    ASSERT_STRNE("TEST_MC1_CSROW0_CH1", get_channel_label(1, 0, 1).c_str());
+    ASSERT_STRNE("TEST_MC1_CSROW0_CH2", get_channel_label(1, 0, 2).c_str());
+    ASSERT_STRNE("TEST_MC1_CSROW0_CH3", get_channel_label(1, 0, 3).c_str());
 }
 
 TEST_F(ut_edac_collector_tests, test_get_xx_negative)
 {
-    ResetTestEnvironment();
+    error_callback = ErrorSink;
 
-    edac_collector collector(ErrorSink);
+    fail_fopen = true;
 
-    edac_mocking.fopen_callback = FOpenFail;
-
-    ASSERT_STREQ("", collector.get_channel_label(0, 0, 0).c_str());
+    ASSERT_STREQ("", get_channel_label(0, 0, 0).c_str());
     ASSERT_EQ(2, last_errno_);
     ASSERT_STREQ("/sys/devices/system/edac/mc/mc0/csrow0/ch0_dimm_label", last_error_filename_.c_str());
-    ASSERT_EQ(-1, collector.get_channel_ce_count(0, 0, 1));
+    ASSERT_EQ(-1, get_channel_ce_count(0, 0, 1));
     ASSERT_EQ(2, last_errno_);
     ASSERT_STREQ("/sys/devices/system/edac/mc/mc0/csrow0/ch1_ce_count", last_error_filename_.c_str());
 
-    edac_mocking.fopen_callback = FOpen;
-    edac_mocking.getline_callback = GetLineFail;
+    fail_fopen = false;
+    fail_getline = true;
 
-    ASSERT_STREQ("", collector.get_channel_label(0, 0, 0).c_str());
+    ASSERT_STREQ("", get_channel_label(0, 0, 0).c_str());
     ASSERT_EQ(9, last_errno_);
     ASSERT_STREQ("/sys/devices/system/edac/mc/mc0/csrow0/ch0_dimm_label", last_error_filename_.c_str());
-    ASSERT_EQ(-1, collector.get_channel_ce_count(0, 0, 1));
+    ASSERT_EQ(-1, get_channel_ce_count(0, 0, 1));
     ASSERT_EQ(9, last_errno_);
     ASSERT_STREQ("/sys/devices/system/edac/mc/mc0/csrow0/ch1_ce_count", last_error_filename_.c_str());
 }
 
 TEST_F(ut_edac_collector_tests, test_collect_data)
 {
-    ResetTestEnvironment();
-
-    edac_collector collector(ErrorSink);
+    error_callback = ErrorSink;
 
     edac_mocking.stat_callback = Stat;
-    edac_mocking.fopen_callback = FOpen;
-    edac_mocking.getline_callback = GetLine;
-    edac_mocking.fclose_callback = FClose;
 
-    ASSERT_TRUE(collector.collect_data(DataSink, NULL));
+    ASSERT_TRUE(collect_data(DataSink, NULL));
     ASSERT_EQ(12, logged_data_.size());
 
     // Compare to golden...
@@ -707,33 +707,26 @@ TEST_F(ut_edac_collector_tests, test_collect_data)
         ++log_it;
     }
 
-    edac_mocking.getline_callback = GetLineFail;
+    fail_getline = true;
 
     logged_data_.clear();
-    ASSERT_TRUE(collector.collect_data(DataSink, NULL));
+    ASSERT_TRUE(collect_data(DataSink, NULL));
     ASSERT_EQ(0, logged_data_.size());
 
-    edac_mocking.fopen_callback = FOpenFail;
-    edac_mocking.getline_callback = GetLine;
+    fail_fopen = true;
+    fail_getline = false;
 
-    ASSERT_TRUE(collector.collect_data(DataSink, NULL));
+    ASSERT_TRUE(collect_data(DataSink, NULL));
     ASSERT_EQ(0, logged_data_.size());
 
-    ASSERT_FALSE(collector.collect_data(NULL, NULL));
+    ASSERT_FALSE(collect_data(NULL, NULL));
 }
 
 TEST_F(ut_edac_collector_tests, test_collect_inventory)
 {
-    ResetTestEnvironment();
+    error_callback = ErrorSink;
 
-    edac_collector collector(ErrorSink);
-
-    edac_mocking.stat_callback = Stat;
-    edac_mocking.fopen_callback = FOpen;
-    edac_mocking.getline_callback = GetLine;
-    edac_mocking.fclose_callback = FClose;
-
-    ASSERT_TRUE(collector.collect_inventory(InventorySink, NULL));
+    ASSERT_TRUE(collect_inventory(InventorySink, NULL));
     ASSERT_EQ(12, logged_inv_.size());
 
     map<string,string>::iterator log_it = logged_inv_.begin();
@@ -746,17 +739,15 @@ TEST_F(ut_edac_collector_tests, test_collect_inventory)
     edac_mocking.stat_callback = StatFail;
 
     logged_inv_.clear();
-    ASSERT_TRUE(collector.collect_inventory(InventorySink, NULL));
+    ASSERT_TRUE(collect_inventory(InventorySink, NULL));
     ASSERT_EQ(0, logged_inv_.size());
 
-    ASSERT_FALSE(collector.collect_inventory(NULL, NULL));
+    ASSERT_FALSE(collect_inventory(NULL, NULL));
 }
 
 // Testing plugin relay methods...
 TEST_F(ut_edac_collector_tests, test_init_finalize_relays)
 {
-    ResetTestEnvironment();
-
     // Open plugin: Positive
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -772,8 +763,6 @@ TEST_F(ut_edac_collector_tests, test_init_finalize_relays)
 
 TEST_F(ut_edac_collector_tests, test_start_stop_relays)
 {
-    ResetTestEnvironment();
-
     // Open plugin
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -798,8 +787,6 @@ TEST_F(ut_edac_collector_tests, test_start_stop_relays)
 
 TEST_F(ut_edac_collector_tests, test_sample_relay)
 {
-    ResetTestEnvironment();
-
     // Open plugin
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -815,8 +802,6 @@ TEST_F(ut_edac_collector_tests, test_sample_relay)
 
 TEST_F(ut_edac_collector_tests, test_log_relay)
 {
-    ResetTestEnvironment();
-
     // Open plugin
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -832,8 +817,6 @@ TEST_F(ut_edac_collector_tests, test_log_relay)
 
 TEST_F(ut_edac_collector_tests, test_set_sample_rate_relay)
 {
-    ResetTestEnvironment();
-
     // Open plugin
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -849,8 +832,6 @@ TEST_F(ut_edac_collector_tests, test_set_sample_rate_relay)
 
 TEST_F(ut_edac_collector_tests, test_enable_relay)
 {
-    ResetTestEnvironment();
-
     // Open plugin
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -866,8 +847,6 @@ TEST_F(ut_edac_collector_tests, test_enable_relay)
 
 TEST_F(ut_edac_collector_tests, test_disable_relay)
 {
-    ResetTestEnvironment();
-
     // Open plugin
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -883,8 +862,6 @@ TEST_F(ut_edac_collector_tests, test_disable_relay)
 
 TEST_F(ut_edac_collector_tests, test_reset_relay)
 {
-    ResetTestEnvironment();
-
     // Open plugin
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -900,8 +877,6 @@ TEST_F(ut_edac_collector_tests, test_reset_relay)
 
 TEST_F(ut_edac_collector_tests, test_get_sample_rate_relay)
 {
-    ResetTestEnvironment();
-
     // Open plugin
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -917,8 +892,6 @@ TEST_F(ut_edac_collector_tests, test_get_sample_rate_relay)
 
 TEST_F(ut_edac_collector_tests, test_inventory_collect_relay)
 {
-    ResetTestEnvironment();
-
     // Open plugin
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -934,8 +907,6 @@ TEST_F(ut_edac_collector_tests, test_inventory_collect_relay)
 
 TEST_F(ut_edac_collector_tests, test_inventory_log_relay)
 {
-    ResetTestEnvironment();
-
     // Open plugin
     ASSERT_EQ(ORCM_SUCCESS, errcounts_init_relay());
 
@@ -955,8 +926,6 @@ TEST_F(ut_edac_collector_tests, test_inventory_log_relay)
 // Testing errcounts_impl class
 TEST_F(ut_edac_collector_tests, test_errcounts_callback_relays)
 {
-    ResetTestEnvironment();
-
     errcounts_impl dummy;
 
     // Positive
@@ -1001,8 +970,6 @@ TEST_F(ut_edac_collector_tests, test_errcounts_callback_relays)
 
 TEST_F(ut_edac_collector_tests, test_errcounts_construction_and_init_finalize)
 {
-    ResetTestEnvironment();
-
     errcounts_impl dummy;
 
     ASSERT_NULL(dummy.collector_);
@@ -1018,8 +985,6 @@ TEST_F(ut_edac_collector_tests, test_errcounts_construction_and_init_finalize)
 
 TEST_F(ut_edac_collector_tests, test_start_and_stop)
 {
-    ResetTestEnvironment();
-
     errcounts_impl dummy;
 
     dummy.start(0);
@@ -1046,9 +1011,6 @@ TEST_F(ut_edac_collector_tests, test_start_and_stop)
 TEST_F(ut_edac_collector_tests, test_get_and_set_sample_rate)
 {
     int rate = -999;
-
-    ResetTestEnvironment();
-
     errcounts_impl dummy;
 
     dummy.get_sample_rate(&rate);
@@ -1073,11 +1035,7 @@ TEST_F(ut_edac_collector_tests, test_get_and_set_sample_rate)
 
 TEST_F(ut_edac_collector_tests, test_ev_create_thread_and_destroy_thread_negative)
 {
-    ResetTestEnvironment();
-
     errcounts_impl dummy;
-
-    //dummy.init();
 
     dummy.ev_create_thread();
     ASSERT_NULL(dummy.ev_base_);
@@ -1090,14 +1048,10 @@ TEST_F(ut_edac_collector_tests, test_ev_create_thread_and_destroy_thread_negativ
     ASSERT_NULL(dummy.ev_base_);
 
     SAFE_OBJ_RELEASE(dummy.errcounts_sampler_);
-
-    //dummy.finalize();
 }
 
 TEST_F(ut_edac_collector_tests, test_ev_pause_and_resume)
 {
-    ResetTestEnvironment();
-
     errcounts_impl dummy;
 
     // No per-thread sampling...
@@ -1133,12 +1087,11 @@ TEST_F(ut_edac_collector_tests, test_ev_pause_and_resume)
 
 TEST_F(ut_edac_collector_tests, test_perthread_errcounts_sample)
 {
-    ResetTestEnvironment();
-
     mca_sensor_errcounts_component.sample_rate = 10;
-
     errcounts_impl dummy;
     dummy.init();
+    edac_collector* saved = dummy.collector_;
+    dummy.collector_ = (edac_collector*)this;
 
     dummy.errcounts_sampler_ = OBJ_NEW(orcm_sensor_sampler_t);
     OBJ_CONSTRUCT(&dummy.errcounts_sampler_->bucket, opal_buffer_t);
@@ -1149,19 +1102,20 @@ TEST_F(ut_edac_collector_tests, test_perthread_errcounts_sample)
 
     ASSERT_EQ(12, dummy.data_samples_labels_.size());
 
+    dummy.collector_ = saved;
     dummy.finalize();
 }
 
 TEST_F(ut_edac_collector_tests, test_sample)
 {
-    ResetTestEnvironment();
-
     mca_sensor_errcounts_component.use_progress_thread = false;
 
     orcm_sensor_sampler_t sampler;
 
     errcounts_impl dummy;
     dummy.init();
+    edac_collector* saved = dummy.collector_;
+    dummy.collector_ = (edac_collector*)this;
 
     opal_output_verbose_.clear();
     last_orte_error_ = 0;
@@ -1212,16 +1166,18 @@ TEST_F(ut_edac_collector_tests, test_sample)
     dummy.collector_->previous_sample_->clear();
     dummy.sample(&sampler);
     ASSERT_NE(OPAL_SUCCESS, last_orte_error_);
+
+    dummy.collector_ = saved;
 }
 
 TEST_F(ut_edac_collector_tests, test_inventory_collect)
 {
-    ResetTestEnvironment();
-
     opal_buffer_t buffer;
 
     errcounts_impl dummy;
     dummy.init();
+    edac_collector* saved = dummy.collector_;
+    dummy.collector_ = (edac_collector*)this;
 
     last_orte_error_ = 0;
     dummy.inventory_collect(&buffer);
@@ -1248,12 +1204,12 @@ TEST_F(ut_edac_collector_tests, test_inventory_collect)
         dummy.inventory_collect(&buffer);
         ASSERT_NE(OPAL_SUCCESS, last_orte_error_);
     }
+
+    dummy.collector_ = saved;
 }
 
 TEST_F(ut_edac_collector_tests, test_log)
 {
-    ResetTestEnvironment();
-
     orcm_sensor_sampler_t sampler;
     opal_buffer_t buffer;
 
@@ -1335,9 +1291,6 @@ TEST_F(ut_edac_collector_tests, test_error_callback)
     string path="/sysfs/madeuppath/entry";
     int err = 54;
     string golden="WARNING: errcounts_tests sensor errcounts : sample: trouble accessing sysfs entry (errno=54): '/sysfs/madeuppath/entry': skipping data entry";
-
-    ResetTestEnvironment();
-
     errcounts_impl dummy;
 
     dummy.error_callback(path.c_str(), err);
@@ -1348,13 +1301,13 @@ TEST_F(ut_edac_collector_tests, test_error_callback)
 
 TEST_F(ut_edac_collector_tests, test_inventory_log)
 {
-    ResetTestEnvironment();
-
     opal_buffer_t buffer;
     OBJ_CONSTRUCT(&buffer, opal_buffer_t);
 
     errcounts_impl dummy;
     dummy.init();
+    edac_collector* edac_saved = dummy.collector_;
+    dummy.collector_ = (edac_collector*)this;
 
     dummy.inventory_collect(&buffer);
 
@@ -1424,6 +1377,8 @@ TEST_F(ut_edac_collector_tests, test_inventory_log)
 
     ASSERT_EQ(0, database_data_.size());
 
+    dummy.collector_ = edac_saved;
+
     dummy.finalize();
     OBJ_DESTRUCT(&buffer);
 }
@@ -1447,8 +1402,6 @@ TEST_F(ut_edac_collector_tests, test_component_functions)
 
 TEST_F(ut_edac_collector_tests, test_init_negative)
 {
-    ResetTestEnvironment();
-
     errcounts_impl dummy;
     edac_mocking.stat_callback = StatFail;
 
@@ -1547,8 +1500,6 @@ TEST_F(ut_edac_collector_tests, errcounts_api_tests_2)
 
 TEST_F(ut_edac_collector_tests, test_sample_and_inv_test)
 {
-    ResetTestEnvironment();
-
     opal_buffer_t buffer;
     OBJ_CONSTRUCT(&buffer, opal_buffer_t);
     errcounts_impl* impl = new errcounts_impl();

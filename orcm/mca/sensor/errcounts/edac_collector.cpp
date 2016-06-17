@@ -11,8 +11,6 @@
 
 extern "C" {
     #include <sys/stat.h>
-    #include <stdio.h>
-    #include <stdlib.h>
     #include <errno.h>
     #include <string.h>
 }
@@ -37,6 +35,21 @@ edac_collector::edac_collector(edac_error_callback_fn_t error_cb, const char* ed
 edac_collector::~edac_collector()
 {
     delete previous_sample_;
+}
+
+FILE* edac_collector::FOpen(const char* path, const char* mode) const
+{
+    return fopen(path, mode);
+}
+
+ssize_t edac_collector::GetLine(char** lineptr, size_t* n, FILE* stream) const
+{
+    return getline(lineptr, n, stream);
+}
+
+int edac_collector::FClose(FILE* fd) const
+{
+    return fclose(fd);
 }
 
 bool edac_collector::collect_data(edac_data_callback_fn_t cb, void* user_data)
@@ -206,19 +219,19 @@ int edac_collector::get_xx_count(int mc, int csrow, const char* filename) const
 {
     stringstream ss;
     ss << base_edac_path << "/mc" << mc << "/csrow" << csrow << "/" << filename;
-    FILE* fd = fopen(ss.str().c_str(), "r");
+    FILE* fd = FOpen(ss.str().c_str(), "r");
     if(NULL == fd) {
         report_error(ss.str().c_str(), errno);
         return -1;
     }
     char* buffer = NULL;
     size_t buffer_size = 0;
-    if(-1 == getline(&buffer, &buffer_size, fd)) {
+    if(-1 == GetLine(&buffer, &buffer_size, fd)) {
         report_error(ss.str().c_str(), errno);
-        fclose(fd);
+        FClose(fd);
         return -1;
     }
-    fclose(fd);
+    FClose(fd);
     int count = atoi(buffer);
     free(buffer);
     return count;
@@ -245,19 +258,19 @@ std::string edac_collector::get_channel_label(int mc, int csrow, int channel) co
 {
     stringstream ss;
     ss << base_edac_path << "/mc" << mc << "/csrow" << csrow << "/ch" << channel << "_dimm_label";
-    FILE* fd = fopen(ss.str().c_str(), "r");
+    FILE* fd = FOpen(ss.str().c_str(), "r");
     if(NULL == fd) {
         report_error(ss.str().c_str(), errno);
         return string();
     }
     char* buffer = NULL;
     size_t buffer_size = 0;
-    if(-1 == getline(&buffer, &buffer_size, fd)) {
+    if(-1 == GetLine(&buffer, &buffer_size, fd)) {
         report_error(ss.str().c_str(), errno);
-        fclose(fd);
+        FClose(fd);
         return string();
     }
-    fclose(fd);
+    FClose(fd);
     string rv = buffer;
     free(buffer);
     remove_newlines(rv);

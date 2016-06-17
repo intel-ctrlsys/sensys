@@ -14,6 +14,8 @@
 extern "C" {
 #endif /* __cplusplus */
     #include <stdbool.h>
+    #include <stdio.h>
+    #include <stdlib.h>
 
     typedef void (*edac_error_callback_fn_t)(const char* pathname, int error_number, void* user_data);
     typedef void (*edac_data_callback_fn_t)(const char* label, int error_count, void* user_data);
@@ -26,6 +28,7 @@ extern "C" {
 
 #include <string>
 #include <map>
+
 typedef std::map<std::string,int> SampleMap;
 typedef std::map<std::string,int>* SampleMapPtr;
 
@@ -45,6 +48,11 @@ class edac_collector
         bool collect_inventory(edac_inventory_callback_fn_t cb, void* user_data);
 
         bool have_edac() const;
+
+    protected:
+        virtual FILE* FOpen(const char* path, const char* mode) const;
+        virtual ssize_t GetLine(char** lineptr, size_t* n, FILE* stream) const;
+        virtual int FClose(FILE* fd) const;
 
     PRIVATE:
         int get_mc_folder_count() const;

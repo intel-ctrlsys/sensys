@@ -111,6 +111,7 @@ static void opal_buffer_destruct (opal_buffer_t* buffer)
 {
     if (NULL != buffer->base_ptr) {
         free (buffer->base_ptr);
+        buffer->base_ptr = NULL;
     }
 }
 

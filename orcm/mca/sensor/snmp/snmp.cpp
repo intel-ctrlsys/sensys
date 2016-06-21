@@ -376,6 +376,7 @@ int snmp_impl::enable_sampling(const char* sensor_spec)
     if(mca_sensor_snmp_component.test) {
         return ORCM_SUCCESS;
     }
+    ORCM_ON_NULL_RETURN_ERROR(runtime_metrics_, ORCM_ERROR);
     return runtime_metrics_->SetCollectionState(true, sensor_spec);
 }
 
@@ -384,6 +385,7 @@ int snmp_impl::disable_sampling(const char* sensor_spec)
     if(mca_sensor_snmp_component.test) {
         return ORCM_SUCCESS;
     }
+    ORCM_ON_NULL_RETURN_ERROR(runtime_metrics_, ORCM_ERROR);
     return runtime_metrics_->SetCollectionState(false, sensor_spec);
 }
 
@@ -392,6 +394,7 @@ int snmp_impl::reset_sampling(const char* sensor_spec)
     if(mca_sensor_snmp_component.test) {
         return ORCM_SUCCESS;
     }
+    ORCM_ON_NULL_RETURN_ERROR(runtime_metrics_, ORCM_ERROR);
     return runtime_metrics_->ResetCollectionState(sensor_spec);
 }
 
@@ -407,6 +410,8 @@ void snmp_impl::perthread_snmp_sample_relay(int fd, short args, void *user_data)
 
 void snmp_impl::perthread_snmp_sample()
 {
+    ORCM_ON_NULL_RETURN(snmp_sampler_);
+
     collect_sample(true);
 
     ORCM_SENSOR_XFER(&snmp_sampler_->bucket);
@@ -431,6 +436,8 @@ void snmp_impl::collect_sample(bool perthread /* = false*/)
         generate_test_vector();
         return;
     }
+
+    ORCM_ON_NULL_RETURN(runtime_metrics_);
 
     if(!runtime_metrics_->DoCollectMetrics()) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -545,9 +552,8 @@ void snmp_impl::ev_destroy_thread()
 void snmp_impl::generate_test_vector()
 {
     struct timeval current_time;
-    opal_buffer_t buffer;
-    opal_buffer_t* bucket = &buffer;
-    OBJ_CONSTRUCT(bucket, opal_buffer_t);
+    opal_buffer_t* bucket = OBJ_NEW(opal_buffer_t);
+    ORCM_ON_NULL_RETURN(bucket);
 
     packPluginName(bucket);
     gettimeofday(&current_time, NULL);
@@ -561,7 +567,7 @@ void snmp_impl::generate_test_vector()
     if (OPAL_SUCCESS != rc) {
         ORTE_ERROR_LOG(rc);
     }
-    OBJ_DESTRUCT(bucket);
+    SAFE_RELEASE(bucket);
 }
 
 #define TEST_VECTOR_SIZE 8

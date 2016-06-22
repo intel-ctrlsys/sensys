@@ -2752,8 +2752,10 @@ bool build_argument_string(char **argument_string, opal_list_t *argument_list)
         OPAL_LIST_FOREACH(argument, argument_list, opal_value_t) {
             char *old_argument_string = *argument_string;
             char* val = format_opal_value_as_sql_string(argument);
-            if(use_comma)
+            if(use_comma){
                 asprintf(argument_string,"%s,%s",old_argument_string,val);
+                SAFEFREE(old_argument_string);
+            }
             else{
                 asprintf(argument_string,"%s",val);
                 use_comma = true;

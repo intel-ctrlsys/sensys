@@ -83,32 +83,6 @@ For example:
 .TP 4
 octl resource status
 .PP
-.SS queue
-.
-The \fIqueue\fR command set displays information about the currently configured
-queues as well as the sessions within each queue.
-.TP
-.SS status
-\fIstatus\fR lists current queues and sessions within the queues.
-.PP
-For example:
-.
-.TP 4
-octl queue status
-.PP
-.SS session
-.
-The \fIsession\fR command set allows admin to modify previously submitted
-sessions.
-.TP
-.SS cancel <session-id>
-\fIcancel\fR specified running or pending session.
-.PP
-For example:
-.
-.TP 4
-octl session cancel 199
-.PP
 .SS diag
 .
 The \fIdiag\fR command set allows admin to run diagnostics on a remote Open RCM
@@ -139,26 +113,6 @@ For example:
 .
 .TP 4
 octl diag mem node[2:1-3]
-.PP
-.SS power
-.
-The \fIpower\fR command set allows admin to modify power settings.
-.TP
-.SS set <Watts>
-\fIset\fR global power budget to specified wattage.
-.PP
-For example:
-.
-.TP 4
-octl power set 1000
-.TP
-.SS get
-\fIget\fR current global power budget.
-.PP
-For example:
-.
-.TP 4
-octl power get
 .PP
 .SS analytics
 .
@@ -567,9 +521,8 @@ the “node” table and this field is not being populated yet.
 .PP
 \fIoctl\fR is an admin level tool for interacting with ORCM. This tool has the
 ability to run as an interactive shell or as a single one-shot command.
-Currently the tools provides information about configured resources, sessions,
-and queues. This tool is also for managing resource, policies, and sessions at
-the admin level.
+Currently the tools provides information about configured resources. This tool
+is also for managing resource and policies at the admin level.
 .
 .
 .SS Setting MCA Parameters
@@ -654,11 +607,6 @@ interactive shell will not parse the MCA options.
 .TP 4
 octl resource status
 Get the state of all resources
-.
-.
-.TP 4
-octl queue status
-Get the state of all queues
 .
 .
 .\" **************************

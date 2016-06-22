@@ -249,40 +249,6 @@ static int run_cmd_resource(char** cmdlist, int sub_cmd)
     return rc;
 }
 
-static int run_cmd_queue(char** cmdlist, int sub_cmd)
-{
-    int rc = ORCM_SUCCESS;
-    switch (sub_cmd) {
-        case cmd_status:
-            rc = orcm_octl_queue_status(cmdlist);
-            break;
-        case cmd_policy:
-            rc = orcm_octl_queue_policy(cmdlist);
-            break;
-        case cmd_define:
-            rc = orcm_octl_queue_define(cmdlist);
-            break;
-        case cmd_add:
-            rc = orcm_octl_queue_add(cmdlist);
-            break;
-        case cmd_remove:
-            rc = orcm_octl_queue_remove(cmdlist);
-            break;
-        case cmd_acl:
-            rc = orcm_octl_queue_acl(cmdlist);
-            break;
-        case cmd_priority:
-            rc = orcm_octl_queue_priority(cmdlist);
-            break;
-        case cmd_null:
-            rc = ORCM_ERR_TAKE_NEXT_OPTION;
-            break;
-        default:
-            rc = ORCM_ERR_OPERATION_UNSUPPORTED;
-    }
-    return rc;
-}
-
 static int run_cmd_diag(char** cmdlist, int sub_cmd)
 {
     int rc = ORCM_SUCCESS;
@@ -609,9 +575,6 @@ static int run_cmd(int argc, char *cmdlist[])
     switch (rc) {
         case cmd_resource:
             rc = run_cmd_resource(cmdlist, sub_cmd);
-            break;
-        case cmd_queue:
-            rc = run_cmd_queue(cmdlist, sub_cmd);
             break;
         case cmd_diag:
             rc = run_cmd_diag(cmdlist, sub_cmd);

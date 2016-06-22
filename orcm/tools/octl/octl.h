@@ -36,23 +36,6 @@ static orcm_cli_init_t cli_init[] = {
     // drain subcommand
     { { "resource", NULL }, "resume", 0, 1, "Resource Resume" },
 
-    /****** queue command ******/
-    { { NULL }, "queue", 0, 0, "Queue Information" },
-    // status subcommand
-    { { "queue", NULL }, "status", 0, 0, "Queue Status" },
-    // policy subcommand
-    { { "queue", NULL }, "policy", 0, 0, "Queue Policies" },
-    // define subcommand
-    { { "queue", NULL }, "define", 0, 2, "Queue Definintion" },
-    // addition subcommand
-    { { "queue", NULL }, "add", 0, 2, "Add Resource to Queue" },
-    // remmoval subcommand
-    { { "queue", NULL }, "remove", 0, 2, "Remove Resource from Queue" },
-    // acl subcommand
-    { { "queue", NULL }, "acl", 0, 2, "Queue Access Control" },
-    // priority subcommand
-    { { "queue", NULL }, "priority", 0, 2, "Queue Priority Modification" },
-
     /****** diag command ******/
     { { NULL }, "diag", 0, 0, "Diagnostics" },
     // cpu subcommand

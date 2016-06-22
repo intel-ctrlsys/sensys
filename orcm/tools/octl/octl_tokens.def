@@ -3,7 +3,6 @@
 #endif
 
 TOK(resource)
-TOK(queue)
 TOK(diag)
 TOK(status)
 TOK(add)

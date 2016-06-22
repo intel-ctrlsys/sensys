@@ -34,7 +34,6 @@ octl_SOURCES = \
         octl.h \
         octl.c \
         octl_commands.c \
-        queue.c \
         resource.c \
         sensor.c \
         grouping.h \

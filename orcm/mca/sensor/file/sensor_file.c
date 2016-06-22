@@ -187,7 +187,7 @@ static void start(orte_jobid_t jobid)
     int i;
     char *filename;
     file_tracker_t *ft = NULL;
-    char *ptr;
+    char *ptr = NULL;
 
     /* cannot monitor my own job */
     if (jobid == ORTE_PROC_MY_NAME->jobid && ORTE_JOBID_WILDCARD != jobid) {

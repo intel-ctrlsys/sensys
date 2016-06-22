@@ -1823,7 +1823,7 @@ static int get_sensor_inventory_list_from_node(opal_list_t *inventory_list, orcm
 
                 strncpy(val, (char*)&sdrbuf[48], sizeof(val)-1);
                 name_size = (int)(((SDR01REC*)sdrbuf)->id_strlen & 0x1f);
-                val[MIN(name_size,sizeof(val)-1)] = '\0'; /* IPMI structure caps copy to 16 characters */
+                val[MIN(name_size,(int)sizeof(val)-1)] = '\0'; /* IPMI structure caps copy to 16 characters */
                 asprintf(&key, "sensor_ipmi_%d", sensor_num);
 
                 /* Store Inventory Key */

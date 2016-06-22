@@ -90,8 +90,10 @@ static int accumulate_data(win_statistics_t *win_statistics, opal_list_t *data_l
 static double computing(win_statistics_t *win_statistics);
 
 /* function to print out the data statistics */
+#if OPAL_ENABLE_DEBUG
 static void print_out_results(win_statistics_t *win_statistics,
                               orcm_workflow_caddy_t *caddy, double result);
+#endif
 
 /* function to add the window descriptions to the ras event */
 static int set_window_description(win_statistics_t *win_statistics,
@@ -298,6 +300,7 @@ static double computing(win_statistics_t *win_statistics)
     return result;
 }
 
+#if OPAL_ENABLE_DEBUG
 static void print_out_results(win_statistics_t *win_statistics,
                               orcm_workflow_caddy_t *caddy, double result)
 {
@@ -310,6 +313,7 @@ static void print_out_results(win_statistics_t *win_statistics,
     printf("Window compute type:\t%s\n", win_statistics->compute_type);
     printf("Window results:\t%f\n\n\n", result);
 }
+#endif
 
 static int set_window_description(win_statistics_t *win_statistics,
                                   orcm_ras_event_t *event_data)

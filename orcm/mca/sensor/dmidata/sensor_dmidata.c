@@ -63,7 +63,7 @@ static void dmidata_inventory_log(char *hostname, opal_buffer_t *inventory_snaps
    hwloc.  This is not the goal of test vectors.  This will be repaired at some
    point in the future. */
 #if 0
-static void generate_test_vector(opal_buffer_t *v);
+ static void generate_test_vector(opal_buffer_t *v);
 #endif
 
 /* instantiate the module */
@@ -332,7 +332,7 @@ static void extract_cpu_inventory(hwloc_topology_t topo, char *hostname, dmidata
             mkv = OBJ_NEW(orcm_value_t);
             asprintf(&mkv->value.key, "sensor_dmidata_%s", inv_key);
             ORCM_ON_NULL_GOTO(mkv->value.key, cleanup);
-            if(!strncmp(inv_key,"cpu_model_number",sizeof("cpu_model_number")) |
+            if(!strncmp(inv_key,"cpu_model_number",sizeof("cpu_model_number")) ||
                !strncmp(inv_key,"cpu_family",sizeof("cpu_family"))) {
                 mkv->value.type = OPAL_INT;
                 mkv->value.data.integer = strtol(obj->infos[k].value,NULL,10);

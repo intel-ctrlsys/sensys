@@ -46,7 +46,7 @@ const opal_data_type_t value_column_types[] = {
     OPAL_INT,
     OPAL_DOUBLE,
     OPAL_STRING,
-    NULL
+    OPAL_NULL
 };
 
 int opal_value_to_orcm_db_item(const opal_value_t *kv,

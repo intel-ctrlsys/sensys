@@ -297,11 +297,11 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
     orcm_scd_cmd_flag_t command, sub_command;
     int rc, i, j, cnt, result;
     int32_t int_param;
-    int32_t *int_param_ptr = &int_param;
+    int32_t *int_param_ptr;
     float float_param;
-    float *float_param_ptr = &float_param;
+    float *float_param_ptr;
     bool bool_param;
-    bool *bool_param_ptr = &bool_param;
+    bool *bool_param_ptr;
     orcm_alloc_t *alloc, **allocs;
     opal_buffer_t *ans, *rmbuf;
     orcm_session_t *session;
@@ -723,6 +723,224 @@ static void orcm_scd_base_recv(int status, orte_process_name_t* sender,
                     alloc = session->alloc;
                     if(alloc->id == sessionid) { //found the session
                         found = true;
+                        switch(sub_command) {
+                        case ORCM_GET_POWER_BUDGET_COMMAND:
+                            int_param_ptr = &int_param;
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_BUDGET_KEY,
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
+                                result = ORTE_ERR_BAD_PARAM;
+                                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+                                    ORTE_ERROR_LOG(rc);
+                                    OBJ_RELEASE(ans);
+                                    return;
+                                }
+                                goto answer;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                        break;
+                        case ORCM_GET_POWER_MODE_COMMAND:
+                            int_param_ptr = &int_param;
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_MODE_KEY,
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
+                                result = ORTE_ERR_BAD_PARAM;
+                                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+                                    ORTE_ERROR_LOG(rc);
+                                    OBJ_RELEASE(ans);
+                                    return;
+                                }
+                                goto answer;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                        break;
+                        case ORCM_GET_POWER_WINDOW_COMMAND:
+                            int_param_ptr = &int_param;
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_POWER_WINDOW_KEY,
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
+                                result = ORTE_ERR_BAD_PARAM;
+                                if (OPAL_SUCCESS != (result = opal_dss.pack(ans, &rc, 1, OPAL_INT))) {
+                                    ORTE_ERROR_LOG(rc);
+                                    OBJ_RELEASE(ans);
+                                    return;
+                                }
+                                goto answer;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                        break;
+                        case ORCM_GET_POWER_OVERAGE_COMMAND:
+                            int_param_ptr = &int_param;
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_LIMIT_KEY,
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
+                                result = ORTE_ERR_BAD_PARAM;
+                                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+                                    ORTE_ERROR_LOG(rc);
+                                    OBJ_RELEASE(ans);
+                                    return;
+                                }
+                                goto answer;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                        break;
+                        case ORCM_GET_POWER_UNDERAGE_COMMAND:
+                            int_param_ptr = &int_param;
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_LIMIT_KEY,
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
+                                result = ORTE_ERR_BAD_PARAM;
+                                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+                                    ORTE_ERROR_LOG(rc);
+                                    OBJ_RELEASE(ans);
+                                    return;
+                                }
+                                goto answer;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                        break;
+                        case ORCM_GET_POWER_OVERAGE_TIME_COMMAND:
+                            int_param_ptr = &int_param;
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_OVERAGE_TIME_LIMIT_KEY,
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
+                                result = ORTE_ERR_BAD_PARAM;
+                                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+                                    ORTE_ERROR_LOG(rc);
+                                    OBJ_RELEASE(ans);
+                                    return;
+                                }
+                                goto answer;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                        break;
+                        case ORCM_GET_POWER_UNDERAGE_TIME_COMMAND:
+                            int_param_ptr = &int_param;
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_CAP_UNDERAGE_TIME_LIMIT_KEY,
+                                                            (void**)&int_param_ptr, OPAL_INT32)) {
+                                result = ORTE_ERR_BAD_PARAM;
+                                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+                                    ORTE_ERROR_LOG(rc);
+                                    OBJ_RELEASE(ans);
+                                    return;
+                                }
+                                goto answer;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &int_param, 1, OPAL_INT32))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                        break;
+                        case ORCM_GET_POWER_FREQUENCY_COMMAND:
+                            float_param_ptr = &float_param;
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_MANUAL_FREQUENCY_KEY,
+                                                            (void**)&float_param_ptr, OPAL_FLOAT)) {
+                                result = ORTE_ERR_BAD_PARAM;
+                                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+                                    ORTE_ERROR_LOG(rc);
+                                    OBJ_RELEASE(ans);
+                                    return;
+                                }
+                                goto answer;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &float_param, 1, OPAL_FLOAT))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                        break;
+                        case ORCM_GET_POWER_STRICT_COMMAND:
+                            bool_param_ptr = &bool_param;
+                            if (false == orte_get_attribute(&alloc->constraints, ORCM_PWRMGMT_FREQ_STRICT_KEY,
+                                                            (void**)&bool_param_ptr, OPAL_BOOL)) {
+                                result = ORTE_ERR_BAD_PARAM;
+                                if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &result, 1, OPAL_INT))) {
+                                    ORTE_ERROR_LOG(rc);
+                                    OBJ_RELEASE(ans);
+                                    return;
+                                }
+                                goto answer;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &success, 1, OPAL_INT))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                            if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &bool_param, 1, OPAL_BOOL))) {
+                                ORTE_ERROR_LOG(rc);
+                                OBJ_RELEASE(ans);
+                                return;
+                            }
+                        break;
+                       default:
+                           rc = ORTE_ERR_BAD_PARAM;
+                           if (OPAL_SUCCESS != (rc = opal_dss.pack(ans, &rc, 1, OPAL_INT))) {
+                               ORTE_ERROR_LOG(rc);
+                               OBJ_RELEASE(ans);
+                               return;
+                           }
+                       }
+                    }
+                    if (true == found) {
                         break;
                     }
                 }

@@ -780,7 +780,7 @@ int print_row(opal_list_t *row, const char *separator, bool is_header)
      * and this function need to be changed in the future.
      */
     opal_value_t *item;
-    int item_count = 0;
+    unsigned int item_count = 0;
     if (NULL == row) {
       return ORCM_ERROR;
     }

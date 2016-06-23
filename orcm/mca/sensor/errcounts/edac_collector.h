@@ -42,7 +42,7 @@ class edac_collector
 {
     public:
         edac_collector(edac_error_callback_fn_t error_cb = NULL, const char* edac_path = NULL);
-        ~edac_collector();
+        virtual ~edac_collector();
 
         bool collect_data(edac_data_callback_fn_t cb, void* user_data);
         bool collect_inventory(edac_inventory_callback_fn_t cb, void* user_data);

@@ -661,7 +661,7 @@ TEST_F(ut_snmp_collector_tests, test_ev_pause_and_resume)
 
 void ut_snmp_collector_tests::sample_check(opal_buffer_t *bucket)
 {
-    char *str = NULL;
+    const char *str = NULL;
     int32_t n = 1;
     char *plugin_name = NULL;
     opal_buffer_t *buf = NULL;
@@ -676,14 +676,14 @@ void ut_snmp_collector_tests::sample_check(opal_buffer_t *bucket)
     ASSERT_FALSE(collected_samples.empty());
     ASSERT_TRUE(2 < collected_samples.size());
 
-    str = collected_samples[2].getValue<char*>();
+    str = collected_samples[2].strData.c_str();
     ASSERT_STREQ(dataStr, str);
 
     ASSERT_EQ(collected_samples[3].getValue<int64_t>(), dataInt);
     ASSERT_FLOAT_EQ(collected_samples[4].getValue<float>(), dataFloat);
     ASSERT_DOUBLE_EQ(collected_samples[5].getValue<double>(), dataDouble);
 
-    str = collected_samples[6].getValue<char*>();
+    str = collected_samples[6].strData.c_str();
     ASSERT_STREQ(dataIpAddr, str);
 
     ASSERT_EQ(collected_samples[7].getValue<uint32_t>(), dataUint);
@@ -795,8 +795,8 @@ TEST_F(ut_snmp_collector_tests, test_getOIDs)
 
     vector<vardata> v = snmp.getOIDsVardataVector(collector);
     ASSERT_EQ(OIDS_LIST_SIZE, v.size());
-    EXPECT_STREQ(v[0].getValue<char*>(), OID_0);
-    EXPECT_STREQ(v[1].getValue<char*>(), OID_1);
+    EXPECT_STREQ(v[0].strData.c_str(), OID_0);
+    EXPECT_STREQ(v[1].strData.c_str(), OID_1);
 }
 
 TEST_F(ut_snmp_collector_tests, noSnmpConfigAvailable)
@@ -1158,7 +1158,8 @@ TEST_F(ut_snmp_collector_tests, snmp_generate_inv_test_data)
             stringstream ss;
             ss << "sensor_snmp_" << (i+1);
             EXPECT_STREQ(ss.str().c_str(), item.getKey().c_str()) << "Wrong order; expected item label!";
-            EXPECT_STREQ(test_vector[i].key, item.getValue<char*>()) << "Wrong value retreived!";
+            //EXPECT_STREQ(test_vector[i].key, item.getValue<char*>()) << "Wrong value retreived!";
+            EXPECT_STREQ(test_vector[i].key, item.strData.c_str()) << "Wrong value retreived!";
         });
     }
 

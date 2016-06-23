@@ -71,13 +71,14 @@ class vardata {
     orcm_value_t* loadToOrcmValue();
     void appendToOpalList(opal_list_t *opalList);
 
+    std::string strData;
+
     private:
     opal_data_type_t type;
 
     union supportedDataTypes data;
 
     std::string key;
-    std::string strData;
 };
 
 class invalidBuffer : public std::runtime_error {

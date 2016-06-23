@@ -23,14 +23,14 @@ TEST_F(ut_vardata_constructor_tests, test_string) {
     string s = string("Hello, World!");
     vardata probe = vardata(s);
     ASSERT_EQ(OPAL_STRING, probe.getDataType());
-    ASSERT_EQ(0, s.compare(probe.getValue<string>()));
+    ASSERT_EQ(0, s.compare(probe.strData));
 }
 
 TEST_F(ut_vardata_constructor_tests, test_c_string) {
     char s[] = "Hello, World!";
     vardata probe = vardata(s);
     ASSERT_EQ(OPAL_STRING, probe.getDataType());
-    ASSERT_EQ(0, strcmp(s,probe.getValue<char*>()));
+    ASSERT_EQ(0, strcmp(s,probe.strData.c_str()));
 }
 
 TEST_F(ut_vardata_constructor_tests, test_float) {
@@ -102,7 +102,7 @@ TEST_F(ut_vardata_tests, test_vardata_packto) {
     testDataString->packTo(&buffer);
 
     ASSERT_EQ(testData->getValue<int32_t>(), fromOpalBuffer(&buffer).getValue<int32_t>());
-    ASSERT_EQ(testDataString->getValue<string>(), fromOpalBuffer(&buffer).getValue<string>());
+    ASSERT_EQ(testDataString->strData, fromOpalBuffer(&buffer).strData);
 
     OBJ_DESTRUCT(&buffer);
 }
@@ -124,7 +124,7 @@ TEST_F(ut_vardataList_tests, test_pack_unpack) {
     for (int i = 0; i < probeList.size(); ++i) {
         ASSERT_EQ(probeList[i].getDataType(), testList[i].getDataType());
         if (OPAL_STRING == probeList[i].getDataType()) {
-            ASSERT_EQ(0, probeList[i].getValue<string>().compare(testList[i].getValue<string>()));
+            ASSERT_EQ(0, probeList[i].strData.compare(testList[i].strData));
         } else {
             switch(probeList[i].getDataType()) {
                 case OPAL_FLOAT:
@@ -223,7 +223,7 @@ TEST_F(ut_vardata_tests, test_from_opal_buffer_string) {
 
     vardata result = fromOpalBuffer(&buffer, type);
     EXPECT_STREQ(label,result.getKey().c_str());
-    EXPECT_STREQ(testValue, result.getValue<char*>());
+    EXPECT_STREQ(testValue, result.strData.c_str());
 }
 
 TEST_F(ut_vardata_tests, test_from_opal_buffer_timeval) {

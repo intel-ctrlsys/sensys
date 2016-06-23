@@ -872,9 +872,8 @@ int query(query_func_names db_func, opal_list_t *filters, int query_limit)
     rc = close_database();
     if (ORCM_SUCCESS != rc) {
         orcm_octl_error("disconnect-db-fail");
-        return rc;
     }
-    return returned_rows;
+    return rc;
 }
 
 void query_custom_opal_list_free(opal_list_t **opal_list)

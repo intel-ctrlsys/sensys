@@ -847,7 +847,6 @@ int print_all_query_results(time_t *query_time, int query_limit)
 int query(query_func_names db_func, opal_list_t *filters, int query_limit)
 {
     int rc;
-    int returned_rows;
     time_t query_time;
 
     rc = open_database();
@@ -867,7 +866,7 @@ int query(query_func_names db_func, opal_list_t *filters, int query_limit)
         return rc;
     }
 
-    returned_rows = print_all_query_results(&query_time, query_limit);
+    print_all_query_results(&query_time, query_limit);
 
     rc = close_database();
     if (ORCM_SUCCESS != rc) {

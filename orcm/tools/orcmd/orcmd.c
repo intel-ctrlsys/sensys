@@ -79,7 +79,6 @@ OBJ_CLASS_DECLARATION(orcmd_wpid_event_cb_t);
 OBJ_CLASS_INSTANCE(orcmd_wpid_event_cb_t, opal_object_t, NULL, NULL);
 
 #define HNP_PORT_NUM 12345
-static int stepd_pid = 0;
 
 static opal_cmd_line_init_t cmd_line_init[] = {
     /* Various "obvious" options */

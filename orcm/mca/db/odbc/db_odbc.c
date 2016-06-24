@@ -40,11 +40,11 @@
 #include "orcm/runtime/orcm_globals.h"
 
 #include "orcm/mca/db/base/base.h"
-#include "orcm/mca/db/base/db_base_utils.c"
 #include "db_odbc.h"
 
 extern bool is_supported_opal_int_type(opal_data_type_t type);
-
+extern const char *value_column_names[];
+extern const char *opal_type_column_name;
 /* Module API functions */
 static int odbc_init(struct orcm_db_base_module_t *imod);
 static void odbc_finalize(struct orcm_db_base_module_t *imod);

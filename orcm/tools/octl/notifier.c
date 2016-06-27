@@ -210,7 +210,7 @@ int orcm_octl_set_notifier_policy(int cmd, char **argv)
     if (0 == opal_argv_count(nodelist)) {
         opal_argv_free(nodelist);
         nodelist = NULL;
-        orcm_octl_error("nodelist-notfound");
+        orcm_octl_error("nodelist-notfound", argv[5]);
         rc = ORCM_ERR_BAD_PARAM;
         goto done;
     }

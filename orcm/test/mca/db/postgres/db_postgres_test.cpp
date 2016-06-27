@@ -198,6 +198,7 @@ create_argument_to_function(char* value, orcm_db_qry_arg_types type){
     opal_value_t *return_item = OBJ_NEW(opal_value_t);
     return_item->type = type;
     return_item->data.string = value;
+    return return_item;
 }
 
 static opal_list_t* create_list_with_supported_types(){

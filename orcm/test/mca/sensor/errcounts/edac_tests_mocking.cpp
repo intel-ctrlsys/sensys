@@ -18,15 +18,6 @@ edac_tests_mocking edac_mocking;
 extern "C" { // Mocking must use correct "C" linkages
     #include <stdarg.h>
 
-    int __wrap_stat(const char* pathname, struct stat* sb)
-    {
-        if(NULL == edac_mocking.stat_callback) {
-            return __real_stat(pathname, sb);
-        } else {
-            return edac_mocking.stat_callback(pathname, sb);
-        }
-    }
-
     void __wrap_orte_errmgr_base_log(int err, char* file, int lineno)
     {
         if(NULL == edac_mocking.orte_errmgr_base_log_callback) {
@@ -102,7 +93,7 @@ extern "C" { // Mocking must use correct "C" linkages
 } // extern "C"
 
 edac_tests_mocking::edac_tests_mocking() :
-    stat_callback(NULL), orte_errmgr_base_log_callback(NULL),
+    orte_errmgr_base_log_callback(NULL),
     opal_output_verbose_callback(NULL), orte_util_print_name_args_callback(NULL),
     opal_dss_pack_callback(NULL), opal_dss_unpack_callback(NULL),
     orcm_analytics_base_send_data_callback(NULL), opal_progress_thread_init_callback(NULL),

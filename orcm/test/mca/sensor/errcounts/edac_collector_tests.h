@@ -21,10 +21,17 @@
 #include "orcm/mca/db/db.h"
 #define GTEST_MOCK_TESTING
 #include "orcm/mca/sensor/errcounts/edac_collector.h"
+#include "orcm/mca/sensor/errcounts/errcounts.h"
 #undef GTEST_MOCK_TESTING
 
 class ut_edac_collector_tests: public testing::Test, public edac_collector
 {
+    public:
+        ~ut_edac_collector_tests() {};
+        static FILE* FOpenMock(const char* path, const char* mode);
+        static int FCloseMock(FILE* fd);
+        static ssize_t GetLineMock(char** line_buf, size_t* line_buff_size, FILE* fd);
+
     protected: // gtest required methods
         static void SetUpTestCase();
         static void TearDownTestCase();
@@ -36,17 +43,16 @@ class ut_edac_collector_tests: public testing::Test, public edac_collector
         virtual FILE* FOpen(const char* path, const char* mode) const;
         virtual int FClose(FILE* fd) const;
         virtual ssize_t GetLine(char** lineptr, size_t* n, FILE* stream) const;
+        virtual int Stat(const char* path, struct stat* info) const;
         bool fail_fopen;
         bool fail_getline;
+        bool fail_stat;
 
         // Mocking....
-        static int Stat(const char* pathname, struct stat* sb);
+        static int StatOk(const char* pathname, struct stat* sb);
         static int StatFail(const char* pathname, struct stat* sb);
-        static FILE* FOpenMock(const char* path, const char* mode);
         static FILE* FOpenMockFail(const char* path, const char* mode);
-        static ssize_t GetLineMock(char** line_buf, size_t* line_buff_size, FILE* fd);
         static ssize_t GetLineMockFail(char** line_buf, size_t* line_buff_size, FILE* fd);
-        static int FCloseMock(FILE* fd);
         static void OrteErrmgrBaseLog(int err, char* file, int lineno);
         static void OpalOutputVerbose(int level, int output_id, const char* line);
         static char* OrteUtilPrintNameArgs(const orte_process_name_t *name);
@@ -89,5 +95,16 @@ class ut_edac_collector_tests: public testing::Test, public edac_collector
         static std::vector<orcm_analytics_value_t*> current_analytics_values_;
         static std::map<std::string,std::string> database_data_;
 }; // class
+
+class SpecialErrcountsMock: public errcounts_impl
+{
+public:
+    SpecialErrcountsMock() : errcounts_impl() {};
+    virtual ~SpecialErrcountsMock() {};
+
+protected:
+    virtual void OrcmSensorXfer(opal_buffer_t* buffer) { (void)buffer; };
+    virtual void OpalEventEvtimerAdd(opal_event_t* ev, struct timeval* tv) { (void)ev; (void)tv; };
+};
 
 #endif // EDAC_COLLECTOR_TESTS_H

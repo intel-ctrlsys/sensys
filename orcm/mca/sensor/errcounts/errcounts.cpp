@@ -63,11 +63,13 @@ errcounts_impl::errcounts_impl()
  : collector_(NULL), ev_paused_(false), ev_base_(NULL), errcounts_sampler_(NULL),
    edac_missing_(false), collect_metrics_(NULL), diagnostics_(0)
 {
+    collector_ = new edac_collector(error_callback_relay, mca_sensor_errcounts_component.edac_mc_folder);
 }
 
 errcounts_impl::~errcounts_impl()
 {
     finalize();
+    SAFE_DELETE(collector_);
 }
 
 int errcounts_impl::init(void)
@@ -75,18 +77,16 @@ int errcounts_impl::init(void)
     try {
         collect_metrics_ = new RuntimeMetrics("errcounts", orcm_sensor_base.collect_metrics,
                                               mca_sensor_errcounts_component.collect_metrics);
-        collector_ = new edac_collector(error_callback_relay, mca_sensor_errcounts_component.edac_mc_folder);
     } catch(bad_alloc&) {
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
     if(0 == mca_sensor_errcounts_component.sample_rate) {
         mca_sensor_errcounts_component.sample_rate = orcm_sensor_base.sample_rate;
     }
-    hostname_ = orte_process_info.nodename;
+    hostname_ = "test_host";
     edac_missing_ = (collector_->have_edac())?false:true;
     if(true == edac_missing_) {
         orte_show_help("help-orcm-sensor-errcounts.txt", "no-edac", true, (char*)hostname_.c_str());
-        SAFE_DELETE(collector_);
         return ORCM_ERROR;
     }
     return ORCM_SUCCESS;
@@ -100,8 +100,8 @@ void errcounts_impl::finalize(void)
     stop(0);
     ev_destroy_thread();
 
-    SAFE_DELETE(collector_);
     SAFE_DELETE(collect_metrics_);
+    edac_missing_ = true;
 }
 
 void errcounts_impl::start(orte_jobid_t job)
@@ -420,11 +420,21 @@ void errcounts_impl::inventory_callback(const char* label, const char* name)
     }
 }
 
+void errcounts_impl::OrcmSensorXfer(opal_buffer_t* buffer)
+{
+    ORCM_SENSOR_XFER(buffer);
+}
+
+void errcounts_impl::OpalEventEvtimerAdd(opal_event_t* ev, struct timeval* tv)
+{
+    opal_event_evtimer_add(ev, tv);
+}
+
 void errcounts_impl::perthread_errcounts_sample()
 {
     collect_sample(true);
 
-    ORCM_SENSOR_XFER(&errcounts_sampler_->bucket);
+    OrcmSensorXfer(&errcounts_sampler_->bucket);
 
     // clear the bucket
     OBJ_DESTRUCT(&errcounts_sampler_->bucket);
@@ -435,7 +445,7 @@ void errcounts_impl::perthread_errcounts_sample()
         errcounts_sampler_->rate.tv_sec = mca_sensor_errcounts_component.sample_rate;
     }
     // set ourselves to sample again
-    opal_event_evtimer_add(&errcounts_sampler_->ev, &errcounts_sampler_->rate);
+    OpalEventEvtimerAdd(&errcounts_sampler_->ev, &errcounts_sampler_->rate);
 }
 
 

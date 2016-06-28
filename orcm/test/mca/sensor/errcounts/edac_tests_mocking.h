@@ -19,7 +19,6 @@ extern "C" {
     #include "orte/include/orte/types.h"
     #include "orcm/mca/analytics/analytics_types.h"
 
-    extern int __real_stat(const char* pathname, struct stat* sb);
     extern void __real_orte_errmgr_base_log(int err, char* file, int lineno);
     extern void __real_opal_output_verbose(int level, int output_id, const char* format, ...);
     extern char* __real_orte_util_print_name_args(const orte_process_name_t* name);
@@ -33,7 +32,6 @@ extern "C" {
 }
 #endif // __cplusplus
 
-typedef int (*stat_callback_fn_t)(const char* pathname, struct stat* sb);
 typedef void (*orte_errmgr_base_log_callback_fn_t)(int err, char* file, int lineno);
 typedef void (*opal_output_verbose_callback_fn_t)(int level, int id, const char* line);
 typedef char* (*orte_util_print_name_args_fn_t)(const orte_process_name_t* name);
@@ -50,7 +48,6 @@ class edac_tests_mocking
         edac_tests_mocking();
 
         // Public Callbacks
-        stat_callback_fn_t stat_callback;
         orte_errmgr_base_log_callback_fn_t orte_errmgr_base_log_callback;
         opal_output_verbose_callback_fn_t opal_output_verbose_callback;
         orte_util_print_name_args_fn_t orte_util_print_name_args_callback;

@@ -16,6 +16,7 @@ extern "C" {
     #include <stdbool.h>
     #include <stdio.h>
     #include <stdlib.h>
+    #include <sys/stat.h>
 
     typedef void (*edac_error_callback_fn_t)(const char* pathname, int error_number, void* user_data);
     typedef void (*edac_data_callback_fn_t)(const char* label, int error_count, void* user_data);
@@ -53,6 +54,7 @@ class edac_collector
         virtual FILE* FOpen(const char* path, const char* mode) const;
         virtual ssize_t GetLine(char** lineptr, size_t* n, FILE* stream) const;
         virtual int FClose(FILE* fd) const;
+        virtual int Stat(const char* path, struct stat* info) const;
 
     PRIVATE:
         int get_mc_folder_count() const;

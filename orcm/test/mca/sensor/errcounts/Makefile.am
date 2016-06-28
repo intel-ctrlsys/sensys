@@ -40,7 +40,6 @@ errcounts_tests_SOURCES = \
     edac_tests_mocking.h
 
 MOCKING=\
-    -Wl,--wrap=stat \
     -Wl,--wrap=orte_errmgr_base_log \
     -Wl,--wrap=opal_output_verbose \
     -Wl,--wrap=orte_util_print_name_args \

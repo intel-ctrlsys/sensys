@@ -178,11 +178,11 @@ void ut_edac_collector_tests::SetUp()
 
     fail_getline = false;
     fail_fopen = false;
+    fail_stat = false;
 }
 
 void ut_edac_collector_tests::TearDown()
 {
-    edac_mocking.stat_callback = NULL;
     edac_mocking.orte_errmgr_base_log_callback = NULL;
     edac_mocking.opal_output_verbose_callback = NULL;
     edac_mocking.orte_util_print_name_args_callback = NULL;
@@ -218,6 +218,14 @@ ssize_t ut_edac_collector_tests::GetLine(char** lineptr, size_t* n, FILE* stream
     }
 }
 
+int ut_edac_collector_tests::Stat(const char* path, struct stat* info) const
+{
+    if(fail_stat)
+        return ut_edac_collector_tests::StatFail(path, info);
+    else
+        return ut_edac_collector_tests::StatOk(path, info);
+}
+
 void ut_edac_collector_tests::ClearBuffers()
 {
     while(0 < packed_int32_.size()) {
@@ -239,7 +247,6 @@ void ut_edac_collector_tests::ResetTestEnvironment()
     database_data_.clear();
     ClearBuffers();
 
-    edac_mocking.stat_callback = Stat;
     edac_mocking.orte_errmgr_base_log_callback = OrteErrmgrBaseLog;
     edac_mocking.opal_output_verbose_callback = OpalOutputVerbose;
     edac_mocking.orte_util_print_name_args_callback = OrteUtilPrintNameArgs;
@@ -273,7 +280,7 @@ void ut_edac_collector_tests::ResetTestEnvironment()
 }
 
 // Mocking methods
-int ut_edac_collector_tests::Stat(const char* pathname, struct stat* sb)
+int ut_edac_collector_tests::StatOk(const char* pathname, struct stat* sb)
 {
     if(sysfs_.end() == sysfs_.find(pathname)) {
         errno = ENOENT;
@@ -536,17 +543,15 @@ void ut_edac_collector_tests::InventorySink(const char* label, const char* name,
 // Testing the data collection class
 TEST_F(ut_edac_collector_tests, test_constructor_error_callback)
 {
-    edac_collector collector;
-
     last_user_data_ = NULL;
     last_error_filename_ = string();
     last_errno_ = 0;
-    collector.report_error("/somepath", 1);
+    report_error("/somepath", 1);
     ASSERT_TRUE(last_error_filename_.empty());
     ASSERT_EQ(0, last_errno_);
 
-    collector.error_callback = ErrorSink;
-    collector.report_error("/somepath", 1);
+    error_callback = ErrorSink;
+    report_error("/somepath", 1);
 
     ASSERT_STREQ("/somepath", last_error_filename_.c_str());
     ASSERT_EQ(1, last_errno_);
@@ -554,36 +559,30 @@ TEST_F(ut_edac_collector_tests, test_constructor_error_callback)
 
 TEST_F(ut_edac_collector_tests, test_have_edac)
 {
-    edac_collector collector;
+    fail_stat = true;
+    ASSERT_FALSE(have_edac());
 
-    edac_mocking.stat_callback = StatFail;
-    ASSERT_FALSE(collector.have_edac());
-
-    edac_mocking.stat_callback = Stat;
-    ASSERT_TRUE(collector.have_edac());
+    fail_stat = false;
+    ASSERT_TRUE(have_edac());
 }
 
 TEST_F(ut_edac_collector_tests, test_get_mc_folder_count)
 {
-    edac_collector collector;
-
-    ASSERT_EQ(2, collector.get_mc_folder_count());
+    ASSERT_EQ(2, get_mc_folder_count());
 }
 
 TEST_F(ut_edac_collector_tests, test_get_csrow_folder_count)
 {
-    edac_collector collector(ErrorSink);
+    error_callback = ErrorSink;
 
-    ASSERT_EQ(1, collector.get_csrow_folder_count(0));
-    ASSERT_EQ(1, collector.get_csrow_folder_count(1));
+    ASSERT_EQ(1, get_csrow_folder_count(0));
+    ASSERT_EQ(1, get_csrow_folder_count(1));
 }
 
 TEST_F(ut_edac_collector_tests, test_get_channel_folder_count)
 {
-    edac_collector collector(ErrorSink);
-
-    ASSERT_EQ(4, collector.get_channel_folder_count(0, 0));
-    ASSERT_EQ(4, collector.get_channel_folder_count(1, 0));
+    ASSERT_EQ(4, get_channel_folder_count(0, 0));
+    ASSERT_EQ(4, get_channel_folder_count(1, 0));
 }
 
 TEST_F(ut_edac_collector_tests, test_get_ce_count)
@@ -694,7 +693,7 @@ TEST_F(ut_edac_collector_tests, test_collect_data)
 {
     error_callback = ErrorSink;
 
-    edac_mocking.stat_callback = Stat;
+    fail_stat = false;
 
     ASSERT_TRUE(collect_data(DataSink, NULL));
     ASSERT_EQ(12, logged_data_.size());
@@ -736,7 +735,7 @@ TEST_F(ut_edac_collector_tests, test_collect_inventory)
         ++log_it;
     }
 
-    edac_mocking.stat_callback = StatFail;
+    fail_stat = true;
 
     logged_inv_.clear();
     ASSERT_TRUE(collect_inventory(InventorySink, NULL));
@@ -972,7 +971,7 @@ TEST_F(ut_edac_collector_tests, test_errcounts_construction_and_init_finalize)
 {
     errcounts_impl dummy;
 
-    ASSERT_NULL(dummy.collector_);
+    ASSERT_NOT_NULL(dummy.collector_);
     ASSERT_NULL(dummy.ev_base_);
     ASSERT_NULL(dummy.errcounts_sampler_);
 
@@ -980,7 +979,7 @@ TEST_F(ut_edac_collector_tests, test_errcounts_construction_and_init_finalize)
     ASSERT_NOT_NULL(dummy.collector_);
     ASSERT_STREQ("test_host", dummy.hostname_.c_str());
     dummy.finalize();
-    ASSERT_NULL(dummy.collector_);
+    ASSERT_NOT_NULL(dummy.collector_);
 }
 
 TEST_F(ut_edac_collector_tests, test_start_and_stop)
@@ -1087,11 +1086,15 @@ TEST_F(ut_edac_collector_tests, test_ev_pause_and_resume)
 
 TEST_F(ut_edac_collector_tests, test_perthread_errcounts_sample)
 {
+    mca_sensor_errcounts_component.test = false;
+    mca_sensor_errcounts_component.use_progress_thread = true;
     mca_sensor_errcounts_component.sample_rate = 10;
-    errcounts_impl dummy;
-    dummy.init();
+
+    SpecialErrcountsMock dummy;
     edac_collector* saved = dummy.collector_;
     dummy.collector_ = (edac_collector*)this;
+    dummy.init();
+    ASSERT_FALSE(dummy.edac_missing_);
 
     dummy.errcounts_sampler_ = OBJ_NEW(orcm_sensor_sampler_t);
     OBJ_CONSTRUCT(&dummy.errcounts_sampler_->bucket, opal_buffer_t);
@@ -1403,9 +1406,11 @@ TEST_F(ut_edac_collector_tests, test_component_functions)
 TEST_F(ut_edac_collector_tests, test_init_negative)
 {
     errcounts_impl dummy;
-    edac_mocking.stat_callback = StatFail;
-
+    fail_stat = true;
+    edac_collector* saved = dummy.collector_;
+    dummy.collector_ = this;
     ASSERT_EQ(ORCM_ERROR, dummy.init());
+    dummy.collector_ = saved;
 }
 
 // Testing the data collection class

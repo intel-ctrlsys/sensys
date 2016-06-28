@@ -10,7 +10,6 @@
 #include "edac_collector.h"
 
 extern "C" {
-    #include <sys/stat.h>
     #include <errno.h>
     #include <string.h>
 }
@@ -50,6 +49,11 @@ ssize_t edac_collector::GetLine(char** lineptr, size_t* n, FILE* stream) const
 int edac_collector::FClose(FILE* fd) const
 {
     return fclose(fd);
+}
+
+int edac_collector::Stat(const char* path, struct stat* info) const
+{
+    return stat(path, info);
 }
 
 bool edac_collector::collect_data(edac_data_callback_fn_t cb, void* user_data)
@@ -133,7 +137,7 @@ bool edac_collector::collect_inventory(edac_inventory_callback_fn_t cb, void* us
 bool edac_collector::have_edac() const
 {
     struct stat sb;
-    if (0 == stat(base_edac_path.c_str(), &sb) && S_ISDIR(sb.st_mode)) {
+    if (0 == Stat(base_edac_path.c_str(), &sb) && S_ISDIR(sb.st_mode)) {
         return true;
     }
     return false;
@@ -146,7 +150,7 @@ int edac_collector::get_mc_folder_count() const
     struct stat sb;
     for(int i = 0; ; ++i) {
         ss << base_edac_path << "/mc" << i;
-        if(0 == stat(ss.str().c_str(), &sb)) {
+        if(0 == Stat(ss.str().c_str(), &sb)) {
             ++count;
             ss.str("");
         } else {
@@ -163,7 +167,7 @@ int edac_collector::get_csrow_folder_count(int mc) const
     struct stat sb;
     for(int i = 0; ; ++i) {
         ss << base_edac_path << "/mc" << mc << "/csrow" << i;
-        if(0 == stat(ss.str().c_str(), &sb)) {
+        if(0 == Stat(ss.str().c_str(), &sb)) {
             ++count;
             ss.str("");
         } else {
@@ -180,7 +184,7 @@ int edac_collector::get_channel_folder_count(int mc, int csrow) const
     struct stat sb;
     for(int i = 0; ; ++i) {
         ss << base_edac_path << "/mc" << mc << "/csrow" << csrow << "/ch" << i << "_dimm_label";
-        if(0 == stat(ss.str().c_str(), &sb)) {
+        if(0 == Stat(ss.str().c_str(), &sb)) {
             ++count;
             ss.str("");
         } else {

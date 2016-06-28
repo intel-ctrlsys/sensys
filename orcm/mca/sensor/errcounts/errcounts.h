@@ -55,6 +55,10 @@ class errcounts_impl
         int disable_sampling(const char* sensor_spec);
         int reset_sampling(const char* sensor_spec);
 
+    protected:
+        virtual void OrcmSensorXfer(opal_buffer_t* buffer);
+        virtual void OpalEventEvtimerAdd(opal_event_t* ev, struct timeval* tv);
+
     PRIVATE: // Static Callback Relays
         static void error_callback_relay(const char* pathname, int error_number, void* user_data);
         static void data_callback_relay(const char* label, int error_count, void* user_data);

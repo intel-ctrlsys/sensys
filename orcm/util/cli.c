@@ -447,9 +447,6 @@ int orcm_cli_handle_auto_completion(orcm_cli_t *cli,
             *space = true;
         } else {
             /* multiple completions, list possibilities */
-            if (*len != 0 && ' ' != *(input + *len -1)) {
-                add_char_to_input_array(' ', input, len);
-            }
             tmp = opal_argv_join(completions, ' ');
             printf("\n\t%s", tmp);
             free(tmp);

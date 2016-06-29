@@ -39,7 +39,9 @@ $(nodist_man_MANS): $(top_builddir)/orcm/include/orcm_config.h
 
 endif # OPAL_INSTALL_BINARIES
 
-orcmd_SOURCES = orcmd.c
+orcmd_SOURCES = orcmd.c \
+                orcmd_core.c \
+                orcmd_core.h
 # the following empty orcmd_LDFLAGS is used
 #  so that the orcmd can be compiled statically
 #  by simply changing the value of this from

@@ -1,5 +1,5 @@
 if HAVE_GTEST
-gtestSubdirs=octl
+gtestSubdirs=octl orcmd
 endif
 
 SUBDIRS=$(gtestSubdirs)

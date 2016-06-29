@@ -39,7 +39,7 @@ class errcounts_impl
 {
     public:
         errcounts_impl();
-        ~errcounts_impl();
+        virtual ~errcounts_impl();
 
         int init(void);
         void finalize(void);

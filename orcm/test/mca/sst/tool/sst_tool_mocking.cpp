@@ -53,6 +53,8 @@ extern "C" {
             if (sst_mocking.framework_open_counter++ >=
                 sst_mocking.mca_base_framework_open_max){
                 return ORCM_ERROR;
+            } else {
+                return ORCM_SUCCESS;
             }
         }
         return __real_mca_base_framework_open(framework, flags);
@@ -68,6 +70,78 @@ extern "C" {
 
     int __wrap_orte_register_params(void) {
         if (sst_mocking.orte_register_params) {
+            return ORCM_ERROR;
+        } else {
+            return ORCM_SUCCESS;
+        }
+    }
+
+    int __wrap_opal_pstat_base_select(void) {
+        if (sst_mocking.opal_pstat_base_select) {
+            return ORCM_ERROR;
+        } else {
+            return ORCM_SUCCESS;
+        }
+    }
+
+    int __wrap_orte_state_base_select(void) {
+        if (sst_mocking.orte_state_base_select) {
+            return ORCM_ERROR;
+        } else {
+            return ORCM_SUCCESS;
+        }
+    }
+
+    int __wrap_orte_oob_base_select(void) {
+        if (sst_mocking.orte_oob_base_select) {
+            return ORCM_ERROR;
+        } else {
+            return ORCM_SUCCESS;
+        }
+    }
+
+    int __wrap_orte_rml_base_select(void) {
+        if (sst_mocking.orte_rml_base_select) {
+            return ORCM_ERROR;
+        } else {
+            return ORCM_SUCCESS;
+        }
+    }
+
+    int __wrap_orte_errmgr_base_select(void) {
+        if (sst_mocking.orte_errmgr_base_select) {
+            return ORCM_ERROR;
+        } else {
+            return ORCM_SUCCESS;
+        }
+    }
+
+    int __wrap_orte_routed_base_select(void) {
+        if (sst_mocking.orte_routed_base_select) {
+            return ORCM_ERROR;
+        } else {
+            return ORCM_SUCCESS;
+        }
+    }
+
+    int __wrap_orte_rmaps_base_select(void) {
+        if (sst_mocking.orte_rmaps_base_select) {
+            return ORCM_ERROR;
+        } else {
+            return ORCM_SUCCESS;
+        }
+    }
+
+    int __wrap_orcm_db_base_select(void) {
+        if (sst_mocking.orcm_db_base_select) {
+            return ORCM_ERROR;
+        } else {
+            return ORCM_SUCCESS;
+        }
+    }
+
+    int __wrap_opal_dstore_base_select(void) {
+        if (sst_mocking.opal_dstore_base_select) {
             return ORCM_ERROR;
         } else {
             return ORCM_SUCCESS;
@@ -109,4 +183,3 @@ int mock_cfgi_define_system(opal_list_t *config,
         return ORCM_SUCCESS;
     }
 }
-

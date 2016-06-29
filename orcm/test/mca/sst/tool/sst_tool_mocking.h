@@ -43,6 +43,15 @@ typedef struct mocking_flags {
     bool orte_plm_base_set_hnp_name;
     bool orte_register_params;
     bool opal_dss_unpack;
+    bool opal_pstat_base_select;
+    bool orte_state_base_select;
+    bool orte_oob_base_select;
+    bool orte_rml_base_select;
+    bool orte_errmgr_base_select;
+    bool orte_routed_base_select;
+    bool orte_rmaps_base_select;
+    bool orcm_db_base_select;
+    bool opal_dstore_base_select;
 }mocking_flags;
 
 extern mocking_flags sst_mocking;

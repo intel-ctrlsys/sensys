@@ -54,6 +54,15 @@ void ut_sst_tool_tests::InitMockingFlags()
     sst_mocking.orte_register_params = false;
     sst_mocking.mca_base_framework_open = false;
     sst_mocking.opal_dss_unpack = false;
+    sst_mocking.opal_pstat_base_select = false;
+    sst_mocking.orte_state_base_select = false;
+    sst_mocking.orte_oob_base_select = false;
+    sst_mocking.orte_rml_base_select = false;
+    sst_mocking.orte_errmgr_base_select = false;
+    sst_mocking.orte_routed_base_select = false;
+    sst_mocking.orte_rmaps_base_select = false;
+    sst_mocking.orcm_db_base_select = false;
+    sst_mocking.opal_dstore_base_select = false;
     // Change function pointers
     orcm_cfgi.read_config = &mock_cfgi_read_config;
     orcm_cfgi.define_system = &mock_cfgi_define_system;
@@ -142,6 +151,107 @@ TEST_F(ut_sst_tool_tests, tool_init_orte_register_params)
     EXPECT_EQ(rc, ORTE_ERR_SILENT);
 }
 
+TEST_F(ut_sst_tool_tests, tool_init_opal_pstat_base_select)
+{
+    int rc;
+    InitMockingFlags();
+    opal_init(NULL,NULL);
+    orte_event_base = opal_sync_event_base;
+    sst_mocking.opal_pstat_base_select = true;
+    rc = orcm_sst_tool_module.init();
+    EXPECT_EQ(rc, ORTE_ERR_SILENT);
+}
+
+TEST_F(ut_sst_tool_tests, tool_init_orte_state_base_select)
+{
+    int rc;
+    InitMockingFlags();
+    opal_init(NULL,NULL);
+    orte_event_base = opal_sync_event_base;
+    sst_mocking.orte_state_base_select = true;
+    rc = orcm_sst_tool_module.init();
+    EXPECT_EQ(rc, ORTE_ERR_SILENT);
+}
+
+TEST_F(ut_sst_tool_tests, tool_init_orte_oob_base_select)
+{
+    int rc;
+    InitMockingFlags();
+    opal_init(NULL,NULL);
+    orte_event_base = opal_sync_event_base;
+    sst_mocking.orte_oob_base_select = true;
+    rc = orcm_sst_tool_module.init();
+    EXPECT_EQ(rc, ORTE_ERR_SILENT);
+}
+
+TEST_F(ut_sst_tool_tests, tool_init_orte_rml_base_select)
+{
+    int rc;
+    InitMockingFlags();
+    opal_init(NULL,NULL);
+    orte_event_base = opal_sync_event_base;
+    sst_mocking.orte_rml_base_select = true;
+    rc = orcm_sst_tool_module.init();
+    EXPECT_EQ(rc, ORTE_ERR_SILENT);
+}
+
+TEST_F(ut_sst_tool_tests, tool_init_orte_errmgr_base_select)
+{
+    int rc;
+    InitMockingFlags();
+    opal_init(NULL,NULL);
+    orte_event_base = opal_sync_event_base;
+    sst_mocking.orte_errmgr_base_select = true;
+    rc = orcm_sst_tool_module.init();
+    EXPECT_EQ(rc, ORTE_ERR_SILENT);
+}
+
+TEST_F(ut_sst_tool_tests, tool_init_orte_routed_base_select)
+{
+    int rc;
+    InitMockingFlags();
+    opal_init(NULL,NULL);
+    orte_event_base = opal_sync_event_base;
+    sst_mocking.orte_routed_base_select = true;
+    rc = orcm_sst_tool_module.init();
+    EXPECT_EQ(rc, ORTE_ERR_SILENT);
+}
+
+TEST_F(ut_sst_tool_tests, tool_init_orte_rmaps_base_select)
+{
+    int rc;
+    InitMockingFlags();
+    opal_init(NULL,NULL);
+    orte_event_base = opal_sync_event_base;
+    sst_mocking.orte_rmaps_base_select = true;
+    rc = orcm_sst_tool_module.init();
+    EXPECT_EQ(rc, ORTE_ERR_SILENT);
+}
+
+TEST_F(ut_sst_tool_tests, tool_init_orcm_db_base_select)
+{
+    int rc;
+    InitMockingFlags();
+    opal_init(NULL,NULL);
+    orte_event_base = opal_sync_event_base;
+    sst_mocking.orcm_db_base_select = true;
+    rc = orcm_sst_tool_module.init();
+    EXPECT_EQ(rc, ORTE_ERR_SILENT);
+}
+
+TEST_F(ut_sst_tool_tests, tool_init_opal_dstore_base_select)
+{
+    int rc;
+    InitMockingFlags();
+    opal_init(NULL,NULL);
+    orte_event_base = opal_sync_event_base;
+    sst_mocking.opal_dstore_base_select = true;
+    rc = orcm_sst_tool_module.init();
+    EXPECT_EQ(rc, ORTE_ERR_SILENT);
+}
+
+
+
 TEST_F(ut_sst_tool_tests, tool_init_mca_base_framework_open_all)
 {
     int rc=ORTE_ERR_SILENT;
@@ -153,6 +263,7 @@ TEST_F(ut_sst_tool_tests, tool_init_mca_base_framework_open_all)
     orte_process_info.proc_type = (ORTE_PROC_CM |ORTE_PROC_DAEMON);
     sst_mocking.opal_dss_unpack = true;
     sst_mocking.mca_base_framework_open = true;
+    sst_mocking.opal_dstore_base_select = true;
     for(sst_mocking.mca_base_framework_open_max=0;sst_mocking.mca_base_framework_open_max<calls_to_mock;sst_mocking.mca_base_framework_open_max++){
         sst_mocking.framework_open_counter = 0;
         rc &= orcm_sst_tool_module.init();

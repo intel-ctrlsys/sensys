@@ -43,6 +43,15 @@ MOCKING = \
 	-Wl,--wrap=orte_plm_base_set_hnp_name \
 	-Wl,--wrap=orte_register_params \
 	-Wl,--wrap=mca_base_framework_open \
+	-Wl,--wrap=opal_pstat_base_select \
+	-Wl,--wrap=orte_state_base_select \
+	-Wl,--wrap=orte_oob_base_select \
+	-Wl,--wrap=orte_rml_base_select \
+	-Wl,--wrap=orte_errmgr_base_select \
+	-Wl,--wrap=orte_routed_base_select \
+	-Wl,--wrap=orte_rmaps_base_select \
+	-Wl,--wrap=orcm_db_base_select \
+	-Wl,--wrap=opal_dstore_base_select \
 	-Wl,--wrap=opal_dss_unpack
 
 #

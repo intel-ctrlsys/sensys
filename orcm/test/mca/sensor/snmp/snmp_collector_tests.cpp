@@ -103,6 +103,8 @@ queue<string> ut_snmp_collector_tests::packed_str_;
 queue<struct timeval> ut_snmp_collector_tests::packed_ts_;
 std::vector<orcm_analytics_value_t*> ut_snmp_collector_tests::current_analytics_values_;
 map<string,string> ut_snmp_collector_tests::database_data_;
+char* ut_snmp_collector_tests::config_file = NULL;
+char* ut_snmp_collector_tests::tmp_config_file = NULL;
 
 extern "C" {
     extern orcm_sensor_snmp_component_t mca_sensor_snmp_component;
@@ -116,6 +118,7 @@ extern "C" {
 
 void ut_snmp_collector_tests::SetUp()
 {
+    mca_sensor_snmp_component.config_file = tmp_config_file;
     ResetTestEnvironment();
 }
 
@@ -127,7 +130,9 @@ void ut_snmp_collector_tests::SetUpTestCase()
 
     initParserFramework();
 
-    replaceConfigFile();
+    config_file = mca_sensor_snmp_component.config_file;
+    tmp_config_file = strdup(SNMP_DEFAULT_FILE_NAME);
+    testFilesObj.writeDefaultSnmpConfigFile();
 }
 
 void ut_snmp_collector_tests::TearDownTestCase()
@@ -136,8 +141,10 @@ void ut_snmp_collector_tests::TearDownTestCase()
 
     cleanParserFramework();
 
-    restoreConfigFile();
-
+    testFilesObj.removeDefaultSnmpConfigFile();
+    mca_sensor_snmp_component.config_file = config_file;
+    config_file = NULL;
+    SAFEFREE(tmp_config_file);
 }
 
 void ut_snmp_collector_tests::TearDown()
@@ -156,18 +163,6 @@ void ut_snmp_collector_tests::TearDown()
     snmp_mocking.snmp_add_null_var_callback = NULL;
     snmp_mocking.snprint_objid_callback = NULL;
     snmp_mocking.orcm_util_load_orcm_analytics_value_callback = NULL;
-}
-
-void ut_snmp_collector_tests::replaceConfigFile()
-{
-    int ret = testFilesObj.writeDefaultSnmpConfigFile();
-    ASSERT_TRUE(ORCM_SUCCESS == ret);
-}
-
-void ut_snmp_collector_tests::restoreConfigFile()
-{
-     int ret = testFilesObj.restoreDefaultSnmpConfigFile();
-     ASSERT_TRUE(ORCM_SUCCESS == ret);
 }
 
 void ut_snmp_collector_tests::ClearBuffers()

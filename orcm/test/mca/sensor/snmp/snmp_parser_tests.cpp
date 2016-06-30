@@ -11,6 +11,19 @@
 
 using namespace std;
 
+void ut_snmp_parser_tests::SetUpTestCase(){
+    opal_init_test();
+    initParserFramework();
+    writeConfigFile();
+    writeTestFiles();
+}
+
+void ut_snmp_parser_tests::TearDownTestCase(){
+    cleanParserFramework();
+    removeTestFiles();
+    removeConfigFile();
+}
+
 void ut_snmp_parser_tests::initParserFramework()
 {
     OBJ_CONSTRUCT(&orcm_parser_base_framework.framework_components, opal_list_t);
@@ -28,15 +41,15 @@ void ut_snmp_parser_tests::cleanParserFramework()
     OPAL_LIST_DESTRUCT(&orcm_parser_base.actives);
 }
 
-void ut_snmp_parser_tests::replaceConfigFile()
+void ut_snmp_parser_tests::writeConfigFile()
 {
     int ret = testFilesObj.writeDefaultSnmpConfigFile();
     ASSERT_TRUE(ORCM_SUCCESS == ret);
 }
 
-void ut_snmp_parser_tests::restoreConfigFile()
+void ut_snmp_parser_tests::removeConfigFile()
 {
-    int ret = testFilesObj.restoreDefaultSnmpConfigFile();
+    int ret = testFilesObj.removeDefaultSnmpConfigFile();
     ASSERT_TRUE(ORCM_SUCCESS == ret);
 }
 
@@ -53,13 +66,19 @@ void ut_snmp_parser_tests::removeTestFiles()
 }
 
 TEST_F(ut_snmp_parser_tests, parse_default_file){
+    char *prefix = opal_install_dirs.prefix;
+    opal_install_dirs.prefix = NULL;
     snmpParser sp; // It will take the default snmp configuration file.
     sp.getSnmpCollectorVector();
+    opal_install_dirs.prefix = prefix;
 }
 
 TEST_F(ut_snmp_parser_tests, parse_no_file){
+    char *prefix = opal_install_dirs.prefix;
+    opal_install_dirs.prefix = NULL;
     snmpParser sp(""); // It will take the default snmp configuration file.
     sp.getSnmpCollectorVector();
+    opal_install_dirs.prefix = prefix;
 }
 
 TEST_F(ut_snmp_parser_tests, parse_file_not_found){

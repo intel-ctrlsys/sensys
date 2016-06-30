@@ -27,25 +27,14 @@ extern "C"{
 
 class ut_snmp_parser_tests: public testing::Test {
     protected:
-        virtual void SetUp(){
-            opal_init_test();
-            initParserFramework();
-            replaceConfigFile();
-            writeTestFiles();
-        }
-
-        virtual void TearDown(){
-           cleanParserFramework();
-           restoreConfigFile();
-           removeTestFiles();
-        }
-
-        virtual void initParserFramework();
-        virtual void cleanParserFramework();
-        virtual void replaceConfigFile();
-        virtual void restoreConfigFile();
-        virtual void writeTestFiles();
-        virtual void removeTestFiles();
+        static void SetUpTestCase();
+        static void TearDownTestCase();
+        static void initParserFramework();
+        static void cleanParserFramework();
+        static void removeConfigFile();
+        static void writeConfigFile();
+        static void writeTestFiles();
+        static void removeTestFiles();
 };
 
 #endif

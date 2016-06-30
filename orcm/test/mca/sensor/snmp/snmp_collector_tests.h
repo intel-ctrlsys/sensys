@@ -60,6 +60,8 @@ class ut_snmp_collector_tests: public testing::Test
         static std::vector<snmpCollector> init(void);
         static  orcm_analytics_value_t* OrcmUtilLoadAnalyticsValue(opal_list_t *key, opal_list_t*nc, opal_list_t *c);
 
+        static char* config_file;
+        static char* tmp_config_file;
         static snmpCollector *collector;
         static const char* hostname_;
         static const char* plugin_name_;

@@ -16,16 +16,12 @@
 #include "orcm/mca/sensor/snmp/snmp_parser.h"
 #include "file_defs.h"
 
-#define SNMP_DEFAULT_FILE_PERMISSIONS 600
-
 using namespace std;
 
 class testFiles {
     public:
-        testFiles() { SNMP_DEFAULT_FILE_PATH=""; }
-        ~testFiles() {};
-        int restoreDefaultSnmpConfigFile();
-        int writeDefaultSnmpConfigFile();
+        int writeDefaultSnmpConfigFile() { return writeStringToFile(SNMP_DEFAULT_FILE_NAME, SNMP_DEFAULT_XML_FILE); }
+        int removeDefaultSnmpConfigFile() { return removeFile(SNMP_DEFAULT_FILE_NAME); }
         int writeTestFiles();
         int removeTestFiles();
         int writeInvalidSnmpConfigFile() { return writeStringToFile(NO_AGGREGATORS_XML_NAME,
@@ -33,13 +29,7 @@ class testFiles {
         int removeInvalidSnmpConfigFile() { return removeFile(NO_AGGREGATORS_XML_NAME); }
 
     private:
-        string SNMP_DEFAULT_FILE_PATH;
-        void setSnmpDefaultFilePath();
         int writeStringToFile(const string& file, const string& str);
-        int backupFile(const string& file, unsigned int permissions);
-        int restoreBackupFile(const string& file);
-        inline bool fileExists(const string& file);
-        int createBakFile(const string& file, const string& bakFile, unsigned int permissions);
         int removeFile(const string& file);
 };
 

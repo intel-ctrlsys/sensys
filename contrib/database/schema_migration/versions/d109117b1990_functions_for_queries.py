@@ -19,6 +19,14 @@ import sqlalchemy as sa
 import textwrap
 
 def _postgresql_upgrade_ddl():
+    _postgresql_create_query_funcs()
+    _postgresql_remove_old_views()
+
+def _postgresql_downgrade_ddl():
+    _postgresql_remove_query_funcs()
+    _postgresql_create_old_views()
+
+def _postgresql_create_query_funcs():
     """
     Creates the following functions to make queries in a more effective way:
         is_numeric(TEXT) RETURNS BOOLEAN
@@ -310,7 +318,7 @@ def _postgresql_upgrade_ddl():
         $func$  LANGUAGE plpgsql;
     """))
 
-def _postgresql_downgrade_ddl():
+def _postgresql_remove_query_funcs():
     """
     Drops the following functions that were intented to make queries effective:
         is_numeric(TEXT) RETURNS BOOLEAN
@@ -333,6 +341,100 @@ def _postgresql_downgrade_ddl():
     op.execute(textwrap.dedent("DROP FUNCTION IF EXISTS query_snsr_get_inventory(nodes TEXT, num_limit INT);"))
     op.execute(textwrap.dedent("DROP FUNCTION IF EXISTS is_numeric(TEXT);"))
     op.execute(textwrap.dedent("DROP FUNCTION IF EXISTS orcm_comma_list_to_regex(list TEXT, comma BOOLEAN);"))
+
+def _postgresql_create_old_views():
+    """
+    Creates the following views that were used to make queries:
+        data_samples_view
+        data_sensors_view
+        event_date_view
+        event_sensor_data_view
+        event_view
+        nodes_idle_time_view
+        syslog_view
+    """
+
+    op.execute(textwrap.dedent("""
+        CREATE OR REPLACE VIEW data_samples_view AS
+        SELECT data_sample_raw.hostname, data_sample_raw.data_item,
+            data_sample_raw.data_type_id, data_sample_raw.time_stamp,
+            data_sample_raw.value_int, data_sample_raw.value_real,
+            data_sample_raw.value_str, data_sample_raw.units
+        FROM data_sample_raw;
+    """))
+
+    op.execute(textwrap.dedent("""
+        CREATE OR REPLACE VIEW data_sensors_view AS
+        SELECT dsr.hostname, dsr.data_item,
+            concat(dsr.time_stamp) AS time_stamp,
+            concat(dsr.value_int, dsr.value_real, dsr.value_str) AS value_str,
+            dsr.units
+        FROM data_sample_raw dsr;
+    """))
+
+    op.execute(textwrap.dedent("""
+        CREATE OR REPLACE VIEW event_date_view AS
+        SELECT event.event_id::text AS event_id,
+            event.time_stamp::text AS time_stamp
+        FROM event;
+    """))
+
+    op.execute(textwrap.dedent("""
+        CREATE OR REPLACE VIEW event_sensor_data_view AS
+        SELECT data_sample_raw.time_stamp::text AS time_stamp,
+            data_sample_raw.hostname, data_sample_raw.data_item,
+            concat(data_sample_raw.value_int::text, data_sample_raw.value_real::text, data_sample_raw.value_str) AS value,
+            data_sample_raw.units, data_sample_raw.time_stamp AS time_stamp2
+        FROM data_sample_raw;
+    """))
+
+    op.execute(textwrap.dedent("""
+        CREATE OR REPLACE VIEW event_view AS
+        SELECT concat(event.event_id) AS event_id,
+            concat(event.time_stamp) AS time_stamp, event.severity, event.type,
+            event_data.value_str AS hostname,
+            get_event_msg(event.event_id) AS event_message
+        FROM event JOIN event_data ON event.event_id = event_data.event_id
+            AND event_data.event_data_key_id = 1;
+    """))
+
+    op.execute(textwrap.dedent("""
+        CREATE OR REPLACE VIEW nodes_idle_time_view AS
+        SELECT data_sample_raw.hostname,
+            max(data_sample_raw.time_stamp) AS last_reading,
+            now() - max(data_sample_raw.time_stamp)::timestamp with time zone AS idle_time,
+            concat(now() - max(data_sample_raw.time_stamp)::timestamp with time zone) AS idle_time_str
+        FROM data_sample_raw
+        GROUP BY data_sample_raw.hostname;
+    """))
+
+    op.execute(textwrap.dedent("""
+        CREATE OR REPLACE VIEW syslog_view AS
+        SELECT data_sample_raw.hostname, data_sample_raw.data_item,
+            data_sample_raw.time_stamp::text AS time_stamp,
+            data_sample_raw.value_str AS log
+        FROM data_sample_raw
+        WHERE data_sample_raw.data_item::text ~~ 'syslog_log%'::text;
+    """))
+
+def _postgresql_remove_old_views():
+    """
+    Drops the following views that were used to make queries:
+        data_samples_view
+        data_sensors_view
+        event_date_view
+        event_sensor_data_view
+        event_view
+        nodes_idle_time_view
+        syslog_view
+    """
+    op.execute(textwrap.dedent("DROP VIEW IF EXISTS data_samples_view;"))
+    op.execute(textwrap.dedent("DROP VIEW IF EXISTS data_sensors_view;"))
+    op.execute(textwrap.dedent("DROP VIEW IF EXISTS event_date_view;"))
+    op.execute(textwrap.dedent("DROP VIEW IF EXISTS event_sensor_data_view;"))
+    op.execute(textwrap.dedent("DROP VIEW IF EXISTS event_view;"))
+    op.execute(textwrap.dedent("DROP VIEW IF EXISTS nodes_idle_time_view;"))
+    op.execute(textwrap.dedent("DROP VIEW IF EXISTS syslog_view;"))
 
 def upgrade():
     """

@@ -18,8 +18,13 @@ AC_DEFUN([MCA_orcm_sensor_nodepower_CONFIG], [
                                 [Build nodepower support (default: no)])],
 	                        [], with_nodepower=no)
 
+    AS_IF([test "$with_ipmiutil" = "no"],
+          [AC_MSG_WARN([NODEPOWER SENSOR SUPPORT REQUESTED])
+           AC_MSG_WARN([BUT SUPPORT FOR REQUIRED LIBRARY HAS BEEN DISABLED])])
+
+
     # do not build if support not requested
-    AS_IF([test "$with_nodepower" != "no"],
+    AS_IF([test "$with_nodepower" != "no" && test "$with_ipmiutil" != "no"],
           [AS_IF([test ! -z "$with_nodepower" -a "$with_nodepower" != "yes"],
                  [orcm_check_nodepower_dir="$with_nodepower"])
 

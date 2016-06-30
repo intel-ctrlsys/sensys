@@ -12,6 +12,9 @@
 #include <string.h>
 #ifdef HAVE_LED_CONTROL_SUPPORT
     #include <ipmicmd.h>
+#else
+    #define IPMI_SESSION_AUTHTYPE_PASSWORD 0
+    #define IPMI_PRIV_LEVEL_USER 0
 #endif
 
 #include "led_control.h"

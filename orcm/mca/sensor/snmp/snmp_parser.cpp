@@ -28,6 +28,12 @@
         variable = getSecType(field->value.data.string);   \
     }
 
+#define getPrivProtocolFromItem(variable, searchedKey, field) \
+    if (NULL != field && OPAL_STRING == field->value.type     \
+        && 0 == strcmp(searchedKey, field->value.key)){       \
+        variable = getPrivProtocol(field->value.data.string); \
+    }
+
 #define returnIfMatches(variable, pattern, value) \
     if (NULL != variable && stringMatchRegex(string(variable), pattern)){ \
         return value;                                                     \
@@ -185,19 +191,20 @@ void snmpParser::buildSnmpCollectorsFromList(opal_list_t* list)
     string version="", oids="";
     auth_type authType = DEFAULT_AUTH_TYPE;
     sec_type secType = DEFAULT_SEC_TYPE;
+    priv_protocol priv = DEFAULT_PRIV_TYPE;
 
     getAllSnmpValues(aggregator, hostname, version, user, pass, location, oids,
-                     authType, secType, list);
+                     authType, secType, priv, list);
 
     if (fieldsAreNotEmpty(aggregator, hostname, version, user, oids) &&
         aggregatorIsThisHostname(aggregator)){
-        getSnmpCollectors(version, hostname, user, pass, authType, secType, oids, location);
+        getSnmpCollectors(version, hostname, user, pass, authType, secType, priv, oids, location);
     }
 }
 
 void snmpParser::getAllSnmpValues(string& aggregator, string& hostname, string& version,
                                   string& user, string& pass, string& location, string& oids,
-                                  auth_type& authType, sec_type& secType, opal_list_t* list)
+                                  auth_type& authType, sec_type& secType, priv_protocol& priv, opal_list_t* list)
 {
     orcm_value_t *field = NULL;
     OPAL_LIST_FOREACH(field, list, orcm_value_t){
@@ -210,6 +217,7 @@ void snmpParser::getAllSnmpValues(string& aggregator, string& hostname, string& 
         getStringValueFromItem(oids, XML_OIDS, field);
         getAuthTypeFromItem(authType, XML_AUTH_TYPE, field);
         getSecTypeFromItem(secType, XML_SEC_TYPE, field);
+        getPrivProtocolFromItem(priv, XML_PRIV_TYPE, field);
     }
 }
 
@@ -232,6 +240,17 @@ sec_type snmpParser::getSecType(char *secType)
     return DEFAULT_SEC_TYPE;
 }
 
+priv_protocol snmpParser::getPrivProtocol(char *priv)
+{
+    if (NULL != priv && 0 != strcmp("", priv)){
+        returnIfMatches(priv, "NOPRIV", NOPRIV);
+        returnIfMatches(priv, "DES", DES);
+        returnIfMatches(priv, "AES", AES);
+    }
+    return DEFAULT_PRIV_TYPE;
+}
+
+
 inline bool snmpParser::fieldsAreNotEmpty(string aggregator, string hostname,
                                    string version, string user, string oids)
 {
@@ -252,7 +271,7 @@ bool snmpParser::aggregatorIsThisHostname(string aggregator){
 }
 
 void snmpParser::getSnmpCollectors(string version, string  hostname, string user, string pass,
-                                   auth_type authType, sec_type secType, string oids, string location)
+                                   auth_type authType, sec_type secType, priv_protocol priv, string oids, string location)
 {
     vector<string> hostnames = expandLogicalGroup(hostname);
     for (vector<string>::iterator host = hostnames.begin(); host != hostnames.end() ; host++){
@@ -260,7 +279,7 @@ void snmpParser::getSnmpCollectors(string version, string  hostname, string user
             collectors.push_back(getSnmpCollectorVersion1(*host, user, oids, location));
         } else if (0 == version.compare("2") || 0 == version.compare("3")) {
             collectors.push_back(getSnmpCollectorVersion3(*host, user, pass, authType, secType,
-                                                           oids, location));
+                                                           priv, oids, location));
         }
     }
 }
@@ -292,9 +311,9 @@ snmpCollector snmpParser::getSnmpCollectorVersion1(string hostname, string user,
 }
 
 snmpCollector snmpParser::getSnmpCollectorVersion3(string hostname, string user, string pass, auth_type auth,
-                                                   sec_type secType, string oids, string location)
+                                                   sec_type secType, priv_protocol priv, string oids, string location)
 {
-    snmpCollector collector(hostname, user, pass, auth, secType);
+    snmpCollector collector(hostname, user, pass, auth, secType, priv);
     collector.setLocation(location);
     collector.setOIDs(oids);
     return collector;

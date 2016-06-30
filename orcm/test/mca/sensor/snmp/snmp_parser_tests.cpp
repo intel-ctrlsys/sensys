@@ -141,6 +141,27 @@ TEST_F(ut_snmp_parser_tests, parse_no_version_number){
     ASSERT_EQ(0, v.size());
 }
 
+TEST_F(ut_snmp_parser_tests, parse_default_priv_value){
+    snmpCollectorVector v;
+    snmpParser sp(DEFAULT_PRIV_XML_NAME);
+    v = sp.getSnmpCollectorVector();
+    ASSERT_EQ(EXPECTED_COLLECTORS_BY_CONFIG, v.size());
+}
+
+TEST_F(ut_snmp_parser_tests, parse_AES_priv_value){
+    snmpCollectorVector v;
+    snmpParser sp(AES_PRIV_XML_NAME);
+    v = sp.getSnmpCollectorVector();
+    ASSERT_EQ(EXPECTED_COLLECTORS_BY_CONFIG, v.size());
+}
+
+TEST_F(ut_snmp_parser_tests, parse_NOPRIV_priv_value){
+    snmpCollectorVector v;
+    snmpParser sp(NOPRIV_PRIV_XML_NAME);
+    v = sp.getSnmpCollectorVector();
+    ASSERT_EQ(EXPECTED_COLLECTORS_BY_CONFIG, v.size());
+}
+
 TEST_F(ut_snmp_parser_tests, parse_default_auth_value){
     snmpCollectorVector v;
     snmpParser sp(DEFAULT_AUTH_VALUE_XML_NAME);

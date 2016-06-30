@@ -42,6 +42,11 @@ snmpCollector::snmpCollector(string host, string user, string pass, auth_type au
 }
 
 snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth, sec_type sec) : runtime_metrics_(NULL) {
+    snmpCollector(host, user, pass, auth, sec, DES);
+}
+
+
+snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth, sec_type sec, priv_protocol priv) : runtime_metrics_(NULL) {
     hostname = string(host);
     username = string(user);
     password = string(pass);
@@ -56,6 +61,8 @@ snmpCollector::snmpCollector(string host, string user, string pass, auth_type au
 
     storeCharsAndLength(username, &session.securityName, &session.securityNameLen);
     setSecurityLevel(sec);
+
+    setPrivacyLevel(priv);
 
     switch(auth) {
         case MD5:
@@ -222,6 +229,17 @@ vector<vardata> snmpCollector::packCollectedData(netsnmp_pdu *response) {
         }
     }
     return retValue;
+}
+
+void snmpCollector::setPrivacyLevel(priv_protocol priv) {
+    switch(priv){
+        case NOPRIV:
+            break;
+        case DES:
+            break;
+        case AES:
+            break;
+    }
 }
 
 void snmpCollector::setSecurityLevel(sec_type sec) {

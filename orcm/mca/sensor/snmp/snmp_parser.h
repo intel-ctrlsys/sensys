@@ -28,6 +28,7 @@ extern "C" {
 
 #define DEFAULT_SEC_TYPE  AUTHNOPRIV
 #define DEFAULT_AUTH_TYPE MD5
+#define DEFAULT_PRIV_TYPE DES
 #define SNMP_DEFAULT_FILE_NAME "orcm-default-config.xml"
 
 #define XML_SNMP "snmp"
@@ -42,6 +43,7 @@ extern "C" {
 #define XML_AGGREGATOR "aggregator"
 #define XML_HOSTNAME "hostname"
 #define XML_OIDS "oids"
+#define XML_PRIV_TYPE "priv"
 
 typedef std::map<std::string, snmpCollector> snmpCollectorMap;
 typedef std::vector<snmpCollector> snmpCollectorVector;
@@ -76,19 +78,20 @@ class snmpParser {
         void buildSnmpCollectorsFromList(opal_list_t* list);
         void getAllSnmpValues(std::string& aggregator, std::string& hostname, std::string& version,
                               std::string& user, std::string& pass, std::string& location, std::string& oids,
-                              auth_type& authType, sec_type& secType, opal_list_t* list);
+                              auth_type& authType, sec_type& secType, priv_protocol& priv, opal_list_t* list);
         auth_type getAuthType(char *authType);
         sec_type getSecType(char *secType);
+        priv_protocol getPrivProtocol(char *priv);
         inline bool fieldsAreNotEmpty(std::string aggregator, std::string hostname, std::string version,
                                       std::string user, std::string oids);
         bool aggregatorIsThisHostname(std::string aggregator);
         void getSnmpCollectors(std::string version, std::string  hostname, std::string user, std::string pass,
-                               auth_type authType, sec_type secType, std::string oids, std::string location);
+                               auth_type authType, sec_type secType, priv_protocol priv, std::string oids, std::string location);
         std::vector<std::string> expandLogicalGroup(std::string str);
         snmpCollector getSnmpCollectorVersion1(std::string hostname, std::string user,
                                                std::string oids, std::string location);
         snmpCollector getSnmpCollectorVersion3(std::string hostname, std::string user, std::string pass,
-                                               auth_type auth, sec_type sec, std::string oids, std::string location);
+                                               auth_type auth, sec_type sec, priv_protocol priv, std::string oids, std::string location);
 };
 
 class fileNotFound : public runtime_error {

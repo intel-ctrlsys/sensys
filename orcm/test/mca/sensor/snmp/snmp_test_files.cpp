@@ -42,6 +42,9 @@ int testFiles::writeTestFiles()
     ret += writeStringToFile(WRONG_SNMP_TAG_ENTRIES_XML_NAME, WRONG_SNMP_TAG_ENTRIES_XML_FILE);
     ret += writeStringToFile(WRONG_VERSION_NUMBER_01_XML_NAME, WRONG_VERSION_NUMBER_01_XML_FILE);
     ret += writeStringToFile(WRONG_VERSION_NUMBER_02_XML_NAME, WRONG_VERSION_NUMBER_02_XML_FILE);
+    ret += writeStringToFile(DEFAULT_PRIV_XML_NAME, DEFAULT_PRIV_XML_FILE);
+    ret += writeStringToFile(AES_PRIV_XML_NAME, AES_PRIV_XML_FILE);
+    ret += writeStringToFile(NOPRIV_PRIV_XML_NAME, NOPRIV_PRIV_XML_FILE);
     return ret;
 }
 
@@ -69,5 +72,8 @@ int testFiles::removeTestFiles()
     ret += removeFile(WRONG_SNMP_TAG_ENTRIES_XML_NAME);
     ret += removeFile(WRONG_VERSION_NUMBER_01_XML_NAME);
     ret += removeFile(WRONG_VERSION_NUMBER_02_XML_NAME);
+    ret += removeFile(DEFAULT_PRIV_XML_NAME);
+    ret += removeFile(AES_PRIV_XML_NAME);
+    ret += removeFile(NOPRIV_PRIV_XML_NAME);
     return ret;
 }

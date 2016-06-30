@@ -20,7 +20,7 @@
 #define BASE_XML_NAME "base.xml"
 #define BASE_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\" priv=\"DES\"> \n\
         <aggregator>localhost</aggregator> \n\
         <hostname>server[2:0-20],server21</hostname> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
@@ -35,7 +35,7 @@
 #define AUTHPRIV_SEC_VALUE_XML_NAME "authpriv_sec_value.xml"
 #define AUTHPRIV_SEC_VALUE_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHPRIV\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHPRIV\" priv=\"DES\"> \n\
         <aggregator>localhost</aggregator> \n\
         <hostname>server[2:0-20],server21</hostname> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
@@ -50,7 +50,7 @@
 #define DEFAULT_AUTH_VALUE_XML_NAME "default_auth_value.xml"
 #define DEFAULT_AUTH_VALUE_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"invalid_value___this_will_use_the_default_md5\" sec=\"AUTHNOPRIV\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"invalid_value___this_will_use_the_default_md5\" sec=\"AUTHNOPRIV\" priv=\"DES\"> \n\
         <aggregator>localhost</aggregator> \n\
         <hostname>server[2:0-20],server21</hostname> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
@@ -65,7 +65,7 @@
 #define DEFAULT_SEC_VALUE_XML_NAME "default_sec_value.xml"
 #define DEFAULT_SEC_VALUE_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"invalid_value___this_will_use_the_default_authnopriv\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"invalid_value___this_will_use_the_default_authnopriv\" priv=\"DES\"> \n\
         <aggregator>localhost</aggregator> \n\
         <hostname>server[2:0-20],server21</hostname> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
@@ -83,7 +83,7 @@
 #define NO_AGGREGATORS_XML_NAME "no_aggregators.xml"
 #define NO_AGGREGATORS_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"NOAUTH\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"NOAUTH\" priv=\"DES\"> \n\
         <hostname>server[2:0-20],server21</hostname> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
     </config> \n\
@@ -96,7 +96,7 @@
 #define NOAUTH_SEC_VALUE_XML_NAME "noauth_sec_value.xml"
 #define NOAUTH_SEC_VALUE_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"NOAUTH\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"NOAUTH\" priv=\"DES\"> \n\
         <aggregator>localhost</aggregator> \n\
         <hostname>server[2:0-20],server21</hostname> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
@@ -111,7 +111,7 @@
 #define NO_HOSTNAME_XML_NAME "no_hostname.xml"
 #define NO_HOSTNAME_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"NOAUTH\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"NOAUTH\" priv=\"DES\"> \n\
         <aggregator>localhost</aggregator> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
     </config> \n\
@@ -143,7 +143,7 @@ test :) \n"
 #define SHA1_AUTH_VALUE_XML_NAME "sha1_auth_value.xml"
 #define SHA1_AUTH_VALUE_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"SHA1\" sec=\"NOAUTH\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"SHA1\" sec=\"NOAUTH\" priv=\"DES\"> \n\
         <aggregator>localhost</aggregator> \n\
         <hostname>server[2:0-20],server21</hostname> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
@@ -158,7 +158,7 @@ test :) \n"
 #define SUCCESSFUL_XML_NAME "successful.xml"
 #define SUCCESSFUL_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\" priv=\"DES\"> \n\
         <aggregator>localhost</aggregator> \n\
         <hostname>server[2:0-20],server21</hostname> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
@@ -173,7 +173,7 @@ test :) \n"
 #define WRONG_OIDS_V1_XML_NAME "wrong_oids_v1.xml"
 #define WRONG_OIDS_V1_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\" priv=\"DES\"> \n\
         <aggregator>node01</aggregator> \n\
         <hostname>server[2:0-20],server21</hostname> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
@@ -188,7 +188,7 @@ test :) \n"
 #define  WRONG_OIDS_V3_XML_NAME "wrong_oids_v3.xml"
 #define  WRONG_OIDS_V3_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\" priv=\"DES\"> \n\
         <aggregator>localhost</aggregator> \n\
         <hostname>server[2:0-20],server21</hostname> \n\
         <oids>this_is_a_wrong_oids</oids> \n\
@@ -203,7 +203,7 @@ test :) \n"
 #define WRONG_SNMP_TAG_ENTRIES_XML_NAME "wrong_snmp_tag_entries.xml"
 #define WRONG_SNMP_TAG_ENTRIES_XML_FILE \
 "<snmp> \n\
-    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHPRIV\"> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHPRIV\" priv=\"DES\"> \n\
         <invalid>this_is_an_invalid_entry</invalid> \n\
         <another_one>invalid</another_one> \n\
         <yet_another_one>not_valid</yet_another_one> \n\
@@ -247,6 +247,51 @@ test :) \n"
 "<snmp> \n\
     <config name=\"snmp2\" version=\"-1\" user=\"user\" location=\"X Lab\"> \n\
         <aggregator>localhost</aggregator> \n\
+        <hostname>switches[2:0-20],switch21</hostname> \n\
+        <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
+    </config> \n\
+</snmp> \n"
+
+#define DEFAULT_PRIV_XML_NAME "default_priv.xml"
+#define DEFAULT_PRIV_XML_FILE \
+"<snmp> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\" priv=\"Some Invalid Value\"> \n\
+        <aggregator>localhost</aggregator> \n\
+        <hostname>server[2:0-20],server21</hostname> \n\
+        <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
+    </config> \n\
+    <config name=\"snmp2\" version=\"1\" user=\"user\" location=\"X Lab\"> \n\
+        <aggregator>node01</aggregator> \n\
+        <hostname>switches[2:0-20],switch21</hostname> \n\
+        <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
+    </config> \n\
+</snmp> \n"
+
+#define AES_PRIV_XML_NAME "aes_priv.xml"
+#define AES_PRIV_XML_FILE \
+"<snmp> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\" priv=\"AES\"> \n\
+        <aggregator>localhost</aggregator> \n\
+        <hostname>server[2:0-20],server21</hostname> \n\
+        <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
+    </config> \n\
+    <config name=\"snmp2\" version=\"1\" user=\"user\" location=\"X Lab\"> \n\
+        <aggregator>node01</aggregator> \n\
+        <hostname>switches[2:0-20],switch21</hostname> \n\
+        <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
+    </config> \n\
+</snmp> \n"
+
+#define NOPRIV_PRIV_XML_NAME "nopriv_priv.xml"
+#define NOPRIV_PRIV_XML_FILE \
+"<snmp> \n\
+    <config name=\"snmp1\" version=\"3\" user=\"user\" pass=\"12345678\" auth=\"MD5\" sec=\"AUTHNOPRIV\" priv=\"NOPRIV\"> \n\
+        <aggregator>localhost</aggregator> \n\
+        <hostname>server[2:0-20],server21</hostname> \n\
+        <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
+    </config> \n\
+    <config name=\"snmp2\" version=\"1\" user=\"user\" location=\"X Lab\"> \n\
+        <aggregator>node01</aggregator> \n\
         <hostname>switches[2:0-20],switch21</hostname> \n\
         <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids> \n\
     </config> \n\

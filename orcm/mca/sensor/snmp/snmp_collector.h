@@ -28,6 +28,7 @@
 
 enum auth_type {MD5, SHA1};
 enum sec_type {NOAUTH, AUTHNOPRIV, AUTHPRIV};
+enum priv_protocol {DES, AES, NOPRIV};
 
 class RuntimeMetrics;
 
@@ -40,6 +41,7 @@ class snmpCollector {
         snmpCollector(std::string hostname, std::string username, std::string password);
         snmpCollector(std::string hostname, std::string username, std::string password, auth_type auth);
         snmpCollector(std::string hostname, std::string username, std::string password, auth_type auth, sec_type sec);
+        snmpCollector(std::string hostname, std::string username, std::string password, auth_type auth, sec_type sec, priv_protocol priv);
         ~snmpCollector();
 
         void dump_pdu(netsnmp_pdu *p);
@@ -63,6 +65,7 @@ class snmpCollector {
         std::list<std::string> oidList;
 
         void setSecurityLevel(sec_type sec);
+        void setPrivacyLevel(priv_protocol priv);
         void setMD5Authentication(std::string password);
         void setSHA1Authentication(std::string password);
         void storeCharsAndLength(std::string s, char **c_str, size_t *len);

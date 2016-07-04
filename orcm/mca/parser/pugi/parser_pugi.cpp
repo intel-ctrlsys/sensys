@@ -48,9 +48,7 @@ inline bool is_file_id_valid(int file_id){
 
 void print_error_msg(const char *msg)
 {
-    int opal_id = opal_output_open(NULL);
-    opal_output(opal_id, "ERROR: pugi_parser: %s", msg);
-    opal_output_close(opal_id);
+    ORCM_UTIL_MSG("ERROR: %s: pugi_parser: %s", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg);
 }
 
 

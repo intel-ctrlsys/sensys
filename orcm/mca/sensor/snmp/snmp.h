@@ -111,4 +111,9 @@ class noSnmpConfigAvailable : public std::runtime_error {
     noSnmpConfigAvailable() : std::runtime_error( "No snmp configuration available." ) {}
 };
 
+class noDataSampled : public std::runtime_error {
+    public:
+    noDataSampled() : std::runtime_error( "No available data for sampling." ) {}
+};
+
 #endif /* SNMP_H */

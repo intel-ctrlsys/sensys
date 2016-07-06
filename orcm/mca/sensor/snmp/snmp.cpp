@@ -226,9 +226,8 @@ void snmp_impl::log(opal_buffer_t* buf)
         SAFE_OBJ_RELEASE(analytics_vals);
 
     } catch (exception &e) {
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                            "ERROR: %s sensor SNMP : init: '%s'",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
+        opal_output(0, "ERROR: %s sensor SNMP : log: '%s'",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
     }
     SAFE_OBJ_RELEASE(key);
     SAFE_OBJ_RELEASE(compute);
@@ -474,9 +473,8 @@ void snmp_impl::collect_sample(bool perthread /* = false*/)
             ORTE_ERROR_LOG(rc);
         }
     } catch (exception &e) {
-        opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                            "ERROR: %s sensor SNMP : collect_data: '%s'",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
+        opal_output(0, "ERROR: %s sensor SNMP : collect_data: '%s'",
+                    ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
     }
     OBJ_DESTRUCT(&buffer);
 }
@@ -493,16 +491,22 @@ void snmp_impl::packPluginName(opal_buffer_t* buffer) {
 
 
 void snmp_impl::collectAndPackDataSamples(opal_buffer_t *buffer) {
+    bool has_sampled = false;
+
     for(snmpCollectorVector::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
         try {
             vector<vardata> dataSamples = it->collectData();
             vardata(it->getHostname()).setKey(HOSTNAME_STR).packTo(buffer);
             packDataToBuffer(dataSamples, buffer);
+            has_sampled = true;
         } catch (exception &e) {
-            opal_output_verbose(1, orcm_sensor_base_framework.framework_output,
-                                "WARNING: %s sensor SNMP : unable to collect sample: '%s'",
-                                ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
+            opal_output(0, "WARNING: %s sensor SNMP : unable to collect sample: '%s'",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
         }
+    }
+
+    if (!has_sampled) {
+       throw noDataSampled();
     }
 }
 

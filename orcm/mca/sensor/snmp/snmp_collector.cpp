@@ -156,9 +156,9 @@ vector<vardata> snmpCollector::collectData() {
 
     status = snmp_synch_response(ss, pdu, &response);
     if (status == STAT_TIMEOUT) {
-        throw snmpTimeout();
+        throw snmpTimeout(hostname);
     } else if (status != STAT_SUCCESS) {
-        throw dataCollectionError();
+        throw dataCollectionError(hostname);
     }
     if (NULL != response) {
         retValue = packCollectedData(response);

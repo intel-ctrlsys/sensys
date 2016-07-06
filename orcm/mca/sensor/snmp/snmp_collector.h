@@ -92,12 +92,16 @@ class invalidSession: public runtime_error {
 
 class snmpTimeout: public runtime_error {
     public:
-        snmpTimeout() : runtime_error("Connection to SNMP device timed out") {}
+        snmpTimeout(string &device) : runtime_error(
+            string("Connection to SNMP device timed out: ")
+            + string(device)) {}
 };
 
 class dataCollectionError: public runtime_error {
     public:
-        dataCollectionError() : runtime_error("Error during data collection") {}
+        dataCollectionError(string &device) : runtime_error(
+            string ("Error during data collection. Possible misconfigured SNMP device (")
+            + device + string(")")) {}
 };
 
 class packetError: public runtime_error {

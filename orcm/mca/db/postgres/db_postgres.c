@@ -85,7 +85,6 @@ static int postgres_commit(struct orcm_db_base_module_t *imod);
 static int postgres_rollback(struct orcm_db_base_module_t *imod);
 
 /* Internal helper functions */
-static void escape_string_apostrophe(char *str_src, char *str_dst);
 static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
                                       opal_list_t *input,
                                       opal_list_t *ret);
@@ -291,46 +290,38 @@ static int postgres_store(struct orcm_db_base_module_t *imod,
     return rc;
 }
 
-static void escape_string_apostrophe(char *str_src, char *str_dst)
+int postgres_escape_string(char *str_src, char **str_dst)
 {
-    size_t i=0;
-    size_t copy_size = 0;
-    int carry = 0;
-    char msg1[STRING_MAX_LEN];
-    char msg2[STRING_MAX_LEN];
+    int rc = ORCM_SUCCESS;
+    int str_pos = 0;
+    int quotes = 0;
+    size_t act_length = 0;
+    char *chr_pos = NULL;
 
-    memset(msg1,0,STRING_MAX_LEN);
-    memset(msg2,0,STRING_MAX_LEN);
+    if( NULL != str_src ) {
+        act_length = strlen(str_src);
+        *str_dst = strdup(str_src);
 
-    if (strlen(str_src) >= STRING_MAX_LEN) {
-        copy_size = STRING_MAX_LEN - 1;
-    } else {
-        copy_size = strlen(str_src);
-    }
-    strncpy(msg1, str_src, copy_size);
-
-    for(i=0; i<=strlen(msg1); i++)
-    {
-        if (carry + i < STRING_MAX_LEN) {
-            msg2[carry+i] = msg1[i];
-        }
-        if(msg1[i] == '\'')
-        {
-            if (carry + i < STRING_MAX_LEN) {
-                msg2[carry+i] = '\\';
+        if( NULL != *str_dst ) {
+            while( ORCM_SUCCESS == rc
+                   && NULL != (chr_pos = strchr(str_src + str_pos, '\'')) ) {
+                *str_dst = (char *)realloc( *str_dst, act_length + 2 );
+                if( NULL != *str_dst) {
+                    str_pos = chr_pos - str_src + 1;
+                    strcpy( *str_dst + str_pos + quotes + 1, chr_pos + 1 );
+                    (*str_dst)[str_pos + quotes] = '\'';
+                    act_length++;
+                    quotes++;
+                } else {
+                    rc = ORCM_ERR_OUT_OF_RESOURCE;
+                }
             }
-            if (carry + i + 1 < STRING_MAX_LEN) {
-                msg2[carry+i+1] = '\'';
-            }
-            carry++;
+        } else {
+            rc = ORCM_ERR_OUT_OF_RESOURCE;
         }
     }
-    if (carry + i < STRING_MAX_LEN) {
-        msg2[carry+i] = '\0';
-    }
-    strncpy(str_dst, msg2, strlen(msg2));
 
-    return;
+    return rc;
 }
 
 static int postgres_store_sample(struct orcm_db_base_module_t *imod,
@@ -344,7 +335,7 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
     opal_value_t *timestamp_item = NULL;
     opal_value_t *hostname_item = NULL;
 
-    char escaped_str[STRING_MAX_LEN];
+    char *escaped_str = NULL;
     char hostname[256];
     char time_stamp[TIMESTAMP_STR_LENGTH];
     char **data_item_parts=NULL;
@@ -469,19 +460,19 @@ static int postgres_store_sample(struct orcm_db_base_module_t *imod,
          *  data_type_id) */
         switch (item.item_type) {
         case ORCM_DB_ITEM_STRING:
-            memset(escaped_str, '\0', sizeof(escaped_str));
-            escape_string_apostrophe(item.value.value_str, escaped_str);
+            postgres_escape_string(item.value.value_str, &escaped_str);
             if (NULL != units) {
                 asprintf(rows + i,
-                         "('%s','%s_%s','%s',NULL,NULL,E'%s','%s',%d)",
+                         "('%s','%s_%s','%s',NULL,NULL,'%s','%s',%d)",
                          hostname, data_group, data_item, time_stamp,
                          escaped_str, units, kv->type);
             } else {
                 asprintf(rows + i,
-                         "('%s','%s_%s','%s',NULL,NULL,E'%s',NULL,%d)",
+                         "('%s','%s_%s','%s',NULL,NULL,'%s',NULL,%d)",
                          hostname, data_group, data_item, time_stamp,
                          escaped_str, kv->type);
             }
+            SAFEFREE(escaped_str);
             break;
         case ORCM_DB_ITEM_REAL:
             if (NULL != units) {
@@ -582,7 +573,7 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
     opal_value_t *param_items[] = {NULL, NULL, NULL};
     opal_bitmap_t item_bm;
 
-    char escaped_str[STRING_MAX_LEN];
+    char *escaped_str = NULL;
     char *hostname = NULL;
     char *data_group = NULL;
     char time_stamp[TIMESTAMP_STR_LENGTH];
@@ -746,21 +737,21 @@ static int postgres_store_data_sample(mca_db_postgres_module_t *mod,
          *  event_id) */
         switch (item.item_type) {
         case ORCM_DB_ITEM_STRING:
-            memset(escaped_str, '\0', sizeof(escaped_str));
-            escape_string_apostrophe(item.value.value_str, escaped_str);
+            postgres_escape_string(item.value.value_str, &escaped_str);
             if (NULL != units) {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',NULL,NULL,E'%s','%s',%d,%d,%lld)",
+                         "('%s','%s_%s','%s',NULL,NULL,'%s','%s',%d,%d,%lld)",
                          hostname, data_group, data_item, time_stamp,
                          escaped_str, units, mv->value.type, mv->value.type,
                          event_id_once_added);
             } else {
                 asprintf(rows + j,
-                         "('%s','%s_%s','%s',NULL,NULL,E'%s',NULL,%d,%d,%lld)",
+                         "('%s','%s_%s','%s',NULL,NULL,'%s',NULL,%d,%d,%lld)",
                          hostname, data_group, data_item, time_stamp,
                          escaped_str, mv->value.type, mv->value.type,
                          event_id_once_added);
             }
+            SAFEFREE(escaped_str);
             break;
         case ORCM_DB_ITEM_REAL:
             if (NULL != units) {
@@ -2684,6 +2675,7 @@ static int postgres_close_result_set(struct orcm_db_base_module_t *imod,
 
 char* format_string_to_sql(opal_data_type_t type, char* raw_string){
     char* formated_string = NULL;
+    char* escaped_raw_string = NULL;
 
     switch(type){
         case ORCM_DB_QRY_DATE:
@@ -2715,15 +2707,15 @@ char* format_string_to_sql(opal_data_type_t type, char* raw_string){
             if(NULL == raw_string)
                 formated_string = strdup("NULL");
             else{
-                char escaped_raw_string[2 * STRING_MAX_LEN + 1];
-                memset(escaped_raw_string,0,sizeof(escaped_raw_string));
-                escape_string_apostrophe(raw_string, escaped_raw_string);
-                asprintf(&formated_string,"E\'%s\'",escaped_raw_string);
+                postgres_escape_string(raw_string, &escaped_raw_string);
+                asprintf(&formated_string,"\'%s\'",escaped_raw_string);
+                SAFEFREE(escaped_raw_string);
             }
             break;
         default:
             formated_string = strdup("");
     }
+
     return formated_string;
 }
 

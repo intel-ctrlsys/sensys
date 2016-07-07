@@ -753,7 +753,7 @@ TEST(ut_db_postgres_tests, build_query_from_function_name_and_arguments_2)
     char* query = NULL;
     opal_list_t* argument_list = create_list_with_supported_types();
     query = build_query_from_function_name_and_arguments("function_name",argument_list);
-    ASSERT_EQ(0, strcmp(query, "select * from function_name('value'::TIMESTAMP,value::DOUBLE,value::INT,'value'::INTERVAL,E'value',E'value',);"));
+    ASSERT_EQ(0, strcmp(query, "select * from function_name('value'::TIMESTAMP,value::DOUBLE,value::INT,'value'::INTERVAL,'value','value',);"));
 }
 
 TEST(ut_db_postgres_tests, build_query_from_function_name_and_arguments_3)
@@ -817,4 +817,16 @@ TEST(ut_db_postgres_tests, fetch_function_pqexec_fail)
     opal_list_t* argument_list = create_list_with_supported_types();
     rc = mca_db_postgres_module.api.fetch_function((orcm_db_base_module_t*)mod,"function_name",argument_list,argument_list);
     EXPECT_EQ(ORCM_ERROR,rc);
+}
+
+TEST(ut_db_postgres_tests, escape_psql_string)
+{
+    int rc;
+    const char *test_str = "''a'bc''d'";
+    char *test_result = NULL;
+
+    rc = postgres_escape_string((char *)test_str, &test_result);
+    EXPECT_EQ(ORCM_SUCCESS,rc);
+    ASSERT_STREQ(test_result,"''''a''bc''''d''");
+    SAFEFREE(test_result);
 }

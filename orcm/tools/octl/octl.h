@@ -237,8 +237,9 @@ static orcm_cli_init_t cli_init[] = {
     { { "query", "event", NULL}, "sensor-data", 0, 0, "Returns the sensor data around an event" },
     { { "query", "event", NULL}, "", 0, 0, "query event sensor-data <event-id> [interval] <sensor-list> [node-list]" },
     { { "query", NULL}, "node", 0, 0, "Node status command." },
-    { { "query", "node", NULL}, "status", 0, 0, "Returns the status logged in the data base for the "
-    "nodes in the database: query node status <node-list>" },
+    { { "query", "node", NULL}, "status", 0, 0, "Returns the status logged in"
+    " the database for the nodes in the database:" },
+    { { "query", "node", NULL}, "", 0, 0, "query node status <node-list>" },
 
     /****** Chassis ID commands ******/
     { { NULL}, "chassis-id", 0, 0, "Enable/Disable chassis identify LED." },

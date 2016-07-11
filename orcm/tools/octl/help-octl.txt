@@ -533,7 +533,7 @@ Date has the format: YYYY-MM-DD hh:mm:ss
                      YYYY-MM-DD (00:00:00 will be added)
                      hh:mm:ss (current day will be added)
 Example: query event data 2016-02-16 08:22:00 2016-02-16 08:22:14 c[2:1-10]
-         query event data 08:22:00 2015-01-01
+         query event data 08:22:00 2015-01-01 c[2:1-10]
          query event data 10:00:00 c[2:1-10],a[2:1-10]
 
 [usage:query-event-sensor-data]
@@ -552,7 +552,7 @@ Date has the format: YYYY-MM-DD hh:mm:ss
                      YYYY-MM-DD (00:00:00 will be added)
                      hh:mm:ss (current day will be added)
 Example: query history 2015-11-13 15:00:00 2015-11-13 16:00:00 c[2:1-10]
-         query history 13:01:01 2015-01-01
+         query history 13:01:01 2015-01-01 c[2:1-10]
          query history *
 
 [usage:query-idle]

@@ -144,7 +144,8 @@ int run_orcmd(int argc, char *argv[])
     mca_base_cmd_line_setup(&cmd_line);
     if (ORCM_SUCCESS != (ret = opal_cmd_line_parse(&cmd_line, false, argc, argv))) {
         fprintf(stderr, "Command line error, use -h to get help.  Error: %d\n", ret);
-        return 1;
+        ret = 1;
+        goto cleanup;
     }
 
     /* Initialize the argv parsing handle */
@@ -167,7 +168,8 @@ int run_orcmd(int argc, char *argv[])
      */
     if (OPAL_SUCCESS != mca_base_cmd_line_process_args(&cmd_line, &environ, &environ)) {
         opal_finalize_util();
-        return 1;
+        ret = 1;
+        goto cleanup;
     }
 
 
@@ -179,7 +181,8 @@ int run_orcmd(int argc, char *argv[])
             free(str);
         }
         opal_finalize_util();
-        return 0;
+        ret = 0;
+        goto cleanup;
     }
 
     if (orcm_globals.version) {
@@ -191,7 +194,8 @@ int run_orcmd(int argc, char *argv[])
             free(str);
         }
         opal_finalize_util();
-        return 0;
+        ret = 0;
+        goto cleanup;
     }
 
     /***************

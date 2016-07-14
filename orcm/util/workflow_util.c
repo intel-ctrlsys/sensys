@@ -23,8 +23,6 @@ opal_list_t* orcm_util_workflow_add_retrieve_workflows_section(const char *file)
     int file_id;
 
     if (0 > (file_id = orcm_parser.open(file))) {
-        ORCM_UTIL_MSG("%s workflow:util:Can't open workflow file",
-                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
         return result_list;
     }
 

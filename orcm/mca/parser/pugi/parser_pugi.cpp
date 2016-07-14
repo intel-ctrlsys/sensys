@@ -48,7 +48,7 @@ inline bool is_file_id_valid(int file_id){
 
 void print_error_msg(const char *msg)
 {
-    ORCM_UTIL_MSG("ERROR: %s: pugi_parser: %s", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg);
+    fprintf(stderr, "ERROR: %s : pugi_parser: %s \n", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), msg);
 }
 
 

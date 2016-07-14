@@ -78,7 +78,7 @@ class pugi_impl {
 class unableToOpenFile : public std::runtime_error {
     public:
     unableToOpenFile(const std::string& file, const std::string& pugi_error_msg) :
-        std::runtime_error("Cannot open file: " + file + " Error: " + pugi_error_msg) {}
+        std::runtime_error("Cannot open file '" + file + "' because " + pugi_error_msg) {}
 };
 
 #endif

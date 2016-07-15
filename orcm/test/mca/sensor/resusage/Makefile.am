@@ -34,9 +34,13 @@ PY_LOG_COMPILER = /usr/bin/python
 check_PROGRAMS = resusage_tests
 
 resusage_tests_SOURCES = \
-	resusage_tests.cpp
+                         resusage_tests.cpp \
+                         resusage_tests_mocking.cpp
 
-MOCKING =
+MOCKING = \
+          -Wl,--wrap=orte_get_job_data_object \
+          -Wl,--wrap=opal_pointer_array_get_item \
+          -Wl,--wrap=orcm_analytics_base_send_data
 
 #
 # Libraries we depend on

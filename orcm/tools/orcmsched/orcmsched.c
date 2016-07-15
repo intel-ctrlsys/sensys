@@ -67,8 +67,6 @@
 #include "orte/mca/odls/base/base.h"
 #include "orte/mca/plm/plm.h"
 #include "orte/mca/plm/base/plm_private.h"
-#include "orcm/mca/pwrmgmt/pwrmgmt.h"
-#include "orcm/mca/pwrmgmt/base/base.h"
 #include "orte/mca/ras/ras.h"
 #include "orte/mca/routed/routed.h"
 
@@ -207,16 +205,6 @@ int main(int argc, char *argv[])
     /* init the ORCM library */
     if (ORCM_SUCCESS != (ret = orcm_init(ORCM_SCHED))) {
         fprintf(stderr, "Failed to init: error %d\n", ret);
-        exit(1);
-    }
-
-   /* setup the PWRMGMT framework */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_pwrmgmt_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        exit(1);
-    }
-    if (ORTE_SUCCESS != (ret = orcm_pwrmgmt_base_select())) {
-        ORTE_ERROR_LOG(ret);
         exit(1);
     }
 

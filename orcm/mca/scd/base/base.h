@@ -70,6 +70,7 @@ OBJ_CLASS_DECLARATION(orcm_alloc_tracker_t);
 typedef struct {
     /* flag that we just want to test */
     bool test_mode;
+#if 0
     /* cluster power budget in Watts */
     int32_t power_budget;
     /* default cluster power mode */
@@ -88,6 +89,7 @@ typedef struct {
     float power_frequency;
     /* default cluster power strictness policy */
     bool power_strict;
+#endif
     /* define an event base strictly for scheduling - this
      * allows the scheduler to respond to requests for
      * information without interference with the
@@ -154,6 +156,7 @@ ORCM_DECLSPEC int orcm_scd_base_rm_add_session_state(orcm_scd_session_state_t st
                                                      int priority);
 ORCM_DECLSPEC void orcm_scd_base_construct_queues(int fd, short args, void *cbdata);
 ORCM_DECLSPEC int orcm_scd_base_get_next_session_id(void);
+#if 0
 ORCM_DECLSPEC int orcm_scd_base_get_cluster_power_budget(void);
 ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_budget(int budget);
 ORCM_DECLSPEC int orcm_scd_base_get_cluster_power_mode(void);
@@ -172,6 +175,7 @@ ORCM_DECLSPEC float orcm_scd_base_get_cluster_power_frequency(void);
 ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_frequency(float frequency);
 ORCM_DECLSPEC bool orcm_scd_base_get_cluster_power_strict(void);
 ORCM_DECLSPEC int orcm_scd_base_set_cluster_power_strict(bool strict);
+#endif
 
 END_C_DECLS
 #endif

@@ -187,6 +187,7 @@ TEST_F(ut_parser_base_tests, parser_base_select_NULL_component)
     ASSERT_EQ(MY_ORCM_SUCCESS, ret);
 }
 
+
 TEST_F(ut_parser_base_tests, parser_base_select_NULL_query_component)
 {
     int ret;

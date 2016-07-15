@@ -34,10 +34,7 @@ octl_SOURCES = \
         octl.h \
         octl.c \
         octl_commands.c \
-        power.c \
-        queue.c \
         resource.c \
-        session.c \
         sensor.c \
         grouping.h \
         grouping.c \

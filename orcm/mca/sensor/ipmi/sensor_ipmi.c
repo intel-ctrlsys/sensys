@@ -1089,7 +1089,6 @@ static void ipmi_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
                     if (0 <= orcm_sensor_base.dbhandle) {
                         orcm_db.store_new(orcm_sensor_base.dbhandle, ORCM_DB_INVENTORY_DATA , oldhost->records, NULL, NULL, NULL);
                     }
-
                 } else {
                     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                                         "ipmi compare passed");

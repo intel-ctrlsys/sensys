@@ -63,6 +63,7 @@ void ut_sst_tool_tests::InitMockingFlags()
     sst_mocking.orte_rmaps_base_select = false;
     sst_mocking.orcm_db_base_select = false;
     sst_mocking.opal_dstore_base_select = false;
+
     // Change function pointers
     orcm_cfgi.read_config = &mock_cfgi_read_config;
     orcm_cfgi.define_system = &mock_cfgi_define_system;
@@ -249,8 +250,6 @@ TEST_F(ut_sst_tool_tests, tool_init_opal_dstore_base_select)
     rc = orcm_sst_tool_module.init();
     EXPECT_EQ(rc, ORTE_ERR_SILENT);
 }
-
-
 
 TEST_F(ut_sst_tool_tests, tool_init_mca_base_framework_open_all)
 {

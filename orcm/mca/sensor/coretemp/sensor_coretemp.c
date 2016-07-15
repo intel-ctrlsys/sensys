@@ -932,6 +932,7 @@ static void coretemp_inventory_log(char *hostname, opal_buffer_t *inventory_snap
     rc = opal_dss.unpack(inventory_snapshot, &tmp, &n, OPAL_STRING);
     SAFEFREE(tmp);
     ON_FAILURE_RETURN(rc);
+    SAFEFREE(tmp);
 
     n=1;
     rc = opal_dss.unpack(inventory_snapshot, &current_time, &n, OPAL_TIMEVAL);

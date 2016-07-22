@@ -12,7 +12,7 @@
  *                         All rights reserved.
  * Copyright (c) 2012-2014 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved
  * Copyright (c) 2014      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
@@ -59,7 +59,6 @@
 #include "opal/util/argv.h"
 #include "opal/datatype/opal_datatype.h"
 
-#include "orte/mca/dfs/dfs.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/odls/base/odls_private.h"
 #include "orte/util/show_help.h"

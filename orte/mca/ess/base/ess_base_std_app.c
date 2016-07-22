@@ -12,7 +12,7 @@
  * Copyright (c) 2010-2012 Oak Ridge National Labs.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.  All rights
  *                         reserved.
- * Copyright (c) 2013-2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
  * Copyright (c) 2014      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * Copyright (c) 2015 Cisco Systems, Inc.  All rights reserved.
@@ -51,7 +51,6 @@
 #include "orte/mca/rml/base/base.h"
 #include "orte/mca/routed/base/base.h"
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/dfs/base/base.h"
 #include "orte/mca/grpcomm/base/base.h"
 #include "orte/mca/oob/base/base.h"
 #include "orte/mca/rml/rml.h"
@@ -310,17 +309,6 @@ int orte_ess_base_app_setup(bool db_restrict_local)
         error = "orte_cr_init";
         goto error;
     }
-    /* open the distributed file system */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_dfs_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_dfs_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_dfs_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_dfs_base_select";
-        goto error;
-    }
     return ORTE_SUCCESS;
  error:
     if (!progress_thread_running) {
@@ -351,7 +339,6 @@ int orte_ess_base_app_finalize(void)
     /* now can close the rml and its friendly group comm */
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);
     (void) mca_base_framework_close(&opal_dstore_base_framework);
-    (void) mca_base_framework_close(&orte_dfs_base_framework);
     (void) mca_base_framework_close(&orte_routed_base_framework);
 
     (void) mca_base_framework_close(&orte_rml_base_framework);

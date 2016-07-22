@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved. 
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved. 
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -54,7 +54,6 @@
 #include "orte/mca/routed/base/base.h"
 #include "orte/mca/routed/routed.h"
 #include "orte/mca/oob/base/base.h"
-#include "orte/mca/dfs/base/base.h"
 #include "orte/mca/grpcomm/grpcomm.h"
 #include "orte/mca/grpcomm/base/base.h"
 #include "orte/mca/iof/base/base.h"
@@ -407,18 +406,6 @@ static int orcmsched_init(void)
         goto error;
     }
     
-    /* setup the DFS framework */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_dfs_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_dfs_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_dfs_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_dfs_select";
-        goto error;
-    }
-
     /* setup the cmd server */
     if (ORCM_SUCCESS != (ret = orcm_cmd_server_init())) {
         ORTE_ERROR_LOG(ret);
@@ -462,7 +449,6 @@ static void orcmsched_finalize(void)
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);
     (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
-    (void) mca_base_framework_close(&orte_dfs_base_framework);
     (void) mca_base_framework_close(&orte_routed_base_framework);
     (void) mca_base_framework_close(&orte_rml_base_framework);
     (void) mca_base_framework_close(&orte_oob_base_framework);

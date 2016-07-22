@@ -13,7 +13,7 @@
  * Copyright (c) 2008-2010 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2010-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -41,7 +41,7 @@
 #endif
 
 #include "opal/constants.h"
-#include "opal/mca/mpool/sm/mpool_sm.h"
+#include "opal/mca/common/sm/common_sm.h"
 
 OBJ_CLASS_INSTANCE(
     mca_common_sm_module_t,
@@ -247,50 +247,6 @@ mca_common_sm_local_proc_reorder(opal_proc_t **procs,
     *out_num_local_procs = num_local_procs;
 
     return OPAL_SUCCESS;
-}
-
-/* ////////////////////////////////////////////////////////////////////////// */
-/**
- *  allocate memory from a previously allocated shared memory
- *  block.
- *
- *  @param size size of request, in bytes (IN)
- *
- *  @retval addr virtual address
- */
-void *
-mca_common_sm_seg_alloc(struct mca_mpool_base_module_t *mpool,
-                        size_t *size,
-                        mca_mpool_base_registration_t **registration)
-{
-    mca_mpool_sm_module_t *sm_module = (mca_mpool_sm_module_t *)mpool;
-    mca_common_sm_seg_header_t *seg = sm_module->sm_common_module->module_seg;
-    void *addr;
-
-    opal_atomic_lock(&seg->seg_lock);
-    if (seg->seg_offset + *size > seg->seg_size) {
-        addr = NULL;
-    }
-    else {
-        size_t fixup;
-
-        /* add base address to segment offset */
-        addr = sm_module->sm_common_module->module_data_addr + seg->seg_offset;
-        seg->seg_offset += *size;
-
-        /* fix up seg_offset so next allocation is aligned on a
-         * sizeof(long) boundry.  Do it here so that we don't have to
-         * check before checking remaining size in buffer
-         */
-        if ((fixup = (seg->seg_offset & (sizeof(long) - 1))) > 0) {
-            seg->seg_offset += sizeof(long) - fixup;
-        }
-    }
-    if (NULL != registration) {
-        *registration = NULL;
-    }
-    opal_atomic_unlock(&seg->seg_lock);
-    return addr;
 }
 
 /* ////////////////////////////////////////////////////////////////////////// */

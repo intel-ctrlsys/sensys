@@ -55,7 +55,6 @@
 #include "orte/mca/rmaps/base/base.h"
 #include "orte/mca/rmaps/rmaps.h"
 #include "orte/mca/oob/base/base.h"
-#include "orte/mca/dfs/base/base.h"
 #include "orte/mca/grpcomm/grpcomm.h"
 #include "orte/mca/grpcomm/base/base.h"
 #include "orte/mca/iof/base/base.h"
@@ -515,18 +514,6 @@ static int tool_init(void)
         goto error;
     }
     
-    /* setup the DFS framework */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_dfs_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_dfs_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_dfs_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_dfs_select";
-        goto error;
-    }
-
     initialized = true;
     return ORTE_SUCCESS;
     

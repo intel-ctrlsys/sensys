@@ -15,7 +15,7 @@
  * Copyright (c) 2010      IBM Corporation.  All rights reserved.
  * Copyright (c) 2011-2014 Los Alamos National Security, LLC.  All rights
  *                         reserved.
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved
  *
  * $COPYRIGHT$
  *
@@ -123,7 +123,6 @@
 #include "orte/mca/odls/base/base.h"
 #include "orte/mca/odls/base/odls_private.h"
 #include "orte/mca/odls/alps/odls_alps.h"
-#include "orte/orted/pmix/pmix_server.h"
 
 /*
  * Module functions (function pointers used in a struct)

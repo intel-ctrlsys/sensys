@@ -54,15 +54,10 @@
 #include "orte/mca/routed/base/base.h"
 #include "orte/mca/routed/routed.h"
 #include "orte/mca/oob/base/base.h"
-#include "orte/mca/dfs/base/base.h"
-#include "orte/mca/grpcomm/grpcomm.h"
-#include "orte/mca/grpcomm/base/base.h"
-#include "orte/mca/iof/base/base.h"
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/odls/base/base.h"
 #include "orte/mca/notifier/notifier.h"
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/filem/base/base.h"
 #include "orte/util/parse_options.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/session_dir.h"
@@ -544,20 +539,6 @@ static int orcmd_init(void)
     OBJ_DESTRUCT(&buf);
     OBJ_RELEASE(uribuf);
 
-    /*
-     * Group communications
-     */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_grpcomm_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_grpcomm_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_grpcomm_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_grpcomm_base_select";
-        goto error;
-    }
-
     /* Open/select the odls */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_odls_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -574,18 +555,6 @@ static int orcmd_init(void)
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);
         error = "orte_rml.enable_comm";
-        goto error;
-    }
-
-    /* setup the FileM */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_filem_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_filem_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_filem_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_filem_base_select";
         goto error;
     }
 
@@ -652,18 +621,6 @@ static int orcmd_init(void)
     /* start the local sensors */
     orcm_sensor.start(ORTE_PROC_MY_NAME->jobid);
 
-    /* setup the DFS framework */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_dfs_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_dfs_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_dfs_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_dfs_select";
-        goto error;
-    }
-
     /* open and setup the DIAG framework */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_diag_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -721,15 +678,9 @@ static void orcmd_finalize(void)
     /* close frameworks */
     (void) orcm_cmd_server_finalize();
     (void) mca_base_framework_close(&orcm_diag_base_framework);
-    (void) mca_base_framework_close(&orte_filem_base_framework);
-    (void) mca_base_framework_close(&orte_grpcomm_base_framework);
-    (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_notifier_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
     (void) mca_base_framework_close(&orte_plm_base_framework);
-
-    /* close the dfs so its threads can exit */
-    (void) mca_base_framework_close(&orte_dfs_base_framework);
 
     /* make sure our local procs are dead */
     orte_odls.kill_local_procs(NULL);

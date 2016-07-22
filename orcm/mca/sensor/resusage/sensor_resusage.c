@@ -39,7 +39,6 @@
 #include "orte/mca/rml/rml.h"
 #include "orte/mca/state/state.h"
 #include "orte/runtime/orte_globals.h"
-#include "orte/orted/orted.h"
 
 #include "orcm/mca/db/db.h"
 #include "orcm/util/utils.h"

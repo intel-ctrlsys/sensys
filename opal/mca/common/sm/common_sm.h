@@ -12,6 +12,7 @@
  * Copyright (c) 2009-2010 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2010-2012 Los Alamos National Security, LLC.
  *                         All rights reserved.
+ * Copyright (c) 2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -29,9 +30,7 @@
 #include "opal/class/opal_list.h"
 #include "opal/sys/atomic.h"
 #include "opal/mca/shmem/shmem.h"
-#include "opal/mca/btl/base/base.h"
 #include "opal/util/proc.h"
-#include "opal/mca/btl/base/btl_base_error.h"
 #include "opal/mca/mpool/mpool.h"
 
 BEGIN_C_DECLS
@@ -122,14 +121,6 @@ mca_common_sm_module_attach(opal_shmem_ds_t *seg_meta,
  */
 OPAL_DECLSPEC extern int
 mca_common_sm_module_unlink(mca_common_sm_module_t *modp);
-
-/**
- * callback from the sm mpool
- */
-OPAL_DECLSPEC extern void *
-mca_common_sm_seg_alloc(struct mca_mpool_base_module_t *mpool,
-                        size_t *size,
-                        mca_mpool_base_registration_t **registration);
 
 /**
  * This function will release all local resources attached to the

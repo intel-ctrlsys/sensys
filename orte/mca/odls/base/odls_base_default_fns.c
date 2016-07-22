@@ -14,7 +14,7 @@
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
  * Copyright (c) 2011-2013 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2013-2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
  * Copyright (c) 2014      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
@@ -68,7 +68,6 @@
 #include "orte/mca/schizo/schizo.h"
 #include "orte/mca/state/state.h"
 #include "orte/mca/filem/filem.h"
-#include "orte/mca/dfs/dfs.h"
 
 #include "orte/util/context_fns.h"
 #include "orte/util/name_fns.h"
@@ -79,7 +78,6 @@
 #include "orte/util/show_help.h"
 #include "orte/runtime/orte_globals.h"
 #include "orte/runtime/orte_wait.h"
-#include "orte/orted/orted.h"
 
 #if OPAL_ENABLE_FT_CR == 1
 #include "orte/mca/snapc/snapc.h"
@@ -396,15 +394,6 @@ int orte_odls_base_default_construct_child_list(opal_buffer_t *data,
     /* ensure the map object is present */
     if (NULL == jdata->map) {
         jdata->map = OBJ_NEW(orte_job_map_t);
-    }
-
-    /* if we have a file map, then we need to load it */
-    if (orte_get_attribute(&jdata->attributes, ORTE_JOB_FILE_MAPS, (void**)&bptr, OPAL_BUFFER)) {
-        if (NULL != orte_dfs.load_file_maps) {
-            orte_dfs.load_file_maps(jdata->jobid, bptr, fm_release, bptr);
-        } else {
-            OBJ_RELEASE(bptr);
-        }
     }
 
     /* check the procs */

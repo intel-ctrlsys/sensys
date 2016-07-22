@@ -13,7 +13,7 @@
  *                         reserved.
  * Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2007-2008 Sun Microsystems, Inc.  All rights reserved.
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * Copyright (c) 2014-2015 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  *
@@ -50,7 +50,6 @@
 #include "orte/util/name_fns.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/error_strings.h"
-#include "orte/orted/pmix/pmix_server.h"
 
 #include "orte/runtime/runtime.h"
 #include "orte/runtime/orte_globals.h"
@@ -202,11 +201,6 @@ int orte_init(int* pargc, char*** pargv, orte_proc_type_t flags)
         error = "opal dstore internal";
         ret = ORTE_ERR_FATAL;
         goto error;
-    }
-
-    if (ORTE_PROC_IS_DAEMON || ORTE_PROC_IS_HNP) {
-        /* let the pmix server register params */
-        pmix_server_register();
     }
 
     /* open the ESS and select the correct module for this environment */

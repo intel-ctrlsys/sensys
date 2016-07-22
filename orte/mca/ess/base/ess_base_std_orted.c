@@ -14,7 +14,7 @@
  * Copyright (c) 2011      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.  All rights
  *                         reserved.
- * Copyright (c) 2013-2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -51,7 +51,6 @@
 #include "orte/mca/routed/routed.h"
 #include "orte/mca/oob/base/base.h"
 #include "orte/mca/qos/base/base.h"
-#include "orte/mca/dfs/base/base.h"
 #include "orte/mca/grpcomm/grpcomm.h"
 #include "orte/mca/grpcomm/base/base.h"
 #include "orte/mca/iof/base/base.h"
@@ -77,7 +76,6 @@
 #include "orte/runtime/orte_wait.h"
 #include "orte/runtime/orte_globals.h"
 #include "orte/runtime/orte_quit.h"
-#include "orte/orted/pmix/pmix_server.h"
 
 #include "orte/mca/ess/base/base.h"
 
@@ -504,12 +502,6 @@ int orte_ess_base_orted_setup(char **hosts)
     jdata->state = ORTE_JOB_STATE_RUNNING;
     /* obviously, we have "reported" */
     jdata->num_reported = 1;
-    /* setup the PMIx server */
-    if (ORTE_SUCCESS != (ret = pmix_server_init())) {
-        ORTE_ERROR_LOG(ret);
-        error = "pmix server init";
-        goto error;
-    }
     /* setup the routed info - the selected routed component
      * will know what to do.
      */
@@ -581,17 +573,6 @@ int orte_ess_base_orted_setup(char **hosts)
         error = "orte_cr_init";
         goto error;
     }
-    /* setup the DFS framework */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_dfs_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_dfs_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_dfs_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_dfs_select";
-        goto error;
-    }
     /* setup the SCHIZO framework */
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_schizo_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
@@ -629,8 +610,6 @@ int orte_ess_base_orted_finalize(void)
     if (NULL != log_path) {
         unlink(log_path);
     }
-    /* shutdown the pmix server */
-    pmix_server_finalize();
     /* close frameworks */
     (void) mca_base_framework_close(&orte_schizo_base_framework);
     (void) mca_base_framework_close(&orte_filem_base_framework);
@@ -638,8 +617,6 @@ int orte_ess_base_orted_finalize(void)
     (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
     (void) mca_base_framework_close(&orte_plm_base_framework);
-    /* close the dfs so its threads can exit */
-    (void) mca_base_framework_close(&orte_dfs_base_framework);
     /* make sure our local procs are dead */
     orte_odls.kill_local_procs(NULL);
     (void) mca_base_framework_close(&orte_rtc_base_framework);

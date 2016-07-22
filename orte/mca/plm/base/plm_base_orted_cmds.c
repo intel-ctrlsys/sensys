@@ -11,7 +11,7 @@
  *                         All rights reserved.
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -44,7 +44,6 @@
 #include "orte/util/proc_info.h"
 #include "orte/mca/state/state.h"
 #include "orte/runtime/orte_wait.h"
-#include "orte/orted/orted.h"
 
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/plm/base/plm_private.h"

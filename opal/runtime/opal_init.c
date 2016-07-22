@@ -15,7 +15,7 @@
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
  * Copyright (c) 2010-2015 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2013-2014 Intel, Inc. All rights reserved
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
@@ -490,23 +490,6 @@ opal_init(int* pargc, char*** pargv)
         error = "opal_shmem_base_select";
         goto return_error;
     }
-
-#if OPAL_ENABLE_FT_CR    == 1
-    /*
-     * Initialize the compression framework
-     * Note: Currently only used in C/R so it has been marked to only
-     *       initialize when C/R is enabled. If other places in the code
-     *       wish to use this framework, it is safe to remove the protection.
-     */
-    if( OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_compress_base_framework, 0)) ) {
-        error = "opal_compress_base_open";
-        goto return_error;
-    }
-    if( OPAL_SUCCESS != (ret = opal_compress_base_select()) ) {
-        error = "opal_compress_base_select";
-        goto return_error;
-    }
-#endif
 
     /*
      * Initalize the checkpoint/restart functionality

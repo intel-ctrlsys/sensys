@@ -8,7 +8,7 @@
 
 if HAVE_GTEST
 gtestSubdirs=ipmi errcounts snmp base coretemp freq sigar componentpower \
-             mcedata nodepower resusage syslog file heartbeat
+             mcedata nodepower resusage syslog file heartbeat udsensors
 endif
 
 # Removed ft_tester from production runs.

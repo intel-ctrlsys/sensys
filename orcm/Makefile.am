@@ -2,9 +2,9 @@
 #
 # Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
@@ -21,7 +21,7 @@ SUBDIRS = \
 	. \
 	$(MCA_orcm_FRAMEWORK_COMPONENT_DSO_SUBDIRS) \
         test
-    
+
 DIST_SUBDIRS = \
         etc \
 	include \
@@ -31,7 +31,7 @@ DIST_SUBDIRS = \
 	$(MCA_orcm_FRAMEWORK_COMPONENT_ALL_SUBDIRS) \
         test
 
-#Build The main ORCM library 
+#Build The main ORCM library
 lib_LTLIBRARIES = liborcm.la
 liborcm_la_SOURCES =
 liborcm_la_LIBADD = \
@@ -42,12 +42,15 @@ liborcm_la_LDFLAGS = -lstdc++ $(ipmiutil_LIBS)\
         -version-info $(liborcm_so_version) \
         $(ORCM_LIBORCM_EXTRA_LDFLAGS)
 
+lib_LTLIBRARIES += libudsensors.la
+libudsensors_la_SOURCES =
+
 # included subdirectory Makefile.am's and appended-to variables
 headers =
 noinst_LTLIBRARIES =
 include_HEADERS =
-nobase_orcm_HEADERS = 
-dist_orcmdata_DATA = 
+nobase_orcm_HEADERS =
+dist_orcmdata_DATA =
 liborcm_la_SOURCES += $(headers)
 nodist_man_MANS =
 

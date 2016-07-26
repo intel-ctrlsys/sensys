@@ -37,7 +37,9 @@ util_tests_SOURCES = \
     util_tests.cpp \
     util_tests.h \
     util_tests_mocking.cpp \
-    util_tests_mocking.h
+    util_tests_mocking.h \
+    dataContainerTests.cpp \
+    dataContainerTests.h
 
 MOCKING = \
     -Wl,--wrap=orte_errmgr_base_log
@@ -48,7 +50,7 @@ MOCKING = \
 
 LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a
 
-AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread $(MOCKING)
+AM_LDFLAGS = -ludsensors -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 
 #
 # Preprocessor flags

@@ -16,7 +16,8 @@ headers += \
         util/attr.h \
         util/logical_group.h \
         util/vardata.h \
-        util/string_utils.h
+        util/string_utils.h \
+        util/dataContainer.h
 
 liborcm_la_SOURCES += \
         util/error_strings.c \
@@ -26,3 +27,6 @@ liborcm_la_SOURCES += \
         util/logical_group.c \
         util/workflow_util.c \
         util/vardata.cpp
+
+libudsensors_la_SOURCES += \
+        util/dataContainer.cpp

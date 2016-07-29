@@ -1585,7 +1585,7 @@ void orcm_sensor_ipmi_get_device_id(ipmi_capsule_t *cap)
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-mc-fail",
                        true, orte_process_info.nodename,
                        orte_process_info.nodename, cap->node.bmc_ip,
-                       cap->node.user, cap->node.pasw, cap->node.auth,
+                       cap->node.user, "*****", cap->node.auth,
                        cap->node.priv, cap->node.ciph, error_string);
         }
     } else {
@@ -1593,7 +1593,7 @@ void orcm_sensor_ipmi_get_device_id(ipmi_capsule_t *cap)
         orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-set-lan-fail",
                        true, orte_process_info.nodename,
                        orte_process_info.nodename, cap->node.bmc_ip,
-                       cap->node.user, cap->node.pasw, cap->node.auth,
+                       cap->node.user, "*****", cap->node.auth,
                        cap->node.priv, cap->node.ciph, error_string);
     }
 
@@ -1631,7 +1631,7 @@ void orcm_sensor_ipmi_get_power_states(ipmi_capsule_t *cap)
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-cmd-mc-fail",
                        true, orte_process_info.nodename,
                        orte_process_info.nodename, cap->node.bmc_ip,
-                       cap->node.user, cap->node.pasw, cap->node.auth,
+                       cap->node.user, "*****", cap->node.auth,
                        cap->node.priv, cap->node.ciph, error_string);
         }
     } else {
@@ -1639,7 +1639,7 @@ void orcm_sensor_ipmi_get_power_states(ipmi_capsule_t *cap)
         orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-set-lan-fail",
                        true, orte_process_info.nodename,
                        orte_process_info.nodename, cap->node.bmc_ip,
-                       cap->node.user, cap->node.pasw, cap->node.auth,
+                       cap->node.user, "*****", cap->node.auth,
                        cap->node.priv, cap->node.ciph, error_string);
     }
 }
@@ -1680,7 +1680,7 @@ void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap)
         orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-set-lan-fail",
                            true, orte_process_info.nodename,
                            cap->node.name, cap->node.bmc_ip,
-                           cap->node.user, cap->node.pasw, cap->node.auth,
+                           cap->node.user, "*****", cap->node.auth,
                            cap->node.priv, cap->node.ciph, error_string);
         return;
     } else {
@@ -1690,7 +1690,7 @@ void orcm_sensor_ipmi_get_sensor_reading(ipmi_capsule_t *cap)
             orte_show_help("help-orcm-sensor-ipmi.txt", "ipmi-get-sdr-fail",
                            true, orte_process_info.nodename,
                            cap->node.bmc_ip, cap->node.bmc_ip,
-                           cap->node.user, cap->node.pasw, cap->node.auth,
+                           cap->node.user, "*****", cap->node.auth,
                            cap->node.priv, cap->node.ciph, error_string);
             return;
         } else {

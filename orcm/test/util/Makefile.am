@@ -39,7 +39,8 @@ util_tests_SOURCES = \
     util_tests_mocking.cpp \
     util_tests_mocking.h \
     dataContainerTests.cpp \
-    dataContainerTests.h
+    dataContainerTests.h \
+    UDExceptionTests.cpp
 
 MOCKING = \
     -Wl,--wrap=orte_errmgr_base_log

@@ -18,7 +18,10 @@ headers += \
         util/vardata.h \
         util/string_utils.h \
         util/dataContainer.h \
-        util/UDExceptions.h
+        util/UDExceptions.h \
+        util/sensorFactory.h \
+        util/sensorInterface.h \
+        util/baseFactory.h
 
 liborcm_la_SOURCES += \
         util/error_strings.c \
@@ -30,4 +33,6 @@ liborcm_la_SOURCES += \
         util/vardata.cpp
 
 libudsensors_la_SOURCES += \
-        util/dataContainer.cpp
+        util/dataContainer.cpp \
+        util/sensorFactory.cpp \
+        util/baseFactory.cpp

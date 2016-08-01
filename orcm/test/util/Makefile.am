@@ -40,10 +40,15 @@ util_tests_SOURCES = \
     util_tests_mocking.h \
     dataContainerTests.cpp \
     dataContainerTests.h \
-    UDExceptionTests.cpp
+    UDExceptionTests.cpp \
+    sensorFactory_tests.cpp \
+    sensorFactory_tests.h
 
 MOCKING = \
-    -Wl,--wrap=orte_errmgr_base_log
+    -Wl,--wrap=orte_errmgr_base_log \
+    -Wl,--wrap=dlopen \
+    -Wl,--wrap=dlsym \
+    -Wl,--wrap=dlerror
 
 #
 # Libraries we depend on

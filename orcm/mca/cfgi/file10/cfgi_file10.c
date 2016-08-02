@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014 - 2016     Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -42,6 +42,9 @@
 #include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/cfgi/file10/cfgi_file10.h"
 
+#include "orcm/mca/parser/parser.h"
+#include "orcm/mca/parser/base/base.h"
+
 #define ORCM_MAX_LINE_LENGTH  512
 
 /* API functions */
@@ -53,6 +56,8 @@ static int define_system(opal_list_t *config,
                          orcm_node_t **mynode,
                          orte_vpid_t *num_procs,
                          opal_buffer_t *buf);
+static opal_list_t* file10_read_configuration_section(void);
+static int file10_read_version(opal_list_t *result_list, int num_loop);
 
 /* The module struct */
 
@@ -63,48 +68,67 @@ orcm_cfgi_base_module_t orcm_cfgi_file10_module = {
     define_system
 };
 
-static char *orcm_getline(FILE *fp);
+static opal_list_t* file10_read_configuration_section(void)
+{
+
+    opal_list_t *result_list = NULL;
+    int file_id;
+
+    if (NULL == orcm_cfgi_base.config_file) {
+        opal_output(orcm_cfgi_base_framework.framework_output, "NULL FILE");
+        return NULL;
+    }
+
+    if (0 > (file_id = orcm_parser.open(orcm_cfgi_base.config_file))) {
+        opal_output(orcm_cfgi_base_framework.framework_output,
+                    "Can't open %s", orcm_cfgi_base.config_file);
+        return NULL;
+    }
+
+    result_list = orcm_parser.retrieve_document(file_id);
+
+    orcm_parser.close(file_id);
+    return result_list;
+}
+
+static int file10_read_version(opal_list_t *result_list, int num_loop)
+{
+    orcm_value_t *list_item = NULL;
+
+    /*restrict the "version" tag to be checked for one loop */
+    if (1 < num_loop) {
+        return ORCM_SUCCESS;
+    }
+
+    OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
+
+        if (OPAL_PTR == list_item->value.type) {
+            return file10_read_version((opal_list_t *)list_item->value.data.ptr, num_loop+1);
+        }
+        else if (0 == strcasecmp("version", list_item->value.key)) {
+            opal_output(orcm_cfgi_base_framework.framework_output,
+                        "CFGI1.0 shouldn't have version tag.");
+            return ORCM_ERR_TAKE_NEXT_OPTION;
+        }
+    }
+    return ORCM_SUCCESS;
+}
 
 static int file10_init(void)
 {
-    FILE *fp;
-    char *line, *ptr;
+    opal_list_t *result_list = NULL;
+    int rc = ORCM_SUCCESS;
 
-    /* if a file is available, open it and read the first
-     * line - if it is version 1.x, then that is us
-     */
-    if (NULL == orcm_cfgi_base.config_file) {
-        opal_output(orcm_cfgi_base_framework.framework_output, "NULL FILE");
+    result_list = file10_read_configuration_section();
+    if (NULL == result_list) {
         return ORCM_ERR_TAKE_NEXT_OPTION;
     }
-    if (NULL == (fp = fopen(orcm_cfgi_base.config_file, "r"))) {
-        opal_output(orcm_cfgi_base_framework.framework_output,
-                    "CANT OPEN %s", orcm_cfgi_base.config_file);
-        return ORCM_ERR_TAKE_NEXT_OPTION;
-    }
-    if (NULL == (line = orcm_getline(fp))) {
-        opal_output(orcm_cfgi_base_framework.framework_output, "FAILED TO GET LINE");
-        fclose(fp);
-        return ORCM_ERR_TAKE_NEXT_OPTION;
-    }
-    if (NULL == (ptr = strchr(line, '='))) {
-        opal_output(orcm_cfgi_base_framework.framework_output, "NOT FIND =");
-        free(line);
-        fclose(fp);
-        return ORCM_ERR_TAKE_NEXT_OPTION;
-    }
-    ptr++; // points to the quote
-    ptr++; // points to the version number
-    if ('1' != *ptr) {
-        opal_output(orcm_cfgi_base_framework.framework_output, "NOT FOUND 1: %s", ptr);
-        free(line);
-        fclose(fp);
-        return ORCM_ERR_TAKE_NEXT_OPTION;
-    }
-    free(line);
-    fclose(fp);
 
-    return ORCM_SUCCESS;
+    rc = file10_read_version(result_list, 0);
+
+    SAFE_RELEASE_NESTED_LIST(result_list);
+    /*return success if there is no version tag available*/
+    return rc;
 }
 
 static void file10_finalize(void)
@@ -113,17 +137,18 @@ static void file10_finalize(void)
 
 static int parse_configuration(orcm_cfgi_xml_parser_t *xml,
                                orcm_row_t *row);
-static void parse_config(FILE *fp,
-                         char *filename,
-                         opal_list_t *config,
+static int parse_config(opal_list_t *result_list,
                          orcm_cfgi_xml_parser_t *xml_in);
 static bool check_me(orcm_config_t *config, char *node,
                      orte_vpid_t vpid, char *my_ip);
 
 static int read_config(opal_list_t *config)
 {
-    FILE *fp;
-    orcm_cfgi_xml_parser_t *xml;
+    orcm_cfgi_xml_parser_t *xml = NULL;
+    orcm_cfgi_xml_parser_t *config_xml = NULL;
+    opal_list_t *result_list = NULL;
+    int rc = ORCM_SUCCESS;
+    opal_list_item_t *first_item;
 
     opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
                         "cfgi:file10 reading config");
@@ -133,14 +158,27 @@ static int read_config(opal_list_t *config)
      * that we will use as our jobid, and the static port(s)
      * assigned to orcm.
      */
-
-    fp = fopen(orcm_cfgi_base.config_file, "r");
-    if (NULL == fp) {
-        opal_show_help("help-orcm-cfgi.txt", "site-file-not-found", true, orcm_cfgi_base.config_file);
-        return ORCM_ERR_SILENT;
+    result_list = file10_read_configuration_section();
+    if (NULL == result_list) {
+        return ORCM_ERR_TAKE_NEXT_OPTION;
     }
-    parse_config(fp, orcm_cfgi_base.config_file, config, NULL);
-    fclose(fp);
+
+    config_xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
+
+    rc = parse_config(result_list, config_xml);
+    SAFE_RELEASE_NESTED_LIST(result_list);
+    if (ORCM_SUCCESS != rc) {
+        OBJ_RELEASE(config_xml);
+        return rc;
+    }
+
+    first_item = opal_list_remove_first(&config_xml->subvals);
+    if (NULL == first_item) {
+        OBJ_RELEASE(config_xml);
+        return ORCM_ERROR;
+    }
+    opal_list_append(config, first_item);
+
 
     /* print it out, if requested */
     if (30 < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
@@ -148,7 +186,9 @@ static int read_config(opal_list_t *config)
             orcm_util_print_xml(xml, NULL);
         }
     }
-    return ORCM_SUCCESS;
+
+    OBJ_RELEASE(config_xml);
+    return rc;
 }
 
 static char *log=NULL;
@@ -468,171 +508,35 @@ static int define_system(opal_list_t *config,
     return ORTE_SUCCESS;
 }
 
-static char *orcm_getline(FILE *fp)
-{
-    char *ret, *buff, *ptr;
-    char input[ORCM_MAX_LINE_LENGTH];
-    size_t i;
-
-    ret = fgets(input, ORCM_MAX_LINE_LENGTH, fp);
-    if (NULL != ret) {
-	   input[strlen(input)-1] = '\0';  /* remove newline */
-           /* strip leading spaces */
-           ptr = input;
-           for (i=0; i < strlen(input)-1; i++) {
-               if (' ' != input[i]) {
-                   ptr = &input[i];
-                   break;
-               }
-           }
-	   buff = strdup(ptr);
-	   return buff;
-    }
-
-    return NULL;
-}
-
-static char* extract_tag(char *filename, char *line)
-{
-    char *start, *end;
-    char *tmp;
-    char *ret = NULL;
-
-    tmp = strdup(line);
-    if (tmp) {
-        /* find the start of the tag */
-        start = strchr(tmp, '<');
-        if (NULL == start) {
-            fprintf(stderr, "Error parsing tag in configuration file %s: xml format error in %s\n",
-                    filename, line);
-            free(tmp);
-            return NULL;
-        }
-        start++;
-        /* if it is the end character, skip over */
-        if ('/' == *start) {
-            start++;
-        }
-        /* find the end of the tag */
-        end = strchr(start, '>');
-        if (NULL == end) {
-            fprintf(stderr, "Error parsing tag in configuration file %s: xml format error in %s\n",
-                    filename, line);
-            free(tmp);
-            return NULL;
-        }
-        *end = '\0';
-        /* pass it back */
-        ret = strdup(start);
-        free(tmp);
-    }
-    return ret;
-}
-
-static char* extract_value(char *filename, char *line)
-{
-    char *start, *end;
-
-    /* find the start of the value */
-    start = strchr(line, '>');
-    if (NULL == start) {
-        fprintf(stderr, "Error parsing value in configuration file %s: xml format error in %s\n",
-                filename, line);
-        return NULL;
-    }
-    start++;
-    /* find the end of the value */
-    end = strchr(start, '<');
-    if (NULL == end) {
-        fprintf(stderr, "Error parsing value in configuration file %s: xml format error in %s\n",
-                filename, line);
-        return NULL;
-    }
-    *end = '\0';
-    /* pass it back */
-    return start;
-}
-
-static void parse_config(FILE *fp,
-                         char *filename,
-                         opal_list_t *config,
+static int parse_config(opal_list_t *result_list,
                          orcm_cfgi_xml_parser_t *xml_in)
 {
-    char *line;
-    orcm_cfgi_xml_parser_t *xml;
-    char *tag;
+    orcm_value_t *list_item = NULL;
+    orcm_cfgi_xml_parser_t *xml = NULL;
+    int rc;
 
-    opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                        "WORKING %s", (NULL == xml_in) ? "NEW" : xml_in->name);
-    xml = NULL;
-    while (NULL != (line = orcm_getline(fp))) {
-        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                            "LINE: %s", line);
-        /* skip empty lines */
-        if (strlen(line) < 3) {
-            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                                "ZERO OR SHORT LENGTH LINE");
-            free(line);
-            continue;
-        }
-        /* skip all comment lines and xml directives */
-        if ('<' != line[0] || '?' == line[1] || '!' == line[1]) {
-            opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                                "COMMENT OR DIRECTIVE");
-            free(line);
-            continue;
-        }
-        /* extract the tag */
-        if (NULL == (tag = extract_tag(filename, line))) {
-            return;
-        }
-        /* are we inside a section? */
-        if (NULL != xml_in) {
-            /* is this the matching end tag? */
-            if (0 == strcmp(xml_in->name, tag)) {
-                /* pop the stack */
-                free(tag);
-                free(line);
-                return;
+    OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
+
+        if (OPAL_PTR == list_item->value.type) {
+            xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
+
+            xml->name = strdup(list_item->value.key);
+            if (NULL == xml->name) {
+                return ORCM_ERR_OUT_OF_RESOURCE;
             }
-            /* ignore any descriptions */
-            if (0 == strcmp(tag, "description")) {
-                free(tag);
-                free(line);
-                continue;
+
+            rc = parse_config((opal_list_t *)list_item->value.data.ptr, xml);
+            if (ORCM_SUCCESS != rc) {
+                return rc;
             }
-            /* if it is not a value, then it must be the start
-             * of a new section - so parse it
-             */
-            if (0 != strcmp(tag, "value")) {
-                xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-                xml->name = tag;
-                opal_list_append(&xml_in->subvals, &xml->super);
-                opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                                    "START NEW SUBSECTION: %s", tag);
-                parse_config(fp, filename, &xml_in->subvals, xml);
-                continue;
-            }
-            /* if it is a value, fill it in */
-            free(tag);
-            if (NULL == (tag = extract_value(filename, line))) {
-                return;
-            }
-            opal_argv_append_nosize(&xml_in->value, tag);
-            /* keep looping until we see the other end of the section */
-            parse_config(fp, filename, config, xml_in);
-            return;
+
+            opal_list_append(&xml_in->subvals, &xml->super);
         }
-        /* if we are not inside a section, then start one */
-        xml = OBJ_NEW(orcm_cfgi_xml_parser_t);
-        xml->name = strdup(tag);
-        opal_list_append(config, &xml->super);
-        opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
-                            "NOT INSIDE: START NEW SECTION: %s", tag);
-        free(tag);
-        /* loop around and parse it */
-        parse_config(fp, filename, config, xml);
+        else if (0 == strcmp("value", list_item->value.key)) {
+            opal_argv_append_nosize(&xml_in->value, list_item->value.data.string);
+        }
     }
+    return ORCM_SUCCESS;
 }
 
 static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
@@ -662,9 +566,9 @@ static int parse_daemons(orcm_cfgi_xml_parser_t *xml,
             opal_argv_append_nosize(&daemon_cfg.mca_params, val);
             free(val);
         }
-    } else if (0 == strcmp(xml->name, "mca-params") &&
+    } else if (0 == strcmp(xml->name, "mca-params")) {
+        if (NULL != xml->value && NULL != xml->value[0] &&
             0 < strlen(xml->value[0])) {
-        if (NULL != xml->value[0]) {
             opal_output_verbose(10, orcm_cfgi_base_framework.framework_output,
                                 "\tORCM-MCA-PARAMS %s", xml->value[0]);
             vals = opal_argv_split(xml->value[0], ',');

@@ -167,16 +167,6 @@ int orcm_init(orcm_proc_type_t flags)
     orcm_clusters = OBJ_NEW(opal_list_t);
     orcm_schedulers = OBJ_NEW(opal_list_t);
 
-    /* everyone must open the cfgi framework */
-    if (ORCM_SUCCESS != (ret = mca_base_framework_open(&orcm_cfgi_base_framework, 0))) {
-        error = "orcm_cfgi_base_open";
-        goto error;
-    }
-    if (ORCM_SUCCESS != (ret = orcm_cfgi_base_select())) {
-        error = "orcm_cfgi_select";
-        goto error;
-    }
-
     if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_parser_base_framework, 0))) {
         ORTE_ERROR_LOG(ret);
         error = "orcm_parser_base_open";
@@ -185,6 +175,16 @@ int orcm_init(orcm_proc_type_t flags)
     if (ORTE_SUCCESS != (ret = orcm_parser_base_select())) {
         ORTE_ERROR_LOG(ret);
         error = "orcm_parser_select";
+        goto error;
+    }
+
+    /* everyone must open the cfgi framework */
+    if (ORCM_SUCCESS != (ret = mca_base_framework_open(&orcm_cfgi_base_framework, 0))) {
+        error = "orcm_cfgi_base_open";
+        goto error;
+    }
+    if (ORCM_SUCCESS != (ret = orcm_cfgi_base_select())) {
+        error = "orcm_cfgi_select";
         goto error;
     }
 

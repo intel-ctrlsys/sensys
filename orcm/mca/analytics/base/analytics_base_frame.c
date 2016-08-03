@@ -34,6 +34,8 @@
 
 #include "orcm/mca/analytics/base/static-components.h"
 
+#include "orcm/mca/analytics/base/c_analytics_factory.h"
+
 static int orcm_analytics_base_register(mca_base_register_flag_t flags);
 static void orcm_analytics_stop_wokflow_step(orcm_workflow_step_t *wf_step);
 static void orcm_analytics_stop_wokflow_thread(orcm_workflow_t *wf);
@@ -52,6 +54,7 @@ static int orcm_analytics_base_register(mca_base_register_flag_t flags)
 {
     orcm_analytics_base.store_raw_data = true;
     orcm_analytics_base.store_event_data = true;
+    orcm_analytics_base.pluginlibdir = opal_install_dirs.opallibdir;
 
     (void)mca_base_var_register("orcm", "analytics", "base", "store_raw_data",
                                 "store raw data",
@@ -71,6 +74,13 @@ static int orcm_analytics_base_register(mca_base_register_flag_t flags)
                                 OPAL_INFO_LVL_9,
                                 MCA_BASE_VAR_SCOPE_READONLY,
                                 &orcm_analytics_base.suppress_repeat);
+    (void)mca_base_var_register("orcm", "analytics", "base", "pluginlibdir",
+                                "the plugin library directory",
+                                MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
+                                OPAL_INFO_LVL_9,
+                                MCA_BASE_VAR_SCOPE_READONLY,
+                                &orcm_analytics_base.pluginlibdir);
+
     return ORCM_SUCCESS;
 
 }
@@ -250,7 +260,6 @@ static void orcm_analytics_base_load_default_workflows(void)
     return;
 }
 
-
 /*
  * Function for finding and opening either all MCA components, or the one
  * that was specifically requested via a MCA parameter.
@@ -276,7 +285,7 @@ static int orcm_analytics_base_open(mca_base_open_flag_t flags)
     /* Check for default workflow file and load it*/
     orcm_analytics_base_load_default_workflows();
 
-    return rc;
+    return search_plugin_creator(orcm_analytics_base.pluginlibdir, "analytics_extension");
 }
 
 MCA_BASE_FRAMEWORK_DECLARE(orcm, analytics, "ORCM Analytics", orcm_analytics_base_register,

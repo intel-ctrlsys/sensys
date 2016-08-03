@@ -26,6 +26,7 @@
 
 #include "orcm/mca/analytics/base/base.h"
 #include "orcm/mca/analytics/base/analytics_private.h"
+#include "orcm/mca/analytics/base/c_analytics_factory.h"
 #include "orcm/util/utils.h"
 
 #define WORKFLOW_WILD_CHARACTER "*"
@@ -245,6 +246,14 @@ static void orcm_analytics_base_workflow_step_error(int rc, orcm_workflow_step_t
     SAFE_RELEASE(wf_step);
 }
 
+const char *orcm_analytics_get_plugin_name(const char *wf_step_name)
+{
+    if (check_plugin_exist(wf_step_name)) {
+        return "extension";
+    }
+    return wf_step_name;
+}
+
 static int orcm_analytics_base_workflow_step_add(orcm_workflow_t *wf, opal_buffer_t* buffer, int step)
 {
     orcm_workflow_step_t *wf_step = NULL;
@@ -279,7 +288,8 @@ static int orcm_analytics_base_workflow_step_add(orcm_workflow_t *wf, opal_buffe
         return rc;
     }
 
-    rc = orcm_analytics_base_select_workflow_step(wf_step);
+    rc = orcm_analytics_base_select_workflow_step(wf_step,
+                                                  orcm_analytics_get_plugin_name(step_name));
     if (ORCM_SUCCESS != rc) {
         orcm_analytics_base_workflow_step_error(rc, wf_step);
         OPAL_OUTPUT_VERBOSE((5, orcm_analytics_base_framework.framework_output,

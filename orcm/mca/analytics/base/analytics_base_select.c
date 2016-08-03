@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved. 
+ * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016      Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -57,7 +57,8 @@ static int orcm_analytics_base_select_create_handle(orcm_analytics_base_componen
 }
 
 
-int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workstep)
+int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workstep,
+                                             const char *plugin_name)
 {
     mca_base_component_list_item_t *cli = NULL;
     orcm_analytics_base_component_t *component = NULL;
@@ -71,8 +72,7 @@ int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workstep)
         basecomp = (mca_base_component_t *)cli->cli_component;
         component = (orcm_analytics_base_component_t *)basecomp;
 
-        if (0 == strncmp(basecomp->mca_component_name,
-                         workstep->analytic,
+        if (0 == strncmp(basecomp->mca_component_name, plugin_name,
                          MCA_BASE_MAX_COMPONENT_NAME_LEN + 1)) {
             opal_output_verbose(5, orcm_analytics_base_framework.framework_output,
                                 "mca:analytics:select: found requested component %s",

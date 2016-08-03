@@ -24,7 +24,8 @@ ORCM_DECLSPEC int orcm_analytics_base_workflow_list(opal_buffer_t *buffer);
 ORCM_DECLSPEC int orcm_analytics_base_comm_start(void);
 ORCM_DECLSPEC int orcm_analytics_base_comm_stop(void);
 ORCM_DECLSPEC int orcm_analytics_base_recv_pack_int(opal_buffer_t *buffer, int *value, int count);
-ORCM_DECLSPEC int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workflow);
+ORCM_DECLSPEC int orcm_analytics_base_select_workflow_step(orcm_workflow_step_t *workflow,
+                                                           const char *plugin_name);
 ORCM_DECLSPEC void orcm_analytics_stop_wokflow(orcm_workflow_t *wf);
 ORCM_DECLSPEC void orcm_analytics_base_activate_analytics_workflow_step(orcm_workflow_t *wf,
                                                                         orcm_workflow_step_t *wf_step,
@@ -127,6 +128,11 @@ int orcm_analytics_base_gen_notifier_event(orcm_value_t *current_value,
 int orcm_analytics_base_data_key(char** data_key, char* key,
                                  orcm_workflow_t* wf, orcm_workflow_step_t* wf_step);
 
+/* function to get the module name for the given workflow step name.
+ * If the given workflow step name is one of the newly developed plugins,
+ * use "extension" as the new module name; otherwise, use the actual workflow step name */
+const char* orcm_analytics_get_plugin_name(const char *wf_step_name);
+
 #define ANALYTICS_COUNT_DEFAULT 1
 #define MAX_ALLOWED_ATTRIBUTES_PER_WORKFLOW_STEP 2
 #define HASH_TABLE_SIZE 10000
@@ -137,6 +143,7 @@ typedef struct {
     bool store_raw_data;
     bool store_event_data;
     char* suppress_repeat;
+    char *pluginlibdir;
 } orcm_analytics_base_t;
 ORCM_DECLSPEC extern orcm_analytics_base_t orcm_analytics_base;
 

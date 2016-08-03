@@ -79,4 +79,3 @@ TEST(analytics_base, control_storage_negative_test_2)
 
     ASSERT_NE(ORCM_SUCCESS, rc);
 }
-

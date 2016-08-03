@@ -1,9 +1,9 @@
 #
-# Copyright (c) 2014      Intel, Inc.  All rights reserved.
+# Copyright (c) 2014-2016      Intel, Inc.  All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
@@ -13,7 +13,8 @@ libmca_analytics_la_SOURCES =
 
 # local files
 headers = analytics.h \
-          analytics_types.h
+          analytics_types.h \
+          analytics_interface.h
 
 libmca_analytics_la_SOURCES += $(headers)
 

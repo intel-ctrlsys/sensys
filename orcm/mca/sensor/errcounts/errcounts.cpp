@@ -83,7 +83,7 @@ int errcounts_impl::init(void)
     if(0 == mca_sensor_errcounts_component.sample_rate) {
         mca_sensor_errcounts_component.sample_rate = orcm_sensor_base.sample_rate;
     }
-    hostname_ = "test_host";
+    hostname_ = orte_process_info.nodename;
     edac_missing_ = (collector_->have_edac())?false:true;
     if(true == edac_missing_) {
         orte_show_help("help-orcm-sensor-errcounts.txt", "no-edac", true, (char*)hostname_.c_str());

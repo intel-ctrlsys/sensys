@@ -4,7 +4,7 @@
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  *                         All rights reserved.
- *
+ * Copyright (c) 2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -46,7 +46,6 @@
 
 #include "orte/mca/rml/rml.h"
 #include "orte/mca/rml/rml_types.h"
-#include "orte/mca/snapc/snapc.h"
 #include "orte/runtime/orte_globals.h"
 #include "orte/util/name_fns.h"
 

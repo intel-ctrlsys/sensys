@@ -65,7 +65,6 @@
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/routed/base/base.h"
 #include "orte/mca/rmaps/rmaps_types.h"
-#include "orte/mca/schizo/schizo.h"
 #include "orte/mca/state/state.h"
 #include "orte/mca/filem/filem.h"
 
@@ -711,35 +710,6 @@ void orte_odls_base_default_launch_local(int fd, short sd, void *cbdata)
             }
         }
 
-        /* setup the environment for this app */
-        if (ORTE_SUCCESS != (rc = orte_schizo.setup_fork(jobdat, app))) {
-
-            OPAL_OUTPUT_VERBOSE((10, orte_odls_base_framework.framework_output,
-                                 "%s odls:launch:setup_fork failed with error %s",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                 ORTE_ERROR_NAME(rc)));
-
-            /* do not ERROR_LOG this failure - it will be reported
-             * elsewhere. The launch is going to fail. Since we could have
-             * multiple app_contexts, we need to ensure that we flag only
-             * the correct one that caused this operation to fail. We then have
-             * to flag all the other procs from the app_context as having "not failed"
-             * so we can report things out correctly
-             */
-            /* cycle through children to find those for this jobid */
-            for (idx=0; idx < orte_local_children->size; idx++) {
-                if (NULL == (child = (orte_proc_t*)opal_pointer_array_get_item(orte_local_children, idx))) {
-                    continue;
-                }
-                if (OPAL_EQUAL == opal_dss.compare(&job, &(child->name.jobid), ORTE_JOBID) &&
-                    j == (int)child->app_idx) {
-                    child->exit_code = rc;
-                    ORTE_ACTIVATE_PROC_STATE(&child->name, ORTE_PROC_STATE_FAILED_TO_LAUNCH);
-                }
-            }
-            goto GETOUT;
-        }
-
         /* setup the working directory for this app - will jump us
          * to that directory
          */
@@ -958,12 +928,6 @@ void orte_odls_base_default_launch_local(int fd, short sd, void *cbdata)
             /* setup the rest of the environment with the proc-specific items - these
              * will be overwritten for each child
              */
-            if (ORTE_SUCCESS != (rc = orte_schizo.setup_child(jobdat, child, app))) {
-                ORTE_ERROR_LOG(rc);
-                child->exit_code = rc;
-                ORTE_ACTIVATE_PROC_STATE(&child->name, ORTE_PROC_STATE_FAILED_TO_LAUNCH);
-                continue;
-            }
 
 #if OPAL_ENABLE_FT_CR == 1
             /*
@@ -1686,12 +1650,6 @@ int orte_odls_base_default_restart_proc(orte_proc_t *child,
         child->rml_uri = NULL;
     }
     app = (orte_app_context_t*)opal_pointer_array_get_item(jobdat->apps, child->app_idx);
-
-    /* reset envars to match this child */
-    if (ORTE_SUCCESS != (rc = orte_schizo.setup_child(jobdat, child, app))) {
-        ORTE_ERROR_LOG(rc);
-        goto CLEANUP;
-    }
 
     /* setup the path */
     if (ORTE_SUCCESS != (rc = setup_path(app))) {

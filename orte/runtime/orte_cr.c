@@ -11,6 +11,7 @@
  *                         All rights reserved.
  * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
  *                         reserved.
+ * Copyright (c) 2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -60,8 +61,6 @@
 #include "orte/mca/routed/routed.h"
 #include "orte/mca/rml/base/base.h"
 #include "orte/mca/iof/base/base.h"
-#include "orte/mca/snapc/snapc.h"
-#include "orte/mca/snapc/base/base.h"
 #include "orte/mca/filem/base/base.h"
 
 /*************

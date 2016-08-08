@@ -16,6 +16,7 @@
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved
  * Copyright (c) 2014      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2016      Intel, Inc. All rights reserved
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -73,8 +74,6 @@
 #include "orte/mca/rml/rml.h"
 #include "orte/mca/rml/rml_types.h"
 #include "orte/mca/routed/routed.h"
-#include "orte/mca/snapc/snapc.h"
-#include "orte/mca/snapc/base/base.h"
 #include "orte/mca/sstore/sstore.h"
 #include "orte/mca/sstore/base/base.h"
 

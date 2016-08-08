@@ -61,7 +61,6 @@
 #include "orte/mca/snapc/base/base.h"
 #include "orte/mca/sstore/base/base.h"
 #endif
-#include "orte/mca/schizo/base/base.h"
 #include "orte/mca/filem/base/base.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/session_dir.h"
@@ -573,17 +572,7 @@ int orte_ess_base_orted_setup(char **hosts)
         error = "orte_cr_init";
         goto error;
     }
-    /* setup the SCHIZO framework */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_schizo_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_schizo_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_schizo_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_schizo_select";
-        goto error;
-    }
+
     return ORTE_SUCCESS;
  error:
     orte_show_help("help-orte-runtime.txt",
@@ -611,7 +600,6 @@ int orte_ess_base_orted_finalize(void)
         unlink(log_path);
     }
     /* close frameworks */
-    (void) mca_base_framework_close(&orte_schizo_base_framework);
     (void) mca_base_framework_close(&orte_filem_base_framework);
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);
     (void) mca_base_framework_close(&orte_iof_base_framework);

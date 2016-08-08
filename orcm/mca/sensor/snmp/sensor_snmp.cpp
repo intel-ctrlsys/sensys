@@ -115,7 +115,7 @@ int snmp_disable_sampling_relay(const char* sensor_specification)
 int snmp_reset_sampling_relay(const char* sensor_specification)
 {
     if(NULL != impl) {
-        return impl->disable_sampling(sensor_specification);
+        return impl->reset_sampling(sensor_specification);
     } else {
         ORTE_ERROR_LOG(ORCM_ERR_NOT_AVAILABLE);
         return ORCM_ERR_NOT_AVAILABLE;

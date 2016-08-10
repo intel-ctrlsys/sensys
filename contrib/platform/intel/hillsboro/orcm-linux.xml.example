@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
+<!-- EXAMPLE FILE - ERASE ALL COMMENTS OR IT WILL NOT WORK! -->
 <configuration>
     <version>3</version>
     <role>RECORD</role>
@@ -60,17 +61,48 @@
             </step>
         </workflow>
     </workflows>
+    <!-- The following is an example of the IPMI section
+    <ipmi>
+        <bmc_node name="node04">
+            <bmc_address>192.168.0.104</bmc_address>
+            <user>bmc_username_01</user>
+            <pass>bmc_password_01</pass>
+            <auth_method>PASSWORD</auth_method>
+            <priv_level>USER</priv_level>
+            <aggregator>agg01</aggregator>
+        </bmc_node>
+    </ipmi>
+    -->
+    <!-- The following is an example of the SNMP section
+    <snmp>
+        <config name="snmp1" version="3" user="user" pass="12345678" auth="MD5" sec="AUTHNOPRIV">
+            <aggregator>localhost</aggregator>
+            <hostname>server[2:0-20],server21</hostname>
+            <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids>
+        </config>
+        <config name="snmp2" version="1" user="user" location="X Lab">
+            <aggregator>node01</aggregator>
+            <hostname>switches[2:0-20],switch21</hostname>
+            <oids>1.3.6.1.4.1.343.1.1.3.1,1.3.6.1.4.1.343.1.1.3.4</oids>
+        </config>
+    </snmp>
+    -->
 
     <openmpi-mca-params>
+        <!--Basic behavior to smooth startup-->
         mca_base_component_show_load_errors = 1
         mpi_param_check = 0
         orte_abort_timeout = 10
         hwloc_base_mem_bind_failure_action = silent
 
+        <!--Add the interface for out-of-band communication and set it up-->
         oob_tcp_peer_retries = 120
+        <!--oob_tcp_connect_timeout=600-->
 
+        <!--Define the MPI interconnects-->
         btl = sm,tcp,self
 
+        <!--Setup shared memory-->
         btl_sm_free_list_max = 768
 
         sensor_ipmi_sel_state_filename = /var/run/orcmd_sel_state_table
@@ -83,13 +115,16 @@
         sensor_heartbeat_rate=10
         sensor_base_log_samples=1
         db_print_file=-
-
+        <!--disable munge-->
         sec = ^munge
 
+        <!--Enable Database collection from Analytics-->
         analytics_base_store_raw_data = true
 
+        <!--Enable/Disable Database collection of Events from Analytics-->
         analytics_base_store_event_data = true
 
+        <!--Notifier SMTP settings-->
         notifier_smtp_server=localhost
         notifier_smtp_port=25
         notifier_smtp_to = to-name@email.com

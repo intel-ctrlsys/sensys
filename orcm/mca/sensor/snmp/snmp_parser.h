@@ -15,6 +15,7 @@
 #include <map>
 #include "orcm/constants.h"
 #include "snmp_collector.h"
+#include "orcm/mca/cfgi/base/base.h"
 #include "orcm/util/string_utils.h"
 #include "orcm/runtime/orcm_globals.h"
 
@@ -29,7 +30,6 @@ extern "C" {
 #define DEFAULT_SEC_TYPE  AUTHNOPRIV
 #define DEFAULT_AUTH_TYPE MD5
 #define DEFAULT_PRIV_TYPE DES
-#define SNMP_DEFAULT_FILE_NAME "orcm-default-config.xml"
 
 #define XML_SNMP "snmp"
 #define XML_CONFIG_NODE "config"
@@ -50,6 +50,8 @@ typedef std::vector<snmpCollector> snmpCollectorVector;
 
 using std::runtime_error;
 
+ORCM_DECLSPEC extern orcm_cfgi_base_t orcm_cfgi_base;
+
 class snmpParser {
     public:
         snmpParser(const std::string& filePath="");
@@ -65,7 +67,6 @@ class snmpParser {
         snmpCollectorMap snmpMap;
         snmpCollectorVector collectors, snmpVector;
 
-        void setDefaultPath();
         void parseFile();
         void openConfigFile();
         void closeConfigFile();

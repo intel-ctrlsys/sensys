@@ -9,6 +9,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2016      Intel Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -21,6 +22,7 @@
 #ifndef OPAL_UTIL_KEYVAL_PARSE_H
 #define OPAL_UTIL_KEYVAL_PARSE_H
 
+#include <regex.h>
 #include "opal_config.h"
 
 BEGIN_C_DECLS
@@ -46,6 +48,9 @@ typedef void (*opal_keyval_parse_fn_t)(const char *key, const char *value);
  * opal_util_keyval_parse() will serialize multiple calls.
  */
 OPAL_DECLSPEC int opal_util_keyval_parse(const char *filename,
+                                         opal_keyval_parse_fn_t callback);
+
+OPAL_DECLSPEC int opal_util_keyval_parse_xml(const char *filename,
                                          opal_keyval_parse_fn_t callback);
 
 OPAL_DECLSPEC int opal_util_keyval_parse_init(void);

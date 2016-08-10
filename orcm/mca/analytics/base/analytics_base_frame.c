@@ -14,6 +14,7 @@
 
 #include "opal/mca/mca.h"
 #include "opal/mca/base/base.h"
+#include "orcm/mca/cfgi/base/base.h"
 #include "opal/mca/event/event.h"
 #include "opal/dss/dss.h"
 #include "opal/util/output.h"
@@ -236,7 +237,8 @@ static void orcm_analytics_base_load_default_workflows(void)
     orcm_value_t *list_item = NULL;
     char *file = NULL;
 
-    if (0 > asprintf(&file, "%s/etc/orcm-default-config.xml", opal_install_dirs.prefix)) {
+
+    if (NULL == (file = strdup(orcm_cfgi_base.config_file))) {
         return;
     }
 

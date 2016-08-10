@@ -12,6 +12,7 @@
  *                         All rights reserved.
  * Copyright (c) 2013      Los Alamos National Security, LLC. All rights
  *                         reserved.
+ * Copyright (c) 2016      Intel Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -21,6 +22,7 @@
 
 #include "opal_config.h"
 
+#include <regex.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -37,10 +39,23 @@ static opal_list_t * _param_list;
 
 int mca_base_parse_paramfile(const char *paramfile, opal_list_t *list)
 {
+    int res;
+    regex_t regex_comp;
+    int regex_res;
+
     file_being_read = (char*)paramfile;
     _param_list = list;
 
-    return opal_util_keyval_parse(paramfile, save_value);
+    regcomp(&regex_comp, "\\.xml$", REG_EXTENDED|REG_ICASE);
+    regex_res = regexec(&regex_comp, file_being_read, 0, 0, 0);
+    if( !regex_res ){
+        res = opal_util_keyval_parse_xml(paramfile, save_value);
+    } else if( REG_NOMATCH == regex_res ){
+        res = opal_util_keyval_parse(paramfile, save_value);
+    }
+
+    regfree(&regex_comp);
+    return res;
 }
 
 int mca_base_internal_env_store(void)

@@ -13,7 +13,7 @@
 # Copyright (c) 2010      IBM Corporation.  All rights reserved.
 # Copyright (c) 2010-2011 Oak Ridge National Labs.  All rights reserved.
 # Copyright (c) 2013      Los Alamos National Security, Inc.  All rights reserved.
-# Copyright (c) 2013      Intel Corporation.  All rights reserved.
+# Copyright (c) 2013-2016 Intel Corporation.  All rights reserved.
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
@@ -113,6 +113,7 @@ EXTRA_DIST = \
     platform/intel/bend/linux-optimized.conf \
     platform/intel/hillsboro/orcm-linux \
     platform/intel/hillsboro/orcm-linux.xml \
+    platform/intel/hillsboro/orcm-linux.xml.example \
     platform/intel/hillsboro/orcm-linux.conf \
     platform/mellanox/optimized \
     platform/mellanox/optimized.conf

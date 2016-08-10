@@ -45,7 +45,6 @@ using namespace std;
 snmpParser::snmpParser(const string& filePath)
 {
     fileId = ORCM_ERROR;
-    setDefaultPath();
     setParseFile(filePath);
 }
 
@@ -64,7 +63,7 @@ void snmpParser::setParseFile(const string& filePath)
 {
     unsetParseFile();
     if( filePath.empty()){
-        file = SNMP_DEFAULT_FILE_PATH;
+        this->file = orcm_cfgi_base.config_file;
     } else {
         file = filePath;
     }
@@ -93,12 +92,6 @@ void snmpParser::unsetParseFile()
 snmpCollectorVector snmpParser::getSnmpCollectorVector()
 {
     return snmpVector;
-}
-
-void snmpParser::setDefaultPath()
-{
-    string prefix = (NULL != opal_install_dirs.prefix) ? string(opal_install_dirs.prefix) + "/etc/" : "";
-    SNMP_DEFAULT_FILE_PATH = prefix + SNMP_DEFAULT_FILE_NAME;
 }
 
 void snmpParser::parseFile()

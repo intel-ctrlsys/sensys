@@ -64,17 +64,10 @@ ipmiParser::ipmiParser(const string& file)
 void ipmiParser::setFile(const string& file)
 {
     if (file.empty()){
-        setDefaultPath();
-        this->file = IPMI_DEFAULT_FILE_PATH;
+        this->file = orcm_cfgi_base.config_file;
     } else {
         this->file = file;
     }
-}
-
-void ipmiParser::setDefaultPath()
-{
-    string prefix = (NULL != opal_install_dirs.prefix)? string(opal_install_dirs.prefix) : "";
-    IPMI_DEFAULT_FILE_PATH = prefix + string("/etc/") + string(DEFAULT_FILE_NAME);
 }
 
 void ipmiParser::parse()

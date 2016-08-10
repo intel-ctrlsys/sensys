@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015      Intel, Inc. All rights reserved
+ * Copyright (c) 2015-2016 Intel, Inc. All rights reserved
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -14,6 +14,7 @@
 #include "opal/class/opal_list.h"
 #include "opal/class/opal_hash_table.h"
 #include "orcm/util/utils.h"
+#include "orcm/mca/cfgi/base/base.h"
 #include "orcm/mca/parser/parser.h"
 #include "orcm/mca/parser/base/base.h"
 #include <fcntl.h>
@@ -49,6 +50,8 @@ typedef struct {
     int parser_fd;
     struct flock file_lock;
 } file_with_lock_t;
+
+ORCM_DECLSPEC extern orcm_cfgi_base_t orcm_cfgi_base;
 
 extern file_with_lock_t logical_group_file_lock;
 extern orcm_logical_group_t LOGICAL_GROUP;

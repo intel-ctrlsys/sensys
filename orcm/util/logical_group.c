@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -130,7 +130,7 @@ static int orcm_logical_group_init(char *config_file)
 
     if (NULL == config_file) {
         if (-1 == (erri = asprintf(&(LOGICAL_GROUP.storage_filename),
-                   "%s/etc/orcm-default-config.xml", opal_install_dirs.prefix))) {
+                   "%s", orcm_cfgi_base.config_file))) {
             return ORCM_ERR_OUT_OF_RESOURCE;
         }
     } else if (NULL == (LOGICAL_GROUP.storage_filename = strdup(config_file))) {

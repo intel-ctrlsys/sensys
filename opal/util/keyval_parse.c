@@ -12,6 +12,7 @@
  *                         All rights reserved.
  * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
  *                         reserved.
+ * Copyright (c) 2016      Intel Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -36,6 +37,8 @@ static char *key_buffer = NULL;
 static size_t key_buffer_len = 0;
 static opal_mutex_t keyval_mutex;
 
+static int parse_params_xml(char **params);
+static int clean_xml_comments(char **params);
 static int parse_line(void);
 static int parse_line_new(opal_keyval_parse_state_t first_val);
 static void parse_error(int num);
@@ -119,7 +122,155 @@ cleanup:
     return ret;
 }
 
+int
+opal_util_keyval_parse_xml(const char *filename,
+                       opal_keyval_parse_fn_t callback)
+{
+    int ret = OPAL_SUCCESS;
+    regex_t regex_comp;
+    regmatch_t reg_matches[3];
+    int regex_res = 0;
+    int file_pos = 0;
+    int start = -1;
+    char *buff = NULL;
+    char *params = NULL;
 
+    OPAL_THREAD_LOCK(&keyval_mutex);
+
+    keyval_filename = filename;
+    keyval_callback = callback;
+
+    opal_util_keyval_yyin = fopen(keyval_filename, "r");
+    if( NULL != opal_util_keyval_yyin ){
+        fseek(opal_util_keyval_yyin, 0L, SEEK_END);
+        file_pos = ftell(opal_util_keyval_yyin);
+        rewind(opal_util_keyval_yyin);
+
+        buff = (char*)malloc(file_pos * sizeof(char));
+        if( NULL != buff ){
+            fread(buff, 1, file_pos, opal_util_keyval_yyin);
+            ret = clean_xml_comments(&buff);
+            file_pos = 0;
+
+            regcomp(&regex_comp,
+                    "(<openmpi\\-mca\\-params>)|(</openmpi\\-mca\\-params>)",
+                    REG_EXTENDED);
+            while( !regex_res && OPAL_SUCCESS == ret ){
+                regex_res = regexec(&regex_comp, buff + file_pos, 3,
+                                    reg_matches, 0);
+                if( !regex_res ){
+                    if( 0 < reg_matches[1].rm_eo ){
+                        file_pos += reg_matches[1].rm_eo;
+                        if( -1 == start ) start = file_pos;
+                    } else if( 0 < reg_matches[2].rm_eo ){
+                        file_pos += reg_matches[2].rm_eo;
+
+                        if( -1 != start ){
+                            params = strndup( buff + start, file_pos - start - 21);
+                            if( NULL != params ){
+                                ret = parse_params_xml(&params);
+                                free(params);
+                                start = -1;
+                            } else {
+                                ret = OPAL_ERR_OUT_OF_RESOURCE;
+                            }
+                        }
+                    }
+                }
+            }
+
+            regfree(&regex_comp);
+            free(buff);
+        } else {
+            ret = OPAL_ERR_OUT_OF_RESOURCE;
+        }
+
+        fclose(opal_util_keyval_yyin);
+    } else {
+        ret = OPAL_ERR_NOT_FOUND;
+    }
+
+    OPAL_THREAD_UNLOCK(&keyval_mutex);
+    return ret;
+}
+
+static int parse_params_xml(char **params)
+{
+    regex_t regex_comp;
+    int regex_res = 0;
+    int pos;
+    regmatch_t reg_matches[3];
+    int res = OPAL_SUCCESS;
+    char *param = NULL;
+    char *value = NULL;
+
+    regcomp(&regex_comp, "[[:space:]]*([^=[:space:]]+)[[:space:]]*="
+                         "[[:space:]]*([^=[:cntrl:]]+[^=[:space:]])"
+                         "[[:space:]]*",
+            REG_EXTENDED);
+
+    pos = 0;
+    while( !regex_res && OPAL_SUCCESS == res ){
+        regex_res = regexec(&regex_comp, (*params) + pos, 3, reg_matches, 0);
+        if( !regex_res ){
+            param = strndup( (*params) + pos + reg_matches[1].rm_so,
+                             reg_matches[1].rm_eo - reg_matches[1].rm_so);
+            value = strndup( (*params) + pos + reg_matches[2].rm_so,
+                             reg_matches[2].rm_eo - reg_matches[2].rm_so);
+
+            if( param != NULL && value != NULL ){
+                keyval_callback(param, value);
+                pos += reg_matches[0].rm_eo;
+            } else {
+                res = OPAL_ERR_OUT_OF_RESOURCE;
+            }
+            if ( NULL != param ) free(param);
+            if ( NULL != value ) free(value);
+        }
+    }
+
+    regfree(&regex_comp);
+    return res;
+}
+
+static int clean_xml_comments(char **xml_str)
+{
+    regex_t regex_comp;
+    int regex_res = 0;
+    int pos;
+    int start = -1;
+    regmatch_t reg_matches[3];
+    int res = OPAL_SUCCESS;
+    char *aux_buff = NULL;
+
+    regcomp(&regex_comp, "(<!\\-\\-)|(\\-\\->)", REG_EXTENDED);
+
+    pos = 0;
+    while( !regex_res && OPAL_SUCCESS == res ){
+        regex_res = regexec(&regex_comp, (*xml_str) + pos, 3, reg_matches, 0);
+        if( !regex_res ){
+            if( 0 < reg_matches[1].rm_eo ){
+                if( -1 == start ) start = pos + reg_matches[1].rm_so;
+                pos += reg_matches[1].rm_eo;
+            } else if( 0 < reg_matches[2].rm_eo ){
+                if( -1 != start ){
+                    aux_buff = strdup((*xml_str) + pos + reg_matches[2].rm_eo);
+                    if( NULL != aux_buff ){
+                        strcpy((*xml_str) + start, aux_buff);
+                        free(aux_buff);
+                        start = -1;
+                    } else {
+                        res = OPAL_ERR_OUT_OF_RESOURCE;
+                    }
+                }
+                pos += reg_matches[2].rm_eo;
+            }
+        }
+    }
+
+    regfree(&regex_comp);
+    return res;
+}
 
 static int parse_line(void)
 {

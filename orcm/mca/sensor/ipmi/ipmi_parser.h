@@ -15,6 +15,7 @@
 #include <map>
 #include "orcm/constants.h"
 #include "orcm/mca/sensor/ipmi/ipmi_collector.h"
+#include "orcm/mca/cfgi/base/base.h"
 #include "orcm/runtime/orcm_globals.h"
 
 extern "C" {
@@ -22,7 +23,6 @@ extern "C" {
     #include "opal/mca/installdirs/installdirs.h"
 }
 
-#define DEFAULT_FILE_NAME "orcm-default-config.xml"
 #define XML_IPMI "ipmi"
 #define XML_BMC_NODE "bmc_node"
 #define XML_NAME "name"
@@ -37,6 +37,8 @@ extern "C" {
 
 typedef std::map<std::string, ipmiCollector> ipmiCollectorMap;
 typedef std::vector<ipmiCollector> ipmiCollectorVector;
+
+ORCM_DECLSPEC extern orcm_cfgi_base_t orcm_cfgi_base;
 
 /**
  * DISCLAIMER: even when port and channel information is retrieved and
@@ -56,14 +58,12 @@ class ipmiParser {
     private:
         std::string file;
         int fileId;
-        std::string IPMI_DEFAULT_FILE_PATH;
         ipmiCollectorMap ipmiMap;
         ipmiCollectorVector ipmiVector;
 
         int  openFile();
         void closeFile();
         void setFile(const std::string& file);
-        void setDefaultPath();
         void parse();
         void getIpmiCollectorMapFromIpmiSections(opal_list_t *ipmiSections);
         void fillVectorFromMap();

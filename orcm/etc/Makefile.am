@@ -21,9 +21,8 @@
 orcm_config_files = @OPAL_SITE_CONFIG_FILE@
 orcm_config_file_found = @OPAL_SITE_CONFIG_FILE_FOUND@
 
-orcm_default_config_file = @ORCM_DEFAULT_CONFIG_FILE@
-orcm_default_config_file_found = @ORCM_DEFAULT_CONFIG_FILE_FOUND@
-orcm_default_config_file_dist = orcm-default-config.xml
+orcm_config_file_example = @OPAL_SITE_CONFIG_FILE_EXAMPLE@
+orcm_config_file_example_found = @OPAL_SITE_CONFIG_FILE_EXAMPLE_FOUND@
 
 orcm_rsyslog_config_file = @OPAL_SYSLOG_CONFIG_FILE@
 orcm_rsyslog_config_file_found = @OPAL_SYSLOG_CONFIG_FILE_FOUND@
@@ -60,25 +59,34 @@ install-data-local:
 	            fi; \
 	        done \
         fi;
-	@ p="$(orcm_default_config_file)"; \
-	echo "**FOUND $(orcm_default_config_file)**"; \
-        if test "$(orcm_default_config_file_found)" = "yes"; then \
-		if test -f $(DESTDIR)$(sysconfdir)/orcm-default-config.xml; then \
-			echo "******************************* WARNING ************************************"; \
-			echo "*** Not installing new $$p over existing file in:"; \
-			echo "***   $(DESTDIR)$(sysconfdir)/orcm-default-config.xml ";  \
-			echo "******************************* WARNING ************************************"; \
-		else \
-			if test -f  "$$p"; then d=; else d="$(srcdir)/../"; fi; \
-			echo "$(INSTALL_DATA) -m 600 $$d$$p $(DESTDIR)$(sysconfdir)/orcm-default-config.xml"; \
-			$(INSTALL_DATA) -m 600 $$d$$p $(DESTDIR)$(sysconfdir)/orcm-default-config.xml; \
-		fi \
-	fi;
+
+	@ p="$(orcm_config_file_example)"; \
+        echo "**FOUND $(orcm_config_file_example) **"; \
+        if test "$(orcm_config_file_example_found)" = "yes"; then \
+	    if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	    echo " $(INSTALL) -m 600 $$d$$p $(DESTDIR)$(sysconfdir)/orcm-site.xml.example"; \
+	    $(INSTALL) -m 600 $$d$$p $(DESTDIR)$(sysconfdir)/orcm-site.xml.example; \
+        else \
+            for file in $$p; do \
+	            if test -f $(DESTDIR)$(sysconfdir)/orcm-site.xml.example; then \
+	                echo "******************************* WARNING ************************************"; \
+	                echo "*** Not installing new $$file over existing file in:"; \
+	                echo "***   $(DESTDIR)$(sysconfdir)/$$file"; \
+	                echo "******************************* WARNING ************************************"; \
+	            else \
+	                if test -f "$$file"; then d=; else d="$(srcdir)/"; fi; \
+	                f="`echo $$file | sed -e 's|^.*/||'`"; \
+	                echo " $(INSTALL_DATA) $$d$$file $(DESTDIR)$(sysconfdir)/$$f"; \
+	                $(INSTALL_DATA) $$d$$file $(DESTDIR)$(sysconfdir)/$$f; \
+	            fi; \
+	        done \
+        fi;
+
 	@ p="$(orcm_rsyslog_config_file)"; \
         echo "**FOUND $(orcm_rsyslog_config_file)**"; \
         if test "$(orcm_rsyslog_config_file_found)" = "yes"; then \
 	        if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-    	    echo " $(INSTALL_DATA) $$d$$p $(DESTDIR)$(sysconfdir)/10-rsyslog_orcm.conf"; \
+                    echo " $(INSTALL_DATA) $$d$$p $(DESTDIR)$(sysconfdir)/10-rsyslog_orcm.conf"; \
 	        $(INSTALL_DATA) $$d$$p $(DESTDIR)$(sysconfdir)/10-rsyslog_orcm.conf; \
 	        if test -d "$(orcm_rsyslog_supported_config_location)"; then \
 	            $(INSTALL_DATA) $$d$$p $(orcm_rsyslog_supported_config_location)/10-rsyslog_orcm.conf; \
@@ -100,14 +108,4 @@ uninstall-local:
 	      rm -f "$(DESTDIR)$(sysconfdir)/$$file" ; \
 	    fi ; \
 	  fi ; \
-	done
-	@ p="$(orcm_default_config_file)"; \
-	for file in $$p; do \
-		if test -f "$(DESTDIR)$(sysconfdir)/$$file"; then \
-			if test -f "$$file"; then d=; else d="$(srcdir)/../"; fi; \
-			if diff "$(DESTDIR)$(sysconfdir)/$$file" "$$d$$file" > /dev/null 2>&1 ; then \
-				echo "rm -f $(DESTDIR)$(sysconfdir)/$$file" ; \
-				rm -f "$(DESTDIR)$(sysconfdir)/$$file" ; \
-			fi ; \
-		fi ; \
 	done

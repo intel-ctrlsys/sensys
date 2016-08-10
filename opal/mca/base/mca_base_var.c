@@ -16,6 +16,7 @@
  * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2016      Intel Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -434,9 +435,16 @@ static int mca_base_var_cache_files(bool rel_path_search)
     }
 
 #if OPAL_WANT_HOME_CONFIG_FILES
+    if( NULL != (tmp = getenv("ORCM_MCA_cfgi_base_config_file")) )
+        tmp = strdup(tmp);
+    else
+        asprintf(&tmp, "%s"OPAL_PATH_SEP"orcm-site.xml", opal_install_dirs.sysconfdir);
+
     asprintf(&mca_base_var_files, "%s"OPAL_PATH_SEP".openmpi" OPAL_PATH_SEP
-             "mca-params.conf%c%s" OPAL_PATH_SEP "openmpi-mca-params.conf",
-             home, OPAL_ENV_SEP, opal_install_dirs.sysconfdir);
+             "mca-params.conf%c%s" OPAL_PATH_SEP "openmpi-mca-params.conf%c%s",
+             home, OPAL_ENV_SEP, opal_install_dirs.sysconfdir, OPAL_ENV_SEP,
+             tmp);
+    free(tmp);
 #else
     asprintf(&mca_base_var_files, "%s" OPAL_PATH_SEP "openmpi-mca-params.conf",
              opal_install_dirs.sysconfdir);

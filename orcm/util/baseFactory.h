@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#define DEFAULT_PLUGIN_PATH "/usr/lib"
+#define DEFAULT_PLUGIN_PATH "/usr/lib64"
 #define DEFAULT_PLUGIN_PREFIX "libudplugin_"
 
 typedef void* (*pluginInstance)(void);

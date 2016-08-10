@@ -49,7 +49,7 @@ void baseFactory::addPluginsIfPrefixMatch(DIR *d)
 {
     struct dirent *entry = NULL;
     while (NULL != (entry = readdir(d))) {
-        if (NULL != std::strstr(entry->d_name, plugins_prefix.c_str())) {
+        if (!strncmp(entry->d_name, plugins_prefix.c_str(), strlen(plugins_prefix.c_str()))) {
             pluginFilesFound.push_back(formFullPath(entry->d_name));
         }
     }

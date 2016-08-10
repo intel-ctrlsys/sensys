@@ -17,6 +17,18 @@ int sensorFactory::open(const char *plugin_path, const char *plugin_prefix)
     return 0;
 }
 
+void sensorFactory::close()
+{
+    std::map<std::string, void*>::iterator it;
+    for (it = pluginHandlers.begin(); it != pluginHandlers.end(); ++it) {
+        if (it->second) {
+            dlclose(it->second);
+        }
+        pluginsLoaded.erase(it->first);
+        pluginHandlers.erase(it);
+    }
+}
+
 void sensorFactory::loadPlugins()
 {
     int res = 0;
@@ -31,19 +43,37 @@ void sensorFactory::openAndGetSymbolsFromPlugin()
 {
     void *plugin;
     pluginInstance *entryPoint;
-
     std::vector<std::string>::iterator it;
     for (it = pluginFilesFound.begin(); it != pluginFilesFound.end(); ++it) {
         plugin = openPlugin(*it);
         if (plugin) {
             entryPoint = (pluginInstance*)getPluginSymbol(plugin, "initPlugin");
-            if (entryPoint) {
-                pluginsLoaded[*it] = entryPoint;
-            } else {
-                throw sensorFactoryException("Symbol not found on plugin");
-            }
+            pluginsLoaded[*it] = entryPoint;
+        }
+        pluginHandlers[*it] = plugin;
+    }
+}
+
+int sensorFactory::getFoundPlugins()
+{
+    return pluginsLoaded.size();
+}
+
+int sensorFactory::getAmountOfPluginHandlers()
+{
+    return pluginHandlers.size();
+}
+
+int sensorFactory::getLoadedPlugins()
+{
+    int c = 0;
+    std::map<std::string, pluginInstance*>::iterator it;
+    for (it = pluginsLoaded.begin(); it != pluginsLoaded.end(); ++it) {
+        if (it->second) {
+            c++;
         }
     }
+    return c;
 }
 
 sensorFactory* sensorFactory::getInstance()

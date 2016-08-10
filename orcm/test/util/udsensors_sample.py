@@ -10,7 +10,7 @@
 
 import os
 
-DEFAULT_FILENAME="/tmp/gemeter_sample.so"
+DEFAULT_FILENAME="/tmp/libudplugin_sample.so"
 
 def write_binary_file(filename=DEFAULT_FILENAME):
     try:

@@ -18,11 +18,17 @@ class sensorFactory : public baseFactory {
 public:
     static struct sensorFactory* getInstance();
     int open(const char *plugin_path, const char *plugin_prefix);
+    void close(void);
     void loadPlugins(void);
-    void openAndGetSymbolsFromPlugin(void);
+    int getFoundPlugins(void);
+    int getLoadedPlugins(void);
+    int getAmountOfPluginHandlers(void);
+
 private:
     sensorFactory(){};
     virtual ~sensorFactory(){};
+    void openAndGetSymbolsFromPlugin(void);
+    std::map<std::string, void*> pluginHandlers;
 };
 
 class sensorFactoryException : public std::runtime_error

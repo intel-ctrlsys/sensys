@@ -21,13 +21,14 @@ void ut_sensorFactory::TearDown()
 {
     obj->pluginFilesFound.clear();
     obj->pluginsLoaded.clear();
+    obj->close();
 }
 
 TEST_F(ut_sensorFactory, openWithNullParamsAndExpectDefaultPath)
 {
     std::string path;
-    const char *default_path = "/usr/lib/";
-    obj->open(NULL, NULL);
+    const char *default_path = "/usr/lib64/";
+    EXPECT_NO_THROW(obj->open(NULL, NULL));
     path = obj->getPluginsPath();
     EXPECT_EQ(0, path.compare(default_path));
 }
@@ -36,7 +37,7 @@ TEST_F(ut_sensorFactory, openWithNullParamsAndExpectDefaultPrefix)
 {
     std::string prefix;
     const char *default_prefix = "libudplugin_";
-    obj->open(NULL, NULL);
+    EXPECT_NO_THROW(obj->open(NULL, NULL));
     prefix = obj->getPluginsPrefix();
     EXPECT_EQ(0, prefix.compare(default_prefix));
 }
@@ -48,7 +49,7 @@ TEST_F(ut_sensorFactory, openWithGoodParamsAndExpectSameValues)
     const char *myprefix = "myprefix_";
     const char *mypath = "/etc/";
 
-    obj->open(mypath, myprefix);
+    EXPECT_NO_THROW(obj->open(mypath, myprefix));
     prefix = obj->getPluginsPrefix();
     path = obj->getPluginsPath();
 
@@ -66,19 +67,23 @@ TEST_F(ut_sensorFactory, openAndCheckTrailingSlashOnPath)
 
 TEST_F(ut_sensorFactory, openPluginsOnDefaultPathWithExistingFiles)
 {
-    obj->open(NULL, "lib");
+    mock_dlopen = true;
+    EXPECT_NO_THROW(obj->open(NULL, "lib"));
     EXPECT_TRUE(obj->pluginFilesFound.size() != 0);
+    mock_dlopen = false;
 }
 
 TEST_F(ut_sensorFactory, openPluginsOnDefaultPathAndCheckFullPathInVector)
 {
-    obj->open(NULL, "lib");
-    const char *default_path = "/usr/lib/lib";
+    mock_dlopen = true;
+    EXPECT_NO_THROW(obj->open(NULL, "lib"));
+    const char *default_path = "/usr/lib64/lib";
     ASSERT_TRUE(obj->pluginFilesFound.size() != 0);
     std::vector<std::string>::iterator it;
     for (it = obj->pluginFilesFound.begin(); it != obj->pluginFilesFound.end(); ++it) {
         EXPECT_TRUE(NULL != strstr(it->c_str(), default_path));
     }
+    mock_dlopen = false;
 }
 
 TEST_F(ut_sensorFactory, openPluginsWithNonExistingPathAndGetException)
@@ -94,20 +99,26 @@ TEST_F(ut_sensorFactory, openPluginsWithNonExistingPathAndGetException)
 
 TEST_F(ut_sensorFactory, openPluginsAndCheckLoadedPluginsOnPathWithoutValidPlugins)
 {
-    obj->open(NULL, NULL);
-    EXPECT_EQ(0, obj->pluginsLoaded.size());
+    EXPECT_NO_THROW(obj->open(NULL, NULL));
+    EXPECT_EQ(0, obj->getFoundPlugins());
 }
 
 TEST_F(ut_sensorFactory, openPluginLoadOneValidPlugin)
 {
-    obj->open("/tmp/", NULL);
-    EXPECT_EQ(1, obj->pluginsLoaded.size());
+    EXPECT_NO_THROW(obj->open("/tmp/", NULL));
+    EXPECT_EQ(1, obj->getFoundPlugins());
+}
+
+TEST_F(ut_sensorFactory, openPluginAndCheckLoadedHandlers)
+{
+    EXPECT_NO_THROW(obj->open("/tmp/", NULL));
+    EXPECT_EQ(1, obj->getAmountOfPluginHandlers());
 }
 
 TEST_F(ut_sensorFactory, openPluginWithoutValidSymbol)
 {
     mock_dlsym = true;
-    EXPECT_THROW(obj->open("/tmp/", NULL), sensorFactoryException);
+    EXPECT_NO_THROW(obj->open("/tmp/", NULL));
     mock_dlsym = false;
 }
 
@@ -115,7 +126,43 @@ TEST_F(ut_sensorFactory, openPluginWithoutValidSymbolAndDlErrorisNull)
 {
     mock_dlsym = true;
     mock_dlerror = true;
-    EXPECT_THROW(obj->open("/tmp/", NULL), sensorFactoryException);
+    EXPECT_NO_THROW(obj->open("/tmp/", NULL));
     mock_dlsym = false;
     mock_dlerror = false;
+}
+
+TEST_F(ut_sensorFactory, openValidPluginAndClose)
+{
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    obj->close();
+    EXPECT_EQ(0, obj->getFoundPlugins());
+}
+
+TEST_F(ut_sensorFactory, openInvalidPluginAndClose)
+{
+    mock_dlopen = true;
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    obj->close();
+    EXPECT_EQ(0, obj->getFoundPlugins());
+    mock_dlopen = false;
+}
+
+TEST_F(ut_sensorFactory, getAmountOfFoundPlugins)
+{
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    EXPECT_EQ(1, obj->getFoundPlugins());
+}
+
+TEST_F(ut_sensorFactory, getAmountOfLoadedPlugins)
+{
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    EXPECT_EQ(1, obj->getLoadedPlugins());
+}
+
+TEST_F(ut_sensorFactory, getAmountOfLoadedPluginsWithInvalidPointer)
+{
+    mock_dlsym = true;
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    EXPECT_EQ(0, obj->getLoadedPlugins());
+    mock_dlsym = false;
 }

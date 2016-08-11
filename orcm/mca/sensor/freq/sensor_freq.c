@@ -842,7 +842,7 @@ static void freq_inventory_collect(opal_buffer_t *inventory_snapshot)
     if(mca_sensor_freq_component.test) {
         generate_test_inv_data(inventory_snapshot);
     } else {
-        unsigned int tot_items = (unsigned int)opal_list_get_size(&tracking) + 1; /* include "hostname"/nodename pair */
+        unsigned int tot_items = (unsigned int)opal_list_get_size(&tracking);
         unsigned int offset = 0;
         unsigned int i = 0;
         const char *ccomp = "freq";
@@ -861,14 +861,9 @@ static void freq_inventory_collect(opal_buffer_t *inventory_snapshot)
         /*pack the tot_items*/
         rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT);
         ORCM_ON_FAILURE_RETURN(rc);
-        --tot_items; /* adjust back for extra "hostname"/nodename pair */
-        tot_items -= (unsigned int)opal_list_get_size(&pstate_list);
-        /* store our hostname */
-        ccomp = "hostname";
-        rc = opal_dss.pack(inventory_snapshot, &ccomp, 1, OPAL_STRING);
-        ORCM_ON_FAILURE_RETURN(rc);
-        rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
-        ORCM_ON_FAILURE_RETURN(rc);
+        /*pack the hostname*/
+        //rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
+        //ORCM_ON_FAILURE_RETURN(rc);
 
         for(i = 0; i < tot_items; ++i) {
             asprintf(&comp, "sensor_freq_%d", i+1);
@@ -912,6 +907,7 @@ static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     opal_list_t *records = NULL;
     int rc = OPAL_SUCCESS;
     orcm_value_t *time_stamp;
+    orcm_value_t *host_name = NULL;
     struct timeval current_time;
     char *inv_val = NULL;
     char *inv = NULL;
@@ -922,12 +918,17 @@ static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     rc = opal_dss.unpack(inventory_snapshot, &tot_items, &n, OPAL_UINT);
     ORCM_ON_FAILURE_RETURN(rc);
 
+    host_name = orcm_util_load_orcm_value("hostname", hostname, OPAL_STRING, NULL);
+    ORCM_ON_NULL_RETURN(host_name);
+
     time_stamp = orcm_util_load_orcm_value("ctime", &current_time, OPAL_TIMEVAL, NULL);
     ORCM_ON_NULL_RETURN(time_stamp);
 
     records = OBJ_NEW(opal_list_t);
     opal_list_append(records, (opal_list_item_t*)time_stamp);
-    time_stamp=NULL;
+    opal_list_append(records, (opal_list_item_t*)host_name);
+    time_stamp = NULL;
+    host_name = NULL;
     while(tot_items > 0) {
         orcm_value_t *mkv = NULL;
 
@@ -944,7 +945,7 @@ static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
         inv=NULL;
         mkv->value.type = OPAL_STRING;
         mkv->value.data.string = inv_val;
-        inv_val=NULL;
+        inv_val = NULL;
         opal_list_append(records, (opal_list_item_t*)mkv);
 
         --tot_items;
@@ -958,6 +959,7 @@ static void freq_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot
     }
     records=NULL;
 cleanup:
+    ORCM_RELEASE(host_name);
     ORCM_RELEASE(records);
     SAFEFREE(inv_val);
     SAFEFREE(inv);

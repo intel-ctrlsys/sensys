@@ -10,7 +10,7 @@
 #ifndef ORCM_MCA_ANALYTICS_INTERFACE_ANALYTICS_INTERFACE_H_
 #define ORCM_MCA_ANALYTICS_INTERFACE_ANALYTICS_INTERFACE_H_
 
-#include "orcm/util/dataContainer.h"
+#include "orcm/common/dataContainer.h"
 #include <list>
 
 struct Event {

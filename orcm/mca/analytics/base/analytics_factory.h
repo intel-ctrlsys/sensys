@@ -13,7 +13,7 @@
 #include <string>
 #include <map>
 #include "orcm/mca/analytics/analytics_interface.h"
-#include "orcm/util/baseFactory.h"
+#include "orcm/common/baseFactory.h"
 
 #define ANALYTICS_SUCCESS 0
 #define ANALYTICS_ERROR 1

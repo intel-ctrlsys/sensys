@@ -1,6 +1,6 @@
 # -*- makefile -*-
 #
-# Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
+# Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
 ## $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -16,12 +16,7 @@ headers += \
         util/attr.h \
         util/logical_group.h \
         util/vardata.h \
-        util/string_utils.h \
-        util/dataContainer.h \
-        util/UDExceptions.h \
-        util/sensorFactory.h \
-        util/sensorInterface.h \
-        util/baseFactory.h
+        util/string_utils.h
 
 liborcm_la_SOURCES += \
         util/error_strings.c \
@@ -31,8 +26,3 @@ liborcm_la_SOURCES += \
         util/logical_group.c \
         util/workflow_util.c \
         util/vardata.cpp
-
-libudsensors_la_SOURCES += \
-        util/dataContainer.cpp \
-        util/sensorFactory.cpp \
-        util/baseFactory.cpp

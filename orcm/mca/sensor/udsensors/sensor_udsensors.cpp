@@ -15,13 +15,14 @@
 
 #include "orcm/util/utils.h"
 #include "orcm/runtime/orcm_globals.h"
-
 #include "orcm/mca/analytics/analytics.h"
-
 #include "orcm/mca/sensor/base/base.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
+
 #include "sensor_udsensors.h"
+#include "sensorFactory.h"
+
 
 extern "C" {
     #include "opal/runtime/opal_progress_threads.h"
@@ -64,18 +65,24 @@ orcm_sensor_base_module_t orcm_sensor_udsensors_module = {
 
 static orcm_sensor_sampler_t *udsensors_sampler = NULL;
 static orcm_sensor_udsensors_t orcm_sensor_udsensors;
+static struct sensorFactory *factory;
 
 END_C_DECLS
 
 static int init(void)
 {
     int rc = ORCM_SUCCESS;
+    factory = sensorFactory::getInstance();
 
     mca_sensor_udsensors_component.diagnostics = 0;
     mca_sensor_udsensors_component.runtime_metrics =
         orcm_sensor_base_runtime_metrics_create("udsensors", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_udsensors_component.collect_metrics);
-
+    try {
+        factory->open(mca_sensor_udsensors_component.udpath, NULL);
+    } catch (sensorFactoryException& e){
+        opal_output(0, "ERROR: %s ", e.what());
+    }
     return rc;
 }
 

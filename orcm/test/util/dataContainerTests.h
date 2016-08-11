@@ -11,7 +11,7 @@
 #define DATA_CONTAINER_TESTS_H
 
 #include "gtest/gtest.h"
-#include "orcm/util/dataContainer.h"
+#include "orcm/common/dataContainer.h"
 
 class utDataContainer : public testing::Test {
     protected:

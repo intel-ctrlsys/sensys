@@ -14,6 +14,7 @@ AM_CFLAGS = $(ORCM_CFLAGS)
 SUBDIRS = \
         etc \
 	include \
+        common \
 	$(EXT_orcm_FRAMEWORKS_SUBDIRS) \
 	$(EXT_orcm_FRAMEWORK_COMPONENT_STATIC_SUBDIRS) \
 	$(MCA_orcm_FRAMEWORKS_SUBDIRS) \
@@ -25,6 +26,7 @@ SUBDIRS = \
 DIST_SUBDIRS = \
         etc \
 	include \
+        common \
 	$(EXT_orcm_FRAMEWORKS_SUBDIRS) \
 	$(EXT_orcm_FRAMEWORK_COMPONENT_ALL_SUBDIRS) \
 	$(MCA_orcm_FRAMEWORKS_SUBDIRS) \
@@ -32,15 +34,11 @@ DIST_SUBDIRS = \
         test
 
 #Build The main ORCM library
-lib_LTLIBRARIES = libudsensors.la
-libudsensors_la_SOURCES =
-
-lib_LTLIBRARIES += liborcm.la
+lib_LTLIBRARIES = liborcm.la
 liborcm_la_SOURCES =
 liborcm_la_LIBADD = \
 	$(MCA_orcm_FRAMEWORK_LIBS) \
-	$(ORTE_TOP_BUILDDIR)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
-        libudsensors.la
+	$(ORTE_TOP_BUILDDIR)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
 
 liborcm_la_DEPENDENCIES = $(lib@ORTE_LIB_PREFIX@open_rte_la_LIBADD)
 liborcm_la_LDFLAGS = -lstdc++ $(ipmiutil_LIBS)\
@@ -60,7 +58,7 @@ nodist_man_MANS =
 
 if WANT_INSTALL_HEADERS
 orcmdir = $(orcmincludedir)/$(subdir)
-nobase_orcm_HEADERS += $(headers)
+nobase_orcm_HEADERS = $(headers)
 else
 orcmdir = $(includedir)
 endif

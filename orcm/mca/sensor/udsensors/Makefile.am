@@ -11,7 +11,9 @@
 sources = \
         sensor_udsensors_component.c \
         sensor_udsensors.h \
-        sensor_udsensors.cpp
+        sensor_udsensors.cpp \
+        sensorFactory.h \
+        sensorFactory.cpp
 
 # Make the output library in this directory, and name it either
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la
@@ -29,7 +31,9 @@ mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_sensor_udsensors_la_SOURCES = $(sources)
 mca_sensor_udsensors_la_LDFLAGS = -module -avoid-version
+mca_sensor_udsensors_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_sensor_udsensors_la_SOURCES =$(sources)
 libmca_sensor_udsensors_la_LDFLAGS = -module -avoid-version
+libmca_sensor_udsensors_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la

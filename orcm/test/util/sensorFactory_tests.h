@@ -14,7 +14,7 @@
 #include <stdexcept>
 #include "gtest/gtest.h"
 
-#include "orcm/util/sensorFactory.h"
+#include "orcm/mca/sensor/udsensors/sensorFactory.h"
 
 bool mock_dlopen;
 bool mock_dlsym;

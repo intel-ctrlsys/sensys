@@ -56,7 +56,7 @@ MOCKING = \
 
 LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a
 
-AM_LDFLAGS = -ludsensors -lorcm -lorcmopen-pal -lpthread $(MOCKING)
+AM_LDFLAGS = -lsensysplugins -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 
 #
 # Preprocessor flags

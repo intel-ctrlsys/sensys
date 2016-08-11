@@ -9,7 +9,7 @@
 
 #include <string>
 #include <stdexcept>
-#include "orcm/util/UDExceptions.h"
+#include "orcm/common/UDExceptions.h"
 
 #include "UDExceptionTests.h"
 

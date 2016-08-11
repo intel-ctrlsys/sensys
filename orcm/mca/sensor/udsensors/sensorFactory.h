@@ -12,7 +12,7 @@
 
 #include <stddef.h>
 
-#include "baseFactory.h"
+#include "orcm/common/baseFactory.h"
 
 class sensorFactory : public baseFactory {
 public:

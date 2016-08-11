@@ -13,7 +13,7 @@ headers += \
     base/analytics_factory.h \
     base/c_analytics_factory.h
 
-libmca_analytics_la_SOURCES += \
+sources =\
     base/analytics_base_frame.c \
     base/analytics_base_recv.c \
     base/analytics_base_select.c \
@@ -21,3 +21,6 @@ libmca_analytics_la_SOURCES += \
     base/analytics_base_db.c   \
     base/analytics_base_event.c \
     base/analytics_factory.cpp
+
+libmca_analytics_la_SOURCES += $(sources)
+libmca_analytics_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la

@@ -620,9 +620,6 @@ int orcm_octl_sensor_change_sampling(int command, char** cmdlist)
                                           ORCM_RML_TAG_SENSOR,
                                           orte_rml_send_callback, NULL))) {
             orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
-            opal_buffer_t* tmp = buf;
-            OBJ_RELEASE(tmp); // There are 2 ref counts here; dispose of one.
-
             orcm_octl_error("connection-fail");
             goto change_sampling_cleanup;
         }

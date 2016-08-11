@@ -32,18 +32,20 @@ DIST_SUBDIRS = \
         test
 
 #Build The main ORCM library
-lib_LTLIBRARIES = liborcm.la
+lib_LTLIBRARIES = libudsensors.la
+libudsensors_la_SOURCES =
+
+lib_LTLIBRARIES += liborcm.la
 liborcm_la_SOURCES =
 liborcm_la_LIBADD = \
 	$(MCA_orcm_FRAMEWORK_LIBS) \
-	$(ORTE_TOP_BUILDDIR)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
+	$(ORTE_TOP_BUILDDIR)/orte/lib@ORTE_LIB_PREFIX@open-rte.la \
+        libudsensors.la
+
 liborcm_la_DEPENDENCIES = $(lib@ORTE_LIB_PREFIX@open_rte_la_LIBADD)
 liborcm_la_LDFLAGS = -lstdc++ $(ipmiutil_LIBS)\
         -version-info $(liborcm_so_version) \
         $(ORCM_LIBORCM_EXTRA_LDFLAGS)
-
-lib_LTLIBRARIES += libudsensors.la
-libudsensors_la_SOURCES =
 
 # included subdirectory Makefile.am's and appended-to variables
 headers =

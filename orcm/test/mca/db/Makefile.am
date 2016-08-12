@@ -7,7 +7,7 @@
 # $HEADER$
 
 if HAVE_GTEST
-gtestSubdirs=base print odbc postgres
+gtestSubdirs=zeromq base print odbc postgres
 endif
 
 SUBDIRS=$(gtestSubdirs)

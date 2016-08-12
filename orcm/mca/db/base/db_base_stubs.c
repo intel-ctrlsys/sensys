@@ -240,7 +240,7 @@ static void process_store_new(int fd, short args, void *cbdata)
         rc = ORCM_ERR_NOT_FOUND;
         goto callback_and_cleanup;
     }
-    if (NULL != hdl->module->store) {
+    if (NULL != hdl->module->store_new) {
         rc = hdl->module->store_new((struct orcm_db_base_module_t*)hdl->module,
                                     req->data_type, req->input, req->output);
     } else {

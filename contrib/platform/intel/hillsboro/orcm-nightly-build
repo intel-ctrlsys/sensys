@@ -47,4 +47,5 @@ with_componentpower=yes
 with_mcedata=yes
 with_errcounts=yes
 with_snmp=yes
+with_udsensors=yes
 with_zeromq=yes

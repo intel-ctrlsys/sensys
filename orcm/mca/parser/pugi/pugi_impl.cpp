@@ -13,6 +13,7 @@
 using namespace pugi;
 using namespace std;
 
+
 int pugi_impl::loadFile()
 {
     xml_parse_result result = doc.load_file(file.c_str());
@@ -53,9 +54,18 @@ int pugi_impl::writeSection(opal_list_t *input, char const*key,
     int rc;
 
     rc = writeToTree(root, input, key, name, overwrite);
-    if (ORCM_SUCCESS != rc) {
+
+    if (ORCM_ERR_NOT_FOUND == rc) {
+        rc = appendListToRootNode(root, input, key, name);
+        if (rc != ORCM_SUCCESS) {
+            return rc;
+        }
+        return saveSection();
+    }
+    else if (ORCM_SUCCESS != rc) {
         return rc;
     }
+
     return saveSection();
 }
 
@@ -114,7 +124,6 @@ int pugi_impl::convertOpalPtrToXmlNodes(xml_node& key_node, orcm_value_t *list_i
     else {
         return ORCM_SUCCESS;
     }
-
 }
 
 int pugi_impl::createNodeFromList(orcm_value_t *list_item, xml_node& key_node)
@@ -163,7 +172,43 @@ int pugi_impl::writeToTree(opal_list_t *srcList, opal_list_t *input, char const*
             }
         }
     }
-    return ORCM_ERROR;
+    return ORCM_ERR_NOT_FOUND;
+}
+
+int pugi_impl::appendListToRootNode(opal_list_t *srcList, opal_list_t *input, char const* key,
+                                    char const* name)
+{
+    opal_list_t *modified_input = OBJ_NEW(opal_list_t);
+    orcm_value_t *list_first_element = NULL;
+    int rc;
+
+    if (NULL != name && (0 != strcmp("",name))) {
+        addValuesToList(input, "name", name);
+    }
+
+    char *keyPtr = strdup(key);
+    if (NULL == keyPtr) {
+        SAFE_RELEASE_NESTED_LIST(modified_input);
+        return ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    rc = orcm_util_append_orcm_value (modified_input, keyPtr, input, OPAL_PTR, NULL);
+    if (rc != ORCM_SUCCESS) {
+        SAFEFREE(keyPtr);
+        SAFE_RELEASE_NESTED_LIST(modified_input);
+        return rc;
+    }
+
+    list_first_element = (orcm_value_t *)opal_list_get_first(srcList);
+    if (OPAL_PTR != list_first_element->value.type) {
+        SAFE_RELEASE_NESTED_LIST(modified_input);
+        SAFEFREE(keyPtr);
+        return ORCM_ERROR;
+    }
+
+    appendToList((opal_list_t**)&(list_first_element->value.data.ptr), modified_input, false);
+    SAFEFREE(keyPtr);
+    return ORCM_SUCCESS;
 }
 
 int pugi_impl::checkOpalPtrToWrite(orcm_value_t *item, opal_list_t *input, char const* key,
@@ -191,7 +236,7 @@ void pugi_impl::appendToList(opal_list_t **srcList, opal_list_t *input, bool ove
         if (NULL == input) {
             return;
         }
-        opal_list_join( *srcList, opal_list_get_end(*srcList), input);
+        opal_list_join( *srcList, opal_list_get_last(*srcList), input);
     }
 }
 

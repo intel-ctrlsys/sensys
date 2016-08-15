@@ -10,6 +10,7 @@
 #include "parser_pugi_tests.h"
 #include "opal/class/opal_list.h"
 #include "orcm/runtime/orcm_globals.h"
+#include "parser_pugi_mocking.h"
 
 BEGIN_C_DECLS
     #include "orcm/util/utils.h"
@@ -24,6 +25,8 @@ END_C_DECLS
 using namespace std;
 
 typedef pugi_impl parser_t;
+extern bool is_orcm_util_append_expected_succeed;
+extern bool is_strdup_expected_succeed;
 
 void print_opal_list(opal_list_t* list);
 bool allItemsInListHaveGivenKey(opal_list_t *list, char const *key);
@@ -102,7 +105,7 @@ TEST_F(ut_parser_pugi_tests, test_API_finalize)
 
 // Open and Close API Tests.
 
-TEST_F(ut_parser_pugi_tests, test_API_open_invalidFile)
+TEST_F(ut_parser_pugi_tests, test_API_open_invalidFilebool)
 {
     int file_id = pugi_open(invalidFile);
     ASSERT_EQ(ORCM_ERR_FILE_OPEN_FAILURE,file_id);
@@ -373,6 +376,53 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_nullInput_overwrite_false)
     ASSERT_EQ(ORCM_SUCCESS, ret);
 }
 
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeoneAttributeNonRoot)
+{
+    FILE *xml_file;
+
+    xml_file = fopen("/tmp/write_xml", "w+");
+    fprintf(xml_file, "<group>value</group>\n");
+    fclose(xml_file);
+
+    int file_id = pugi_open("/tmp/write_xml");
+    char *key = strdup("nonroot");
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_RELEASE_NESTED_LIST(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    unlink("/tmp/write_xml");
+    ASSERT_NE(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeMockingUtilAppendNonRoot)
+{
+    FILE *xml_file;
+
+    xml_file = fopen("/tmp/write_xml", "w+");
+    fprintf(xml_file, "<group>\n</group>\n");
+    fclose(xml_file);
+
+    int file_id = pugi_open("/tmp/write_xml");
+    char *key = strdup("nonroot");
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+
+    is_orcm_util_append_expected_succeed = false;
+
+    parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_RELEASE_NESTED_LIST(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    unlink("/tmp/write_xml");
+    is_orcm_util_append_expected_succeed = true;
+    ASSERT_NE(ORCM_SUCCESS, ret);
+}
+
 TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeAtRoot)
 {
     int file_id = pugi_open(writeFile.c_str());
@@ -400,7 +450,37 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeAtNonRoot)
     SAFE_RELEASE_NESTED_LIST(input);
     SAFEFREE(key);
     pugi_close(file_id);
-    ASSERT_NE(ORCM_SUCCESS, ret);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeWithEmptyStringAtNonRoot)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("nonroot");
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
+
+    int ret = pugi_write_section(file_id, input, key, "", false);
+    SAFE_RELEASE_NESTED_LIST(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNode_withNameAtNonRoot)
+{
+    int file_id = pugi_open(writeFile.c_str());
+    char *key = strdup("nonroot");
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
+
+    int ret = pugi_write_section(file_id, input, key, "name", false);
+    SAFE_RELEASE_NESTED_LIST(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    ASSERT_EQ(ORCM_SUCCESS, ret);
 }
 
 TEST_F(ut_parser_pugi_tests, test_API_writeSection_twoNodeHirearchyAtRoot)

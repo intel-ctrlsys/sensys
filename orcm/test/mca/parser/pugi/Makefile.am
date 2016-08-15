@@ -35,10 +35,13 @@ check_PROGRAMS = parser_pugi_tests
 
 parser_pugi_tests_SOURCES = \
     parser_pugi_tests.h \
-    parser_pugi_tests.cpp
+    parser_pugi_tests.cpp \
+    parser_pugi_mocking.cpp \
+    parser_pugi_mocking.h
 
-#MOCKING=
-
+MOCKING = \
+          -Wl,--wrap=__strdup \
+          -Wl,--wrap=orcm_util_append_orcm_value
 #
 # Libraries we depend on
 #

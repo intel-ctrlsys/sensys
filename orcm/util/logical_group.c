@@ -707,7 +707,7 @@ static int orcm_logical_group_crate_xml_file(char *storage_filename)
         return ORCM_ERR_FILE_OPEN_FAILURE;
     }
     else {
-        if (0 > fprintf(storage_fp, "<logicalgroup />")) {
+        if (0 > fprintf(storage_fp, "<configuration />")) {
             fclose(storage_fp);
             return ORCM_ERR_FILE_WRITE_FAILURE;
         }
@@ -721,9 +721,12 @@ static int orcm_logical_group_open_file_write_mode(char *storage_filename)
 {
     int ret = ORCM_SUCCESS;
 
-    ret = orcm_logical_group_crate_xml_file(storage_filename);
-    if (ORCM_SUCCESS == ret) {
-        ret = orcm_logical_group_open_file(storage_filename);
+    ret = orcm_logical_group_open_file(storage_filename);
+    if (ORCM_SUCCESS != ret) {
+        ret = orcm_logical_group_crate_xml_file(storage_filename);
+        if (ORCM_SUCCESS == ret) {
+            ret = orcm_logical_group_open_file(storage_filename);
+        }
     }
     return ret;
 }

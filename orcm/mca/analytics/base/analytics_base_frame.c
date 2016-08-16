@@ -285,7 +285,9 @@ static int orcm_analytics_base_open(mca_base_open_flag_t flags)
     /* Check for default workflow file and load it*/
     orcm_analytics_base_load_default_workflows();
 
-    return search_plugin_creator(orcm_analytics_base.pluginlibdir, "analytics_extension");
+    search_plugin_creator(orcm_analytics_base.pluginlibdir, "analytics_extension");
+
+    return rc;
 }
 
 MCA_BASE_FRAMEWORK_DECLARE(orcm, analytics, "ORCM Analytics", orcm_analytics_base_register,

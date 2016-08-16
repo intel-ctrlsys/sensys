@@ -22,7 +22,7 @@ extern "C" {
     extern mca_db_zeromq_module_t mca_db_zeromq_module;
     extern void orcm_db_zeromq_output_callback(int level, const char* msg);
     extern void orcm_db_zeromq_print_value(const opal_value_t *kv, std::stringstream& ss);
-    extern std::string orcm_db_zeromq_print_orcm_json_format(opal_list_t *kvs);
+    extern std::string orcm_db_zeromq_print_orcm_json_format(opal_list_t *kvs, bool inventory = false);
     extern void orcm_db_zeromq_print_time_value(const struct timeval *time, std::stringstream& ss);
 }
 
@@ -207,7 +207,7 @@ TEST_F(BasicTestFixture, Json_formatter_tests)
         opal_list_append(kv, (opal_list_item_t*)mv);
     }
     str = orcm_db_zeromq_print_orcm_json_format(kv);
-    EXPECT_EQ("{\"data\":[{\"key\":\"int\",\"value\":4,\"units\":\"\"}]}", str);
+    EXPECT_EQ("{\"data\":[{\"key\":\"int\",\"value\":4}]}", str);
     ORCM_RELEASE(kv);
 
 
@@ -227,7 +227,7 @@ TEST_F(BasicTestFixture, Json_formatter_tests)
         opal_list_append(kv, (opal_list_item_t*)mv);
     }
     str = orcm_db_zeromq_print_orcm_json_format(kv);
-    EXPECT_EQ("{\"data\":[{\"key\":\"int16\",\"value\":4,\"units\":\"\"}]}", str);
+    EXPECT_EQ("{\"data\":[{\"key\":\"int16\",\"value\":4}]}", str);
     ORCM_RELEASE(kv);
 
 
@@ -237,7 +237,7 @@ TEST_F(BasicTestFixture, Json_formatter_tests)
         opal_list_append(kv, (opal_list_item_t*)mv);
     }
     str = orcm_db_zeromq_print_orcm_json_format(kv);
-    EXPECT_EQ("{\"data\":[{\"key\":\"int32\",\"value\":4,\"units\":\"\"}]}", str);
+    EXPECT_EQ("{\"data\":[{\"key\":\"int32\",\"value\":4}]}", str);
     ORCM_RELEASE(kv);
 
 
@@ -257,7 +257,7 @@ TEST_F(BasicTestFixture, Json_formatter_tests)
     if (NULL != mv) {
         opal_list_append(kv, (opal_list_item_t*)mv);
     }
-    str = orcm_db_zeromq_print_orcm_json_format(kv);
+    str = orcm_db_zeromq_print_orcm_json_format(kv, true);
     EXPECT_EQ("{\"data\":[{\"key\":\"uint\",\"value\":4}]}", str);
     ORCM_RELEASE(kv);
 

@@ -46,7 +46,7 @@ orcm_db_base_component_t mca_db_zeromq_component = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },
-    .priority = 7,
+    .priority = 3,
     .available = orcm_db_zeromq_component_avail,
     .create_handle = orcm_db_zeromq_component_create,
     .finalize = NULL

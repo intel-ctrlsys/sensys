@@ -63,7 +63,7 @@ int orcm_db_zeromq_store_new(struct orcm_db_base_module_t* imod,
                              opal_list_t* ret);
 void orcm_db_zeromq_output_callback(int level, const char* msg);
 void orcm_db_zeromq_print_value(const opal_value_t *kv, std::stringstream& ss);
-std::string orcm_db_zeromq_print_orcm_json_format(opal_list_t *kvs);
+std::string orcm_db_zeromq_print_orcm_json_format(opal_list_t *kvs, bool inventory = false);
 void orcm_db_zeromq_print_time_value(const struct timeval *time, std::stringstream& ss);
 
 mca_db_zeromq_module_t mca_db_zeromq_module = {
@@ -89,14 +89,13 @@ mca_db_zeromq_module_t mca_db_zeromq_module = {
 int orcm_db_zeromq_init(struct orcm_db_base_module_t* imod)
 {
     mca_db_zeromq_module_t* mod = (mca_db_zeromq_module_t*)imod;
-
     try {
         orcm_db_zeromq_object->Init(mod->bind_port, ZMQ_THREADS, MAX_ZMQ_BUFFERS, orcm_db_zeromq_output_callback);
         orcm_db_zeromq_output_callback(1, "mca: db: zeromq: selected and initialized.");
     } catch (ZeroMQException& ex) {
-        int rv = ex.ZMQError();
-        std::string errMsg = std::string("mca: db: zeromq: selected but failed to initialize: '") + ex.what();
-        orcm_db_zeromq_output_callback(0, errMsg.c_str());
+        std::stringstream ss;
+        ss << "mca: db: zeromq: selected but failed to initialize: '" << ex.what() <<"' (" << ex.ZMQError() << ")";
+        orcm_db_zeromq_output_callback(0, ss.str().c_str());
         return ORCM_ERROR;
     }
 
@@ -122,7 +121,7 @@ int orcm_db_zeromq_store_new(struct orcm_db_base_module_t* imod,
         { ORCM_DB_DIAG_DATA, "diagnostic_data"}
     };
     mca_db_zeromq_module_t* mod = (mca_db_zeromq_module_t*)imod;
-    std::string json = orcm_db_zeromq_print_orcm_json_format(kvs);
+    std::string json = orcm_db_zeromq_print_orcm_json_format(kvs, (ORCM_DB_INVENTORY_DATA == data_type));
 
     try {
         if(firstMessage) {
@@ -132,9 +131,9 @@ int orcm_db_zeromq_store_new(struct orcm_db_base_module_t* imod,
         orcm_db_zeromq_object->PublishMessage(lookup[data_type], json);
         orcm_db_zeromq_output_callback(9, "mca: db: zeromq: published message.");
     } catch (ZeroMQException& ex) {
-        int rv = ex.ZMQError();
-        std::string errMsg = std::string("mca: db: zeromq: public message failed: '") + ex.what() + "'";
-        orcm_db_zeromq_output_callback(0, errMsg.c_str());
+        std::stringstream ss;
+        ss << "mca: db: zeromq: public message failed: '" << ex.what() << "' (" << ex.ZMQError() << ")";
+        orcm_db_zeromq_output_callback(0, ss.str().c_str());
         return ORCM_ERROR;
     } catch (std::bad_alloc& ex) {
         return ORCM_ERR_OUT_OF_RESOURCE;
@@ -145,11 +144,10 @@ int orcm_db_zeromq_store_new(struct orcm_db_base_module_t* imod,
 
 void orcm_db_zeromq_output_callback(int level, const char* msg)
 {
-    // opal_output_verbose(level, 1, msg); // THIS IS NOT WORKING???
-    cout << "Ouput Level " << level << ": " << msg << endl;
+    opal_output_verbose(level, orcm_db_base_framework.framework_output, msg);
 }
 
-std::string orcm_db_zeromq_print_orcm_json_format(opal_list_t *kvs)
+std::string orcm_db_zeromq_print_orcm_json_format(opal_list_t *kvs, bool inventory)
 {
     std::stringstream ss;
     bool insert_comma = false;
@@ -163,8 +161,8 @@ std::string orcm_db_zeromq_print_orcm_json_format(opal_list_t *kvs)
             ss << "{\"key\":\"" << kv->value.key << "\",\"value\":";
             orcm_db_zeromq_print_value(&(kv->value), ss);
 
-            if (NULL != kv->units) {
-                ss << ",\"units\":\"" << std::string(kv->units) << "\"}";
+            if (!inventory && NULL != kv->units && '\0' != *kv->units) {
+                ss << ",\"units\":\"" << kv->units << "\"}";
             }
             else
                 ss << "}";
@@ -172,7 +170,7 @@ std::string orcm_db_zeromq_print_orcm_json_format(opal_list_t *kvs)
         }
     }
     ss << "]}";
-return ss.str();
+    return ss.str();
 }
 
 
@@ -222,10 +220,10 @@ void orcm_db_zeromq_print_value(const opal_value_t *kv, std::stringstream &ss)
         ss << (kv->data.flag ? "true" : "false");
         break;
     case OPAL_FLOAT:
-        ss <<  kv->data.fval ;
+        ss <<  kv->data.fval;
         break;
     case OPAL_DOUBLE:
-        ss << kv->data.dval ;
+        ss << kv->data.dval;
         break;
     case OPAL_TIMEVAL:
         orcm_db_zeromq_print_time_value(&kv->data.tv, ss);

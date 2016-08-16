@@ -13,8 +13,6 @@
 class sensorInterface
 {
 public:
-    sensorInterface(){};
-    virtual ~sensorInterface(){};
     virtual int init(void);
     virtual int finalize(void);
 };

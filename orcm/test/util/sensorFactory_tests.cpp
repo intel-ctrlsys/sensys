@@ -14,6 +14,7 @@ void ut_sensorFactory::SetUp()
     mock_dlopen = false;
     mock_dlsym = false;
     mock_dlerror = false;
+    mock_plugin = false;
     obj = sensorFactory::getInstance();
 }
 
@@ -22,6 +23,20 @@ void ut_sensorFactory::TearDown()
     obj->pluginFilesFound.clear();
     obj->pluginsLoaded.clear();
     obj->close();
+}
+
+int mockPlugin::init()
+{
+    std::cout << "In the init\n";
+    if (throwOnInit) {
+        throw std::runtime_error("Failing on mockPlugin.init");
+    }
+    return 0;
+}
+
+int mockPlugin::finalize()
+{
+    return 0;
 }
 
 TEST_F(ut_sensorFactory, openWithNullParamsAndExpectDefaultPath)
@@ -135,7 +150,7 @@ TEST_F(ut_sensorFactory, openValidPluginAndClose)
 {
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
     obj->close();
-    EXPECT_EQ(0, obj->getFoundPlugins());
+    EXPECT_EQ(0, obj->getLoadedPlugins());
 }
 
 TEST_F(ut_sensorFactory, openInvalidPluginAndClose)
@@ -143,7 +158,7 @@ TEST_F(ut_sensorFactory, openInvalidPluginAndClose)
     mock_dlopen = true;
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
     obj->close();
-    EXPECT_EQ(0, obj->getFoundPlugins());
+    EXPECT_EQ(0, obj->getLoadedPlugins());
     mock_dlopen = false;
 }
 
@@ -165,4 +180,38 @@ TEST_F(ut_sensorFactory, getAmountOfLoadedPluginsWithInvalidPointer)
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
     EXPECT_EQ(0, obj->getLoadedPlugins());
     mock_dlsym = false;
+}
+
+TEST_F(ut_sensorFactory, initWithoutErrors)
+{
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    EXPECT_NO_THROW(obj->init());
+}
+
+TEST_F(ut_sensorFactory, initWithPluginException)
+{
+    mock_dlsym = true;
+    mock_plugin = true;
+    throwOnInit = true;
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    EXPECT_THROW(obj->init(), std::runtime_error);
+    mock_plugin = false;
+    mock_dlsym = false;
+    throwOnInit = false;
+}
+
+TEST_F(ut_sensorFactory, initWithPluginExceptionAndErrorMsg)
+{
+    mock_dlsym = true;
+    mock_plugin = true;
+    throwOnInit = true;
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    try {
+        obj->init();
+    } catch (std::runtime_error& e) {
+        EXPECT_TRUE(NULL != strstr(e.what(), "Failing on mockPlugin.init"));
+    }
+    mock_dlsym = true;
+    mock_plugin = true;
+    throwOnInit = false;
 }

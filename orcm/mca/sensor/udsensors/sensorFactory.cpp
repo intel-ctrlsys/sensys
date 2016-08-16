@@ -29,6 +29,23 @@ void sensorFactory::close()
     }
 }
 
+void sensorFactory::init()
+{
+    std::map<std::string, sensorInterface*>::iterator it;
+    std::string errors = "";
+    for (it = pluginsLoaded.begin(); it != pluginsLoaded.end(); ++it) {
+        try {
+            it->second->init();
+        } catch (std::runtime_error &e) {
+            errors.append("Plugin " + it->first + " failed in init with:\n");
+            errors.append(std::string(e.what()) + "\n");
+        }
+    }
+    if (errors.compare("")) {
+        throw sensorFactoryException(errors);
+    }
+}
+
 void sensorFactory::loadPlugins()
 {
     int res = 0;
@@ -42,13 +59,15 @@ void sensorFactory::loadPlugins()
 void sensorFactory::openAndGetSymbolsFromPlugin()
 {
     void *plugin;
-    pluginInstance *entryPoint;
+    sensorInstance entryPoint;
     std::vector<std::string>::iterator it;
     for (it = pluginFilesFound.begin(); it != pluginFilesFound.end(); ++it) {
         plugin = openPlugin(*it);
         if (plugin) {
-            entryPoint = (pluginInstance*)getPluginSymbol(plugin, "initPlugin");
-            pluginsLoaded[*it] = entryPoint;
+            entryPoint = (sensorInstance)getPluginSymbol(plugin, "initPlugin");
+            if (entryPoint) {
+                pluginsLoaded[*it] = entryPoint();
+            }
         }
         pluginHandlers[*it] = plugin;
     }
@@ -56,7 +75,7 @@ void sensorFactory::openAndGetSymbolsFromPlugin()
 
 int sensorFactory::getFoundPlugins()
 {
-    return pluginsLoaded.size();
+    return pluginFilesFound.size();
 }
 
 int sensorFactory::getAmountOfPluginHandlers()
@@ -66,14 +85,7 @@ int sensorFactory::getAmountOfPluginHandlers()
 
 int sensorFactory::getLoadedPlugins()
 {
-    int c = 0;
-    std::map<std::string, pluginInstance*>::iterator it;
-    for (it = pluginsLoaded.begin(); it != pluginsLoaded.end(); ++it) {
-        if (it->second) {
-            c++;
-        }
-    }
-    return c;
+    return pluginsLoaded.size();
 }
 
 sensorFactory* sensorFactory::getInstance()

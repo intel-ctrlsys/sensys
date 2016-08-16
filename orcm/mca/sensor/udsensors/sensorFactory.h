@@ -13,16 +13,21 @@
 #include <stddef.h>
 
 #include "orcm/common/baseFactory.h"
+#include "orcm/common/sensorInterface.h"
+
+typedef sensorInterface* (*sensorInstance)(void);
 
 class sensorFactory : public baseFactory {
 public:
     static struct sensorFactory* getInstance();
     int open(const char *plugin_path, const char *plugin_prefix);
     void close(void);
+    void init(void);
     void loadPlugins(void);
     int getFoundPlugins(void);
     int getLoadedPlugins(void);
     int getAmountOfPluginHandlers(void);
+    std::map<std::string, sensorInterface*> pluginsLoaded;
 
 private:
     sensorFactory(){};

@@ -37,7 +37,6 @@ public:
     std::string formFullPath(const char *filename);
 
     std::vector<std::string> pluginFilesFound;
-    std::map<std::string, pluginInstance*> pluginsLoaded;
     std::string plugins_path;
     std::string plugins_prefix;
 

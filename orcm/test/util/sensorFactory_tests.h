@@ -19,26 +19,41 @@
 bool mock_dlopen;
 bool mock_dlsym;
 bool mock_dlerror;
+bool mock_plugin;
+bool throwOnInit;
+
+class mockPlugin
+{
+public:
+    virtual int init(void);
+    virtual int finalize(void);
+};
 
 extern "C" {
     extern void *__real_dlopen(const char *filename, int flag);
     extern void *__real_dlsym(void *handle, const char *symbol);
     extern char *__real_dlerror(void);
 
+    void * get_mockPlugin(void) {
+        return new mockPlugin();
+    }
+
     void * __wrap_dlopen(const char *filename, int flag) {
         if (mock_dlopen) {
             return NULL;
-        }
-        else {
+        } else {
             return __real_dlopen(filename, flag);
         }
     }
 
     void * __wrap_dlsym(void *handle, const char *symbol) {
         if (mock_dlsym) {
-            return NULL;
-        }
-        else {
+            if (mock_plugin) {
+                return (void*)get_mockPlugin;
+            } else {
+                return NULL;
+            }
+        } else {
             return __real_dlsym(handle, symbol);
         }
     }

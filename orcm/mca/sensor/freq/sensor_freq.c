@@ -861,9 +861,8 @@ static void freq_inventory_collect(opal_buffer_t *inventory_snapshot)
         /*pack the tot_items*/
         rc = opal_dss.pack(inventory_snapshot, &tot_items, 1, OPAL_UINT);
         ORCM_ON_FAILURE_RETURN(rc);
-        /*pack the hostname*/
-        //rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
-        //ORCM_ON_FAILURE_RETURN(rc);
+
+        tot_items -= (unsigned int)opal_list_get_size(&pstate_list);
 
         for(i = 0; i < tot_items; ++i) {
             asprintf(&comp, "sensor_freq_%d", i+1);

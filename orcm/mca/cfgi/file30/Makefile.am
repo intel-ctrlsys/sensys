@@ -11,6 +11,8 @@
 sources = \
         cfgi_file30.h \
         cfgi_file30.c \
+        cfgi_file30_helpers.h \
+        cfgi_file30_helpers.c \
         cfgi_file30_component.c
 
 # Make the output library in this directory, and name it either

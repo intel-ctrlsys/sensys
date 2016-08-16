@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+    <!-- Version is fixed to 3.0 -->
+    <version>3.0</version>
+    <!-- We need a single RECORD -->
+    <role>RECORD</role>
+    <junction>
+        <!-- We need a single root for the hierarchy -->
+        <type>cluster</type>
+        <name>master3</name>
+        <junction>
+            <type>row</type>
+            <name>row1</name>
+            <junction>
+		<type>rack</type>
+                <name>agg01</name>
+                <controller>
+                    <host>agg01</host>
+                    <port>55805</port>
+                    <aggregator>yes</aggregator>
+                </controller>
+                <junction>
+                    <type>node</type>
+                    <name>node[4:0-255]</name>
+                    <controller>
+                        <!-- This controller takes its host name from its ’rows name -->
+                        <!-- The @ operator does the unique selection -->
+                        <host>@</host>
+                        <port>55805</port>
+                        <aggregator>no</aggregator>
+                    </controller>
+                </junction>
+            </junction>
+            <junction>
+                <type>rack</type>
+                <name>agg02</name>
+                <controller>
+                    <host>agg02</host>
+                    <port>55805</port>
+                    <aggregator>yes</aggregator>
+                </controller>
+                <junction>
+                    <type>node</type>
+                    <name>node[4:256-511]</name>
+                    <controller>
+                        <host>@</host>
+                        <port>55805</port>
+                        <aggregator>no</aggregator>
+                    </controller>
+                </junction>
+            </junction>
+            <junction>
+                <type>rack</type>
+                <name>agg03</name>
+                <controller>
+                    <host>agg03</host>
+                    <port>55805</port>
+                    <aggregator>yes</aggregator>
+                </controller>
+                <junction>
+                    <type>node</type>
+                    <name>node[4:512-767]</name>
+                    <controller>
+                        <host>@</host><port>55805</port>
+                        <aggregator>no</aggregator>
+                    </controller>
+                </junction>
+            </junction>
+            <junction>
+                <type>rack</type>
+                <name>agg04</name>
+                <controller>
+                    <host>agg04</host>
+                    <port>55805</port>
+                    <aggregator>yes</aggregator>
+                </controller>
+                <junction>
+                    <type>node</type>
+                    <name>node[4:768-1023]</name>
+                    <controller>
+                        <host>@</host>
+                        <port>55805</port>
+                        <aggregator>no</aggregator>
+                    </controller>
+                </junction>
+            </junction>
+        </junction>
+    </junction>
+    <scheduler>
+        <!--shost identifies the node that houses the ORCM scheduler. Only one allowed -->
+        <shost>master01</shost>
+        <port>55820</port>
+    </scheduler>
+</configuration>
+

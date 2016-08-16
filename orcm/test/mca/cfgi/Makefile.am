@@ -7,5 +7,7 @@
 #
 
 if HAVE_GTEST
-gtestSubdirs=file10
+gtestSubdirs=file10 file30
 endif
+
+SUBDIRS=$(gtestSubdirs)

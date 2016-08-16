@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+    <version>3</version>
+    <role>RECORD</role>
+    <junction>
+        <type>cluster</type>
+        <name>default_cluster</name>
+        <junction>
+            <type>row</type>
+            <junction>
+                <type>rack</type>
+                <name>rack</name>
+                <controller>
+                     <host>localhost</host>
+                     <port>55805</port>
+                     <aggregator>yes</aggregator>
+                </controller>
+                <junction>
+                     <type>node</type>
+                     <name>node</name>
+                </junction>
+            </junction>
+        </junction>
+    </junction>
+
+    <scheduler>
+        <shost>localhost</shost>
+        <port>55820</port>
+    </scheduler>
+</configuration>
+

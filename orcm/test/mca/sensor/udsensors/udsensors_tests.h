@@ -23,4 +23,13 @@ class ut_udsensors_tests: public testing::Test
         static bool use_pt_;
 }; // class
 
+class ut_udsensors_sample : public ut_udsensors_tests
+{
+    protected:
+        void SetUp();
+        void TearDown();
+        void *samplerPtr;
+        void *object;
+};
+
 #endif // UDSENSORS_TESTS_H

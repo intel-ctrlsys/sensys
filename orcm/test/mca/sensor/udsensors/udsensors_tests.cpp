@@ -9,16 +9,6 @@
 
 #include "udsensors_tests.h"
 
-// ORTE
-#include "orte/runtime/orte_globals.h"
-
-//OPAL
-#include "opal/mca/installdirs/installdirs.h"
-
-// ORCM
-#include "orcm/mca/sensor/base/sensor_private.h"
-#include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
-
 // C
 #include <unistd.h>
 
@@ -31,6 +21,15 @@
 using namespace std;
 
 extern "C" {
+    #include "opal/mca/installdirs/installdirs.h"
+    #include "orte/runtime/orte_globals.h"
+    #include "orcm/util/utils.h"
+    #include "orcm/runtime/orcm_globals.h"
+    #include "orcm/mca/analytics/analytics.h"
+    #include "orcm/mca/sensor/base/base.h"
+    #include "orcm/mca/sensor/base/sensor_private.h"
+    #include "opal/runtime/opal_progress_threads.h"
+
     extern int orcm_sensor_udsensors_open(void);
     extern int orcm_sensor_udsensors_close(void);
     extern int udsensors_component_register(void);
@@ -59,53 +58,59 @@ void ut_udsensors_tests::TearDownTestCase()
 
 }
 
-TEST_F(ut_udsensors_tests, udsensors_sensor_sample_with_progress_thread)
+void ut_udsensors_sample::SetUp()
 {
-    void* object = orcm_sensor_base_runtime_metrics_create("udsensors", false, false);
+    object = orcm_sensor_base_runtime_metrics_create("udsensors", false, false);
     mca_sensor_udsensors_component.runtime_metrics = object;
-    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) OBJ_NEW(orcm_sensor_sampler_t);
+    samplerPtr = (void*) sampler;
+    orcm_sensor_udsensors_module.init();
+}
+
+void ut_udsensors_sample::TearDown()
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
+
+    orcm_sensor_base_runtime_metrics_destroy(object);
+    mca_sensor_udsensors_component.runtime_metrics = NULL;
+    mca_sensor_udsensors_component.diagnostics = 0;
+
+    OBJ_RELEASE(sampler);
+}
+
+TEST_F(ut_udsensors_sample, udsensors_sensor_sample_with_progress_thread)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
 
     mca_sensor_udsensors_component.use_progress_thread = true;
     orcm_sensor_udsensors_module.sample(sampler);
     EXPECT_EQ(0, (mca_sensor_udsensors_component.diagnostics & 0x1));
 
-    OBJ_RELEASE(sampler);
-    orcm_sensor_base_runtime_metrics_destroy(object);
-    mca_sensor_udsensors_component.runtime_metrics = NULL;
-    mca_sensor_udsensors_component.diagnostics = 0;
 }
 
-TEST_F(ut_udsensors_tests, udsensors_sensor_sample_no_progress_thread)
+TEST_F(ut_udsensors_sample, udsensors_sensor_sample_no_progress_thread)
 {
-    void* object = orcm_sensor_base_runtime_metrics_create("udsensors", false, false);
-    mca_sensor_udsensors_component.runtime_metrics = object;
-    orcm_sensor_sampler_t* sampler = (orcm_sensor_sampler_t*)OBJ_NEW(orcm_sensor_sampler_t);
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
 
     mca_sensor_udsensors_component.use_progress_thread = false;
     orcm_sensor_base_runtime_metrics_set(object, true, "udsensors");
     orcm_sensor_udsensors_module.sample(sampler);
     EXPECT_EQ(1, (mca_sensor_udsensors_component.diagnostics & 0x1));
-
-    OBJ_RELEASE(sampler);
-    orcm_sensor_base_runtime_metrics_destroy(object);
-    mca_sensor_udsensors_component.runtime_metrics = NULL;
-    mca_sensor_udsensors_component.diagnostics = 0;
 }
 
-TEST_F(ut_udsensors_tests, udsensors_sensor_perthread)
+TEST_F(ut_udsensors_sample, udsensors_sensor_perthread)
 {
-        mca_sensor_udsensors_component.use_progress_thread = true;
-        EXPECT_EQ(ORCM_SUCCESS,orcm_sensor_udsensors_module.init());
+    mca_sensor_udsensors_component.use_progress_thread = true;
 
-        orcm_sensor_udsensors_module.set_sample_rate(1);
-        orcm_sensor_udsensors_module.start(0);
-        sleep(5);
-        orcm_sensor_udsensors_module.set_sample_rate(2);
-        sleep(5);
+    orcm_sensor_udsensors_module.set_sample_rate(1);
+    orcm_sensor_udsensors_module.start(0);
+    sleep(5);
+    orcm_sensor_udsensors_module.set_sample_rate(2);
+    sleep(5);
 
-        orcm_sensor_udsensors_module.stop(0);
-        orcm_sensor_udsensors_module.finalize();
-        mca_sensor_udsensors_component.use_progress_thread = false;
+    orcm_sensor_udsensors_module.stop(0);
+    mca_sensor_udsensors_component.use_progress_thread = false;
 }
 
 TEST_F(ut_udsensors_tests, udsensors_api_tests)
@@ -130,18 +135,28 @@ TEST_F(ut_udsensors_tests, udsensors_api_tests)
     mca_sensor_udsensors_component.runtime_metrics = NULL;
 }
 
-TEST_F(ut_udsensors_tests, udsensors_init)
+TEST_F(ut_udsensors_tests, udsensors_init_without_plugins)
 {
-    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_udsensors_module.init());
+    EXPECT_NE(ORCM_SUCCESS, orcm_sensor_udsensors_module.init());
     EXPECT_NE(0, (uint64_t)(mca_sensor_udsensors_component.runtime_metrics));
 
     orcm_sensor_udsensors_module.finalize();
 }
 
-TEST_F(ut_udsensors_tests, udsensors_start_stop_progress_thread)
+TEST_F(ut_udsensors_tests, udsensors_init_wrong_udsensorpath)
+{
+    mca_sensor_udsensors_component.udpath = strdup ("/dummy/path");
+    EXPECT_NE(ORCM_SUCCESS, orcm_sensor_udsensors_module.init());
+
+    free( mca_sensor_udsensors_component.udpath );
+    mca_sensor_udsensors_component.udpath = opal_install_dirs.opallibdir;
+    orcm_sensor_udsensors_module.finalize();
+}
+
+
+TEST_F(ut_udsensors_sample, udsensors_start_stop_progress_thread)
 {
     int sample_rate = 8;
-    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_udsensors_module.init());
     mca_sensor_udsensors_component.use_progress_thread = true;
     mca_sensor_udsensors_component.sample_rate = sample_rate;
 
@@ -151,7 +166,6 @@ TEST_F(ut_udsensors_tests, udsensors_start_stop_progress_thread)
     orcm_sensor_udsensors_module.stop(5);
     EXPECT_FALSE(orcm_sensor_udsensors.ev_active);
 
-    orcm_sensor_udsensors_module.finalize();
     mca_sensor_udsensors_component.sample_rate = 1;
 }
 
@@ -176,14 +190,11 @@ TEST_F(ut_udsensors_tests, udsensors_double_start)
 
     orcm_sensor_udsensors_module.stop(5);
     EXPECT_FALSE(orcm_sensor_udsensors.ev_active);
-
-    orcm_sensor_udsensors_module.finalize();
 }
 
-TEST_F(ut_udsensors_tests, udsensors_start_stop)
+TEST_F(ut_udsensors_sample, udsensors_start_stop)
 {
     int sample_rate = 8;
-    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_udsensors_module.init());
     mca_sensor_udsensors_component.use_progress_thread = false;
     mca_sensor_udsensors_component.sample_rate = sample_rate;
 
@@ -193,7 +204,6 @@ TEST_F(ut_udsensors_tests, udsensors_start_stop)
     orcm_sensor_udsensors_module.stop(5);
     EXPECT_FALSE(orcm_sensor_udsensors.ev_active);
 
-    orcm_sensor_udsensors_module.finalize();
     mca_sensor_udsensors_component.sample_rate = 1;
  }
 
@@ -254,4 +264,3 @@ TEST_F(ut_udsensors_tests, udsensors_component_register_defaults)
     EXPECT_EQ(orcm_sensor_base.collect_metrics,mca_sensor_udsensors_component.collect_metrics);
     EXPECT_EQ(opal_install_dirs.opallibdir, mca_sensor_udsensors_component.udpath);
 }
-

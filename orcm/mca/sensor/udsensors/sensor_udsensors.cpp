@@ -13,18 +13,19 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "orcm/util/utils.h"
-#include "orcm/runtime/orcm_globals.h"
-#include "orcm/mca/analytics/analytics.h"
-#include "orcm/mca/sensor/base/base.h"
-#include "orcm/mca/sensor/base/sensor_private.h"
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 
 #include "sensor_udsensors.h"
 #include "sensorFactory.h"
 
+#include "orcm/common/dataContainerHelper.hpp"
 
 extern "C" {
+    #include "orcm/util/utils.h"
+    #include "orcm/runtime/orcm_globals.h"
+    #include "orcm/mca/analytics/analytics.h"
+    #include "orcm/mca/sensor/base/base.h"
+    #include "orcm/mca/sensor/base/sensor_private.h"
     #include "opal/runtime/opal_progress_threads.h"
 }
 
@@ -45,6 +46,8 @@ static void udsensors_inventory_log(char *hostname, opal_buffer_t *inventory_sna
 int udsensors_enable_sampling(const char* sensor_specification);
 int udsensors_disable_sampling(const char* sensor_specification);
 int udsensors_reset_sampling(const char* sensor_specification);
+static void udsensors_fill_compute_data(opal_list_t* compute, dataContainer& cnt);
+static void udsensors_send_log_to_analytics(opal_list_t *key, opal_list_t *non_compute, opal_list_t *compute);
 
 /* instantiate the module */
 orcm_sensor_base_module_t orcm_sensor_udsensors_module = {
@@ -73,6 +76,8 @@ static int init(void)
 {
     int rc = ORCM_SUCCESS;
     factory = sensorFactory::getInstance();
+    int pluginsFound = 0;
+    int pluginsLoaded = 0;
 
     mca_sensor_udsensors_component.diagnostics = 0;
     mca_sensor_udsensors_component.runtime_metrics =
@@ -82,12 +87,35 @@ static int init(void)
         factory->open(mca_sensor_udsensors_component.udpath, NULL);
     } catch (sensorFactoryException& e){
         opal_output(0, "ERROR: %s ", e.what());
+        rc = ORCM_ERROR;
     }
+
+    if (ORCM_SUCCESS == rc){
+        try {
+            factory->init();
+        } catch (sensorFactoryException& e){
+            opal_output(0, "ERROR: %s ", e.what());
+        }
+    }
+
+    pluginsFound = factory->getFoundPlugins();
+    pluginsLoaded = factory->getLoadedPlugins();
+    opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
+                        "%s sensor udsensors : %i plugins found, %i plugins loaded",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), pluginsFound, pluginsLoaded);
+
+    if (0 == pluginsLoaded){
+        rc = ORCM_ERROR;
+    }
+
     return rc;
 }
 
 static void finalize(void)
 {
+     orcm_sensor_base_runtime_metrics_destroy(mca_sensor_udsensors_component.runtime_metrics);
+     mca_sensor_udsensors_component.runtime_metrics = NULL;
+     factory->close();
 }
 
 /*
@@ -120,8 +148,6 @@ static void start(orte_jobid_t jobid)
     }else{
         mca_sensor_udsensors_component.sample_rate = orcm_sensor_base.sample_rate;
     }
-
-    return;
 }
 
 static void stop(orte_jobid_t jobid)
@@ -175,20 +201,161 @@ static void perthread_udsensors_sample(int fd, short args, void *cbdata)
 
 void collect_udsensors_sample(orcm_sensor_sampler_t *sampler)
 {
+    int rc = ORCM_SUCCESS;
+    const char *name = "udsensors";
+    opal_buffer_t data, *bptr;
+    bool packed = false;
+    struct timeval current_time;
+    dataContainerMap pluginsContent;
+
     void* metrics_obj = mca_sensor_udsensors_component.runtime_metrics;
 
     if(!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, NULL)) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor udsensors : skipping actual sample collection",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        return;
     }
     mca_sensor_udsensors_component.diagnostics |= 0x1;
+
+    try {
+        factory->sample(pluginsContent);
+    } catch (sensorFactoryException& e) {
+        opal_output(0, "ERROR: %s ", e.what());
+    }
+
+    /* prepare to store the results */
+    OBJ_CONSTRUCT(&data, opal_buffer_t);
+
+    if(!pluginsContent.empty()) {
+
+        /* pack our name */
+        rc = opal_dss.pack(&data, &name, 1, OPAL_STRING);
+        ORCM_ON_FAILURE_GOTO(rc,clean);
+
+        /* store our hostname */
+        rc = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING);
+        ORCM_ON_FAILURE_GOTO(rc,clean);
+
+        /* get the sample time */
+        gettimeofday(&current_time, NULL);
+        rc = opal_dss.pack(&data, &current_time, 1, OPAL_TIMEVAL);
+        ORCM_ON_FAILURE_GOTO(rc,clean);
+
+        /* Store the samplings from user-defined plugins */
+        try{
+            dataContainerHelper::serializeMap(pluginsContent, &data);
+            packed = true;
+        } catch (ErrOpal &e){
+            opal_output(0, "ERROR: %s ", e.what());
+        }
+    }
+
+  if (packed) {
+        bptr = &data;
+        rc = opal_dss.pack(&sampler->bucket, &bptr, 1, OPAL_BUFFER);
+     }
+
+clean:
+    ORTE_ERROR_LOG(rc);
+    OBJ_DESTRUCT(&data);
+
 }
+
+
+static void udsensors_fill_compute_data(opal_list_t* compute, dataContainer& cnt)
+{
+    try {
+        dataContainerHelper::dataContainerToList(cnt,(void *)compute);
+    } catch (ErrOpal &e){
+        opal_output(0, "ERROR: %s ", e.what());
+    }
+
+}
+
+static void udsensors_send_log_to_analytics(opal_list_t *key, opal_list_t *non_compute, opal_list_t *compute)
+{
+    orcm_analytics_value_t *analytics_vals = NULL;
+
+    if (!opal_list_is_empty(compute)){
+        /* send data to analytics */
+        analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute, compute);
+        orcm_analytics.send_data(analytics_vals);
+    }
+    SAFE_RELEASE(analytics_vals);
+}
+
 
 static void udsensors_log(opal_buffer_t *sample)
 {
+    int rc = ORCM_SUCCESS;
+    int32_t n = 0;
+    char *hostname = NULL;
+    struct timeval sampletime;
+    opal_list_t *key = NULL;
+    opal_list_t* compute = NULL;
+    opal_list_t *non_compute = NULL;
+    dataContainerMap pluginsContent;
+    std::string prefix("udsensors_");
+    std::string data_group;
+
+    /* unpack the host this came from */
+    n=1;
+    rc = opal_dss.unpack(sample, &hostname, &n, OPAL_STRING);
+    ORCM_ON_FAILURE_GOTO(rc,clean);
+
+    /* unpack the sample time when the data was sampled */
+    n = 1;
+    rc = opal_dss.unpack(sample, &sampletime, &n, OPAL_TIMEVAL);
+    ORCM_ON_FAILURE_GOTO(rc,clean);
+
+    /*deserialize to get dataContainer map*/
+    try{
+        dataContainerHelper::deserializeMap(pluginsContent, sample);
+    } catch (ErrOpal &e){
+        opal_output(0, "ERROR: %s ", e.what());
+        goto clean;
+    }
+
+    /* fill with sensor plugins data */
+    for (dataContainerMap::iterator it = pluginsContent.begin() ; it != pluginsContent.end() ; ++it){
+
+        /* fill the key list with hostname and data_group(user-defined sensor) */
+        key = OBJ_NEW(opal_list_t);
+        ORCM_ON_NULL_GOTO(key,clean);
+
+        rc = orcm_util_append_orcm_value(key,(char *)"hostname", hostname, OPAL_STRING, NULL);
+        ORCM_ON_FAILURE_GOTO(rc,clean);
+
+        data_group.append(prefix);
+        data_group.append(it->first);
+        rc = orcm_util_append_orcm_value(key,(char *)"data_group",const_cast<char*>(data_group.c_str()), OPAL_STRING, NULL);
+        ORCM_ON_FAILURE_GOTO(rc,clean);
+
+        /* fill non compute data list with time stamp */
+        non_compute = OBJ_NEW(opal_list_t);
+        ORCM_ON_NULL_GOTO(key,clean);
+
+        rc = orcm_util_append_orcm_value(non_compute,(char *)"ctime", &sampletime, OPAL_TIMEVAL, NULL);
+        ORCM_ON_FAILURE_GOTO(rc,clean);
+
+        compute = OBJ_NEW(opal_list_t);
+        udsensors_fill_compute_data(compute, it->second);
+
+        udsensors_send_log_to_analytics(key, non_compute, compute);
+
+        data_group.clear();
+        ORCM_RELEASE(key);
+        ORCM_RELEASE(non_compute);
+        ORCM_RELEASE(compute);
+   }
+
+clean :
+    SAFEFREE(hostname);
+    ORCM_RELEASE(key);
+    ORCM_RELEASE(non_compute);
+    ORCM_RELEASE(compute);
 }
+
 
 static void udsensors_set_sample_rate(int sample_rate)
 {

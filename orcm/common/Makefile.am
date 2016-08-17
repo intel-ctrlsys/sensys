@@ -11,12 +11,19 @@
 # note - headers and nodist_headers will go in ${includedir}/openmpi,
 # not ${includedir}/
 headers = \
-        dataContainer.h \
+        dataContainer.hpp \
         UDExceptions.h \
         sensorInterface.h \
-        baseFactory.h
+        baseFactory.h \
+        dataContainerHelper.hpp
 
-lib_LTLIBRARIES = libsensysplugins.la
+lib_LTLIBRARIES = \
+        libsensysplugins.la \
+        libsensysplugins_helper.la
+
 libsensysplugins_la_SOURCES = \
         dataContainer.cpp \
         baseFactory.cpp
+
+libsensysplugins_helper_la_SOURCES  = \
+        dataContainerHelper.cpp

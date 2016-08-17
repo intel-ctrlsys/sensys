@@ -42,7 +42,9 @@ util_tests_SOURCES = \
     dataContainerTests.h \
     UDExceptionTests.cpp \
     sensorFactory_tests.cpp \
-    sensorFactory_tests.h
+    sensorFactory_tests.h \
+    dataContainerHelperTests.cpp \
+    dataContainerHelperTests.h
 
 MOCKING = \
     -Wl,--wrap=orte_errmgr_base_log \
@@ -56,7 +58,7 @@ MOCKING = \
 
 LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a
 
-AM_LDFLAGS = -lsensysplugins -lorcm -lorcmopen-pal -lpthread $(MOCKING)
+AM_LDFLAGS = -lsensysplugins -lsensysplugins_helper -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 
 #
 # Preprocessor flags

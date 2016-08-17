@@ -121,7 +121,10 @@ TEST_F(utDataContainerIteration, eraseItem) {
 
 TEST_F(utDataContainerIteration, iterateItems) {
     EXPECT_EQ( 0, cnt->getKey(it).compare(probeValue) );
+    EXPECT_EQ( 0, cnt->getUnits(it).compare(probeUnits) );
+    EXPECT_EQ( 0, cnt->getDataTypeName(it).compare(typeid(int).name()) );
     EXPECT_EQ( 3, cnt->getValue<int>(it) );
+    EXPECT_TRUE( cnt->matchType<int>(it) );
 }
 
 TEST_F(utDataContainerIteration, iterateAndErase) {

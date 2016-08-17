@@ -7,13 +7,13 @@
  * $HEADER$
  */
 
-#include "dataContainer.h"
+#include "dataContainer.hpp"
 #include <typeinfo>
 
 #define SUPPORT_FOR(TYPE) \
     template void dataContainer::put<TYPE>(const string& k, const TYPE& v, const string& u); \
     template TYPE dataContainer::getValue<TYPE>(const string& key); \
-    template TYPE dataContainer::getValue<TYPE>(const dataContainer::iterator& it); \
+    template TYPE dataContainer::getValue<TYPE>(const dataContainer::iterator& it) const; \
     template bool dataContainer::matchType<TYPE>(const string& key);
 
 using namespace std;
@@ -46,7 +46,7 @@ template<typename T> T dataContainer::getValue(const string& key) {
     return container[key].getValue<T>();
 }
 
-template<typename T> T dataContainer::getValue(const dataContainer::iterator& it) {
+template<typename T> T dataContainer::getValue(const dataContainer::iterator& it) const {
     return it->second.getValue<T>();
 }
 
@@ -59,19 +59,13 @@ void dataContainer::erase(const dataContainer::iterator& it) {
     container.erase(it);
 }
 
-inline void dataContainer::checkForKey(const string& key) {
-    if (!containsKey(key)) {
-        throw unableToFindKey(key);
-    }
-}
-
 // dataHolder Methods
 dataHolder::dataHolder() {}
 
 template <> dataHolder::dataHolder(const string& value) {
     size_t s = value.length() + 1; // +1 because of NULL terminator
     dataByte* ptr = (dataByte*) value.c_str();
-    storedData.insert(storedData.begin(), ptr, ptr+ s);
+    storedData.insert(storedData.begin(), ptr, ptr + s);
     dataTypeName = string(typeid(string).name());
 }
 

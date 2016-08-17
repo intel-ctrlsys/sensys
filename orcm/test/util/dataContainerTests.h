@@ -11,7 +11,7 @@
 #define DATA_CONTAINER_TESTS_H
 
 #include "gtest/gtest.h"
-#include "orcm/common/dataContainer.h"
+#include "orcm/common/dataContainer.hpp"
 
 class utDataContainer : public testing::Test {
     protected:
@@ -31,9 +31,11 @@ class utDataContainerIteration : public utDataContainer {
         static const int numberOfElements = 5;
         dataContainer::iterator it;
         std::string probeValue;
+        std::string probeUnits;
 
         utDataContainerIteration() : utDataContainer() {
             probeValue = std::string("intValue_3");
+            probeUnits = std::string("ints");
             cnt->put("intValue_1", 1, "ints");
             cnt->put("intValue_2", 2, "ints");
             cnt->put("intValue_3", 3, "ints");

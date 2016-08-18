@@ -58,7 +58,7 @@ nodist_man_MANS =
 
 if WANT_INSTALL_HEADERS
 orcmdir = $(orcmincludedir)/$(subdir)
-nobase_orcm_HEADERS = $(headers)
+nobase_orcm_HEADERS += $(headers)
 else
 orcmdir = $(includedir)
 endif

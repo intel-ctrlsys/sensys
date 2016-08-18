@@ -76,6 +76,14 @@ dataContainerHelperTests::dataContainerHelperTests() {
     cnt->put("floatValue", (float) 3.14, "floats");
     cnt->put("doubleValue", (double) 3.14159265, "doubles");
 
+    dataContainer cnt2;
+    dataContainer* cnt3 = new dataContainer();
+    cnt3->put("intValue", (int) 5, "units-ints");
+
+    cntMap["cnt1"] = *cnt;
+    cntMap["cnt2"] = cnt2;
+    cntMap["cnt3"] = *cnt3;
+
     buffer = OBJ_NEW(opal_buffer_t);
 }
 
@@ -175,7 +183,19 @@ template <> void dataContainerHelperTests::compareItems<std::string>(const dataC
     EXPECT_EQ(0, dst.getValue<std::string>(key).compare(cnt.getValue<std::string>(it)));
 }
 
-void dataContainerHelperTests::exceptionTester(const int rc, const std::string& message, serializationMethods f) {
+void dataContainerHelperTests::serializationMapExceptionTester(const int rc, const std::string& message, serializationMapMethods f) {
+    try {
+        f(cntMap, buffer);
+        FAIL() << "Exception was not thrown!";
+    } catch(ErrOpal &e) {
+        EXPECT_EQ(0, message.compare(e.what()));
+        EXPECT_EQ(rc, e.getRC());
+    } catch(std::exception &e) {
+        FAIL() << "Unknown exception catched.";
+    }
+}
+
+void dataContainerHelperTests::serializationExceptionTester(const int rc, const std::string& message, serializationMethods f) {
     try {
         f(*cnt, buffer);
         FAIL() << "Exception was not thrown!";
@@ -230,7 +250,7 @@ TEST_F(dataContainerHelperTests, packContainerInBuffer) {
 
 TEST_F(dataContainerHelperTests, failingLabelPack) {
     mock.setupPackMock(1);
-    exceptionTester(OPAL_ERROR, "Unable to pack string into opal buffer", dataContainerHelper::serialize);
+    serializationExceptionTester(OPAL_ERROR, "Unable to pack string into opal buffer", dataContainerHelper::serialize);
     mock.teardownMocks();
 }
 
@@ -240,21 +260,21 @@ TEST_F(dataContainerHelperTests, failingDataPack) {
 #else
     mock.setupPackMock(4);
 #endif
-    exceptionTester(OPAL_ERROR, "Unable to pack data into opal buffer", dataContainerHelper::serialize);
+    serializationExceptionTester(OPAL_ERROR, "Unable to pack data into opal buffer", dataContainerHelper::serialize);
     mock.teardownMocks();
 }
 
 #if !OPAL_ENABLE_DEBUG
 TEST_F(dataContainerHelperTests, failToPackDataType) {
     mock.setupPackMock(3);
-    exceptionTester(OPAL_ERROR, "Unable to pack data type into opal buffer", dataContainerHelper::serialize);
+    serializationExceptionTester(OPAL_ERROR, "Unable to pack data type into opal buffer", dataContainerHelper::serialize);
     mock.teardownMocks();
 }
 
 TEST_F(dataContainerHelperTests, failToUnpackDataType) {
     mock.setupUnpackMock(3);
     EXPECT_NO_THROW(dataContainerHelper::serialize(*cnt, buffer));
-    exceptionTester(OPAL_ERROR, "Unable to unpack data type", dataContainerHelper::deserialize);
+    serializationExceptionTester(OPAL_ERROR, "Unable to unpack data type", dataContainerHelper::deserialize);
     mock.teardownMocks();
 }
 #endif
@@ -287,7 +307,7 @@ TEST_F(dataContainerHelperTests, failUnpackLabelToContainer) {
     mock.setupUnpackMock(1);
 
     EXPECT_NO_THROW(dataContainerHelper::serialize(*cnt, buffer));
-    exceptionTester(OPAL_ERROR, "Unable to unpack string from opal buffer", dataContainerHelper::deserialize);
+    serializationExceptionTester(OPAL_ERROR, "Unable to unpack string from opal buffer", dataContainerHelper::deserialize);
     mock.teardownMocks();
 }
 
@@ -301,21 +321,52 @@ TEST_F(dataContainerHelperTests, failUnpackDataToContainer) {
 #endif
 
     EXPECT_NO_THROW(dataContainerHelper::serialize(*cnt, buffer));
-    exceptionTester(OPAL_ERROR, "Unable to unpack data from opal buffer", dataContainerHelper::deserialize);
+    serializationExceptionTester(OPAL_ERROR, "Unable to unpack data from opal buffer", dataContainerHelper::deserialize);
     mock.teardownMocks();
+}
+
+TEST_F(dataContainerHelperTests, serializeMapToNullOpalBuffer) {
+    opal_buffer_t* tmpPtr = buffer;
+    buffer = NULL;
+    serializationMapExceptionTester(OPAL_ERR_BAD_PARAM, "Invalid output buffer", dataContainerHelper::serializeMap);
+    buffer = tmpPtr;
+}
+
+TEST_F(dataContainerHelperTests, deserializeMapToNullOpalBuffer) {
+    opal_buffer_t* tmpPtr = buffer;
+    buffer = NULL;
+    serializationMapExceptionTester(OPAL_ERR_BAD_PARAM, "Invalid input buffer", dataContainerHelper::deserializeMap);
+    buffer = tmpPtr;
+}
+
+TEST_F(dataContainerHelperTests, serializeDeserializeMap) {
+    dataContainerMap dstMap;
+    ASSERT_NO_THROW(dataContainerHelper::serializeMap(cntMap, buffer));
+    ASSERT_NO_THROW(dataContainerHelper::deserializeMap(dstMap, buffer));
+    ASSERT_EQ(cntMap.size(), dstMap.size());
+    for (dataContainerMap::iterator it =  dstMap.begin(); it != dstMap.end(); it++) {
+        EXPECT_TRUE(cntMap.end() != cntMap.find(it->first));
+    }
+}
+
+TEST_F(dataContainerHelperTests, serializeDeserializeEmptyMap) {
+    dataContainerMap emptyMap;
+    ASSERT_NO_THROW(dataContainerHelper::serializeMap(emptyMap, buffer));
+    ASSERT_NO_THROW(dataContainerHelper::deserializeMap(emptyMap, buffer));
+    ASSERT_EQ(0, emptyMap.size());
 }
 
 TEST_F(dataContainerHelperTests, serializeToNullOpalBuffer) {
     opal_buffer_t* tmpPtr = buffer;
     buffer = NULL;
-    exceptionTester(OPAL_ERR_BAD_PARAM, "Invalid output buffer", dataContainerHelper::serialize);
+    serializationExceptionTester(OPAL_ERR_BAD_PARAM, "Invalid output buffer", dataContainerHelper::serialize);
     buffer = tmpPtr;
 }
 
 TEST_F(dataContainerHelperTests, deserializeFromNullOpalBuffer) {
     opal_buffer_t* tmpPtr = buffer;
     buffer = NULL;
-    exceptionTester(OPAL_ERR_BAD_PARAM, "Invalid input buffer", dataContainerHelper::deserialize);
+    serializationExceptionTester(OPAL_ERR_BAD_PARAM, "Invalid input buffer", dataContainerHelper::deserialize);
     buffer = tmpPtr;
 }
 
@@ -368,7 +419,7 @@ TEST_F(dataContainerHelperFullDataTypeTests, invalidDataType) {
     packKeyUnits(buffer, dummyLabel, dummyLabel);
     packDummyUnsupportedData(buffer);
 
-    exceptionTester(OPAL_ERR_UNKNOWN_DATA_TYPE,
+    serializationExceptionTester(OPAL_ERR_UNKNOWN_DATA_TYPE,
                     "Unsupported data type for dataContainer",
                     dataContainerHelper::deserialize);
 }

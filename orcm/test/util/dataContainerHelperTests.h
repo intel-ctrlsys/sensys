@@ -46,10 +46,12 @@ class dssMocks {
 };
 
 typedef void (*serializationMethods)(dataContainer& cnt, void* buffer);
+typedef void (*serializationMapMethods)(dataContainerMap &cnt, void* buffer);
 
 class dataContainerHelperTests : public testing::Test {
     protected:
         dataContainer* cnt;
+        dataContainerMap cntMap;
         opal_buffer_t* buffer;
 
 
@@ -65,7 +67,8 @@ class dataContainerHelperTests : public testing::Test {
                                                dataContainer::iterator& it,
                                                std::string key,
                                                dataContainer& dst);
-        void exceptionTester(const int rc, const std::string& message, serializationMethods f);
+        void serializationExceptionTester(const int rc, const std::string& message, serializationMethods f);
+        void serializationMapExceptionTester(const int rc, const std::string& message, serializationMapMethods f);
 
     public:
         dataContainerHelperTests();

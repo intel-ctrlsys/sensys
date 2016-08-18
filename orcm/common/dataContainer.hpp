@@ -136,4 +136,6 @@ class dataContainer {
         std::map<std::string, dataHolder> container;
 };
 
+typedef std::map<std::string, dataContainer> dataContainerMap;
+
 #endif

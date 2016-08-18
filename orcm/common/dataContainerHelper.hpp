@@ -25,18 +25,25 @@ class dataContainerHelper {
         static void packDataFromContainer(const dataContainer& cnt,
                                           const dataContainer::iterator it,
                                           opal_buffer_t* buffer);
-
+        static void packContainerMapToOpalBuffer(dataContainerMap &cntMap, opal_buffer_t* buffer);
+        static void packContainerBufferToOpalBuffer(opal_buffer_t* cntBuffer, opal_buffer_t* buffer);
+        static void unpackContainerMapFromOpalBuffer(dataContainerMap &cntMap, opal_buffer_t* buffer);
         static std::string unpackStringLabel(opal_buffer_t* buffer);
         static void pushBufferItemToContainer(dataContainer& cnt, opal_buffer_t* buffer);
+        static void pushBufferToContainerMap(dataContainerMap &cntMap, opal_buffer_t* buffer);
 
         static opal_data_type_t getOpalType(opal_buffer_t* buffer);
         template<typename T> static T extractFromBuffer(opal_buffer_t* buffer, const opal_data_type_t& type);
         static void appendContainerToOpalBuffer(dataContainer& cnt, opal_buffer_t* buffer);
+        static void appendContainerMapToOpalBuffer(dataContainerMap& cnt, opal_buffer_t* buffer);
         static void pushBufferToContainer(dataContainer& cnt, opal_buffer_t* buffer);
         static void whenInvalidBufferThrowBadParam(const std::string& msg, const void* buffer);
+        static bool isBufferEmpty(opal_buffer_t* buffer);
     public:
         static void serialize(dataContainer& cnt, void* buffer);
         static void deserialize(dataContainer& cnt, void* buffer);
+        static void serializeMap(dataContainerMap& cntMap, void* buffer);
+        static void deserializeMap(dataContainerMap& cntMap, void* buffer);
 };
 
 class ErrOpal : public std::runtime_error {

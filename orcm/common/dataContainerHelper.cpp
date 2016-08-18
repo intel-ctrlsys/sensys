@@ -30,7 +30,6 @@ void dataContainerHelper::appendContainerToOpalBuffer(dataContainer& cnt,
 
 void dataContainerHelper::packStringLabel(const string& label, opal_buffer_t* buffer) {
     int rc = OPAL_SUCCESS;
-
     if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &label, 1, OPAL_STRING))) {
         throw ErrOpal("Unable to pack string into opal buffer", rc);
     }
@@ -136,8 +135,14 @@ void dataContainerHelper::pushBufferItemToContainer(dataContainer& cnt, opal_buf
     }
 }
 
+bool dataContainerHelper::isBufferEmpty(opal_buffer_t* buffer) {
+    if (buffer->unpack_ptr < buffer->base_ptr + buffer->bytes_used)
+        return false;
+    return true;
+}
+
 void dataContainerHelper::pushBufferToContainer(dataContainer& cnt, opal_buffer_t* buffer) {
-    while( buffer->unpack_ptr < buffer->base_ptr + buffer->bytes_used ) {
+    while( !isBufferEmpty(buffer) ) {
         pushBufferItemToContainer(cnt, buffer);
     }
 }
@@ -173,15 +178,68 @@ void dataContainerHelper::whenInvalidBufferThrowBadParam(const std::string& msg,
     }
 }
 
+void dataContainerHelper::pushBufferToContainerMap(dataContainerMap &cntMap, opal_buffer_t* buffer) {
+    unpackContainerMapFromOpalBuffer(cntMap, buffer);
+}
+
+void dataContainerHelper::unpackContainerMapFromOpalBuffer(dataContainerMap &cntMap, opal_buffer_t* buffer) {
+    string label;
+    opal_buffer_t* cntBuffer = NULL;
+    dataContainer* cnt = NULL;
+
+    while (!isBufferEmpty(buffer)){
+        label  = unpackStringLabel(buffer);
+        cntBuffer = extractFromBuffer<opal_buffer_t*>(buffer, OPAL_BUFFER);
+        cnt = new dataContainer();
+        deserialize(*cnt, cntBuffer);
+        cntMap[label] =  *cnt;
+        delete cnt;
+    }
+}
+
+void dataContainerHelper::appendContainerMapToOpalBuffer(dataContainerMap &cntMap, opal_buffer_t* buffer) {
+    packContainerMapToOpalBuffer(cntMap, buffer);
+}
+
+void dataContainerHelper::packContainerBufferToOpalBuffer(opal_buffer_t* cntBuffer, opal_buffer_t* buffer) {
+    int rc = OPAL_SUCCESS;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &cntBuffer, 1, OPAL_BUFFER))) {
+        throw ErrOpal("Unable to pack container buffer into buffer", rc);
+    }
+}
+
+void dataContainerHelper::packContainerMapToOpalBuffer(dataContainerMap &cntMap, opal_buffer_t* buffer) {
+    opal_buffer_t* cntBuffer;
+    for (dataContainerMap::iterator it = cntMap.begin() ; it != cntMap.end() ; it++) {
+       packStringLabel(it->first, buffer);
+       cntBuffer = OBJ_NEW(opal_buffer_t);
+       serialize(it->second, cntBuffer);
+       packContainerBufferToOpalBuffer(cntBuffer, buffer);
+    }
+}
+
+
 void dataContainerHelper::serialize(dataContainer &cnt, void* buffer) {
     whenInvalidBufferThrowBadParam("Invalid output buffer", buffer);
     appendContainerToOpalBuffer(cnt, (opal_buffer_t*) buffer);
 }
 
+void dataContainerHelper::serializeMap(dataContainerMap &cntMap, void* buffer) {
+    whenInvalidBufferThrowBadParam("Invalid output buffer", buffer);
+    appendContainerMapToOpalBuffer(cntMap, (opal_buffer_t*) buffer);
+}
+
+
 void dataContainerHelper::deserialize(dataContainer& cnt, void* buffer) {
     whenInvalidBufferThrowBadParam("Invalid input buffer", buffer);
     pushBufferToContainer(cnt, (opal_buffer_t*) buffer);
 }
+
+void dataContainerHelper::deserializeMap(dataContainerMap &cntMap, void* buffer) {
+    whenInvalidBufferThrowBadParam("Invalid input buffer", buffer);
+    pushBufferToContainerMap(cntMap, (opal_buffer_t*) buffer);
+}
+
 
 #define ADD_EQUIVALENCE_FOR(TYPE, OPAL_TYPE) \
     retValue[typeid(TYPE).name()] = OPAL_TYPE;

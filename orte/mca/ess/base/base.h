@@ -12,7 +12,7 @@
  * Copyright (c) 2011-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012      Oak Ridge National Labs.  All rights reserved.
  * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights reserved.
- * Copyright (c) 2013      Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -56,31 +56,11 @@ ORTE_DECLSPEC extern char *orte_ess_base_vpid;
 /*
  * Internal helper functions used by components
  */
-ORTE_DECLSPEC int orte_ess_env_get(void);
-
 ORTE_DECLSPEC int orte_ess_base_std_prolog(void);
-
-ORTE_DECLSPEC int orte_ess_base_app_setup(bool db_restrict_local);
-ORTE_DECLSPEC int orte_ess_base_app_finalize(void);
-ORTE_DECLSPEC void orte_ess_base_app_abort(int status, bool report);
 
 ORTE_DECLSPEC int orte_ess_base_tool_setup(void);
 ORTE_DECLSPEC int orte_ess_base_tool_finalize(void);
 
-ORTE_DECLSPEC int orte_ess_base_orted_setup(char **hosts);
-ORTE_DECLSPEC int orte_ess_base_orted_finalize(void);
-
-/* Detect whether or not this proc is bound - if not,
- * see if it should bind itself
- */
-ORTE_DECLSPEC int orte_ess_base_proc_binding(void);
-
-/*
- * Put functions
- */
-ORTE_DECLSPEC int orte_ess_env_put(orte_std_cntr_t num_procs,
-                                   orte_std_cntr_t num_local_procs,
-                                   char ***env);
 
 END_C_DECLS
 

@@ -7,6 +7,7 @@
  *
  *               2014      Mellanox Technologies, Inc.
  *                         All rights reserved.
+ * Copyright (c) 2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -37,7 +38,6 @@
 #include "opal/threads/threads.h"
 #include "opal/mca/timer/base/base.h"
 #include "opal/include/opal_stdint.h"
-#include "opal/mca/memchecker/base/base.h"
 
 #include "orte/mca/oob/oob.h"
 #include "orte/mca/oob/base/base.h"

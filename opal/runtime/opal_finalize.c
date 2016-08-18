@@ -38,7 +38,6 @@
 #include "opal/datatype/opal_datatype.h"
 #include "opal/mca/if/base/base.h"
 #include "opal/mca/installdirs/base/base.h"
-#include "opal/mca/memchecker/base/base.h"
 #include "opal/mca/memory/base/base.h"
 #include "opal/mca/backtrace/base/base.h"
 #include "opal/mca/sec/base/base.h"
@@ -151,7 +150,6 @@ opal_finalize(void)
     (void) mca_base_framework_close(&opal_timer_base_framework);
 
     (void) mca_base_framework_close(&opal_backtrace_base_framework);
-    (void) mca_base_framework_close(&opal_memchecker_base_framework);
 
     /* close the memory manager components.  Registered hooks can
        still be fired any time between now and the call to

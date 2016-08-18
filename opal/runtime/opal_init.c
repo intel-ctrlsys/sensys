@@ -44,7 +44,6 @@
 #include "opal/mca/hwloc/base/base.h"
 #include "opal/mca/sec/base/base.h"
 #include "opal/mca/timer/base/base.h"
-#include "opal/mca/memchecker/base/base.h"
 #include "opal/dss/dss.h"
 #include "opal/mca/shmem/base/base.h"
 #if OPAL_ENABLE_FT_CR    == 1
@@ -422,18 +421,6 @@ opal_init(int* pargc, char*** pargv)
     /* initialize the memory manager / tracker */
     if (OPAL_SUCCESS != (ret = opal_mem_hooks_init())) {
         error = "opal_mem_hooks_init";
-        goto return_error;
-    }
-
-    /* initialize the memory checker, to allow early support for annotation */
-    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_memchecker_base_framework, 0))) {
-        error = "opal_memchecker_base_open";
-        goto return_error;
-    }
-
-    /* select the memory checker */
-    if (OPAL_SUCCESS != (ret = opal_memchecker_base_select())) {
-        error = "opal_memchecker_base_select";
         goto return_error;
     }
 

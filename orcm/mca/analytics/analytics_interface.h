@@ -22,12 +22,13 @@ struct Event {
 };
 
 struct DataSet {
-    DataSet(dataContainer &_results, std::list<Event> &_events) : results(_results), events(_events) {
+    DataSet(dataContainer& _results, std::list<Event>& _events) :
+            results(_results), events(_events) {
     }
-    const dataContainer attributes;
-    const dataContainer key;
-    const dataContainer non_compute;
-    const dataContainer compute;
+    dataContainer attributes;
+    dataContainer key;
+    dataContainer non_compute;
+    dataContainer compute;
     dataContainer &results;
     std::list<Event> &events;
 };
@@ -35,7 +36,7 @@ struct DataSet {
 class Analytics {
     public:
         virtual ~Analytics() {};
-        virtual int analyze(DataSet data_set) = 0;
+        virtual int analyze(DataSet& data_set) = 0;
 };
 
 #endif /* ORCM_MCA_ANALYTICS_INTERFACE_ANALYTICS_INTERFACE_H_ */

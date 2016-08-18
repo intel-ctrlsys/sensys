@@ -19,7 +19,7 @@ class DummyPlugin : public Analytics {
     public:
         DummyPlugin();
         virtual ~DummyPlugin();
-        int analyze(DataSet data_set);
+        int analyze(DataSet& data_set);
         static Analytics* creator(void);
         static void entry_func(void);
     private:

@@ -25,7 +25,7 @@ DummyPlugin::~DummyPlugin()
 
 }
 
-int DummyPlugin::analyze(DataSet data_set)
+int DummyPlugin::analyze(DataSet& data_set)
 {
     return ANALYTICS_SUCCESS;
 }
@@ -247,4 +247,12 @@ TEST_F(AnalyticsFactoryTest, get_plugin_name_not_match)
     const char *module_name = orcm_analytics_get_plugin_name("filter");
     factory->cleanup();
     ASSERT_STREQ(module_name, "filter");
+}
+
+TEST_F(AnalyticsFactoryTest, close_clean_plugin)
+{
+    AnalyticsFactory *factory = AnalyticsFactory::getInstance();
+    factory->setPluginCreator("DummyPlugin", DummyPlugin::creator);
+    close_clean_plugin();
+    ASSERT_EQ(factory->pluginFilesFound.size(), 0);
 }

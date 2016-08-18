@@ -13,8 +13,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    int search_plugin_creator(const char *directory, const char *plugin_name);
-    bool check_plugin_exist(const char *plugin_name);
+    int search_plugin_creator(const char* directory, const char* plugin_name);
+    bool check_plugin_exist(const char* plugin_name);
+    void close_clean_plugin(void);
 #ifdef __cplusplus
 }
 #endif

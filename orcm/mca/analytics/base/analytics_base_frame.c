@@ -158,6 +158,8 @@ static int orcm_analytics_base_close(void)
     /* Destroy the base objects */
     OPAL_LIST_DESTRUCT(&orcm_analytics_base.workflows);
 
+    close_clean_plugin();
+
     return mca_base_framework_components_close(&orcm_analytics_base_framework,
                                                NULL);
 }

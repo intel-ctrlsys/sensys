@@ -441,7 +441,7 @@ int check_record_field(char *field_value, int *record) {
     if ( 0 == strcasecmp(FDrecord, field_value) ) {
         (*record)++;
         if (*record > 1) {
-            opal_output(0,"ERROR: Can't set up more than 1 RECORD string \n");
+            opal_output(0,"ERROR: Can't set up more than 1 RECORD role \n");
             return ORCM_ERR_BAD_PARAM;
         }
     }else{
@@ -464,50 +464,55 @@ int check_aggregator_yes_no_field(char *field_value) {
 }
 
 int check_lex_tags_and_field(opal_list_t *root) {
-    char *key = NULL;
-    char *data = NULL;
-    char *next = NULL;
+    int role_count = 0;
+    int aggs_count = 0;
+
+    return search_lex_tags_and_field(root, &role_count, &aggs_count);
+}
+
+int search_lex_tags_and_field(opal_list_t *root, int *role, int *aggs) {
     orcm_value_t *ptr = NULL;
     int record_count = 0;
-    static int aggs_count = 0;
 
     OPAL_LIST_FOREACH(ptr, root, orcm_value_t) {
-        key = ptr->value.key;
-        data = ptr->value.data.string;
-        next = ptr->value.data.ptr;
 
-        if (0 == strcasecmp(TXrole, key)) {
-            if (ORCM_SUCCESS != check_record_field(data, &record_count)) {
+        if (0 == strcasecmp(TXrole, ptr->TAG)) {
+            (*role)++;
+            if (ORCM_SUCCESS != check_record_field(ptr->VALUE, &record_count)) {
                 return ORCM_ERR_BAD_PARAM;
             }
         }
 
-        if (0 == strcasecmp(TXaggregat, key)) {
-            if (0 == strcasecmp("yes", data)) {
-                ++aggs_count;
+        if (0 == strcasecmp(TXaggregat, ptr->TAG)) {
+            if (0 == strcasecmp("yes", ptr->VALUE)) {
+                (*aggs)++;
             }
-            if (ORCM_SUCCESS != check_aggregator_yes_no_field(data)) {
+            if (ORCM_SUCCESS != check_aggregator_yes_no_field(ptr->VALUE)) {
                 return ORCM_ERR_BAD_PARAM;
             }
         }
 
-        if (0 == strcasecmp(TXport, key)) {
-            if (ORCM_SUCCESS != check_lex_port_field(data)) {
+        if (0 == strcasecmp(TXport, ptr->TAG)) {
+            if (ORCM_SUCCESS != check_lex_port_field(ptr->VALUE)) {
                 return ORCM_ERR_BAD_PARAM;
             }
         }
 
         if (OPAL_STRING != ptr->value.type) {
-            /* Iterating over the childrens */
-            if (ORCM_SUCCESS != check_lex_tags_and_field((opal_list_t*)next)) {
+            if (ORCM_SUCCESS != search_lex_tags_and_field((opal_list_t*)ptr->SUBLIST, role, aggs)) {
                 return ORCM_ERR_BAD_PARAM;
             }
         }
     }
 
-    if (0 >= aggs_count) {
-       opal_output(0,"ERROR: Need at least one aggregator configuration\n");
-       return ORCM_ERR_BAD_PARAM;
+    if (0 >= (*aggs)) {
+        opal_output(0,"ERROR: Need at least one aggregator configuration\n");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (0 >= (*role)) {
+        opal_output(0,"ERROR: Need at least one role configuration\n");
+        return ORCM_ERR_BAD_PARAM;
     }
 
     return ORCM_SUCCESS;
@@ -605,36 +610,43 @@ int is_singleton(const char * in_tagtext)
 }
 
 int check_duplicate_singleton(opal_list_t *root) {
+    int mem_counter = 1;
+
+    return search_singletons(root, &mem_counter);
+}
+
+int search_singletons(opal_list_t *root, int *mem_counter) {
     orcm_value_t *ptr = NULL;
     char **singleton_list = {NULL};
-    static int error = ORCM_SUCCESS;
-    static int mem_counter = 1;
-    static int singleton_counter = 0;
+    int error = ORCM_SUCCESS;
+    int singleton_counter = 0;
 
     singleton_list = (char **)malloc(sizeof(char*));
     OPAL_LIST_FOREACH(ptr, root, orcm_value_t) {
-        if (is_singleton(ptr->value.key) ) {
-            singleton_list = (char **)realloc(singleton_list, sizeof(char*) * mem_counter);
+        if (is_singleton(ptr->TAG) ) {
+            singleton_list = (char **)realloc(singleton_list, sizeof(char*)*(*mem_counter));
             if (NULL != singleton_list) {
-                singleton_list[singleton_counter] = ptr->value.key;
+                singleton_list[singleton_counter] = ptr->TAG;
                 for (int i = 0; i < singleton_counter; i++) {
-                    if (0 == strcasecmp(singleton_list[i], ptr->value.key)) {
+                    if (0 == strcasecmp(singleton_list[i], ptr->TAG)) {
                         opal_output(0, "ERROR: More than one instance of \"%s\" was found",
                                        ptr->value.key);
                         error = ORCM_ERR_BAD_PARAM;
                     }
                 }
-                ++mem_counter;
+                (*mem_counter)++;
                 ++singleton_counter;
             } else {
                 opal_output(0, "ERROR: couldn't allocate more memory");
                 SAFEFREE(singleton_list);
-                error = ORCM_ERROR;
+                return ORCM_ERROR;
             }
         }
         if (OPAL_STRING != ptr->value.type) {
-            singleton_counter = 0;
-            check_duplicate_singleton((opal_list_t*)ptr->value.data.ptr);
+            if (ORCM_SUCCESS != (error = search_singletons((opal_list_t*)ptr->SUBLIST, mem_counter))) {
+                SAFEFREE(singleton_list);
+                return error;
+            }
         }
     }
     SAFEFREE(singleton_list);

@@ -67,9 +67,11 @@ int check_file_exist(void);
 char * tolower_cstr(char * in);
 int check_record_field(char *field_value, int *record);
 int check_lex_tags_and_field(opal_list_t *root);
+int search_lex_tags_and_field(opal_list_t *root, int *role_count, int *aggs_count);
 int check_lex_port_field(char *field_value);
 int check_aggregator_yes_no_field(char *field_value);
 int is_singleton(const char * in_tagtext);
 int check_duplicate_singleton(opal_list_t *root);
+int search_singletons(opal_list_t *root, int *mem_counter);
 
 #endif /* CFGI_FILE30_H */

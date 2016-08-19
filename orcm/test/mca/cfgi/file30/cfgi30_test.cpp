@@ -178,6 +178,13 @@ TEST_F(ut_cfgi30_tests, check_lex_tags_and_fields_valid_xml)
     xml_lexical_tester(file_name, ORCM_SUCCESS);
 }
 
+TEST_F(ut_cfgi30_tests, check_lex_tags_and_fields_no_role)
+{
+    const char* file_name = set_name("no_role.xml");
+
+    xml_lexical_tester(file_name, ORCM_ERR_BAD_PARAM);
+}
+
 TEST_F(ut_cfgi30_tests, check_valid_test_full_example)
 {
     const char* file_name = set_name("full_example.xml");

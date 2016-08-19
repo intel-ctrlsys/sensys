@@ -34,6 +34,7 @@ public:
     void addPluginsIfPrefixMatch(DIR *d);
     void* getPluginSymbol(void*, const char *symbol);
     void* openPlugin(std::string plugin);
+    void closePlugin(void *plugin);
     std::string formFullPath(const char *filename);
 
     std::vector<std::string> pluginFilesFound;

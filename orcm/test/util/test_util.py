@@ -10,7 +10,6 @@
 """ Script to execute Gtest Tests """
 
 import sys
-import udsensors_sample
 from subprocess import Popen, PIPE
 
 def get_gtests(gtest_binary):
@@ -46,7 +45,6 @@ def execute_test(gtest_binary, test_name):
 
 def run_tests(gtest_binary):
     """ Execute gtest binary """
-    udsensors_sample.write_binary_file()
     tests = get_gtests(gtest_binary)
     ret = 0
     passed = 0
@@ -63,7 +61,6 @@ def run_tests(gtest_binary):
             passed = passed+1
     print '+TEST SUMMARY PASSED = %d'%(passed)
     print '+TEST SUMMARY FAILED = %d'%(failed)
-    udsensors_sample.delete_binary_file()
     return ret
 
 if __name__ == '__main__':

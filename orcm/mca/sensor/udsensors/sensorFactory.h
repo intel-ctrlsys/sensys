@@ -11,11 +11,15 @@
 #define SENSOR_FACTORY_H
 
 #include <stddef.h>
+#include <stdlib.h>
 
 #include "orcm/common/baseFactory.h"
+#include "orcm/common/dataContainer.hpp"
 #include "orcm/common/sensorInterface.h"
 
 typedef sensorInterface* (*sensorInstance)(void);
+typedef char* (*getPluginName)(void);
+typedef std::map<std::string, sensorInterface*>::iterator pluginsIterator;
 
 class sensorFactory : public baseFactory {
 public:
@@ -23,17 +27,20 @@ public:
     int open(const char *plugin_path, const char *plugin_prefix);
     void close(void);
     void init(void);
+    void sample(dataContainerMap& dc);
     void loadPlugins(void);
     int getFoundPlugins(void);
     int getLoadedPlugins(void);
     int getAmountOfPluginHandlers(void);
-    std::map<std::string, sensorInterface*> pluginsLoaded;
 
 private:
     sensorFactory(){};
     virtual ~sensorFactory(){};
     void openAndGetSymbolsFromPlugin(void);
+    void getPluginInstanceAndName(void *plugin);
+    void __sample(pluginsIterator it, dataContainerMap &dc);
     std::map<std::string, void*> pluginHandlers;
+    std::map<std::string, sensorInterface*> pluginsLoaded;
 };
 
 class sensorFactoryException : public std::runtime_error

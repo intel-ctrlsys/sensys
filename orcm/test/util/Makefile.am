@@ -50,7 +50,9 @@ MOCKING = \
     -Wl,--wrap=orte_errmgr_base_log \
     -Wl,--wrap=dlopen \
     -Wl,--wrap=dlsym \
-    -Wl,--wrap=dlerror
+    -Wl,--wrap=dlerror \
+    -Wl,--wrap=dlclose \
+    -Wl,--wrap=readdir
 
 #
 # Libraries we depend on

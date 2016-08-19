@@ -25,12 +25,12 @@
 // C++
 #include <iostream>
 #include <stdexcept>
+#include "orcm/mca/sensor/udsensors/sensor_udsensors.cpp"
 
 // Fixture
 using namespace std;
 
 extern "C" {
-    #include "orcm/mca/sensor/udsensors/sensor_udsensors.cpp"
     extern int orcm_sensor_udsensors_open(void);
     extern int orcm_sensor_udsensors_close(void);
     extern int udsensors_component_register(void);

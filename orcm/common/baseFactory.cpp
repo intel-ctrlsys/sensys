@@ -40,6 +40,11 @@ void* baseFactory::openPlugin(std::string plugin)
     return (void*)dlopen(plugin.c_str(), RTLD_LAZY);
 }
 
+void baseFactory::closePlugin(void *plugin)
+{
+    dlclose(plugin);
+}
+
 void* baseFactory::getPluginSymbol(void* plugin, const char *symbol)
 {
     return (void*)dlsym(plugin, symbol);

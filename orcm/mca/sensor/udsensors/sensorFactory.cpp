@@ -21,9 +21,7 @@ void sensorFactory::close()
 {
     std::map<std::string, void*>::iterator it;
     for (it = pluginHandlers.begin(); it != pluginHandlers.end(); ++it) {
-        if (it->second) {
-            dlclose(it->second);
-        }
+        closePlugin(it->second);
         pluginsLoaded.erase(it->first);
         pluginHandlers.erase(it);
     }
@@ -46,6 +44,34 @@ void sensorFactory::init()
     }
 }
 
+void sensorFactory::sample(dataContainerMap &dc)
+{
+    pluginsIterator it;
+    std::string errors = "";
+    for (it = pluginsLoaded.begin(); it != pluginsLoaded.end(); ++it) {
+        try {
+            __sample(it, dc);
+        } catch (std::runtime_error &e) {
+            errors.append("Plugin " + it->first + " failed in sample with:\n");
+            errors.append(std::string(e.what()) + "\n");
+        }
+    }
+    if (errors.compare("")) {
+        throw sensorFactoryException(errors);
+    }
+    return;
+}
+
+void sensorFactory::__sample(pluginsIterator it, dataContainerMap &dc)
+{
+    dataContainer *tmpdataContainer;
+    tmpdataContainer = new dataContainer;
+    it->second->sample(*tmpdataContainer);
+    if (tmpdataContainer->count())
+        dc[it->first] = *tmpdataContainer;
+    delete tmpdataContainer;
+}
+
 void sensorFactory::loadPlugins()
 {
     int res = 0;
@@ -59,17 +85,32 @@ void sensorFactory::loadPlugins()
 void sensorFactory::openAndGetSymbolsFromPlugin()
 {
     void *plugin;
-    sensorInstance entryPoint;
     std::vector<std::string>::iterator it;
     for (it = pluginFilesFound.begin(); it != pluginFilesFound.end(); ++it) {
         plugin = openPlugin(*it);
         if (plugin) {
-            entryPoint = (sensorInstance)getPluginSymbol(plugin, "initPlugin");
-            if (entryPoint) {
-                pluginsLoaded[*it] = entryPoint();
-            }
+            getPluginInstanceAndName(plugin);
         }
-        pluginHandlers[*it] = plugin;
+    }
+}
+
+void sensorFactory::getPluginInstanceAndName(void *plugin)
+{
+    sensorInstance entryPoint;
+    getPluginName p_name;
+    char *tmp_name = NULL;
+
+    entryPoint = (sensorInstance)getPluginSymbol(plugin, "initPlugin");
+    p_name = (getPluginName)getPluginSymbol(plugin, "getPluginName");
+
+    if (entryPoint && p_name) {
+        tmp_name = p_name();
+        std::string plugin_name = std::string(tmp_name);
+        free(tmp_name);
+        pluginsLoaded[plugin_name] = entryPoint();
+        pluginHandlers[plugin_name] = plugin;
+    } else {
+        closePlugin(plugin);
     }
 }
 

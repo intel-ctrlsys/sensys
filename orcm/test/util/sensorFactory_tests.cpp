@@ -9,25 +9,38 @@
 
 #include "sensorFactory_tests.h"
 
+#define N_MOCKED_PLUGINS 1
+
 void ut_sensorFactory::SetUp()
 {
-    mock_dlopen = false;
-    mock_dlsym = false;
-    mock_dlerror = false;
-    mock_plugin = false;
+    setFullMock(false, 0);
+    throwOnInit = false;
+    throwOnSample = false;
+    emptyContainer = false;
     obj = sensorFactory::getInstance();
 }
 
 void ut_sensorFactory::TearDown()
 {
     obj->pluginFilesFound.clear();
-    obj->pluginsLoaded.clear();
     obj->close();
+}
+
+void ut_sensorFactory::setFullMock(bool mockStatus, int nPlugins)
+{
+    mock_readdir = mockStatus;
+    n_mocked_plugins = nPlugins;
+    mock_dlopen = mockStatus;
+    mock_dlclose = mockStatus;
+    mock_dlsym = mockStatus;
+    mock_plugin = mockStatus;
+    getPluginNameMock = mockStatus;
+    initPluginMock = mockStatus;
+    dlopenReturnHandler = mockStatus;
 }
 
 int mockPlugin::init()
 {
-    std::cout << "In the init\n";
     if (throwOnInit) {
         throw std::runtime_error("Failing on mockPlugin.init");
     }
@@ -37,6 +50,17 @@ int mockPlugin::init()
 int mockPlugin::finalize()
 {
     return 0;
+}
+
+void mockPlugin::sample(dataContainer &dc)
+{
+    if (throwOnSample) {
+        throw std::runtime_error("Failing on mockPlugin.sample");
+    }
+    if (!emptyContainer) {
+        dc.put("intValue_1", 1234, "ints");
+    }
+    return;
 }
 
 TEST_F(ut_sensorFactory, openWithNullParamsAndExpectDefaultPath)
@@ -91,8 +115,8 @@ TEST_F(ut_sensorFactory, openPluginsOnDefaultPathWithExistingFiles)
 TEST_F(ut_sensorFactory, openPluginsOnDefaultPathAndCheckFullPathInVector)
 {
     mock_dlopen = true;
-    EXPECT_NO_THROW(obj->open(NULL, "lib"));
-    const char *default_path = "/usr/lib64/lib";
+    EXPECT_NO_THROW(obj->open(NULL, "libc"));
+    const char *default_path = "/usr/lib64/libc";
     ASSERT_TRUE(obj->pluginFilesFound.size() != 0);
     std::vector<std::string>::iterator it;
     for (it = obj->pluginFilesFound.begin(); it != obj->pluginFilesFound.end(); ++it) {
@@ -120,21 +144,38 @@ TEST_F(ut_sensorFactory, openPluginsAndCheckLoadedPluginsOnPathWithoutValidPlugi
 
 TEST_F(ut_sensorFactory, openPluginLoadOneValidPlugin)
 {
+    setFullMock(true, N_MOCKED_PLUGINS);
     EXPECT_NO_THROW(obj->open("/tmp/", NULL));
-    EXPECT_EQ(1, obj->getFoundPlugins());
+    EXPECT_EQ(N_MOCKED_PLUGINS, obj->getFoundPlugins());
+
 }
 
 TEST_F(ut_sensorFactory, openPluginAndCheckLoadedHandlers)
 {
+    setFullMock(true, N_MOCKED_PLUGINS);
     EXPECT_NO_THROW(obj->open("/tmp/", NULL));
-    EXPECT_EQ(1, obj->getAmountOfPluginHandlers());
+    EXPECT_EQ(N_MOCKED_PLUGINS, obj->getAmountOfPluginHandlers());
 }
 
-TEST_F(ut_sensorFactory, openPluginWithoutValidSymbol)
+TEST_F(ut_sensorFactory, openPluginWithoutValidInitSymbol)
 {
-    mock_dlsym = true;
+    setFullMock(true, N_MOCKED_PLUGINS);
+    initPluginMock = false;
     EXPECT_NO_THROW(obj->open("/tmp/", NULL));
-    mock_dlsym = false;
+}
+
+TEST_F(ut_sensorFactory, openPluginWithoutValidNameSymbol)
+{
+    setFullMock(true, N_MOCKED_PLUGINS);
+    getPluginNameMock = false;
+    EXPECT_NO_THROW(obj->open("/tmp/", NULL));
+}
+
+TEST_F(ut_sensorFactory, openPluginWithoutValidSymbols)
+{
+    setFullMock(true, N_MOCKED_PLUGINS);
+    mock_plugin = false;
+    EXPECT_NO_THROW(obj->open("/tmp/", NULL));
 }
 
 TEST_F(ut_sensorFactory, openPluginWithoutValidSymbolAndDlErrorisNull)
@@ -148,6 +189,7 @@ TEST_F(ut_sensorFactory, openPluginWithoutValidSymbolAndDlErrorisNull)
 
 TEST_F(ut_sensorFactory, openValidPluginAndClose)
 {
+    setFullMock(true, N_MOCKED_PLUGINS);
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
     obj->close();
     EXPECT_EQ(0, obj->getLoadedPlugins());
@@ -155,23 +197,17 @@ TEST_F(ut_sensorFactory, openValidPluginAndClose)
 
 TEST_F(ut_sensorFactory, openInvalidPluginAndClose)
 {
-    mock_dlopen = true;
+    setFullMock(true, N_MOCKED_PLUGINS);
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
     obj->close();
     EXPECT_EQ(0, obj->getLoadedPlugins());
-    mock_dlopen = false;
-}
-
-TEST_F(ut_sensorFactory, getAmountOfFoundPlugins)
-{
-    EXPECT_NO_THROW(obj->open("/tmp", NULL));
-    EXPECT_EQ(1, obj->getFoundPlugins());
 }
 
 TEST_F(ut_sensorFactory, getAmountOfLoadedPlugins)
 {
+    setFullMock(true, N_MOCKED_PLUGINS);
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
-    EXPECT_EQ(1, obj->getLoadedPlugins());
+    EXPECT_EQ(N_MOCKED_PLUGINS, obj->getLoadedPlugins());
 }
 
 TEST_F(ut_sensorFactory, getAmountOfLoadedPluginsWithInvalidPointer)
@@ -190,20 +226,16 @@ TEST_F(ut_sensorFactory, initWithoutErrors)
 
 TEST_F(ut_sensorFactory, initWithPluginException)
 {
-    mock_dlsym = true;
-    mock_plugin = true;
+    setFullMock(true, N_MOCKED_PLUGINS);
     throwOnInit = true;
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
     EXPECT_THROW(obj->init(), std::runtime_error);
-    mock_plugin = false;
-    mock_dlsym = false;
     throwOnInit = false;
 }
 
 TEST_F(ut_sensorFactory, initWithPluginExceptionAndErrorMsg)
 {
-    mock_dlsym = true;
-    mock_plugin = true;
+    setFullMock(true, N_MOCKED_PLUGINS);
     throwOnInit = true;
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
     try {
@@ -211,7 +243,51 @@ TEST_F(ut_sensorFactory, initWithPluginExceptionAndErrorMsg)
     } catch (std::runtime_error& e) {
         EXPECT_TRUE(NULL != strstr(e.what(), "Failing on mockPlugin.init"));
     }
-    mock_dlsym = true;
-    mock_plugin = true;
     throwOnInit = false;
+}
+
+TEST_F(ut_sensorFactory, callSampleOnPluginsAndFillMap)
+{
+    dataContainer cnt;
+    dataContainerMap res;
+    std::string expected_units = "ints";
+    int expected_value = 1234;
+
+    setFullMock(true, N_MOCKED_PLUGINS);
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    EXPECT_NO_THROW(obj->init());
+    EXPECT_NO_THROW(obj->sample(res));
+    EXPECT_EQ(N_MOCKED_PLUGINS, res.size());
+    std::string plugin_name = res.begin()->first;
+    EXPECT_EQ(0, plugin_name.compare("MyFakePlugin"));
+
+    cnt = res.begin()->second;
+    EXPECT_EQ(0, expected_units.compare(cnt.getUnits("intValue_1")));
+    EXPECT_TRUE(expected_value == cnt.getValue<int>("intValue_1"));
+}
+
+TEST_F(ut_sensorFactory, callSampleWithoutDataAndExpectEmptyMap)
+{
+    dataContainerMap res;
+    emptyContainer = true;
+    setFullMock(true, N_MOCKED_PLUGINS);
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    EXPECT_NO_THROW(obj->init());
+    EXPECT_NO_THROW(obj->sample(res));
+    EXPECT_EQ(0, res.size());
+    emptyContainer = true;
+}
+
+TEST_F(ut_sensorFactory, callSampleOnPluginAndReceiveException)
+{
+    dataContainerMap res;
+    setFullMock(true, N_MOCKED_PLUGINS);
+    throwOnSample = true;
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    EXPECT_NO_THROW(obj->init());
+    try {
+        obj->sample(res);
+    } catch (std::runtime_error& e) {
+        EXPECT_TRUE(NULL != strstr(e.what(), "Failing on mockPlugin.sample"));
+    }
 }

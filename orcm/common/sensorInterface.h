@@ -10,11 +10,14 @@
 #ifndef SENSOR_INTERFACE_H
 #define SENSOR_INTERFACE_H
 
+#include "dataContainer.hpp"
+
 class sensorInterface
 {
 public:
     virtual int init(void);
     virtual int finalize(void);
+    virtual void sample(dataContainer &data);
 };
 
 #endif

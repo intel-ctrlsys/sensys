@@ -41,7 +41,6 @@
 #include "opal/datatype/opal_datatype.h"
 #include "opal/mca/installdirs/base/base.h"
 #include "opal/mca/memory/base/base.h"
-#include "opal/mca/memcpy/base/base.h"
 #include "opal/mca/hwloc/base/base.h"
 #include "opal/mca/sec/base/base.h"
 #include "opal/mca/timer/base/base.h"
@@ -408,15 +407,6 @@ opal_init(int* pargc, char*** pargv)
      */
     if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_hwloc_base_framework, 0))) {
         error = "opal_hwloc_base_open";
-        goto return_error;
-    }
-
-    /* the memcpy component should be one of the first who get
-     * loaded in order to make sure we have all the available
-     * versions of memcpy correctly configured.
-     */
-    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_memcpy_base_framework, 0))) {
-        error = "opal_memcpy_base_open";
         goto return_error;
     }
 

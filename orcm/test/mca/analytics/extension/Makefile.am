@@ -54,7 +54,7 @@ LDADD = \
     $(EXTENSION_LIB) \
     $(ANALYTICS_UTIL_LIB_DIR)/analytics_util.o
 
-AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto -lipmiutil -ludsensors
+AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto -lipmiutil -lsensysplugins
 
 #
 # Preprocessor flags

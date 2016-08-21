@@ -32,6 +32,7 @@ class AnalyticsFactoryTest: public testing::Test
         static bool readdir_success;
         static bool dlopen_success;
         static bool dlerror_success;
+        static bool dlsym_success;
 
         static void SetUpTestCase();
         static void TearDownTestCase();

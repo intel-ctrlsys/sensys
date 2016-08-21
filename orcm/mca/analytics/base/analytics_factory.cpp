@@ -43,7 +43,8 @@ int AnalyticsFactory::findAndRegistPlugins()
     if (ANALYTICS_SUCCESS != ret) {
         return ret;
     }
-    return registPlugins();
+    registPlugins();
+    return ret;
 }
 
 static int ret_on_error()
@@ -62,9 +63,9 @@ int AnalyticsFactory::openAndSetPluginCreator(std::string plugin_name)
     int erri = ANALYTICS_SUCCESS;
     if (NULL != plugin) {
         EntryPointFunc entryPoint = (EntryPointFunc)getPluginSymbol(plugin, "initPlugin");
-        if (ANALYTICS_SUCCESS != (erri = ret_on_error())) {
+        if (NULL == entryPoint) {
             dlclose(plugin);
-            return erri;
+            return ret_on_error();
         }
         entryPoint();
         pluginHandlers.push_back(plugin);
@@ -74,18 +75,11 @@ int AnalyticsFactory::openAndSetPluginCreator(std::string plugin_name)
     }
 }
 
-int AnalyticsFactory::registPlugins(void)
+void AnalyticsFactory::registPlugins(void)
 {
-    int erri = ANALYTICS_SUCCESS;
-
     for (int index = 0; index < pluginFilesFound.size(); index++) {
-        erri = openAndSetPluginCreator(pluginFilesFound.at(index));
-        if (ANALYTICS_SUCCESS != erri) {
-            return erri;
-        }
+        openAndSetPluginCreator(pluginFilesFound.at(index));
     }
-
-    return ANALYTICS_SUCCESS;
 }
 
 void AnalyticsFactory::setPluginCreator(std::string plugin_name, create_obj creator)

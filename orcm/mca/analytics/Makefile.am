@@ -25,6 +25,7 @@ nobase_orcm_HEADERS = $(headers)
 endif
 
 include base/Makefile.am
+include extension_plugins/example/Makefile.am
 
 distclean-local:
 	rm -f base/static-components.h

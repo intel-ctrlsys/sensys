@@ -36,7 +36,7 @@ class AnalyticsFactory : public baseFactory {
         AnalyticsFactory() {};
         virtual ~AnalyticsFactory() {};
         int findAndRegistPlugins(void);
-        int registPlugins(void);
+        void registPlugins(void);
         int openAndSetPluginCreator(std::string plugin_name);
 };
 

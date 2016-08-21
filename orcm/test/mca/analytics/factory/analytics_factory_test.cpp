@@ -44,6 +44,7 @@ Analytics* DummyPlugin::creator(void)
 bool AnalyticsFactoryTest::readdir_success;
 bool AnalyticsFactoryTest::dlopen_success;
 bool AnalyticsFactoryTest::dlerror_success;
+bool AnalyticsFactoryTest::dlsym_success;
 
 void AnalyticsFactoryTest::SetUpTestCase()
 {
@@ -60,6 +61,7 @@ void AnalyticsFactoryTest::reset_var()
     readdir_success = false;
     dlopen_success = false;
     dlerror_success = false;
+    dlsym_success = false;
 }
 
 struct dirent* AnalyticsFactoryTest::readdir_mock(DIR* dirstream)
@@ -94,7 +96,10 @@ char* AnalyticsFactoryTest::dlerror_mock()
 
 void* AnalyticsFactoryTest::dlsym_mock(void *__restrict __handle, const char *__restrict __name)
 {
-    return (void*)(&(DummyPlugin::entry_func));
+    if (dlsym_success) {
+        return (void*)(&(DummyPlugin::entry_func));
+    }
+    return NULL;
 }
 
 int AnalyticsFactoryTest::dlclose_mock(void *__handle)
@@ -187,12 +192,12 @@ TEST_F(AnalyticsFactoryTest, empty_plugin_name_dlopen_null)
     analytics_factory_mocking.dlopen_callback = AnalyticsFactoryTest::dlopen_mock;
     AnalyticsFactoryTest::dlopen_success = false;
     analytics_factory_mocking.dlerror_callback = AnalyticsFactoryTest::dlerror_mock;
-    AnalyticsFactoryTest::dlerror_success = true;
+    AnalyticsFactoryTest::dlerror_success = false;
     int rc = factory->search("/tmp", "DummyPlugin");
     factory->cleanup();
     reset_mocking();
     AnalyticsFactoryTest::reset_var();
-    ASSERT_EQ(ANALYTICS_ERROR, rc);
+    ASSERT_EQ(ANALYTICS_SUCCESS, rc);
 }
 
 TEST_F(AnalyticsFactoryTest, match_plugin_name_init_plugin_failure)
@@ -203,6 +208,7 @@ TEST_F(AnalyticsFactoryTest, match_plugin_name_init_plugin_failure)
     analytics_factory_mocking.dlopen_callback = AnalyticsFactoryTest::dlopen_mock;
     AnalyticsFactoryTest::dlopen_success = true;
     analytics_factory_mocking.dlsym_callback = AnalyticsFactoryTest::dlsym_mock;
+    AnalyticsFactoryTest::dlsym_success = false;
     analytics_factory_mocking.dlerror_callback = AnalyticsFactoryTest::dlerror_mock;
     AnalyticsFactoryTest::dlerror_success = true;
     analytics_factory_mocking.dlclose_callback = AnalyticsFactoryTest::dlclose_mock;
@@ -210,7 +216,7 @@ TEST_F(AnalyticsFactoryTest, match_plugin_name_init_plugin_failure)
     factory->cleanup();
     reset_mocking();
     AnalyticsFactoryTest::reset_var();
-    ASSERT_EQ(ANALYTICS_ERROR, rc);
+    ASSERT_EQ(ANALYTICS_SUCCESS, rc);
 }
 
 TEST_F(AnalyticsFactoryTest, match_plugin_name_init_plugin_success)
@@ -220,9 +226,8 @@ TEST_F(AnalyticsFactoryTest, match_plugin_name_init_plugin_success)
     AnalyticsFactoryTest::readdir_success = true;
     analytics_factory_mocking.dlopen_callback = AnalyticsFactoryTest::dlopen_mock;
     AnalyticsFactoryTest::dlopen_success = true;
-    analytics_factory_mocking.dlerror_callback = AnalyticsFactoryTest::dlerror_mock;
-    AnalyticsFactoryTest::dlerror_success = false;
     analytics_factory_mocking.dlsym_callback = AnalyticsFactoryTest::dlsym_mock;
+    AnalyticsFactoryTest::dlsym_success = true;
     analytics_factory_mocking.dlclose_callback = AnalyticsFactoryTest::dlclose_mock;
     int rc = factory->search("/tmp", "DummyPlugin");
     factory->cleanup();

@@ -10,10 +10,17 @@
 #include "analytics_extension_test.hpp"
 
 #include "gtest/gtest.h"
-#include "analytics_util.h"
+#include "orcm/test/mca/analytics/util/analytics_util.h"
 #include "orcm/mca/analytics/analytics_interface.h"
 #include "orcm/mca/analytics/base/analytics_factory.h"
+#include "analytics_extension_mocking.h"
 #include <list>
+
+
+extern opal_list_t* convert_to_event_list(std::list<Event>& events, orcm_workflow_caddy_t* current_caddy);
+extern bool is_orcm_util_load_time_expected_succeed;
+extern bool database_log_fail;
+
 
 class sample : public Analytics
 {
@@ -25,9 +32,6 @@ int sample::analyze(DataSet& ds)
 {
     return 0;
 }
-
-extern opal_list_t* convert_to_event_list(std::list<Event>& events, orcm_workflow_caddy_t* current_caddy);
-
 
 TEST(analytics_extension, init_null_input)
 {
@@ -63,6 +67,7 @@ TEST(analytics_extension, finalize_test)
         orcm_analytics_extension_module.api.finalize(base_mod);
     }
 }
+
 
 TEST(analytics_extension, analyze_null_caddy)
 {
@@ -166,9 +171,61 @@ TEST(analytics_extension, analyze_valid_input)
         }
         analytics_util::fill_analytics_value(caddy, "localhost", &time, &value, 1);
         caddy->imod->orcm_mca_analytics_data_store = new sample();
+        is_orcm_util_load_time_expected_succeed = true;
         rc = orcm_analytics_extension_module.api.analyze(0, 0, caddy);
         orcm_analytics_extension_module.api.finalize(mod);
         ASSERT_EQ(ORCM_SUCCESS, rc);
+    }
+}
+
+TEST(analytics_extension, analyze_valid_input_load_val_fail)
+{
+    int rc = -1;
+    orcm_analytics_base_module_t *mod = NULL;
+    orcm_workflow_caddy_t *caddy = analytics_util::create_caddy((orcm_analytics_base_module_t*)
+                          malloc(sizeof(orcm_analytics_base_module_t)), OBJ_NEW(orcm_workflow_t),
+                          OBJ_NEW(orcm_workflow_step_t), NULL, NULL);
+    double value = 37.5;
+    struct timeval time = {2500, 0};
+    if (NULL != caddy) {
+        if (NULL != caddy->imod) {
+            mod = caddy->imod;
+        }
+        if (NULL != caddy->wf_step) {
+            analytics_util::fill_attribute(&(caddy->wf_step->attributes), "db", "yes");
+        }
+        analytics_util::fill_analytics_value(caddy, "localhost", &time, &value, 1);
+        caddy->imod->orcm_mca_analytics_data_store = new sample();
+        is_orcm_util_load_time_expected_succeed = false;
+        rc = orcm_analytics_extension_module.api.analyze(0, 0, caddy);
+        orcm_analytics_extension_module.api.finalize(mod);
+        ASSERT_EQ(ORCM_ERR_OUT_OF_RESOURCE, rc);
+    }
+}
+
+TEST(analytics_extension, analyze_db_logging_fail)
+{
+    int rc = -1;
+    orcm_analytics_base_module_t *mod = NULL;
+    orcm_workflow_caddy_t *caddy = analytics_util::create_caddy((orcm_analytics_base_module_t*)
+                          malloc(sizeof(orcm_analytics_base_module_t)), OBJ_NEW(orcm_workflow_t),
+                          OBJ_NEW(orcm_workflow_step_t), NULL, NULL);
+    double value = 37.5;
+    struct timeval time = {2500, 0};
+    if (NULL != caddy) {
+        if (NULL != caddy->imod) {
+            mod = caddy->imod;
+        }
+        if (NULL != caddy->wf_step) {
+            analytics_util::fill_attribute(&(caddy->wf_step->attributes), "db", "yes");
+        }
+        analytics_util::fill_analytics_value(caddy, "localhost", &time, &value, 1);
+        caddy->imod->orcm_mca_analytics_data_store = new sample();
+        is_orcm_util_load_time_expected_succeed = true;
+        database_log_fail = true;
+        rc = orcm_analytics_extension_module.api.analyze(0, 0, caddy);
+        orcm_analytics_extension_module.api.finalize(mod);
+        ASSERT_EQ(ORCM_ERROR, rc);
     }
 }
 

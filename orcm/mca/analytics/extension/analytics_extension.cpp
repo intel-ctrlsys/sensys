@@ -76,7 +76,7 @@ opal_list_t* convert_to_opal_list(dataContainer& result){
     dataContainer::iterator i = result.begin();
     while(i != result.end()){
         std::string units = result.getUnits(result.getKey(i));
-        double item_value = result.template getValue<double>(i);
+        double item_value = result.getValue<double>(i);
         orcm_value_t* val = orcm_util_load_orcm_value((char*)(result.getKey(i)).c_str(),(void*)&item_value,OPAL_DOUBLE,(char*)units.c_str());
         if(NULL != val){
             opal_list_append(compute, (opal_list_item_t*)val);
@@ -94,7 +94,7 @@ dataContainer create_compute_container(opal_list_t* compute_list)
         std::string key = current_val->value.key;
         std::string units = current_val->units;
         double val = orcm_util_get_number_orcm_value(current_val);
-        compute_container.template put<double>(key, val, units);
+        compute_container.put<double>(key, val, units);
     }
     return compute_container;
 }
@@ -107,11 +107,11 @@ dataContainer create_data_container(opal_list_t* datalist)
         std::string key = current_val->value.key;
         if(key != "ctime"){
             std::string data = current_val->value.data.string;
-            dc.template put<std::string>(key, data, "");
+            dc.put<std::string>(key, data, "");
         }
         else {
             struct timeval tv = current_val->value.data.tv;
-            dc.template put<timeval>("ctime", tv, "");
+            dc.put<timeval>("ctime", tv, "");
          }
     }
     return dc;

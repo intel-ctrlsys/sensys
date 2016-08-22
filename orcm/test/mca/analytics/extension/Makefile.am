@@ -30,36 +30,26 @@ check_PROGRAMS = extension_tests
 
 extension_tests_SOURCES = \
     analytics_extension_test.cpp \
-    analytics_extension_test.h
+    analytics_extension_test.h \
+    analytics_extension_mocking.cpp \
+    analytics_extension_mocking.h
 
-EXTENSION_BUILD_DIR=$(top_builddir)/orcm/mca/analytics/extension
-
-if MCA_BUILD_orcm_analytics_extension_DSO
-
-EXTENSION_LIB=$(EXTENSION_BUILD_DIR)/mca_analytics_extension.la
-
-else
-
-EXTENSION_LIB=$(EXTENSION_BUILD_DIR)/libmca_analytics_extension.la
-
-endif
+MOCKING = \
+    -Wl,--wrap=orcm_util_load_analytics_time_compute \
+    -Wl,--wrap=orcm_analytics_base_log_to_database_event
 
 ANALYTICS_UTIL_LIB_DIR=$(top_builddir)/orcm/test/mca/analytics/util
 #
 # Libraries we depend on
 #
 
-LDADD = \
-    @GTEST_LIBRARY_DIR@/libgtest_main.a \
-    $(EXTENSION_LIB) \
-    $(ANALYTICS_UTIL_LIB_DIR)/analytics_util.o
+LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a \
+        $(ANALYTICS_UTIL_LIB_DIR)/analytics_util.o
 
-AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto -lipmiutil -lsensysplugins
+AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 
 #
 # Preprocessor flags
 #
 
-EXTENSION_DIR=$(top_srcdir)/orcm/mca/analytics/extension
-ANALYTICS_UTIL_DIR=$(top_srcdir)/orcm/test/mca/analytics/util
-AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_srcdir) -I$(EXTENSION_DIR) -I$(ANALYTICS_UTIL_DIR)
+AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_srcdir)

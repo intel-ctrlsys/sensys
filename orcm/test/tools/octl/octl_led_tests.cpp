@@ -53,6 +53,7 @@ void ut_octl_led_tests::SetUp()
     is_orcm_parser_base_select_expected_to_succeed = true;
     is_get_bmc_info_expected_to_succeed = true;
     is_orcm_logical_group_parse_array_string_expected_to_succeed = true;
+    orcm_cfgi_base.config_file = strdup("orcm-site.xml");
 }
 
 void ut_octl_led_tests::TearDown()
@@ -67,6 +68,7 @@ void ut_octl_led_tests::TearDown()
 
     orte_rml.recv_cancel = saved_recv_cancel;
     saved_recv_cancel = NULL;
+    free(orcm_cfgi_base.config_file);
 }
 
 void ut_octl_led_tests::SetUpTestCase()

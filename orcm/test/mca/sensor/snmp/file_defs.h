@@ -3,6 +3,8 @@
 
 #define EXPECTED_COLLECTORS_BY_CONFIG 22
 
+#define SNMP_DEFAULT_FILE_NAME "orcm-site.xml"
+
 #define SNMP_DEFAULT_XML_FILE \
 "<snmp> \n\
     <config name=\"router\" version=\"1\" user=\"public\" location=\"Melaque\"> \n\

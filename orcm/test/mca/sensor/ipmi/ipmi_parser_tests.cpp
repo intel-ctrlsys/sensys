@@ -107,10 +107,14 @@ void ut_ipmi_parser::setFileName()
 
 TEST_F(ut_ipmi_parser, test_emptyConstructor)
 {
+    orcm_cfgi_base.config_file = strdup(fileName.c_str());
+
     ipmiParser p;
     ipmiParser *pPtr = new ipmiParser();
     ASSERT_TRUE(NULL != pPtr);
     delete pPtr;
+
+    free(orcm_cfgi_base.config_file);
 }
 
 TEST_F(ut_ipmi_parser, test_constructor_validFile)

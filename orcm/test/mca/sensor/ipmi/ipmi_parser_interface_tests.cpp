@@ -53,8 +53,12 @@ void ut_ipmi_parser_interface::mockedConstructor()
 
 TEST(negative, default_initialization)
 {
+    orcm_cfgi_base.config_file = strdup("dummyFile");
+
     init_parser_framework();
     ASSERT_FALSE(load_ipmi_config_file());
+
+    free(orcm_cfgi_base.config_file);
 }
 
 TEST_F(ut_ipmi_parser_interface, get_aggregator)

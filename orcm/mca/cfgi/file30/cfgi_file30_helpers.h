@@ -74,4 +74,28 @@ int is_singleton(const char * in_tagtext);
 int check_duplicate_singleton(opal_list_t *root);
 int search_singletons(opal_list_t *root, int *mem_counter);
 
+int cfgi30_check_configure_hosts_ports(opal_list_t *elements_list);
+int cfgi30_check_scheduler_hosts_ports(opal_list_t *scheduler, char ***hosts,
+                                       int **ports);
+int cfgi30_check_junction_hosts_ports(opal_list_t *junction, char ***hosts,
+                                      int **ports, char **lastName);
+int cfgi30_check_controller_hosts_ports(opal_list_t *controller, char **host,
+                                        int *port);
+int cfgi30_check_unique_hosts_ports(char ***hosts, int **ports, char **name,
+                                    char **host, int *port, char **lastName,
+                                    opal_list_t **next_junctions, char is_node);
+int cfgi30_expand_name_at(char **name, char **lastName);
+int cfgi30_add_valid_noregex_host_port(char ***hosts, int **ports, char **host,
+                                       int *port, char ***new_names,
+                                       char is_node);
+int cfgi30_add_valid_regex_hosts_ports(char ***hosts, int **ports, char **host,
+                                       int *port, char ***new_names,
+                                       char is_node, char is_regex,
+                                       opal_list_t **next_junctions);
+int cfgi30_add_uniq_host_port(char ***hosts, int **ports, char **host, int *port);
+int cfgi30_add_host_port(char ***hosts, int **ports, char **host, int *port);
+char cfgi30_exists_host_port(char ***hosts, int **ports, char **host,
+                             int *port);
+void cfgi30_free_string_array(char ***array);
+
 #endif /* CFGI_FILE30_H */

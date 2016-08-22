@@ -21,9 +21,6 @@
 orcm_config_files = @OPAL_SITE_CONFIG_FILE@
 orcm_config_file_found = @OPAL_SITE_CONFIG_FILE_FOUND@
 
-orcm_config_file_example = @OPAL_SITE_CONFIG_FILE_EXAMPLE@
-orcm_config_file_example_found = @OPAL_SITE_CONFIG_FILE_EXAMPLE_FOUND@
-
 orcm_rsyslog_config_file = @OPAL_SYSLOG_CONFIG_FILE@
 orcm_rsyslog_config_file_found = @OPAL_SYSLOG_CONFIG_FILE_FOUND@
 orcm_rsyslog_supported_config_location = "/etc/rsyslog.d"
@@ -47,28 +44,6 @@ install-data-local:
         else \
             for file in $$p; do \
 	            if test -f $(DESTDIR)$(sysconfdir)/orcm-site.xml; then \
-	                echo "******************************* WARNING ************************************"; \
-	                echo "*** Not installing new $$file over existing file in:"; \
-	                echo "***   $(DESTDIR)$(sysconfdir)/$$file"; \
-	                echo "******************************* WARNING ************************************"; \
-	            else \
-	                if test -f "$$file"; then d=; else d="$(srcdir)/"; fi; \
-	                f="`echo $$file | sed -e 's|^.*/||'`"; \
-	                echo " $(INSTALL_DATA) $$d$$file $(DESTDIR)$(sysconfdir)/$$f"; \
-	                $(INSTALL_DATA) $$d$$file $(DESTDIR)$(sysconfdir)/$$f; \
-	            fi; \
-	        done \
-        fi;
-
-	@ p="$(orcm_config_file_example)"; \
-        echo "**FOUND $(orcm_config_file_example) **"; \
-        if test "$(orcm_config_file_example_found)" = "yes"; then \
-	    if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-	    echo " $(INSTALL) -m 600 $$d$$p $(DESTDIR)$(sysconfdir)/orcm-site.xml.example"; \
-	    $(INSTALL) -m 600 $$d$$p $(DESTDIR)$(sysconfdir)/orcm-site.xml.example; \
-        else \
-            for file in $$p; do \
-	            if test -f $(DESTDIR)$(sysconfdir)/orcm-site.xml.example; then \
 	                echo "******************************* WARNING ************************************"; \
 	                echo "*** Not installing new $$file over existing file in:"; \
 	                echo "***   $(DESTDIR)$(sysconfdir)/$$file"; \

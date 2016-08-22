@@ -185,6 +185,11 @@ static int read_config(opal_list_t *config)
         return ORCM_ERR_SILENT;
     }
 
+    if( ORCM_SUCCESS != cfgi30_check_configure_hosts_ports(cfgi) ){
+        SAFE_RELEASE_NESTED_LIST(cfgi);
+        return ORCM_ERR_SILENT;
+    }
+
     erri = convert_to_orcm_cfgi_xml_parser_t_list(cfgi, config);
 
     SAFE_RELEASE_NESTED_LIST(cfgi);

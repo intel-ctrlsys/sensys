@@ -653,3 +653,372 @@ int search_singletons(opal_list_t *root, int *mem_counter) {
     return error;
 }
 
+int cfgi30_check_configure_hosts_ports(opal_list_t *elements_list)
+{
+    orcm_value_t *element = NULL;
+    char **hosts = NULL;
+    int *ports = NULL;
+    int res = ORCM_SUCCESS;
+
+    hosts = (char**)malloc(sizeof(char*));
+    if( NULL != hosts ){
+        hosts[0] = NULL;
+        element = (orcm_value_t *)elements_list->opal_list_sentinel.opal_list_next;
+        elements_list = (opal_list_t*)element->value.data.ptr;
+
+        OPAL_LIST_FOREACH(element, elements_list, orcm_value_t){
+            if( 0 == strcmp(TXjunction, element->value.key) ){
+                res = cfgi30_check_junction_hosts_ports(
+                            (opal_list_t*)element->value.data.ptr, &hosts,
+                            &ports, NULL);
+            } else if( 0 == strcmp(TXscheduler, element->value.key) ){
+                res = cfgi30_check_scheduler_hosts_ports(
+                            (opal_list_t*)element->value.data.ptr, &hosts,
+                            &ports);
+            }
+
+            if( ORCM_SUCCESS != res ) break;
+        }
+    } else {
+        res = ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    cfgi30_free_string_array(&hosts);
+    if( NULL != ports ) SAFEFREE(ports);
+
+    return res;
+}
+
+int cfgi30_check_scheduler_hosts_ports(opal_list_t *scheduler, char ***hosts,
+                                       int **ports)
+{
+    char *host = NULL;
+    int port = -1;
+    int res = ORCM_SUCCESS;
+
+    res = cfgi30_check_controller_hosts_ports(scheduler, &host, &port);
+    if( ORCM_SUCCESS == res ){
+        res = cfgi30_add_uniq_host_port(hosts, ports, &host, &port);
+    }
+
+    return res;
+}
+
+int cfgi30_check_junction_hosts_ports(opal_list_t *junction, char ***hosts,
+                                      int **ports, char **lastName)
+{
+    orcm_value_t *element = NULL;
+    opal_list_t **next_junctions = (opal_list_t**)malloc( sizeof(opal_list_t*) );
+    int junctions = 0;
+    char *name = NULL;
+    char *host = NULL;
+    int port = -1;
+    char is_node = 2;
+    int res = ORCM_SUCCESS;
+
+    if( NULL == next_junctions ) res = ORCM_ERR_OUT_OF_RESOURCE;
+    else next_junctions[0] = NULL;
+
+    OPAL_LIST_FOREACH(element, junction, orcm_value_t){
+        if( ORCM_SUCCESS != res ) break;
+
+        if( 0 == strcmp(TXjunction, element->value.key) ){
+            next_junctions = (opal_list_t**)realloc( next_junctions,
+                                       sizeof(opal_list_t*) * (junctions + 2));
+            if( NULL != next_junctions ){
+                next_junctions[junctions] = (opal_list_t*)element->value.data.ptr;
+                junctions++;
+                next_junctions[junctions] = NULL;
+            } else {
+                res = ORCM_ERR_OUT_OF_RESOURCE;
+            }
+        } else if( 0 == strcmp(TXcontrol, element->value.key) ){
+            res = cfgi30_check_controller_hosts_ports(
+                        (opal_list_t*)element->value.data.ptr, &host, &port);
+        } else if( 0 == strcmp(TXname, element->value.key) ){
+            if( name != NULL ) SAFEFREE(name);
+            name = strdup(element->value.data.string);
+            if( NULL == name ) res = ORCM_ERR_OUT_OF_RESOURCE;
+        } else if( 0 == strcmp(TXtype, element->value.key) ){
+            if( 0 == strcmp("node", element->value.data.string) ) is_node = 1;
+            else is_node = 0;
+        }
+    }
+
+    if( ORCM_SUCCESS == res ){
+        if( NULL != name ){
+            if( 2 != is_node ){
+                res = cfgi30_check_unique_hosts_ports(hosts, ports, &name,
+                            &host, &port, lastName, next_junctions, is_node);
+            } else {
+                opal_output(0,"ERROR: A junction is missing it's type");
+                res = ORCM_ERR_BAD_PARAM;
+            }
+        } else {
+            opal_output(0,"ERROR: A junction is missing it's name");
+            res = ORCM_ERR_BAD_PARAM;
+        }
+    }
+
+    SAFEFREE(name);
+    SAFEFREE(next_junctions);
+    return res;
+}
+
+int cfgi30_check_controller_hosts_ports(opal_list_t *controller, char **host,
+                                        int *port){
+    orcm_value_t *element = NULL;
+    int res = ORCM_SUCCESS;
+
+    OPAL_LIST_FOREACH(element, controller, orcm_value_t){
+        if( 0 == strcmp(TXhost, element->value.key)
+            || 0 == strcmp(TXshost, element->value.key)){
+            (*host) = element->value.data.string;
+        } else if( 0 == strcmp(TXport, element->value.key) ){
+            (*port) = atoi(element->value.data.string);
+        }
+    }
+
+    if( NULL == (*host) ){
+        opal_output(0,"ERROR: Controller/Scheduler with missing (s)host field");
+        res = ORCM_ERR_BAD_PARAM;
+    } else if( -1 == (*port) ){
+        opal_output(0,"ERROR: Controller/Scheduler with missing port field");
+        res = ORCM_ERR_BAD_PARAM;
+    }
+
+    return res;
+}
+
+int cfgi30_check_unique_hosts_ports(char ***hosts, int **ports, char **name,
+                                    char **host, int *port, char **lastName,
+                                    opal_list_t **next_junctions, char is_node)
+{
+    int res = ORCM_SUCCESS;
+    int regex_res;
+    int str_pos = 0;
+    char *expandable = NULL;
+    char **expanded = NULL;
+    char is_regex = 0;
+    regmatch_t list_matches[4];
+    regex_t regex_comp_oregex;
+
+
+    res = cfgi30_expand_name_at(name, lastName);
+    if( ORCM_SUCCESS == res ){
+        regcomp(&regex_comp_oregex,
+                "(([^[,[:space:]]*\\[[[:digit:]]+:"
+                        "[[:digit:]]+-[[:digit:]]+\\][^,[:space:]]*)"
+                    "|([^,[:space:]]+)),?",
+                REG_EXTENDED);
+
+        while( ORCM_SUCCESS == res
+               && !(regex_res = regexec(&regex_comp_oregex, (*name) + str_pos,
+                                        4, list_matches, 0)) ) {
+            if( 0 < list_matches[2].rm_eo ){
+                is_regex = 1;
+                expandable = strndup( (*name) + str_pos + list_matches[2].rm_so,
+                                      (int)(list_matches[2].rm_eo
+                                          - list_matches[2].rm_so));
+
+                if( NULL != expandable){
+                    res = orte_regex_extract_node_names(expandable, &expanded);
+                    free(expandable);
+                } else {
+                    res = ORCM_ERR_OUT_OF_RESOURCE;
+                }
+            } else if( 0 < list_matches[3].rm_eo ){
+                if( (*name)[list_matches[0].rm_eo] == ',' ){
+                    is_regex = 1;
+                }
+
+                expandable = strndup( (*name) + str_pos + list_matches[3].rm_so,
+                                      (int)(list_matches[3].rm_eo
+                                          - list_matches[3].rm_so));
+                expanded = (char**)malloc( sizeof(char*) * 2 );
+                if( NULL != expanded && NULL != expandable ){
+                    expanded[0] = expandable;
+                    expanded[1] = NULL;
+                } else {
+                    res = ORCM_ERR_OUT_OF_RESOURCE;
+                }
+            }
+
+            if( ORCM_SUCCESS == res ){
+                if( !is_regex ){
+                    res = cfgi30_add_valid_noregex_host_port(hosts, ports, host,
+                                port, &expanded, is_node);
+                }
+
+                if( ORCM_SUCCESS == res ){
+                    str_pos += list_matches[0].rm_eo;
+                    res = cfgi30_add_valid_regex_hosts_ports(hosts, ports, host,
+                                port, &expanded, is_node, is_regex,
+                                next_junctions);
+                }
+            }
+
+            cfgi30_free_string_array(&expanded);
+        }
+        regfree(&regex_comp_oregex);
+    }
+
+    return res;
+}
+
+int cfgi30_expand_name_at(char **name, char **lastName)
+{
+    char *at_pos = strchr(*name, '@');
+    char *tmp = NULL;
+    int ln_size, n_size;
+    int res = ORCM_SUCCESS;
+
+    if( NULL != lastName && NULL != at_pos){
+        ln_size = strlen(*lastName);
+        n_size = strlen(*name);
+
+        do{
+            tmp = (char*)malloc( sizeof(char) * ln_size + n_size );
+            if( NULL != tmp ){
+                strncpy(tmp, (*name), at_pos - (*name));
+                strcpy(tmp + (at_pos - (*name)), *lastName);
+                strcpy(tmp + (at_pos - (*name)) + ln_size, at_pos + 1);
+                free(*name);
+                *name = tmp;
+                n_size += (ln_size - 1);
+            } else {
+                res = ORCM_ERR_OUT_OF_RESOURCE;
+            }
+        }while( NULL != (at_pos = strchr(*name, '@')) && ORCM_SUCCESS == res );
+    } else if( NULL == lastName && NULL != at_pos ){
+        opal_output(0,"ERROR: You can't use '@' if there isn't a parent name.");
+        res = ORCM_ERR_BAD_PARAM;
+    }
+
+    return res;
+}
+
+int cfgi30_add_valid_noregex_host_port(char ***hosts, int **ports, char **host,
+                                       int *port, char ***new_names,
+                                       char is_node)
+{
+    int res = ORCM_SUCCESS;
+
+    if( is_node && NULL != (*host)
+                && 0 != strcmp((*new_names)[0], *host)
+                && 0 != strcmp(*host, "@")
+                && 0 != strcmp(*host, "localhost") ){
+        opal_output(0, "ERROR: A node controller host name must be the same "
+                       "as the non-regex parent node name.");
+        res = ORCM_ERR_BAD_PARAM;
+    } else if( NULL != (*host) && 0 != strcmp(*host, "@") ){
+        res = cfgi30_add_uniq_host_port(hosts, ports, host, port);
+    }
+
+    return res;
+}
+
+int cfgi30_add_valid_regex_hosts_ports(char ***hosts, int **ports, char **host,
+                                       int *port, char ***new_names,
+                                       char is_node, char is_regex,
+                                       opal_list_t **next_junctions)
+{
+    int iterator = 0;
+    int iterator2 = 0;
+    int res = ORCM_SUCCESS;
+
+    if( is_regex && is_node && NULL != (*host) && 0 != strcmp(*host, "@") ){
+        opal_output(0, "ERROR: A node controller host name must be @ if the "
+                       "parent node name is a regex.");
+        res = ORCM_ERR_BAD_PARAM;
+    }
+
+    for( iterator = 0; NULL != (*new_names)[iterator] && ORCM_SUCCESS == res;
+         iterator++ ){
+
+        if( NULL != (*host) && 0 == strcmp(*host, "@") ){
+            res = cfgi30_add_uniq_host_port(hosts, ports,
+                        (*new_names) + iterator, port);
+        }
+
+        if( ORCM_SUCCESS == res ){
+            for( iterator2 = 0; NULL != next_junctions[iterator2];
+                 iterator2++ ){
+                res = cfgi30_check_junction_hosts_ports(
+                            next_junctions[iterator2], hosts, ports,
+                            (*new_names) + iterator );
+            }
+        }
+
+        if( ORCM_SUCCESS != res ) break;
+    }
+
+    return res;
+}
+
+int cfgi30_add_uniq_host_port(char ***hosts, int **ports, char **host, int *port)
+{
+    int res = ORCM_SUCCESS;
+
+    if( !cfgi30_exists_host_port(hosts, ports, host, port) ){
+        res = cfgi30_add_host_port(hosts, ports, host, port);
+    } else {
+        res = ORCM_ERR_BAD_PARAM;
+        opal_output(0, "ERROR: Duplicate (s)host-port pair found: "
+                       "port=%d host=%s", *port, *host);
+    }
+
+    return res;
+}
+
+int cfgi30_add_host_port(char ***hosts, int **ports, char **host, int *port)
+{
+    int res = ORCM_SUCCESS;
+    int hosts_size = opal_argv_count(*hosts);
+    char *tmp = strdup(*host);
+
+    (*hosts) = (char**)realloc( (*hosts), sizeof(char*) * (hosts_size + 2) );
+    (*ports) = (int*)realloc( (*ports), sizeof(int) * (hosts_size + 1) );
+
+    if( NULL != *hosts && NULL != *ports && NULL != tmp ){
+        (*hosts)[hosts_size] = tmp;
+        (*ports)[hosts_size] = *port;
+        (*hosts)[hosts_size + 1] = NULL;
+    } else {
+        res = ORCM_ERR_OUT_OF_RESOURCE;
+    }
+
+    return res;
+}
+
+char cfgi30_exists_host_port(char ***hosts, int **ports, char **host,
+                             int *port)
+{
+    char exists = 0;
+    int iterator = 0;
+
+    for( iterator = 0; NULL != (*hosts)[iterator]; iterator++ ){
+        if( 0 == strcmp( *host, (*hosts)[iterator] )
+            && (*port) == (*ports)[iterator] ){
+            exists = 1;
+            break;
+        }
+    }
+
+    return exists;
+}
+
+void cfgi30_free_string_array(char ***array)
+{
+    int iterator = 0;
+
+    if( NULL != *array ){
+        for( iterator = 0; NULL != (*array)[iterator]; iterator++ ){
+            SAFEFREE((*array)[iterator]);
+        }
+
+        SAFEFREE(*array);
+        *array = NULL;
+    }
+}
+

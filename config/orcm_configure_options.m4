@@ -28,18 +28,6 @@ AC_DEFUN([ORCM_LOAD_CONFIGURATION],[
             AC_MSG_RESULT([no])
             AC_SUBST(OPAL_SITE_CONFIG_FILE_FOUND, "no")
         fi
-        AC_MSG_CHECKING([for config file example])
-        # define an ORCM site configuration example filename
-        platform_site_config_file_example="`basename $platform_loaded`.xml.example"
-        # look where platform file is located for platform.xml.example name
-        if test -r "${platform_file_dir}/${platform_site_config_file_example}" ; then
-            AC_SUBST(OPAL_SITE_CONFIG_FILE_EXAMPLE, [$platform_file_dir/$platform_site_config_file_example])
-            AC_MSG_RESULT([$platform_file_dir/$platform_site_config_file_example])
-            AC_SUBST(OPAL_SITE_CONFIG_FILE_EXAMPLE_FOUND, "yes")
-        else
-            AC_MSG_RESULT([no])
-            AC_SUBST(OPAL_SITE_CONFIG_FILE_EXAMPLE_FOUND, "no")
-        fi
     fi
     if test "$with_syslog" = "yes"; then
         AC_MSG_CHECKING([for rsyslog support config file])

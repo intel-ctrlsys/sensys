@@ -30,6 +30,7 @@
 
 int number_of_clusters;
 int schedulers_count;
+int singleton_error;
 
 int stringMatchRegex(char* str, char* pattern) {
   regex_t regex_comp;
@@ -465,9 +466,9 @@ int check_aggregator_yes_no_field(char *field_value) {
 
 int is_not_ignored(char* tag){
 
-    if(0 == strcasecmp(TXjunction,tag) ||
-       0 == strcasecmp(TXcontrol,tag)      ||
-       0 == strcasecmp(TXconfig,tag)      ||
+    if(0 == strcasecmp(TXjunction,tag)||
+       0 == strcasecmp(TXcontrol,tag) ||
+       0 == strcasecmp(TXconfig,tag)  ||
        0 == strcasecmp(TXscheduler,tag)){
 
         return 1;
@@ -478,8 +479,22 @@ int is_not_ignored(char* tag){
 int check_lex_tags_and_field(opal_list_t *root) {
     int role_count = 0;
     int aggs_count = 0;
+    int ret = ORCM_SUCCESS;
 
-    return search_lex_tags_and_field(root, &role_count, &aggs_count);
+    ret = search_lex_tags_and_field(root, &role_count, &aggs_count);
+
+    if (0 >= aggs_count) {
+        opal_output(0,"ERROR: Need at least one aggregator configuration\n");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    if (0 >= role_count) {
+        opal_output(0,"ERROR: Need at least one role configuration\n");
+        return ORCM_ERR_BAD_PARAM;
+    }
+
+    return ret;
+
 }
 
 int search_lex_tags_and_field(opal_list_t *root, int *role, int *aggs) {
@@ -515,16 +530,6 @@ int search_lex_tags_and_field(opal_list_t *root, int *role, int *aggs) {
                 return ORCM_ERR_BAD_PARAM;
             }
         }
-    }
-
-    if (0 >= (*aggs)) {
-        opal_output(0,"ERROR: Need at least one aggregator configuration\n");
-        return ORCM_ERR_BAD_PARAM;
-    }
-
-    if (0 >= (*role)) {
-        opal_output(0,"ERROR: Need at least one role configuration\n");
-        return ORCM_ERR_BAD_PARAM;
     }
 
     return ORCM_SUCCESS;
@@ -624,13 +629,13 @@ int is_singleton(const char * in_tagtext)
 int check_duplicate_singleton(opal_list_t *root) {
     int mem_counter = 1;
 
+    singleton_error = ORCM_SUCCESS;
     return search_singletons(root, &mem_counter);
 }
 
 int search_singletons(opal_list_t *root, int *mem_counter) {
     orcm_value_t *ptr = NULL;
     char **singleton_list = {NULL};
-    int error = ORCM_SUCCESS;
     int singleton_counter = 0;
 
     singleton_list = (char **)malloc(sizeof(char*));
@@ -641,9 +646,8 @@ int search_singletons(opal_list_t *root, int *mem_counter) {
                 singleton_list[singleton_counter] = ptr->TAG;
                 for (int i = 0; i < singleton_counter; i++) {
                     if (0 == strcasecmp(singleton_list[i], ptr->TAG)) {
-                        opal_output(0, "ERROR: More than one instance of \"%s\" was found",
-                                       ptr->value.key);
-                        error = ORCM_ERR_BAD_PARAM;
+                        opal_output(0, "ERROR: More than one instance of \"%s\" was found", ptr->value.key);
+                        singleton_error = ORCM_ERR_BAD_PARAM;
                     }
                 }
                 (*mem_counter)++;
@@ -654,15 +658,16 @@ int search_singletons(opal_list_t *root, int *mem_counter) {
                 return ORCM_ERROR;
             }
         }
+
         if (OPAL_STRING != ptr->value.type && is_not_ignored(ptr->TAG)) {
-            if (ORCM_SUCCESS != (error = search_singletons((opal_list_t*)ptr->SUBLIST, mem_counter))) {
+            if (ORCM_SUCCESS != (singleton_error = search_singletons((opal_list_t*)ptr->SUBLIST, mem_counter))){
                 SAFEFREE(singleton_list);
-                return error;
+                return singleton_error;
             }
         }
     }
     SAFEFREE(singleton_list);
-    return error;
+    return singleton_error;
 }
 
 int cfgi30_check_configure_hosts_ports(opal_list_t *elements_list)

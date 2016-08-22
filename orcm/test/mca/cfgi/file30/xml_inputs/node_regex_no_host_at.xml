@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+    <version>3</version>
+    <role>RECORD</role>
+    <junction>
+        <type>cluster</type>
+        <name>default_cluster</name>
+        <junction>
+            <type>row</type>
+            <name>default_row</name>
+            <junction>
+                <type>rack</type>
+                <name>rack</name>
+                <controller>
+                     <host>localhost</host>
+                     <port>55805</port>
+                     <aggregator>yes</aggregator>
+                </controller>
+                <junction>
+                     <type>node</type>
+                     <name>node[2:1-2]</name>
+                </junction>
+            </junction>
+        </junction>
+    </junction>
+
+    <scheduler>
+        <shost>localhost</shost>
+        <port>55820</port>
+    </scheduler>
+
+    <workflows>
+        <workflow name = "default_average">
+            <step name = "filter">
+                <data_group>coretemp</data_group>
+            </step>
+            <step name = "aggregate">
+                <operation>average</operation>
+                <db>yes</db>
+            </step>
+        </workflow>
+
+        <workflow name = "default_threshold">
+            <step name = "filter">
+                <data_group>coretemp</data_group>
+            </step>
+            <step name = "threshold">
+                <policy>hi|45|warning|syslog</policy>
+                <db>yes</db>
+            </step>
+        </workflow>
+
+        <workflow name = "default_syslog">
+            <step name = "filter">
+                <data_group>syslog</data_group>
+            </step>
+            <step name = "genex">
+                <severity>crit</severity>
+                <db>yes</db>
+            </step>
+        </workflow>
+    </workflows>
+</configuration>
+

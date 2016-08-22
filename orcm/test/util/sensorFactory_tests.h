@@ -33,8 +33,8 @@ int n_mocked_plugins;
 class mockPlugin
 {
 public:
-    virtual int init(void);
-    virtual int finalize(void);
+    virtual void init(void);
+    virtual void finalize(void);
     virtual void sample(dataContainer &dc);
 };
 

@@ -39,17 +39,16 @@ void ut_sensorFactory::setFullMock(bool mockStatus, int nPlugins)
     dlopenReturnHandler = mockStatus;
 }
 
-int mockPlugin::init()
+void mockPlugin::init()
 {
     if (throwOnInit) {
         throw std::runtime_error("Failing on mockPlugin.init");
     }
-    return 0;
 }
 
-int mockPlugin::finalize()
+void mockPlugin::finalize()
 {
-    return 0;
+    return;
 }
 
 void mockPlugin::sample(dataContainer &dc)

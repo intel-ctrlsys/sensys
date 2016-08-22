@@ -13,6 +13,7 @@
 headers = \
         dataContainer.hpp \
         UDExceptions.h \
+        udsensors.h \
         sensorInterface.h \
         baseFactory.h \
         dataContainerHelper.hpp

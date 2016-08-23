@@ -30,7 +30,7 @@ check_PROGRAMS = extension_tests
 
 extension_tests_SOURCES = \
     analytics_extension_test.cpp \
-    analytics_extension_test.h \
+    analytics_extension_test.hpp \
     analytics_extension_mocking.cpp \
     analytics_extension_mocking.h
 

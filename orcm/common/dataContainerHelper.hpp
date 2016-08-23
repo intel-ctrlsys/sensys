@@ -25,9 +25,7 @@ class dataContainerHelper {
         static void packDataFromContainer(const dataContainer& cnt,
                                           const dataContainer::iterator it,
                                           opal_buffer_t* buffer);
-        static void packContainerMapToOpalBuffer(dataContainerMap &cntMap, opal_buffer_t* buffer);
         static void packContainerBufferToOpalBuffer(opal_buffer_t* cntBuffer, opal_buffer_t* buffer);
-        static void unpackContainerMapFromOpalBuffer(dataContainerMap &cntMap, opal_buffer_t* buffer);
         static std::string unpackStringLabel(opal_buffer_t* buffer);
         static void pushBufferItemToContainer(dataContainer& cnt, opal_buffer_t* buffer);
         static void pushBufferToContainerMap(dataContainerMap &cntMap, opal_buffer_t* buffer);
@@ -37,13 +35,15 @@ class dataContainerHelper {
         static void appendContainerToOpalBuffer(dataContainer& cnt, opal_buffer_t* buffer);
         static void appendContainerMapToOpalBuffer(dataContainerMap& cnt, opal_buffer_t* buffer);
         static void pushBufferToContainer(dataContainer& cnt, opal_buffer_t* buffer);
-        static void whenInvalidBufferThrowBadParam(const std::string& msg, const void* buffer);
+        static void whenNullThrowBadParam(const std::string& msg, const void* ptr);
         static bool isBufferEmpty(opal_buffer_t* buffer);
+        static void pushContainerToList(dataContainer& cnt, void* list);
     public:
         static void serialize(dataContainer& cnt, void* buffer);
         static void deserialize(dataContainer& cnt, void* buffer);
         static void serializeMap(dataContainerMap& cntMap, void* buffer);
         static void deserializeMap(dataContainerMap& cntMap, void* buffer);
+        static void dataContainerToList(dataContainer& cnt, void* list);
 };
 
 class ErrOpal : public std::runtime_error {

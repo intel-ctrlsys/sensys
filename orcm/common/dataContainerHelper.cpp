@@ -171,18 +171,14 @@ void dataContainerHelper::packDataFromContainer(const dataContainer& cnt,
     }
 }
 
-void dataContainerHelper::whenInvalidBufferThrowBadParam(const std::string& msg,
-                                                                const void* buffer) {
-    if (NULL == buffer) {
+void dataContainerHelper::whenNullThrowBadParam(const std::string& msg,
+                                                                const void* ptr) {
+    if (NULL == ptr) {
         throw ErrOpal(msg, OPAL_ERR_BAD_PARAM);
     }
 }
 
 void dataContainerHelper::pushBufferToContainerMap(dataContainerMap &cntMap, opal_buffer_t* buffer) {
-    unpackContainerMapFromOpalBuffer(cntMap, buffer);
-}
-
-void dataContainerHelper::unpackContainerMapFromOpalBuffer(dataContainerMap &cntMap, opal_buffer_t* buffer) {
     string label;
     opal_buffer_t* cntBuffer = NULL;
     dataContainer* cnt = NULL;
@@ -198,17 +194,6 @@ void dataContainerHelper::unpackContainerMapFromOpalBuffer(dataContainerMap &cnt
 }
 
 void dataContainerHelper::appendContainerMapToOpalBuffer(dataContainerMap &cntMap, opal_buffer_t* buffer) {
-    packContainerMapToOpalBuffer(cntMap, buffer);
-}
-
-void dataContainerHelper::packContainerBufferToOpalBuffer(opal_buffer_t* cntBuffer, opal_buffer_t* buffer) {
-    int rc = OPAL_SUCCESS;
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &cntBuffer, 1, OPAL_BUFFER))) {
-        throw ErrOpal("Unable to pack container buffer into buffer", rc);
-    }
-}
-
-void dataContainerHelper::packContainerMapToOpalBuffer(dataContainerMap &cntMap, opal_buffer_t* buffer) {
     opal_buffer_t* cntBuffer;
     for (dataContainerMap::iterator it = cntMap.begin() ; it != cntMap.end() ; it++) {
        packStringLabel(it->first, buffer);
@@ -218,28 +203,60 @@ void dataContainerHelper::packContainerMapToOpalBuffer(dataContainerMap &cntMap,
     }
 }
 
+void dataContainerHelper::packContainerBufferToOpalBuffer(opal_buffer_t* cntBuffer, opal_buffer_t* buffer) {
+    int rc = OPAL_SUCCESS;
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &cntBuffer, 1, OPAL_BUFFER))) {
+        throw ErrOpal("Unable to pack container buffer into buffer", rc);
+    }
+}
 
 void dataContainerHelper::serialize(dataContainer &cnt, void* buffer) {
-    whenInvalidBufferThrowBadParam("Invalid output buffer", buffer);
+    whenNullThrowBadParam("Invalid output buffer", buffer);
     appendContainerToOpalBuffer(cnt, (opal_buffer_t*) buffer);
 }
 
 void dataContainerHelper::serializeMap(dataContainerMap &cntMap, void* buffer) {
-    whenInvalidBufferThrowBadParam("Invalid output buffer", buffer);
+    whenNullThrowBadParam("Invalid output buffer", buffer);
     appendContainerMapToOpalBuffer(cntMap, (opal_buffer_t*) buffer);
 }
 
 
 void dataContainerHelper::deserialize(dataContainer& cnt, void* buffer) {
-    whenInvalidBufferThrowBadParam("Invalid input buffer", buffer);
+    whenNullThrowBadParam("Invalid input buffer", buffer);
     pushBufferToContainer(cnt, (opal_buffer_t*) buffer);
 }
 
 void dataContainerHelper::deserializeMap(dataContainerMap &cntMap, void* buffer) {
-    whenInvalidBufferThrowBadParam("Invalid input buffer", buffer);
+    whenNullThrowBadParam("Invalid input buffer", buffer);
     pushBufferToContainerMap(cntMap, (opal_buffer_t*) buffer);
 }
 
+void dataContainerHelper::pushContainerToList(dataContainer& cnt, void* list) {
+    char* key = NULL;
+    void* data = NULL;
+    opal_data_type_t type;
+    char* units = NULL;
+    int rc = OPAL_SUCCESS;
+
+    for (dataContainer::iterator it = cnt.begin() ; it != cnt.end() ; ++it) {
+        key = strdup(cnt.getKey(it).c_str());
+        data = cnt.getRawDataPtr(it);
+        type = dataTypeMap[cnt.getDataTypeName(it)];
+        units = strdup(cnt.getUnits(it).c_str());
+        rc |= orcm_util_append_orcm_value((opal_list_t*) list, key, data, type, units);
+        SAFEFREE(key);
+        SAFEFREE(units);
+    }
+
+    if (OPAL_SUCCESS != rc) {
+        throw ErrOpal("There were some errors trying to convert dataContainer to List", rc);
+    }
+}
+
+void dataContainerHelper::dataContainerToList(dataContainer& cnt, void* list) {
+    whenNullThrowBadParam("Invalid input list", list);
+    pushContainerToList(cnt, list);
+}
 
 #define ADD_EQUIVALENCE_FOR(TYPE, OPAL_TYPE) \
     retValue[typeid(TYPE).name()] = OPAL_TYPE;

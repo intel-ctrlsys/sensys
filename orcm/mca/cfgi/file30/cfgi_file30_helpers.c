@@ -463,6 +463,18 @@ int check_aggregator_yes_no_field(char *field_value) {
     return ORCM_SUCCESS;
 }
 
+int is_not_ignored(char* tag){
+
+    if(0 == strcasecmp(TXjunction,tag) ||
+       0 == strcasecmp(TXcontrol,tag)      ||
+       0 == strcasecmp(TXconfig,tag)      ||
+       0 == strcasecmp(TXscheduler,tag)){
+
+        return 1;
+    }
+    return 0;
+}
+
 int check_lex_tags_and_field(opal_list_t *root) {
     int role_count = 0;
     int aggs_count = 0;
@@ -498,7 +510,7 @@ int search_lex_tags_and_field(opal_list_t *root, int *role, int *aggs) {
             }
         }
 
-        if (OPAL_STRING != ptr->value.type) {
+        if (OPAL_STRING != ptr->value.type && is_not_ignored(ptr->TAG)) {
             if (ORCM_SUCCESS != search_lex_tags_and_field((opal_list_t*)ptr->SUBLIST, role, aggs)) {
                 return ORCM_ERR_BAD_PARAM;
             }
@@ -642,7 +654,7 @@ int search_singletons(opal_list_t *root, int *mem_counter) {
                 return ORCM_ERROR;
             }
         }
-        if (OPAL_STRING != ptr->value.type) {
+        if (OPAL_STRING != ptr->value.type && is_not_ignored(ptr->TAG)) {
             if (ORCM_SUCCESS != (error = search_singletons((opal_list_t*)ptr->SUBLIST, mem_counter))) {
                 SAFEFREE(singleton_list);
                 return error;

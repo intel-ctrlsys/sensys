@@ -149,6 +149,21 @@ TEST_F(ut_cfgi30_tests, check_duplicate_singleton_correct)
     pugi_close(fileID);
 }
 
+TEST_F(ut_cfgi30_tests, check_duplicate_singleton_ignored_tags)
+{
+    const char* file_name = set_name("ignored_tags.xml");
+
+    int fileID = pugi_open(file_name);
+
+    ASSERT_LT(0, fileID);
+
+    opal_list_t *list = pugi_retrieve_document(fileID);
+
+    EXPECT_EQ(ORCM_SUCCESS, check_duplicate_singleton(list));
+
+    pugi_close(fileID);
+}
+
 TEST_F(ut_cfgi30_tests, check_duplicate_singleton_incorrect)
 {
     const char* file_name = set_name("unified_duplicate_singleton.xml");
@@ -174,6 +189,13 @@ TEST_F(ut_cfgi30_tests, check_lex_tags_and_fields_no_aggs)
 TEST_F(ut_cfgi30_tests, check_lex_tags_and_fields_valid_xml)
 {
     const char* file_name = set_name("valid_xml_file.xml");
+
+    xml_lexical_tester(file_name, ORCM_SUCCESS);
+}
+
+TEST_F(ut_cfgi30_tests, check_lex_tags_and_fields_ignored_tags)
+{
+    const char* file_name = set_name("ignored_tags.xml");
 
     xml_lexical_tester(file_name, ORCM_SUCCESS);
 }

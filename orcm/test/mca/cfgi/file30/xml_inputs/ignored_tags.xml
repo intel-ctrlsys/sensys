@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+    <version>3</version>
+    <role>RECORD</role>
+    <junction>
+        <type>cluster</type>
+        <name>default_cluster</name>
+        <junction>
+            <type>row</type>
+            <name>default_row</name>
+            <junction>
+                <type>rack</type>
+                <name>rack</name>
+                <controller>
+                     <host>localhost</host>
+                     <port>55805</port>
+                     <aggregator>yes</aggregator>
+                </controller>
+                <junction>
+                    <type>node</type>
+                    <name>localhost</name>
+                </junction>
+            </junction>
+        </junction>
+    </junction>
+
+    <scheduler>
+        <shost>localhost</shost>
+        <port>55820</port>
+    </scheduler>
+
+    <workflows>
+        <workflow name = "default_threshold">
+            <step name = "filter">
+                <data_group>coretemp</data_group>
+            </step>
+            <step name = "threshold">
+                <policy>hi|38|crit|syslog</policy>
+                <db>yes</db>
+            </step>
+        </workflow>
+    </workflows>
+
+    <ipmi>
+      <bmc_node name="simulator187_13">
+        <bmc_address>10.23.187.13</bmc_address>
+        <user>admin</user>
+        <pass>admin123</pass>
+        <auth_method>PASSWORD</auth_method>
+        <priv_level>USER</priv_level>
+        <channel>0</channel>
+        <aggregator>localhost</aggregator>
+      </bmc_node>
+    </ipmi>
+</configuration>

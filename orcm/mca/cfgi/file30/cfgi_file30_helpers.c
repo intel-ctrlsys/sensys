@@ -845,7 +845,8 @@ int cfgi30_check_unique_hosts_ports(char ***hosts, int **ports, char **name,
             }
 
             if( ORCM_SUCCESS == res ){
-                if( !is_regex ){
+                if( !is_regex
+                    || (NULL != (*host) && 0 != strcmp(*host, "@")) ){
                     res = cfgi30_add_valid_noregex_host_port(hosts, ports, host,
                                 port, &expanded, is_node);
                 }
@@ -908,8 +909,8 @@ int cfgi30_add_valid_noregex_host_port(char ***hosts, int **ports, char **host,
                 && 0 != strcmp((*new_names)[0], *host)
                 && 0 != strcmp(*host, "@")
                 && 0 != strcmp(*host, "localhost") ){
-        opal_output(0, "ERROR: A node controller host name must be the same "
-                       "as the non-regex parent node name.");
+        opal_output(0, "ERROR: A node controller host name must be the same as"
+                       " the parent node name (or '@' if name it's a regex).");
         res = ORCM_ERR_BAD_PARAM;
     } else if( NULL != (*host) && 0 != strcmp(*host, "@") ){
         res = cfgi30_add_uniq_host_port(hosts, ports, host, port);
@@ -927,12 +928,6 @@ int cfgi30_add_valid_regex_hosts_ports(char ***hosts, int **ports, char **host,
     int iterator2 = 0;
     int res = ORCM_SUCCESS;
 
-    if( is_regex && is_node && NULL != (*host) && 0 != strcmp(*host, "@") ){
-        opal_output(0, "ERROR: A node controller host name must be @ if the "
-                       "parent node name is a regex.");
-        res = ORCM_ERR_BAD_PARAM;
-    }
-
     for( iterator = 0; NULL != (*new_names)[iterator] && ORCM_SUCCESS == res;
          iterator++ ){
 
@@ -942,15 +937,13 @@ int cfgi30_add_valid_regex_hosts_ports(char ***hosts, int **ports, char **host,
         }
 
         if( ORCM_SUCCESS == res ){
-            for( iterator2 = 0; NULL != next_junctions[iterator2];
-                 iterator2++ ){
+            for( iterator2 = 0; NULL != next_junctions[iterator2]
+                                && ORCM_SUCCESS == res; iterator2++ ){
                 res = cfgi30_check_junction_hosts_ports(
                             next_junctions[iterator2], hosts, ports,
                             (*new_names) + iterator );
             }
         }
-
-        if( ORCM_SUCCESS != res ) break;
     }
 
     return res;

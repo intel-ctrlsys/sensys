@@ -113,7 +113,6 @@ EXTRA_DIST = \
     platform/intel/bend/linux-optimized.conf \
     platform/intel/hillsboro/orcm-linux \
     platform/intel/hillsboro/orcm-linux.xml \
-    platform/intel/hillsboro/orcm-linux.xml.example \
     platform/intel/hillsboro/orcm-linux.conf \
     platform/mellanox/optimized \
     platform/mellanox/optimized.conf

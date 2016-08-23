@@ -53,6 +53,9 @@ extern "C" {
 #define ON_NULL_THROW(x) if(NULL==x) {        \
     ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE); \
     throw unableToAllocateObj(); }
+#define ON_ERROR_THROW(x,y) {            \
+    int rc_ = x; if (ORCM_SUCCESS!= x) { \
+    ORTE_ERROR_LOG(rc_); throw y(); }}
 
 #define HOSTNAME_STR "hostname"
 #define TOT_HOSTNAMES_STR "tot_hostnames"
@@ -138,8 +141,8 @@ void snmp_impl::start(orte_jobid_t job)
     if(-999 == (int)job) {
         return; // NOOP ID; Succeed without actually starting...
     }
-    // start a separate SNMp progress thread for sampling
-    if (true == mca_sensor_snmp_component.use_progress_thread) {
+    // start a separate SNMP progress thread for sampling
+    if (mca_sensor_snmp_component.use_progress_thread) {
         // setup snmp sampler
         snmp_sampler_ = OBJ_NEW(orcm_sensor_sampler_t);
 
@@ -169,7 +172,7 @@ void snmp_impl::sample(orcm_sensor_sampler_t* sampler)
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;
     }
-    if (false == mca_sensor_snmp_component.use_progress_thread) {
+    if (!mca_sensor_snmp_component.use_progress_thread) {
         snmp_sampler_ = sampler;
         collect_sample();
         snmp_sampler_ = NULL;
@@ -178,61 +181,92 @@ void snmp_impl::sample(orcm_sensor_sampler_t* sampler)
 
 void snmp_impl::log(opal_buffer_t* buf)
 {
+    opal_list_t* non_compute = NULL;
+    opal_list_t* key = NULL;
+    orcm_analytics_value_t* analytics_vals = NULL;
+
     if(NULL == buf) {
         ORTE_ERROR_LOG(ORTE_ERR_BAD_PARAM);
         return;
     }
 
-    opal_list_t* compute = NULL;
-    opal_list_t* non_compute = NULL;
-    opal_list_t* key = NULL;
-    orcm_analytics_value_t* analytics_vals = NULL;
+    vardata ctime = fromOpalBuffer(buf);
 
-    // Modified in order to have easier to read code
     try {
-        key = OBJ_NEW(opal_list_t);
-        ON_NULL_THROW(key);
-
-        compute = OBJ_NEW(opal_list_t);
-        ON_NULL_THROW(compute);
-
-        non_compute = OBJ_NEW(opal_list_t);
-        ON_NULL_THROW(non_compute);
-
-        fromOpalBuffer(buf).appendToOpalList(non_compute); // ctime
-        vardata vardataHost = fromOpalBuffer(buf);
-        vardataHost.appendToOpalList(key);         // hostname
-
-        opal_output_verbose(10, orcm_sensor_base_framework.framework_output,
-                            "%s sensor SNMP : received data from: '%s'",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), vardataHost.getValue<char*>());
-
-        vardata(plugin_name_).setKey("data_group").appendToOpalList(key);
-        vardata(string(ORCM_COMPONENT_MON)).setKey("component").appendToOpalList(key);
-        vardata(string(ORCM_SUBCOMPONENT_MEM)).setKey("sub_component").appendToOpalList(key);
-
-        vector<vardata> compute_vector = unpackDataFromBuffer(buf);
-
-        analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute, compute);
-        for(vector<vardata>::iterator it = compute_vector.begin(); it != compute_vector.end(); ++it) {
-            ON_NULL_THROW(analytics_vals);
-            ON_NULL_THROW(analytics_vals->key);
-            ON_NULL_THROW(analytics_vals->non_compute_data);
-            ON_NULL_THROW(analytics_vals->compute_data);
-
-            it->appendToOpalList(analytics_vals->compute_data);
+        while(haveDataInBuffer(buf)) {
+            allocateAnalyticsObjects(&key, &non_compute);
+            prepareDataForAnalytics(ctime, key, non_compute, buf, &analytics_vals);
+            orcm_analytics.send_data(analytics_vals);
+            releaseAnalyticsObjects(&key, &non_compute, &analytics_vals);
         }
-        orcm_analytics.send_data(analytics_vals);
-        SAFE_OBJ_RELEASE(analytics_vals);
-
     } catch (exception &e) {
         opal_output(0, "ERROR: %s sensor SNMP : log: '%s'",
                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), e.what());
+        releaseAnalyticsObjects(&key, &non_compute, &analytics_vals);
     }
-    SAFE_OBJ_RELEASE(key);
-    SAFE_OBJ_RELEASE(compute);
-    SAFE_OBJ_RELEASE(non_compute);
-    SAFE_OBJ_RELEASE(analytics_vals);
+}
+
+bool snmp_impl::haveDataInBuffer(opal_buffer_t *buffer)
+{
+    return buffer->unpack_ptr < buffer->base_ptr + buffer->bytes_used;
+}
+
+void snmp_impl::prepareDataForAnalytics(vardata& ctime,
+                                        opal_list_t *key,
+                                        opal_list_t *non_compute,
+                                        opal_buffer_t *buf,
+                                        orcm_analytics_value_t **analytics_vals) {
+
+    ctime.appendToOpalList(non_compute); // ctime
+    vardata vardataHost = fromOpalBuffer(buf);
+    vardataHost.appendToOpalList(key); // hostname
+
+    opal_output_verbose(10, orcm_sensor_base_framework.framework_output,
+                        "%s sensor SNMP : received data from: '%s'",
+                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), vardataHost.getValue<char*>());
+
+    setAnalyticsKeys(key);
+
+    *analytics_vals = orcm_util_load_orcm_analytics_value(key, non_compute, NULL);
+    checkAnalyticsVals(*analytics_vals);
+
+    vector<vardata> compute_vector = unpackSamplesFromBuffer(buf);
+    for(vector<vardata>::iterator it = compute_vector.begin(); it != compute_vector.end(); ++it) {
+        it->appendToOpalList((*analytics_vals)->compute_data);
+    }
+}
+
+void snmp_impl::setAnalyticsKeys(opal_list_t *key)
+{
+    vardata(plugin_name_).setKey("data_group").appendToOpalList(key);
+    vardata(string(ORCM_COMPONENT_MON)).setKey("component").appendToOpalList(key);
+    vardata(string(ORCM_SUBCOMPONENT_MEM)).setKey("sub_component").appendToOpalList(key);
+}
+
+void snmp_impl::checkAnalyticsVals(orcm_analytics_value_t *analytics_vals)
+{
+    ON_NULL_THROW(analytics_vals);
+    ON_NULL_THROW(analytics_vals->key);
+    ON_NULL_THROW(analytics_vals->non_compute_data);
+    ON_NULL_THROW(analytics_vals->compute_data);
+}
+
+void snmp_impl::allocateAnalyticsObjects(opal_list_t** key, opal_list_t** non_compute)
+{
+    *key = OBJ_NEW(opal_list_t);
+    ON_NULL_THROW(*key);
+
+    *non_compute = OBJ_NEW(opal_list_t);
+    ON_NULL_THROW(*non_compute);
+
+}
+
+void snmp_impl::releaseAnalyticsObjects(opal_list_t **key, opal_list_t **non_compute,
+                                        orcm_analytics_value_t **analytics_vals)
+{
+    SAFE_OBJ_RELEASE(*key);
+    SAFE_OBJ_RELEASE(*non_compute);
+    SAFE_OBJ_RELEASE(*analytics_vals);
 }
 
 vector<vardata> snmp_impl::getOIDsVardataVector(snmpCollector sc){
@@ -347,7 +381,7 @@ void snmp_impl::inventory_log(char *hostname,
 void snmp_impl::set_sample_rate(int sample_rate)
 {
     // set the snmp sample rate if separate thread is enabled
-    if (true == mca_sensor_snmp_component.use_progress_thread) {
+    if (mca_sensor_snmp_component.use_progress_thread) {
         mca_sensor_snmp_component.sample_rate = sample_rate;
     } else {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
@@ -363,7 +397,7 @@ void snmp_impl::get_sample_rate(int* sample_rate)
         return;
     }
     *sample_rate = mca_sensor_snmp_component.sample_rate;
-    if (false == mca_sensor_snmp_component.use_progress_thread) {
+    if (!mca_sensor_snmp_component.use_progress_thread) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor snmp : get_sample_rate: called but not using"
                             "per-thread sampling", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -446,7 +480,7 @@ void snmp_impl::collect_sample(bool perthread /* = false*/)
     }
     diagnostics_ |= 0x1;
 
-    if(true == perthread) {
+    if(perthread) {
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor snmp : perthread_snmp_sample: called",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
@@ -489,15 +523,29 @@ void snmp_impl::packPluginName(opal_buffer_t* buffer) {
     return;
 }
 
+void snmp_impl::packSamplesIntoBuffer(opal_buffer_t *buffer, const vector<vardata> &dataSamples) {
+    vardata(dataSamples.size()).setKey("nSamples").packTo(buffer);
+    packDataToBuffer(dataSamples, buffer);
+}
+
+vector<vardata> snmp_impl::unpackSamplesFromBuffer(opal_buffer_t *buffer) {
+    vector<vardata> samples;
+    int nSamples = fromOpalBuffer(buffer).getValue<int>();
+
+    for (int i = 0; i < nSamples; i++) {
+        samples.push_back(fromOpalBuffer(buffer));
+    }
+
+    return samples;
+}
 
 void snmp_impl::collectAndPackDataSamples(opal_buffer_t *buffer) {
     bool has_sampled = false;
 
     for(snmpCollectorVector::iterator it = collectorObj_.begin(); it != collectorObj_.end(); ++it) {
         try {
-            vector<vardata> dataSamples = it->collectData();
             vardata(it->getHostname()).setKey(HOSTNAME_STR).packTo(buffer);
-            packDataToBuffer(dataSamples, buffer);
+            packSamplesIntoBuffer(buffer, it->collectData());
             has_sampled = true;
         } catch (exception &e) {
             opal_output(0, "WARNING: %s sensor SNMP : unable to collect sample: '%s'",
@@ -512,7 +560,7 @@ void snmp_impl::collectAndPackDataSamples(opal_buffer_t *buffer) {
 
 void snmp_impl::ev_pause()
 {
-    if(NULL != ev_base_ && false == ev_paused_) {
+    if(NULL != ev_base_ && !ev_paused_) {
         if(OPAL_SUCCESS == opal_progress_thread_pause("snmp")) {
             ev_paused_ = true;
         }
@@ -521,7 +569,7 @@ void snmp_impl::ev_pause()
 
 void snmp_impl::ev_resume()
 {
-    if(NULL != ev_base_ && true == ev_paused_) {
+    if(NULL != ev_base_ && ev_paused_) {
         if(OPAL_SUCCESS == opal_progress_thread_resume("snmp")) {
             ev_paused_ = false;
         }

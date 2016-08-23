@@ -665,30 +665,39 @@ void ut_snmp_collector_tests::sample_check(opal_buffer_t *bucket)
     int32_t n = 1;
     char *plugin_name = NULL;
     opal_buffer_t *buf = NULL;
+    opal_buffer_t *samplesBuffer = NULL;
 
     ASSERT_FALSE(NULL == bucket);
 
     ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(bucket, &buf, &n, OPAL_BUFFER));
     ASSERT_EQ(OPAL_SUCCESS, opal_dss.unpack(buf, &plugin_name, &n, OPAL_STRING));
 
-    vector<vardata> collected_samples = unpackDataFromBuffer(buf);
+    vardata timeStamp = fromOpalBuffer(buf);
+    vardata deviceName = fromOpalBuffer(buf);
+
+    vector<vardata> collected_samples;
+    int nSamples = fromOpalBuffer(buf).getValue<int>();
+
+    for (int i = 0; i < nSamples; i++) {
+        collected_samples.push_back(fromOpalBuffer(buf));
+    }
 
     ASSERT_FALSE(collected_samples.empty());
     ASSERT_TRUE(2 < collected_samples.size());
 
-    str = collected_samples[2].strData.c_str();
+    str = collected_samples[0].strData.c_str();
     ASSERT_STREQ(dataStr, str);
 
-    ASSERT_EQ(collected_samples[3].getValue<int64_t>(), dataInt);
-    ASSERT_FLOAT_EQ(collected_samples[4].getValue<float>(), dataFloat);
-    ASSERT_DOUBLE_EQ(collected_samples[5].getValue<double>(), dataDouble);
+    ASSERT_EQ(collected_samples[1].getValue<int64_t>(), dataInt);
+    ASSERT_FLOAT_EQ(collected_samples[2].getValue<float>(), dataFloat);
+    ASSERT_DOUBLE_EQ(collected_samples[3].getValue<double>(), dataDouble);
 
-    str = collected_samples[6].strData.c_str();
+    str = collected_samples[4].strData.c_str();
     ASSERT_STREQ(dataIpAddr, str);
 
+    ASSERT_EQ(collected_samples[5].getValue<uint32_t>(), dataUint);
+    ASSERT_EQ(collected_samples[6].getValue<uint32_t>(), dataUint);
     ASSERT_EQ(collected_samples[7].getValue<uint32_t>(), dataUint);
-    ASSERT_EQ(collected_samples[8].getValue<uint32_t>(), dataUint);
-    ASSERT_EQ(collected_samples[9].getValue<uint32_t>(), dataUint);
 
     OBJ_RELEASE(buf);
 }

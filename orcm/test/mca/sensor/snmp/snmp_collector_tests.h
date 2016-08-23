@@ -19,7 +19,9 @@
 #include <vector>
 #include <queue>
 
-#include "orcm/mca/db/db.h"
+extern "C" {
+    #include "orcm/mca/db/db.h"
+};
 
 class ut_snmp_collector_tests: public testing::Test
 {

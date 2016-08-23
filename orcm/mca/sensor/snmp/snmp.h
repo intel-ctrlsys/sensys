@@ -70,6 +70,8 @@ class snmp_impl
     PRIVATE: // In-Object Callback Methods
         void perthread_snmp_sample();
         void collectAndPackDataSamples(opal_buffer_t *buffer);
+        void packSamplesIntoBuffer(opal_buffer_t *buffer, const std::vector<vardata>& dataSamples);
+        std::vector<vardata> unpackSamplesFromBuffer(opal_buffer_t *buffer);
         void packPluginName(opal_buffer_t* buffer);
         void collect_sample(bool perthread = false);
         void ev_pause();
@@ -82,8 +84,19 @@ class snmp_impl
         void generate_test_inv_vector(opal_buffer_t *inventory_snapshot);
         std::vector<vardata> generate_data();
         void printInitErrorMsg(const char *extraMsg);
+        void allocateAnalyticsObjects(opal_list_t **key, opal_list_t **non_compute);
+        void releaseAnalyticsObjects(opal_list_t **key, opal_list_t **non_compute,
+                                     orcm_analytics_value_t **analytics_vals);
+        void checkAnalyticsVals(orcm_analytics_value_t *analytics_vals);
+        void setAnalyticsKeys(opal_list_t *key);
+        void prepareDataForAnalytics(vardata& ctime,
+                                     opal_list_t *key,
+                                     opal_list_t *non_compute,
+                                     opal_buffer_t *buf,
+                                     orcm_analytics_value_t **analytics_vals);
+        bool haveDataInBuffer(opal_buffer_t *buffer);
 
-    PRIVATE: // Fields (i.e. state)
+PRIVATE: // Fields (i.e. state)
         std::vector<snmpCollector> collectorObj_;
         std::string hostname_;
         std::string config_file_;
@@ -114,6 +127,11 @@ class noSnmpConfigAvailable : public std::runtime_error {
 class noDataSampled : public std::runtime_error {
     public:
     noDataSampled() : std::runtime_error( "No available data for sampling." ) {}
+};
+
+class unableToPackData : public std::runtime_error {
+    public:
+    unableToPackData() : std::runtime_error( "Unable to pack data samples." ) {}
 };
 
 #endif /* SNMP_H */

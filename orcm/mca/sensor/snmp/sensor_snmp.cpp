@@ -13,7 +13,7 @@
 BEGIN_C_DECLS
 
 // Instance of plugin
-snmp_impl* impl = NULL;
+snmp_impl *impl = NULL;
 
 int snmp_init_relay(void)
 {
@@ -140,4 +140,4 @@ void snmp_inventory_log(char *hostname, opal_buffer_t *inventory_snapshot)
     }
 }
 
-END_C_DECLS
+END_C_DECLS;

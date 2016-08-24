@@ -53,6 +53,15 @@ const char* ut_cfgi30_tests::set_name(const char *name)
     return file_path.c_str();
 }
 
+TEST_F(ut_cfgi30_tests, test_cfgi30_check_free_string_array)
+{
+    char **array = NULL;
+
+    cfgi30_free_string_array(&array);
+
+    EXPECT_EQ(NULL, array);
+}
+
 TEST_F(ut_cfgi30_tests, test_cfgi30_check_correct_port_field)
 {
     char *port = strdup("54312");
@@ -573,6 +582,25 @@ TEST_F(ut_cfgi30_tests, test_check_duplicated_regex_host_port)
     const char* file_name = set_name("duplicated_regex_host_port.xml");
 
     xml_semantical_tester(file_name, ORCM_ERR_BAD_PARAM);
+}
+
+TEST_F(ut_cfgi30_tests, test_check_node_regex_no_host_at)
+{
+    const char* file_name = set_name("node_regex_no_host_at.xml");
+
+    xml_semantical_tester(file_name, ORCM_SUCCESS);
+}
+
+TEST_F(ut_cfgi30_tests, test_check_node_list_expand_name_at)
+{
+    const char* file_name = set_name("node_list_expand_name_at.xml");
+
+    xml_semantical_tester(file_name, ORCM_SUCCESS);
+}
+
+TEST_F(ut_cfgi30_tests, test_check_lex_tags_and_field_null)
+{
+    EXPECT_EQ(ORCM_ERR_SILENT, check_lex_tags_and_field(NULL));
 }
 
 /* utils */

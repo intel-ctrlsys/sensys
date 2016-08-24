@@ -104,20 +104,15 @@ static int return_error(int ret, const char *err_msg)
 
 static int file30_init(void)
 {
-    int erri = ORCM_SUCCESS;
-
     if (NULL == orcm_cfgi_base.config_file) {
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "NULL FILE");
-    }
-
-    erri = check_file_exist();
-    if (ORCM_SUCCESS != erri) {
-        return ORCM_ERR_TAKE_NEXT_OPTION;
     }
 
     fileId = orcm_parser.open(orcm_cfgi_base.config_file);
 
     if (0 > fileId) {
+        orte_show_help("help-orcm-cfgi.txt", "site-file-not-found",
+                       true, orcm_cfgi_base.config_file);
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "FAILED TO OPEN XML CFGI FILE");
     }
 
@@ -140,8 +135,8 @@ static int file30_init(void)
     }
 
     if( '3' != version->value.data.string[0]){
-        SAFE_RELEASE_NESTED_LIST(config);
         opal_output(0, "EXPECTED VERSION 3 NOT FOUND: %s", version->value.data.string);
+        SAFE_RELEASE_NESTED_LIST(config);
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "VERSION 3 NOT FOUND");
     }
 

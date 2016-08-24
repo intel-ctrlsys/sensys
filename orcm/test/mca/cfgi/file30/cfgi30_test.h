@@ -19,6 +19,7 @@ class ut_cfgi30_tests: public testing::Test
 protected:
     virtual void SetUp()
     {
+        errno = 0;
         set_file_path();
     }
 

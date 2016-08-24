@@ -10,6 +10,7 @@
 #include "orcm_config.h"
 #include "orcm/constants.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <regex.h>
 
@@ -57,23 +58,6 @@ int print_pugi_opal_list (opal_list_t *root) {
         }
     }
 
-    return ORCM_SUCCESS;
-}
-
-int check_file_exist(void) {
-    FILE *fp = fopen(orcm_cfgi_base.config_file, "r");
-    if (NULL == fp) {
-        orte_show_help("help-orcm-cfgi.txt", "site-file-not-found",
-                       true, orcm_cfgi_base.config_file);
-        return ORCM_ERR_SILENT;
-    }
-
-    if (0 != fclose(fp)) {
-        opal_output(0, "FAIL to PROPERLY CLOSE THE CFGI XML FILE");
-        return ORCM_ERR_SILENT;
-    }
-
-    fp = NULL;
     return ORCM_SUCCESS;
 }
 
@@ -481,6 +465,11 @@ int check_lex_tags_and_field(opal_list_t *root) {
     int aggs_count = 0;
     int ret = ORCM_SUCCESS;
 
+    if (NULL == root){
+        opal_output(0,"ERROR: empty configuration tree\n");
+        return ORCM_ERR_SILENT;
+    }
+
     ret = search_lex_tags_and_field(root, &role_count, &aggs_count);
 
     if (0 >= aggs_count) {
@@ -543,21 +532,20 @@ int search_lex_tags_and_field(opal_list_t *root, int *role, int *aggs) {
 int is_singleton(const char * in_tagtext)
 {
     const char *t = in_tagtext;
-
-    /*First a quick check than a fuller one*/
     if (NULL == t) {
         return 0;
     }
 
-    switch (t[0]) {
+    int first_letter = t[0];
+    first_letter = tolower(first_letter);
+
+    switch (first_letter) {
         case 'a':
-        case 'A':
             if (0 == strcasecmp(t,TXaggregat)) {
                 return 1;
             }
             break;
         case 'c':
-        case 'C':
             if (0 == strcasecmp(t,TXcontrol) ||
                 0 == strcasecmp(t,TXcount) ||
                 0 == strcasecmp(t,TXcores) ||
@@ -566,56 +554,47 @@ int is_singleton(const char * in_tagtext)
             }
             break;
         case 'e':
-        case 'E':
             if (0 == strcasecmp(t,TXenvar)) {
                 return 1;
             }
             break;
         case 'h':
-        case 'H':
             if (0 == strcasecmp(t,TXhost)) {
                 return 1;
             }
             break;
         case 'l':
-        case 'L':
             if (0 == strcasecmp(t,TXlog)) {
                 return 1;
             }
             break;
         case 'n':
-        case 'N':
             if (0 == strcasecmp(t,TXname)) {
                 return 1;
             }
             break;
          case 'p':
-         case 'P':
              if (0 == strcasecmp(t,TXport)) {
                  return 1;
              }
              break;
          case 'r':
-         case 'R':
              if (0 == strcasecmp(t,TXrole)) {
                  return 1;
              }
              break;
          case 's':
-         case 'S':
              if (0 == strcasecmp(t,TXscheduler) ||
                  0 == strcasecmp(t,TXshost)) {
                  return 1;
              }
              break;
          case 't':
-         case 'T':
              if ( ! strcasecmp(t,TXtype)) {
                  return 1;
              }
              break;
          case 'v':
-         case 'V':
              if (0 == strcasecmp(t,TXversion)) {
                  return 1;
              }
@@ -640,7 +619,7 @@ int search_singletons(opal_list_t *root, int *mem_counter) {
 
     singleton_list = (char **)malloc(sizeof(char*));
     OPAL_LIST_FOREACH(ptr, root, orcm_value_t) {
-        if (is_singleton(ptr->TAG) ) {
+        if (is_singleton(ptr->TAG)) {
             singleton_list = (char **)realloc(singleton_list, sizeof(char*)*(*mem_counter));
             if (NULL != singleton_list) {
                 singleton_list[singleton_counter] = ptr->TAG;
@@ -684,11 +663,11 @@ int cfgi30_check_configure_hosts_ports(opal_list_t *elements_list)
         elements_list = (opal_list_t*)element->value.data.ptr;
 
         OPAL_LIST_FOREACH(element, elements_list, orcm_value_t){
-            if( 0 == strcmp(TXjunction, element->value.key) ){
+            if( 0 == strcasecmp(TXjunction, element->value.key) ){
                 res = cfgi30_check_junction_hosts_ports(
                             (opal_list_t*)element->value.data.ptr, &hosts,
                             &ports, NULL);
-            } else if( 0 == strcmp(TXscheduler, element->value.key) ){
+            } else if( 0 == strcasecmp(TXscheduler, element->value.key) ){
                 res = cfgi30_check_scheduler_hosts_ports(
                             (opal_list_t*)element->value.data.ptr, &hosts,
                             &ports);
@@ -739,7 +718,7 @@ int cfgi30_check_junction_hosts_ports(opal_list_t *junction, char ***hosts,
     OPAL_LIST_FOREACH(element, junction, orcm_value_t){
         if( ORCM_SUCCESS != res ) break;
 
-        if( 0 == strcmp(TXjunction, element->value.key) ){
+        if( 0 == strcasecmp(TXjunction, element->value.key) ){
             next_junctions = (opal_list_t**)realloc( next_junctions,
                                        sizeof(opal_list_t*) * (junctions + 2));
             if( NULL != next_junctions ){
@@ -749,15 +728,15 @@ int cfgi30_check_junction_hosts_ports(opal_list_t *junction, char ***hosts,
             } else {
                 res = ORCM_ERR_OUT_OF_RESOURCE;
             }
-        } else if( 0 == strcmp(TXcontrol, element->value.key) ){
+        } else if( 0 == strcasecmp(TXcontrol, element->value.key) ){
             res = cfgi30_check_controller_hosts_ports(
                         (opal_list_t*)element->value.data.ptr, &host, &port);
-        } else if( 0 == strcmp(TXname, element->value.key) ){
+        } else if( 0 == strcasecmp(TXname, element->value.key) ){
             if( name != NULL ) SAFEFREE(name);
             name = strdup(element->value.data.string);
             if( NULL == name ) res = ORCM_ERR_OUT_OF_RESOURCE;
-        } else if( 0 == strcmp(TXtype, element->value.key) ){
-            if( 0 == strcmp("node", element->value.data.string) ) is_node = 1;
+        } else if( 0 == strcasecmp(TXtype, element->value.key) ){
+            if( 0 == strcasecmp(FDnode, element->value.data.string) ) is_node = 1;
             else is_node = 0;
         }
     }
@@ -788,10 +767,10 @@ int cfgi30_check_controller_hosts_ports(opal_list_t *controller, char **host,
     int res = ORCM_SUCCESS;
 
     OPAL_LIST_FOREACH(element, controller, orcm_value_t){
-        if( 0 == strcmp(TXhost, element->value.key)
-            || 0 == strcmp(TXshost, element->value.key)){
+        if( 0 == strcasecmp(TXhost, element->value.key)
+            || 0 == strcasecmp(TXshost, element->value.key)){
             (*host) = element->value.data.string;
-        } else if( 0 == strcmp(TXport, element->value.key) ){
+        } else if( 0 == strcasecmp(TXport, element->value.key) ){
             (*port) = atoi(element->value.data.string);
         }
     }
@@ -863,7 +842,7 @@ int cfgi30_check_unique_hosts_ports(char ***hosts, int **ports, char **name,
 
             if( ORCM_SUCCESS == res ){
                 if( !is_regex
-                    || (NULL != (*host) && 0 != strcmp(*host, "@")) ){
+                    || (NULL != (*host) && 0 != strcasecmp(*host, "@")) ){
                     res = cfgi30_add_valid_noregex_host_port(hosts, ports, host,
                                 port, &expanded, is_node);
                 }
@@ -923,13 +902,13 @@ int cfgi30_add_valid_noregex_host_port(char ***hosts, int **ports, char **host,
     int res = ORCM_SUCCESS;
 
     if( is_node && NULL != (*host)
-                && 0 != strcmp((*new_names)[0], *host)
-                && 0 != strcmp(*host, "@")
-                && 0 != strcmp(*host, "localhost") ){
+                && 0 != strcasecmp((*new_names)[0], *host)
+                && 0 != strcasecmp(*host, "@")
+                && 0 != strcasecmp(*host, "localhost") ){
         opal_output(0, "ERROR: A node controller host name must be the same as"
                        " the parent node name (or '@' if name it's a regex).");
         res = ORCM_ERR_BAD_PARAM;
-    } else if( NULL != (*host) && 0 != strcmp(*host, "@") ){
+    } else if( NULL != (*host) && 0 != strcasecmp(*host, "@") ){
         res = cfgi30_add_uniq_host_port(hosts, ports, host, port);
     }
 
@@ -948,7 +927,7 @@ int cfgi30_add_valid_regex_hosts_ports(char ***hosts, int **ports, char **host,
     for( iterator = 0; NULL != (*new_names)[iterator] && ORCM_SUCCESS == res;
          iterator++ ){
 
-        if( NULL != (*host) && 0 == strcmp(*host, "@") ){
+        if( NULL != (*host) && 0 == strcasecmp(*host, "@") ){
             res = cfgi30_add_uniq_host_port(hosts, ports,
                         (*new_names) + iterator, port);
         }
@@ -1008,7 +987,7 @@ char cfgi30_exists_host_port(char ***hosts, int **ports, char **host,
     int iterator = 0;
 
     for( iterator = 0; NULL != (*hosts)[iterator]; iterator++ ){
-        if( 0 == strcmp( *host, (*hosts)[iterator] )
+        if( 0 == strcasecmp( *host, (*hosts)[iterator] )
             && (*port) == (*ports)[iterator] ){
             exists = 1;
             break;

@@ -63,7 +63,6 @@ int parse_rack_junction(opal_list_t* source, opal_list_t *target, char *name, ch
 int parse_node_junction(opal_list_t* source, opal_list_t *target, char *name, char *parent_type);
 int select_parse_junction_tag(orcm_value_t* source_item, opal_list_t* target, char* parent_type);
 int parse_cluster_junction(opal_list_t* source, opal_list_t *target, char *name, char *parent_type);
-int check_file_exist(void);
 char * tolower_cstr(char * in);
 int check_record_field(char *field_value, int *record);
 int check_lex_tags_and_field(opal_list_t *root);

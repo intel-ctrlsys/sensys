@@ -32,6 +32,7 @@
 #define SAFE_FREE(x) if(NULL != x) { free((void*)x); x=NULL; }
 #define SAFE_DELETE(x) { delete x; x=NULL; }
 #define SAFE_OBJ_RELEASE(x) if(NULL!=x) OBJ_RELEASE(x)
+#define CHECK_NULL_ALLOC(x, e, label)  if(NULL==x) { e=ORCM_ERR_OUT_OF_RESOURCE; goto label; }
 int extension_init(orcm_analytics_base_module_t *imod);
 void extension_finalize(orcm_analytics_base_module_t *imod);
 int extension_analyze(int sd, short args, void *cbdata);
@@ -117,7 +118,7 @@ dataContainer create_data_container(opal_list_t* datalist)
     return dc;
 }
 
-opal_list_t* convert_to_event_list(std::list<Event>& events, orcm_workflow_caddy_t* current_caddy)
+opal_list_t* convert_to_event_list(std::list<Event>& events, orcm_workflow_caddy_t* current_caddy, char* event_key)
 {
     opal_list_t* event_list = OBJ_NEW(opal_list_t);
     if(events.empty()){
@@ -131,7 +132,7 @@ opal_list_t* convert_to_event_list(std::list<Event>& events, orcm_workflow_caddy
        char* msg = (char*)(ev.msg.c_str());
        char* units = (char*)(ev.unit.c_str());
        int sev = orcm_analytics_event_get_severity(sev1);
-       orcm_value_t* val = orcm_util_load_orcm_value(NULL,(void*)&ev.value,OPAL_DOUBLE,units);
+       orcm_value_t* val = orcm_util_load_orcm_value(event_key,(void*)&ev.value,OPAL_DOUBLE,units);
        orcm_analytics_base_gen_notifier_event(val, current_caddy, sev, msg,
                                                       a1, event_list);
        i++;
@@ -154,10 +155,13 @@ int extension_analyze(int sd, short args, void* cbdata)
     orcm_workflow_caddy_t* current_caddy = (orcm_workflow_caddy_t*)cbdata;
     orcm_analytics_value_t* analytics_value_to_next = NULL;
     Analytics* analytics = NULL;
+    char* event_key = NULL;
+    opal_list_t* event_list = NULL;
     if (ORCM_SUCCESS != (rc = orcm_analytics_base_assert_caddy_data(cbdata))) {
         SAFE_OBJ_RELEASE(current_caddy);
         return ORCM_ERR_BAD_PARAM;
     }
+    char* plugin_name = current_caddy->wf_step->analytic;
     dataContainer compute_result;
     std::list<Event> events;
     DataSet ds(compute_result, events);
@@ -176,7 +180,9 @@ int extension_analyze(int sd, short args, void* cbdata)
     }
     analytics->analyze(ds);
     opal_list_t* compute_list = convert_to_opal_list(ds.results);
-    opal_list_t* event_list = convert_to_event_list(ds.events, current_caddy);
+    orcm_analytics_base_data_key(&event_key, plugin_name, current_caddy->wf, current_caddy->wf_step);
+    CHECK_NULL_ALLOC(event_key, rc, cleanup);
+    event_list = convert_to_event_list(ds.events, current_caddy, event_key);
     analytics_value_to_next = orcm_util_load_analytics_time_compute(current_caddy->analytics_value->key,
                                                   current_caddy->analytics_value->non_compute_data, compute_list);
     if(NULL != analytics_value_to_next){
@@ -195,6 +201,7 @@ cleanup:
     if(ORCM_SUCCESS != rc){
         SAFE_OBJ_RELEASE(compute_list);
         SAFE_OBJ_RELEASE(event_list);
+        SAFE_FREE(event_key);
     }
     SAFE_OBJ_RELEASE(current_caddy);
     return rc;

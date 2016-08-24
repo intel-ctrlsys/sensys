@@ -17,7 +17,7 @@
 #include <list>
 
 
-extern opal_list_t* convert_to_event_list(std::list<Event>& events, orcm_workflow_caddy_t* current_caddy);
+extern opal_list_t* convert_to_event_list(std::list<Event>& events, orcm_workflow_caddy_t* current_caddy, char* event_key);
 extern bool is_orcm_util_load_time_expected_succeed;
 extern bool database_log_fail;
 
@@ -234,12 +234,13 @@ TEST(analytics_extension, analyze_db_logging_fail)
 TEST(analytics_extension, convert_to_event_list_empty_list)
 {
     std::list<Event> events;
-    opal_list_t* evlist = convert_to_event_list(events, NULL);
+    opal_list_t* evlist = convert_to_event_list(events, NULL, NULL);
 }
 
 TEST(analytics_extension, convert_to_event_list_valid_list)
 {
     std::list<Event> events;
+    char* event_key = strdup("Test_example");
     Event ev = {
     "crit",
     "syslog",
@@ -256,7 +257,7 @@ TEST(analytics_extension, convert_to_event_list_valid_list)
                           malloc(sizeof(orcm_analytics_base_module_t)), OBJ_NEW(orcm_workflow_t),
                           wf_step, NULL, NULL);
     analytics_util::fill_analytics_value(caddy, "localhost", &time, &value, 1);
-    opal_list_t* evlist = convert_to_event_list(events, caddy);
+    opal_list_t* evlist = convert_to_event_list(events, caddy, event_key);
 }
 
 

@@ -35,9 +35,6 @@
 struct UDSensor
 {
 public:
-    UDSensor(void){};
-    virtual ~UDSensor(){};
-
     // The init function will be called in the initialization process
     // of the plugin. Here is the place where the setup is performed,
     // E. g. look for some resource if it's available, check existance

@@ -30,9 +30,9 @@ libsensysplugins_helper_la_SOURCES  = \
         dataContainerHelper.cpp
 
 if WANT_INSTALL_HEADERS
-orcmdir = $(orcmincludedir)
+orcmdir = $(orcmincludedir)/orcm/common
 nobase_dist_orcm_HEADERS = $(headers)
 else
-orcmdir = $(includedir)
+orcmdir = $(includedir)/orcm/common
 nobase_dist_noinst_HEADERS = $(headers)
 endif

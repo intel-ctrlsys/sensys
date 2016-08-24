@@ -14,6 +14,8 @@
 #include "orte/mca/errmgr/errmgr.h"
 #include "orcm/util/utils.h"
 
+#include <sstream>
+
 #define OPAL_EPS (double) 1e-6
 
 dssMocks mock;
@@ -37,6 +39,14 @@ extern "C" {
             return OPAL_ERROR;
         }
         return mock.real_unpack(buffer, dst, num_vals, type);
+    }
+
+    int __wrap_orcm_util_append_orcm_value(opal_list_t *list, char *key, void *data,
+                                           opal_data_type_t type, char *units) {
+        if (mock.mockAppendOrcmValue()) {
+            return OPAL_ERROR;
+        }
+        return __real_orcm_util_append_orcm_value(list, key, data, type, units);
     }
 }
 
@@ -62,9 +72,16 @@ void dssMocks::setupUnpackMock(int n) {
     unpackLimit = n;
 }
 
+void dssMocks::setupAppendOrcmValueMock(int n) {
+    appendOrcmValueCount = 0;
+    appendOrcmValueLimit = n;
+}
+
+
 void dssMocks::teardownMocks() {
     packLimit = 0;
     unpackLimit = 0;
+    appendOrcmValueLimit = 0;
 }
 
 
@@ -207,6 +224,19 @@ void dataContainerHelperTests::serializationExceptionTester(const int rc, const 
     }
 }
 
+void dataContainerHelperTests::dataContainerToListExceptionTester(const int rc, const std::string& message, opal_list_t* list) {
+    try {
+        dataContainerHelper::dataContainerToList(*cnt, (void*)list);
+        FAIL() << "Exception was not thrown!";
+    } catch(ErrOpal &e) {
+        EXPECT_EQ(0, message.compare(e.what()));
+        EXPECT_EQ(rc, e.getRC());
+    } catch(std::exception &e) {
+        FAIL() << "Unknown exception catched.";
+    }
+}
+
+
 dataContainerHelperFullDataTypeTests::dataContainerHelperFullDataTypeTests() {
     opal_init_test();
 
@@ -229,6 +259,57 @@ dataContainerHelperFullDataTypeTests::dataContainerHelperFullDataTypeTests() {
     cnt->put("stringValue", std::string("Hello, World!"), "strings");
 
     buffer = OBJ_NEW(opal_buffer_t);
+}
+
+void dataContainerHelperTests::verifyItem(orcm_value_t* item, dataContainer::iterator& it){
+    EXPECT_EQ(0, cnt->getKey(it).compare(item->value.key));
+    EXPECT_EQ(0, cnt->getUnits(it).compare(item->units));
+    switch (item->value.type) {
+        case OPAL_STRING:
+            EXPECT_EQ(0, cnt->getValue<std::string>(it->first).compare(item->value.data.string));
+            break;
+        case OPAL_TIMEVAL:
+            EXPECT_EQ(item->value.data.tv.tv_sec, cnt->getValue<struct timeval>(it).tv_sec);
+            EXPECT_EQ(item->value.data.tv.tv_usec, cnt->getValue<struct timeval>(it).tv_usec);
+            break;
+        case OPAL_DOUBLE:
+            EXPECT_NEAR(cnt->getValue<double>(it), item->value.data.dval, OPAL_EPS);
+            break;
+        case OPAL_FLOAT:
+            EXPECT_NEAR(cnt->getValue<float>(it), item->value.data.fval, OPAL_EPS);
+            break;
+        case OPAL_UINT64:
+            EXPECT_EQ(cnt->getValue<uint64_t>(it), item->value.data.uint64);
+            break;
+        case OPAL_INT64:
+            EXPECT_EQ(cnt->getValue<int64_t>(it), item->value.data.int64);
+            break;
+        case OPAL_UINT32:
+            EXPECT_EQ(cnt->getValue<uint32_t>(it), item->value.data.uint32);
+            break;
+        case OPAL_INT32:
+            EXPECT_EQ(cnt->getValue<int32_t>(it), item->value.data.int32);
+            break;
+        case OPAL_UINT16:
+            EXPECT_EQ(cnt->getValue<uint16_t>(it), item->value.data.uint16);
+            break;
+        case OPAL_INT16:
+            EXPECT_EQ(cnt->getValue<int16_t>(it), item->value.data.int16);
+            break;
+        case OPAL_UINT8:
+            EXPECT_EQ(cnt->getValue<uint8_t>(it), item->value.data.uint8);
+            break;
+        case OPAL_INT8:
+            EXPECT_EQ(cnt->getValue<int8_t>(it), item->value.data.int8);
+            break;
+        case OPAL_BOOL:
+            EXPECT_EQ(cnt->getValue<bool>(it), item->value.data.flag);
+            break;
+        default:
+            std::stringstream ss;
+            ss <<"Unsupported data type: " <<  (int)item->value.type;
+            FAIL() << ss.str();
+    }
 }
 
 // Test cases
@@ -322,6 +403,18 @@ TEST_F(dataContainerHelperTests, failUnpackDataToContainer) {
 
     EXPECT_NO_THROW(dataContainerHelper::serialize(*cnt, buffer));
     serializationExceptionTester(OPAL_ERROR, "Unable to unpack data from opal buffer", dataContainerHelper::deserialize);
+    mock.teardownMocks();
+}
+
+TEST_F(dataContainerHelperTests, failPackContainerBuffer) {
+
+#if OPAL_ENABLE_DEBUG
+    mock.setupPackMock(11);
+#else
+    mock.setupPackMock(14);
+#endif
+
+    serializationMapExceptionTester(OPAL_ERROR, "Unable to pack container buffer into buffer", dataContainerHelper::serializeMap);
     mock.teardownMocks();
 }
 
@@ -422,4 +515,34 @@ TEST_F(dataContainerHelperFullDataTypeTests, invalidDataType) {
     serializationExceptionTester(OPAL_ERR_UNKNOWN_DATA_TYPE,
                     "Unsupported data type for dataContainer",
                     dataContainerHelper::deserialize);
+}
+
+TEST_F(dataContainerHelperTests, dataContainerToList_invalidList) {
+    opal_list_t *list = NULL;
+    dataContainerToListExceptionTester(OPAL_ERR_BAD_PARAM, "Invalid input list", list);
+    ASSERT_TRUE(NULL == list);
+}
+
+TEST_F(dataContainerHelperTests, dataContainerToList_appendOrcmValueFailed) {
+    opal_list_t *list = OBJ_NEW(opal_list_t);
+    mock.setupAppendOrcmValueMock(1);
+    dataContainerToListExceptionTester(OPAL_ERROR,
+                                       "There were some errors trying to convert dataContainer to List",
+                                       list);
+    ORCM_RELEASE(list);
+    mock.teardownMocks();
+}
+
+TEST_F(dataContainerHelperFullDataTypeTests, dataContainerToList) {
+    orcm_value_t *item = NULL;
+    opal_list_t *list = OBJ_NEW(opal_list_t);
+
+    EXPECT_NO_THROW(dataContainerHelper::dataContainerToList(*cnt, (void*)list));
+    EXPECT_EQ(cnt->count(), opal_list_get_size(list));
+    dataContainer::iterator it = cnt->begin();
+    OPAL_LIST_FOREACH(item, list, orcm_value_t) {
+        verifyItem(item, it);
+        ++it;
+    }
+    ORCM_RELEASE(list);
 }

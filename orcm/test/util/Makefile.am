@@ -52,7 +52,8 @@ MOCKING = \
     -Wl,--wrap=dlsym \
     -Wl,--wrap=dlerror \
     -Wl,--wrap=dlclose \
-    -Wl,--wrap=readdir
+    -Wl,--wrap=readdir \
+    -Wl,--wrap=orcm_util_append_orcm_value
 
 #
 # Libraries we depend on

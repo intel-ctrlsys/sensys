@@ -13,7 +13,18 @@
 #include "gtest/gtest.h"
 
 #include "orcm/common/dataContainer.hpp"
-#include "opal/dss/dss.h"
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
+    #include "orcm/runtime/orcm_globals.h"
+    #include "opal/dss/dss.h"
+
+    extern int __real_orcm_util_append_orcm_value(opal_list_t *list, char *key, void *data,
+                                                  opal_data_type_t type, char *units);
+#ifdef  __cplusplus
+}
+#endif
 
 class dssMocks {
     private:
@@ -23,16 +34,21 @@ class dssMocks {
         size_t packLimit;
         size_t unpackLimit;
         size_t unpackCount;
+        size_t appendOrcmValueLimit;
+        size_t appendOrcmValueCount;
 
     public:
         dssMocks();
         ~dssMocks();
         void setupPackMock(int n);
         void setupUnpackMock(int n);
+        void setupAppendOrcmValueMock(int n);
         void teardownMocks();
 
         inline bool mockPack() { return (packLimit > 0 && packLimit == ++packCount); };
         inline bool mockUnpack() { return (unpackLimit > 0 && unpackLimit == ++unpackCount); };
+        inline bool mockAppendOrcmValue() { return (appendOrcmValueLimit > 0 &&
+                                                    appendOrcmValueLimit == ++appendOrcmValueCount); }
 
         inline int real_pack(opal_buffer_t *buffer,
                              const void *src,
@@ -69,6 +85,8 @@ class dataContainerHelperTests : public testing::Test {
                                                dataContainer& dst);
         void serializationExceptionTester(const int rc, const std::string& message, serializationMethods f);
         void serializationMapExceptionTester(const int rc, const std::string& message, serializationMapMethods f);
+        void dataContainerToListExceptionTester(const int rc, const std::string& message, opal_list_t *list);
+        void verifyItem(orcm_value_t *item, dataContainer::iterator& it);
 
     public:
         dataContainerHelperTests();

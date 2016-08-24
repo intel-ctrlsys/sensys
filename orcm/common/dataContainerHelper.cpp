@@ -8,7 +8,9 @@
  */
 
 #include "orcm/common/dataContainerHelper.hpp"
+extern "C" {
 #include "orcm/util/utils.h"
+}
 
 #include "orte/mca/errmgr/errmgr.h"
 

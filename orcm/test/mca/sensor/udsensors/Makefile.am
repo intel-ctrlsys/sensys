@@ -37,7 +37,12 @@ udsensors_tests_SOURCES = \
     udsensors_tests.cpp
 
 MOCKING = \
-    -Wl,--wrap=opal_progress_thread_init
+    -Wl,--wrap=opal_progress_thread_init \
+    -Wl,--wrap=dlopen \
+    -Wl,--wrap=dlsym \
+    -Wl,--wrap=dlerror \
+    -Wl,--wrap=dlclose \
+    -Wl,--wrap=readdir
 
 #
 # Libraries we depend on

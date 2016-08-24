@@ -46,6 +46,8 @@ extern "C" {
     }
 };
 
+#define N_MOCKED_PLUGINS 1
+
 bool ut_udsensors_tests::use_pt_ = true;
 
 void ut_udsensors_tests::SetUpTestCase()
@@ -263,4 +265,45 @@ TEST_F(ut_udsensors_tests, udsensors_component_register_defaults)
     EXPECT_EQ(0, mca_sensor_udsensors_component.sample_rate);
     EXPECT_EQ(orcm_sensor_base.collect_metrics,mca_sensor_udsensors_component.collect_metrics);
     EXPECT_EQ(opal_install_dirs.opallibdir, mca_sensor_udsensors_component.udpath);
+}
+
+void ut_udsensors_init::SetUp()
+{
+    setFullMock(false, 0);
+    throwOnInit = false;
+    throwOnSample = false;
+    emptyContainer = false;
+    obj = sensorFactory::getInstance();
+}
+
+void ut_udsensors_init::TearDown()
+{
+    obj->pluginFilesFound.clear();
+    obj->close();
+}
+
+void ut_udsensors_init::setFullMock(bool mockStatus, int nPlugins)
+{
+    mock_readdir = mockStatus;
+    n_mocked_plugins = nPlugins;
+    mock_dlopen = mockStatus;
+    mock_dlclose = mockStatus;
+    mock_dlsym = mockStatus;
+    mock_plugin = mockStatus;
+    getPluginNameMock = mockStatus;
+    initPluginMock = mockStatus;
+    dlopenReturnHandler = mockStatus;
+}
+
+TEST_F(ut_udsensors_init, fail_in_factory_init)
+{
+    setFullMock(true, N_MOCKED_PLUGINS);
+    throwOnInit = true;
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_udsensors_module.init());
+}
+
+TEST_F(ut_udsensors_init, loaded_plugins)
+{
+    setFullMock(true, N_MOCKED_PLUGINS);
+    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_udsensors_module.init());
 }

@@ -11,6 +11,7 @@
 #define UDSENSORS_TESTS_H
 
 #include "gtest/gtest.h"
+#include "mockFactory.h"
 
 class ut_udsensors_tests: public testing::Test
 {
@@ -30,6 +31,16 @@ class ut_udsensors_sample : public ut_udsensors_tests
         void TearDown();
         void *samplerPtr;
         void *object;
+};
+
+class ut_udsensors_init : public ut_udsensors_tests
+{
+    protected:
+        void SetUp();
+        void TearDown();
+        struct sensorFactory *obj;
+        void setFullMock(bool mock_status, int nPlugins);
+        void setMockFailAtInit();
 };
 
 #endif // UDSENSORS_TESTS_H

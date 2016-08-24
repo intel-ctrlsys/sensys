@@ -104,9 +104,7 @@ void sensorFactory::getPluginInstanceAndName(void *plugin)
     p_name = (getPluginName)getPluginSymbol(plugin, "getPluginName");
 
     if (entryPoint && p_name) {
-        tmp_name = p_name();
-        std::string plugin_name = std::string(tmp_name);
-        free(tmp_name);
+        std::string plugin_name = std::string(p_name());
         pluginsLoaded[plugin_name] = entryPoint();
         pluginHandlers[plugin_name] = plugin;
     } else {

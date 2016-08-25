@@ -16,6 +16,8 @@
 #include <iostream>
 #include <stdexcept>
 #include "orcm/mca/sensor/udsensors/sensor_udsensors.cpp"
+#include "orcm/common/dataContainer.hpp"
+#include "orcm/common/dataContainerHelper.hpp"
 
 // Fixture
 using namespace std;
@@ -29,6 +31,7 @@ extern "C" {
     #include "orcm/mca/sensor/base/base.h"
     #include "orcm/mca/sensor/base/sensor_private.h"
     #include "opal/runtime/opal_progress_threads.h"
+    #include "opal/runtime/opal.h"
 
     extern int orcm_sensor_udsensors_open(void);
     extern int orcm_sensor_udsensors_close(void);
@@ -306,4 +309,39 @@ TEST_F(ut_udsensors_init, loaded_plugins)
 {
     setFullMock(true, N_MOCKED_PLUGINS);
     EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_udsensors_module.init());
+}
+
+void ut_udsensors_log::SetUp()
+{
+    opal_init_test();
+
+    dataContainer cnt;
+    cnt.put("intValue", (int) 3, "ints");
+    cnt.put("floatValue", (float) 3.14, "floats");
+    cnt.put("doubleValue", (double) 3.14159265, "doubles");
+
+    dataContainerMap cntMap;
+    cntMap["cnt1"] = cnt;
+
+    opal_buffer_t* buffer = (opal_buffer_t*) OBJ_NEW(opal_buffer_t);
+    bufferPtr = (void*) buffer;
+
+    dataContainerHelper::serializeMap(cntMap, buffer);
+}
+
+void ut_udsensors_log::TearDown()
+{
+    opal_buffer_t* buffer = (opal_buffer_t*) bufferPtr;
+    ORCM_RELEASE(buffer);
+}
+
+TEST_F(ut_udsensors_log, log_with_invalid_buffer)
+{
+    orcm_sensor_udsensors_module.log(NULL);
+}
+
+TEST_F(ut_udsensors_log, log_with_valid_buffer)
+{
+    opal_buffer_t* buffer = (opal_buffer_t*) bufferPtr;
+    orcm_sensor_udsensors_module.log(buffer);
 }

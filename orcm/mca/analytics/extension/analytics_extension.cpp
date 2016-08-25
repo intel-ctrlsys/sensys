@@ -201,8 +201,8 @@ cleanup:
     if(ORCM_SUCCESS != rc){
         SAFE_OBJ_RELEASE(compute_list);
         SAFE_OBJ_RELEASE(event_list);
-        SAFE_FREE(event_key);
     }
+    SAFE_FREE(event_key);
     SAFE_OBJ_RELEASE(current_caddy);
     return rc;
 }

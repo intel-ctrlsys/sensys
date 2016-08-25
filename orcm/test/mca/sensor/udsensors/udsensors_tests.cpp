@@ -63,22 +63,60 @@ void ut_udsensors_tests::TearDownTestCase()
 
 }
 
+
+void ut_udsensors_tests::setFullMock(bool mockStatus, int nPlugins)
+{
+    mock_readdir = mockStatus;
+    n_mocked_plugins = nPlugins;
+    mock_dlopen = mockStatus;
+    mock_dlclose = mockStatus;
+    mock_dlsym = mockStatus;
+    mock_plugin = mockStatus;
+    mock_do_collect = mockStatus;
+    mock_opal_pack = mockStatus;
+    mock_opal_unpack = mockStatus;
+    do_collect_expected_value = mockStatus;
+    opal_pack_expected_value = mockStatus;
+    opal_unpack_expected_value = mockStatus;
+    mock_serializeMap = mockStatus;
+    getPluginNameMock = mockStatus;
+    initPluginMock = mockStatus;
+    dlopenReturnHandler = mockStatus;
+}
+
+bool ut_udsensors_tests::isOutputError(std::string output)
+{
+    std::string error = ("ERROR");
+    std::size_t found = output.find(error);
+    return (found!=std::string::npos);
+}
+
 void ut_udsensors_sample::SetUp()
 {
+    setFullMock(true, N_MOCKED_PLUGINS);
+    throwOnInit = false;
+    emptyContainer = false;
+    mock_serializeMap = false;
+    opal_pack_expected_value = false;
+
+    orcm_sensor_udsensors_module.init();
     object = orcm_sensor_base_runtime_metrics_create("udsensors", false, false);
     mca_sensor_udsensors_component.runtime_metrics = object;
 
     orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) OBJ_NEW(orcm_sensor_sampler_t);
     samplerPtr = (void*) sampler;
-    orcm_sensor_udsensors_module.init();
 }
 
 void ut_udsensors_sample::TearDown()
 {
+    orcm_sensor_udsensors_module.finalize();
+    setFullMock(false, 0);
+    throwOnInit = false;
+    throwOnSample = false;
+    do_collect_expected_value = true;
+
     orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
 
-    orcm_sensor_base_runtime_metrics_destroy(object);
-    mca_sensor_udsensors_component.runtime_metrics = NULL;
     mca_sensor_udsensors_component.diagnostics = 0;
 
     OBJ_RELEASE(sampler);
@@ -87,7 +125,6 @@ void ut_udsensors_sample::TearDown()
 TEST_F(ut_udsensors_sample, udsensors_sensor_sample_with_progress_thread)
 {
     orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
-
     mca_sensor_udsensors_component.use_progress_thread = true;
     orcm_sensor_udsensors_module.sample(sampler);
     EXPECT_EQ(0, (mca_sensor_udsensors_component.diagnostics & 0x1));
@@ -97,12 +134,46 @@ TEST_F(ut_udsensors_sample, udsensors_sensor_sample_with_progress_thread)
 TEST_F(ut_udsensors_sample, udsensors_sensor_sample_no_progress_thread)
 {
     orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
-
     mca_sensor_udsensors_component.use_progress_thread = false;
     orcm_sensor_base_runtime_metrics_set(object, true, "udsensors");
     orcm_sensor_udsensors_module.sample(sampler);
     EXPECT_EQ(1, (mca_sensor_udsensors_component.diagnostics & 0x1));
 }
+
+
+TEST_F(ut_udsensors_sample, udsensors_sensor_sample_no_collect_metrics)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
+    mca_sensor_udsensors_component.use_progress_thread = false;
+    do_collect_expected_value = false;
+    orcm_sensor_udsensors_module.sample(sampler);
+    EXPECT_EQ(0, (mca_sensor_udsensors_component.diagnostics & 0x1));
+}
+
+TEST_F(ut_udsensors_sample, udsensors_sensor_sample_exception_in_factory)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
+    mca_sensor_udsensors_component.use_progress_thread = false;
+    throwOnSample = true;
+    emptyContainer = false;
+
+    testing::internal::CaptureStderr();
+    orcm_sensor_udsensors_module.sample(sampler);
+    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
+}
+
+TEST_F(ut_udsensors_sample, udsensors_sensor_sample_exception_in_serializeMap)
+{
+    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
+    mca_sensor_udsensors_component.use_progress_thread = false;
+    mock_serializeMap = true;
+    emptyContainer = false;
+
+    testing::internal::CaptureStderr();
+    orcm_sensor_udsensors_module.sample(sampler);
+    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
+}
+
 
 TEST_F(ut_udsensors_sample, udsensors_sensor_perthread)
 {
@@ -144,8 +215,6 @@ TEST_F(ut_udsensors_tests, udsensors_init_without_plugins)
 {
     EXPECT_NE(ORCM_SUCCESS, orcm_sensor_udsensors_module.init());
     EXPECT_NE(0, (uint64_t)(mca_sensor_udsensors_component.runtime_metrics));
-
-    orcm_sensor_udsensors_module.finalize();
 }
 
 TEST_F(ut_udsensors_tests, udsensors_init_wrong_udsensorpath)
@@ -215,6 +284,7 @@ TEST_F(ut_udsensors_sample, udsensors_start_stop)
 TEST_F(ut_udsensors_tests, udsensors_sample_rate_tests)
 {
     int rate = 5;
+    mca_sensor_udsensors_component.use_progress_thread = false;
     orcm_sensor_udsensors_module.set_sample_rate(rate);
     EXPECT_NE(rate, mca_sensor_udsensors_component.sample_rate);
 
@@ -243,12 +313,6 @@ TEST_F(ut_udsensors_tests, udsensors_inventory_log)
 {
      opal_buffer_t buffer;
      orcm_sensor_udsensors_module.inventory_log((char*)"testhost1", &buffer);
-}
-
-TEST_F(ut_udsensors_tests, udsensors_log)
-{
-     opal_buffer_t buffer;
-     orcm_sensor_udsensors_module.log(&buffer);
 }
 
 TEST_F(ut_udsensors_tests, udsensors_component)
@@ -285,18 +349,6 @@ void ut_udsensors_init::TearDown()
     obj->close();
 }
 
-void ut_udsensors_init::setFullMock(bool mockStatus, int nPlugins)
-{
-    mock_readdir = mockStatus;
-    n_mocked_plugins = nPlugins;
-    mock_dlopen = mockStatus;
-    mock_dlclose = mockStatus;
-    mock_dlsym = mockStatus;
-    mock_plugin = mockStatus;
-    getPluginNameMock = mockStatus;
-    initPluginMock = mockStatus;
-    dlopenReturnHandler = mockStatus;
-}
 
 TEST_F(ut_udsensors_init, fail_in_factory_init)
 {
@@ -313,20 +365,19 @@ TEST_F(ut_udsensors_init, loaded_plugins)
 
 void ut_udsensors_log::SetUp()
 {
+    setFullMock(false, 0);
     opal_init_test();
-
-    dataContainer cnt;
-    cnt.put("intValue", (int) 3, "ints");
-    cnt.put("floatValue", (float) 3.14, "floats");
-    cnt.put("doubleValue", (double) 3.14159265, "doubles");
-
-    dataContainerMap cntMap;
-    cntMap["cnt1"] = cnt;
+    struct timeval current_time;
+    const char *name = "udsensors_test";
+    const char *nodename = "localhost";
 
     opal_buffer_t* buffer = (opal_buffer_t*) OBJ_NEW(opal_buffer_t);
-    bufferPtr = (void*) buffer;
 
-    dataContainerHelper::serializeMap(cntMap, buffer);
+    opal_dss.pack(buffer, &nodename, 1, OPAL_STRING);
+    gettimeofday(&current_time, NULL);
+    opal_dss.pack(buffer, &current_time, 1, OPAL_TIMEVAL);
+
+    bufferPtr = (void*) buffer;
 }
 
 void ut_udsensors_log::TearDown()
@@ -337,11 +388,47 @@ void ut_udsensors_log::TearDown()
 
 TEST_F(ut_udsensors_log, log_with_invalid_buffer)
 {
+    setFullMock(true, 0);
+    opal_unpack_expected_value = false;
+    testing::internal::CaptureStderr();
     orcm_sensor_udsensors_module.log(NULL);
+    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }
 
 TEST_F(ut_udsensors_log, log_with_valid_buffer)
 {
+    orcm_sensor_udsensors_module.init();
     opal_buffer_t* buffer = (opal_buffer_t*) bufferPtr;
+    dataContainer cnt;
+    cnt.put("intValue", (int) 3, "ints");
+    cnt.put("floatValue", (float) 3.14, "floats");
+    cnt.put("doubleValue", (double) 3.14159265, "doubles");
+
+    dataContainerMap cntMap;
+    cntMap["cnt1"] = cnt;
+    dataContainerHelper::serializeMap(cntMap, buffer);
+    testing::internal::CaptureStderr();
     orcm_sensor_udsensors_module.log(buffer);
+    EXPECT_FALSE(isOutputError(testing::internal::GetCapturedStderr()));
+}
+
+TEST_F(ut_udsensors_log, log_with_empty_buffer)
+{
+    orcm_sensor_udsensors_module.init();
+    opal_buffer_t* buffer = (opal_buffer_t*) bufferPtr;
+    dataContainer cnt;
+    dataContainerMap cntMap;
+    cntMap["cnt1"] = cnt;
+    dataContainerHelper::serializeMap(cntMap, buffer);
+    testing::internal::CaptureStderr();
+    orcm_sensor_udsensors_module.log(buffer);
+    EXPECT_FALSE(isOutputError(testing::internal::GetCapturedStderr()));
+}
+
+TEST_F(ut_udsensors_tests, udsensors_fill_compute_data_invalid_buffer)
+{
+    dataContainer cnt;
+    testing::internal::CaptureStderr();
+    udsensors_fill_compute_data(NULL, cnt);
+    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }

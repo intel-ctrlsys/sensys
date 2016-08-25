@@ -42,7 +42,12 @@ MOCKING = \
     -Wl,--wrap=dlsym \
     -Wl,--wrap=dlerror \
     -Wl,--wrap=dlclose \
-    -Wl,--wrap=readdir
+    -Wl,--wrap=readdir \
+    -Wl,--wrap=orcm_sensor_base_runtime_metrics_do_collect \
+    -Wl,--wrap=opal_dss_pack \
+    -Wl,--wrap=opal_dss_unpack \
+    -Wl,--wrap=orcm_analytics_base_send_data \
+    -Wl,--wrap=_ZN19dataContainerHelper12serializeMapERSt3mapISs13dataContainerSt4lessISsESaISt4pairIKSsS1_EEEPv
 
 #
 # Libraries we depend on
@@ -50,7 +55,7 @@ MOCKING = \
 
 LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a
 
-AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread $(MOCKING)
+AM_LDFLAGS = -lsensysplugins -lsensysplugins_helper -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 
 #
 # Preprocessor flags

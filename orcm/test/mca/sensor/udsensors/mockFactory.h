@@ -15,6 +15,7 @@
 #include "gtest/gtest.h"
 
 #include "orcm/mca/sensor/udsensors/sensorFactory.h"
+#include "orcm/common/dataContainerHelper.hpp"
 
 bool mock_readdir;
 bool mock_dlopen;
@@ -22,6 +23,14 @@ bool mock_dlclose;
 bool mock_dlsym;
 bool mock_dlerror;
 bool mock_plugin;
+bool mock_do_collect;
+bool mock_opal_pack;
+bool mock_opal_unpack;
+bool mock_analytics_base_send_data;
+bool mock_serializeMap;
+bool do_collect_expected_value;
+bool opal_pack_expected_value;
+bool opal_unpack_expected_value;
 bool throwOnInit;
 bool throwOnSample;
 bool dlopenReturnHandler;
@@ -39,12 +48,17 @@ public:
 };
 
 extern "C" {
+    #include "orte/include/orte/types.h"
+    #include "orcm/mca/analytics/analytics_types.h"
     extern void *__real_dlopen(const char *filename, int flag);
     extern void *__real_dlsym(void *handle, const char *symbol);
     extern char *__real_dlerror(void);
     extern int *__real_dlclose(void *handle);
     extern struct dirent *__real_readdir(DIR *dirp);
-
+    extern bool __real_orcm_sensor_base_runtime_metrics_do_collect(void*, const char*);
+    extern int __real_opal_dss_pack(opal_buffer_t* buffer, const void* src, int32_t num_vals, opal_data_type_t type);
+    extern int __real_opal_dss_unpack(opal_buffer_t* buffer, void* dst, int32_t* num_vals, opal_data_type_t type);
+    extern void __real__ZN19dataContainerHelper12serializeMapERSt3mapISs13dataContainerSt4lessISsESaISt4pairIKSsS1_EEEPv(dataContainerMap &cntMap, void* buffer);
     const char *fake_dlerror = "Im a fake error message.";
     dirent *fake_dirent = NULL;
 
@@ -127,7 +141,45 @@ extern "C" {
         else
             return __real_dlclose(handle);
     }
+    bool __wrap_orcm_sensor_base_runtime_metrics_do_collect(void* runtime_metrics, const char* sensor_spec){
+        if (mock_do_collect) {
+            return do_collect_expected_value;
+        }
+        return __real_orcm_sensor_base_runtime_metrics_do_collect(runtime_metrics, sensor_spec);
+    }
+
+    int __wrap_opal_dss_pack(opal_buffer_t* buffer, const void* src, int32_t num_vals, opal_data_type_t type) {
+        if(mock_opal_pack) {
+            return opal_pack_expected_value;
+        } else {
+            __real_opal_dss_pack(buffer, src, num_vals, type);
+        }
+    }
+
+    int __wrap_opal_dss_unpack(opal_buffer_t* buffer, void* dst, int32_t* num_vals, opal_data_type_t type) {
+        if(mock_opal_unpack) {
+            return opal_unpack_expected_value;
+        } else {
+            __real_opal_dss_unpack(buffer, dst, num_vals, type);
+        }
+    }
+
+    void __wrap_orcm_analytics_base_send_data(orcm_analytics_value_t *data){
+      /*Dummy function*/
+    }
+
+    void __wrap__ZN19dataContainerHelper12serializeMapERSt3mapISs13dataContainerSt4lessISsESaISt4pairIKSsS1_EEEPv(dataContainerMap &cntMap, void* buffer){
+        if(mock_serializeMap){
+            throw ErrOpal("Failing on mockSerializeMap", -1);
+        } else {
+             __real__ZN19dataContainerHelper12serializeMapERSt3mapISs13dataContainerSt4lessISsESaISt4pairIKSsS1_EEEPv(cntMap, buffer);
+        }
+    }
+
 }
+
+typedef int (*opal_dss_pack_fn_t)(opal_buffer_t* buffer, const void* src, int32_t num_vals, opal_data_type_t type);
+typedef int (*opal_dss_unpack_fn_t)(opal_buffer_t* buffer, void* dst, int32_t* num_vals, opal_data_type_t type);
 
 int mockPlugin::init()
 {

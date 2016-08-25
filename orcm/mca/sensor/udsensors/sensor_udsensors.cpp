@@ -214,6 +214,7 @@ void collect_udsensors_sample(orcm_sensor_sampler_t *sampler)
         opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                             "%s sensor udsensors : skipping actual sample collection",
                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
+        return;
     }
     mca_sensor_udsensors_component.diagnostics |= 0x1;
 

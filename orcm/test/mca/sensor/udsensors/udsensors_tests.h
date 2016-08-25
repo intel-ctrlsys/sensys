@@ -19,6 +19,8 @@ class ut_udsensors_tests: public testing::Test
         // gtest fixture required methods
         static void SetUpTestCase();
         static void TearDownTestCase();
+        static void setFullMock(bool mock_status, int nPlugins);
+        static bool isOutputError(std::string output);
 
     public:
         static bool use_pt_;
@@ -49,7 +51,6 @@ class ut_udsensors_init : public ut_udsensors_tests
         void SetUp();
         void TearDown();
         struct sensorFactory *obj;
-        void setFullMock(bool mock_status, int nPlugins);
         void setMockFailAtInit();
 };
 

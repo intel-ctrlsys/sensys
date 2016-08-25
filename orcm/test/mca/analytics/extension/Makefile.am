@@ -36,7 +36,9 @@ extension_tests_SOURCES = \
 
 MOCKING = \
     -Wl,--wrap=orcm_util_load_analytics_time_compute \
-    -Wl,--wrap=orcm_analytics_base_log_to_database_event
+    -Wl,--wrap=orcm_analytics_base_log_to_database_event \
+    -Wl,--wrap=orcm_util_load_orcm_value \
+    -Wl,--wrap=malloc
 
 ANALYTICS_UTIL_LIB_DIR=$(top_builddir)/orcm/test/mca/analytics/util
 #

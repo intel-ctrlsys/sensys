@@ -17,10 +17,16 @@
 #include <list>
 
 
+extern "C" {
+    extern orcm_analytics_base_module_t* extension_component_create(void);
+    extern bool extension_component_avail(void);
+}
+extern opal_list_t* convert_to_opal_list(dataContainer& dc);
 extern opal_list_t* convert_to_event_list(std::list<Event>& events, orcm_workflow_caddy_t* current_caddy, char* event_key);
 extern bool is_orcm_util_load_time_expected_succeed;
 extern bool database_log_fail;
-
+extern bool is_orcm_util_append_expected_succeed;
+extern bool is_malloc_expected_succeed;
 
 class sample : public Analytics
 {
@@ -31,6 +37,21 @@ public:
 int sample::analyze(DataSet& ds)
 {
     return 0;
+}
+
+TEST(analytics_extension, component_avail)
+{
+    ASSERT_TRUE(extension_component_avail());
+}
+
+TEST(analytics_extension, test_extension_component_create)
+{
+    is_malloc_expected_succeed = false;
+    ASSERT_EQ((void*)NULL, (void*)extension_component_create());
+    is_malloc_expected_succeed = true;
+    orcm_analytics_base_module_t* mod = extension_component_create();
+    ASSERT_NE((void*)NULL, (void*)mod);
+    free(mod);
 }
 
 TEST(analytics_extension, init_null_input)
@@ -167,7 +188,7 @@ TEST(analytics_extension, analyze_valid_input)
             mod = caddy->imod;
         }
         if (NULL != caddy->wf_step) {
-            analytics_util::fill_attribute(&(caddy->wf_step->attributes), "db", "yes");
+            analytics_util::fill_attribute(&(caddy->wf_step->attributes), "db", "no");
         }
         analytics_util::fill_analytics_value(caddy, "localhost", &time, &value, 1);
         caddy->imod->orcm_mca_analytics_data_store = new sample();
@@ -190,9 +211,6 @@ TEST(analytics_extension, analyze_valid_input_load_val_fail)
     if (NULL != caddy) {
         if (NULL != caddy->imod) {
             mod = caddy->imod;
-        }
-        if (NULL != caddy->wf_step) {
-            analytics_util::fill_attribute(&(caddy->wf_step->attributes), "db", "yes");
         }
         analytics_util::fill_analytics_value(caddy, "localhost", &time, &value, 1);
         caddy->imod->orcm_mca_analytics_data_store = new sample();
@@ -260,6 +278,19 @@ TEST(analytics_extension, convert_to_event_list_valid_list)
     opal_list_t* evlist = convert_to_event_list(events, caddy, event_key);
 }
 
+TEST(analytics_extension, convert_to_opal_list)
+{
+    dataContainer dc;
+    char* key = strdup("Test_example");
+    char* data = strdup("Test_data");
+    dc.put<std::string>(key, data, "");
+    is_orcm_util_append_expected_succeed = true;
+    opal_list_t* res_list = convert_to_opal_list(dc);
+    OBJ_RELEASE(res_list);
+    is_orcm_util_append_expected_succeed = false;
+    res_list = convert_to_opal_list(dc);
+    OBJ_RELEASE(res_list);
+}
 
 
 

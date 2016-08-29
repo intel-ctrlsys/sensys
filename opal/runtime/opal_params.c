@@ -19,6 +19,7 @@
  * Copyright (c) 2014      Hochschule Esslingen.  All rights reserved.
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
+* Copyright (c) 2016       Intel, Inc. All rights reserved
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -37,7 +38,6 @@
 #include "opal/mca/base/mca_base_var.h"
 #include "opal/threads/mutex.h"
 #include "opal/threads/threads.h"
-#include "opal/mca/shmem/base/base.h"
 #include "opal/mca/base/mca_base_var.h"
 #include "opal/runtime/opal_params.h"
 #include "opal/dss/dss.h"

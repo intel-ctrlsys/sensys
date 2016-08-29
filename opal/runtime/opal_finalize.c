@@ -45,7 +45,6 @@
 #include "opal/mca/hwloc/base/base.h"
 #include "opal/mca/event/base/base.h"
 #include "opal/runtime/opal_progress.h"
-#include "opal/mca/shmem/base/base.h"
 #if OPAL_ENABLE_FT_CR    == 1
 #include "opal/mca/compress/base/base.h"
 #endif
@@ -163,9 +162,6 @@ opal_finalize(void)
 
     /* close the hwloc framework */
     (void) mca_base_framework_close(&opal_hwloc_base_framework);
-
-    /* close the shmem framework */
-    (void) mca_base_framework_close(&opal_shmem_base_framework);
 
     /* close the sec framework */
     (void) mca_base_framework_close(&opal_sec_base_framework);

@@ -45,7 +45,6 @@
 #include "opal/mca/sec/base/base.h"
 #include "opal/mca/timer/base/base.h"
 #include "opal/dss/dss.h"
-#include "opal/mca/shmem/base/base.h"
 #if OPAL_ENABLE_FT_CR    == 1
 #include "opal/mca/compress/base/base.h"
 #endif
@@ -456,17 +455,6 @@ opal_init(int* pargc, char*** pargv)
     }
     /* we want to tick the event library whenever possible */
     opal_progress_event_users_increment();
-
-    /* setup the shmem framework */
-    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_shmem_base_framework, 0))) {
-        error = "opal_shmem_base_open";
-        goto return_error;
-    }
-
-    if (OPAL_SUCCESS != (ret = opal_shmem_base_select())) {
-        error = "opal_shmem_base_select";
-        goto return_error;
-    }
 
     /*
      * Initalize the checkpoint/restart functionality

@@ -16,7 +16,9 @@
 #include <stdexcept>
 #include <stdint.h>
 #include <sys/time.h>
+#include <typeinfo>
 
+using namespace std;
 // Exceptions
 class unableToFindKey : public std::runtime_error {
     public:
@@ -53,6 +55,7 @@ class dataHolder {
         inline void setUnits(const std::string& u) {
             units = u;
         };
+
     protected:
         std::string units;
         std::string dataTypeName;
@@ -137,5 +140,49 @@ class dataContainer {
 };
 
 typedef std::map<std::string, dataContainer> dataContainerMap;
+
+// dataContainer Templates
+
+template <typename T> inline void dataContainer::put(const string& k, const T& v, const string& u) {
+    dataHolder data(v);
+    data.setUnits(u);
+    container.insert(pair< string, dataHolder >(k, data));
+}
+
+template<typename T> inline T dataContainer::getValue(const string& key) {
+    checkForKey(key);
+    return container[key].getValue<T>();
+}
+
+template<typename T> inline T dataContainer::getValue(const dataContainer::iterator& it) const {
+    return it->second.getValue<T>();
+}
+
+template <> inline dataHolder::dataHolder(const string& value) {
+    size_t s = value.length() + 1; // +1 because of NULL terminator
+    dataByte* ptr = (dataByte*) value.c_str();
+    storedData.insert(storedData.begin(), ptr, ptr + s);
+    dataTypeName = string(typeid(string).name());
+}
+
+template<typename T> inline dataHolder::dataHolder(const T& value) {
+    size_t s = sizeof(T);
+    dataByte* ptr = (dataByte*) &value;
+    storedData.insert(storedData.begin(), ptr, ptr + s);
+    dataTypeName = string(typeid(T).name());
+}
+
+template <> inline string dataHolder::getValue() {
+    char* s = (char*) storedData.data();
+    return string(s);
+}
+
+template<typename T> inline T dataHolder::getValue() {
+    return *((T*) storedData.data());
+}
+
+template<typename T> inline bool dataHolder::is() {
+    return (0 == dataTypeName.compare(typeid(T).name()));
+}
 
 #endif

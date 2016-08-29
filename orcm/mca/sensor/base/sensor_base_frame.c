@@ -64,7 +64,7 @@ static int orcm_sensor_base_register(mca_base_register_flag_t flags)
                                 &orcm_sensor_base.sample_rate);
 
     /* see if we want samples logged */
-    orcm_sensor_base.log_samples = false;
+    orcm_sensor_base.log_samples = true;
     (void)mca_base_var_register("orcm", "sensor", "base", "log_samples",
                                 "Log samples to database",
                                 MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,

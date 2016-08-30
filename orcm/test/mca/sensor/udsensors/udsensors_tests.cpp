@@ -354,7 +354,7 @@ TEST_F(ut_udsensors_init, fail_in_factory_init)
 {
     setFullMock(true, N_MOCKED_PLUGINS);
     throwOnInit = true;
-    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_udsensors_module.init());
+    EXPECT_EQ(ORCM_ERROR, orcm_sensor_udsensors_module.init());
 }
 
 TEST_F(ut_udsensors_init, loaded_plugins)

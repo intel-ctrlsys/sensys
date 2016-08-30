@@ -975,6 +975,7 @@ int cfgi30_add_host_port(char ***hosts, int **ports, char **host, int *port)
         (*hosts)[hosts_size + 1] = NULL;
     } else {
         res = ORCM_ERR_OUT_OF_RESOURCE;
+        SAFEFREE(tmp);
     }
 
     return res;

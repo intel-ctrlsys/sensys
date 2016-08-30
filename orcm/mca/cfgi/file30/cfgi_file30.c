@@ -524,42 +524,38 @@ static bool check_me(orcm_config_t *config, char *node,
 {
     char *uri = NULL;
     bool node_itself = false;
-    char *this_ip = NULL;
     int rc = ORCM_SUCCESS;
 
-    get_node_ip(node, &this_ip);
-    ORCM_ON_NULL_RETURN_ERROR(this_ip, node_itself);
+    if( NULL != node && (0 == strcmp(node, orte_process_info.nodename)
+        || 0 == strcmp(node, my_ip)) ){
 
-    if (0 == strcmp(this_ip, my_ip)) {
-        if (NULL != orcm_cfgi_base.port_number && NULL != config->port &&
-            0 != strcmp(orcm_cfgi_base.port_number, config->port)) {
-            SAFEFREE(this_ip);
-            return node_itself;
-        }
-        ORTE_PROC_MY_NAME->vpid = vpid;
-        setup_environ(config->mca_params);
-        if (config->aggregator) {
+        opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
+                            "file30:check_me: node '%s' matches", node);
+
+        if( config->aggregator ){
             orte_process_info.proc_type = ORCM_AGGREGATOR;
         }
-        /* load our port */
-        if(-1 != asprintf(&uri, OPAL_MCA_PREFIX"oob_tcp_static_ipv4_ports=%s", config->port)) {
+
+        ORTE_PROC_MY_NAME->vpid = vpid;
+        setup_environ(config->mca_params);
+        // load our port
+        if( -1 != asprintf(&uri,
+                           OPAL_MCA_PREFIX"oob_tcp_static_ipv4_ports=%s",
+                           config->port) ){
             putenv(uri);  // cannot free this value
             opal_output_verbose(2, orcm_cfgi_base_framework.framework_output,
                                 "push our port %s", uri);
-            node_itself = true;
+
+            if( ORCM_SUCCESS == (rc = orcm_set_proc_hostname(node)) ){
+                node_itself = true;
+            } else {
+                ORTE_ERROR_LOG(rc);
+            }
         }
     }
 
-    if (node_itself) {
-        if (ORCM_SUCCESS != (rc = orcm_set_proc_hostname(node))) {
-            ORTE_ERROR_LOG(rc);
-        }
-    }
-
-    SAFEFREE(this_ip);
     return node_itself;
 }
-
 
 static int parse_orcm_config(orcm_config_t *cfg,
                              orcm_cfgi_xml_parser_t *xml)

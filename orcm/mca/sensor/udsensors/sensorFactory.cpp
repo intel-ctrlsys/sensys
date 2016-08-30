@@ -21,9 +21,7 @@ void sensorFactory::close()
 {
     std::map<std::string, void*>::iterator it;
     for (it = pluginHandlers.begin(); it != pluginHandlers.end(); ++it) {
-        closePlugin(it->second);
-        pluginsLoaded.erase(it->first);
-        pluginHandlers.erase(it);
+        unloadPlugin(it);
     }
 }
 
@@ -37,11 +35,19 @@ void sensorFactory::init()
         } catch (std::runtime_error &e) {
             errors.append("Plugin " + it->first + " failed in init with:\n");
             errors.append(std::string(e.what()) + "\n");
+            unloadPlugin(pluginHandlers.find(it->first));
         }
     }
     if (errors.compare("")) {
         throw sensorFactoryException(errors);
     }
+}
+
+void sensorFactory::unloadPlugin(std::map<std::string, void*>::iterator it)
+{
+    closePlugin(it->second);
+    pluginsLoaded.erase(it->first);
+    pluginHandlers.erase(it);
 }
 
 void sensorFactory::sample(dataContainerMap &dc)

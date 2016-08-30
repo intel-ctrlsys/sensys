@@ -29,6 +29,7 @@ public:
     void init(void);
     void sample(dataContainerMap& dc);
     void loadPlugins(void);
+    void unloadPlugin(std::map<std::string, void*>::iterator it);
     int getFoundPlugins(void);
     int getLoadedPlugins(void);
     int getAmountOfPluginHandlers(void);

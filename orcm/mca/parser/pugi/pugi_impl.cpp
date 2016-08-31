@@ -58,11 +58,13 @@ int pugi_impl::writeSection(opal_list_t *input, char const*key,
     if (ORCM_ERR_NOT_FOUND == rc) {
         rc = appendListToRootNode(root, input, key, name);
         if (rc != ORCM_SUCCESS) {
+            SAFE_RELEASE_NESTED_LIST(input);
             return rc;
         }
         return saveSection();
     }
     else if (ORCM_SUCCESS != rc) {
+        SAFE_RELEASE_NESTED_LIST(input);
         return rc;
     }
 
@@ -195,13 +197,13 @@ int pugi_impl::appendListToRootNode(opal_list_t *srcList, opal_list_t *input, ch
     rc = orcm_util_append_orcm_value (modified_input, keyPtr, input, OPAL_PTR, NULL);
     if (rc != ORCM_SUCCESS) {
         SAFEFREE(keyPtr);
-        SAFE_RELEASE_NESTED_LIST(modified_input);
+        SAFE_RELEASE(modified_input);
         return rc;
     }
 
     list_first_element = (orcm_value_t *)opal_list_get_first(srcList);
     if (OPAL_PTR != list_first_element->value.type) {
-        SAFE_RELEASE_NESTED_LIST(modified_input);
+        SAFE_RELEASE(modified_input);
         SAFEFREE(keyPtr);
         return ORCM_ERROR;
     }

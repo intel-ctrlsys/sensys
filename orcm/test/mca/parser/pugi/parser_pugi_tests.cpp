@@ -391,7 +391,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeoneAttributeNonRoot)
     parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     unlink("/tmp/write_xml");
@@ -415,7 +415,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeMockingUtilAppendNonRo
     parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     unlink("/tmp/write_xml");
@@ -432,7 +432,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeAtRoot)
     parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -447,7 +447,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeAtNonRoot)
     parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -462,7 +462,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeWithEmptyStringAtNonRo
     parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
 
     int ret = pugi_write_section(file_id, input, key, "", false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -477,7 +477,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNode_withNameAtNonRoot)
     parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
 
     int ret = pugi_write_section(file_id, input, key, "name", false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -496,7 +496,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_twoNodeHirearchyAtRoot)
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -517,7 +517,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_twoNodeHirearchyWithNameAttrA
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -542,7 +542,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_twoNodeHirearchyWithIntAtRoot
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_NE(ORCM_SUCCESS, ret);
@@ -571,7 +571,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -599,7 +599,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, NULL, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
 }
@@ -613,7 +613,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeWithNameAttrAtNULL)
     parser_pugi_load_orcm_value (input, strdup("group"), NULL, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, NULL, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
 }
@@ -641,7 +641,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -670,7 +670,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);
@@ -700,7 +700,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, name, false);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     SAFEFREE(name);
     pugi_close(file_id);
@@ -730,7 +730,7 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_threeNodeHirearchyWithNameAtt
     parser_pugi_load_orcm_value (input, strdup("group"), inner_list, OPAL_PTR);
 
     int ret = pugi_write_section(file_id, input, key, NULL, true);
-    SAFE_RELEASE_NESTED_LIST(input);
+
     SAFEFREE(key);
     pugi_close(file_id);
     ASSERT_EQ(ORCM_SUCCESS, ret);

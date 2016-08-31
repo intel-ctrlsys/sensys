@@ -939,7 +939,6 @@ static int orcm_logical_group_save_to_file_internal(opal_hash_table_t *groups)
         erri = orcm_parser.write_section(logical_group_file_lock.parser_fd, parser_input, "logicalgroup", "", true);
     }
 
-    SAFE_RELEASE(parser_input);
     return erri;
 }
 

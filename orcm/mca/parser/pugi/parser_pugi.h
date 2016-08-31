@@ -116,6 +116,8 @@ extern opal_list_t* pugi_retrieve_section_from_list(int file_id,
  * key (key/name) provided.
  *
  * @param[in] file_id: file id returned by pugi_open.
+ * @param[in] input:   Input to be written to XML. Parser will handle freeing of
+ *                     the memory in input list.
  * @param[in] key:     xml tag that will be searched across the xml document.
  * @param[in] name:    it can be null, or empty string if it needs to be
  *                     ignored; otherwise, the result items need to match their

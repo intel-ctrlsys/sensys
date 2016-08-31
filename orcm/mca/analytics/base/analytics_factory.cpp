@@ -51,7 +51,6 @@ static int ret_on_error()
 {
     char* error = NULL;
     if (NULL != (error = dlerror())) {
-        std::cerr << error << std::endl;
         return ANALYTICS_ERROR;
     }
     return ANALYTICS_SUCCESS;

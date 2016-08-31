@@ -793,3 +793,22 @@ void orcm_util_release_nested_orcm_value_list(opal_list_t *list)
         ORCM_RELEASE(list);
     }
 }
+
+void orcm_util_release_nested_orcm_cfgi_xml_parser_t_item(orcm_cfgi_xml_parser_t *item)
+{
+    if (NULL != item){
+        orcm_util_release_nested_orcm_cfgi_xml_parser_t_list((opal_list_t *) &item->subvals);
+        ORCM_RELEASE(item);
+    }
+}
+
+void orcm_util_release_nested_orcm_cfgi_xml_parser_t_list(opal_list_t *list)
+{
+    if (NULL != list)  {
+        orcm_cfgi_xml_parser_t *item = NULL, *next = NULL;
+        OPAL_LIST_FOREACH_SAFE(item, next, list, orcm_cfgi_xml_parser_t){
+            opal_list_remove_item(list, (opal_list_item_t *) item);
+            orcm_util_release_nested_orcm_cfgi_xml_parser_t_item(item);
+        }
+    }
+}

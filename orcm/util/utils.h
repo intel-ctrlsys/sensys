@@ -176,4 +176,8 @@ ORCM_DECLSPEC int orcm_util_workflow_add_extract_workflow_info(opal_list_t *resu
 ORCM_DECLSPEC void orcm_util_release_nested_orcm_value_list(opal_list_t *list);
 ORCM_DECLSPEC void orcm_util_release_nested_orcm_value_list_item(orcm_value_t **item);
 
+/* Release orcm_cfgi_xml_parser_t list*/
+ORCM_DECLSPEC void orcm_util_release_nested_orcm_cfgi_xml_parser_t_item(orcm_cfgi_xml_parser_t *item);
+ORCM_DECLSPEC void orcm_util_release_nested_orcm_cfgi_xml_parser_t_list(opal_list_t *list);
+
 #endif

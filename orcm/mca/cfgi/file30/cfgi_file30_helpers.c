@@ -148,6 +148,7 @@ int parse_controller_tag(opal_list_t* source, opal_list_t *target) {
     OPAL_LIST_FOREACH(source_item, source, orcm_value_t) {
         if(OPAL_PTR == source_item->value.type){
             opal_output(0, "ERROR: Controller cannot have a child item");
+            orcm_util_release_nested_orcm_cfgi_xml_parser_t_item(target_item);
             return ORCM_ERR_BAD_PARAM;
         }
 
@@ -289,6 +290,7 @@ int parse_junction_tag(opal_list_t* source, opal_list_t *target, char *name, cha
         }
 
         if(ORCM_SUCCESS != return_value){
+            orcm_util_release_nested_orcm_cfgi_xml_parser_t_item(target_item);
             return return_value;
         }
     }
@@ -317,6 +319,7 @@ int parse_scheduler_tag(opal_list_t* source, opal_list_t *target) {
         if(OPAL_PTR == source_item->value.type){
             opal_output(0,
                 "ERROR: Scheduler cannot have a child item");
+            orcm_util_release_nested_orcm_cfgi_xml_parser_t_item(target_item);
             return ORCM_ERR_BAD_PARAM;
         }
 
@@ -393,6 +396,7 @@ int convert_to_orcm_cfgi_xml_parser_t_list(opal_list_t* source, opal_list_t *tar
     orcm_cfgi_xml_parser_t *target_item;
     number_of_clusters = 0;
     schedulers_count = 0;
+    int return_code = ORCM_SUCCESS;
 
     if (0 != strcasecmp(source_item->TAG, TXconfig)) {
         opal_output(0,"ERROR: Configuration tag must be at the top of the file.");
@@ -402,7 +406,12 @@ int convert_to_orcm_cfgi_xml_parser_t_list(opal_list_t* source, opal_list_t *tar
     target_item = build_cfgi_xml_parser_object(source_item->TAG);
     opal_list_append(target, &target_item->super);
 
-    return parse_configuration_tag(source_item->SUBLIST, &target_item->subvals);
+    return_code = parse_configuration_tag(source_item->SUBLIST, &target_item->subvals);
+    if(ORCM_SUCCESS != return_code){
+        orcm_util_release_nested_orcm_cfgi_xml_parser_t_list(target);
+    }
+
+    return return_code;
 }
 
 int check_lex_port_field(char *field_value) {

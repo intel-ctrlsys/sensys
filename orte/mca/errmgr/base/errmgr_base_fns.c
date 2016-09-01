@@ -69,7 +69,6 @@
 
 #include "orte/mca/ess/ess.h"
 #include "orte/mca/state/state.h"
-#include "orte/mca/odls/odls.h"
 #include "orte/mca/plm/plm.h"
 #include "orte/mca/rml/rml.h"
 #include "orte/mca/rml/rml_types.h"
@@ -209,8 +208,6 @@ void orte_errmgr_base_abort(int error_code, char *fmt, ...)
 
     /* if I am a daemon or the HNP... */
     if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_DAEMON) {
-        /* whack my local procs */
-        orte_odls.kill_local_procs(NULL);
         /* whack any session directories */
         orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);
     }

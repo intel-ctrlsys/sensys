@@ -55,7 +55,6 @@
 #include "orte/mca/routed/routed.h"
 #include "orte/mca/oob/base/base.h"
 #include "orte/mca/plm/base/base.h"
-#include "orte/mca/odls/base/base.h"
 #include "orte/mca/notifier/notifier.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/util/parse_options.h"
@@ -539,18 +538,6 @@ static int orcmd_init(void)
     OBJ_DESTRUCT(&buf);
     OBJ_RELEASE(uribuf);
 
-    /* Open/select the odls */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_odls_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_odls_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_odls_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_odls_base_select";
-        goto error;
-    }
-
     /* enable communication with the rml */
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);
@@ -680,11 +667,8 @@ static void orcmd_finalize(void)
     (void) mca_base_framework_close(&orcm_diag_base_framework);
     (void) mca_base_framework_close(&orte_notifier_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
-    (void) mca_base_framework_close(&orte_plm_base_framework);
 
     /* make sure our local procs are dead */
-    orte_odls.kill_local_procs(NULL);
-    (void) mca_base_framework_close(&orte_odls_base_framework);
     (void) mca_base_framework_close(&orte_routed_base_framework);
     (void) mca_base_framework_close(&orte_rml_base_framework);
     (void) mca_base_framework_close(&orte_oob_base_framework);

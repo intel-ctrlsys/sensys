@@ -10,6 +10,7 @@
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights reserved.
+ * Copyright (c) 2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -39,31 +40,6 @@ BEGIN_C_DECLS
  * MCA framework
  */
 ORTE_DECLSPEC extern mca_base_framework_t orte_plm_base_framework;
-/*
- * Select an available component.
- */
-ORTE_DECLSPEC int orte_plm_base_select(void);
-
-/**
- * Functions that other frameworks may need to call directly
- * Specifically, the ODLS needs to access some of these
- * to avoid recursive callbacks
- */
-ORTE_DECLSPEC void orte_plm_base_app_report_launch(int fd, short event, void *data);
-ORTE_DECLSPEC void orte_plm_base_receive_process_msg(int fd, short event, void *data);
-
-ORTE_DECLSPEC void orte_plm_base_setup_job(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orte_plm_base_setup_job_complete(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orte_plm_base_complete_setup(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orte_plm_base_daemons_reported(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orte_plm_base_allocation_complete(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orte_plm_base_daemons_launched(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orte_plm_base_vm_ready(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orte_plm_base_mapping_complete(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orte_plm_base_launch_apps(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orte_plm_base_post_launch(int fd, short args, void *cbdata);
-ORTE_DECLSPEC void orte_plm_base_registered(int fd, short args, void *cbdata);
-ORTE_DECLSPEC int orte_plm_base_fork_hnp(void);
 
 END_C_DECLS
 

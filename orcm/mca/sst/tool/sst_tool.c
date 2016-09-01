@@ -60,7 +60,6 @@
 #include "orte/mca/iof/base/base.h"
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/plm/base/plm_private.h"
-#include "orte/mca/odls/base/base.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/filem/base/base.h"
 #include "orte/util/parse_options.h"
@@ -468,18 +467,6 @@ static int tool_init(void)
     if (ORTE_SUCCESS != (ret = orte_grpcomm_base_select())) {
         ORTE_ERROR_LOG(ret);
         error = "orte_grpcomm_base_select";
-        goto error;
-    }
-    
-    /* Open/select the odls */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_odls_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_odls_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_odls_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_odls_base_select";
         goto error;
     }
     

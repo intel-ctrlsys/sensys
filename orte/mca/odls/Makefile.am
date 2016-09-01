@@ -10,6 +10,7 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2010 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2016      Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -25,7 +26,7 @@ libmca_odls_la_SOURCES =
 dist_ortedata_DATA =
 
 # local files
-headers = odls.h odls_types.h
+headers = odls_types.h
 libmca_odls_la_SOURCES += $(headers)
 
 # Conditionally install the header files
@@ -33,8 +34,3 @@ if WANT_INSTALL_HEADERS
 ortedir = $(orteincludedir)/$(subdir)
 nobase_orte_HEADERS = $(headers)
 endif
-
-include base/Makefile.am
-
-distclean-local:
-	rm -f base/static-components.h

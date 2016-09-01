@@ -191,15 +191,6 @@ int orte_ess_base_tool_setup(void)
             error = "orte_iof_base_select";
             goto error;
         }
-        /* if we were given an HNP, then also setup the PLM in case this
-         * tool wants to request that we spawn something for it */
-        if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_plm_base_framework, 0))) {
-            ORTE_ERROR_LOG(ret);
-            error = "orte_plm_base_open";
-            goto error;
-        }
-        /* we don't select the plm framework as we only want the
-         * base proxy functions */
     }
 
 #if OPAL_ENABLE_FT_CR == 1

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
+ * Copyright (c) 2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -49,9 +50,6 @@ ORTE_DECLSPEC int orte_state_base_set_job_state_priority(orte_job_state_t state,
 
 ORTE_DECLSPEC int orte_state_base_remove_job_state(orte_job_state_t state);
 
-ORTE_DECLSPEC void orte_util_print_job_state_machine(void);
-
-
 ORTE_DECLSPEC void orte_state_base_activate_proc_state(orte_process_name_t *proc,
                                                        orte_proc_state_t state);
 
@@ -66,16 +64,6 @@ ORTE_DECLSPEC int orte_state_base_set_proc_state_priority(orte_proc_state_t stat
                                                           int priority);
 
 ORTE_DECLSPEC int orte_state_base_remove_proc_state(orte_proc_state_t state);
-
-ORTE_DECLSPEC void orte_util_print_proc_state_machine(void);
-
-/* common state processing functions */
-ORTE_DECLSPEC void orte_state_base_local_launch_complete(int fd, short argc, void *cbdata);
-ORTE_DECLSPEC void orte_state_base_cleanup_job(int fd, short argc, void *cbdata);
-ORTE_DECLSPEC void orte_state_base_report_progress(int fd, short argc, void *cbdata);
-ORTE_DECLSPEC void orte_state_base_track_procs(int fd, short argc, void *cbdata);
-ORTE_DECLSPEC void orte_state_base_check_all_complete(int fd, short args, void *cbdata);
-
 
 END_C_DECLS
 #endif

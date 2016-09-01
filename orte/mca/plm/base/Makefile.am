@@ -10,6 +10,7 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2009-2010 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2016      Intel, Inc. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -22,12 +23,6 @@ headers += \
         base/plm_private.h
 
 libmca_plm_la_SOURCES += \
-        base/plm_base_frame.c \
-        base/plm_base_select.c \
-        base/plm_base_receive.c \
-	base/plm_base_launch_support.c \
-	base/plm_base_jobid.c \
-	base/plm_base_proxy.c \
-	base/plm_base_orted_cmds.c
+	base/plm_base_jobid.c
 
 dist_ortedata_DATA += base/help-plm-base.txt

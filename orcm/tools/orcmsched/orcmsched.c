@@ -63,8 +63,6 @@
 
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/rml/rml.h"
-#include "orte/mca/odls/odls.h"
-#include "orte/mca/odls/base/base.h"
 #include "orte/mca/plm/plm.h"
 #include "orte/mca/plm/base/plm_private.h"
 #include "orte/mca/ras/ras.h"

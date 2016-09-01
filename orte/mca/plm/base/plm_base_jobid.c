@@ -9,6 +9,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2016      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -29,6 +30,17 @@
 #include "orte/runtime/orte_globals.h"
 
 #include "orte/mca/plm/base/plm_private.h"
+
+/*
+ * The following file was created by configure.  It contains extern
+ * statements and the definition of an array of pointers to each
+ * module's public mca_base_module_t struct.
+ */
+
+#include "orte/mca/plm/base/static-components.h"
+
+MCA_BASE_FRAMEWORK_DECLARE(orte, plm, NULL, NULL, NULL, NULL,
+                           mca_plm_base_static_components, 0);
 
 /*
  * attempt to create a globally unique name - do a hash
@@ -68,51 +80,5 @@ int orte_plm_base_set_hnp_name(void)
     ORTE_PROC_MY_HNP->vpid = ORTE_PROC_MY_NAME->vpid;
 
     /* done */
-    return ORTE_SUCCESS;
-}
-
-/*
- * Create a jobid
- */
-int orte_plm_base_create_jobid(orte_job_t *jdata)
-{
-#if 0
-    int32_t j;
-
-    /* RHC: WHILE ORTE CAN NOW HANDLE RECYCLING OF JOBID'S,
-     * THE MPI LAYER CANNOT SINCE THERE IS NO WAY TO
-     * UPDATE THE OMPI_PROC_T LIST AND/OR THE BTL'S
-     */
-
-    /* see if there is a prior
-     * jobid that has completed and can be re-used. It can
-     * never be 0 as that belongs to the HNP and its daemons
-     */
-    for (j=1; j < orte_job_data->size; j++) {
-        if (NULL == opal_pointer_array_get_item(orte_job_data, j)) {
-            /* this local jobid is available - reuse it */
-            jdata->jobid = ORTE_CONSTRUCT_LOCAL_JOBID(ORTE_PROC_MY_NAME->jobid, j);
-            return ORTE_SUCCESS;
-        }
-    }
-#endif
-
-    if (ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_RESTART)) {
-        /* this job is being restarted - do not assign it
-         * a new jobid
-         */
-        return ORTE_SUCCESS;
-    }
-
-    if (UINT16_MAX == orte_plm_globals.next_jobid) {
-        /* if we get here, then no local jobids are available */
-        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-        jdata->jobid = ORTE_JOBID_INVALID;
-        return ORTE_ERR_OUT_OF_RESOURCE;
-    }
-
-    /* take the next jobid */
-    jdata->jobid =  ORTE_CONSTRUCT_LOCAL_JOBID(ORTE_PROC_MY_NAME->jobid, orte_plm_globals.next_jobid);
-    orte_plm_globals.next_jobid++;
     return ORTE_SUCCESS;
 }

@@ -60,7 +60,6 @@
 #include "opal/datatype/opal_datatype.h"
 
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/odls/base/odls_private.h"
 #include "orte/util/show_help.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/name_fns.h"

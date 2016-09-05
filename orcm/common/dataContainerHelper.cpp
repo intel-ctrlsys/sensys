@@ -193,6 +193,7 @@ void dataContainerHelper::pushBufferToContainerMap(dataContainerMap &cntMap, opa
         deserialize(*cnt, cntBuffer);
         cntMap[label] =  *cnt;
         delete cnt;
+        ORCM_RELEASE(cntBuffer);
     }
 }
 
@@ -203,6 +204,7 @@ void dataContainerHelper::appendContainerMapToOpalBuffer(dataContainerMap &cntMa
        cntBuffer = OBJ_NEW(opal_buffer_t);
        serialize(it->second, cntBuffer);
        packContainerBufferToOpalBuffer(cntBuffer, buffer);
+       ORCM_RELEASE(cntBuffer);
     }
 }
 

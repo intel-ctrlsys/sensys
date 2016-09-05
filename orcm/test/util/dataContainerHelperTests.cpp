@@ -325,6 +325,8 @@ TEST_F(dataContainerHelperTests, packContainerInBuffer) {
         unpackKeyUnits(buffer, &key, &units);
         EXPECT_EQ(0, cnt->getKey(it).compare(key));
         EXPECT_EQ(0, cnt->getUnits(it).compare(units));
+        SAFEFREE(key);
+        SAFEFREE(units);
         checkPackedData(*cnt, it, buffer);
     }
 }

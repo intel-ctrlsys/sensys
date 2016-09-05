@@ -29,6 +29,7 @@ int baseFactory::getPluginFilenames()
     d = opendir(plugins_path.c_str());
     if (d) {
         addPluginsIfPrefixMatch(d);
+        closedir(d);
     } else {
         ret = -ENOTDIR;
     }

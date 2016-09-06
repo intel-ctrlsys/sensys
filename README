@@ -4,11 +4,11 @@ $COPYRIGHT$
 Additional copyrights may follow
 
 $HEADER$
- 
+
 ===========================================================================
 
-Open-RCM - Open Resilient Cluster Manager
+Sensys - "Sensys is a monitoring system capable of supporting clusters up to and beyond exascale sizes"
 
-Please look up the following GEMETER github wiki page for details:
+Please look up the following Sensys github wiki page for details:
 
-     https://github.com/orcmteam/gemeter/wiki
+     https://github.com/intel-ctrlsys/sensys/wiki

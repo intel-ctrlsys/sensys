@@ -1,10 +1,14 @@
 <?xml version="1.0"?>
 <root>
+    <!--inside root node -->
     <group name="group_name1" >
+        <!--inside group node -->
         <tagnoname>
+            <!--inside tag node -->
             <tagname name="tag_name1" >
                 tagname_value
             </tagname>
+            <!--Between tag nodes -->
             <tagname name="tag_name2" >
                 <anothertag name="anothertag_name1"/>
                 <anothertag name="anothertag_name2"/>

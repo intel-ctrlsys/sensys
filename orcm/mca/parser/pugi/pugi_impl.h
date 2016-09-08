@@ -68,6 +68,8 @@ class pugi_impl {
         int  extractFromEmptyKeyList(opal_list_t *list);
         bool itemListHasChildren(orcm_value_t *item);
         bool isLeafNode(pugi::xml_node node);
+        bool isCommentNode(pugi::xml_node node);
+        void addCommentNodeToList(pugi::xml_node node, opal_list_t *list);
         bool itemMatchesKeyAndName(orcm_value_t *item, char const *key, char const* name);
         void joinLists(opal_list_t **list, opal_list_t **otherList);
         opal_list_t* duplicateList(opal_list_t *src);

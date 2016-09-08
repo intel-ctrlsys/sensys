@@ -16,7 +16,7 @@ using namespace std;
 
 int pugi_impl::loadFile()
 {
-    xml_parse_result result = doc.load_file(file.c_str());
+    xml_parse_result result = doc.load_file(file.c_str(), parse_default | parse_comments);
     if (result){
         return convertXmlNodeToOpalList(doc,root);
     }
@@ -134,6 +134,9 @@ int pugi_impl::createNodeFromList(orcm_value_t *list_item, xml_node& key_node)
 
     if (0 == strcmp("name", list_item->value.key)) {
         key_node.append_attribute(list_item->value.key) = list_item->value.data.string;
+    }
+    else if (0 == strcmp("", list_item->value.key)) {
+        key_node.append_child(node_comment).set_value(list_item->value.data.string);
     }
     else {
         node = key_node.append_child();
@@ -264,6 +267,10 @@ void pugi_impl::addNodeToList(xml_node node, opal_list_t *list)
         addLeafNodeToList(node,list);
         return;
     }
+    if (isCommentNode(node)) {
+        addCommentNodeToList(node,list);
+        return;
+    }
     opal_list_t *children = OBJ_NEW(opal_list_t);
     if (NULL == children){
         return;
@@ -274,6 +281,21 @@ void pugi_impl::addNodeToList(xml_node node, opal_list_t *list)
     char *name = strdup(trim(nameString).c_str());
     orcm_util_append_orcm_value(list, name, children, OPAL_PTR, NULL);
     SAFEFREE(name);
+}
+
+bool pugi_impl::isCommentNode(xml_node node)
+{
+    if (node_comment == node.type()){
+        return true;
+    }
+    return false;
+}
+
+void pugi_impl::addCommentNodeToList(xml_node node, opal_list_t *list)
+{
+    string name("");
+    string value(node.value());
+    addValuesToList(list, trim(name).c_str(), trim(value).c_str());
 }
 
 bool pugi_impl::isLeafNode(xml_node node)
@@ -402,9 +424,13 @@ opal_list_t* pugi_impl::duplicateList(opal_list_t *src)
     opal_list_t *dest = orcm_util_copy_opal_list(src);
     if (NULL != dest){
         orcm_value_t *item = NULL;
-        OPAL_LIST_FOREACH(item,dest,orcm_value_t){
+        orcm_value_t *next = NULL;
+        OPAL_LIST_FOREACH_SAFE(item,next,dest,orcm_value_t){
             if (itemListHasChildren(item)){
                 item->value.data.ptr = duplicateList((opal_list_t*)item->value.data.ptr);
+            }
+            else if (0 == strcmp("", item->value.key)) {
+                opal_list_remove_item(dest, (opal_list_item_t *)item);
             }
         }
     }

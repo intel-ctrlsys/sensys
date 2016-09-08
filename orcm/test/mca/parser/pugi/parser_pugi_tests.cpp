@@ -747,6 +747,28 @@ TEST_F(ut_parser_pugi_tests, test_API_writeSection_OverWriteSetAtRoot)
     ASSERT_EQ(ORCM_SUCCESS, ret);
 }
 
+TEST_F(ut_parser_pugi_tests, test_API_writeSection_oneNodeWithComments)
+{
+    FILE *xml_file;
+
+    xml_file = fopen("/tmp/write_xml", "w+");
+    fprintf(xml_file, "<root><!--Comments--></root>\n");
+    fclose(xml_file);
+
+    int file_id = pugi_open("/tmp/write_xml");
+    char *key = strdup("root");
+    opal_list_t *input = OBJ_NEW(opal_list_t);
+
+    parser_pugi_load_orcm_value (input, strdup("group"), strdup("value"), OPAL_STRING);
+
+    int ret = pugi_write_section(file_id, input, key, NULL, false);
+    SAFE_RELEASE_NESTED_LIST(input);
+    SAFEFREE(key);
+    pugi_close(file_id);
+    unlink("/tmp/write_xml");
+    ASSERT_EQ(ORCM_SUCCESS, ret);
+}
+
 /* Utilities */
 
 

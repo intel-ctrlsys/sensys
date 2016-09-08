@@ -77,6 +77,8 @@ typedef enum error_verbosity_level
 
 /* API functions */
 static int file30_init(void);
+static void file30_init_error_cleanup(opal_list_t *config);
+static int file30_open_config_file(void);
 static void file30_finalize(void);
 static int read_config(opal_list_t *config);
 static int define_system(opal_list_t *config,
@@ -102,7 +104,7 @@ static int return_error(int ret, const char *err_msg)
     return ret;
 }
 
-static int file30_init(void)
+static int file30_open_config_file(void)
 {
     if (NULL == orcm_cfgi_base.config_file) {
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "NULL FILE");
@@ -115,28 +117,46 @@ static int file30_init(void)
                        true, orcm_cfgi_base.config_file);
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "FAILED TO OPEN XML CFGI FILE");
     }
+    return ORCM_SUCCESS;
+}
+
+static void file30_init_error_cleanup(opal_list_t *config)
+{
+    SAFE_RELEASE_NESTED_LIST(config);
+    orcm_parser.close(fileId);
+}
+
+static int file30_init(void)
+{
+    int ret;
+
+    ret = file30_open_config_file();
+    if (ret != ORCM_SUCCESS) {
+        return ret;
+    }
 
     opal_list_t *config = orcm_parser.retrieve_section(fileId, TXconfig, NULL);
 
     if(NULL == config){
+        orcm_parser.close(fileId);
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "MISSING CONFIGURATION TAG");
     }
 
     orcm_value_t *version = get_child(config, TXversion);
 
     if(NULL == version) {
-        SAFE_RELEASE_NESTED_LIST(config);
+        file30_init_error_cleanup(config);
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "MISSING VERSION TAG");
     }
 
     if(false == stringMatchRegex(version->value.data.string, version_REGEX)){
-        SAFE_RELEASE_NESTED_LIST(config);
+        file30_init_error_cleanup(config);
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "BAD PARSING OF VERSION DATA");
     }
 
     if( '3' != version->value.data.string[0]){
         opal_output(0, "EXPECTED VERSION 3 NOT FOUND: %s", version->value.data.string);
-        SAFE_RELEASE_NESTED_LIST(config);
+        file30_init_error_cleanup(config);
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "VERSION 3 NOT FOUND");
     }
 
@@ -146,9 +166,7 @@ static int file30_init(void)
 
 static void file30_finalize(void)
 {
-    int return_code = orcm_parser.close(fileId);
-    if(ORCM_SUCCESS != return_code)
-        opal_output(0, "FAIL to PROPERLY CLOSE THE CFGI XML FILE");
+    return;
 }
 
 static bool check_me(orcm_config_t *config, char *node,
@@ -166,6 +184,7 @@ static int read_config(opal_list_t *config)
     if (V_HIGHER < opal_output_get_verbosity(orcm_cfgi_base_framework.framework_output)) {
         print_pugi_opal_list(cfgi);
     }
+    orcm_parser.close(fileId);
 
     if (ORCM_SUCCESS != check_lex_tags_and_field(cfgi)) {
         SAFE_RELEASE_NESTED_LIST(cfgi);

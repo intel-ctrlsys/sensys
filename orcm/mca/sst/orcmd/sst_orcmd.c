@@ -401,12 +401,14 @@ static int orcmd_init(void)
         goto error;
     }
 
-    /* open the notifier */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_notifier_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&buf);
-        error = "orte_notifier_base_open";
-        goto error;
+    if (ORCM_PROC_IS_AGGREGATOR) {
+        /* open the notifier */
+        if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_notifier_base_framework, 0))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&buf);
+            error = "orte_notifier_base_open";
+            goto error;
+        }
     }
 
     /* open the errmgr */
@@ -450,11 +452,13 @@ static int orcmd_init(void)
     }
 
     /* select the notifier*/
-    if (ORTE_SUCCESS != (ret = orte_notifier_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        OBJ_DESTRUCT(&buf);
-        error = "orte_notifier_base_select";
-        goto error;
+    if (ORCM_PROC_IS_AGGREGATOR) {
+        if (ORTE_SUCCESS != (ret = orte_notifier_base_select())) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_DESTRUCT(&buf);
+            error = "orte_notifier_base_select";
+            goto error;
+        }
     }
 
     /* select the errmgr */
@@ -665,7 +669,9 @@ static void orcmd_finalize(void)
     /* close frameworks */
     (void) orcm_cmd_server_finalize();
     (void) mca_base_framework_close(&orcm_diag_base_framework);
-    (void) mca_base_framework_close(&orte_notifier_base_framework);
+    if (ORCM_PROC_IS_AGGREGATOR) {
+        (void) mca_base_framework_close(&orte_notifier_base_framework);
+    }
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
 
     /* make sure our local procs are dead */

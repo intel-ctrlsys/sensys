@@ -157,13 +157,6 @@ Results have a limit of %d rows!
 [info:workflow-created]
 Workflow created with id: %i.
 
-[info:workflow-key-type]
-Key: %s
-Type: %d
-
-[info:workflow-key-type]
-Value: %s
-
 [info:workflow-deleted]
 Workflow(s) deleted.
 

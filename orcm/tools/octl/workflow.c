@@ -224,9 +224,7 @@ static int workflow_add_process_workflows (opal_list_t *result_list, char *cli_a
     }
 
     OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
-        orcm_octl_info("workflow-key-type", list_item->value.key, list_item->value.type);
         if (list_item->value.type == OPAL_STRING) {
-            orcm_octl_info("workflow-value", list_item->value.data.string);
             OPAL_ARGV_FREE(aggregator);
             rc = workflow_add_extract_aggregator(&aggregator, cli_aggregator, list_item->value.key, list_item->value.data.string);
             if (ORCM_SUCCESS != rc) {
@@ -302,12 +300,12 @@ int orcm_octl_workflow_add(char **value)
 
     result_list = orcm_util_workflow_add_retrieve_workflows_section(file);
     if (NULL == result_list) {
+        orcm_octl_error("workflow-notfound");
         return ORCM_ERR_BAD_PARAM;
     }
 
     rc= ORCM_ERROR;
     OPAL_LIST_FOREACH(list_item, result_list, orcm_value_t) {
-        orcm_octl_info("workflow-key-type", list_item->value.key, list_item->value.type);
 
         if (list_item->value.type == OPAL_PTR) {
             if (0 == strcmp(list_item->value.key, "workflows")) {

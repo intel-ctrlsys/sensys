@@ -40,7 +40,6 @@
 #include "opal/util/net.h"
 #include "opal/datatype/opal_datatype.h"
 #include "opal/mca/installdirs/base/base.h"
-#include "opal/mca/memory/base/base.h"
 #include "opal/mca/hwloc/base/base.h"
 #include "opal/mca/sec/base/base.h"
 #include "opal/mca/timer/base/base.h"
@@ -405,15 +404,6 @@ opal_init(int* pargc, char*** pargv)
      */
     if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_hwloc_base_framework, 0))) {
         error = "opal_hwloc_base_open";
-        goto return_error;
-    }
-
-    /* open the memory manager components.  Memory hooks may be
-       triggered before this (any time after mem_free_init(),
-       actually).  This is a hook available for memory manager hooks
-       without good initialization routine support */
-    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_memory_base_framework, 0))) {
-        error = "opal_memory_base_open";
         goto return_error;
     }
 

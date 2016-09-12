@@ -63,7 +63,6 @@
 #include "opal/constants.h"
 
 #include "opal/mca/if/base/base.h"
-#include "opal/mca/memory/base/base.h"
 #include "opal/mca/timer/base/base.h"
 
 #include "opal/threads/mutex.h"

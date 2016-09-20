@@ -61,7 +61,6 @@
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/plm/base/plm_private.h"
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/filem/base/base.h"
 #include "orte/util/parse_options.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/session_dir.h"
@@ -474,18 +473,6 @@ static int tool_init(void)
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);
         error = "orte_rml.enable_comm";
-        goto error;
-    }
-    
-    /* setup the FileM */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_filem_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_filem_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_filem_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_filem_base_select";
         goto error;
     }
     

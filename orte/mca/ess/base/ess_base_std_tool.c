@@ -50,10 +50,6 @@
 #include "orte/mca/errmgr/base/base.h"
 #include "orte/mca/iof/base/base.h"
 #include "orte/mca/state/base/base.h"
-#if OPAL_ENABLE_FT_CR == 1
-#include "orte/mca/snapc/base/base.h"
-#include "orte/mca/sstore/base/base.h"
-#endif
 #include "orte/util/proc_info.h"
 #include "orte/util/session_dir.h"
 #include "orte/util/show_help.h"
@@ -194,31 +190,6 @@ int orte_ess_base_tool_setup(void)
     }
 
 #if OPAL_ENABLE_FT_CR == 1
-    /*
-     * Setup the SnapC
-     */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_snapc_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_snapc_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_sstore_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_sstore_base_open";
-        goto error;
-    }
-
-    if (ORTE_SUCCESS != (ret = orte_snapc_base_select(ORTE_PROC_IS_HNP, ORTE_PROC_IS_APP))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_snapc_base_select";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_sstore_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_sstore_base_select";
-        goto error;
-    }
-
     /* Tools do not need all the OPAL CR stuff */
     opal_cr_set_enabled(false);
 #endif
@@ -236,11 +207,6 @@ int orte_ess_base_tool_setup(void)
 int orte_ess_base_tool_finalize(void)
 {
     orte_wait_finalize();
-
-#if OPAL_ENABLE_FT_CR == 1
-    mca_base_framework_close(&orte_snapc_base_framework);
-    mca_base_framework_close(&orte_sstore_base_framework);
-#endif
 
     /* if I am a tool, then all I will have done is
      * a very small subset of orte_init - ensure that

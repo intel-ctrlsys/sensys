@@ -59,7 +59,6 @@
 #include "orte/mca/iof/base/base.h"
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/filem/base/base.h"
 #include "orte/util/parse_options.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/session_dir.h"
@@ -381,18 +380,6 @@ static int orcmsched_init(void)
         goto error;
     }
     
-    /* setup the FileM */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_filem_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_filem_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_filem_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_filem_base_select";
-        goto error;
-    }
-    
     /*
      * Initalize the CR setup
      * Note: Always do this, even in non-FT builds.
@@ -444,7 +431,6 @@ static void orcmsched_finalize(void)
     /* close frameworks */
     (void) orcm_cmd_server_finalize();
     (void) mca_base_framework_close(&orcm_scd_base_framework);
-    (void) mca_base_framework_close(&orte_filem_base_framework);
     (void) mca_base_framework_close(&orte_grpcomm_base_framework);
     (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);

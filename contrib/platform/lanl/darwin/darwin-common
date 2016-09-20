@@ -20,7 +20,7 @@ enable_mpi_cxx_seek=no
 enable_cxx_exceptions=no
 
 # Disable components not needed on any TOSS platform
-enable_mca_no_build=carto,crs,filem,routed-linear,snapc,pml-dr,pml-crcp2,pml-crcpw,pml-v,pml-example,crcp,btl-tcp
+enable_mca_no_build=carto,crs,routed-linear,snapc,pml-dr,pml-crcp2,pml-crcpw,pml-v,pml-example,crcp,btl-tcp
 
 # Enable malloc hooks for mpi_leave_pinned
 with_memory_manager=linux

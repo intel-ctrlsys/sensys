@@ -24,7 +24,7 @@ enable_ft_thread=no
 
 enable_per_user_config_files=no
 enable_pty_support=no
-enable_mca_no_build=crs,filem,routed-linear,snapc,pml-dr,pml-crcp2,pml-crcpw,pml-v,pml-example,crcp,pml-cm,ess-cnos,grpcomm-cnos,plm-rsh,btl-tcp,oob-ud,ras-simulator
+enable_mca_no_build=crs,routed-linear,snapc,pml-dr,pml-crcp2,pml-crcpw,pml-v,pml-example,crcp,pml-cm,ess-cnos,grpcomm-cnos,plm-rsh,btl-tcp,oob-ud,ras-simulator
 enable_contrib_no_build=libnbc,vt
 
 # enable direct calling for ob1

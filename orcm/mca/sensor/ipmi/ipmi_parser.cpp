@@ -64,7 +64,12 @@ ipmiParser::ipmiParser(const string& file)
 void ipmiParser::setFile(const string& file)
 {
     if (file.empty()){
-        this->file = orcm_cfgi_base.config_file;
+        if( 3 < orcm_cfgi_base.version ) {
+            this->file = orcm_cfgi_base.config_file;
+        } else {
+            string prefix = (NULL != opal_install_dirs.prefix)? string(opal_install_dirs.prefix) : "";
+            this->file = prefix + string("/etc/") + string("orcm-default-config.xml");
+        }
     } else {
         this->file = file;
     }

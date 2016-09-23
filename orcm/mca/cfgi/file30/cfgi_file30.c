@@ -129,6 +129,7 @@ static void file30_init_error_cleanup(opal_list_t *config)
 static int file30_init(void)
 {
     int ret;
+    float fversion = 0;
 
     ret = file30_open_config_file();
     if (ret != ORCM_SUCCESS) {
@@ -154,12 +155,14 @@ static int file30_init(void)
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "BAD PARSING OF VERSION DATA");
     }
 
-    if( '3' != version->value.data.string[0]){
+    fversion = atof(version->value.data.string);
+    if( fversion < 3.0 || fversion >= 4.0 ){
         opal_output(0, "EXPECTED VERSION 3 NOT FOUND: %s", version->value.data.string);
         file30_init_error_cleanup(config);
         return return_error(ORCM_ERR_TAKE_NEXT_OPTION, "VERSION 3 NOT FOUND");
     }
 
+    orcm_cfgi_base.version = fversion;
     SAFE_RELEASE_NESTED_LIST(config);
     return ORCM_SUCCESS;
 }

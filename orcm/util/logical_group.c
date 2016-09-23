@@ -129,8 +129,13 @@ static int orcm_logical_group_init(char *config_file)
     int erri = ORCM_SUCCESS;
 
     if (NULL == config_file) {
-        if (-1 == (erri = asprintf(&(LOGICAL_GROUP.storage_filename),
-                   "%s", orcm_cfgi_base.config_file))) {
+        if( 3 < orcm_cfgi_base.version ) {
+            if (-1 == (erri = asprintf(&(LOGICAL_GROUP.storage_filename),
+                                       "%s", orcm_cfgi_base.config_file))) {
+                return ORCM_ERR_OUT_OF_RESOURCE;
+            }
+        } else if (-1 == (erri = asprintf(&(LOGICAL_GROUP.storage_filename),
+                   "%s/etc/orcm-default-config.xml", opal_install_dirs.prefix))) {
             return ORCM_ERR_OUT_OF_RESOURCE;
         }
     } else if (NULL == (LOGICAL_GROUP.storage_filename = strdup(config_file))) {
@@ -695,6 +700,7 @@ static int orcm_logical_group_open_file(char *storage_filename)
 static int orcm_logical_group_crate_xml_file(char *storage_filename)
 {
     FILE *storage_fp = NULL;
+    int res = 0;
 
     if (NULL == storage_filename || '\0' == storage_filename[0]) {
         ORCM_UTIL_ERROR_MSG("Bad setup for parsing logical groupings.");
@@ -707,7 +713,13 @@ static int orcm_logical_group_crate_xml_file(char *storage_filename)
         return ORCM_ERR_FILE_OPEN_FAILURE;
     }
     else {
-        if (0 > fprintf(storage_fp, "<configuration />")) {
+        if( 3 < orcm_cfgi_base.version ) {
+            res = fprintf(storage_fp, "<configuration />");
+        } else {
+            res = fprintf(storage_fp, "<logicalgroup />");
+        }
+
+        if (0 > res) {
             fclose(storage_fp);
             return ORCM_ERR_FILE_WRITE_FAILURE;
         }

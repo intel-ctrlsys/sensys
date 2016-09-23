@@ -67,6 +67,7 @@ void ut_snmp_parser_tests::removeTestFiles()
 
 TEST_F(ut_snmp_parser_tests, parse_default_file){
     orcm_cfgi_base.config_file = strdup(SNMP_DEFAULT_FILE_NAME);
+    orcm_cfgi_base.version = 3.1;
 
     snmpParser sp; // It will take the default snmp configuration file.
     sp.getSnmpCollectorVector();
@@ -76,6 +77,7 @@ TEST_F(ut_snmp_parser_tests, parse_default_file){
 
 TEST_F(ut_snmp_parser_tests, parse_no_file){
     orcm_cfgi_base.config_file = strdup(SNMP_DEFAULT_FILE_NAME);
+    orcm_cfgi_base.version = 3.1;
 
     char *prefix = opal_install_dirs.prefix;
     opal_install_dirs.prefix = NULL;

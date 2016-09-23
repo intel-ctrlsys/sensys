@@ -237,8 +237,11 @@ static void orcm_analytics_base_load_default_workflows(void)
     orcm_value_t *list_item = NULL;
     char *file = NULL;
 
-
-    if (NULL == (file = strdup(orcm_cfgi_base.config_file))) {
+    if( 3 < orcm_cfgi_base.version ) {
+        if (NULL == (file = strdup(orcm_cfgi_base.config_file))) {
+            return;
+        }
+    } else if (0 > asprintf(&file, "%s/etc/orcm-default-config.xml", opal_install_dirs.prefix)) {
         return;
     }
 

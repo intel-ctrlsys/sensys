@@ -97,6 +97,7 @@ static int file10_read_version(opal_list_t *result_list, int num_loop)
 
     /*restrict the "version" tag to be checked for one loop */
     if (1 < num_loop) {
+        orcm_cfgi_base.version = 1.0;
         return ORCM_SUCCESS;
     }
 

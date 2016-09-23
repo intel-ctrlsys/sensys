@@ -63,7 +63,12 @@ void snmpParser::setParseFile(const string& filePath)
 {
     unsetParseFile();
     if( filePath.empty()){
-        this->file = orcm_cfgi_base.config_file;
+        if( 3 < orcm_cfgi_base.version ) {
+            this->file = orcm_cfgi_base.config_file;
+        } else {
+            string prefix = (NULL != opal_install_dirs.prefix)? string(opal_install_dirs.prefix) : "";
+            this->file = prefix + string("/etc/") + string("orcm-default-config.xml");
+        }
     } else {
         file = filePath;
     }

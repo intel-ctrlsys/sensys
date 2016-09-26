@@ -197,6 +197,11 @@ static int init(void)
     OBJ_CONSTRUCT(&tracking, opal_list_t);
     OBJ_CONSTRUCT(&event_history, opal_list_t);
 
+    /* If the test vectors have been enabled then bypass the init */
+    if (mca_sensor_coretemp_component.test) {
+        return ORCM_SUCCESS;
+    }
+
     /*
      * Open up the base directory so we can get a listing
      */

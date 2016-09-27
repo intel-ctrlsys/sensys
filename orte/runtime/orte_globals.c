@@ -13,7 +13,7 @@
  * Copyright (c) 2009-2010 Oracle and/or its affiliates.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved
  * Copyright (c) 2014-2015 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
@@ -370,18 +370,6 @@ int orte_dt_init(void)
                                                      (opal_dss_print_fn_t)orte_dt_std_print,
                                                      OPAL_DSS_UNSTRUCTURED,
                                                      "ORTE_DAEMON_CMD", &tmp))) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
-    }
-
-    tmp = ORTE_IOF_TAG;
-    if (ORTE_SUCCESS != (rc = opal_dss.register_type(orte_dt_pack_iof_tag,
-                                                     orte_dt_unpack_iof_tag,
-                                                     (opal_dss_copy_fn_t)orte_dt_copy_iof_tag,
-                                                     (opal_dss_compare_fn_t)orte_dt_compare_iof_tag,
-                                                     (opal_dss_print_fn_t)orte_dt_std_print,
-                                                     OPAL_DSS_UNSTRUCTURED,
-                                                     "ORTE_IOF_TAG", &tmp))) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }

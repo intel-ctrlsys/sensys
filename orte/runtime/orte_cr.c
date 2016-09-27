@@ -60,7 +60,6 @@
 #include "orte/mca/routed/base/base.h"
 #include "orte/mca/routed/routed.h"
 #include "orte/mca/rml/base/base.h"
-#include "orte/mca/iof/base/base.h"
 
 /*************
  * Local functions

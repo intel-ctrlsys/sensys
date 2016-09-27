@@ -54,7 +54,6 @@
 #include "orte/mca/routed/base/base.h"
 #include "orte/mca/routed/routed.h"
 #include "orte/mca/oob/base/base.h"
-#include "orte/mca/iof/base/base.h"
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/util/parse_options.h"
@@ -415,7 +414,6 @@ static void orcmsched_finalize(void)
     /* close frameworks */
     (void) orcm_cmd_server_finalize();
     (void) mca_base_framework_close(&orcm_scd_base_framework);
-    (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
     (void) mca_base_framework_close(&orte_routed_base_framework);
     (void) mca_base_framework_close(&orte_rml_base_framework);

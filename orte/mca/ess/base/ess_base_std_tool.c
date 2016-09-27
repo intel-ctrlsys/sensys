@@ -48,7 +48,6 @@
 #include "orte/mca/qos/base/base.h"
 #include "orte/mca/routed/base/base.h"
 #include "orte/mca/errmgr/base/base.h"
-#include "orte/mca/iof/base/base.h"
 #include "orte/mca/state/base/base.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/session_dir.h"
@@ -174,21 +173,6 @@ int orte_ess_base_tool_setup(void)
         goto error;
     }
 
-    /* setup I/O forwarding system - must come after we init routes */
-    if (NULL != orte_process_info.my_hnp_uri) {
-        /* only do this if we were given an HNP */
-        if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_iof_base_framework, 0))) {
-            ORTE_ERROR_LOG(ret);
-            error = "orte_iof_base_open";
-            goto error;
-        }
-        if (ORTE_SUCCESS != (ret = orte_iof_base_select())) {
-            ORTE_ERROR_LOG(ret);
-            error = "orte_iof_base_select";
-            goto error;
-        }
-    }
-
 #if OPAL_ENABLE_FT_CR == 1
     /* Tools do not need all the OPAL CR stuff */
     opal_cr_set_enabled(false);
@@ -208,13 +192,6 @@ int orte_ess_base_tool_finalize(void)
 {
     orte_wait_finalize();
 
-    /* if I am a tool, then all I will have done is
-     * a very small subset of orte_init - ensure that
-     * I only back those elements out
-     */
-    if (NULL != orte_process_info.my_hnp_uri) {
-        (void) mca_base_framework_close(&orte_iof_base_framework);
-    }
     (void) mca_base_framework_close(&orte_routed_base_framework);
     (void) mca_base_framework_close(&orte_rml_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);

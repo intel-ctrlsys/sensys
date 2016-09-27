@@ -9,7 +9,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -175,9 +175,6 @@ OPAL_DECLSPEC OBJ_CLASS_DECLARATION(orte_attribute_t);
 #define    ORTE_RML_TAG             (OPAL_DSS_ID_DYNAMIC + 14) /**< tag for sending/receiving messages */
 /* DAEMON command type */
 #define    ORTE_DAEMON_CMD          (OPAL_DSS_ID_DYNAMIC + 15) /**< command flag for communicating with the daemon */
-
-/* IOF types */
-#define    ORTE_IOF_TAG             (OPAL_DSS_ID_DYNAMIC + 16)
 
 /* Attribute */
 #define    ORTE_ATTRIBUTE           (OPAL_DSS_ID_DYNAMIC + 17)

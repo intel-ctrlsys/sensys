@@ -12,7 +12,7 @@
  * Copyright (c) 2011      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -622,23 +622,6 @@ int orte_dt_pack_daemon_cmd(opal_buffer_t *buffer, const void *src, int32_t num_
 
     return ret;
 }
-
-/*
- * ORTE_IOF_TAG
- */
-int orte_dt_pack_iof_tag(opal_buffer_t *buffer, const void *src, int32_t num_vals,
-                         opal_data_type_t type)
-{
-    int ret;
-
-    /* Turn around and pack the real type */
-    if (ORTE_SUCCESS != (ret = opal_dss_pack_buffer(buffer, src, num_vals, ORTE_IOF_TAG_T))) {
-        ORTE_ERROR_LOG(ret);
-    }
-
-    return ret;
-}
-
 
 /*
  * ORTE_ATTR

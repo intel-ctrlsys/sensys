@@ -9,7 +9,7 @@
  *                         All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -167,16 +167,6 @@ int orte_dt_compare_tags(orte_rml_tag_t *value1, orte_rml_tag_t *value2, opal_da
 
 /* ORTE_DAEMON_CMD */
 int orte_dt_compare_daemon_cmd(orte_daemon_cmd_flag_t *value1, orte_daemon_cmd_flag_t *value2, opal_data_type_t type)
-{
-    if (*value1 > *value2) return OPAL_VALUE1_GREATER;
-
-    if (*value2 > *value1) return OPAL_VALUE2_GREATER;
-
-    return OPAL_EQUAL;
-}
-
-/* ORTE_IOF_TAG */
-int orte_dt_compare_iof_tag(orte_iof_tag_t *value1, orte_iof_tag_t *value2, opal_data_type_t type)
 {
     if (*value1 > *value2) return OPAL_VALUE1_GREATER;
 

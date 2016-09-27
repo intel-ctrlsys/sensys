@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -21,7 +21,6 @@
 #include "opal/util/output.h"
 
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/iof/iof.h"
 #include "orte/mca/rml/rml.h"
 #include "orte/util/session_dir.h"
 #include "orte/runtime/orte_quit.h"
@@ -289,16 +288,6 @@ static void track_procs(int fd, short argc, void *cbdata)
          * successful launch for short-lived procs
          */
         ORTE_FLAG_SET(pdata, ORTE_PROC_FLAG_IOF_COMPLETE);
-        /* Release the stdin IOF file descriptor for this child, if one
-         * was defined. File descriptors for the other IOF channels - stdout,
-         * stderr, and stddiag - were released when their associated pipes
-         * were cleared and closed due to termination of the process
-         * Do this after we handle termination in case the IOF needs
-         * to check to see if all procs from the job are actually terminated
-         */
-        if (NULL != orte_iof.close) {
-            orte_iof.close(proc, ORTE_IOF_STDIN);
-        }
         if (ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_WAITPID) &&
             !ORTE_FLAG_TEST(pdata, ORTE_PROC_FLAG_RECORDED)) {
             ORTE_ACTIVATE_PROC_STATE(proc, ORTE_PROC_STATE_TERMINATED);

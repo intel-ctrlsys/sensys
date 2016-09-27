@@ -65,6 +65,12 @@ void ut_snmp_parser_tests::removeTestFiles()
     ASSERT_TRUE(ORCM_SUCCESS == ret);
 }
 
+TEST_F(ut_snmp_parser_tests, parse_default_file_compatible){
+    orcm_cfgi_base.config_file = strdup(SNMP_DEFAULT_FILE_NAME);
+    ASSERT_THROW(snmpParser sp, fileNotFound);
+    free(orcm_cfgi_base.config_file);
+}
+
 TEST_F(ut_snmp_parser_tests, parse_default_file){
     orcm_cfgi_base.config_file = strdup(SNMP_DEFAULT_FILE_NAME);
     orcm_cfgi_base.version = 3.1;

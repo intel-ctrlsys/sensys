@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <configuration>
-    <version>3</version>
+    <version>3.1</version>
     <role>RECORD</role>
     <junction>
         <type>cluster</type>

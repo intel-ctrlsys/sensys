@@ -105,6 +105,20 @@ void ut_ipmi_parser::setFileName()
     }
 }
 
+TEST_F(ut_ipmi_parser, test_emptyConstructor_compatible)
+{
+    orcm_cfgi_base.config_file = strdup(fileName.c_str());
+    float version_bkp = orcm_cfgi_base.version;
+    orcm_cfgi_base.version = 3.1;
+
+    ipmiParser p;
+    ipmiParser *pPtr = new ipmiParser();
+    orcm_cfgi_base.version = version_bkp;
+    free(orcm_cfgi_base.config_file);
+    ASSERT_TRUE(NULL != pPtr);
+    delete pPtr;
+}
+
 TEST_F(ut_ipmi_parser, test_emptyConstructor)
 {
     orcm_cfgi_base.config_file = strdup(fileName.c_str());

@@ -39,3 +39,5 @@ libmca_sensor_udsensors_la_SOURCES =$(sources)
 libmca_sensor_udsensors_la_LDFLAGS = -module -avoid-version
 libmca_sensor_udsensors_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la \
                                     $(top_builddir)/orcm/common/libsensysplugins_helper.la
+
+include rand_generator/Makefile.am

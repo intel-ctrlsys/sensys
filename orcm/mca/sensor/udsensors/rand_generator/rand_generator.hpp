@@ -7,7 +7,7 @@
  * $HEADER$
  */
 
-#include "udsensors.h"
+#include "orcm/common/udsensors.h"
 
 class mySensor : public UDSensor
 {

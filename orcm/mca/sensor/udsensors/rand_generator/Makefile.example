@@ -1,0 +1,27 @@
+#
+# Copyright (c) 2016 Intel, Inc. All rights reserved.
+# $COPYRIGHT$
+#
+# Additional copyrights may follow
+#
+# $HEADER$
+#
+
+SENSORPLUGIN=rand_generator
+PLUGINPREFIX=libudplugin_
+CXX=g++
+SENSYSPATH=/opt/openrcm
+# If Sensys was installed from the rpm set SENSYSPLIBPATH with $(SENSYSPATH)/lib64 instead.
+SENSYSPLIBPATH=$(SENSYSPATH)/lib
+PLUGININSTALLPATH=$(SENSYSPLIBPATH)/openmpi
+CXXFLAGS=-O3 -fPIC -I$(SENSYSPATH)/include/openmpi/orcm/common
+LDFLAGS=-L$(SENSYSPLIBPATH) -shared -rdynamic -lsensysplugins
+
+all:
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(SENSORPLUGIN).cpp -o $(PLUGINPREFIX)$(SENSORPLUGIN).so
+install: all
+	install $(PLUGINPREFIX)$(SENSORPLUGIN).so $(PLUGININSTALLPATH)
+
+clean:
+	-rm *.o
+	-rm *.so

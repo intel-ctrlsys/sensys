@@ -7,7 +7,7 @@
  * $HEADER$
  */
 
-#include "mysensor.hpp"
+#include "rand_generator.hpp"
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -31,4 +31,4 @@ void mySensor::finalize()
     std::cout << "On finalize" << std::endl;
 }
 
-export_plugin(mySensor, "MySensor");
+export_plugin(mySensor, "RandGenerator");

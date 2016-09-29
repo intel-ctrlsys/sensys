@@ -55,7 +55,7 @@
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "sensor_freq.h"
 
-#define TEST_CORES (8192)
+#define TEST_CORES (512)
 
 #define ON_NULL_RETURN(x) if(NULL==x){ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);return;}
 #define F_CLOSE(x) if(NULL!=x){fclose(x); x=NULL;}

@@ -286,6 +286,11 @@ static int init(void)
         orcm_sensor_base_runtime_metrics_create("mcedata", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_mcedata_component.collect_metrics);
 
+    /* If the test vectors have been enabled then bypass the init */
+    if (mca_sensor_mcedata_component.test) {
+        return ORCM_SUCCESS;
+    }
+
     /*
      * Open up the base directory so we can get a listing
      */

@@ -54,8 +54,6 @@
 #include "orte/mca/routed/base/base.h"
 #include "orte/mca/routed/routed.h"
 #include "orte/mca/oob/base/base.h"
-#include "orte/mca/grpcomm/grpcomm.h"
-#include "orte/mca/grpcomm/base/base.h"
 #include "orte/mca/iof/base/base.h"
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/errmgr/errmgr.h"
@@ -359,20 +357,6 @@ static int orcmsched_init(void)
     OBJ_DESTRUCT(&buf);
     OBJ_RELEASE(uribuf);
 
-    /*
-     * Group communications
-     */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_grpcomm_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_grpcomm_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_grpcomm_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_grpcomm_base_select";
-        goto error;
-    }
-    
     /* enable communication with the rml */
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);
@@ -431,7 +415,6 @@ static void orcmsched_finalize(void)
     /* close frameworks */
     (void) orcm_cmd_server_finalize();
     (void) mca_base_framework_close(&orcm_scd_base_framework);
-    (void) mca_base_framework_close(&orte_grpcomm_base_framework);
     (void) mca_base_framework_close(&orte_iof_base_framework);
     (void) mca_base_framework_close(&orte_errmgr_base_framework);
     (void) mca_base_framework_close(&orte_routed_base_framework);

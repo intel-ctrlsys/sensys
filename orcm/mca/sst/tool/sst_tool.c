@@ -55,8 +55,6 @@
 #include "orte/mca/rmaps/base/base.h"
 #include "orte/mca/rmaps/rmaps.h"
 #include "orte/mca/oob/base/base.h"
-#include "orte/mca/grpcomm/grpcomm.h"
-#include "orte/mca/grpcomm/base/base.h"
 #include "orte/mca/iof/base/base.h"
 #include "orte/mca/plm/base/base.h"
 #include "orte/mca/plm/base/plm_private.h"
@@ -455,20 +453,6 @@ static int tool_init(void)
         goto error;
     }
 
-    /*
-     * Group communications
-     */
-    if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orte_grpcomm_base_framework, 0))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_grpcomm_base_open";
-        goto error;
-    }
-    if (ORTE_SUCCESS != (ret = orte_grpcomm_base_select())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_grpcomm_base_select";
-        goto error;
-    }
-    
     /* enable communication with the rml */
     if (ORTE_SUCCESS != (ret = orte_rml.enable_comm())) {
         ORTE_ERROR_LOG(ret);

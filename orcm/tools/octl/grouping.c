@@ -10,11 +10,38 @@
 #include "orcm/util/logical_group.h"
 #include "orte/util/regex.h"
 
+bool get_user_confirmation(void);
+
+bool get_user_confirmation()
+{
+    char ans;
+    printf("The default config file will be overwritten.\n"
+          "Are you sure you want to overwrite orcm-site.xml?(Y/N)(y/n)");
+    scanf("%c", &ans);
+    if('\n' == ans) {
+        printf("Logical Group not added to file\n"
+               "Please answer Y/y to write to default configuration file or\n"
+               "Restart octl with -l <filename> option to write to a different file\n");
+        return false;
+    }
+    while('\n' != getchar())
+        ;
+    if('y' == tolower(ans)){
+        return true;
+    }
+    else {
+        printf("Logical Group not added to file\n"
+               "Restart octl with -l <filename> option to write to a different file\n");
+    }
+    return false;
+}
+
 int orcm_octl_logical_group_add(int argc, char **argv)
 {
     int erri = ORCM_SUCCESS;
     char *tag = NULL;
     char *regex = NULL;
+    bool save = true;
 
     if (4 != argc) {
         orcm_octl_usage("grouping-add", INVALID_USG);
@@ -27,18 +54,21 @@ int orcm_octl_logical_group_add(int argc, char **argv)
         orcm_octl_error("add-wildcard");
         return ORCM_ERR_BAD_PARAM;
     }
-
-    if (ORCM_SUCCESS != (erri = orcm_logical_group_add(tag, regex, LOGICAL_GROUP.groups))) {
-        return erri;
+    if(NULL == getenv("ORCM_MCA_logical_group_config_file")){
+        save = get_user_confirmation();
     }
+    if(save){
+        if (ORCM_SUCCESS != (erri = orcm_logical_group_add(tag, regex, LOGICAL_GROUP.groups))) {
+            return erri;
+        }
 
-    if (ORCM_SUCCESS != (erri = orcm_logical_group_save_to_file(LOGICAL_GROUP.storage_filename,
-                                                                LOGICAL_GROUP.groups))) {
-        return erri;
+        if (ORCM_SUCCESS != (erri = orcm_logical_group_save_to_file(LOGICAL_GROUP.storage_filename,
+                                                                    LOGICAL_GROUP.groups))) {
+            return erri;
+        }
+
+        orcm_octl_info("grouping-success", "Add");
     }
-
-    orcm_octl_info("grouping-success", "Add");
-
     return erri;
 }
 

@@ -4,4 +4,4 @@ port=29418
 project=css/grei
 defaultremote=origin
 defaultrebase=0
-defaultbranch=staging
+defaultbranch=master

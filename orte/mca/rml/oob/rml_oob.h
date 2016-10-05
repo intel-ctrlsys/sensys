@@ -14,7 +14,7 @@
  *                         All rights reserved.
  * Copyright (c) 2014      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
- * Copyright (c) 2014 -2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -80,7 +80,6 @@ void orte_rml_oob_recv_cancel(orte_process_name_t* peer,
                               orte_rml_tag_t tag);
 
 int orte_rml_oob_open_channel(orte_process_name_t * peer,
-                              opal_list_t * qos_attributes,
                               orte_rml_channel_callback_fn_t cbfunc,
                               void *cbdata);
 

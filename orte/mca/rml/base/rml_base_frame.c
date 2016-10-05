@@ -5,7 +5,7 @@
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.  All rights
  *                         reserved.
  * Copyright (c) 2013      Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2014-2015 Intel Corporation.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel Corporation.  All rights reserved.
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
@@ -289,8 +289,6 @@ OBJ_CLASS_INSTANCE(orte_rml_send_t,
 static void channel_cons(orte_rml_channel_t *ptr)
 {
     ptr->channel_num = ORTE_RML_INVALID_CHANNEL_NUM;
-    ptr->qos = NULL;
-    ptr->qos_channel_ptr = NULL;
     ptr->recv = false;
 }
 
@@ -301,7 +299,6 @@ OBJ_CLASS_INSTANCE(orte_rml_channel_t,
 static void open_channel_cons(orte_rml_open_channel_t *ptr)
 {
     ptr->cbdata = NULL;
-    ptr->qos_attributes = NULL;
 }
 OBJ_CLASS_INSTANCE(orte_rml_open_channel_t,
                    opal_list_item_t,

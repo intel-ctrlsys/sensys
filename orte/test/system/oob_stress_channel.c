@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2016  Intel, Inc. All rights reserved.
+ * $COPYRIGHT$
+ *
+ * Additional copyrights may follow
+ *
+ * $HEADER$
+ */
+
 #include "orte_config.h"
 
 #include <stdio.h>
@@ -14,7 +23,6 @@
 
 #include "orte/runtime/runtime.h"
 #include "orte/runtime/orte_wait.h"
-#include "orte/mca/qos/qos.h"
 #include "orte/util/attr.h"
 
 #define MY_TAG 12345
@@ -31,7 +39,6 @@ static volatile int num_msgs_sent = 0;
 static void close_channel_callback(int status,
                                   orte_rml_channel_num_t channel_num,
                                   orte_process_name_t * peer,
-                                  opal_list_t *qos_attributes,
                                   void * cbdata)
 {
     if (ORTE_SUCCESS != status)
@@ -44,7 +51,6 @@ static void close_channel_callback(int status,
 static void open_channel_callback(int status,
                                   orte_rml_channel_num_t channel_num,
                                   orte_process_name_t * peer,
-                                  opal_list_t *qos_attributes,
                                   void * cbdata)
 {
     if (ORTE_SUCCESS != status) {
@@ -103,13 +109,11 @@ static void channel_send_callback (int status, orte_rml_channel_num_t channel,
 int main(int argc, char *argv[]){
     int count;
     int msgsize;
-    int *type, type_val;
     int *i, j, rc, n;
     orte_process_name_t peer;
     double maxpower;
     opal_buffer_t *buf;
     orte_rml_recv_cb_t blob;
-    opal_list_t *qos_attributes;
     int  window;
     uint32_t timeout = 1;
     bool retry = false;
@@ -133,41 +137,8 @@ int main(int argc, char *argv[]){
     if (peer.vpid == orte_process_info.num_procs) {
         peer.vpid = 0;
     }
-    type_val = orte_qos_ack;
-    type = &type_val;
     window = 5;
     count =3;
-    qos_attributes = OBJ_NEW (opal_list_t);
-    if (ORTE_SUCCESS == (rc = orte_set_attribute( qos_attributes,
-                                  ORTE_QOS_TYPE, ORTE_ATTR_GLOBAL, (void*)type, OPAL_UINT8))) {
-        type = &window;
-        if (ORTE_SUCCESS == (rc = orte_set_attribute(qos_attributes, ORTE_QOS_WINDOW_SIZE,
-                                      ORTE_ATTR_GLOBAL, (void*) type, OPAL_UINT32))) {
-            //  orte_get_attribute( &qos_attributes, ORTE_QOS_WINDOW_SIZE, (void**)&type, OPAL_UINT32);
-            // opal_output(0, "%s set attribute window =%d complete \n", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), *type );
-            type = &timeout;
-            orte_set_attribute (qos_attributes, ORTE_QOS_ACK_NACK_TIMEOUT, ORTE_ATTR_GLOBAL,
-                                    (void*)type, OPAL_UINT32);
-            orte_set_attribute (qos_attributes, ORTE_QOS_MSG_RETRY, ORTE_ATTR_GLOBAL,
-                                    NULL, OPAL_BOOL);
-           /* Uncomment following lines to print channel attributes */
-           /*
-           opal_output(0, "%s set attribute retry =%d complete \n", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), retry );
-           orte_get_attribute( qos_attributes, ORTE_QOS_TYPE, (void**)&type, OPAL_UINT8);
-           opal_output(0, "%s set attribute type =%d complete \n", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), *type );
-           orte_get_attribute( qos_attributes, ORTE_QOS_WINDOW_SIZE, (void**)&type, OPAL_UINT32);
-           opal_output(0, "%s set attribute window =%d complete \n", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), *type )
-           orte_get_attribute( qos_attributes, ORTE_QOS_ACK_NACK_TIMEOUT, (void**)&type, OPAL_UINT32);
-           opal_output(0, "%s set attribute timeout =%d complete \n", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), *type );*/
-           channel_inactive = true;
-           orte_rml.open_channel ( &peer, qos_attributes, open_channel_callback, NULL);
-           opal_output(0, "%s process sent open channel request %d waiting for completion \n",
-                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), j);
-           ORTE_WAIT_FOR_COMPLETION(channel_inactive);
-           opal_output(0, "%s open channel complete to %s", ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                                                                 ORTE_NAME_PRINT(&peer));
-          }
-    }
     for (j = 0; j< count; j++)
     {
         if (ORTE_PROC_MY_NAME->vpid == 0)

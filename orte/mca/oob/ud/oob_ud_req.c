@@ -4,7 +4,7 @@
  *                         reserved.
  *               2014      Mellanox Technologies, Inc.
  *                         All rights reserved.
- * Copyright (c) 2015      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -287,11 +287,7 @@ void mca_oob_ud_req_complete (mca_oob_ud_req_t *req, int rc)
     case MCA_OOB_UD_REQ_SEND:
         if (req->req_data_type != MCA_OOB_UD_REQ_TR) {
             req->rml_msg->status = rc;
-            if( NULL == req->rml_msg->channel) {
-                ORTE_RML_SEND_COMPLETE(req->rml_msg);
-            } else {
-                ORTE_QOS_SEND_COMPLETE(req->rml_msg);
-            }
+            ORTE_RML_SEND_COMPLETE(req->rml_msg);
         }
         break;
     case MCA_OOB_UD_REQ_RECV:

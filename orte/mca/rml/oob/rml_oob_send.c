@@ -12,7 +12,7 @@
  *                         All rights reserved.
  * Copyright (c) 2012-2013 Los Alamos National Security, LLC.  All rights
  *                         reserved.
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -34,7 +34,6 @@
 #include "orte/mca/rml/base/base.h"
 #include "orte/mca/rml/rml_types.h"
 #include "rml_oob.h"
-#include "orte/mca/qos/base/base.h"
 typedef struct {
     opal_object_t object;
     opal_event_t ev;
@@ -198,7 +197,6 @@ static void send_msg(int fd, short args, void *cbdata)
     }
     snd->cbdata = req->post.send.cbdata;
     snd->channel = req->post.send.channel;
-    /* call send prep to prep the Qos channel for send */
     if (NULL != snd->channel)
     {
         OPAL_OUTPUT_VERBOSE((1, orte_rml_base_framework.framework_output,
@@ -300,7 +298,6 @@ int orte_rml_oob_send_buffer_nb(orte_process_name_t* peer,
 }
 
 int orte_rml_oob_open_channel(orte_process_name_t * peer,
-                              opal_list_t *qos_attributes,
                               orte_rml_channel_callback_fn_t cbfunc,
                               void *cbdata)
 {
@@ -318,7 +315,6 @@ int orte_rml_oob_open_channel(orte_process_name_t * peer,
     /* process the request in an event to be safe */
     req = OBJ_NEW(orte_rml_send_request_t);
     req->post.open_channel.dst = *peer;
-    req->post.open_channel.qos_attributes = qos_attributes;
     req->post.open_channel.cbfunc = cbfunc;
     req->post.open_channel.cbdata = cbdata;
     /* setup the event for the open callback */

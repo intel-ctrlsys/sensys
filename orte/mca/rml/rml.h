@@ -12,7 +12,7 @@
  *                         All rights reserved.
  * Copyright (c) 2011-2015 Los Alamos National Security, LLC.  All rights
  *                         reserved.
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  *
@@ -444,13 +444,12 @@ typedef void (*orte_rml_module_purge_fn_t)(orte_process_name_t *peer);
 /********* NEW RML QOS MESSAGING APIS *****************/
 /***** Questions *****/
 /*
-1 : Should we provide a func for the user to get qos attributes of a channel? (do we allow for sets?? )
+1 : Should we provide a func for the user to get attributes of a channel? (do we allow for sets?? )
 2 : Should open channel - have a channel error callback function?
 */
 typedef void (*orte_rml_channel_callback_fn_t) (int status,
                                                 orte_rml_channel_num_t channel_num,
                                                 orte_process_name_t * peer,
-                                                opal_list_t *qos_attributes,
                                                 void * cbdata);
 /**
  * Funtion prototype for callback from non-blocking iovec send on a channel
@@ -503,7 +502,6 @@ typedef void (*orte_rml_send_buffer_channel_callback_fn_t)(int status,
  * * Open a messaging channel with specified QoS to a specific peer
  *
  * @param[in]  peer             End point Peer to which the channel needs to be opened
- * @param[in]  qos_attributes   List of Quality of Service Attributes for the channel
  * @param[in] cbfunc            Callback function on channel create (open) comlpetion
  * @param[in] cbdata            User data to provide during completion callback
  *
@@ -512,7 +510,6 @@ typedef void (*orte_rml_send_buffer_channel_callback_fn_t)(int status,
  * @retval ORTE_ERROR_UNSUPPORTED_QOS - the requested QoS cannot be provided.
  */
 typedef int (*orte_rml_module_open_channel_fn_t)(orte_process_name_t* peer,
-                                                    opal_list_t *qos_attributes,
                                                     orte_rml_channel_callback_fn_t cbfunc,
                                                     void* cbdata);
 
@@ -639,7 +636,7 @@ struct orte_rml_module_t {
     /** Purge information */
     orte_rml_module_purge_fn_t                   purge;
 
-    /** Open a qos messaging channel to a peer*/
+    /** Open a messaging channel to a peer*/
     orte_rml_module_open_channel_fn_t            open_channel;
 
     /** send a non blocking iovec message over a channel */
@@ -648,7 +645,7 @@ struct orte_rml_module_t {
     /** send a non blocking buffer message over a channel */
     orte_rml_module_send_buffer_channel_nb_fn_t  send_buffer_channel_nb;
 
-    /** close a qos messaging channel */
+    /** close a  messaging channel */
     orte_rml_module_close_channel_fn_t           close_channel;
 };
 /** Convienence typedef */

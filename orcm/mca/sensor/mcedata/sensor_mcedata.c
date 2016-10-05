@@ -1359,7 +1359,6 @@ static void generate_test_vector(orcm_sensor_sampler_t* sampler)
     int ret;
     opal_buffer_t data;
     const char *temp = "mcedata";
-    const char* host = "testhost";
     struct timeval current_time;
     unsigned int uval = 0;
     opal_buffer_t* buffer = &data;
@@ -1370,7 +1369,7 @@ static void generate_test_vector(orcm_sensor_sampler_t* sampler)
     ret = opal_dss.pack(buffer, &temp, 1, OPAL_STRING);
     ON_FAILURE_GOTO(ret, cleanup);
 
-    ret = opal_dss.pack(buffer, &host, 1, OPAL_STRING);
+    ret = opal_dss.pack(buffer, &orte_process_info.nodename,, 1, OPAL_STRING);
     ON_FAILURE_GOTO(ret, cleanup);
 
     gettimeofday(&current_time, NULL);

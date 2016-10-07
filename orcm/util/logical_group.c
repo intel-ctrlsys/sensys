@@ -72,8 +72,17 @@ static opal_hash_table_t *orcm_logical_group_list_internal(char *tag, int do_all
 /* open the storage file */
 static int orcm_logical_group_open_file(char *storage_filename);
 
-/* create an XML file with logicalgroup tag in it */
-static int orcm_logical_group_crate_xml_file(char *storage_filename);
+/* opens the storage file making sure that a logical group tag exists */
+static int orcm_logical_group_open_file_with_logicalgroup_tag(char *storage_filename);
+
+/* appends an <logicalgroup> tag to the file according to CFGI v3 and olders */
+static int orcm_logical_group_add_old_external_tag(char *storage_filename);
+
+/* checks if a <logicalgroup> tag exists in the file */
+static int orcm_logical_group_check_tag(char *storage_filename);
+
+/* creates the file in order to be able to write logical groups to it*/
+static int orcm_logical_group_create_file(char *storage_filename);
 
 /* load the content of the storage file to an in-memory hash table */
 static int orcm_logical_group_load_from_file(char *storage_filename,
@@ -684,7 +693,6 @@ static int orcm_logical_group_parse_from_file(opal_hash_table_t *io_groups)
 
 static int orcm_logical_group_open_file(char *storage_filename)
 {
-
     if (NULL == storage_filename || '\0' == storage_filename[0]) {
         ORCM_UTIL_ERROR_MSG("Bad setup for parsing logical groupings.");
         return ORCM_ERR_FILE_OPEN_FAILURE;
@@ -697,74 +705,109 @@ static int orcm_logical_group_open_file(char *storage_filename)
     return ORCM_SUCCESS;
 }
 
-static int orcm_logical_group_crate_xml_file(char *storage_filename)
+static int orcm_logical_group_add_old_external_tag(char *storage_filename)
 {
     FILE *storage_fp = NULL;
-    int res = 0;
+    char *file_content = NULL;
+    long fsize = 0;
+    int res = ORCM_SUCCESS;
 
-    if (NULL == storage_filename || '\0' == storage_filename[0]) {
-        ORCM_UTIL_ERROR_MSG("Bad setup for parsing logical groupings.");
-        return ORCM_ERR_FILE_OPEN_FAILURE;
+    storage_fp = fopen(storage_filename, "r+");
+    if( NULL == storage_fp ){
+        ORCM_UTIL_ERROR_MSG("Failed to add tag for logical groupings.");
+        res = ORCM_ERR_FILE_OPEN_FAILURE;
+    } else {
+        fseek(storage_fp, 0, SEEK_END);
+        fsize = ftell(storage_fp);
+        fseek(storage_fp, 0, SEEK_SET);
+
+        file_content = malloc(fsize + 17);
+        if( NULL == file_content ){
+            ORCM_UTIL_ERROR_MSG("Failed to add tag for logical groupings.");
+            res = ORCM_ERR_OUT_OF_RESOURCE;
+        } else {
+            strcpy(file_content,"<logicalgroup />");
+            fread(file_content + 16, fsize, 1, storage_fp);
+            fseek(storage_fp, 0, SEEK_SET);
+
+            if( 0 >= fputs(file_content, storage_fp) ){
+                res = ORCM_ERR_FILE_WRITE_FAILURE;
+            }
+            free(file_content);
+        }
+        fflush(storage_fp);
+        fclose(storage_fp);
     }
+
+    return res;
+}
+
+static int orcm_logical_group_check_tag(char *storage_filename)
+{
+    int res = ORCM_SUCCESS;
+    opal_list_t *result_list = NULL;
+
+    res = orcm_logical_group_open_file(storage_filename);
+    if( ORCM_SUCCESS == res ){
+        result_list = orcm_parser.retrieve_section(
+                          logical_group_file_lock.parser_fd,
+                          "logicalgroup", "");
+
+        res = orcm_parser.close(logical_group_file_lock.parser_fd);
+        if( NULL == result_list && ORCM_SUCCESS == res ){
+            res = ORCM_ERR_NOT_FOUND;
+        }
+    }
+
+    return res;
+}
+
+static int orcm_logical_group_create_file(char *storage_filename)
+{
+    FILE *storage_fp = NULL;
+    int res = ORCM_SUCCESS;
 
     storage_fp = fopen(storage_filename, "a");
     if (NULL == storage_fp) {
         ORCM_UTIL_ERROR_MSG("Failed to create file for logical groupings.");
-        return ORCM_ERR_FILE_OPEN_FAILURE;
-    }
-    else {
+        res = ORCM_ERR_FILE_OPEN_FAILURE;
+    } else {
         if( 3 < orcm_cfgi_base.version ) {
-            res = fprintf(storage_fp, "<configuration />");
+            res = fprintf(storage_fp, "<?xml version=\"1.0\"?>\n<configuration />");
         } else {
-            res = fprintf(storage_fp, "<logicalgroup />");
+            res = fprintf(storage_fp, "<?xml version=\"1.0\"?>\n<logicalgroup />");
         }
 
-        if (0 > res) {
-            fclose(storage_fp);
-            return ORCM_ERR_FILE_WRITE_FAILURE;
+        if (0 >= res ){
+            res = ORCM_ERR_FILE_WRITE_FAILURE;
+        } else {
+            res = ORCM_SUCCESS;
         }
+
+        fflush(storage_fp);
+        fclose(storage_fp);
     }
-    fflush(storage_fp);
-    fclose(storage_fp);
-    return ORCM_SUCCESS;
-}
 
-static int orcm_logical_group_open_file_write_mode(char *storage_filename)
-{
-    int ret = ORCM_SUCCESS;
-
-    ret = orcm_logical_group_open_file(storage_filename);
-    if (ORCM_SUCCESS != ret) {
-        ret = orcm_logical_group_crate_xml_file(storage_filename);
-        if (ORCM_SUCCESS == ret) {
-            ret = orcm_logical_group_open_file(storage_filename);
-        }
-    }
-    return ret;
+    return res;
 }
 
 static int orcm_logical_group_open_file_with_logicalgroup_tag(char *storage_filename)
 {
-    int ret = ORCM_SUCCESS;
-    opal_list_t *result_list = NULL;
+    int res = ORCM_SUCCESS;
 
-    ret = orcm_logical_group_open_file(storage_filename);
-    if (ORCM_SUCCESS != ret) {
-        ret = orcm_logical_group_open_file_write_mode(storage_filename);
-        if (ORCM_SUCCESS != ret) {
-            return ret;
+    if( -1 == access( storage_filename, F_OK ) ){
+        res = orcm_logical_group_create_file(storage_filename);
+    } else if( 3 >= orcm_cfgi_base.version ){
+        res = orcm_logical_group_check_tag(storage_filename);
+        if( ORCM_ERR_NOT_FOUND == res ){
+            res = orcm_logical_group_add_old_external_tag(storage_filename);
         }
     }
 
-    result_list = orcm_parser.retrieve_section(logical_group_file_lock.parser_fd, "logicalgroup", "");
-    if (NULL == result_list) {
-        ret = orcm_parser.close(logical_group_file_lock.parser_fd);
-        if (ORCM_SUCCESS == ret) {
-            ret = orcm_logical_group_open_file_write_mode(storage_filename);
-        }
-    }
-    SAFE_RELEASE_NESTED_LIST(result_list);
-    return ret;
+    if( ORCM_SUCCESS == res )
+        res = orcm_logical_group_open_file(storage_filename);
+
+    return res;
 }
 
 static int orcm_logical_group_load_from_file(char *storage_filename,

@@ -8,6 +8,7 @@
  */
 
 #include "baseFactory.h"
+#include <regex.h>
 
 void baseFactory::setPluginsPath(const char *user_plugins_path)
 {
@@ -22,10 +23,12 @@ void baseFactory::setPluginsPrefix(const char *user_plugins_prefix)
     plugins_prefix = NULL == user_plugins_prefix ? DEFAULT_PLUGIN_PREFIX : user_plugins_prefix;
 }
 
+
 int baseFactory::getPluginFilenames()
 {
     DIR *d = NULL;
     int ret = 0;
+    compilePluginNameRegex();
     d = opendir(plugins_path.c_str());
     if (d) {
         addPluginsIfPrefixMatch(d);
@@ -51,11 +54,24 @@ void* baseFactory::getPluginSymbol(void* plugin, const char *symbol)
     return (void*)dlsym(plugin, symbol);
 }
 
+void baseFactory::compilePluginNameRegex(){
+    std::string expresion ("^.*\\.so(\\.[[:digit:]]+)*$");
+    expresion.insert(1,plugins_prefix);
+    regcomp(&regex_comp, expresion.c_str(), REG_EXTENDED|REG_ICASE);
+}
+
+bool baseFactory::prefixAndExtMatch(char *d_name)
+{
+    int regex_res = -1;
+    regex_res = regexec(&regex_comp,d_name, 0, NULL, 0);
+    return (regex_res == 0);
+}
+
 void baseFactory::addPluginsIfPrefixMatch(DIR *d)
 {
     struct dirent *entry = NULL;
     while (NULL != (entry = readdir(d))) {
-        if (!strncmp(entry->d_name, plugins_prefix.c_str(), strlen(plugins_prefix.c_str()))) {
+        if (prefixAndExtMatch((entry->d_name))) {
             pluginFilesFound.push_back(formFullPath(entry->d_name));
         }
     }

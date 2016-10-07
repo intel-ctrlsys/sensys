@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <regex.h>
 
 #define DEFAULT_PLUGIN_PATH "/usr/lib64"
 #define DEFAULT_PLUGIN_PREFIX "libudplugin_"
@@ -25,6 +26,13 @@
 typedef void* (*pluginInstance)(void);
 
 class baseFactory {
+
+private:
+    bool prefixAndExtMatch(char *d_name);
+    void compilePluginNameRegex();
+
+    regex_t regex_comp;
+
 public:
     void setPluginsPath(const char *user_plugins_path);
     void setPluginsPrefix(const char *user_plugins_prefix);

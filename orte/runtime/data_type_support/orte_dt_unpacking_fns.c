@@ -12,7 +12,7 @@
  * Copyright (c) 2011      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -684,20 +684,6 @@ int orte_dt_unpack_tag(opal_buffer_t *buffer, void *dest,
 }
 
 /*
- * ORTE_DAEMON_CMD
- */
-int orte_dt_unpack_daemon_cmd(opal_buffer_t *buffer, void *dest, int32_t *num_vals,
-                              opal_data_type_t type)
-{
-    int ret;
-
-    /* turn around and unpack the real type */
-    ret = opal_dss_unpack_buffer(buffer, dest, num_vals, ORTE_DAEMON_CMD_T);
-
-    return ret;
-}
-
-/*
  * ORTE_ATTR
  */
 
@@ -850,45 +836,4 @@ int orte_dt_unpack_attr(opal_buffer_t *buffer, void *dest, int32_t *num_vals,
     }
 
     return OPAL_SUCCESS;
-}
-
-int orte_dt_unpack_sig(opal_buffer_t *buffer, void *dest, int32_t *num_vals,
-                       opal_data_type_t type)
-{
-    orte_grpcomm_signature_t **ptr;
-    int32_t i, n, cnt;
-    int rc;
-
-    ptr = (orte_grpcomm_signature_t **) dest;
-    n = *num_vals;
-
-    for (i = 0; i < n; ++i) {
-        /* allocate the new object */
-        ptr[i] = OBJ_NEW(orte_grpcomm_signature_t);
-        if (NULL == ptr[i]) {
-            return OPAL_ERR_OUT_OF_RESOURCE;
-        }
-        /* unpack the #procs */
-        cnt = 1;
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &ptr[i]->sz, &cnt, OPAL_SIZE))) {
-            ORTE_ERROR_LOG(rc);
-            return rc;
-        }
-        if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, &ptr[i]->seq_num, &cnt, OPAL_UINT32))) {
-            ORTE_ERROR_LOG(rc);
-            return rc;
-        }
-        if (0 < ptr[i]->sz) {
-            /* allocate space for the array */
-            ptr[i]->signature = (orte_process_name_t*)malloc(ptr[i]->sz * sizeof(orte_process_name_t));
-            /* unpack the array - the array is our signature for the collective */
-            cnt = ptr[i]->sz;
-            if (OPAL_SUCCESS != (rc = opal_dss.unpack(buffer, ptr[i]->signature, &cnt, ORTE_NAME))) {
-                ORTE_ERROR_LOG(rc);
-                OBJ_RELEASE(ptr[i]);
-                return rc;
-            }
-        }
-    }
-    return ORTE_SUCCESS;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013      Intel, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel Corporation.  All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow
@@ -25,7 +25,6 @@
 #include "orte/runtime/orte_globals.h"
 #include "orte/mca/rml/rml.h"
 #include "orte/mca/routed/routed.h"
-#include "orte/mca/odls/odls_types.h"
 #include "orte/mca/state/state.h"
 
 #include "orte/mca/notifier/notifier.h"

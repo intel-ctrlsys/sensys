@@ -11,7 +11,7 @@
 #                         All rights reserved.
 # Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
 # Copyright (c) 2014      Cisco Systems, Inc.  All rights reserved.
-# Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+# Copyright (c) 2014-2016 Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -53,7 +53,6 @@ headers += \
         util/hostfile/hostfile.h \
         util/hostfile/hostfile_lex.h \
         util/dash_host/dash_host.h \
-        util/comm/comm.h \
         util/nidmap.h \
         util/regex.h \
         util/attr.h \
@@ -72,7 +71,6 @@ lib@ORTE_LIB_PREFIX@open_rte_la_SOURCES += \
         util/hostfile/hostfile_lex.l \
         util/hostfile/hostfile.c \
         util/dash_host/dash_host.c \
-        util/comm/comm.c \
         util/nidmap.c \
         util/regex.c \
         util/attr.c \

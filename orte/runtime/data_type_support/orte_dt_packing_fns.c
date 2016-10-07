@@ -12,7 +12,7 @@
  * Copyright (c) 2011      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -608,22 +608,6 @@ int orte_dt_pack_tag(opal_buffer_t *buffer, const void *src,
 }
 
 /*
- * ORTE_DAEMON_CMD
- */
-int orte_dt_pack_daemon_cmd(opal_buffer_t *buffer, const void *src, int32_t num_vals,
-                              opal_data_type_t type)
-{
-    int ret;
-
-    /* Turn around and pack the real type */
-    if (ORTE_SUCCESS != (ret = opal_dss_pack_buffer(buffer, src, num_vals, ORTE_DAEMON_CMD_T))) {
-        ORTE_ERROR_LOG(ret);
-    }
-
-    return ret;
-}
-
-/*
  * ORTE_ATTR
  */
 int orte_dt_pack_attr(opal_buffer_t *buffer, const void *src, int32_t num_vals,
@@ -762,39 +746,4 @@ int orte_dt_pack_attr(opal_buffer_t *buffer, const void *src, int32_t num_vals,
     }
 
     return OPAL_SUCCESS;
-}
-
-/*
- * ORTE_SIGNATURE
- */
-int orte_dt_pack_sig(opal_buffer_t *buffer, const void *src, int32_t num_vals,
-                     opal_data_type_t type)
-{
-    orte_grpcomm_signature_t **ptr;
-    int32_t i;
-    int rc;
-
-    ptr = (orte_grpcomm_signature_t **) src;
-
-    for (i = 0; i < num_vals; ++i) {
-        /* pack the #procs */
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &ptr[i]->sz, 1, OPAL_SIZE))) {
-            ORTE_ERROR_LOG(rc);
-            return rc;
-        }
-        /* pack the sequence number */
-        if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, &ptr[i]->seq_num, 1, OPAL_UINT32))) {
-            ORTE_ERROR_LOG(rc);
-            return rc;
-        }
-        if (0 < ptr[i]->sz) {
-            /* pack the array */
-            if (OPAL_SUCCESS != (rc = opal_dss.pack(buffer, ptr[i]->signature, ptr[i]->sz, ORTE_NAME))) {
-                ORTE_ERROR_LOG(rc);
-                return rc;
-            }
-        }
-    }
-
-    return ORTE_SUCCESS;
 }

@@ -2,7 +2,7 @@
  * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.  All rights
  *                         reserved.
- * Copyright (c) 2014-2016  Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016  Intel Corporation.  All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -34,7 +34,6 @@
 #include "orte/util/proc_info.h"
 #include "orte/util/name_fns.h"
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/odls/odls_types.h"
 #include "orte/mca/rml/rml.h"
 #include "orte/mca/state/state.h"
 #include "orte/runtime/orte_globals.h"

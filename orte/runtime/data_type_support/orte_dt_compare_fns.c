@@ -9,7 +9,7 @@
  *                         All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -22,8 +22,6 @@
 #include <string.h>
 
 #include <sys/types.h>
-
-#include "orte/mca/grpcomm/grpcomm.h"
 
 #include "orte/runtime/data_type_support/orte_dt_support.h"
 
@@ -165,16 +163,6 @@ int orte_dt_compare_tags(orte_rml_tag_t *value1, orte_rml_tag_t *value2, opal_da
     }
 }
 
-/* ORTE_DAEMON_CMD */
-int orte_dt_compare_daemon_cmd(orte_daemon_cmd_flag_t *value1, orte_daemon_cmd_flag_t *value2, opal_data_type_t type)
-{
-    if (*value1 > *value2) return OPAL_VALUE1_GREATER;
-
-    if (*value2 > *value1) return OPAL_VALUE2_GREATER;
-
-    return OPAL_EQUAL;
-}
-
 /* ORTE_ATTR */
 int orte_dt_compare_attr(orte_attribute_t *value1, orte_attribute_t *value2, opal_data_type_t type)
 {
@@ -186,26 +174,4 @@ int orte_dt_compare_attr(orte_attribute_t *value1, orte_attribute_t *value2, opa
     }
 
     return OPAL_EQUAL;
-}
-
-/* ORTE_SIGNATURE */
-int orte_dt_compare_sig(orte_grpcomm_signature_t *value1, orte_grpcomm_signature_t *value2, opal_data_type_t type)
-{
-    if (value1->sz > value2->sz) {
-        return OPAL_VALUE1_GREATER;
-    }
-    if (value2->sz > value1->sz) {
-        return OPAL_VALUE2_GREATER;
-    }
-     if (value1->seq_num > value2->seq_num) {
-        return OPAL_VALUE1_GREATER;
-    }
-    if (value2->seq_num > value1->seq_num) {
-        return OPAL_VALUE2_GREATER;
-    }
-    /* same size - check contents */
-    if (0 == memcmp(value1->signature, value2->signature, value1->sz*sizeof(orte_process_name_t))) {
-        return OPAL_EQUAL;
-    }
-    return OPAL_VALUE2_GREATER;
 }

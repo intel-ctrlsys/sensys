@@ -9,6 +9,7 @@
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
+# Copyright (c) 2016      Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -25,5 +26,4 @@ headers += \
 libmca_ras_la_SOURCES += \
         base/ras_base_frame.c \
         base/ras_base_select.c \
-        base/ras_base_allocate.c \
         base/ras_base_node.c

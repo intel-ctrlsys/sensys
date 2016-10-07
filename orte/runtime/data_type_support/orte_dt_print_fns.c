@@ -13,7 +13,7 @@
  * Copyright (c) 2011-2015 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2016 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -30,7 +30,6 @@
 #include "opal/mca/hwloc/base/base.h"
 
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/grpcomm/grpcomm.h"
 #include "orte/mca/rmaps/base/base.h"
 #include "opal/dss/dss.h"
 #include "orte/util/name_fns.h"
@@ -147,10 +146,6 @@ int orte_dt_std_print(char **output, char *prefix, void *src, opal_data_type_t t
 
         case ORTE_RML_TAG:
             orte_dt_quick_print(output, "ORTE_RML_TAG", prefix, src, ORTE_RML_TAG_T);
-            break;
-
-        case ORTE_DAEMON_CMD:
-            orte_dt_quick_print(output, "ORTE_DAEMON_CMD", prefix, src, ORTE_DAEMON_CMD_T);
             break;
 
         default:
@@ -856,39 +851,3 @@ int orte_dt_print_attr(char **output, char *prefix,
     free(prefx);
     return ORTE_SUCCESS;
 }
-
-int orte_dt_print_sig(char **output, char *prefix, orte_grpcomm_signature_t *src, opal_data_type_t type)
-{
-    char *prefx;
-    size_t i;
-    char *tmp, *tmp2;
-
-    /* deal with NULL prefix */
-    if (NULL == prefix) asprintf(&prefx, " ");
-    else prefx = strdup(prefix);
-
-    /* if src is NULL, just print data type and return */
-    if (NULL == src) {
-        asprintf(output, "%sData type: ORTE_SIG", prefx);
-        free(prefx);
-        return OPAL_SUCCESS;
-    }
-
-    if (NULL == src->signature) {
-        asprintf(output, "%sORTE_SIG  SeqNumber:%d  Procs: NULL", prefx, src->seq_num);
-        free(prefx);
-        return ORTE_SUCCESS;
-    }
-
-    /* there must be at least one proc in the signature */
-    asprintf(&tmp, "%sORTE_SIG  SeqNumber:%d  Procs: ", prefx, src->seq_num);
-
-    for (i=0; i < src->sz; i++) {
-        asprintf(&tmp2, "%s%s", tmp, ORTE_NAME_PRINT(&src->signature[i]));
-        free(tmp);
-        tmp = tmp2;
-    }
-    *output = tmp;
-    return ORTE_SUCCESS;
-}
-

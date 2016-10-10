@@ -7,17 +7,17 @@
  * $HEADER$
  */
 
+#include "orcm/mca/analytics/extension_plugins/average/analytics_average.h"
 #include "gtest/gtest.h"
-#include "orcm/mca/analytics/extension_plugins/example/analytics_example.h"
 
-TEST(analytics_example, analyze_test)
+TEST(analytics_average, analyze_test)
 {
     AnalyticsFactory* analytics_factory = AnalyticsFactory::getInstance();
-    Analytics* example = Example::creator();
+    Analytics* average = Average::creator();
     dataContainer dc;
     std::list<Event> events;
     DataSet data_set(dc, events);
-    int rc = example->analyze(data_set);
-    delete example;
+    int rc = average->analyze(data_set);
+    delete average;
     ASSERT_EQ(0, rc);
 }

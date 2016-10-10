@@ -13,15 +13,15 @@
 #include "orcm/mca/analytics/analytics_interface.h"
 #include "orcm/mca/analytics/base/analytics_factory.h"
 
-class Example : public Analytics {
+class Average : public Analytics {
     public:
-        Example();
-        virtual ~Example();
+        Average();
+        virtual ~Average();
         int analyze(DataSet& data_set);
         static Analytics* creator();
 
     private:
-        Example(Example const &);
+        Average(Average const &);
 };
 
 #endif /* ORCM_MCA_ANALYTICS_EXTENSION_PLUGINS_ANALYTICS_EXAMPLE_H_ */

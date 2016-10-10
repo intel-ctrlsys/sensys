@@ -7,30 +7,29 @@
  * $HEADER$
  */
 
-#include "analytics_example.h"
+#include "../average/analytics_average.h"
+
 #include <iostream>
 
 extern "C" {
     void initPlugin(void) {
         AnalyticsFactory* factory = AnalyticsFactory::getInstance();
-        factory->setPluginCreator("example", Example::creator);
+        factory->setPluginCreator("average", Average::creator);
     }
 }
 
-Example::Example()
+Average::Average()
 {
 
 }
 
-Example::~Example()
+Average::~Average()
 {
 
 }
 
-int Example::analyze(DataSet& data_set)
+int Average::analyze(DataSet& data_set)
 {
-    std::cout << "This is an example plugin!" << std::endl;
-
     //Example to compute sample average
     dataContainer::iterator i = data_set.compute.begin();
     double avg, sum = 0.0;
@@ -41,13 +40,13 @@ int Example::analyze(DataSet& data_set)
         i++;
     }
     avg = sum / n;
-    data_set.results.put<double>("Example_key", avg, "C");
+    data_set.results.put<double>("Average_key", avg, "C");
 
     //Example to create an event for a sample
     Event ev = {
     "crit",
     "syslog",
-    "Test_example",
+    "Test_Average",
     avg,
     "C",
     };
@@ -55,10 +54,10 @@ int Example::analyze(DataSet& data_set)
     return 0;
 }
 
-Analytics* Example::creator()
+Analytics* Average::creator()
 {
-    Analytics* example = new Example();
-    return example;
+    Analytics* average = new Average();
+    return average;
 }
 
 

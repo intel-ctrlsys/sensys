@@ -20,16 +20,16 @@ include $(top_srcdir)/Makefile.ompi-rules
 # other non-zero: fail
 #
 
-TESTS = analytics_example_test
+TESTS = analytics_average_test
 
 #
 # Executables to be built for "make check"
 #
 
-check_PROGRAMS = analytics_example_test
+check_PROGRAMS = analytics_average_test
 
-analytics_example_test_SOURCES = \
-    analytics_example_test.cpp
+analytics_average_test_SOURCES = \
+    analytics_average_test.cpp
 
 #
 # Libraries we depend on
@@ -37,7 +37,7 @@ analytics_example_test_SOURCES = \
 
 LDADD = \
     @GTEST_LIBRARY_DIR@/libgtest_main.a \
-    $(top_builddir)/orcm/mca/analytics/analytics_extension_example.la
+    $(top_builddir)/orcm/mca/analytics/analytics_extension_average.la
 
 AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread
 

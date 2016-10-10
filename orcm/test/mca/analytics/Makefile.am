@@ -7,7 +7,7 @@
 # $HEADER$
 
 if HAVE_GTEST
-gtestSubdirs=window cott spatial base genex factory extension example
+gtestSubdirs=window cott spatial base genex factory extension average
 endif
 
 SUBDIRS=util $(gtestSubdirs) aggregate

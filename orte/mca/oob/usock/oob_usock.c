@@ -13,7 +13,7 @@
  *                         All rights reserved.
  * Copyright (c) 2009-2015 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011      Oak Ridge National Labs.  All rights reserved.
- * Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -453,7 +453,6 @@ static void ft_event(int state) {
         OBJ_CONSTRUCT(&mod->peer_list,     opal_list_t);
         OBJ_CONSTRUCT(&mod->peers,         opal_hash_table_t);
         OBJ_CONSTRUCT(&mod->peer_names,    opal_hash_table_t);
-        OBJ_CONSTRUCT(&mod->peer_free,     opal_free_list_t);
 
         /*
          * Resume event processing

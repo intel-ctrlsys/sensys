@@ -1369,7 +1369,7 @@ static void generate_test_vector(orcm_sensor_sampler_t* sampler)
     ret = opal_dss.pack(buffer, &temp, 1, OPAL_STRING);
     ON_FAILURE_GOTO(ret, cleanup);
 
-    ret = opal_dss.pack(buffer, &orte_process_info.nodename,, 1, OPAL_STRING);
+    ret = opal_dss.pack(buffer, &orte_process_info.nodename, 1, OPAL_STRING);
     ON_FAILURE_GOTO(ret, cleanup);
 
     gettimeofday(&current_time, NULL);

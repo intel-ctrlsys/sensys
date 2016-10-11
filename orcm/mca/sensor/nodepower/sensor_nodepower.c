@@ -195,6 +195,11 @@ static int init(void)
     mca_sensor_nodepower_component.runtime_metrics =
         orcm_sensor_base_runtime_metrics_create("nodepower", orcm_sensor_base.collect_metrics,
                                                 mca_sensor_nodepower_component.collect_metrics);
+
+    if (mca_sensor_nodepower_component.test) {
+        return ORCM_SUCCESS;
+    }
+
     /* we must be root to run */
     if (0 != geteuid()) {
         return OPAL_ERR_PERM;

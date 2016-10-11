@@ -74,7 +74,7 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler);
 static void syslog_log(opal_buffer_t *buf);
 static void syslog_set_sample_rate(int sample_rate);
 static void syslog_get_sample_rate(int *sample_rate);
-static void *syslog_listener(void *arg);
+void syslog_listener(int fd, short flags, void *arg);
 int syslog_enable_sampling(const char* sensor_specification);
 int syslog_disable_sampling(const char* sensor_specification);
 int syslog_reset_sampling(const char* sensor_specification);
@@ -204,7 +204,12 @@ static void start(orte_jobid_t jobid)
 
     /* Create a thread to catch all messages addressed by rsyslog */
     if(!mca_sensor_syslog_component.test) {
-        pthread_create(&listener, NULL, syslog_listener, NULL);
+        syslog_socket_handler = opal_event_new(orte_event_base,
+                                               syslog_socket(),
+                                               EV_READ|EV_PERSIST,
+                                               syslog_listener,
+                                               NULL);
+        opal_event_add(syslog_socket_handler, NULL);
     }
 
     /* start a separate syslog progress thread for sampling */
@@ -249,6 +254,8 @@ static void stop(orte_jobid_t jobid)
         opal_progress_thread_pause("syslog");
         ORCM_RELEASE(syslog_sampler);
     }
+    opal_event_del(syslog_socket_handler);
+    close(syslog_socket());
     OBJ_DESTRUCT(&msgQueue);
     return;
 }
@@ -592,34 +599,29 @@ static int syslog_socket(void)
 }
 
 /**
- * Dedicated thread to catch any syslog event
+ * Dedicated callback to catch any syslog event
  *
  * @returns insert any gotten message into a queue
  */
-static void *syslog_listener(void *arg)
+void syslog_listener(int fd, short flags, void *arg)
 {
-    int n;
+    int n = 0;
+    int socket;
     syslog_msg *log;
     char msg[MAXLEN];
 
-    memset(msg, 0, MAXLEN);
-    stop_thread = false;
-    while(!stop_thread) {
-        if (syslog_socket() < 0) {
-            opal_output(0, "SYSLOG ERROR: Unable to open socket, sensor won't collect data\n");
-            return (void*) -1;
-        }
-
-        n = recv(syslog_socket(), msg, MAXLEN, 0);
-        if (n > 0) {
-            log = OBJ_NEW(syslog_msg);
-            log->log = strdup(msg);
-            opal_list_append(&msgQueue,&log->super);
-            memset(msg, 0, MAXLEN);
-        }
+    socket = syslog_socket();
+    if (0 > socket) {
+        opal_output(0, "SYSLOG ERROR: Unable to open socket, sensor won't collect data\n");
+        return;
     }
-    close(syslog_socket());
-    return 0;
+    memset(msg, 0, MAXLEN);
+    n = recv(socket, msg, MAXLEN, 0);
+    if ( n > 0 ) {
+        log = OBJ_NEW(syslog_msg);
+        log->log = strdup(msg);
+        opal_list_append(&msgQueue, &log->super);
+    }
 }
 
 static void syslog_set_sample_rate(int sample_rate)

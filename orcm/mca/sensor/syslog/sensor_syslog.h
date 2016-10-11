@@ -41,6 +41,7 @@ typedef struct {
     int sample_rate;
 } orcm_sensor_syslog_t;
 
+opal_event_t *syslog_socket_handler;
 END_C_DECLS
 
 #endif

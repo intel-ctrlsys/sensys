@@ -44,6 +44,7 @@ extern "C" {
     extern int orcm_sensor_syslog_close(void);
     extern int orcm_sensor_syslog_query(mca_base_module_t **module, int *priority);
     extern int syslog_component_register(void);
+    extern void syslog_listener(int fd, short flags, void *arg);
     extern void perthread_syslog_sample(int fd, short args, void *cbdata);
     extern const char *syslog_get_severity(int  prival);
     extern const char *syslog_get_facility(int prival);
@@ -493,7 +494,9 @@ TEST_F(ut_syslog_tests, syslog_sample_log_test2)
     mssleep(DEF_MS_PERIOD);
     orcm_sensor_sampler_t sampler;
     OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    mca_sensor_syslog_component.test = true;
     orcm_sensor_syslog_module.sample(&sampler);
+    mca_sensor_syslog_component.test = false;
     opal_buffer_t* buffer = &sampler.bucket;
 
     int n = 1;
@@ -695,4 +698,112 @@ TEST_F(ut_syslog_tests, test_generate_vector)
     orcm_sensor_syslog_module.finalize();
     mca_sensor_syslog_component.test = false;
     OBJ_DESTRUCT(&buffer);
+}
+
+TEST_F(ut_syslog_tests, syslog_listener)
+{
+    ResetTestCase();
+
+    bad_syslog_entry_ = true;
+
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(6);
+    mssleep(DEF_MS_PERIOD);
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    mca_sensor_syslog_component.test = true;
+    orcm_sensor_syslog_module.sample(&sampler);
+    mca_sensor_syslog_component.test = false;
+    opal_buffer_t* buffer = &sampler.bucket;
+
+    // Params doesn't matter
+    syslog_listener(1, 1, NULL);
+
+    int n = 1;
+    opal_buffer_t* logBuffer = NULL;
+    int rv = opal_dss.unpack(buffer, &logBuffer, &n, OPAL_BUFFER);
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    Cleanup(&sampler, &logBuffer, 6);
+}
+
+TEST_F(ut_syslog_tests, syslog_listener_2)
+{
+    ResetTestCase();
+
+    bad_syslog_entry_ = true;
+
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(6);
+    mssleep(DEF_MS_PERIOD);
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_syslog_module.sample(&sampler);
+    opal_buffer_t* buffer = &sampler.bucket;
+
+    // Params doesn't matter
+    syslog_listener(1, 1, NULL);
+
+    int n = 1;
+    opal_buffer_t* logBuffer = NULL;
+    int rv = opal_dss.unpack(buffer, &logBuffer, &n, OPAL_BUFFER);
+    EXPECT_NE(ORCM_SUCCESS, rv);
+
+    Cleanup(&sampler, &logBuffer, 6);
+}
+
+TEST_F(ut_syslog_tests, syslog_listener_bad_socket)
+{
+    ResetTestCase();
+    syslog_socket_ = -1; // Invalid socket
+    syslog_listener(1, 1, NULL);
+}
+
+TEST_F(ut_syslog_tests, syslog_listener_recv_bad_socket)
+{
+    ResetTestCase();
+
+    syslog_socket_ = -1; // Invalid socket
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(6);
+    mssleep(DEF_MS_PERIOD);
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    mca_sensor_syslog_component.test = true;
+    orcm_sensor_syslog_module.sample(&sampler);
+    mca_sensor_syslog_component.test = false;
+    opal_buffer_t* buffer = &sampler.bucket;
+
+    // Params doesn't matter
+    syslog_listener(1, 1, NULL);
+
+    int n = 1;
+    opal_buffer_t* logBuffer = NULL;
+    int rv = opal_dss.unpack(buffer, &logBuffer, &n, OPAL_BUFFER);
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    Cleanup(&sampler, &logBuffer, 6);
+}
+
+TEST_F(ut_syslog_tests, syslog_listener_test_vector)
+{
+    ResetTestCase();
+    mca_sensor_syslog_component.test = true;
+    ASSERT_EQ(ORCM_SUCCESS, orcm_sensor_syslog_module.init());
+    orcm_sensor_syslog_module.start(6);
+    mssleep(DEF_MS_PERIOD);
+    orcm_sensor_sampler_t sampler;
+    OBJ_CONSTRUCT(&sampler, orcm_sensor_sampler_t);
+    orcm_sensor_syslog_module.sample(&sampler);
+    opal_buffer_t* buffer = &sampler.bucket;
+
+    // Params doesn't matter
+    syslog_listener(1, 1, NULL);
+
+    int n = 1;
+    opal_buffer_t* logBuffer = NULL;
+    int rv = opal_dss.unpack(buffer, &logBuffer, &n, OPAL_BUFFER);
+    EXPECT_EQ(ORCM_SUCCESS, rv);
+
+    Cleanup(&sampler, &logBuffer, -1);
 }

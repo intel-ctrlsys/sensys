@@ -209,6 +209,7 @@ static void start(orte_jobid_t jobid)
                                                EV_READ|EV_PERSIST,
                                                syslog_listener,
                                                NULL);
+        ON_NULL_GOTO(syslog_socket_handler, cleanup);
         opal_event_add(syslog_socket_handler, NULL);
     }
 

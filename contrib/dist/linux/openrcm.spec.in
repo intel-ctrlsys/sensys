@@ -79,7 +79,7 @@ Prefix: /opt/openrcm
 #
 %define _prefix %{orcm_prefix}
 %define _sysconfdir %{_prefix}/etc
-%define _libdir %{_prefix}/lib64
+%define _libdir %{_prefix}/lib
 %define _includedir %{_prefix}/include
 %define _mandir %{_prefix}/share/man
 %define _pkgdatadir %{_prefix}/share/openmpi

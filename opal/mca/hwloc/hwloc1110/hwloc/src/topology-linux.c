@@ -3,7 +3,7 @@
  * Copyright © 2009-2015 Inria.  All rights reserved.
  * Copyright © 2009-2013 Université Bordeaux
  * Copyright © 2009-2014 Cisco Systems, Inc.  All rights reserved.
- * Copyright © 2015 Intel, Inc.  All rights reserved.
+ * Copyright © 2015 Intel Corporation.  All rights reserved.
  * Copyright © 2010 IBM
  * See COPYING in top-level directory.
  */

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016 Intel Inc. All rights reserved
+# Copyright (c) 2016 Intel Corporation. All rights reserved
 #
 """create event view
 

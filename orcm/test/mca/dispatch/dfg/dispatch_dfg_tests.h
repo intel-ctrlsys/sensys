@@ -1,4 +1,4 @@
-/* Copyright (c) 2015      Intel, Inc. All rights reserved.*/
+/* Copyright (c) 2015      Intel Corporation. All rights reserved.*/
 
 #ifndef GREI_ORCM_TEST_MCA_EVGEN_SAEG_EVGEN_SAEG_TEST_H
 #define GREI_ORCM_TEST_MCA_EVGEN_SAEG_EVGEN_SAEG_TEST_H

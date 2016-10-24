@@ -1,4 +1,4 @@
-/* * Copyright (c) 2015      Intel, Inc. All rights reserved.*/
+/* * Copyright (c) 2015      Intel Corporation. All rights reserved.*/
 
 #include "dispatch_dfg_tests.h"
 #include <stdio.h>

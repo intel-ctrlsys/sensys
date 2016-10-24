@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2012-2013 Los Alamos National Security, Inc. All rights reserved.
- * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016      Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  * 
  * Additional copyrights may follow

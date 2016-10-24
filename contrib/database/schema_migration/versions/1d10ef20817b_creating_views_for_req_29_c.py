@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015 Intel Inc. All rights reserved
+# Copyright (c) 2015 Intel Corporation. All rights reserved
 #
 """Creating views for octl query command (data_sensors_view, syslog_view, nodes_idle_time_view)
 

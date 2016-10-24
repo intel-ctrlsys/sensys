@@ -1,7 +1,8 @@
 dnl -*- shell-script -*-
 dnl
 dnl Copyright (c) 2013-2014 Cisco Systems, Inc.  All rights reserved.
-dnl Copyright (c) 2014      Intel, Inc. All rights reserved.
+dnl Copyright (c) 2014      Intel Corporation. All rights reserved.
+dnl Copyright (c) 2016      Intel Corporation. All rights reserved.
 dnl $COPYRIGHT$
 dnl
 dnl Additional copyrights may follow

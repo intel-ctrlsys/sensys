@@ -1,5 +1,6 @@
 #
-# Copyright (c) 2015  Intel, Inc. All rights reserved.
+# Copyright (c) 2015  Intel Corporation. All rights reserved.
+# Copyright (c) 2016      Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow

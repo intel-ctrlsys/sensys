@@ -1,7 +1,7 @@
 #
 # Copyright (c) TBD
 #
-# Copyright (c) 2014      Intel, Inc. All rights reserved.
+# Copyright (c) 2014      Intel Corporation. All rights reserved.
 # 
 # Additional copyrights may follow
 # 

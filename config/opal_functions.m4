@@ -13,10 +13,11 @@ dnl                         All rights reserved.
 dnl Copyright (c) 2007      Sun Microsystems, Inc.  All rights reserved.
 dnl Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
 dnl Copyright (c) 2009-2015 Cisco Systems, Inc.  All rights reserved.
-dnl Copyright (c) 2014      Intel, Inc. All rights reserved.
+dnl Copyright (c) 2014      Intel Corporation. All rights reserved.
 dnl Copyright (c) 2015      Research Organization for Information Science
 dnl                         and Technology (RIST). All rights reserved.
 dnl
+dnl Copyright (c) 2016      Intel Corporation. All rights reserved.
 dnl $COPYRIGHT$
 dnl
 dnl Additional copyrights may follow

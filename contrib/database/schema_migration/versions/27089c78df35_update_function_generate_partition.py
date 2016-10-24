@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016 Intel Inc. All rights reserved
+# Copyright (c) 2016 Intel Corporation. All rights reserved
 #
 """Updated generate_partition_triggers to correctly generate INSERT statement
 Updated trigger handler to return the new data to support INSERT RETURNING syntax

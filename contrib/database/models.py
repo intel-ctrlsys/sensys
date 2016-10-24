@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2016 Intel Inc. All rights reserved
+# Copyright (c) 2015-2016 Intel Corporation. All rights reserved
 #
 """This module contains a set of classes that used by SQLAlchemy for
 Object Relational Mapper (ORM)

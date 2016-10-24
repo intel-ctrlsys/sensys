@@ -1,7 +1,8 @@
 dnl -*- shell-script -*-
 dnl
-dnl Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
+dnl Copyright (c) 2013-2016 Intel Corporation.  All rights reserved.
 dnl
+dnl Copyright (c) 2016      Intel Corporation. All rights reserved.
 dnl $COPYRIGHT$
 dnl
 dnl Additional copyrights may follow

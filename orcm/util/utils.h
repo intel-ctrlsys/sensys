@@ -181,4 +181,11 @@ ORCM_DECLSPEC void orcm_util_release_nested_orcm_value_list_item(orcm_value_t **
 ORCM_DECLSPEC void orcm_util_release_nested_orcm_cfgi_xml_parser_t_item(orcm_cfgi_xml_parser_t *item);
 ORCM_DECLSPEC void orcm_util_release_nested_orcm_cfgi_xml_parser_t_list(opal_list_t *list);
 
+ORCM_DECLSPEC int** orcm_util_alloc_2d_int_array(int row, int col);
+ORCM_DECLSPEC void orcm_util_release_2d_int_array(int **array, int row);
+
+/* convert a string (str) to integer (num), if the conversion succeeded, return true;
+ * otherwise return false. The conversion would fail if the input string is invalid or the number
+ * is out of range: [INT_MIN, INT_MAX] */
+ORCM_DECLSPEC bool orcm_util_convert_str_to_int(const char *str, int *num);
 #endif

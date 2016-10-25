@@ -20,7 +20,8 @@
 #include "opal/dss/dss_types.h"
 
 #include "orcm/mca/db/base/base.h"
-
+#include "opal/runtime/opal_progress_threads.h"
+#include "orcm/util/utils.h"
 
 static void process_open(int fd, short args, void *cbdata)
 {
@@ -67,6 +68,7 @@ static void process_open(int fd, short args, void *cbdata)
                 hdl->component = component;
                 hdl->module = mod;
                 index = opal_pointer_array_add(&orcm_db_base.handles, hdl);
+                req->dbhandle = index;
                 if (NULL != req->cbfunc) {
                     req->cbfunc(index, ORCM_SUCCESS, req->input, NULL,
                                 req->cbdata);
@@ -86,28 +88,178 @@ static void process_open(int fd, short args, void *cbdata)
     OBJ_RELEASE(req);
 }
 
+static void enqueue_request(opal_event_base_t *event_base, orcm_db_request_t *req,
+                            void(*func)(int, short, void*))
+{
+    opal_event_set(event_base, &req->ev, -1, OPAL_EV_WRITE, func, req);
+    opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
+    opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
+}
+
+static orcm_db_request_t* make_an_open_request(char *name, opal_list_t *properties,
+                                               orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    orcm_db_request_t *req = OBJ_NEW(orcm_db_request_t);
+    req->primary_key = name;
+    req->input = properties;
+    req->cbfunc = cbfunc;
+    req->cbdata = cbdata;
+    return req;
+}
+
 void orcm_db_base_open(char *name,
                        opal_list_t *properties,
                        orcm_db_callback_fn_t cbfunc,
                        void *cbdata)
 {
-    orcm_db_request_t *req;
-
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orcm_db_request_t);
-    /* transfer the name in the primary key */
-    req->primary_key = name;
-    req->input = properties;
-    req->cbfunc = cbfunc;
-    req->cbdata = cbdata;
-    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
-                   OPAL_EV_WRITE,
-                   process_open, req);
-    opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
-    opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
+    orcm_db_request_t *req = make_an_open_request(name, properties, cbfunc, cbdata);
+    enqueue_request(orcm_db_base.ev_base, req, process_open);
+}
+
+static opal_event_base_t* create_event_thread(int handle_id)
+{
+    char *thread_name = make_thread_name(handle_id);
+    opal_event_base_t* event_base = opal_progress_thread_init(thread_name);
+    SAFEFREE(thread_name);
+    return event_base;
+}
+
+static int create_a_handle(orcm_db_request_t *req)
+{
+    orcm_db_handle_t *handle = NULL;
+    process_open(0, 0, req);
+    if (NULL != (handle = (orcm_db_handle_t*)
+        opal_pointer_array_get_item(&orcm_db_base.handles, req->dbhandle))) {
+        handle->ev_base = create_event_thread(req->dbhandle);
+    }
+    return req->dbhandle;
+}
+
+static void remove_component_element(orcm_db_request_t *req)
+{
+    opal_value_t *kv = NULL;
+    opal_value_t *next_kv = NULL;
+    OPAL_LIST_FOREACH_SAFE(kv, next_kv, req->input, opal_value_t) {
+        if (0 == strncmp(kv->key, "components", strlen(kv->key) + 1)) {
+            opal_list_remove_item(req->input, &kv->super);
+            OBJ_RELEASE(kv);
+            break;
+        }
+    }
+}
+
+static void add_component_element(opal_list_t *list, char *storage)
+{
+    opal_value_t *kv = orcm_util_load_opal_value("components", storage, OPAL_STRING);
+    if (NULL != kv) {
+        opal_list_append(list, (opal_list_item_t*)kv);
+    }
+}
+
+static void append_storage_type(orcm_db_request_t *req, int index)
+{
+    if (NULL != orcm_db_base.storages) {
+        if (NULL == req->input) {
+            req->input = OBJ_NEW(opal_list_t);
+        } else {
+            remove_component_element(req);
+        }
+        add_component_element(req->input, orcm_db_base.storages[index]);
+    }
+    if (NULL != req->cbfunc && NULL != req->input) {
+        OBJ_RETAIN(req->input);
+    }
+}
+
+static void create_handles(orcm_db_bucket_t *bucket, orcm_db_request_t *req)
+{
+    int thread_id;
+    int storage_id;
+    req->dbhandle = -1;
+    for (thread_id = 0; thread_id < bucket->num_threads; ++thread_id) {
+        for (storage_id = 0; storage_id < orcm_db_base.num_storage; ++storage_id) {
+            append_storage_type(req, storage_id);
+            OBJ_RETAIN(req);
+            bucket->handle_ids[thread_id][storage_id] = create_a_handle(req);
+            req->dbhandle = -1;
+        }
+    }
+}
+
+static int get_data_type_index(orcm_db_data_type_t data_type)
+{
+    int index = 0;
+    if (ORCM_DB_EVENT_DATA == data_type) {
+        index = 1;
+    } else if (ORCM_DB_INVENTORY_DATA == data_type) {
+        index = 2;
+    } else if (ORCM_DB_DIAG_DATA == data_type) {
+        index = 3;
+    }
+    return index;
+}
+
+static orcm_db_bucket_t* create_bucket(orcm_db_data_type_t data_type)
+{
+    int index = get_data_type_index(data_type);
+    orcm_db_bucket_t *bucket = OBJ_NEW(orcm_db_bucket_t);
+    bucket->num_threads = orcm_db_base.num_threads[index];
+    if (NULL == (bucket->handle_ids = orcm_util_alloc_2d_int_array(
+                 orcm_db_base.num_threads[index], orcm_db_base.num_storage))) {
+        OBJ_RELEASE(bucket);
+    }
+    return bucket;
+}
+
+static void clean_data(orcm_db_callback_fn_t cbfunc,
+                       int status, opal_list_t *properties, void *cbdata)
+{
+    if (NULL != cbfunc) {
+        cbfunc(-1, status, properties, NULL, cbdata);
+    }
+}
+
+static orcm_db_bucket_t* get_bucket(orcm_db_data_type_t data_type)
+{
+    orcm_db_bucket_t *bucket = NULL;
+    opal_hash_table_get_value_uint32(orcm_db_base.buckets, data_type, (void**)&bucket);
+    return bucket;
+}
+
+static orcm_db_bucket_t* check_or_create_bucket(orcm_db_data_type_t data_type,
+                                                opal_list_t *properties,
+                                                orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    orcm_db_bucket_t *bucket = get_bucket(data_type);
+    if (NULL != bucket) {
+        clean_data(cbfunc, ORCM_EXISTS, properties, cbdata);
+        return NULL;
+    }
+    bucket = create_bucket(data_type);
+    if (NULL == bucket) {
+        clean_data(cbfunc, ORCM_ERR_OUT_OF_RESOURCE, properties, cbdata);
+        return NULL;
+    }
+    return bucket;
+}
+
+void orcm_db_base_open_multi_thread_select(orcm_db_data_type_t data_type, opal_list_t *properties,
+                                           orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    orcm_db_request_t *req = NULL;
+    orcm_db_bucket_t *bucket = check_or_create_bucket(data_type, properties, cbfunc, cbdata);
+    if (NULL == bucket) {
+        return;
+    }
+    req = make_an_open_request(NULL, properties, cbfunc, cbdata);
+    create_handles(bucket, req);
+    SAFE_RELEASE(req->input);
+    OBJ_RELEASE(req);
+    opal_hash_table_set_value_uint32(orcm_db_base.buckets, data_type, bucket);
 }
 
 static void process_close(int fd, short args, void *cbdata)
@@ -145,27 +297,59 @@ callback_and_cleanup:
     OBJ_RELEASE(req);
 }
 
+static orcm_db_request_t* make_a_close_request(int dbhandle,
+                                               orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    orcm_db_request_t *req = OBJ_NEW(orcm_db_request_t);
+    req->dbhandle = dbhandle;
+    req->cbfunc = cbfunc;
+    req->cbdata = cbdata;
+    return req;
+}
+
 void orcm_db_base_close(int dbhandle,
                         orcm_db_callback_fn_t cbfunc,
                         void *cbdata)
 {
-    orcm_db_request_t *req;
-
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orcm_db_request_t);
-    req->dbhandle = dbhandle;
-    req->cbfunc = cbfunc;
-    req->cbdata = cbdata;
-    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
-                   OPAL_EV_WRITE,
-                   process_close, req);
-    opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
-    opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
+    orcm_db_request_t *req = make_a_close_request(dbhandle, cbfunc, cbdata);
+    enqueue_request(orcm_db_base.ev_base, req, process_close);
 }
 
+static bool enqueue_request_one_storage(int handle_id, orcm_db_request_t *req,
+                                        void(*func)(int, short, void*))
+{
+    orcm_db_handle_t *handle = (orcm_db_handle_t*)opal_pointer_array_get_item(&orcm_db_base.handles,
+                                                                              handle_id);
+    if (NULL == handle) {
+        return false;
+    }
+    enqueue_request(handle->ev_base, req, func);
+    return true;
+}
+
+void orcm_db_base_close_multi_thread_select(orcm_db_data_type_t data_type,
+                                            orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    int thread_id, storage_id, handle_id;
+    orcm_db_request_t *req = NULL;
+    orcm_db_bucket_t *bucket = get_bucket(data_type);
+    if (NULL == bucket) {
+        return;
+    }
+    for (thread_id = 0; thread_id < bucket->num_threads; ++thread_id) {
+        for (storage_id = 0; storage_id < orcm_db_base.num_storage; ++storage_id) {
+            handle_id = bucket->handle_ids[thread_id][storage_id];
+            if (0 <= handle_id) {
+                req = make_a_close_request(handle_id, cbfunc, cbdata);
+                enqueue_request_one_storage(handle_id, req, process_close);
+            }
+        }
+    }
+}
 
 static void process_store(int fd, short args, void *cbdata)
 {
@@ -255,6 +439,20 @@ callback_and_cleanup:
     OBJ_RELEASE(req);
 }
 
+static orcm_db_request_t* make_a_store_request(int dbhandle, orcm_db_data_type_t data_type,
+                                               opal_list_t *input, opal_list_t *ret,
+                                               orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    orcm_db_request_t *req = OBJ_NEW(orcm_db_request_t);
+    req->dbhandle = dbhandle;
+    req->data_type = data_type;
+    req->input = input;
+    req->output = ret;
+    req->cbfunc = cbfunc;
+    req->cbdata = cbdata;
+    return req;
+}
+
 void orcm_db_base_store_new(int dbhandle,
                             orcm_db_data_type_t data_type,
                             opal_list_t *input,
@@ -262,24 +460,49 @@ void orcm_db_base_store_new(int dbhandle,
                             orcm_db_callback_fn_t cbfunc,
                             void *cbdata)
 {
-    orcm_db_request_t *req;
-
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orcm_db_request_t);
-    req->dbhandle = dbhandle;
-    req->data_type = data_type;
-    req->input = input;
-    req->output = ret;
-    req->cbfunc = cbfunc;
-    req->cbdata = cbdata;
-    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
-                   OPAL_EV_WRITE,
-                   process_store_new, req);
-    opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
-    opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
+    orcm_db_request_t *req = make_a_store_request(dbhandle, data_type, input, ret, cbfunc, cbdata);
+    enqueue_request(orcm_db_base.ev_base, req, process_store_new);
+}
+
+static void store_a_request(int *handle_ids, orcm_db_data_type_t data_type,
+                            orcm_db_callback_fn_t cbfunc, opal_list_t* input,
+                            opal_list_t* ret, void* cbdata)
+{
+    orcm_db_request_t *req = NULL;
+    int storage_id = 0;
+    for (; storage_id < orcm_db_base.num_storage; ++storage_id) {
+        req = make_a_store_request(handle_ids[storage_id], data_type, input, ret, cbfunc, cbdata);
+        if (NULL != cbfunc && NULL != req->input) {
+            OBJ_RETAIN(req->input);
+        }
+        if (!enqueue_request_one_storage(handle_ids[storage_id], req, process_store_new)) {
+            SAFE_RELEASE(req->input);
+            OBJ_RELEASE(req);
+        }
+    }
+    SAFE_RELEASE(input);
+}
+
+int orcm_db_base_store_multi_thread_select(orcm_db_data_type_t data_type,
+                                           opal_list_t *input, opal_list_t *ret,
+                                           orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    orcm_db_bucket_t *bucket = get_bucket(data_type);
+    if (NULL == bucket) {
+        clean_data(cbfunc, ORCM_ERR_NOT_FOUND, input, cbdata);
+        return ORCM_ERR_NOT_FOUND;
+    }
+
+    /* round-robin to get the next thread that will serve the request */
+    bucket->current_thread_id = (bucket->current_thread_id + 1) % bucket->num_threads;
+
+    store_a_request(bucket->handle_ids[bucket->current_thread_id],
+                    data_type, cbfunc, input, ret, cbdata);
+    return bucket->current_thread_id;
 }
 
 static void process_record_data_samples(int fd, short args, void *cbdata)
@@ -512,25 +735,43 @@ callback_and_cleanup:
     OBJ_RELEASE(req);
 }
 
+static orcm_db_request_t *create_a_commit_request(int dbhandle,
+                                                  orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    orcm_db_request_t *req = OBJ_NEW(orcm_db_request_t);
+    req->dbhandle = dbhandle;
+    req->cbfunc = cbfunc;
+    req->cbdata = cbdata;
+    return req;
+}
+
 void orcm_db_base_commit(int dbhandle,
                          orcm_db_callback_fn_t cbfunc,
                          void *cbdata)
 {
-    orcm_db_request_t *req;
-
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orcm_db_request_t);
-    req->dbhandle = dbhandle;
-    req->cbfunc = cbfunc;
-    req->cbdata = cbdata;
-    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
-                   OPAL_EV_WRITE,
-                   process_commit, req);
-    opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
-    opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
+    orcm_db_request_t *req = create_a_commit_request(dbhandle, cbfunc, cbdata);
+    enqueue_request(orcm_db_base.ev_base, req, process_commit);
+}
+
+void orcm_db_base_commit_multi_thread_select(orcm_db_data_type_t data_type,
+                                             int thread_id,
+                                             orcm_db_callback_fn_t cbfunc,
+                                             void *cbdata)
+{
+    orcm_db_request_t *req = NULL;
+    int storage_id = 0;
+    orcm_db_bucket_t *bucket = get_bucket(data_type);
+    if (NULL == bucket) {
+        return;
+    }
+    for (; storage_id < orcm_db_base.num_storage; ++storage_id) {
+        req = create_a_commit_request(bucket->handle_ids[thread_id][storage_id], cbfunc, cbdata);
+        enqueue_request_one_storage(bucket->handle_ids[thread_id][storage_id], req, process_commit);
+    }
 }
 
 static void process_rollback(int fd, short args, void *cbdata)
@@ -563,25 +804,33 @@ callback_and_cleanup:
     OBJ_RELEASE(req);
 }
 
+static orcm_db_request_t *make_a_rollback_request(int dbhandle,
+                                                  orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    orcm_db_request_t *req = OBJ_NEW(orcm_db_request_t);
+    req->dbhandle = dbhandle;
+    req->cbfunc = cbfunc;
+    req->cbdata = cbdata;
+    return req;
+}
+
 void orcm_db_base_rollback(int dbhandle,
                            orcm_db_callback_fn_t cbfunc,
                            void *cbdata)
 {
-    orcm_db_request_t *req;
-
     /* push this request into our event_base
      * for processing to ensure nobody else is
      * using that dbhandle
      */
-    req = OBJ_NEW(orcm_db_request_t);
-    req->dbhandle = dbhandle;
-    req->cbfunc = cbfunc;
-    req->cbdata = cbdata;
-    opal_event_set(orcm_db_base.ev_base, &req->ev, -1,
-                   OPAL_EV_WRITE,
-                   process_rollback, req);
-    opal_event_set_priority(&req->ev, OPAL_EV_SYS_HI_PRI);
-    opal_event_active(&req->ev, OPAL_EV_WRITE, 1);
+    orcm_db_request_t *req = make_a_rollback_request(dbhandle, cbfunc, cbdata);
+    enqueue_request(orcm_db_base.ev_base, req, process_rollback);
+}
+
+void orcm_db_base_rollback_multi_thread_select(int dbhandle,
+                                               orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    orcm_db_request_t *req = make_a_rollback_request(dbhandle, cbfunc, cbdata);
+    enqueue_request_one_storage(dbhandle, req, process_rollback);
 }
 
 static void process_fetch(int fd, short args, void *cbdata)

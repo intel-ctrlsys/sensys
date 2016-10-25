@@ -21,7 +21,26 @@ void orcm_dispatch_tests_cleanup(void *cbdata)
     OBJ_RELEASE(analytics_event_data);
 }
 
-void orcm_dispatch_test_open(char *name, opal_list_t *properties,
+void orcm_dispatch_test_open(orcm_db_data_type_t data_type, opal_list_t *properties,
+                             orcm_db_callback_fn_t cbfunc, void *cbdata)
+{
+    opal_list_t *input_list;
+
+    input_list = OBJ_NEW(opal_list_t);
+
+    if (NULL == input_list) {
+        return;
+    }
+
+    if (NULL != cbfunc) {
+        cbfunc(1, 1, input_list, NULL, NULL);
+    }
+    if (NULL != cbfunc) {
+        cbfunc(1, 0, NULL, NULL, NULL);
+    }
+}
+
+void orcm_dispatch_test_close(orcm_db_data_type_t data_type,
                               orcm_db_callback_fn_t cbfunc, void *cbdata)
 {
     opal_list_t *input_list;
@@ -38,29 +57,11 @@ void orcm_dispatch_test_open(char *name, opal_list_t *properties,
     if (NULL != cbfunc) {
         cbfunc(1, 0, NULL, NULL, NULL);
     }
-}
-
-void orcm_dispatch_test_close(int dbhandle, orcm_db_callback_fn_t cbfunc, void *cbdata)
-{
-    opal_list_t *input_list;
-
-    input_list = OBJ_NEW(opal_list_t);
-
-    if (NULL == input_list) {
-        return;
-    }
-
-    if (NULL != cbfunc) {
-        cbfunc(1, 1, input_list, NULL, NULL);
-    }
-    if (NULL != cbfunc) {
-        cbfunc(1, 0, NULL, NULL, NULL);
-    }
 
 }
 
-void orcm_dispatch_test_store_new(int dbhandle, orcm_db_data_type_t data_type, opal_list_t *input,
-                                   opal_list_t *ret, orcm_db_callback_fn_t cbfunc, void *cbdata)
+int orcm_dispatch_test_store_new(orcm_db_data_type_t data_type, opal_list_t *input,
+                                 opal_list_t *ret, orcm_db_callback_fn_t cbfunc, void *cbdata)
 {
 
     if (NULL != cbfunc) {
@@ -69,21 +70,21 @@ void orcm_dispatch_test_store_new(int dbhandle, orcm_db_data_type_t data_type, o
     if (NULL != cbfunc) {
         cbfunc(1, 0, input, NULL, NULL);
     }
-
+    return 0;
 }
 
 void orcm_dispatch_test_setup()
 {
-    orcm_db.open =  orcm_dispatch_test_open;
-    orcm_db.close = orcm_dispatch_test_close;
-    orcm_db.store_new = orcm_dispatch_test_store_new;
+    orcm_db.open_multi_thread_select =  orcm_dispatch_test_open;
+    orcm_db.close_multi_thread_select = orcm_dispatch_test_close;
+    orcm_db.store_multi_thread_select = orcm_dispatch_test_store_new;
 }
 
 void orcm_dispatch_test_tear_down()
 {
-    orcm_db.open =  orcm_db_base_open;
-    orcm_db.close = orcm_db_base_close;
-    orcm_db.store_new = orcm_db_base_store_new;
+    orcm_db.open_multi_thread_select =  orcm_db_base_open_multi_thread_select;
+    orcm_db.close_multi_thread_select = orcm_db_base_close_multi_thread_select;
+    orcm_db.store_multi_thread_select = orcm_db_base_store_multi_thread_select;
 }
 
 

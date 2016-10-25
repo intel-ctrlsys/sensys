@@ -567,14 +567,12 @@ static int orcmd_init(void)
         /* database */
         if (ORTE_SUCCESS != (ret = mca_base_framework_open(&orcm_db_base_framework, 0))) {
             ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&buf);
             error = "orcm_db_base_open";
             goto error;
         }
         /* always restrict daemons to local database components */
         if (ORTE_SUCCESS != (ret = orcm_db_base_select())) {
             ORTE_ERROR_LOG(ret);
-            OBJ_DESTRUCT(&buf);
             error = "orcm_db_base_select";
             goto error;
         }

@@ -65,76 +65,50 @@ orcm_dispatch_base_module_t orcm_dispatch_dfg_module = {
 };
 
 /* local variables */
-static int env_dbhandle = -1;
-static int event_dbhandle = -1;
-static int env_db_commit_count = 0;
+static int env_db_commit_count[MAX_NUM_THREAD] = {0};
 
-static void dfg_env_db_open_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
-                                    void *cbdata)
+static void dfg_env_db_open_cbfunc(int dbh, int status, opal_list_t *input_list,
+                                   opal_list_t *output_list, void *cbdata)
 {
-    if (0 == status) {
-        env_dbhandle = dbh;
-    } else {
+    if (0 != status) {
         OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
                              "%s dispatch:dfg DB env open operation failed",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     }
-
-    if (NULL != input_list) {
-        OBJ_RELEASE(input_list);
-    }
-
+    SAFE_RELEASE(input_list);
 }
 
-static void dfg_event_db_open_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
-                                      void *cbdata)
+static void dfg_event_db_open_cbfunc(int dbh, int status, opal_list_t *input_list,
+                                     opal_list_t *output_list, void *cbdata)
 {
-    if (0 == status) {
-        event_dbhandle = dbh;
-    } else {
+    if (0 != status) {
         OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
                              "%s dispatch:dfg DB event open operation failed",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     }
-
-    if (NULL != input_list) {
-        OBJ_RELEASE(input_list);
-    }
-
+    SAFE_RELEASE(input_list);
 }
 
-static void dfg_data_cbfunc(int dbh, int status, opal_list_t *input_list, opal_list_t *output_list,
-                             void *cbdata)
+static void dfg_data_cbfunc(int dbh, int status, opal_list_t *input_list,
+                            opal_list_t *output_list, void *cbdata)
 {
-    if (NULL != input_list) {
-        OBJ_RELEASE(input_list);
-    }
-
+    SAFE_RELEASE(input_list);
 }
 
 static opal_list_t* dfg_init_env_dbhandle_commit_rate(void)
 {
-    orcm_value_t *attribute;
-    opal_list_t *props = NULL; /* DB Attributes list */
+    opal_list_t *props = OBJ_NEW(opal_list_t); /* DB Attributes list */
+    orcm_value_t *attribute = OBJ_NEW(orcm_value_t);
 
-    props = OBJ_NEW(opal_list_t);
-
-    if (NULL != props) {
-        attribute = OBJ_NEW(orcm_value_t);
-        if (NULL != attribute) {
-            attribute->value.key = strdup("autocommit");
-            attribute->value.type = OPAL_BOOL;
-            if (orcm_dispatch_base.sensor_db_commit_rate > 1) {
-                attribute->value.data.flag = false; /* Disable Auto commit/Enable grouped commits */
-            } else {
-                attribute->value.data.flag = true; /* Enable Auto commit/Disable grouped commits */
-            }
-            opal_list_append(props, (opal_list_item_t *)attribute);
-        }
-        else {
-            OBJ_RELEASE(props);
-        }
+    attribute->value.key = strdup("autocommit");
+    attribute->value.type = OPAL_BOOL;
+    if (1 < orcm_dispatch_base.sensor_db_commit_rate) {
+        attribute->value.data.flag = false; /* Disable Auto commit/Enable grouped commits */
+    } else {
+        attribute->value.data.flag = true; /* Enable Auto commit/Disable grouped commits */
     }
+    opal_list_append(props, (opal_list_item_t *)attribute);
+
     return props;
 }
 
@@ -145,37 +119,20 @@ static void dfg_init(void)
     OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
                          "%s dispatch:dfg init",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    if (0 > env_dbhandle) {
-        /* get a db handle for env data*/
-        props = dfg_init_env_dbhandle_commit_rate();
-        orcm_db.open("dfg_env", props, dfg_env_db_open_cbfunc, NULL);
-    }
 
-    if (0 > event_dbhandle) {
-        /* get a db handle for event data*/
-        orcm_db.open("dfg_event", NULL, dfg_event_db_open_cbfunc, NULL);
-    }
-
-    return;
+    /* get a db handle for env data*/
+    props = dfg_init_env_dbhandle_commit_rate();
+    orcm_db.open_multi_thread_select(ORCM_DB_ENV_DATA, props, dfg_env_db_open_cbfunc, NULL);
+    orcm_db.open_multi_thread_select(ORCM_DB_EVENT_DATA, NULL, dfg_event_db_open_cbfunc, NULL);
 }
 
 static void dfg_finalize(void)
 {
-
     OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
                          "%s dispatch:dfg finalize",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-
-    if (0 <= env_dbhandle) {
-        orcm_db.close(env_dbhandle, NULL, NULL);
-        env_dbhandle = -1;
-    }
-
-    if (0 <= event_dbhandle) {
-        orcm_db.close(event_dbhandle, NULL, NULL);
-        event_dbhandle = -1;
-    }
-    return;
+    orcm_db.close_multi_thread_select(ORCM_DB_ENV_DATA, NULL, NULL);
+    orcm_db.close_multi_thread_select(ORCM_DB_EVENT_DATA, NULL, NULL);
 }
 
 static opal_list_t* dfg_convert_event_data_to_list(orcm_ras_event_t *ecd)
@@ -231,40 +188,32 @@ static void dfg_env_data_commit_cb(int dbhandle, int status, opal_list_t *in,
                                     opal_list_t *out, void *cbdata) {
     if (ORCM_SUCCESS != status) {
         ORTE_ERROR_LOG(status);
-        orcm_db.rollback(dbhandle, NULL, NULL);
+        orcm_db.rollback_multi_thread_select(dbhandle, NULL, NULL);
     }
 }
 
-
 static void dfg_generate_database_event(opal_list_t *input_list, int data_type)
 {
-
-    if (ORCM_RAS_EVENT_SENSOR == data_type ) {
-        if (0 <= env_dbhandle) {
-            orcm_db.store_new(env_dbhandle, ORCM_DB_ENV_DATA, input_list, NULL, dfg_data_cbfunc, NULL);
-            if (orcm_dispatch_base.sensor_db_commit_rate > 1) {
-                env_db_commit_count++;
-                if (env_db_commit_count == orcm_dispatch_base.sensor_db_commit_rate) {
-                    orcm_db.commit(env_dbhandle, dfg_env_data_commit_cb, NULL);
-                    env_db_commit_count = 0;
-                }
-            }
-        }
-        else {
+    int thread_id = -1;
+    if (ORCM_RAS_EVENT_SENSOR == data_type) {
+        if (0 > (thread_id = orcm_db.store_multi_thread_select(ORCM_DB_ENV_DATA, input_list,
+                                                               NULL, dfg_data_cbfunc, NULL))) {
             OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
                                  "%s dispatch:dfg couldn't store env data as db handler isn't opened",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+        } else if (orcm_dispatch_base.sensor_db_commit_rate > 1) {
+            env_db_commit_count[thread_id]++;
+            if (orcm_dispatch_base.sensor_db_commit_rate == env_db_commit_count[thread_id]) {
+                orcm_db.commit_multi_thread_select(ORCM_DB_ENV_DATA,
+                                                   thread_id, dfg_env_data_commit_cb, NULL);
+                env_db_commit_count[thread_id] = 0;
+            }
         }
-    }
-    else {
-        if (0 <= event_dbhandle) {
-            orcm_db.store_new(event_dbhandle, ORCM_DB_EVENT_DATA, input_list, NULL, dfg_data_cbfunc, NULL);
-        }
-        else {
-            OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
-                                 "%s dispatch:dfg couldn't store event data as db handler isn't opened",
-                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-        }
+    } else if (0 > (thread_id = orcm_db.store_multi_thread_select(ORCM_DB_EVENT_DATA, input_list,
+                                                                  NULL, dfg_data_cbfunc, NULL))) {
+        OPAL_OUTPUT_VERBOSE((1, orcm_dispatch_base_framework.framework_output,
+                            "%s dispatch:dfg couldn't store event data as db handler isn't opened",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     }
 }
 

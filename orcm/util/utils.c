@@ -813,3 +813,57 @@ void orcm_util_release_nested_orcm_cfgi_xml_parser_t_list(opal_list_t *list)
         }
     }
 }
+
+int** orcm_util_alloc_2d_int_array(int row, int col)
+{
+    int **array = NULL;
+    int index = 0;
+    if (0 >= row || 0 >= col) {
+        return array;
+    }
+    if (NULL == (array = (int**)malloc(sizeof(int*) * row))) {
+        return array;
+    }
+    while (index < row && NULL != (array[index] = (int*)malloc(sizeof(int) * col))) {
+        index++;
+    }
+    if (index < row) {
+        orcm_util_release_2d_int_array(array, index);
+        return NULL;
+    }
+    return array;
+}
+
+void orcm_util_release_2d_int_array(int **array, int row)
+{
+    int index;
+    if (NULL != array) {
+        for (index = 0; index < row; index++) {
+            SAFEFREE(array[index]);
+        }
+        free(array);
+    }
+}
+
+bool orcm_util_convert_str_to_int(const char *str, int *num)
+{
+    errno = 0;
+    bool rc = true;
+    char *end = NULL;
+    long value = strtol(str, &end, 0);
+
+    /* check the overflow and underflow */
+    if ((ERANGE == errno && (LONG_MAX == value || LONG_MIN == value)) ||
+        (0 != errno && 0 == value)) {
+        rc = false;
+    } else if (str == end || '\0' != *end) { // check whether has non-digit character
+        rc = false;
+    } else if (value > INT_MAX || value < INT_MIN) { // check whether out of integer range
+        rc = false;
+    } else {
+        *num = (int)value;
+    }
+
+    errno = 0;
+    return rc;
+}

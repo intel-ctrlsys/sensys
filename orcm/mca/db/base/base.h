@@ -27,7 +27,7 @@
 #include "opal/class/opal_pointer_array.h"
 #include "opal/class/opal_bitmap.h"
 #include "opal/dss/dss.h"
-
+#include "opal/class/opal_hash_table.h"
 #include "orcm/mca/db/db.h"
 
 BEGIN_C_DECLS
@@ -44,6 +44,11 @@ typedef struct {
     opal_pointer_array_t handles;
     opal_event_base_t *ev_base;
     bool ev_base_active;
+    char *thread_counts;
+    int num_threads[NUM_DATA_TYPE];
+    char **storages;
+    int num_storage;
+    opal_hash_table_t *buckets;
 } orcm_db_base_t;
 
 typedef struct {
@@ -87,6 +92,7 @@ typedef struct {
     opal_object_t super;
     orcm_db_base_component_t *component;
     orcm_db_base_module_t *module;
+    opal_event_base_t *ev_base;
 } orcm_db_handle_t;
 OBJ_CLASS_DECLARATION(orcm_db_handle_t);
 
@@ -154,9 +160,18 @@ ORCM_DECLSPEC void orcm_db_base_record_diag_test(int dbhandle,
 ORCM_DECLSPEC void orcm_db_base_commit(int dbhandle,
                                        orcm_db_callback_fn_t cbfunc,
                                        void *cbdata);
+ORCM_DECLSPEC void orcm_db_base_commit_multi_thread_select(orcm_db_data_type_t data_type,
+                                                           int thread_id,
+                                                           orcm_db_callback_fn_t cbfunc,
+                                                           void *cbdata);
+
 ORCM_DECLSPEC void orcm_db_base_rollback(int dbhandle,
                                          orcm_db_callback_fn_t cbfunc,
                                          void *cbdata);
+ORCM_DECLSPEC void orcm_db_base_rollback_multi_thread_select(int dbhandle,
+                                                            orcm_db_callback_fn_t cbfunc,
+                                                            void *cbdata);
+
 ORCM_DECLSPEC void orcm_db_base_fetch(int dbhandle,
                                       const char *view,
                                       opal_list_t *filters,
@@ -169,6 +184,22 @@ ORCM_DECLSPEC void orcm_db_base_fetch_function(int dbhandle,
                                       opal_list_t *kvs,
                                       orcm_db_callback_fn_t cbfunc,
                                       void *cbdata);
+
+ORCM_DECLSPEC void orcm_db_base_open_multi_thread_select(orcm_db_data_type_t data_type,
+                                                         opal_list_t *properties,
+                                                         orcm_db_callback_fn_t cbfunc,
+                                                         void *cbdata);
+
+ORCM_DECLSPEC int orcm_db_base_store_multi_thread_select(orcm_db_data_type_t data_type,
+                                                         opal_list_t *input,
+                                                         opal_list_t *ret,
+                                                         orcm_db_callback_fn_t cbfunc,
+                                                         void *cbdata);
+
+ORCM_DECLSPEC void orcm_db_base_close_multi_thread_select(orcm_db_data_type_t data_type,
+                                                          orcm_db_callback_fn_t cbfunc,
+                                                          void *cbdata);
+
 ORCM_DECLSPEC int orcm_db_base_get_num_rows(int dbhandle,
                                             int rshandle,
                                             int *num_rows);
@@ -190,6 +221,8 @@ ORCM_DECLSPEC int orcm_util_find_items(const char *keys[],
                              opal_list_t *list,
                              opal_value_t *items[],
                              opal_bitmap_t *map);
+
+char* make_thread_name(int handle_id);
 
 END_C_DECLS
 

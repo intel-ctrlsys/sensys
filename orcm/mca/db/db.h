@@ -28,6 +28,8 @@
 
 #include "orcm/mca/mca.h"
 
+#define NUM_DATA_TYPE 4
+#define MAX_NUM_THREAD 10
 /**
  * DATABASE DESIGN
  *
@@ -81,6 +83,14 @@ typedef struct {
 } orcm_db_filter_t;
 OBJ_CLASS_DECLARATION(orcm_db_filter_t);
 
+typedef struct {
+    opal_object_t super;
+    int **handle_ids;
+    int current_thread_id;
+    int num_threads;
+} orcm_db_bucket_t;
+OBJ_CLASS_DECLARATION(orcm_db_bucket_t);
+
 /* callback function for async requests */
 typedef void (*orcm_db_callback_fn_t)(int dbhandle,
                                       int status,
@@ -131,6 +141,23 @@ typedef void (*orcm_db_base_API_open_fn_t)(char *name,
                                            void *cbdata);
 
 /*
+ * Open a database for multiple threads and multiple storage types
+ *
+ * Open a database for access (read, write, etc.). The request
+ * should have the type of data to be stored in db. Also, the type is used for the db
+ * to balance the loads on multiple threads. The
+ * request can also optionally provide a list of opal_value_t
+ * properties - this is where one might specify the name of
+ * the backend database, a URI for contacting it, the name of
+ * a particular table for request, etc.
+ */
+
+typedef void (*orcm_db_base_API_open_multi_thread_select_fn_t)(orcm_db_data_type_t data_type,
+                                                               opal_list_t *properties,
+                                                               orcm_db_callback_fn_t cbfunc,
+                                                               void *cbdata);
+
+/*
  * Close a database handle
  *
  * Close the specified database handle. This may or may not invoke
@@ -142,6 +169,17 @@ typedef void (*orcm_db_base_API_open_fn_t)(char *name,
 typedef void (*orcm_db_base_API_close_fn_t)(int dbhandle,
                                             orcm_db_callback_fn_t cbfunc,
                                             void *cbdata);
+
+/*
+ * Close all the database handles for a specific data type
+ *
+ * This may or may not invoke termination of a connection to a remote
+ * database or release of memory storage, depending on the precise implementation of the
+ * active database components.
+ */
+typedef void (*orcm_db_base_API_close_multi_thread_select_fn_t)(orcm_db_data_type_t data_type,
+                                                                orcm_db_callback_fn_t cbfunc,
+                                                                void *cbdata);
 
 /*
  * Store one or more data elements against a primary key.  The values are
@@ -178,6 +216,18 @@ typedef int (*orcm_db_base_module_store_new_fn_t)(
         orcm_db_data_type_t data_type,
         opal_list_t *input,
         opal_list_t *ret);
+
+/*
+ * Store one or more data elements against a primary key. The values are
+ * passed as a key-value list. The information regarding the number of threads,
+ * the number of types of data storage and the load balancing techniques among
+ * all the threads is transparent to the users.
+ */
+typedef int (*orcm_db_base_API_store_multi_thread_select_fn_t)(orcm_db_data_type_t data_type,
+                                                               opal_list_t *input,
+                                                               opal_list_t *ret,
+                                                               orcm_db_callback_fn_t cbfunc,
+                                                               void *cbdata);
 
 /*
  * Specialized API function for storing data samples from components from the
@@ -253,6 +303,11 @@ typedef int (*orcm_db_base_module_record_diag_test_fn_t)(
 typedef void (*orcm_db_base_API_commit_fn_t)(int dbhandle,
                                              orcm_db_callback_fn_t cbfunc,
                                              void *cbdata);
+typedef void (*orcm_db_base_API_commit_multi_thread_select_fn_t)(orcm_db_data_type_t data_tye,
+                                                                 int thread_id,
+                                                                 orcm_db_callback_fn_t cbfunc,
+                                                                 void *cbdata);
+
 typedef int (*orcm_db_base_module_commit_fn_t)(struct orcm_db_base_module_t *imod);
 
 /*
@@ -261,6 +316,10 @@ typedef int (*orcm_db_base_module_commit_fn_t)(struct orcm_db_base_module_t *imo
 typedef void (*orcm_db_base_API_rollback_fn_t)(int dbhandle,
                                                orcm_db_callback_fn_t cbfunc,
                                                void *cbdata);
+typedef void (*orcm_db_base_API_rollback_multi_thread_select_fn_t)(int dbhandle,
+                                                                   orcm_db_callback_fn_t cbfunc,
+                                                                   void *cbdata);
+
 typedef int (*orcm_db_base_module_rollback_fn_t)(struct orcm_db_base_module_t *imod);
 
 /*
@@ -365,21 +424,26 @@ struct orcm_db_base_module_t{
 typedef struct orcm_db_base_module_t orcm_db_base_module_t;
 
 typedef struct {
-    orcm_db_base_API_open_fn_t                 open;
-    orcm_db_base_API_close_fn_t                close;
-    orcm_db_base_API_store_fn_t                store;
-    orcm_db_base_API_store_new_fn_t            store_new;
-    orcm_db_base_API_record_data_samples_fn_t  record_data_samples;
-    orcm_db_base_API_update_node_features_fn_t update_node_features;
-    orcm_db_base_API_record_diag_test_fn_t     record_diag_test;
-    orcm_db_base_API_commit_fn_t               commit;
-    orcm_db_base_API_rollback_fn_t             rollback;
-    orcm_db_base_API_fetch_fn_t                fetch;
-    orcm_db_base_API_get_num_rows_fn_t         get_num_rows;
-    orcm_db_base_API_get_next_row_fn_t         get_next_row;
-    orcm_db_base_API_close_result_set_fn_t     close_result_set;
-    orcm_db_base_API_remove_fn_t               remove;
-    orcm_db_base_API_fetch_function_fn_t       fetch_function;
+    orcm_db_base_API_open_fn_t                             open;
+    orcm_db_base_API_close_fn_t                            close;
+    orcm_db_base_API_store_fn_t                            store;
+    orcm_db_base_API_store_new_fn_t                        store_new;
+    orcm_db_base_API_record_data_samples_fn_t              record_data_samples;
+    orcm_db_base_API_update_node_features_fn_t             update_node_features;
+    orcm_db_base_API_record_diag_test_fn_t                 record_diag_test;
+    orcm_db_base_API_commit_fn_t                           commit;
+    orcm_db_base_API_rollback_fn_t                         rollback;
+    orcm_db_base_API_fetch_fn_t                            fetch;
+    orcm_db_base_API_get_num_rows_fn_t                     get_num_rows;
+    orcm_db_base_API_get_next_row_fn_t                     get_next_row;
+    orcm_db_base_API_close_result_set_fn_t                 close_result_set;
+    orcm_db_base_API_remove_fn_t                           remove;
+    orcm_db_base_API_fetch_function_fn_t                   fetch_function;
+    orcm_db_base_API_open_multi_thread_select_fn_t         open_multi_thread_select;
+    orcm_db_base_API_store_multi_thread_select_fn_t        store_multi_thread_select;
+    orcm_db_base_API_close_multi_thread_select_fn_t        close_multi_thread_select;
+    orcm_db_base_API_commit_multi_thread_select_fn_t       commit_multi_thread_select;
+    orcm_db_base_API_rollback_multi_thread_select_fn_t     rollback_multi_thread_select;
 } orcm_db_API_module_t;
 
 

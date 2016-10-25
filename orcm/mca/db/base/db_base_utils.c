@@ -357,3 +357,10 @@ void tm_to_str_time_stamp(const struct tm *time, char *tbuf,
 {
     strftime(tbuf, size, "%F %T", time);
 }
+
+char* make_thread_name(int handle_id)
+{
+    char *thread_name = NULL;
+    asprintf(&thread_name, "db_%d", handle_id);
+    return thread_name;
+}

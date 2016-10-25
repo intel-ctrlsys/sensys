@@ -11,18 +11,19 @@
 #include "orcm/util/logical_group.h"
 #include "orte/util/regex.h"
 
-bool get_user_confirmation(void);
+bool get_user_confirmation(bool);
 
-bool get_user_confirmation()
+bool get_user_confirmation(bool add)
 {
     char ans;
     printf("The default config file will be overwritten.\n"
           "Are you sure you want to overwrite orcm-site.xml?(Y/N)(y/n)");
     scanf("%c", &ans);
     if('\n' == ans) {
-        printf("Logical Group not added to file\n"
-               "Please answer Y/y to write to default configuration file or\n"
-               "Restart octl with -l <filename> option to write to a different file\n");
+        printf("\nPlease answer Y/y to write to default configuration file\n");
+        if(add){
+            printf(" OR Restart octl with -l <filename> option to write to a different file\n");
+        }
         return false;
     }
     while('\n' != getchar())
@@ -31,8 +32,10 @@ bool get_user_confirmation()
         return true;
     }
     else {
-        printf("Logical Group not added to file\n"
-               "Restart octl with -l <filename> option to write to a different file\n");
+        printf("Logical group was not added/removed\n");
+        if(add) {
+            printf("Restart octl with -l <filename> option to write to a different file\n");
+        }
     }
     return false;
 }
@@ -56,7 +59,7 @@ int orcm_octl_logical_group_add(int argc, char **argv)
         return ORCM_ERR_BAD_PARAM;
     }
     if(NULL == getenv("ORCM_MCA_logical_group_config_file")){
-        save = get_user_confirmation();
+        save = get_user_confirmation(true);
     }
     if(save){
         if (ORCM_SUCCESS != (erri = orcm_logical_group_add(tag, regex, LOGICAL_GROUP.groups))) {
@@ -79,6 +82,7 @@ int orcm_octl_logical_group_remove(int argc, char **argv)
     char *tag = NULL;
     char *regex = NULL;
     char *err_str = NULL;
+    bool save = true;
 
     if (4 != argc) {
         orcm_octl_usage("grouping-remove", INVALID_USG);
@@ -86,24 +90,27 @@ int orcm_octl_logical_group_remove(int argc, char **argv)
     }
     tag = argv[2];
     regex = argv[3];
-
-    if (ORCM_SUCCESS != (erri = orcm_logical_group_remove(tag, regex, LOGICAL_GROUP.groups))) {
-        if (ORCM_ERR_NO_ANY_GROUP == erri ||
-            ORCM_ERR_GROUP_NOT_EXIST == erri || ORCM_ERR_NODE_NOT_EXIST == erri) {
-            orcm_err2str(erri, (const char**)(&err_str));
-            orcm_octl_error("grouping-remove", err_str);
-            erri = ORCM_ERR_BAD_PARAM;
+    if(NULL == getenv("ORCM_MCA_logical_group_config_file")){
+            save = get_user_confirmation(false);
+    }
+    if(save) {
+        if (ORCM_SUCCESS != (erri = orcm_logical_group_remove(tag, regex, LOGICAL_GROUP.groups))) {
+            if (ORCM_ERR_NO_ANY_GROUP == erri ||
+                ORCM_ERR_GROUP_NOT_EXIST == erri || ORCM_ERR_NODE_NOT_EXIST == erri) {
+                orcm_err2str(erri, (const char**)(&err_str));
+                orcm_octl_error("grouping-remove", err_str);
+                erri = ORCM_ERR_BAD_PARAM;
+            }
+            return erri;
         }
-        return erri;
+
+        if (ORCM_SUCCESS != (erri = orcm_logical_group_save_to_file(LOGICAL_GROUP.storage_filename,
+                                                                    LOGICAL_GROUP.groups))) {
+            return erri;
+        }
+
+        orcm_octl_info("grouping-success", "Remove");
     }
-
-    if (ORCM_SUCCESS != (erri = orcm_logical_group_save_to_file(LOGICAL_GROUP.storage_filename,
-                                                                LOGICAL_GROUP.groups))) {
-        return erri;
-    }
-
-    orcm_octl_info("grouping-success", "Remove");
-
     return erri;
 }
 

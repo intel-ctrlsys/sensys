@@ -366,7 +366,7 @@ static int get_inventory_list(int cmd, opal_list_t *filterlist, opal_list_t** re
     if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buffer,
                                                       ORCM_RML_TAG_ORCMD_FETCH,
                                                       orte_rml_send_callback, xfer))) {
-        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH);
         ORTE_ERROR_LOG(rc);
         goto inv_list_cleanup;
     }
@@ -374,7 +374,7 @@ static int get_inventory_list(int cmd, opal_list_t *filterlist, opal_list_t** re
     /* wait for status message */
     ORCM_WAIT_FOR_COMPLETION(xfer->active, ORCM_OCTL_WAIT_TIMEOUT, &rc);
     if (ORCM_SUCCESS != rc) {
-        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_SENSOR);
+        orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORCM_RML_TAG_ORCMD_FETCH);
         ORTE_ERROR_LOG(rc);
         goto inv_list_cleanup;
     }

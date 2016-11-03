@@ -400,7 +400,6 @@ TEST_F(ut_octl_tests, notifier_get_policy_negative_test_3)
 TEST_F(ut_octl_tests, negative_test_sensor_storage_1)
 {
     const char* cmdlist[] = {
-        "sensor",
         "store",
         "all",
         "dummy",
@@ -414,7 +413,6 @@ TEST_F(ut_octl_tests, negative_test_sensor_storage_1)
 TEST_F(ut_octl_tests, negative_test_sensor_storage_2)
 {
     const char* cmdlist[] = {
-        "sensor",
         "store",
         "all",
         "tn01",
@@ -427,7 +425,6 @@ TEST_F(ut_octl_tests, negative_test_sensor_storage_2)
 TEST_F(ut_octl_tests, negative_test_sensor_storage_3)
 {
     const char* cmdlist[] = {
-        "sensor",
         "store",
         "all",
         "",
@@ -440,7 +437,6 @@ TEST_F(ut_octl_tests, negative_test_sensor_storage_3)
 TEST_F(ut_octl_tests, negative_test_sensor_storage_4)
 {
     const char* cmdlist[] = {
-        "sensor",
         "store",
         "",
         "",
@@ -453,7 +449,6 @@ TEST_F(ut_octl_tests, negative_test_sensor_storage_4)
 TEST_F(ut_octl_tests, negative_test_sensor_storage_5)
 {
     const char* cmdlist[] = {
-        "sensor",
         "store",
         "all",
         "tn01,tn02",
@@ -467,7 +462,6 @@ TEST_F(ut_octl_tests, negative_test_sensor_storage_5)
 TEST_F(ut_octl_tests, negative_test_sensor_storage_6)
 {
     const char* cmdlist[] = {
-        "sensor",
         "store",
         "all",
         "tn01,tn02",
@@ -481,7 +475,6 @@ TEST_F(ut_octl_tests, negative_test_sensor_storage_6)
 TEST_F(ut_octl_tests, positive_test_sensor_storage_1)
 {
     const char* cmdlist[] = {
-        "sensor",
         "store",
         "all",
         "tn01",
@@ -494,7 +487,6 @@ TEST_F(ut_octl_tests, positive_test_sensor_storage_1)
 TEST_F(ut_octl_tests, positive_test_sensor_storage_2)
 {
     const char* cmdlist[] = {
-        "sensor",
         "store",
         "all",
         "tn01,tn02",

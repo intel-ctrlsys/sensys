@@ -680,8 +680,8 @@ static int orcm_octl_sensor_parse_nodelist(char **value, char ***nodelist)
 {
     int rc;
 
-    if (strcmp(value[3], "")) {
-        rc = orcm_logical_group_parse_array_string(value[3], nodelist);
+    if (strcmp(value[2], "")) {
+        rc = orcm_logical_group_parse_array_string(value[2], nodelist);
         if (ORCM_SUCCESS != rc) {
             orcm_octl_error("nodelist-extract");
             return ORCM_ERROR;
@@ -760,8 +760,8 @@ int orcm_octl_sensor_store(int storage_command, char** cmdlist)
     int node_index;
     int rc;
 
-    if (4 != opal_argv_count(cmdlist) || 0 > storage_command) {
-        orcm_octl_usage("sensor-store", INVALID_USG);
+    if (3 != opal_argv_count(cmdlist) || 0 > storage_command) {
+        orcm_octl_usage("store", INVALID_USG);
         return ORCM_ERR_BAD_PARAM;
     }
 
@@ -774,7 +774,7 @@ int orcm_octl_sensor_store(int storage_command, char** cmdlist)
     buf = OBJ_NEW(opal_buffer_t);
     if (NULL == buf) {
         SAFEFREE (nodelist);
-        orcm_octl_error("allocate-memory", "sensor store");
+        orcm_octl_error("allocate-memory", "store");
         return ORCM_ERR_OUT_OF_RESOURCE;
     }
 
@@ -782,7 +782,7 @@ int orcm_octl_sensor_store(int storage_command, char** cmdlist)
         xfer = OBJ_NEW(orte_rml_recv_cb_t);
         if (NULL == xfer) {
             SAFEFREE (nodelist);
-            orcm_octl_error("allocate-memory", "sensor store");
+            orcm_octl_error("allocate-memory", "store");
             OBJ_RELEASE(buf);
             return ORCM_ERR_OUT_OF_RESOURCE;
         }

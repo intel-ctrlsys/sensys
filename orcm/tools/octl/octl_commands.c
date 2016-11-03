@@ -301,10 +301,13 @@ static int run_cmd_sensor_get(char** cmdlist)
     return rc;
 }
 
-static int run_cmd_sensor_store(char** cmdlist)
+static int run_cmd_sensor_store(char** cmdlist, int sub_cmd)
 {
-    int rc = octl_cmd_to_enum(cmdlist[2]);
-    switch (rc) {
+    int rc = ORCM_SUCCESS;
+    if (cmd_null == sub_cmd || 2 > opal_argv_count(cmdlist)) {
+        return ORCM_ERR_TAKE_NEXT_OPTION;
+    }
+    switch (sub_cmd) {
         case cmd_none:
             rc = orcm_octl_sensor_store(0, cmdlist);
             break;
@@ -327,8 +330,7 @@ static int run_cmd_sensor_store(char** cmdlist)
 static int run_cmd_sensor(char** cmdlist, int sub_cmd)
 {
     int rc = ORCM_SUCCESS;
-    if (cmd_null == sub_cmd || ((cmd_set == sub_cmd || cmd_get == sub_cmd ||
-        cmd_store == sub_cmd) && 3 > opal_argv_count(cmdlist))) {
+    if (cmd_null == sub_cmd || ((cmd_set == sub_cmd || cmd_get == sub_cmd) && 3 > opal_argv_count(cmdlist))) {
         return ORCM_ERR_TAKE_NEXT_OPTION;
     }
     switch (sub_cmd) {
@@ -346,9 +348,6 @@ static int run_cmd_sensor(char** cmdlist, int sub_cmd)
             break;
         case cmd_reset:
             rc = orcm_octl_sensor_change_sampling(2, cmdlist);
-            break;
-        case cmd_store:
-            rc = run_cmd_sensor_store(cmdlist);
             break;
         default:
             rc = ORCM_ERR_OPERATION_UNSUPPORTED;
@@ -591,6 +590,9 @@ static int run_cmd(int argc, char *cmdlist[])
             break;
         case cmd_workflow:
             rc = run_cmd_workflow(cmdlist, sub_cmd);
+            break;
+        case cmd_store:
+            rc = run_cmd_sensor_store(cmdlist, sub_cmd);
             break;
         case cmd_query:
             rc = run_cmd_query(argc, cmdlist, sub_cmd);

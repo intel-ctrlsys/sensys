@@ -436,12 +436,12 @@ Example: sensor get sample-rate base c[2:1-10]
 sensor get inventory <nodelist>
 Example: sensor get inventory c[2:1-10]
 
-[usage:sensor-store]
-sensor store <command> <aggregators>
-Example: sensor store raw_data a[2:1-10]
-         sensor store event_data a[2:1-10]
-         sensor store all a[2:1-10]
-         sensor store none a[2:1-10]
+[usage:store]
+store <option> <aggregators>
+Example: store raw_data a[2:1-10]
+         store event_data a[2:1-10]
+         store all a[2:1-10]
+         store none a[2:1-10]
 
 [usage:power-set]
 power set <command> <value>

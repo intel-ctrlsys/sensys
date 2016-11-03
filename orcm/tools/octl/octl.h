@@ -69,12 +69,6 @@ static orcm_cli_init_t cli_init[] = {
     // sensor reset sampling subcommand
     { { "sensor", NULL }, "reset", 0, 2, "Reset sampling to service load defaults for the current "
     "datagroup or sensor for a node-list: reset <node-list> <datagroup|\"all\"[:{sensor_label|\"all\"}]>" },
-    // sensor storage policy commands
-    { { "sensor", NULL }, "store", 0, 0, "Sensor store Commands" },
-    { { "sensor", "store", NULL }, "raw_data", 0, 1, "store raw_data aggregators" },
-    { { "sensor", "store", NULL }, "event_data", 0, 1, "store event_data aggregators" },
-    { { "sensor", "store", NULL }, "all", 0, 1, "store all aggregators" },
-    { { "sensor", "store", NULL }, "none", 0, 1, "store none aggregators" },
 
     /****** notifier commands ******/
     { { NULL }, "notifier", 0, 0, "notifier" },
@@ -104,6 +98,13 @@ static orcm_cli_init_t cli_init[] = {
     { { "workflow", NULL }, "add", 0, 1, "workflow add file.txt [aggregators]" },
     { { "workflow", NULL }, "remove", 0, 2, "workflow remove aggregators workflow_name workflow_id" },
     { { "workflow", NULL }, "list", 0, 0, "workflow list aggregators" },
+
+    /****** store commands ******/
+    { { NULL }, "store", 0, 0, "Database storage commands" },
+    { { "store", NULL }, "raw_data", 0, 1, "store raw_data <aggregators>" },
+    { { "store", NULL }, "event_data", 0, 1, "store event_data <aggregators>" },
+    { { "store", NULL }, "all", 0, 1, "store all <aggregators>" },
+    { { "store", NULL }, "none", 0, 1, "store none <aggregators>" },
 
     /****** Query commands ******/
     { { NULL}, "query", 0, 0, "Query data from DB" },

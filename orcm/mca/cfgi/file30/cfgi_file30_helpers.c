@@ -472,6 +472,7 @@ int is_not_ignored(char* tag){
 int check_lex_tags_and_field(opal_list_t *root) {
     int role_count = 0;
     int aggs_count = 0;
+    int shost_count = 0;
     int ret = ORCM_SUCCESS;
 
     if (NULL == root){
@@ -479,7 +480,7 @@ int check_lex_tags_and_field(opal_list_t *root) {
         return ORCM_ERR_SILENT;
     }
 
-    ret = search_lex_tags_and_field(root, &role_count, &aggs_count);
+    ret = search_lex_tags_and_field(root, &role_count, &aggs_count, &shost_count);
 
     if (0 >= aggs_count) {
         opal_output(0,"ERROR: Need at least one aggregator configuration\n");
@@ -491,15 +492,21 @@ int check_lex_tags_and_field(opal_list_t *root) {
         return ORCM_ERR_BAD_PARAM;
     }
 
-    return ret;
+    if (0 >= shost_count) {
+        opal_output(0,"ERROR: Missing scheduler host (shost tag) configuration\n");
+        return ORCM_ERR_BAD_PARAM;
+    }
 
+    return ret;
 }
 
-int search_lex_tags_and_field(opal_list_t *root, int *role, int *aggs) {
+int search_lex_tags_and_field(opal_list_t *root, int *role, int *aggs, int  *shost) {
     orcm_value_t *ptr = NULL;
     int record_count = 0;
 
     OPAL_LIST_FOREACH(ptr, root, orcm_value_t) {
+
+        if (0 == strcasecmp(TXshost, ptr->TAG)) (*shost)++;
 
         if (0 == strcasecmp(TXrole, ptr->TAG)) {
             (*role)++;
@@ -524,7 +531,7 @@ int search_lex_tags_and_field(opal_list_t *root, int *role, int *aggs) {
         }
 
         if (OPAL_STRING != ptr->value.type && is_not_ignored(ptr->TAG)) {
-            if (ORCM_SUCCESS != search_lex_tags_and_field((opal_list_t*)ptr->SUBLIST, role, aggs)) {
+            if (ORCM_SUCCESS != search_lex_tags_and_field((opal_list_t*)ptr->SUBLIST, role, aggs, shost)) {
                 return ORCM_ERR_BAD_PARAM;
             }
         }

@@ -283,6 +283,13 @@ TEST_F(ut_cfgi30_tests, test_check_lex_tags_and_fields_no_aggs)
     xml_lexical_tester(file_name, ORCM_ERR_BAD_PARAM);
 }
 
+TEST_F(ut_cfgi30_tests, test_check_lex_tags_and_fields_no_shost)
+{
+    const char* file_name = set_name("no_shost_xml_file.xml");
+
+    xml_lexical_tester(file_name, ORCM_ERR_BAD_PARAM);
+}
+
 TEST_F(ut_cfgi30_tests, test_check_lex_tags_and_fields_valid_xml)
 {
     const char* file_name = set_name("valid_xml_file.xml");

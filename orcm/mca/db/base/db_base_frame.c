@@ -183,7 +183,7 @@ static int fill_thread_counts(char **thread_counts_str_array, int count)
     return rc;
 }
 
-static int orcm_db_base_init_thread_count(void)
+int orcm_db_base_init_thread_count(void)
 {
     char **thread_counts_array = opal_argv_split(orcm_db_base.thread_counts, ',');
     int count = opal_argv_count(thread_counts_array);
@@ -196,7 +196,7 @@ static int orcm_db_base_init_thread_count(void)
     return rc;
 }
 
-static int orcm_db_base_init_storages(void)
+int orcm_db_base_init_storages(void)
 {
     char *storages = getenv("ORCM_MCA_db");
     orcm_db_base.storages = opal_argv_split(storages, ',');
@@ -215,7 +215,6 @@ static int orcm_db_base_frame_open(mca_base_open_flag_t flags)
     OBJ_CONSTRUCT(&orcm_db_base.actives, opal_list_t);
     OBJ_CONSTRUCT(&orcm_db_base.handles, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_db_base.handles, 3, INT_MAX, 1);
-
     if (ORCM_ERR_BAD_PARAM == orcm_db_base_init_thread_count()) {
         return ORCM_ERR_BAD_PARAM;
     }
@@ -290,14 +289,14 @@ OBJ_CLASS_INSTANCE(orcm_db_filter_t,
                    opal_value_t,
                    filter_con, NULL);
 
-static void bucket_con(orcm_db_bucket_t *bucket)
+void bucket_con(orcm_db_bucket_t *bucket)
 {
     bucket->current_thread_id = -1;
     bucket->handle_ids = NULL;
     bucket->num_threads = 1;
 }
 
-static void bucket_des(orcm_db_bucket_t *bucket)
+void bucket_des(orcm_db_bucket_t *bucket)
 {
     bucket->current_thread_id = -1;
     orcm_util_release_2d_int_array(bucket->handle_ids, bucket->num_threads);

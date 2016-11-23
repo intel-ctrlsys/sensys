@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved. 
- * Copyright (c) 2012-2013 Los Alamos National Security, Inc.  All rights reserved. 
+ * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2013 Los Alamos National Security, Inc.  All rights reserved.
  * Copyright (c) 2013      Intel Corporation. All rights reserved.
  * Copyright (c) 2016      Intel Corporation. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -21,7 +21,7 @@
 
 #include "orcm/mca/db/base/base.h"
 
-static bool selected = false;
+bool orcm_db_base_selected = false;
 
 int orcm_db_base_select(void)
 {
@@ -30,12 +30,12 @@ int orcm_db_base_select(void)
     orcm_db_base_active_component_t *active, *ncomponent;
     bool inserted;
 
-    if (selected) {
+    if (orcm_db_base_selected) {
         /* ensure we don't do this twice */
         return ORCM_SUCCESS;
     }
-    selected = true;
-    
+    orcm_db_base_selected = true;
+
     /* Query all available components and ask if they have a module */
     OPAL_LIST_FOREACH(cli, &orcm_db_base_framework.framework_components, mca_base_component_list_item_t) {
         component = (orcm_db_base_component_t*)cli->cli_component;

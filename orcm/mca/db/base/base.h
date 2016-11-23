@@ -51,6 +51,8 @@ typedef struct {
     opal_hash_table_t *buckets;
 } orcm_db_base_t;
 
+extern orcm_db_base_t orcm_db_base;
+
 typedef struct {
     opal_list_item_t super;
     orcm_db_base_component_t *component;

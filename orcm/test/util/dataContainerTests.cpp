@@ -110,6 +110,19 @@ TEST_F(utDataContainer, putAndGetStrings) {
     EXPECT_EQ(0, stringProbe.compare(putAndGet(cnt, "label", "strings", stringProbe)) );
 }
 
+TEST_F(utDataContainer, concatContainers) {
+    dataContainer dc1;
+    dataContainer dc2;
+
+    dc1.put("test1",1,"");
+    dc2.put("test2",2,"");
+
+    dc1.concat(dc2);
+    EXPECT_EQ(1,dc1.getValue<int>("test1"));
+    EXPECT_EQ(2,dc1.getValue<int>("test2"));
+    dc1.clear();
+}
+
 TEST_F(utDataContainerIteration, eraseItem) {
     EXPECT_TRUE( cnt->containsKey(probeValue) );
     EXPECT_NO_THROW( cnt->erase(probeValue) );

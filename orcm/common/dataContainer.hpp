@@ -74,6 +74,14 @@ class dataContainer {
         void erase(const dataContainer::iterator& it);
         void erase(const std::string& key);
 
+        inline void concat(dataContainer &dc) {
+            (this->container).insert(dc.begin(), dc.end());
+        }
+
+        inline void clear() {
+            (this->container).clear();
+        }
+
         inline bool containsKey(const std::string& key) {
             return !(container.find(key) == container.end());
         };

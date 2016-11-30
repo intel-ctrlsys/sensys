@@ -47,7 +47,7 @@ private:
 
 public:
     IpmiTestSensor(std::string hostname) : ipmiSensorInterface(hostname) {};
-//    virtual ~IpmiTestSensor(){};
+    virtual ~IpmiTestSensor(){};
     void init();
     void sample(dataContainer &dc);
     void collect_inventory(dataContainer &dc);

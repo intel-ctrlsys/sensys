@@ -71,7 +71,6 @@ orcm_sensor_base_module_t orcm_sensor_ipmi_ts_module = {
 static orcm_sensor_sampler_t *ipmi_ts_sampler = NULL;
 orcm_sensor_ipmi_ts_t orcm_sensor_ipmi_ts;
 static struct ipmiSensorFactory *factory;
-static void generate_test_vector(opal_buffer_t *v);
 
 END_C_DECLS
 
@@ -307,7 +306,7 @@ static void ipmi_ts_log(opal_buffer_t *sample)
     opal_list_t* compute = NULL;
     opal_list_t *non_compute = NULL;
     dataContainerMap pluginsContent;
-    std::string prefix("ipmi_ts_");
+    std::string prefix("ipmi_ts");
     std::string data_group;
 
     /* unpack the host this came from */
@@ -331,15 +330,15 @@ static void ipmi_ts_log(opal_buffer_t *sample)
     /* fill with sensor plugins data */
     for (dataContainerMap::iterator it = pluginsContent.begin() ; it != pluginsContent.end() ; ++it){
 
-        /* fill the key list with hostname and data_group(user-defined sensor) */
+        /* fill the key list with hostname and data_group */
         key = OBJ_NEW(opal_list_t);
         ORCM_ON_NULL_GOTO(key,clean_sample_log);
 
-        rc = orcm_util_append_orcm_value(key,(char *)"hostname", hostname, OPAL_STRING, NULL);
+        /* fill bmc hostname*/
+        rc = orcm_util_append_orcm_value(key,(char *)"hostname",const_cast<char*>(it->first.c_str()), OPAL_STRING, NULL);
         ORCM_ON_FAILURE_GOTO(rc,clean_sample_log);
 
         data_group.append(prefix);
-        data_group.append(it->first);
         rc = orcm_util_append_orcm_value(key,(char *)"data_group",const_cast<char*>(data_group.c_str()), OPAL_STRING, NULL);
         ORCM_ON_FAILURE_GOTO(rc,clean_sample_log);
 

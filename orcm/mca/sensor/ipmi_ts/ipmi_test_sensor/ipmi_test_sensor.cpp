@@ -78,7 +78,7 @@ void IpmiTestSensor::addMetricsData(dataContainer &dc, const vector<metrics> &li
 void IpmiTestSensor::addStaticMetricsData(dataContainer &dc, const vector<staticMetrics> &list)
 {
     for (vector<staticMetrics>::const_iterator it = list.begin(); it != list.end(); ++it)
-        dc.put(it->label, "", it->value);
+        dc.put(it->label, it->value, "");
 }
 
 void IpmiTestSensor::sample(dataContainer &dc)
@@ -89,7 +89,6 @@ void IpmiTestSensor::sample(dataContainer &dc)
 
 void IpmiTestSensor::collect_inventory(dataContainer &dc)
 {
-    std::cout << "On finalize" << std::endl;
     addStaticMetricsData(dc, staticMetricsInventory);
     dc.put(hostname, hostname, hostname);
 }

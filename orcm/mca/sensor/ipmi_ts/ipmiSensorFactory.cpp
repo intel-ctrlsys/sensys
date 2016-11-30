@@ -9,7 +9,6 @@
 
 #include <set>
 #include "ipmiSensorFactory.hpp"
-#include <iostream>
 
 ipmiSensorFactory::ipmiSensorFactory(){
      this->ipmiPlugins["IpmiTestSensor"] =  getIpmiInstance<IpmiTestSensor>;

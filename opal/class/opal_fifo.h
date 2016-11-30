@@ -192,7 +192,7 @@ static inline opal_list_item_t *opal_fifo_push_atomic (opal_fifo_t *fifo,
     opal_atomic_wmb ();
 
     /* try to get the tail */
-    tail_item = opal_atomic_swap_ptr (&fifo->opal_fifo_tail.data.item, item);
+    tail_item = (opal_list_item_t*) opal_atomic_swap_ptr (&fifo->opal_fifo_tail.data.item, item);
 
     opal_atomic_wmb ();
 

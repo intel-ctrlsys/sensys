@@ -1,0 +1,239 @@
+/*
+ * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * $COPYRIGHT$
+ *
+ * Additional copyrights may follow
+ *
+ * $HEADER$
+ */
+
+#include "orcm/mca/sensor/ipmi_ts/ipmiHAL.h"
+#include "orcm/mca/sensor/ipmi_ts/ipmiutilDFx.h"
+#include "orcm/mca/sensor/ipmi_ts/ipmiutilAgent.h"
+
+
+#include <cstddef>
+#include <string>
+#include <sstream>
+#include <ctime>
+
+extern "C" {
+    #include "opal/class/opal_fifo.h"
+    #include "opal/mca/event/event.h"
+    #include "opal/runtime/opal_progress_threads.h"
+    #include "orcm/util/utils.h"
+}
+
+using namespace std;
+
+/*
+ * The following are OPAL objects, and they are being treated as static variables within this file
+ * Sadly, even if this is a bad practice, it is necessary given the legacy code we need to work with
+ */
+
+// Constants
+static const struct timeval CONSUMER_RATE = {0, 100};
+static const char THREAD_NAME[] = "ipmiHAL";
+
+// Threads and queues
+static opal_fifo_t* requestQueue = NULL;
+static opal_event_t *consumerHandler = NULL;
+static opal_event_base_t *ev_base = NULL;
+static opal_event_base_t **dispatchingThreads = NULL;
+static ipmiLibInterface *ptrToAgent = NULL;
+static int currentThread = 0;
+
+// Prototypes to functions
+static bool shouldUseDFx_();
+static int getNumberOfDispatchingAgents();
+static void processRequest_();
+void dispatchResponseToCallback_(int, short, void* ptr);
+
+// Aux data structure
+typedef struct
+{
+    opal_list_item_t super;
+    ipmiCommands command;
+    buffer data;
+    string bmc;
+    ipmiHAL_callback cbFunction;
+    void* cbData;
+    ipmiResponse_t response;
+    opal_event_t *handler;
+} request_data_t;
+
+
+ipmiHAL* ipmiHAL::s_instance = 0;
+ipmiLibInterface* ipmiHAL::agent = 0;
+
+ipmiHAL::ipmiHAL() : consuming(false)
+{
+    requestQueue = OBJ_NEW(opal_fifo_t);
+
+    if (shouldUseDFx_())
+        agent = new ipmiutilDFx();
+    else
+        agent = new ipmiutilAgent(); // TODO change this with the real object
+
+    ptrToAgent = agent;
+}
+
+ipmiHAL::~ipmiHAL()
+{
+    finalizeThreads_();
+    releaseHandlers_();
+
+    ORCM_RELEASE(requestQueue);
+
+    ptrToAgent = NULL;
+    delete agent;
+}
+
+void ipmiHAL::finalizeThreads_()
+{
+    opal_progress_thread_finalize(THREAD_NAME);
+    for (int i = 0; i < getNumberOfDispatchingAgents(); ++i)
+        opal_progress_thread_finalize(getThreadName_(i));
+    delete  dispatchingThreads;
+    dispatchingThreads = NULL;
+}
+
+void ipmiHAL::releaseHandlers_()
+{
+    if (NULL != consumerHandler)
+    {
+        opal_event_del(consumerHandler);
+        opal_event_free(consumerHandler);
+        consumerHandler = NULL;
+    }
+}
+
+ipmiHAL* ipmiHAL::getInstance()
+{
+    if (!s_instance) {
+        s_instance = new ipmiHAL();
+        if (!shouldUseDFx_())
+            s_instance->startAgents();
+    }
+    return s_instance;
+}
+
+void ipmiHAL::startAgents()
+{
+    initialize_();
+}
+
+void ipmiHAL::addRequest(ipmiCommands command, buffer data, string bmc, ipmiHAL_callback cbFunction, void* cbData)
+{
+    request_data_t *request_item = new request_data_t();
+    request_item->command = command;
+    request_item->data = data;
+    request_item->bmc = bmc;
+    request_item->cbFunction = cbFunction;
+    request_item->cbData = cbData;
+
+    opal_fifo_push(requestQueue, (opal_list_item_t*) request_item);
+}
+
+bool ipmiHAL::isQueueEmpty()
+{
+    return opal_fifo_is_empty(requestQueue);
+}
+
+void ipmiHAL::initialize_()
+{
+    initializeDispatchingAgents_();
+    initializeConsumerLoop_();
+    consuming = true;
+}
+
+void ipmiHAL::initializeConsumerLoop_()
+{
+    if (consuming)  // Already initialized, no need for initialization
+        return;
+
+    ev_base = opal_progress_thread_init(THREAD_NAME);
+    throwWhenNullPointer(ev_base);
+
+    consumerHandler = opal_event_evtimer_new(ev_base, processRequest_, NULL);
+    throwWhenNullPointer(consumerHandler);
+
+    processRequest_();
+}
+
+void ipmiHAL::terminateInstance()
+{
+    if (s_instance) {
+        delete s_instance;
+        s_instance = NULL;
+    }
+}
+
+void ipmiHAL::initializeDispatchingAgents_()
+{
+    if (consuming)
+        return;
+
+    int n = getNumberOfDispatchingAgents();
+    initializeDispatchThreads_(n);
+}
+
+const char* ipmiHAL::getThreadName_(int index)
+{
+    static string baseName("ipmiHAL_dispatcher_");
+    string number = static_cast<ostringstream*>( &(ostringstream() << index) )->str();
+    return (baseName + number).c_str();
+}
+
+void ipmiHAL::initializeDispatchThreads_(int n)
+{
+    dispatchingThreads = new opal_event_base_t*[n];
+    for (int i = 0; i < n; ++i)
+        dispatchingThreads[i] = opal_progress_thread_init(getThreadName_(i));
+}
+
+void ipmiHAL::throwWhenNullPointer(void* ptr)
+{
+    if (NULL == ptr)
+        throw ipmiHAL_objects::unableToAllocateObj();
+}
+
+/*
+ * Functions with legacy code:
+ */
+int getNumberOfDispatchingAgents()
+{
+    return 4; // TODO change this with the MCA parameter
+}
+
+bool shouldUseDFx_()
+{
+    return true; // TODO change this with the MCA parameter
+}
+
+void processRequest_()
+{
+    request_data_t *request_item = (request_data_t*) opal_fifo_pop(requestQueue);
+
+    if (NULL != request_item) {
+        request_item->response= ptrToAgent->sendCommand(request_item->command, request_item->data, request_item->bmc);
+        request_item->handler = opal_event_evtimer_new(dispatchingThreads[currentThread],
+                                                       dispatchResponseToCallback_,
+                                                       request_item);
+        opal_event_add(request_item->handler, &CONSUMER_RATE);
+        currentThread = (currentThread+1) % getNumberOfDispatchingAgents();
+    }
+
+    opal_event_add(consumerHandler, &CONSUMER_RATE);
+}
+
+void dispatchResponseToCallback_(int, short, void* ptr)
+{
+    request_data_t *request_item = (request_data_t *) ptr;
+    if (NULL != request_item) {
+        if (NULL != request_item->cbFunction)
+            request_item->cbFunction(request_item->bmc, request_item->response, request_item->cbData);
+        opal_event_free(request_item->handler);
+        delete request_item;
+    }
+}

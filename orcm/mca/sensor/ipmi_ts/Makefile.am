@@ -14,7 +14,14 @@ sources = \
         sensor_ipmi_ts.cpp \
         ipmiSensorFactory.h \
         ipmiSensorFactory.cpp \
-        ipmiSensorInterface.h
+        ipmiSensorInterface.h \
+	ipmiLibInterface.h \
+	ipmiHAL.h \
+	ipmiHAL.cpp \
+	ipmiutilAgent.h \
+	ipmiutilAgent.cpp \
+	ipmiutilDFx.h \
+	ipmiutilDFx.cpp
 
 # Make the output library in this directory, and name it either
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la

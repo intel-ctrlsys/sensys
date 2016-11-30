@@ -33,7 +33,11 @@ check_PROGRAMS = ipmi_ts_tests
 
 ipmi_ts_tests_SOURCES = \
     ipmi_ts_tests.h \
-    ipmi_ts_tests.cpp
+    ipmi_ts_tests.cpp \
+    ipmiHAL_tests.h \
+    ipmiHAL_tests.cpp \
+    ipmiutilAgent_tests.h \
+    ipmiutilAgent_tests.cpp
 
 MOCKING = \
     -Wl,--wrap=opal_progress_thread_init \

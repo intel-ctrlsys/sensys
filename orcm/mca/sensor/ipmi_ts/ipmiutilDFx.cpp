@@ -19,6 +19,7 @@ set<string> ipmiutilDFx::getBmcList()
     list.insert("fake_bmc_3");
     list.insert("fake_bmc_4");
     list.insert("fake_bmc_5");
+    return list;
 }
 
 ipmiResponse_t ipmiutilDFx::sendCommand(ipmiCommands command, const buffer& data, std::string bmc)

@@ -220,8 +220,13 @@ void processRequest_()
         request_item->handler = opal_event_evtimer_new(dispatchingThreads[currentThread],
                                                        dispatchResponseToCallback_,
                                                        request_item);
-        opal_event_add(request_item->handler, &CONSUMER_RATE);
-        currentThread = (currentThread+1) % getNumberOfDispatchingAgents();
+        if (NULL != request_item->handler) {
+            opal_event_add(request_item->handler, &CONSUMER_RATE);
+            currentThread = (currentThread+1) % getNumberOfDispatchingAgents();
+        } else {
+            delete request_item;
+            throw ipmiHAL_objects::unableToAllocateObj();
+        }
     }
 
     opal_event_add(consumerHandler, &CONSUMER_RATE);

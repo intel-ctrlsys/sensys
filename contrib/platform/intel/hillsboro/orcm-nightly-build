@@ -1,5 +1,6 @@
 LDFLAGS="-z noexecstack -z relro -z now -pie"
 CPPFLAGS="-fstack-protector -fPIE -fPIC -O2 -Wformat -Wformat-security"
+CFLAGS="-fstack-protector -fPIE -fPIC -O2 -Wformat -Wformat-security"
 enable_mpi=no
 enable_oshmem=no
 enable_sensors=yes

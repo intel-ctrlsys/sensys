@@ -53,17 +53,19 @@ MOCKING = \
     -Wl,--wrap=opal_dss_unpack \
     -Wl,--wrap=orcm_analytics_base_send_data \
     -Wl,--wrap=_ZN19dataContainerHelper12serializeMapERSt3mapISs13dataContainerSt4lessISsESaISt4pairIKSsS1_EEEPv \
-    -Wl,--wrap=_ZN19dataContainerHelper14deserializeMapERSt3mapISs13dataContainerSt4lessISsESaISt4pairIKSsS1_EEEPv
-
-
+    -Wl,--wrap=_ZN19dataContainerHelper14deserializeMapERSt3mapISs13dataContainerSt4lessISsESaISt4pairIKSsS1_EEEPv \
+    -Wl,--wrap=set_lan_options \
+    -Wl,--wrap=ipmi_cmd_mc \
+    -Wl,--wrap=ipmi_cmd \
+    -Wl,--wrap=get_sdr_cache \
+    -Wl,--wrap=find_sdr_next
 #
 # Libraries we depend on
 #
 
 LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a
 
-AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto  $(MOCKING) # -lipmiutil
-
+AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto -lipmiutil $(MOCKING)
 #
 # Preprocessor flags
 #

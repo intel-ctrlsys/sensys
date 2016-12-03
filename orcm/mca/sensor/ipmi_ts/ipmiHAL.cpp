@@ -58,7 +58,7 @@ typedef struct
     string bmc;
     ipmiHAL_callback cbFunction;
     void* cbData;
-    ipmiResponse_t response;
+    ipmiResponse response;
     opal_event_t *handler;
 } request_data_t;
 
@@ -216,7 +216,7 @@ void processRequest_()
     request_data_t *request_item = (request_data_t*) opal_fifo_pop(requestQueue);
 
     if (NULL != request_item) {
-        request_item->response= ptrToAgent->sendCommand(request_item->command, request_item->data, request_item->bmc);
+        request_item->response= ptrToAgent->sendCommand(request_item->command, &request_item->data, request_item->bmc);
         request_item->handler = opal_event_evtimer_new(dispatchingThreads[currentThread],
                                                        dispatchResponseToCallback_,
                                                        request_item);

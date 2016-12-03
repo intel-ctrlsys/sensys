@@ -13,27 +13,26 @@
 #include <set>
 #include <vector>
 #include <string>
+#include <map>
+
+#include "ipmiResponse.h"
 
 enum ipmiCommands {
-    DUMMY,
-    GET_FRU_INV_AREA
+    DUMMY = 0,
+    GETDEVICEID,
+    GETACPIPOWER,
+    READFRUDATA,
+    GETSENSORLIST,
 };
 
 typedef std::vector<unsigned char> buffer;
-
-typedef struct
-{
-    buffer response;
-    std::string errorMessage;
-    std::string completionMessage;
-} ipmiResponse_t;
 
 class ipmiLibInterface
 {
 public:
     virtual ~ipmiLibInterface() {};
     virtual std::set<std::string> getBmcList() = 0;
-    virtual ipmiResponse_t sendCommand(ipmiCommands command, const buffer& data, std::string bmc) = 0;
+    virtual ipmiResponse sendCommand(ipmiCommands command, buffer* data, std::string bmc) = 0;
 };
 
 #endif //IPMILIBINTERFACE_H

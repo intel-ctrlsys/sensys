@@ -16,6 +16,7 @@ sources = \
         ipmiSensorFactory.cpp \
         ipmiSensorInterface.h \
 	ipmiLibInterface.h \
+        ipmiResponse.h \
 	ipmiHAL.h \
 	ipmiHAL.cpp \
 	ipmiutilAgent.h \
@@ -23,7 +24,9 @@ sources = \
 	ipmiutilDFx.h \
 	ipmiutilDFx.cpp \
 	ipmiResponseFactory.hpp \
-	ipmiResponseFactory.cpp
+	ipmiResponseFactory.cpp \
+	ipmiutilAgent_exceptions.h \
+	ipmiutilAgent_exceptions.cpp
 
 # Make the output library in this directory, and name it either
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la
@@ -39,15 +42,19 @@ endif
 
 mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
+mca_sensor_ipmi_ts_la_CPPFLAGS = $(sensor_ipmi_ts_CPPFLAGS) $(ipmiutil_CPPFLAGS)
 mca_sensor_ipmi_ts_la_SOURCES = $(sources)
-mca_sensor_ipmi_ts_la_LDFLAGS = -module -avoid-version
+mca_sensor_ipmi_ts_la_LDFLAGS = -module -avoid-version $(ipmiutil_LDFLAGS)
 mca_sensor_ipmi_ts_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la \
-                                 $(top_builddir)/orcm/common/libsensysplugins_helper.la
+                               $(top_builddir)/orcm/common/libsensysplugins_helper.la \
+                               $(sensor_ipmi_ts_LIBS) $(ipmiutil_LIBS) -lm
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_sensor_ipmi_ts_la_SOURCES =$(sources)
-libmca_sensor_ipmi_ts_la_LDFLAGS = -module -avoid-version
+libmca_sensor_ipmi_ts_la_CPPFLAGS = $(sensor_ipmi_ts_CPPFLAGS) $(ipmiutil_CPPFLAGS)
+libmca_sensor_ipmi_ts_la_LDFLAGS = -module -avoid-version $(sensor_ipmi_LDFLAGS) $(ipmiutil_LDFLAGS)
 libmca_sensor_ipmi_ts_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la \
-                                    $(top_builddir)/orcm/common/libsensysplugins_helper.la
+                                  $(top_builddir)/orcm/common/libsensysplugins_helper.la \
+                                  $(sensor_ipmi_LIBS) $(ipmiutil_LIBS) -lm
 
 include ipmi_test_sensor/Makefile.am

@@ -22,4 +22,8 @@ AC_DEFUN([MCA_orcm_sensor_ipmi_ts_CONFIG], [
     AS_IF([test "$with_ipmi" != "no"],
           [$1],
           [$1])
+
+    AC_SUBST(sensor_ipmi_ts_CPPFLAGS)
+    AC_SUBST(sensor_ipmi_ts_LDFLAGS)
+    AC_SUBST(sensor_ipmi_ts_LIBS)
 ])dnl

@@ -10,7 +10,17 @@
 #ifndef IPMIUTILAGENT_H
 #define IPMIUTILAGENT_H
 
+#include <map>
+#include <stdexcept>
+
 #include "orcm/mca/sensor/ipmi_ts/ipmiLibInterface.h"
+#include "orcm/mca/sensor/ipmi_ts/ipmiutilAgent_exceptions.h"
+
+extern "C" {
+    typedef unsigned char uchar;
+    typedef unsigned short int ushort;
+    #include <../share/ipmiutil/isensor.h>
+};
 
 class ipmiutilAgent : public ipmiLibInterface
 {
@@ -21,7 +31,7 @@ public:
     ipmiutilAgent();
     ~ipmiutilAgent();
     std::set<std::string> getBmcList();
-    ipmiResponse_t sendCommand(ipmiCommands command, const buffer& data, std::string bmc);
+    ipmiResponse sendCommand(ipmiCommands command, buffer* data, std::string bmc);
 
     // For testing purposes only. Please do not use in production code
     ipmiutilAgent(std::string file);

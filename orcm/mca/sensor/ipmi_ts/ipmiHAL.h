@@ -15,7 +15,7 @@
 #include <string>
 #include <stdexcept>
 
-typedef void (*ipmiHAL_callback)(std::string bmc, ipmiResponse_t response, void* cbData);
+typedef void (*ipmiHAL_callback)(std::string bmc, ipmiResponse response, void* cbData);
 
 class ipmiHAL
 {

@@ -22,14 +22,24 @@ set<string> ipmiutilDFx::getBmcList()
     return list;
 }
 
-ipmiResponse_t ipmiutilDFx::sendCommand(ipmiCommands command, const buffer& data, std::string bmc)
+ipmiResponse ipmiutilDFx::sendCommand(ipmiCommands command, buffer* data, std::string bmc)
 {
-    ipmiResponse_t response;
+    if (GETSENSORLIST == command)
+        return ipmiResponse(getSensorList_(), "","",true);
 
-    buffer bmcResponse;
-    response.completionMessage = string();
-    response.errorMessage = string();
-    response.response = bmcResponse;
-
+    ipmiResponse response;
     return response;
+}
+
+map<unsigned short int, string> ipmiutilDFx::getSensorList_()
+{
+    map<unsigned short int, string> retValue;
+    retValue[0] = "fake_sensor_1";
+    retValue[1] = "fake_sensor_2";
+    retValue[2] = "fake_sensor_3";
+    retValue[3] = "fake_sensor_4";
+    retValue[4] = "fake_sensor_5";
+    retValue[5] = "fake_sensor_6";
+    return retValue;
+
 }

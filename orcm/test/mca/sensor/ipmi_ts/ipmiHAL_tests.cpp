@@ -47,9 +47,16 @@ double HAL::elapsedSecs(time_t startTime) {
     return difftime(now, startTime);
 }
 
-void HAL::cbFunc(string bmc, ipmiResponse_t response, void* cbData)
+void HAL::cbFunc(string bmc, ipmiResponse response, void* cbData)
 {
     HAL* ptr = (HAL*) cbData;
+    ptr->callbackFlag = true;
+}
+
+void HAL::cbFunc_sensorList(string bmc, ipmiResponse response, void* cbData)
+{
+    HAL* ptr = (HAL*) cbData;
+    ptr->isSensorListEmpty = response.getSensorList().empty();
     ptr->callbackFlag = true;
 }
 
@@ -95,6 +102,18 @@ TEST_F(HAL, callback_data_is_correctly_passed)
 
     HWobject->startAgents();
     assertTimedOut(callbackFlag, TIMEOUT, true);
+}
+
+TEST_F(HAL, request_sensor_list)
+{
+    EXPECT_TRUE(HWobject->isQueueEmpty());
+    EXPECT_TRUE(isSensorListEmpty);
+    ASSERT_NO_THROW(HWobject->addRequest(GETSENSORLIST, *emptyBuffer, bmc, cbFunc_sensorList, this));
+
+    HWobject->startAgents();
+    assertTimedOut(callbackFlag, TIMEOUT, true);
+
+    ASSERT_FALSE(isSensorListEmpty);
 }
 
 TEST_F(EXTRA, terminate_without_instance)

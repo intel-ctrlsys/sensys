@@ -14,11 +14,13 @@
 
 class ipmiutilDFx : public ipmiLibInterface
 {
+private:
+    std::map<unsigned short int, std::string> getSensorList_();
 public:
     ipmiutilDFx() {};
     ~ipmiutilDFx() {};
     std::set<std::string> getBmcList();
-    ipmiResponse_t sendCommand(ipmiCommands command, const buffer& data, std::string bmc);
+    ipmiResponse sendCommand(ipmiCommands command, buffer* data, std::string bmc);
 };
 
 #endif //IPMIUTILDFX_H

@@ -29,12 +29,15 @@ protected:
     std::string bmc;
     static const double TIMEOUT = 5; //sec
     bool callbackFlag = false;
+    bool isSensorListEmpty = true;
 
     virtual void SetUp();
     virtual void TearDown();
 
     static double elapsedSecs(time_t startTime);
-    static void cbFunc(std::string bmc, ipmiResponse_t response, void* cbData);
+    static void cbFunc(std::string bmc, ipmiResponse response, void* cbData);
+    static void cbFunc_sensorList(std::string bmc, ipmiResponse response, void* cbData);
+
 };
 
 class EXTRA : public testing::Test

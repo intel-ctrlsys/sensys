@@ -119,8 +119,8 @@ void dataContainerHelperTests::unpackKeyUnits(opal_buffer_t* buffer, char** key,
     EXPECT_EQ(OPAL_SUCCESS, opal_dss.unpack(buffer, units, &number, OPAL_STRING));
 }
 
-void dataContainerHelperTests::packKeyUnits(opal_buffer_t* buffer, char* key, char* units) {
-    int number = 1;
+void dataContainerHelperTests::packKeyUnits(opal_buffer_t* buffer, char** key, char** units) {
+    int32_t number = 1;
 
     EXPECT_EQ(OPAL_SUCCESS, opal_dss.pack(buffer, key, number, OPAL_STRING));
     EXPECT_EQ(OPAL_SUCCESS, opal_dss.pack(buffer, units, number, OPAL_STRING));
@@ -508,15 +508,16 @@ TEST_F(dataContainerHelperFullDataTypeTests, serializeAndDeserialize) {
 }
 
 TEST_F(dataContainerHelperFullDataTypeTests, invalidDataType) {
-    EXPECT_NO_THROW(dataContainerHelper::serialize(*cnt, buffer));
+    char *dummyLabel = strdup("-");
 
-    char dummyLabel[] = "-";
-    packKeyUnits(buffer, dummyLabel, dummyLabel);
+    EXPECT_NO_THROW(dataContainerHelper::serialize(*cnt, buffer));
+    packKeyUnits(buffer, &dummyLabel, &dummyLabel);
     packDummyUnsupportedData(buffer);
 
     serializationExceptionTester(OPAL_ERR_UNKNOWN_DATA_TYPE,
                     "Unsupported data type for dataContainer",
                     dataContainerHelper::deserialize);
+    free(dummyLabel);
 }
 
 TEST_F(dataContainerHelperTests, dataContainerToList_invalidList) {

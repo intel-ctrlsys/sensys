@@ -71,7 +71,7 @@ class dataContainerHelperTests : public testing::Test {
         opal_buffer_t* buffer;
 
 
-        void packKeyUnits(opal_buffer_t* buffer, char* key, char* units);
+        void packKeyUnits(opal_buffer_t* buffer, char** key, char** units);
         void unpackKeyUnits(opal_buffer_t* buffer, char** key, char** units);
         void packDummyUnsupportedData(opal_buffer_t* buffer);
         void checkPackedData(const dataContainer& cnt, dataContainer::iterator& it, opal_buffer_t* buffer);

@@ -8,6 +8,8 @@
  */
 
 #include "orcm/mca/sensor/ipmi_ts/ipmiSensorInterface.h"
+#ifndef ORCM_SENSOR_IPMI_TS_TEST_SENSOR_H
+#define ORCM_SENSOR_IPMI_TS_TEST_SENSOR_H
 
 namespace ipmi
 {
@@ -53,3 +55,5 @@ public:
     void collect_inventory(dataContainer &dc);
     void finalize();
 };
+
+#endif

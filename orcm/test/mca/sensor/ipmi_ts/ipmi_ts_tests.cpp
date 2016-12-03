@@ -62,21 +62,19 @@ bool ut_ipmi_ts_tests::use_pt_ = true;
 
 void ut_ipmi_ts_tests::SetUpTestCase()
 {
+    opal_init_test();
     mca_sensor_ipmi_ts_component.test = true;
 }
 
 void ut_ipmi_ts_tests::TearDownTestCase()
 {
+    mca_sensor_ipmi_ts_component.test = true;
 }
 
 void ut_ipmi_ts_tests::setFullMock(bool mockStatus, int nPlugins)
 {
-    mock_readdir = mockStatus;
     n_mocked_plugins = nPlugins;
     n_opal_calls = 0;
-    mock_dlopen = mockStatus;
-    mock_dlclose = mockStatus;
-    mock_dlsym = mockStatus;
     mock_plugin = mockStatus;
     mock_do_collect = mockStatus;
     mock_opal_pack = mockStatus;
@@ -107,6 +105,7 @@ TEST_F(ut_ipmi_ts_tests, init_without_plugins)
     EXPECT_NE(ORCM_SUCCESS, orcm_sensor_ipmi_ts_module.init());
     EXPECT_NE(0, (uint64_t)(mca_sensor_ipmi_ts_component.runtime_metrics));
     orcm_sensor_ipmi_ts_module.finalize();
+    mca_sensor_ipmi_ts_component.test = true;
 }
 
 
@@ -196,7 +195,6 @@ TEST_F(ut_ipmi_ts_tests, component_register_defaults)
     EXPECT_EQ(orcm_sensor_base.collect_metrics,mca_sensor_ipmi_ts_component.collect_metrics);
 }
 
-
 TEST_F(ut_ipmi_ts_sample, start_stop_progress_thread)
 {
     int sample_rate = 8;
@@ -212,38 +210,21 @@ TEST_F(ut_ipmi_ts_sample, start_stop_progress_thread)
     mca_sensor_ipmi_ts_component.sample_rate = 1;
 }
 
-
 void ut_ipmi_ts_init::SetUp()
 {
     setFullMock(false, 0);
     throwOnInit = false;
     throwOnSample = false;
     emptyContainer = false;
-    obj = ipmiSensorFactory::getInstance();
 }
 
 void ut_ipmi_ts_init::TearDown()
 {
-    obj->close();
 }
 
-
-TEST_F(ut_ipmi_ts_init, DISABLED_test_vector)
+TEST_F(ut_ipmi_ts_init, test_vector)
 {
-    EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_ts_module.init());
-}
-
-
-TEST_F(ut_ipmi_ts_init, fail_in_factory_init)
-{
-    setFullMock(true, N_MOCKED_PLUGINS);
-    throwOnInit = true;
-    EXPECT_EQ(ORCM_ERROR, orcm_sensor_ipmi_ts_module.init());
-}
-
-TEST_F(ut_ipmi_ts_init, DISABLED_loaded_plugins)
-{
-    setFullMock(true, N_MOCKED_PLUGINS);
+    mca_sensor_ipmi_ts_component.test = true;
     EXPECT_EQ(ORCM_SUCCESS, orcm_sensor_ipmi_ts_module.init());
 }
 
@@ -305,19 +286,7 @@ TEST_F(ut_ipmi_ts_sample, no_collect_metrics)
     EXPECT_EQ(0, (mca_sensor_ipmi_ts_component.diagnostics & 0x1));
 }
 
-TEST_F(ut_ipmi_ts_sample, DISABLED_exception_in_factory)
-{
-    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
-    mca_sensor_ipmi_ts_component.use_progress_thread = false;
-    throwOnSample = true;
-    emptyContainer = false;
-
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.sample(sampler);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
-TEST_F(ut_ipmi_ts_sample, DISABLED_exception_in_serializeMap)
+TEST_F(ut_ipmi_ts_sample, exception_in_serializeMap)
 {
     mock_opal_pack = true;
     opal_pack_expected_value = false;
@@ -365,7 +334,6 @@ TEST_F(ut_ipmi_ts_sample, udsensors_start_stop)
 void ut_ipmi_ts_log::SetUp()
 {
     setFullMock(false, 0);
-    opal_init_test();
     struct timeval current_time;
     const char *name = "ipmi_ts_test";
     const char *nodename = "localhost";
@@ -442,7 +410,7 @@ void ut_ipmi_ts_inventory::TearDown()
     setFullMock(false, 0);
 }
 
-TEST_F(ut_ipmi_ts_inventory, DISABLED_throw_on_sample_with_null_param)
+TEST_F(ut_ipmi_ts_inventory, throw_on_sample_with_null_param)
 {
     throwOnSample = true;
     testing::internal::CaptureStderr();
@@ -450,23 +418,15 @@ TEST_F(ut_ipmi_ts_inventory, DISABLED_throw_on_sample_with_null_param)
     EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }
 
-TEST_F(ut_ipmi_ts_inventory, DISABLED_with_null_param)
+TEST_F(ut_ipmi_ts_inventory, with_null_param)
 {
     testing::internal::CaptureStderr();
     orcm_sensor_ipmi_ts_module.inventory_collect(NULL);
     EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }
 
-TEST_F(ut_ipmi_ts_inventory, DISABLED_mock_opal_pack_with_null_param)
-{
-    mock_opal_pack = true;
-    opal_pack_expected_value = false;
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.inventory_collect(NULL);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
 
-TEST_F(ut_ipmi_ts_inventory, DISABLED_mock_opal_pack_with_null_param_2)
+TEST_F(ut_ipmi_ts_inventory, mock_opal_pack_with_null_param)
 {
     mock_opal_pack = true;
     opal_pack_expected_value = false;
@@ -476,7 +436,7 @@ TEST_F(ut_ipmi_ts_inventory, DISABLED_mock_opal_pack_with_null_param_2)
     EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }
 
-TEST_F(ut_ipmi_ts_inventory, DISABLED_mock_serializeMap_with_null_param)
+TEST_F(ut_ipmi_ts_inventory, mock_serializeMap_with_null_param)
 {
     mock_opal_pack = true;
     mock_serializeMap = true;
@@ -487,16 +447,6 @@ TEST_F(ut_ipmi_ts_inventory, DISABLED_mock_serializeMap_with_null_param)
     EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }
 
-TEST_F(ut_ipmi_ts_inventory, DISABLED_valid_plugin_with_empty_buffer)
-{
-    mock_opal_pack = true;
-    opal_pack_expected_value = false;
-    opal_buffer_t *inventory_snapshot = OBJ_NEW(opal_buffer_t);
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.inventory_collect(inventory_snapshot);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-    SAFE_RELEASE(inventory_snapshot);
-}
 
 TEST_F(ut_ipmi_ts_inventory, valid_plugin_with_empty_buffer_2)
 {
@@ -540,7 +490,6 @@ void ut_ipmi_ts_inventory_log::SetUp()
     orcm_sensor_ipmi_ts_module.init();
     object = orcm_sensor_base_runtime_metrics_create("ipmi_ts", false, false);
     mca_sensor_ipmi_ts_component.runtime_metrics = object;
-
 }
 
 void ut_ipmi_ts_inventory_log::TearDown()
@@ -549,7 +498,7 @@ void ut_ipmi_ts_inventory_log::TearDown()
     setFullMock(false, 0);
 }
 
-TEST_F(ut_ipmi_ts_inventory_log, DISABLED_with_null_param)
+TEST_F(ut_ipmi_ts_inventory_log, with_null_param)
 {
     testing::internal::CaptureStderr();
     orcm_sensor_ipmi_ts_module.inventory_log(NULL, NULL);

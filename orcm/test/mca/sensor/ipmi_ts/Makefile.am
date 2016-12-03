@@ -43,22 +43,18 @@ ipmi_ts_tests_SOURCES = \
 
 MOCKING = \
     -Wl,--wrap=opal_progress_thread_init \
-    -Wl,--wrap=readdir \
     -Wl,--wrap=orcm_sensor_base_runtime_metrics_do_collect \
-    -Wl,--wrap=dlopen \
-    -Wl,--wrap=dlsym \
-    -Wl,--wrap=dlerror \
-    -Wl,--wrap=dlclose \
     -Wl,--wrap=opal_dss_pack \
     -Wl,--wrap=opal_dss_unpack \
     -Wl,--wrap=orcm_analytics_base_send_data \
-    -Wl,--wrap=_ZN19dataContainerHelper12serializeMapERSt3mapISs13dataContainerSt4lessISsESaISt4pairIKSsS1_EEEPv \
     -Wl,--wrap=_ZN19dataContainerHelper14deserializeMapERSt3mapISs13dataContainerSt4lessISsESaISt4pairIKSsS1_EEEPv \
+    -Wl,--wrap=_ZN19dataContainerHelper12serializeMapERSt3mapISs13dataContainerSt4lessISsESaISt4pairIKSsS1_EEEPv \
     -Wl,--wrap=set_lan_options \
     -Wl,--wrap=ipmi_cmd_mc \
     -Wl,--wrap=ipmi_cmd \
     -Wl,--wrap=get_sdr_cache \
-    -Wl,--wrap=find_sdr_next
+    -Wl,--wrap=find_sdr_next 
+
 #
 # Libraries we depend on
 #

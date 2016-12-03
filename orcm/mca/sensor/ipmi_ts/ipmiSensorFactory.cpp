@@ -9,6 +9,7 @@
 
 #include <set>
 #include "ipmiSensorFactory.hpp"
+#include "orcm/mca/sensor/ipmi_ts/ipmiHAL.h"
 
 ipmiSensorFactory::ipmiSensorFactory(){
      this->ipmiPlugins["IpmiTestSensor"] =  getIpmiInstance<IpmiTestSensor>;
@@ -27,9 +28,19 @@ void ipmiSensorFactory::load(bool test_vector)
 
 void ipmiSensorFactory::close()
 {
-    std::map<std::string, ipmiSensorInterface*>::iterator it;
+    pluginsIterator it;
+    std::string errors = "";
     for (it = pluginsLoaded.begin(); it != pluginsLoaded.end(); ++it) {
-        unloadPlugin(it);
+        try {
+           it->second->finalize();
+           unloadPlugin(it);
+        } catch (std::runtime_error &e) {
+            errors.append("Device:  " + it->first + " failed in finilize with:\n");
+            errors.append(std::string(e.what()) + "\n");
+        }
+    }
+    if (errors.compare("")) {
+        throw ipmiSensorFactoryException(errors);
     }
 }
 
@@ -114,9 +125,8 @@ void ipmiSensorFactory::__sample(pluginsIterator it, dataContainerMap &dc)
 
 void ipmiSensorFactory::getPluginInstanceAndName(std::string ipmiObj)
 {
-    //TODO: Get bmc hostnames and create and instances
-    // ->getBmcList() will return a set of strings
-    std::set<std::string> bmcList;
+    ipmiHAL *HWobj = ipmiHAL::getInstance();
+    std::set<std::string> bmcList = HWobj->getBmcList();
     std::set<std::string>::iterator it;
 
     for (it = bmcList.begin(); it != bmcList.end(); ++it)

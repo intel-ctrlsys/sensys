@@ -7,8 +7,8 @@
  * $HEADER$
  */
 
-#ifndef OPAMETRICS_TESTS_H
-#define OPAMETRICS_TESTS_H
+#ifndef IPMI_TS_TESTS_H
+#define IPMI_TS_TESTS_H
 
 #include "gtest/gtest.h"
 #include "mockTest.h"
@@ -46,7 +46,6 @@ class ut_ipmi_ts_log: public ut_ipmi_ts_tests
 {
     protected:
         void* bufferPtr;
-
         void SetUp();
         void TearDown();
 };
@@ -65,7 +64,7 @@ class ut_ipmi_ts_inventory_log : public ut_ipmi_ts_tests
 protected:
     void SetUp();
     void TearDown();
-    void *samplerPtr;
+    void *bufferPtr;
     void *object;
 };
 

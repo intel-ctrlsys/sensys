@@ -12,6 +12,8 @@
 
 #include <vector>
 #include <iostream>
+#include "orcm/common/dataContainer.hpp"
+
 typedef std::vector<unsigned char> buffer;
 
 class ipmiResponse
@@ -22,6 +24,7 @@ private:
     std::string errorMessage;
     std::string completionMessage;
     std::map<unsigned short int, std::string> sensorList;
+    dataContainer readings;
 
     void setValues(std::string err, std::string completion, bool succ)
     {
@@ -57,11 +60,18 @@ public:
         setValues(err, completion, succ);
     }
 
+    ipmiResponse(dataContainer data, std::string err, std::string completion, bool succ)
+    {
+        readings = data;
+        setValues(err, completion, succ);
+    }
+
     inline bool wasSuccessful() { return success; }
     inline std::string getErrorMessage() { return  errorMessage; }
     inline std::string getCompletionMessage() { return completionMessage; }
     inline std::map<unsigned short int, std::string> getSensorList() { return sensorList; };
     inline const buffer& getResponseBuffer() { return response; }
+    inline dataContainer getReadings() { return readings; };
 };
 
 #endif //IPMIRESPONSE_H

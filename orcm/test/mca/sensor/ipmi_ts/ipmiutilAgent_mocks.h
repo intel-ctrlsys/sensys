@@ -10,34 +10,7 @@
 #ifndef IPMIUTILAGENT_MOCKS_H
 #define IPMIUTILAGENT_MOCKS_H
 
-#include <queue>
-
-class mockManager
-{
-private:
-    std::queue<int> pendingMocks;
-public:
-    inline void restartMock()
-    {
-        pendingMocks = std::queue<int>();
-    }
-
-    inline int nextMockState()
-    {
-        if (pendingMocks.empty())
-            return 0;
-
-        int retValue = pendingMocks.front();
-        pendingMocks.pop();
-
-        return retValue;
-    }
-
-    inline void pushState(int s)
-    {
-        pendingMocks.push(s);
-    }
-};
+#include "testUtils.h"
 
 enum supportedMocks
 {
@@ -53,7 +26,8 @@ enum mockStates
 {
     NO_MOCK = 0,
     SUCCESS,
-    FAILURE
+    FAILURE,
+    RETURN_FRU_AREA
 };
 
 static int dispatchIpmiResponse(mockStates state)

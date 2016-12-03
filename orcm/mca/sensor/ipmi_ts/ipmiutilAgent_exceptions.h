@@ -35,4 +35,10 @@ public:
     unableToCollectSensorList() : baseException("Unable to retrieve sensor list from BMC.", 1, ERROR) {}
 };
 
+class unableToCollectSensorReadings : public baseException
+{
+public:
+    unableToCollectSensorReadings() : baseException("Unable to retrieve sensor readings from BMC.", 1, ERROR) {}
+};
+
 #endif // IPMIUTILAGENT_EXCEPTIONS_H

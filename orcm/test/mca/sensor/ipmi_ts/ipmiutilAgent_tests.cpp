@@ -139,6 +139,19 @@ TEST_F(ipmiutilAgent_tests, requestSensorList_negative)
     ASSERT_FALSE(response.wasSuccessful());
 }
 
+TEST_F(ipmiutilAgent_tests, requestSensorReadings)
+{
+    mocks[GET_SDR_CACHE].pushState(SUCCESS);
+    ipmiResponse response = agent->sendCommand(GETSENSORREADINGS, &emptyBuffer, PROBE_BMC);
+    ASSERT_TRUE(response.wasSuccessful());
+}
+
+TEST_F(ipmiutilAgent_tests, requestSensorReadings_negative)
+{
+    mocks[GET_SDR_CACHE].pushState(FAILURE);
+    ipmiResponse response = agent->sendCommand(GETSENSORREADINGS, &emptyBuffer, PROBE_BMC);
+    ASSERT_FALSE(response.wasSuccessful());
+}
 
 /*
 TEST_F(ipmiutilAgent_tests, requestFruInventory) //TODO failing test

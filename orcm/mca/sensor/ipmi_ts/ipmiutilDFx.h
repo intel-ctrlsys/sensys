@@ -16,9 +16,10 @@ class ipmiutilDFx : public ipmiLibInterface
 {
 private:
     std::map<unsigned short int, std::string> getSensorList_();
+    dataContainer getReadings_();
 public:
     ipmiutilDFx() {};
-    ~ipmiutilDFx() {};
+    virtual ~ipmiutilDFx() {};
     std::set<std::string> getBmcList();
     ipmiResponse sendCommand(ipmiCommands command, buffer* data, std::string bmc);
 };

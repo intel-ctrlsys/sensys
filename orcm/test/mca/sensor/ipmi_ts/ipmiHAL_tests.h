@@ -30,6 +30,7 @@ protected:
     static const double TIMEOUT = 5; //sec
     bool callbackFlag = false;
     bool isSensorListEmpty = true;
+    bool isSampleContainerEmpty = true;
 
     virtual void SetUp();
     virtual void TearDown();
@@ -37,6 +38,7 @@ protected:
     static double elapsedSecs(time_t startTime);
     static void cbFunc(std::string bmc, ipmiResponse response, void* cbData);
     static void cbFunc_sensorList(std::string bmc, ipmiResponse response, void* cbData);
+    static void cbFunc_readings(std::string bmc, ipmiResponse response, void* cbData);
 
 };
 

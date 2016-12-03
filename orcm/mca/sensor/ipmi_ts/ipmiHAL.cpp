@@ -208,6 +208,8 @@ int getNumberOfDispatchingAgents()
 
 bool shouldUseDFx_()
 {
+    static const char MCA_DFX_FLAG[] = "ORCM_MCA_sensor_ipmi_ts_dfx";
+
     return true; // TODO change this with the MCA parameter
 }
 

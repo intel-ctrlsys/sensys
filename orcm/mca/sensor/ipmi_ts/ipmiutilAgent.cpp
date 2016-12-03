@@ -10,6 +10,8 @@
 #include "orcm/mca/sensor/ipmi_ts/ipmiutilAgent.h"
 #include "orcm/mca/sensor/ipmi/ipmi_parser.h"
 #include "orcm/mca/sensor/ipmi/ipmi_collector.h"
+#include "orcm/mca/sensor/ipmi/ipmi_sel_collector.h"
+#include "orcm/mca/sensor/ipmi/ipmi_credentials.h"
 #include <ipmicmd.h>
 
 using namespace std;
@@ -30,6 +32,12 @@ private:
     void setAddressForNextFruPage_(buffer &inputBuffer);
     void initializeFruInputBuffer_(buffer &inputBuffer,int id);
     map<unsigned short int, string> getSensorListFromSDR_();
+    dataContainer getReadingsFromSDR_();
+    string getSelFilename_();
+
+    static void sel_error_callback_(int level, const char* msg);
+    static void sel_ras_event_callback_(const char* event, const char* hostname, void* user_object);
+
 public:
     ipmiCollectorMap config;
     set<string> hostList;
@@ -41,7 +49,11 @@ public:
     ipmiResponse getFruInventory(buffer* data);
     ipmiResponse getDummyResponse(buffer* data);
     ipmiResponse getSensorList(buffer* data);
+    ipmiResponse getSensorReadings(buffer* data);
+    ipmiResponse getSelRecords(string bmc);
 };
+
+static string selErrorMessage("");
 
 class connectionInfo
 {
@@ -130,6 +142,9 @@ string ipmiutilAgent::implPtr::setConnectionParameters(string bmc)
 
 ipmiResponse ipmiutilAgent::sendCommand(ipmiCommands command, buffer* data, string bmc)
 {
+    if (GETSELRECORDS == command)
+        return impl_->getSelRecords(bmc);
+
     impl_->setConnectionParameters(bmc);
 
     switch (command)
@@ -142,9 +157,54 @@ ipmiResponse ipmiutilAgent::sendCommand(ipmiCommands command, buffer* data, stri
             return impl_->getFruInventory(data);
         case GETSENSORLIST:
             return impl_->getSensorList(data);
+        case GETSENSORREADINGS:
+            return impl_->getSensorReadings(data);
         default:
             return impl_->getDummyResponse(data);
     }
+}
+
+string ipmiutilAgent::implPtr::getSelFilename_()
+{
+    return string();
+}
+
+ipmiResponse ipmiutilAgent::implPtr::getSelRecords(string bmc)
+{
+    int rc = 0;
+    int cc = 0;
+    connectionInfo conn(bmc, config);
+    ipmi_credentials creds(conn.bmcAddress, conn.user, conn.pass);
+
+    selErrorMessage = "";
+    dataContainer selRecords;
+    ipmi_sel_collector scanner(bmc.c_str(), creds, sel_error_callback_, (void*) &selRecords);
+
+    if(false == scanner.is_bad()) {
+        scanner.load_last_record_id(getSelFilename_().c_str());
+        if (scanner.scan_new_records(sel_ras_event_callback_))
+        {
+            rc = -15;
+            cc = 255;
+        }
+
+        return ipmiResponse(selRecords, getErrorMessage(rc), getCompletionMessage(cc), true);
+    }
+
+    return ipmiResponse(NULL, selErrorMessage, "", false);
+}
+
+void ipmiutilAgent::implPtr::sel_error_callback_(int level, const char* msg)
+{
+    char* line;
+    asprintf(&line, "%s: collecting IPMI SEL records: %s\n", (0 == level)?"ERROR":"INFO", msg);
+    selErrorMessage = string(line);
+}
+
+void ipmiutilAgent::implPtr::sel_ras_event_callback_(const char* event, const char* hostname, void* user_object)
+{
+    dataContainer* dc = (dataContainer*)user_object;
+    dc->put("sel_event_record", (void*)event, "");
 }
 
 ipmiResponse ipmiutilAgent::implPtr::getSensorList(buffer* data)
@@ -152,6 +212,16 @@ ipmiResponse ipmiutilAgent::implPtr::getSensorList(buffer* data)
     try {
         map<unsigned short int, string> list = getSensorListFromSDR_();
         return ipmiResponse(list, getErrorMessage(0), getCompletionMessage(0), true);
+    } catch(runtime_error &e) {
+        return ipmiResponse(NULL, e.what(), "", false);
+    }
+}
+
+ipmiResponse ipmiutilAgent::implPtr::getSensorReadings(buffer* data)
+{
+    try {
+        dataContainer dc = getReadingsFromSDR_();
+        return ipmiResponse(dc, getErrorMessage(0), getCompletionMessage(0), true);
     } catch(runtime_error &e) {
         return ipmiResponse(NULL, e.what(), "", false);
     }
@@ -178,7 +248,7 @@ map<unsigned short int, string> ipmiutilAgent::implPtr::getSensorListFromSDR_()
         }
     }
 
-    free(sdrlist);
+    free_sdr_cache(sdrlist);
     ipmi_close();
 
     return list;
@@ -232,6 +302,41 @@ ipmiResponse ipmiutilAgent::implPtr::getFruInventory(buffer* data)
     }
 
     return getFruData_(id, max_fru_area);
+}
+
+dataContainer ipmiutilAgent::implPtr::getReadingsFromSDR_()
+{
+    dataContainer readings;
+    unsigned char *sdrlist = NULL;
+
+    if (0 != get_sdr_cache(&sdrlist))
+        throw unableToCollectSensorReadings();
+
+    unsigned short int id = 0;
+    unsigned char sdrbuf[SDR_SZ];
+
+    while(0 == find_sdr_next(sdrbuf, sdrlist, id))
+    {
+        id = sdrbuf[0] + (sdrbuf[1] << 8); // this SDR id
+        if (0x01 == sdrbuf[3]) // full SDR, let's keep it
+        {
+            int snum = sdrbuf[7];
+            unsigned char reading[4] = {0};
+            if (0 == GetSensorReading(snum, sdrbuf, reading))
+            {
+                int name_size = (int)(((SDR01REC*)sdrbuf)->id_strlen & 0x1f);;
+                string key = string((char*)&sdrbuf[48], name_size);
+                string unit = string(get_unit_type( sdrbuf[20], sdrbuf[21], sdrbuf[22],0));
+                double value = RawToFloat(reading[0], sdrbuf);
+                readings.put(key, value, unit);
+            }
+        }
+    }
+
+    free_sdr_cache(sdrlist);
+    ipmi_close();
+
+    return readings;
 }
 
 bool ipmiutilAgent::implPtr::isNewAreaLarger_(long int* area, unsigned char* rdata)

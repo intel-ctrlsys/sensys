@@ -258,6 +258,7 @@ void ut_edac_collector_tests::ResetTestEnvironment()
     edac_mocking.opal_progress_thread_finalize_callback = NULL;
 
     orte_process_info.nodename = (char*)hostname_;
+    orcm_sensor_base.host_tag_value = (char*)hostname_;
 
     errcounts_finalize_relay();
 

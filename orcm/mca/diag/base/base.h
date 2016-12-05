@@ -48,6 +48,7 @@ typedef struct {
     opal_list_t modules;
     int dbhandle;
     bool dbhandle_requested;
+    char *host_tag_value;
 } orcm_diag_base_t;
 ORCM_DECLSPEC extern orcm_diag_base_t orcm_diag_base;
 

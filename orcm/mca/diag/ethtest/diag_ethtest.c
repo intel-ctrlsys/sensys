@@ -394,7 +394,8 @@ sendresults:
     }
 
     /* Pack our node name */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(data,
+                         &orcm_diag_base.host_tag_value, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_RELEASE(data);
         SAFE_FREE(eth_test);

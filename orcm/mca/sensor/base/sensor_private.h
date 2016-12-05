@@ -80,6 +80,9 @@ typedef struct {
     bool collect_metrics;       /* Holds the user configured variable indicating whether sensor metric sampling is enabled or not */
     bool collect_inventory;     /* Holds the user configured variable indicating whether inventory collection is enabled or not */
     bool set_dynamic_inventory; /* Holds the user configured variable indicating whether dynamic inventory collection is enabled or not */
+
+    /* Holds the value specified in the <host> tag in the configuration file for this daemon */
+    char *host_tag_value;
 } orcm_sensor_base_t;
 
 typedef struct {

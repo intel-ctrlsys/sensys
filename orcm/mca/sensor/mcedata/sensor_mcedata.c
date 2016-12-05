@@ -1058,7 +1058,7 @@ void collect_mcedata_sample(orcm_sensor_sampler_t *sampler)
         }
 
         /* store our hostname */
-        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING))) {
             fclose(fp);
             ORTE_ERROR_LOG(ret);
             OBJ_DESTRUCT(&data);
@@ -1370,7 +1370,7 @@ static void generate_test_vector(orcm_sensor_sampler_t* sampler)
     ret = opal_dss.pack(buffer, &temp, 1, OPAL_STRING);
     ON_FAILURE_GOTO(ret, cleanup);
 
-    ret = opal_dss.pack(buffer, &orte_process_info.nodename, 1, OPAL_STRING);
+    ret = opal_dss.pack(buffer, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ON_FAILURE_GOTO(ret, cleanup);
 
     gettimeofday(&current_time, NULL);

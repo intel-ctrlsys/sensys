@@ -558,7 +558,8 @@ void collect_coretemp_sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* store our hostname */
-    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (ret = opal_dss.pack(&data,
+                         &orcm_sensor_base.host_tag_value, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(ret);
         goto ct_sample_exit;
     }
@@ -801,7 +802,7 @@ static void generate_test_vector(opal_buffer_t *v)
     ON_FAILURE_RETURN(ret);
 
 /* pack the hostname */
-    ret = opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING);
+    ret = opal_dss.pack(v, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ON_FAILURE_RETURN(ret);
 
 /* get the sample time */
@@ -846,7 +847,7 @@ static void generate_test_inv_data(opal_buffer_t *inventory_snapshot)
 
     rc = opal_dss.pack(inventory_snapshot, &ctemp, 1, OPAL_STRING);
     ON_FAILURE_RETURN(rc);
-    rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
+    rc = opal_dss.pack(inventory_snapshot, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ON_FAILURE_RETURN(rc);
     gettimeofday(&sample_time, NULL);
     rc = opal_dss.pack(inventory_snapshot, &sample_time, 1, OPAL_TIMEVAL);
@@ -888,7 +889,7 @@ static void coretemp_inventory_collect(opal_buffer_t *inventory_snapshot)
         rc = opal_dss.pack(inventory_snapshot, &ctemp, 1, OPAL_STRING);
         ON_FAILURE_RETURN(rc);
 
-        rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
+        rc = opal_dss.pack(inventory_snapshot, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
         ON_FAILURE_RETURN(rc);
 
         gettimeofday(&sample_time, NULL);

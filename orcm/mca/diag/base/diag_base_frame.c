@@ -85,6 +85,7 @@ static int orcm_diag_base_open(mca_base_open_flag_t flags)
     orcm_diag_base.dbhandle = -1;
     orcm_diag_base.dbhandle_requested = false;
     OBJ_CONSTRUCT(&orcm_diag_base.modules, opal_list_t);
+    orcm_diag_base.host_tag_value = orcm_get_proc_hostname();
 
     if (OPAL_SUCCESS != (rc = mca_base_framework_components_open(&orcm_diag_base_framework, flags))) {
         return rc;

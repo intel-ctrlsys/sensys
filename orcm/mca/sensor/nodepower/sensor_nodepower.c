@@ -485,7 +485,7 @@ retry_b:
     ORCM_ON_FAILURE_GOTO(ret, cleanup);
 
     /* store our hostname */
-    ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING);
+    ret = opal_dss.pack(&data, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ORCM_ON_FAILURE_GOTO(ret, cleanup);
 
     /* get the sample time */
@@ -633,7 +633,7 @@ static void generate_test_vector(opal_buffer_t *v)
     ORCM_ON_FAILURE_RETURN(ret);
 
 /* pack the hostname */
-    ret = opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING);
+    ret = opal_dss.pack(v, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ORCM_ON_FAILURE_RETURN(ret);
 
 /* get the time of sampling */
@@ -665,7 +665,7 @@ static void nodepower_inventory_collect(opal_buffer_t *inventory_snapshot)
     rc = opal_dss.pack(inventory_snapshot, &current_time, 1, OPAL_TIMEVAL);
     ORCM_ON_FAILURE_RETURN(rc);
     /* store our hostname */
-    rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
+    rc = opal_dss.pack(inventory_snapshot, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ORCM_ON_FAILURE_RETURN(rc);
     comp = "sensor_nodepower_1";
     rc = opal_dss.pack(inventory_snapshot, &comp, 1, OPAL_STRING);

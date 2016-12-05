@@ -178,11 +178,12 @@ void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
     }
 
     /* the stats framework can't know nodename or rank */
-    strncpy(stats->node, orte_process_info.nodename, (OPAL_PSTAT_MAX_STRING_LEN - 1));
+    strncpy(stats->node, orcm_sensor_base.host_tag_value, (OPAL_PSTAT_MAX_STRING_LEN - 1));
     stats->rank = ORTE_PROC_MY_NAME->vpid;
 
     /* pack them */
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &orte_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf,
+                         &orcm_sensor_base.host_tag_value, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&buf);
         OBJ_RELEASE(stats);
@@ -238,7 +239,7 @@ void collect_resusage_sample(orcm_sensor_sampler_t *sampler)
                 continue;
             }
             /* the stats framework can't know nodename or rank */
-            strncpy(stats->node, orte_process_info.nodename, (OPAL_PSTAT_MAX_STRING_LEN - 1));
+            strncpy(stats->node, orcm_sensor_base.host_tag_value, (OPAL_PSTAT_MAX_STRING_LEN - 1));
             stats->rank = child->name.vpid;
             /* pack them */
             if (OPAL_SUCCESS != (rc = opal_dss.pack(&buf, &stats, 1, OPAL_PSTAT))) {
@@ -523,7 +524,7 @@ static void generate_test_vector(opal_buffer_t *v)
 
     /* pack the hostname */
     if (OPAL_SUCCESS != (ret =
-                opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING))){
+                opal_dss.pack(v, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING))){
         ORTE_ERROR_LOG(ret);
         return;
     }
@@ -564,7 +565,7 @@ static void generate_test_vector(opal_buffer_t *v)
     }
 
     /* the stats framework can't know nodename or rank */
-    strncpy(stats->node, orte_process_info.nodename, (OPAL_PSTAT_MAX_STRING_LEN - 1));
+    strncpy(stats->node, orcm_sensor_base.host_tag_value, (OPAL_PSTAT_MAX_STRING_LEN - 1));
     stats->rank = ORTE_PROC_MY_NAME->vpid;
 
     /* pack the node stats */
@@ -640,7 +641,8 @@ static void res_inventory_collect(opal_buffer_t *inventory_snapshot)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot,
+                         &orcm_sensor_base.host_tag_value, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }

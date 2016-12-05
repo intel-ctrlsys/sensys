@@ -127,7 +127,7 @@ void snmp_impl::load_mca_variables(void)
     if(0 == mca_sensor_snmp_component.sample_rate) {
         mca_sensor_snmp_component.sample_rate = orcm_sensor_base.sample_rate;
     }
-    hostname_ = orte_process_info.nodename;
+    hostname_ = orcm_sensor_base.host_tag_value;
 }
 
 void snmp_impl::finalize(void)

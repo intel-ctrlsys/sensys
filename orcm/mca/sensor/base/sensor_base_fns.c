@@ -213,7 +213,7 @@ void collect_inventory_info(opal_buffer_t *inventory_snapshot)
     opal_output_verbose(5, orcm_sensor_base_framework.framework_output,
                         "%s sensor:base: Starting Inventory Collection",
                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-    rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
+    rc = opal_dss.pack(inventory_snapshot, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ORCM_ON_FAILURE_RETURN(rc);
     /* call the inventory collection function of all enabled modules in priority order */
     for (i=0; i < orcm_sensor_base.modules.size; i++) {

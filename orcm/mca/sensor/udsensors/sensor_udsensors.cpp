@@ -234,7 +234,7 @@ void collect_udsensors_sample(orcm_sensor_sampler_t *sampler)
         ORCM_ON_FAILURE_GOTO(rc,clean);
 
         /* store our hostname */
-        rc = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING);
+        rc = opal_dss.pack(&data, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
         ORCM_ON_FAILURE_GOTO(rc,clean);
 
         /* get the sample time */

@@ -146,6 +146,7 @@ static int orcm_sensor_base_open(mca_base_open_flag_t flags)
     /* construct the array of modules */
     OBJ_CONSTRUCT(&orcm_sensor_base.modules, opal_pointer_array_t);
     opal_pointer_array_init(&orcm_sensor_base.modules, 3, INT_MAX, 1);
+    orcm_sensor_base.host_tag_value = orcm_get_proc_hostname();
 
     /* Open up all available components */
     rc = mca_base_framework_components_open(&orcm_sensor_base_framework, flags);

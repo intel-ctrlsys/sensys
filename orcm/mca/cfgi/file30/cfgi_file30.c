@@ -695,7 +695,6 @@ static int parse_node(orcm_node_t *node, int idx, orcm_cfgi_xml_parser_t *x)
             ORTE_ERROR_LOG(ORCM_ERR_BAD_PARAM);
             return ORCM_ERR_BAD_PARAM;
         }
-
         tmp = get_controller_name(&x->value[0], NULL);
         if (NULL == tmp) {
             ORTE_ERROR_LOG(ORCM_ERR_OUT_OF_RESOURCE);
@@ -724,7 +723,6 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
     char *tmp = NULL;
     char **vals = NULL;
     char **names = NULL;
-
 
     if (0 == strcmp(x->name, TXcontrol)) {
         /* the value contains the node name of the controller, or an expression
@@ -803,6 +801,12 @@ static int parse_rack(orcm_rack_t *rack, int idx, orcm_cfgi_xml_parser_t *x)
                                             "\tNEW NODE NAME %s", names[m]);
                         node = OBJ_NEW(orcm_node_t);
                         node->name = strdup(names[m]);
+                        if (NULL == node->name) {
+                            opal_argv_free(vals);
+                            opal_argv_free(names);
+                            OBJ_RELEASE(node);
+                            return ORCM_ERR_OUT_OF_RESOURCE;
+                        }
                         OBJ_RETAIN(rack);
                         node->rack = rack;
                         node->state = ORTE_NODE_STATE_UNKNOWN;

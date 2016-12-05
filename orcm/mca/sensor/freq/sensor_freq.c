@@ -522,7 +522,7 @@ void collect_freq_sample(orcm_sensor_sampler_t *sampler)
     ORCM_ON_FAILURE_GOTO(ret,cleanup);
 
     /* store our hostname */
-    ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING);
+    ret = opal_dss.pack(&data, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ORCM_ON_FAILURE_GOTO(ret,cleanup);
 
     /* Store number of labels to collect */
@@ -778,7 +778,7 @@ static void generate_test_vector(opal_buffer_t *v)
     ret = opal_dss.pack(v, &ctmp, 1, OPAL_STRING);
     ORCM_ON_FAILURE_RETURN(ret);
 /* pack the hostname */
-    ret = opal_dss.pack(v, &orte_process_info.nodename, 1, OPAL_STRING);
+    ret = opal_dss.pack(v, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ORCM_ON_FAILURE_RETURN(ret);
 /* pack then number of cores */
     ret = opal_dss.pack(v, &ncores, 1, OPAL_INT32);

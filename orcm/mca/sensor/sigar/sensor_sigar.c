@@ -1349,7 +1349,8 @@ void collect_sigar_sample(orcm_sensor_sampler_t *sampler)
     OBJ_CONSTRUCT(&data, opal_buffer_t);
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
-    if(ORCM_SUCCESS != (rc = orcm_sensor_pack_data_header(&data, PLUGIN_NAME, orte_process_info.nodename, &current_time))) {
+    if(ORCM_SUCCESS != (rc = orcm_sensor_pack_data_header(&data, PLUGIN_NAME,
+                        orcm_sensor_base.host_tag_value, &current_time))) {
         ORTE_ERROR_LOG(rc);
         OBJ_DESTRUCT(&data);
         OBJ_DESTRUCT(&collected_data);
@@ -1609,7 +1610,8 @@ static void sigar_inventory_collect(opal_buffer_t *inventory_snapshot)
         ORTE_ERROR_LOG(rc);
         return;
     }
-    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING))) {
+    if (OPAL_SUCCESS != (rc = opal_dss.pack(inventory_snapshot,
+                         &orcm_sensor_base.host_tag_value, 1, OPAL_STRING))) {
         ORTE_ERROR_LOG(rc);
         return;
     }

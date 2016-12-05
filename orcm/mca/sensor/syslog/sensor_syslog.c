@@ -385,7 +385,7 @@ void collect_syslog_sample(orcm_sensor_sampler_t *sampler)
     ON_FAILURE_GOTO(ret, cleanup);
 
     /* store our hostname */
-    ret = opal_dss.pack(&data, &orte_process_info.nodename, 1, OPAL_STRING);
+    ret = opal_dss.pack(&data, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ON_FAILURE_GOTO(ret, cleanup);
 
     /* store the number of messages */
@@ -705,7 +705,7 @@ bool orcm_sensor_syslog_generate_test_vector(opal_buffer_t* buffer)
     LOCAL_ON_FAIL_CLEANUP(ret);
 
     /* store our hostname */
-    ret = opal_dss.pack(buffer, &orte_process_info.nodename, 1, OPAL_STRING);
+    ret = opal_dss.pack(buffer, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     LOCAL_ON_FAIL_CLEANUP(ret);
 
     /* store the number of messages */
@@ -783,7 +783,7 @@ static void syslog_inventory_collect(opal_buffer_t *inventory_snapshot)
     rc = opal_dss.pack(inventory_snapshot, &ctemp, 1, OPAL_STRING);
     ON_FAILURE_RETURN(rc);
 
-    rc = opal_dss.pack(inventory_snapshot, &orte_process_info.nodename, 1, OPAL_STRING);
+    rc = opal_dss.pack(inventory_snapshot, &orcm_sensor_base.host_tag_value, 1, OPAL_STRING);
     ON_FAILURE_RETURN(rc);
 
     gettimeofday(&sample_time, NULL);

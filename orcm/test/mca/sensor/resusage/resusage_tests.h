@@ -48,6 +48,9 @@ class ut_resusage_tests: public testing::Test
         static opal_pointer_array_t mocked_array;
         static opal_process_name_t mocked_name;
 
+        static void init_parser_framework();
+        static void clean_parser_framework();
+
     public:
         static int err_num;
         static orte_proc_t mocked_process;

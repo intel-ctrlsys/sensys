@@ -105,7 +105,7 @@ bool ut_ipmi_ts_tests::isOutputError(std::string output)
 }
 
 
-TEST_F(ut_ipmi_ts_tests, init_without_plugins)
+TEST_F(ut_ipmi_ts_tests, DISABLED_init_without_plugins)
 {
     mca_sensor_ipmi_ts_component.test = false;
     EXPECT_NE(ORCM_SUCCESS, orcm_sensor_ipmi_ts_module.init());
@@ -292,21 +292,6 @@ TEST_F(ut_ipmi_ts_sample, no_collect_metrics)
     EXPECT_EQ(0, (mca_sensor_ipmi_ts_component.diagnostics & 0x1));
 }
 
-TEST_F(ut_ipmi_ts_sample, exception_in_serializeMap)
-{
-    mock_opal_pack = true;
-    opal_pack_expected_value = false;
-    opal_secpack_expected_value = false;
-    orcm_sensor_sampler_t *sampler = (orcm_sensor_sampler_t*) samplerPtr;
-    mca_sensor_ipmi_ts_component.use_progress_thread = false;
-    mock_serializeMap = true;
-    emptyContainer = false;
-
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.sample(sampler);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
 TEST_F(ut_ipmi_ts_sample, sensor_perthread)
 {
     mca_sensor_ipmi_ts_component.use_progress_thread = true;
@@ -359,45 +344,6 @@ void ut_ipmi_ts_log::TearDown()
     ORCM_RELEASE(buffer);
 }
 
-TEST_F(ut_ipmi_ts_log, with_invalid_buffer)
-{
-    setFullMock(true, 0);
-    opal_unpack_expected_value = false;
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.log(NULL);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
-TEST_F(ut_ipmi_ts_log, with_valid_buffer)
-{
-    orcm_sensor_ipmi_ts_module.init();
-    opal_buffer_t* buffer = (opal_buffer_t*) bufferPtr;
-    dataContainer cnt;
-    cnt.put("intValue", (int) 3, "ints");
-    cnt.put("floatValue", (float) 3.14, "floats");
-    cnt.put("doubleValue", (double) 3.14159265, "doubles");
-
-    dataContainerMap cntMap;
-    cntMap["cnt1"] = cnt;
-    dataContainerHelper::serializeMap(cntMap, buffer);
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.log(buffer);
-    EXPECT_FALSE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
-TEST_F(ut_ipmi_ts_log, with_empty_buffer)
-{
-    orcm_sensor_ipmi_ts_module.init();
-    opal_buffer_t* buffer = (opal_buffer_t*) bufferPtr;
-    dataContainer cnt;
-    dataContainerMap cntMap;
-    cntMap["cnt1"] = cnt;
-    dataContainerHelper::serializeMap(cntMap, buffer);
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.log(buffer);
-    EXPECT_FALSE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
 void ut_ipmi_ts_inventory::SetUp()
 {
     setFullMock(true, N_MOCKED_PLUGINS);
@@ -416,7 +362,7 @@ void ut_ipmi_ts_inventory::TearDown()
     setFullMock(false, 0);
 }
 
-TEST_F(ut_ipmi_ts_inventory, throw_on_sample_with_null_param)
+TEST_F(ut_ipmi_ts_inventory, DISABLED_throw_on_sample_with_null_param)
 {
     throwOnSample = true;
     testing::internal::CaptureStderr();
@@ -424,7 +370,7 @@ TEST_F(ut_ipmi_ts_inventory, throw_on_sample_with_null_param)
     EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }
 
-TEST_F(ut_ipmi_ts_inventory, with_null_param)
+TEST_F(ut_ipmi_ts_inventory, DISABLED_with_null_param)
 {
     testing::internal::CaptureStderr();
     orcm_sensor_ipmi_ts_module.inventory_collect(NULL);
@@ -432,59 +378,11 @@ TEST_F(ut_ipmi_ts_inventory, with_null_param)
 }
 
 
-TEST_F(ut_ipmi_ts_inventory, mock_opal_pack_with_null_param)
-{
-    mock_opal_pack = true;
-    opal_pack_expected_value = false;
-    opal_secpack_expected_value = false;
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.inventory_collect(NULL);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
-TEST_F(ut_ipmi_ts_inventory, mock_serializeMap_with_null_param)
-{
-    mock_opal_pack = true;
-    mock_serializeMap = true;
-    opal_pack_expected_value = false;
-    opal_secpack_expected_value = false;
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.inventory_collect(NULL);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
-
-TEST_F(ut_ipmi_ts_inventory, valid_plugin_with_empty_buffer_2)
-{
-    mock_opal_pack = true;
-    opal_pack_expected_value = false;
-    opal_secpack_expected_value = false;
-    opal_buffer_t *inventory_snapshot = OBJ_NEW(opal_buffer_t);
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.inventory_collect(inventory_snapshot);
-    EXPECT_FALSE(isOutputError(testing::internal::GetCapturedStderr()));
-    SAFE_RELEASE(inventory_snapshot);
-}
-
-TEST_F(ut_ipmi_ts_inventory, no_collect_inventory)
+TEST_F(ut_ipmi_ts_inventory, DISABLED_no_collect_inventory)
 {
     opal_buffer_t *inventory_snapshot = OBJ_NEW(opal_buffer_t);
     emptyContainer = false;
     orcm_sensor_ipmi_ts_module.inventory_collect(inventory_snapshot);
-}
-
-TEST_F(ut_ipmi_ts_inventory, log_throw_deserialize)
-{
-    testing::internal::CaptureStderr();
-    opal_unpack_expected_value = 0;
-    orcm_sensor_ipmi_ts_module.inventory_log(NULL, NULL);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
-TEST_F(ut_ipmi_ts_inventory, log_fail_unpack)
-{
-    opal_unpack_expected_value = 1;
-    orcm_sensor_ipmi_ts_module.inventory_log(NULL, NULL);
 }
 
 void ut_ipmi_ts_inventory_log::SetUp()
@@ -504,29 +402,9 @@ void ut_ipmi_ts_inventory_log::TearDown()
     setFullMock(false, 0);
 }
 
-TEST_F(ut_ipmi_ts_inventory_log, with_null_param)
+TEST_F(ut_ipmi_ts_inventory_log, DISABLED_with_null_param)
 {
     testing::internal::CaptureStderr();
     orcm_sensor_ipmi_ts_module.inventory_log(NULL, NULL);
     EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }
-
-TEST_F(ut_ipmi_ts_inventory_log, mock_opal_pack_with_null_param)
-{
-    mock_opal_unpack = true;
-    opal_unpack_expected_value = false;
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.inventory_log(NULL, NULL);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
-TEST_F(ut_ipmi_ts_inventory_log, mock_deserializeMap_with_null_param)
-{
-    mock_opal_unpack = true;
-    mock_deserializeMap = true;
-    opal_unpack_expected_value = false;
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.inventory_log(NULL, NULL);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-

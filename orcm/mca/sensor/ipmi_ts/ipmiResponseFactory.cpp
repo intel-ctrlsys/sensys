@@ -8,38 +8,21 @@
  */
 
 #include <iostream>
-#include <sstream>
-#include <iomanip>
 
 #include <ipmiResponseFactory.hpp>
+#include "orcm/util/string_utils.h"
 
 /*Seconds between the epoch (1/1/1970) and IPMI's start time (1/1/1996)*/
 #define EPOCH_IPMI_DIFF_TIME 820454400
 
-class StrFormat
-{
-    public:
-    static string hex_to_str(uint32_t hex_data)
-    {
-        ostringstream oss;
-        oss << hex << setfill('0') << setw(2)<< hex_data;
-        return oss.str();
-    }
-
-    static string hex_to_str_no_fill(uint32_t hex_data)
-    {
-        ostringstream oss;
-        oss << hex << hex_data;
-        return oss.str();
-    }
-};
+using namespace std;
 
 IPMIResponse::IPMIResponse(ResponseBuffer* buffer, MessageType type)
 {
     if (!buffer || !buffer->size())
         return; // TODO: Notify error case somehow.
 
-    if (READFRUDATA != type)
+    if (READFRUDATA_MSG != type)
     {
         uint8_t c_code = (*buffer)[0];
         data_container.put("completion_code", c_code, ""); // byte 1
@@ -50,16 +33,16 @@ IPMIResponse::IPMIResponse(ResponseBuffer* buffer, MessageType type)
 
     switch (type)
     {
-        case GETDEVICEID:
+        case GETDEVICEID_MSG:
             device_id_cmd_to_data_container(buffer);
             break;
-        case GETACPIPOWER:
+        case GETACPIPOWER_MSG:
             acpi_power_cmd_to_data_container(buffer);
             break;
-        case GETFRUINVAREA:
+        case GETFRUINVAREA_MSG:
             fru_inv_area_cmd_to_data_container(buffer);
             break;
-        case READFRUDATA:
+        case READFRUDATA_MSG:
             fru_data_cmd_to_data_container(buffer);
             break;
         default:
@@ -78,36 +61,36 @@ void IPMIResponse::device_id_cmd_to_data_container(ResponseBuffer* buffer)
     if (GETDEVICEID_SIZE != buffer->size())
         return; // TODO: Notify error case somehow.
 
-    string tmp_val = StrFormat::hex_to_str((*buffer)[1]);
+    string tmp_val = hex_to_str((*buffer)[1]);
     add_to_container("device_id", tmp_val);          // byte 2
 
-    tmp_val = StrFormat::hex_to_str((*buffer)[2]);
+    tmp_val = hex_to_str((*buffer)[2]);
     add_to_container("device_revision", tmp_val);    // byte 3
 
-    tmp_val = StrFormat::hex_to_str_no_fill((*buffer)[3]) + ".";
-    tmp_val += StrFormat::hex_to_str_no_fill((*buffer)[4]);
-    add_to_container("bmc_fw_version", tmp_val);     // byte 4 and 5
+    tmp_val = hex_to_str_no_fill((*buffer)[3]) + ".";
+    tmp_val += hex_to_str_no_fill((*buffer)[4]);
+    add_to_container("bmc_ver", tmp_val);     // byte 4 and 5
 
-    tmp_val = StrFormat::hex_to_str_no_fill((*buffer)[5]&0x0F) +  ".";
-    tmp_val += StrFormat::hex_to_str_no_fill((*buffer)[5]&0xF0);
-    add_to_container("ipmi_version", tmp_val);       // byte 6
+    tmp_val = hex_to_str_no_fill((*buffer)[5]&0x0F) +  ".";
+    tmp_val += hex_to_str_no_fill((*buffer)[5]&0xF0);
+    add_to_container("ipmi_ver", tmp_val);       // byte 6
 
-    tmp_val = StrFormat::hex_to_str((*buffer)[6]);
+    tmp_val = hex_to_str((*buffer)[6]);
     add_to_container("additional_support", tmp_val); // byte 7
 
-    tmp_val = StrFormat::hex_to_str_no_fill((*buffer)[9]);
-    tmp_val += StrFormat::hex_to_str((*buffer)[8]);
-    tmp_val += StrFormat::hex_to_str((*buffer)[7]);
+    tmp_val = hex_to_str_no_fill((*buffer)[9]);
+    tmp_val += hex_to_str((*buffer)[8]);
+    tmp_val += hex_to_str((*buffer)[7]);
     add_to_container("manufacturer_id", tmp_val);    // byte 8 to 10
 
-    tmp_val = StrFormat::hex_to_str((*buffer)[10]);
-    tmp_val += StrFormat::hex_to_str((*buffer)[11]);
+    tmp_val = hex_to_str((*buffer)[10]);
+    tmp_val += hex_to_str((*buffer)[11]);
     add_to_container("product_id", tmp_val);         // byte 11 and 12
 
-    tmp_val = StrFormat::hex_to_str((*buffer)[12]);
-    tmp_val += StrFormat::hex_to_str((*buffer)[13]);
-    tmp_val += StrFormat::hex_to_str((*buffer)[14]);
-    tmp_val += StrFormat::hex_to_str((*buffer)[15]);
+    tmp_val = hex_to_str((*buffer)[12]);
+    tmp_val += hex_to_str((*buffer)[13]);
+    tmp_val += hex_to_str((*buffer)[14]);
+    tmp_val += hex_to_str((*buffer)[15]);
     add_to_container("aux_firmware_info", tmp_val);  // byte 13 to 16
 }
 
@@ -228,16 +211,16 @@ void IPMIResponse::get_manuf_date(uint64_t fru_offset, ResponseBuffer *buffer)
         manuf_date = string(c_str);
     }
 
-    add_to_container("manuf_date", manuf_date);
+    add_to_container("bb_manufactured_date", manuf_date);
 }
 
 void IPMIResponse::get_fru_data(uint64_t fru_offset, ResponseBuffer *buffer)
 {
     vector<string> fru_data;
-    fru_data.push_back("manuf_name");
-    fru_data.push_back("product_name");
-    fru_data.push_back("serial_number");
-    fru_data.push_back("part_number");
+    fru_data.push_back("bb_vendor");
+    fru_data.push_back("bb_product");
+    fru_data.push_back("bb_serial");
+    fru_data.push_back("bb_part");
 
     uint8_t board_data_len = 0;
     string board_data = "";

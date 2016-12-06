@@ -12,7 +12,11 @@
 #include "orcm/mca/sensor/ipmi/ipmi_collector.h"
 #include "orcm/mca/sensor/ipmi/ipmi_sel_collector.h"
 #include "orcm/mca/sensor/ipmi/ipmi_credentials.h"
+#include "orcm/mca/sensor/ipmi_ts/ipmiResponseFactory.hpp"
+
 #include <ipmicmd.h>
+
+#include "orcm/util/string_utils.h"
 
 using namespace std;
 
@@ -31,12 +35,13 @@ private:
     ipmiResponse getFruData_(int id, long int area);
     void setAddressForNextFruPage_(buffer &inputBuffer);
     void initializeFruInputBuffer_(buffer &inputBuffer,int id);
-    map<unsigned short int, string> getSensorListFromSDR_();
+    dataContainer getSensorListFromSDR_();
     dataContainer getReadingsFromSDR_();
     string getSelFilename_();
 
     static void sel_error_callback_(int level, const char* msg);
     static void sel_ras_event_callback_(const char* event, const char* hostname, void* user_object);
+
 
 public:
     ipmiCollectorMap config;
@@ -51,6 +56,8 @@ public:
     ipmiResponse getSensorList(buffer* data);
     ipmiResponse getSensorReadings(buffer* data);
     ipmiResponse getSelRecords(string bmc);
+    ipmiResponse getFullSensorList(buffer* data);
+    ipmiResponse getFullSensorReading(buffer* data, string bmc);
 };
 
 static string selErrorMessage("");
@@ -159,6 +166,10 @@ ipmiResponse ipmiutilAgent::sendCommand(ipmiCommands command, buffer* data, stri
             return impl_->getSensorList(data);
         case GETSENSORREADINGS:
             return impl_->getSensorReadings(data);
+        case GETFULLSENSORLIST:
+            return impl_->getFullSensorList(data);
+        case GETFULLSENSORREADING:
+	  return impl_->getFullSensorReading(data, bmc);
         default:
             return impl_->getDummyResponse(data);
     }
@@ -204,13 +215,14 @@ void ipmiutilAgent::implPtr::sel_error_callback_(int level, const char* msg)
 void ipmiutilAgent::implPtr::sel_ras_event_callback_(const char* event, const char* hostname, void* user_object)
 {
     dataContainer* dc = (dataContainer*)user_object;
-    dc->put("sel_event_record", (void*)event, "");
+    string n = cast_to_str(dc->count());
+    dc->put(string("sel_event_record_") + n, string(event), "");
 }
 
 ipmiResponse ipmiutilAgent::implPtr::getSensorList(buffer* data)
 {
     try {
-        map<unsigned short int, string> list = getSensorListFromSDR_();
+        dataContainer list = getSensorListFromSDR_();
         return ipmiResponse(list, getErrorMessage(0), getCompletionMessage(0), true);
     } catch(runtime_error &e) {
         return ipmiResponse(NULL, e.what(), "", false);
@@ -227,9 +239,9 @@ ipmiResponse ipmiutilAgent::implPtr::getSensorReadings(buffer* data)
     }
 }
 
-map<unsigned short int, string> ipmiutilAgent::implPtr::getSensorListFromSDR_()
+dataContainer ipmiutilAgent::implPtr::getSensorListFromSDR_()
 {
-    map<unsigned short int, string> list;
+    dataContainer list;
     unsigned char *sdrlist = NULL;
 
     if (0 != get_sdr_cache(&sdrlist))
@@ -238,13 +250,16 @@ map<unsigned short int, string> ipmiutilAgent::implPtr::getSensorListFromSDR_()
     unsigned short int id = 0;
     unsigned char sdrbuf[SDR_SZ];
 
+    string prefix = "sensor_ipmi_ts_";
+    int sufix = 0;
     while(0 == find_sdr_next(sdrbuf, sdrlist, id))
     {
         id = sdrbuf[0] + (sdrbuf[1] << 8); // this SDR id
         if (0x01 == sdrbuf[3]) // full SDR, let's keep it
         {
-            int name_size = (int)(((SDR01REC*)sdrbuf)->id_strlen & 0x1f);;
-            list[id] = string((char*)&sdrbuf[48], name_size);
+            int name_size = (int)(((SDR01REC*)sdrbuf)->id_strlen & 0x1f);
+            string sensor_name = string((char*)&sdrbuf[48], name_size);
+            list.put(prefix+cast_to_str(++sufix), sensor_name, "");
         }
     }
 
@@ -365,8 +380,9 @@ ipmiResponse ipmiutilAgent::implPtr::getFruData_(int id, long int area)
         unsigned char rdata[MAX_RESPONSE_SIZE] = {0};
         int rlen = MAX_RESPONSE_SIZE;
 
-        for (int attempt = 0; attempt < MAX_RETRIES_FOR_FRU_DATA && 0 != rc; ++attempt)
+        for (int attempt = 0; attempt < MAX_RETRIES_FOR_FRU_DATA && 0 != rc; ++attempt) {
             rc = ipmi_cmd(READ_FRU_DATA, &inputBuffer.front(), 4, rdata, &rlen, &cc, 0);
+	}
 
         if (0 != rc)
             return ipmiResponse(rdata, rlen, getErrorMessage(rc), getCompletionMessage(cc), false);
@@ -394,4 +410,47 @@ void ipmiutilAgent::implPtr::setAddressForNextFruPage_(buffer &inputBuffer)
     } else {
         inputBuffer[1] += 0x10;
     }
+}
+
+ipmiResponse ipmiutilAgent::implPtr::getFullSensorList(buffer* data)
+{
+    ResponseBuffer deviceIdBuffer = getDeviceId(data).getResponseBuffer();
+    IPMIResponse deviceIdResponse(&deviceIdBuffer, GETDEVICEID_MSG);
+    dataContainer dcDeviceId = deviceIdResponse.getDataContainer();
+
+    ResponseBuffer fruInventoryBuffer = getFruInventory(data).getResponseBuffer();
+    IPMIResponse fruInventoryResponse(&fruInventoryBuffer, GETFRUINVAREA_MSG);
+    dataContainer dcFruInventory = fruInventoryResponse.getDataContainer();
+
+    ResponseBuffer sensorListBuffer = getSensorList(data).getResponseBuffer();
+    IPMIResponse sensorListResponse(&sensorListBuffer, GETSENSORLIST_MSG);
+    dataContainer dcSensorList = sensorListResponse.getDataContainer();
+
+    dcDeviceId.concat(dcFruInventory);
+    dcDeviceId.concat(dcSensorList);
+
+    return ipmiResponse(dcDeviceId, "", "", true);
+}
+
+ipmiResponse ipmiutilAgent::implPtr::getFullSensorReading(buffer* data, string bmc)
+{
+    ResponseBuffer deviceIdBuffer = getDeviceId(data).getResponseBuffer();;
+    IPMIResponse deviceIdResponse(&deviceIdBuffer, GETDEVICEID_MSG);
+    dataContainer dcDeviceId = deviceIdResponse.getDataContainer();
+
+    ResponseBuffer acpiPowerBuffer = getAcpiPower(data).getResponseBuffer();
+    IPMIResponse acpiPowerResponse(&acpiPowerBuffer, GETFRUINVAREA_MSG);
+    dataContainer dcAcpiPower = acpiPowerResponse.getDataContainer();
+
+    ipmiResponse selRecordsResponse = getSelRecords(bmc);
+    dataContainer dcSelRecords = selRecordsResponse.getReadings();
+
+    ipmiResponse sensorReadingsResponse = getSensorReadings(data);
+    dataContainer dcSensorReadings = sensorReadingsResponse.getReadings();
+
+    dcDeviceId.concat(dcAcpiPower);
+    dcDeviceId.concat(dcSelRecords);
+    dcDeviceId.concat(dcSensorReadings);
+
+    return ipmiResponse(dcDeviceId, "", "", true);
 }

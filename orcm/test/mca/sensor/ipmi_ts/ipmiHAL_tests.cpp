@@ -61,7 +61,7 @@ void HAL::cbFunc(string bmc, ipmiResponse response, void* cbData)
 void HAL::cbFunc_sensorList(string bmc, ipmiResponse response, void* cbData)
 {
     HAL* ptr = (HAL*) cbData;
-    ptr->isSensorListEmpty = response.getSensorList().empty();
+    ptr->isSensorListEmpty = (0 == response.getReadings().count());
     ptr->callbackFlag = true;
 }
 
@@ -210,14 +210,12 @@ TEST_F(TEST_SENSOR, init_method)
 
 TEST_F(TEST_SENSOR, sample_method)
 {
-    dataContainer dc;
-    ASSERT_NO_THROW(sensor->sample(dc));
+    ASSERT_NO_THROW(sensor->sample());
 }
 
 TEST_F(TEST_SENSOR, collect_inventory_method)
 {
-    dataContainer dc;
-    ASSERT_NO_THROW(sensor->collect_inventory(dc));
+    ASSERT_NO_THROW(sensor->collect_inventory());
 }
 
 TEST_F(TEST_SENSOR, finalize_method)
@@ -246,18 +244,21 @@ TEST_F(TEST_SENSOR_DFX, init_method)
     ASSERT_NO_THROW(sensor->init());
 }
 
+static void ipmi_callback(std::string hostname, dataContainer* dc)
+{
+    ASSERT_TRUE( 0 < dc->count() );
+}
+
 TEST_F(TEST_SENSOR_DFX, sample_method)
 {
-    dataContainer dc;
-    ASSERT_NO_THROW(sensor->sample(dc));
-    ASSERT_TRUE( 0 < dc.count() );
+    sensor->setSamplingPtr(ipmi_callback);
+    ASSERT_NO_THROW(sensor->sample());
 }
 
 TEST_F(TEST_SENSOR_DFX, collect_inventory_method)
 {
-    dataContainer dc;
-    ASSERT_NO_THROW(sensor->collect_inventory(dc));
-    ASSERT_TRUE( 0 < dc.count() );
+    sensor->setInventoryPtr(ipmi_callback);
+    ASSERT_NO_THROW(sensor->collect_inventory());
 }
 
 TEST_F(TEST_SENSOR_DFX, finalize_method)

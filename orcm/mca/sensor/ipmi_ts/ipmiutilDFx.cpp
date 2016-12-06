@@ -24,34 +24,43 @@ set<string> ipmiutilDFx::getBmcList()
 
 ipmiResponse ipmiutilDFx::sendCommand(ipmiCommands command, buffer* data, std::string bmc)
 {
-    if (GETSENSORLIST == command)
+    if (GETFULLSENSORLIST == command || GETSENSORLIST == command )
         return ipmiResponse(getSensorList_(), "","",true);
 
-    if (GETSENSORREADINGS == command)
+    if (GETFULLSENSORREADING == command || GETSENSORREADINGS == command )
         return ipmiResponse(getReadings_(), "","",true);
 
     ipmiResponse response;
     return response;
 }
 
-map<unsigned short int, string> ipmiutilDFx::getSensorList_()
+dataContainer ipmiutilDFx::getSensorList_()
 {
-    map<unsigned short int, string> retValue;
-    retValue[0] = "fake_sensor_1";
-    retValue[1] = "fake_sensor_2";
-    retValue[2] = "fake_sensor_3";
-    retValue[3] = "fake_sensor_4";
-    retValue[4] = "fake_sensor_5";
-    retValue[5] = "fake_sensor_6";
-    return retValue;
+    dataContainer dc;
+    dc.put("sensor_ipmi_ts_1", string("doubleValue"), "");
+    dc.put("sensor_ipmi_ts_2", string("intValue"), "");
+    dc.put("sensor_ipmi_ts_3", string("boolValue"), "");
+    dc.put("sensor_ipmi_ts_4", string("int8Value"), "");
+    dc.put("sensor_ipmi_ts_5", string("int16Value"), "");
+    dc.put("sensor_ipmi_ts_6", string("int32Value"), "");
+    dc.put("sensor_ipmi_ts_7", string("int64Value"), "");
+    dc.put("sensor_ipmi_ts_8", string("uint8Value"), "");
+    dc.put("sensor_ipmi_ts_9", string("uint16Value"), "");
+    dc.put("sensor_ipmi_ts_10", string("uint32Value"), "");
+    dc.put("sensor_ipmi_ts_11", string("uint64Value"), "");
+    dc.put("sensor_ipmi_ts_12", string("floatValue"), "");
+    dc.put("bmc_ver", string("1.22"), "");
+    dc.put("ipmi_ver", string("2"), "");
+    dc.put("bb_serial", string("QSIP23300384"), "");
+    dc.put("bb_vendor", string("Intel Corporation"), "");
+    dc.put("bb_manufactured_date", string("08/18/12"), "");
+    return dc;
 
 }
 
 dataContainer ipmiutilDFx::getReadings_()
 {
     dataContainer dc;
-    dc.put("intValue", (int) 3, "ints");
-    dc.put("floatValue", (float) 3.14, "floats");
     dc.put("doubleValue", (double) 3.14159265, "doubles");
     dc.put("intValue", (int) 5, "units-ints");
     dc.put("boolValue", (bool) true, "booleans");
@@ -65,5 +74,4 @@ dataContainer ipmiutilDFx::getReadings_()
     dc.put("uint64Value", (uint64_t) 64, "uint64s");
     dc.put("floatValue", (float) 3.14, "floats");
     return dc;
-
 }

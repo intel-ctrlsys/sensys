@@ -21,6 +21,7 @@ extern "C" {
     #include "opal/mca/event/event.h"
     #include "opal/runtime/opal_progress_threads.h"
     #include "orcm/util/utils.h"
+    #include <stdlib.h>
 }
 
 using namespace std;
@@ -72,7 +73,7 @@ ipmiHAL::ipmiHAL() : consuming(false)
     if (shouldUseDFx_())
         agent = new ipmiutilDFx();
     else
-        agent = new ipmiutilAgent(); // TODO change this with the real object
+        agent = new ipmiutilAgent("");
 
     ptrToAgent = agent;
 }
@@ -202,7 +203,20 @@ void ipmiHAL::throwWhenNullPointer(void* ptr)
  */
 int getNumberOfDispatchingAgents()
 {
-    return 4; // TODO change this with the MCA parameter
+    static const char MCA_AGENTS_EVAR[] = "ORCM_MCA_sensor_ipmi_ts_agents";
+    static const int DEFAULT_AGENTS = 4;
+
+    int agents = DEFAULT_AGENTS;
+    char* envValue = getenv(MCA_AGENTS_EVAR);
+
+    if (NULL != envValue)
+    {
+        envValue = strdup(envValue);
+        agents = atoi(envValue);
+        free(envValue);
+    }
+
+    return agents <= 0 ? DEFAULT_AGENTS : agents;
 }
 
 bool shouldUseDFx_()
@@ -243,10 +257,9 @@ void processRequest_()
 void dispatchResponseToCallback_(int, short, void* ptr)
 {
     request_data_t *request_item = (request_data_t *) ptr;
-    if (NULL != request_item) {
-        if (NULL != request_item->cbFunction)
-            request_item->cbFunction(request_item->bmc, request_item->response, request_item->cbData);
-        opal_event_free(request_item->handler);
-        delete request_item;
-    }
+
+    if (NULL != request_item->cbFunction)
+        request_item->cbFunction(request_item->bmc, request_item->response, request_item->cbData);
+    opal_event_free(request_item->handler);
+    delete request_item;
 }

@@ -156,23 +156,88 @@ TEST_F(ipmiutilAgent_tests, requestSensorReadings_negative)
     ASSERT_FALSE(response.wasSuccessful());
 }
 
-/*
-TEST_F(ipmiutilAgent_tests, requestFruInventory) //TODO failing test
+TEST_F(ipmiutilAgent_tests, requestFruInventory_Failure)
 {
-    mocks[IPMI_CMD].pushState(SUCCESS);
+    mocks[IPMI_CMD].pushState(FAILURE);
     ipmiResponse response = agent->sendCommand(READFRUDATA, &emptyBuffer, PROBE_BMC);
+    ASSERT_FALSE(response.wasSuccessful());
+}
+
+TEST_F(ipmiutilAgent_tests, requestFruInventory_Success)
+{
+    for (int i = 0; i < MAX_FRU_DEVICES; i++ ) mocks[IPMI_CMD].pushState(SUCCESS);
+    ipmiResponse response = agent->sendCommand(READFRUDATA, &emptyBuffer, PROBE_BMC);
+    mocks[IPMI_CMD].restartMock();
     ASSERT_TRUE(response.wasSuccessful());
 }
- */
 
-/*
-TEST_F(ipmiutilAgent_tests, simpleConstructorWorks)
+TEST_F(ipmiutilAgent_tests, requestFruInventory_getFruData_Failure)
 {
-    ipmiLibInterface *tmpAgent = new ipmiutilAgent();
-    ASSERT_TRUE(tmpAgent);
-    delete tmpAgent;
+    for (int i = 0; i < MAX_FRU_DEVICES; i++ ) mocks[IPMI_CMD].pushState(RETURN_FRU_AREA_1);
+    for (int i = 0; i < 15; i++ ) mocks[IPMI_CMD].pushState(FAILURE);
+
+    ipmiResponse response = agent->sendCommand(READFRUDATA, &emptyBuffer, PROBE_BMC);
+
+    mocks[IPMI_CMD].restartMock();
+    ASSERT_FALSE(response.wasSuccessful());
 }
-*/
+
+TEST_F(ipmiutilAgent_tests, requestFruInventory_getFruData_Success)
+{
+    for (int i = 0; i < MAX_FRU_DEVICES/2; i++ ) mocks[IPMI_CMD].pushState(RETURN_FRU_AREA_1);
+    for (int i = 0; i < MAX_FRU_DEVICES/2; i++ ) mocks[IPMI_CMD].pushState(RETURN_FRU_AREA_2);
+    for (int i = 0; i < AREA_FRU_PAGE_SIZE; i++ ) mocks[IPMI_CMD].pushState(SUCCESS);
+
+    ipmiResponse response = agent->sendCommand(READFRUDATA, &emptyBuffer, PROBE_BMC);
+
+    mocks[IPMI_CMD].restartMock();
+    ASSERT_TRUE(response.wasSuccessful());
+}
+
+TEST_F(ipmiutilAgent_tests, requestFruInventory_isNewAreaLarger)
+{
+    for (int i = 0; i < MAX_FRU_DEVICES/2; i++ ) mocks[IPMI_CMD].pushState(RETURN_FRU_AREA_1);
+    for (int i = 0; i < MAX_FRU_DEVICES/2; i++ ) mocks[IPMI_CMD].pushState(RETURN_FRU_AREA_2);
+    for (int i = 0; i < AREA_FRU_PAGE_SIZE; i++ ) mocks[IPMI_CMD].pushState(SUCCESS);
+
+    ipmiResponse response = agent->sendCommand(READFRUDATA, &emptyBuffer, PROBE_BMC);
+    mocks[IPMI_CMD].restartMock();
+    ASSERT_TRUE(response.getResponseBuffer().size() > 0);
+}
+
+TEST_F(ipmiutilAgent_tests, requestFullSensorList)
+{
+    /* Setting up for getDeviceId */
+    mocks[IPMI_CMD_MC].pushState(SUCCESS);
+
+    /* Setting up for getFruInventory */
+    mocks[IPMI_CMD].pushState(SUCCESS);
+
+    /* Setting up for getSensorList */
+    mocks[GET_SDR_CACHE].pushState(SUCCESS);
+
+    for (int i = 0; i < MAX_FRU_DEVICES/2; i++ ) mocks[IPMI_CMD].pushState(RETURN_FRU_AREA_1);
+    for (int i = 0; i < MAX_FRU_DEVICES/2; i++ ) mocks[IPMI_CMD].pushState(RETURN_FRU_AREA_2);
+    for (int i = 0; i < AREA_FRU_PAGE_SIZE; i++ ) mocks[IPMI_CMD].pushState(SUCCESS);
+
+    ipmiResponse response = agent->sendCommand(GETFULLSENSORLIST, &emptyBuffer, PROBE_BMC);
+    ASSERT_TRUE(response.wasSuccessful());
+}
+
+TEST_F(ipmiutilAgent_tests, requestFullSensorReading)
+{
+    /* Setting up for getDeviceId */
+    mocks[IPMI_CMD_MC].pushState(SUCCESS);
+
+    /* Setting up for getAcpiPower */
+    mocks[IPMI_CMD_MC].pushState(SUCCESS);
+
+    /* Setting up for getSensorList */
+    mocks[GET_SDR_CACHE].pushState(SUCCESS);
+
+    ipmiResponse response = agent->sendCommand(GETFULLSENSORREADING, &emptyBuffer, PROBE_BMC);
+    ASSERT_TRUE(response.wasSuccessful());
+}
 
 TEST_F(ipmiutilAgent_extra, errorException)
 {

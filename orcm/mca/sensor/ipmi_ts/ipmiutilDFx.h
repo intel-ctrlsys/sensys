@@ -15,7 +15,7 @@
 class ipmiutilDFx : public ipmiLibInterface
 {
 private:
-    std::map<unsigned short int, std::string> getSensorList_();
+    dataContainer getSensorList_();
     dataContainer getReadings_();
 public:
     ipmiutilDFx() {};

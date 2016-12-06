@@ -19,11 +19,13 @@ BEGIN_C_DECLS
 typedef struct {
     orcm_sensor_base_component_t super;
     bool test;
+    bool dfx;
     char* policy;
     bool use_progress_thread;
     int sample_rate;
     bool collect_metrics;
     void* runtime_metrics;
+    int agents;
     int64_t diagnostics;
 } orcm_sensor_ipmi_ts_component_t;
 

@@ -15,6 +15,8 @@
 #include <regex.h>
 #include <vector>
 #include <string.h>
+#include <sstream>
+#include <iomanip>
 
 using namespace std;
 
@@ -120,6 +122,52 @@ static inline char** convertStringVectorToCharPtrArray(vector<string> v){
         charptrArray[i] = strdup(v[i].c_str());
     }
     return charptrArray;
+}
+
+/**
+ * @brief Function that turns an integer hexadecimal value into a string.
+ * The hexadecimal value is represented on pairs of digits. It will fill
+ * missing digits '0'.
+ *
+ * @param hex_data An integer variable holding the hexadecimal
+ *
+ * @return The resulting string.
+ */
+static inline string hex_to_str(uint32_t hex_data)
+{
+    ostringstream oss;
+    oss << hex << setfill('0') << setw(2)<< hex_data;
+    return oss.str();
+}
+
+/**
+ * @brief Function that turns an integer hexadecimal value into a string
+ *
+ * @param hex_data An integer variable holding the hexadecimal
+ *
+ * @return The resulting string.
+ */
+static inline string hex_to_str_no_fill(uint32_t hex_data)
+{
+    ostringstream oss;
+    oss << hex << hex_data;
+    return oss.str();
+}
+
+
+/**
+ * @brief Function that turns a printable datatype into a string
+ *
+ * @param t_data The input data
+ *
+ * @return The resulting string.
+ */
+template <typename T>
+static inline string cast_to_str(T t_data)
+{
+    ostringstream oss;
+    oss << t_data;
+    return oss.str();
 }
 
 #endif //PARSER_UTILS_H

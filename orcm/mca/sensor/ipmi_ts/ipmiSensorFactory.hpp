@@ -14,10 +14,10 @@
 #include <stdlib.h>
 
 #include "orcm/common/baseFactory.h"
-#include "orcm/common/dataContainer.hpp"
 #include "ipmiSensorInterface.h"
 
 #include "ipmi_test_sensor/ipmi_test_sensor.hpp"
+#include "ipmi_sensor/ipmiSensor.hpp"
 
 typedef ipmiSensorInterface* (*sensorInstance)(std::string);
 typedef char* (*getPluginName)(void);
@@ -30,9 +30,12 @@ public:
     void load(bool test_vector);
     void close(void);
     void init(void);
-    void sample(dataContainerMap& dc);
-    void collect_inventory(dataContainerMap& dc);
+    void sample();
+    void collect_inventory();
     void unloadPlugin(std::map<std::string, ipmiSensorInterface*>::iterator it);
+    void setCallbackPointers(ipmiDataLoggerCallback sampling,
+                             ipmiDataLoggerCallback inventory,
+                             ipmiErrorLoggerCallback errorlog);
     int getLoadedPlugins(void);
 
     template<typename T>
@@ -42,8 +45,8 @@ private:
     ipmiSensorFactory();
     virtual ~ipmiSensorFactory(){};
     void getPluginInstanceAndName(std::string ipmiObj);
-    void __sample(pluginsIterator it, dataContainerMap &dc);
-    void __collect_inventory(pluginsIterator it, dataContainerMap &dc);
+    void __sample(pluginsIterator it);
+    void __collect_inventory(pluginsIterator it);
     std::map<std::string, void*> pluginHandlers;
     std::map<std::string, ipmiSensorInterface*> pluginsLoaded;
     IpmiPlugins ipmiPlugins;

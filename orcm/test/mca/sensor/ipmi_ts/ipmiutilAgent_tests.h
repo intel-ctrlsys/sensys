@@ -25,12 +25,14 @@ protected:
     std::string fileName;
 
     static const int MY_MODULE_PRIORITY = 20;
+    static const int MAX_FRU_DEVICES = 254;
+    static const int AREA_FRU_PAGE_SIZE = 240;
     const std::string PROBE_BMC;
     const std::set<std::string> getNodesInConfigFile();
 
     virtual void SetUp();
     virtual void TearDown();
-    ipmiutilAgent_tests() : PROBE_BMC("cn01") {};
+    ipmiutilAgent_tests() : PROBE_BMC("c01") {};
 
     void initParserFramework();
     void cleanParserFramework();

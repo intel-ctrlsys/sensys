@@ -15,18 +15,18 @@ sources = \
         ipmiSensorFactory.h \
         ipmiSensorFactory.cpp \
         ipmiSensorInterface.h \
-	ipmiLibInterface.h \
+        ipmiLibInterface.h \
         ipmiResponse.h \
-	ipmiHAL.h \
-	ipmiHAL.cpp \
-	ipmiutilAgent.h \
-	ipmiutilAgent.cpp \
-	ipmiutilDFx.h \
-	ipmiutilDFx.cpp \
-	ipmiResponseFactory.hpp \
-	ipmiResponseFactory.cpp \
-	ipmiutilAgent_exceptions.h \
-	ipmiutilAgent_exceptions.cpp
+        ipmiHAL.h \
+        ipmiHAL.cpp \
+        ipmiutilAgent.h \
+        ipmiutilAgent.cpp \
+        ipmiutilDFx.h \
+        ipmiutilDFx.cpp \
+        ipmiResponseFactory.hpp \
+        ipmiResponseFactory.cpp \
+        ipmiutilAgent_exceptions.h \
+        ipmiutilAgent_exceptions.cpp
 
 # Make the output library in this directory, and name it either
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la
@@ -58,3 +58,4 @@ libmca_sensor_ipmi_ts_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.l
                                   $(sensor_ipmi_LIBS) $(ipmiutil_LIBS) -lm
 
 include ipmi_test_sensor/Makefile.am
+include ipmi_sensor/Makefile.am

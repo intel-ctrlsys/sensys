@@ -39,7 +39,11 @@ ipmi_ts_tests_SOURCES = \
     ipmiutilAgent_tests.h \
     ipmiutilAgent_tests.cpp \
     ipmiResponseFactory_tests.hpp \
-    ipmiResponseFactory_tests.cpp
+    ipmiResponseFactory_tests.cpp \
+    ipmi_sensor_tests.hpp \
+    ipmi_sensor_tests.cpp \
+    timeoutHelper.hpp \
+    timeoutHelper.cpp
 
 MOCKING = \
     -Wl,--wrap=opal_progress_thread_init \

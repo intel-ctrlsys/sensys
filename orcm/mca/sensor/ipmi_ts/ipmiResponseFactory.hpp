@@ -19,13 +19,13 @@
 #define GETFRUINVAREA_SIZE 4
 #define READFRUDATA_SIZE 4
 
-using namespace std;
 enum MessageType
 {
-    GETDEVICEID = 0,
-    GETACPIPOWER,
-    GETFRUINVAREA,
-    READFRUDATA
+    GETDEVICEID_MSG = 0,
+    GETACPIPOWER_MSG,
+    GETFRUINVAREA_MSG,
+    READFRUDATA_MSG,
+    GETSENSORLIST_MSG
 };
 
 typedef vector<uint8_t> ResponseBuffer;

@@ -81,20 +81,27 @@ void IpmiTestSensor::addStaticMetricsData(dataContainer &dc, const vector<static
         dc.put(it->label, it->value, "");
 }
 
-void IpmiTestSensor::sample(dataContainer &dc)
+void IpmiTestSensor::sample()
 {
-    addMetricsData(dc, metricsData);
-    addStaticMetricsData(dc, staticMetricsData);
+    dataContainer *dc = new dataContainer();
+    addMetricsData(*dc, metricsData);
+    addStaticMetricsData(*dc, staticMetricsData);
+
+    if (NULL != samplingPtr_)
+        samplingPtr_(hostname, dc);
 }
 
-void IpmiTestSensor::collect_inventory(dataContainer &dc)
+void IpmiTestSensor::collect_inventory()
 {
-    addStaticMetricsData(dc, staticMetricsInventory);
-    dc.put(hostname, hostname, hostname);
+    dataContainer *dc = new dataContainer();
+    addStaticMetricsData(*dc, staticMetricsInventory);
+    dc->put(hostname, hostname, hostname);
+
+    if (NULL != inventoryPtr_)
+        inventoryPtr_(hostname, dc);
 }
 
 void IpmiTestSensor::finalize()
 {
-    std::cout << "On finalize" << std::endl;
 }
 

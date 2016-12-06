@@ -18,6 +18,9 @@
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "orcm/mca/sensor/resusage/sensor_resusage.h"
 
+#include "orcm/mca/parser/base/base.h"
+#include "orcm/mca/parser/pugi/parser_pugi.h"
+
 // Fixture
 using namespace std;
 
@@ -55,11 +58,15 @@ void ut_resusage_tests::SetUpTestCase()
     mocked_process.name.vpid = 1;
     mocked_process.node = &mocked_node;
     err_num = 0;
+
+    init_parser_framework();
 }
 
 void ut_resusage_tests::TearDownTestCase()
 {
-    // Release OPAL level resources
+    clean_parser_framework();
+
+   // Release OPAL level resources
     opal_dss_close();
 
     OBJ_DESTRUCT(&job1);
@@ -68,6 +75,26 @@ void ut_resusage_tests::TearDownTestCase()
     OBJ_DESTRUCT(&mocked_node);
     OBJ_DESTRUCT(&mocked_process);
 }
+
+void ut_resusage_tests::init_parser_framework()
+{
+    static const int MY_MODULE_PRIORITY = 20;
+
+    OBJ_CONSTRUCT(&orcm_parser_base_framework.framework_components, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_parser_base.actives, opal_list_t);
+    orcm_parser_active_module_t *act_module;
+    act_module = OBJ_NEW(orcm_parser_active_module_t);
+    act_module->priority = MY_MODULE_PRIORITY;
+    act_module->module = &orcm_parser_pugi_module;
+    opal_list_append(&orcm_parser_base.actives, &act_module->super);
+}
+
+void ut_resusage_tests::clean_parser_framework()
+{
+    OPAL_LIST_DESTRUCT(&orcm_parser_base_framework.framework_components);
+    OPAL_LIST_DESTRUCT(&orcm_parser_base.actives);
+}
+
 
 orte_job_t* ut_resusage_tests::GetJobDataObject1(orte_jobid_t id)
 {

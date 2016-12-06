@@ -17,7 +17,7 @@ enum supportedMocks
     SET_LAN_OPTIONS,
     IPMI_CMD_MC,
     IPMI_CMD,
-    GET_SDR_CACHE,
+    GET_SDR_CACHE
 };
 
 static std::map<supportedMocks, mockManager> mocks;
@@ -27,7 +27,8 @@ enum mockStates
     NO_MOCK = 0,
     SUCCESS,
     FAILURE,
-    RETURN_FRU_AREA
+    RETURN_FRU_AREA_1,
+    RETURN_FRU_AREA_2
 };
 
 static int dispatchIpmiResponse(mockStates state)
@@ -91,6 +92,24 @@ extern "C"
         mockStates state = (mockStates) mocks[IPMI_CMD].nextMockState();
         if (NO_MOCK == state)
             return __real_ipmi_cmd(icmd, pdata, sdata, presp, sresp, pcc, fdebugcmd);
+
+        if (FAILURE == state) {
+            return dispatchIpmiResponse(state);
+        }
+
+        if (RETURN_FRU_AREA_1 == state) {
+            int counter = 0;
+            presp[0] = 0x02;
+            presp[1] = 0x03;
+            presp[2] = 0x0F;
+        }
+
+        if (RETURN_FRU_AREA_2 == state) {
+            int counter = 0;
+            presp[0] = 0x03;
+            presp[1] = 0x04;
+            presp[2] = 0x0F;
+        }
 
         return dispatchIpmiResponse(state);
     }

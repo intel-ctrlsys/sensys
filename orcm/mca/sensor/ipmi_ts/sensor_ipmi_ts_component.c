@@ -1,10 +1,11 @@
 /*
- * Copyright (c) 2016  Intel, Inc. All rights reserved.
+ * Copyright (c) 2016  Intel Corporation. All rights reserved.
+ * $COPYRIGHT$
+ *
  * Additional copyrights may follow
  *
  * $HEADER$
  */
-
 #include "orcm_config.h"
 #include "orcm/constants.h"
 #include "orcm/mca/sensor/base/sensor_private.h"
@@ -91,6 +92,21 @@ int ipmi_ts_component_register(void)
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_ipmi_ts_component.test);
 
+    mca_sensor_ipmi_ts_component.dfx = false;
+    (void) mca_base_component_var_register (c, "dfx",
+                                            "Generate and pass DFx data (DEBUG only)",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_ipmi_ts_component.dfx);
+
+    mca_sensor_ipmi_ts_component.agents = 4;
+    (void) mca_base_component_var_register (c, "agents",
+                                            "Number of dispatching agents for ipmi HAL",
+                                            MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            & mca_sensor_ipmi_ts_component.agents);
 
     mca_sensor_ipmi_ts_component.use_progress_thread = false;
     (void) mca_base_component_var_register(c, "use_progress_thread",

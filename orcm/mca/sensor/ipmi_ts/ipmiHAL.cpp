@@ -11,7 +11,6 @@
 #include "orcm/mca/sensor/ipmi_ts/ipmiutilDFx.h"
 #include "orcm/mca/sensor/ipmi_ts/ipmiutilAgent.h"
 
-
 #include <cstddef>
 #include <string>
 #include <sstream>
@@ -209,8 +208,15 @@ int getNumberOfDispatchingAgents()
 bool shouldUseDFx_()
 {
     static const char MCA_DFX_FLAG[] = "ORCM_MCA_sensor_ipmi_ts_dfx";
+    char *envShouldUseDfx = getenv(MCA_DFX_FLAG);
 
-    return true; // TODO change this with the MCA parameter
+    if (NULL == envShouldUseDfx)
+        return false;
+
+    if (0 == string(envShouldUseDfx).compare("1"))
+        return true;
+
+    return false;
 }
 
 void processRequest_()

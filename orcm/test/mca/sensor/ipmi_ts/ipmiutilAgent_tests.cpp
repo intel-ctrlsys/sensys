@@ -13,6 +13,7 @@
 #include "orcm/mca/sensor/ipmi_ts/ipmiutilAgent_exceptions.h"
 #include "orcm/mca/sensor/ipmi/ipmi_parser.h"
 
+
 extern "C" {
     #include "orcm/mca/parser/base/base.h"
     #include "orcm/mca/parser/pugi/parser_pugi.h"
@@ -27,7 +28,9 @@ void ipmiutilAgent_tests::SetUp()
     setFileName();
 
     orcm_cfgi_base.config_file = strdup(fileName.c_str());
-    mocks[SET_LAN_OPTIONS].restartMock();
+
+    for (map<supportedMocks, mockManager>::iterator it = mocks.begin(); it != mocks.end(); ++it)
+        it->second.restartMock();
 
     agent = new ipmiutilAgent(fileName);
 }
@@ -199,4 +202,10 @@ TEST_F(ipmiutilAgent_extra, completionException)
     } catch(...) {
         FAIL();
     }
+}
+
+TEST_F(ipmiutilAgent_extra, functions_for_message_interpretation)
+{
+    EXPECT_TRUE(getErrorMessage(1).empty());
+    EXPECT_TRUE(getCompletionMessage(-1).empty());
 }

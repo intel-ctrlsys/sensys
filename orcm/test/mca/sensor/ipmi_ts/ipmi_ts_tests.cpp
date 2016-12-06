@@ -64,11 +64,17 @@ void ut_ipmi_ts_tests::SetUpTestCase()
 {
     opal_init_test();
     mca_sensor_ipmi_ts_component.test = true;
+
+    static const char MCA_DFX_FLAG[] = "ORCM_MCA_sensor_ipmi_ts_dfx";
+    setenv(MCA_DFX_FLAG, "1", 1);
 }
 
 void ut_ipmi_ts_tests::TearDownTestCase()
 {
     mca_sensor_ipmi_ts_component.test = true;
+
+    static const char MCA_DFX_FLAG[] = "ORCM_MCA_sensor_ipmi_ts_dfx";
+    unsetenv(MCA_DFX_FLAG);
 }
 
 void ut_ipmi_ts_tests::setFullMock(bool mockStatus, int nPlugins)

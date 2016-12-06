@@ -12,13 +12,21 @@
 
 #include "orcm/mca/sensor/ipmi_ts/ipmiLibInterface.h"
 #include "orcm/mca/sensor/ipmi_ts/ipmiutilDFx.h"
+#include "orcm/mca/sensor/ipmi_ts/ipmi_test_sensor/ipmi_test_sensor.hpp"
+
+extern "C" {
+    #include "orcm/mca/parser/base/base.h"
+    #include "orcm/mca/parser/pugi/parser_pugi.h"
+    #include "orcm/util/utils.h"
+}
 
 using namespace std;
 
 void HAL::SetUp()
 {
     opal_init_test();
-    // TODO set MCA parameters to use DFx
+
+    setenv(MCA_DFX_FLAG.c_str(), "1", 1);
 
     mocks[OPAL_EVENT_EVTIMER_NEW].restartMock();
 
@@ -33,6 +41,7 @@ void HAL::SetUp()
 
 void HAL::TearDown()
 {
+    unsetenv(MCA_DFX_FLAG.c_str());
     ipmiHAL::terminateInstance();
     delete emptyBuffer;
 }
@@ -143,6 +152,8 @@ TEST_F(HAL, unable_to_allocate_event)
 {
     mocks[OPAL_EVENT_EVTIMER_NEW].pushState(FAILURE);
     ASSERT_NO_THROW(HWobject->addRequest(DUMMY, *emptyBuffer, bmc, NULL, NULL));
+
+    ASSERT_THROW(HWobject->startAgents(),std::runtime_error);
 }
 
 TEST_F(HAL, retrieve_bmc_list)
@@ -179,4 +190,139 @@ TEST_F(EXTRA, response_object)
     EXPECT_TRUE(0 == response.getErrorMessage().compare(errMessage));
     EXPECT_TRUE(0 == response.getCompletionMessage().compare(completionMessage));
     EXPECT_FALSE(response.getResponseBuffer().empty());
+}
+
+void TEST_SENSOR::SetUp()
+{
+    sensor = new ipmiSensorInterface("bmc");
+}
+
+void TEST_SENSOR::TearDown()
+{
+    delete sensor;
+
+}
+
+TEST_F(TEST_SENSOR, init_method)
+{
+    ASSERT_NO_THROW(sensor->init());
+}
+
+TEST_F(TEST_SENSOR, sample_method)
+{
+    dataContainer dc;
+    ASSERT_NO_THROW(sensor->sample(dc));
+}
+
+TEST_F(TEST_SENSOR, collect_inventory_method)
+{
+    dataContainer dc;
+    ASSERT_NO_THROW(sensor->collect_inventory(dc));
+}
+
+TEST_F(TEST_SENSOR, finalize_method)
+{
+    ASSERT_NO_THROW(sensor->finalize());
+}
+
+TEST_F(TEST_SENSOR, get_hostname_method)
+{
+    ASSERT_TRUE(0 == sensor->getHostname().compare("bmc"));
+}
+
+void TEST_SENSOR_DFX::SetUp()
+{
+    sensor = (ipmiSensorInterface*) new IpmiTestSensor("bmc");
+}
+
+void TEST_SENSOR_DFX::TearDown()
+{
+    delete sensor;
+
+}
+
+TEST_F(TEST_SENSOR_DFX, init_method)
+{
+    ASSERT_NO_THROW(sensor->init());
+}
+
+TEST_F(TEST_SENSOR_DFX, sample_method)
+{
+    dataContainer dc;
+    ASSERT_NO_THROW(sensor->sample(dc));
+    ASSERT_TRUE( 0 < dc.count() );
+}
+
+TEST_F(TEST_SENSOR_DFX, collect_inventory_method)
+{
+    dataContainer dc;
+    ASSERT_NO_THROW(sensor->collect_inventory(dc));
+    ASSERT_TRUE( 0 < dc.count() );
+}
+
+TEST_F(TEST_SENSOR_DFX, finalize_method)
+{
+    ASSERT_NO_THROW(sensor->finalize());
+}
+
+TEST_F(TEST_SENSOR_DFX, get_hostname_method)
+{
+    ASSERT_TRUE(0 == sensor->getHostname().compare("bmc"));
+}
+
+void realHAL::initParserFramework()
+{
+    OBJ_CONSTRUCT(&orcm_parser_base_framework.framework_components, opal_list_t);
+    OBJ_CONSTRUCT(&orcm_parser_base.actives, opal_list_t);
+    orcm_parser_active_module_t *act_module;
+    act_module = OBJ_NEW(orcm_parser_active_module_t);
+    act_module->priority = MY_MODULE_PRIORITY;
+    act_module->module = &orcm_parser_pugi_module;
+    opal_list_append(&orcm_parser_base.actives, &act_module->super);
+}
+
+void realHAL::cleanParserFramework()
+{
+    OPAL_LIST_DESTRUCT(&orcm_parser_base_framework.framework_components);
+    OPAL_LIST_DESTRUCT(&orcm_parser_base.actives);
+}
+
+void realHAL::setFileName()
+{
+    char* srcdir = getenv("srcdir");
+    if (NULL != srcdir){
+        fileName = string(srcdir) + "/ipmi.xml";
+    } else {
+        fileName = "ipmi.xml";
+    }
+}
+
+void realHAL::SetUp()
+{
+    opal_init_test();
+
+    initParserFramework();
+    setFileName();
+
+    orcm_cfgi_base.config_file = strdup(fileName.c_str());
+}
+
+void realHAL::TearDown()
+{
+    cleanParserFramework();
+}
+
+TEST_F(realHAL, without_MCA_parameter)
+{
+    ipmiHAL *HWobject = ipmiHAL::getInstance();
+}
+
+TEST_F(realHAL, with_MCA_parameter)
+{
+    static const char MCA_DFX_FLAG[] = "ORCM_MCA_sensor_ipmi_ts_dfx";
+    setenv(MCA_DFX_FLAG, "0", 1);
+
+    ipmiHAL *HWobject = ipmiHAL::getInstance();
+
+    unsetenv(MCA_DFX_FLAG);
 }

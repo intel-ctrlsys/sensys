@@ -10,10 +10,10 @@
 SENSORPLUGIN=rand_generator
 PLUGINPREFIX=libudplugin_
 CXX=g++
-SENSYSPATH=/opt/openrcm
+SENSYSPATH=/opt/sensys
 SENSYSPLIBPATH=$(SENSYSPATH)/lib
 PLUGININSTALLPATH=$(SENSYSPLIBPATH)/openmpi
-CXXFLAGS=-O3 -fPIC -I$(SENSYSPATH)/include/openmpi/orcm/common
+CXXFLAGS=-O3 -fPIC -I$(SENSYSPATH)/include/openmpi/
 LDFLAGS=-L$(SENSYSPLIBPATH) -shared -rdynamic -lsensysplugins
 
 all:

@@ -61,11 +61,8 @@ using namespace std;
 const char* ut_edac_collector_tests::hostname_ = "test_host";
 const char* ut_edac_collector_tests::plugin_name_ = "errcounts";
 const char* ut_edac_collector_tests::proc_name_ = "errcounts_tests";
-map<string,string> ut_edac_collector_tests::sysfs_;
-unsigned int ut_edac_collector_tests::fopened_ = 0;
 int ut_edac_collector_tests::last_errno_ = 0;
 string ut_edac_collector_tests::last_error_filename_;
-void* ut_edac_collector_tests::last_user_data_ = NULL;
 int ut_edac_collector_tests::last_orte_error_ = ORCM_SUCCESS;
 int ut_edac_collector_tests::fail_pack_on_ = -1;
 int ut_edac_collector_tests::fail_pack_count_ = 0;
@@ -73,6 +70,7 @@ int ut_edac_collector_tests::fail_unpack_on_ = -1;
 int ut_edac_collector_tests::fail_unpack_count_ = 0;
 bool ut_edac_collector_tests::fail_pack_buffer_ = false;
 bool ut_edac_collector_tests::fail_unpack_buffer_ = false;
+char* ut_edac_collector_tests::saved_edac_folder_ = NULL;
 
 map<string,int> ut_edac_collector_tests::logged_data_;
 map<string,int> ut_edac_collector_tests::golden_data_;
@@ -86,6 +84,7 @@ std::vector<orcm_analytics_value_t*> ut_edac_collector_tests::current_analytics_
 map<string,string> ut_edac_collector_tests::database_data_;
 
 extern "C" {
+    extern errcounts_impl* implementation;
     extern orcm_sensor_errcounts_component_t mca_sensor_errcounts_component;
     extern orte_proc_info_t orte_process_info;
 
@@ -95,45 +94,141 @@ extern "C" {
     extern int errcounts_component_register(void);
 }
 
+static void mkfile(const char* filename, const char* contents)
+{
+    FILE* fd = fopen(filename, "w");
+    fwrite(contents, 1, strlen(contents), fd);
+    fclose(fd);
+}
+
+class edac_collector_mock_getline: public edac_collector
+{
+    public:
+    edac_collector_mock_getline(edac_error_callback_fn_t error_cb = NULL,
+                          const char* edac_path = NULL)
+            : edac_collector(error_cb, edac_path) {};
+        virtual ~edac_collector_mock_getline() {};
+
+    protected:
+        ssize_t GetLine(char** lineptr, size_t* n, FILE* stream) const
+        {
+            (void)lineptr;
+            (void)n;
+            (void)stream;
+            errno = EBADF;
+            return -1;
+        };
+};
+
+class edac_collector_mock_stat: public edac_collector
+{
+public:
+    edac_collector_mock_stat(edac_error_callback_fn_t error_cb = NULL,
+                          const char* edac_path = NULL)
+            : edac_collector(error_cb, edac_path) {};
+    virtual ~edac_collector_mock_stat() {};
+
+protected:
+    int Stat(const char* path, struct stat* info) const
+    {
+        (void)path;
+        (void)info;
+        return -1;
+    }
+};
+
+class edac_collector_mock_fopen: public edac_collector
+{
+public:
+    edac_collector_mock_fopen(edac_error_callback_fn_t error_cb = NULL,
+                          const char* edac_path = NULL)
+            : edac_collector(error_cb, edac_path) {};
+    virtual ~edac_collector_mock_fopen() {};
+
+protected:
+    FILE* FOpen(const char* path, const char* mode) const
+    {
+        (void)path;
+        (void)mode;
+        errno = ENOENT;
+        return NULL;
+    };
+};
+
+
+void ut_edac_collector_tests::BuildMcFileSys()
+{
+    mkfile("./mcfile", "");
+    mkdir("./mc", 0755);
+
+    mkdir("./mc/mc0", 0755);
+    mkdir("./mc/mc0/csrow0", 0755);
+    mkfile("./mc/mc0/csrow0/ce_count", "2");
+    mkfile("./mc/mc0/csrow0/ue_count", "1");
+    mkfile("./mc/mc0/csrow0/ch0_dimm_label", "TEST_MC0_CSROW0_CH0\n");
+    mkfile("./mc/mc0/csrow0/ch0_ce_count", "0");
+    mkfile("./mc/mc0/csrow0/ch1_dimm_label", "TEST_MC0_CSROW0_CH1\n");
+    mkfile("./mc/mc0/csrow0/ch1_ce_count", "1");
+    mkfile("./mc/mc0/csrow0/ch2_dimm_label", "TEST_MC0_CSROW0_CH2\n");
+    mkfile("./mc/mc0/csrow0/ch2_ce_count", "1");
+    mkfile("./mc/mc0/csrow0/ch3_dimm_label", "TEST_MC0_CSROW0_CH3\n");
+    mkfile("./mc/mc0/csrow0/ch3_ce_count", "0");
+
+    mkdir("./mc/mc1", 0755);
+    mkdir("./mc/mc1/csrow0", 0755);
+    mkfile("./mc/mc1/csrow0/ce_count", "6");
+    mkfile("./mc/mc1/csrow0/ue_count", "2");
+    mkfile("./mc/mc1/csrow0/ch0_dimm_label", "TEST_MC1_CSROW0_CH0\n");
+    mkfile("./mc/mc1/csrow0/ch0_ce_count", "1");
+    mkfile("./mc/mc1/csrow0/ch1_dimm_label", "TEST_MC1_CSROW0_CH1\n");
+    mkfile("./mc/mc1/csrow0/ch1_ce_count", "2");
+    mkfile("./mc/mc1/csrow0/ch2_dimm_label", "TEST_MC1_CSROW0_CH2\n");
+    mkfile("./mc/mc1/csrow0/ch2_ce_count", "1");
+    mkfile("./mc/mc1/csrow0/ch3_dimm_label", "TEST_MC1_CSROW0_CH3\n");
+    mkfile("./mc/mc1/csrow0/ch3_ce_count", "2");
+}
+
+void ut_edac_collector_tests::DestroyMcFileSys()
+{
+    remove("./mc/mc1/csrow0/ch3_ce_count");
+    remove("./mc/mc1/csrow0/ch3_dimm_label");
+    remove("./mc/mc1/csrow0/ch2_ce_count");
+    remove("./mc/mc1/csrow0/ch2_dimm_label");
+    remove("./mc/mc1/csrow0/ch1_ce_count");
+    remove("./mc/mc1/csrow0/ch1_dimm_label");
+    remove("./mc/mc1/csrow0/ch0_ce_count");
+    remove("./mc/mc1/csrow0/ch0_dimm_label");
+    remove("./mc/mc1/csrow0/ue_count");
+    remove("./mc/mc1/csrow0/ce_count");
+    remove("./mc/mc1/csrow0");
+    remove("./mc/mc1");
+
+    remove("./mc/mc0/csrow0/ch3_ce_count");
+    remove("./mc/mc0/csrow0/ch3_dimm_label");
+    remove("./mc/mc0/csrow0/ch2_ce_count");
+    remove("./mc/mc0/csrow0/ch2_dimm_label");
+    remove("./mc/mc0/csrow0/ch1_ce_count");
+    remove("./mc/mc0/csrow0/ch1_dimm_label");
+    remove("./mc/mc0/csrow0/ch0_ce_count");
+    remove("./mc/mc0/csrow0/ch0_dimm_label");
+    remove("./mc/mc0/csrow0/ue_count");
+    remove("./mc/mc0/csrow0/ce_count");
+    remove("./mc/mc0/csrow0");
+    remove("./mc/mc0");
+
+    remove("./mc");
+    remove("./mcfile");
+}
+
 void ut_edac_collector_tests::SetUpTestCase()
 {
     // Apparently never configured in OPAL to a real value only -1...
     opal_dss_register_vars();
-
+    saved_edac_folder_ = mca_sensor_errcounts_component.edac_mc_folder;
+    mca_sensor_errcounts_component.edac_mc_folder = (char*)"./mc";
+    
     // Base of sysfs (mocked)
-    sysfs_["/sys/devices/system/edac/mc"] = "__DIR__";
-
-    // MC0
-    sysfs_["/sys/devices/system/edac/mc/mc0"] = "__DIR__";
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0"] = "__DIR__";
-
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0/ce_count"] = "2";
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0/ue_count"] = "1";
-
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0/ch0_dimm_label"] = "TEST_MC0_CSROW0_CH0\n";
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0/ch0_ce_count"]   = "0";
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0/ch1_dimm_label"] = "TEST_MC0_CSROW0_CH1\n";
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0/ch1_ce_count"]   = "1";
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0/ch2_dimm_label"] = "TEST_MC0_CSROW0_CH2\n";
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0/ch2_ce_count"]   = "1";
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0/ch3_dimm_label"] = "TEST_MC0_CSROW0_CH3\n";
-    sysfs_["/sys/devices/system/edac/mc/mc0/csrow0/ch3_ce_count"]   = "0";
-
-    // MC1
-    sysfs_["/sys/devices/system/edac/mc/mc1"] = "__DIR__";
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0"] = "__DIR__";
-
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0/ce_count"] = "6";
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0/ue_count"] = "2";
-
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0/ch0_dimm_label"] = "TEST_MC1_CSROW0_CH0\n";
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0/ch0_ce_count"]   = "1";
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0/ch1_dimm_label"] = "TEST_MC1_CSROW0_CH1\n";
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0/ch1_ce_count"]   = "2";
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0/ch2_dimm_label"] = "TEST_MC1_CSROW0_CH2\n";
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0/ch2_ce_count"]   = "1";
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0/ch3_dimm_label"] = "TEST_MC1_CSROW0_CH3\n";
-    sysfs_["/sys/devices/system/edac/mc/mc1/csrow0/ch3_ce_count"]   = "2";
+    BuildMcFileSys();
 
     // Golden Data Comparer
     golden_data_["CPU_SrcID#0_Sum_DIMM#0_CE"] = 2;
@@ -168,18 +263,17 @@ void ut_edac_collector_tests::SetUpTestCase()
 
 void ut_edac_collector_tests::TearDownTestCase()
 {
-    sysfs_.clear();
     golden_data_.clear();
     golden_inv_.clear();
+    
+    mca_sensor_errcounts_component.edac_mc_folder = saved_edac_folder_;
+
+    DestroyMcFileSys();
 }
 
 void ut_edac_collector_tests::SetUp()
 {
     ResetTestEnvironment();
-
-    fail_getline = false;
-    fail_fopen = false;
-    fail_stat = false;
 }
 
 void ut_edac_collector_tests::TearDown()
@@ -192,41 +286,7 @@ void ut_edac_collector_tests::TearDown()
     edac_mocking.orcm_analytics_base_send_data_callback = NULL;
     edac_mocking.opal_progress_thread_init_callback = NULL;
     edac_mocking.opal_progress_thread_finalize_callback = NULL;
-
-    fopened_ = false;
 }
-
-FILE* ut_edac_collector_tests::FOpen(const char* path, const char* mode) const
-{
-    if(fail_fopen) {
-        return FOpenMockFail(path, mode);
-    } else {
-        return FOpenMock(path, mode);
-    }
-}
-
-int ut_edac_collector_tests::FClose(FILE* fd) const
-{
-    return FCloseMock(fd);
-}
-
-ssize_t ut_edac_collector_tests::GetLine(char** lineptr, size_t* n, FILE* stream) const
-{
-    if(fail_getline) {
-        return GetLineMockFail(lineptr, n, stream);
-    } else {
-        return GetLineMock(lineptr, n, stream);
-    }
-}
-
-int ut_edac_collector_tests::Stat(const char* path, struct stat* info) const
-{
-    if(fail_stat)
-        return ut_edac_collector_tests::StatFail(path, info);
-    else
-        return ut_edac_collector_tests::StatOk(path, info);
-}
-
 void ut_edac_collector_tests::ClearBuffers()
 {
     while(0 < packed_int32_.size()) {
@@ -282,100 +342,6 @@ void ut_edac_collector_tests::ResetTestEnvironment()
 }
 
 // Mocking methods
-int ut_edac_collector_tests::StatOk(const char* pathname, struct stat* sb)
-{
-    if(sysfs_.end() == sysfs_.find(pathname)) {
-        errno = ENOENT;
-        return -1;
-    } else {
-        memset((void*)sb, 0, sizeof(struct stat));
-        sb->st_nlink = 1;
-        sb->st_blksize = 512;
-        sb->st_blocks = 1;
-        if("__DIR__" == sysfs_[pathname]) {
-            sb->st_mode = S_IFDIR;
-        } else {
-            sb->st_mode = S_IFREG;
-        }
-        return 0;
-    }
-}
-
-int ut_edac_collector_tests::StatFail(const char* pathname, struct stat* sb)
-{
-    (void)pathname;
-    (void)sb;
-    return -1;
-}
-
-FILE* ut_edac_collector_tests::FOpenMock(const char* path, const char* mode)
-{
-    if(sysfs_.end() == sysfs_.find(path)) {
-        errno = ENOENT;
-        return NULL;
-    } else if("r" == string(mode)) {
-        ++fopened_;
-        return (FILE*)path;
-    } else {
-        errno = EINVAL;
-        return NULL;
-    }
-}
-
-FILE* ut_edac_collector_tests::FOpenMockFail(const char* path, const char* mode)
-{
-    (void)path;
-    (void)mode;
-    errno = ENOENT;
-    return NULL;
-}
-
-ssize_t ut_edac_collector_tests::GetLineMock(char** line_buf, size_t* line_buff_size, FILE* fd)
-{
-    const char* lookup = (const char*)fd;
-    if(NULL == lookup) {
-        return 0;
-    }
-    string result = sysfs_[lookup];
-    if(NULL == *line_buf) {
-        *line_buf = (char*)malloc(result.size() + 1);
-        strncpy(*line_buf, result.c_str(), result.size());
-        (*line_buf)[result.size()] = '\0';
-        *line_buff_size = result.size() + 1;
-        return strlen(*line_buf);
-    } else if(0 < *line_buff_size) {
-        strncpy(*line_buf, result.c_str(), min(result.size(),*line_buff_size));
-        (*line_buf)[*line_buff_size-1] = '\0';
-        *line_buff_size = strlen(*line_buf) + 1;
-        if(result.size() > 0 && '\n' == result[result.size()-1]) {
-            --(*line_buff_size);
-        }
-        return strlen(*line_buf);
-    } else {
-        return -1;
-    }
-}
-
-ssize_t ut_edac_collector_tests::GetLineMockFail(char** line_buf, size_t* line_buff_size, FILE* fd)
-{
-    (void)line_buf;
-    (void)line_buff_size;
-    (void)fd;
-    errno = EBADF;
-    return -1;
-}
-
-int ut_edac_collector_tests::FCloseMock(FILE* fd)
-{
-    if(0 == fopened_ || NULL == fd) {
-        errno = EBADF;
-        return -1;
-    } else {
-        --fopened_;
-        return 0;
-    }
-}
-
 void ut_edac_collector_tests::OrteErrmgrBaseLog(int err, char* file, int lineno)
 {
     (void)file;
@@ -495,16 +461,6 @@ void ut_edac_collector_tests::OrcmAnalyticsBaseSendData(orcm_analytics_value_t* 
     }
 }
 
-opal_event_base_t* ut_edac_collector_tests::OpalProgressThreadInit(const char* name)
-{
-    return NULL;
-}
-
-int ut_edac_collector_tests::OpalProgressThreadFinalize(const char* name)
-{
-    return ORCM_SUCCESS;
-}
-
 void ut_edac_collector_tests::MyDbStoreNew(int dbhandle, orcm_db_data_type_t data_type, opal_list_t *input,
                                            opal_list_t *ret, orcm_db_callback_fn_t cbfunc, void *cbdata)
 {
@@ -525,35 +481,32 @@ void ut_edac_collector_tests::MyDbStoreNew(int dbhandle, orcm_db_data_type_t dat
 // Callbacks...
 void ut_edac_collector_tests::ErrorSink(const char* pathname, int error_number, void* user_data)
 {
-    last_user_data_ = user_data;
     last_error_filename_ = pathname;
     last_errno_ = error_number;
 }
 
 void ut_edac_collector_tests::DataSink(const char* label, int count, void* user_data)
 {
-    last_user_data_ = user_data;
     logged_data_[label] = count;
 }
 
 void ut_edac_collector_tests::InventorySink(const char* label, const char* name, void* user_data)
 {
-    last_user_data_ = user_data;
     logged_inv_[label] = name;
 }
 
 // Testing the data collection class
 TEST_F(ut_edac_collector_tests, test_constructor_error_callback)
 {
-    last_user_data_ = NULL;
+    edac_collector* collector = new edac_collector(NULL, "./mc");
     last_error_filename_ = string();
     last_errno_ = 0;
-    report_error("/somepath", 1);
+    collector->report_error("/somepath", 1);
     ASSERT_TRUE(last_error_filename_.empty());
     ASSERT_EQ(0, last_errno_);
 
-    error_callback = ErrorSink;
-    report_error("/somepath", 1);
+    collector->error_callback = ErrorSink;
+    collector->report_error("/somepath", 1);
 
     ASSERT_STREQ("/somepath", last_error_filename_.c_str());
     ASSERT_EQ(1, last_errno_);
@@ -561,143 +514,157 @@ TEST_F(ut_edac_collector_tests, test_constructor_error_callback)
 
 TEST_F(ut_edac_collector_tests, test_have_edac)
 {
-    fail_stat = true;
-    ASSERT_FALSE(have_edac());
+    edac_collector* collector = new edac_collector(NULL, "./not_mc");
+    ASSERT_FALSE(collector->have_edac());
+    delete collector;
 
-    fail_stat = false;
-    ASSERT_TRUE(have_edac());
+    collector = new edac_collector(NULL, "./mc");
+    ASSERT_TRUE(collector->have_edac());
+    delete collector;
+
+    collector = new edac_collector(NULL, "./mcfile");
+    ASSERT_FALSE(collector->have_edac());
+    delete collector;
 }
 
 TEST_F(ut_edac_collector_tests, test_get_mc_folder_count)
 {
-    ASSERT_EQ(2, get_mc_folder_count());
+    edac_collector* collector = new edac_collector(NULL, "./mc");
+    ASSERT_EQ(2, collector->get_mc_folder_count());
+    delete collector;
 }
 
 TEST_F(ut_edac_collector_tests, test_get_csrow_folder_count)
 {
-    error_callback = ErrorSink;
+    edac_collector* collector = new edac_collector(ErrorSink, "./mc");
 
-    ASSERT_EQ(1, get_csrow_folder_count(0));
-    ASSERT_EQ(1, get_csrow_folder_count(1));
+    ASSERT_EQ(1, collector->get_csrow_folder_count(0));
+    ASSERT_EQ(1, collector->get_csrow_folder_count(1));
+    delete collector;
 }
 
 TEST_F(ut_edac_collector_tests, test_get_channel_folder_count)
 {
-    ASSERT_EQ(4, get_channel_folder_count(0, 0));
-    ASSERT_EQ(4, get_channel_folder_count(1, 0));
+    edac_collector* collector = new edac_collector(NULL, "./mc");
+    ASSERT_EQ(4, collector->get_channel_folder_count(0, 0));
+    ASSERT_EQ(4, collector->get_channel_folder_count(1, 0));
+    delete collector;
 }
 
 TEST_F(ut_edac_collector_tests, test_get_ce_count)
 {
-    error_callback = ErrorSink;
+    edac_collector* collector = new edac_collector(ErrorSink, "./mc");
 
-    ASSERT_EQ(2, get_ce_count(0, 0));
-    ASSERT_EQ(6, get_ce_count(1, 0));
+    ASSERT_EQ(2, collector->get_ce_count(0, 0));
+    ASSERT_EQ(6, collector->get_ce_count(1, 0));
+    delete collector;
+    collector = new edac_collector_mock_fopen(ErrorSink, "./mc");
 
-    fail_fopen = true;
-
-    ASSERT_NE(2, get_ce_count(0, 0));
-    ASSERT_NE(6, get_ce_count(1, 0));
+    ASSERT_NE(2, collector->get_ce_count(0, 0));
+    ASSERT_NE(6, collector->get_ce_count(1, 0));
+    delete collector;
 }
 
 TEST_F(ut_edac_collector_tests, test_get_ue_count)
 {
-    error_callback = DataSink;
+    edac_collector* collector = new edac_collector(DataSink, "./mc");
 
-    ASSERT_EQ(1, get_ue_count(0, 0));
-    ASSERT_EQ(2, get_ue_count(1, 0));
+    ASSERT_EQ(1, collector->get_ue_count(0, 0));
+    ASSERT_EQ(2, collector->get_ue_count(1, 0));
 
-    fail_fopen = true;
+    delete collector;
+    collector = new edac_collector_mock_fopen(DataSink, "./mc");
 
-    ASSERT_NE(1, get_ue_count(0, 0));
-    ASSERT_NE(2, get_ue_count(1, 0));
+    ASSERT_NE(1, collector->get_ue_count(0, 0));
+    ASSERT_NE(2, collector->get_ue_count(1, 0));
+    delete collector;
 }
 
 TEST_F(ut_edac_collector_tests, test_get_channel_ce_count)
 {
-    error_callback = ErrorSink;
+    edac_collector* collector = new edac_collector(ErrorSink, "./mc");
 
-    ASSERT_EQ(0, get_channel_ce_count(0, 0, 0));
-    ASSERT_EQ(1, get_channel_ce_count(0, 0, 1));
-    ASSERT_EQ(1, get_channel_ce_count(0, 0, 2));
-    ASSERT_EQ(0, get_channel_ce_count(0, 0, 3));
+    ASSERT_EQ(0, collector->get_channel_ce_count(0, 0, 0));
+    ASSERT_EQ(1, collector->get_channel_ce_count(0, 0, 1));
+    ASSERT_EQ(1, collector->get_channel_ce_count(0, 0, 2));
+    ASSERT_EQ(0, collector->get_channel_ce_count(0, 0, 3));
 
-    ASSERT_EQ(1, get_channel_ce_count(1, 0, 0));
-    ASSERT_EQ(2, get_channel_ce_count(1, 0, 1));
-    ASSERT_EQ(1, get_channel_ce_count(1, 0, 2));
-    ASSERT_EQ(2, get_channel_ce_count(1, 0, 3));
+    ASSERT_EQ(1, collector->get_channel_ce_count(1, 0, 0));
+    ASSERT_EQ(2, collector->get_channel_ce_count(1, 0, 1));
+    ASSERT_EQ(1, collector->get_channel_ce_count(1, 0, 2));
+    ASSERT_EQ(2, collector->get_channel_ce_count(1, 0, 3));
+    delete collector;
+    collector = new edac_collector_mock_fopen(ErrorSink, "./mc");
 
-    fail_fopen = true;
+    ASSERT_NE(0, collector->get_channel_ce_count(0, 0, 0));
+    ASSERT_NE(1, collector->get_channel_ce_count(0, 0, 1));
+    ASSERT_NE(1, collector->get_channel_ce_count(0, 0, 2));
+    ASSERT_NE(0, collector->get_channel_ce_count(0, 0, 3));
 
-    ASSERT_NE(0, get_channel_ce_count(0, 0, 0));
-    ASSERT_NE(1, get_channel_ce_count(0, 0, 1));
-    ASSERT_NE(1, get_channel_ce_count(0, 0, 2));
-    ASSERT_NE(0, get_channel_ce_count(0, 0, 3));
-
-    ASSERT_NE(1, get_channel_ce_count(1, 0, 0));
-    ASSERT_NE(2, get_channel_ce_count(1, 0, 1));
-    ASSERT_NE(1, get_channel_ce_count(1, 0, 2));
-    ASSERT_NE(2, get_channel_ce_count(1, 0, 3));
+    ASSERT_NE(1, collector->get_channel_ce_count(1, 0, 0));
+    ASSERT_NE(2, collector->get_channel_ce_count(1, 0, 1));
+    ASSERT_NE(1, collector->get_channel_ce_count(1, 0, 2));
+    ASSERT_NE(2, collector->get_channel_ce_count(1, 0, 3));
+    delete collector;
 }
 
 TEST_F(ut_edac_collector_tests, test_get_channel_label)
 {
-    error_callback = ErrorSink;
+    edac_collector* collector = new edac_collector(ErrorSink, "./mc");
 
-    ASSERT_STREQ("TEST_MC0_CSROW0_CH0", get_channel_label(0, 0, 0).c_str());
-    ASSERT_STREQ("TEST_MC0_CSROW0_CH1", get_channel_label(0, 0, 1).c_str());
-    ASSERT_STREQ("TEST_MC0_CSROW0_CH2", get_channel_label(0, 0, 2).c_str());
-    ASSERT_STREQ("TEST_MC0_CSROW0_CH3", get_channel_label(0, 0, 3).c_str());
+    ASSERT_STREQ("TEST_MC0_CSROW0_CH0", collector->get_channel_label(0, 0, 0).c_str());
+    ASSERT_STREQ("TEST_MC0_CSROW0_CH1", collector->get_channel_label(0, 0, 1).c_str());
+    ASSERT_STREQ("TEST_MC0_CSROW0_CH2", collector->get_channel_label(0, 0, 2).c_str());
+    ASSERT_STREQ("TEST_MC0_CSROW0_CH3", collector->get_channel_label(0, 0, 3).c_str());
 
-    ASSERT_STREQ("TEST_MC1_CSROW0_CH0", get_channel_label(1, 0, 0).c_str());
-    ASSERT_STREQ("TEST_MC1_CSROW0_CH1", get_channel_label(1, 0, 1).c_str());
-    ASSERT_STREQ("TEST_MC1_CSROW0_CH2", get_channel_label(1, 0, 2).c_str());
-    ASSERT_STREQ("TEST_MC1_CSROW0_CH3", get_channel_label(1, 0, 3).c_str());
+    ASSERT_STREQ("TEST_MC1_CSROW0_CH0", collector->get_channel_label(1, 0, 0).c_str());
+    ASSERT_STREQ("TEST_MC1_CSROW0_CH1", collector->get_channel_label(1, 0, 1).c_str());
+    ASSERT_STREQ("TEST_MC1_CSROW0_CH2", collector->get_channel_label(1, 0, 2).c_str());
+    ASSERT_STREQ("TEST_MC1_CSROW0_CH3", collector->get_channel_label(1, 0, 3).c_str());
 
-    fail_fopen = true;
+    delete collector;
+    collector = new edac_collector_mock_fopen(ErrorSink, "./mc");
 
-    ASSERT_STRNE("TEST_MC0_CSROW0_CH0", get_channel_label(0, 0, 0).c_str());
-    ASSERT_STRNE("TEST_MC0_CSROW0_CH1", get_channel_label(0, 0, 1).c_str());
-    ASSERT_STRNE("TEST_MC0_CSROW0_CH2", get_channel_label(0, 0, 2).c_str());
-    ASSERT_STRNE("TEST_MC0_CSROW0_CH3", get_channel_label(0, 0, 3).c_str());
+    ASSERT_STRNE("TEST_MC0_CSROW0_CH0", collector->get_channel_label(0, 0, 0).c_str());
+    ASSERT_STRNE("TEST_MC0_CSROW0_CH1", collector->get_channel_label(0, 0, 1).c_str());
+    ASSERT_STRNE("TEST_MC0_CSROW0_CH2", collector->get_channel_label(0, 0, 2).c_str());
+    ASSERT_STRNE("TEST_MC0_CSROW0_CH3", collector->get_channel_label(0, 0, 3).c_str());
 
-    ASSERT_STRNE("TEST_MC1_CSROW0_CH0", get_channel_label(1, 0, 0).c_str());
-    ASSERT_STRNE("TEST_MC1_CSROW0_CH1", get_channel_label(1, 0, 1).c_str());
-    ASSERT_STRNE("TEST_MC1_CSROW0_CH2", get_channel_label(1, 0, 2).c_str());
-    ASSERT_STRNE("TEST_MC1_CSROW0_CH3", get_channel_label(1, 0, 3).c_str());
+    ASSERT_STRNE("TEST_MC1_CSROW0_CH0", collector->get_channel_label(1, 0, 0).c_str());
+    ASSERT_STRNE("TEST_MC1_CSROW0_CH1", collector->get_channel_label(1, 0, 1).c_str());
+    ASSERT_STRNE("TEST_MC1_CSROW0_CH2", collector->get_channel_label(1, 0, 2).c_str());
+    ASSERT_STRNE("TEST_MC1_CSROW0_CH3", collector->get_channel_label(1, 0, 3).c_str());
+    delete collector;
 }
 
 TEST_F(ut_edac_collector_tests, test_get_xx_negative)
 {
-    error_callback = ErrorSink;
+    edac_collector* collector = new edac_collector_mock_fopen(ErrorSink, "./mc");
 
-    fail_fopen = true;
-
-    ASSERT_STREQ("", get_channel_label(0, 0, 0).c_str());
+    ASSERT_STREQ("", collector->get_channel_label(0, 0, 0).c_str());
     ASSERT_EQ(2, last_errno_);
-    ASSERT_STREQ("/sys/devices/system/edac/mc/mc0/csrow0/ch0_dimm_label", last_error_filename_.c_str());
-    ASSERT_EQ(-1, get_channel_ce_count(0, 0, 1));
+    ASSERT_STREQ("./mc/mc0/csrow0/ch0_dimm_label", last_error_filename_.c_str());
+    ASSERT_EQ(-1, collector->get_channel_ce_count(0, 0, 1));
     ASSERT_EQ(2, last_errno_);
-    ASSERT_STREQ("/sys/devices/system/edac/mc/mc0/csrow0/ch1_ce_count", last_error_filename_.c_str());
+    ASSERT_STREQ("./mc/mc0/csrow0/ch1_ce_count", last_error_filename_.c_str());
 
-    fail_fopen = false;
-    fail_getline = true;
+    delete collector;
+    collector = new edac_collector_mock_getline(ErrorSink, "./mc");
 
-    ASSERT_STREQ("", get_channel_label(0, 0, 0).c_str());
+    ASSERT_STREQ("", collector->get_channel_label(0, 0, 0).c_str());
     ASSERT_EQ(9, last_errno_);
-    ASSERT_STREQ("/sys/devices/system/edac/mc/mc0/csrow0/ch0_dimm_label", last_error_filename_.c_str());
-    ASSERT_EQ(-1, get_channel_ce_count(0, 0, 1));
+    ASSERT_STREQ("./mc/mc0/csrow0/ch0_dimm_label", last_error_filename_.c_str());
+    ASSERT_EQ(-1, collector->get_channel_ce_count(0, 0, 1));
     ASSERT_EQ(9, last_errno_);
-    ASSERT_STREQ("/sys/devices/system/edac/mc/mc0/csrow0/ch1_ce_count", last_error_filename_.c_str());
+    ASSERT_STREQ("./mc/mc0/csrow0/ch1_ce_count", last_error_filename_.c_str());
+    delete collector;
 }
 
 TEST_F(ut_edac_collector_tests, test_collect_data)
 {
-    error_callback = ErrorSink;
+    edac_collector* collector = new edac_collector(ErrorSink, "./mc");
 
-    fail_stat = false;
-
-    ASSERT_TRUE(collect_data(DataSink, NULL));
+    ASSERT_TRUE(collector->collect_data(DataSink, NULL));
     ASSERT_EQ(12, logged_data_.size());
 
     // Compare to golden...
@@ -707,27 +674,27 @@ TEST_F(ut_edac_collector_tests, test_collect_data)
         ASSERT_EQ(it->second, log_it->second) << it->second << "==" << log_it->second;
         ++log_it;
     }
-
-    fail_getline = true;
+    delete collector;
+    collector = new edac_collector_mock_getline(ErrorSink, "./mc");
 
     logged_data_.clear();
-    ASSERT_TRUE(collect_data(DataSink, NULL));
+    ASSERT_TRUE(collector->collect_data(DataSink, NULL));
     ASSERT_EQ(0, logged_data_.size());
 
-    fail_fopen = true;
-    fail_getline = false;
+    delete collector;
+    collector = new edac_collector_mock_fopen(ErrorSink, "./mc");
 
-    ASSERT_TRUE(collect_data(DataSink, NULL));
+    ASSERT_TRUE(collector->collect_data(DataSink, NULL));
     ASSERT_EQ(0, logged_data_.size());
 
-    ASSERT_FALSE(collect_data(NULL, NULL));
+    ASSERT_FALSE(collector->collect_data(NULL, NULL));
+    delete collector;
 }
 
 TEST_F(ut_edac_collector_tests, test_collect_inventory)
 {
-    error_callback = ErrorSink;
-
-    ASSERT_TRUE(collect_inventory(InventorySink, NULL));
+    edac_collector* collector = new edac_collector(ErrorSink, "./mc");
+    ASSERT_TRUE(collector->collect_inventory(InventorySink, NULL));
     ASSERT_EQ(12, logged_inv_.size());
 
     map<string,string>::iterator log_it = logged_inv_.begin();
@@ -736,14 +703,15 @@ TEST_F(ut_edac_collector_tests, test_collect_inventory)
         ASSERT_STREQ(it->second.c_str(), log_it->second.c_str()) << it->second << "==" << log_it->second;
         ++log_it;
     }
-
-    fail_stat = true;
+    delete collector;
+    collector = new edac_collector_mock_stat(ErrorSink, "./mc");
 
     logged_inv_.clear();
-    ASSERT_TRUE(collect_inventory(InventorySink, NULL));
+    ASSERT_TRUE(collector->collect_inventory(InventorySink, NULL));
     ASSERT_EQ(0, logged_inv_.size());
 
-    ASSERT_FALSE(collect_inventory(NULL, NULL));
+    ASSERT_FALSE(collector->collect_inventory(NULL, NULL));
+    delete collector;
 }
 
 // Testing plugin relay methods...
@@ -1092,9 +1060,9 @@ TEST_F(ut_edac_collector_tests, test_perthread_errcounts_sample)
     mca_sensor_errcounts_component.use_progress_thread = true;
     mca_sensor_errcounts_component.sample_rate = 10;
 
-    SpecialErrcountsMock dummy;
+    errcounts_impl dummy;
     edac_collector* saved = dummy.collector_;
-    dummy.collector_ = (edac_collector*)this;
+    dummy.collector_ = new edac_collector(ErrorSink, "./mc");
     dummy.init();
     ASSERT_FALSE(dummy.edac_missing_);
 
@@ -1107,8 +1075,9 @@ TEST_F(ut_edac_collector_tests, test_perthread_errcounts_sample)
 
     ASSERT_EQ(12, dummy.data_samples_labels_.size());
 
-    dummy.collector_ = saved;
     dummy.finalize();
+    delete dummy.collector_;
+    dummy.collector_ = saved;
 }
 
 TEST_F(ut_edac_collector_tests, test_sample)
@@ -1120,7 +1089,7 @@ TEST_F(ut_edac_collector_tests, test_sample)
     errcounts_impl dummy;
     dummy.init();
     edac_collector* saved = dummy.collector_;
-    dummy.collector_ = (edac_collector*)this;
+    dummy.collector_ = new edac_collector(ErrorSink, "./mc");
 
     opal_output_verbose_.clear();
     last_orte_error_ = 0;
@@ -1172,6 +1141,7 @@ TEST_F(ut_edac_collector_tests, test_sample)
     dummy.sample(&sampler);
     ASSERT_NE(OPAL_SUCCESS, last_orte_error_);
 
+    delete dummy.collector_;
     dummy.collector_ = saved;
 }
 
@@ -1182,7 +1152,7 @@ TEST_F(ut_edac_collector_tests, test_inventory_collect)
     errcounts_impl dummy;
     dummy.init();
     edac_collector* saved = dummy.collector_;
-    dummy.collector_ = (edac_collector*)this;
+    dummy.collector_ = new edac_collector(ErrorSink, "./mc");
 
     last_orte_error_ = 0;
     dummy.inventory_collect(&buffer);
@@ -1209,7 +1179,7 @@ TEST_F(ut_edac_collector_tests, test_inventory_collect)
         dummy.inventory_collect(&buffer);
         ASSERT_NE(OPAL_SUCCESS, last_orte_error_);
     }
-
+    delete dummy.collector_;
     dummy.collector_ = saved;
 }
 
@@ -1227,7 +1197,7 @@ TEST_F(ut_edac_collector_tests, test_log)
     ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
     last_orte_error_ = ORCM_SUCCESS;
 
-    // Remove pluging name
+    // Remove plugin name
     string plugin;
     ASSERT_TRUE(dummy.unpack_string(&buffer, plugin));
     ASSERT_STREQ(plugin_name_, plugin.c_str());
@@ -1289,6 +1259,82 @@ TEST_F(ut_edac_collector_tests, test_log)
 
         ClearBuffers();
     }
+    dummy.finalize();
+}
+
+TEST_F(ut_edac_collector_tests, test_log_negative)
+{
+    orcm_sensor_sampler_t sampler;
+    opal_buffer_t buffer;
+
+    errcounts_impl dummy;
+    dummy.init();
+    edac_collector* saved = dummy.collector_;
+    ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
+    last_orte_error_ = ORCM_SUCCESS;
+
+    dummy.sample(&sampler);
+    ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
+    last_orte_error_ = ORCM_SUCCESS;
+
+    string plugin;
+    ASSERT_TRUE(dummy.unpack_string(&buffer, plugin));
+    ASSERT_STREQ(plugin_name_, plugin.c_str());
+
+    dummy.collector_ = new edac_collector_mock_stat(ErrorSink, "./mc");
+    last_orte_error_ = -1024;
+    dummy.log(&buffer);
+    ASSERT_EQ(-1024, last_orte_error_);
+    delete dummy.collector_;
+    dummy.collector_ = saved;
+    dummy.finalize();
+}
+
+TEST_F(ut_edac_collector_tests, test_edac_missing)
+{
+    orcm_sensor_sampler_t sampler;
+
+    errcounts_impl dummy;
+    edac_collector* saved = dummy.collector_;
+    dummy.collector_ = new edac_collector_mock_stat(ErrorSink, "./mc");
+    dummy.init();
+    last_orte_error_ = -2048;
+    dummy.start(1);
+    ASSERT_EQ(-2048, last_orte_error_);
+    dummy.stop(1);
+    ASSERT_EQ(-2048, last_orte_error_);
+    dummy.log(NULL);
+    ASSERT_EQ(-2048, last_orte_error_);
+    dummy.inventory_collect(NULL);
+    ASSERT_EQ(-2048, last_orte_error_);
+    dummy.inventory_log(NULL, NULL);
+    ASSERT_EQ(-2048, last_orte_error_);
+    dummy.set_sample_rate(5);
+    ASSERT_EQ(-2048, last_orte_error_);
+    dummy.get_sample_rate(NULL);
+    ASSERT_EQ(-2048, last_orte_error_);
+
+    dummy.finalize();
+    delete dummy.collector_;
+    dummy.collector_ = saved;
+}
+
+TEST_F(ut_edac_collector_tests, test_test_vector)
+{
+    mca_sensor_errcounts_component.test = true;
+    orcm_sensor_sampler_t sampler;
+    opal_buffer_t buffer;
+    errcounts_impl dummy;
+    dummy.collector_->error_callback = ErrorSink;
+    dummy.init();
+
+    last_orte_error_ = ORCM_SUCCESS;
+    dummy.inventory_collect(&buffer);
+    ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
+    dummy.sample(&sampler);
+    ASSERT_EQ(ORCM_SUCCESS, last_orte_error_);
+
+    dummy.finalize();
 }
 
 TEST_F(ut_edac_collector_tests, test_error_callback)
@@ -1310,9 +1356,9 @@ TEST_F(ut_edac_collector_tests, test_inventory_log)
     OBJ_CONSTRUCT(&buffer, opal_buffer_t);
 
     errcounts_impl dummy;
-    dummy.init();
     edac_collector* edac_saved = dummy.collector_;
-    dummy.collector_ = (edac_collector*)this;
+    dummy.collector_ = new edac_collector(ErrorSink, "./mc");
+    dummy.init();
 
     dummy.inventory_collect(&buffer);
 
@@ -1382,9 +1428,10 @@ TEST_F(ut_edac_collector_tests, test_inventory_log)
 
     ASSERT_EQ(0, database_data_.size());
 
+    dummy.finalize();
+    delete dummy.collector_;
     dummy.collector_ = edac_saved;
 
-    dummy.finalize();
     OBJ_DESTRUCT(&buffer);
 }
 
@@ -1408,10 +1455,10 @@ TEST_F(ut_edac_collector_tests, test_component_functions)
 TEST_F(ut_edac_collector_tests, test_init_negative)
 {
     errcounts_impl dummy;
-    fail_stat = true;
     edac_collector* saved = dummy.collector_;
-    dummy.collector_ = this;
+    dummy.collector_ = new edac_collector_mock_stat(ErrorSink, "./mc");
     ASSERT_EQ(ORCM_ERROR, dummy.init());
+    delete dummy.collector_;
     dummy.collector_ = saved;
 }
 

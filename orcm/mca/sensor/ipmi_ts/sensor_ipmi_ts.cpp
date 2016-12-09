@@ -119,6 +119,9 @@ static void finalize(void)
      orcm_sensor_base_runtime_metrics_destroy(mca_sensor_ipmi_ts_component.runtime_metrics);
      mca_sensor_ipmi_ts_component.runtime_metrics = NULL;
      factory->close();
+
+    ipmiHAL *instance = ipmiHAL::getInstance();
+    instance->terminateInstance();
 }
 
 /*

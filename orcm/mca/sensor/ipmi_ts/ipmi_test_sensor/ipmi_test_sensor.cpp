@@ -89,6 +89,7 @@ void IpmiTestSensor::sample()
 
     if (NULL != samplingPtr_)
         samplingPtr_(hostname, dc);
+    delete dc;
 }
 
 void IpmiTestSensor::collect_inventory()
@@ -99,6 +100,7 @@ void IpmiTestSensor::collect_inventory()
 
     if (NULL != inventoryPtr_)
         inventoryPtr_(hostname, dc);
+    delete dc;
 }
 
 void IpmiTestSensor::finalize()

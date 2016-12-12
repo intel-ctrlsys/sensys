@@ -185,6 +185,9 @@ ipmiResponse ipmiutilAgent::implPtr::getSelRecords(string bmc)
     int rc = 0;
     int cc = 0;
     connectionInfo conn(bmc, config);
+    if (NULL == conn.bmcAddress || NULL == conn.user || NULL == conn.pass) {
+        return ipmiResponse(NULL, "NULL connection parameters", "", false);
+    }
     ipmi_credentials creds(conn.bmcAddress, conn.user, conn.pass);
 
     selErrorMessage = "";
@@ -210,6 +213,7 @@ void ipmiutilAgent::implPtr::sel_error_callback_(int level, const char* msg)
     char* line;
     asprintf(&line, "%s: collecting IPMI SEL records: %s\n", (0 == level)?"ERROR":"INFO", msg);
     selErrorMessage = string(line);
+    free(line);
 }
 
 void ipmiutilAgent::implPtr::sel_ras_event_callback_(const char* event, const char* hostname, void* user_object)

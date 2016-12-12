@@ -34,6 +34,8 @@ using namespace std;
 // Constants
 static const struct timeval CONSUMER_RATE = {0, 100};
 static const char THREAD_NAME[] = "ipmiHAL";
+static const char MAX_NUM_OF_DISPATCH_AGENTS = 100;
+static const int DEFAULT_AGENTS = 4;
 
 // Threads and queues
 static opal_fifo_t* requestQueue = NULL;
@@ -92,7 +94,12 @@ ipmiHAL::~ipmiHAL()
 void ipmiHAL::finalizeThreads_()
 {
     opal_progress_thread_finalize(THREAD_NAME);
-    for (int i = 0; i < getNumberOfDispatchingAgents(); ++i)
+
+    int numAgents = getNumberOfDispatchingAgents();
+    if (numAgents > MAX_NUM_OF_DISPATCH_AGENTS)
+        numAgents = MAX_NUM_OF_DISPATCH_AGENTS;
+
+    for (int i = 0; i < numAgents; ++i)
         opal_progress_thread_finalize(getThreadName_(i));
     delete  dispatchingThreads;
     dispatchingThreads = NULL;
@@ -174,7 +181,10 @@ void ipmiHAL::initializeDispatchingAgents_()
     if (consuming)
         return;
 
-    int n = getNumberOfDispatchingAgents();
+    int n = DEFAULT_AGENTS;
+    n = getNumberOfDispatchingAgents();
+    if (n > MAX_NUM_OF_DISPATCH_AGENTS)
+        n = MAX_NUM_OF_DISPATCH_AGENTS;
     initializeDispatchThreads_(n);
 }
 
@@ -204,7 +214,6 @@ void ipmiHAL::throwWhenNullPointer(void* ptr)
 int getNumberOfDispatchingAgents()
 {
     static const char MCA_AGENTS_EVAR[] = "ORCM_MCA_sensor_ipmi_ts_agents";
-    static const int DEFAULT_AGENTS = 4;
 
     int agents = DEFAULT_AGENTS;
     char* envValue = getenv(MCA_AGENTS_EVAR);
@@ -212,8 +221,11 @@ int getNumberOfDispatchingAgents()
     if (NULL != envValue)
     {
         envValue = strdup(envValue);
-        agents = atoi(envValue);
-        free(envValue);
+        if (NULL != envValue)
+        {
+            agents = atoi(envValue);
+            free(envValue);
+        }
     }
 
     return agents <= 0 ? DEFAULT_AGENTS : agents;

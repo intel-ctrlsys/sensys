@@ -202,41 +202,7 @@ TEST_F(ipmiutilAgent_tests, requestFruInventory_isNewAreaLarger)
 
     ipmiResponse response = agent->sendCommand(READFRUDATA, &emptyBuffer, PROBE_BMC);
     mocks[IPMI_CMD].restartMock();
-    ASSERT_TRUE(response.getResponseBuffer().size() > 0);
-}
-
-TEST_F(ipmiutilAgent_tests, requestFullSensorList)
-{
-    /* Setting up for getDeviceId */
-    mocks[IPMI_CMD_MC].pushState(SUCCESS);
-
-    /* Setting up for getFruInventory */
-    mocks[IPMI_CMD].pushState(SUCCESS);
-
-    /* Setting up for getSensorList */
-    mocks[GET_SDR_CACHE].pushState(SUCCESS);
-
-    for (int i = 0; i < MAX_FRU_DEVICES/2; i++ ) mocks[IPMI_CMD].pushState(RETURN_FRU_AREA_1);
-    for (int i = 0; i < MAX_FRU_DEVICES/2; i++ ) mocks[IPMI_CMD].pushState(RETURN_FRU_AREA_2);
-    for (int i = 0; i < AREA_FRU_PAGE_SIZE; i++ ) mocks[IPMI_CMD].pushState(SUCCESS);
-
-    ipmiResponse response = agent->sendCommand(GETFULLSENSORLIST, &emptyBuffer, PROBE_BMC);
-    ASSERT_TRUE(response.wasSuccessful());
-}
-
-TEST_F(ipmiutilAgent_tests, requestFullSensorReading)
-{
-    /* Setting up for getDeviceId */
-    mocks[IPMI_CMD_MC].pushState(SUCCESS);
-
-    /* Setting up for getAcpiPower */
-    mocks[IPMI_CMD_MC].pushState(SUCCESS);
-
-    /* Setting up for getSensorList */
-    mocks[GET_SDR_CACHE].pushState(SUCCESS);
-
-    ipmiResponse response = agent->sendCommand(GETFULLSENSORREADING, &emptyBuffer, PROBE_BMC);
-    ASSERT_TRUE(response.wasSuccessful());
+    ASSERT_TRUE(response.getReadings().count() > 0);
 }
 
 TEST_F(ipmiutilAgent_extra, errorException)

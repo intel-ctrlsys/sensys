@@ -24,11 +24,23 @@ set<string> ipmiutilDFx::getBmcList()
 
 ipmiResponse ipmiutilDFx::sendCommand(ipmiCommands command, buffer* data, std::string bmc)
 {
-    if (GETFULLSENSORLIST == command || GETSENSORLIST == command )
+    if (GETSENSORLIST == command )
         return ipmiResponse(getSensorList_(), "","",true);
 
-    if (GETFULLSENSORREADING == command || GETSENSORREADINGS == command )
+    if (GETSENSORREADINGS == command )
         return ipmiResponse(getReadings_(), "","",true);
+
+    if (GETDEVICEID == command )
+        return ipmiResponse(getDeviceID_(), "","",true);
+
+    if (GETACPIPOWER == command )
+        return ipmiResponse(getACPIPower_(), "","",true);
+
+    if (GETSELRECORDS == command )
+        return ipmiResponse(getSELRecords_(), "","",true);
+
+    if (READFRUDATA == command )
+        return ipmiResponse(getFRUData_(), "","",true);
 
     ipmiResponse response;
     return response;
@@ -49,13 +61,7 @@ dataContainer ipmiutilDFx::getSensorList_()
     dc.put("sensor_ipmi_ts_10", string("uint32Value"), "");
     dc.put("sensor_ipmi_ts_11", string("uint64Value"), "");
     dc.put("sensor_ipmi_ts_12", string("floatValue"), "");
-    dc.put("bmc_ver", string("1.22"), "");
-    dc.put("ipmi_ver", string("2"), "");
-    dc.put("bb_serial", string("QSIP23300384"), "");
-    dc.put("bb_vendor", string("Intel Corporation"), "");
-    dc.put("bb_manufactured_date", string("08/18/12"), "");
     return dc;
-
 }
 
 dataContainer ipmiutilDFx::getReadings_()
@@ -73,5 +79,40 @@ dataContainer ipmiutilDFx::getReadings_()
     dc.put("uint32Value", (uint32_t) 32, "uint32s");
     dc.put("uint64Value", (uint64_t) 64, "uint64s");
     dc.put("floatValue", (float) 3.14, "floats");
+    return dc;
+}
+
+dataContainer ipmiutilDFx::getDeviceID_()
+{
+    dataContainer dc;
+    dc.put("bmc_ver", string("1.22"), "");
+    return dc;
+}
+
+dataContainer ipmiutilDFx::getFRUData_()
+{
+    dataContainer dc;
+    dc.put("bb_serial", string("QSIP23300384"), "");
+    dc.put("bb_vendor", string("Intel Corporation"), "");
+    dc.put("bb_manufactured_date", string("08/18/12"), "");
+    return dc;
+}
+
+dataContainer ipmiutilDFx::getACPIPower_()
+{
+    dataContainer dc;
+    dc.put("system_power_state", string("S1"), "");
+    dc.put("device_power_state", string("D1"), "");
+    return dc;
+}
+
+dataContainer ipmiutilDFx::getSELRecords_()
+{
+    dataContainer dc;
+    dc.put("fake_SEL_record_1", string("SEL_01"), "");
+    dc.put("fake_SEL_record_2", string("SEL_02"), "");
+    dc.put("fake_SEL_record_3", string("SEL_03"), "");
+    dc.put("fake_SEL_record_4", string("SEL_04"), "");
+    dc.put("fake_SEL_record_5", string("SEL_05"), "");
     return dc;
 }

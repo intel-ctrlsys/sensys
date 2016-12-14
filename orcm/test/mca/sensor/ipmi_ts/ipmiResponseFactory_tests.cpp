@@ -30,21 +30,6 @@ TEST_F(IPMIResponseTests, empty_buffer)
     ASSERT_FALSE(dc.count());
 }
 
-TEST_F(IPMIResponseTests, error_in_completion_code)
-{
-    ResponseBuffer buffer;
-    buffer.push_back(0x01); // Completion code reported error
-    buffer.push_back(0x0A); // Garbage
-    buffer.push_back(0x0B); // Garbage
-    buffer.push_back(0x0C); // Garbage
-
-    IPMIResponse response(&buffer, GETDEVICEID_MSG);
-    dataContainer dc = response.getDataContainer();
-    ASSERT_EQ(1, dc.count());
-
-    ASSERT_EQ(0x01, dc.getValue<uint8_t>("completion_code"));
-}
-
 TEST_F(IPMIResponseTests, get_device_id_wrong_size)
 {
     test_wrong_size(GETDEVICEID_MSG);
@@ -68,7 +53,6 @@ TEST_F(IPMIResponseTests, read_fru_data_wrong_size)
 TEST_F(IPMIResponseTests, get_device_id_cmd)
 {
     ResponseBuffer buffer;
-    buffer.push_back(0x00); // Completion Code
     buffer.push_back(0x02); // Device ID
     buffer.push_back(0x03); // Device Revision
     buffer.push_back(0x04); // Firmware Revision 1
@@ -87,8 +71,6 @@ TEST_F(IPMIResponseTests, get_device_id_cmd)
 
     IPMIResponse response(&buffer, GETDEVICEID_MSG);
     dataContainer dc = response.getDataContainer();
-
-    ASSERT_EQ(0x00, dc.getValue<uint8_t>("completion_code"));
 
     string tmp_val = dc.getValue<string>("device_id");
     ASSERT_FALSE(tmp_val.compare("02"));
@@ -119,14 +101,11 @@ TEST_F(IPMIResponseTests, acpi_power_cmd_first_bit_ignored)
 {
     ResponseBuffer buffer;
 
-    buffer.push_back(0x00); // Completion Code
     buffer.push_back(0x80); // System power state (first bit is ignored)
     buffer.push_back(0x80); // Device power state (first bit is ignored)
 
     IPMIResponse response(&buffer, GETACPIPOWER_MSG);
     dataContainer dc = response.getDataContainer();
-
-    ASSERT_EQ(0x00, dc.getValue<uint8_t>("completion_code"));
 
     string tmp_val = dc.getValue<string>("system_power_state");
     ASSERT_FALSE(tmp_val.compare("S0/G0"));
@@ -141,7 +120,6 @@ TEST_F(IPMIResponseTests, acpi_power_cmd_all_combinations)
 
     for (PowerMap::iterator it=sys_pwr.begin(); it!=sys_pwr.end(); ++it)
     {
-        buffer.push_back(0x00);      // Completion Code
         buffer.push_back(it->first); // System power state
         buffer.push_back(it->first); // Device power state
 
@@ -149,8 +127,6 @@ TEST_F(IPMIResponseTests, acpi_power_cmd_all_combinations)
 
         IPMIResponse response(&buffer, GETACPIPOWER_MSG);
         dataContainer dc = response.getDataContainer();
-
-        ASSERT_EQ(0x00, dc.getValue<uint8_t>("completion_code"));
 
         string tmp_val = dc.getValue<string>("system_power_state");
         ASSERT_FALSE(tmp_val.compare(it->second));
@@ -170,7 +146,6 @@ TEST_F(IPMIResponseTests, acpi_power_cmd_all_combinations)
 TEST_F(IPMIResponseTests, get_fru_inv_area_cmd)
 {
     ResponseBuffer buffer;
-    buffer.push_back(0x00); // Completion Code
     buffer.push_back(0x02); // FRU inventory area size LS byte
     buffer.push_back(0x03); // FRU inventory area size MS byte
     buffer.push_back(0x0F); // Device Access type
@@ -178,7 +153,6 @@ TEST_F(IPMIResponseTests, get_fru_inv_area_cmd)
     IPMIResponse response(&buffer, GETFRUINVAREA_MSG);
     dataContainer dc = response.getDataContainer();
 
-    ASSERT_EQ(0x00, dc.getValue<uint8_t>("completion_code"));
     ASSERT_EQ(0x0302, dc.getValue<uint16_t>("fru_inv_area_size"));
     ASSERT_EQ(0x01, dc.getValue<uint8_t>("device_access_type"));
 }
@@ -302,17 +276,10 @@ TEST_F(IPMIResponseTests, read_fru_data_cmd)
 void IPMIResponseTests::test_wrong_size(MessageType msg)
 {
     ResponseBuffer buffer;
-    buffer.push_back(0x00);
-    buffer.push_back(0x0A); // Garbage
+    buffer.push_back(0x00); // Garbage
 
     IPMIResponse response(&buffer, msg);
     dataContainer dc = response.getDataContainer();
 
-    if (READFRUDATA_MSG != msg)
-    {
-        ASSERT_EQ(1, dc.count());
-        ASSERT_EQ(0x00, dc.getValue<uint8_t>("completion_code"));
-    }
-    else
-        ASSERT_EQ(0, dc.count());
+    ASSERT_EQ(0, dc.count());
 }

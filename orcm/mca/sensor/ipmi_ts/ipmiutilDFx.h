@@ -17,6 +17,10 @@ class ipmiutilDFx : public ipmiLibInterface
 private:
     dataContainer getSensorList_();
     dataContainer getReadings_();
+    dataContainer getACPIPower_();
+    dataContainer getSELRecords_();
+    dataContainer getDeviceID_();
+    dataContainer getFRUData_();
 public:
     ipmiutilDFx() {};
     virtual ~ipmiutilDFx() {};

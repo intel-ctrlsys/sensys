@@ -22,15 +22,6 @@ IPMIResponse::IPMIResponse(ResponseBuffer* buffer, MessageType type)
     if (!buffer || !buffer->size())
         return; // TODO: Notify error case somehow.
 
-    if (READFRUDATA_MSG != type)
-    {
-        uint8_t c_code = (*buffer)[0];
-        data_container.put("completion_code", c_code, ""); // byte 1
-
-        if (c_code)
-            return; // TODO: Notify error case somehow.
-    }
-
     switch (type)
     {
         case GETDEVICEID_MSG:
@@ -61,36 +52,36 @@ void IPMIResponse::device_id_cmd_to_data_container(ResponseBuffer* buffer)
     if (GETDEVICEID_SIZE != buffer->size())
         return; // TODO: Notify error case somehow.
 
-    string tmp_val = hex_to_str((*buffer)[1]);
+    string tmp_val = hex_to_str((*buffer)[0]);
     add_to_container("device_id", tmp_val);          // byte 2
 
-    tmp_val = hex_to_str((*buffer)[2]);
+    tmp_val = hex_to_str((*buffer)[1]);
     add_to_container("device_revision", tmp_val);    // byte 3
 
-    tmp_val = hex_to_str_no_fill((*buffer)[3]) + ".";
-    tmp_val += hex_to_str_no_fill((*buffer)[4]);
+    tmp_val = hex_to_str_no_fill((*buffer)[2]) + ".";
+    tmp_val += hex_to_str_no_fill((*buffer)[3]);
     add_to_container("bmc_ver", tmp_val);     // byte 4 and 5
 
-    tmp_val = hex_to_str_no_fill((*buffer)[5]&0x0F) +  ".";
-    tmp_val += hex_to_str_no_fill((*buffer)[5]&0xF0);
+    tmp_val = hex_to_str_no_fill((*buffer)[4]&0x0F) +  ".";
+    tmp_val += hex_to_str_no_fill((*buffer)[4]&0xF0);
     add_to_container("ipmi_ver", tmp_val);       // byte 6
 
-    tmp_val = hex_to_str((*buffer)[6]);
+    tmp_val = hex_to_str((*buffer)[5]);
     add_to_container("additional_support", tmp_val); // byte 7
 
-    tmp_val = hex_to_str_no_fill((*buffer)[9]);
-    tmp_val += hex_to_str((*buffer)[8]);
+    tmp_val = hex_to_str_no_fill((*buffer)[8]);
     tmp_val += hex_to_str((*buffer)[7]);
+    tmp_val += hex_to_str((*buffer)[6]);
     add_to_container("manufacturer_id", tmp_val);    // byte 8 to 10
 
-    tmp_val = hex_to_str((*buffer)[10]);
-    tmp_val += hex_to_str((*buffer)[11]);
+    tmp_val = hex_to_str((*buffer)[9]);
+    tmp_val += hex_to_str((*buffer)[10]);
     add_to_container("product_id", tmp_val);         // byte 11 and 12
 
-    tmp_val = hex_to_str((*buffer)[12]);
+    tmp_val = hex_to_str((*buffer)[11]);
+    tmp_val += hex_to_str((*buffer)[12]);
     tmp_val += hex_to_str((*buffer)[13]);
     tmp_val += hex_to_str((*buffer)[14]);
-    tmp_val += hex_to_str((*buffer)[15]);
     add_to_container("aux_firmware_info", tmp_val);  // byte 13 to 16
 }
 
@@ -99,10 +90,10 @@ void IPMIResponse::acpi_power_cmd_to_data_container(ResponseBuffer* buffer)
     if (GETACPIPOWER_SIZE != buffer->size())
         return; // TODO: Notify error case somehow.
 
-    string tmp_val = get_system_power_state((*buffer)[1] & 0x7F);
+    string tmp_val = get_system_power_state((*buffer)[0] & 0x7F);
     add_to_container("system_power_state", tmp_val); // byte 2
 
-    tmp_val = get_device_power_state((*buffer)[2] & 0x7F);
+    tmp_val = get_device_power_state((*buffer)[1] & 0x7F);
     add_to_container("device_power_state", tmp_val); // byte 3
 }
 
@@ -111,10 +102,10 @@ void IPMIResponse::fru_inv_area_cmd_to_data_container(ResponseBuffer* buffer)
     if (GETFRUINVAREA_SIZE != buffer->size())
         return; // TODO: Notify error case somehow.
 
-    uint32_t tmp_val = (*buffer)[1];
-    tmp_val += uint32_t((*buffer)[2]) << 8;
+    uint32_t tmp_val = (*buffer)[0];
+    tmp_val += uint32_t((*buffer)[1]) << 8;
     add_to_container("fru_inv_area_size", tmp_val);              // byte 2 and 3
-    add_to_container("device_access_type", (*buffer)[3] & 0x01); // byte 4
+    add_to_container("device_access_type", (*buffer)[2] & 0x01); // byte 4
 }
 
 void IPMIResponse::fru_data_cmd_to_data_container(ResponseBuffer* buffer)

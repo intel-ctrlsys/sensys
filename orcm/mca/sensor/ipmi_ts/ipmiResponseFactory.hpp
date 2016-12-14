@@ -14,9 +14,9 @@
 
 #include "orcm/common/dataContainer.hpp"
 
-#define GETDEVICEID_SIZE 16
-#define GETACPIPOWER_SIZE 3
-#define GETFRUINVAREA_SIZE 4
+#define GETDEVICEID_SIZE 15
+#define GETACPIPOWER_SIZE 2
+#define GETFRUINVAREA_SIZE 3
 #define READFRUDATA_SIZE 4
 
 enum MessageType

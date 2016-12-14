@@ -35,24 +35,46 @@ void ipmiSensor::init() {}
 
 void ipmiSensor::sample()
 {
-    ipmiSensorCallbackDirectory *directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
-
+    ipmiSensorCallbackDirectory *directory = NULL;
     ipmiHAL *cmd = ipmiHAL::getInstance();
     cmd->startAgents();
 
     buffer data;
+    directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
+    cmd->addRequest(GETDEVICEID, data, hostname,
+        get_sensor_readings_cb, (void*)directory);
+
+    directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
+    cmd->addRequest(GETACPIPOWER, data, hostname,
+        get_sensor_readings_cb, (void*)directory);
+
+/*
+    directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
+    cmd->addRequest(GETSELRECORDS, data, hostname,
+        get_sensor_readings_cb, (void*)directory);
+*/
+
+    directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
     cmd->addRequest(GETSENSORREADINGS, data, hostname,
         get_sensor_readings_cb, (void*)directory);
 }
 
 void ipmiSensor::collect_inventory()
 {
-    ipmiSensorCallbackDirectory *directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
-
+    ipmiSensorCallbackDirectory *directory = NULL;
     ipmiHAL *cmd = ipmiHAL::getInstance();
     cmd->startAgents();
 
     buffer data;
+    directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
+    cmd->addRequest(GETDEVICEID, data, hostname,
+        get_sensor_list_cb, (void*)directory);
+
+    directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
+    cmd->addRequest(READFRUDATA, data, hostname,
+        get_sensor_list_cb, (void*)directory);
+
+    directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
     cmd->addRequest(GETSENSORLIST, data, hostname,
         get_sensor_list_cb, (void*)directory);
 }

@@ -17,6 +17,7 @@
 #include "gtest/gtest.h"
 
 #include "orcm/mca/sensor/ipmi_ts/ipmiResponseFactory.hpp"
+#include "ipmiResponseFactory_mocks.h"
 
 typedef map<uint8_t, string> PowerMap;
 
@@ -49,6 +50,7 @@ protected:
         dev_pwr[0x03] = "D3";
         dev_pwr[0x04] = "Unknown";
         dev_pwr[0xFF] = "Illegal";
+        mocks[LOCALTIME].restartMock();
     }
 
     virtual void TearDown() {

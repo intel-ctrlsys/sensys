@@ -8,11 +8,11 @@
  */
 
 #include "orcm/mca/sensor/ipmi_ts/ipmiutilAgent.h"
+#include "orcm/mca/sensor/ipmi_ts/ipmi_ts_sel_collector.h"
+#include "orcm/mca/sensor/ipmi_ts/ipmiResponseFactory.hpp"
+
 #include "orcm/mca/sensor/ipmi/ipmi_parser.h"
 #include "orcm/mca/sensor/ipmi/ipmi_collector.h"
-#include "orcm/mca/sensor/ipmi/ipmi_sel_collector.h"
-#include "orcm/mca/sensor/ipmi/ipmi_credentials.h"
-#include "orcm/mca/sensor/ipmi_ts/ipmiResponseFactory.hpp"
 
 #include <ipmicmd.h>
 
@@ -150,10 +150,10 @@ string ipmiutilAgent::implPtr::setConnectionParameters(string bmc)
 ipmiResponse ipmiutilAgent::sendCommand(ipmiCommands command, buffer* data, string bmc)
 {
     ipmi_close();
+    impl_->setConnectionParameters(bmc);
+
     if (GETSELRECORDS == command)
         return impl_->getSelRecords(bmc);
-
-    impl_->setConnectionParameters(bmc);
 
     switch (command)
     {
@@ -181,15 +181,10 @@ ipmiResponse ipmiutilAgent::implPtr::getSelRecords(string bmc)
 {
     int rc = 0;
     int cc = 0;
-    connectionInfo conn(bmc, config);
-    if (NULL == conn.bmcAddress || NULL == conn.user || NULL == conn.pass) {
-        return ipmiResponse(NULL, "NULL connection parameters", "", false);
-    }
-    ipmi_credentials creds(conn.bmcAddress, conn.user, conn.pass);
 
     selErrorMessage = "";
     dataContainer selRecords;
-    ipmi_sel_collector scanner(bmc.c_str(), creds, sel_error_callback_, (void*) &selRecords);
+    ipmi_ts_sel_collector scanner(bmc.c_str(), sel_error_callback_, (void*) &selRecords);
 
     if(false == scanner.is_bad()) {
         scanner.load_last_record_id(getSelFilename_().c_str());

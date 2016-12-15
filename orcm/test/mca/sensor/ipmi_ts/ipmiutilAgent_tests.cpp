@@ -22,6 +22,9 @@ extern "C" {
 
 using namespace std;
 
+extern std::map<supportedMocks, mockManager> mocks;
+extern sensor_ipmi_sel_mocked_functions sel_mocking;
+
 void ipmiutilAgent_tests::SetUp()
 {
     initParserFramework();
@@ -95,11 +98,42 @@ void ipmiutilAgent_tests::assertHostNameListIsConsistent(set<string> list)
 }
 
 // Test cases
+TEST_F(ipmiutilAgent_tests, empty_constructor)
+{
+    ipmiutilAgent *ptr = new ipmiutilAgent();
+    delete ptr;
+}
+
+TEST_F(ipmiutilAgent_tests, invalid_file)
+{
+    ipmiutilAgent *ptr = new ipmiutilAgent("unexistent");
+    delete ptr;
+}
+
+
 TEST_F(ipmiutilAgent_tests, getBmcList)
 {
     set<string> bmcList = agent->getBmcList();
     ASSERT_FALSE(bmcList.empty());
     assertHostNameListIsConsistent(bmcList);
+}
+
+TEST_F(ipmiutilAgent_tests, getSelRecords_invalidbmc)
+{
+    agent->sendCommand(GETSELRECORDS, NULL, "bmc");
+}
+
+TEST_F(ipmiutilAgent_tests, getSelRecords_validbmc)
+{
+    agent->sendCommand(GETSELRECORDS, NULL, "cn01");
+}
+
+TEST_F(ipmiutilAgent_tests, getSelRecords_wrong_address)
+{
+    mocks[STRDUP].pushState(FAILURE);
+    mocks[STRDUP].pushState(FAILURE);
+    mocks[STRDUP].pushState(FAILURE);
+    agent->sendCommand(GETSELRECORDS, NULL, "cn01");
 }
 
 TEST_F(ipmiutilAgent_tests, sendCommand)

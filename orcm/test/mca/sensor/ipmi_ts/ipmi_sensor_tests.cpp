@@ -91,7 +91,6 @@ void inventory_callback(std::string hostname, dataContainer* dc)
 
 void sample_callback(std::string hostname, dataContainer* dc)
 {
-    sel_records_flag = true; // TODO: remove this once SEL records are working
     if (MAX_SENSOR_READINGS == dc->count())
     {
         assert_numeric_item(dc, "doubleValue", (double) 3.14159265, "doubles");
@@ -147,6 +146,25 @@ TEST_F(ipmiSensor_Tests, collect_inventory_ipmi)
     sensor.finalize();
 }
 
+
+TEST_F(ipmiSensorFactory_Tests, throw_factory_exception)
+{
+    static struct ipmiSensorFactory *factory;
+    factory = ipmiSensorFactory::getInstance();
+    factory->load(true);
+    mocks[PLUGIN_TEST_INIT].pushState(FAILURE);
+    mocks[PLUGIN_TEST_FINALIZE].pushState(FAILURE);
+    mocks[PLUGIN_INIT].pushState(FAILURE);
+    mocks[PLUGIN_FINALIZE].pushState(FAILURE);
+
+    factory->init();
+    factory->close();
+    factory->load(false);
+    factory->init();
+    factory->close();
+ }
+
+
 TEST_F(ipmiSensor_Tests, ipmi_sample)
 {
     dataContainer dc;
@@ -157,4 +175,12 @@ TEST_F(ipmiSensor_Tests, ipmi_sample)
     sensor.sample();
     ASSERT_TRUE_TIMEOUT(callback_flag, TIMEOUT);
     sensor.finalize();
+}
+
+TEST_F(ipmiSensor_Tests, constructors_destructors)
+{
+    IpmiTestSensor *its = new IpmiTestSensor("test");
+    delete its;
+    ipmiSensor *is = new ipmiSensor("test");
+    delete is;
 }

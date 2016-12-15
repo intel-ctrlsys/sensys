@@ -48,11 +48,9 @@ void ipmiSensor::sample()
     cmd->addRequest(GETACPIPOWER, data, hostname,
         get_sensor_readings_cb, (void*)directory);
 
-/*
     directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
     cmd->addRequest(GETSELRECORDS, data, hostname,
         get_sensor_readings_cb, (void*)directory);
-*/
 
     directory = new ipmiSensorCallbackDirectory(samplingPtr_, inventoryPtr_, errorPtr_);
     cmd->addRequest(GETSENSORREADINGS, data, hostname,

@@ -26,7 +26,15 @@ sources = \
         ipmiResponseFactory.hpp \
         ipmiResponseFactory.cpp \
         ipmiutilAgent_exceptions.h \
-        ipmiutilAgent_exceptions.cpp
+        ipmiutilAgent_exceptions.cpp \
+        ipmi_ts_persist_sel_record_id.cpp \
+        ipmi_ts_persist_sel_record_id.h \
+        ipmi_ts_sel_callback_defs.h \
+        ipmi_ts_sel_collector.cpp \
+        ipmi_ts_sel_collector.h \
+        ipmi_ts_sel_record.cpp \
+        ipmi_ts_sel_record.h
+ 
 
 # Make the output library in this directory, and name it either
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la

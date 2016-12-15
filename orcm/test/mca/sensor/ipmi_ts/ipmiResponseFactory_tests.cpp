@@ -30,6 +30,15 @@ TEST_F(IPMIResponseTests, empty_buffer)
     ASSERT_FALSE(dc.count());
 }
 
+TEST_F(IPMIResponseTests, unhandled_type)
+{
+    ResponseBuffer buffer;
+    buffer.push_back(0x02); // Device ID
+    IPMIResponse response(&buffer, GETSENSORLIST_MSG);
+    dataContainer dc = response.getDataContainer();
+    ASSERT_FALSE(dc.count());
+}
+
 TEST_F(IPMIResponseTests, get_device_id_wrong_size)
 {
     test_wrong_size(GETDEVICEID_MSG);
@@ -206,10 +215,8 @@ TEST_F(IPMIResponseTests, read_fru_data_cmd_empty_fru_data)
     tmp_val = dc.getValue<string>("bb_part");
     ASSERT_FALSE(tmp_val.compare(""));
 }
-
-TEST_F(IPMIResponseTests, read_fru_data_cmd)
+void fill_fru_data_buffer(ResponseBuffer& buffer)
 {
-    ResponseBuffer buffer;
     buffer.push_back(0x00); // Reserved
     buffer.push_back(0x00); // Reserved
     buffer.push_back(0x00); // Reserved
@@ -248,13 +255,48 @@ TEST_F(IPMIResponseTests, read_fru_data_cmd)
     buffer.push_back(0xA1); // Garbage
     buffer.push_back(0xA2); // Garbage
     buffer.push_back(0xA3); // Garbage
+}
 
+TEST_F(IPMIResponseTests, read_fru_data_cmd)
+{
+    ResponseBuffer buffer;
+    fill_fru_data_buffer(buffer);
     IPMIResponse response(&buffer, READFRUDATA_MSG);
     dataContainer dc = response.getDataContainer();
 
     string tmp_val = dc.getValue<string>("bb_manufactured_date");
     cout << tmp_val << endl;
     ASSERT_FALSE(tmp_val.compare("11/28/16"));
+
+    tmp_val = dc.getValue<string>("bb_vendor");
+    cout << tmp_val << endl;
+    ASSERT_FALSE(tmp_val.compare("MANUF"));
+
+    tmp_val = dc.getValue<string>("bb_product");
+    cout << tmp_val << endl;
+    ASSERT_FALSE(tmp_val.compare("NAME"));
+
+    tmp_val = dc.getValue<string>("bb_serial");
+    cout << tmp_val << endl;
+    ASSERT_FALSE(tmp_val.compare("123456"));
+
+    tmp_val = dc.getValue<string>("bb_part");
+    cout << tmp_val << endl;
+    ASSERT_FALSE(tmp_val.compare("42"));
+}
+
+
+TEST_F(IPMIResponseTests, read_fru_data_cmd_empty_manuf_date)
+{
+    ResponseBuffer buffer;
+    fill_fru_data_buffer(buffer);
+    mocks[LOCALTIME].pushState(FAILURE);
+    IPMIResponse response(&buffer, READFRUDATA_MSG);
+    dataContainer dc = response.getDataContainer();
+
+    string tmp_val = dc.getValue<string>("bb_manufactured_date");
+    cout << tmp_val << endl;
+    ASSERT_FALSE(tmp_val.compare(""));
 
     tmp_val = dc.getValue<string>("bb_vendor");
     cout << tmp_val << endl;

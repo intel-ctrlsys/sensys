@@ -10084,7 +10084,12 @@ PUGI__NS_BEGIN
 				return _left->eval_number(c, stack) * _right->eval_number(c, stack);
 
 			case ast_op_divide:
-				return _left->eval_number(c, stack) / _right->eval_number(c, stack);
+			{
+                                double r = 0;
+                                r = _right->eval_number(c, stack);
+                                if (0 != r) return _left->eval_number(c, stack) / r;
+                                return r;
+                        }
 
 			case ast_op_mod:
 				return fmod(_left->eval_number(c, stack), _right->eval_number(c, stack));

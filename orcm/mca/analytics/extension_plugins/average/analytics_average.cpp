@@ -40,7 +40,7 @@ int Average::analyze(DataSet& data_set)
         i++;
     }
 
-    if (0 == n) return -1;
+    if (0 == n) return 0;
 
     avg = sum / n;
     data_set.results.put<double>("Average_key", avg, "C");

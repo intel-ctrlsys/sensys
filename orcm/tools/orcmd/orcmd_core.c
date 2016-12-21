@@ -252,26 +252,11 @@ int run_orcmd(int argc, char *argv[])
             goto cleanup;
         }
 
-        /* send hwloc topo to scheduler */
-        if (NULL != opal_hwloc_topology) {
-            have_hwloc_topology = true;
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &have_hwloc_topology, 1, OPAL_BOOL))) {
-                ORTE_ERROR_LOG(ret);
-                OBJ_RELEASE(buf);
-                goto cleanup;
-            }
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &opal_hwloc_topology, 1, OPAL_HWLOC_TOPO))) {
-                ORTE_ERROR_LOG(ret);
-                OBJ_RELEASE(buf);
-                goto cleanup;
-            }
-        } else {
-            have_hwloc_topology = false;
-            if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &have_hwloc_topology, 1, OPAL_BOOL))) {
-                ORTE_ERROR_LOG(ret);
-                OBJ_RELEASE(buf);
-                goto cleanup;
-            }
+        have_hwloc_topology = false;
+        if (OPAL_SUCCESS != (ret = opal_dss.pack(buf, &have_hwloc_topology, 1, OPAL_BOOL))) {
+            ORTE_ERROR_LOG(ret);
+            OBJ_RELEASE(buf);
+            goto cleanup;
         }
 
         if (ORTE_SUCCESS != (ret = orte_rml.send_buffer_nb(ORTE_PROC_MY_SCHEDULER, buf,

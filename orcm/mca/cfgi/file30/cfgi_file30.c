@@ -383,7 +383,7 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
         /* pack the number of rows */
         num = opal_list_get_size(&cluster->rows);
         opal_dss.pack(&clusterbuf, &num, 1, OPAL_INT32);
-        OPAL_LIST_FOREACH_REV(row, &cluster->rows, orcm_row_t) {
+        OPAL_LIST_FOREACH(row, &cluster->rows, orcm_row_t) {
             OBJ_CONSTRUCT(&rowbuf, opal_buffer_t);
             /* pack the number of racks */
             num = opal_list_get_size(&row->racks);
@@ -427,7 +427,7 @@ static int define_system(opal_list_t *config,    orcm_node_t **mynode,
             /* pack the name of the row controller, which will be invalid
              * if we don't have one in the config */
             opal_dss.pack(&rowbuf, &row->controller.daemon, 1, ORTE_NAME);
-            OPAL_LIST_FOREACH_REV(rack, &row->racks, orcm_rack_t) {
+            OPAL_LIST_FOREACH(rack, &row->racks, orcm_rack_t) {
                 OBJ_CONSTRUCT(&rackbuf, opal_buffer_t);
                 if (ORTE_NODE_STATE_UNDEF != rack->controller.state) {
                     /* the rack includes a controller */

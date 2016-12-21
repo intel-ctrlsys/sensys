@@ -24,7 +24,8 @@ enum ipmiCommands {
     READFRUDATA,
     GETSENSORLIST,
     GETSENSORREADINGS,
-    GETSELRECORDS
+    GETSELRECORDS,
+    GETPSUPOWER
 };
 
 typedef std::vector<unsigned char> buffer;

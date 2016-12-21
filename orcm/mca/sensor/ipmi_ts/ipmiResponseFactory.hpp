@@ -18,6 +18,7 @@
 #define GETACPIPOWER_SIZE 2
 #define GETFRUINVAREA_SIZE 3
 #define READFRUDATA_SIZE 4
+#define PSUPOWER_SIZE 7
 
 enum MessageType
 {
@@ -25,7 +26,8 @@ enum MessageType
     GETACPIPOWER_MSG,
     GETFRUINVAREA_MSG,
     READFRUDATA_MSG,
-    GETSENSORLIST_MSG
+    GETSENSORLIST_MSG,
+    GETPSUPOWER_MSG
 };
 
 typedef vector<uint8_t> ResponseBuffer;
@@ -38,6 +40,7 @@ class IPMIResponse
     private:
         dataContainer data_container;
         void device_id_cmd_to_data_container(ResponseBuffer*);
+        void psu_power_cmd_to_data_container(ResponseBuffer*);
         void acpi_power_cmd_to_data_container(ResponseBuffer*);
         void fru_inv_area_cmd_to_data_container(ResponseBuffer*);
         void fru_data_cmd_to_data_container(ResponseBuffer*);

@@ -23,7 +23,12 @@ protected:
     ipmiDataLoggerCallback inventoryPtr_;
     ipmiErrorLoggerCallback errorPtr_;
 public:
-    ipmiSensorInterface(std::string h) {hostname = h;};
+    ipmiSensorInterface(std::string h) {
+        hostname = h;
+        samplingPtr_ = NULL;
+        inventoryPtr_ = NULL;
+        errorPtr_ = NULL;
+    };
     std::string getHostname() {return hostname;};
     virtual void init(void){return;};
     virtual void finalize(void){return;};

@@ -47,7 +47,6 @@ extern "C"
                                int addr_len)
     {
         mockStates state = (mockStates) mocks[SET_LAN_OPTIONS].nextMockState();
-        std::cout << state << std::endl;
         if (NO_MOCK == state)
             return __real_set_lan_options(node, user, pswd, auth, priv, cipher, addr, addr_len);
 
@@ -160,4 +159,45 @@ extern "C"
 
         return NULL;
     }
+
+    int __wrap_ipmi_cmdraw(unsigned char cmd,
+                           unsigned char netfn,
+                           unsigned char sa,
+                           unsigned char bus,
+                           unsigned char lun,
+                           unsigned char *pdata,
+                           int sdata,
+                           unsigned char *presp,
+                           int *sresp,
+                           unsigned char *pcc,
+                           char fdebugcmd)
+    {
+        mockStates state = (mockStates) mocks[IPMI_CMDRAW].nextMockState();
+        if (NO_MOCK == state)
+            return __real_ipmi_cmdraw(cmd, netfn, sa, bus, lun, pdata, sdata, presp, sresp, pcc, fdebugcmd);
+
+        if (RETRIEVE_BUFFER_1 == state)
+        {
+            presp[0] = 0x06;
+            presp[1] = 0xc1;
+            presp[2] = 0x34;
+            presp[3] = 0xb5;
+            presp[4] = 0x17;
+            presp[5] = 0xcb;
+            presp[6] = 0x98;
+            *sresp = 7;
+            *pcc = 0;
+            return 0;
+        }
+
+        if (SUCCESS == state)
+        {
+            *pcc = 0;
+            *sresp = 0;
+            return 0;
+        }
+
+        return dispatchIpmiResponse(state);
+    }
+
 }

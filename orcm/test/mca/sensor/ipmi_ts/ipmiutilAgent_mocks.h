@@ -23,7 +23,8 @@ enum supportedMocks
     IPMI_CMD_MC,
     IPMI_CMD,
     GET_SDR_CACHE,
-    STRDUP
+    STRDUP,
+    IPMI_CMDRAW
 };
 
 enum mockStates
@@ -33,7 +34,8 @@ enum mockStates
     FAILURE,
     RETURN_FRU_AREA_1,
     RETURN_FRU_AREA_2,
-    LEGACY
+    LEGACY,
+    RETRIEVE_BUFFER_1
 };
 
 extern "C"
@@ -68,6 +70,29 @@ extern "C"
                         int *sresp,
                         unsigned char *pcc,
                         char fdebugcmd);
+
+    extern int __real_ipmi_cmdraw(unsigned char cmd,
+                                  unsigned char netfn,
+                                  unsigned char sa,
+                                  unsigned char bus,
+                                  unsigned char lun,
+                                  unsigned char *pdata,
+                                  int sdata,
+                                  unsigned char *presp,
+                                  int *sresp,
+                                  unsigned char *pcc,
+                                  char fdebugcmd);
+    int __wrap_ipmi_cmdraw(unsigned char cmd,
+                           unsigned char netfn,
+                           unsigned char sa,
+                           unsigned char bus,
+                           unsigned char lun,
+                           unsigned char *pdata,
+                           int sdata,
+                           unsigned char *presp,
+                           int *sresp,
+                           unsigned char *pcc,
+                           char fdebugcmd);
 
     extern int __real_get_sdr_cache(unsigned char **pret);
     int __wrap_get_sdr_cache(unsigned char **pret);

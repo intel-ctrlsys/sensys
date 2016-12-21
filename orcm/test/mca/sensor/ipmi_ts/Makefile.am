@@ -68,6 +68,7 @@ MOCKING = \
     -Wl,--wrap=set_lan_options \
     -Wl,--wrap=ipmi_cmd_mc \
     -Wl,--wrap=ipmi_cmd \
+    -Wl,--wrap=ipmi_cmdraw \
     -Wl,--wrap=get_sdr_cache \
     -Wl,--wrap=find_sdr_next \
     -Wl,--wrap=rename \

@@ -30,3 +30,6 @@ static void get_sensor_list_cb(std::string bmc,
 
 static void get_sensor_readings_cb(std::string bmc,
         ipmiResponse response, void* cbData);
+
+static void get_nodepower_readings_cb(std::string bmc,
+        ipmiResponse response, void* cbData);

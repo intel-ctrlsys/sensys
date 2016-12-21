@@ -41,7 +41,7 @@ void HAL::SetUp()
 
 void HAL::TearDown()
 {
-    unsetenv(MCA_DFX_FLAG.c_str());
+    setenv(MCA_DFX_FLAG.c_str(), "1", 1);
     ipmiHAL::terminateInstance();
     delete emptyBuffer;
 }
@@ -325,5 +325,5 @@ TEST_F(realHAL, with_MCA_parameter)
 
     ipmiHAL *HWobject = ipmiHAL::getInstance();
 
-    unsetenv(MCA_DFX_FLAG);
+    setenv(MCA_DFX_FLAG, "1", 1);
 }

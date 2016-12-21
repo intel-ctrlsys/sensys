@@ -74,7 +74,7 @@ void ut_ipmi_ts_tests::TearDownTestCase()
     mca_sensor_ipmi_ts_component.test = true;
 
     static const char MCA_DFX_FLAG[] = "ORCM_MCA_sensor_ipmi_ts_dfx";
-    unsetenv(MCA_DFX_FLAG);
+    setenv(MCA_DFX_FLAG, "1", 1);
 }
 
 void ut_ipmi_ts_tests::setFullMock(bool mockStatus, int nPlugins)
@@ -103,17 +103,6 @@ bool ut_ipmi_ts_tests::isOutputError(std::string output)
     std::size_t found = output.find(error);
     return (found!=std::string::npos);
 }
-
-
-TEST_F(ut_ipmi_ts_tests, DISABLED_init_without_plugins)
-{
-    mca_sensor_ipmi_ts_component.test = false;
-    EXPECT_NE(ORCM_SUCCESS, orcm_sensor_ipmi_ts_module.init());
-    EXPECT_NE(0, (uint64_t)(mca_sensor_ipmi_ts_component.runtime_metrics));
-    orcm_sensor_ipmi_ts_module.finalize();
-    mca_sensor_ipmi_ts_component.test = true;
-}
-
 
 TEST_F(ut_ipmi_ts_tests, ipmi_ts_api_tests)
 {
@@ -237,6 +226,12 @@ TEST_F(ut_ipmi_ts_init, test_vector)
 
 void ut_ipmi_ts_sample::SetUp()
 {
+    opal_init_test();
+    mca_sensor_ipmi_ts_component.test = true;
+
+    static const char MCA_DFX_FLAG[] = "ORCM_MCA_sensor_ipmi_ts_dfx";
+    setenv(MCA_DFX_FLAG, "1", 1);
+
     setFullMock(true, N_MOCKED_PLUGINS);
     throwOnInit = false;
     emptyContainer = false;
@@ -362,29 +357,6 @@ void ut_ipmi_ts_inventory::TearDown()
     setFullMock(false, 0);
 }
 
-TEST_F(ut_ipmi_ts_inventory, DISABLED_throw_on_sample_with_null_param)
-{
-    throwOnSample = true;
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.inventory_collect(NULL);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
-TEST_F(ut_ipmi_ts_inventory, DISABLED_with_null_param)
-{
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.inventory_collect(NULL);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
-}
-
-
-TEST_F(ut_ipmi_ts_inventory, DISABLED_no_collect_inventory)
-{
-    opal_buffer_t *inventory_snapshot = OBJ_NEW(opal_buffer_t);
-    emptyContainer = false;
-    orcm_sensor_ipmi_ts_module.inventory_collect(inventory_snapshot);
-}
-
 void ut_ipmi_ts_inventory_log::SetUp()
 {
     setFullMock(true, N_MOCKED_PLUGINS);
@@ -400,11 +372,4 @@ void ut_ipmi_ts_inventory_log::TearDown()
 {
     orcm_sensor_ipmi_ts_module.finalize();
     setFullMock(false, 0);
-}
-
-TEST_F(ut_ipmi_ts_inventory_log, DISABLED_with_null_param)
-{
-    testing::internal::CaptureStderr();
-    orcm_sensor_ipmi_ts_module.inventory_log(NULL, NULL);
-    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }

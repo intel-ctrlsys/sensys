@@ -40,6 +40,8 @@ private:
     string getSelFilename_();
     dataContainer getDataContainerFromResponseBuffer(ResponseBuffer buff, MessageType type);
     dataContainer getDataContainerFromCBuffer(unsigned char* rdata, int rlen, MessageType type);
+    dataContainer getNodePowerDataContainer(const unsigned char npwr_device);
+    void appendNodePowerDataContainerToDataContainer(dataContainer *dc, dataContainer npwr_dc, string tag);
 
     static void sel_error_callback_(int level, const char* msg);
     static void sel_ras_event_callback_(const char* event, const char* hostname, void* user_object);
@@ -58,6 +60,7 @@ public:
     ipmiResponse getSensorList(buffer* data);
     ipmiResponse getSensorReadings(buffer* data);
     ipmiResponse getSelRecords(string bmc);
+    ipmiResponse getPsuPower(buffer* data);
 };
 
 static string selErrorMessage("");
@@ -152,9 +155,6 @@ ipmiResponse ipmiutilAgent::sendCommand(ipmiCommands command, buffer* data, stri
     ipmi_close();
     impl_->setConnectionParameters(bmc);
 
-    if (GETSELRECORDS == command)
-        return impl_->getSelRecords(bmc);
-
     switch (command)
     {
         case GETDEVICEID:
@@ -167,6 +167,10 @@ ipmiResponse ipmiutilAgent::sendCommand(ipmiCommands command, buffer* data, stri
             return impl_->getSensorList(data);
         case GETSENSORREADINGS:
             return impl_->getSensorReadings(data);
+        case GETSELRECORDS:
+            return impl_->getSelRecords(bmc);
+        case GETPSUPOWER:
+            return impl_->getPsuPower(data);
         default:
             return impl_->getDummyResponse(data);
     }
@@ -265,6 +269,7 @@ dataContainer ipmiutilAgent::implPtr::getSensorListFromSDR_()
             list.put(prefix+cast_to_str(++sufix), sensor_name, "");
         }
     }
+    list.put(prefix+cast_to_str(++sufix), string("Node Power"), "");
 
     free_sdr_cache(sdrlist);
 
@@ -302,6 +307,61 @@ ipmiResponse ipmiutilAgent::implPtr::getDeviceId(buffer* data)
     dataContainer dc = getDataContainerFromCBuffer(rdata, rlen, GETDEVICEID_MSG);
     return ipmiResponse(dc, getErrorMessage(rc), getCompletionMessage(cc), 0 == rc);
 }
+
+dataContainer ipmiutilAgent::implPtr::getNodePowerDataContainer(const unsigned char npwr_device)
+{
+    // unsigned char cmd[8] = {0x00, 0x20, 0x18, 0x52, 0x0f, npwr_device, 0x07, 0x86};
+
+    // The following values are hardcoded for nodepower-specific IPMI messages
+    unsigned char cc    = 0;
+    unsigned char cmd   = 0x52;
+    unsigned char netfn = 0x06;
+    unsigned char slave = 0x20;
+    unsigned char bus   = 0x00;
+    unsigned char lun   = 0x00;
+
+    unsigned char in_buff[4] = {0x0f, npwr_device, 0x07, 0x86};
+    int in_len = 4;
+
+    unsigned char out_buff[MAX_RESPONSE_SIZE];
+    int out_len = MAX_RESPONSE_SIZE;
+
+    ipmi_cmdraw(cmd, netfn, slave, bus, lun, in_buff, in_len, out_buff, &out_len, &cc, 0);
+    ipmi_close();
+    return getDataContainerFromCBuffer(out_buff, out_len, GETPSUPOWER_MSG);
+}
+
+void ipmiutilAgent::implPtr::appendNodePowerDataContainerToDataContainer(
+    dataContainer *dc, dataContainer npwr_dc, string tag)
+{
+    uint64_t accu = 0;
+    uint64_t cnt = 0;
+
+    if (0 != npwr_dc.count())
+    {
+        accu = npwr_dc.getValue<uint64_t>("accu");
+        cnt = npwr_dc.getValue<uint64_t>("cnt");
+    }
+
+    dc->put("accu_"+tag, accu, "");
+    dc->put("cnt_"+tag, cnt, "");
+}
+
+ipmiResponse ipmiutilAgent::implPtr::getPsuPower(buffer* data)
+{
+    const unsigned char NODEPOWER_PA_R = 0xb0;
+    const unsigned char NODEPOWER_PB_R = 0xb2;
+
+    dataContainer dc_a = getNodePowerDataContainer(NODEPOWER_PA_R);
+    dataContainer dc_b = getNodePowerDataContainer(NODEPOWER_PB_R);
+
+    dataContainer dc;
+    appendNodePowerDataContainerToDataContainer(&dc, dc_a, "a");
+    appendNodePowerDataContainerToDataContainer(&dc, dc_b, "b");
+
+    return ipmiResponse(dc, getErrorMessage(0), getCompletionMessage(0), true);
+}
+
 
 ipmiResponse ipmiutilAgent::implPtr::getAcpiPower(buffer* data)
 {

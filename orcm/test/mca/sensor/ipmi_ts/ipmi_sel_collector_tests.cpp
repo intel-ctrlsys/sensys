@@ -224,6 +224,7 @@ TEST_F(ut_ipmi_sel_collection, positive_test_of_events_4)
 
 TEST_F(ut_ipmi_sel_collection, negative_test_of_events)
 {
+    mocks[IPMI_CMD].pushState(LEGACY);
     sel_mocking.clear_errors();
     sel_mocking.clear_ras_events();
     ipmi_ts_sel_collector collector(hostname, test_error_sink_c, NULL);

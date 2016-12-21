@@ -136,6 +136,9 @@ void sample_callback(std::string hostname, dataContainer* dc)
 
 TEST_F(ipmiSensor_Tests, collect_inventory_ipmi)
 {
+    static const char MCA_DFX_FLAG[] = "ORCM_MCA_sensor_ipmi_ts_dfx";
+    setenv(MCA_DFX_FLAG, "1", 1);
+
     dataContainer dc;
     ipmiSensor sensor("test");
 
@@ -144,6 +147,8 @@ TEST_F(ipmiSensor_Tests, collect_inventory_ipmi)
     sensor.collect_inventory();
     ASSERT_TRUE_TIMEOUT(callback_flag, TIMEOUT);
     sensor.finalize();
+
+    unsetenv(MCA_DFX_FLAG);
 }
 
 

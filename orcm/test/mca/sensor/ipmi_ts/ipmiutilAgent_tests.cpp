@@ -100,7 +100,7 @@ void ipmiutilAgent_tests::assertHostNameListIsConsistent(set<string> list)
 // Test cases
 TEST_F(ipmiutilAgent_tests, empty_constructor)
 {
-    ipmiutilAgent *ptr = new ipmiutilAgent();
+    ipmiutilAgent *ptr = new ipmiutilAgent("");
     delete ptr;
 }
 
@@ -120,11 +120,13 @@ TEST_F(ipmiutilAgent_tests, getBmcList)
 
 TEST_F(ipmiutilAgent_tests, getSelRecords_invalidbmc)
 {
+    mocks[IPMI_CMD].pushState(FAILURE);
     agent->sendCommand(GETSELRECORDS, NULL, "bmc");
 }
 
 TEST_F(ipmiutilAgent_tests, getSelRecords_validbmc)
 {
+    mocks[IPMI_CMD].pushState(FAILURE);
     agent->sendCommand(GETSELRECORDS, NULL, "cn01");
 }
 
@@ -133,6 +135,7 @@ TEST_F(ipmiutilAgent_tests, getSelRecords_wrong_address)
     mocks[STRDUP].pushState(FAILURE);
     mocks[STRDUP].pushState(FAILURE);
     mocks[STRDUP].pushState(FAILURE);
+    mocks[IPMI_CMD].pushState(FAILURE);
     agent->sendCommand(GETSELRECORDS, NULL, "cn01");
 }
 
@@ -237,6 +240,66 @@ TEST_F(ipmiutilAgent_tests, requestFruInventory_isNewAreaLarger)
     ipmiResponse response = agent->sendCommand(READFRUDATA, &emptyBuffer, PROBE_BMC);
     mocks[IPMI_CMD].restartMock();
     ASSERT_TRUE(response.getReadings().count() > 0);
+}
+
+TEST_F(ipmiutilAgent_tests, requestFruInventory_requestNodepower)
+{
+    mocks[SET_LAN_OPTIONS].pushState(SUCCESS);
+    mocks[IPMI_CMDRAW].pushState(RETRIEVE_BUFFER_1);
+    mocks[IPMI_CMDRAW].pushState(RETRIEVE_BUFFER_1);
+    ipmiResponse response = agent->sendCommand(GETPSUPOWER, &emptyBuffer, PROBE_BMC);
+    mocks[IPMI_CMDRAW].restartMock();
+    mocks[SET_LAN_OPTIONS].restartMock();
+    EXPECT_GT(response.getReadings().count(), 0);
+    EXPECT_GT(response.getReadings().getValue<uint64_t>("accu_a"), 0);
+    EXPECT_GT(response.getReadings().getValue<uint64_t>("accu_b"), 0);
+    EXPECT_GT(response.getReadings().getValue<uint64_t>("cnt_a"), 0);
+    EXPECT_GT(response.getReadings().getValue<uint64_t>("cnt_b"), 0);
+}
+
+TEST_F(ipmiutilAgent_tests, requestFruInventory_requestNodepower_onlyFirstPSU)
+{
+    mocks[SET_LAN_OPTIONS].pushState(SUCCESS);
+    mocks[IPMI_CMDRAW].pushState(RETRIEVE_BUFFER_1);
+    mocks[IPMI_CMDRAW].pushState(SUCCESS);
+    ipmiResponse response = agent->sendCommand(GETPSUPOWER, &emptyBuffer, PROBE_BMC);
+    mocks[IPMI_CMDRAW].restartMock();
+    mocks[SET_LAN_OPTIONS].restartMock();
+    EXPECT_GT(response.getReadings().count(), 0);
+    EXPECT_GT(response.getReadings().getValue<uint64_t>("accu_a"), 0);
+    EXPECT_EQ(response.getReadings().getValue<uint64_t>("accu_b"), 0);
+    EXPECT_GT(response.getReadings().getValue<uint64_t>("cnt_a"), 0);
+    EXPECT_EQ(response.getReadings().getValue<uint64_t>("cnt_b"), 0);
+}
+
+TEST_F(ipmiutilAgent_tests, requestFruInventory_requestNodepower_onlySecondPSU)
+{
+    mocks[SET_LAN_OPTIONS].pushState(SUCCESS);
+    mocks[IPMI_CMDRAW].pushState(SUCCESS);
+    mocks[IPMI_CMDRAW].pushState(RETRIEVE_BUFFER_1);
+    ipmiResponse response = agent->sendCommand(GETPSUPOWER, &emptyBuffer, PROBE_BMC);
+    mocks[IPMI_CMDRAW].restartMock();
+    mocks[SET_LAN_OPTIONS].restartMock();
+    EXPECT_GT(response.getReadings().count(), 0);
+    EXPECT_EQ(response.getReadings().getValue<uint64_t>("accu_a"), 0);
+    EXPECT_GT(response.getReadings().getValue<uint64_t>("accu_b"), 0);
+    EXPECT_EQ(response.getReadings().getValue<uint64_t>("cnt_a"), 0);
+    EXPECT_GT(response.getReadings().getValue<uint64_t>("cnt_b"), 0);
+}
+
+TEST_F(ipmiutilAgent_tests, requestFruInventory_requestNodepower_NoPSU)
+{
+    mocks[SET_LAN_OPTIONS].pushState(SUCCESS);
+    mocks[IPMI_CMDRAW].pushState(SUCCESS);
+    mocks[IPMI_CMDRAW].pushState(SUCCESS);
+    ipmiResponse response = agent->sendCommand(GETPSUPOWER, &emptyBuffer, PROBE_BMC);
+    mocks[IPMI_CMDRAW].restartMock();
+    mocks[SET_LAN_OPTIONS].restartMock();
+    EXPECT_GT(response.getReadings().count(), 0);
+    EXPECT_EQ(response.getReadings().getValue<uint64_t>("accu_a"), 0);
+    EXPECT_EQ(response.getReadings().getValue<uint64_t>("accu_b"), 0);
+    EXPECT_EQ(response.getReadings().getValue<uint64_t>("cnt_a"), 0);
+    EXPECT_EQ(response.getReadings().getValue<uint64_t>("cnt_b"), 0);
 }
 
 TEST_F(ipmiutilAgent_extra, errorException)

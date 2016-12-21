@@ -20,7 +20,7 @@ using namespace std;
 IPMIResponse::IPMIResponse(ResponseBuffer* buffer, MessageType type)
 {
     if (!buffer || !buffer->size())
-        return; // TODO: Notify error case somehow.
+        return;
 
     switch (type)
     {
@@ -36,8 +36,10 @@ IPMIResponse::IPMIResponse(ResponseBuffer* buffer, MessageType type)
         case READFRUDATA_MSG:
             fru_data_cmd_to_data_container(buffer);
             break;
+        case GETPSUPOWER_MSG:
+            psu_power_cmd_to_data_container(buffer);
+            break;
         default:
-            // TODO: Notify error case somehow.
             break;
     }
 }
@@ -50,7 +52,7 @@ dataContainer IPMIResponse::getDataContainer()
 void IPMIResponse::device_id_cmd_to_data_container(ResponseBuffer* buffer)
 {
     if (GETDEVICEID_SIZE != buffer->size())
-        return; // TODO: Notify error case somehow.
+        return;
 
     string tmp_val = hex_to_str((*buffer)[0]);
     add_to_container("device_id", tmp_val);          // byte 2
@@ -85,10 +87,39 @@ void IPMIResponse::device_id_cmd_to_data_container(ResponseBuffer* buffer)
     add_to_container("aux_firmware_info", tmp_val);  // byte 13 to 16
 }
 
+void IPMIResponse::psu_power_cmd_to_data_container(ResponseBuffer* buffer)
+{
+    if (PSUPOWER_SIZE > buffer->size())
+        return;
+
+    unsigned char data_a[8] = {0};
+
+    data_a[0]=(*buffer)[1];
+    data_a[1]=(*buffer)[2];
+    data_a[1]&=0x7f;
+    data_a[2]=(*buffer)[3];
+    if (data_a[2]&0x1){
+        data_a[1]|=0x80;
+    }
+    data_a[2]>>=1;
+    uint64_t reading_a = *((uint64_t*)data_a);
+
+    unsigned char data_b[8] = {0};
+
+    data_b[0]=(*buffer)[4];
+    data_b[1]=(*buffer)[5];
+    data_b[2]=(*buffer)[6];
+    uint64_t reading_b = *((uint64_t*)data_b);
+
+    add_to_container("accu", reading_a);
+    add_to_container("cnt", reading_b);
+}
+
+
 void IPMIResponse::acpi_power_cmd_to_data_container(ResponseBuffer* buffer)
 {
     if (GETACPIPOWER_SIZE != buffer->size())
-        return; // TODO: Notify error case somehow.
+        return;
 
     string tmp_val = get_system_power_state((*buffer)[0] & 0x7F);
     add_to_container("system_power_state", tmp_val); // byte 2
@@ -100,7 +131,7 @@ void IPMIResponse::acpi_power_cmd_to_data_container(ResponseBuffer* buffer)
 void IPMIResponse::fru_inv_area_cmd_to_data_container(ResponseBuffer* buffer)
 {
     if (GETFRUINVAREA_SIZE != buffer->size())
-        return; // TODO: Notify error case somehow.
+        return;
 
     uint32_t tmp_val = (*buffer)[0];
     tmp_val += uint32_t((*buffer)[1]) << 8;
@@ -111,7 +142,7 @@ void IPMIResponse::fru_inv_area_cmd_to_data_container(ResponseBuffer* buffer)
 void IPMIResponse::fru_data_cmd_to_data_container(ResponseBuffer* buffer)
 {
     if (READFRUDATA_SIZE >= buffer->size())
-        return; // TODO: Notify error case somehow.
+        return;
 
     /*
         Source: Platform Management Fru Document (Rev 1.2)

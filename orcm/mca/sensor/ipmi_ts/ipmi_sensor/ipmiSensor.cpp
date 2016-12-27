@@ -159,10 +159,10 @@ static void get_nodepower_readings_cb(string bmc, ipmiResponse response, void* c
         uint64_t cnt_b = readings.getValue<uint64_t>("cnt_b");
 
         // Overflow detection
-        if (prevReadings[bmc].accu_a > accu_a || prevReadings[bmc].cnt_a >= cnt_a)
+        if (prevReadings[bmc].accu_a > accu_a || prevReadings[bmc].cnt_a > cnt_a)
             errorFlag = ERROR_A;
 
-        if (prevReadings[bmc].accu_b > accu_b || prevReadings[bmc].cnt_b >= cnt_b)
+        if (prevReadings[bmc].accu_b > accu_b || prevReadings[bmc].cnt_b > cnt_b)
             errorFlag = ERROR_B;
 
         double reading = powerReading(accu_a, prevReadings[bmc].accu_a, cnt_a, prevReadings[bmc].cnt_a) +
@@ -173,16 +173,19 @@ static void get_nodepower_readings_cb(string bmc, ipmiResponse response, void* c
         prevReadings[bmc].accu_b = accu_b;
         prevReadings[bmc].cnt_b = cnt_b;
 
-        dataContainer *dc = new dataContainer();
-        dc->put("nodepower", reading, "W");
-
-        if (NULL != directory->samplingCbFn)
-            directory->samplingCbFn(bmc, dc);
-
-        delete dc;
-
         switch (errorFlag)
         {
+            case NO_ERROR:
+                {
+                    dataContainer *dc = new dataContainer();
+                    dc->put("nodepower", reading, "W");
+
+                    if (NULL != directory->samplingCbFn)
+                        directory->samplingCbFn(bmc, dc);
+
+                    delete dc;
+                }
+                break;
             case ERROR_A:
                 if (NULL != directory->errorCbFn)
                     directory->errorCbFn(bmc, "Detected overflow on reading A", "");
@@ -190,8 +193,6 @@ static void get_nodepower_readings_cb(string bmc, ipmiResponse response, void* c
             case ERROR_B:
                 if (NULL != directory->errorCbFn)
                     directory->errorCbFn(bmc, "Detected overflow on reading B", "");
-                break;
-            default:
                 break;
         }
     } else {

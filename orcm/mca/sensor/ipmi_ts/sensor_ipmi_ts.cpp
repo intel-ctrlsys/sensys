@@ -78,6 +78,12 @@ END_C_DECLS
 
 static int init(void)
 {
+    if (!ORCM_PROC_IS_AGGREGATOR)
+    {
+        opal_output(0, "ERROR: Running ipmi_ts should only be done in an aggregator.");
+        return ORCM_ERROR;
+    }
+
     int rc = ORCM_SUCCESS;
     factory = ipmiSensorFactory::getInstance();
     int pluginsLoaded = 0;
@@ -116,6 +122,9 @@ static int init(void)
 
 static void finalize(void)
 {
+    if (!ORCM_PROC_IS_AGGREGATOR)
+        return;
+
      orcm_sensor_base_runtime_metrics_destroy(mca_sensor_ipmi_ts_component.runtime_metrics);
      mca_sensor_ipmi_ts_component.runtime_metrics = NULL;
      factory->close();

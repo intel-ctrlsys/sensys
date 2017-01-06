@@ -86,15 +86,6 @@ TEST_F(HAL, request_is_added_to_queue)
     ASSERT_FALSE(HWobject->isQueueEmpty());
 }
 
-TEST_F(HAL, request_is_taken_from_queue)
-{
-    EXPECT_TRUE(HWobject->isQueueEmpty());
-    ASSERT_NO_THROW(HWobject->addRequest(DUMMY, *emptyBuffer, bmc, NULL, NULL));
-    EXPECT_FALSE(HWobject->isQueueEmpty());
-    HWobject->startAgents();
-    ASSERT_TRUE(HWobject->isQueueEmpty());
-}
-
 TEST_F(HAL, several_requests_are_processed)
 {
     EXPECT_TRUE(HWobject->isQueueEmpty());
@@ -151,9 +142,7 @@ TEST_F(HAL, non_double_start_of_agents)
 TEST_F(HAL, unable_to_allocate_event)
 {
     mocks[OPAL_EVENT_EVTIMER_NEW].pushState(FAILURE);
-    ASSERT_NO_THROW(HWobject->addRequest(DUMMY, *emptyBuffer, bmc, NULL, NULL));
-
-    ASSERT_THROW(HWobject->startAgents(),std::runtime_error);
+    ASSERT_THROW(HWobject->addRequest(DUMMY, *emptyBuffer, bmc, NULL, NULL), std::runtime_error);
 }
 
 TEST_F(HAL, retrieve_bmc_list)

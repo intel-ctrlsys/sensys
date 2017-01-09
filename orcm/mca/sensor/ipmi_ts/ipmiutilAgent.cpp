@@ -49,7 +49,9 @@ private:
 
 public:
     ipmiCollectorMap config;
+    ipmiCollectorVector config_vector;
     set<string> hostList;
+    set<string> aggregators;
 
     implPtr(string file);
     string setConnectionParameters(string bmc);
@@ -102,14 +104,14 @@ ipmiutilAgent::implPtr::implPtr(string file)
     loadConfiguration_(file);
 }
 
+
 void ipmiutilAgent::implPtr::loadConfiguration_(string file)
 {
     ipmiParser *p = new ipmiParser(file);
     config = p->getIpmiCollectorMap();
-    delete p;
+    config_vector = p->getIpmiCollectorVector();
 
-    for (ipmiCollectorMap::iterator it = config.begin(); it != config.end(); ++it)
-        hostList.insert(it->first);
+    delete p;
 }
 
 ipmiutilAgent::ipmiutilAgent(string file) : impl_(new implPtr(file))
@@ -126,9 +128,18 @@ ipmiutilAgent::~ipmiutilAgent()
     delete impl_;
 }
 
-set<string> ipmiutilAgent::getBmcList()
+
+set<string> ipmiutilAgent::getBmcList(string agg)
 {
-    return impl_->hostList;
+    ipmiCollectorVector::iterator it;
+    set<string> bmcList;
+
+    for (it = impl_->config_vector.begin(); it != impl_->config_vector.end(); ++it) {
+         if (0 == agg.compare(it->getAggregator()))
+              bmcList.insert(it->getHostname());
+    }
+
+    return bmcList;
 }
 
 string ipmiutilAgent::implPtr::setConnectionParameters(string bmc)

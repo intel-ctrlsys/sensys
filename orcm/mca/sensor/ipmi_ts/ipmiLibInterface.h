@@ -34,7 +34,7 @@ class ipmiLibInterface
 {
 public:
     virtual ~ipmiLibInterface() {};
-    virtual std::set<std::string> getBmcList() = 0;
+    virtual std::set<std::string> getBmcList(string agg) = 0;
     virtual ipmiResponse sendCommand(ipmiCommands command, buffer* data, std::string bmc) = 0;
 };
 

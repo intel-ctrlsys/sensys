@@ -27,7 +27,7 @@ typedef std::map<std::string, ipmiSensorInterface*(*)(std::string)> IpmiPlugins;
 class ipmiSensorFactory : public baseFactory {
 public:
     static struct ipmiSensorFactory* getInstance();
-    void load(bool test_vector);
+    void load(bool test_vector, std::string agg);
     void close(void);
     void init(void);
     void sample();
@@ -44,7 +44,7 @@ public:
 private:
     ipmiSensorFactory();
     virtual ~ipmiSensorFactory(){};
-    void getPluginInstanceAndName(std::string ipmiObj);
+    void getPluginInstanceAndName(std::string ipmiObj, std::string agg);
     void __sample(pluginsIterator it);
     void __collect_inventory(pluginsIterator it);
     std::map<std::string, void*> pluginHandlers;

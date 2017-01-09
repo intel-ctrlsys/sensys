@@ -27,7 +27,6 @@ extern "C" {
     #include "orcm/mca/sensor/base/base.h"
     #include "orcm/mca/sensor/base/sensor_private.h"
     #include "opal/runtime/opal_progress_threads.h"
-    #include "opal/mca/installdirs/installdirs.h"
     #include "orcm/mca/db/db.h"
 }
 
@@ -78,10 +77,16 @@ END_C_DECLS
 
 static int init(void)
 {
+    char* hostname = NULL;
+
     if (!ORCM_PROC_IS_AGGREGATOR)
     {
         opal_output(0, "ERROR: Running ipmi_ts should only be done in an aggregator.");
         return ORCM_ERROR;
+    }
+
+    if (NULL == (hostname = orcm_get_proc_hostname())) {
+        hostname = (char*) "localhost";
     }
 
     int rc = ORCM_SUCCESS;
@@ -94,7 +99,7 @@ static int init(void)
                                                 mca_sensor_ipmi_ts_component.collect_metrics);
 
     try {
-        factory->load(mca_sensor_ipmi_ts_component.test);
+        factory->load(mca_sensor_ipmi_ts_component.test, hostname);
     } catch (ipmiSensorFactoryException& e){
         opal_output(0, "ERROR: %s ", e.what());
         rc = ORCM_ERROR;

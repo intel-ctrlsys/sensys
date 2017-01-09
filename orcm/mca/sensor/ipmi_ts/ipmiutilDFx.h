@@ -24,7 +24,7 @@ private:
 public:
     ipmiutilDFx() {};
     virtual ~ipmiutilDFx() {};
-    std::set<std::string> getBmcList();
+    std::set<std::string> getBmcList(string agg);
     ipmiResponse sendCommand(ipmiCommands command, buffer* data, std::string bmc);
 };
 

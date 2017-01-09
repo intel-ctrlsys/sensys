@@ -11,7 +11,7 @@
 
 using namespace std;
 
-set<string> ipmiutilDFx::getBmcList()
+set<string> ipmiutilDFx::getBmcList(string agg)
 {
     set<string> list;
     list.insert("fake_bmc_1");

@@ -39,7 +39,7 @@ private:
 public:
     static ipmiHAL* getInstance();
 
-    inline std::set<std::string> getBmcList() {return ((ipmiLibInterface*) agent)->getBmcList();};
+    inline std::set<std::string> getBmcList(string agg) {return ((ipmiLibInterface*) agent)->getBmcList(agg);};
     static void throwWhenNullPointer(void* ptr);
 
     bool isQueueEmpty();

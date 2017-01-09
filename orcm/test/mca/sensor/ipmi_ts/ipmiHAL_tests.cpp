@@ -147,7 +147,7 @@ TEST_F(HAL, unable_to_allocate_event)
 
 TEST_F(HAL, retrieve_bmc_list)
 {
-    set<string> bmcList = HWobject->getBmcList();
+    set<string> bmcList = HWobject->getBmcList("localhost");
     ASSERT_FALSE(bmcList.empty());
 }
 

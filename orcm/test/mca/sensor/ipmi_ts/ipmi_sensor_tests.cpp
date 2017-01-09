@@ -156,7 +156,7 @@ TEST_F(ipmiSensorFactory_Tests, throw_factory_exception)
 {
     static struct ipmiSensorFactory *factory;
     factory = ipmiSensorFactory::getInstance();
-    factory->load(true);
+    factory->load(true, "localhost");
     mocks[PLUGIN_TEST_INIT].pushState(FAILURE);
     mocks[PLUGIN_TEST_FINALIZE].pushState(FAILURE);
     mocks[PLUGIN_INIT].pushState(FAILURE);
@@ -164,7 +164,7 @@ TEST_F(ipmiSensorFactory_Tests, throw_factory_exception)
 
     factory->init();
     factory->close();
-    factory->load(false);
+    factory->load(false, "localhost");
     factory->init();
     factory->close();
  }

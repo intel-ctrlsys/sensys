@@ -113,8 +113,8 @@ TEST_F(ipmiutilAgent_tests, invalid_file)
 
 TEST_F(ipmiutilAgent_tests, getBmcList)
 {
-    set<string> bmcList = agent->getBmcList();
-    ASSERT_FALSE(bmcList.empty());
+    set<string> bmcList = agent->getBmcList("localhost");
+    ASSERT_TRUE(bmcList.empty());
     assertHostNameListIsConsistent(bmcList);
 }
 

@@ -16,13 +16,10 @@ ipmiSensorFactory::ipmiSensorFactory(){
      this->ipmiPlugins["ipmiSensor"] =  getIpmiInstance<ipmiSensor>;
 };
 
-void ipmiSensorFactory::load(bool test_vector)
+void ipmiSensorFactory::load(bool test_vector, string agg)
 {
-    //std::string ipmiObj = (test_vector) ? "IpmiTestSensor" : "IpmiBmc";
-    if (test_vector)
-        getPluginInstanceAndName("IpmiTestSensor");
-    else
-        getPluginInstanceAndName("ipmiSensor");
+    std::string ipmiObj = (test_vector) ? "IpmiTestSensor" : "ipmiSensor";
+    getPluginInstanceAndName(ipmiObj, agg);
 }
 
 void ipmiSensorFactory::close()
@@ -115,11 +112,16 @@ void ipmiSensorFactory::collect_inventory()
     return;
 }
 
-void ipmiSensorFactory::getPluginInstanceAndName(std::string ipmiObj)
+void ipmiSensorFactory::getPluginInstanceAndName(std::string ipmiObj, std::string agg)
 {
+    std::string errors = "";
     ipmiHAL *HWobj = ipmiHAL::getInstance();
-    std::set<std::string> bmcList = HWobj->getBmcList();
+    std::set<std::string> bmcList = HWobj->getBmcList(agg);
     std::set<std::string>::iterator it;
+
+    if(bmcList.empty()){
+        throw ipmiSensorFactoryException("No BMCs available for node " + agg);
+    }
 
     for (it = bmcList.begin(); it != bmcList.end(); ++it)
     {

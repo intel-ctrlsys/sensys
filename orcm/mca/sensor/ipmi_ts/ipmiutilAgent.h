@@ -30,7 +30,7 @@ private:
 public:
     ipmiutilAgent();
     virtual ~ipmiutilAgent();
-    std::set<std::string> getBmcList();
+    std::set<std::string> getBmcList(string agg);
     ipmiResponse sendCommand(ipmiCommands command, buffer* data, std::string bmc);
 
     // For testing purposes only. Please do not use in production code

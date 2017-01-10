@@ -26,6 +26,7 @@ extern "C" {
     #include "orcm/mca/sensor/ipmi_ts/sensor_ipmi_ts.h"
     #include "opal/mca/installdirs/installdirs.h"
     #include "orte/runtime/orte_globals.h"
+    #include "orte/util/proc_info.h"
     #include "orcm/util/utils.h"
     #include "orcm/runtime/orcm_globals.h"
     #include "orcm/mca/analytics/analytics.h"
@@ -59,6 +60,19 @@ extern "C" {
 
 #define N_MOCKED_PLUGINS 1
 bool ut_ipmi_ts_tests::use_pt_ = true;
+
+static orte_proc_type_t tmp_proc_type;
+
+void set_aggregator_mode()
+{
+    tmp_proc_type = orte_process_info.proc_type;
+    orte_process_info.proc_type |= ORTE_PROC_AGGREGATOR;
+}
+
+void unset_aggregator_mode()
+{
+    orte_process_info.proc_type = tmp_proc_type;
+}
 
 void ut_ipmi_ts_tests::SetUpTestCase()
 {
@@ -207,6 +221,7 @@ TEST_F(ut_ipmi_ts_sample, start_stop_progress_thread)
 
 void ut_ipmi_ts_init::SetUp()
 {
+    set_aggregator_mode();
     setFullMock(false, 0);
     throwOnInit = false;
     throwOnSample = false;
@@ -215,6 +230,7 @@ void ut_ipmi_ts_init::SetUp()
 
 void ut_ipmi_ts_init::TearDown()
 {
+    unset_aggregator_mode();
 }
 
 TEST_F(ut_ipmi_ts_init, test_vector)
@@ -228,6 +244,8 @@ void ut_ipmi_ts_sample::SetUp()
 {
     opal_init_test();
     mca_sensor_ipmi_ts_component.test = true;
+
+    set_aggregator_mode();
 
     static const char MCA_DFX_FLAG[] = "ORCM_MCA_sensor_ipmi_ts_dfx";
     setenv(MCA_DFX_FLAG, "1", 1);
@@ -248,6 +266,7 @@ void ut_ipmi_ts_sample::SetUp()
 
 void ut_ipmi_ts_sample::TearDown()
 {
+    unset_aggregator_mode();
     orcm_sensor_ipmi_ts_module.finalize();
     setFullMock(false, 0);
     throwOnInit = false;
@@ -319,6 +338,7 @@ TEST_F(ut_ipmi_ts_sample, udsensors_start_stop)
 
 void ut_ipmi_ts_log::SetUp()
 {
+    set_aggregator_mode();
     setFullMock(false, 0);
     struct timeval current_time;
     const char *name = "ipmi_ts_test";
@@ -335,12 +355,14 @@ void ut_ipmi_ts_log::SetUp()
 
 void ut_ipmi_ts_log::TearDown()
 {
+    unset_aggregator_mode();
     opal_buffer_t* buffer = (opal_buffer_t*) bufferPtr;
     ORCM_RELEASE(buffer);
 }
 
 void ut_ipmi_ts_inventory::SetUp()
 {
+    set_aggregator_mode();
     setFullMock(true, N_MOCKED_PLUGINS);
     throwOnSample = false;
     mock_opal_pack = false;
@@ -353,12 +375,14 @@ void ut_ipmi_ts_inventory::SetUp()
 
 void ut_ipmi_ts_inventory::TearDown()
 {
+    unset_aggregator_mode();
     orcm_sensor_ipmi_ts_module.finalize();
     setFullMock(false, 0);
 }
 
 void ut_ipmi_ts_inventory_log::SetUp()
 {
+    set_aggregator_mode();
     setFullMock(true, N_MOCKED_PLUGINS);
     mock_opal_unpack = false;
     mock_serializeMap = false;
@@ -370,6 +394,7 @@ void ut_ipmi_ts_inventory_log::SetUp()
 
 void ut_ipmi_ts_inventory_log::TearDown()
 {
+    unset_aggregator_mode();
     orcm_sensor_ipmi_ts_module.finalize();
     setFullMock(false, 0);
 }

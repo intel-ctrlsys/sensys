@@ -50,6 +50,7 @@ class edac_collector
         bool collect_inventory(edac_inventory_callback_fn_t cb, void* user_data);
 
         bool have_edac() const;
+        int get_mc_folder_count() const;
 
     protected:
         virtual FILE* FOpen(const char* path, const char* mode) const;
@@ -58,7 +59,6 @@ class edac_collector
         virtual int Stat(const char* path, struct stat* info) const;
 
     PRIVATE:
-        int get_mc_folder_count() const;
         int get_csrow_folder_count(int mc) const;
         int get_channel_folder_count(int mc, int csrow) const;
 

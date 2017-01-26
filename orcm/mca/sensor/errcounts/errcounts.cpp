@@ -86,7 +86,7 @@ int errcounts_impl::init(void)
     }
     hostname_ = orcm_sensor_base.host_tag_value;
     edac_missing_ = (collector_->have_edac())?false:true;
-    if(true == edac_missing_) {
+    if(true == edac_missing_ || 0 == collector_->get_mc_folder_count()) {
         orte_show_help("help-orcm-sensor-errcounts.txt", "no-edac", true, (char*)hostname_.c_str());
         return ORCM_ERROR;
     }

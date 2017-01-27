@@ -11,7 +11,7 @@ $HEADER$
 ===========================================================================
 -->
 
-# A monitoring system for clusters up to and beyond exascale sizes
+# A cluster monitoring system architected for exascale systems
 
 Sensys provides resilient and scalable monitoring for resource utilization and node state of health, collecting all the data in a database for subsequent analysis. Sensys includes several loadable plugins that monitor various metrics related to different features present in each node like temperature, voltage, power usage, memory, disk and process information.
 

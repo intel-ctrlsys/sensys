@@ -12,7 +12,7 @@ sources = \
         sensor_ipmi_ts_component.c \
         sensor_ipmi_ts.h \
         sensor_ipmi_ts.cpp \
-        ipmiSensorFactory.h \
+        ipmiSensorFactory.hpp \
         ipmiSensorFactory.cpp \
         ipmiSensorInterface.h \
         ipmiLibInterface.h \

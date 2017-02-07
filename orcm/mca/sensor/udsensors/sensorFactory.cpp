@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017  Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -8,6 +8,7 @@
  */
 
 #include "sensorFactory.h"
+#include "orcm/runtime/orcm_globals.h"
 
 int sensorFactory::open(const char *plugin_path, const char *plugin_prefix)
 {
@@ -104,15 +105,24 @@ void sensorFactory::getPluginInstanceAndName(void *plugin)
 {
     sensorInstance entryPoint;
     getPluginName p_name;
-    char *tmp_name = NULL;
+    sensorInterface* tmp_plugin = NULL;
 
     entryPoint = (sensorInstance)getPluginSymbol(plugin, "initPlugin");
     p_name = (getPluginName)getPluginSymbol(plugin, "getPluginName");
 
     if (entryPoint && p_name) {
         std::string plugin_name = std::string(p_name());
-        pluginsLoaded[plugin_name] = entryPoint();
-        pluginHandlers[plugin_name] = plugin;
+        tmp_plugin = entryPoint();
+        //OOB sensors run only in the aggregator nodes
+        if (!ORCM_PROC_IS_AGGREGATOR && (tmp_plugin->sensor_type == OOB)) {
+            delete tmp_plugin;
+            closePlugin(plugin);
+        }
+        else{
+           pluginsLoaded[plugin_name] = tmp_plugin;
+           pluginHandlers[plugin_name] = plugin;
+        }
+
     } else {
         closePlugin(plugin);
     }

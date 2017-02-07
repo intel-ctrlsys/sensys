@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017   Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -8,11 +8,28 @@
  */
 
 #include "sensorFactory_tests.h"
+#include "orte/util/proc_info.h"
 
 #define N_MOCKED_PLUGINS 1
 
+
+static orte_proc_type_t tmp_proc_type;
+
+void set_aggregator_mode()
+{
+    tmp_proc_type = orte_process_info.proc_type;
+    orte_process_info.proc_type |= ORTE_PROC_AGGREGATOR;
+
+}
+
+void unset_aggregator_mode()
+{
+    orte_process_info.proc_type = tmp_proc_type;
+}
+
 void ut_sensorFactory::SetUp()
 {
+    set_aggregator_mode();
     setFullMock(false, 0);
     throwOnInit = false;
     throwOnSample = false;
@@ -22,6 +39,7 @@ void ut_sensorFactory::SetUp()
 
 void ut_sensorFactory::TearDown()
 {
+    unset_aggregator_mode();
     obj->pluginFilesFound.clear();
     obj->close();
 }
@@ -198,6 +216,25 @@ TEST_F(ut_sensorFactory, openInvalidPluginAndClose)
 {
     setFullMock(true, N_MOCKED_PLUGINS);
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    obj->close();
+    EXPECT_EQ(0, obj->getLoadedPlugins());
+}
+
+TEST_F(ut_sensorFactory, openOOBPluginOnAggregatorAndClose)
+{
+    setFullMock(true, N_MOCKED_PLUGINS);
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    EXPECT_EQ(1, obj->getLoadedPlugins());
+    obj->close();
+    EXPECT_EQ(0, obj->getLoadedPlugins());
+}
+
+TEST_F(ut_sensorFactory, openOOBPluginOnComputeNodeAndClose)
+{
+    unset_aggregator_mode();
+    setFullMock(true, N_MOCKED_PLUGINS);
+    EXPECT_NO_THROW(obj->open("/tmp", NULL));
+    EXPECT_EQ(0, obj->getLoadedPlugins());
     obj->close();
     EXPECT_EQ(0, obj->getLoadedPlugins());
 }

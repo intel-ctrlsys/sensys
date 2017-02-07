@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017  Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -32,9 +32,24 @@
         }                                                         \
     }                                                             \
 
+// The sensor types determine if the plugin is collecting data via
+// in-band(IB) or out-of-band(OOB). Note that OOB sensors run actively
+// only in the aggregator node.
+enum supportedTypes
+{
+    IB,
+    OOB
+};
+
 struct UDSensor
 {
 public:
+
+    // By default, sensor_type is set to IB and can be changed in the
+    // constructor of the plugin class.
+    supportedTypes sensor_type;
+    UDSensor():sensor_type(IB) {};
+
     // The init function will be called in the initialization process
     // of the plugin. Here is the place where the setup is performed,
     // E. g. look for some resource if it's available, check existance

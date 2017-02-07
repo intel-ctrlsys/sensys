@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017   Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -34,6 +33,8 @@ int n_mocked_plugins;
 class mockPlugin
 {
 public:
+    supportedTypes sensor_type;
+    mockPlugin(): sensor_type(OOB) {};
     virtual void init(void);
     virtual void finalize(void);
     virtual void sample(dataContainer &dc);

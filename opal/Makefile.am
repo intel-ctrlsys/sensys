@@ -29,7 +29,8 @@ SUBDIRS = \
 	$(MCA_opal_FRAMEWORKS_SUBDIRS) \
 	$(MCA_opal_FRAMEWORK_COMPONENT_STATIC_SUBDIRS) \
         . \
-	$(MCA_opal_FRAMEWORK_COMPONENT_DSO_SUBDIRS)
+	$(MCA_opal_FRAMEWORK_COMPONENT_DSO_SUBDIRS) \
+	test
 
 # libltdl is included by variable because if --disable-dlopen was
 # used, there will be no generated Makefile in that directory (and
@@ -42,7 +43,8 @@ DIST_SUBDIRS = \
 	util \
 	mca/base \
 	$(MCA_opal_FRAMEWORKS_SUBDIRS) \
-	$(MCA_opal_FRAMEWORK_COMPONENT_ALL_SUBDIRS)
+	$(MCA_opal_FRAMEWORK_COMPONENT_ALL_SUBDIRS) \
+	test
 
 # Build the main OPAL library
 

@@ -71,5 +71,9 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/mca/cfgi/Makefile
     orcm/test/mca/cfgi/file10/Makefile
     orcm/test/mca/cfgi/file30/Makefile
+    opal/test/Makefile
+    opal/test/mca/Makefile
+    opal/test/mca/sec/Makefile
+    opal/test/mca/sec/munge/Makefile
     ])
 ])

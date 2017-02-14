@@ -21,7 +21,7 @@
 #
 
 SUBDIRS = config contrib $(MCA_PROJECT_SUBDIRS)
-EXTRA_DIST = README INSTALL VERSION Doxyfile LICENSE autogen.pl
+EXTRA_DIST = README.md VERSION Doxyfile LICENSE autogen.pl
 
 dist-hook:
 	env LS_COLORS= sh "$(top_srcdir)/config/distscript.sh" "$(top_srcdir)" "$(distdir)" "$(ORCM_VERSION)" "$(ORCM_REPO_REV)"

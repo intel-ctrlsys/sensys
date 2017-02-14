@@ -22,12 +22,18 @@ munge_tests_SOURCES = \
 
 # Mocking
 
-MOCKING =
+MOCKING = \
+    -Wl,--wrap=munge_encode \
+    -Wl,--wrap=munge_decode \
+    -Wl,--wrap=getgrgid \
+    -Wl,--wrap=getpwuid \
+    -Wl,--wrap=getgrouplist \
+    -Wl,--wrap=malloc
 
 # Library dependencies
 
 LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a
 
-AM_LDFLAGS = -lorcm -lorcmopen-pal $(MOCKING)
+AM_LDFLAGS = -lorcm -lmunge -lorcmopen-pal -lpthread $(MOCKING)
 
-AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_srcdir)
+AM_CPPFLAGS=-I@GTEST_INCLUDE_DIR@ -I$(top_srcdir) -fpermissive

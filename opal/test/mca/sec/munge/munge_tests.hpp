@@ -11,6 +11,7 @@
 #define MUNGE_TESTS_H
 
 #include "gtest/gtest.h"
+#include "mockFactory.hpp"
 
 class ut_munge_tests: public testing::Test
 {
@@ -19,5 +20,4 @@ protected:
     static void TearDownTestCase();
 };
 
-
-#endif 
+#endif /*MUNGE_TESTS_H*/

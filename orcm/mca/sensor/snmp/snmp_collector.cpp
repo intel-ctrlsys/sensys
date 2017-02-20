@@ -16,16 +16,15 @@
 
 using namespace std;
 
-snmpCollector::snmpCollector() : runtime_metrics_(NULL) {
+snmpCollector::snmpCollector() {
+    initDataMembers();
     snmpCollector("","");
 }
 
-snmpCollector::snmpCollector(string host, string user) : runtime_metrics_(NULL) {
+snmpCollector::snmpCollector(string host, string user) {
+    initDataMembers();
     hostname = string(host);
     username = string(user);
-    response = NULL;
-    pdu = NULL;
-    anOID_len = 0;
 
     init_snmp("orcm");
     snmp_sess_init( &session );
@@ -34,26 +33,27 @@ snmpCollector::snmpCollector(string host, string user) : runtime_metrics_(NULL) 
     storeCharsAndLength(username, (char**) &session.community, &session.community_len);
 }
 
-snmpCollector::snmpCollector(string host, string user, string pass) : runtime_metrics_(NULL) {
+snmpCollector::snmpCollector(string host, string user, string pass) {
+    initDataMembers();
     snmpCollector(host, user, pass, MD5);
 }
 
-snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth) : runtime_metrics_(NULL) {
+snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth) {
+    initDataMembers();
     snmpCollector(host, user, pass, auth, AUTHNOPRIV);
 }
 
-snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth, sec_type sec) : runtime_metrics_(NULL) {
+snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth, sec_type sec) {
+    initDataMembers();
     snmpCollector(host, user, pass, auth, sec, DES);
 }
 
 
-snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth, sec_type sec, priv_protocol priv) : runtime_metrics_(NULL) {
+snmpCollector::snmpCollector(string host, string user, string pass, auth_type auth, sec_type sec, priv_protocol priv) {
+    initDataMembers();
     hostname = string(host);
     username = string(user);
     password = string(pass);
-    response = NULL;
-    pdu = NULL;
-    anOID_len = 0;
 
     init_snmp("orcm");
     snmp_sess_init( &session );
@@ -73,6 +73,13 @@ snmpCollector::snmpCollector(string host, string user, string pass, auth_type au
             setSHA1Authentication(password);
             break;
     }
+}
+
+void snmpCollector::initDataMembers() {
+    anOID_len = 0;
+    pdu = NULL;
+    response = NULL;
+    runtime_metrics_ = NULL;
 }
 
 snmpCollector::~snmpCollector() {

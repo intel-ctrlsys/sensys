@@ -118,7 +118,7 @@ ipmiutilAgent::ipmiutilAgent(string file) : impl_(new implPtr(file))
 {
 }
 
-ipmiutilAgent::ipmiutilAgent()
+ipmiutilAgent::ipmiutilAgent() : impl_(new implPtr(""))
 {
     ipmiutilAgent("");
 }

@@ -45,6 +45,7 @@ class snmpCollector {
         snmpCollector(std::string hostname, std::string username, std::string password, auth_type auth, sec_type sec, priv_protocol priv);
         ~snmpCollector();
 
+	inline void initDataMembers();
         void dump_pdu(netsnmp_pdu *p);
         void setOIDs(std::string strOIDs);
         void updateOIDs();

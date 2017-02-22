@@ -80,6 +80,7 @@ void snmpCollector::initDataMembers() {
     pdu = NULL;
     response = NULL;
     runtime_metrics_ = NULL;
+    session = {0};
 }
 
 snmpCollector::~snmpCollector() {
@@ -108,9 +109,9 @@ void snmpCollector::dump_pdu(netsnmp_pdu *p) {
     printf("Community: %p\n",p->community);
     printf("Community len: %ld\n",p->community_len);
     printf("Enterprise: %p\n",p->enterprise);
-    printf("Enterprise length: %d\n",p->enterprise_length);
-    printf("Trap: %d\n",p->trap_type);
-    printf("Specific type: %d\n",p->specific_type);
+    printf("Enterprise length: %zu\n",p->enterprise_length);
+    printf("Trap: %ld\n",p->trap_type);
+    printf("Specific type: %ld\n",p->specific_type);
     printf("Agent address[0]: %u\n",p->agent_addr[0]);
     printf("Agent address[1]: %u\n",p->agent_addr[1]);
     printf("Agent address[2]: %u\n",p->agent_addr[2]);

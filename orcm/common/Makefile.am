@@ -29,6 +29,9 @@ libsensysplugins_la_SOURCES = \
 libsensysplugins_helper_la_SOURCES  = \
         dataContainerHelper.cpp
 
+libsensysplugins_la_CXXFLAGS = -std=c++11
+libsensysplugins_helper_la_CXXFLAGS = -std=c++11
+
 if WANT_INSTALL_HEADERS
 orcmdir = $(orcmincludedir)/orcm/common
 nobase_dist_orcm_HEADERS = $(headers)

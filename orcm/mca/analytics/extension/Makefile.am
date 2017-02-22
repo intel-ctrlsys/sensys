@@ -28,7 +28,9 @@ mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_analytics_extension_la_SOURCES = $(sources)
 mca_analytics_extension_la_LDFLAGS = -module -avoid-version
+mca_analytics_extension_la_CXXFLAGS = -std=c++11 
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_analytics_extension_la_SOURCES =$(sources)
 libmca_analytics_extension_la_LDFLAGS = -module -avoid-version
+libmca_analytics_extension_la_CXXFLAGS = -std=c++11 

@@ -38,6 +38,7 @@ endif
 mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 
+mca_sensor_snmp_la_CXXFLAGS = $(sensor_snmp_CXXFLAGS) -std=c++11
 mca_sensor_snmp_la_CPPFLAGS = $(sensor_snmp_CPPFLAGS) $(snmp_CPPFLAGS)
 mca_sensor_snmp_la_SOURCES = $(sources)
 mca_sensor_snmp_la_LDFLAGS = -module -avoid-version
@@ -46,5 +47,6 @@ mca_sensor_snmp_la_LIBADD = $(sensor_snmp_LIBS) $(snmp_LIBS) -lnetsnmp
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_sensor_snmp_la_SOURCES =$(sources)
 libmca_sensor_snmp_la_CPPFLAGS = $(sensor_snmp_CPPFLAGS) $(snmp_CPPFLAGS)
+libmca_sensor_snmp_la_CXXFLAGS = $(sensor_snmp_CXXFLAGS) -std=c++11
 libmca_sensor_snmp_la_LDFLAGS = -module -avoid-version $(sensor_snmp_LDFLAGS) $(snmp_LDFLAGS)
 libmca_sensor_snmp_la_LIBADD = $(sensor_snmp_LIBS) $(snmp_LIBS) -lnetsnmp

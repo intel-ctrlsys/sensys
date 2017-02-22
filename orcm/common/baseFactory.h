@@ -50,7 +50,7 @@ public:
     std::string plugins_prefix;
 
 protected:
-    baseFactory(){};
+    baseFactory() : regex_comp({0}) {};
     virtual ~baseFactory(){};
 };
 

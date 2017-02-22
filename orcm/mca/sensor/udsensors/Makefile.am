@@ -30,12 +30,14 @@ endif
 mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_sensor_udsensors_la_SOURCES = $(sources)
+mca_sensor_udsensors_la_CXXFLAGS = -std=c++11
 mca_sensor_udsensors_la_LDFLAGS = -module -avoid-version
 mca_sensor_udsensors_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la \
                                  $(top_builddir)/orcm/common/libsensysplugins_helper.la
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_sensor_udsensors_la_SOURCES =$(sources)
+libmca_sensor_udsensors_la_CXXFLAGS = -std=c++11
 libmca_sensor_udsensors_la_LDFLAGS = -module -avoid-version
 libmca_sensor_udsensors_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la \
                                     $(top_builddir)/orcm/common/libsensysplugins_helper.la

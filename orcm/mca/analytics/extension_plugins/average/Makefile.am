@@ -18,3 +18,4 @@ mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 analytics_extension_average_la_SOURCES = $(average_sources)
 analytics_extension_average_la_LDFLAGS = -module -avoid-version
+analytics_extension_average_la_CXXFLAGS = -std=c++11

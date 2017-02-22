@@ -51,6 +51,7 @@ endif
 mcacomponentdir = $(orcmlibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_sensor_ipmi_ts_la_CPPFLAGS = $(sensor_ipmi_ts_CPPFLAGS) $(ipmiutil_CPPFLAGS)
+mca_sensor_ipmi_ts_la_CXXFLAGS = $(sensor_ipmi_ts_CXXFLAGS) $(ipmiutil_CXXFLAGS) -std=c++11
 mca_sensor_ipmi_ts_la_SOURCES = $(sources)
 mca_sensor_ipmi_ts_la_LDFLAGS = -module -avoid-version $(ipmiutil_LDFLAGS)
 mca_sensor_ipmi_ts_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la \
@@ -60,6 +61,7 @@ mca_sensor_ipmi_ts_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la \
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_sensor_ipmi_ts_la_SOURCES =$(sources)
 libmca_sensor_ipmi_ts_la_CPPFLAGS = $(sensor_ipmi_ts_CPPFLAGS) $(ipmiutil_CPPFLAGS)
+libmca_sensor_ipmi_ts_la_CXXFLAGS = $(sensor_ipmi_ts_CXXFLAGS) $(ipmiutil_CXXFLAGS) -std=c++11
 libmca_sensor_ipmi_ts_la_LDFLAGS = -module -avoid-version $(sensor_ipmi_LDFLAGS) $(ipmiutil_LDFLAGS)
 libmca_sensor_ipmi_ts_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la \
                                   $(top_builddir)/orcm/common/libsensysplugins_helper.la \

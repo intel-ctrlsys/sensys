@@ -18,6 +18,7 @@ headers = analytics.h \
           analytics_interface.h
 
 libmca_analytics_la_SOURCES += $(headers)
+libmca_analytics_la_CXXFLAGS = -std=c++11
 
 # Conditionally install the header files
 if WANT_INSTALL_HEADERS

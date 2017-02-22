@@ -15,7 +15,6 @@ void ut_munge_tests::SetUpTestCase()
     step = 0;
     initialized = true;
     mock_getgrgid = true;
-    my_cred.credential = strdup("OLAKEASEabc");
     return;
 }
 
@@ -24,7 +23,6 @@ void ut_munge_tests::TearDownTestCase()
     step = 0;
     initialized = false;
     mock_getgrgid = false;
-    free(my_cred.credential);
     return;
 }
 
@@ -41,10 +39,12 @@ TEST_F(ut_munge_tests, init_finalize_explicit)
 TEST_F(ut_munge_tests, init_finalize_none_action)
 {
     mock_munge_encode = true;
+    my_cred.credential = strdup("OLAKEASEabc");
     int rc =  init();
     EXPECT_EQ(OPAL_SUCCESS, rc);
     initialized = false;
     finalize();
+    free(my_cred.credential);
 }
 
 TEST_F(ut_munge_tests, init_munge_failure)
@@ -71,8 +71,10 @@ TEST_F(ut_munge_tests, get_my_credential_not_refresh)
     opal_sec_cred_t cred;
     initialized = true;
     refresh = false;
+    my_cred.credential = strdup("OLAKEASEabc");
     int rc = get_my_cred(dstorehandle, my_id, &cred);
     EXPECT_EQ(OPAL_SUCCESS, rc);
+    finalize();
 }
 
 TEST_F(ut_munge_tests, get_my_credential_successful)
@@ -82,10 +84,12 @@ TEST_F(ut_munge_tests, get_my_credential_successful)
     opal_sec_cred_t cred;
     refresh = true;
     mock_munge_encode = true;
+    my_cred.credential = strdup("OLAKEASEabc");
     int rc = get_my_cred(dstorehandle, my_id, &cred);
     EXPECT_EQ(strcmp(cred.method, "munge"), 0);
     EXPECT_EQ(cred.size, 12);
     EXPECT_EQ(OPAL_SUCCESS, rc);
+    finalize();
 }
 
 TEST_F(ut_munge_tests, get_my_credential_failure)
@@ -241,9 +245,7 @@ TEST_F(ut_munge_tests, authenticate_group_authorize_success)
     cred.credential = strdup("OLAKEASEabc");
     mock_munge_decode = true;
     /* group authorize */
-    uid_t uid_remote;
     authorize_grp = strdup("orcmuser");
-
     mock_getgrouplist = true;
     int rc = authenticate(&cred);
     EXPECT_EQ(OPAL_SUCCESS, rc);
@@ -252,14 +254,10 @@ TEST_F(ut_munge_tests, authenticate_group_authorize_success)
 
 TEST_F(ut_munge_tests, authenticate_get_grouplist_failure)
 {
-    // authorize
     opal_sec_cred_t cred;
     cred.credential = strdup("OLAKEASEabc");
     mock_munge_decode = true;
-    // group authorize
-    uid_t uid_remote;
     authorize_grp = NULL;
-
     mock_getpwuid = false;
     int rc = authenticate(&cred);
     EXPECT_EQ(OPAL_ERR_AUTHENTICATION_FAILED, rc);
@@ -277,16 +275,12 @@ TEST_F(ut_munge_tests, authenticate_munge_decode_failure)
 
 TEST_F(ut_munge_tests, authenticate_grouplist_authorize_failure)
 {
-    /* authorize */
     opal_sec_cred_t cred;
     cred.credential = strdup("OLAKEASEabc");
     mock_munge_decode = true;
-    /* group authorize */
     authorize_grp = NULL;
-    /* group list */
     mock_getpwuid = true;
     mock_getgrouplist = false;
-    /* group list authorize */
     int rc = authenticate(&cred);
     EXPECT_EQ(OPAL_ERR_AUTHENTICATION_FAILED, rc);
 }

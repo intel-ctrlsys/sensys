@@ -54,9 +54,7 @@ extern "C" {
 
     int __wrap_munge_encode(char **cred, munge_ctx_t ctx, const void *buf, int len)
     {
-        static opal_sec_cred_t my_cred;
         if (mock_munge_encode) {
-	    my_cred.credential = strdup("OLAKEASEabc");
             return EMUNGE_SUCCESS;
         }
         return EMUNGE_SNAFU;
@@ -65,9 +63,7 @@ extern "C" {
     int __wrap_munge_decode(const char *cred, munge_ctx_t ctx,
                             void **buf, int *len, uid_t *uid, gid_t *gid)
     {
-        static opal_sec_cred_t my_cred;
         if (mock_munge_decode) {
-            my_cred.credential = strdup("OLAKEASEabc");
             return EMUNGE_SUCCESS;
         }
         return EMUNGE_SNAFU;

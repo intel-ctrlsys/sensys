@@ -89,6 +89,7 @@ static int get_my_cred(int dstorehandle,
                 opal_output_verbose(2, opal_sec_base_framework.framework_output,
                                     "sec: munge failed to create credential: %s",
                                     munge_strerror(rc));
+
                 return OPAL_ERR_SERVER_NOT_AVAIL;
             }
             /* include the '\0' termination string character */

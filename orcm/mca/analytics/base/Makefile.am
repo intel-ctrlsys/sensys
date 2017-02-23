@@ -25,4 +25,4 @@ sources =\
 
 libmca_analytics_la_SOURCES += $(sources)
 libmca_analytics_la_LIBADD = $(top_builddir)/orcm/common/libsensysplugins.la
-libmca_analytics_la_CXXFLAGS = -std=c++11 
+libmca_analytics_la_CXXFLAGS += -std=c++11 

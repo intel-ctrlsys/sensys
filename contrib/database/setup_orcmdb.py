@@ -11,6 +11,8 @@ import models
 
 def main():
     """Command line interface for setup database"""
+    save_cwd = os.getcwd()
+
     try:
         parser = ArgumentParser(description="Setup ORCM database")
         parser.add_argument("--alembic-ini", dest='alembic_ini',
@@ -19,7 +21,6 @@ def main():
                             help="A path to the Alembic config file")
         args = parser.parse_args()
 
-        save_cwd = os.getcwd()
         ini_dir, ini_file = os.path.split(args.alembic_ini)
         os.chdir(os.path.join(save_cwd, ini_dir))
         models.setup(alembic_ini=ini_file)

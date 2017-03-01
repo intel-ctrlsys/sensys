@@ -85,20 +85,24 @@ int ipmi_ts_component_register(void)
     mca_base_component_t *c = &mca_sensor_ipmi_ts_component.super.base_version;
 
     mca_sensor_ipmi_ts_component.test = false;
+#if OPAL_ENABLE_DEBUG
     (void) mca_base_component_var_register (c, "test",
                                             "Generate and pass test vector",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_ipmi_ts_component.test);
-
+#endif
     mca_sensor_ipmi_ts_component.dfx = false;
+
+#if OPAL_ENABLE_DEBUG
     (void) mca_base_component_var_register (c, "dfx",
                                             "Generate and pass DFx data (DEBUG only)",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_ipmi_ts_component.dfx);
+#endif
 
     mca_sensor_ipmi_ts_component.agents = 4;
     (void) mca_base_component_var_register (c, "agents",

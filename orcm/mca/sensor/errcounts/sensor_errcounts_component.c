@@ -84,12 +84,14 @@ int errcounts_component_register(void)
     mca_base_component_t *c = &mca_sensor_errcounts_component.super.base_version;
 
     mca_sensor_errcounts_component.test = false;
+#if OPAL_ENABLE_DEBUG
     (void) mca_base_component_var_register (c, "test",
                                             "Generate and pass test vectors",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             &mca_sensor_errcounts_component.test);
+#endif
 
     mca_sensor_errcounts_component.use_progress_thread = false;
     (void) mca_base_component_var_register(c, "use_progress_thread",
@@ -108,12 +110,14 @@ int errcounts_component_register(void)
                                            &mca_sensor_errcounts_component.sample_rate);
 
     mca_sensor_errcounts_component.edac_mc_folder = "/sys/devices/system/edac/mc";
+#if OPAL_ENABLE_DEBUG
     (void) mca_base_component_var_register(c, "edac_mc_folder_test",
                                            "Testing location of the edac/mc folder. Used in integration testing only.",
                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,
                                            OPAL_INFO_LVL_9,
                                            MCA_BASE_VAR_SCOPE_READONLY,
                                            &mca_sensor_errcounts_component.edac_mc_folder);
+#endif
 
     mca_sensor_errcounts_component.collect_metrics = orcm_sensor_base.collect_metrics;
     (void) mca_base_component_var_register(c, "collect_metrics",

@@ -105,12 +105,14 @@ static int orcm_sensor_resusage_register (void)
                                             &mca_sensor_resusage_component.log_process_stats);
 
     mca_sensor_resusage_component.test = false;
+#if OPAL_ENABLE_DEBUG
     (void) mca_base_component_var_register (c, "test",
                                             "Generate and pass test vector",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                             OPAL_INFO_LVL_9,
                                             MCA_BASE_VAR_SCOPE_READONLY,
                                             & mca_sensor_resusage_component.test);
+#endif
 
     mca_sensor_resusage_component.collect_metrics = orcm_sensor_base.collect_metrics;
     (void) mca_base_component_var_register(c, "collect_metrics",

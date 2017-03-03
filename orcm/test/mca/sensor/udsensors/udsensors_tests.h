@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -35,6 +35,14 @@ class ut_udsensors_log: public ut_udsensors_tests
         void TearDown();
 };
 
+class ut_udsensors_inventory_log: public ut_udsensors_tests
+{
+    protected:
+        void* bufferPtr;
+
+        void SetUp();
+        void TearDown();
+};
 
 class ut_udsensors_sample : public ut_udsensors_tests
 {

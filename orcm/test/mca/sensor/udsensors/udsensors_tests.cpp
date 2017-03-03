@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -32,6 +32,7 @@ extern "C" {
     #include "orcm/mca/sensor/base/sensor_private.h"
     #include "opal/runtime/opal_progress_threads.h"
     #include "opal/runtime/opal.h"
+    #include "orcm/mca/db/db.h"
 
     extern int orcm_sensor_udsensors_open(void);
     extern int orcm_sensor_udsensors_close(void);
@@ -303,16 +304,37 @@ TEST_F(ut_udsensors_tests, udsensors_sample_rate_tests)
     mca_sensor_udsensors_component.sample_rate = 1;
 }
 
-TEST_F(ut_udsensors_tests, udsensors_inventory_collect)
+TEST_F(ut_udsensors_sample, udsensors_inventory_collect)
 {
-     opal_buffer_t buffer;
-     orcm_sensor_udsensors_module.inventory_collect(&buffer);
+    opal_buffer_t buffer;
+    orcm_sensor_udsensors_module.init();
+    testing::internal::CaptureStderr();
+    orcm_sensor_udsensors_module.inventory_collect(&buffer);
+    EXPECT_FALSE(isOutputError(testing::internal::GetCapturedStderr()));
 }
 
-TEST_F(ut_udsensors_tests, udsensors_inventory_log)
+TEST_F(ut_udsensors_sample, udsensors_inventory_collect_exception_in_factory)
 {
-     opal_buffer_t buffer;
-     orcm_sensor_udsensors_module.inventory_log((char*)"testhost1", &buffer);
+    opal_buffer_t buffer;
+    mca_sensor_udsensors_component.use_progress_thread = false;
+    throwOnSample = true;
+    emptyContainer = false;
+
+    testing::internal::CaptureStderr();
+    orcm_sensor_udsensors_module.inventory_collect(&buffer);
+    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
+}
+
+TEST_F(ut_udsensors_sample, udsensors_inventory_collect_exception_in_serializeMap)
+{
+    opal_buffer_t buffer;
+    mca_sensor_udsensors_component.use_progress_thread = false;
+    mock_serializeMap = true;
+    emptyContainer = false;
+
+    testing::internal::CaptureStderr();
+    orcm_sensor_udsensors_module.inventory_collect(&buffer);
+    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }
 
 TEST_F(ut_udsensors_tests, udsensors_component)
@@ -430,5 +452,67 @@ TEST_F(ut_udsensors_tests, udsensors_fill_compute_data_invalid_buffer)
     dataContainer cnt;
     testing::internal::CaptureStderr();
     udsensors_fill_compute_data(NULL, cnt);
+    EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
+}
+
+void ut_udsensors_inventory_log::SetUp()
+{
+    setFullMock(false, 0);
+    opal_init_test();
+    struct timeval current_time;
+    const char *name = "udsensors_test";
+
+    opal_buffer_t* buffer = (opal_buffer_t*) OBJ_NEW(opal_buffer_t);
+
+    gettimeofday(&current_time, NULL);
+    opal_dss.pack(buffer, &current_time, 1, OPAL_TIMEVAL);
+
+    bufferPtr = (void*) buffer;
+    orcm_sensor_base.dbhandle = -1;
+}
+
+void ut_udsensors_inventory_log::TearDown()
+{
+    opal_buffer_t* buffer = (opal_buffer_t*) bufferPtr;
+    ORCM_RELEASE(buffer);
+}
+
+TEST_F(ut_udsensors_inventory_log, udsensors_inventory_log_valid_buffer)
+{
+    orcm_sensor_udsensors_module.init();
+    opal_buffer_t* buffer = (opal_buffer_t*) bufferPtr;
+    dataContainer cnt;
+    cnt.put("intValue", std::string("intValue"), "");
+    cnt.put("floatValue", std::string("intValue"), "floats");
+    cnt.put("doubleValue", std::string("intValue"), "doubles");
+
+    dataContainerMap cntMap;
+    cntMap["cnt1"] = cnt;
+    dataContainerHelper::serializeMap(cntMap, buffer);
+
+    testing::internal::CaptureStderr();
+    orcm_sensor_udsensors_module.inventory_log((char*)"testhost1", buffer);
+    EXPECT_FALSE(isOutputError(testing::internal::GetCapturedStderr()));
+}
+
+TEST_F(ut_udsensors_inventory_log, udsensors_inventory_log_empty_buffer)
+{
+    orcm_sensor_udsensors_module.init();
+    opal_buffer_t* buffer = (opal_buffer_t*) bufferPtr;
+
+    dataContainerMap cntMap;
+    dataContainerHelper::serializeMap(cntMap, buffer);
+
+    testing::internal::CaptureStderr();
+    orcm_sensor_udsensors_module.inventory_log((char*)"testhost1", buffer);
+    EXPECT_FALSE(isOutputError(testing::internal::GetCapturedStderr()));
+}
+
+TEST_F(ut_udsensors_inventory_log, udsensors_inventory_log_with_invalid_buffer)
+{
+    setFullMock(true, 0);
+    opal_unpack_expected_value = false;
+    testing::internal::CaptureStderr();
+    orcm_sensor_udsensors_module.inventory_log((char*)"testhost1", NULL);
     EXPECT_TRUE(isOutputError(testing::internal::GetCapturedStderr()));
 }

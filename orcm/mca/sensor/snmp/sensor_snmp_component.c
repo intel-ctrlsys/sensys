@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2015-2017 Intel Corporation. All rights reserved.
  * Additional copyrights may follow
  *
  * $HEADER$
@@ -81,7 +81,7 @@ int snmp_component_register(void)
     mca_base_component_t *c = &mca_sensor_snmp_component.super.base_version;
 
     mca_sensor_snmp_component.test = false;
-#if OPAL_ENABLE_DEBUG
+#if SENSYS_ENABLE_DFX
     (void) mca_base_component_var_register (c, "test",
                                             "Generate and pass test vector",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,

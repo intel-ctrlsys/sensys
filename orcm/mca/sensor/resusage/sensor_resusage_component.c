@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2010-2011 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2014-2016 Intel Corporation.  All rights reserved.
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -105,7 +105,7 @@ static int orcm_sensor_resusage_register (void)
                                             &mca_sensor_resusage_component.log_process_stats);
 
     mca_sensor_resusage_component.test = false;
-#if OPAL_ENABLE_DEBUG
+#if SENSYS_ENABLE_DFX
     (void) mca_base_component_var_register (c, "test",
                                             "Generate and pass test vector",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,

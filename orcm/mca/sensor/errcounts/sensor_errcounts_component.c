@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2015-2017 Intel Corporation. All rights reserved.
  * Additional copyrights may follow
  *
  * $HEADER$
@@ -84,7 +84,7 @@ int errcounts_component_register(void)
     mca_base_component_t *c = &mca_sensor_errcounts_component.super.base_version;
 
     mca_sensor_errcounts_component.test = false;
-#if OPAL_ENABLE_DEBUG
+#if SENSYS_ENABLE_DFX
     (void) mca_base_component_var_register (c, "test",
                                             "Generate and pass test vectors",
                                             MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
@@ -110,7 +110,7 @@ int errcounts_component_register(void)
                                            &mca_sensor_errcounts_component.sample_rate);
 
     mca_sensor_errcounts_component.edac_mc_folder = "/sys/devices/system/edac/mc";
-#if OPAL_ENABLE_DEBUG
+#if SENSYS_ENABLE_DFX
     (void) mca_base_component_var_register(c, "edac_mc_folder_test",
                                            "Testing location of the edac/mc folder. Used in integration testing only.",
                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0,

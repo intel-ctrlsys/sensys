@@ -10,6 +10,7 @@ enable_binaries=yes
 enable_heterogeneous=no
 enable_picky=yes
 enable_debug=no
+enable_dfx=yes
 enable_shared=yes
 enable_static=no
 enable_ipv6=yes

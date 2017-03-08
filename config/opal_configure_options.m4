@@ -21,7 +21,7 @@ dnl Copyright (c) 2013      Intel Corporation. All rights reserved
 dnl Copyright (c) 2015      Research Organization for Information Science
 dnl                         and Technology (RIST). All rights reserved.
 dnl
-dnl Copyright (c) 2016      Intel Corporation. All rights reserved.
+dnl Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
 dnl $COPYRIGHT$
 dnl
 dnl Additional copyrights may follow
@@ -172,6 +172,15 @@ else
     WANT_DEBUG=0
 fi
 
+# Enabling DFx hooks
+AC_MSG_CHECKING([if want test vectors and DFx hooks])
+if test "$enable_dfx" = "yes"; then
+    AC_DEFINE_UNQUOTED(SENSYS_ENABLE_DFX, 1,
+        [Whether we want the compilation of test vectors and DFx hooks])
+else
+    AC_DEFINE_UNQUOTED(SENSYS_ENABLE_DFX, 0,
+        [Whether we don't want the compilation of test vectors and DFx hooks])
+fi
 
 AC_MSG_CHECKING([if want to developer-level timing framework])
 AC_ARG_ENABLE(timing,

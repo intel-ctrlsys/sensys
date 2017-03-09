@@ -255,7 +255,8 @@ static void stop(orte_jobid_t jobid)
         opal_progress_thread_pause("syslog");
         ORCM_RELEASE(syslog_sampler);
     }
-    opal_event_del(syslog_socket_handler);
+    if (!mca_sensor_syslog_component.test)
+        opal_event_del(syslog_socket_handler);
     close(syslog_socket());
     OBJ_DESTRUCT(&msgQueue);
     return;

@@ -1,6 +1,8 @@
 #
-# Copyright (c) 2015 Intel Corporation. All rights reserved
+# Copyright (c) 2015-2017 Intel Corporation. All rights reserved
 #
+from __future__ import print_function
+
 import argparse
 import os
 from sqlalchemy import create_engine, DDL
@@ -13,7 +15,6 @@ def connect_to_db(db_url, verbose=False):
     postgresql[+<driver>://[<username>[:<password>]]@<server>[:<port>]/<database>.d
 
     See SQLAlchemy database dialect for more information.
-    :param verbose: Echo all SQL command
     :return:  Database engine
     """
     return create_engine(db_url, echo=verbose)
@@ -122,46 +123,49 @@ def disable_partition_trigger(db_engine, table_name, verbose=False):
 
 
 def main():
-    """Main driver"""
-    main_parser = argparse.ArgumentParser(add_help=False,
+    "Entry point of the tool."
+    parser = argparse.ArgumentParser(
         description="PostgreSQL Table Partition Helper.  Use this program to "
                     "enable table partitioning with and without auto dropping "
                     "of old partitions.  This program can also be used to "
                     "disable table partition.")
-    # The parent_parser is to parse the common arguments
-    parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument("-v", "--verbose", action='store_true')
-    parent_parser.add_argument("-d", "--db_url", type=str, default="",
-        metavar="postgresql+driver://username:password@host:port/database",
+    parser.add_argument("-v", "--verbose", action='store_true')
+    parser.add_argument(
+        "-d", "--db_url", type=str, default="",
+        metavar="postgresql://username:password@host:port/database",
         help="The database connection string in the format "
              "expected by SQLAlchemy.  The default value can "
              "also be set in the environment variable "
              "'PG_DB_URL'")
-    parent_parser.add_argument("table", type=str,
+    subparser = parser.add_subparsers(dest="subparser_name")
+    enable_parser = subparser.add_parser('enable')
+    enable_parser.add_argument(
+        "table", type=str,
         help="The name of the table to enable or disable partitioning.  This "
              "table must have at least one column that is a PostgreSQL "
              "timestamp data type.")
-
-    subparsers = main_parser.add_subparsers(dest='subparser_name',
-        help="Enable or Disable partition subcommands")
-    enable_parser = subparsers.add_parser("enable", parents=[parent_parser],
-                                          help="Enable partition")
-    disable_parser = subparsers.add_parser("disable", parents=[parent_parser],
-                                           help="Disable partition")
-
-    enable_parser.add_argument("column", type=str,
+    enable_parser.add_argument(
+        "column", type=str,
         help="The name of the column to partition on.  This column needs to be "
              "a PostgreSQL timestamp data type.")
-    enable_parser.add_argument("interval", type=str,
+    enable_parser.add_argument(
+        "interval", type=str,
         choices=["MINUTE", "HOUR", "DAY", "MONTH", "YEAR"],
         help="The interval unit to partition the data by.  This is the "
              "partition size.")
-    enable_parser.add_argument("--partitions-to-keep", type=int, default=0,
+    enable_parser.add_argument(
+        "--partitions-to-keep", type=int, default=0,
         help="The number of partitions to keep before purging.  "
              "Specify a value less than 1 will disable auto purging old "
              "partitions (keep all partitions).  Default value is 0.")
+    disable_parser = subparser.add_parser('disable')
+    disable_parser.add_argument(
+        "table", type=str,
+        help="The name of the table to enable or disable partitioning.  This "
+             "table must have at least one column that is a PostgreSQL "
+             "timestamp data type.")
+    args = parser.parse_args()
 
-    args = main_parser.parse_args()
     if args.verbose:
         print(args)
 

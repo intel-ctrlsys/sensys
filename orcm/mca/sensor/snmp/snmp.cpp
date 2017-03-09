@@ -614,7 +614,7 @@ void snmp_impl::generate_test_vector()
     vardata(hostname_).setKey(string(HOSTNAME_STR)).packTo(bucket);
 
     vector<vardata> dataSamples = generate_data();
-    packDataToBuffer(dataSamples, bucket);
+    packSamplesIntoBuffer(bucket, dataSamples);
 
     int rc = opal_dss.pack(&snmp_sampler_->bucket, &bucket, 1, OPAL_BUFFER);
     if (OPAL_SUCCESS != rc) {

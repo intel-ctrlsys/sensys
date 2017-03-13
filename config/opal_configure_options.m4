@@ -174,12 +174,17 @@ fi
 
 # Enabling DFx hooks
 AC_MSG_CHECKING([if want test vectors and DFx hooks])
+AC_ARG_ENABLE(dfx,
+    AC_HELP_STRING([--enable-dfx],
+                   [enable test vectors and DFx hooks (only for testing purposes) (default: disabled)]))
 if test "$enable_dfx" = "yes"; then
     AC_DEFINE_UNQUOTED(SENSYS_ENABLE_DFX, 1,
         [Whether we want the compilation of test vectors and DFx hooks])
+    AC_MSG_RESULT([yes])
 else
     AC_DEFINE_UNQUOTED(SENSYS_ENABLE_DFX, 0,
         [Whether we don't want the compilation of test vectors and DFx hooks])
+    AC_MSG_RESULT([no])
 fi
 
 AC_MSG_CHECKING([if want to developer-level timing framework])

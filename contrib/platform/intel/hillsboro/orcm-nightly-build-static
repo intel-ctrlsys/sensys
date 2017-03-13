@@ -12,7 +12,6 @@ enable_binaries=yes
 enable_heterogeneous=no
 enable_picky=yes
 enable_debug=no
-enable_dfx=yes
 enable_shared=no
 enable_static=yes
 enable_ipv6=yes

@@ -235,15 +235,15 @@ void collect_udsensors_sample(orcm_sensor_sampler_t *sampler)
         if (!orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, const_cast<char*>(it->first.c_str())))
             break;
 
-        dataContainer *tmp = new dataContainer;
+        dataContainer tmp = __pluginsContent[it->first];
         for (dataContainer::iterator item=it->second.begin(); item!=it->second.end(); ++item)
         {
             if (orcm_sensor_base_runtime_metrics_do_collect(metrics_obj, const_cast<char*>(item->first.c_str())))
-                tmp->put(item->first, it->second.getValue<string>(item), it->second.getUnits(item));
+                continue;
+            tmp.erase(item->first);
         }
-        if (tmp->count())
-            pluginsContent[it->first] = *tmp;
-        delete tmp;
+        if (tmp.count())
+            pluginsContent[it->first] = tmp;
     }
 
     /* prepare to store the results */

@@ -54,6 +54,7 @@ MOCKING = \
 
 
 LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a
+CXXFLAGS = -std=c++11
 
 AM_LDFLAGS = -lsensysplugins -lsensysplugins_helper -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 

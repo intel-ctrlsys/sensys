@@ -41,7 +41,7 @@ enum supportedTypes
     OOB
 };
 
-struct UDSensor
+class UDSensor
 {
 public:
 
@@ -49,6 +49,7 @@ public:
     // constructor of the plugin class.
     supportedTypes sensor_type;
     UDSensor():sensor_type(IB) {};
+    virtual ~UDSensor(){};
 
     // The init function will be called in the initialization process
     // of the plugin. Here is the place where the setup is performed,
@@ -79,6 +80,15 @@ public:
     // procedure do not take much time to complete, in order to avoid
     // delays in other sensor sampling functions.
     virtual void sample(dataContainer &cnt) {return;};
+
+    // The configuration path is passed as a string in case the plugin
+    // wants to obtain useful information from it.
+    // E. g. authetication information.
+    void setConfigFilePath(std::string path){this->configPath = path;};
+    std::string getConfigFilePath(void) {return this->configPath;};
+
+    private:
+    std::string configPath;
 };
 
 #endif

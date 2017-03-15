@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017  Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -15,18 +15,18 @@
 
 #include "orcm/common/baseFactory.h"
 #include "orcm/common/dataContainer.hpp"
-#include "orcm/common/sensorInterface.h"
+#include "orcm/common/udsensors.h"
 
-typedef sensorInterface* (*sensorInstance)(void);
+typedef UDSensor* (*sensorInstance)(void);
 typedef char* (*getPluginName)(void);
-typedef std::map<std::string, sensorInterface*>::iterator pluginsIterator;
+typedef std::map<std::string, UDSensor*>::iterator pluginsIterator;
 
 class sensorFactory : public baseFactory {
 public:
     static struct sensorFactory* getInstance();
     int open(const char *plugin_path, const char *plugin_prefix);
     void close(void);
-    void init(void);
+    void init(std::string configPath);
     void sample(dataContainerMap& dc);
     void loadPlugins(void);
     void unloadPlugin(std::map<std::string, void*>::iterator it);
@@ -41,7 +41,7 @@ private:
     void getPluginInstanceAndName(void *plugin);
     void __sample(pluginsIterator it, dataContainerMap &dc);
     std::map<std::string, void*> pluginHandlers;
-    std::map<std::string, sensorInterface*> pluginsLoaded;
+    std::map<std::string, UDSensor*> pluginsLoaded;
 };
 
 class sensorFactoryException : public std::runtime_error

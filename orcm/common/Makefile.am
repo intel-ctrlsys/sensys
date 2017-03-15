@@ -1,6 +1,6 @@
 # -*- makefile -*-
 #
-# Copyright (c) 2016      Intel Corporation. All rights reserved.
+# Copyright (c) 2016-2017  Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -14,7 +14,6 @@ headers = \
         dataContainer.hpp \
         UDExceptions.h \
         udsensors.h \
-        sensorInterface.h \
         baseFactory.h \
         dataContainerHelper.hpp
 

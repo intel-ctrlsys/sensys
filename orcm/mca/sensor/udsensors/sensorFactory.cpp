@@ -26,12 +26,12 @@ void sensorFactory::close()
     }
 }
 
-void sensorFactory::init()
+void sensorFactory::init(string configPath)
 {
-    std::map<std::string, sensorInterface*>::iterator it;
     std::string errors = "";
-    for (it = pluginsLoaded.begin(); it != pluginsLoaded.end(); ++it) {
+    for (auto it = pluginsLoaded.begin(); it != pluginsLoaded.end(); ++it) {
         try {
+            it->second->setConfigFilePath(configPath);
             it->second->init();
         } catch (std::runtime_error &e) {
             errors.append("Plugin " + it->first + " failed in init with:\n");
@@ -105,7 +105,7 @@ void sensorFactory::getPluginInstanceAndName(void *plugin)
 {
     sensorInstance entryPoint;
     getPluginName p_name;
-    sensorInterface* tmp_plugin = NULL;
+    UDSensor* tmp_plugin = NULL;
 
     entryPoint = (sensorInstance)getPluginSymbol(plugin, "initPlugin");
     p_name = (getPluginName)getPluginSymbol(plugin, "getPluginName");

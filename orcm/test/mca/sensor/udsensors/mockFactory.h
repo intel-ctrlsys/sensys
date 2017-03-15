@@ -16,6 +16,7 @@
 
 #include "orcm/mca/sensor/udsensors/sensorFactory.h"
 #include "orcm/common/dataContainerHelper.hpp"
+#include "orcm/common/udsensors.h"
 
 bool mock_readdir;
 bool mock_dlopen;
@@ -39,12 +40,12 @@ bool initPluginMock;
 bool emptyContainer;
 int n_mocked_plugins;
 
-class mockPlugin
+class mockPlugin : public UDSensor
 {
 public:
-    virtual int init(void);
-    virtual int finalize(void);
-    virtual void sample(dataContainer &dc);
+    void init(void);
+    void finalize(void);
+    void sample(dataContainer &dc);
 };
 
 extern "C" {
@@ -181,17 +182,15 @@ extern "C" {
 typedef int (*opal_dss_pack_fn_t)(opal_buffer_t* buffer, const void* src, int32_t num_vals, opal_data_type_t type);
 typedef int (*opal_dss_unpack_fn_t)(opal_buffer_t* buffer, void* dst, int32_t* num_vals, opal_data_type_t type);
 
-int mockPlugin::init()
+void mockPlugin::init()
 {
     if (throwOnInit) {
         throw std::runtime_error("Failing on mockPlugin.init");
     }
-    return 0;
 }
 
-int mockPlugin::finalize()
+void mockPlugin::finalize()
 {
-    return 0;
 }
 
 void mockPlugin::sample(dataContainer &dc)
@@ -202,7 +201,6 @@ void mockPlugin::sample(dataContainer &dc)
     if (!emptyContainer) {
         dc.put("intValue_1", 1234, "ints");
     }
-    return;
 }
 
 #endif

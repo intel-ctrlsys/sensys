@@ -57,6 +57,11 @@ bool ut_udsensors_tests::use_pt_ = true;
 void ut_udsensors_tests::SetUpTestCase()
 {
 
+    if(opal_install_dirs.prefix != NULL){
+        free(opal_install_dirs.prefix);
+    }
+    opal_install_dirs.prefix = strdup(".");
+
 }
 
 void ut_udsensors_tests::TearDownTestCase()

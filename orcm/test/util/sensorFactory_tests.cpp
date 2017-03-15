@@ -257,7 +257,7 @@ TEST_F(ut_sensorFactory, getAmountOfLoadedPluginsWithInvalidPointer)
 TEST_F(ut_sensorFactory, initWithoutErrors)
 {
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
-    EXPECT_NO_THROW(obj->init());
+    EXPECT_NO_THROW(obj->init(configPath));
 }
 
 TEST_F(ut_sensorFactory, initWithPluginException)
@@ -265,7 +265,7 @@ TEST_F(ut_sensorFactory, initWithPluginException)
     setFullMock(true, N_MOCKED_PLUGINS);
     throwOnInit = true;
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
-    EXPECT_THROW(obj->init(), std::runtime_error);
+    EXPECT_THROW(obj->init(configPath), std::runtime_error);
     throwOnInit = false;
 }
 
@@ -275,7 +275,7 @@ TEST_F(ut_sensorFactory, initWithPluginExceptionAndErrorMsg)
     throwOnInit = true;
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
     try {
-        obj->init();
+        obj->init(configPath);
     } catch (std::runtime_error& e) {
         EXPECT_TRUE(NULL != strstr(e.what(), "Failing on mockPlugin.init"));
     }
@@ -291,7 +291,7 @@ TEST_F(ut_sensorFactory, callSampleOnPluginsAndFillMap)
 
     setFullMock(true, N_MOCKED_PLUGINS);
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
-    EXPECT_NO_THROW(obj->init());
+    EXPECT_NO_THROW(obj->init(configPath));
     EXPECT_NO_THROW(obj->sample(res));
     EXPECT_EQ(N_MOCKED_PLUGINS, res.size());
     std::string plugin_name = res.begin()->first;
@@ -308,7 +308,7 @@ TEST_F(ut_sensorFactory, callSampleWithoutDataAndExpectEmptyMap)
     emptyContainer = true;
     setFullMock(true, N_MOCKED_PLUGINS);
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
-    EXPECT_NO_THROW(obj->init());
+    EXPECT_NO_THROW(obj->init(configPath));
     EXPECT_NO_THROW(obj->sample(res));
     EXPECT_EQ(0, res.size());
     emptyContainer = true;
@@ -320,7 +320,7 @@ TEST_F(ut_sensorFactory, callSampleOnPluginAndReceiveException)
     setFullMock(true, N_MOCKED_PLUGINS);
     throwOnSample = true;
     EXPECT_NO_THROW(obj->open("/tmp", NULL));
-    EXPECT_NO_THROW(obj->init());
+    EXPECT_NO_THROW(obj->init(configPath));
     try {
         obj->sample(res);
     } catch (std::runtime_error& e) {

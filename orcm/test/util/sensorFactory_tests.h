@@ -15,6 +15,7 @@
 #include "gtest/gtest.h"
 
 #include "orcm/mca/sensor/udsensors/sensorFactory.h"
+#include "orcm/common/udsensors.h"
 
 bool mock_readdir;
 bool mock_dlopen;
@@ -30,14 +31,13 @@ bool initPluginMock;
 bool emptyContainer;
 int n_mocked_plugins;
 
-class mockPlugin
+class mockPlugin : public UDSensor
 {
 public:
-    supportedTypes sensor_type;
-    mockPlugin(): sensor_type(OOB) {};
-    virtual void init(void);
-    virtual void finalize(void);
-    virtual void sample(dataContainer &dc);
+    mockPlugin(){ this->sensor_type = OOB;};
+    void init(void);
+    void finalize(void);
+    void sample(dataContainer &dc);
 };
 
 extern "C" {
@@ -135,6 +135,7 @@ class ut_sensorFactory: public testing::Test
 {
 public:
     struct sensorFactory *obj;
+    std::string configPath;
     void setFullMock(bool mock_status, int nPlugins);
 protected:
     virtual void SetUp();

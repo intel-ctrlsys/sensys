@@ -28,6 +28,7 @@ extern "C" {
     #include "orcm/mca/sensor/base/sensor_private.h"
     #include "opal/runtime/opal_progress_threads.h"
     #include "orcm/mca/db/db.h"
+    #include "opal/mca/installdirs/installdirs.h"
 }
 
 BEGIN_C_DECLS
@@ -78,6 +79,7 @@ END_C_DECLS
 static int init(void)
 {
     int rc = ORCM_SUCCESS;
+    string configPath = string(opal_install_dirs.prefix) + "/etc/orcm-site.xml";
     factory = sensorFactory::getInstance();
     int pluginsFound = 0;
     int pluginsLoaded = 0;
@@ -95,7 +97,7 @@ static int init(void)
 
     if (ORCM_SUCCESS == rc){
         try {
-            factory->init();
+            factory->init(configPath);
         } catch (sensorFactoryException& e){
             opal_output(0, "ERROR: %s ", e.what());
         }

@@ -29,6 +29,7 @@ void sensorFactory::close()
 void sensorFactory::init(string configPath)
 {
     std::string errors = "";
+    std::vector<std::string> removal_list;
     for (auto it = pluginsLoaded.begin(); it != pluginsLoaded.end(); ++it) {
         try {
             it->second->setConfigFilePath(configPath);
@@ -36,9 +37,13 @@ void sensorFactory::init(string configPath)
         } catch (std::runtime_error &e) {
             errors.append("Plugin " + it->first + " failed in init with:\n");
             errors.append(std::string(e.what()) + "\n");
-            unloadPlugin(pluginHandlers.find(it->first));
+            removal_list.push_back(it->first);
         }
     }
+
+    for (auto i=removal_list.begin(); i!=removal_list.end(); ++i)
+        unloadPlugin(pluginHandlers.find(*i));
+
     if (errors.compare("")) {
         throw sensorFactoryException(errors);
     }

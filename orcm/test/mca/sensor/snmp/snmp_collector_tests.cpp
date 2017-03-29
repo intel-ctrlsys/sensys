@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2016  Intel Corporation. All rights reserved.
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2017       Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -62,6 +62,7 @@ extern "C" {
 
 #define SNMP_ERR_BADVALUE               (3)
 #define HOSTNAME_STR "hostname"
+#define NSAMPLES_STR "nSamples"
 #define CTIME_STR "ctime"
 #define TOT_HOSTNAMES_STR "tot_hostnames"
 #define TOT_ITEMS_STR "tot_items"
@@ -1031,6 +1032,10 @@ TEST_F(ut_snmp_collector_tests, snmp_generate_test_data)
     EXPECT_NO_THROW({
         vardata hostname = fromOpalBuffer(buffer);
         EXPECT_STREQ(HOSTNAME_STR, hostname.getKey().c_str()) << "Wrong order; expected hostname!";
+    });
+    EXPECT_NO_THROW({
+        vardata nSamples = fromOpalBuffer(buffer);
+        EXPECT_STREQ(NSAMPLES_STR, nSamples.getKey().c_str()) << "Wrong order; expected nsamples!";
     });
     for(int i = 0; i < TEST_VECTOR_SIZE; ++i) {
         EXPECT_NO_THROW({

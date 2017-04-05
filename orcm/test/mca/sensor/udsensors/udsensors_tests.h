@@ -24,6 +24,9 @@ class ut_udsensors_tests: public testing::Test
 
     public:
         static bool use_pt_;
+
+        ut_udsensors_tests();
+        ~ut_udsensors_tests();
 }; // class
 
 class ut_udsensors_log: public ut_udsensors_tests

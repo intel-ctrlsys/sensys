@@ -28,6 +28,7 @@ extern "C" {
     #include "orcm/util/utils.h"
     #include "orcm/runtime/orcm_globals.h"
     #include "orcm/mca/analytics/analytics.h"
+    #include "orcm/mca/cfgi/base/base.h"
     #include "orcm/mca/sensor/base/base.h"
     #include "orcm/mca/sensor/base/sensor_private.h"
     #include "opal/runtime/opal_progress_threads.h"
@@ -53,6 +54,17 @@ extern "C" {
 #define N_MOCKED_PLUGINS 1
 
 bool ut_udsensors_tests::use_pt_ = true;
+
+
+ut_udsensors_tests::ut_udsensors_tests()
+{
+    orcm_cfgi_base.config_file = strdup("");
+}
+
+ut_udsensors_tests::~ut_udsensors_tests()
+{
+    free(orcm_cfgi_base.config_file);
+}
 
 void ut_udsensors_tests::SetUpTestCase()
 {

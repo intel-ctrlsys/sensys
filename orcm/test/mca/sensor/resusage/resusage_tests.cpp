@@ -339,12 +339,8 @@ TEST_F(ut_resusage_tests, res_log_node_stats_valid)
 TEST_F(ut_resusage_tests, resusage_component_open_query_close)
 {
     const char* string1 = "ORCM_MCA_sensor=resusage";
-    const char* string2 = "ORCM_MCA_sensor=^componentpower,coretemp,dmidata,"
-                         "errcounts,evinj,file,freq,ft_tests,heartbeat,ipmi,"
-                         "mcedata,nodepower,resusage,sigar,snmp,systlog,test";
     mca_base_open_flag_t test_open_flag = (mca_base_open_flag_t)0;
     putenv((char *)string1);
-    putenv((char *)string2);
     opal_init_test();
     EXPECT_EQ(ORCM_SUCCESS, mca_base_framework_open(
                   &orcm_sensor_base_framework, test_open_flag));

@@ -866,7 +866,7 @@ int mca_oob_tcp_peer_recv_connect_ack(mca_oob_tcp_peer_t* pr,
         peer->state = MCA_OOB_TCP_FAILED;
         mca_oob_tcp_peer_close(peer);
         free(msg);
-        return ORTE_ERR_CONNECTION_REFUSED;
+        return ORTE_ERR_UNREACH;
     }
     free(msg);
 

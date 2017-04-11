@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2013-2016 Intel Corporation. All rights reserved.
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2013-2017 Intel Corporation. All rights reserved.
+ *
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -715,10 +715,11 @@ static void freq_log(opal_buffer_t *sample)
             unsigned int uival;
             rc = opal_dss.unpack(sample, &uival, &n, OPAL_UINT);
             ORCM_ON_FAILURE_GOTO(rc,cleanup);
-            char* units = "%";
+            char* units;
             freq_get_units(label,&units);
             rc = orcm_util_append_orcm_value(analytics_vals->compute_data,
                                              label, &uival, OPAL_UINT, units);
+            SAFEFREE(units);
             ORCM_ON_FAILURE_GOTO(rc,cleanup);
         }
         SAFEFREE(label);
@@ -730,15 +731,18 @@ cleanup:
 
     /* unpack the pstate entry count */
 }
+
 void freq_get_units(char* label, char** units)
 {
-    *units="%";
     if ((11 == strlen(label) && 0 == strncmp(label, "num_pstates", 11)) ||
        (8 == strlen(label) && 0 == strncmp(label, "no_turbo", 8)) ||
        (11 == strlen(label) && 0 == strncmp(label, "allow_turbo", 11))) {
-        *units = "";
+        *units = strdup("");
+    } else {
+        *units = strdup("%");
     }
 }
+
 void freq_set_sample_rate(int sample_rate)
 {
     /* set the freq sample rate if seperate thread is enabled */

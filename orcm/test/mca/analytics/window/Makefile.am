@@ -1,6 +1,5 @@
 #
-# Copyright (c) 2014-2016      Intel Corporation. All rights reserved.
-# Copyright (c) 2016      Intel Corporation. All rights reserved.
+# Copyright (c) 2014-2017      Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -21,7 +20,10 @@ include $(top_srcdir)/Makefile.ompi-rules
 # other non-zero: fail
 #
 
-TESTS = window_tests
+TESTS = test_window.py
+
+TEST_EXTENSIONS = .py
+PY_LOG_COMPILER = /usr/bin/python
 
 #
 # Executables to be built for "make check"

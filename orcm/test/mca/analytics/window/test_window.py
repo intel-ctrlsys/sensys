@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #
-# Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
+# Copyright (c) 2017      Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -25,5 +25,5 @@ def run_tests(gtest_binary):
     return retcode
 
 if __name__ == '__main__':
-    PROG = './db_base_tests --gtest_output=xml:db-base-log.xml'
+    PROG = './window_tests --gtest_output=xml:window-log.xml'
     sys.exit(run_tests(PROG))

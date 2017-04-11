@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2016      Intel Corporation. All rights reserved.
+# Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -11,58 +11,17 @@
 import sys
 from subprocess import Popen, PIPE
 
-def get_gtests(gtest_binary):
-    """ Get the list of tests from gtest """
-    process = Popen([gtest_binary, '--gtest_list_tests'], stdout=PIPE)
-    (output, _) = process.communicate()
-    exit_code = process.wait()
-    if exit_code != 0:
-        return []
-    lines = output.split('\n')
-    fixture = ''
-    counter = 0
-    tests = []
-    for line in lines:
-        counter = counter+1
-        if counter != 1:
-            if line == '':
-                continue
-            if line[0] != ' ':
-                fixture = line
-            else:
-                test = fixture+line[2:]
-                tests.append(test)
-    return tests
-
-def execute_test(gtest_binary, test_name):
-    """ Execute a given test from a given gtest binary """
-    process = Popen([gtest_binary, "--gtest_color=yes",
-                     "--gtest_filter=%s"%(test_name)], stdout=PIPE, stderr=PIPE)
-    (output, err) = process.communicate()
-    ret_value = process.wait()
-    return (ret_value, output, err)
-
 def run_tests(gtest_binary):
-    """ Executes a gtest_binary and shows a summary """
-    tests = get_gtests(gtest_binary)
-    ret = 0
-    passed = 0
-    failed = 0
+    """ Execute gtest binary """
     print '+RUNNING: %s'%gtest_binary
-    for test in tests:
-        (ret_value, output, err) = execute_test(gtest_binary, test)
-        print ret_value, output, err
-        if ret_value != 0:
-            print '+STDERR:\n%s'%err
-            print '+STDOUT:\n%s'%output
-            ret = ret_value
-            failed = failed+1
-        else:
-            passed = passed+1
-    print '+TEST SUMMARY PASSED = %d'%(passed)
-    print '+TEST SUMMARY FAILED = %d'%(failed)
-    return ret
+    process = Popen(gtest_binary.split(), stdout=PIPE, stderr=PIPE)
+    (output, err) = process.communicate()
+    retcode = process.wait()
+
+    if retcode != 0:
+        print "+STDERR:\n{0}+STDOUT:\n{1}".format(err, output)
+    return retcode
 
 if __name__ == "__main__":
-    PROGRAM = './parser_pugi_tests'
-    sys.exit(run_tests(PROGRAM))
+    PROG = './parser_pugi_tests --gtest_output=xml:parser-pugi-log.xml'
+    sys.exit(run_tests(PROG))

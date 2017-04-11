@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -18,6 +18,9 @@ freq_tests_mocking freq_mocking;
 extern "C" { // Mocking must use correct "C" linkages
     DIR* __wrap_opendir(const char* dirname)
     {
+        if (freq_mocking.call_real_func)
+            return __real_opendir(dirname);
+
         if(NULL == freq_mocking.opendir_callback) {
             return NULL;
         } else {
@@ -27,6 +30,8 @@ extern "C" { // Mocking must use correct "C" linkages
 
     FILE* __wrap_fopen(const char * filename, const char * mode)
     {
+        if (freq_mocking.call_real_func)
+            return __real_fopen(filename, mode);
         if(NULL == freq_mocking.fopen_callback) {
              return NULL;
         } else
@@ -35,6 +40,9 @@ extern "C" { // Mocking must use correct "C" linkages
 
     int __wrap_fclose(FILE* fd)
     {
+        if (freq_mocking.call_real_func)
+            return __real_fclose(fd);
+
         if(NULL == freq_mocking.fclose_callback) {
             return -1;
         } else {
@@ -44,6 +52,9 @@ extern "C" { // Mocking must use correct "C" linkages
 
     char*__wrap_fgets(char* s , int size, FILE* fd)
     {
+        if (freq_mocking.call_real_func)
+            return __real_fgets(s, size, fd);
+
         if(NULL == freq_mocking.fgets_callback) {
             return NULL;
         } else {
@@ -53,6 +64,9 @@ extern "C" { // Mocking must use correct "C" linkages
 
     int __wrap_closedir(DIR* dir_fd)
     {
+        if (freq_mocking.call_real_func)
+            return __real_closedir(dir_fd);
+
         if(NULL == freq_mocking.closedir_callback) {
             return 0;
         } else {
@@ -62,6 +76,9 @@ extern "C" { // Mocking must use correct "C" linkages
 
     struct dirent* __wrap_readdir(DIR* dir_fd)
     {
+        if (freq_mocking.call_real_func)
+            return __real_readdir(dir_fd);
+
         if(NULL == freq_mocking.readdir_callback) {
             return NULL;
         } else {
@@ -74,4 +91,5 @@ extern "C" { // Mocking must use correct "C" linkages
 freq_tests_mocking::freq_tests_mocking() :
     opendir_callback(NULL), closedir_callback(NULL), fgets_callback(NULL), readdir_callback(NULL), fopen_callback(NULL), fclose_callback(NULL)
 {
+    call_real_func = true;
 }

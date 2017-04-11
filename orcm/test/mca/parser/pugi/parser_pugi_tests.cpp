@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -119,6 +119,7 @@ TEST_F(ut_parser_pugi_tests, test_API_close_invalidFileId)
 
 TEST_F(ut_parser_pugi_tests, test_API_openAndClose_validFile)
 {
+    openedFiles = 0;
     OPEN_VALID_FILE(file_id);
     EXPECT_EQ(++openedFiles, file_id);
     ASSERT_EQ(ORCM_SUCCESS,pugi_close(file_id));
@@ -126,6 +127,7 @@ TEST_F(ut_parser_pugi_tests, test_API_openAndClose_validFile)
 
 TEST_F(ut_parser_pugi_tests, test_API_openTwice_validFile)
 {
+    openedFiles = 0;
     OPEN_VALID_FILE(file_id_1);
     OPEN_VALID_FILE(file_id_2);
     EXPECT_EQ(++openedFiles, file_id_1);
@@ -136,6 +138,7 @@ TEST_F(ut_parser_pugi_tests, test_API_openTwice_validFile)
 
 TEST_F(ut_parser_pugi_tests, test_API_closeTwice_validFile)
 {
+    openedFiles = 0;
     OPEN_VALID_FILE(file_id);
     ASSERT_EQ(++openedFiles, file_id);
     EXPECT_EQ(ORCM_SUCCESS, pugi_close(file_id));

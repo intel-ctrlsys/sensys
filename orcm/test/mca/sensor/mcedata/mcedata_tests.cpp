@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -411,7 +411,7 @@ TEST_F(ut_mcedata_tests, mcedata_start_log_file_test)
 
     mca_sensor_mcedata_component.use_progress_thread = false;
     char* saved_logfile = mca_sensor_mcedata_component.logfile;
-    mca_sensor_mcedata_component.logfile = (char*)"./test.logfile";
+    mca_sensor_mcedata_component.logfile = strdup("./test.logfile");
 
     int rv = orcm_sensor_mcedata_module.init();
     EXPECT_EQ(ORCM_SUCCESS, rv);
@@ -442,7 +442,7 @@ TEST_F(ut_mcedata_tests, mcedata_start_log_file_test_2)
     fclose(tfd);
     mca_sensor_mcedata_component.use_progress_thread = false;
     char* saved_logfile = mca_sensor_mcedata_component.logfile;
-    mca_sensor_mcedata_component.logfile = (char*)"./test.logfile";
+    mca_sensor_mcedata_component.logfile = strdup("./test.logfile");
 
     int rv = orcm_sensor_mcedata_module.init();
     EXPECT_EQ(ORCM_SUCCESS, rv);
@@ -469,7 +469,7 @@ TEST_F(ut_mcedata_tests, mcedata_update_collect_sample_test_negative)
     mca_sensor_mcedata_component.test = false;
     mca_sensor_mcedata_component.use_progress_thread = false;
     char* saved_logfile = mca_sensor_mcedata_component.logfile;
-    mca_sensor_mcedata_component.logfile = (char*)"./test.logfile";
+    mca_sensor_mcedata_component.logfile = strdup("./test.logfile");
     mca_sensor_mcedata_component.collect_metrics = true;
 
     int rv = orcm_sensor_mcedata_module.init();
@@ -498,7 +498,7 @@ TEST_F(ut_mcedata_tests, mcedata_update_collect_sample_test_negative)
 
 TEST_F(ut_mcedata_tests, mcedata_update_log_file_size_test)
 {
-    char* logfile = (char*)"./test.logfile";
+    char* logfile = strdup("./test.logfile");
     char* lines[] = {
         (char*)"DUMMY COMMENT LINE\n",
         (char*)"DUMMY LOG mcelog CPU \n",
@@ -581,7 +581,7 @@ TEST_F(ut_mcedata_tests, mcedata_update_log_file_size_test_2)
     mca_sensor_mcedata_component.test = false;
     mca_sensor_mcedata_component.use_progress_thread = false;
     char* saved_logfile = mca_sensor_mcedata_component.logfile;
-    mca_sensor_mcedata_component.logfile = (char*)"./test.logfile";
+    mca_sensor_mcedata_component.logfile = strdup("./test.logfile");
     mca_sensor_mcedata_component.collect_metrics = true;
 
     FILE* tfd = fopen("./test.logfile", "w");

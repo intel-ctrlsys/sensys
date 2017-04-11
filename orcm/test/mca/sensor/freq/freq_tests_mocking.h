@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -41,7 +41,7 @@ class freq_tests_mocking
     public:
         // Construction
         freq_tests_mocking();
-
+        bool call_real_func;
         // Public Callbacks
         opendir_callback_fn_t opendir_callback;
         closedir_callback_fn_t closedir_callback;

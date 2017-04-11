@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -35,8 +35,8 @@ class ut_orcmd_tests: public testing::Test
         static void SetUpTestCase();
         static void TearDownTestCase();
         static void ResetTestCase();
-        static void OrcmInit();
-        static void OrcmInitJobid();
-        static void OrcmInitVpid();
+        static int OrcmInit();
+        static int OrcmInitJobid();
+        static int OrcmInitVpid();
 }; // class
 #endif // ORCMD_TESTS_H

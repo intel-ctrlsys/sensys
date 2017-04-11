@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -19,11 +19,11 @@ extern "C" { // Mocking must use correct "C" linkages
 
     int __wrap_orcm_init(int flags)
     {
-        int rc = __real_orcm_init(flags);
         if(NULL != orcmd_mocking.orcm_init_callback){
-            orcmd_mocking.orcm_init_callback();
+            return orcmd_mocking.orcm_init_callback();
+        } else {
+            return  __real_orcm_init(flags);
         }
-        return rc;
     }
 
 } // extern "C"

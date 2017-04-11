@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015-2016  Intel Corporation. All rights reserved.
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2015-2017  Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -1058,23 +1057,21 @@ TEST_F(ut_edac_collector_tests, test_perthread_errcounts_sample)
 {
     mca_sensor_errcounts_component.test = false;
     mca_sensor_errcounts_component.use_progress_thread = true;
-    mca_sensor_errcounts_component.sample_rate = 10;
+    mca_sensor_errcounts_component.sample_rate = 1;
 
     errcounts_impl dummy;
     edac_collector* saved = dummy.collector_;
+
     dummy.collector_ = new edac_collector(ErrorSink, "./mc");
     dummy.init();
+    dummy.start(0);
     ASSERT_FALSE(dummy.edac_missing_);
-
-    dummy.errcounts_sampler_ = OBJ_NEW(orcm_sensor_sampler_t);
-    OBJ_CONSTRUCT(&dummy.errcounts_sampler_->bucket, opal_buffer_t);
 
     dummy.perthread_errcounts_sample();
 
-    SAFE_OBJ_RELEASE(dummy.errcounts_sampler_);
-
     ASSERT_EQ(12, dummy.data_samples_labels_.size());
 
+    dummy.stop(0);
     dummy.finalize();
     delete dummy.collector_;
     dummy.collector_ = saved;
@@ -1354,7 +1351,7 @@ TEST_F(ut_edac_collector_tests, test_inventory_log)
 {
     opal_buffer_t buffer;
     OBJ_CONSTRUCT(&buffer, opal_buffer_t);
-
+    mca_sensor_errcounts_component.test = false;
     errcounts_impl dummy;
     edac_collector* edac_saved = dummy.collector_;
     dummy.collector_ = new edac_collector(ErrorSink, "./mc");

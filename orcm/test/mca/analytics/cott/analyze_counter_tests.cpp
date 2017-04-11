@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Intel Corporation. All rights reserved.
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2015-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -80,7 +79,6 @@ extern void add_data_values(const string& hostname, time_t tv, orcm_workflow_cad
                             opal_list_t* threshold_list, opal_list_t* event_list);
 extern int assert_caddy_data(void *cbdata);
 
-
 extern host_analyze_counters* counter_analyzer;
 extern map<string,int> lookup_fault;
 extern map<string,bool> lookup_store;
@@ -94,6 +92,7 @@ struct test_step_data
     string notifier_action;
 };
 
+extern test_step_data global_step_data;
 // gtest setup
 void analyze_counter_tests::SetUpTestCase()
 {
@@ -122,6 +121,12 @@ void analyze_counter_tests::ResetTestCase()
     last_event_host_ = "";
     last_event_label_ = "";
     last_callback_count_ = 0;
+
+    global_step_data.fault_type = ORCM_EVENT_HARD_FAULT;
+    global_step_data.store_event = true;
+    global_step_data.severity = ORCM_RAS_SEVERITY_ERROR;
+    global_step_data.use_notifier = false;
+    global_step_data.notifier_action = strdup("none");
 
     while(0 != fail_malloc_call_.size()) {
         fail_malloc_call_.pop();
@@ -230,10 +235,10 @@ orcm_workflow_caddy_t* analyze_counter_tests::MakeCaddy(bool include_hostname, b
 
     orcm_value_t* val = NULL;
     if(true == include_hostname) {
-        val = orcm_util_load_orcm_value((char*)"hostname", (void*)"test_host", OPAL_STRING, NULL);
+      val = orcm_util_load_orcm_value((char*)"hostname", (void*)"test_host", OPAL_STRING, NULL);
         opal_list_append(caddy->analytics_value->key, &val->value.super);
     } else {
-        val = orcm_util_load_orcm_value((char*)"somekey", (void*)"value", OPAL_STRING, NULL);
+      val = orcm_util_load_orcm_value((char*)"somekey", (void*)"value", OPAL_STRING, NULL);
         opal_list_append(caddy->analytics_value->key, &val->value.super);
     }
 
@@ -246,7 +251,7 @@ orcm_workflow_caddy_t* analyze_counter_tests::MakeCaddy(bool include_hostname, b
         fast_time += 60; // every call adds 60 seconds to time stamp
         opal_list_append(caddy->analytics_value->non_compute_data, &val->value.super);
     } else {
-        val = orcm_util_load_orcm_value((char*)"some_non_compute", (void*)"non_value", OPAL_STRING, NULL);
+      val = orcm_util_load_orcm_value((char*)"some_non_compute", (void*)"non_value", OPAL_STRING, NULL);
         opal_list_append(caddy->analytics_value->non_compute_data, &val->value.super);
     }
 

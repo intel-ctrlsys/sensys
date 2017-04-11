@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -21,7 +21,7 @@ extern "C" {
 #endif // __cplusplus
 
 
-typedef void (*orcm_init_callback_fn_t)(void);
+typedef int (*orcm_init_callback_fn_t)(void);
 
 
 class orcmd_tests_mocking

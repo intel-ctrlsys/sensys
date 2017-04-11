@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -40,6 +40,7 @@ extern "C" {
 
 int counter = 0;
 bool dir_name_flag = false;
+
 static queue<bool> opendirQ;
 static queue<bool> readdirQ;
 static queue<bool> fopenQ;
@@ -70,12 +71,16 @@ void ut_freq_tests::SetUpTestCase()
     // Configure/Create OPAL level resources
     opal_dss_register_vars();
     opal_dss_open();
+    freq_mocking.call_real_func = false;
 }
 
 void ut_freq_tests::TearDownTestCase()
 {
     // Release OPAL level resources
     opal_dss_close();
+    // Gtest uses fopen, fclose, etc to save xml log files.
+    // need to call real functions after teardown to save results.
+    freq_mocking.call_real_func = true;
 }
 
 FILE* ut_freq_tests::FOpen(const char * filename, const char * mode)
@@ -280,7 +285,7 @@ TEST_F(ut_freq_tests, freq_api_tests_2)
 TEST_F(ut_freq_tests, freq_get_units_tests)
 {
     //Setup
-    char* units;
+    char *units;
 
     //Tests
     freq_get_units((char*)"num_pstates", &units);
@@ -295,6 +300,7 @@ TEST_F(ut_freq_tests, freq_get_units_tests)
     EXPECT_STREQ("%", units);
     freq_get_units((char*)"p_cpu_cores", &units);
     EXPECT_STREQ("%", units);
+    free(units);
 }
 
 TEST_F(ut_freq_tests, freq_set_get_sample_rate_tests)

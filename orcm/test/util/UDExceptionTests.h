@@ -35,6 +35,11 @@ class criticalTest : public exceptionTester {
         criticalTest() : exceptionTester() { label = string("CRITICAL "); };
 };
 
+class errorTest : public exceptionTester {
+    public:
+        errorTest() : exceptionTester() { label = string("ERROR "); };
+};
+
 class warningTest : public exceptionTester {
     public:
         warningTest() : exceptionTester() { label = string("WARNING "); };

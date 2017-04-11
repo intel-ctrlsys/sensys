@@ -19,6 +19,7 @@ namespace udlib {
     using std::string;
 
     const static string criticalLabel("CRITICAL : ");
+    const static string errorLabel("ERROR : ");
     const static string warningLabel("WARNING : ");
 
     class Critical : public std::runtime_error {
@@ -26,6 +27,13 @@ namespace udlib {
             Critical(const string &m) : std::runtime_error(criticalLabel + m) {};
             Critical(const string &m, const string &file) : std::runtime_error(
                  criticalLabel + m + string(" : ") + file) {}
+    };
+
+    class Error : public std::runtime_error {
+        public:
+            Error(const string &m) : std::runtime_error(errorLabel + m) {};
+            Error(const string &m, const string &file) : std::runtime_error(
+                 errorLabel + m + string(" : ") + file) {}
     };
 
     class Warning : public std::runtime_error {

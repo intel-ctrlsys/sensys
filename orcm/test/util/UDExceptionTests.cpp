@@ -80,6 +80,31 @@ TEST_F(criticalTest, fileName) {
     }
 }
 
+TEST_F(errorTest, simpleMessage) {
+    using udlib::Error;
+
+    try {
+        throw Error(probeMessage);
+    } catch (Error e) {
+        checkLabelAndMessage(e.what());
+    } catch (exception e) {
+        FAIL();
+    }
+}
+
+TEST_F(errorTest, fileName) {
+    using udlib::Error;
+
+    try {
+        UDLIB_THROW(Error, probeMessage);
+    } catch (Error e) {
+        checkLabelAndMessage(e.what());
+        checkFilename(e.what());
+    } catch (exception e) {
+        FAIL();
+    }
+}
+
 TEST_F(warningTest, simpleMessage) {
     using udlib::Warning;
 

@@ -1,0 +1,17 @@
+sudo: required
+
+language: c
+
+services:
+  - docker
+
+env:
+  - STATIC_BUILD=false
+  - STATIC_BUILD=true
+
+before_install:
+  - sudo service docker restart
+  - sleep 3
+  - sudo docker pull intelctrlsys/sensys-bld-centos7.3
+
+script: "bash -c ./contrib/travis-ci/build.sh"

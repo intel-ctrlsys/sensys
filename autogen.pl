@@ -832,8 +832,9 @@ if (!$ok || $help_arg) {
 #---------------------------------------------------------------------------
 
 # Check for project existence
-my $project_name_long = "Open Resilient Cluster Manager";
-my $project_name_short = "openrcm";
+my $project_name_long = "Sensys system for High Performance Computing";
+my $project_name_short = "sensys";
+
 
 #---------------------------------------------------------------------------
 

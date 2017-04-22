@@ -13,6 +13,8 @@ $HEADER$
 
 # A cluster monitoring system architected for exascale systems
 
+[![Build Status](https://travis-ci.org/intel-ctrlsys/sensys.svg?branch=master)](https://travis-ci.org/intel-ctrlsys/sensys)
+
 Sensys provides resilient and scalable monitoring for resource utilization and node state of health, collecting all the data in a database for subsequent analysis. Sensys includes several loadable plugins that monitor various metrics related to different features present in each node like temperature, voltage, power usage, memory, disk and process information.
 
 # Building and installing

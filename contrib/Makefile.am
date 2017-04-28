@@ -44,6 +44,7 @@ EXTRA_DIST = \
     database/schema_migration/README \
     database/schema_migration/script.py.mako \
     database/schema_migration/versions \
+    database/sensys-schema.sql \
     dist/make_dist_tarball \
     dist/linux/openmpi.spec \
     dist/mofed/compile_debian_mlnx_example.in \

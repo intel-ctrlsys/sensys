@@ -2362,7 +2362,11 @@ static opal_data_type_t get_opal_type_from_postgres_type(Oid pg_type)
     case INT2OID:
         return OPAL_INT16;
     case INT2VECTOROID:
-    case INT2ARRAYOID:
+    /* INT2ARRAYOID type exists only in PGSQL 9.3 resulting in compile error
+     * if you try to compile with PGSQL 9.2 (for OpenHPC).
+     * Commenting this type because it's currently unused due that the
+     * implementation is not complete and only accepts strings */
+    //case INT2ARRAYOID:
         return OPAL_INT16_ARRAY;
     case INT4OID:
         return OPAL_INT32;
@@ -2376,11 +2380,19 @@ static opal_data_type_t get_opal_type_from_postgres_type(Oid pg_type)
     case TIDOID:
     case BITOID:
     case VARBITOID:
-    case UUIDOID:
+    /* UUIDOID type exists only in PGSQL 9.3 resulting in compile error
+     * if you try to compile with PGSQL 9.2 (for OpenHPC).
+     * Commenting this type because it's currently unused due that the
+     * implementation is not complete and only accepts strings */
+    //case UUIDOID:
         return OPAL_UINT8_ARRAY;
     case OIDVECTOROID:
     case INT4ARRAYOID:
-    case OIDARRAYOID:
+    /* OIDARRAYOID type exists only in PGSQL 9.3 resulting in compile error
+     * if you try to compile with PGSQL 9.2 (for OpenHPC).
+     * Commenting this type because it's currently unused due that the
+     * implementation is not complete and only accepts strings */
+    //case OIDARRAYOID:
     case REGTYPEARRAYOID:
         return OPAL_UINT32_ARRAY;
     case FLOAT4OID:

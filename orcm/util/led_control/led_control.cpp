@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -10,12 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef HAVE_LED_CONTROL_SUPPORT
-    #include <ipmicmd.h>
-#else
-    #define IPMI_SESSION_AUTHTYPE_PASSWORD 0
-    #define IPMI_PRIV_LEVEL_USER 0
-#endif
 
 #include "led_control.h"
 
@@ -28,8 +22,9 @@ LedControl::LedControl(){
     this->hostname = NULL;
     this->user = NULL;
     this->pass = NULL;
-    this->auth = IPMI_SESSION_AUTHTYPE_PASSWORD;
-    this->priv = IPMI_PRIV_LEVEL_USER;
+    this->auth = IPMI_SESSION_AUTHTYPE_PASSWORD_;
+    this->priv = IPMI_PRIV_LEVEL_USER_;
+    this->ipmi = new IPMICmdWrapper();
 }
 
 LedControl::LedControl(const char *hostname, const char *user, const char *pass,
@@ -40,6 +35,7 @@ LedControl::LedControl(const char *hostname, const char *user, const char *pass,
     this->pass = strdup(pass);
     this->auth = auth;
     this->priv = priv;
+    this->ipmi = new IPMICmdWrapper();
 }
 
 LedControl::~LedControl(){
@@ -49,24 +45,22 @@ LedControl::~LedControl(){
         free(this->user);
     if (this->pass)
         free(this->pass);
+    if (this->ipmi)
+        delete ipmi;
 }
 
 int LedControl::ipmiCmdOperation(unsigned short cmd, unsigned char *buff_in,
         int in_size, unsigned char *buff_out, int *out_size,
         unsigned char *ccode){
-#ifdef HAVE_LED_CONTROL_SUPPORT
     int ret = 0;
     if (this->remote_node){
-        ret = set_lan_options(hostname, user, pass, auth, priv, 3, NULL, 0);
+        ret = ipmi->setLanOptions(hostname, user, pass, auth, priv, 3, NULL, 0);
         if (ret)
             return ret;
     }
-    ret = ipmi_cmd(cmd, buff_in, in_size, buff_out, out_size, ccode, 0);
-    ipmi_close();
+    ret = ipmi->ipmiCommand(cmd, buff_in, in_size, buff_out, out_size, ccode, 0);
+    ipmi->ipmiClose();
     return 0 == *ccode ? ret : -1;
-#else
-    return -1;
-#endif
 }
 
 int LedControl::getChassisIDState(){
@@ -75,17 +69,13 @@ int LedControl::getChassisIDState(){
     unsigned char c_code;
     int is_supported = 0;
 
-#ifdef HAVE_LED_CONTROL_SUPPORT
-    ipmiCmdOperation(CHASSIS_STATUS, NULL, 0, buff_out, &out_size, &c_code);
+    ipmiCmdOperation(CHASSIS_STATUS_CMD, NULL, 0, buff_out, &out_size, &c_code);
 
     is_supported = (buff_out[MISC_CHASSIS] >> 4) & 4;
     if (!is_supported){
         return -1;
     }
     return (buff_out[MISC_CHASSIS] >> 4) & 3;
-#else
-    return -1;
-#endif
 }
 
 int LedControl::setChassisID(int action, unsigned char seconds){
@@ -99,11 +89,7 @@ int LedControl::setChassisID(int action, unsigned char seconds){
     buff_in[1] = 1;
     in_size = (action == LED_INDEFINITE_ON) ? 2 : 1;
 
-#ifdef HAVE_LED_CONTROL_SUPPORT
-    return ipmiCmdOperation(CHASSIS_IDENTIFY, buff_in, in_size, buff_out, &out_size, &c_code);
-#else
-    return -1;
-#endif
+    return ipmiCmdOperation(CHASSIS_IDENTIFY_CMD, buff_in, in_size, buff_out, &out_size, &c_code);
 }
 
 int LedControl::disableChassisID(){

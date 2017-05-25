@@ -715,8 +715,6 @@ chmod -R +r *
 %{_prefix}/include/openmpi/orcm/mca/sst/base/base.h
 %{_prefix}/include/openmpi/orcm/mca/sst/sst.h
 %dir %{_prefix}/include/openmpi/orcm/runtime
-%{_prefix}/include/openmpi/orcm/runtime/led_control.h
-%{_prefix}/include/openmpi/orcm/runtime/led_control_interface.h
 %{_prefix}/include/openmpi/orcm/runtime/orcm_cmd_server.h
 %{_prefix}/include/openmpi/orcm/runtime/orcm_globals.h
 %{_prefix}/include/openmpi/orcm/runtime/orcm_info_support.h
@@ -725,6 +723,8 @@ chmod -R +r *
 %dir %{_prefix}/include/openmpi/orcm/util
 %{_prefix}/include/openmpi/orcm/util/attr.h
 %{_prefix}/include/openmpi/orcm/util/cli.h
+%{_prefix}/include/openmpi/orcm/util/led_control/led_control.h
+%{_prefix}/include/openmpi/orcm/util/led_control/led_control_interface.h
 %{_prefix}/include/openmpi/orcm/util/logical_group.h
 %{_prefix}/include/openmpi/orcm/util/string_utils.h
 %{_prefix}/include/openmpi/orcm/util/utils.h

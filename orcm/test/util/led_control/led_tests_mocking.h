@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -18,12 +18,12 @@ extern bool is_supported;
 extern "C"{
 #endif
 
-    extern int __real_ipmi_cmd(unsigned short, unsigned char*, int,
+    int ipmi_cmd_mocked(unsigned short, unsigned char*, int,
         unsigned char*, int*, unsigned char*, char);
 
-    extern int __real_ipmi_close(void);
+    int ipmi_close_mocked(void);
 
-    extern int __real_set_lan_options(char*, char*, char*, int, int, int, void*, int);
+    int set_lan_options_mocked(char*, char*, char*, int, int, int, void*, int);
 
 #ifdef __cplusplus
 }

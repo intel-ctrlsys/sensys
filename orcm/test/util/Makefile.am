@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016      Intel Corporation. All rights reserved.
+# Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -12,6 +12,12 @@
 #
 
 include $(top_srcdir)/Makefile.ompi-rules
+
+if HAVE_GTEST
+gtestSubdirs=led_control
+endif
+
+SUBDIRS=$(gtestSubdirs)
 
 #
 # Tests.  "make check" return values:

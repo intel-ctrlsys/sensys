@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -7,12 +7,12 @@
  * $HEADER$
  */
 
-#include "led_control.h"
+#include "orcm/util/led_control/led_control.h"
 
 LedControl *lc = 0;
 
 extern "C" {
-    #include "led_control_interface.h"
+    #include "orcm/util/led_control/led_control_interface.h"
 
     void init_led_control(char* hostname, char* user, char* pass, int auth, int priv){
         lc = new LedControl(hostname, user, pass, auth, priv);

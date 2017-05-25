@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -12,7 +12,7 @@
 
 #include "gtest/gtest.h"
 #include "octl_mocking.h"
-#include "orcm/runtime/led_control.h"
+#include "orcm/util/led_control/led_control.h"
 #include "orcm/mca/sensor/ipmi/ipmi_parser.h"
 #include "orcm/mca/sensor/ipmi/ipmi_parser_interface.h"
 

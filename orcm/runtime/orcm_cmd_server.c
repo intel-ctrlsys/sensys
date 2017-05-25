@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -27,7 +27,7 @@
 #include "orte/mca/notifier/base/base.h"
 #include "orcm/runtime/orcm_globals.h"
 #include "orcm/runtime/orcm_cmd_server.h"
-#include "orcm/runtime/led_control_interface.h"
+#include "orcm/util/led_control/led_control_interface.h"
 
 #include "orcm/util/utils.h"
 #include "orcm/util/logical_group.h"

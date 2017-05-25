@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016      Intel Corporation. All rights reserved.
+# Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -39,10 +39,7 @@ led_tests_SOURCES = \
     led_tests_mocking.cpp \
     led_tests_mocking.h
 
-MOCKING=\
-    -Wl,--wrap=ipmi_cmd \
-    -Wl,--wrap=ipmi_close \
-    -Wl,--wrap=set_lan_options
+MOCKING=
 
 #
 # Libraries we depend on
@@ -50,7 +47,7 @@ MOCKING=\
 
 LDADD = @GTEST_LIBRARY_DIR@/libgtest_main.a
 
-AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread -lcrypto -lipmiutil $(MOCKING)
+AM_LDFLAGS = -lorcm -lorcmopen-pal -lpthread $(MOCKING)
 
 #
 # Preprocessor flags

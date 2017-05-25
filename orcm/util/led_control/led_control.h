@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -15,6 +15,11 @@
 #else
     #define PRIVATE private
 #endif
+
+#include "orcm/util/led_control/ipmicmd_wrapper.h"
+
+const unsigned char IPMI_SESSION_AUTHTYPE_PASSWORD_ = 0x04;
+const unsigned char IPMI_PRIV_LEVEL_USER_ = 0x02;
 
 enum LedState{
     LED_OFF = 0,
@@ -45,7 +50,7 @@ class LedControl{
         LedControl(const char *hostname, const char *user, const char *pass, int auth, int priv);
 
         // Destructor
-        ~LedControl();
+        virtual ~LedControl();
 
         // Turn Chassis ID LED ON indefinitely.
         //
@@ -72,17 +77,18 @@ class LedControl{
         int getChassisIDState();
 
     private:
-        int setChassisID(int, unsigned char);
-        int ipmiCmdOperation(unsigned short, unsigned char*, int, unsigned char*,
-                    int *, unsigned char *);
-
-    private:
         bool remote_node;
         char* hostname;
         char* user;
         char* pass;
         int auth;
         int priv;
+        int setChassisID(int, unsigned char);
+        int ipmiCmdOperation(unsigned short, unsigned char*, int, unsigned char*,
+                    int *, unsigned char *);
+
+    protected:
+        IPMICmdWrapper *ipmi;
 };
 
 #endif /* LED_CONTROL_H */

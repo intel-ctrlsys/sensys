@@ -833,11 +833,11 @@ find -L -type f | sed -e s@^\.@@ > %{_sourcedir}/files.txt
 %{_prefix}/include/openmpi/orcm/runtime/orcm_globals.h
 %{_prefix}/include/openmpi/orcm/runtime/orcm_info_support.h
 %{_prefix}/include/openmpi/orcm/runtime/orcm_cmd_server.h
-%{_prefix}/include/openmpi/orcm/runtime/led_control.h
-%{_prefix}/include/openmpi/orcm/runtime/led_control_interface.h
 %{_prefix}/include/openmpi/orcm/util/utils.h
 %{_prefix}/include/openmpi/orcm/util/cli.h
 %{_prefix}/include/openmpi/orcm/util/attr.h
+%{_prefix}/include/openmpi/orcm/util/led_control/led_control.h
+%{_prefix}/include/openmpi/orcm/util/led_control/led_control_interface.h
 %{_prefix}/include/openmpi/orcm/util/logical_group.h
 %{_prefix}/include/openmpi/orcm/util/vardata.h
 %{_prefix}/include/openmpi/orcm/util/string_utils.h

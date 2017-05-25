@@ -1,7 +1,6 @@
 # -*- shell-script -*-
 #
-# Copyright (c) 2013-2016 Intel Corporation. All rights reserved.
-# Copyright (c) 2016      Intel Corporation. All rights reserved.
+# Copyright (c) 2013-2017 Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -54,8 +53,8 @@ AC_DEFUN([GREI_CONFIG_FILES],[
     orcm/test/tools/octl/Makefile
     orcm/test/tools/orcmd/Makefile
     orcm/test/util/Makefile
+    orcm/test/util/led_control/Makefile
     orcm/test/runtime/Makefile
-    orcm/test/runtime/led_control/Makefile
     orcm/test/runtime/orcm_globals/Makefile
     orcm/test/runtime/cmd_server/Makefile
     orcm/test/runtime/orcm_finalize/Makefile

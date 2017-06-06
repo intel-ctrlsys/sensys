@@ -15,7 +15,6 @@ sources = \
         pugi_impl.h \
         pugi_impl.cpp \
         pugixml/pugiconfig.hpp \
-        pugixml/pugixml.cpp \
         pugixml/pugixml.hpp
 
 # Make the output library in this directory, and name it either

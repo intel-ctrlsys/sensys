@@ -15,7 +15,12 @@ headers = \
         UDExceptions.h \
         udsensors.h \
         baseFactory.h \
-        dataContainerHelper.hpp
+        dataContainerHelper.hpp \
+        parsers/pugixml/pugixml.hpp \
+        parsers/pugixml/pugiconfig.hpp \
+        sensorconfig.hpp \
+        sensorConfigNodeXml.hpp \
+        xmlManager.hpp
 
 lib_LTLIBRARIES = \
         libsensysplugins.la \
@@ -23,7 +28,10 @@ lib_LTLIBRARIES = \
 
 libsensysplugins_la_SOURCES = \
         dataContainer.cpp \
-        baseFactory.cpp
+        baseFactory.cpp \
+        sensorconfig.cpp \
+        sensorConfigNodeXml.cpp \
+        xmlManager.cpp
 
 libsensysplugins_helper_la_SOURCES  = \
         dataContainerHelper.cpp

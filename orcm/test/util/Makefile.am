@@ -50,7 +50,14 @@ util_tests_SOURCES = \
     sensorFactory_tests.cpp \
     sensorFactory_tests.h \
     dataContainerHelperTests.cpp \
-    dataContainerHelperTests.h
+    dataContainerHelperTests.h \
+    sensorXmlManagerTests.cpp \
+    sensorXmlManagerTests.h \
+    sensorConfigTests.cpp \
+    sensorConfigTests.h \
+    sensorConfigNodeXmlTests.cpp \
+    sensorConfigNodeXmlTests.h \
+    xmlFiles.h
 
 MOCKING = \
     -Wl,--wrap=orte_errmgr_base_log \

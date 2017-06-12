@@ -499,6 +499,7 @@ find -L -type f | sed -e s@^\.@@ > %{_sourcedir}/files.txt
 %dir %{_prefix}/include/openmpi/orcm/mca/sst/base
 %dir %{_prefix}/include/openmpi/orcm/runtime
 %dir %{_prefix}/include/openmpi/orcm/util
+%dir %{_prefix}/include/openmpi/orcm/util/led_control
 %{_prefix}/lib/pkgconfig/opal.pc
 %{_prefix}/lib/pkgconfig/orcm.pc
 %{_prefix}/include/openmpi/opal/sys/powerpc/atomic.h
@@ -836,11 +837,13 @@ find -L -type f | sed -e s@^\.@@ > %{_sourcedir}/files.txt
 %{_prefix}/include/openmpi/orcm/util/utils.h
 %{_prefix}/include/openmpi/orcm/util/cli.h
 %{_prefix}/include/openmpi/orcm/util/attr.h
-%{_prefix}/include/openmpi/orcm/util/led_control/led_control.h
-%{_prefix}/include/openmpi/orcm/util/led_control/led_control_interface.h
+%{_prefix}/include/openmpi/orcm/util/dlopen_helper.h
 %{_prefix}/include/openmpi/orcm/util/logical_group.h
 %{_prefix}/include/openmpi/orcm/util/vardata.h
 %{_prefix}/include/openmpi/orcm/util/string_utils.h
+%{_prefix}/include/openmpi/orcm/util/led_control/ipmicmd_wrapper.h
+%{_prefix}/include/openmpi/orcm/util/led_control/led_control.h
+%{_prefix}/include/openmpi/orcm/util/led_control/led_control_interface.h
 %{_prefix}/include/openmpi/orcm_config.h
 
 %files common

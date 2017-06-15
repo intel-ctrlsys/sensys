@@ -18,6 +18,7 @@ headers = \
         dataContainerHelper.hpp \
         parsers/pugixml/pugixml.hpp \
         parsers/pugixml/pugiconfig.hpp \
+        parsers/pugixml/pugixml.cpp \
         sensorconfig.hpp \
         sensorConfigNodeXml.hpp \
         xmlManager.hpp

@@ -796,6 +796,12 @@ find -L -type f | sed -e s@^\.@@ > %{_sourcedir}/files.txt
 %{_prefix}/include/openmpi/orcm/common/udsensors.h
 %{_prefix}/include/openmpi/orcm/common/baseFactory.h
 %{_prefix}/include/openmpi/orcm/common/dataContainerHelper.hpp
+%{_prefix}/include/openmpi/orcm/common/sensorconfig.hpp
+%{_prefix}/include/openmpi/orcm/common/sensorConfigNodeXml.hpp
+%{_prefix}/include/openmpi/orcm/common/xmlManager.hpp
+%{_prefix}/include/openmpi/orcm/common/parsers/pugixml/pugixml.cpp
+%{_prefix}/include/openmpi/orcm/common/parsers/pugixml/pugixml.hpp
+%{_prefix}/include/openmpi/orcm/common/parsers/pugixml/pugiconfig.hpp
 %{_prefix}/include/openmpi/orcm/mca/analytics/base/analytics_private.h
 %{_prefix}/include/openmpi/orcm/mca/analytics/base/base.h
 %{_prefix}/include/openmpi/orcm/mca/analytics/base/analytics_factory.h

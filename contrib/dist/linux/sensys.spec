@@ -477,6 +477,8 @@ find -L -type f | sed -e s@^\.@@ > %{_sourcedir}/files.txt
 %dir %{_prefix}/include/openmpi/orte/runtime/data_type_support
 %dir %{_prefix}/include/openmpi/orcm
 %dir %{_prefix}/include/openmpi/orcm/common
+%dir %{_prefix}/include/openmpi/orcm/common/parsers
+%dir %{_prefix}/include/openmpi/orcm/common/parsers/pugixml
 %dir %{_prefix}/include/openmpi/orcm/mca
 %dir %{_prefix}/include/openmpi/orcm/mca/analytics
 %dir %{_prefix}/include/openmpi/orcm/mca/analytics/base

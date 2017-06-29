@@ -1,7 +1,7 @@
 #
 # Copyright (c) 2013-2014 Intel Corporation. All rights reserved.
 #
-# Copyright (c) 2016      Intel Corporation. All rights reserved.
+# Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 # 
 # Additional copyrights may follow
@@ -14,7 +14,9 @@ dist_orcmdata_DATA = help-orcm-sensor-coretemp.txt
 sources = \
         sensor_coretemp.c \
         sensor_coretemp.h \
-        sensor_coretemp_component.c
+        sensor_coretemp_component.c \
+        sysfs_utils.h \
+        sysfs_utils.c
 
 # Make the output library in this directory, and name it either
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la

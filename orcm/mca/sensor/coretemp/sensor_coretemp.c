@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2013-2016  Intel Corporation. All rights reserved.
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2013-2017  Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -53,6 +52,7 @@
 #include "orcm/mca/sensor/base/sensor_private.h"
 #include "orcm/mca/sensor/base/sensor_runtime_metrics.h"
 #include "sensor_coretemp.h"
+#include "orcm/mca/sensor/coretemp/sysfs_utils.h"
 
 #define TEST_CORES (256)
 
@@ -229,7 +229,9 @@ static int init(void)
         }
 
         /* open that directory */
-        if (NULL == (dirname = opal_os_path(false, "/sys/bus/platform/devices", dir_entry->d_name, NULL ))) {
+        dirname = get_temperature_files_path(opal_os_path(false,
+            "/sys/bus/platform/devices", dir_entry->d_name, NULL ));
+        if (NULL == dirname) {
             continue;
         }
         if (NULL == (tdir = opendir(dirname))) {

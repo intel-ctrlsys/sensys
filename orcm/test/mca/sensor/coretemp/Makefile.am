@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016      Intel Corporation. All rights reserved.
+# Copyright (c) 2016-2017 Intel Corporation. All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -34,9 +34,12 @@ PY_LOG_COMPILER = /usr/bin/python
 check_PROGRAMS = coretemp_tests
 
 coretemp_tests_SOURCES = \
-	coretemp_tests.cpp
+	coretemp_tests.cpp \
+	sysfs_utils_tests.cpp
 
-MOCKING =
+MOCKING = \
+	-Wl,--wrap=nftw \
+	-Wl,--wrap=regcomp
 
 #
 # Libraries we depend on

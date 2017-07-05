@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015-2016  Intel Corporation. All rights reserved.
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2015-2017  Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -28,9 +27,8 @@ snmpCollector::snmpCollector(string host, string user) {
 
     init_snmp("orcm");
     snmp_sess_init( &session );
-    session.peername = const_cast<char*>(hostname.c_str());
     session.version = SNMP_VERSION_1;
-    storeCharsAndLength(username, (char**) &session.community, &session.community_len);
+    updateCharPointers();
 }
 
 snmpCollector::snmpCollector(string host, string user, string pass) {
@@ -57,12 +55,10 @@ snmpCollector::snmpCollector(string host, string user, string pass, auth_type au
 
     init_snmp("orcm");
     snmp_sess_init( &session );
-    session.peername = const_cast<char*>(hostname.c_str());
     session.version=SNMP_VERSION_3;
+    updateCharPointers();
 
-    storeCharsAndLength(username, &session.securityName, &session.securityNameLen);
     setSecurityLevel(sec);
-
     setPrivacyLevel(priv);
 
     switch(auth) {
@@ -73,6 +69,12 @@ snmpCollector::snmpCollector(string host, string user, string pass, auth_type au
             setSHA1Authentication(password);
             break;
     }
+}
+
+void snmpCollector::updateCharPointers() {
+    session.peername = const_cast<char*>(hostname.c_str());
+    storeCharsAndLength(username, (char**) &session.community, &session.community_len);
+    storeCharsAndLength(username, &session.securityName, &session.securityNameLen);
 }
 
 void snmpCollector::initDataMembers() {
@@ -156,6 +158,8 @@ vector<vardata> snmpCollector::collectData() {
     netsnmp_session *ss = NULL;
     vector<vardata> retValue;
     int status;
+
+    updateCharPointers();
 
     if ( !(ss = snmp_open(&session)) ) {
         throw invalidSession();

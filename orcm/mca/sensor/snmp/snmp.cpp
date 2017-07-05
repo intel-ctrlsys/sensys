@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015-2016  Intel Corporation. All rights reserved.
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2015-2017  Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -221,10 +220,6 @@ void snmp_impl::prepareDataForAnalytics(vardata& ctime,
     ctime.appendToOpalList(non_compute); // ctime
     vardata vardataHost = fromOpalBuffer(buf);
     vardataHost.appendToOpalList(key); // hostname
-
-    opal_output_verbose(10, orcm_sensor_base_framework.framework_output,
-                        "%s sensor SNMP : received data from: '%s'",
-                        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), vardataHost.getValue<char*>());
 
     setAnalyticsKeys(key);
 

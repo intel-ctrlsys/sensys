@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015-2016  Intel Corporation. All rights reserved.
- * Copyright (c) 2016      Intel Corporation. All rights reserved.
+ * Copyright (c) 2015-2017  Intel Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -66,6 +65,7 @@ class snmpCollector {
         std::string hostname, username, password, location;
         std::list<std::string> oidList;
 
+        void updateCharPointers();
         void setSecurityLevel(sec_type sec);
         void setPrivacyLevel(priv_protocol priv);
         void setMD5Authentication(std::string password);

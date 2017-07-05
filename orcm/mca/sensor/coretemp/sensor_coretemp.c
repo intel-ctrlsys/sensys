@@ -229,8 +229,10 @@ static int init(void)
         }
 
         /* open that directory */
-        dirname = get_temperature_files_path(opal_os_path(false,
-            "/sys/bus/platform/devices", dir_entry->d_name, NULL ));
+        char* tmp_dirname = opal_os_path(false, "/sys/bus/platform/devices",
+                                         dir_entry->d_name, NULL);
+        dirname = get_temperature_files_path(tmp_dirname);
+        SAFEFREE(tmp_dirname);
         if (NULL == dirname) {
             continue;
         }

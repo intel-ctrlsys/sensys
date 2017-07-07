@@ -176,7 +176,7 @@ void orcm_cmd_server_recv(int status, orte_process_name_t* sender,
             goto ERROR;
         }
 
-        if (is_loaded("ipmi") || is_loaded("nodepower")){
+        if (is_loaded("ipmi") || is_loaded("nodepower")|| is_loaded("ipmi_ts")){
             response = ORCM_ERR_IPMI_CONFLICT;
             goto ERROR;
         }

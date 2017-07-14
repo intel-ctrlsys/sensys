@@ -47,7 +47,7 @@ Sensys is an autotools based project, to build it the following steps are needed
 4. Run ```make install```
   - Ensure that you have write permissions to the defined prefix as well as root permissions if it is required.
 
-Further build and installation instructions can be found on the [wiki page](https://github.com/intel-ctrlsys/sensys/wiki/2.1-Sensys-Build-and-Installation).
+Further build and installation instructions can be found on the [wiki page](https://intel-ctrlsys.github.io/sensys/2-Build-and-Installation-Guide/2.1-Sensys-Build-and-Installation/2.1.01-Build-Dependencies.html).
 
 # Getting started and documentation
 

@@ -10,8 +10,12 @@ env:
   - STATIC_BUILD=true
 
 before_install:
+  - pip install --user cpp-coveralls
   - sudo service docker restart
   - sleep 3
   - sudo docker pull intelctrlsys/sensys-bld-centos7.3
 
 script: "bash -c ./contrib/travis-ci/build.sh"
+
+after_success:
+  - coveralls --gcov-options '\lp'

@@ -8,9 +8,11 @@
 set -ev
 
 if [ "${STATIC_BUILD}" = "true" ]; then
+	flags="CFLAGS=-fprofile-arcs -ftest-coverage CXXFLAGS=-fprofile-arcs -ftest-coverage LDFLAGS=-fprofile-arcs -ftest-coverage"
 	extra_conf="--with-platform=contrib/platform/intel/hillsboro/orcm-nightly-build-static --with-gtest-incdir=/usr/local/include --with-gtest-libdir=/usr/local/lib"
 	test_run="LD_LIBRARY_PATH=/opt/sensys/lib:/opt/sensys/lib/openmpi make check"
 else
+	flags=""
 	extra_conf="--with-platform=contrib/platform/intel/hillsboro/orcm-nightly-build"
 	test_run="true"
 fi

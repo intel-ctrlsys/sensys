@@ -18,4 +18,4 @@ before_install:
 script: "bash -c ./contrib/travis-ci/build.sh"
 
 after_success:
-  - coveralls --gcov-options '\lp'
+  - coveralls --gcov-options '\-lp'
